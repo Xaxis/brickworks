@@ -339,3 +339,110 @@ def test_technic_beam_has_pin_holes(library: Library) -> None:
 
 def test_stickers_have_no_connectors(library: Library) -> None:
     assert extract(library, "003238a.dat") == []
+
+
+# -- occupancy and sockets -----------------------------------------------
+
+from ldraw import occupancy as occ  # noqa: E402
+
+
+def _occupancy(library: Library, part: str):
+    mesh = flatten(library, part)
+    return occ.remove_studs(occ.voxelise(mesh), extract(library, part))
+
+
+@pytest.mark.parametrize(
+    "part,studs_x,plates,studs_z",
+    [
+        ("3005.dat", 1, 3, 1),    # Brick 1 x 1
+        ("3004.dat", 2, 3, 1),    # Brick 1 x 2
+        ("3622.dat", 3, 3, 1),    # Brick 1 x 3
+        ("3009.dat", 6, 3, 1),    # Brick 1 x 6
+        ("3003.dat", 2, 3, 2),    # Brick 2 x 2
+        ("3001.dat", 4, 3, 2),    # Brick 2 x 4
+        ("3024.dat", 1, 1, 1),    # Plate 1 x 1
+        ("3020.dat", 4, 1, 2),    # Plate 2 x 4
+        ("3031.dat", 4, 1, 4),    # Plate 4 x 4
+        ("3832.dat", 10, 1, 2),   # Plate 2 x 10
+        ("3068b.dat", 2, 1, 2),   # Tile 2 x 2
+    ],
+)
+def test_occupancy_matches_the_named_size(
+    library: Library, part: str, studs_x: int, plates: int, studs_z: int
+) -> None:
+    """A part called "Brick 2 x 4" must occupy 4 x 3 x 2 on the lattice.
+
+    This is the test that catches the studs being counted as volume: a
+    brick whose studs count comes out three and a half plates tall, and
+    nothing can then be stacked on it.
+    """
+    grid = _occupancy(library, part)
+    assert grid.shape[0] * occ.CELL == pytest.approx(studs_x * 20.0)
+    assert grid.shape[1] * occ.CELL == pytest.approx(plates * 8.0)
+    assert grid.shape[2] * occ.CELL == pytest.approx(studs_z * 20.0)
+
+
+def test_lattice_divides_every_lego_dimension() -> None:
+    """The cell has to divide the stud pitch, half pitch, brick and plate.
+
+    Anything coarser breaks under a quarter turn, which is how half of
+    modern building works. 4 LDU fails: a 1x1 brick spans -10 to 10 and
+    straddles a cell at each end.
+    """
+    for dimension in (20.0, 10.0, 24.0, 8.0, 4.0):
+        assert dimension % occ.CELL == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    "part,expected",
+    [
+        ("3005.dat", 1), ("3004.dat", 2), ("3009.dat", 6),
+        ("3003.dat", 4), ("3001.dat", 8), ("3020.dat", 8),
+        ("3031.dat", 16), ("3832.dat", 20),
+        ("3068b.dat", 4),   # a tile has no studs but plainly takes them
+        ("3070b.dat", 1),   # and the 1x1 tile declares no connector at all
+    ],
+)
+def test_socket_counts(library: Library, part: str, expected: int) -> None:
+    assert len(occ.bottom_sockets(_occupancy(library, part))) == expected
+
+
+def test_sockets_agree_with_studs(library: Library) -> None:
+    """Two independent derivations must land on the same lattice.
+
+    Stud positions come from the primitives a part is drawn with; socket
+    positions come from voxelising its underside. They share no code, so
+    agreeing to the micron is real evidence both are right.
+    """
+    for part in ("3001.dat", "3003.dat", "3020.dat", "3031.dat", "3832.dat"):
+        grid = _occupancy(library, part)
+        sockets = sorted(
+            (round(x, 3), round(z, 3))
+            for x, z in occ.bottom_sockets(grid)
+        )
+        tops = sorted(
+            (round(c.position.x, 3), round(-c.position.z, 3))
+            for c in studs(extract(library, part))
+        )
+        assert sockets == tops, part
+
+
+def test_an_arch_has_no_socket_under_its_span(library: Library) -> None:
+    """Arch 1 x 4 stands on two legs; nothing attaches under the opening."""
+    sockets = occ.bottom_sockets(_occupancy(library, "3659.dat"))
+    assert len(sockets) == 2
+
+
+def test_collision_is_exact_on_the_lattice(library: Library) -> None:
+    """Two bricks side by side do not collide; overlapping ones do."""
+    brick = _occupancy(library, "3001.dat")
+    step = int(round(20.0 / occ.CELL))
+
+    # Four studs along: exactly touching, not overlapping.
+    assert not occ.collides(brick, brick, (4 * step, 0, 0))
+    # Three studs along: one stud of overlap.
+    assert occ.collides(brick, brick, (3 * step, 0, 0))
+    # Directly on top, one brick up (3 plates).
+    assert not occ.collides(brick, brick, (0, 3 * int(round(8.0 / occ.CELL)), 0))
+    # In the same place as itself.
+    assert occ.collides(brick, brick, (0, 0, 0))
