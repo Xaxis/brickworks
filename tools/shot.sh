@@ -8,9 +8,10 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 out="${1:-shots/latest.png}"
+shift || true
 mkdir -p "$(dirname "$out")"
 rm -f "$out"
-godot --path . --resolution 1600x900 --position 0,0 -- "--shot=$PWD/$out" 2>&1 \
+godot --path . --resolution 1600x900 --position 0,0 -- "--shot=$PWD/$out" "$@" 2>&1 \
   | grep -viE '^$|Godot Engine|Vulkan|godotengine.org|CoreAudio|TextServer' | head -30
 if [ -f "$out" ]; then
   echo "wrote $out ($(du -h "$out" | cut -f1))"

@@ -32,9 +32,14 @@ func _ready() -> void:
 	_builder.library = _library
 
 	var stress: String = _argument("--stress")
+	var wanted: String = _argument("--model")
 	var placed: int = 0
 	if not stress.is_empty():
 		placed = _build_stress(stress.to_int())
+	elif not wanted.is_empty():
+		placed = _open(wanted)
+		if placed == 0:
+			push_error("could not open %s" % wanted)
 	else:
 		placed = _open(SAMPLE_MODEL)
 		if placed == 0:

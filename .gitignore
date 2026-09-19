@@ -32,3 +32,4 @@ node_modules/
 .DS_Store
 *.swp
 shots/
+models/design.ldr
