@@ -248,3 +248,94 @@ def test_srgb_is_converted_to_linear(palette: Palette) -> None:
     linear = grey.as_linear()
     for channel, raw in zip(linear, grey.value):
         assert channel < raw / 255.0
+
+
+# -- connectivity --------------------------------------------------------
+
+from ldraw.connectivity import (  # noqa: E402
+    ConnectorKind,
+    Gender,
+    extract,
+    studs,
+    tubes,
+)
+
+
+@pytest.mark.parametrize(
+    "part,expected_studs",
+    [
+        ("3005.dat", 1),      # Brick 1 x 1
+        ("3004.dat", 2),      # Brick 1 x 2
+        ("3003.dat", 4),      # Brick 2 x 2
+        ("3001.dat", 8),      # Brick 2 x 4
+        ("3024.dat", 1),      # Plate 1 x 1
+        ("3020.dat", 8),      # Plate 2 x 4
+        ("3832.dat", 20),     # Plate 2 x 10
+        ("3068b.dat", 0),     # Tile 2 x 2 — tiles have no studs
+        ("3867.dat", 256),    # Baseplate 16 x 16
+        ("3811.dat", 1024),   # Baseplate 32 x 32
+    ],
+)
+def test_stud_counts_match_the_real_part(
+    library: Library, part: str, expected_studs: int
+) -> None:
+    """Stud counts are checkable against the brick in your hand."""
+    assert len(studs(extract(library, part))) == expected_studs
+
+
+def test_studs_sit_on_the_20_ldu_lattice(library: Library) -> None:
+    """Every stud of a baseplate lands exactly on the stud pitch."""
+    found = studs(extract(library, "3867.dat"))
+    xs = sorted({round(c.position.x, 3) for c in found})
+    zs = sorted({round(c.position.z, 3) for c in found})
+    assert len(xs) == 16 and len(zs) == 16
+    for axis in (xs, zs):
+        spacing = {round(b - a, 3) for a, b in zip(axis, axis[1:])}
+        assert spacing == {20.0}
+
+
+def test_studs_point_up(library: Library) -> None:
+    """A top stud's outward axis is -Y, which is up in LDraw."""
+    for connection in studs(extract(library, "3001.dat")):
+        assert connection.axis.y == pytest.approx(-1.0)
+        assert connection.gender is Gender.MALE
+
+
+def test_tubes_point_down_and_sit_between_studs(library: Library) -> None:
+    """The underside tubes of a 2x4 brick grip studs from outside.
+
+    Three tubes, on the half-lattice between the stud columns, opening
+    downward — the geometry that makes a stud grip rather than rattle.
+    """
+    found = tubes(extract(library, "3001.dat"))
+    assert len(found) == 3
+    assert sorted(round(c.position.x) for c in found) == [-20, 0, 20]
+    for connection in found:
+        assert connection.axis.y == pytest.approx(1.0)  # +Y is down
+        assert connection.gender is Gender.FEMALE
+
+
+def test_sideways_parts_get_rotated_axes(library: Library) -> None:
+    """A headlight brick has studs on more than one face.
+
+    This is the test that catches forgetting to rotate the connector
+    axis: with a hard-coded 'up' every SNOT part silently claims its side
+    studs point at the sky.
+    """
+    found = studs(extract(library, "4070.dat"))  # Brick 1x1 with Headlight
+    axes = {
+        (round(c.axis.x), round(c.axis.y), round(c.axis.z)) for c in found
+    }
+    assert len(axes) > 1, "expected studs facing more than one direction"
+
+
+def test_technic_beam_has_pin_holes(library: Library) -> None:
+    found = extract(library, "32523.dat")  # Technic Beam 3
+    holes = [c for c in found if c.kind is ConnectorKind.PIN_HOLE]
+    assert len(holes) == 3
+    for hole in holes:
+        assert hole.gender is Gender.NEUTRAL
+
+
+def test_stickers_have_no_connectors(library: Library) -> None:
+    assert extract(library, "003238a.dat") == []
