@@ -1,8 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/main.gd" id="1"]
 [ext_resource type="Script" path="res://src/camera/cad_camera.gd" id="2"]
 [ext_resource type="Script" path="res://src/render/brick_world.gd" id="3"]
+[ext_resource type="Script" path="res://src/assembly/builder.gd" id="4"]
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky"]
 sky_top_color = Color(0.45, 0.52, 0.62, 1)
@@ -67,6 +68,9 @@ script = ExtResource("2")
 [node name="BrickWorld" type="Node3D" parent="."]
 script = ExtResource("3")
 
+[node name="Builder" type="Node3D" parent="."]
+script = ExtResource("4")
+
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="Title" type="Label" parent="HUD"]
@@ -100,4 +104,4 @@ offset_bottom = -12.0
 theme_override_colors/font_color = Color(1, 1, 1, 0.55)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
 theme_override_constants/outline_size = 3
-text = "right-drag orbit · shift-drag pan · wheel zoom · F frame · 1-5 views"
+text = "click place · right-click remove · R rotate · [ ] part · ; ' colour · alt-drag orbit · shift-drag pan · wheel zoom · F frame · ctrl-Z undo"

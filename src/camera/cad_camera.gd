@@ -69,14 +69,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_WHEEL_DOWN:
 				if button.pressed:
 					_target_distance = minf(max_distance, _target_distance * zoom_step)
-			MOUSE_BUTTON_RIGHT:
-				_orbiting = button.pressed
 			MOUSE_BUTTON_MIDDLE:
-				_panning = button.pressed
-			MOUSE_BUTTON_LEFT:
-				# Shift-drag pans, so a trackpad without a middle button
-				# can still do everything.
+				# Middle-drag orbits; with shift it pans.
 				if button.shift_pressed:
+					_panning = button.pressed
+				else:
+					_orbiting = button.pressed
+			MOUSE_BUTTON_LEFT:
+				# Left and right click place and remove bricks, so the
+				# camera only claims the left button with a modifier: alt
+				# to orbit, shift to pan. That also covers a trackpad with
+				# no middle button.
+				if button.alt_pressed:
+					_orbiting = button.pressed
+				elif button.shift_pressed:
 					_panning = button.pressed
 
 	elif event is InputEventMouseMotion:

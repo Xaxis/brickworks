@@ -10,6 +10,7 @@ const SAMPLE_MODEL := "res://vendor/ldraw/models/car.ldr"
 
 @onready var _camera: CadCamera = $CadCamera
 @onready var _world: BrickWorld = $BrickWorld
+@onready var _builder: Builder = $Builder
 @onready var _status: Label = $HUD/Status
 @onready var _title: Label = $HUD/Title
 
@@ -27,6 +28,8 @@ func _ready() -> void:
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
+	_builder.world = _world
+	_builder.library = _library
 
 	var stress: String = _argument("--stress")
 	var placed: int = 0
@@ -36,6 +39,7 @@ func _ready() -> void:
 		placed = _open(SAMPLE_MODEL)
 		if placed == 0:
 			placed = _build_demo()
+	_lay_baseplate()
 
 	_title.text = "%d parts catalogued, %d colours — %d ms" % [
 		_library.parts.size(), _library.colors.size(), catalogue_ms]
@@ -44,6 +48,10 @@ func _ready() -> void:
 	# real before framing them.
 	await get_tree().process_frame
 	_camera.frame(_world.model_bounds())
+
+	var autobuild: String = _argument("--autobuild")
+	if not autobuild.is_empty():
+		_autobuild(autobuild.to_int())
 
 	var bench: String = _argument("--bench")
 	if not bench.is_empty():
@@ -123,7 +131,10 @@ func _open(path: String) -> int:
 	var missing: Dictionary = {}
 	for item: Variant in model.flatten(_library.parts):
 		var placement: LdrModel.Placement = item
-		if _world.add_brick(placement.part_id, placement.color_code, placement.transform) != 0:
+		var brick_id: int = _world.add_brick(
+			placement.part_id, placement.color_code, placement.transform)
+		if brick_id != 0:
+			_builder.register(brick_id, placement.part_id, placement.transform)
 			placed += 1
 		else:
 			missing[placement.part_id] = true
@@ -156,6 +167,82 @@ func _build_demo() -> int:
 	return placed
 
 
+## Build something by driving the placement path rather than the model, so
+## the whole chain gets exercised: a ray is cast, the lattice is marched,
+## the hit face decides a target, the target is snapped to the stud grid
+## and dropped onto whatever is below, the result is collision checked, and
+## only then is a brick placed.
+##
+## A brick that lands half a plate low, or one that is allowed to overlap
+## its neighbour, shows up here and nowhere else — placing bricks by
+## writing transforms directly would prove nothing about any of it.
+func _autobuild(courses: int) -> void:
+	var palette: Array[int] = [4, 14, 2, 1, 26, 25, 15, 191]
+	const BRICK := "3001"      # Brick 2 x 4: 80 x 40 LDU
+	const LONG := 80.0
+	const SHORT := 40.0
+	# A hollow square, four bricks to a side. The long walls take the full
+	# span and the short walls fit between them, which is what stops the
+	# corners overlapping; the pair swaps every course, so the courses bond
+	# the way a real wall does instead of stacking four separate columns.
+	const REACH := 2.0 * LONG          # 160: half the outer span
+	var placed: int = 0
+	var refused: int = 0
+
+	for course: int in courses:
+		_builder.held_color = palette[course % palette.size()]
+		var swap: bool = course % 2 == 1
+
+		for side: int in 4:
+			var full: bool = (side < 2) != swap
+			var offset: float = REACH - SHORT * 0.5    # 140
+			for n: int in (4 if full else 3):
+				var along: float
+				var target: Vector3
+				if full:
+					along = -1.5 * LONG + n * LONG     # -120 -40 40 120
+				else:
+					along = -LONG + n * LONG           # -80 0 80
+
+				match side:
+					0:
+						target = Vector3(along, 0.0, -offset)
+						_builder.held_rotation = 0
+					1:
+						target = Vector3(along, 0.0, offset)
+						_builder.held_rotation = 0
+					2:
+						target = Vector3(-offset, 0.0, along)
+						_builder.held_rotation = 1
+					_:
+						target = Vector3(offset, 0.0, along)
+						_builder.held_rotation = 1
+
+				# Aim straight down from well above, the way a cursor would.
+				_builder.update_preview(
+					target + Vector3(0.0, 2000.0, 0.0), Vector3.DOWN)
+				if _builder.place() != 0:
+					placed += 1
+				else:
+					refused += 1
+
+	# Collision has to be shown firing, not merely never asked. Every brick
+	# above sat on a clear column, so nothing was refused; put one exactly
+	# where another already is and it must be.
+	var overlap_refused: bool = false
+	var sample: BrickWorld.Brick = null
+	for brick: Variant in _world.bricks():
+		sample = brick
+		break
+	if sample != null:
+		var cells: Array[Vector3i] = _builder._cells_for(
+			_library.mesh_for(sample.part_id), sample.transform)
+		overlap_refused = _builder.lattice.collides(cells)
+
+	print("autobuild placed=%d refused=%d cells=%d overlap_detected=%s" % [
+		placed, refused, _builder.lattice.occupied_cells(), overlap_refused])
+
+
 ## Fill a cube with bricks to find where the frame time goes.
 ##
 ## Deliberately uses a handful of part types rather than one: a single part
@@ -186,6 +273,16 @@ func _build_stress(target: int) -> int:
 	return placed
 
 
+## Something to build on. A model opened from a file floats in space
+## otherwise, and there is nothing for a first brick to rest against.
+func _lay_baseplate() -> void:
+	const PLATE := "3811"   # Baseplate 32 x 32
+	var at := Transform3D(Basis.IDENTITY, Vector3(0.0, -8.0, 0.0))
+	var brick_id: int = _world.add_brick(PLATE, 288, at)  # Dark Green
+	if brick_id != 0:
+		_builder.register(brick_id, PLATE, at)
+
+
 func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> void:
 	_status.text = "%s bricks · %d batches · %s triangles" % [
 		_comma(brick_count), batch_count, _comma(triangle_count)]
@@ -198,6 +295,46 @@ func _process(_delta: float) -> void:
 	# that the counts can grow without it moving.
 	var fps: float = Engine.get_frames_per_second()
 	_status.text = _status.text.split(" · fps")[0] + " · fps %.0f" % fps
+
+
+## The palette the number keys reach for: a readable spread rather than
+## the first twelve codes, which are mostly greys and browns.
+const QUICK_COLORS: Array[int] = [4, 14, 2, 1, 26, 25, 15, 0, 70, 191]
+
+## Parts the bracket keys cycle. A starter bin, not the catalogue — the
+## catalogue has 24,731 entries and needs a search box, which is next.
+const QUICK_PARTS: Array[String] = [
+	"3005", "3004", "3622", "3009", "3003", "3001", "3007",
+	"3024", "3023", "3020", "3031", "3068b", "3040b", "3298", "4070", "3062b"]
+
+var _part_index: int = 5
+var _color_index: int = 0
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_refresh_preview()
+		return
+
+	if not (event is InputEventMouseButton):
+		return
+	var button: InputEventMouseButton = event
+	if not button.pressed or button.alt_pressed or button.shift_pressed:
+		return
+
+	if button.button_index == MOUSE_BUTTON_LEFT:
+		_builder.place()
+		_refresh_preview()
+	elif button.button_index == MOUSE_BUTTON_RIGHT:
+		_builder.remove_hovered()
+		_refresh_preview()
+
+
+func _refresh_preview() -> void:
+	var mouse: Vector2 = get_viewport().get_mouse_position()
+	_builder.update_preview(
+		_camera.project_ray_origin(mouse),
+		_camera.project_ray_normal(mouse))
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -213,6 +350,26 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_4: _camera.set_view("right")
 		KEY_5: _camera.set_view("top")
 		KEY_0: _camera.set_view("default")
+		KEY_R:
+			_builder.rotate_held(-1 if key.shift_pressed else 1)
+			_refresh_preview()
+		KEY_BRACKETLEFT, KEY_BRACKETRIGHT:
+			var step: int = 1 if key.keycode == KEY_BRACKETRIGHT else -1
+			_part_index = posmod(_part_index + step, QUICK_PARTS.size())
+			_builder.held_part = QUICK_PARTS[_part_index]
+			_refresh_preview()
+		KEY_SEMICOLON, KEY_APOSTROPHE:
+			var shift: int = 1 if key.keycode == KEY_APOSTROPHE else -1
+			_color_index = posmod(_color_index + shift, QUICK_COLORS.size())
+			_builder.held_color = QUICK_COLORS[_color_index]
+			_refresh_preview()
+		KEY_Z:
+			if key.ctrl_pressed or key.meta_pressed:
+				if key.shift_pressed:
+					_builder.redo()
+				else:
+					_builder.undo()
+				_refresh_preview()
 		KEY_ESCAPE:
 			get_tree().quit()
 
