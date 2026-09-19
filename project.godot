@@ -33,6 +33,12 @@ import/blender/enabled=false
 
 [rendering]
 
+; A universal macOS binary has to be able to run on Apple silicon, and
+; Godot refuses to build one unless the mobile texture format is enabled
+; — even for a project with no imported textures, as this one currently
+; is. Cheap to leave on, and it fails the export loudly if left off.
+textures/vram_compression/import_etc2_astc=true
+
 ; A brick is 24 units tall (1 unit = 1 LDU = 0.4 mm), and a big model runs
 ; to a few thousand units. The near plane has to be tight enough to let the
 ; camera sit on a single stud without clipping it.
