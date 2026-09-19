@@ -54,9 +54,12 @@ mesh is a derivative — with attribution. See `docs/ATTRIBUTION.md` for the
 required notice and the LEGO trademark constraints, which bind naming and
 UI copy.
 
-**Colours: `LDConfig.ldr`.** 322 colours with the finishes that decide
-which shader a surface needs: 57 transparent, 59 rubber, 24 pearlescent,
-24 speckle, 15 glitter, 11 metal, 7 chrome, 3 glow, 20 fabric.
+**Colours: `LDConfig.ldr`.** 322 colours, in the eleven buckets that
+decide which shader a surface needs: solid 147, rubber 59, transparent
+32, pearlescent 24, fabric 20, metal 11, opalescent 8, chrome 7, glitter
+7, speckle 4, glow 3. (Counting *transparency* rather than finish gives
+57, since rubber, glitter and opal colours can each be translucent.) See
+§6 for why fabric and opalescent are their own buckets.
 
 ---
 
@@ -230,7 +233,33 @@ the next part needs.
 
 ---
 
-## 6. Still open
+## 6. Corrections worth keeping
+
+Two things the library does not tell you plainly, both found by checking
+counts that looked odd rather than by reading documentation.
+
+**`MATERIAL` has three kinds, not two.** Classifying everything that is
+not `GLITTER` as `SPECKLE` swept the twenty `FABRIC` colours in with the
+four real speckles — and fabric is not plastic at all. It is cloth:
+capes, sails, flags, needing a different shader entirely. The eight
+`Opal_*` colours are split out for the same reason: LDraw writes them as
+`GLITTER`, but they carry `LUMINANCE` as well, and a milky opalescent
+sheen does not look like suspended flecks. Final buckets: solid 147,
+rubber 59, transparent 32, pearlescent 24, fabric 20, metal 11,
+opalescent 8, chrome 7, glitter 7, speckle 4, glow 3.
+
+**1,160 redirect stubs are invisible to a type filter.** Files titled
+`0 ~Moved to <target>` are tagged `!LDRAW_ORG Part UPDATE <year>`, *not*
+`Alias`, and overlap the 495 Alias-tagged files exactly zero times. The
+only signal is the title. They render correctly — each holds one
+identity reference to its target — so geometry was never wrong, and
+content-hash de-duplication already meant they cost no extra storage.
+What they did do is put a thousand entries in the catalogue that are not
+things anyone should be offered, with ids like `10` and `100` that a
+language model might well guess. They are now marked, resolved through
+their chain, and excluded from every search path.
+
+## 7. Still open
 
 - **Web delivery.** 863 MB of geometry cannot ship wholesale. Plan: a core
   set resident, the rest fetched on demand. Threads need COOP/COEP headers,
@@ -242,3 +271,12 @@ the next part needs.
 - **The design assistant.** The LLM emits a structured placement DSL that
   is validated against the real collision and connection engine — it is
   never trusted with geometry directly.
+- **Stability is support and connection only.** No force balance. The
+  published approach is a quadratic program over friction, support and
+  normal forces at each contact, with friction capacity in the
+  *objective* rather than the constraints so that unstable layouts get a
+  gradient to repair along instead of returning "infeasible".
+- **The repository is still named `lego-emulator`**, which puts the
+  trademark in an internet address and uses it as a noun. The
+  application is called Brickworks; the repository should follow. See
+  docs/ATTRIBUTION.md.

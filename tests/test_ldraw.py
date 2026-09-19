@@ -446,3 +446,67 @@ def test_collision_is_exact_on_the_lattice(library: Library) -> None:
     assert not occ.collides(brick, brick, (0, 3 * int(round(8.0 / occ.CELL)), 0))
     # In the same place as itself.
     assert occ.collides(brick, brick, (0, 0, 0))
+
+
+# -- things the library does not tell you plainly -----------------------
+
+
+def test_fabric_is_not_speckle(palette: Palette) -> None:
+    """MATERIAL has three kinds, not two.
+
+    Treating everything that is not GLITTER as SPECKLE swept the twenty
+    FABRIC colours in with the four real speckles. Fabric is not plastic:
+    it is cloth — capes, sails, flags — and needs a different shader, so
+    the miscount sized the wrong bucket.
+    """
+    counts: dict[str, int] = {}
+    for color in palette:
+        counts[color.finish.value] = counts.get(color.finish.value, 0) + 1
+
+    assert counts.get("speckle") == 4
+    assert counts.get("fabric") == 20
+    assert sum(counts.values()) == len(palette)
+
+
+def test_opalescent_is_split_from_glitter(palette: Palette) -> None:
+    """LDraw writes opal colours as GLITTER, but they also glow.
+
+    A milky opalescent sheen does not look like suspended flecks, and
+    the eight Opal_* colours all carry LUMINANCE where true glitter does
+    not.
+    """
+    counts: dict[str, int] = {}
+    for color in palette:
+        counts[color.finish.value] = counts.get(color.finish.value, 0) + 1
+    assert counts.get("opalescent") == 8
+    assert counts.get("glitter") == 7
+
+    opal = palette.get(360)  # Opal_Trans_Clear
+    assert opal.finish is Finish.OPALESCENT
+    assert opal.luminance > 0
+
+
+def test_moved_stubs_are_found_by_title_not_by_type(library: Library) -> None:
+    """1,160 redirect stubs are tagged as ordinary Parts.
+
+    This is the trap: they carry !LDRAW_ORG "Part UPDATE <year>", not
+    Alias, and share no overlap with the 495 files that *are* tagged
+    Alias. Filtering on the type misses every one of them, so a
+    catalogue built that way offers a thousand entries that are not
+    things. The only signal is the title.
+    """
+    moved = library.get("100.dat")
+    assert moved is not None
+    assert moved.is_redirect
+    assert moved.moved_to == "3665"
+    # The thing that makes it a trap:
+    assert not moved.is_alias
+    assert "alias" not in moved.part_type.lower()
+
+
+def test_a_redirect_still_renders_its_target(library: Library) -> None:
+    """A stub holds one identity reference, so it draws the real part."""
+    stub = flatten(library, "100.dat")
+    target = flatten(library, "3665.dat")
+    assert len(stub.triangles) == len(target.triangles)
+    assert stub.bounds() == target.bounds()

@@ -46,6 +46,7 @@ class Part:
     connector_counts: dict[str, int]
     recolourable: bool
     unofficial: bool
+    moved_to: str = ""
 
     # Filled on demand from the .lbm.
     boxes: list[tuple[int, ...]] = field(default_factory=list)
@@ -116,6 +117,18 @@ class Catalogue:
     def __len__(self) -> int:
         return len(self.parts)
 
+    def resolve(self, part_id: str) -> str:
+        """Follow a redirect stub to the part that replaced it."""
+        seen: set[str] = set()
+        current = part_id
+        while current not in seen:
+            seen.add(current)
+            part = self.parts.get(current)
+            if part is None or not part.moved_to:
+                return current
+            current = part.moved_to
+        return part_id
+
     def get(self, part_id: str) -> Part | None:
         part = self.parts.get(part_id)
         if part is not None and not part.loaded:
@@ -145,6 +158,11 @@ class Catalogue:
             return []
         found: list[Part] = []
         for part in self.parts.values():
+            # Never offer a redirect stub. It renders, but "~Moved to
+            # 3665" is not a part, and a model that picks one has picked
+            # a name rather than a thing.
+            if part.moved_to:
+                continue
             haystack = f"{part.id} {part.name} {part.category}".lower()
             if all(n in haystack for n in needles):
                 found.append(part)
@@ -175,6 +193,7 @@ def _read(entry: dict[str, Any]) -> Part:
         connector_counts=dict(entry.get("connector_counts", {})),
         recolourable=bool(entry.get("recolourable", True)),
         unofficial=bool(entry.get("unofficial", False)),
+        moved_to=str(entry.get("moved_to", "")),
     )
 
 

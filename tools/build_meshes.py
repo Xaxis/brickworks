@@ -72,6 +72,10 @@ class PartRecord:
     fixed_colors: list[int] = field(default_factory=list)
     recolourable: bool = True
     unofficial: bool = False
+    # Set when this id is a redirect stub: the part it was renamed to.
+    # 1,160 of these exist and none is tagged as an Alias, so they can
+    # only be found by their title.
+    moved_to: str = ""
 
 
 _LIBRARY: Library | None = None
@@ -147,6 +151,7 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
             fixed_colors=fixed,
             recolourable=any(s.color == 16 for s in part.surfaces),
             unofficial="unofficial" in str(ldfile.path),
+            moved_to=ldfile.moved_to,
         )
         return (part_id, blob, asdict(record))
 

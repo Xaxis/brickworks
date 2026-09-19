@@ -47,6 +47,7 @@ class Finish(Enum):
     METAL = "metal"
     RUBBER = "rubber"
     GLITTER = "glitter"
+    OPALESCENT = "opalescent"
     SPECKLE = "speckle"
     GLOW = "glow"
     FABRIC = "fabric"
@@ -228,8 +229,24 @@ def _parse_colour_line(body: str) -> Color | None:
 
     # Order matters: the most specific finish wins, because a glitter
     # colour is also transparent and a chrome colour is also metallic.
+    #
+    # The MATERIAL kinds are not two but three. Treating everything that
+    # is not GLITTER as SPECKLE swept the twenty FABRIC colours in with
+    # the four real speckles — and fabric is not plastic at all. It is
+    # cloth: capes, sails, flags. It needs its own shader, not a
+    # flecked-plastic one, and the count matters because it sizes the
+    # bucket.
+    #
+    # The eight Opal_* colours are split out for the same reason. LDraw
+    # writes them as GLITTER, but they carry LUMINANCE as well, and a
+    # milky opalescent sheen does not look like suspended glitter flecks.
     if material is not None:
-        finish = Finish.GLITTER if material.kind == "GLITTER" else Finish.SPECKLE
+        if material.kind == "FABRIC":
+            finish = Finish.FABRIC
+        elif material.kind == "GLITTER":
+            finish = Finish.OPALESCENT if luminance > 0 else Finish.GLITTER
+        else:
+            finish = Finish.SPECKLE
     elif "CHROME" in flags:
         finish = Finish.CHROME
     elif "PEARLESCENT" in flags:

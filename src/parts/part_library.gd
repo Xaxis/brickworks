@@ -54,6 +54,14 @@ class PartInfo extends RefCounted:
 	## False when this build ships no geometry for the part, which is the
 	## normal case on the web for anything outside the pack.
 	var packed: bool = true
+	## When this id is only a redirect, the part it was renamed to. 1,160
+	## entries in the library are stubs like "~Moved to 3665": they render
+	## correctly, because each forwards to its target, but they are not
+	## things anyone should be offered.
+	var moved_to: String = ""
+
+	func is_redirect() -> bool:
+		return not moved_to.is_empty()
 	var keywords: PackedStringArray
 	## Counts by connector kind. The connectors themselves live in the
 	## .lbm beside the geometry and arrive with it; keeping them here took
@@ -135,6 +143,7 @@ func _read_part(entry: Dictionary) -> PartInfo:
 		info.connector_counts = counts
 	info.recolourable = bool(entry.get("recolourable", true))
 	info.packed = bool(entry.get("packed", true))
+	info.moved_to = entry.get("moved_to", "")
 	info.unofficial = bool(entry.get("unofficial", false))
 
 	var size: Array = entry.get("size_ldu", [0, 0, 0])
@@ -237,6 +246,8 @@ func search(query: String, limit: int = 100) -> Array[PartInfo]:
 
 	for id: String in _ordered_ids:
 		var info: PartInfo = parts[id]
+		if info.is_redirect():
+			continue
 		var haystack: String = (info.name + " " + info.category + " " + info.id).to_lower()
 		var matched: bool = true
 		for needle: String in needles:

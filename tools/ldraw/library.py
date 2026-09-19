@@ -56,6 +56,9 @@ class LDrawFile:
     bfc_certified: bool = False
     bfc_ccw: bool = True            # winding declared by BFC CERTIFY
     license: str = ""
+    # Set when this file is a redirect stub rather than a part: the name
+    # of the part it was renamed to.
+    moved_to: str = ""
 
     @property
     def is_primitive(self) -> bool:
@@ -72,6 +75,23 @@ class LDrawFile:
     @property
     def is_alias(self) -> bool:
         return "alias" in self.part_type.lower()
+
+    @property
+    def is_redirect(self) -> bool:
+        """A stub that only forwards to the part that replaced it.
+
+        There are 1,160 of these, and they cannot be recognised from
+        ``!LDRAW_ORG``: they are tagged as ordinary Parts and Shortcuts,
+        with *zero* overlap with the 495 files actually tagged Alias.
+        The only marker is the title, ``0 ~Moved to <target>``.
+
+        They still render — each holds one identity reference to its
+        target — so a build that ignores them produces correct geometry
+        and simply carries the duplicate. What they must not do is
+        appear as parts someone can choose, or the catalogue offers a
+        thousand entries that are not things.
+        """
+        return bool(self.moved_to)
 
     @property
     def is_physical_colour(self) -> bool:
@@ -227,6 +247,11 @@ def _read_header(ldfile: LDrawFile, text: str) -> None:
         if first:
             ldfile.description = body
             first = False
+            # "0 ~Moved to 3815c01" — the only signal these give.
+            lowered = body.lower()
+            if lowered.startswith("~moved to"):
+                target = body[len("~Moved to"):].strip()
+                ldfile.moved_to = target.split()[0].lower() if target else ""
             continue
 
         upper = body.upper()
