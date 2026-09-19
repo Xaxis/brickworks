@@ -1,0 +1,33 @@
+# Vendored upstream data — re-fetch with tools/fetch_data.sh, never commit
+vendor/
+build/
+dist/
+.vercel/
+.env
+.env.local
+
+# Generated assets
+assets/generated/
+godot/assets/parts/
+*.pck
+*.wasm
+
+# Godot
+.godot/
+.import/
+export_presets.cfg
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Editors / OS
+.idea/
+.DS_Store
+*.swp
