@@ -12,9 +12,28 @@
 class_name PartLibrary
 extends RefCounted
 
-const CATALOGUE_PATH := "res://assets/generated/catalogue.json"
-const COLORS_PATH := "res://assets/generated/colors.json"
-const PARTS_DIR := "res://assets/generated/parts/"
+## Where the assets live. The full library is 875 MB of geometry, which
+## is fine to ship in a desktop binary and out of the question over the
+## wire, so the web build carries a curated pack instead: every part is
+## still in the catalogue and searchable, and the ones with geometry are
+## the ones you can place. Whichever is present wins, web pack first.
+const ASSET_ROOTS: Array[String] = [
+	"res://assets/web/", "res://assets/generated/"]
+
+var _root: String = ""
+
+
+## Pick the asset root once, so the catalogue and the meshes cannot
+## disagree about which build this is.
+func _resolve_root() -> String:
+	if not _root.is_empty():
+		return _root
+	for candidate: String in ASSET_ROOTS:
+		if FileAccess.file_exists(candidate + "catalogue.json"):
+			_root = candidate
+			return _root
+	_root = ASSET_ROOTS[ASSET_ROOTS.size() - 1]
+	return _root
 
 
 ## What a part is, without its geometry.
@@ -32,6 +51,9 @@ class PartInfo extends RefCounted:
 	var box_count: int
 	var recolourable: bool
 	var unofficial: bool
+	## False when this build ships no geometry for the part, which is the
+	## normal case on the web for anything outside the pack.
+	var packed: bool = true
 	var keywords: PackedStringArray
 	## Counts by connector kind. The connectors themselves live in the
 	## .lbm beside the geometry and arrive with it; keeping them here took
@@ -71,7 +93,9 @@ var _missing: Dictionary = {}       ## hashes already reported, to log once
 signal loaded(part_count: int)
 
 
-func load_catalogue(path: String = CATALOGUE_PATH) -> bool:
+func load_catalogue(path: String = "") -> bool:
+	if path.is_empty():
+		path = _resolve_root() + "catalogue.json"
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		push_error("part library: no catalogue at %s — run tools/build_meshes.py" % path)
@@ -110,6 +134,7 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	if typeof(counts) == TYPE_DICTIONARY:
 		info.connector_counts = counts
 	info.recolourable = bool(entry.get("recolourable", true))
+	info.packed = bool(entry.get("packed", true))
 	info.unofficial = bool(entry.get("unofficial", false))
 
 	var size: Array = entry.get("size_ldu", [0, 0, 0])
@@ -126,9 +151,10 @@ func _read_part(entry: Dictionary) -> PartInfo:
 
 
 func _load_colors() -> void:
-	var file: FileAccess = FileAccess.open(COLORS_PATH, FileAccess.READ)
+	var colors_path: String = _resolve_root() + "colors.json"
+	var file: FileAccess = FileAccess.open(colors_path, FileAccess.READ)
 	if file == null:
-		push_warning("part library: no colours at %s" % COLORS_PATH)
+		push_warning("part library: no colours at %s" % colors_path)
 		return
 	var raw: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
@@ -162,7 +188,7 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 	if _mesh_cache.has(info.mesh_hash):
 		return _mesh_cache[info.mesh_hash]
 
-	var path: String = PARTS_DIR + info.mesh_hash + ".lbm"
+	var path: String = _resolve_root() + "parts/" + info.mesh_hash + ".lbm"
 	var part: Lbm.PartMesh = Lbm.load_part(path)
 	if part == null:
 		if not _missing.has(info.mesh_hash):

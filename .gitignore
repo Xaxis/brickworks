@@ -6,8 +6,10 @@ dist/
 .env
 .env.local
 
-# Generated assets
+# Generated assets. Both are derived from vendor/ and reproducible:
+# tools/build_meshes.py writes generated/, tools/web_pack.py selects web/.
 assets/generated/
+assets/web/
 godot/assets/parts/
 *.pck
 *.wasm
@@ -15,7 +17,6 @@ godot/assets/parts/
 # Godot
 .godot/
 .import/
-export_presets.cfg
 
 # Python
 __pycache__/
@@ -33,3 +34,6 @@ node_modules/
 *.swp
 shots/
 models/design.ldr
+.vercel
+tools/web/node_modules/
+tools/web/package-lock.json

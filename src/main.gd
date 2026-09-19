@@ -6,7 +6,9 @@
 ## as the test. Everything it does by hand here becomes a tool later.
 extends Node3D
 
-const SAMPLE_MODEL := "res://vendor/ldraw/models/car.ldr"
+## Shipped with the build. It used to be read out of vendor/, which the
+## export excludes, so the web build silently fell back to the demo wall.
+const SAMPLE_MODEL := "res://models/car.ldr"
 
 @onready var _camera: CadCamera = $CadCamera
 @onready var _world: BrickWorld = $BrickWorld
@@ -164,9 +166,12 @@ func _build_demo() -> int:
 		# Offset alternate courses by two studs, the way a real wall is laid.
 		var offset: int = (course % 2) * STUD * 2
 		for column: int in 6:
+			# Courses go up. The negated height was left over from thinking
+			# in LDraw's axes, where -Y is up, and built the whole wall
+			# downward through the baseplate.
 			var at := Transform3D(
 				Basis.IDENTITY,
-				Vector3(column * STUD * 4 + offset, -course * COURSE_HEIGHT, 0))
+				Vector3(column * STUD * 4 + offset, course * COURSE_HEIGHT, 0))
 			if _world.add_brick(BRICK, palette[course % palette.size()], at) != 0:
 				placed += 1
 	return placed

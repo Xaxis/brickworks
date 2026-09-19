@@ -19,6 +19,13 @@ uniform float subsurface : hint_range(0.0, 1.0) = 0.12;
 // shadow that a direct light cannot reach.
 uniform float cavity_strength : hint_range(0.0, 1.0) = 0.35;
 
+// Whether the instance colour needs converting from sRGB to linear here.
+// The two renderers disagree about what they are handed: under Forward+
+// the conversion belongs in the shader, and doing it again under
+// Compatibility darkens every part. Set from the renderer at startup, so
+// a brick is the same colour on the desktop and on the web.
+uniform bool linearise = true;
+
 varying vec3 instance_color;
 varying vec3 view_normal;
 
@@ -33,7 +40,7 @@ vec3 srgb_to_linear(vec3 c) {
 }
 
 void vertex() {
-	instance_color = srgb_to_linear(COLOR.rgb);
+	instance_color = linearise ? srgb_to_linear(COLOR.rgb) : COLOR.rgb;
 	view_normal = NORMAL;
 }
 

@@ -67,6 +67,17 @@ var _materials: Dictionary = {}      ## int MaterialClass -> ShaderMaterial
 signal rebuilt(brick_count: int, batch_count: int, triangle_count: int)
 
 
+## Whether the shader should linearise the instance colour itself.
+##
+## Forward+ renders in linear space and converts on output, so an sRGB
+## palette value has to be linearised going in. The Compatibility
+## renderer — which is what the web build gets, since Forward+ needs
+## WebGPU — already accounts for it, and linearising a second time
+## renders every part as a darker, duller version of itself.
+static func _linearise_colors() -> bool:
+	return RenderingServer.get_current_rendering_method() != "gl_compatibility"
+
+
 ## Materials are shared, not per batch: four of them cover everything, and
 ## sharing them lets Godot group the draws.
 func _material(material_class: int, two_sided: bool) -> ShaderMaterial:
@@ -81,6 +92,7 @@ func _material(material_class: int, two_sided: bool) -> ShaderMaterial:
 
 	var material := ShaderMaterial.new()
 	material.shader = SHADERS[name]
+	material.set_shader_parameter("linearise", _linearise_colors())
 	if material_class == MaterialClass.TRANSPARENT:
 		# Transparent parts draw after every opaque one, whatever order the
 		# batches were created in.
