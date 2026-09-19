@@ -15,8 +15,17 @@
 class_name Lbm
 extends RefCounted
 
-const MAGIC := 0x324D424C  # "LBM2" little-endian
-const HEADER_SIZE := 36
+const MAGIC := 0x334D424C  # "LBM3" little-endian
+const HEADER_SIZE := 44
+const CONNECTOR_SIZE := 26
+const BOX_SIZE := 12
+const SOCKET_SIZE := 8
+
+## Wire order of connector kinds and genders; append only.
+const KINDS: PackedStringArray = [
+	"stud", "tube", "ridge", "axle", "axle_hole", "pin", "pin_hole",
+	"clip", "bar", "ball", "socket"]
+const GENDERS: PackedStringArray = ["male", "female", "neutral"]
 const VERTEX_SIZE := 10
 const I16_MAX := 32767.0
 const SURFACE_TWO_SIDED := 1
@@ -37,9 +46,24 @@ const LDU_MM := 0.4
 ## plastic and its fixed-colour print into separate MultiMeshes or the print
 ## takes the colour of the head. Most parts have exactly one surface, where
 ## the two arrangements are identical.
+class Connector extends RefCounted:
+	var kind: String
+	var gender: String
+	var position: Vector3   ## part-local, LDU
+	var axis: Vector3       ## unit, pointing out of the part
+
+
 class PartMesh extends RefCounted:
 	var surfaces: Array[ArrayMesh] = []
 	var bounds: AABB
+	## Where this part can join others.
+	var connectors: Array[Connector] = []
+	## Collision cover in whole lattice cells: Vector3i position and size.
+	var boxes: Array[AABB] = []
+	## Underside positions that accept a stud, in LDU.
+	var sockets: PackedVector2Array = PackedVector2Array()
+	## The occupancy lattice these boxes are measured in, in LDU.
+	var cell_ldu: float = 2.0
 	## Per surface, the LDraw colour code it is moulded in. Entries equal to
 	## [constant COLOR_INHERIT] are recoloured per instance.
 	var surface_colors: PackedInt32Array = PackedInt32Array()
@@ -94,6 +118,11 @@ static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMe
 	var lo := Vector3(bytes.decode_float(12), bytes.decode_float(16), bytes.decode_float(20))
 	var hi := Vector3(bytes.decode_float(24), bytes.decode_float(28), bytes.decode_float(32))
 	part.bounds = AABB(lo, hi - lo)
+
+	var connector_count: int = bytes.decode_u16(36)
+	var box_count: int = bytes.decode_u16(38)
+	var socket_count: int = bytes.decode_u16(40)
+	part.cell_ldu = float(bytes.decode_u16(42)) / 16.0
 
 	var offset: int = HEADER_SIZE
 	for surface_index: int in surface_count:
@@ -155,6 +184,49 @@ static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMe
 		part.surface_colors.append(color)
 		part.surface_two_sided.append(1 if (flags & SURFACE_TWO_SIDED) != 0 else 0)
 		part.triangle_count += index_count / 3
+
+	# The connectivity rides along with the geometry because it is wanted
+	# at the same moment: when a part is first placed, never before.
+	for _c: int in connector_count:
+		if offset + CONNECTOR_SIZE > bytes.size():
+			push_error("lbm: %s truncated in connectors" % source)
+			return part
+		var connector: Connector = Connector.new()
+		var kind_index: int = bytes.decode_u8(offset)
+		var gender_index: int = bytes.decode_u8(offset + 1)
+		connector.kind = KINDS[kind_index] if kind_index < KINDS.size() else ""
+		connector.gender = GENDERS[gender_index] if gender_index < GENDERS.size() else ""
+		connector.position = Vector3(
+			bytes.decode_float(offset + 2),
+			bytes.decode_float(offset + 6),
+			bytes.decode_float(offset + 10))
+		connector.axis = Vector3(
+			bytes.decode_float(offset + 14),
+			bytes.decode_float(offset + 18),
+			bytes.decode_float(offset + 22))
+		part.connectors.append(connector)
+		offset += CONNECTOR_SIZE
+
+	for _b: int in box_count:
+		if offset + BOX_SIZE > bytes.size():
+			push_error("lbm: %s truncated in boxes" % source)
+			return part
+		part.boxes.append(AABB(
+			Vector3(bytes.decode_s16(offset),
+				bytes.decode_s16(offset + 2),
+				bytes.decode_s16(offset + 4)),
+			Vector3(bytes.decode_s16(offset + 6),
+				bytes.decode_s16(offset + 8),
+				bytes.decode_s16(offset + 10))))
+		offset += BOX_SIZE
+
+	for _s: int in socket_count:
+		if offset + SOCKET_SIZE > bytes.size():
+			push_error("lbm: %s truncated in sockets" % source)
+			return part
+		part.sockets.append(Vector2(
+			bytes.decode_float(offset), bytes.decode_float(offset + 4)))
+		offset += SOCKET_SIZE
 
 	return part
 

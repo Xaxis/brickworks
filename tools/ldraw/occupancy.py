@@ -226,6 +226,37 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
     )
 
 
+def fill_cavities(occupancy: Occupancy) -> Occupancy:
+    """Close the voids inside a part, layer by layer.
+
+    Voxelising a brick gives its walls and tubes, because that is what the
+    plastic is: the inside is hollow. For collision that is wrong. Nothing
+    can be placed inside a brick's cavity — the space is already spoken
+    for by the studs of whatever it sits on — so an engine that sees the
+    cavity as free will allow a 1x1 brick to be dropped inside a 2x4 one.
+
+    Filling is done one horizontal layer at a time rather than over the
+    whole volume, because the cavity is open at the bottom and a 3D fill
+    from outside reaches straight into it. In any single layer the same
+    cavity is a closed ring of wall, so it fills.
+
+    Taking the layers separately is also what keeps an arch honest: under
+    its span the gap runs out to the edge of the part in that layer, so it
+    is open to the outside rather than enclosed, and stays open.
+    """
+    if occupancy.cell_count == 0:
+        return occupancy
+
+    grid = occupancy.to_grid().copy()
+    for y in range(grid.shape[1]):
+        filled = binary_fill_holes(grid[:, y, :])
+        if filled is not None:
+            grid[:, y, :] = filled
+
+    return Occupancy(
+        origin=occupancy.origin, shape=occupancy.shape, bits=grid.reshape(-1))
+
+
 def remove_studs(
     occupancy: Occupancy, connections: list[Connection], *, cell: float = CELL
 ) -> Occupancy:
@@ -395,3 +426,84 @@ def collides(a: Occupancy, b: Occupancy, offset: tuple[int, int, int]) -> bool:
         lo[2] - shift[2]:hi[2] - shift[2],
     ]
     return bool(np.any(slice_a & slice_b))
+
+
+def to_boxes(occupancy: Occupancy, *, limit: int = 64) -> list[tuple[int, ...]]:
+    """Cover the occupied cells with a few axis-aligned boxes.
+
+    The grid itself is the honest answer to "does this overlap that", but
+    it is also several kilobytes a part, which is a hundred megabytes over
+    the library — too much to keep resident just to answer a question that
+    a handful of boxes answers as well.
+
+    Nearly every part is a box or a short stack of them: a brick is one, a
+    slope is a staircase of four or five, an arch is three. Growing a box
+    greedily from each uncovered cell finds those without needing to be
+    clever, and the result is exact — every occupied cell is inside some
+    box and no box contains an empty cell — so a test against the boxes
+    gives the same answer as a test against the grid.
+
+    Returns ``(x, y, z, width, height, depth)`` tuples in absolute lattice
+    coordinates. Parts that will not reduce to ``limit`` boxes fall back
+    to their bounding box, which over-reports rather than under-reports:
+    it can refuse a legal placement but never allows an illegal one.
+    """
+    if occupancy.cell_count == 0:
+        return []
+
+    grid = occupancy.to_grid()
+    ox, oy, oz = occupancy.origin
+    remaining = grid.copy()
+    boxes: list[tuple[int, ...]] = []
+
+    while remaining.any():
+        if len(boxes) >= limit:
+            xs, ys, zs = np.nonzero(grid)
+            return [(
+                ox + int(xs.min()), oy + int(ys.min()), oz + int(zs.min()),
+                int(xs.max() - xs.min()) + 1,
+                int(ys.max() - ys.min()) + 1,
+                int(zs.max() - zs.min()) + 1,
+            )]
+
+        start = np.argwhere(remaining)[0]
+        x0, y0, z0 = (int(v) for v in start)
+        x1, y1, z1 = x0 + 1, y0 + 1, z0 + 1
+
+        # Grow along each axis in turn while the slab stays solid. The
+        # order matters only for how the boxes come out, not whether the
+        # cover is correct, and x-then-z-then-y suits parts that are wide
+        # and flat, which most are.
+        grown = True
+        while grown:
+            grown = False
+            if x1 < grid.shape[0] and grid[x1, y0:y1, z0:z1].all():
+                x1 += 1
+                grown = True
+            if z1 < grid.shape[2] and grid[x0:x1, y0:y1, z1].all():
+                z1 += 1
+                grown = True
+            if y1 < grid.shape[1] and grid[x0:x1, y1, z0:z1].all():
+                y1 += 1
+                grown = True
+
+        remaining[x0:x1, y0:y1, z0:z1] = False
+        boxes.append((ox + x0, oy + y0, oz + z0, x1 - x0, y1 - y0, z1 - z0))
+
+    return boxes
+
+
+def boxes_collide(
+    a: list[tuple[int, ...]],
+    b: list[tuple[int, ...]],
+    offset: tuple[int, int, int],
+) -> bool:
+    """Do two box covers overlap, with ``b`` shifted by whole cells?"""
+    for bx, by, bz, bw, bh, bd in b:
+        sx, sy, sz = bx + offset[0], by + offset[1], bz + offset[2]
+        for ax, ay, az, aw, ah, ad in a:
+            if (ax < sx + bw and sx < ax + aw
+                    and ay < sy + bh and sy < ay + ah
+                    and az < sz + bd and sz < az + ad):
+                return True
+    return False

@@ -28,23 +28,24 @@ class PartInfo extends RefCounted:
 	var size: Vector3           ## LDU
 	var bounds: AABB
 	var stud_count: int
+	var socket_count: int
+	var box_count: int
 	var recolourable: bool
 	var unofficial: bool
 	var keywords: PackedStringArray
-	var connectors: Array[Connector] = []
+	## Counts by connector kind. The connectors themselves live in the
+	## .lbm beside the geometry and arrive with it; keeping them here took
+	## the catalogue past 25 MB, to answer questions about parts nobody
+	## had placed.
+	var connector_counts: Dictionary = {}
+
+	func has_connector(kind: String) -> bool:
+		return int(connector_counts.get(kind, 0)) > 0
 
 	## Footprint in whole studs, rounded up. Useful for sorting and for
 	## the assistant's reasoning; not a substitute for real collision.
 	func footprint_studs() -> Vector2i:
 		return Vector2i(int(ceil(size.x / 20.0)), int(ceil(size.z / 20.0)))
-
-
-## One place a part can join another.
-class Connector extends RefCounted:
-	var kind: String            ## stud / tube / pin_hole / axle_hole / ...
-	var gender: String          ## male / female / neutral
-	var position: Vector3       ## part-local, LDU
-	var axis: Vector3           ## unit, pointing out of the part
 
 
 ## A colour the palette knows about.
@@ -103,6 +104,11 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	info.mesh_hash = entry.get("mesh", "")
 	info.triangles = int(entry.get("triangles", 0))
 	info.stud_count = int(entry.get("stud_count", 0))
+	info.socket_count = int(entry.get("socket_count", 0))
+	info.box_count = int(entry.get("box_count", 0))
+	var counts: Variant = entry.get("connector_counts", {})
+	if typeof(counts) == TYPE_DICTIONARY:
+		info.connector_counts = counts
 	info.recolourable = bool(entry.get("recolourable", true))
 	info.unofficial = bool(entry.get("unofficial", false))
 
@@ -115,17 +121,6 @@ func _read_part(entry: Dictionary) -> PartInfo:
 
 	for word: Variant in entry.get("keywords", []):
 		info.keywords.append(str(word))
-
-	for raw: Variant in entry.get("connectors", []):
-		var record: Dictionary = raw
-		var connector: Connector = Connector.new()
-		connector.kind = record.get("kind", "")
-		connector.gender = record.get("gender", "")
-		var p: Array = record.get("pos", [0, 0, 0])
-		var a: Array = record.get("axis", [0, 1, 0])
-		connector.position = Vector3(p[0], p[1], p[2])
-		connector.axis = Vector3(a[0], a[1], a[2])
-		info.connectors.append(connector)
 
 	return info
 

@@ -40,19 +40,11 @@ from ldraw.colors import Palette  # noqa: E402
 from ldraw.connectivity import extract as extract_connections  # noqa: E402
 from ldraw.geometry import flatten  # noqa: E402
 from ldraw.library import Library  # noqa: E402
+from ldraw import occupancy as occ  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LDRAW = ROOT / "vendor" / "ldraw"
 DEFAULT_OUT = ROOT / "assets" / "generated"
-
-
-@dataclass
-class ConnectorRecord:
-    kind: str
-    gender: str
-    # Application space: +Y up, 1 unit = 1 LDU.
-    pos: tuple[float, float, float]
-    axis: tuple[float, float, float]
 
 
 @dataclass
@@ -68,8 +60,13 @@ class PartRecord:
     size_ldu: tuple[float, float, float]
     bounds_min: tuple[float, float, float]
     bounds_max: tuple[float, float, float]
-    connectors: list[ConnectorRecord] = field(default_factory=list)
+    # Counts only. The connectors, collision boxes and sockets themselves
+    # live in the .lbm beside the geometry, because they are wanted at the
+    # same moment it is and putting them here took the catalogue past 25 MB.
     stud_count: int = 0
+    socket_count: int = 0
+    connector_counts: dict[str, int] = field(default_factory=dict)
+    box_count: int = 0
     keywords: list[str] = field(default_factory=list)
     # Colours the part is moulded in when it is not recolourable.
     fixed_colors: list[int] = field(default_factory=list)
@@ -107,31 +104,29 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
             return (part_id, None, {"error": "no geometry"})
 
         part = meshfile.build(mesh)
+
+        # Occupancy: solid volume for collision, and the underside sockets
+        # the primitives cannot tell us about.
+        connections = extract_connections(_LIBRARY, name)
+        solid = occ.fill_cavities(occ.remove_studs(occ.voxelise(mesh), connections))
+
+        counts: dict[str, int] = {}
+        for connection in connections:
+            counts[connection.kind.value] = counts.get(connection.kind.value, 0) + 1
+            part.connectors.append(meshfile.ConnectorOut(
+                kind=connection.kind.value,
+                gender=connection.gender.value,
+                # The same axis change the mesh gets, so the two agree.
+                pos=(connection.position.x, -connection.position.y,
+                     -connection.position.z),
+                axis=(connection.axis.x, -connection.axis.y, -connection.axis.z),
+            ))
+        part.boxes = [tuple(int(v) for v in box) for box in occ.to_boxes(solid)]
+        part.sockets = [(float(x), float(z)) for x, z in occ.bottom_sockets(solid)]
+        part.cell_ldu = occ.CELL
+
         blob = meshfile.write(part)
         digest = hashlib.blake2b(blob, digest_size=10).hexdigest()
-
-        connectors = []
-        studs = 0
-        for connection in extract_connections(_LIBRARY, name):
-            if connection.kind.value == "stud":
-                studs += 1
-            connectors.append(
-                ConnectorRecord(
-                    kind=connection.kind.value,
-                    gender=connection.gender.value,
-                    # Same axis change the mesh gets, so they agree.
-                    pos=(
-                        round(connection.position.x, 4),
-                        round(-connection.position.y, 4),
-                        round(-connection.position.z, 4),
-                    ),
-                    axis=(
-                        round(connection.axis.x, 4),
-                        round(-connection.axis.y, 4),
-                        round(-connection.axis.z, 4),
-                    ),
-                )
-            )
 
         fixed = sorted({s.color for s in part.surfaces if s.color != 16})
         record = PartRecord(
@@ -144,8 +139,10 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
             size_ldu=tuple(round(v, 3) for v in part.size_ldu()),  # type: ignore[arg-type]
             bounds_min=tuple(round(v, 3) for v in part.bounds_min),  # type: ignore[arg-type]
             bounds_max=tuple(round(v, 3) for v in part.bounds_max),  # type: ignore[arg-type]
-            connectors=connectors,
-            stud_count=studs,
+            stud_count=counts.get("stud", 0),
+            socket_count=len(part.sockets),
+            connector_counts=counts,
+            box_count=len(part.boxes),
             keywords=ldfile.keywords[:12],
             fixed_colors=fixed,
             recolourable=any(s.color == 16 for s in part.surfaces),
@@ -214,6 +211,7 @@ def main() -> int:
         "format": 1,
         "unit": "LDU",
         "ldu_mm": meshfile.LDU_MM,
+        "cell_ldu": occ.CELL,
         "up_axis": "+Y",
         "generated": int(time.time()),
         "counts": {

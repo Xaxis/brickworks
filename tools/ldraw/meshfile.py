@@ -50,11 +50,15 @@ LDU) fall back to a coarser step, and nothing touches them.
 
 Layout
 ------
-    magic     "LBM2"                    4 bytes
-    flags     u16                       bit 0: has two-sided surfaces
-    surfaces  u16
-    scale     f32                       quantisation steps per LDU
-    bounds    6 x f32                   min xyz, max xyz
+    magic      "LBM3"                   4 bytes
+    flags      u16                      bit 0: has two-sided surfaces
+    surfaces   u16
+    scale      f32                      quantisation steps per LDU
+    bounds     6 x f32                  min xyz, max xyz
+    connectors u16
+    boxes      u16
+    sockets    u16
+    cell       u16                      occupancy lattice, in 1/16 LDU
     per surface:
         color     i16                   LDraw colour code; 16 means
                                         "the colour this part is placed
@@ -64,6 +68,23 @@ Layout
         indices   u32
         vertex[]  3 x i16 + 2 x i16     position (steps), normal (octahedral)
         index[]   u16 or u32            u16 when vertices <= 65535
+    connector[]  u8 kind, u8 gender, 3 x f32 pos, 3 x f32 axis
+    box[]        6 x i16                x y z w h d, in lattice cells
+    socket[]     2 x f32                x z, in LDU
+
+Why the connectivity rides along with the geometry
+--------------------------------------------------
+A part's connectors, collision boxes and sockets could live in the
+catalogue, and at first they did.  With 196,541 studs across the library
+that took the catalogue past 25 MB, which is several seconds to parse
+before the first frame — to answer questions about parts nobody has
+placed.
+
+They belong here instead because they share the geometry's lifetime
+exactly: they are needed when a part is first placed and not before, they
+are the same for every part that shares a shape, and one fetch brings all
+of it.  What stays in the catalogue is only what browsing and searching
+need.
 """
 
 from __future__ import annotations
@@ -74,7 +95,7 @@ from dataclasses import dataclass, field
 from .geometry import Mesh, compute_normals
 from .parser import COLOR_INHERIT, Vec3
 
-MAGIC = b"LBM2"
+MAGIC = b"LBM3"
 
 # Quantisation steps per LDU.  A power of two so the division is exact and
 # a round number of steps lands on every lattice position.
@@ -111,6 +132,26 @@ class Surface:
         return len(self.positions) // 3
 
 
+# Connector kinds, as a byte.  The order is the wire format; append only.
+CONNECTOR_KINDS = (
+    "stud", "tube", "ridge", "axle", "axle_hole", "pin", "pin_hole",
+    "clip", "bar", "ball", "socket",
+)
+GENDERS = ("male", "female", "neutral")
+
+# The occupancy lattice is stored in sixteenths of an LDU so it stays an
+# integer in the header whatever it is set to.
+_CELL_SCALE = 16
+
+
+@dataclass(slots=True)
+class ConnectorOut:
+    kind: str
+    gender: str
+    pos: tuple[float, float, float]
+    axis: tuple[float, float, float]
+
+
 @dataclass(slots=True)
 class PartMesh:
     """A part, split into one surface per distinct colour role."""
@@ -118,6 +159,10 @@ class PartMesh:
     surfaces: list[Surface] = field(default_factory=list)
     bounds_min: tuple[float, float, float] = (0.0, 0.0, 0.0)
     bounds_max: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    connectors: list[ConnectorOut] = field(default_factory=list)
+    boxes: list[tuple[int, int, int, int, int, int]] = field(default_factory=list)
+    sockets: list[tuple[float, float]] = field(default_factory=list)
+    cell_ldu: float = 2.0
 
     @property
     def triangle_count(self) -> int:
@@ -266,6 +311,11 @@ def write(part: PartMesh, *, scale: float | None = None) -> bytes:
     out += MAGIC
     out += struct.pack("<HHf", flags, len(part.surfaces), scale)
     out += struct.pack("<6f", *part.bounds_min, *part.bounds_max)
+    out += struct.pack(
+        "<HHHH",
+        len(part.connectors), len(part.boxes), len(part.sockets),
+        int(round(part.cell_ldu * _CELL_SCALE)),
+    )
 
     for surface in part.surfaces:
         count = surface.vertex_count
@@ -299,6 +349,18 @@ def write(part: PartMesh, *, scale: float | None = None) -> bytes:
         else:
             out += struct.pack(f"<{len(surface.indices)}I", *surface.indices)
 
+    for connector in part.connectors:
+        out += struct.pack(
+            "<BB6f",
+            CONNECTOR_KINDS.index(connector.kind) if connector.kind in CONNECTOR_KINDS else 255,
+            GENDERS.index(connector.gender) if connector.gender in GENDERS else 255,
+            *connector.pos, *connector.axis,
+        )
+    for box in part.boxes:
+        out += struct.pack("<6h", *box)
+    for socket in part.sockets:
+        out += struct.pack("<2f", *socket)
+
     return bytes(out)
 
 
@@ -317,9 +379,13 @@ def read(data: bytes) -> PartMesh:
 
     _flags, surface_count, scale = struct.unpack_from("<HHf", data, 4)
     bounds = struct.unpack_from("<6f", data, 12)
-    part = PartMesh(bounds_min=bounds[:3], bounds_max=bounds[3:])
+    n_connectors, n_boxes, n_sockets, cell = struct.unpack_from("<HHHH", data, 36)
+    part = PartMesh(
+        bounds_min=bounds[:3], bounds_max=bounds[3:],
+        cell_ldu=cell / _CELL_SCALE,
+    )
 
-    offset = 36
+    offset = 44
     for _ in range(surface_count):
         color, surface_flags, vertices, indices = struct.unpack_from(
             "<hHII", data, offset
@@ -343,6 +409,21 @@ def read(data: bytes) -> PartMesh:
             offset += indices * 4
 
         part.surfaces.append(surface)
+
+    for _ in range(n_connectors):
+        values = struct.unpack_from("<BB6f", data, offset)
+        offset += 26
+        part.connectors.append(ConnectorOut(
+            kind=CONNECTOR_KINDS[values[0]] if values[0] < len(CONNECTOR_KINDS) else "",
+            gender=GENDERS[values[1]] if values[1] < len(GENDERS) else "",
+            pos=values[2:5], axis=values[5:8],
+        ))
+    for _ in range(n_boxes):
+        part.boxes.append(struct.unpack_from("<6h", data, offset))
+        offset += 12
+    for _ in range(n_sockets):
+        part.sockets.append(struct.unpack_from("<2f", data, offset))
+        offset += 8
 
     return part
 
