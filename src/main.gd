@@ -28,9 +28,14 @@ func _ready() -> void:
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
 
-	var placed: int = _open(SAMPLE_MODEL)
-	if placed == 0:
-		placed = _build_demo()
+	var stress: String = _argument("--stress")
+	var placed: int = 0
+	if not stress.is_empty():
+		placed = _build_stress(stress.to_int())
+	else:
+		placed = _open(SAMPLE_MODEL)
+		if placed == 0:
+			placed = _build_demo()
 
 	_title.text = "%d parts catalogued, %d colours — %d ms" % [
 		_library.parts.size(), _library.colors.size(), catalogue_ms]
@@ -40,9 +45,46 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_camera.frame(_world.model_bounds())
 
+	var bench: String = _argument("--bench")
+	if not bench.is_empty():
+		await _benchmark(bench.to_int())
+
 	var shot: String = _argument("--shot")
 	if not shot.is_empty():
 		await _capture(shot)
+
+
+## Measure a settled frame rate and print it, then quit.
+func _benchmark(frames: int) -> void:
+	# Without this the number is the monitor's refresh rate, not the
+	# renderer's: a 120 Hz panel reports 120 fps however little work it is.
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+
+	# Discard the first second: shader compilation, the shadow atlas and
+	# the camera easing all land in it and none of them recur.
+	for _warm: int in 60:
+		await get_tree().process_frame
+
+	var started: int = Time.get_ticks_usec()
+	for _n: int in frames:
+		await get_tree().process_frame
+	var elapsed: float = float(Time.get_ticks_usec() - started) / 1_000_000.0
+
+	# The engine's own counters, so the claim can be checked rather than
+	# inferred from a frame time that might be capped by something else.
+	var draw_calls: int = int(Performance.get_monitor(
+		Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	var primitives: int = int(Performance.get_monitor(
+		Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+	var video_mb: float = Performance.get_monitor(
+		Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+
+	print("bench bricks=%d batches=%d  %.2f ms/frame  %.0f fps  draws=%d  prims=%d  vram=%.0fMB" % [
+		_world.brick_count(), _world.get_child_count(),
+		elapsed / float(frames) * 1000.0, float(frames) / elapsed,
+		draw_calls, primitives, video_mb])
+	get_tree().quit()
 
 
 ## Save a frame and quit. Used by tools/shot.sh so a change to how parts
@@ -111,6 +153,36 @@ func _build_demo() -> int:
 				Vector3(column * STUD * 4 + offset, -course * COURSE_HEIGHT, 0))
 			if _world.add_brick(BRICK, palette[course % palette.size()], at) != 0:
 				placed += 1
+	return placed
+
+
+## Fill a cube with bricks to find where the frame time goes.
+##
+## Deliberately uses a handful of part types rather than one: a single part
+## would collapse into one batch and flatter the numbers, whereas a real
+## model spreads over dozens.
+func _build_stress(target: int) -> int:
+	var kinds: PackedStringArray = PackedStringArray([
+		"3001", "3003", "3004", "3005", "3020", "3024", "3068b", "3062b"])
+	var palette: PackedInt32Array = PackedInt32Array([
+		4, 14, 2, 1, 26, 25, 15, 0, 70, 72, 191, 308])
+
+	# A roughly cubic arrangement on the real lattice, so the spatial
+	# spread matches what a big model actually looks like.
+	var side: int = int(ceil(pow(float(target), 1.0 / 3.0)))
+	var placed: int = 0
+	var n: int = 0
+	for y: int in side:
+		for z: int in side:
+			for x: int in side:
+				if placed >= target:
+					return placed
+				var at := Transform3D(Basis.IDENTITY,
+					Vector3(x * 80.0, y * 24.0, z * 40.0))
+				if _world.add_brick(
+						kinds[n % kinds.size()], palette[(n / 7) % palette.size()], at) != 0:
+					placed += 1
+				n += 1
 	return placed
 
 
