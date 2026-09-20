@@ -1,24 +1,33 @@
-## The sign-in panel, shown where the composer normally sits.
+## Signing in, in two steps and without a password.
 ##
-## It appears in exactly one place — above the assistant — and it says so,
-## because a sign-in box that turns up without explanation reads as a
-## paywall over the whole app. It is not: everything else is already
-## working behind it, and the form says that in as many words.
+## There is no password anywhere in this app. A password is a thing to
+## choose badly, reuse, forget and then reset by email — which is the
+## same email, one step later and less securely. So the email is the
+## whole of it: ask for a code, type the code.
 ##
-## One form does both jobs. Asking someone to decide between "sign in"
-## and "create an account" before they have typed anything is a decision
-## they cannot make yet, so the fields come first and the two buttons sit
-## under them.
+## One form, not two. There is no separate sign-up: a code sent to an
+## address nobody has used before makes the account when it is redeemed,
+## so there is nothing for a person to choose between and nothing for us
+## to keep in step.
+##
+## What is shown never says whether an address has an account. The
+## server answers the same way either way, and so does this — otherwise
+## a sign-in form becomes a way of asking who is a member.
 class_name SignInForm
 extends VBoxContainer
 
+enum Step { ADDRESS, CODE }
+
 var account: Account
 
+var _why: Label
 var _email: LineEdit
-var _password: LineEdit
-var _sign_in: Button
-var _create: Button
+var _code: LineEdit
+var _send: Button
+var _verify: Button
+var _again: LinkButton
 var _note: Label
+var _step: int = Step.ADDRESS
 var _busy: bool = false
 
 signal done
@@ -28,45 +37,41 @@ func setup(with_account: Account) -> void:
 	account = with_account
 	add_theme_constant_override("separation", 6)
 
-	var why := Label.new()
-	why.text = ("The assistant designs with a model that costs money to "
-		+ "run, so it needs an account. Building, the catalogue, saving "
-		+ "and loading stay free and need none.")
-	why.add_theme_font_size_override("font_size", 11)
-	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	why.modulate = Color(1, 1, 1, 0.62)
-	add_child(why)
+	_why = Label.new()
+	_why.add_theme_font_size_override("font_size", 11)
+	_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_why.modulate = Color(1, 1, 1, 0.62)
+	add_child(_why)
 
 	_email = LineEdit.new()
 	_email.placeholder_text = "you@example.com"
-	# So a password manager and the browser's autofill recognise it in the
-	# web build, and so typing an address does not open the build's own
-	# single-key shortcuts.
 	_email.keep_editing_on_text_submit = true
-	_email.text_submitted.connect(func(_t: String) -> void: _attempt(false))
+	_email.text_submitted.connect(func(_t: String) -> void: _ask())
 	add_child(_email)
 
-	_password = LineEdit.new()
-	_password.placeholder_text = "password"
-	_password.secret = true
-	_password.text_submitted.connect(func(_t: String) -> void: _attempt(false))
-	add_child(_password)
+	_send = Button.new()
+	_send.text = "Email me a code"
+	_send.pressed.connect(_ask)
+	add_child(_send)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	add_child(row)
+	_code = LineEdit.new()
+	_code.placeholder_text = "the code from the email"
+	_code.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_code.keep_editing_on_text_submit = true
+	_code.text_submitted.connect(func(_t: String) -> void: _redeem())
+	add_child(_code)
 
-	_sign_in = Button.new()
-	_sign_in.text = "Sign in"
-	_sign_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_sign_in.pressed.connect(func() -> void: _attempt(false))
-	row.add_child(_sign_in)
+	_verify = Button.new()
+	_verify.text = "Sign in"
+	_verify.pressed.connect(_redeem)
+	add_child(_verify)
 
-	_create = Button.new()
-	_create.text = "Create account"
-	_create.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_create.pressed.connect(func() -> void: _attempt(true))
-	row.add_child(_create)
+	_again = LinkButton.new()
+	_again.text = "Use a different address"
+	_again.add_theme_font_size_override("font_size", 10)
+	_again.modulate = Color(1, 1, 1, 0.5)
+	_again.pressed.connect(func() -> void: _show(Step.ADDRESS))
+	add_child(_again)
 
 	_note = Label.new()
 	_note.add_theme_font_size_override("font_size", 11)
@@ -74,54 +79,83 @@ func setup(with_account: Account) -> void:
 	_note.visible = false
 	add_child(_note)
 
+	_show(Step.ADDRESS)
+
 
 func focus_first() -> void:
-	if _email != null:
+	if _step == Step.ADDRESS:
 		_email.grab_focus()
+	else:
+		_code.grab_focus()
 
 
-func _attempt(creating: bool) -> void:
-	if _busy or account == null:
+func _show(step: int) -> void:
+	_step = step
+	var asking: bool = step == Step.ADDRESS
+	_email.visible = asking
+	_send.visible = asking
+	_code.visible = not asking
+	_verify.visible = not asking
+	_again.visible = not asking
+	_why.text = ("No password. We email you a code and you type it in."
+		if asking else
+		"Check %s for a code. It works once and expires in ten minutes."
+			% _email.text.strip_edges())
+	if not asking:
+		_code.text = ""
+	_note.visible = false
+
+
+func _ask() -> void:
+	if _busy:
 		return
 	var address: String = _email.text.strip_edges()
-	var secret: String = _password.text
-
 	# Checked here as well as on the server, because a round trip to be
 	# told the field is empty is a round trip nobody needed.
-	if address.is_empty() or not address.contains("@"):
+	if address.is_empty() or not address.contains("@") or not address.contains("."):
 		_say("Enter the email address to use.", false)
 		_email.grab_focus()
 		return
-	if secret.length() < 10 and creating:
-		_say("A new password needs at least ten characters.", false)
-		_password.grab_focus()
+
+	_set_busy(true)
+	var problem: String = await account.request_code(address)
+	_set_busy(false)
+	if not problem.is_empty():
+		_say(problem, false)
 		return
-	if secret.is_empty():
-		_say("Enter your password.", false)
-		_password.grab_focus()
+	# Moves on whether or not an account existed, because the answer is
+	# the same either way and the person is now waiting for an email.
+	_show(Step.CODE)
+	_code.grab_focus()
+
+
+func _redeem() -> void:
+	if _busy:
+		return
+	var typed: String = _code.text.strip_edges()
+	if typed.is_empty():
+		_say("Enter the code from the email.", false)
+		_code.grab_focus()
 		return
 
 	_set_busy(true)
-	var problem: String = (await account.sign_up(address, secret) if creating
-		else await account.sign_in(address, secret))
+	var problem: String = await account.verify_code(_email.text.strip_edges(), typed)
 	_set_busy(false)
-
 	if problem.is_empty():
-		_password.text = ""
 		done.emit()
 		return
 	_say(problem, false)
-	_password.grab_focus()
+	_code.grab_focus()
 
 
 func _set_busy(busy: bool) -> void:
 	_busy = busy
-	_sign_in.disabled = busy
-	_create.disabled = busy
+	_send.disabled = busy
+	_verify.disabled = busy
 	_email.editable = not busy
-	_password.editable = not busy
+	_code.editable = not busy
 	if busy:
-		_say("Checking…", true)
+		_say("Sending…" if _step == Step.ADDRESS else "Checking…", true)
 
 
 func _say(text: String, quiet: bool) -> void:

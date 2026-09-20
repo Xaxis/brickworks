@@ -6,35 +6,30 @@
 ## The endpoints were already checked with curl, which proves the server
 ## is right and proves nothing about [Account]: the client has its own
 ## share of the work — refreshing before a token expires, forgetting a
-## session the server has stopped honouring, reading the tier back. This
-## drives that half.
+## session the server has stopped honouring, redeeming a code against
+## the right endpoint with the right type. This drives that half.
 ##
 ## It creates a throwaway account each run, so it needs a deployment it
 ## is allowed to make a mess of. Exits non-zero on the first failure.
 extends SceneTree
 
 var _failures: int = 0
+var _host: Node
 
 
 func _initialize() -> void:
 	_run()
 
 
-## A SceneTree script starts before the tree is live, and an HTTPRequest
-## added to a root that is not yet inside_tree refuses to send. One frame
-## is enough, and waiting for it here keeps that detail out of [Account].
-func _settled() -> void:
-	await process_frame
-
-
 func _run() -> void:
-	await _settled()
+	await process_frame
 
 	var account := Account.new()
 	# Not added through _ready: this needs to boot at a moment of its
 	# choosing so each step can be checked, rather than racing a probe
 	# that started itself.
 	root.add_child(account)
+	_host = account
 	await account.boot()
 
 	_check("deployment offers accounts", account.available)
@@ -46,33 +41,34 @@ func _run() -> void:
 	_check("starts signed out", not account.signed_in())
 
 	var email: String = "probe+%d@brickworks.diy" % Time.get_unix_time_from_system()
-	var password := "stud-tube-plate-47"
 
-	var problem: String = await account.sign_up(email, password)
-	_check("sign up accepted: %s" % problem, problem.is_empty())
-	_check("signed in after sign up", account.signed_in())
-	_check("tier is builder, got '%s'" % account.tier, account.tier == "builder")
-	_check("budget is set, got %d" % account.budget, account.budget > 0)
-	_check("nothing spent yet, got %d" % account.used, account.used == 0)
-	_check("has a token", not (await account.access_token()).is_empty())
+	# Asking for a code must be accepted for an address nobody has used.
+	var asked: String = await account.request_code(email)
+	_check("a code can be asked for: %s" % asked, asked.is_empty())
 
-	# Signing up twice with one address is the commonest mistake there is,
-	# and the message has to say what to do about it.
-	var again: String = await account.sign_up(email, password)
-	_check("second sign up refused", not again.is_empty())
-	_check("...and says to sign in instead: '%s'" % again, again.to_lower().contains("sign"))
-
-	var wrong: String = await account.sign_in(email, "not-the-password")
-	_check("wrong password refused", not wrong.is_empty())
+	# A wrong code has to be refused, and say so in words.
+	var wrong: String = await account.verify_code(email, "00000000")
+	_check("a wrong code is refused", not wrong.is_empty())
 	_check("...in plain words: '%s'" % wrong, not wrong.contains("_"))
+	_check("...and nobody is signed in by it", not account.signed_in())
+
+	# And the real one works. Minted here because a probe has no inbox;
+	# everything after the minting is the path a person takes.
+	var problem: String = await SignInHelper.sign_in(account, email, _host)
+	_check("the code signs in: %s" % problem, problem.is_empty())
+	_check("signed in", account.signed_in())
+	_check("as the right person, got '%s'" % account.email, account.email == email)
+	_check("tier is builder, got '%s'" % account.tier, account.tier == "builder")
+	_check("has a token", not (await account.access_token()).is_empty())
+	_check("the assistant is not included for them",
+		not account.assistant_included())
 
 	await account.sign_out()
 	_check("signed out", not account.signed_in())
 	_check("token gone", (await account.access_token()).is_empty())
 
-	var back: String = await account.sign_in(email, password)
+	var back: String = await SignInHelper.sign_in(account, email, _host)
 	_check("signs back in: %s" % back, back.is_empty())
-	_check("same account, got '%s'" % account.email, account.email == email)
 
 	# A session on disk has to survive a restart, which is the whole
 	# reason the refresh token is written at all.
@@ -81,8 +77,17 @@ func _run() -> void:
 	await second.boot()
 	_check("a fresh Account picks the session back up", second.signed_in())
 	_check("...as the same person, got '%s'" % second.email, second.email == email)
-
 	await second.sign_out()
+
+	# Asking over and over has to stop, or this is a way to bury
+	# somebody's inbox on our bill.
+	var refused: bool = false
+	var fresh: String = "flood+%d@brickworks.diy" % Time.get_unix_time_from_system()
+	for attempt: int in 6:
+		if not (await account.request_code(fresh)).is_empty():
+			refused = true
+			break
+	_check("asking for codes over and over is refused", refused)
 
 	print("")
 	print("%d failed" % _failures if _failures else "all checks passed")

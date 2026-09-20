@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<!--
+  The master account's view of who has signed up and what this
+  deployment has paid for.
+
+  A page rather than a panel in the app, because it is a table and a
+  browser is better at tables than a game engine is — and because
+  nothing here belongs in a build that everybody downloads.
+
+  The page is public; what it can show is not. Every figure comes from
+  /api/admin, which verifies the token and checks the address against
+  MASTER_EMAIL before it reads a single row. Anyone else signing in here
+  gets a 404 — the same answer as a route that does not exist, because a
+  403 would confirm there is something here to be shut out of.
+
+  The session is kept in sessionStorage, not localStorage: an admin
+  token should not outlive the tab it was typed into.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Brickworks — accounts</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<style>
+  :root {
+    --ink: #eef1f5; --soft: #a9b2bf; --faint: #6f7987;
+    --line: #262d38; --bg: #11151b; --panel: #171c24;
+    --yellow: #f2cd37; --green: #57c97e; --red: #e06a62;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 38px 22px 80px; }
+  h1 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .sub { color: var(--soft); margin: 0 0 26px; font-size: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 10px; padding: 20px; }
+  label { display: block; font-size: 13px; color: var(--soft); margin: 12px 0 5px; }
+  input {
+    width: 100%; padding: 9px 11px; border-radius: 7px; font: inherit;
+    background: #0d1116; border: 1px solid var(--line); color: var(--ink);
+  }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 7px;
+    border: 1px solid var(--line); background: #222a34; color: var(--ink);
+    padding: 9px 15px;
+  }
+  button.go { background: var(--yellow); color: #11151b; border-color: var(--yellow); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; gap: 9px; align-items: center; margin-top: 16px; }
+  .note { font-size: 13px; margin-top: 12px; min-height: 19px; }
+  .note.bad { color: var(--red); }
+  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           margin: 22px 0; }
+  .stat { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 10px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 25px; letter-spacing: -0.02em; }
+  .stat span { font-size: 12.5px; color: var(--faint); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--soft); font-weight: 600; font-size: 12.5px;
+       text-transform: uppercase; letter-spacing: .05em;
+       padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill { font-size: 12px; padding: 2px 9px; border-radius: 99px;
+          border: 1px solid var(--line); background: #0d1116; }
+  .bar { height: 4px; border-radius: 3px; background: #222a34; margin-top: 5px; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--green); }
+  .hide { display: none; }
+  .foot { margin-top: 30px; color: var(--faint); font-size: 12.5px; }
+  a { color: var(--soft); }
+</style>
+
+<div class="wrap">
+  <h1>Accounts</h1>
+  <p class="sub">What this deployment has paid for. Designs run on
+     somebody's own key never reach this server, so they are not counted
+     here and could not be.</p>
+
+  <div id="gate" class="card">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+    <div id="step-code" class="hide">
+      <label for="code">Code from the email</label>
+      <input id="code" inputmode="numeric" autocomplete="one-time-code">
+    </div>
+    <div class="row">
+      <button class="go" id="send">Email me a code</button>
+      <button class="go hide" id="in">Sign in</button>
+      <span class="note" id="gate-note"></span>
+    </div>
+  </div>
+
+  <div id="view" class="hide">
+    <div class="stats">
+      <div class="stat"><b id="n-accounts">—</b><span>accounts</span></div>
+      <div class="stat"><b id="n-designs">—</b><span>designs this month</span></div>
+      <div class="stat"><b id="n-turns">—</b><span>round trips</span></div>
+      <div class="stat"><b id="n-month">—</b><span>month</span></div>
+    </div>
+    <div class="card" style="padding:4px 4px 0">
+      <table>
+        <thead><tr>
+          <th>Email</th><th>Tier</th><th class="n">Designs</th>
+          <th class="n">Turns</th><th>Joined</th><th></th>
+        </tr></thead>
+        <tbody id="people"></tbody>
+      </table>
+    </div>
+    <div class="row">
+      <button id="again">Refresh</button>
+      <button id="out">Sign out</button>
+      <span class="note" id="note"></span>
+    </div>
+  </div>
+
+  <p class="foot">
+    <a href="/">Brickworks</a> · this page is not indexed and shows nothing
+    to anyone but the master account.
+  </p>
+</div>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const KEY = "brickworks-admin-token";
+  let config = null;
+
+  const say = (where, text, bad = false) => {
+    const el = $(where);
+    el.textContent = text;
+    el.classList.toggle("bad", bad);
+  };
+
+  async function settings() {
+    if (config) return config;
+    const reply = await fetch("/api/account");
+    config = await reply.json();
+    if (!config.enabled) throw new Error("accounts are not configured here");
+    return config;
+  }
+
+  async function askForCode(email) {
+    const reply = await fetch("/api/otp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const body = await reply.json().catch(() => ({}));
+    if (!reply.ok) throw new Error(body.error || "could not send a code");
+  }
+
+  async function redeem(email, code) {
+    const { url, key } = await settings();
+    const reply = await fetch(`${url}/auth/v1/verify`, {
+      method: "POST",
+      headers: { apikey: key, "content-type": "application/json" },
+      // "email", not "magiclink" and not "signup", even though the code
+      // is minted as a magiclink. The other two are accepted as
+      // well-formed and answer "token has expired or is invalid".
+      body: JSON.stringify({ type: "email", email, token: code.trim() }),
+    });
+    const body = await reply.json();
+    if (!reply.ok || !body.access_token) {
+      throw new Error(body.msg || body.error_description || "that code did not work");
+    }
+    return body.access_token;
+  }
+
+  async function load(token) {
+    const reply = await fetch("/api/admin", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (reply.status === 404) {
+      // What a non-master account sees. Said plainly here because the
+      // person reading it is the one who typed the address.
+      throw new Error("that account cannot see this page");
+    }
+    if (!reply.ok) throw new Error(`the server said ${reply.status}`);
+    return reply.json();
+  }
+
+  const when = (iso) =>
+    new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric", month: "short", day: "numeric",
+    });
+
+  // A month is a date with no time in it, so it has no timezone either.
+  // Letting Date decide gives it midnight UTC, which west of Greenwich
+  // is the previous day — and the previous day of the first is the
+  // month before. September read as August.
+  const monthName = (day) =>
+    new Date(day + "T12:00:00Z").toLocaleDateString(undefined, {
+      year: "numeric", month: "short", timeZone: "UTC",
+    });
+
+  function draw(data) {
+    $("n-accounts").textContent = data.accounts.toLocaleString();
+    $("n-designs").textContent = data.designs.toLocaleString();
+    $("n-turns").textContent = data.turns.toLocaleString();
+    $("n-month").textContent = monthName(data.month);
+
+    $("people").innerHTML = "";
+    for (const person of data.people) {
+      const used = Math.min(person.designs / Math.max(person.budget, 1), 1);
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${person.email ?? "<span style='color:var(--faint)'>no address</span>"}</td>
+        <td><span class="pill">${person.tier}</span></td>
+        <td class="n">${person.designs} / ${person.budget}
+            <div class="bar"><i style="width:${(used * 100).toFixed(0)}%"></i></div></td>
+        <td class="n">${person.turns}</td>
+        <td>${when(person.joined)}</td>
+        <td><button data-user="${person.id}"
+                    data-tier="${person.tier === "pro" ? "builder" : "pro"}">
+              make ${person.tier === "pro" ? "builder" : "pro"}
+            </button></td>`;
+      $("people").append(row);
+    }
+  }
+
+  async function refresh() {
+    const token = sessionStorage.getItem(KEY);
+    if (!token) return show(false);
+    try {
+      draw(await load(token));
+      show(true);
+      say("note", "");
+    } catch (problem) {
+      sessionStorage.removeItem(KEY);
+      show(false);
+      say("gate-note", problem.message, true);
+    }
+  }
+
+  const show = (inside) => {
+    $("view").classList.toggle("hide", !inside);
+    $("gate").classList.toggle("hide", inside);
+  };
+
+  $("send").addEventListener("click", async () => {
+    const email = $("email").value.trim().toLowerCase();
+    if (!email.includes("@")) return say("gate-note", "Enter an email address", true);
+    $("send").disabled = true;
+    say("gate-note", "Sending…");
+    try {
+      await askForCode(email);
+      // Moves on whether or not that address has an account: the server
+      // answers the same way either way, and so does this.
+      $("step-code").classList.remove("hide");
+      $("send").classList.add("hide");
+      $("in").classList.remove("hide");
+      $("code").focus();
+      say("gate-note", "Check your email.");
+    } catch (problem) {
+      say("gate-note", problem.message, true);
+    } finally {
+      $("send").disabled = false;
+    }
+  });
+
+  $("in").addEventListener("click", async () => {
+    $("in").disabled = true;
+    say("gate-note", "Checking…");
+    try {
+      const token = await redeem($("email").value.trim().toLowerCase(), $("code").value);
+      sessionStorage.setItem(KEY, token);
+      $("code").value = "";
+      say("gate-note", "");
+      await refresh();
+    } catch (problem) {
+      say("gate-note", problem.message, true);
+    } finally {
+      $("in").disabled = false;
+    }
+  });
+
+  for (const [id, button] of [["email", "send"], ["code", "in"]]) {
+    $(id).addEventListener("keydown", (event) => {
+      if (event.key === "Enter") $(button).click();
+    });
+  }
+
+  $("again").addEventListener("click", refresh);
+  $("out").addEventListener("click", () => {
+    sessionStorage.removeItem(KEY);
+    $("step-code").classList.add("hide");
+    $("send").classList.remove("hide");
+    $("in").classList.add("hide");
+    show(false);
+  });
+
+  $("people").addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-user]");
+    if (!button) return;
+    button.disabled = true;
+    say("note", "Changing…");
+    try {
+      const reply = await fetch("/api/admin", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${sessionStorage.getItem(KEY)}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "set_tier",
+          user: button.dataset.user,
+          tier: button.dataset.tier,
+        }),
+      });
+      if (!reply.ok) throw new Error(`the server said ${reply.status}`);
+      await refresh();
+    } catch (problem) {
+      say("note", problem.message, true);
+      button.disabled = false;
+    }
+  });
+
+  refresh();
+</script>
+</html>

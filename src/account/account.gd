@@ -186,16 +186,73 @@ func _adopt_status(body: Dictionary) -> void:
 	changed.emit()
 
 
-## Create an account. Returns an empty string on success, or something to
-## show the person on failure.
-func sign_up(with_email: String, password: String) -> String:
-	return await _authenticate("/auth/v1/signup",
-		{"email": with_email, "password": password})
+## Ask for a code by email. Returns an empty string when the request was
+## accepted, or something to show on failure.
+##
+## "Accepted" is not "an email was sent" and cannot be. The server
+## answers the same way whether or not the address has an account,
+## because a sign-in form that distinguishes them is a way of asking
+## whether somebody is a member.
+##
+## There is no separate sign-up. A code for an address nobody has used
+## before creates the account when it is redeemed, so there is only one
+## path here and only one to keep working.
+func request_code(with_email: String) -> String:
+	var reply: Dictionary = await _fetch(
+		api_base() + "/api/otp",
+		PackedStringArray(["content-type: application/json"]),
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"email": with_email.strip_edges().to_lower()}))
+
+	var body: Variant = reply.get("body")
+	var code: int = int(reply.get("code", 0))
+	if code == 200:
+		return ""
+	if typeof(body) == TYPE_DICTIONARY and body.has("error"):
+		return str(body["error"])
+	if code == 0:
+		return "Could not reach the sign-in service."
+	return "Could not send a code (HTTP %d)." % code
 
 
-func sign_in(with_email: String, password: String) -> String:
-	return await _authenticate("/auth/v1/token?grant_type=password",
-		{"email": with_email, "password": password})
+## Redeem a code. Empty on success.
+##
+## Sent straight to Supabase rather than through our own server, so the
+## session and the token it mints are between the person and Supabase
+## and pass through nothing of ours.
+func verify_code(with_email: String, code: String) -> String:
+	if not available or _project_url.is_empty():
+		return "Accounts are not available on this build."
+
+	var tidy: String = code.strip_edges().replace(" ", "")
+	if tidy.is_empty():
+		return "Enter the code from the email."
+
+	var reply: Dictionary = await _fetch(_project_url + "/auth/v1/verify",
+		PackedStringArray([
+			"content-type: application/json",
+			"apikey: " + _project_key,
+		]), HTTPClient.METHOD_POST,
+		# type is "email", not "magiclink" and not "signup" — even when
+		# the link was minted as a magiclink and its own
+		# verification_type says signup. The other two are accepted as
+		# well-formed and answer "Token has expired or is invalid",
+		# which reads as a wrong code rather than as a wrong request.
+		JSON.stringify({
+			"type": "email",
+			"email": with_email.strip_edges().to_lower(),
+			"token": tidy,
+		}))
+
+	var body: Variant = reply.get("body")
+	if typeof(body) != TYPE_DICTIONARY:
+		return "Could not reach the sign-in service."
+	if reply.get("code", 0) >= 400 or not body.has("access_token"):
+		return _readable(body)
+
+	_keep_session(body)
+	await boot()
+	return ""
 
 
 func sign_out() -> void:
@@ -238,34 +295,6 @@ func note_usage(spent: int, of_budget: int) -> void:
 	if of_budget > 0:
 		budget = of_budget
 	changed.emit()
-
-
-func _authenticate(path: String, payload: Dictionary) -> String:
-	if not available or _project_url.is_empty():
-		return "Accounts are not available on this build."
-
-	var reply: Dictionary = await _fetch(_project_url + path, PackedStringArray([
-		"content-type: application/json",
-		"apikey: " + _project_key,
-	]), HTTPClient.METHOD_POST, JSON.stringify(payload))
-
-	var body: Variant = reply.get("body")
-	if typeof(body) != TYPE_DICTIONARY:
-		return "Could not reach the sign-in service."
-	if reply.get("code", 0) >= 400:
-		return _readable(body)
-
-	var token: String = str(body.get("access_token", ""))
-	if token.is_empty():
-		# Signing up with confirmation on returns a user and no session.
-		# This deployment confirms addresses automatically, so reaching
-		# here means something changed server-side rather than a normal
-		# outcome — say so plainly instead of appearing to hang.
-		return "That account was created but not signed in. Try signing in."
-
-	_keep_session(body)
-	await boot()
-	return ""
 
 
 func _do_refresh() -> void:
@@ -324,12 +353,8 @@ static func _readable(body: Dictionary) -> String:
 		body.get("error_description", body.get("message", body.get("error", "")))))
 	var code: String = str(body.get("error_code", ""))
 	match code:
-		"invalid_credentials":
-			return "That email and password do not match an account."
-		"user_already_exists", "email_exists":
-			return "There is already an account with that address. Try signing in."
-		"weak_password":
-			return "That password is too easy to guess. Ten characters or more, and not one from a known breach."
+		"otp_expired", "invalid_credentials":
+			return "That code is wrong or has expired. Ask for another."
 		"over_email_send_rate_limit", "over_request_rate_limit":
 			return "Too many attempts just now. Give it a minute."
 		"validation_failed":

@@ -38,7 +38,7 @@ func _run() -> void:
 
 	# An ordinary account, which is to say not the master one.
 	var email: String = "tier+%d@brickworks.diy" % Time.get_unix_time_from_system()
-	var problem: String = await account.sign_up(email, "stud-tube-plate-47")
+	var problem: String = await SignInHelper.sign_in(account, email, main)
 	if not problem.is_empty():
 		print("FAIL sign up: %s" % problem)
 		quit(1)

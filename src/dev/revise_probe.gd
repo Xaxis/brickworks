@@ -39,9 +39,8 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var problem: String = await account.sign_up(
-		"revise+%d@brickworks.diy" % Time.get_unix_time_from_system(),
-		"stud-tube-plate-47")
+	var problem: String = await SignInHelper.sign_in(account,
+		"revise+%d@brickworks.diy" % Time.get_unix_time_from_system(), main)
 	if not problem.is_empty():
 		print("FAIL sign up: %s" % problem)
 		quit(1)

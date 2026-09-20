@@ -170,3 +170,71 @@ end;
 $$;
 
 revoke all on function public.claim_design(uuid, integer, text) from public, anon, authenticated;
+
+-- Sign-in codes asked for, so asking too often can be refused.
+--
+-- In the function's memory would be simpler and would not work: a
+-- serverless instance recycles whenever it likes, and the limit this
+-- enforces is the one that stops somebody emailing a stranger a hundred
+-- codes on our Resend bill. A limit that forgets is not one.
+--
+-- Rows are kept for a day and swept on write, so this never grows into
+-- a table anybody has to think about.
+create table if not exists public.otp_requests (
+    id       bigserial primary key,
+    email    text not null,
+    ip       text not null default '',
+    asked_at timestamptz not null default now()
+);
+
+create index if not exists otp_requests_recent
+    on public.otp_requests (asked_at desc);
+create index if not exists otp_requests_email
+    on public.otp_requests (email, asked_at desc);
+
+alter table public.otp_requests enable row level security;
+-- No policy at all: nothing but the service role has any business here,
+-- and the absence of a policy is what says so.
+
+-- Ask for a code, and say whether that was allowed.
+--
+-- Two limits, because they stop different things. Per email stops one
+-- address being buried; per address-of-origin stops one machine walking
+-- a list. Both windows are generous enough that a person retrying a
+-- code that did not arrive is never refused.
+create or replace function public.may_ask_for_code(
+    for_email text, from_ip text,
+    per_email integer default 4, per_ip integer default 20,
+    window_minutes integer default 15)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    since timestamptz := now() - make_interval(mins => window_minutes);
+    by_email integer;
+    by_ip integer;
+begin
+    delete from public.otp_requests where asked_at < now() - interval '1 day';
+
+    select count(*) into by_email
+    from public.otp_requests
+    where email = lower(for_email) and asked_at >= since;
+
+    select count(*) into by_ip
+    from public.otp_requests
+    where ip = from_ip and from_ip <> '' and asked_at >= since;
+
+    if by_email >= per_email or by_ip >= per_ip then
+        return false;
+    end if;
+
+    insert into public.otp_requests (email, ip)
+    values (lower(for_email), coalesce(from_ip, ''));
+    return true;
+end;
+$$;
+
+revoke all on function public.may_ask_for_code(text, text, integer, integer, integer)
+    from public, anon, authenticated;
