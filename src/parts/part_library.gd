@@ -128,6 +128,10 @@ var _ordered_ids: PackedStringArray = PackedStringArray()
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
 var _fetching: Dictionary = {}      ## hash -> true, so nothing fetches twice
+## Waiting their turn. The parts bin asks for a thumbnail per visible
+## cell, so without a ceiling a single scroll opens a hundred connections
+## at once and every one of them finishes later than it would have.
+var _queued_fetches: PackedStringArray = PackedStringArray()
 var _fetch_host: Node = null
 
 ## Emitted when a part fetched from the network is ready to place.
@@ -286,6 +290,10 @@ func request_mesh(part_id: String) -> bool:
 		return true
 	if _fetching.has(info.mesh_hash):
 		return true
+	if _fetching.size() >= MAX_IN_FLIGHT:
+		if not _queued_fetches.has(part_id):
+			_queued_fetches.append(part_id)
+		return true
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
 
@@ -315,6 +323,20 @@ func request_mesh(part_id: String) -> bool:
 	return true
 
 
+## How many part fetches may be open at once. Enough to keep the link
+## busy, few enough that a scroll does not queue a hundred of them behind
+## each other in the browser's own connection limit.
+const MAX_IN_FLIGHT := 6
+
+
+## Start the next waiting fetch, if there is room.
+func _next_fetch() -> void:
+	while not _queued_fetches.is_empty() and _fetching.size() < MAX_IN_FLIGHT:
+		var part_id: String = _queued_fetches[0]
+		_queued_fetches.remove_at(0)
+		request_mesh(part_id)
+
+
 ## Send the requests that arrived before there was anywhere to send them.
 func _release_waiting() -> void:
 	if _waiting.is_empty():
@@ -342,6 +364,7 @@ func _on_fetched(
 ) -> void:
 	request.queue_free()
 	_fetching.erase(hash_name)
+	_next_fetch()
 
 	if code != 200 or body.is_empty():
 		fetch_failed.emit(part_id, "HTTP %d" % code)

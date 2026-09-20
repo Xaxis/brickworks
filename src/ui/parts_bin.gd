@@ -635,6 +635,18 @@ func on_thumbnail(part_id: String, color_code: int, texture: ImageTexture) -> vo
 		cell.texture = texture
 
 
+## Geometry the web build had to fetch has landed. Ask again for the
+## preview that could not be drawn without it — but only if that part is
+## still on screen, so a scroll does not draw thumbnails for a page
+## nobody is looking at any more.
+func on_geometry_arrived(part_id: String) -> void:
+	var cell: TextureRect = _cells.get(part_id)
+	if cell == null or not is_instance_valid(cell) or cell.texture != null:
+		return
+	if thumbnails:
+		thumbnails.request(part_id, _selected_color)
+
+
 func selected_color() -> int:
 	return _selected_color
 

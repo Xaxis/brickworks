@@ -308,6 +308,7 @@ func _build_ui() -> void:
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_thumbnails.ready_for.connect(_bin.on_thumbnail)
+	_thumbnails.geometry_arrived.connect(_bin.on_geometry_arrived)
 
 	_bin_dock = SideDock.new()
 	_bin_dock.setup(_bin, SideDock.Edge.LEFT, 336.0)
@@ -625,12 +626,33 @@ func _lay_baseplate() -> void:
 			_store.scenery[brick_id] = true
 
 
+## Counted once. Walking 29,479 entries on every rebuild would be work
+## done for a number that cannot change while the app is running.
+var _placeable: int = -1
+
+
+func _placeable_parts() -> int:
+	if _placeable >= 0:
+		return _placeable
+	_placeable = 0
+	for id: String in _library.ids():
+		var info: PartLibrary.PartInfo = _library.parts[id]
+		if not info.is_redirect() and info.reachable:
+			_placeable += 1
+	return _placeable
+
+
 func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> void:
 	if _counts == null:
 		return
+	# The count of parts you can place, which is not the size of the
+	# catalogue: 1,160 of its entries are redirect stubs forwarding to
+	# whatever replaced them. The bin says 28,319 and this said 29,479,
+	# and two numbers for the same thing on one screen is how the app
+	# looked like it was hiding parts.
 	_counts_base = "%s bricks · %d batches · %s triangles · %s parts" % [
 		_comma(brick_count), batch_count, _comma(triangle_count),
-		_comma(_library.parts.size())]
+		_comma(_placeable_parts())]
 	# Stability is cheap but not free, and a rebuild can fire several
 	# times while a model is being dropped in. Once a second is plenty
 	# for something a person reads.

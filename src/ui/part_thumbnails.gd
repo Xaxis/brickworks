@@ -34,12 +34,26 @@ var _cache: Dictionary = {}        ## String key -> ImageTexture
 var _order: Array[String] = []     ## least recently used first
 var _queue: Array[Dictionary] = []
 var _queued: Dictionary = {}       ## key -> true, so nothing queues twice
+## Parts whose geometry is on its way. The colour is not kept: a part
+## fetched for one swatch is wanted for whichever is selected when it
+## arrives, and re-queueing by part id covers both.
+var _awaiting: Dictionary = {}
 
 ## Emitted when a preview someone asked for is ready.
+## A part's geometry landed; whoever asked for a preview should ask
+## again. Kept separate from [signal ready_for], which carries a texture.
+signal geometry_arrived(part_id: String)
+
 signal ready_for(part_id: String, color_code: int, texture: ImageTexture)
 
 
 func _ready() -> void:
+	# Geometry that arrives after a preview was asked for has to put the
+	# work back on the queue, or the cell stays empty for ever having
+	# been one frame too early.
+	if library != null and not library.fetched.is_connected(_on_geometry_arrived):
+		library.fetched.connect(_on_geometry_arrived)
+
 	_viewport = SubViewport.new()
 	_viewport.size = Vector2i(SIZE, SIZE)
 	# Drawn on demand, not every frame: most frames render nothing.
@@ -112,6 +126,16 @@ func request(part_id: String, color_code: int) -> ImageTexture:
 	return null
 
 
+func _on_geometry_arrived(part_id: String) -> void:
+	if not _awaiting.has(part_id):
+		return
+	_awaiting.erase(part_id)
+	# Re-queued for whichever colour is wanted now rather than the one
+	# that was wanted when the fetch started, which may be several
+	# swatches ago.
+	geometry_arrived.emit(part_id)
+
+
 ## Drop anything not on screen. Called when a view closes.
 func trim(keep: PackedStringArray) -> void:
 	var wanted: Dictionary = {}
@@ -145,6 +169,13 @@ func _render(job: Dictionary) -> void:
 
 	var part: Lbm.PartMesh = library.mesh_for(job["part"])
 	if part == null or part.surfaces.is_empty():
+		# On the web most parts are a request away rather than absent, and
+		# giving up here left the bin showing a few hundred previews and
+		# twenty-eight thousand empty squares. Ask for the geometry and
+		# come back when it lands; the library caps how many are in the
+		# air at once, so a scroll does not open a connection per cell.
+		if library.request_mesh(job["part"]):
+			_awaiting[job["part"]] = true
 		return
 
 	# Surface 0 is the recolourable one by construction; a printed part's
