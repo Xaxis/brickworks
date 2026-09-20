@@ -114,6 +114,16 @@ async function report(response) {
 
   return response.status(200).json({
     month,
+    // Asked of the configuration, not of the last send. Each function
+    // is its own instance, so runtime state from the OTP route is not
+    // visible here and pretending otherwise would report whatever the
+    // last invocation of *this* one happened to see.
+    email: {
+      sender: process.env.EMAIL_FROM || "Brickworks <noreply@brickworks.diy>",
+      // A fallback is only ever set while the proper domain is waiting
+      // on DNS records, so its presence is the signal.
+      borrowing: process.env.EMAIL_FROM_FALLBACK || null,
+    },
     // The totals are of what this deployment paid for. A design run on
     // somebody's own key never touches this server, so it is not here
     // and could not be — which is the arrangement working, not a gap.

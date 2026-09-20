@@ -102,6 +102,12 @@
       <div class="stat"><b id="n-turns">—</b><span>round trips</span></div>
       <div class="stat"><b id="n-month">—</b><span>month</span></div>
     </div>
+    <div id="email-warning" class="card hide"
+         style="border-color:#5a4a1e;background:#241f10;margin-bottom:14px">
+      <b style="color:var(--yellow)">Sign-in email is going out under a
+      borrowed sender.</b>
+      <div id="email-detail" style="color:var(--soft);font-size:13.5px;margin-top:6px"></div>
+    </div>
     <div class="card" style="padding:4px 4px 0">
       <table>
         <thead><tr>
@@ -202,6 +208,15 @@
     $("n-designs").textContent = data.designs.toLocaleString();
     $("n-turns").textContent = data.turns.toLocaleString();
     $("n-month").textContent = monthName(data.month);
+
+    const borrowing = data.email?.borrowing;
+    $("email-warning").classList.toggle("hide", !borrowing);
+    if (borrowing) {
+      $("email-detail").textContent =
+        `${data.email.sender} is not verified with Resend, so codes are `
+        + `sending as ${borrowing}. Verify the domain, then remove `
+        + `EMAIL_FROM_FALLBACK from the project.`;
+    }
 
     $("people").innerHTML = "";
     for (const person of data.people) {

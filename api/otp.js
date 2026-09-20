@@ -69,14 +69,28 @@ function letter(code) {
 </div>`;
 }
 
-async function deliver(email, code) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
-  // Must be a domain verified with Resend. Their sandbox sender only
-  // reaches the account owner and 403s for everybody else, which fails
-  // as a silent non-delivery rather than as an error anyone sees.
-  const from = process.env.EMAIL_FROM || "Brickworks <noreply@soniq.bot>";
-  const reply = await fetch("https://api.resend.com/emails", {
+/// Where sign-in codes come from.
+///
+/// brickworks.diy, because that is what the app is. A sender has to be
+/// on a domain verified with Resend, which means DNS records on the
+/// domain — so until those exist this address is refused with a 403 and
+/// nothing arrives.
+///
+/// EMAIL_FROM_FALLBACK exists for exactly that window and for no other
+/// reason. Borrowing another product's verified domain is the wrong
+/// thing and looks it in somebody's inbox; it is here only so sign-in
+/// keeps working while the records are added, and every use of it is
+/// recorded so it cannot quietly become permanent.
+const SENDER = "Brickworks <noreply@brickworks.diy>";
+
+/// Set when the proper sender was refused. Only for the log: each
+/// serverless function is its own instance, so this cannot be read from
+/// /api/admin — that asks the configuration instead, which is a fact
+/// rather than whatever the last invocation happened to see.
+let borrowed = null;
+
+async function post(key, from, email, code) {
+  return fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: JSON.stringify({
@@ -89,6 +103,36 @@ async function deliver(email, code) {
     }),
     signal: AbortSignal.timeout(10000),
   });
+}
+
+async function deliver(email, code) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+
+  const wanted = process.env.EMAIL_FROM || SENDER;
+  let reply = await post(key, wanted, email, code);
+  if (reply.ok) {
+    borrowed = null;
+    return true;
+  }
+
+  // A 403 here means one thing: the domain is not verified. Worth
+  // separating from every other failure, because it is the one with a
+  // fix that is three DNS records rather than a mystery.
+  const detail = await reply.text().catch(() => "");
+  const unverified = reply.status === 403 && /not verified/i.test(detail);
+  const spare = process.env.EMAIL_FROM_FALLBACK;
+  if (!unverified || !spare) {
+    console.error(`otp: Resend refused ${wanted} — ${reply.status} ${detail.slice(0, 160)}`);
+    return false;
+  }
+
+  borrowed = { wanted, using: spare, since: new Date().toISOString() };
+  console.error(
+    `otp: ${wanted} is not verified with Resend, so this went out as `
+    + `${spare}. Verify the domain and drop EMAIL_FROM_FALLBACK.`,
+  );
+  reply = await post(key, spare, email, code);
   return reply.ok;
 }
 
