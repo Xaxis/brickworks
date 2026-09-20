@@ -28,6 +28,7 @@ var _store: ModelStore
 var _bar: ModelBar
 var _bin: PartsBin
 var _chat: ChatPanel
+var _account: Account
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -192,7 +193,12 @@ func _capture(path: String) -> void:
 	# absent from every screenshot while the scene tree, the batches, the
 	# instance transforms and the instance colours all insisted they were
 	# there. They were. The picture was old.
-	for _n: int in 12:
+	# Anything that has to come off the network before the picture is
+	# worth taking — whether this build has accounts, for one — needs
+	# longer than a dozen frames. --settle buys that time in frames
+	# rather than in a sleep, so the scene keeps drawing while it waits.
+	var settle: float = maxf(_argument("--settle").to_float(), 0.0)
+	for _n: int in 12 + int(settle * 60.0):
 		await get_tree().process_frame
 		RenderingServer.force_draw(false)
 	var image: Image = get_viewport().get_texture().get_image()
@@ -236,17 +242,27 @@ func _build_ui() -> void:
 	_thumbnails.library = _library
 	add_child(_thumbnails)
 
+	# Accounts exist for one reason: the assistant spends money per
+	# request. Everything the builder does is already running by the time
+	# this finishes probing, and none of it waits on the answer.
+	_account = Account.new()
+	add_child(_account)
+
 	_assistant = Assistant.new()
 	_assistant.library = _library
 	_assistant.world = _world
 	_assistant.builder = _builder
 	# On desktop there is no proxy in front of us, so talk to the model
-	# directly when a key is around. The web build uses the same-origin
-	# function, which holds the key server-side.
-	if not OS.has_feature("web"):
-		var key: String = _anthropic_key()
-		if not key.is_empty():
-			_assistant.direct_key = key
+	# directly when a key is around — that is a developer running with
+	# their own key, and there is nobody to bill. Otherwise the desktop
+	# build talks to the same hosted function the web build does, which
+	# means the same sign-in and the same monthly budget.
+	var key: String = "" if OS.has_feature("web") else _anthropic_key()
+	if not key.is_empty():
+		_assistant.direct_key = key
+	else:
+		_assistant.endpoint = _account.api_base() + Assistant.DEFAULT_ENDPOINT
+		_assistant.account = _account
 	add_child(_assistant)
 
 	var column := VBoxContainer.new()
@@ -330,6 +346,8 @@ func _build_ui() -> void:
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
+	if _assistant.direct_key.is_empty():
+		_chat.watch(_account)
 
 	_bin.populate()
 	_builder.held_color = _bin.selected_color()

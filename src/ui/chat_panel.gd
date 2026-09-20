@@ -21,6 +21,7 @@ const SUGGESTIONS: Array[String] = [
 ]
 
 var assistant: Assistant
+var account: Account
 
 var _log: VBoxContainer
 var _scroll: ScrollContainer
@@ -28,6 +29,10 @@ var _input: TextEdit
 var _send: Button
 var _status: Label
 var _suggestions: VBoxContainer
+var _composer: VBoxContainer
+var _gate: SignInForm
+var _footer: HBoxContainer
+var _meter: Label
 var _spinner_at: int = 0
 var _working: bool = false
 
@@ -90,17 +95,48 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 
+	# The composer and the sign-in form occupy the same place and only one
+	# is ever shown. Keeping them as siblings rather than rebuilding the
+	# bottom of the panel means a half-typed prompt survives a session
+	# expiring mid-sentence.
+	_composer = VBoxContainer.new()
+	_composer.add_theme_constant_override("separation", 6)
+	root.add_child(_composer)
+
 	_input = TextEdit.new()
 	_input.placeholder_text = PLACEHOLDER
 	_input.custom_minimum_size = Vector2(0, 64)
 	_input.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_input.gui_input.connect(_on_input_key)
-	root.add_child(_input)
+	_composer.add_child(_input)
 
 	_send = Button.new()
 	_send.text = "Build it"
 	_send.pressed.connect(_on_send)
-	root.add_child(_send)
+	_composer.add_child(_send)
+
+	_footer = HBoxContainer.new()
+	_footer.add_theme_constant_override("separation", 8)
+	_composer.add_child(_footer)
+
+	_meter = Label.new()
+	_meter.add_theme_font_size_override("font_size", 10)
+	_meter.modulate = Color(1, 1, 1, 0.5)
+	_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_footer.add_child(_meter)
+
+	var out := Button.new()
+	out.text = "Sign out"
+	out.flat = true
+	out.add_theme_font_size_override("font_size", 10)
+	out.modulate = Color(1, 1, 1, 0.5)
+	out.pressed.connect(func() -> void:
+		if account != null:
+			await account.sign_out())
+	_footer.add_child(out)
+
+	_gate = SignInForm.new()
+	root.add_child(_gate)
 
 
 func bind(to: Assistant) -> void:
@@ -109,6 +145,53 @@ func bind(to: Assistant) -> void:
 	assistant.progress.connect(_on_progress)
 	assistant.finished.connect(_on_finished)
 	assistant.built.connect(_on_built)
+
+
+## Hand the panel the account it should follow. Optional: a build with no
+## accounts behind it never calls this, and the panel then shows the
+## composer as it always did.
+func watch(with_account: Account) -> void:
+	account = with_account
+	_gate.setup(account)
+	_gate.done.connect(func() -> void: _input.grab_focus())
+	account.changed.connect(_on_account_changed)
+	_on_account_changed()
+
+
+func _on_account_changed() -> void:
+	if account == null:
+		return
+	var allowed: bool = account.signed_in()
+	_composer.visible = allowed
+	_gate.visible = account.available and not allowed
+
+	if account.state == Account.State.UNKNOWN:
+		# Still asking. Neither the form nor the composer is right yet,
+		# and announcing "not available" here would be a verdict passed
+		# before the question was put — which is what it did, for the
+		# second or so the probe takes.
+		_status.text = ""
+		return
+
+	if not account.available:
+		# No accounts configured at all. Saying which part is missing is
+		# more use than an empty panel, and there is nothing the person
+		# can do about it from here, so no form is offered.
+		_status.text = ("The assistant is not available on this build. "
+			+ "Everything else works.")
+		return
+
+	if allowed:
+		var left: int = account.designs_left()
+		_meter.text = "%d of %d designs left this month" % [left, account.budget]
+		if left == 0:
+			_status.text = ("That is this month's designs used up. The "
+				+ "builder and the catalogue keep working.")
+			_send.disabled = true
+		else:
+			_send.disabled = _working
+	else:
+		_status.text = ""
 
 
 func _show_suggestions() -> void:

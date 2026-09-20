@@ -32,6 +32,10 @@ const PLATE := 8.0
 var library: PartLibrary
 var world: BrickWorld
 var builder: Builder
+## The signed-in account, when there is one. The proxy will not answer
+## without it. Left null on a desktop build calling Anthropic directly
+## with its own key, where there is nobody to bill.
+var account: Account
 
 ## Where the proxy lives. Relative on the web (same origin); on desktop
 ## this needs a full URL, or a key in the environment for a direct call.
@@ -144,6 +148,14 @@ func _send() -> void:
 		headers.append("x-api-key: " + direct_key)
 		headers.append("anthropic-version: 2023-06-01")
 		body["thinking"] = {"type": "adaptive"}
+	elif account != null:
+		# Fetched rather than read, because a design can run for minutes
+		# and the token may be minutes from expiring when it starts.
+		var token: String = await account.access_token()
+		if token.is_empty():
+			_stop(false, "Sign in to use the assistant.")
+			return
+		headers.append("authorization: Bearer " + token)
 
 	if _http.request(url, headers, HTTPClient.METHOD_POST,
 			JSON.stringify(body)) != OK:
@@ -154,12 +166,49 @@ func _send() -> void:
 	_on_response(result)
 
 
+## Keep the remaining-designs count honest from the headers the proxy
+## sends back, so the panel does not have to ask again after every build.
+func _note_usage(headers: Variant) -> void:
+	if account == null or typeof(headers) != TYPE_PACKED_STRING_ARRAY:
+		return
+	var used: int = -1
+	var budget: int = -1
+	for line: String in headers:
+		var lower: String = line.to_lower()
+		if lower.begins_with("x-designs-used:"):
+			used = int(line.split(":", true, 1)[1].strip_edges())
+		elif lower.begins_with("x-designs-budget:"):
+			budget = int(line.split(":", true, 1)[1].strip_edges())
+	if used >= 0:
+		account.note_usage(used, budget)
+
+
 func _on_response(result: Array) -> void:
 	if not _busy:
 		return
 	var code: int = result[1]
 	var payload: PackedByteArray = result[3]
 	var parsed: Variant = JSON.parse_string(payload.get_string_from_utf8())
+
+	_note_usage(result[2])
+
+	if code != 200 and typeof(parsed) == TYPE_DICTIONARY:
+		# Two refusals deserve their own words rather than the generic
+		# error line: both are ordinary states of a working account, and
+		# neither is something to retry.
+		if bool(parsed.get("signin_required", false)):
+			if account != null:
+				# The session is spent; make the panel offer the form
+				# again rather than leaving a composer that cannot send.
+				await account.boot()
+			_stop(false, str(parsed.get("error", "Sign in to use the assistant.")))
+			return
+		if bool(parsed.get("quota_exhausted", false)):
+			if account != null:
+				account.note_usage(
+					int(parsed.get("used", 0)), int(parsed.get("budget", 0)))
+			_stop(false, str(parsed.get("error", "No designs left this month.")))
+			return
 
 	if code != 200 or typeof(parsed) != TYPE_DICTIONARY:
 		var detail: String = "HTTP %d" % code

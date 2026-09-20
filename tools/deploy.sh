@@ -49,18 +49,40 @@ for f in "$dir"/*; do
   cp "$f" ".vercel/output/static/b/$sha/"
 done
 
-# The design assistant's proxy, packaged the way the Build Output API
-# wants it. A prebuilt deploy has no build step to discover api/, so the
-# function is assembled here: a directory per route, the handler inside
-# it, and a .vc-config.json saying how to run it.
+# The serverless endpoints, packaged the way the Build Output API wants
+# them. A prebuilt deploy has no build step to discover api/, so each is
+# assembled here: a directory per route, the handler inside it, and a
+# .vc-config.json saying how to run it.
 #
-# It needs ANTHROPIC_API_KEY set on the project. Without it the endpoint
-# answers 503 and says the assistant is not configured, which is a
-# better failure than a blank panel.
-if [ -f api/claude.js ]; then
-  fn=.vercel/output/functions/api/claude.func
+# Every route gets its own copy of the shared modules — the ones named
+# with a leading underscore, which are imports rather than routes. A
+# function directory is its own bundle with nothing outside it on the
+# path, so a route importing ./_auth.js finds nothing unless the file is
+# sitting beside it.
+#
+# They need ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY and
+# SUPABASE_SECRET_KEY set on the project. Missing the Anthropic key makes
+# the assistant answer 503 and say so; missing the Supabase ones makes it
+# refuse sign-in rather than fall open, which is the safer of the two
+# ways to be misconfigured while holding an API key.
+for handler in api/*.js; do
+  [ -f "$handler" ] || continue
+  route=$(basename "$handler" .js)
+  case "$route" in _*) continue ;; esac
+
+  fn=".vercel/output/functions/api/$route.func"
   mkdir -p "$fn"
-  cp api/claude.js "$fn/index.mjs"
+  cp "$handler" "$fn/index.mjs"
+  for shared in api/_*.js; do
+    [ -f "$shared" ] && cp "$shared" "$fn/"
+  done
+  # The handler is .mjs and so is unambiguously a module; the shared
+  # files it imports are .js, which Node classifies by the nearest
+  # package.json — and a function bundle has none. Node 22 does detect
+  # module syntax and gets it right without this, so the marker is not
+  # load-bearing today; it is here so the answer does not depend on a
+  # heuristic that a runtime bump could change underneath us.
+  echo '{ "type": "module" }' > "$fn/package.json"
   cat > "$fn/.vc-config.json" <<'JSON'
 {
   "runtime": "nodejs22.x",
@@ -70,7 +92,18 @@ if [ -f api/claude.js ]; then
   "maxDuration": 300
 }
 JSON
-  echo "deploy: packaged /api/claude"
+  echo "deploy: packaged /api/$route"
+done
+
+# Geometry the app fetches when someone picks a part the build does not
+# carry. Served from /parts/ at the deployment root rather than under
+# /b/<sha>/, because it is the same bytes every deploy and the browser
+# should keep it across them.
+if [ -d assets/web/remote ]; then
+  mkdir -p .vercel/output/static/parts
+  cp assets/web/remote/*.lbm .vercel/output/static/parts/ 2>/dev/null || true
+  count=$(ls -1 .vercel/output/static/parts 2>/dev/null | wc -l | tr -d ' ')
+  echo "deploy: $count parts served on demand"
 fi
 
 # The landing page sits at the root and the application at /app. Before

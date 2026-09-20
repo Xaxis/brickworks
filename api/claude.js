@@ -10,13 +10,19 @@
 // So this adds the key, checks the request is the shape we expect, and
 // forwards. Nothing else.
 //
-// Abuse is the obvious risk of an open endpoint holding a key. What is
-// here: an allowlist of models, hard caps on tokens and payload size, a
-// required origin, and a coarse per-IP rate limit. What is NOT here is
-// durable rate limiting — the limiter below lives in the function's
-// memory and resets whenever the instance recycles, so it slows a casual
-// scraper and would not stop a determined one. Put a real limiter in
-// front of this before pointing a domain at it.
+// Abuse is the obvious risk of an endpoint holding a key, so this one is
+// not open. Every request has to carry a signed-in account, and every
+// design is counted against that account's monthly budget in Postgres —
+// a limit that survives the function recycling, which the per-IP limiter
+// below does not. The per-IP limit is still here, in front of the token
+// check, to keep a flood of junk from costing a signature verification
+// each.
+//
+// The builder itself needs none of this. Placing bricks, searching the
+// catalogue, saving a model — none of it comes through here, which is
+// what lets the free tier work with no account at all.
+
+import { AuthError, authConfigured, bearer, claimDesign, tierFor, verify } from "./_auth.js";
 
 const ALLOWED_MODELS = new Set(["claude-opus-5", "claude-sonnet-5"]);
 const MAX_TOKENS = 16000;
@@ -47,7 +53,7 @@ export default async function handler(request, response) {
     return response
       .status(204)
       .setHeader("Access-Control-Allow-Origin", "*")
-      .setHeader("Access-Control-Allow-Headers", "content-type")
+      .setHeader("Access-Control-Allow-Headers", "content-type, authorization")
       .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
       .end();
   }
@@ -75,6 +81,32 @@ export default async function handler(request, response) {
       .json({ error: "Too many designs at once. Give it a minute." });
   }
 
+  // Fail closed. A deployment that holds an API key but has no accounts
+  // configured is a misconfiguration, not a free-for-all, and the shape
+  // of that mistake is an open endpoint spending someone else's money.
+  // ASSISTANT_OPEN exists so a local `vercel dev` can skip sign-in; it is
+  // deliberately awkward to set by accident.
+  const open = process.env.ASSISTANT_OPEN === "1";
+  let account = null;
+  let tier = "builder";
+  if (!open) {
+    if (!authConfigured()) {
+      return response
+        .status(503)
+        .json({ error: "Accounts are not configured on this deployment." });
+    }
+    try {
+      const claims = await verify(bearer(request));
+      account = claims.sub;
+      tier = await tierFor(account);
+    } catch (error) {
+      const status = error instanceof AuthError ? error.status : 401;
+      return response
+        .status(status)
+        .json({ error: error.message, signin_required: status === 401 });
+    }
+  }
+
   let body = request.body;
   if (typeof body === "string") {
     try {
@@ -100,6 +132,30 @@ export default async function handler(request, response) {
   }
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return response.status(400).json({ error: "messages must be a non-empty array" });
+  }
+
+  // Charged here rather than at the top: a request that was going to be
+  // refused for its shape should not cost the player a design.
+  if (account) {
+    let spend;
+    try {
+      spend = await claimDesign(account, tier);
+    } catch (error) {
+      const status = error instanceof AuthError ? error.status : 503;
+      return response.status(status).json({ error: error.message });
+    }
+    if (!spend.allowed) {
+      return response.status(429).json({
+        error:
+          `That is all ${spend.budget} designs for this month. ` +
+          `The builder itself keeps working.`,
+        used: spend.used,
+        budget: spend.budget,
+        quota_exhausted: true,
+      });
+    }
+    response.setHeader("x-designs-used", String(spend.used));
+    response.setHeader("x-designs-budget", String(spend.budget));
   }
 
   const payload = {
