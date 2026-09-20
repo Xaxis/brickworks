@@ -58,6 +58,12 @@ const SWATCHES: Array[int] = [
 var library: PartLibrary
 var thumbnails: PartThumbnails
 
+## How many parts can be placed at all, and how many of those the default
+## view sets aside. Both are shown, because a bin that says "20,581" to
+## someone who was told there are 29,479 parts looks broken.
+var _offerable: int = 0
+var _set_aside: int = 0
+
 var _search: LineEdit
 var _grid: GridContainer
 var _scroll: ScrollContainer
@@ -140,6 +146,10 @@ func _build() -> void:
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 11)
 	_status.modulate = Color(1, 1, 1, 0.6)
+	# Two lines when it needs them. The line has to carry where the rest
+	# of the catalogue went, and truncating that leaves the bin looking
+	# short of parts with no explanation — the thing the line is for.
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 
 	var colour_title := Label.new()
@@ -157,7 +167,17 @@ func _build() -> void:
 func populate() -> void:
 	if library == null:
 		return
-	_search.placeholder_text = "Search %s parts…" % _comma(library.parts.size())
+	# The catalogue holds 1,160 redirect stubs — "~Moved to 3665" — that
+	# forward to the part that replaced them. Counting them here promised
+	# more parts than the bin could ever show, which is one of the two
+	# reasons the bin looked like it was hiding things.
+	var offerable: int = 0
+	for id: String in library.ids():
+		var entry: PartLibrary.PartInfo = library.parts[id]
+		if not entry.is_redirect() and entry.reachable:
+			offerable += 1
+	_offerable = offerable
+	_search.placeholder_text = "Search %s parts…" % _comma(offerable)
 	_build_categories()
 	_build_swatches()
 	_run_search("")
@@ -302,6 +322,7 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	var needles: PackedStringArray = query.to_lower().split(" ", false)
 	var wanted_category: String = category.to_lower()
 	var found: Array[PartLibrary.PartInfo] = []
+	var set_aside: int = 0
 
 	for id: String in library.ids():
 		var info: PartLibrary.PartInfo = library.parts[id]
@@ -312,8 +333,11 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		if wanted_category == "all":
 			# Stickers and superseded parts are still findable by name or
 			# by their own button; they are just not what anyone means by
-			# "show me the parts".
+			# "show me the parts". Counted as they are skipped so the
+			# status line can say how many and where they went — silently
+			# dropping 7,738 parts is indistinguishable from losing them.
 			if needles.is_empty() and _is_buried(info.category):
+				set_aside += 1
 				continue
 		elif info.category.to_lower() != wanted_category:
 			continue
@@ -331,6 +355,7 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 
 		found.append(info)
 
+	_set_aside = set_aside
 	_sort_for(found, query)
 	return found
 
@@ -494,6 +519,13 @@ func _update_status() -> void:
 	else:
 		_status.text = "%s of %s — scroll for more" % [
 			_comma(_shown), _comma(total)]
+
+	# Where the rest went. Only on the default view, since that is the
+	# only place anything is held back.
+	if _set_aside > 0:
+		_status.text += "\n%s stickers and obsolete parts set aside — search finds them" % _comma(_set_aside)
+	_status.tooltip_text = ("%s parts can be placed in this build"
+		% _comma(_offerable))
 
 
 func _make_cell(info: PartLibrary.PartInfo) -> Control:
