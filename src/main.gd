@@ -31,6 +31,9 @@ var _chat: ChatPanel
 var _account: Account
 var _steps: StepsBar
 var _inventory: InventoryPanel
+var _mosaic: MosaicDialog
+var _picker: PickImage
+var _mosaic_source: Image
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -397,6 +400,30 @@ func _build_ui() -> void:
 	$HUD.add_child(_inventory)
 	_bar.parts_wanted.connect(_toggle_parts)
 
+	_picker = PickImage.new()
+	add_child(_picker)
+	_mosaic = MosaicDialog.new()
+	_mosaic.set_anchors_preset(Control.PRESET_CENTER)
+	_mosaic.anchor_left = 0.5
+	_mosaic.anchor_right = 0.5
+	_mosaic.anchor_top = 0.5
+	_mosaic.anchor_bottom = 0.5
+	_mosaic.offset_left = -190
+	_mosaic.offset_right = 190
+	_mosaic.offset_top = -230
+	_mosaic.offset_bottom = 230
+	$HUD.add_child(_mosaic)
+
+	# Straight from the button press into the file dialog, with nothing
+	# awaited between. A browser only opens a file picker while it is
+	# still handling a real click, so anything deferred here would be
+	# silently ignored on the web and work perfectly on the desktop.
+	_bar.mosaic_wanted.connect(_picker.ask)
+	_picker.picked.connect(func(image: Image) -> void: _mosaic.show_for(image))
+	_picker.failed.connect(func(why: String) -> void: _bar.say(why))
+	_picker.picked.connect(func(image: Image) -> void: _mosaic_source = image)
+	_mosaic.build_wanted.connect(_build_mosaic)
+
 	_bin.populate()
 	_builder.held_color = _bin.selected_color()
 
@@ -584,6 +611,49 @@ func _step_parts(step: Instructions.Step) -> Array:
 	adds.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["count"]) > int(b["count"]))
 	return adds
+
+
+## Lay the chosen picture out in plates.
+##
+## The mosaic replaces whatever was there, because a picture is a whole
+## model rather than an addition to one — and it goes through the
+## ordinary placement path, so it is undoable, saveable, counted by the
+## parts list and walked by the booklet like anything else.
+func _build_mosaic(across: int, dither: bool) -> void:
+	if _mosaic_source == null:
+		return
+	_bar.say("laying it out…")
+	await get_tree().process_frame
+
+	var pixels: Array[Mosaic.Pixel] = Mosaic.lay_out(
+		_mosaic_source, across, PackedInt32Array(PartsBin.SWATCHES),
+		_library, dither)
+	if pixels.is_empty():
+		_bar.say("nothing to lay out")
+		return
+
+	_world.clear()
+	_builder.lattice.clear()
+	_assistant.clear_built()
+	_store.scenery.clear()
+
+	var part: Lbm.PartMesh = _library.mesh_for(Mosaic.PIXEL_PART)
+	for pixel: Mosaic.Pixel in pixels:
+		# A 1 x 1 plate sits centred on its stud, and the mosaic is laid
+		# on the ground, so y is the plate height and nothing else.
+		var at := Transform3D(Basis.IDENTITY, Vector3(
+			pixel.x * BrickLattice.STUD + BrickLattice.STUD * 0.5,
+			part.bounds.size.y,
+			pixel.z * BrickLattice.STUD + BrickLattice.STUD * 0.5))
+		var brick_id: int = _world.add_brick(
+			Mosaic.PIXEL_PART, pixel.color_code, at)
+		if brick_id != 0:
+			_builder.register(brick_id, Mosaic.PIXEL_PART, at)
+
+	_camera.frame(_world.model_bounds(), 1.1)
+	_camera.set_view("top")
+	_on_model_changed()
+	_bar.say("%d plates — press P for what to buy" % pixels.size())
 
 
 ## Show or hide the parts list. Worked out on opening rather than kept

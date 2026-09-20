@@ -20,6 +20,8 @@ signal cleared()
 ## Someone wants the parts list. The bar does not own the panel — it is
 ## an overlay across the whole window, not a strip along the top.
 signal parts_wanted()
+## Someone wants to turn a picture into bricks.
+signal mosaic_wanted()
 signal opened(bricks: int)
 
 
@@ -61,6 +63,8 @@ func _build() -> void:
 	_button(row, "Export", _on_export, "Write an .ldr file, which any brick tool reads")
 	_button(row, "Parts", func() -> void: parts_wanted.emit(),
 		"Every part this model needs, by colour and count")
+	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
+		"Turn a picture into a wall of plates")
 	_button(row, "Clear", _on_clear, "Empty the baseplate")
 
 	_status = Label.new()
