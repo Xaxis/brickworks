@@ -47,6 +47,29 @@ var _library: PartLibrary
 ## Compatibility. Godot does not fall back quietly — it warns on every
 ## load, which is a line in everyone's console about a setting they
 ## cannot change.
+## Make a pixel of interface the size a person expects.
+##
+## A phone reports a 390 point wide screen and draws it with three
+## device pixels to the point. Godot is handed the device pixels, so
+## without this the interface is laid out as if on a 1170 pixel display
+## and then shown at a third of the size: legible on a desktop monitor,
+## about two millimetres tall in the hand.
+##
+## Scaling by the ratio the browser reports puts it back. The 3D is
+## unaffected — it still renders at full device resolution, which is
+## what makes it look sharp.
+func _match_screen_density() -> void:
+	if not OS.has_feature("web"):
+		return
+	var reported: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
+	var ratio: float = float(reported) if reported != null else 1.0
+	if ratio <= 0.0:
+		return
+	# Capped: a 4x display would otherwise leave room for almost nothing,
+	# and past about two the gain in legibility is small.
+	get_window().content_scale_factor = clampf(ratio, 1.0, 2.0)
+
+
 func _enable_antialiasing() -> void:
 	var method: String = RenderingServer.get_current_rendering_method()
 	if method == "forward_plus" or method == "mobile":
@@ -55,6 +78,7 @@ func _enable_antialiasing() -> void:
 
 func _ready() -> void:
 	_enable_antialiasing()
+	_match_screen_density()
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
@@ -442,6 +466,14 @@ func _build_ui() -> void:
 	_picker.picked.connect(func(image: Image) -> void: _mosaic_source = image)
 	_mosaic.build_wanted.connect(_build_mosaic)
 
+	# Panels sized to the window, and folded away when there is no room
+	# for them beside the model. On a phone a panel that takes its
+	# design width would leave about fifty pixels of viewport, so it
+	# becomes a drawer: most of the screen while you are using it, gone
+	# the moment you are not.
+	get_tree().root.size_changed.connect(_fit_panels)
+	_fit_panels()
+
 	_bin.populate()
 	_builder.held_color = _bin.selected_color()
 
@@ -672,6 +704,44 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	_camera.set_view("top")
 	_on_model_changed()
 	_bar.say("%d plates — press P for what to buy" % pixels.size())
+
+
+## Width below which the two panels cannot both sit beside the model.
+## Their design widths plus something worth looking at between them.
+const ROOMY := 1040.0
+
+
+## Fit the panels to the window, and decide whether they are drawers.
+func _fit_panels() -> void:
+	if _bin_dock == null or _chat_dock == null:
+		return
+	# The real window, not the viewport. With canvas_items stretch the
+	# visible rect is the design size — 1600 wide whatever the window
+	# is — so asking it how much room there is always answers "plenty",
+	# and the panels stayed at their desktop widths on a phone.
+	var across: float = float(DisplayServer.window_get_size().x) \
+		/ maxf(get_window().content_scale_factor, 0.001)
+	var cramped: bool = across < ROOMY
+
+	# A drawer leaves the far rail showing, so the way out is visible
+	# from inside it.
+	var drawer: float = maxf(across - SideDock.RAIL_WIDTH * 2.0 - 16.0, 220.0)
+	_bin_dock.set_open_width(minf(336.0, drawer) if cramped else 336.0)
+	_chat_dock.set_open_width(minf(340.0, drawer) if cramped else 340.0)
+
+	if cramped and not _folded_for_room:
+		# Only once. Folding them on every resize would fight anyone
+		# dragging a window edge with a panel deliberately open.
+		_folded_for_room = true
+		_bin_dock.set_open(false, false)
+		_chat_dock.set_open(false, false)
+	elif not cramped and _folded_for_room:
+		_folded_for_room = false
+		_bin_dock.set_open(true, false)
+		_chat_dock.set_open(true, false)
+
+
+var _folded_for_room: bool = false
 
 
 ## Show or hide the parts list. Worked out on opening rather than kept

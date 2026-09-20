@@ -32,6 +32,18 @@ var _tween: Tween
 signal toggled(open: bool)
 
 
+## How wide the panel is when open. Changing it while open resizes it,
+## which is what a window being resized has to do.
+func set_open_width(width: float) -> void:
+	_full_width = width
+	if _open:
+		_holder.custom_minimum_size.x = width
+
+
+func open_width() -> float:
+	return _full_width
+
+
 func setup(inner: Control, on_edge: int, width: float) -> void:
 	edge = on_edge
 	content = inner

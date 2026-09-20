@@ -28,6 +28,10 @@ gdscript/warnings/integer_division=0
 window/size/viewport_width=1600
 window/size/viewport_height=900
 window/stretch/mode="canvas_items"
+; Expand, not keep. Keeping the 16:9 of the design size letterboxes
+; anything that is not that shape, and a portrait phone is very much
+; not — it got two black bars taller than the app between them.
+window/stretch/aspect="expand"
 
 [filesystem]
 
