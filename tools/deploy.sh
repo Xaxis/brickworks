@@ -49,10 +49,35 @@ for f in "$dir"/*; do
   cp "$f" ".vercel/output/static/b/$sha/"
 done
 
+# The design assistant's proxy, packaged the way the Build Output API
+# wants it. A prebuilt deploy has no build step to discover api/, so the
+# function is assembled here: a directory per route, the handler inside
+# it, and a .vc-config.json saying how to run it.
+#
+# It needs ANTHROPIC_API_KEY set on the project. Without it the endpoint
+# answers 503 and says the assistant is not configured, which is a
+# better failure than a blank panel.
+if [ -f api/claude.js ]; then
+  fn=.vercel/output/functions/api/claude.func
+  mkdir -p "$fn"
+  cp api/claude.js "$fn/index.mjs"
+  cat > "$fn/.vc-config.json" <<'JSON'
+{
+  "runtime": "nodejs22.x",
+  "handler": "index.mjs",
+  "launcherType": "Nodejs",
+  "shouldAddHelpers": true,
+  "maxDuration": 300
+}
+JSON
+  echo "deploy: packaged /api/claude"
+fi
+
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "routes": [
+    { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
       "headers": {
