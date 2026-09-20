@@ -1,44 +1,56 @@
 // Shared body of the plastic shaders. Included by plastic.gdshader and
-// plastic_two_sided.gdshader, which differ only in their cull mode: a
-// shader's render_mode is fixed at compile time, so a part whose source
-// is not BFC certified — and therefore has no reliable outside — needs
-// its own shader rather than a flag.
+// its variants, which differ only in cull mode and whether they write
+// ALPHA — a shader fixes both at compile time, which is the only reason
+// there is more than one file.
+//
+// ABS plastic, as bricks are actually moulded. Three things separate
+// plastic that reads as plastic from plastic that reads as painted
+// cardboard, and all three are cheap:
+//
+//   Sheen at grazing angles. ABS is a dielectric, so its reflectance
+//   climbs sharply towards the silhouette. Without it a brick looks flat
+//   however the roughness is tuned.
+//
+//   Roughness that varies. A moulded surface is not uniformly glossy:
+//   the top of a stud is polished by the tool, the walls carry faint
+//   draw marks. A touch of variation stops the highlight reading as a
+//   sticker.
+//
+//   Colour in linear space. LDConfig values are sRGB; feeding them
+//   straight to a physically based renderer washes every part out.
+//
+// The angles all come from the fragment stage. An earlier version took
+// NORMAL in vertex() and compared it against a fixed axis, which is a
+// model-space vector measured against a view-space direction: the
+// shading then turned with the brick instead of with the camera, and
+// every part came out flat and muddy with its studs barely readable.
 
-// Moulded ABS sits around here; tuned against photographs of real bricks
-// under a softbox rather than picked for looks.
-uniform float base_roughness : hint_range(0.0, 1.0) = 0.28;
-uniform float roughness_variation : hint_range(0.0, 0.5) = 0.06;
+uniform float base_roughness : hint_range(0.0, 1.0) = 0.22;
+uniform float roughness_variation : hint_range(0.0, 0.5) = 0.10;
 uniform float specular_level : hint_range(0.0, 1.0) = 0.5;
-uniform float sheen_strength : hint_range(0.0, 2.0) = 0.65;
 
-// Light colours scatter a little light under the surface, which is why a
-// white brick never reads as pure white in shadow.
-uniform float subsurface : hint_range(0.0, 1.0) = 0.12;
-
-// Crevice darkening. Stud roots and the gaps between bricks hold a little
-// shadow that a direct light cannot reach.
-uniform float cavity_strength : hint_range(0.0, 1.0) = 0.35;
+// Light colours scatter a little under the surface, which is why a white
+// brick never reads as pure white in shadow.
+uniform float subsurface : hint_range(0.0, 1.0) = 0.10;
 
 // Whether the instance colour needs converting from sRGB to linear here.
 // The two renderers disagree about what they are handed: under Forward+
 // the conversion belongs in the shader, and doing it again under
-// Compatibility darkens every part. Set from the renderer at startup, so
-// a brick is the same colour on the desktop and on the web.
+// Compatibility darkens every part.
 uniform bool linearise = true;
 
-// A colour supplied directly, for the times a part is drawn as a single
+// A colour supplied directly, for when a part is drawn as a single
 // MeshInstance rather than through a MultiMesh — the parts bin previews.
-// There is no instance colour on that path, and COLOR would fall back to
-// the vertex colour attribute, which these meshes do not carry: the part
-// would render black. A negative red means "not set, use COLOR".
+// There is no instance colour on that path and COLOR would fall back to
+// the vertex colour attribute, which these meshes do not carry, so the
+// part would render black. A negative red means "not set, use COLOR".
 uniform vec4 tint_override = vec4(-1.0, 0.0, 0.0, 1.0);
 
 varying vec3 instance_color;
-varying vec3 view_normal;
 
 vec3 srgb_to_linear(vec3 c) {
-	// The exact piecewise transfer function, not a 2.2 power approximation:
-	// the approximation visibly lifts dark greys, and bricks use a lot of
+	// The exact piecewise transfer function, not a 2.2 power: the
+	// approximation visibly lifts dark greys, and bricks use a lot of
 	// dark grey.
 	bvec3 cutoff = lessThanEqual(c, vec3(0.04045));
 	vec3 low = c / 12.92;
@@ -49,49 +61,39 @@ vec3 srgb_to_linear(vec3 c) {
 void vertex() {
 	vec3 source = tint_override.r >= 0.0 ? tint_override.rgb : COLOR.rgb;
 	instance_color = linearise ? srgb_to_linear(source) : source;
-	view_normal = NORMAL;
 }
 
 void fragment() {
 	ALBEDO = instance_color;
-
-	// Roughness rises slightly towards the silhouette: grazing light picks
-	// up the fine tooling texture that a head-on view does not resolve.
-	float facing = abs(dot(normalize(view_normal), vec3(0.0, 0.0, 1.0)));
-	ROUGHNESS = base_roughness + roughness_variation * (1.0 - facing);
-	SPECULAR = specular_level;
 	METALLIC = 0.0;
 
-	// Dielectric sheen towards the edges.
-	float fresnel = pow(1.0 - facing, 5.0);
-	SPECULAR += sheen_strength * fresnel * 0.1;
+	// How square-on this surface is to the eye. Both vectors are in view
+	// space here, which is what makes the result mean anything.
+	float facing = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
+	float grazing = 1.0 - facing;
 
-	// A cheap stand-in for occlusion in the crevices: surfaces pointing
-	// away from up catch less bounced light.
-	float upness = dot(normalize(NORMAL), vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5;
-	AO = mix(1.0 - cavity_strength, 1.0, upness);
-	AO_LIGHT_AFFECT = 0.4;
+	// Grazing light picks up the fine tooling texture a head-on view does
+	// not resolve.
+	ROUGHNESS = base_roughness + roughness_variation * grazing;
 
-	// Pale plastics scatter; dark ones absorb. Keying the amount to
-	// luminance gets that for free instead of needing a per-colour flag.
+	// Dielectric sheen towards the silhouette. This is the edge light
+	// that makes a stud read as a cylinder rather than a smudge.
+	SPECULAR = specular_level + 0.35 * pow(grazing, 4.0);
+
+	// Pale plastics scatter, dark ones absorb; keying the amount to
+	// luminance gets that without a per-colour flag.
 	float luminance = dot(instance_color, vec3(0.2126, 0.7152, 0.0722));
 	BACKLIGHT = vec3(subsurface * luminance);
 
 #ifdef PLASTIC_TRANSPARENT
-	// Transparent ABS is glassy, not frosted: it is moulded in the same
-	// tool as opaque plastic and polished the same way, so it keeps the
-	// roughness and gains transmission.
-	//
-	// The alpha rides in on the instance colour, which carries the
-	// palette's own ALPHA value for the colour the part is placed in.
-	// Edge-on the sheet transmits less, the way real glazing does, so the
-	// silhouette of a windscreen reads instead of vanishing.
+	// Transparent ABS is glassy, not frosted: moulded in the same tool as
+	// opaque plastic and polished the same way, so it keeps the roughness
+	// and gains transmission. Edge-on it transmits less, the way real
+	// glazing does, so a windscreen's silhouette reads instead of
+	// vanishing.
 	float base_alpha = tint_override.r >= 0.0 ? tint_override.a : COLOR.a;
-	float edge = pow(1.0 - facing, 3.0);
-	ALPHA = clamp(base_alpha + edge * (1.0 - base_alpha) * 0.8, 0.0, 1.0);
-	ROUGHNESS = base_roughness * 0.55;
-	// Light that makes it through picks up the tint on the way.
-	BACKLIGHT = instance_color * 0.35;
-	AO = 1.0;
+	ALPHA = clamp(base_alpha + pow(grazing, 3.0) * (1.0 - base_alpha) * 0.85, 0.0, 1.0);
+	ROUGHNESS = base_roughness * 0.4;
+	BACKLIGHT = instance_color * 0.4;
 #endif
 }

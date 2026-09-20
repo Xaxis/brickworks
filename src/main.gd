@@ -22,7 +22,8 @@ var _stability_text: String = ""
 var _counts_base: String = ""
 var _stability_at: int = 0
 var _counts: Label
-var _keys: Label
+var _bin_dock: SideDock
+var _chat_dock: SideDock
 var _store: ModelStore
 var _bar: ModelBar
 var _bin: PartsBin
@@ -81,6 +82,9 @@ func _ready() -> void:
 	if not ask.is_empty():
 		await _ask(ask)
 
+	if not _argument("--showcase").is_empty():
+		_showcase()
+
 	var bench: String = _argument("--bench")
 	if not bench.is_empty():
 		await _benchmark(bench.to_int())
@@ -88,6 +92,30 @@ func _ready() -> void:
 	var shot: String = _argument("--shot")
 	if not shot.is_empty():
 		await _capture(shot)
+
+
+## A few parts, close up, for judging how they look rather than whether
+## they are in the right place.
+func _showcase() -> void:
+	_world.clear()
+	_builder.lattice.clear()
+	var wanted: String = _argument("--showcase")
+	var row: Array = [
+		["3001", 4], ["3003", 14], ["3024", 15], ["3062b", 1],
+		["3040b", 2], ["3941", 25], ["4073", 47], ["3005", 0],
+	]
+	if wanted != "1" and not wanted.is_empty():
+		row = [[wanted, 4]]
+	var x: float = 0.0
+	for entry: Array in row:
+		var at := Transform3D(Basis.IDENTITY, Vector3(x, 24.0, 0.0))
+		var id: int = _world.add_brick(entry[0], entry[1], at)
+		if id != 0:
+			_builder.register(id, entry[0], at)
+		x += 60.0
+	await get_tree().process_frame
+	_camera.frame(_world.model_bounds(), 1.05)
+	_camera.set_view("default")
 
 
 ## Run one design through the assistant and report, for checking the
@@ -251,8 +279,11 @@ func _build_ui() -> void:
 	_bin.thumbnails = _thumbnails
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
-	layout.add_child(_bin)
 	_thumbnails.ready_for.connect(_bin.on_thumbnail)
+
+	_bin_dock = SideDock.new()
+	_bin_dock.setup(_bin, SideDock.Edge.LEFT, 336.0)
+	layout.add_child(_bin_dock)
 
 	# The middle column is the viewport. Nothing is drawn into it, but the
 	# counters and the key list live at its top and bottom so they cannot
@@ -272,16 +303,32 @@ func _build_ui() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(spacer)
 
-	_keys = _viewport_label(11)
-	_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_keys.modulate = Color(1, 1, 1, 0.5)
-	_keys.text = ("click place  ·  right-click remove  ·  R rotate  ·  "
-		+ "/ search  ·  alt-drag orbit  ·  shift-drag pan  ·  "
-		+ "wheel zoom  ·  F frame  ·  ctrl-Z undo")
-	middle.add_child(_keys)
+	# The hint is wide, and a container asks its children how narrow they
+	# can get. Left to itself the strip set the middle column's minimum
+	# width and squeezed the assistant off the right edge, so it lives in
+	# a clipping wrapper that claims no width of its own.
+	var hint_area := Control.new()
+	hint_area.custom_minimum_size = Vector2(0, 26)
+	hint_area.clip_contents = true
+	hint_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(hint_area)
+
+	var hint := ControlsHint.new()
+	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	hint.offset_top = -24.0
+	hint.offset_bottom = 0.0
+	hint.alignment = BoxContainer.ALIGNMENT_CENTER
+	hint_area.add_child(hint)
+
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(0, 6)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(pad)
 
 	_chat = ChatPanel.new()
-	layout.add_child(_chat)
+	_chat_dock = SideDock.new()
+	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
+	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
 
 	_bin.populate()
@@ -324,6 +371,18 @@ static func _anthropic_key() -> String:
 
 ## The working model is written a couple of seconds after the last
 ## change, so closing the tab costs seconds rather than an afternoon.
+## Turn the whole build on the baseplate, keeping the lattice exact.
+func _turn_model(quarter_turns: int) -> void:
+	var moved: Array = _world.rotate_model(quarter_turns, _store.scenery)
+	if moved.is_empty():
+		return
+	for entry: Dictionary in moved:
+		_builder.lattice.release(entry["id"])
+	for entry: Dictionary in moved:
+		_builder.register(entry["id"], entry["part"], entry["at"])
+	_on_model_changed()
+
+
 func _on_model_changed() -> void:
 	if _store != null:
 		_store.touch()
@@ -594,7 +653,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## cursor over the text.
 func _over_panel() -> bool:
 	var mouse: Vector2 = get_viewport().get_mouse_position()
-	for panel: Control in [_bin, _chat]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar]:
 		if panel != null and panel.get_global_rect().has_point(mouse):
 			return true
 	return false
@@ -630,14 +689,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_refresh_preview()
 		KEY_BRACKETLEFT, KEY_BRACKETRIGHT:
 			var step: int = 1 if key.keycode == KEY_BRACKETRIGHT else -1
-			_part_index = posmod(_part_index + step, QUICK_PARTS.size())
-			_builder.held_part = QUICK_PARTS[_part_index]
-			_refresh_preview()
-		KEY_SEMICOLON, KEY_APOSTROPHE:
-			var shift: int = 1 if key.keycode == KEY_APOSTROPHE else -1
-			_color_index = posmod(_color_index + shift, QUICK_COLORS.size())
+			_color_index = posmod(_color_index + step, QUICK_COLORS.size())
 			_builder.held_color = QUICK_COLORS[_color_index]
+			_bin._on_colour(QUICK_COLORS[_color_index])
 			_refresh_preview()
+		KEY_Q, KEY_E:
+			_turn_model(1 if key.keycode == KEY_E else -1)
+		KEY_TAB:
+			# Both panels away, for looking at the model.
+			var showing: bool = _bin_dock.is_open() or _chat_dock.is_open()
+			_bin_dock.set_open(not showing)
+			_chat_dock.set_open(not showing)
 		KEY_Z:
 			if key.ctrl_pressed or key.meta_pressed:
 				if key.shift_pressed:

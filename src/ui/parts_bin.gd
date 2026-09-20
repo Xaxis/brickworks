@@ -21,16 +21,31 @@ class_name PartsBin
 extends PanelContainer
 
 const COLUMNS := 4
-const RESULT_LIMIT := 240
+## How many cells are added at a time. The grid grows as it is scrolled
+## rather than stopping at a cap: a fixed limit meant that of 28,319
+## parts you could only ever see the first 240, with nothing to say the
+## rest existed.
+const PAGE := 120
 ## Milliseconds of quiet before a search runs. Long enough that typing a
 ## word is one search, short enough to feel immediate.
 const SEARCH_DEBOUNCE := 160
 
-## Categories worth a button, in the order a builder reaches for them.
-const CATEGORIES: Array[String] = [
-	"All", "Brick", "Plate", "Tile", "Slope", "Technic", "Wedge",
-	"Round", "Arch", "Panel", "Bracket", "Hinge", "Vehicle", "Minifig",
+## Categories that lead, when the catalogue has them. Everything else is
+## added after these, ordered by how many parts it holds.
+##
+## A hand-written list was the bug: thirteen names covered 12,438 of
+## 28,319 parts and the other 15,881 were unreachable by any button,
+## because LDraw has 94 categories and most of them are not things you
+## would think to type.
+const LEADING: Array[String] = [
+	"Brick", "Plate", "Tile", "Slope", "Technic", "Wedge", "Panel",
+	"Bracket", "Arch", "Hinge", "Plant", "Animal", "Minifig",
 ]
+
+## Categories kept out of the default view. They are still searchable and
+## still have their own button; they are simply not what anyone means by
+## "show me the parts".
+const BURIED: Array[String] = ["Sticker", "Obsolete", "Moved"]
 
 ## The colours offered as swatches: the standard palette a set is
 ## actually moulded in, rather than all 322 including one-offs.
@@ -50,8 +65,10 @@ var _status: Label
 var _swatch_row: FlowContainer
 var _category_row: FlowContainer
 
-var _category: String = "Brick"
+var _category: String = "All"
 var _results: Array[PartLibrary.PartInfo] = []
+var _shown: int = 0
+var _categories: Array[String] = []
 var _cells: Dictionary = {}            ## part id -> TextureRect
 var _selected_part: String = ""
 var _selected_color: int = 4
@@ -96,18 +113,17 @@ func _build() -> void:
 	_search.text_changed.connect(_on_search_typed)
 	root.add_child(_search)
 
+	# Built from the catalogue once it is loaded, not from a fixed list.
+	var category_scroll := ScrollContainer.new()
+	category_scroll.custom_minimum_size = Vector2(0, 58)
+	category_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(category_scroll)
+
 	_category_row = FlowContainer.new()
+	_category_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_category_row.add_theme_constant_override("h_separation", 4)
 	_category_row.add_theme_constant_override("v_separation", 4)
-	root.add_child(_category_row)
-	for name: String in CATEGORIES:
-		var button := Button.new()
-		button.text = name
-		button.toggle_mode = true
-		button.button_pressed = name == _category
-		button.add_theme_font_size_override("font_size", 11)
-		button.pressed.connect(_on_category.bind(name))
-		_category_row.add_child(button)
+	category_scroll.add_child(_category_row)
 
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -142,8 +158,52 @@ func populate() -> void:
 	if library == null:
 		return
 	_search.placeholder_text = "Search %s parts…" % _comma(library.parts.size())
+	_build_categories()
 	_build_swatches()
 	_run_search("")
+
+
+## The category buttons, taken from what the catalogue actually holds.
+func _build_categories() -> void:
+	var counts: Dictionary = {}
+	for id: String in library.ids():
+		var info: PartLibrary.PartInfo = library.parts[id]
+		if info.is_redirect() or not info.reachable:
+			continue
+		var category: String = info.category.strip_edges()
+		if category.is_empty():
+			continue
+		counts[category] = int(counts.get(category, 0)) + 1
+
+	var rest: Array[String] = []
+	for category: String in counts:
+		if category in LEADING:
+			continue
+		rest.append(category)
+	# Biggest first, so the useful ones are near the front.
+	rest.sort_custom(func(a: String, b: String) -> bool:
+		return int(counts[a]) > int(counts[b]))
+
+	_categories = ["All"]
+	for category: String in LEADING:
+		if counts.has(category):
+			_categories.append(category)
+	for category: String in rest:
+		_categories.append(category)
+
+	for child: Node in _category_row.get_children():
+		child.queue_free()
+	for category: String in _categories:
+		var button := Button.new()
+		var total: int = int(counts.get(category, 0))
+		button.text = category if category == "All" else "%s %d" % [
+			category, total]
+		button.tooltip_text = category
+		button.toggle_mode = true
+		button.button_pressed = category == _category
+		button.add_theme_font_size_override("font_size", 10)
+		button.pressed.connect(_on_category.bind(category))
+		_category_row.add_child(button)
 
 
 func _build_swatches() -> void:
@@ -197,7 +257,7 @@ func _on_category(name: String) -> void:
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
-		button.button_pressed = button.text == name
+		button.button_pressed = button.tooltip_text == name
 	_run_search(_search.text)
 
 
@@ -211,6 +271,17 @@ func _process(_delta: float) -> void:
 	if _pending and Time.get_ticks_msec() - _search_at >= SEARCH_DEBOUNCE:
 		_pending = false
 		_run_search(_search.text)
+
+	# Grow the grid as it is scrolled. Checking here rather than on a
+	# scroll signal covers the case where the window is resized and the
+	# existing page no longer fills it.
+	if _shown < _results.size() and _scroll != null:
+		var bar: VScrollBar = _scroll.get_v_scroll_bar()
+		if bar.max_value <= 0.0:
+			return
+		var remaining: float = bar.max_value - bar.value - bar.page
+		if remaining < 260.0:
+			_show_more()
 
 
 func _run_search(query: String) -> void:
@@ -238,9 +309,14 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 			continue
 		if not info.reachable:
 			continue  # no geometry anywhere in this build
-		if wanted_category != "all":
-			if not info.category.to_lower().begins_with(wanted_category):
+		if wanted_category == "all":
+			# Stickers and superseded parts are still findable by name or
+			# by their own button; they are just not what anyone means by
+			# "show me the parts".
+			if needles.is_empty() and _is_buried(info.category):
 				continue
+		elif info.category.to_lower() != wanted_category:
+			continue
 
 		if not needles.is_empty():
 			var haystack: String = (
@@ -254,12 +330,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 				continue
 
 		found.append(info)
-		if found.size() >= RESULT_LIMIT * 4:
-			break
 
 	_sort_for(found, query)
-	if found.size() > RESULT_LIMIT:
-		found.resize(RESULT_LIMIT)
 	return found
 
 
@@ -384,23 +456,44 @@ static func _is_decorated(info: PartLibrary.PartInfo) -> bool:
 		or name.contains("print"))
 
 
+static func _is_buried(category: String) -> bool:
+	for name: String in BURIED:
+		if category.begins_with(name):
+			return true
+	return false
+
+
 func _fill_grid() -> void:
 	for child: Node in _grid.get_children():
 		child.queue_free()
 	_cells.clear()
+	_shown = 0
 	if thumbnails:
 		thumbnails.clear_queue()
+	_scroll.scroll_vertical = 0
+	_show_more()
 
-	for info: PartLibrary.PartInfo in _results:
-		_grid.add_child(_make_cell(info))
 
-	var shown: int = _results.size()
-	if shown == 0:
+## Add the next page of cells. Called on first fill and again whenever
+## the scroll reaches the end, so the whole result set is reachable
+## without ever building 28,000 controls.
+func _show_more() -> void:
+	var limit: int = mini(_shown + PAGE, _results.size())
+	while _shown < limit:
+		_grid.add_child(_make_cell(_results[_shown]))
+		_shown += 1
+	_update_status()
+
+
+func _update_status() -> void:
+	var total: int = _results.size()
+	if total == 0:
 		_status.text = "nothing matches"
-	elif shown >= RESULT_LIMIT:
-		_status.text = "first %d matches" % shown
+	elif _shown >= total:
+		_status.text = "%s part%s" % [_comma(total), "" if total == 1 else "s"]
 	else:
-		_status.text = "%d part%s" % [shown, "" if shown == 1 else "s"]
+		_status.text = "%s of %s — scroll for more" % [
+			_comma(_shown), _comma(total)]
 
 
 func _make_cell(info: PartLibrary.PartInfo) -> Control:

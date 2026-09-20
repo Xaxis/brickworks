@@ -206,8 +206,21 @@ def build(mesh: Mesh, *, crease_degrees: float = 45.0) -> PartMesh:
             lookup[key] = {}
         table = lookup[key]
 
-        for ci, point in enumerate((triangle.a, triangle.b, triangle.c)):
-            normal = normals[ti * 3 + ci]
+        # Reversed on the way out. LDraw's BFC winds a front face one
+        # way and the engine expects the other, and the two flips in the
+        # axis change cancel rather than fixing it — negating Y and Z is
+        # a half turn about X, which preserves handedness.
+        #
+        # The symptom was subtle enough to live with for a long time:
+        # a closed box looks almost right drawn inside-out, because the
+        # far wall stands in for the near one. A stud does not. Every
+        # stud rendered as an open ring you could see straight through,
+        # which is what "the pieces don't look right" was.
+        corners = (triangle.a, triangle.c, triangle.b)
+        for ci, point in enumerate(corners):
+            # Corner normals are stored in the original a, b, c order,
+            # so the swap above has to be undone when looking one up.
+            normal = normals[ti * 3 + (0 if ci == 0 else 3 - ci)]
             # Convert to the application's axes as we go: +Y up, and Z
             # negated with it so the handedness — and the winding — hold.
             px, py, pz = point.x, -point.y, -point.z

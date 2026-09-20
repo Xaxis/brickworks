@@ -327,3 +327,48 @@ func _triangles_of(mesh: Mesh) -> int:
 	var arrays: Array = mesh.surface_get_arrays(0)
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 	return indices.size() / 3
+
+
+## Turn the whole model a quarter turn about its own centre.
+##
+## Not the same thing as orbiting the camera, which changes where you
+## stand rather than which way the model faces. This is picking the build
+## up off the table and putting it back down the other way round, and it
+## has to keep the lattice honest: every brick moves to a cell, not to
+## somewhere near one.
+##
+## Returns the placements so the caller can rebuild its own lattice from
+## them, because the world does not own that.
+func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
+	var turns: int = posmod(quarter_turns, 4)
+	if turns == 0 or _bricks.is_empty():
+		return []
+
+	# Turn about the centre of the footprint, snapped to the stud grid so
+	# a model on the lattice stays on it.
+	var box: AABB = model_bounds()
+	var pivot := Vector3(
+		round(box.get_center().x / BrickLattice.STUD) * BrickLattice.STUD,
+		0.0,
+		round(box.get_center().z / BrickLattice.STUD) * BrickLattice.STUD)
+	var turn := Basis(Vector3.UP, turns * PI * 0.5)
+
+	var moved: Array = []
+	for brick_id: int in _bricks.keys():
+		if keep.has(brick_id):
+			continue
+		var brick: Brick = _bricks[brick_id]
+		var offset: Vector3 = brick.transform.origin - pivot
+		var at := Transform3D(
+			turn * brick.transform.basis, pivot + turn * offset)
+		# Land exactly on the lattice: an accumulated quarter turn drifts
+		# by a fraction of a cell otherwise, and after four of them a
+		# model no longer meets the grid it was built on.
+		at.origin = BrickLattice.to_ldu(BrickLattice.to_cell(at.origin))
+		at.basis = BrickLattice.snap_basis(at.basis)
+		moved.append({"id": brick_id, "part": brick.part_id,
+			"colour": brick.color_code, "at": at})
+		brick.transform = at
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			_mark_dirty(key)
+	return moved
