@@ -136,7 +136,12 @@ export function bearer(request) {
 /// Ask Postgres, as the service role, for the caller's tier and their
 /// place against this month's budget — in one statement, so two requests
 /// landing together cannot both decide they were under it.
-export async function claimDesign(account, tier) {
+///
+/// [design] names the conversation. A design is a dozen round trips and
+/// sometimes forty, so every turn of one claims against the same id and
+/// only the first costs anything. Without it a single lighthouse spent
+/// six of a sixty-a-month budget.
+export async function claimDesign(account, tier, design) {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) throw new AuthError("accounts are not fully configured here", 503);
 
@@ -148,7 +153,7 @@ export async function claimDesign(account, tier) {
       authorization: `Bearer ${secret}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ account, budget }),
+    body: JSON.stringify({ account, budget, design: design || null }),
     signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) throw new AuthError("could not check your remaining designs", 503);
@@ -157,10 +162,20 @@ export async function claimDesign(account, tier) {
   return { allowed: Boolean(row?.allowed), used: row?.used ?? 0, budget };
 }
 
-/// Designs per calendar month. Generous enough that nobody building for
-/// an evening meets it, low enough that a leaked password cannot empty
-/// the account.
+/// Designs — conversations, not requests — per calendar month. Generous
+/// enough that nobody building for an evening meets it, low enough that
+/// a leaked password cannot empty the account.
 export const BUDGETS = { builder: 60, pro: 400 };
+
+/// A conversation id from the client, reduced to something safe to store
+/// and impossible to use as an injection. Anything unusable becomes null
+/// and Postgres invents one, which costs the caller a design per turn —
+/// the right way round for a client that cannot follow the protocol.
+export function designId(raw) {
+  if (typeof raw !== "string") return null;
+  const clean = raw.trim().slice(0, 64);
+  return /^[A-Za-z0-9_-]{8,64}$/.test(clean) ? clean : null;
+}
 
 export async function tierFor(account) {
   const secret = process.env.SUPABASE_SECRET_KEY;

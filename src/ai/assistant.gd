@@ -49,6 +49,11 @@ var _busy: bool = false
 var _repairs: int = 0
 var _turns: int = 0
 var _pending: Model = null
+## Names the conversation for the proxy's monthly budget. One design is
+## a dozen round trips and sometimes forty, so the turns have to be
+## recognisable as belonging together — otherwise a single lighthouse
+## spends six of the month's sixty.
+var _design_id: String = ""
 var _placed_ids: PackedInt64Array = PackedInt64Array()
 
 signal said(text: String)
@@ -122,9 +127,23 @@ func _start(text: String) -> void:
 	_repairs = 0
 	_turns = 0
 	_pending = null
+	# A new one per instruction, including a revision: asking for a
+	# change starts a fresh round of turns and produces a new model, so
+	# it is a design in the sense anyone would count.
+	_design_id = _new_design_id()
 	_messages.append({"role": "user", "content": text})
 	progress.emit("thinking")
 	_send()
+
+
+## Unguessable, and in the alphabet the proxy accepts. Not a secret —
+## the account is what limits spending — just something two designs are
+## not going to share.
+static func _new_design_id() -> String:
+	var bytes := PackedByteArray()
+	for _n: int in 12:
+		bytes.append(randi() % 256)
+	return Marshalls.raw_to_base64(bytes).replace("+", "-").replace("/", "_").replace("=", "")
 
 
 func _send() -> void:
@@ -139,6 +158,7 @@ func _send() -> void:
 		"system": _system_prompt(),
 		"messages": _messages,
 		"tools": _tools(),
+		"design_id": _design_id,
 	}
 
 	var headers: PackedStringArray = ["content-type: application/json"]

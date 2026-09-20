@@ -22,7 +22,15 @@
 // catalogue, saving a model — none of it comes through here, which is
 // what lets the free tier work with no account at all.
 
-import { AuthError, authConfigured, bearer, claimDesign, tierFor, verify } from "./_auth.js";
+import {
+  AuthError,
+  authConfigured,
+  bearer,
+  claimDesign,
+  designId,
+  tierFor,
+  verify,
+} from "./_auth.js";
 
 const ALLOWED_MODELS = new Set(["claude-opus-5", "claude-sonnet-5"]);
 const MAX_TOKENS = 16000;
@@ -139,7 +147,7 @@ export default async function handler(request, response) {
   if (account) {
     let spend;
     try {
-      spend = await claimDesign(account, tier);
+      spend = await claimDesign(account, tier, designId(body.design_id));
     } catch (error) {
       const status = error instanceof AuthError ? error.status : 503;
       return response.status(status).json({ error: error.message });
