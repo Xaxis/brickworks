@@ -35,6 +35,18 @@ class Binding extends RefCounted:
 ## omission. The mouse verbs (orbit, pan, zoom) are left out entirely:
 ## they are the ones people try without being told.
 static func bindings() -> Array[Binding]:
+	# A phone has no keyboard, and a strip of keys it cannot press is
+	# worse than no strip: it reads as a list of things the app will not
+	# let you do.
+	if DisplayServer.is_touchscreen_available() and OS.has_feature("web"):
+		return [
+			Binding.new(["tap"], "place"),
+			Binding.new(["hold"], "remove"),
+			Binding.new(["drag"], "turn"),
+			Binding.new(["2 fingers"], "move and zoom"),
+			Binding.new(["◀ ▶"], "panels"),
+		]
+
 	return [
 		Binding.new(["click"], "place"),
 		Binding.new(["right-click"], "remove"),

@@ -1072,7 +1072,51 @@ var _part_index: int = 5
 var _color_index: int = 0
 
 
+## How long a finger must stay down to mean "take this one off"
+## rather than "put one here", in milliseconds.
+const HOLD_MS := 480
+
+
+var _touch_down_at: int = 0
+var _touch_index: int = -1
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	# Touch, handled before the mouse cases, because mouse emulation is
+	# off — a finger produces no mouse events at all and everything
+	# below would simply never fire.
+	if event is InputEventScreenTouch:
+		var touch: InputEventScreenTouch = event
+		if _over_panel_at(touch.position):
+			return
+		if touch.pressed:
+			# The first finger only. A second is a pinch, which belongs
+			# to the camera and must not place anything.
+			if _touch_index == -1:
+				_touch_index = touch.index
+				_touch_down_at = Time.get_ticks_msec()
+			return
+
+		if touch.index != _touch_index:
+			return
+		_touch_index = -1
+		# The camera saw the same finger and knows whether it travelled.
+		# Asking it is the only way to tell a tap from the end of a turn.
+		if not _camera.last_touch_was_a_tap():
+			return
+
+		_builder.update_preview(
+			_camera.project_ray_origin(touch.position),
+			_camera.project_ray_normal(touch.position))
+		if Time.get_ticks_msec() - _touch_down_at >= HOLD_MS:
+			# Held: the touch equivalent of a right-click, since there
+			# is no second button on glass.
+			_builder.remove_hovered()
+		else:
+			_builder.place()
+		_builder.hide_preview()
+		return
+
 	if event is InputEventMouseMotion:
 		if _over_panel():
 			_builder.hide_preview()
@@ -1101,6 +1145,18 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Without this, clicking a part in the bin also drops a brick behind it,
 ## and moving the mouse across the assistant leaves a ghost following the
 ## cursor over the text.
+## Whether a point is over one of the panels rather than the model.
+## The existing test asks where the mouse is, which on a touch screen is
+## wherever it was last left — usually nowhere near the finger.
+func _over_panel_at(point: Vector2) -> bool:
+	for panel: Control in [_bin_dock, _chat_dock, _bar]:
+		if panel != null and panel.visible and panel.get_global_rect().has_point(point):
+			return true
+	if _inventory != null and _inventory.is_showing():
+		return true
+	return false
+
+
 func _over_panel() -> bool:
 	var mouse: Vector2 = get_viewport().get_mouse_position()
 	for panel: Control in [_bin_dock, _chat_dock, _bar]:

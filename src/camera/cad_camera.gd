@@ -43,6 +43,16 @@ var _target_focus: Vector3 = Vector3.ZERO
 var _orbiting: bool = false
 var _panning: bool = false
 
+## Fingers currently down, by the index the system gives each one.
+##
+## Tracked here rather than relying on the engine's mouse emulation,
+## which turns one finger into a left button and so cannot tell a drag
+## meant to turn the model from a tap meant to place a brick — it would
+## do both, and place a brick wherever the turn happened to end.
+var _touches: Dictionary = {}
+## How far apart two fingers were last frame, for the pinch.
+var _spread: float = 0.0
+
 # Just under a right angle: letting the camera reach straight down makes
 # the yaw axis degenerate and the view spin unpredictably.
 const _PITCH_LIMIT := deg_to_rad(89.0)
@@ -59,7 +69,79 @@ func _ready() -> void:
 	_apply(1.0)
 
 
+## How far a finger may move and still count as a tap rather than a
+## drag, in pixels. Generous, because a finger on glass is never still
+## and a tap that is read as a tiny orbit feels like the app ignoring
+## you.
+const TAP_SLOP := 14.0
+
+
+## True when the last touch was a tap rather than a drag, so whoever
+## handles placing can ask instead of guessing.
+func last_touch_was_a_tap() -> bool:
+	return _was_tap
+
+
+var _was_tap: bool = false
+var _touch_started: Vector2 = Vector2.ZERO
+var _touch_travel: float = 0.0
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		var touch: InputEventScreenTouch = event
+		if touch.pressed:
+			_touches[touch.index] = touch.position
+			if _touches.size() == 1:
+				_touch_started = touch.position
+				_touch_travel = 0.0
+				_was_tap = false
+			elif _touches.size() == 2:
+				# A second finger cancels any tap the first was making:
+				# nobody pinches meaning to place a brick.
+				_was_tap = false
+				_spread = _distance_between()
+		else:
+			if _touches.size() == 1 and _touch_travel <= TAP_SLOP:
+				_was_tap = true
+			_touches.erase(touch.index)
+			_spread = 0.0
+		return
+
+	if event is InputEventScreenDrag:
+		var drag: InputEventScreenDrag = event
+		_touches[drag.index] = drag.position
+		_touch_travel += drag.relative.length()
+
+		if _touches.size() == 1:
+			# One finger turns the model. It is what people try first,
+			# and on a build sitting on a table it is what you do.
+			_target_yaw -= drag.relative.x * 0.006 * orbit_speed
+			_target_pitch = clampf(
+				_target_pitch - drag.relative.y * 0.006 * orbit_speed,
+				-_PITCH_LIMIT, _PITCH_LIMIT)
+			return
+
+		if _touches.size() >= 2:
+			# Two fingers move the model and, by the distance between
+			# them, how close it is. Both at once, because separating
+			# them would mean choosing one and being wrong half the time.
+			var now: float = _distance_between()
+			if _spread > 0.0 and now > 0.0:
+				var change: float = _spread / now
+				_target_distance = clampf(
+					_target_distance * change, min_distance, max_distance)
+			_spread = now
+
+			var scale: float = _target_distance * 0.0016 * pan_speed
+			# Halved: with two fingers down each contributes a drag
+			# event, so the motion would otherwise be applied twice.
+			var right: Vector3 = global_transform.basis.x
+			var up: Vector3 = global_transform.basis.y
+			_target_focus -= right * drag.relative.x * scale * 0.5
+			_target_focus += up * drag.relative.y * scale * 0.5
+		return
+
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event
 		match button.button_index:
@@ -100,6 +182,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			var up: Vector3 = global_transform.basis.y
 			_target_focus -= right * motion.relative.x * scale
 			_target_focus += up * motion.relative.y * scale
+
+
+## How far apart the first two fingers are.
+func _distance_between() -> float:
+	var points: Array = _touches.values()
+	if points.size() < 2:
+		return 0.0
+	return (points[0] as Vector2).distance_to(points[1] as Vector2)
 
 
 func _process(delta: float) -> void:
