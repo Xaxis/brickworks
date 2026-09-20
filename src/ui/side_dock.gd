@@ -49,7 +49,10 @@ func setup(inner: Control, on_edge: int, width: float) -> void:
 	_rail.custom_minimum_size = Vector2(RAIL_WIDTH, 0)
 	_rail.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_rail.focus_mode = Control.FOCUS_NONE
-	_rail.flat = true
+	# Not flat. A flat Button draws no background at all and ignores the
+	# styleboxes below, which left the rail as an arrow floating over the
+	# viewport with nothing to aim at — findable only by someone who
+	# already knew it was there, and invisible over a pale model.
 	_rail.pressed.connect(toggle)
 
 	# The rail is always on the inner side, so it stays put when the
@@ -123,7 +126,15 @@ func set_open(open: bool, animate: bool = true) -> void:
 
 func _update_rail() -> void:
 	# An arrow pointing the way a click will send the panel, so the
-	# control says what it does without a label.
+	# control says what it does without a label. Doubled when the panel
+	# is away, because then the rail is the only thing left of it and has
+	# to read as a thing to click rather than as a stray mark.
 	var folds_left: bool = (edge == Edge.LEFT) == _open
-	_rail.text = "❮" if folds_left else "❯"
-	_rail.tooltip_text = ("Hide this panel" if _open else "Show this panel")
+	if _open:
+		_rail.text = "❮" if folds_left else "❯"
+		_rail.tooltip_text = "Hide this panel"
+	else:
+		_rail.text = "❯\n❯" if edge == Edge.LEFT else "❮\n❮"
+		_rail.tooltip_text = "Show this panel"
+	_rail.add_theme_color_override("font_color",
+		Color(1, 1, 1, 0.7 if _open else 0.92))

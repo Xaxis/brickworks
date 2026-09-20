@@ -334,8 +334,11 @@ func _fetch(url: String, headers: PackedStringArray, method: int, body: String) 
 	http.queue_free()
 
 	var text: String = (result[3] as PackedByteArray).get_string_from_utf8()
-	# An empty body is a real answer for some of these — logout replies
-	# 204 with nothing in it — so do not hand it to the JSON parser just
-	# to have it complain.
-	var parsed: Variant = JSON.parse_string(text) if not text.strip_edges().is_empty() else null
+	# Parsed through an instance rather than JSON.parse_string, which
+	# pushes an engine error when the body is not JSON. It often is not:
+	# a logout replies 204 with nothing in it, and a deployment with no
+	# functions behind it answers every path with the page. Neither is a
+	# fault worth a red line in the log.
+	var json := JSON.new()
+	var parsed: Variant = json.data if json.parse(text) == OK else null
 	return {"code": int(result[1]), "body": parsed}
