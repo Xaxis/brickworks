@@ -112,10 +112,10 @@ def main() -> int:
     parser.add_argument("--budget", type=float, default=48.0,
                         help="megabytes of geometry to stop at")
     parser.add_argument("--out", default=str(WEB))
-    parser.add_argument("--in-storage", action="store_true",
-                        help="the geometry is served from object storage, so "
-                             "put none of it in the deployment and mark every "
-                             "part reachable (tools/storage_parts.py)")
+    parser.add_argument("--self-contained", action="store_true",
+                        help="ship the on-demand geometry in the deployment "
+                             "even though PARTS_URL says where it is served "
+                             "from, for a deployment that must stand alone")
     parser.add_argument("--remote-budget", type=float, default=120.0,
                         help="megabytes of extra geometry to publish for "
                              "fetching on demand")
@@ -199,11 +199,31 @@ def main() -> int:
         json.dumps(document, separators=(",", ":")))
     shutil.copy2(GENERATED / "colors.json", out / "colors.json")
 
-    _write_remote(out, document, meshes, args.remote_budget, args.in_storage)
+    # One fact decides this, not a flag. PARTS_URL is what the app is
+    # told at run time, so letting the same value decide whether the
+    # deployment carries geometry means the two cannot disagree — and
+    # they would have: a pack built without the flag quietly put 13,100
+    # files back into a deployment that had just been trimmed to 817.
+    _write_remote(out, document, meshes, args.remote_budget,
+                  bool(_parts_url()) and not args.self_contained)
 
     written = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     print(f"  wrote {out} ({written / 1e6:.1f} MB total)")
     return 0
+
+
+def _parts_url() -> str:
+    """Where the app will be told the geometry lives, if anywhere."""
+    from os import environ
+
+    if environ.get("PARTS_URL"):
+        return environ["PARTS_URL"]
+    source = ROOT / ".env"
+    if source.exists():
+        for line in source.read_text().splitlines():
+            if line.startswith("PARTS_URL="):
+                return line.partition("=")[2].strip().strip("\"'")
+    return ""
 
 
 def _write_remote(
@@ -232,6 +252,13 @@ def _write_remote(
     remains for a deployment that has to be self-contained.
     """
     if in_storage:
+        # Clear out a previous run's copy, or the deploy would ship the
+        # very files this mode exists to keep out of it — and silently,
+        # since nothing downstream looks for a directory it was not
+        # asked to make.
+        stale = out / "remote"
+        if stale.exists():
+            shutil.rmtree(stale)
         for part in document["parts"]:
             part["reachable"] = True
         (out / "catalogue.json").write_text(
