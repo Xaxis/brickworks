@@ -39,6 +39,7 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["[", "]"], "colour"),
 		Binding.new(["Q", "E"], "turn model"),
 		Binding.new(["B"], "steps"),
+		Binding.new(["P"], "parts"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new(["F"], "frame"),

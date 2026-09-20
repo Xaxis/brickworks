@@ -111,7 +111,7 @@ func check(world: BrickWorld) -> Report:
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		mass[brick.id] = _grams(info)
+		mass[brick.id] = grams(info)
 		report.total_grams += mass[brick.id]
 
 	# Who rests on whom. A brick supports another when one of its cells
@@ -366,7 +366,7 @@ func _check_levels(
 ## not model, so it runs light on longer parts — worst case about 17% on
 ## a 1x4. Stability is a ratio, and an error that biases the whole model
 ## the same way mostly cancels.
-static func _grams(info: PartLibrary.PartInfo) -> float:
+static func grams(info: PartLibrary.PartInfo) -> float:
 	# The body, without the studs standing proud of it.
 	var width: float = info.size.x
 	var depth: float = info.size.z

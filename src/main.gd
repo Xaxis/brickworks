@@ -30,6 +30,7 @@ var _bin: PartsBin
 var _chat: ChatPanel
 var _account: Account
 var _steps: StepsBar
+var _inventory: InventoryPanel
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -368,6 +369,22 @@ func _build_ui() -> void:
 	if _assistant.direct_key.is_empty():
 		_chat.watch(_account)
 
+	# Across the window rather than inside a column: a parts list is
+	# consulted and dismissed, and at four hundred pieces it wants the
+	# room. Added to the HUD directly so no dock resizes around it.
+	_inventory = InventoryPanel.new()
+	_inventory.set_anchors_preset(Control.PRESET_CENTER)
+	_inventory.anchor_left = 0.5
+	_inventory.anchor_right = 0.5
+	_inventory.anchor_top = 0.5
+	_inventory.anchor_bottom = 0.5
+	_inventory.offset_left = -430
+	_inventory.offset_right = 430
+	_inventory.offset_top = -300
+	_inventory.offset_bottom = 300
+	$HUD.add_child(_inventory)
+	_bar.parts_wanted.connect(_toggle_parts)
+
 	_bin.populate()
 	_builder.held_color = _bin.selected_color()
 
@@ -418,6 +435,17 @@ func _turn_model(quarter_turns: int) -> void:
 	for entry: Dictionary in moved:
 		_builder.register(entry["id"], entry["part"], entry["at"])
 	_on_model_changed()
+
+
+## Show or hide the parts list. Worked out on opening rather than kept
+## up to date: it is a snapshot of a finished model, and recomputing it
+## on every brick placed would be work for a panel nobody is looking at.
+func _toggle_parts() -> void:
+	if _inventory.is_showing():
+		_inventory.hide_list()
+		return
+	if not _inventory.show_for(_world, _library, _store.scenery, _bar.model_name()):
+		_bar.say("nothing to list yet")
 
 
 ## Start or leave the booklet. Editing while playback is on would place
@@ -767,6 +795,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_turn_model(1 if key.keycode == KEY_E else -1)
 		KEY_B:
 			_toggle_steps()
+		KEY_P:
+			_toggle_parts()
 		KEY_LEFT, KEY_RIGHT:
 			# Only while a booklet is up. Left and right otherwise belong
 			# to whatever has focus, and stealing them would break the
@@ -798,6 +828,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Leaving playback first. Escape reads as "out of this mode",
 			# and quitting the app because someone wanted the whole model
 			# back would be a bad surprise.
+			if _inventory.is_showing():
+				_inventory.hide_list()
+				return
 			if _steps.is_playing_back():
 				_steps.stop()
 				return

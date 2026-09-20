@@ -17,6 +17,9 @@ var _saves: PopupMenu
 var _entries: Array[ModelStore.Entry] = []
 
 signal cleared()
+## Someone wants the parts list. The bar does not own the panel — it is
+## an overlay across the whole window, not a strip along the top.
+signal parts_wanted()
 signal opened(bricks: int)
 
 
@@ -56,6 +59,8 @@ func _build() -> void:
 	_button(row, "Save", _on_save, "Keep this model under its name")
 	_button(row, "Open…", _on_open, "Reopen a saved model")
 	_button(row, "Export", _on_export, "Write an .ldr file, which any brick tool reads")
+	_button(row, "Parts", func() -> void: parts_wanted.emit(),
+		"Every part this model needs, by colour and count")
 	_button(row, "Clear", _on_clear, "Empty the baseplate")
 
 	_status = Label.new()
@@ -90,6 +95,12 @@ func bind(to: ModelStore) -> void:
 func model_name() -> String:
 	var text: String = _name.text.strip_edges()
 	return text if not text.is_empty() else "Untitled"
+
+
+## Say something in the bar's status line. Public because the parts list
+## and the booklet live outside the bar but have nowhere else to report.
+func say(text: String) -> void:
+	_say(text)
 
 
 func _say(text: String) -> void:
