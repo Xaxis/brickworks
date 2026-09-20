@@ -164,7 +164,6 @@ func _send() -> void:
 		"system": _system_prompt(),
 		"messages": _messages,
 		"tools": _tools(),
-		"design_id": _design_id,
 	}
 
 	var headers: PackedStringArray = ["content-type: application/json"]
@@ -175,6 +174,11 @@ func _send() -> void:
 		headers.append("anthropic-version: 2023-06-01")
 		body["thinking"] = {"type": "adaptive"}
 	elif account != null:
+		# The conversation id goes only to our own proxy. It is not an
+		# Anthropic field, and sending it on the direct desktop call gets
+		# the whole request refused with "design_id: Extra inputs are not
+		# permitted" — which is how the examples generator found this.
+		body["design_id"] = _design_id
 		# Fetched rather than read, because a design can run for minutes
 		# and the token may be minutes from expiring when it starts.
 		var token: String = await account.access_token()
