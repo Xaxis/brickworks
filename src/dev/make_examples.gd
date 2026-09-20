@@ -1,7 +1,11 @@
 ## Design the models that ship with the app.
 ##
 ##   ANTHROPIC_API_KEY=... godot --headless --path . \
-##     --script src/dev/make_examples.gd
+##     --script src/dev/make_examples.gd -- tree boat
+##
+## Names after the -- redo just those; no names redoes the lot. Most
+## runs are one model: seven of the first eight were worth keeping and
+## rebuilding all of them to replace one is money spent on nothing.
 ##
 ## Run deliberately, not as part of a build: it costs real money and the
 ## output is committed, so there is no reason to make it again unless
@@ -19,8 +23,12 @@ extends SceneTree
 const BRIEFS: Array[Dictionary] = [
 	{"file": "house", "brief": "a small house with a pitched red roof, a "
 		+ "door and two windows, standing on a low green lawn. About 90 pieces."},
-	{"file": "tree", "brief": "a broad leafy tree with a brown trunk on a "
-		+ "small grassy mound. About 55 pieces."},
+	{"file": "tree", "brief": "a broad leafy tree. A brown trunk two or "
+		+ "three studs thick going up four or five bricks, then a canopy "
+		+ "of green that gets wider and then narrower again as it rises "
+		+ "— four layers at least, so the outline is round rather than a "
+		+ "slab. No lawn, no mound: let it stand on the bare baseplate. "
+		+ "About 60 pieces."},
 	{"file": "bench", "brief": "a park bench in dark brown with a lamp post "
 		+ "beside it. About 45 pieces."},
 	{"file": "tower", "brief": "a round castle tower with battlements at "
@@ -66,8 +74,14 @@ func _run() -> void:
 	assistant.progress.connect(func(note: String) -> void:
 		print("      · %s" % note))
 
+	var wanted: PackedStringArray = PackedStringArray()
+	for argument: String in OS.get_cmdline_user_args():
+		wanted.append(argument)
+
 	for job: Dictionary in BRIEFS:
 		var name: String = str(job["file"])
+		if not wanted.is_empty() and not wanted.has(name):
+			continue
 		print("")
 		print("  %s" % name)
 		world.clear()
