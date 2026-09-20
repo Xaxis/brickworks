@@ -138,6 +138,30 @@ func _run() -> void:
 		_assert("...and its colour, got %d" % builder.held_color,
 			builder.held_color == hit.color_code)
 
+	# Lifting: the brick comes off, becomes what is held, and undo puts
+	# it back exactly where it was.
+	builder.update_preview(aim + Vector3(0, 400, 0), Vector3.DOWN)
+	await process_frame
+	if builder.hovered_brick() != 0:
+		var lifted: BrickWorld.Brick = world.get_brick(builder.hovered_brick())
+		var lifted_part: String = lifted.part_id
+		var lifted_at: Vector3 = lifted.transform.origin
+		var before: int = world.brick_count()
+		_press(KEY_X)
+		await process_frame
+		_assert("X lifts the brick off, %d -> %d" % [before, world.brick_count()],
+			world.brick_count() == before - 1)
+		_assert("...and it is what you are now holding, got '%s'"
+			% builder.held_part, builder.held_part == lifted_part)
+
+		_press(KEY_Z, true)
+		await process_frame
+		var back: bool = false
+		for brick: BrickWorld.Brick in world.bricks():
+			if brick.part_id == lifted_part and brick.transform.origin.is_equal_approx(lifted_at):
+				back = true
+		_assert("...and undo puts it back where it was", back)
+
 	var steps: StepsBar = _main.get("_steps")
 	_press(KEY_B)
 	for _n: int in 20:

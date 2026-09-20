@@ -352,17 +352,20 @@ func _build_ui() -> void:
 	_steps.export_wanted.connect(_export_booklet)
 	middle.add_child(_steps)
 
+	# Room for two lines. The strip wraps rather than truncating when the
+	# window is narrow, and a clipped area would put the wrapped line
+	# behind the viewport edge instead of showing it.
 	var hint_area := Control.new()
-	hint_area.custom_minimum_size = Vector2(0, 26)
+	hint_area.custom_minimum_size = Vector2(0, 48)
 	hint_area.clip_contents = true
 	hint_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(hint_area)
 
 	var hint := ControlsHint.new()
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	hint.offset_top = -24.0
+	hint.offset_top = -46.0
 	hint.offset_bottom = 0.0
-	hint.alignment = BoxContainer.ALIGNMENT_CENTER
+	hint.alignment = FlowContainer.ALIGNMENT_CENTER
 	hint_area.add_child(hint)
 
 	var pad := Control.new()
@@ -950,6 +953,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_G:
 			# And take a colour and part back off the model.
 			_builder.pick_hovered()
+		KEY_X:
+			# Lift a brick off to move it. The next click puts it down.
+			if _builder.lift_hovered():
+				_on_model_changed()
+				_bar.say("lifted — click to put it down")
 		KEY_LEFT, KEY_RIGHT:
 			# Only while a booklet is up. Left and right otherwise belong
 			# to whatever has focus, and stealing them would break the

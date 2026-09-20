@@ -136,6 +136,45 @@ func paint_hovered(color_code: int) -> bool:
 	return world.recolor_brick(_hovered, color_code)
 
 
+## Take the brick under the cursor off the model and hold it.
+##
+## This is how a brick moves. There was no way to move one at all: the
+## only edit was remove-and-rebuild, and a brick in the middle of
+## something means taking off everything above it first.
+##
+## Lifting rather than dragging, because dragging needs a grab, a live
+## re-solve of where it would land, and a drop — three things to get
+## right — and lifting reuses the placement machinery already there. The
+## brick comes off, becomes what you are holding, at its own colour and
+## rotation, and the next click puts it down. Undo puts it back where it
+## was, because the removal is an ordinary history step.
+func lift_hovered() -> bool:
+	if _hovered == 0:
+		return false
+	var brick: BrickWorld.Brick = world.get_brick(_hovered)
+	if brick == null:
+		return false
+
+	held_part = brick.part_id
+	held_color = brick.color_code
+	held_rotation = _quarter_turns(brick.transform.basis)
+
+	_history.append({
+		"undo": "add",
+		"part": brick.part_id,
+		"color": brick.color_code,
+		"transform": brick.transform,
+	})
+	_redo.clear()
+
+	lattice.release(_hovered)
+	world.remove_brick(_hovered)
+	removed.emit(_hovered)
+	_hovered = 0
+	picked.emit(held_part, held_color)
+	return true
+
+
 ## Adopt the part and colour of the brick under the cursor.
 ##
 ## The fastest way to match something you built twenty bricks ago, and

@@ -15,7 +15,7 @@
 ## hint, so the bindings live in one table and both the display and the
 ## handler read from it.
 class_name ControlsHint
-extends HBoxContainer
+extends FlowContainer
 
 
 ## One control: what to press, and what it does.
@@ -28,9 +28,12 @@ class Binding extends RefCounted:
 		verb = does
 
 
-## Kept short on purpose. A strip that runs off the edge of the window
-## tells you less than a shorter one that fits, and the mouse verbs
-## (orbit, pan, zoom) are the ones people try without being told.
+## Ordered by how often a beginner reaches for it, because that is the
+## order they are dropped in when the window is too narrow to hold them
+## all — the strip wraps to a second line rather than running off the
+## edge, and a hint you cannot finish reading is a hint that lies by
+## omission. The mouse verbs (orbit, pan, zoom) are left out entirely:
+## they are the ones people try without being told.
 static func bindings() -> Array[Binding]:
 	return [
 		Binding.new(["click"], "place"),
@@ -42,6 +45,7 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["P"], "parts"),
 		Binding.new(["C"], "paint"),
 		Binding.new(["G"], "pick"),
+		Binding.new(["X"], "lift"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new(["F"], "frame"),
@@ -50,8 +54,9 @@ static func bindings() -> Array[Binding]:
 
 
 func _ready() -> void:
-	add_theme_constant_override("separation", 12)
-	alignment = BoxContainer.ALIGNMENT_CENTER
+	add_theme_constant_override("h_separation", 12)
+	add_theme_constant_override("v_separation", 4)
+	alignment = FlowContainer.ALIGNMENT_CENTER
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	modulate = Color(1, 1, 1, 0.72)
 
