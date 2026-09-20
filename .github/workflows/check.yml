@@ -1,0 +1,72 @@
+# What can be checked without the part library.
+#
+# The full suite needs assets/generated/ — a gigabyte of converted
+# geometry that takes three quarters of an hour to build from the LDraw
+# library and is not committed. Rebuilding that on every push would cost
+# more than it caught, so CI runs the layers that do not need it: the
+# Python pipeline, which works on LDraw source directly, and a parse of
+# every GDScript file, which is the failure that takes everything else
+# down with it.
+#
+# The Godot probes run locally, through tools/check.sh. This is the
+# safety net for what a laptop might skip, not a replacement for it.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install what the tests need
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio numpy scipy
+      - name: The offline pipeline
+        run: python -m pytest tests/ -q
+
+  gdscript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Godot
+        run: |
+          version=4.7.2-stable
+          name=Godot_v${version}_linux.x86_64
+          curl -sSLo godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${version}/${name}.zip"
+          unzip -q godot.zip
+          chmod +x "${name}"
+          echo "GODOT=$PWD/${name}" >> "$GITHUB_ENV"
+      - name: Every script parses
+        run: |
+          # The editor pass is what registers class_name globals; without
+          # it every file that refers to another by name fails to
+          # resolve, which looks like a hundred errors and is one.
+          "$GODOT" --headless --editor --quit --path . >/dev/null 2>&1 || true
+          output=$("$GODOT" --headless --path . --quit 2>&1 || true)
+          echo "$output"
+          if echo "$output" | grep -qE 'SCRIPT ERROR|Parse Error'; then
+            echo "::error::GDScript does not parse"
+            exit 1
+          fi
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The scripts that deploy and build
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          # -S warning: style opinions on a deploy script are noise, a
+          # quoting bug in one is a broken release.
+          shellcheck -S warning tools/*.sh

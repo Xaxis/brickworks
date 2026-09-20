@@ -6,7 +6,10 @@
 # Runs with a real window because the frame has to come off a real GPU;
 # --headless renders nothing to capture.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+# Guarded: a cd that fails leaves the script running against
+# whatever directory it was started from, which for a deploy means
+# shipping something else entirely.
+cd "$(dirname "$0")/.." || exit 1
 out="${1:-shots/latest.png}"
 shift || true
 mkdir -p "$(dirname "$out")"

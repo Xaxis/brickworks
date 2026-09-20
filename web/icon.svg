@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The mark: a red brick, front on, with its studs above it.
+
+  Front on rather than in three-quarter view, because this has to read
+  at sixteen pixels in a browser tab. A perspective brick at that size
+  is a brown smudge; a silhouette with two studs on it is still a brick.
+  It is also the same shape the site header draws in CSS, so the tab and
+  the page agree.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e2453f"/>
+      <stop offset="1" stop-color="#b52a26"/>
+    </linearGradient>
+    <linearGradient id="stud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ee5a53"/>
+      <stop offset="1" stop-color="#cc3630"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="13" fill="#171b22"/>
+
+  <!-- Studs, drawn before the body so the body's edge cuts across
+       their feet the way a real stud meets the surface. -->
+  <rect x="16.5" y="17" width="13" height="12" rx="3.2" fill="url(#stud)"/>
+  <rect x="34.5" y="17" width="13" height="12" rx="3.2" fill="url(#stud)"/>
+
+  <rect x="10" y="26" width="44" height="23" rx="3.6" fill="url(#body)"/>
+  <!-- The line along the bottom is what makes it read as moulded
+       plastic rather than as a flat rectangle. -->
+  <rect x="10" y="44.5" width="44" height="4.5" rx="2.2" fill="#000" opacity="0.18"/>
+  <rect x="12" y="27.5" width="40" height="1.8" rx="0.9" fill="#fff" opacity="0.22"/>
+</svg>

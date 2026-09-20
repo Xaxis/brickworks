@@ -13,7 +13,10 @@
 # pack, taken away again after, and kept beside the build as build.json with the
 # sizes, so the shelf, a note and the running build all say what it is.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+# Guarded: a cd that fails leaves the script running against
+# whatever directory it was started from, which for a deploy means
+# shipping something else entirely.
+cd "$(dirname "$0")/.." || exit 1
 target="${1:-web}"; shift || true
 mode=release
 for a in "$@"; do

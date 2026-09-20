@@ -16,7 +16,10 @@
 # the engine refuses to start, which is why the proof at the end loads the real
 # URL in a real browser rather than trusting that we sent them.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+# Guarded: a cd that fails leaves the script running against
+# whatever directory it was started from, which for a deploy means
+# shipping something else entirely.
+cd "$(dirname "$0")/.." || exit 1
 
 prod=0; do_export=1; do_check=1; dir=build/web
 for a in "$@"; do
@@ -110,9 +113,22 @@ fi
 # this, / redirected straight into the build, so there was nowhere to
 # say what the thing is.
 if [ -f web/index.html ]; then
-  cp web/index.html .vercel/output/static/index.html
-  [ -f shots/ui3.png ] && cp shots/ui3.png .vercel/output/static/shot-app.png
-  echo "deploy: landing page at /"
+  # Everything in web/, not just the page. It copied index.html alone,
+  # which meant the favicon, the manifest and the Open Graph image —
+  # every file the page references by an absolute path — were simply
+  # absent from the deployment, and a shared link showed no picture.
+  #
+  # Files starting with an underscore are working parts of the build
+  # (the render the share image is composed from) and are not served.
+  count=0
+  for asset in web/*; do
+    name=$(basename "$asset")
+    case "$name" in _*) continue ;; esac
+    [ -f "$asset" ] || continue
+    cp "$asset" ".vercel/output/static/$name"
+    count=$((count + 1))
+  done
+  echo "deploy: landing page and $count file(s) at /"
 fi
 
 cat > .vercel/output/config.json <<EOF
