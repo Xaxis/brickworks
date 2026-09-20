@@ -37,6 +37,9 @@ class Brick extends RefCounted:
 	var part_id: String
 	var color_code: int
 	var transform: Transform3D
+	## Kept out of the picture without being removed, so step playback
+	## can walk a finished model forwards and back without rebuilding it.
+	var hidden: bool = false
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id
@@ -180,6 +183,24 @@ func clear() -> void:
 	_next_id = 1
 
 
+## Show only these bricks, hiding the rest. An empty set shows all of
+## them again, which is what ends playback.
+func show_only(visible_ids: Dictionary) -> void:
+	var everything: bool = visible_ids.is_empty()
+	var changed: bool = false
+	for brick_id: int in _bricks:
+		var brick: Brick = _bricks[brick_id]
+		var hide: bool = not (everything or visible_ids.has(brick_id))
+		if brick.hidden == hide:
+			continue
+		brick.hidden = hide
+		changed = true
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			_mark_dirty(key)
+	if changed:
+		_flush()
+
+
 func brick_count() -> int:
 	return _bricks.size()
 
@@ -280,16 +301,19 @@ func _flush() -> void:
 func _rebuild(batch: Batch, key: String) -> void:
 	var count: int = batch.brick_ids.size()
 	batch.multimesh.instance_count = count
-	# Kept in step with instance_count explicitly: raising one does not
-	# raise the other, and a batch that grows would otherwise keep
-	# drawing only as many instances as it had before.
-	batch.multimesh.visible_instance_count = count
 	if count == 0:
+		batch.multimesh.visible_instance_count = 0
 		return
 
 	var surface_index: int = key.split(":")[1].to_int()
-	for slot: int in count:
-		var brick: Brick = _bricks[batch.brick_ids[slot]]
+	# Hidden bricks are packed off the end rather than left as gaps: a
+	# MultiMesh draws its first visible_instance_count slots, so the ones
+	# to draw have to be the ones at the front.
+	var slot: int = 0
+	for brick_id: int in batch.brick_ids:
+		var brick: Brick = _bricks[brick_id]
+		if brick.hidden:
+			continue
 		batch.multimesh.set_instance_transform(slot, brick.transform)
 
 		# A surface moulded in a fixed colour ignores the brick's colour;
@@ -298,6 +322,12 @@ func _rebuild(batch: Batch, key: String) -> void:
 		var surface_color: int = part.surface_colors[surface_index]
 		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
 		batch.multimesh.set_instance_color(slot, library.color(code).rgb)
+		slot += 1
+
+	# Kept in step with instance_count explicitly: raising one does not
+	# raise the other, and a batch that grows would otherwise keep
+	# drawing only as many instances as it had before.
+	batch.multimesh.visible_instance_count = slot
 
 	# Give the instance bounds that cover where the bricks actually are.
 	#
@@ -310,8 +340,10 @@ func _rebuild(batch: Batch, key: String) -> void:
 	# which looks exactly like the bricks never having been added.
 	var bounds := AABB()
 	var first: bool = true
-	for slot: int in count:
-		var brick: Brick = _bricks[batch.brick_ids[slot]]
+	for brick_id: int in batch.brick_ids:
+		var brick: Brick = _bricks[brick_id]
+		if brick.hidden:
+			continue
 		var box: AABB = brick.transform * batch.multimesh.mesh.get_aabb()
 		if first:
 			bounds = box

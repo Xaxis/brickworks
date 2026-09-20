@@ -92,6 +92,29 @@ func _run() -> void:
 	if focused != null:
 		focused.release_focus()
 
+	var steps: StepsBar = _main.get("_steps")
+	_press(KEY_B)
+	for _n: int in 20:
+		await process_frame
+	_assert("B opens the build steps", steps.is_playing_back())
+
+	# Only worth checking when there is more than one step to move
+	# between, which the starting model has.
+	var world_before: int = _drawn(world)
+	_press(KEY_RIGHT)
+	await process_frame
+	_assert("right arrow adds the next step's bricks, %d -> %d"
+		% [world_before, _drawn(world)], _drawn(world) > world_before)
+	_press(KEY_LEFT)
+	await process_frame
+	_assert("left arrow takes them back off", _drawn(world) == world_before)
+
+	_press(KEY_ESCAPE)
+	await process_frame
+	_assert("escape leaves the steps rather than quitting",
+		not steps.is_playing_back())
+	_assert("...and puts the whole model back", _drawn(world) == world.brick_count())
+
 	# Undo is the one that has to be checked by doing, not by pressing:
 	# it needs something to undo first.
 	var before: int = world.brick_count()
@@ -108,6 +131,16 @@ func _run() -> void:
 	print("")
 	print("%d failed" % _failures if _failures else "every advertised key does something")
 	quit(1 if _failures else 0)
+
+
+## How many bricks are actually on screen, which is not the same as how
+## many exist while a booklet is up.
+func _drawn(world: BrickWorld) -> int:
+	var n: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if not brick.hidden:
+			n += 1
+	return n
 
 
 ## A number that changes whenever any brick moves, so a rotation can be

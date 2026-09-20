@@ -29,6 +29,7 @@ var _bar: ModelBar
 var _bin: PartsBin
 var _chat: ChatPanel
 var _account: Account
+var _steps: StepsBar
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -323,6 +324,12 @@ func _build_ui() -> void:
 	# can get. Left to itself the strip set the middle column's minimum
 	# width and squeezed the assistant off the right edge, so it lives in
 	# a clipping wrapper that claims no width of its own.
+	# Above the key strip, so the strip stays where it always is rather
+	# than jumping down the screen when playback starts.
+	_steps = StepsBar.new()
+	_steps.reveal.connect(func(ids: Dictionary) -> void: _world.show_only(ids))
+	middle.add_child(_steps)
+
 	var hint_area := Control.new()
 	hint_area.custom_minimum_size = Vector2(0, 26)
 	hint_area.clip_contents = true
@@ -399,6 +406,18 @@ func _turn_model(quarter_turns: int) -> void:
 	for entry: Dictionary in moved:
 		_builder.register(entry["id"], entry["part"], entry["at"])
 	_on_model_changed()
+
+
+## Start or leave the booklet. Editing while playback is on would place
+## bricks into a model that is only half on screen, so the build steps
+## are worked out once, on entry, from whatever is there.
+func _toggle_steps() -> void:
+	if _steps.is_playing_back():
+		_steps.stop()
+		return
+	if _world.brick_count() == 0:
+		return
+	_steps.start(_world, _library, _store.scenery)
 
 
 func _on_model_changed() -> void:
@@ -713,6 +732,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_refresh_preview()
 		KEY_Q, KEY_E:
 			_turn_model(1 if key.keycode == KEY_E else -1)
+		KEY_B:
+			_toggle_steps()
+		KEY_LEFT, KEY_RIGHT:
+			# Only while a booklet is up. Left and right otherwise belong
+			# to whatever has focus, and stealing them would break the
+			# search box and the brief.
+			if _steps.is_playing_back():
+				if key.keycode == KEY_RIGHT:
+					_steps.step_forward()
+				else:
+					_steps.step_back()
 		KEY_TAB:
 			# Both panels away, for looking at the model.
 			var showing: bool = _bin_dock.is_open() or _chat_dock.is_open()
@@ -732,6 +762,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if (key.ctrl_pressed or key.meta_pressed) and _bar:
 				_bar._on_save()
 		KEY_ESCAPE:
+			# Leaving playback first. Escape reads as "out of this mode",
+			# and quitting the app because someone wanted the whole model
+			# back would be a bad surprise.
+			if _steps.is_playing_back():
+				_steps.stop()
+				return
 			if OS.has_feature("web"):
 				return
 			get_tree().quit()

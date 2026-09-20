@@ -38,6 +38,7 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["R"], "rotate"),
 		Binding.new(["[", "]"], "colour"),
 		Binding.new(["Q", "E"], "turn model"),
+		Binding.new(["B"], "steps"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new(["F"], "frame"),
