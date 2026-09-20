@@ -126,14 +126,27 @@ func _on_save() -> void:
 func _on_open() -> void:
 	if store == null:
 		return
+	# Saved models first, then the ones that ship with the app. Their own
+	# work belongs at the top; the examples are there so the menu has
+	# something in it the first time, when the honest answer to "open
+	# what?" used to be "nothing saved yet".
 	_entries = store.list_saved()
+	var examples: Array[ModelStore.Entry] = store.list_examples()
 	_saves.clear()
-	if _entries.is_empty():
+	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
 		_saves.set_item_disabled(0, true)
 	else:
 		for n: int in _entries.size():
 			_saves.add_item(_entries[n].describe(), n)
+		if not examples.is_empty():
+			if not _entries.is_empty():
+				_saves.add_separator("Examples")
+			else:
+				_saves.add_separator("Try one of these")
+			for example: ModelStore.Entry in examples:
+				_saves.add_item(example.describe(), _entries.size())
+				_entries.append(example)
 	_saves.reset_size()
 	_saves.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
 	_saves.popup()

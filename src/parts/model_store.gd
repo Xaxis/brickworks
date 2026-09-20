@@ -25,6 +25,10 @@ extends RefCounted
 ## IndexedDB in the browser, which is the reason this works the same in
 ## both without a second implementation.
 const SAVE_DIR := "user://models/"
+## Models that ship with the app. Somewhere to start from: the Open menu
+## said "nothing saved yet" to everybody the first time they opened it,
+## which is a poor answer to "show me what this can do".
+const EXAMPLE_DIR := "res://models/"
 const AUTOSAVE := "user://autosave.ldr"
 
 ## How long after the last change to write the working model. Long
@@ -38,8 +42,14 @@ class Entry extends RefCounted:
 	var path: String
 	var bricks: int
 	var modified: int       ## unix seconds
+	## An example that ships with the app rather than something this
+	## person saved. Read-only in practice: opening one and saving writes
+	## a copy of their own.
+	var example: bool = false
 
 	func describe() -> String:
+		if example:
+			return "%s — %d bricks" % [name, bricks]
 		var when: String = Time.get_datetime_string_from_unix_time(modified)
 		return "%s — %d bricks, %s" % [name, bricks, when.replace("T", " ")]
 
@@ -114,6 +124,28 @@ func list_saved() -> Array[Entry]:
 		found.append(entry)
 	found.sort_custom(func(a: Entry, b: Entry) -> bool:
 		return a.modified > b.modified)
+	return found
+
+
+## The models that ship with the app, prettied up for a menu.
+func list_examples() -> Array[Entry]:
+	var found: Array[Entry] = []
+	var dir: DirAccess = DirAccess.open(EXAMPLE_DIR)
+	if dir == null:
+		return found
+	for file_name: String in dir.get_files():
+		# The exported build strips nothing from names, but the editor
+		# leaves an .import beside anything it has looked at.
+		if not file_name.ends_with(".ldr"):
+			continue
+		var entry := Entry.new()
+		entry.path = EXAMPLE_DIR + file_name
+		entry.name = file_name.substr(0, file_name.length() - 4).capitalize()
+		entry.bricks = _count_bricks(entry.path)
+		entry.example = true
+		found.append(entry)
+	found.sort_custom(func(a: Entry, b: Entry) -> bool:
+		return a.name < b.name)
 	return found
 
 
