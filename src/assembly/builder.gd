@@ -42,8 +42,14 @@ signal removed(brick_id: int)
 signal preview_changed(part_id: String, valid: bool)
 
 
-func _ready() -> void:
+func _init() -> void:
+	# The lattice needs no scene tree, and creating it here rather than in
+	# _ready means a Builder is usable the moment it exists — which the
+	# headless checks rely on.
 	lattice = BrickLattice.new()
+
+
+func _ready() -> void:
 	_ghost_material = ShaderMaterial.new()
 	_ghost_material.shader = GHOST_SHADER
 	_ghost = MeshInstance3D.new()

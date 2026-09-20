@@ -23,6 +23,8 @@ var _counts_base: String = ""
 var _stability_at: int = 0
 var _counts: Label
 var _keys: Label
+var _store: ModelStore
+var _bar: ModelBar
 var _bin: PartsBin
 var _chat: ChatPanel
 var _thumbnails: PartThumbnails
@@ -56,7 +58,11 @@ func _ready() -> void:
 		if placed == 0:
 			push_error("could not open %s" % wanted)
 	else:
-		placed = _open(SAMPLE_MODEL)
+		# Whatever was on screen last time comes back first; the sample
+		# model is only for a first visit.
+		placed = _store.restore()
+		if placed == 0:
+			placed = _open(SAMPLE_MODEL)
 		if placed == 0:
 			placed = _build_demo()
 	_lay_baseplate()
@@ -182,6 +188,11 @@ static func _argument(prefix: String) -> String:
 ## the scene because they are data-driven — 24,731 parts and 322 colours
 ## are not things to lay out by hand.
 func _build_ui() -> void:
+	_store = ModelStore.new()
+	_store.world = _world
+	_store.library = _library
+	_store.builder = _builder
+
 	_stability = Stability.new()
 	_stability.library = _library
 	_stability.lattice = _builder.lattice
@@ -203,11 +214,30 @@ func _build_ui() -> void:
 			_assistant.direct_key = key
 	add_child(_assistant)
 
+	var column := VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	column.add_theme_constant_override("separation", 0)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(column)
+
+	_bar = ModelBar.new()
+	_bar.world = _world
+	_bar.builder = _builder
+	column.add_child(_bar)
+	_bar.bind(_store)
+	_bar.cleared.connect(func() -> void:
+		_lay_baseplate()
+		_on_model_changed())
+	_bar.opened.connect(func(_bricks: int) -> void:
+		_lay_baseplate()
+		_on_model_changed()
+		_camera.frame(_world.model_bounds()))
+
 	var layout := HBoxContainer.new()
-	layout.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_theme_constant_override("separation", 0)
 	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(layout)
+	column.add_child(layout)
 
 	_bin = PartsBin.new()
 	_bin.library = _library
@@ -250,6 +280,12 @@ func _build_ui() -> void:
 	_bin.populate()
 	_builder.held_color = _bin.selected_color()
 
+	# Anything that changes the model marks it for saving.
+	_builder.placed.connect(func(_id: int, _part: String) -> void:
+		_on_model_changed())
+	_builder.removed.connect(func(_id: int) -> void: _on_model_changed())
+	_assistant.built.connect(func(_n: int) -> void: _on_model_changed())
+
 
 ## A label that reads over the 3D behind it, whatever colour that is.
 static func _viewport_label(size: int) -> Label:
@@ -277,6 +313,13 @@ static func _anthropic_key() -> String:
 			if line.begins_with(prefix):
 				return line.substr(prefix.length()).strip_edges().lstrip("\"'").rstrip("\"'")
 	return ""
+
+
+## The working model is written a couple of seconds after the last
+## change, so closing the tab costs seconds rather than an afternoon.
+func _on_model_changed() -> void:
+	if _store != null:
+		_store.touch()
 
 
 func _on_part_chosen(part_id: String) -> void:
@@ -454,6 +497,8 @@ func _lay_baseplate() -> void:
 	var brick_id: int = _world.add_brick(PLATE, 288, at)  # Dark Green
 	if brick_id != 0:
 		_builder.register(brick_id, PLATE, at)
+		if _store != null:
+			_store.scenery[brick_id] = true
 
 
 func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> void:
@@ -472,6 +517,8 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 
 
 func _process(_delta: float) -> void:
+	if _store != null:
+		_store.tick()
 	if _counts == null:
 		return
 	# Frame time belongs beside the counts: the whole point of batching is
@@ -584,6 +631,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_SLASH:
 			if _bin:
 				_bin.focus_search()
+		KEY_S:
+			if (key.ctrl_pressed or key.meta_pressed) and _bar:
+				_bar._on_save()
 		KEY_ESCAPE:
 			if OS.has_feature("web"):
 				return
