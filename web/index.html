@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<!--
+  The page brickworks.diy serves at its root.
+
+  Static, self-contained, no build step and no dependencies: it is the
+  first thing anyone sees and it should be on screen before the 10 MB
+  application has started thinking about downloading. The application
+  itself lives at /app.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Brickworks — every brick, at the size it really is</title>
+<meta name="description" content="A brick construction system with every modelled part at true size, real connection rules, and a design assistant that only produces models that hold together.">
+<meta property="og:title" content="Brickworks">
+<meta property="og:description" content="Every brick, at the size it really is.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://brickworks.diy">
+<style>
+:root {
+	--bg: #0e1013;
+	--bg-soft: #14171c;
+	--panel: #181c22;
+	--line: rgba(255, 255, 255, 0.09);
+	--ink: #eef0f4;
+	--ink-soft: rgba(238, 240, 244, 0.68);
+	--ink-faint: rgba(238, 240, 244, 0.42);
+	--red: #d0332f;
+	--yellow: #f2cd37;
+	--blue: #2a6fc4;
+	--green: #2f8f4e;
+	--accent: var(--yellow);
+	--radius: 12px;
+	--page: 1080px;
+}
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme="dark"]) {
+		--bg: #f4f5f7;
+		--bg-soft: #ffffff;
+		--panel: #ffffff;
+		--line: rgba(15, 20, 28, 0.1);
+		--ink: #12161c;
+		--ink-soft: rgba(18, 22, 28, 0.7);
+		--ink-faint: rgba(18, 22, 28, 0.48);
+		--accent: #b8860b;
+	}
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font: 400 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+
+.wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
+
+/* -- top ------------------------------------------------------------ */
+
+header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	backdrop-filter: blur(12px);
+	background: color-mix(in srgb, var(--bg) 86%, transparent);
+	border-bottom: 1px solid var(--line);
+}
+.bar {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 12px 0;
+}
+.mark {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	font-weight: 640;
+	letter-spacing: -0.02em;
+	font-size: 17px;
+}
+/* A 2x4 in CSS, studs and all. */
+.chip {
+	position: relative;
+	width: 30px;
+	height: 15px;
+	border-radius: 3px;
+	background: var(--red);
+	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	flex: none;
+}
+.chip::before {
+	content: "";
+	position: absolute;
+	inset: -3px 2px auto 2px;
+	height: 4px;
+	background-image: radial-gradient(
+		circle at 3.25px 100%, var(--red) 0 3px, transparent 3.1px);
+	background-size: 6.5px 100%;
+	filter: brightness(1.12);
+}
+.bar nav { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.bar nav a {
+	text-decoration: none;
+	color: var(--ink-soft);
+	font-size: 14px;
+	padding: 7px 10px;
+	border-radius: 8px;
+}
+.bar nav a:hover { color: var(--ink); background: var(--panel); }
+
+.cta {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	text-decoration: none;
+	font-weight: 600;
+	padding: 10px 18px;
+	border-radius: 10px;
+	background: var(--accent);
+	color: #17130a;
+	border: 1px solid transparent;
+	white-space: nowrap;
+}
+.cta:hover { filter: brightness(1.08); }
+.cta.ghost {
+	background: transparent;
+	color: var(--ink);
+	border-color: var(--line);
+}
+.cta.ghost:hover { background: var(--panel); filter: none; }
+
+/* -- hero ----------------------------------------------------------- */
+
+.hero { padding: 76px 0 46px; text-align: center; }
+h1 {
+	margin: 0 0 14px;
+	font-size: clamp(36px, 7vw, 66px);
+	line-height: 1.02;
+	letter-spacing: -0.035em;
+	font-weight: 680;
+	text-wrap: balance;
+}
+.lede {
+	margin: 0 auto 26px;
+	max-width: 56ch;
+	font-size: clamp(16px, 2.3vw, 19px);
+	color: var(--ink-soft);
+	text-wrap: balance;
+}
+.actions {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+.note { margin-top: 14px; font-size: 13px; color: var(--ink-faint); }
+
+.shot {
+	margin: 42px auto 0;
+	border-radius: var(--radius);
+	border: 1px solid var(--line);
+	overflow: hidden;
+	background: var(--bg-soft);
+	box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.7);
+}
+.shot img { display: block; width: 100%; height: auto; }
+
+/* -- numbers -------------------------------------------------------- */
+
+section { padding: 54px 0; }
+h2 {
+	margin: 0 0 8px;
+	font-size: clamp(23px, 3.6vw, 31px);
+	letter-spacing: -0.024em;
+	font-weight: 640;
+}
+.sub { margin: 0 0 26px; color: var(--ink-soft); max-width: 62ch; }
+
+.stats {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+}
+.stat {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 18px;
+}
+.stat b {
+	display: block;
+	font-size: 26px;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+}
+.stat span { font-size: 13.5px; color: var(--ink-soft); }
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-variant-numeric: tabular-nums;
+	font-size: 15px;
+}
+caption {
+	text-align: left;
+	color: var(--ink-faint);
+	font-size: 13px;
+	padding-bottom: 10px;
+}
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--ink-faint); font-weight: 500; font-size: 13px; }
+td.ok { color: var(--green); }
+@media (prefers-color-scheme: dark) { td.ok { color: #57c97e; } }
+
+/* -- features ------------------------------------------------------- */
+
+.grid {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+}
+.card {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 20px;
+}
+.card h3 {
+	margin: 0 0 7px;
+	font-size: 16.5px;
+	font-weight: 620;
+	letter-spacing: -0.01em;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+}
+.card p { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+.dot {
+	width: 11px; height: 11px; border-radius: 3px; flex: none;
+	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.tiers { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.tier { position: relative; }
+.tier ul { margin: 12px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 14.5px; }
+.tier li { margin: 5px 0; }
+.tier .price { font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
+
+footer {
+	border-top: 1px solid var(--line);
+	padding: 30px 0 46px;
+	color: var(--ink-faint);
+	font-size: 13px;
+	line-height: 1.75;
+}
+footer a { color: var(--ink-soft); }
+footer p { margin: 0 0 8px; max-width: 76ch; }
+</style>
+</head>
+<body>
+
+<header>
+	<div class="wrap bar">
+		<span class="mark"><span class="chip"></span>Brickworks</span>
+		<nav>
+			<a href="#exact">Exactness</a>
+			<a href="#what">What it does</a>
+			<a href="#tiers">Tiers</a>
+			<a href="https://github.com/Xaxis/brickworks">Source</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+	</div>
+</header>
+
+<main>
+	<div class="wrap hero">
+		<h1>Every brick, at the size it really is.</h1>
+		<p class="lede">
+			A construction system with every modelled part at true dimensions,
+			real connection rules, and a design assistant that only hands you
+			models which actually hold together.
+		</p>
+		<div class="actions">
+			<a class="cta" href="/app">Start building</a>
+			<a class="cta ghost" href="#exact">How exact?</a>
+		</div>
+		<p class="note">Runs in the browser. No account needed to build.</p>
+
+		<div class="shot">
+			<img src="shot-app.png" width="1600" height="900"
+				alt="The Brickworks builder: a parts panel on the left listing thousands of parts with 3D previews, a model on a green baseplate in the centre, and the design assistant on the right.">
+		</div>
+	</div>
+
+	<section id="exact" class="wrap">
+		<h2>Measured, not approximated</h2>
+		<p class="sub">
+			The dimensions were read off the part geometry rather than copied
+			from a reference, and the tests assert them so a library update
+			cannot move them quietly.
+		</p>
+		<table>
+			<caption>1 LDU = 0.4 mm exactly. Measured against the published specification.</caption>
+			<thead>
+				<tr><th>Feature</th><th>Brickworks</th><th>Specification</th><th></th></tr>
+			</thead>
+			<tbody>
+				<tr><td>Stud pitch</td><td>8.00 mm</td><td>8.0</td><td class="ok">exact</td></tr>
+				<tr><td>Brick height</td><td>9.60 mm</td><td>9.6</td><td class="ok">exact</td></tr>
+				<tr><td>Plate height</td><td>3.20 mm</td><td>3.2</td><td class="ok">exact</td></tr>
+				<tr><td>Stud diameter</td><td>4.80 mm</td><td>4.8</td><td class="ok">exact</td></tr>
+				<tr><td>Wall thickness</td><td>1.60 mm</td><td>1.6</td><td class="ok">exact</td></tr>
+				<tr><td>2 × 4 brick</td><td>32.00 × 16.00 mm</td><td>32 × 16</td><td class="ok">exact</td></tr>
+			</tbody>
+		</table>
+		<p class="note">
+			Sizes are nominal rather than as-moulded: a real 2 × 4 measures
+			31.8 mm, because there is about 0.1 mm of clearance per side so
+			bricks do not jam. Nominal is what makes parts tile exactly on the
+			lattice, and it is what every brick CAD tool uses.
+		</p>
+
+		<div class="stats" style="margin-top:26px">
+			<div class="stat"><b>29,479</b><span>parts, every one modelled</span></div>
+			<div class="stat"><b>322</b><span>colours, with real finishes</span></div>
+			<div class="stat"><b>251,000</b><span>connection points recovered</span></div>
+			<div class="stat"><b>200,000</b><span>bricks at 130 fps</span></div>
+		</div>
+	</section>
+
+	<section id="what" class="wrap">
+		<h2>What it does</h2>
+		<p class="sub">
+			The engine underneath is exact, and everything above it is built on
+			that rather than on an approximation of it.
+		</p>
+		<div class="grid">
+			<div class="card">
+				<h3><span class="dot" style="background:var(--red)"></span>Build by hand</h3>
+				<p>
+					Point at a face and the part goes against it. Positions are
+					whole numbers on a 2 LDU lattice, so collision is exact
+					comparison with no tolerance and a model saved today loads
+					identically tomorrow.
+				</p>
+			</div>
+			<div class="card">
+				<h3><span class="dot" style="background:var(--yellow)"></span>Every part, findable</h3>
+				<p>
+					All 29,479 searchable as you type, with previews rendered live
+					from the real geometry in whichever colour you have picked.
+				</p>
+			</div>
+			<div class="card">
+				<h3><span class="dot" style="background:var(--blue)"></span>A design assistant</h3>
+				<p>
+					Describe something and watch it appear. It proposes placements;
+					the app checks every one against the real lattice and hands back
+					the specific brick and reason when something will not hold.
+				</p>
+			</div>
+			<div class="card">
+				<h3><span class="dot" style="background:var(--green)"></span>Will it stand up?</h3>
+				<p>
+					Live checks for a joint carrying more than its studs hold, a load
+					hanging past its footprint, and a build stacked too high over too
+					small a base.
+				</p>
+			</div>
+			<div class="card">
+				<h3><span class="dot" style="background:#9a4fc4"></span>Yours to take away</h3>
+				<p>
+					Models are saved as LDraw <code>.ldr</code>, so what you build
+					here opens in LDView, LeoCAD, Studio or Mecabricks — and what you
+					made there opens here.
+				</p>
+			</div>
+			<div class="card">
+				<h3><span class="dot" style="background:#e08b2a"></span>Real connections</h3>
+				<p>
+					Studs, tubes, Technic pin holes and axle holes, recovered from
+					the primitives each part is drawn with rather than guessed at
+					from its bounding box.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<section id="tiers" class="wrap">
+		<h2>Tiers</h2>
+		<p class="sub">
+			Building is free and always will be. The assistant costs real money
+			to run, so it is the thing behind an account.
+		</p>
+		<div class="tiers">
+			<div class="card tier">
+				<h3>Free</h3>
+				<div class="price">No account needed</div>
+				<ul>
+					<li>The whole builder</li>
+					<li>All 29,479 parts and 322 colours</li>
+					<li>Save, reopen and export as <code>.ldr</code></li>
+					<li>Stability checking</li>
+					<li>No design assistant</li>
+				</ul>
+			</div>
+			<div class="card tier">
+				<h3>Signed in</h3>
+				<div class="price">Free account</div>
+				<ul>
+					<li>Everything above</li>
+					<li>The design assistant</li>
+					<li>Models kept to your account</li>
+				</ul>
+			</div>
+		</div>
+		<p class="note">Accounts are being built. Until then the assistant is open to everyone.</p>
+	</section>
+</main>
+
+<footer>
+	<div class="wrap">
+		<p>
+			Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+			community, licensed
+			<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+			LDraw™ is a trademark owned and licensed by the Estate of James
+			Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+		</p>
+		<p>
+			LEGO® is a trademark of the LEGO Group of companies which does not
+			sponsor, authorize or endorse this site.
+		</p>
+		<p>
+			<a href="https://github.com/Xaxis/brickworks">Source on GitHub</a>
+			· <a href="/app">Open the app</a>
+		</p>
+	</div>
+</footer>
+
+</body>
+</html>

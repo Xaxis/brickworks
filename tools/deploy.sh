@@ -73,15 +73,13 @@ JSON
   echo "deploy: packaged /api/claude"
 fi
 
-# Geometry the app fetches when someone picks a part the build does not
-# carry. Served from /parts/ at the deployment root rather than under
-# /b/<sha>/, because it is the same bytes every deploy and the browser
-# should keep it across them.
-if [ -d assets/web/remote ]; then
-  mkdir -p .vercel/output/static/parts
-  cp assets/web/remote/*.lbm .vercel/output/static/parts/ 2>/dev/null || true
-  count=$(ls -1 .vercel/output/static/parts 2>/dev/null | wc -l | tr -d ' ')
-  echo "deploy: $count parts served on demand"
+# The landing page sits at the root and the application at /app. Before
+# this, / redirected straight into the build, so there was nowhere to
+# say what the thing is.
+if [ -f web/index.html ]; then
+  cp web/index.html .vercel/output/static/index.html
+  [ -f shots/ui3.png ] && cp shots/ui3.png .vercel/output/static/shot-app.png
+  echo "deploy: landing page at /"
 fi
 
 cat > .vercel/output/config.json <<EOF
@@ -91,7 +89,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
-    { "src": "/", "status": 308, "headers": { "Location": "/b/$sha/" } },
+    { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
       "headers": {
         "Cross-Origin-Opener-Policy": "same-origin",
@@ -106,7 +104,7 @@ cat > .vercel/output/config.json <<EOF
       "continue": true },
     { "src": "/b/([^/]+)/?$", "dest": "/b/\$1/index.html" },
     { "handle": "filesystem" },
-    { "src": "/(.*)", "status": 308, "headers": { "Location": "/b/$sha/" } }
+    { "src": "/(.*)", "status": 308, "headers": { "Location": "/" } }
   ]
 }
 EOF
