@@ -440,6 +440,7 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	var lowered: String = name.to_lower()
 	var score: int = 0
 
+
 	# Plainness is measured by what comes *after* the size, not by the
 	# whole name matching a shape.
 	#
@@ -453,9 +454,15 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	var size: RegExMatch = SIZE.search(name)
 	if size != null:
 		var tail: String = name.substr(size.get_end()).strip_edges()
-		for free: String in FREE_QUALIFIERS:
-			if tail.to_lower().begins_with(free):
-				tail = tail.substr(free.length()).strip_edges()
+		# Only on a tile. The groove is what a flat tile is, so "Tile 1 x 2
+		# with Groove" is the standard part — but "Brick 1 x 2 with
+		# Groove" is a masonry variant, and letting the rule apply to
+		# every family put those variants alongside the plain bricks on
+		# the first page of the bin.
+		if lowered.begins_with("tile"):
+			for free: String in FREE_QUALIFIERS:
+				if tail.to_lower().begins_with(free):
+					tail = tail.substr(free.length()).strip_edges()
 		var qualifiers: int = (0 if tail.is_empty()
 			else tail.split(" ", false).size())
 		score += maxi(100 - qualifiers * 18, 10)
@@ -466,14 +473,13 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 		if size.get_string().count("x") > 1:
 			score -= 12
 
-	# Families, so a part named for one outranks a part that merely
-	# mentions it. Panels and wedges were missing from this list, and
-	# since almost every plain panel is three-dimensional they took the
-	# height penalty with nothing to offset it — so "panel" led with
-	# Panel 3 x 5 Solar/Clip-On/Deltoid.
+	# A part named for a family outranks one that merely mentions it.
+	# Ranked, not flat. The default view is sorted by this alone, and a
+	# uniform bonus made its first page one of everything — which reads
+	# as a sample rather than as a bin. A real bin opens on bricks.
 	for family: String in FAMILIES:
 		if lowered.begins_with(family):
-			score += 10
+			score += int(FAMILIES[family])
 			break
 
 	if _is_decorated(info):
@@ -486,8 +492,14 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	return score
 
 
-static var FAMILIES: PackedStringArray = PackedStringArray([
-	"brick", "plate", "tile", "slope", "panel", "wedge", "bracket", "arch"])
+## Families and how fundamental each one is. Panels and wedges were
+## missing entirely, and since almost every plain panel is
+## three-dimensional they took the height penalty with nothing to offset
+## it — so "panel" led with Panel 3 x 5 Solar/Clip-On/Deltoid.
+static var FAMILIES: Dictionary = {
+	"brick": 14, "plate": 12, "tile": 10, "slope": 8,
+	"panel": 8, "wedge": 8, "bracket": 6, "arch": 6,
+}
 
 
 ## "2 x 4", or "5 x 8 x 0.667". Anywhere in the name, because the family
