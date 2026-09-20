@@ -89,7 +89,9 @@ func _build() -> void:
 	root.add_child(title)
 
 	_search = LineEdit.new()
-	_search.placeholder_text = "Search 24,731 parts…"
+	# Filled in once the catalogue is loaded; the count differs between
+	# the desktop build and the web pack.
+	_search.placeholder_text = "Search parts…"
 	_search.clear_button_enabled = true
 	_search.text_changed.connect(_on_search_typed)
 	root.add_child(_search)
@@ -139,6 +141,7 @@ func _build() -> void:
 func populate() -> void:
 	if library == null:
 		return
+	_search.placeholder_text = "Search %s parts…" % _comma(library.parts.size())
 	_build_swatches()
 	_run_search("")
 
@@ -469,6 +472,18 @@ func on_thumbnail(part_id: String, color_code: int, texture: ImageTexture) -> vo
 
 func selected_color() -> int:
 	return _selected_color
+
+
+static func _comma(value: int) -> String:
+	var text: String = str(value)
+	var out: String = ""
+	var count: int = 0
+	for n: int in range(text.length() - 1, -1, -1):
+		out = text[n] + out
+		count += 1
+		if count % 3 == 0 and n > 0:
+			out = "," + out
+	return out
 
 
 func focus_search() -> void:

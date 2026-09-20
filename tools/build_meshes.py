@@ -209,6 +209,19 @@ def main() -> int:
                 rate = n / (time.time() - started)
                 print(f"  {n:6,}/{len(names):,}  {rate:5.0f}/s  {len(written):,} meshes")
 
+    # Meshes from a previous build that nothing points at any more. The
+    # content hash means most survive a rebuild untouched, so this is
+    # usually a handful — but without it a library update leaves the old
+    # geometry on disk forever.
+    orphans = 0
+    freed = 0
+    if not args.only and not args.limit:
+        for mesh_file in (out / "parts").iterdir():
+            if mesh_file.suffix == ".lbm" and mesh_file.stem not in written:
+                freed += mesh_file.stat().st_size
+                mesh_file.unlink()
+                orphans += 1
+
     catalogue.sort(key=lambda r: r["id"])
     palette = Palette.from_file(ldraw_root / "LDConfig.ldr")
 
@@ -235,6 +248,8 @@ def main() -> int:
     print(f"  parts catalogued : {len(catalogue):,}")
     print(f"  distinct meshes  : {len(written):,}  ({deduped:,} shared an existing one)")
     print(f"  geometry on disk : {bytes_written / 1e6:,.0f} MB")
+    if orphans:
+        print(f"  orphans removed  : {orphans:,}  ({freed / 1e6:,.0f} MB freed)")
     print(f"  failed           : {len(failures):,}")
     for part_id, reason in failures[:10]:
         print(f"      {part_id}: {reason}")
