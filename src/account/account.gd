@@ -46,6 +46,10 @@ var budget: int = 0
 ## form that cannot work.
 var available: bool = false
 
+## Where the geometry this build did not ship is served from, as the
+## deployment reports it. Empty means beside the app.
+var parts_url: String = ""
+
 var _project_url: String = ""
 var _project_key: String = ""
 var _access: String = ""
@@ -77,7 +81,9 @@ func designs_left() -> int:
 ## `vercel dev` gets exercised by the real client rather than by curl.
 func api_base() -> String:
 	if OS.has_feature("web"):
-		return ""
+		# Absolute, not "/api/…". HTTPRequest refuses a relative URL, and
+		# the refusal here read as "this deployment has no accounts".
+		return Origin.here()
 	var override: String = OS.get_environment("BRICKWORKS_API")
 	return override.rstrip("/") if not override.is_empty() else HOSTED
 
@@ -115,6 +121,7 @@ func boot() -> void:
 	available = bool(body.get("enabled", false))
 	_project_url = str(body.get("url", ""))
 	_project_key = str(body.get("key", ""))
+	parts_url = str(body.get("parts_url", "")) if body.get("parts_url") != null else ""
 
 	# A cold start has the refresh token from disk and nothing else — not
 	# even the address to redeem it at, which arrives in the reply above.

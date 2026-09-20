@@ -112,6 +112,10 @@ def main() -> int:
     parser.add_argument("--budget", type=float, default=48.0,
                         help="megabytes of geometry to stop at")
     parser.add_argument("--out", default=str(WEB))
+    parser.add_argument("--in-storage", action="store_true",
+                        help="the geometry is served from object storage, so "
+                             "put none of it in the deployment and mark every "
+                             "part reachable (tools/storage_parts.py)")
     parser.add_argument("--remote-budget", type=float, default=120.0,
                         help="megabytes of extra geometry to publish for "
                              "fetching on demand")
@@ -195,7 +199,7 @@ def main() -> int:
         json.dumps(document, separators=(",", ":")))
     shutil.copy2(GENERATED / "colors.json", out / "colors.json")
 
-    _write_remote(out, document, meshes, args.remote_budget)
+    _write_remote(out, document, meshes, args.remote_budget, args.in_storage)
 
     written = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     print(f"  wrote {out} ({written / 1e6:.1f} MB total)")
@@ -203,7 +207,8 @@ def main() -> int:
 
 
 def _write_remote(
-    out: Path, document: dict, packed: set[str], budget_mb: float
+    out: Path, document: dict, packed: set[str], budget_mb: float,
+    in_storage: bool = False,
 ) -> None:
     """Geometry the app fetches on demand rather than carrying.
 
@@ -218,7 +223,23 @@ def _write_remote(
     7,000 come to 747 MB, because a 48x48 baseplate is 50,000 triangles.
     Taking the small ones first buys far more parts per megabyte, and the
     ones left out are the ones nobody reaches for by accident.
+
+    With ``--in-storage`` none of that applies. The geometry is uploaded
+    once to object storage (tools/storage_parts.py) and served from
+    there, so the deployment carries no parts at all, every part is
+    reachable, and a deploy goes from fourteen thousand files to a few
+    dozen. That is the arrangement the hosted build uses; the budget
+    remains for a deployment that has to be self-contained.
     """
+    if in_storage:
+        for part in document["parts"]:
+            part["reachable"] = True
+        (out / "catalogue.json").write_text(
+            json.dumps(document, separators=(",", ":")))
+        print(f"  on demand: from object storage — all "
+              f"{len(document['parts']):,} parts placeable, nothing in the deploy")
+        return
+
     remote = out / "remote"
     remote.mkdir(parents=True, exist_ok=True)
 

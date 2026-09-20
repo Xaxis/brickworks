@@ -247,6 +247,13 @@ func _build_ui() -> void:
 	# request. Everything the builder does is already running by the time
 	# this finishes probing, and none of it waits on the answer.
 	_account = Account.new()
+	# The geometry this build did not ship may not live beside it, and
+	# only the deployment knows where it does. Nothing waits on this: a
+	# part is only fetched when someone reaches for it, which is long
+	# after the probe has answered.
+	_account.changed.connect(func() -> void:
+		if not _account.parts_url.is_empty():
+			_library.remote_parts = _account.parts_url)
 	add_child(_account)
 
 	_assistant = Assistant.new()

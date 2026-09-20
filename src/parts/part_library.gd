@@ -110,8 +110,10 @@ class BrickColor extends RefCounted:
 
 
 ## Where a part's geometry is fetched from when this build does not
-## carry it. Relative, so it is served from the same origin as the page.
-const REMOTE_PARTS := "parts/"
+## carry it. Set at start-up: on the web it is the deployment root, or
+## wherever the deployment says the geometry lives, because the library
+## is larger than a deployment can hold as files.
+var remote_parts: String = ""
 
 var parts: Dictionary = {}          ## String id -> PartInfo
 var colors: Dictionary = {}         ## int code -> BrickColor
@@ -286,13 +288,23 @@ func request_mesh(part_id: String) -> bool:
 	request.request_completed.connect(
 		_on_fetched.bind(request, info.mesh_hash, part_id))
 
-	var url: String = REMOTE_PARTS + info.mesh_hash + ".lbm"
+	var url: String = _remote_root() + info.mesh_hash + ".lbm"
 	if request.request(url) != OK:
 		_fetching.erase(info.mesh_hash)
 		request.queue_free()
 		fetch_failed.emit(part_id, "could not start the request")
 		return false
 	return true
+
+
+## Absolute, always. A relative URL is not merely resolved differently
+## here — HTTPRequest rejects it outright, so every on-demand part
+## failed to load in the browser and looked like a part the build did
+## not have.
+func _remote_root() -> String:
+	if not remote_parts.is_empty():
+		return remote_parts if remote_parts.ends_with("/") else remote_parts + "/"
+	return Origin.here() + "/parts/"
 
 
 func _on_fetched(

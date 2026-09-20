@@ -48,6 +48,13 @@ export default async function handler(request, response) {
     // Said plainly so the app never has to infer it: what a visitor with
     // no account can do here.
     free_tier: "build, search the catalogue, save and load — no assistant",
+    // Where the geometry this build did not ship is served from. The
+    // library runs to 27,000 meshes and a deployment takes 15,000 files,
+    // so the parts cannot live beside the app — and the ones that would
+    // have been cut are the big interesting pieces, because a size
+    // budget takes the smallest first. Null means "next to the app",
+    // which is what a deployment carrying its own parts wants.
+    parts_url: process.env.PARTS_URL || null,
   };
 
   const token = bearer(request);
