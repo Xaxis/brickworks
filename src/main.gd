@@ -40,7 +40,21 @@ var _assistant: Assistant
 var _library: PartLibrary
 
 
+## Screen-space antialiasing, where there is any.
+##
+## It was a project setting, which the web build could not honour:
+## FXAA exists only on Forward+ and Mobile, and the browser runs
+## Compatibility. Godot does not fall back quietly — it warns on every
+## load, which is a line in everyone's console about a setting they
+## cannot change.
+func _enable_antialiasing() -> void:
+	var method: String = RenderingServer.get_current_rendering_method()
+	if method == "forward_plus" or method == "mobile":
+		get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+
+
 func _ready() -> void:
+	_enable_antialiasing()
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
