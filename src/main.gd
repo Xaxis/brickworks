@@ -443,7 +443,7 @@ func _on_part_chosen(part_id: String) -> void:
 	# for it as soon as it is picked, so it is usually there by the time
 	# the cursor reaches the model.
 	if not _library.is_resident(part_id):
-		_library.request_mesh(part_id)
+		_library.request_mesh(part_id, true)
 	_refresh_preview()
 
 

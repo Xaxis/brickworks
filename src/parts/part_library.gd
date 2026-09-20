@@ -281,7 +281,11 @@ func is_resident(part_id: String) -> bool:
 ##
 ## Returns false when the part cannot be fetched at all. Listen for
 ## [signal fetched].
-func request_mesh(part_id: String) -> bool:
+## [param urgent] is for the part someone just clicked, as against the
+## thumbnails filling in behind them. Without it the held part queues
+## behind six previews nobody asked for, and the ghost does not appear
+## until they are done — the one wait in the whole app that is felt.
+func request_mesh(part_id: String, urgent: bool = false) -> bool:
 	var info: PartInfo = parts.get(part_id)
 	if info == null:
 		return false
@@ -291,7 +295,14 @@ func request_mesh(part_id: String) -> bool:
 	if _fetching.has(info.mesh_hash):
 		return true
 	if _fetching.size() >= MAX_IN_FLIGHT:
-		if not _queued_fetches.has(part_id):
+		if _queued_fetches.has(part_id):
+			# Already waiting. Promote it rather than queue it twice.
+			if urgent:
+				_queued_fetches.remove_at(_queued_fetches.find(part_id))
+				_queued_fetches.insert(0, part_id)
+		elif urgent:
+			_queued_fetches.insert(0, part_id)
+		else:
 			_queued_fetches.append(part_id)
 		return true
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
