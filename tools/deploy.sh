@@ -89,7 +89,7 @@ cat > .vercel/output/config.json <<EOF
   "version": 3,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/\$1" },
-    { "src": "/parts/(.*\\.lbm)", "headers": {
+    { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
