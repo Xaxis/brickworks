@@ -135,6 +135,11 @@ def main() -> int:
                         help="say what would be uploaded and stop")
     parser.add_argument("--all", action="store_true",
                         help="re-upload even what is already there")
+    parser.add_argument("--reverse", action="store_true",
+                        help="work from the end of the list, so a second "
+                             "copy of this can run alongside the first and "
+                             "the two meet in the middle instead of racing "
+                             "each other up the same order")
     args = parser.parse_args()
 
     url, key = env()
@@ -150,6 +155,8 @@ def main() -> int:
     if have:
         print(f"  already up: {len(have):,}")
     todo = [mesh for mesh in meshes if mesh.name not in have]
+    if args.reverse:
+        todo.reverse()
     todo_bytes = sum(mesh.stat().st_size for mesh in todo)
     print(f"  to upload : {len(todo):,}  ({todo_bytes / 1e6:.0f} MB)")
     if args.check or not todo:
