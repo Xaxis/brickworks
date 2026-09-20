@@ -17,6 +17,10 @@ const SAMPLE_MODEL := "res://models/car.ldr"
 @onready var _title: Label = $HUD/Title
 
 var _catalogue_ms: int = 0
+var _stability: Stability
+var _stability_text: String = ""
+var _counts_base: String = ""
+var _stability_at: int = 0
 var _counts: Label
 var _keys: Label
 var _bin: PartsBin
@@ -178,6 +182,10 @@ static func _argument(prefix: String) -> String:
 ## the scene because they are data-driven — 24,731 parts and 322 colours
 ## are not things to lay out by hand.
 func _build_ui() -> void:
+	_stability = Stability.new()
+	_stability.library = _library
+	_stability.lattice = _builder.lattice
+
 	_thumbnails = PartThumbnails.new()
 	_thumbnails.library = _library
 	add_child(_thumbnails)
@@ -451,9 +459,16 @@ func _lay_baseplate() -> void:
 func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> void:
 	if _counts == null:
 		return
-	_counts.text = "%s bricks · %d batches · %s triangles · %s parts in %d ms" % [
+	_counts_base = "%s bricks · %d batches · %s triangles · %s parts" % [
 		_comma(brick_count), batch_count, _comma(triangle_count),
-		_comma(_library.parts.size()), _catalogue_ms]
+		_comma(_library.parts.size())]
+	# Stability is cheap but not free, and a rebuild can fire several
+	# times while a model is being dropped in. Once a second is plenty
+	# for something a person reads.
+	var now: int = Time.get_ticks_msec()
+	if _stability != null and now - _stability_at > 900:
+		_stability_at = now
+		_stability_text = _stability.check(_world).summary()
 
 
 func _process(_delta: float) -> void:
@@ -461,8 +476,13 @@ func _process(_delta: float) -> void:
 		return
 	# Frame time belongs beside the counts: the whole point of batching is
 	# that the counts can grow without it moving.
+	# The counts line is rebuilt from its parts rather than patched, so
+	# repeated frames cannot accrete suffixes.
 	var fps: float = Engine.get_frames_per_second()
-	_counts.text = _counts.text.split(" · fps")[0] + " · fps %.0f" % fps
+	var line: String = "%s · fps %.0f" % [_counts_base, fps]
+	if not _stability_text.is_empty():
+		line += " · " + _stability_text
+	_counts.text = line
 
 
 ## The palette the number keys reach for: a readable spread rather than
