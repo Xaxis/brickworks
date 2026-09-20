@@ -71,6 +71,13 @@ for name in dimensions stability store instructions search inventory mosaic worl
   probe "$name"
 done
 
+# Needs a real window: the previews are drawn by a SubViewport, and a
+# headless run has no rendering device to draw them with. It flashes a
+# window open for a few seconds, which is why it is last.
+echo "── on screen ──"
+run "colour" godot --path . --resolution 1400x900 \
+  --script src/dev/colour_probe.gd
+
 if [ "$network" = 1 ]; then
   echo "── network ──"
   probe remote

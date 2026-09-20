@@ -178,12 +178,19 @@ func _render(job: Dictionary) -> void:
 			_awaiting[job["part"]] = true
 		return
 
-	# Surface 0 is the recolourable one by construction; a printed part's
-	# fixed-colour detail is left off the thumbnail, which reads better at
-	# 96 pixels than the print would anyway.
+	# Surface 0 is the recolourable one on almost every part, and a
+	# printed part's fixed-colour detail is left off the thumbnail —
+	# which reads better at 96 pixels than the print would anyway.
+	#
+	# "Almost" is the whole of it. 649 parts have no recolourable
+	# surface at all, every one of them a sticker, and for those surface
+	# 0 carries its own moulded colour. Tinting it anyway repainted a
+	# Denmark flag in whatever swatch happened to be selected.
 	_holder.mesh = part.surfaces[0]
 
-	var color: PartLibrary.BrickColor = library.color(job["color"])
+	var moulded: int = part.surface_colors[0]
+	var shown: int = int(job["color"]) if moulded == Lbm.COLOR_INHERIT else moulded
+	var color: PartLibrary.BrickColor = library.color(shown)
 	# The shader takes the colour through COLOR, which a lone MeshInstance
 	# has no instance data for — so it rides in as a material tint here.
 	_material.set_shader_parameter("tint_override", color.rgb)
