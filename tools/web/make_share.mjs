@@ -48,9 +48,9 @@ const page_html = `<!doctype html>
 </style>
 <div class="words">
   <div class="mark"><img src="favicon-192.png"><b>Brickworks</b></div>
-  <h1>Every brick, at the size it really is.</h1>
-  <p>28,319 parts at true dimensions, real connection rules, and a design
-     assistant that only hands you models which hold together.</p>
+  <h1>Design it here. Build it on your table.</h1>
+  <p>28,319 parts at the size real ones are, and a parts list and
+     instructions for whatever you make.</p>
   <div class="url">brickworks.diy</div>
 </div>
 <div class="shot"><img src="_og_model.png"><div class="fade"></div></div>`;
