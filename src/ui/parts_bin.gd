@@ -436,26 +436,45 @@ static func _squeeze(text: String) -> String:
 ## in its name: "Brick 2 x 4" and nothing else. Decoration, qualifiers
 ## and unofficial status each push a part down.
 static func _staple_score(info: PartLibrary.PartInfo) -> int:
-	var name: String = info.name.strip_edges()
+	var name: String = _squeeze(info.name.strip_edges())
 	var lowered: String = name.to_lower()
 	var score: int = 0
 
-	# A bare "<Family> N x M" is the plainest form there is.
-	if PLAIN.search(name) != null:
-		score += 100
-	# A qualifier after the size ("with Groove", "Inverted") is still a
-	# real part, just a more specific one.
-	elif QUALIFIED.search(name) != null:
-		score += 60
+	# Plainness is measured by what comes *after* the size, not by the
+	# whole name matching a shape.
+	#
+	# Two families broke the anchored version. LDraw names a slope "Slope
+	# Brick 45 2 x 1" — the angle sits between the family and the size,
+	# so nothing anchored at the start ever matched and every slope
+	# scored zero, which is why searching for one led with Slope 5 x 8 x
+	# 0.667. And the modern flat tiles are "Tile 1 x 2 with Groove": the
+	# groove is what a tile *is*, but it read as a qualifier, so the
+	# three tiles everyone uses ranked below genuinely obscure ones.
+	var size: RegExMatch = SIZE.search(name)
+	if size != null:
+		var tail: String = name.substr(size.get_end()).strip_edges()
+		for free: String in FREE_QUALIFIERS:
+			if tail.to_lower().begins_with(free):
+				tail = tail.substr(free.length()).strip_edges()
+		var qualifiers: int = (0 if tail.is_empty()
+			else tail.split(" ", false).size())
+		score += maxi(100 - qualifiers * 18, 10)
+		# A third dimension is a specialisation, not just a longer name.
+		# Without this, Brick 1 x 2 x 2 scores exactly what Brick 2 x 2
+		# does and then wins the tie on footprint, because it is a stud
+		# narrower — so searching for "brick" led with the tall ones.
+		if size.get_string().count("x") > 1:
+			score -= 12
 
-	if lowered.begins_with("brick"):
-		score += 14
-	elif lowered.begins_with("plate"):
-		score += 12
-	elif lowered.begins_with("tile"):
-		score += 10
-	elif lowered.begins_with("slope"):
-		score += 8
+	# Families, so a part named for one outranks a part that merely
+	# mentions it. Panels and wedges were missing from this list, and
+	# since almost every plain panel is three-dimensional they took the
+	# height penalty with nothing to offset it — so "panel" led with
+	# Panel 3 x 5 Solar/Clip-On/Deltoid.
+	for family: String in FAMILIES:
+		if lowered.begins_with(family):
+			score += 10
+			break
 
 	if _is_decorated(info):
 		score -= 70
@@ -464,15 +483,24 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	# Shortcuts are assemblies, not parts; useful but not staples.
 	if info.kind.to_lower().contains("shortcut"):
 		score -= 25
-	# Long names mean many qualifiers, which means a specialist part.
-	score -= name.length() / 8
 	return score
 
 
-static var PLAIN := RegEx.create_from_string(
-	"^(Brick|Plate|Tile|Slope|Panel|Wedge)\\s+\\d+\\s*x\\s*\\d+$")
-static var QUALIFIED := RegEx.create_from_string(
-	"^(Brick|Plate|Tile|Slope|Panel|Wedge)\\s+\\d+\\s*x\\s*\\d+\\s")
+static var FAMILIES: PackedStringArray = PackedStringArray([
+	"brick", "plate", "tile", "slope", "panel", "wedge", "bracket", "arch"])
+
+
+## "2 x 4", or "5 x 8 x 0.667". Anywhere in the name, because the family
+## word is not always what comes before it.
+static var SIZE := RegEx.create_from_string(
+	"\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*x\\s*\\d+(\\.\\d+)?)?")
+
+## Qualifiers that describe the standard form of a part rather than a
+## variant of it, and so should cost nothing. Only "with groove": a tile
+## "without Groove" is the old mould, and treating both as standard put
+## the superseded one first.
+static var FREE_QUALIFIERS: PackedStringArray = PackedStringArray([
+	"with groove"])
 
 
 static func _is_decorated(info: PartLibrary.PartInfo) -> bool:
