@@ -81,6 +81,7 @@ run "colour" godot --path . --resolution 1400x900 \
 if [ "$network" = 1 ]; then
   echo "── network ──"
   probe remote
+  run "open (over the wire)" godot --path . --script src/dev/open_probe.gd
 fi
 
 echo ""
