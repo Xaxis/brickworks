@@ -101,19 +101,24 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 ## 4 LDU proud of the brick below, so a part resting on studs has its
 ## underside a little into the part beneath rather than exactly on it.
 static func _find_supports(nodes: Array[Node2]) -> void:
-	# −Y is up in LDraw, which this model keeps: a brick's top is its
-	# box.position.y and its bottom is box.end.y. Getting this the wrong
-	# way round produces a booklet that builds downwards from the roof —
-	# every step legal, the whole thing useless.
+	# +Y is up here. LDraw has −Y up, but the conversion to engine space
+	# negated Y and Z, so by the time a brick reaches this its underside
+	# is box.position.y and its top is box.end.y.
+	#
+	# This was the other way round and every check agreed with it,
+	# because the probe had made the same assumption — so a stack of ten
+	# passed "starts at the bottom" while building from the top. What
+	# caught it was looking at a booklet: step one of the lighthouse was
+	# the lamp, hanging in the air above an empty baseplate.
 	const SLACK := 5.0
 	for node: Node2 in nodes:
 		for other: Node2 in nodes:
 			if other.id == node.id:
 				continue
-			# other is below node when other's top is at or under node's
-			# bottom, allowing for the stud that reaches up into it.
-			var sits_on: bool = (other.box.position.y >= node.box.end.y - SLACK
-				and other.box.position.y <= node.box.end.y + SLACK)
+			# other is under node when other's top meets node's underside,
+			# allowing for the stud that reaches up into it.
+			var sits_on: bool = (other.box.end.y >= node.box.position.y - SLACK
+				and other.box.end.y <= node.box.position.y + SLACK)
 			if sits_on and _overlaps_flat(node.box, other.box):
 				node.needs.append(other.id)
 
@@ -187,14 +192,14 @@ static func _next(remaining: Array[Node2], placed: Dictionary,
 	var best: int = -1
 	var best_score: float = INF
 	var fallback: int = -1
-	var fallback_height: float = -INF
+	var fallback_height: float = INF
 
 	for index: int in remaining.size():
 		var node: Node2 = remaining[index]
-		# Lowest first: box.end.y is the underside with −Y up, so a
-		# larger value is further down.
-		if node.box.end.y > fallback_height:
-			fallback_height = node.box.end.y
+		# Lowest first. With +Y up the underside is box.position.y, so
+		# the smallest value is the one nearest the table.
+		if node.box.position.y < fallback_height:
+			fallback_height = node.box.position.y
 			fallback = index
 		if not _ready(node, placed):
 			continue
@@ -204,8 +209,9 @@ static func _next(remaining: Array[Node2], placed: Dictionary,
 		if same_step and distance > NEAR:
 			continue
 		# Height dominates; distance only breaks ties within a layer, so
-		# a nearby brick two layers up never jumps the queue.
-		var score: float = -node.box.end.y * 1000.0 + distance
+		# a nearby brick two layers up never jumps the queue. Lower is a
+		# smaller score, and the smallest score wins.
+		var score: float = node.box.position.y * 1000.0 + distance
 		if score < best_score:
 			best_score = score
 			best = index

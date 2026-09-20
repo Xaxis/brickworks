@@ -23,6 +23,9 @@ class Lot extends RefCounted:
 	var color_code: int
 	var color_name: String
 	var count: int = 0
+	## The colour as six hex digits, for anywhere that wants markup
+	## rather than a Color.
+	var rgb_hex: String = "888888"
 	## Grams for one of them, from the same shell model the stability
 	## check uses. Derived rather than looked up, and it runs a little
 	## light on longer parts — see Stability.grams.
@@ -63,6 +66,10 @@ static func of(world: BrickWorld, library: PartLibrary,
 			lot.name = _tidy(info.name if info != null else brick.part_id)
 			lot.color_code = brick.color_code
 			lot.color_name = color.name if color != null else "colour %d" % brick.color_code
+			if color != null:
+				lot.rgb_hex = "%02x%02x%02x" % [
+					int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
+					int(color.rgb.b * 255.0)]
 			lot.each_grams = Stability.grams(info) if info != null else 0.0
 			by_key[key] = lot
 			inventory.lots.append(lot)

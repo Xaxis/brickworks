@@ -29,6 +29,9 @@ var _clock: float = 0.0
 
 ## Which bricks should be on screen. Empty means the whole model.
 signal reveal(brick_ids: Dictionary)
+## Someone wants the booklet as a file. The bar does not write it: the
+## pictures come from the main viewport, which the bar is sitting on.
+signal export_wanted()
 signal closed
 
 
@@ -89,6 +92,14 @@ func _build() -> void:
 	_pieces.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_pieces.clip_text = true
 	row.add_child(_pieces)
+
+	var save := Button.new()
+	save.text = "Save instructions"
+	save.tooltip_text = "One printable page, pictures and parts included"
+	save.focus_mode = Control.FOCUS_NONE
+	save.add_theme_font_size_override("font_size", 11)
+	save.pressed.connect(func() -> void: export_wanted.emit())
+	row.add_child(save)
 
 	var close := _button("✕", "Back to the whole model")
 	close.pressed.connect(stop)

@@ -50,11 +50,15 @@ func _tower(world: BrickWorld, library: PartLibrary) -> void:
 	_follow("stack of 10", steps, world, library)
 
 	# Bottom-up means the first brick placed is the one nearest the
-	# ground. −Y is up, so that is the largest Y.
+	# ground. +Y is up in engine space — the conversion already negated
+	# it — so that is the *smallest* Y.
+	#
+	# This read "largest" and so did the planner, and the two agreeing
+	# is exactly why a stack built from the top passed this check.
 	var first: BrickWorld.Brick = world.get_brick(steps[0].brick_ids[0])
-	var lowest: float = -INF
+	var lowest: float = INF
 	for brick: BrickWorld.Brick in world.bricks():
-		lowest = maxf(lowest, brick.transform.origin.y)
+		lowest = minf(lowest, brick.transform.origin.y)
 	_assert("stack starts at the bottom, at y=%.0f of %.0f"
 		% [first.transform.origin.y, lowest],
 		is_equal_approx(first.transform.origin.y, lowest))
@@ -138,19 +142,19 @@ func _rests_on_something(brick_id: int, on_table: Dictionary,
 		world: BrickWorld, library: PartLibrary) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	var box: AABB = brick.transform * library.mesh_for(brick.part_id).bounds
-	# On the floor: with −Y up, the underside is box.end.y and the ground
-	# is the largest y anything reaches.
-	var floor_y: float = -INF
+	# On the floor: with +Y up the underside is box.position.y, and the
+	# table is the smallest y anything reaches.
+	var floor_y: float = INF
 	for other: BrickWorld.Brick in world.bricks():
 		var other_box: AABB = other.transform * library.mesh_for(other.part_id).bounds
-		floor_y = maxf(floor_y, other_box.end.y)
-	if absf(box.end.y - floor_y) < 1.0:
+		floor_y = minf(floor_y, other_box.position.y)
+	if absf(box.position.y - floor_y) < 1.0:
 		return true
 
 	for other_id: int in on_table:
 		var other: BrickWorld.Brick = world.get_brick(other_id)
 		var other_box: AABB = other.transform * library.mesh_for(other.part_id).bounds
-		var under: bool = absf(other_box.position.y - box.end.y) <= 5.0
+		var under: bool = absf(other_box.end.y - box.position.y) <= 5.0
 		var overlap: bool = (box.position.x < other_box.end.x - 0.5
 			and other_box.position.x < box.end.x - 0.5
 			and box.position.z < other_box.end.z - 0.5
