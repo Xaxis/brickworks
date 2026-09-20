@@ -23,6 +23,7 @@ var edge: int = Edge.LEFT
 var content: Control
 
 var _rail: Button
+var _arrow: Chevron
 var _holder: Control
 var _open: bool = true
 var _full_width: float = 0.0
@@ -54,6 +55,9 @@ func setup(inner: Control, on_edge: int, width: float) -> void:
 	# viewport with nothing to aim at — findable only by someone who
 	# already knew it was there, and invisible over a pale model.
 	_rail.pressed.connect(toggle)
+
+	_arrow = Chevron.new()
+	_rail.add_child(_arrow)
 
 	# The rail is always on the inner side, so it stays put when the
 	# panel folds rather than travelling with it.
@@ -129,12 +133,39 @@ func _update_rail() -> void:
 	# control says what it does without a label. Doubled when the panel
 	# is away, because then the rail is the only thing left of it and has
 	# to read as a thing to click rather than as a stray mark.
-	var folds_left: bool = (edge == Edge.LEFT) == _open
-	if _open:
-		_rail.text = "❮" if folds_left else "❯"
-		_rail.tooltip_text = "Hide this panel"
-	else:
-		_rail.text = "❯\n❯" if edge == Edge.LEFT else "❮\n❮"
-		_rail.tooltip_text = "Show this panel"
-	_rail.add_theme_color_override("font_color",
-		Color(1, 1, 1, 0.7 if _open else 0.92))
+	_arrow.points_left = (edge == Edge.LEFT) == _open
+	_arrow.doubled = not _open
+	_arrow.queue_redraw()
+	_rail.tooltip_text = ("Hide this panel" if _open else "Show this panel")
+
+
+## The chevron, drawn rather than typeset.
+##
+## It was the characters U+276E and U+276F, which the desktop found in a
+## system font and the browser did not — there is no fallback there, so
+## on the web both rails showed a missing-glyph box. Two lines and an
+## arc have no such problem, and they scale with the rail.
+class Chevron extends Control:
+	var points_left: bool = true
+	var doubled: bool = false
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+
+	func _draw() -> void:
+		var middle: Vector2 = size * 0.5
+		var tint := Color(1, 1, 1, 0.92 if doubled else 0.72)
+		if doubled:
+			_chevron(middle + Vector2(0, -5), tint)
+			_chevron(middle + Vector2(0, 5), tint)
+		else:
+			_chevron(middle, tint)
+
+	func _chevron(at: Vector2, tint: Color) -> void:
+		const REACH := 3.5
+		const HALF := 4.5
+		var lean: float = -REACH if points_left else REACH
+		draw_polyline(PackedVector2Array([
+			at + Vector2(-lean, -HALF), at + Vector2(lean, 0.0),
+			at + Vector2(-lean, HALF)]), tint, 1.6, true)
