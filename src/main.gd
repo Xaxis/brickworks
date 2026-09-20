@@ -100,10 +100,6 @@ func _ask(brief: String) -> void:
 	print("ask ok=%s bricks=%d  %s  (%.0fs)" % [
 		outcome[0], _assistant._placed_ids.size(), outcome[1],
 		(Time.get_ticks_msec() - started) / 1000.0])
-	for brick_id: int in _assistant._placed_ids:
-		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-		if brick:
-			print("   %s at %v" % [brick.part_id, brick.transform.origin])
 	_camera.frame(_world.model_bounds())
 	await get_tree().process_frame
 
@@ -147,8 +143,20 @@ func _capture(path: String) -> void:
 	# Several frames, not one: the camera eases towards its framing and the
 	# shadow atlas fills over a few frames, so the first frame is neither
 	# framed nor lit the way a real one is.
-	for _n: int in 30:
+	#
+	# The frames are forced, not awaited. A process frame is not a drawn
+	# frame: when the window is in the background — which it is whenever
+	# this runs unattended — the OS stops asking for redraws entirely, so
+	# awaiting frame_post_draw waits forever and the captured texture is
+	# whatever was last drawn.
+	#
+	# That cost most of an afternoon. Bricks added after a long wait were
+	# absent from every screenshot while the scene tree, the batches, the
+	# instance transforms and the instance colours all insisted they were
+	# there. They were. The picture was old.
+	for _n: int in 12:
 		await get_tree().process_frame
+		RenderingServer.force_draw(false)
 	var image: Image = get_viewport().get_texture().get_image()
 	var error: int = image.save_png(path)
 	if error != OK:

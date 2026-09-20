@@ -280,6 +280,10 @@ func _flush() -> void:
 func _rebuild(batch: Batch, key: String) -> void:
 	var count: int = batch.brick_ids.size()
 	batch.multimesh.instance_count = count
+	# Kept in step with instance_count explicitly: raising one does not
+	# raise the other, and a batch that grows would otherwise keep
+	# drawing only as many instances as it had before.
+	batch.multimesh.visible_instance_count = count
 	if count == 0:
 		return
 
@@ -294,6 +298,27 @@ func _rebuild(batch: Batch, key: String) -> void:
 		var surface_color: int = part.surface_colors[surface_index]
 		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
 		batch.multimesh.set_instance_color(slot, library.color(code).rgb)
+
+	# Give the instance bounds that cover where the bricks actually are.
+	#
+	# A MultiMesh derives its own AABB from the instance transforms, but
+	# the per-surface meshes here carry a custom_aabb (set when the part
+	# is loaded, to save a pass over every vertex), and a custom AABB on
+	# the mesh is what the MultiMesh measures from. The result is bounds
+	# around the origin rather than around the model, so a batch whose
+	# bricks sit away from the origin is frustum-culled and never drawn —
+	# which looks exactly like the bricks never having been added.
+	var bounds := AABB()
+	var first: bool = true
+	for slot: int in count:
+		var brick: Brick = _bricks[batch.brick_ids[slot]]
+		var box: AABB = brick.transform * batch.multimesh.mesh.get_aabb()
+		if first:
+			bounds = box
+			first = false
+		else:
+			bounds = bounds.merge(box)
+	batch.instance.custom_aabb = bounds
 
 
 func _triangles_of(mesh: Mesh) -> int:
