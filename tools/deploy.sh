@@ -156,9 +156,14 @@ fi
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo production || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 if [ "$prod" = 1 ]; then
-  npx --yes vercel@48 deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN" >"$log" 2>&1
+  # --archive=tgz sends one tarball rather than a file at a time. Both
+  # of this deploy's failures were in the per-file uploader: it aborted
+  # Node outright on fourteen thousand files, and then twice returned a
+  # 500 as an HTML page that the CLI tried to parse as JSON. Neither is
+  # something this end can fix, and neither happens with one upload.
+  npx --yes vercel@48 deploy --prebuilt --prod --yes --archive=tgz --token "$VERCEL_TOKEN" >"$log" 2>&1
 else
-  npx --yes vercel@48 deploy --prebuilt --yes --token "$VERCEL_TOKEN" >"$log" 2>&1
+  npx --yes vercel@48 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN" >"$log" 2>&1
 fi
 code=$?
 url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' "$log" | tail -1)"
