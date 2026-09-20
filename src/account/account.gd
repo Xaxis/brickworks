@@ -50,6 +50,10 @@ var available: bool = false
 ## deployment reports it. Empty means beside the app.
 var parts_url: String = ""
 
+## "included" when this deployment spends its own key for this account,
+## "own_key" otherwise. The server decides; the app only reports it.
+var _assistant_mode: String = "own_key"
+
 var _project_url: String = ""
 var _project_key: String = ""
 var _access: String = ""
@@ -69,6 +73,13 @@ func _ready() -> void:
 
 func signed_in() -> bool:
 	return state == State.SIGNED_IN
+
+
+## Whether this deployment runs the assistant on its own key for this
+## account. It does that for one, and everybody else brings their own —
+## there is no payment system yet and no free tier on our spend.
+func assistant_included() -> bool:
+	return _assistant_mode == "included"
 
 
 func designs_left() -> int:
@@ -154,6 +165,7 @@ func _probe() -> Variant:
 
 
 func _adopt_status(body: Dictionary) -> void:
+	_assistant_mode = str(body.get("assistant", "own_key"))
 	if bool(body.get("signed_in", false)):
 		state = State.SIGNED_IN
 		email = str(body.get("email", ""))

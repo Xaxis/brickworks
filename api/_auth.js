@@ -162,6 +162,24 @@ export async function claimDesign(account, tier, design) {
   return { allowed: Boolean(row?.allowed), used: row?.used ?? 0, budget };
 }
 
+/// The one account this deployment will spend its own API key on.
+///
+/// There is no free tier on our spend and no payment system yet, so
+/// everybody else brings their own key — which their browser sends
+/// straight to Anthropic and which never reaches this server at all.
+/// Set MASTER_EMAIL on the project; unset means nobody, which fails
+/// closed rather than open.
+export function isMaster(claims) {
+  const master = (process.env.MASTER_EMAIL || "").trim().toLowerCase();
+  if (!master) return false;
+  const email = String(claims?.email || "").trim().toLowerCase();
+  // email_verified is Supabase's word for "this address answered". An
+  // unverified one is a claim about somebody else's inbox.
+  if (claims?.email_verified === false) return false;
+  return email !== "" && email === master;
+}
+
+
 /// Designs — conversations, not requests — per calendar month. Generous
 /// enough that nobody building for an evening meets it, low enough that
 /// a leaked password cannot empty the account.

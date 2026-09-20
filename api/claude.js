@@ -18,9 +18,15 @@
 // check, to keep a flood of junk from costing a signature verification
 // each.
 //
+// Who this answers for is narrower than it looks: one account, the one
+// named by MASTER_EMAIL. There is no payment system yet and no free
+// tier on our spend, so everybody else runs the assistant on a key of
+// their own — which their browser sends straight to Anthropic, and
+// which never arrives here to be stored, logged or leaked.
+//
 // The builder itself needs none of this. Placing bricks, searching the
 // catalogue, saving a model — none of it comes through here, which is
-// what lets the free tier work with no account at all.
+// what lets everything but the assistant work with no account at all.
 
 import {
   AuthError,
@@ -28,6 +34,7 @@ import {
   bearer,
   claimDesign,
   designId,
+  isMaster,
   tierFor,
   verify,
 } from "./_auth.js";
@@ -105,6 +112,18 @@ export default async function handler(request, response) {
     }
     try {
       const claims = await verify(bearer(request));
+      if (!isMaster(claims)) {
+        // Not a failure of theirs to fix by signing in again, so it is
+        // not 401 and does not ask them to. The app reads this and
+        // shows the field for a key of their own.
+        return response.status(403).json({
+          error:
+            "The assistant runs on your own Anthropic key. Add one in the "
+            + "assistant panel — it stays on this device and is never sent "
+            + "to us.",
+          bring_your_own_key: true,
+        });
+      }
       account = claims.sub;
       tier = await tierFor(account);
     } catch (error) {

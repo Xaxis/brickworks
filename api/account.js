@@ -18,7 +18,15 @@
 // compiling it in means a rotated key reaches the desktop build without
 // anyone reinstalling.
 
-import { AuthError, BUDGETS, authConfigured, bearer, tierFor, verify } from "./_auth.js";
+import {
+  AuthError,
+  BUDGETS,
+  authConfigured,
+  bearer,
+  isMaster,
+  tierFor,
+  verify,
+} from "./_auth.js";
 
 export default async function handler(request, response) {
   if (request.method === "OPTIONS") {
@@ -48,6 +56,10 @@ export default async function handler(request, response) {
     // Said plainly so the app never has to infer it: what a visitor with
     // no account can do here.
     free_tier: "build, search the catalogue, save and load — no assistant",
+    // Said plainly, because it decides what the assistant panel offers:
+    // a key field for almost everybody, and nothing to do for the one
+    // account this deployment spends its own key on.
+    assistant: "own_key",
     // Where the geometry this build did not ship is served from. The
     // library runs to 27,000 meshes and a deployment takes 15,000 files,
     // so the parts cannot live beside the app — and the ones that would
@@ -77,15 +89,21 @@ export default async function handler(request, response) {
     });
   }
 
+  const master = isMaster(claims);
   const tier = await tierFor(claims.sub);
   const budget = BUDGETS[tier] ?? BUDGETS.builder;
   return response.status(200).json({
     ...base,
+    assistant: master ? "included" : "own_key",
+    master,
     signed_in: true,
     email: claims.email || null,
     tier,
     budget,
-    used: await designsUsed(claims.sub),
+    // Only means anything for the account we spend on. Everybody else
+    // is billed by Anthropic directly and we could not count it if we
+    // wanted to.
+    used: master ? await designsUsed(claims.sub) : 0,
   });
 }
 

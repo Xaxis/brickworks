@@ -40,8 +40,21 @@ var account: Account
 ## Where the proxy lives. Relative on the web (same origin); on desktop
 ## this needs a full URL, or a key in the environment for a direct call.
 var endpoint: String = DEFAULT_ENDPOINT
-## Set on desktop to talk to Anthropic directly instead of via the proxy.
+## Set from the environment on a developer's machine, to talk to
+## Anthropic directly instead of via the proxy. A key the person pasted
+## into the app is not this — see [method key_in_use], which prefers
+## theirs.
 var direct_key: String = ""
+
+
+## The key this request will go out with, and therefore where it goes.
+##
+## A key belonging to the person using the app wins over one from the
+## environment: on a machine that has both, theirs is the one they
+## chose. Empty means the proxy, which answers for one account.
+func key_in_use() -> String:
+	var theirs: String = OwnKey.load_key()
+	return theirs if not theirs.is_empty() else direct_key
 
 var _http: HTTPRequest
 var _messages: Array = []
@@ -162,10 +175,19 @@ func _send() -> void:
 
 	var headers: PackedStringArray = ["content-type: application/json"]
 	var url: String = endpoint
-	if not direct_key.is_empty():
+	var key: String = key_in_use()
+	if not key.is_empty():
 		url = "https://api.anthropic.com/v1/messages"
-		headers.append("x-api-key: " + direct_key)
+		headers.append("x-api-key: " + key)
 		headers.append("anthropic-version: 2023-06-01")
+		if OS.has_feature("web"):
+			# Anthropic blocks browser calls unless asked not to, which
+			# is the right default: it exists to stop a key being put in
+			# a web page where every visitor can read it. Here the key
+			# belongs to the person at the keyboard and never leaves
+			# their machine except to Anthropic, which is the case the
+			# header is for.
+			headers.append("anthropic-dangerous-direct-browser-access: true")
 	elif account != null:
 		# Fetched rather than read, because a design can run for minutes
 		# and the token may be minutes from expiring when it starts.
@@ -204,7 +226,7 @@ func request_body() -> Dictionary:
 		"messages": _messages,
 		"tools": _tools(),
 	}
-	if not direct_key.is_empty():
+	if not key_in_use().is_empty():
 		# The proxy adds this itself, and adds it the same way for
 		# everyone; here we are the client and have to ask.
 		body["thinking"] = {"type": "adaptive"}

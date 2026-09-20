@@ -315,12 +315,15 @@ func _build_ui() -> void:
 	# their own key, and there is nobody to bill. Otherwise the desktop
 	# build talks to the same hosted function the web build does, which
 	# means the same sign-in and the same monthly budget.
+	# A key from the environment is a developer running with their own;
+	# a key the person pasted in is handled by the assistant itself. The
+	# proxy is still wired up either way, because it is what answers for
+	# the one account this deployment spends its own key on.
 	var key: String = "" if OS.has_feature("web") else _anthropic_key()
 	if not key.is_empty():
 		_assistant.direct_key = key
-	else:
-		_assistant.endpoint = _account.api_base() + Assistant.DEFAULT_ENDPOINT
-		_assistant.account = _account
+	_assistant.endpoint = _account.api_base() + Assistant.DEFAULT_ENDPOINT
+	_assistant.account = _account
 	add_child(_assistant)
 
 	var column := VBoxContainer.new()
@@ -423,8 +426,7 @@ func _build_ui() -> void:
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
-	if _assistant.direct_key.is_empty():
-		_chat.watch(_account)
+	_chat.watch(_account)
 
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the

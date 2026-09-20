@@ -31,6 +31,8 @@ var _status: Label
 var _suggestions: VBoxContainer
 var _composer: VBoxContainer
 var _gate: SignInForm
+var _key_form: KeyForm
+var _showing_sign_in: bool = false
 var _footer: HBoxContainer
 var _meter: Label
 var _spinner_at: int = 0
@@ -130,13 +132,30 @@ func _build() -> void:
 	out.flat = true
 	out.add_theme_font_size_override("font_size", 10)
 	out.modulate = Color(1, 1, 1, 0.5)
+	out.text = "Sign out"
 	out.pressed.connect(func() -> void:
+		# A key of your own is the only thing to leave behind when there
+		# is no account; when there is both, the button means both.
+		OwnKey.forget()
 		if account != null:
-			await account.sign_out())
+			await account.sign_out()
+		_showing_sign_in = false
+		_on_account_changed())
 	_footer.add_child(out)
 
 	_gate = SignInForm.new()
 	root.add_child(_gate)
+
+	_key_form = KeyForm.new()
+	_key_form.setup()
+	_key_form.accepted.connect(func() -> void:
+		_showing_sign_in = false
+		_on_account_changed()
+		_input.grab_focus())
+	_key_form.sign_in_wanted.connect(func() -> void:
+		_showing_sign_in = true
+		_on_account_changed())
+	root.add_child(_key_form)
 
 
 func bind(to: Assistant) -> void:
@@ -161,37 +180,49 @@ func watch(with_account: Account) -> void:
 func _on_account_changed() -> void:
 	if account == null:
 		return
-	var allowed: bool = account.signed_in()
-	_composer.visible = allowed
-	_gate.visible = account.available and not allowed
-
 	if account.state == Account.State.UNKNOWN:
-		# Still asking. Neither the form nor the composer is right yet,
-		# and announcing "not available" here would be a verdict passed
-		# before the question was put — which is what it did, for the
-		# second or so the probe takes.
+		# Still asking. Nothing here is right yet, and announcing "not
+		# available" would be a verdict passed before the question was
+		# put — which it did, for the second or so the probe takes.
+		_composer.visible = false
+		_gate.visible = false
+		_key_form.visible = false
 		_status.text = ""
 		return
 
-	if not account.available:
-		# No accounts configured at all. Saying which part is missing is
-		# more use than an empty panel, and there is nothing the person
-		# can do about it from here, so no form is offered.
-		_status.text = ("The assistant is not available on this build. "
-			+ "Everything else works.")
-		return
+	# Three ways to be allowed to design, and they are not equal. A key
+	# of the person's own is the ordinary one: it costs us nothing and
+	# needs no account. Our own key answers for one account. Everything
+	# else gets the field to paste a key into.
+	var own_key: bool = OwnKey.has_key()
+	var included: bool = account.signed_in() and account.assistant_included()
+	var allowed: bool = own_key or included
+
+	_composer.visible = allowed
+	_key_form.visible = not allowed and not _showing_sign_in
+	_gate.visible = not allowed and _showing_sign_in and account.available
 
 	if allowed:
-		var left: int = account.designs_left()
-		_meter.text = "%d of %d designs left this month" % [left, account.budget]
-		if left == 0:
-			_status.text = ("That is this month's designs used up. The "
-				+ "builder and the catalogue keep working.")
-			_send.disabled = true
+		_send.disabled = _working
+		if own_key:
+			# No count to show: Anthropic is billing them directly and
+			# we could not count it if we wanted to.
+			_meter.text = "your own key · %s" % OwnKey.fingerprint()
+			_status.text = ""
 		else:
-			_send.disabled = _working
-	else:
+			var left: int = account.designs_left()
+			_meter.text = "%d of %d designs left this month" % [
+				left, account.budget]
+			if left == 0:
+				_status.text = ("That is this month's designs used up. "
+					+ "The builder and the catalogue keep working.")
+				_send.disabled = true
+		return
+
+	if not account.available and not _showing_sign_in:
 		_status.text = ""
+		return
+	_status.text = ""
 
 
 func _show_suggestions() -> void:
