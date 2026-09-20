@@ -248,12 +248,16 @@ func _build_ui() -> void:
 	# this finishes probing, and none of it waits on the answer.
 	_account = Account.new()
 	# The geometry this build did not ship may not live beside it, and
-	# only the deployment knows where it does. Nothing waits on this: a
-	# part is only fetched when someone reaches for it, which is long
-	# after the probe has answered.
+	# only the deployment knows where it does. Whatever the probe says —
+	# including that it failed — something has to be set here, because
+	# requests that arrive before it answers are held until it does, and
+	# a deployment that serves its own parts would otherwise hold them
+	# for ever waiting on a URL that was never going to come.
 	_account.changed.connect(func() -> void:
-		if not _account.parts_url.is_empty():
-			_library.remote_parts = _account.parts_url)
+		if _library.remote_parts.is_empty():
+			_library.remote_parts = (_account.parts_url
+				if not _account.parts_url.is_empty()
+				else Origin.here() + "/parts/"))
 	add_child(_account)
 
 	_assistant = Assistant.new()

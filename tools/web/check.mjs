@@ -33,6 +33,15 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
+// A preview deployment is behind the team's sign-in, so without this the
+// check would load a login page, find no canvas, and report that the
+// build does not run. The bypass is for automation only: previews stay
+// protected for anyone arriving with a browser, and production is on a
+// custom domain, which the protection does not cover anyway.
+if (args.bypass) {
+  await page.setExtraHTTPHeaders({ "x-vercel-protection-bypass": args.bypass });
+}
+
 const problems = [];
 page.on("console", (m) => {
   if (m.type() === "error") problems.push(m.text().slice(0, 200));

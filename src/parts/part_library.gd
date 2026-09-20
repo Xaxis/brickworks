@@ -113,7 +113,14 @@ class BrickColor extends RefCounted:
 ## carry it. Set at start-up: on the web it is the deployment root, or
 ## wherever the deployment says the geometry lives, because the library
 ## is larger than a deployment can hold as files.
-var remote_parts: String = ""
+var remote_parts: String = "":
+	set(value):
+		remote_parts = value
+		if not value.is_empty():
+			_release_waiting()
+
+## Parts asked for before the deployment said where geometry lives.
+var _waiting: PackedStringArray = PackedStringArray()
 
 var parts: Dictionary = {}          ## String id -> PartInfo
 var colors: Dictionary = {}         ## int code -> BrickColor
@@ -282,6 +289,17 @@ func request_mesh(part_id: String) -> bool:
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
 
+	# Nothing may go out before the deployment has said where the
+	# geometry lives. It bit immediately: the bin asks for thumbnails the
+	# moment it opens, those requests beat the probe, and they fell back
+	# to /parts/ next to the app — where the catch-all route answers with
+	# the landing page. HTML, status 200, and the only complaint was
+	# "does not start with LBM1".
+	if OS.has_feature("web") and remote_parts.is_empty():
+		if not _waiting.has(part_id):
+			_waiting.append(part_id)
+		return true
+
 	_fetching[info.mesh_hash] = true
 	var request := HTTPRequest.new()
 	_fetch_host.add_child(request)
@@ -295,6 +313,16 @@ func request_mesh(part_id: String) -> bool:
 		fetch_failed.emit(part_id, "could not start the request")
 		return false
 	return true
+
+
+## Send the requests that arrived before there was anywhere to send them.
+func _release_waiting() -> void:
+	if _waiting.is_empty():
+		return
+	var held: PackedStringArray = _waiting.duplicate()
+	_waiting.clear()
+	for part_id: String in held:
+		request_mesh(part_id)
 
 
 ## Absolute, always. A relative URL is not merely resolved differently

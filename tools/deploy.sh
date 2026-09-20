@@ -122,6 +122,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
+    { "src": "/parts/(.*)", "status": 404,
+      "headers": { "Content-Type": "text/plain" } },
     { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
       "headers": {
@@ -175,8 +177,26 @@ if [ "$do_check" = 1 ]; then
     npx --prefix tools/web playwright install chromium-headless-shell >/dev/null 2>&1 || true
   fi
   mkdir -p shots
-  node tools/web/web.mjs --url="$url" --out=shots/export/deploy --play --reload || {
-    echo "deploy FAILED: the build does not run at $url"; exit 1; }
+  # tools/web/check.mjs, with the arguments it actually takes. This said
+  # web.mjs and passed --play --reload, none of which exist, so the proof
+  # at the end of every deploy was a MODULE_NOT_FOUND printed under a
+  # line reading "deploy FAILED" — a check that could only ever fail is
+  # worth less than no check, because its failure says nothing.
+  # /app, not /. The root is the landing page now, and pointing the
+  # check at it meant waiting two minutes for a canvas that was never
+  # going to appear on a page of prose.
+  node tools/web/check.mjs --url="$url/app" --out=shots/deploy.png \
+      ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"} || {
+    echo "deploy FAILED: the build does not run at $url/app"; exit 1; }
+
+  # The landing page is what most people meet first, so a deploy that
+  # serves the app but not the page is still a broken deploy.
+  landing=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+    ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} "$url/")
+  if [ "$landing" != "200" ]; then
+    echo "deploy FAILED: the landing page answers $landing at $url/"; exit 1
+  fi
+  echo "deploy: landing page ok, app runs"
 fi
 if [ "$prod" = 1 ]; then
   echo "deploy done $url"
