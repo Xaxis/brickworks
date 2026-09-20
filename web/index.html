@@ -220,6 +220,11 @@ th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--li
 th:first-child, td:first-child { text-align: left; }
 thead th { color: var(--ink-faint); font-weight: 500; font-size: 13px; }
 td.ok { color: var(--green); }
+/* A row that is a deliberate difference rather than a match. Quiet,
+   not red: nothing is wrong, and colouring it like a failure would
+   say something untrue about the one line on the page that exists to
+   be candid. */
+td.off { color: var(--ink-faint); }
 @media (prefers-color-scheme: dark) { td.ok { color: #57c97e; } }
 
 /* -- features ------------------------------------------------------- */
@@ -321,13 +326,20 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 				<tr><td>Stud diameter</td><td>4.80 mm</td><td>4.8</td><td class="ok">exact</td></tr>
 				<tr><td>Wall thickness</td><td>1.60 mm</td><td>1.6</td><td class="ok">exact</td></tr>
 				<tr><td>2 × 4 brick</td><td>32.00 × 16.00 mm</td><td>32 × 16</td><td class="ok">exact</td></tr>
+				<tr><td>Stud height</td><td>1.60 mm</td><td>1.8</td><td class="off">a convention</td></tr>
 			</tbody>
 		</table>
 		<p class="note">
-			Sizes are nominal rather than as-moulded: a real 2 × 4 measures
+			Two places this differs from a moulded brick, both on purpose.
+			Sizes are nominal rather than as-moulded — a real 2 × 4 measures
 			31.8 mm, because there is about 0.1 mm of clearance per side so
-			bricks do not jam. Nominal is what makes parts tile exactly on the
-			lattice, and it is what every brick CAD tool uses.
+			bricks do not jam — and nominal is what makes parts tile exactly
+			on the lattice instead of leaving a gap that accumulates across a
+			long wall. And a stud is drawn 1.6 mm tall where LEGO moulds 1.8,
+			which is the library's own convention; every part follows it, so
+			they remain consistent with each other. Run
+			<code>src/dev/dimensions_probe.gd</code> to measure any of this
+			from the geometry that shipped.
 		</p>
 
 		<div class="stats" style="margin-top:26px">
