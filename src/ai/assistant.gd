@@ -158,13 +158,7 @@ func _send() -> void:
 		_stop(false, "gave up after %d turns" % MAX_TURNS)
 		return
 
-	var body: Dictionary = {
-		"model": MODEL,
-		"max_tokens": 16000,
-		"system": _system_prompt(),
-		"messages": _messages,
-		"tools": _tools(),
-	}
+	var body: Dictionary = request_body()
 
 	var headers: PackedStringArray = ["content-type: application/json"]
 	var url: String = endpoint
@@ -172,13 +166,7 @@ func _send() -> void:
 		url = "https://api.anthropic.com/v1/messages"
 		headers.append("x-api-key: " + direct_key)
 		headers.append("anthropic-version: 2023-06-01")
-		body["thinking"] = {"type": "adaptive"}
 	elif account != null:
-		# The conversation id goes only to our own proxy. It is not an
-		# Anthropic field, and sending it on the direct desktop call gets
-		# the whole request refused with "design_id: Extra inputs are not
-		# permitted" — which is how the examples generator found this.
-		body["design_id"] = _design_id
 		# Fetched rather than read, because a design can run for minutes
 		# and the token may be minutes from expiring when it starts.
 		var token: String = await account.access_token()
@@ -194,6 +182,47 @@ func _send() -> void:
 
 	var result: Array = await _http.request_completed
 	_on_response(result)
+
+
+## The request, built where it can be looked at.
+##
+## The two routes do not take the same body and the difference is not
+## cosmetic. design_id names the conversation for our proxy's monthly
+## budget; it is not an Anthropic field, and sending it on the direct
+## call gets the whole request refused with "design_id: Extra inputs are
+## not permitted". That shipped, because every check went through the
+## proxy and nothing exercised the direct route until the examples
+## generator did and failed on all six.
+##
+## Separated from _send so a probe can inspect it without a network
+## call, which is the only way this stays fixed.
+func request_body() -> Dictionary:
+	var body: Dictionary = {
+		"model": MODEL,
+		"max_tokens": 16000,
+		"system": _system_prompt(),
+		"messages": _messages,
+		"tools": _tools(),
+	}
+	if not direct_key.is_empty():
+		# The proxy adds this itself, and adds it the same way for
+		# everyone; here we are the client and have to ask.
+		body["thinking"] = {"type": "adaptive"}
+	elif account != null:
+		body["design_id"] = _design_id
+	return body
+
+
+## Top-level fields Anthropic's Messages API will accept. Anything else
+## on a direct call is refused outright rather than ignored.
+## static var, not const: a PackedStringArray is built by a constructor
+## call, which is not a constant expression, and declaring it const
+## fails in a way that only shows up where it is used.
+static var ANTHROPIC_FIELDS := PackedStringArray([
+	"model", "max_tokens", "messages", "system", "tools", "tool_choice",
+	"thinking", "temperature", "top_p", "top_k", "stop_sequences",
+	"stream", "metadata", "service_tier", "output_config",
+])
 
 
 ## Keep the remaining-designs count honest from the headers the proxy

@@ -90,6 +90,27 @@ func _initialize() -> void:
 	_check("an empty baseplate says so",
 		assistant._describe_world().contains("empty"))
 
+	# The two routes do not take the same body, and getting that wrong
+	# refuses every request on the direct path — which is what happened.
+	assistant.direct_key = "sk-not-a-real-key"
+	assistant.account = null
+	var direct: Dictionary = assistant.request_body()
+	var strays := PackedStringArray()
+	for field: String in direct:
+		if not Assistant.ANTHROPIC_FIELDS.has(field):
+			strays.append(field)
+	_check("the direct call sends only fields Anthropic takes%s"
+		% ("" if strays.is_empty() else " — stray: " + ", ".join(strays)),
+		strays.is_empty())
+	_check("...and asks for thinking itself", direct.has("thinking"))
+
+	assistant.direct_key = ""
+	assistant.account = Account.new()
+	var proxied: Dictionary = assistant.request_body()
+	_check("the proxied call carries the conversation id",
+		proxied.has("design_id"))
+	_check("...and leaves thinking to the proxy", not proxied.has("thinking"))
+
 	print("")
 	print("%d failed" % _failures if _failures
 		else "the assistant reads back exactly what it writes")
