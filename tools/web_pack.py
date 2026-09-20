@@ -112,6 +112,9 @@ def main() -> int:
     parser.add_argument("--budget", type=float, default=48.0,
                         help="megabytes of geometry to stop at")
     parser.add_argument("--out", default=str(WEB))
+    parser.add_argument("--remote-budget", type=float, default=120.0,
+                        help="megabytes of extra geometry to publish for "
+                             "fetching on demand")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
 
@@ -192,9 +195,64 @@ def main() -> int:
         json.dumps(document, separators=(",", ":")))
     shutil.copy2(GENERATED / "colors.json", out / "colors.json")
 
+    _write_remote(out, document, meshes, args.remote_budget)
+
     written = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     print(f"  wrote {out} ({written / 1e6:.1f} MB total)")
     return 0
+
+
+def _write_remote(
+    out: Path, document: dict, packed: set[str], budget_mb: float
+) -> None:
+    """Geometry the app fetches on demand rather than carrying.
+
+    The pack has to be small because everyone waits for it. This set does
+    not: a part is fetched the moment someone picks it, so what matters
+    is that it exists at all. The cap is on the *deployment*, not on the
+    wait — every file here costs upload time on each deploy and nothing
+    at load time.
+
+    Smallest first, which is not arbitrary. The library's size is a long
+    tail: the smallest 20,000 meshes come to 279 MB and the remaining
+    7,000 come to 747 MB, because a 48x48 baseplate is 50,000 triangles.
+    Taking the small ones first buys far more parts per megabyte, and the
+    ones left out are the ones nobody reaches for by accident.
+    """
+    remote = out / "remote"
+    remote.mkdir(parents=True, exist_ok=True)
+
+    sizes: list[tuple[int, str]] = []
+    for part in document["parts"]:
+        mesh = part["mesh"]
+        if mesh in packed:
+            continue
+        source = GENERATED / "parts" / f"{mesh}.lbm"
+        if source.exists():
+            sizes.append((source.stat().st_size, mesh))
+
+    sizes.sort()
+    budget = int(budget_mb * 1_000_000)
+    used = 0
+    taken: set[str] = set()
+    for size, mesh in sizes:
+        if mesh in taken:
+            continue
+        if used + size > budget:
+            break
+        shutil.copy2(GENERATED / "parts" / f"{mesh}.lbm", remote / f"{mesh}.lbm")
+        taken.add(mesh)
+        used += size
+
+    reachable = sum(
+        1 for p in document["parts"] if p["mesh"] in packed or p["mesh"] in taken)
+    for part in document["parts"]:
+        part["reachable"] = part["mesh"] in packed or part["mesh"] in taken
+    (out / "catalogue.json").write_text(
+        json.dumps(document, separators=(",", ":")))
+
+    print(f"  on demand: {len(taken):,} more meshes, {used / 1e6:.0f} MB "
+          f"— {reachable:,} of {len(document['parts']):,} parts placeable")
 
 
 if __name__ == "__main__":

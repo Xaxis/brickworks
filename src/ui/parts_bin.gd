@@ -236,8 +236,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		var info: PartLibrary.PartInfo = library.parts[id]
 		if info.is_redirect():
 			continue
-		if not info.packed:
-			continue  # no geometry in this build; cannot be placed
+		if not info.reachable:
+			continue  # no geometry anywhere in this build
 		if wanted_category != "all":
 			if not info.category.to_lower().begins_with(wanted_category):
 				continue

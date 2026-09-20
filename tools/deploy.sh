@@ -73,11 +73,24 @@ JSON
   echo "deploy: packaged /api/claude"
 fi
 
+# Geometry the app fetches when someone picks a part the build does not
+# carry. Served from /parts/ at the deployment root rather than under
+# /b/<sha>/, because it is the same bytes every deploy and the browser
+# should keep it across them.
+if [ -d assets/web/remote ]; then
+  mkdir -p .vercel/output/static/parts
+  cp assets/web/remote/*.lbm .vercel/output/static/parts/ 2>/dev/null || true
+  count=$(ls -1 .vercel/output/static/parts 2>/dev/null | wc -l | tr -d ' ')
+  echo "deploy: $count parts served on demand"
+fi
+
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/\$1" },
+    { "src": "/parts/(.*\\.lbm)", "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
       "headers": {

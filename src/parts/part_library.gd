@@ -67,6 +67,11 @@ class PartInfo extends RefCounted:
 	## False when this build ships no geometry for the part, which is the
 	## normal case on the web for anything outside the pack.
 	var packed: bool = true
+	## False when the part cannot be had at all in this build — not
+	## shipped and not served. The difference matters: an unpacked part
+	## is a short wait, an unreachable one is a dead end, and only the
+	## second should be hidden.
+	var reachable: bool = true
 	## When this id is only a redirect, the part it was renamed to. 1,160
 	## entries in the library are stubs like "~Moved to 3665": they render
 	## correctly, because each forwards to its target, but they are not
@@ -104,11 +109,22 @@ class BrickColor extends RefCounted:
 		return alpha < 255
 
 
+## Where a part's geometry is fetched from when this build does not
+## carry it. Relative, so it is served from the same origin as the page.
+const REMOTE_PARTS := "parts/"
+
 var parts: Dictionary = {}          ## String id -> PartInfo
 var colors: Dictionary = {}         ## int code -> BrickColor
 var _ordered_ids: PackedStringArray = PackedStringArray()
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
+var _fetching: Dictionary = {}      ## hash -> true, so nothing fetches twice
+var _fetch_host: Node = null
+
+## Emitted when a part fetched from the network is ready to place.
+signal fetched(part_id: String)
+## Emitted when one cannot be had at all.
+signal fetch_failed(part_id: String, reason: String)
 
 ## Emitted once the catalogue is parsed and the library is usable.
 signal loaded(part_count: int)
@@ -156,6 +172,7 @@ func _read_part(entry: Dictionary) -> PartInfo:
 		info.connector_counts = counts
 	info.recolourable = bool(entry.get("recolourable", true))
 	info.packed = bool(entry.get("packed", true))
+	info.reachable = bool(entry.get("reachable", true))
 	info.moved_to = entry.get("moved_to", "")
 	info.unofficial = bool(entry.get("unofficial", false))
 
@@ -211,6 +228,12 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		return _mesh_cache[info.mesh_hash]
 
 	var path: String = _resolve_root() + "parts/" + info.mesh_hash + ".lbm"
+	if not FileAccess.file_exists(path):
+		# Not in this build. Start fetching it; the caller gets null now
+		# and a [signal fetched] shortly.
+		request_mesh(part_id)
+		return null
+
 	var part: Lbm.PartMesh = Lbm.load_part(path)
 	if part == null:
 		if not _missing.has(info.mesh_hash):
@@ -220,6 +243,75 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 
 	_mesh_cache[info.mesh_hash] = part
 	return part
+
+
+## Where HTTPRequest nodes are parented. The library is a RefCounted and
+## has no tree of its own, so whoever owns it lends one.
+func set_fetch_host(host: Node) -> void:
+	_fetch_host = host
+
+
+## True when this build has the part's geometry to hand.
+func is_resident(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	return info != null and _mesh_cache.has(info.mesh_hash)
+
+
+## Ask for a part this build did not ship.
+##
+## The web build carries a working set of a few hundred parts, because
+## the whole library is a gigabyte and nobody waits for that before
+## placing their first brick. Everything else is a request away: the
+## catalogue lists all 29,479 either way, so search and the design
+## assistant see the entire library, and what is missing is bytes rather
+## than knowledge.
+##
+## Returns false when the part cannot be fetched at all. Listen for
+## [signal fetched].
+func request_mesh(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	if info == null:
+		return false
+	if _mesh_cache.has(info.mesh_hash):
+		fetched.emit(part_id)
+		return true
+	if _fetching.has(info.mesh_hash):
+		return true
+	if _fetch_host == null or not _fetch_host.is_inside_tree():
+		return false
+
+	_fetching[info.mesh_hash] = true
+	var request := HTTPRequest.new()
+	_fetch_host.add_child(request)
+	request.request_completed.connect(
+		_on_fetched.bind(request, info.mesh_hash, part_id))
+
+	var url: String = REMOTE_PARTS + info.mesh_hash + ".lbm"
+	if request.request(url) != OK:
+		_fetching.erase(info.mesh_hash)
+		request.queue_free()
+		fetch_failed.emit(part_id, "could not start the request")
+		return false
+	return true
+
+
+func _on_fetched(
+	_result: int, code: int, _headers: PackedStringArray,
+	body: PackedByteArray, request: HTTPRequest, hash_name: String,
+	part_id: String
+) -> void:
+	request.queue_free()
+	_fetching.erase(hash_name)
+
+	if code != 200 or body.is_empty():
+		fetch_failed.emit(part_id, "HTTP %d" % code)
+		return
+	var part: Lbm.PartMesh = Lbm.parse(body, part_id)
+	if part == null:
+		fetch_failed.emit(part_id, "the geometry did not parse")
+		return
+	_mesh_cache[hash_name] = part
+	fetched.emit(part_id)
 
 
 ## Drop cached geometry. The catalogue stays; only vertices go.

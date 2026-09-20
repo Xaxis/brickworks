@@ -188,6 +188,13 @@ static func _argument(prefix: String) -> String:
 ## the scene because they are data-driven — 24,731 parts and 322 colours
 ## are not things to lay out by hand.
 func _build_ui() -> void:
+	# The library has no scene tree of its own, so it borrows this one to
+	# park its HTTP requests on.
+	_library.set_fetch_host(self)
+	_library.fetched.connect(_on_part_fetched)
+	_library.fetch_failed.connect(func(part_id: String, why: String) -> void:
+		push_warning("could not fetch %s: %s" % [part_id, why]))
+
 	_store = ModelStore.new()
 	_store.world = _world
 	_store.library = _library
@@ -324,7 +331,17 @@ func _on_model_changed() -> void:
 
 func _on_part_chosen(part_id: String) -> void:
 	_builder.held_part = part_id
+	# On the web most parts are a request away rather than resident. Ask
+	# for it as soon as it is picked, so it is usually there by the time
+	# the cursor reaches the model.
+	if not _library.is_resident(part_id):
+		_library.request_mesh(part_id)
 	_refresh_preview()
+
+
+func _on_part_fetched(part_id: String) -> void:
+	if _builder.held_part == part_id:
+		_refresh_preview()
 
 
 func _on_color_chosen(color_code: int) -> void:

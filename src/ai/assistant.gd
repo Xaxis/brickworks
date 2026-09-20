@@ -208,6 +208,7 @@ func _on_response(result: Array) -> void:
 	progress.emit(report["summary"])
 
 	if report["ok"]:
+		await _ensure_parts(_pending)
 		_apply(_pending)
 		_stop(true, report["summary"])
 		return
@@ -264,7 +265,7 @@ func _search(query: String, limit: int) -> String:
 	var found: Array[PartLibrary.PartInfo] = library.search(query, maxi(1, limit))
 	var usable: Array[PartLibrary.PartInfo] = []
 	for info: PartLibrary.PartInfo in found:
-		if info.is_redirect() or not info.packed:
+		if info.is_redirect() or not info.reachable:
 			continue
 		usable.append(info)
 
@@ -440,6 +441,33 @@ func _transform(placement: Placement, _part: Lbm.PartMesh) -> Transform3D:
 
 
 # -- applying ------------------------------------------------------------
+
+
+## Make sure every part a design uses is to hand before placing any of
+## it. On the web most are fetched rather than shipped, and a model that
+## lands half-built because the rest was still downloading is worse than
+## one that takes a moment longer.
+func _ensure_parts(model: Model) -> void:
+	var wanted: Dictionary = {}
+	for placement: Placement in model.placements:
+		if not library.is_resident(placement.part):
+			wanted[placement.part] = true
+	if wanted.is_empty():
+		return
+
+	progress.emit("fetching %d part%s" % [
+		wanted.size(), "" if wanted.size() == 1 else "s"])
+	for part_id: String in wanted:
+		library.request_mesh(part_id)
+
+	# Wait for them, but not forever: a part that never arrives should
+	# cost a few seconds, not the whole design.
+	var deadline: int = Time.get_ticks_msec() + 20000
+	while not wanted.is_empty() and Time.get_ticks_msec() < deadline:
+		await Engine.get_main_loop().process_frame
+		for part_id: String in wanted.keys():
+			if library.is_resident(part_id):
+				wanted.erase(part_id)
 
 
 func _apply(model: Model) -> void:
