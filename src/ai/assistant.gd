@@ -105,6 +105,12 @@ func design(brief: String) -> void:
 	_start(brief)
 
 
+## Whether there is a conversation to carry on, as against a fresh
+## start. The panel asks before deciding which of the two below to call.
+func has_conversation() -> bool:
+	return not _messages.is_empty()
+
+
 ## Ask for a change to what is already built, keeping the conversation.
 func revise(instruction: String) -> void:
 	if _messages.is_empty():
@@ -323,11 +329,117 @@ func _run_tool(block: Dictionary) -> String:
 			progress.emit("checked %d bricks: %s" % [
 				trial.placements.size(), report["summary"]])
 			return report["feedback"]
+		"look_at_model":
+			progress.emit("looking at what is already built")
+			return _describe_world()
 		"submit_design":
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks" % _pending.placements.size())
 			return "Received. Checking it now."
 	return "No tool called %s." % name
+
+
+## What is on the baseplate, in the coordinates the model speaks.
+##
+## Without this the assistant is blind to everything it did not place
+## this conversation, so "add a chimney to this house" had nothing to
+## add a chimney to, and "make the roof blue" could not find a roof. It
+## would cheerfully build a second house beside the first.
+##
+## Positions are inverted back out of the transform rather than kept
+## alongside it. Keeping a second copy of where every brick is would be
+## two sources of truth for one fact, and the one that drifts is always
+## the one nobody is looking at.
+func _describe_world() -> String:
+	if world == null or world.brick_count() == 0:
+		return "The baseplate is empty. Nothing is built yet."
+
+	var mine: Dictionary = {}
+	for brick_id: int in _placed_ids:
+		mine[brick_id] = true
+
+	var rows := PackedStringArray()
+	var tally: Dictionary = {}
+	var low := Vector3i(999999, 999999, 999999)
+	var high := Vector3i(-999999, -999999, -999999)
+	var counted: int = 0
+
+	for brick: BrickWorld.Brick in world.bricks():
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		var at: Vector3i = _to_studs(brick, info)
+		low = Vector3i(mini(low.x, at.x), mini(low.y, at.y), mini(low.z, at.z))
+		high = Vector3i(maxi(high.x, at.x), maxi(high.y, at.y), maxi(high.z, at.z))
+
+		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
+		tally[key] = int(tally.get(key, 0)) + 1
+		counted += 1
+
+		# Capped. A four-hundred brick model listed in full is most of a
+		# context window spent on something the model mostly needs the
+		# shape of, and the tally below carries what the rows drop.
+		if rows.size() < WORLD_ROWS:
+			rows.append("  %-9s c%-3d x=%-4d y=%-4d z=%-4d rot=%d%s" % [
+				brick.part_id, brick.color_code, at.x, at.y, at.z,
+				_quarter_turns(brick.transform.basis),
+				"" if mine.has(brick.id) else "   (placed by hand)"])
+
+	var lines := PackedStringArray()
+	lines.append("%d parts are on the baseplate." % counted)
+	lines.append("They span x %d..%d, z %d..%d studs, and stand y %d..%d plates."
+		% [low.x, high.x, low.z, high.z, low.y, high.y])
+	lines.append("")
+	lines.append("Parts and colours, most first:")
+	var keys: Array = tally.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool:
+		return int(tally[a]) > int(tally[b]))
+	for key: String in keys:
+		var bits: PackedStringArray = key.split(":")
+		lines.append("  %d x %s in colour %s" % [int(tally[key]), bits[0], bits[1]])
+
+	lines.append("")
+	if counted > rows.size():
+		lines.append("Where the first %d of them are (of %d):"
+			% [rows.size(), counted])
+	else:
+		lines.append("Where they are:")
+	lines.append_array(rows)
+	if counted > rows.size():
+		lines.append("  … %d more, not listed." % (counted - rows.size()))
+	return "\n".join(lines)
+
+
+## As many rows as are worth spending. Enough to reason about a typical
+## model in full, few enough that a large one does not crowd out the
+## conversation that asked about it.
+const WORLD_ROWS := 220
+
+
+## A brick's placement, back in studs and plates. The inverse of
+## [method _transform], and it has to stay that way — a description in
+## coordinates the model cannot act on is worse than none.
+func _to_studs(brick: BrickWorld.Brick, info: PartLibrary.PartInfo) -> Vector3i:
+	var rot: int = _quarter_turns(brick.transform.basis)
+	var footprint: Vector2i = info.footprint_studs()
+	var across: int = footprint.y if rot % 2 == 1 else footprint.x
+	var deep: int = footprint.x if rot % 2 == 1 else footprint.y
+	var origin: Vector3 = brick.transform.origin
+	return Vector3i(
+		int(round(origin.x / STUD - across * 0.5)),
+		int(round(origin.y / PLATE)) - _height_plates(info),
+		int(round(origin.z / STUD - deep * 0.5)))
+
+
+## Quarter turns about Y, recovered from the basis.
+##
+## Measured off the X axis, not the forward one. Vector3.FORWARD is
+## (0, 0, -1), so an unrotated basis gives atan2(0, -1) = pi and reads
+## back as a half turn — which is a brick described to the assistant as
+## facing the opposite way from the one it is facing.
+static func _quarter_turns(basis: Basis) -> int:
+	var right: Vector3 = basis * Vector3.RIGHT
+	return posmod(int(round(atan2(-right.z, right.x) / (PI * 0.5))), 4)
 
 
 func _search(query: String, limit: int) -> String:
@@ -604,6 +716,17 @@ HOW TO WORK
 Think about the shape first, then lay it out layer by layer from the \
 ground up.
 
+You cannot see the baseplate. If the request is about what is already \
+there — adding to it, changing part of it, making it taller, matching \
+its colours — call look_at_model first. Guessing what is there and \
+building beside it is the failure this prevents, and it is not \
+recoverable: submitting replaces everything you placed, so a design \
+that ignored the existing model will have thrown it away.
+
+When you revise, submit the WHOLE model, including the parts you are \
+keeping. Anything the person placed by hand is left alone; anything you \
+placed and leave out of the new submission is removed.
+
 Always use search_parts before using a part number you are not certain \
 of. A guessed number is not a part and the design will be rejected.
 
@@ -677,6 +800,20 @@ func _tools() -> Array:
 				"type": "object",
 				"properties": {"bricks": {"type": "array", "items": brick}},
 				"required": ["bricks"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "look_at_model",
+			"description": ("See what is already on the baseplate, in the "
+				+ "same stud and plate coordinates you use. Call this "
+				+ "first whenever the request is about what is there — "
+				+ "adding to it, changing part of it, matching its "
+				+ "colours or its height. You cannot see the model "
+				+ "otherwise."),
+			"input_schema": {
+				"type": "object",
+				"properties": {},
 				"additionalProperties": false,
 			},
 		},

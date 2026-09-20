@@ -247,10 +247,14 @@ func _on_send() -> void:
 	_send.text = "Working…"
 
 	# A first request designs; a later one revises what is already there.
-	if _log.get_child_count() <= 2:
-		assistant.design(text)
-	else:
+	# Asked of the assistant rather than counted off the transcript: the
+	# old test was whether the log had more than two children, which was
+	# true only by an accident of how many rows a message adds, and the
+	# way it fails is to throw the conversation away mid-build.
+	if assistant.has_conversation():
 		assistant.revise(text)
+	else:
+		assistant.design(text)
 
 
 func _on_clear() -> void:
