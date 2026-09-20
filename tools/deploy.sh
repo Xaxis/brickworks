@@ -109,4 +109,9 @@ if [ "$do_check" = 1 ]; then
   node tools/web/web.mjs --url="$url" --out=shots/export/deploy --play --reload || {
     echo "deploy FAILED: the build does not run at $url"; exit 1; }
 fi
-echo "deploy done $url"
+if [ "$prod" = 1 ]; then
+  echo "deploy done $url"
+  echo "             https://brickworks.diy"
+else
+  echo "deploy done $url"
+fi

@@ -5,7 +5,7 @@ modelled, at true size, assembled under real connection rules, with a
 design assistant that produces buildable models rather than plausible
 pictures of them.
 
-**[Try it in a browser →](https://brickworks-five.vercel.app)**
+**[brickworks.diy](https://brickworks.diy)**
 
 ---
 

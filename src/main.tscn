@@ -74,6 +74,7 @@ script = ExtResource("4")
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="Title" type="Label" parent="HUD"]
+visible = false
 offset_left = 16.0
 offset_top = 12.0
 offset_right = 900.0
@@ -84,6 +85,7 @@ theme_override_constants/outline_size = 4
 text = "loading"
 
 [node name="Status" type="Label" parent="HUD"]
+visible = false
 offset_left = 16.0
 offset_top = 36.0
 offset_right = 900.0
@@ -94,6 +96,7 @@ theme_override_constants/outline_size = 4
 text = ""
 
 [node name="Help" type="Label" parent="HUD"]
+visible = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0

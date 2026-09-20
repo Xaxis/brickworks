@@ -16,6 +16,14 @@ const SAMPLE_MODEL := "res://models/car.ldr"
 @onready var _status: Label = $HUD/Status
 @onready var _title: Label = $HUD/Title
 
+var _catalogue_ms: int = 0
+var _counts: Label
+var _keys: Label
+var _bin: PartsBin
+var _chat: ChatPanel
+var _thumbnails: PartThumbnails
+var _assistant: Assistant
+
 var _library: PartLibrary
 
 
@@ -26,12 +34,13 @@ func _ready() -> void:
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
 		return
-	var catalogue_ms: int = Time.get_ticks_msec() - started
+	_catalogue_ms = Time.get_ticks_msec() - started
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
 	_builder.world = _world
 	_builder.library = _library
+	_build_ui()
 
 	var stress: String = _argument("--stress")
 	var wanted: String = _argument("--model")
@@ -48,8 +57,6 @@ func _ready() -> void:
 			placed = _build_demo()
 	_lay_baseplate()
 
-	_title.text = "%d parts catalogued, %d colours — %d ms" % [
-		_library.parts.size(), _library.colors.size(), catalogue_ms]
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
 	# real before framing them.
@@ -60,6 +67,10 @@ func _ready() -> void:
 	if not autobuild.is_empty():
 		_autobuild(autobuild.to_int())
 
+	var ask: String = _argument("--ask")
+	if not ask.is_empty():
+		await _ask(ask)
+
 	var bench: String = _argument("--bench")
 	if not bench.is_empty():
 		await _benchmark(bench.to_int())
@@ -67,6 +78,34 @@ func _ready() -> void:
 	var shot: String = _argument("--shot")
 	if not shot.is_empty():
 		await _capture(shot)
+
+
+## Run one design through the assistant and report, for checking the
+## whole loop without a person having to type into the panel.
+func _ask(brief: String) -> void:
+	# Start from a bare baseplate, so what appears is what was asked for
+	# and not a sample model with something new beside it.
+	_world.clear()
+	_builder.lattice.clear()
+	_lay_baseplate()
+
+	var started: int = Time.get_ticks_msec()
+	_assistant.progress.connect(func(note: String) -> void:
+		print("  [%5.1fs] %s" % [(Time.get_ticks_msec() - started) / 1000.0, note]))
+	_assistant.said.connect(func(text: String) -> void:
+		print("  said: %s" % text.substr(0, 300)))
+
+	_assistant.design(brief)
+	var outcome: Array = await _assistant.finished
+	print("ask ok=%s bricks=%d  %s  (%.0fs)" % [
+		outcome[0], _assistant._placed_ids.size(), outcome[1],
+		(Time.get_ticks_msec() - started) / 1000.0])
+	for brick_id: int in _assistant._placed_ids:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick:
+			print("   %s at %v" % [brick.part_id, brick.transform.origin])
+	_camera.frame(_world.model_bounds())
+	await get_tree().process_frame
 
 
 ## Measure a settled frame rate and print it, then quit.
@@ -124,6 +163,114 @@ static func _argument(prefix: String) -> String:
 		if argument.begins_with(prefix + "="):
 			return argument.substr(prefix.length() + 1)
 	return ""
+
+
+## The panels either side of the viewport: the parts bin on the left, the
+## design assistant on the right. Both are built in code rather than in
+## the scene because they are data-driven — 24,731 parts and 322 colours
+## are not things to lay out by hand.
+func _build_ui() -> void:
+	_thumbnails = PartThumbnails.new()
+	_thumbnails.library = _library
+	add_child(_thumbnails)
+
+	_assistant = Assistant.new()
+	_assistant.library = _library
+	_assistant.world = _world
+	_assistant.builder = _builder
+	# On desktop there is no proxy in front of us, so talk to the model
+	# directly when a key is around. The web build uses the same-origin
+	# function, which holds the key server-side.
+	if not OS.has_feature("web"):
+		var key: String = _anthropic_key()
+		if not key.is_empty():
+			_assistant.direct_key = key
+	add_child(_assistant)
+
+	var layout := HBoxContainer.new()
+	layout.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layout.add_theme_constant_override("separation", 0)
+	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(layout)
+
+	_bin = PartsBin.new()
+	_bin.library = _library
+	_bin.thumbnails = _thumbnails
+	_bin.part_chosen.connect(_on_part_chosen)
+	_bin.color_chosen.connect(_on_color_chosen)
+	layout.add_child(_bin)
+	_thumbnails.ready_for.connect(_bin.on_thumbnail)
+
+	# The middle column is the viewport. Nothing is drawn into it, but the
+	# counters and the key list live at its top and bottom so they cannot
+	# end up underneath a panel.
+	var middle := VBoxContainer.new()
+	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_theme_constant_override("separation", 0)
+	layout.add_child(middle)
+
+	_counts = _viewport_label(12)
+	_counts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	middle.add_child(_counts)
+
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(spacer)
+
+	_keys = _viewport_label(11)
+	_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_keys.modulate = Color(1, 1, 1, 0.5)
+	_keys.text = ("click place  ·  right-click remove  ·  R rotate  ·  "
+		+ "/ search  ·  alt-drag orbit  ·  shift-drag pan  ·  "
+		+ "wheel zoom  ·  F frame  ·  ctrl-Z undo")
+	middle.add_child(_keys)
+
+	_chat = ChatPanel.new()
+	layout.add_child(_chat)
+	_chat.bind(_assistant)
+
+	_bin.populate()
+	_builder.held_color = _bin.selected_color()
+
+
+## A label that reads over the 3D behind it, whatever colour that is.
+static func _viewport_label(size: int) -> Label:
+	var label := Label.new()
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
+	label.add_theme_constant_override("outline_size", 4)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+## The key for a direct desktop call, from the environment or a .env
+## beside the project. Never compiled in, and never used on the web.
+static func _anthropic_key() -> String:
+	var from_env: String = OS.get_environment("ANTHROPIC_API_KEY")
+	if not from_env.is_empty():
+		return from_env
+	var file: FileAccess = FileAccess.open("res://.env", FileAccess.READ)
+	if file == null:
+		return ""
+	while not file.eof_reached():
+		var line: String = file.get_line().strip_edges()
+		for prefix: String in ["ANTHROPIC_API_KEY=", "AI__ANTHROPIC_API_KEY="]:
+			if line.begins_with(prefix):
+				return line.substr(prefix.length()).strip_edges().lstrip("\"'").rstrip("\"'")
+	return ""
+
+
+func _on_part_chosen(part_id: String) -> void:
+	_builder.held_part = part_id
+	_refresh_preview()
+
+
+func _on_color_chosen(color_code: int) -> void:
+	_builder.held_color = color_code
+	_refresh_preview()
 
 
 ## Open an LDraw model and place every part of it. Returns how many landed.
@@ -294,17 +441,20 @@ func _lay_baseplate() -> void:
 
 
 func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> void:
-	_status.text = "%s bricks · %d batches · %s triangles" % [
-		_comma(brick_count), batch_count, _comma(triangle_count)]
+	if _counts == null:
+		return
+	_counts.text = "%s bricks · %d batches · %s triangles · %s parts in %d ms" % [
+		_comma(brick_count), batch_count, _comma(triangle_count),
+		_comma(_library.parts.size()), _catalogue_ms]
 
 
 func _process(_delta: float) -> void:
-	if _status == null:
+	if _counts == null:
 		return
 	# Frame time belongs beside the counts: the whole point of batching is
 	# that the counts can grow without it moving.
 	var fps: float = Engine.get_frames_per_second()
-	_status.text = _status.text.split(" · fps")[0] + " · fps %.0f" % fps
+	_counts.text = _counts.text.split(" · fps")[0] + " · fps %.0f" % fps
 
 
 ## The palette the number keys reach for: a readable spread rather than
@@ -323,6 +473,9 @@ var _color_index: int = 0
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
+		if _over_panel():
+			_builder.hide_preview()
+			return
 		_refresh_preview()
 		return
 
@@ -332,12 +485,27 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not button.pressed or button.alt_pressed or button.shift_pressed:
 		return
 
+	if _over_panel():
+		return
 	if button.button_index == MOUSE_BUTTON_LEFT:
 		_builder.place()
 		_refresh_preview()
 	elif button.button_index == MOUSE_BUTTON_RIGHT:
 		_builder.remove_hovered()
 		_refresh_preview()
+
+
+## True when the cursor is over a panel rather than the model.
+##
+## Without this, clicking a part in the bin also drops a brick behind it,
+## and moving the mouse across the assistant leaves a ghost following the
+## cursor over the text.
+func _over_panel() -> bool:
+	var mouse: Vector2 = get_viewport().get_mouse_position()
+	for panel: Control in [_bin, _chat]:
+		if panel != null and panel.get_global_rect().has_point(mouse):
+			return true
+	return false
 
 
 func _refresh_preview() -> void:
@@ -349,6 +517,11 @@ func _refresh_preview() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.is_pressed():
+		return
+	# A single-letter shortcut must never fire while someone is typing a
+	# part name or a brief.
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit:
 		return
 	var key: InputEventKey = event
 	match key.keycode:
@@ -380,7 +553,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				else:
 					_builder.undo()
 				_refresh_preview()
+		KEY_SLASH:
+			if _bin:
+				_bin.focus_search()
 		KEY_ESCAPE:
+			if OS.has_feature("web"):
+				return
 			get_tree().quit()
 
 

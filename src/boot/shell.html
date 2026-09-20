@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<!--
+  The page Brickworks loads behind.
+
+  Godot's default shell shows a spinner and the engine's name, which is
+  the wrong thing to look at for the ten to thirty seconds a 10 MB
+  WebAssembly build takes to arrive. So the wait shows the thing the app
+  is for: a wall lays itself, course by course, and the number of bricks
+  standing *is* the progress bar. Nothing is faked — each brick appears
+  when the download crosses its share.
+
+  It has to work before any of the engine exists, so it is one file with
+  no dependencies, no fonts to fetch and no images. The bricks are drawn
+  as CSS boxes in real LEGO colours.
+
+  The placeholders Godot substitutes at export time are the contract:
+  $GODOT_PROJECT_NAME, $GODOT_HEAD_INCLUDE, $GODOT_URL, $GODOT_CONFIG,
+  $GODOT_THREADS_ENABLED. Do not rename them.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>$GODOT_PROJECT_NAME</title>
+<style>
+:root {
+	--backdrop: #9ea0a6;
+	--backdrop-deep: #7e8188;
+	--ink: #1b2024;
+	--ink-soft: rgba(27, 32, 36, 0.62);
+	--ink-faint: rgba(27, 32, 36, 0.4);
+	--baseplate: #1d4a33;
+	--baseplate-edge: #163a28;
+	--error: #8c1d18;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--backdrop: #24272c;
+		--backdrop-deep: #15181c;
+		--ink: #e8eaee;
+		--ink-soft: rgba(232, 234, 238, 0.66);
+		--ink-faint: rgba(232, 234, 238, 0.4);
+		--error: #ff9a93;
+	}
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+	margin: 0;
+	height: 100%;
+	background: var(--backdrop);
+	color: var(--ink);
+	font: 400 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+	overscroll-behavior: none;
+}
+
+body {
+	display: grid;
+	place-items: center;
+	background: radial-gradient(
+		120% 80% at 50% 18%, var(--backdrop) 0%, var(--backdrop-deep) 100%);
+}
+
+/* The canvas fills the window once the engine takes over. */
+#canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	outline: none;
+	/* Godot draws here; until then the boot panel sits on top. */
+	position: fixed;
+	inset: 0;
+	touch-action: none;
+}
+#canvas:focus { outline: none; }
+
+#boot {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	grid-template-rows: 1fr auto 1fr;
+	justify-items: center;
+	padding: 24px 16px;
+	gap: 20px;
+	background: inherit;
+	transition: opacity 520ms ease 140ms, visibility 0s linear 660ms;
+	z-index: 2;
+}
+#boot.done { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.brand {
+	align-self: end;
+	text-align: center;
+}
+.wordmark {
+	margin: 0;
+	font-size: clamp(30px, 7vw, 46px);
+	font-weight: 640;
+	letter-spacing: -0.022em;
+}
+.tagline {
+	margin: 8px 0 0;
+	font-size: clamp(13px, 2.4vw, 15px);
+	color: var(--ink-soft);
+	max-width: 34ch;
+	margin-inline: auto;
+	text-wrap: balance;
+}
+
+/* -- the wall ------------------------------------------------------- */
+
+.build { display: grid; justify-items: center; gap: 14px; }
+
+#wall {
+	position: relative;
+	width: min(420px, 86vw);
+	/* Height is set from the course count so the aspect never jumps. */
+	aspect-ratio: 420 / 172;
+}
+
+.brick {
+	position: absolute;
+	border-radius: 2px;
+	/* Bricks arrive by dropping the last few millimetres into place,
+	   which is what laying one actually looks like. */
+	opacity: 0;
+	transform: translateY(-14px);
+	transition: opacity 180ms ease, transform 260ms cubic-bezier(.22,1.2,.4,1);
+	box-shadow:
+		inset 0 -2px 0 rgba(0, 0, 0, 0.22),
+		inset 0 1px 0 rgba(255, 255, 255, 0.16),
+		0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.brick.laid { opacity: 1; transform: translateY(0); }
+
+/* Studs, drawn as a repeating radial so a brick of any width gets the
+   right number without markup per stud. */
+.brick::before {
+	content: "";
+	position: absolute;
+	left: 0; right: 0;
+	top: -3px;
+	height: 4px;
+	background-image: radial-gradient(
+		circle at var(--stud-x, 12px) 100%,
+		currentColor 0 3.1px, transparent 3.2px);
+	background-size: var(--stud-pitch, 24px) 100%;
+	background-repeat: repeat-x;
+	filter: brightness(1.06);
+}
+
+.baseplate {
+	position: absolute;
+	left: -2.5%;
+	right: -2.5%;
+	bottom: -10px;
+	height: 12px;
+	border-radius: 2px;
+	background: var(--baseplate);
+	box-shadow:
+		inset 0 -3px 0 var(--baseplate-edge),
+		inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* -- status --------------------------------------------------------- */
+
+.status {
+	display: grid;
+	justify-items: center;
+	gap: 6px;
+	min-height: 44px;
+	text-align: center;
+}
+.count {
+	font-variant-numeric: tabular-nums;
+	font-size: 14px;
+	color: var(--ink-soft);
+}
+.count strong { font-weight: 600; color: var(--ink); }
+.note { font-size: 13px; color: var(--ink-faint); max-width: 46ch; }
+.note.bad { color: var(--error); max-width: 60ch; }
+
+.legal {
+	align-self: end;
+	font-size: 11.5px;
+	line-height: 1.6;
+	color: var(--ink-faint);
+	text-align: center;
+	max-width: 62ch;
+}
+.legal a { color: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+	.brick { transition: opacity 120ms linear; transform: none; }
+	.brick.laid { transform: none; }
+	#boot { transition: opacity 200ms linear, visibility 0s linear 200ms; }
+}
+</style>
+$GODOT_HEAD_INCLUDE
+</head>
+<body>
+<canvas id="canvas" tabindex="0">
+	Your browser does not support the canvas element.
+</canvas>
+
+<div id="boot">
+	<div class="brand">
+		<h1 class="wordmark">Brickworks</h1>
+		<p class="tagline">Every brick, at the size it really is.</p>
+	</div>
+
+	<div class="build">
+		<div id="wall" role="img" aria-label="A wall being built as the app loads">
+			<div class="baseplate"></div>
+		</div>
+		<div class="status">
+			<div class="count"><strong id="laid">0</strong> of <span id="total">0</span> bricks</div>
+			<div class="note" id="note">Fetching parts…</div>
+		</div>
+	</div>
+
+	<p class="legal">
+		Part geometry from the LDraw™ Parts Library, licensed
+		<a href="https://creativecommons.org/licenses/by/4.0/">CC&nbsp;BY&nbsp;4.0</a>.
+		LEGO® is a trademark of the LEGO Group of companies, which does not
+		sponsor, authorize or endorse this site.
+	</p>
+</div>
+
+<script src="$GODOT_URL"></script>
+<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+
+(function () {
+	"use strict";
+
+	// Real LEGO colours, straight from LDConfig: red, yellow, green, blue,
+	// orange, dark azure, white, light bluish grey.
+	const PALETTE = [
+		"#b40000", "#f2cd37", "#00852b", "#1e5aa8",
+		"#fe8a18", "#078bc9", "#f4f4f4", "#a0a5a9",
+	];
+
+	const COURSES = 8;
+	const PITCH = 2;          // studs per unit of brick width
+	const COURSE_STUDS = 16;  // studs across the wall
+
+	const wall = document.getElementById("wall");
+	const laidLabel = document.getElementById("laid");
+	const totalLabel = document.getElementById("total");
+	const note = document.getElementById("note");
+	const boot = document.getElementById("boot");
+
+	// Lay out a bonded wall: alternate courses are offset by one brick's
+	// half-length, so the joints stagger the way a real wall's do. Widths
+	// vary a little so it does not read as a grid.
+	const bricks = [];
+	const WIDTHS = [4, 2, 4, 6, 2, 4];
+	let seed = 7;
+	const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+	for (let course = 0; course < COURSES; course++) {
+		let stud = course % 2 === 0 ? 0 : -2;
+		let index = 0;
+		while (stud < COURSE_STUDS) {
+			let width = WIDTHS[(course * 3 + index) % WIDTHS.length];
+			if (stud + width > COURSE_STUDS) width = COURSE_STUDS - stud;
+			if (width >= 2) {
+				bricks.push({
+					course,
+					stud: Math.max(0, stud),
+					width: stud < 0 ? width + stud : width,
+					color: PALETTE[Math.floor(rand() * PALETTE.length)],
+				});
+			}
+			stud += width;
+			index++;
+		}
+	}
+
+	// Bottom course first, so the wall grows upward as bytes arrive.
+	bricks.sort((a, b) => a.course - b.course || a.stud - b.stud);
+
+	const COURSE_HEIGHT = 100 / COURSES;
+	const elements = bricks.map((brick) => {
+		const el = document.createElement("div");
+		el.className = "brick";
+		el.style.color = brick.color;
+		el.style.background = brick.color;
+		el.style.left = (brick.stud / COURSE_STUDS) * 100 + "%";
+		el.style.width = (brick.width / COURSE_STUDS) * 100 + "%";
+		el.style.bottom = brick.course * COURSE_HEIGHT + "%";
+		el.style.height = COURSE_HEIGHT - 1.5 + "%";
+		// Stud spacing in the brick's own width, so every brick gets the
+		// right count whatever its size.
+		const pitch = 100 / brick.width;
+		el.style.setProperty("--stud-pitch", pitch + "%");
+		el.style.setProperty("--stud-x", pitch / 2 + "%");
+		wall.appendChild(el);
+		return el;
+	});
+
+	totalLabel.textContent = String(bricks.length);
+
+	let shown = 0;
+	function render(fraction) {
+		const target = Math.round(Math.max(0, Math.min(1, fraction)) * bricks.length);
+		// Only ever lay more, never unlay: progress that goes backwards
+		// (it can, between the wasm and the pack) should not demolish.
+		for (; shown < target; shown++) elements[shown].classList.add("laid");
+		laidLabel.textContent = String(shown);
+	}
+
+	// The engine reports the wasm and pack download; the rest of the bar is
+	// the engine starting and the catalogue parsing, which report nothing.
+	// Creeping the last slice keeps the wall moving instead of stalling at
+	// a number, and it is capped so it can never claim to be finished.
+	const DOWNLOAD_SHARE = 0.86;
+	let downloaded = 0;
+	let creep = 0;
+	let running = true;
+
+	(function tick() {
+		if (!running) return;
+		if (downloaded >= DOWNLOAD_SHARE) {
+			creep = Math.min(1 - DOWNLOAD_SHARE, creep + (1 - DOWNLOAD_SHARE) * 0.012);
+		}
+		render(downloaded + creep);
+		requestAnimationFrame(tick);
+	})();
+
+	function say(text, bad) {
+		note.textContent = text;
+		note.classList.toggle("bad", Boolean(bad));
+	}
+
+	function fail(text) {
+		running = false;
+		say(text, true);
+		laidLabel.textContent = String(shown);
+	}
+
+	// Godot passes anything after "--" to the project, which is how the
+	// app takes --model= and friends. Carry the query string through so a
+	// link can open a particular model.
+	const query = new URLSearchParams(location.search);
+	const args = [];
+	for (const [key, value] of query) {
+		args.push(value === "" ? "--" + key : "--" + key + "=" + value);
+	}
+	if (args.length) GODOT_CONFIG.args = ["--", ...args];
+
+	GODOT_CONFIG.canvas = document.getElementById("canvas");
+	GODOT_CONFIG.onPrintError = function (...parts) {
+		console.error(...parts);
+	};
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	if (missing.length) {
+		let message = "This browser is missing: " + missing.join(", ") + ".";
+		if (GODOT_THREADS_ENABLED) {
+			message += " Threads need the page served with " +
+				"Cross-Origin-Opener-Policy: same-origin and " +
+				"Cross-Origin-Embedder-Policy: require-corp.";
+		}
+		fail(message);
+		return;
+	}
+
+	say("Fetching parts…");
+
+	const engine = new Engine(GODOT_CONFIG);
+	engine.startGame({
+		onProgress: function (current, total) {
+			if (total > 0) {
+				downloaded = Math.min(1, current / total) * DOWNLOAD_SHARE;
+				if (downloaded >= DOWNLOAD_SHARE) say("Sorting the bin…");
+			}
+		},
+	}).then(function () {
+		running = false;
+		downloaded = 1;
+		creep = 0;
+		render(1);
+		say("Ready");
+		boot.classList.add("done");
+		// The canvas wants focus or the first keystroke goes nowhere.
+		setTimeout(function () { GODOT_CONFIG.canvas.focus(); }, 700);
+	}, function (error) {
+		fail(String(error));
+		console.error(error);
+	});
+})();
+</script>
+</body>
+</html>

@@ -26,6 +26,13 @@ uniform float cavity_strength : hint_range(0.0, 1.0) = 0.35;
 // a brick is the same colour on the desktop and on the web.
 uniform bool linearise = true;
 
+// A colour supplied directly, for the times a part is drawn as a single
+// MeshInstance rather than through a MultiMesh — the parts bin previews.
+// There is no instance colour on that path, and COLOR would fall back to
+// the vertex colour attribute, which these meshes do not carry: the part
+// would render black. A negative red means "not set, use COLOR".
+uniform vec4 tint_override = vec4(-1.0, 0.0, 0.0, 1.0);
+
 varying vec3 instance_color;
 varying vec3 view_normal;
 
@@ -40,7 +47,8 @@ vec3 srgb_to_linear(vec3 c) {
 }
 
 void vertex() {
-	instance_color = linearise ? srgb_to_linear(COLOR.rgb) : COLOR.rgb;
+	vec3 source = tint_override.r >= 0.0 ? tint_override.rgb : COLOR.rgb;
+	instance_color = linearise ? srgb_to_linear(source) : source;
 	view_normal = NORMAL;
 }
 
@@ -78,8 +86,9 @@ void fragment() {
 	// palette's own ALPHA value for the colour the part is placed in.
 	// Edge-on the sheet transmits less, the way real glazing does, so the
 	// silhouette of a windscreen reads instead of vanishing.
+	float base_alpha = tint_override.r >= 0.0 ? tint_override.a : COLOR.a;
 	float edge = pow(1.0 - facing, 3.0);
-	ALPHA = clamp(COLOR.a + edge * (1.0 - COLOR.a) * 0.8, 0.0, 1.0);
+	ALPHA = clamp(base_alpha + edge * (1.0 - base_alpha) * 0.8, 0.0, 1.0);
 	ROUGHNESS = base_roughness * 0.55;
 	// Light that makes it through picks up the tint on the way.
 	BACKLIGHT = instance_color * 0.35;

@@ -14,11 +14,15 @@ extends RefCounted
 
 ## Where the assets live. The full library is 875 MB of geometry, which
 ## is fine to ship in a desktop binary and out of the question over the
-## wire, so the web build carries a curated pack instead: every part is
-## still in the catalogue and searchable, and the ones with geometry are
-## the ones you can place. Whichever is present wins, web pack first.
-const ASSET_ROOTS: Array[String] = [
-	"res://assets/web/", "res://assets/generated/"]
+## wire, so the web build carries a curated pack of 881 parts instead.
+##
+## Which one wins depends on the build, and getting that backwards is
+## expensive: preferring the pack everywhere meant the desktop app — with
+## the whole library sitting on disk beside it — offered 881 parts, and
+## the design assistant noticed before I did, reporting that "search is
+## returning a thin slice of the catalogue".
+const FULL_ROOT := "res://assets/generated/"
+const PACK_ROOT := "res://assets/web/"
 
 var _root: String = ""
 
@@ -28,11 +32,20 @@ var _root: String = ""
 func _resolve_root() -> String:
 	if not _root.is_empty():
 		return _root
-	for candidate: String in ASSET_ROOTS:
+	# The full library first everywhere it exists; the pack is what the
+	# web build ships and the only thing it has.
+	# Written out rather than as a ternary: a conditional array literal is
+	# untyped, and assigning it to Array[String] is an error at runtime.
+	var order: Array[String] = []
+	if OS.has_feature("web"):
+		order = [PACK_ROOT, FULL_ROOT]
+	else:
+		order = [FULL_ROOT, PACK_ROOT]
+	for candidate: String in order:
 		if FileAccess.file_exists(candidate + "catalogue.json"):
 			_root = candidate
 			return _root
-	_root = ASSET_ROOTS[ASSET_ROOTS.size() - 1]
+	_root = FULL_ROOT
 	return _root
 
 
@@ -233,11 +246,13 @@ func color(code: int) -> BrickColor:
 	return fallback
 
 
-## Parts whose name or keywords contain every word of the query.
+## Parts whose name, category or id contains every word of the query.
 ##
-## Deliberately a plain substring match: it is predictable, it needs no
-## index, and it runs over 19,000 short strings faster than a frame. The
-## design assistant does the clever retrieval; this is for the parts bin.
+## A plain substring match: predictable, no index, and it scans 24,731
+## short strings faster than a frame. What it must not do is stop at the
+## first N matches in catalogue order — those are whatever sorts first
+## numerically, which is never what was wanted. It collects everything,
+## ranks, and then takes the top of the list.
 func search(query: String, limit: int = 100) -> Array[PartInfo]:
 	var needles: PackedStringArray = query.strip_edges().to_lower().split(" ", false)
 	var results: Array[PartInfo] = []
@@ -248,7 +263,8 @@ func search(query: String, limit: int = 100) -> Array[PartInfo]:
 		var info: PartInfo = parts[id]
 		if info.is_redirect():
 			continue
-		var haystack: String = (info.name + " " + info.category + " " + info.id).to_lower()
+		var haystack: String = (
+			info.name + " " + info.category + " " + info.id).to_lower()
 		var matched: bool = true
 		for needle: String in needles:
 			if not haystack.contains(needle):
@@ -256,8 +272,10 @@ func search(query: String, limit: int = 100) -> Array[PartInfo]:
 				break
 		if matched:
 			results.append(info)
-			if results.size() >= limit:
-				break
+
+	PartsBin._sort_for(results, query.strip_edges())
+	if results.size() > limit:
+		results.resize(limit)
 	return results
 
 
