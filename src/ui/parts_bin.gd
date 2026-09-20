@@ -647,6 +647,22 @@ func on_geometry_arrived(part_id: String) -> void:
 		thumbnails.request(part_id, _selected_color)
 
 
+## Follow a part and colour that were chosen somewhere else — the
+## eyedropper.
+##
+## Reuses the ordinary colour handler rather than repeating what it
+## does, including redrawing the grid: previews are rendered per colour,
+## so a palette that changed without them would show the new colour
+## selected above a grid of the old one.
+func show_held(part_id: String, color_code: int) -> void:
+	_selected_part = part_id
+	if color_code != _selected_color:
+		_on_colour(color_code)
+	for child: Node in _grid.get_children():
+		var button: Button = child
+		button.button_pressed = button.tooltip_text.begins_with(part_id)
+
+
 func selected_color() -> int:
 	return _selected_color
 

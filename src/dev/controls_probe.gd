@@ -92,6 +92,52 @@ func _run() -> void:
 	if focused != null:
 		focused.release_focus()
 
+	# Paint and pick need something under the cursor, which in a headless
+	# run there is not — so the ray is aimed by hand at a brick whose
+	# position is known, which exercises the same hover path a mouse
+	# does rather than poking at the hovered id directly.
+	var target: BrickWorld.Brick = world.bricks()[0]
+	var aim: Vector3 = target.transform.origin
+	builder.update_preview(aim + Vector3(0, 400, 0), Vector3.DOWN)
+	await process_frame
+	_assert("the ray finds a brick to work on", builder.hovered_brick() != 0)
+
+	if builder.hovered_brick() != 0:
+		var hit: BrickWorld.Brick = world.get_brick(builder.hovered_brick())
+		var was: int = hit.color_code
+		var to: int = 1 if was != 1 else 4
+		builder.held_color = to
+		_press(KEY_C)
+		await process_frame
+		_assert("C paints the brick under the cursor, %d -> %d"
+			% [was, hit.color_code], hit.color_code == to)
+		# The id has to survive. Everything outside BrickWorld refers to
+		# a brick by it, so renumbering on recolour orphans the undo
+		# entry and leaves the lattice reserving space for a brick that
+		# no longer exists.
+		_assert("...keeping the same brick", world.get_brick(hit.id) == hit)
+
+		_press(KEY_Z, true)
+		await process_frame
+		_assert("and undo puts the old colour back, got %d" % hit.color_code,
+			hit.color_code == was)
+
+		# A real part, and a different one. An id that does not resolve
+		# makes update_preview return before it raycasts, so the hover
+		# would be whatever undo left behind — which is nothing, because
+		# undo re-aims the preview at the real cursor.
+		builder.held_part = "3024" if hit.part_id != "3024" else "3005"
+		builder.update_preview(aim + Vector3(0, 400, 0), Vector3.DOWN)
+		await process_frame
+		var before_pick: String = builder.held_part
+		_press(KEY_G)
+		await process_frame
+		_assert("G picks up the part under the cursor, '%s' -> '%s'"
+			% [before_pick, builder.held_part],
+			builder.held_part == hit.part_id)
+		_assert("...and its colour, got %d" % builder.held_color,
+			builder.held_color == hit.color_code)
+
 	var steps: StepsBar = _main.get("_steps")
 	_press(KEY_B)
 	for _n: int in 20:

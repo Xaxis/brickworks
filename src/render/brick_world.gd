@@ -159,16 +159,51 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	return true
 
 
+## Change a brick's colour, keeping the brick.
+##
+## A colour change can move a brick between the opaque and transparent
+## batches, so the drawing side really is a remove and re-add. What must
+## not change is the id: everything outside this file refers to a brick
+## by it — the collision lattice, the undo history, which bricks the
+## assistant placed, which are scenery.
+##
+## It did renumber, and the damage was quiet. The lattice went on
+## reserving space for an id that no longer existed while the brick that
+## replaced it occupied nothing, so parts would pass straight through a
+## recoloured brick and undo had nothing to put back.
 func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = _bricks.get(brick_id)
-	if brick == null:
+	if brick == null or brick.color_code == color_code:
 		return false
-	# A colour change can move a brick between the opaque and transparent
-	# batches, so it is a remove and re-add rather than an in-place edit.
-	var at: Transform3D = brick.transform
-	var part_id: String = brick.part_id
-	remove_brick(brick_id)
-	add_brick(part_id, color_code, at)
+
+	# Out of its old batches, into the ones for the new colour, under the
+	# same id throughout.
+	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+		var batch: Batch = _batches.get(key)
+		if batch == null:
+			continue
+		var slot: int = batch.brick_ids.find(brick_id)
+		if slot >= 0:
+			batch.brick_ids.remove_at(slot)
+		_mark_dirty(key)
+
+	brick.color_code = color_code
+
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	var info: PartLibrary.PartInfo = library.parts[brick.part_id]
+	var keys := PackedStringArray()
+	for surface_index: int in part.surface_count():
+		var key: String = _batch_key(
+			info.mesh_hash, surface_index, part, color_code)
+		var batch: Batch = _batches.get(key)
+		if batch == null:
+			batch = _create_batch(key, part, surface_index, color_code)
+			_batches[key] = batch
+		batch.brick_ids.append(brick_id)
+		keys.append(key)
+		_mark_dirty(key)
+	_brick_batches[brick_id] = keys
+	_flush()
 	return true
 
 

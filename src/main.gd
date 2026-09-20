@@ -306,6 +306,14 @@ func _build_ui() -> void:
 	_bin = PartsBin.new()
 	_bin.library = _library
 	_bin.thumbnails = _thumbnails
+	# The eyedropper changes what is held, so the bin and the palette have
+	# to follow — a swatch that still shows red after picking up a blue
+	# brick is a swatch that is lying.
+	_builder.picked.connect(func(part_id: String, color_code: int) -> void:
+		_bin.show_held(part_id, color_code)
+		_refresh_preview()
+		_bar.say("picked %s" % part_id))
+
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_thumbnails.ready_for.connect(_bin.on_thumbnail)
@@ -935,6 +943,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_steps()
 		KEY_P:
 			_toggle_parts()
+		KEY_C:
+			# Paint what is under the cursor in the held colour.
+			if _builder.paint_hovered(_builder.held_color):
+				_on_model_changed()
+		KEY_G:
+			# And take a colour and part back off the model.
+			_builder.pick_hovered()
 		KEY_LEFT, KEY_RIGHT:
 			# Only while a booklet is up. Left and right otherwise belong
 			# to whatever has focus, and stealing them would break the

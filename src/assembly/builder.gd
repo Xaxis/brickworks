@@ -40,6 +40,9 @@ var _redo: Array[Dictionary] = []
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
 signal preview_changed(part_id: String, valid: bool)
+## The eyedropper took a part and colour off the model; the bin and the
+## palette should follow.
+signal picked(part_id: String, color_code: int)
 
 
 func _init() -> void:
@@ -110,6 +113,55 @@ func remove_hovered() -> bool:
 	return true
 
 
+## Recolour the brick under the cursor, without taking it out and
+## putting it back.
+##
+## Until this there was no way to change a brick once placed — the only
+## edit was to remove it and rebuild, which on an interior brick means
+## dismantling what is on top of it. BrickWorld could already do it;
+## nothing had ever asked.
+func paint_hovered(color_code: int) -> bool:
+	if _hovered == 0:
+		return false
+	var brick: BrickWorld.Brick = world.get_brick(_hovered)
+	if brick == null or brick.color_code == color_code:
+		return false
+
+	_history.append({
+		"undo": "recolor",
+		"brick": _hovered,
+		"color": brick.color_code,
+	})
+	_redo.clear()
+	return world.recolor_brick(_hovered, color_code)
+
+
+## Adopt the part and colour of the brick under the cursor.
+##
+## The fastest way to match something you built twenty bricks ago, and
+## much faster than finding the part again in a catalogue of 28,319 —
+## which is what anyone would otherwise have to do.
+func pick_hovered() -> bool:
+	if _hovered == 0:
+		return false
+	var brick: BrickWorld.Brick = world.get_brick(_hovered)
+	if brick == null:
+		return false
+	held_part = brick.part_id
+	held_color = brick.color_code
+	held_rotation = _quarter_turns(brick.transform.basis)
+	picked.emit(brick.part_id, brick.color_code)
+	return true
+
+
+## Quarter turns about Y. Measured off the X axis: Vector3.FORWARD is
+## (0, 0, -1), so an unrotated basis read off it comes back a half turn
+## out.
+static func _quarter_turns(basis: Basis) -> int:
+	var right: Vector3 = basis * Vector3.RIGHT
+	return posmod(int(round(atan2(-right.z, right.x) / (PI * 0.5))), 4)
+
+
 func undo() -> bool:
 	if _history.is_empty():
 		return false
@@ -128,6 +180,17 @@ func redo() -> bool:
 
 ## Carry out a history step and return the step that would reverse it.
 func _apply(step: Dictionary) -> Dictionary:
+	if step.get("undo", "") == "recolor":
+		# Its own reverse: put the old colour back and remember the one
+		# that was there, so redo works without a second kind of entry.
+		var brick_id: int = int(step["brick"])
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			return step
+		var was: int = brick.color_code
+		world.recolor_brick(brick_id, int(step["color"]))
+		return {"undo": "recolor", "brick": brick_id, "color": was}
+
 	if step.get("undo", "") == "remove":
 		var brick_id: int = int(step["brick"])
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
