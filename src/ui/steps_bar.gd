@@ -56,15 +56,15 @@ func _build() -> void:
 	row.add_theme_constant_override("separation", 10)
 	add_child(row)
 
-	var back := _button("❮", "Previous step")
+	var back := _button("Back", "Previous step")
 	back.pressed.connect(func() -> void: _go(_at - 1))
 	row.add_child(back)
 
-	_play = _button("▶", "Play the build through")
+	_play = _button("Play", "Play the build through")
 	_play.pressed.connect(_toggle_play)
 	row.add_child(_play)
 
-	var forward := _button("❯", "Next step")
+	var forward := _button("Next", "Next step")
 	forward.pressed.connect(func() -> void: _go(_at + 1))
 	row.add_child(forward)
 
@@ -101,17 +101,25 @@ func _build() -> void:
 	save.pressed.connect(func() -> void: export_wanted.emit())
 	row.add_child(save)
 
-	var close := _button("✕", "Back to the whole model")
+	var close := _button("Done", "Back to the whole model")
 	close.pressed.connect(stop)
 	row.add_child(close)
 
 
-func _button(glyph: String, tip: String) -> Button:
+## Words, not symbols.
+##
+## These were ❮ ▶ ❚❚ ✕, which the desktop found in a system font and the
+## browser did not — there is no fallback there, so every one of them
+## rendered as a missing-glyph box. A box reads as something broken; a
+## word reads as what it does, and "Play" is not less clear than a
+## triangle.
+func _button(label: String, tip: String) -> Button:
 	var button := Button.new()
-	button.text = glyph
+	button.text = label
 	button.tooltip_text = tip
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(30, 0)
+	button.add_theme_font_size_override("font_size", 11)
+	button.custom_minimum_size = Vector2(52, 0)
 	return button
 
 
@@ -161,13 +169,13 @@ func _toggle_play() -> void:
 		_go(0)
 	_playing = true
 	_clock = 0.0
-	_play.text = "❚❚"
+	_play.text = "Pause"
 	_play.tooltip_text = "Pause"
 
 
 func _stop_play() -> void:
 	_playing = false
-	_play.text = "▶"
+	_play.text = "Play"
 	_play.tooltip_text = "Play the build through"
 
 

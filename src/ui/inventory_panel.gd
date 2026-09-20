@@ -59,7 +59,8 @@ func _build() -> void:
 	header.add_child(csv)
 
 	var close := Button.new()
-	close.text = "✕"
+	close.text = "Done"
+	close.add_theme_font_size_override("font_size", 11)
 	close.focus_mode = Control.FOCUS_NONE
 	close.pressed.connect(hide_list)
 	header.add_child(close)
