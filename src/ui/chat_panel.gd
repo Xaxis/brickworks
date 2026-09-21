@@ -235,6 +235,29 @@ func bind(to: Assistant) -> void:
 	assistant.spent.connect(_on_spent)
 
 
+## Why this cannot be sent, or empty when it can.
+##
+## One place, so the button, the Enter key and the opening suggestions
+## all get the same answer. They used to disagree: the button knew
+## about the monthly limit, Enter did not, and the suggestions were
+## live during the account probe — so clicking one before the probe
+## answered started a conversation that could not run and spent an
+## opener on it.
+func _why_not() -> String:
+	if OwnKey.has_key():
+		return ""
+	if account == null:
+		return ""
+	if account.state == Account.State.UNKNOWN:
+		return "One moment — still checking your account."
+	if not account.signed_in():
+		return "Sign in, or paste a key of your own, to use the assistant."
+	if account.designs_left() <= 0:
+		return ("That is this month's designs used up. The builder and "
+			+ "the catalogue keep working.")
+	return ""
+
+
 ## What the design that just ran cost.
 ##
 ## Tokens and money both. The tokens are what was actually spent and
@@ -368,6 +391,17 @@ func _on_send() -> void:
 	var text: String = _input.text.strip_edges()
 	if text.is_empty():
 		return
+	# Asked here rather than trusted to the button.
+	#
+	# The monthly limit existed only as _send.disabled, which Enter in
+	# the brief box goes nowhere near and which _on_finished clears the
+	# moment a design ends. So the last allowed design re-enabled the
+	# button, and the next one went to the proxy to be refused — paying
+	# a round trip and a wait to be told what was already known.
+	var why: String = _why_not()
+	if not why.is_empty():
+		_status.text = why
+		return
 
 	_suggestions.visible = false
 	_input.text = ""
@@ -470,7 +504,10 @@ func _on_built(brick_count: int) -> void:
 
 func _on_finished(ok: bool, summary: String) -> void:
 	_working = false
-	_send.disabled = false
+	# Not unconditionally. The design that just ended may have been the
+	# last one this month, and re-enabling the button wipes the line
+	# that says so.
+	_send.disabled = not _why_not().is_empty()
 	_send.text = "Build it"
 	# The bill goes in either way. A design that failed after three
 	# repairs is the one you most want the cost of, and leaving it off
@@ -485,6 +522,11 @@ func _on_finished(ok: bool, summary: String) -> void:
 	else:
 		_add(summary, _Role.NOTE)
 		_status.text = line if line != summary else ""
+	# And if that was the last one, say so where the count was.
+	var why: String = _why_not()
+	if not why.is_empty():
+		_status.text = "%s\n%s" % [_status.text, why] \
+			if not _status.text.is_empty() else why
 
 
 func _process(_delta: float) -> void:

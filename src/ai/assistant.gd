@@ -626,10 +626,11 @@ func _on_response(result: Array) -> void:
 			return
 
 	if code != 200 or typeof(parsed) != TYPE_DICTIONARY:
-		var detail: String = "HTTP %d" % code
+		var detail: String = _what_went_wrong(code)
 		if typeof(parsed) == TYPE_DICTIONARY and parsed.has("error"):
 			var err: Variant = parsed["error"]
-			detail = str(err.get("message", err)) if typeof(err) == TYPE_DICTIONARY else str(err)
+			detail = (str(err.get("message", err))
+				if typeof(err) == TYPE_DICTIONARY else str(err))
 		_stop(false, detail)
 		return
 
@@ -720,6 +721,36 @@ func _on_response(result: Array) -> void:
 			+ "— only stacking connects them, so stagger the joints."),
 	})
 	_send()
+
+
+## Something a person can act on, rather than a number.
+##
+## Every failure that never reached a server came back as "HTTP 0",
+## because that is the code an unsent request has. Which is to say: a
+## flat network, a wrong key, a blocked request and a machine that is
+## simply offline all read the same, and none of them read as anything.
+static func _what_went_wrong(code: int) -> String:
+	match code:
+		0:
+			return ("Could not reach the assistant. Check the "
+				+ "connection and try again — nothing was spent.")
+		401, 403:
+			return ("That key was refused. Check it at "
+				+ "console.anthropic.com, or sign in instead.")
+		404:
+			return "The assistant is not reachable at that address."
+		413:
+			return ("This conversation has grown too large to send. "
+				+ "Start a new one with New.")
+		429:
+			return ("Too many requests at once, or the key is out of "
+				+ "credit. Wait a moment and try again.")
+		500, 502, 503, 504:
+			return ("Anthropic is having trouble at the moment. "
+				+ "Nothing was spent; try again shortly.")
+		529:
+			return "Anthropic is overloaded. Try again shortly."
+	return "The assistant answered with an error (HTTP %d)." % code
 
 
 ## End the run, putting the model back if nothing came of it.
