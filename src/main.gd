@@ -1021,7 +1021,14 @@ func _build_stress(target: int) -> int:
 ## otherwise, and there is nothing for a first brick to rest against.
 func _lay_baseplate() -> void:
 	const PLATE := "3811"   # Baseplate 32 x 32
-	var at := Transform3D(Basis.IDENTITY, Vector3(0.0, -8.0, 0.0))
+	# At zero, not a plate below it. A part's origin sits at the top of
+	# its body, and bricks rest with their undersides on the plane that
+	# GROUND_CELL names — which is zero. Laying the baseplate at -8 put
+	# its surface a full plate under them, so everything on it floated
+	# three millimetres clear of the studs it was supposed to be on.
+	# Measured: the gap was 8 LDU, and closing it moves the baseplate
+	# rather than anything built on it.
+	var at := Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0))
 	var brick_id: int = _world.add_brick(PLATE, 288, at)  # Dark Green
 	if brick_id != 0:
 		_builder.register(brick_id, PLATE, at)
