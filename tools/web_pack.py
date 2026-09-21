@@ -38,15 +38,59 @@ sys.path.insert(0, str(ROOT))
 GENERATED = ROOT / "assets" / "generated"
 WEB = ROOT / "assets" / "web"
 
-# Families worth carrying whole: the plain bricks, plates, tiles and
-# slopes that most building is done with. Matched against the part's
-# description, so "Brick  1 x  4" is caught by "brick".
+# How many of each family to carry, smallest mesh first. Matched
+# against the part's category exactly, so "minifig" does not swallow
+# "minifig accessory" and take its budget.
+#
+# This was five families — brick, plate, tile, slope, baseplate — and
+# that is a list of the things a wall is made of. Ask for a car and the
+# library had no wheels, no tyres, one windscreen, no wedges and no
+# panels, so the assistant either built a brick-shaped car or asked for
+# parts that had to come over the wire mid-design. The whole catalogue
+# is searchable either way; this is about what is to hand.
 FAMILIES: tuple[tuple[str, int], ...] = (
+    # what most building is done with
     ("brick", 240),
     ("plate", 260),
     ("tile", 140),
     ("slope", 160),
-    ("baseplate", 12),
+    ("baseplate", 30),
+    # what makes a vehicle a vehicle
+    ("wheel", 70),
+    ("tyre", 40),
+    ("windscreen", 50),
+    ("panel", 60),
+    ("wedge", 50),
+    ("car", 40),
+    ("vehicle", 50),
+    ("glass", 20),
+    ("wing", 30),
+    # what makes a building a building
+    ("door", 45),
+    ("window", 45),
+    ("arch", 30),
+    ("roadsign", 25),
+    ("support", 20),
+    # shapes that are not boxes
+    ("cylinder", 30),
+    ("cone", 20),
+    ("dish", 25),
+    ("bracket", 40),
+    ("hinge", 45),
+    ("turntable", 10),
+    ("bar", 35),
+    ("rock", 15),
+    # what makes a scene a scene
+    ("minifig", 90),
+    ("minifig accessory", 40),
+    ("minifig headwear", 30),
+    ("plant", 35),
+    ("animal", 25),
+    ("container", 30),
+    ("train", 40),
+    ("boat", 20),
+    ("flag", 15),
+    ("technic", 120),
 )
 
 # Parts the build is not usable without, whatever they weigh. The 32x32
@@ -139,7 +183,7 @@ def main() -> int:
     for keyword, cap in FAMILIES:
         candidates = [
             p for p in document["parts"]
-            if keyword in p.get("category", "").lower()
+            if p.get("category", "").lower() == keyword
             and not SKIP.search(p.get("name", ""))
             and not p.get("unofficial", False)
             and p["id"] not in chosen
