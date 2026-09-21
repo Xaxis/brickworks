@@ -38,6 +38,7 @@ var _playback: BuildPlayback
 var _outline: SelectionOutline
 var _gizmo: AxisGizmo
 var _turning: PivotMark
+var _tools: TouchTools
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -455,6 +456,18 @@ func _build_ui() -> void:
 	add_child(_turning)
 
 
+	# The editing verbs, for a screen with no keyboard to press.
+	if TouchTools.wanted():
+		_tools = TouchTools.new()
+		_tools.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		_tools.anchor_top = 0.5
+		_tools.anchor_bottom = 0.5
+		_tools.offset_left = 12.0
+		_tools.offset_top = -TouchTools.TARGET * 2.2
+		_tools.offset_bottom = TouchTools.TARGET * 2.2
+		spacer.add_child(_tools)
+		_tools.chose.connect(_on_touch_tool)
+
 	var hint := ControlsHint.new()
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -46.0
@@ -482,32 +495,28 @@ func _build_ui() -> void:
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the
 	# room. Added to the HUD directly so no dock resizes around it.
+	# Inset from the edges rather than a fixed 860 by 600.
+	#
+	# A fixed size centred on the screen is off the screen as soon as
+	# the screen is smaller than the size: on a phone held sideways the
+	# list overflowed top and bottom, taking its header with it — and
+	# the header holds the only Done button, so the way out was a key
+	# nobody has. It is now as big as there is room for, up to the size
+	# it used to be.
 	_inventory = InventoryPanel.new()
-	_inventory.set_anchors_preset(Control.PRESET_CENTER)
-	_inventory.anchor_left = 0.5
-	_inventory.anchor_right = 0.5
-	_inventory.anchor_top = 0.5
-	_inventory.anchor_bottom = 0.5
-	_inventory.offset_left = -430
-	_inventory.offset_right = 430
-	_inventory.offset_top = -300
-	_inventory.offset_bottom = 300
+	_inventory.set_anchors_preset(Control.PRESET_FULL_RECT)
 	$HUD.add_child(_inventory)
+	_inset(_inventory, 860.0, 600.0)
+	get_viewport().size_changed.connect(func() -> void:
+		_inset(_inventory, 860.0, 600.0)
+		_inset(_mosaic, 380.0, 460.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 
 	_picker = PickImage.new()
 	add_child(_picker)
 	_mosaic = MosaicDialog.new()
-	_mosaic.set_anchors_preset(Control.PRESET_CENTER)
-	_mosaic.anchor_left = 0.5
-	_mosaic.anchor_right = 0.5
-	_mosaic.anchor_top = 0.5
-	_mosaic.anchor_bottom = 0.5
-	_mosaic.offset_left = -190
-	_mosaic.offset_right = 190
-	_mosaic.offset_top = -230
-	_mosaic.offset_bottom = 230
 	$HUD.add_child(_mosaic)
+	_inset(_mosaic, 380.0, 460.0)
 
 	# Straight from the button press into the file dialog, with nothing
 	# awaited between. A browser only opens a file picker while it is
@@ -1353,6 +1362,55 @@ func _aim_at(point: Vector2) -> void:
 	_builder.update_preview(
 		_camera.project_ray_origin(point),
 		_camera.project_ray_normal(point))
+
+
+## Centre a panel, no larger than it wants and no larger than the room
+## there is.
+##
+## The margin is what keeps the way out reachable: a dialog that runs to
+## the edges has its close button under the notch, the rounded corner,
+## or nothing at all.
+func _inset(panel: Control, wants_wide: float, wants_tall: float) -> void:
+	if panel == null:
+		return
+	const MARGIN := 24.0
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	var wide: float = minf(wants_wide, room.x - MARGIN * 2.0)
+	var tall: float = minf(wants_tall, room.y - MARGIN * 2.0)
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 0.5
+	panel.anchor_bottom = 0.5
+	panel.offset_left = -wide * 0.5
+	panel.offset_right = wide * 0.5
+	panel.offset_top = -tall * 0.5
+	panel.offset_bottom = tall * 0.5
+
+
+## One of the round buttons a finger can reach.
+func _on_touch_tool(what: String) -> void:
+	match what:
+		"rotate":
+			_builder.rotate_held(1)
+			_refresh_preview()
+			_bar.say("turned a quarter")
+		"tip":
+			_builder.tip_held(1)
+			_refresh_preview()
+			_bar.say("on its %s" % _builder.held_face)
+		"undo":
+			if _builder.undo():
+				_refresh_preview()
+				_on_model_edited()
+			else:
+				_bar.say("nothing to undo")
+		"redo":
+			if _builder.redo():
+				_refresh_preview()
+				_on_model_edited()
+			else:
+				_bar.say("nothing to redo")
 
 
 ## A box around everything selected, for framing it.

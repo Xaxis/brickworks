@@ -63,7 +63,12 @@ static func bindings() -> Array[Binding]:
 			Binding.new(["tap"], "place"),
 			Binding.new(["hold"], "remove"),
 			Binding.new(["drag"], "turn"),
-			Binding.new(["2 fingers"], "move and zoom"),
+			Binding.new(["2 fingers"], "slide and zoom"),
+			# The buttons down the left are the rest of it. Saying so
+			# is the difference between a control somebody finds and
+			# one they never look for.
+			Binding.new(["⟳ ⤿"], "turn and tip the part"),
+			Binding.new(["↶ ↷"], "undo"),
 			Binding.new(["◀ ▶"], "panels"),
 		]
 
