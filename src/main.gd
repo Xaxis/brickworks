@@ -1230,6 +1230,15 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 
 
 func _process(_delta: float) -> void:
+	# A box whose ending went somewhere else.
+	#
+	# Letting go over a button hands the release to that button, which
+	# handles it and stops it there — so the guard above never runs and
+	# the box is still being drawn with nothing holding it. The camera
+	# keeps the same watch over its own drags, after the same bug.
+	if _marquee != null and _marquee.is_drawing() \
+			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_finish_box(Input.is_key_pressed(KEY_SHIFT))
 	if _store != null:
 		_store.tick()
 	if _counts == null:
@@ -1325,7 +1334,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _marquee.drag_to(moved.position):
 				_builder.hide_preview()
 				return
-		if _over_panel():
+		if _over_panel_at(moved.position):
 			_builder.hide_preview()
 			return
 		_refresh_preview()
@@ -1336,7 +1345,26 @@ func _unhandled_input(event: InputEvent) -> void:
 	var button: InputEventMouseButton = event
 	if button.alt_pressed:
 		return
-	if _over_panel():
+	# A press that lands on a panel belongs to the panel. A release does
+	# not always: if a box is being drawn, that drag started out here
+	# and owns its own ending, wherever the pointer has got to by then.
+	#
+	# Dropping it lost the selection without saying so. Drag a box
+	# rightwards and let go over the parts bin — which is where the
+	# pointer naturally ends up — and the release never arrived, so
+	# nothing was ever selected. The rectangle sat there until the next
+	# press cleared it. You drew a box round six bricks and got
+	# nothing, with no way to tell that from having missed them.
+	#
+	# Asked of the event's own position, too, not of the pointer.
+	# _over_panel() reads the mouse where the system says it is now,
+	# which during a drag is not where the button was let go — and on
+	# the web, where the pointer can be locked or lagging a frame
+	# behind, is not reliably anywhere in particular. An event should
+	# be judged by where it says it happened.
+	var ending_a_box: bool = (button.button_index == MOUSE_BUTTON_LEFT
+		and not button.pressed and _marquee.is_drawing())
+	if _over_panel_at(button.position) and not ending_a_box:
 		return
 
 	# The right button acts on release, not on press.
@@ -1383,12 +1411,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# with nothing to say why. Dragging selects now, which is what the
 	# left button is for: select, place, box-select, and nothing else.
 	if _marquee.is_drawing():
-		var took: int = _builder.select_in(_marquee.box(),
-			_brick_on_screen, _marquee.takes_touching(),
-			button.shift_pressed)
-		_marquee.finish()
-		_bar.say("took %d" % took if took > 0
-			else "nothing in there — right-drag turns the view")
+		_finish_box(button.shift_pressed)
 		return
 	_marquee.finish()
 
@@ -1572,6 +1595,22 @@ func _nudge_by(cells: Vector3i) -> void:
 ## cursor and a click beside the panel dropped a brick into the model
 ## behind it. Nor about the axis gizmo, whose square swallows clicks
 ## wherever it sits.
+## Take whatever the box caught and put it away.
+##
+## One function because two callers need it to do the same thing: the
+## release that ends the drag, and the watchdog for when that release
+## goes somewhere this handler never sees.
+func _finish_box(add: bool) -> void:
+	if not _marquee.is_drawing():
+		_marquee.finish()
+		return
+	var took: int = _builder.select_in(_marquee.box(),
+		_brick_on_screen, _marquee.takes_touching(), add)
+	_marquee.finish()
+	_bar.say("took %d" % took if took > 0
+		else "nothing in there — right-drag turns the view")
+
+
 func _over_panel_at(point: Vector2) -> bool:
 	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo]:
 		if panel != null and panel.visible \

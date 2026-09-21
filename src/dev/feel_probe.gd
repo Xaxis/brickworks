@@ -20,6 +20,8 @@ var _failures: int = 0
 var _world: BrickWorld
 var _camera: CadCamera
 var _builder: Builder
+var _controls: ControlsDialog
+var _main: Node
 var _middle: Vector2
 
 
@@ -30,6 +32,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame
 	var main: Node = load("res://src/main.tscn").instantiate()
+	_main = main
 	root.add_child(main)
 	for _n: int in 150:
 		await process_frame
@@ -37,7 +40,25 @@ func _run() -> void:
 	_world = main.get("_world")
 	_camera = main.get("_camera")
 	_builder = main.get("_builder")
+	_controls = main.get("_controls")
 	var store: ModelStore = main.get("_store")
+
+	# Let the opening animation finish first.
+	#
+	# The model that greets you assembles itself a brick at a time, and
+	# while it is doing that the first click stops it rather than
+	# placing anything — deliberately, because a placement against a
+	# half-shown model would attach to the wrong brick.
+	#
+	# A probe that starts while it is still running therefore loses its
+	# first drag, its first click and its first right-click to it. That
+	# is what was happening: four checks failed together, only when the
+	# machine was busy enough to make the animation outlast the wait,
+	# and every message blamed clicking. Nothing in the output pointed
+	# here.
+	var playback: BuildPlayback = main.get("_playback")
+	if playback != null:
+		playback.stop()
 
 	# Something to aim at, in the middle of the viewport.
 	_world.clear()
@@ -72,6 +93,13 @@ func _run() -> void:
 			+ "anything")
 		quit(1)
 		return
+
+	if not await _input_arrives():
+		_failures += 1
+		print("  FAIL  events are not reaching the app, so nothing "
+			+ "below means anything")
+		quit(1)
+		return
 	await _settle()
 
 	await _mouse()
@@ -102,6 +130,49 @@ func _mouse() -> void:
 	before = _world.brick_count()
 	await _click(MOUSE_BUTTON_LEFT, _middle)
 	_check("a plain click still places", _world.brick_count() > before)
+
+	# A box let go where this handler never sees the release.
+	#
+	# Dragging rightwards and letting go over the parts bin is what
+	# hands naturally do, and it used to leave the box drawn with
+	# nothing holding it — after which every click was read as the end
+	# of a drag still in progress and the app took no input at all.
+	var panel: Vector2 = _panel_point()
+	if panel == Vector2.ZERO:
+		_failures += 1
+		print("  FAIL  no panel on screen to let go over, so the "
+			+ "check below never ran")
+	else:
+		_builder.clear_selection()
+		# Checked, not assumed. A check whose premise has quietly
+		# stopped holding passes for the wrong reason, and this one did
+		# — it went on passing with the bug put back, because the
+		# release it was meant to have dropped was never over a panel
+		# at all.
+		_check("the point to let go over really is a panel",
+			_main._over_panel_at(panel))
+		# Tall enough to enclose the bricks, not a thin band across
+		# their middle — a window select takes what is wholly inside
+		# it, so a box that clips them catches nothing and says the
+		# release was dropped when it was not.
+		var corner := Vector2(panel.x, _middle.y + 240.0)
+		_check("the corner to let go on is over a panel too",
+			_main._over_panel_at(corner))
+		await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(320.0, 240.0),
+			corner)
+		# What actually goes wrong is that the selection silently does
+		# not happen, so that is what to ask about. Asking only whether
+		# the box stopped being drawn was not enough: the next press
+		# begins a new box and clears the old one either way, so the
+		# check passed with the bug put back.
+		_check("a box let go over a panel still selects",
+			not _main._marquee.is_drawing()
+				and _builder.selection.size() > 0)
+		_builder.clear_selection()
+		before = _world.brick_count()
+		await _click(MOUSE_BUTTON_LEFT, _middle)
+		_check("...and clicking still works afterwards",
+			_world.brick_count() > before)
 
 	before = _world.brick_count()
 	await _click(MOUSE_BUTTON_RIGHT, _middle)
@@ -190,6 +261,30 @@ func _keyboard() -> void:
 	await _key(KEY_O)
 
 
+## Wait until events actually arrive, by sending one and watching.
+##
+## A scene in the tree is not a window taking input. On the first run
+## after an edit Godot reimports, and everything sent before the window
+## is ready goes nowhere at all — so every check fails, including the
+## ones that are pure arithmetic and cannot fail for any other reason.
+## A run like that says nothing about the app, and it looked exactly
+## like a real failure: ten of them, in a row, about clicking.
+##
+## Counting frames cannot settle it, because the thing being waited for
+## is how long the machine takes. Asking is the only honest way: turn
+## the view a little and see whether it turned.
+func _input_arrives() -> bool:
+	for _attempt: int in 80:
+		var yaw: float = _camera._target_yaw
+		await _drag(MOUSE_BUTTON_RIGHT, _middle,
+			_middle + Vector2(40.0, 0.0))
+		if not is_equal_approx(_camera._target_yaw, yaw):
+			return true
+		for _n: int in 30:
+			await process_frame
+	return false
+
+
 ## The model framed and the camera settled there, so that the centre of
 ## the screen is over it.
 func _settle() -> void:
@@ -261,12 +356,19 @@ func _settings() -> void:
 	event.button_index = MOUSE_BUTTON_MIDDLE
 	event.pressed = true
 	event.double_click = true
-	event.position = off
-	event.global_position = off
+	event.position = _as_event(off)
+	event.global_position = event.position
 	Input.parse_input_event(event)
 	await _frames(4)
 	_check("double-clicking the middle button re-centres",
 		_camera._target_focus.distance_to(focus) > 1.0)
+
+	# And the panel the two settings live in, because a setting nobody
+	# can reach is a setting nobody has.
+	await _key(KEY_COMMA)
+	_check("comma opens the controls panel",
+		_controls != null and _controls.visible)
+	_controls.visible = false
 
 
 ## Whether the controls strip names this verb for the middle button.
@@ -280,6 +382,20 @@ func _names_middle(verb: String) -> bool:
 func _frames(how_many: int) -> void:
 	for _n: int in how_many:
 		await process_frame
+
+
+## A point on screen that a panel is under, found by walking in from
+## the right edge rather than assuming a width.
+func _panel_point() -> Vector2:
+	var rect: Vector2 = root.get_visible_rect().size
+	var y: float = rect.y * 0.5
+	var x: int = int(rect.x) - 6
+	while float(x) > rect.x * 0.55:
+		var at := Vector2(float(x), y)
+		if _main._over_panel_at(at):
+			return at
+		x -= 6
+	return Vector2.ZERO
 
 
 func _check(what: String, ok: bool) -> void:
@@ -303,9 +419,28 @@ func _press(which: int, at: Vector2, down: bool) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = which
 	event.pressed = down
-	event.position = at
-	event.global_position = at
+	event.position = _as_event(at)
+	event.global_position = event.position
 	Input.parse_input_event(event)
+
+
+## Viewport coordinates turned into the window coordinates an event
+## actually carries.
+##
+## The two are not the same here: this app scales its interface, so the
+## viewport was 1600 wide inside a 1400 wide window. A point worked out
+## from the viewport rectangle and handed to an event lands somewhere
+## else once the engine has scaled it — which meant the check that
+## asked the app whether a point was over a panel, and then let go of
+## the button at that point, was asking about one place and clicking
+## another. It passed with the bug put back, every time, for a reason
+## that had nothing to do with panels.
+func _as_event(at: Vector2) -> Vector2:
+	var rect: Vector2 = root.get_visible_rect().size
+	if rect.x <= 0.0 or rect.y <= 0.0:
+		return at
+	var window := Vector2(DisplayServer.window_get_size())
+	return at * (window / rect)
 
 
 func _wheel(which: int) -> void:
@@ -313,11 +448,12 @@ func _wheel(which: int) -> void:
 	_press(which, _middle, false)
 
 
+
 func _move_to(at: Vector2, by: Vector2, mask: int) -> void:
 	var event := InputEventMouseMotion.new()
-	event.position = at
-	event.global_position = at
-	event.relative = by
+	event.position = _as_event(at)
+	event.global_position = event.position
+	event.relative = _as_event(by)
 	event.button_mask = mask
 	Input.parse_input_event(event)
 
