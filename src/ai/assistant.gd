@@ -144,6 +144,13 @@ class Placement extends RefCounted:
 	## Zero for a placement the model has just invented. What makes
 	## "remove brick 41" mean anything.
 	var id: int = 0
+	## Set when an edit moved this placement. Only a placement that was
+	## actually moved has its transform rebuilt; rebuilding the rest
+	## from a face and a turn read back off their basis would quietly
+	## re-seat every brick that is not on one of the lattice's twenty
+	## four orientations, as a side effect of recolouring something
+	## else.
+	var moved: bool = false
 	## Whether the assistant placed it. A brick the person put there by
 	## hand stays theirs across an edit, so that a later design replaces
 	## the assistant's work and leaves theirs alone.
@@ -911,6 +918,7 @@ func _edit(args: Dictionary) -> Model:
 				placement.x += by.x
 				placement.y += by.y
 				placement.z += by.z
+				placement.moved = true
 				_touched += 1
 
 	for raw: Variant in args.get("add", []):
@@ -969,11 +977,15 @@ func _with_a_look(said: String, ask: String,
 		add_child(_shot)
 
 	var picture: Dictionary = await _shot.block(world, from, scenery)
+	# Cancelled while the picture was being taken. Saying anything now
+	# would be answering a turn that no longer exists.
+	if not _busy:
+		return ""
 	if picture.is_empty():
+		var elevation: String = "front" if from in ["corner", "top"] else from
 		var drawn: String = "%s\n%s" % [
 			ModelView.draw(world, library, "top", scenery),
-			ModelView.draw(world, library,
-				"front" if from == "corner" else from, scenery)]
+			ModelView.draw(world, library, elevation, scenery)]
 		var parts := PackedStringArray()
 		for piece: String in [said, drawn, ask]:
 			if not piece.strip_edges().is_empty():
@@ -1054,7 +1066,7 @@ func _attachment_points(args: Dictionary) -> String:
 				best = d
 				face = name
 		var corner: Vector3 = _corner_on(point, axis, face)
-		lines.append("  stud %d points %-4s — a 1x1 part goes at "
+		lines.append("  stud %d points %-4s — a 1x1 plate goes at "
 			% [found, face]
 			+ "x=%s y=%s z=%s face=%s" % [
 				Placement._num(corner.x / STUD),
@@ -1071,9 +1083,13 @@ func _attachment_points(args: Dictionary) -> String:
 			+ "Tiles and most sloped surfaces are like this.")
 	return ("%s has %d stud%s.\n" % [label, found, "" if found == 1 else "s"]
 		+ "\n".join(lines)
-		+ "\n\nA larger part starts at that corner and extends from it "
-		+ "the way it would on the ground: across x and z if it faces "
-		+ "up, across the other two if it faces sideways.")
+		+ "\n\nThose corners are for a 1x1 plate. A part that covers "
+		+ "more studs extends from the same corner, the way it would on "
+		+ "the ground. A part that is thicker than a plate is the same "
+		+ "on a stud pointing up, +x or +z — but on one pointing down, "
+		+ "-x or -z it hangs the other way, so its corner is further "
+		+ "back along that direction by its own thickness: a brick is "
+		+ "three plates, so three plates or one and a half studs.")
 
 
 ## Where a 1x1 plate's low corner falls if it clutches this stud.
@@ -1711,6 +1727,10 @@ func _apply_edit(model: Model) -> void:
 		if placement == null:
 			doomed.append(brick.id)
 		elif placement.part != brick.part_id:
+			# A different part wearing the same number is a different
+			# brick, so it goes out and comes back rather than being
+			# moved. It has to be re-seated, since nothing else will.
+			placement.moved = true
 			doomed.append(brick.id)
 			fresh.append(placement)
 			wanted.erase(brick.id)
@@ -1726,8 +1746,14 @@ func _apply_edit(model: Model) -> void:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if brick == null or part == null:
 			continue
-		var at: Transform3D = _transform(placement, part)
-		if not brick.transform.is_equal_approx(at):
+		# Only what the edit actually moved. Comparing transforms
+		# instead looks equivalent and is not: a brick placed by hand at
+		# an orientation the lattice does not have a name for reads back
+		# as the nearest one it does, and "the transform differs" is
+		# then true of every such brick, every time, for an edit that
+		# never mentioned it.
+		if placement.moved:
+			var at: Transform3D = _transform(placement, part)
 			world.move_brick(brick_id, at)
 			builder.lattice.release(brick_id)
 			builder.register(brick_id, placement.part, at)

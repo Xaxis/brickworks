@@ -87,7 +87,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if line.is_empty():
 			continue
 
-		var tokens: PackedStringArray = line.split(" ", false)
+		# Split on any whitespace, not on the space character alone.
+		# LDraw writes its fields separated by whitespace and some tools
+		# use tabs; a file that does parsed to nothing at all and was
+		# rejected as "there are no parts in that file".
+		var tokens: PackedStringArray = _fields(line)
 		var line_type: int = tokens[0].to_int()
 
 		if line_type == 0:
@@ -98,13 +102,19 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				var sub_name: String = " ".join(tokens.slice(2)).strip_edges()
 				current = SubModel.new()
 				current.name = sub_name
-				model.submodels[sub_name.to_lower()] = current
+				# Keyed the way a reference to it will be looked up.
+				# FILE names carry directories and extensions as written
+				# and references are reduced to a bare lowercase stem,
+				# so a sub-model called "sub/roof.ldr" was stored under
+				# that and looked for under "roof" — never found, and
+				# the whole sub-assembly silently dropped.
+				model.submodels[_key(sub_name)] = current
 				step = 0
 				if first_file:
 					# The first FILE in an .mpd is the model itself; the
 					# rest are parts of it.
 					model.main = current
-					model.submodels.erase(source_name.to_lower())
+					model.submodels.erase(_key(source_name))
 					first_file = false
 			elif keyword == "STEP":
 				step += 1
@@ -116,7 +126,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if line_type != 1 or tokens.size() < 15:
 			continue
 
-		var color: int = tokens[1].to_int()
+		var color: int = _colour(tokens[1])
+		if color == UNREADABLE_COLOUR:
+			continue
 		var numbers := PackedFloat64Array()
 		var valid: bool = true
 		for n: int in range(2, 14):
@@ -146,6 +158,60 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 ## translation once. Flipping the translation alone — the tempting
 ## shortcut — leaves every rotated part mirrored, which shows up as
 ## slopes facing the wrong way and is easy to miss on a symmetric model.
+## A colour token. LDraw writes a palette index, or a direct colour as
+## 0x2RRGGBB — which String.to_int() does not refuse. It strips the
+## letters and returns a decimal made of whatever digits were left, so
+## 0x2FF0000 became the colour code 2000, which is nothing, and was
+## then written back out as 2000.
+const UNREADABLE_COLOUR := -1
+
+static func _colour(token: String) -> int:
+	var text: String = token.strip_edges()
+	if text.is_valid_int():
+		return text.to_int()
+	if text.to_lower().begins_with("0x2") and text.length() == 9:
+		# Kept as the number it is, so it survives being written out
+		# again. The palette has no entry for it and whatever draws it
+		# will fall back, which is a visible approximation rather than a
+		# silent one.
+		return text.hex_to_int()
+	return UNREADABLE_COLOUR
+
+
+## Whether a colour code is an RGB value written into the file rather
+## than an index into the palette.
+static func is_direct_colour(code: int) -> bool:
+	return code >= 0x2000000
+
+
+## The name a reference and a FILE line have in common: no directory, no
+## extension, lowercase.
+static func _key(name: String) -> String:
+	var text: String = name.replace("\\", "/").strip_edges().to_lower()
+	text = text.get_file()
+	for suffix: String in [".ldr", ".dat", ".mpd"]:
+		if text.ends_with(suffix):
+			return text.substr(0, text.length() - suffix.length())
+	return text
+
+
+## The fields of a line, split on any run of whitespace.
+static func _fields(line: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var token: String = ""
+	for n: int in line.length():
+		var c: String = line[n]
+		if c == " " or c == "\t" or c == "\r":
+			if not token.is_empty():
+				out.append(token)
+				token = ""
+		else:
+			token += c
+	if not token.is_empty():
+		out.append(token)
+	return out
+
+
 static func to_transform(v: PackedFloat64Array) -> Transform3D:
 	var a: float = v[3]
 	var b: float = v[4]
@@ -220,16 +286,13 @@ func _inline(
 	visiting: Dictionary,
 	depth: int
 ) -> void:
-	if depth > 32 or visiting.has(sub.name.to_lower()):
+	if depth > 32 or visiting.has(_key(sub.name)):
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
 		return
-	visiting[sub.name.to_lower()] = true
+	visiting[_key(sub.name)] = true
 
 	for placement: Placement in sub.placements:
-		var key: String = placement.part_id.to_lower()
-		var nested: SubModel = submodels.get(key)
-		if nested == null:
-			nested = submodels.get(key + ".ldr")
+		var nested: SubModel = submodels.get(_key(placement.part_id))
 
 		# A name is a sub-model only if it is not a real part: published
 		# models occasionally name a sub-assembly after a part number.
@@ -274,8 +337,13 @@ static func write_ldr(
 			# Trim to something a human can read without losing a position
 			# that matters: 1/1000 LDU is 0.4 microns.
 			numbers.append(String.num(value, 4).rstrip("0").rstrip("."))
-		lines.append("1 %d %s %s.dat" % [
-			placement.color_code, " ".join(numbers), placement.part_id])
+		# A direct colour goes back out in the form it came in, or it
+		# reads as an enormous palette index that nothing has.
+		var colour: String = ("0x%07X" % placement.color_code
+			if is_direct_colour(placement.color_code)
+			else str(placement.color_code))
+		lines.append("1 %s %s %s.dat" % [
+			colour, " ".join(numbers), placement.part_id])
 
 	lines.append("0")
 	return "\n".join(lines) + "\n"
