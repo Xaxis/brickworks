@@ -64,8 +64,36 @@ func _run() -> void:
 				% [file, ", ".join(retired)])
 			continue
 
-		var text: String = store.to_text(
-			file.get_basename().capitalize())
+		# The header as it was written, not a fresh one.
+		#
+		# to_text writes a title, a name and "Author: Brickworks", which
+		# is right for a model this app made and wrong for one it did
+		# not. This migration replaced "Author: James Jessiman" on the
+		# LDraw demonstration car — the file the whole library grew
+		# around, by the person who started it — and dropped the
+		# comments explaining the format to whoever opened it. LDraw
+		# ships under a licence that asks for attribution, and it would
+		# be wrong without one.
+		var head := PackedStringArray()
+		var whole: String = FileAccess.get_file_as_string(path)
+		for line: String in whole.split("\n"):
+			if line.strip_edges().begins_with("1 "):
+				break
+			head.append(line)
+		while not head.is_empty() and head[-1].strip_edges().is_empty():
+			head.remove_at(head.size() - 1)
+
+		var body: String = store.to_text(file.get_basename().capitalize())
+		var parts := PackedStringArray()
+		var past_head: bool = false
+		for line: String in body.split("\n"):
+			if line.strip_edges().begins_with("1 "):
+				past_head = true
+			if past_head:
+				parts.append(line)
+		var text: String = "%s\n\n%s" % [
+			"\n".join(head), "\n".join(parts)]
+
 		var out: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 		if out == null:
 			print("  %-16s could not be written" % file)

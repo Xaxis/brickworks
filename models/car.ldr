@@ -1,6 +1,14 @@
-0 Car
+0 Example Car for Demonstration of LDRAW Library
 0 Name: car.ldr
-0 Author: Brickworks
+0 Author: James Jessiman
+
+0 // This file demonstrates how you can assemble a model from part files.
+0 // Each line starting with "1" adds one part. It states its color, position and orientation.
+0 // Each line reading "0 STEP" begins another step in building the model.
+0 // To watch these steps and look at the model, open this file in program LDView.
+0 // There, you can go forward and backward through the build steps of this file.
+0 // This file intentionally is kept as simple as possible.
+0 // LDRAW offers many more things. For more information, visit http://www.ldraw.org
 
 1 0 30 6 -60 0 0 -1 0 1 0 1 0 0 3641.dat
 1 0 -30 6 -60 0 0 1 0 1 0 -1 0 0 3641.dat
