@@ -395,6 +395,26 @@ func _send() -> void:
 		reader.run(url, headers, JSON.stringify(body))
 		var streamed: Array = await reader.done
 		reader.queue_free()
+
+		# A connection held open for three minutes gets dropped
+		# sometimes, and losing a whole design to one is not a trade
+		# worth making for watching it appear. Ask again without the
+		# stream, which is a shorter-lived connection and the path that
+		# worked before any of this.
+		if int(streamed[0]) != HTTPRequest.RESULT_SUCCESS:
+			progress.emit("lost the connection — asking again")
+			body.erase("stream")
+			for brick_id: int in _sketched_ids:
+				builder.lattice.release(brick_id)
+				world.remove_brick(brick_id)
+			_sketched_ids = PackedInt64Array()
+			if _http.request(url, headers, HTTPClient.METHOD_POST,
+					JSON.stringify(body)) != OK:
+				_stop(false, "could not reach the assistant")
+				return
+			_on_response(await _http.request_completed)
+			return
+
 		_on_response(streamed)
 		return
 
@@ -624,13 +644,27 @@ func _on_response(result: Array) -> void:
 	_send()
 
 
+## End the run, putting the model back if nothing came of it.
+##
+## Nothing came of it is the important qualification. An edit that has
+## been checked and applied is built and is the person's model now; a
+## connection dropped two minutes later does not make it not have
+## happened. Restoring over it threw away a hundred and forty bricks
+## that were sitting on the baseplate at the time.
 func _stop(ok: bool, summary: String) -> void:
 	# A design that failed leaves the model it was asked to change
 	# exactly as it found it. Without this a revision that ran out of
 	# repairs took the original with it — and the drafts shown along the
 	# way are what removed it.
-	if not ok:
+	if not ok and not _edited:
 		_restore()
+	# Anything the sketch left standing is not a model; the finished one
+	# either replaced it or never came.
+	if not _edited:
+		for brick_id: int in _sketched_ids:
+			builder.lattice.release(brick_id)
+			world.remove_brick(brick_id)
+		_sketched_ids = PackedInt64Array()
 	_busy = false
 	finished.emit(ok, summary)
 

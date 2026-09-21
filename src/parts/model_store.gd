@@ -178,6 +178,48 @@ func open(path: String) -> int:
 	return placed
 
 
+## Open a model from text rather than from a path.
+##
+## Which is what opening somebody's own file means in a browser, where
+## there is no path to open — and, since it is the same code either
+## way, what opening one means on the desktop too.
+##
+## Parts the catalogue does not have are counted and reported rather
+## than skipped in silence: an .ldr from elsewhere will use parts this
+## does not carry, and "opened, 340 of 500 parts" is a true answer where
+## "opened" is not.
+func open_text(text: String, name: String = "model") -> Dictionary:
+	var model: LdrModel = LdrModel.parse(text, name)
+	if model == null:
+		return {"placed": 0, "missing": 0, "error": "that is not an LDraw file"}
+
+	var flattened: Array = model.flatten(library.parts)
+	if flattened.is_empty():
+		return {"placed": 0, "missing": 0,
+			"error": "there are no parts in that file"}
+
+	world.clear()
+	builder.lattice.clear()
+	builder.forget_history()
+	scenery.clear()
+
+	var placed: int = 0
+	var missing: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if not library.parts.has(placement.part_id):
+			missing[placement.part_id] = true
+			continue
+		var brick_id: int = world.add_brick(
+			placement.part_id, placement.color_code, placement.transform)
+		if brick_id != 0:
+			builder.register(brick_id, placement.part_id, placement.transform)
+			placed += 1
+
+	loaded.emit(name, placed)
+	return {"placed": placed, "missing": missing.size(), "error": ""}
+
+
 ## The model as LDraw text, for export or for handing to something else.
 func to_text(title: String = "Model") -> String:
 	var placements: Array = []

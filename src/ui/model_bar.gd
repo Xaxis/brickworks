@@ -15,6 +15,10 @@ var _name: LineEdit
 var _status: Label
 var _saves: PopupMenu
 var _entries: Array[ModelStore.Entry] = []
+var _picker: PickModel
+
+## An id no index can be, for the menu row that is not a saved model.
+const IMPORT := -2
 
 signal cleared()
 ## Someone wants the parts list. The bar does not own the panel — it is
@@ -137,9 +141,14 @@ func _on_open() -> void:
 	_entries = store.list_saved()
 	var examples: Array[ModelStore.Entry] = store.list_examples()
 	_saves.clear()
+	# Exporting an .ldr and then having nowhere to put it back was the
+	# shape of this before: the app could write the format it reads and
+	# could not read the format it writes.
+	_saves.add_item("From a file on this computer…", IMPORT)
+	_saves.add_separator()
 	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
-		_saves.set_item_disabled(0, true)
+		_saves.set_item_disabled(_saves.item_count - 1, true)
 	else:
 		for n: int in _entries.size():
 			_saves.add_item(_entries[n].describe(), n)
@@ -157,11 +166,41 @@ func _on_open() -> void:
 
 
 func _on_pick(id: int) -> void:
+	if id == IMPORT:
+		_import()
+		return
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
 	_name.text = entry.name
 	opened.emit(store.open(entry.path))
+
+
+## Somebody else's .ldr, from wherever they keep it.
+##
+## The picker has to be asked while the click that opened the menu is
+## still being handled, or a browser will not open the file dialog at
+## all — which is why this is called straight from the menu rather than
+## after a confirmation.
+func _import() -> void:
+	if _picker == null:
+		_picker = PickModel.new()
+		add_child(_picker)
+		_picker.picked.connect(func(text: String, file_name: String) -> void:
+			var result: Dictionary = store.open_text(
+				text, file_name.get_basename())
+			if not str(result["error"]).is_empty():
+				_say(str(result["error"]))
+				return
+			_name.text = file_name.get_basename().capitalize()
+			opened.emit(int(result["placed"]))
+			if int(result["missing"]) > 0:
+				_say("opened %d parts — %d are not in the library"
+					% [int(result["placed"]), int(result["missing"])])
+			else:
+				_say("opened %d parts" % int(result["placed"])))
+		_picker.failed.connect(func(why: String) -> void: _say(why))
+	_picker.ask()
 
 
 func _on_export() -> void:

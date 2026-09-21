@@ -1,0 +1,111 @@
+## Can the app read the format it writes?
+##
+##   godot --headless --path . --script src/dev/import_probe.gd
+##
+## It could export an .ldr and then had nowhere to put one back. Which
+## is a strange shape for a tool to have: the one file it produces is
+## the one file it will not open.
+##
+## The round trip is the test. Build something, write it out, read it
+## back, and every brick has to be the same part in the same colour at
+## the same transform — not merely the same number of bricks, which is
+## what a broken transform still gives you.
+extends SceneTree
+
+var _failures: int = 0
+
+
+func _initialize() -> void:
+	var library := PartLibrary.new()
+	if not library.load_catalogue():
+		print("no catalogue")
+		quit(1)
+		return
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	var store := ModelStore.new()
+	store.world = world
+	store.builder = builder
+	store.library = library
+	await process_frame
+
+	# Something with a bit of everything: stacked, turned, and laid on
+	# its side, because a transform that survives upright bricks and
+	# loses sideways ones is the failure worth catching.
+	var built: Array[Dictionary] = []
+	for case: Array in [
+		["3001", 4, "up", 0, Vector3(0, 0, 0)],
+		["3001", 1, "up", 1, Vector3(40, 24, 0)],
+		["3024", 15, "+z", 0, Vector3(0, 40, 60)],
+		["3070b", 0, "down", 2, Vector3(80, 40, 20)],
+		["3005", 14, "-x", 3, Vector3(20, 60, 40)],
+	]:
+		var at := Transform3D(
+			BrickLattice.basis_for(str(case[2]), int(case[3])), case[4])
+		var brick_id: int = world.add_brick(str(case[0]), int(case[1]), at)
+		if brick_id == 0:
+			print("  skip  %s is not in this library" % case[0])
+			continue
+		builder.register(brick_id, str(case[0]), at)
+		built.append({"part": case[0], "colour": case[1], "at": at})
+
+	var text: String = store.to_text("Round Trip")
+	print("  wrote %d bricks as %d lines of LDraw"
+		% [built.size(), text.split("\n").size()])
+
+	var result: Dictionary = store.open_text(text, "round_trip.ldr")
+	if not str(result["error"]).is_empty():
+		_failures += 1
+		print("  FAIL  reading it back: %s" % result["error"])
+	elif int(result["placed"]) != built.size():
+		_failures += 1
+		print("  FAIL  wrote %d bricks, read back %d"
+			% [built.size(), int(result["placed"])])
+	else:
+		print("  ok    %d bricks written and %d read back"
+			% [built.size(), int(result["placed"])])
+
+	# Same parts, same colours, same places.
+	var back: Array[Dictionary] = []
+	for brick: BrickWorld.Brick in world.bricks():
+		back.append({"part": brick.part_id, "colour": brick.color_code,
+			"at": brick.transform})
+	for wanted: Dictionary in built:
+		var found: bool = false
+		for got: Dictionary in back:
+			if (got["part"] == wanted["part"]
+					and got["colour"] == wanted["colour"]
+					and (got["at"] as Transform3D).is_equal_approx(wanted["at"])):
+				found = true
+				break
+		if not found:
+			_failures += 1
+			print("  FAIL  %s c%d did not survive the round trip"
+				% [wanted["part"], wanted["colour"]])
+			print("        wrote %s" % [wanted["at"]])
+			for got: Dictionary in back:
+				if got["part"] == wanted["part"]:
+					print("        read  %s" % [got["at"]])
+	if _failures == 0:
+		print("  ok    every part, colour and transform is unchanged")
+
+	# And a file that is not one.
+	var junk: Dictionary = store.open_text("hello, this is not a model", "x")
+	if str(junk["error"]).is_empty():
+		_failures += 1
+		print("  FAIL  opened something that was not a model")
+	else:
+		print("  ok    something that is not a model is refused: %s"
+			% junk["error"])
+
+	print("")
+	if _failures == 0:
+		print("the app reads the format it writes")
+	else:
+		print("%d FAILURE(S)" % _failures)
+	quit(1 if _failures else 0)

@@ -160,10 +160,21 @@ static func to_transform(v: PackedFloat64Array) -> Transform3D:
 	# F * M * F with F = diag(1, -1, -1): element (r, c) picks up the sign
 	# of both its row and its column, so the two off-diagonal blocks flip
 	# and the diagonal blocks do not.
+	#
+	# LDraw writes the matrix by rows and Basis takes it by columns, so
+	# the elements have to be transposed as well as signed. f and h were
+	# left where they were written, which transposes eight of the nine
+	# and not those two.
+	#
+	# Nothing caught it for as long as every model turned only about the
+	# vertical: a rotation about Y has zeros in exactly f and h, so the
+	# two wrong entries were both zero and the matrix came out right.
+	# The first brick ever laid on its side came back as a matrix that
+	# was not a rotation at all — one column doubled, one column empty.
 	var basis := Basis(
 		Vector3(a, -d, -g),   # column 0
-		Vector3(-b, e, f),    # column 1
-		Vector3(-c, h, i))    # column 2
+		Vector3(-b, e, h),    # column 1
+		Vector3(-c, f, i))    # column 2
 	var origin := Vector3(v[0], -v[1], -v[2])
 	return Transform3D(basis, origin)
 
