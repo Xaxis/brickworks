@@ -314,10 +314,16 @@ func _build_ui() -> void:
 	# a deployment that serves its own parts would otherwise hold them
 	# for ever waiting on a URL that was never going to come.
 	_account.changed.connect(func() -> void:
-		if _library.remote_parts.is_empty():
-			_library.remote_parts = (_account.parts_url
-				if not _account.parts_url.is_empty()
-				else Origin.here() + "/parts/"))
+		if not _account.parts_url.is_empty():
+			# The real answer, which replaces anything guessed before
+			# it arrived. A probe that fails — offline for a moment at
+			# startup — used to pin the guess for the rest of the
+			# session, and the guess is this deployment, which carries
+			# only the parts it shipped with. Every other part then
+			# fetched a web page and was reported as broken geometry.
+			_library.remote_parts = _account.parts_url
+		elif _library.remote_parts.is_empty():
+			_library.remote_parts = Origin.here() + "/parts/")
 	add_child(_account)
 
 	_assistant = Assistant.new()

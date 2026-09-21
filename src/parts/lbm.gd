@@ -100,7 +100,14 @@ static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMe
 		push_error("lbm: %s is too short to be a part" % source)
 		return null
 	if bytes.decode_u32(0) != MAGIC:
-		push_error("lbm: %s does not start with LBM1" % source)
+		# Named after what this actually wants, and saying what came
+		# instead. It said LBM1 for a long time after the format moved
+		# on, and a part fetched from a misrouted deployment arrives as
+		# a web page — so the one clue was a complaint about a version
+		# number that no longer exists, pointing at the parser when the
+		# problem was the route.
+		push_error("lbm: %s is not geometry — wanted LBM3, got %s"
+			% [source, _describe(bytes)])
 		return null
 
 	var surface_count: int = bytes.decode_u16(6)
@@ -247,3 +254,14 @@ static func _oct_decode(qx: int, qy: int) -> Vector3:
 		x = fx
 		y = fy
 	return Vector3(x, y, z).normalized()
+
+
+## What the first few bytes look like, for an error worth reading.
+static func _describe(bytes: PackedByteArray) -> String:
+	if bytes.is_empty():
+		return "nothing"
+	var head: String = bytes.slice(0, mini(bytes.size(), 16)) \
+		.get_string_from_utf8().strip_edges()
+	if head.begins_with("<"):
+		return "a web page (%d bytes)" % bytes.size()
+	return '"%s"' % head if not head.is_empty() else "%d bytes" % bytes.size()
