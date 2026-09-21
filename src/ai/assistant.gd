@@ -324,7 +324,7 @@ func _on_response(result: Array) -> void:
 			tool_results.append({
 				"type": "tool_result",
 				"tool_use_id": block.get("id", ""),
-				"content": _run_tool(block),
+				"content": await _run_tool(block),
 			})
 
 	if tool_results.is_empty():
@@ -375,6 +375,8 @@ func _stop(ok: bool, summary: String) -> void:
 
 
 func _run_tool(block: Dictionary) -> String:
+	# Awaited by the caller, because checking a design may first have to
+	# fetch the geometry for parts this build has not loaded.
 	var name: String = block.get("name", "")
 	var args: Dictionary = block.get("input", {})
 
@@ -385,6 +387,11 @@ func _run_tool(block: Dictionary) -> String:
 			return _search(query, int(args.get("limit", 15)))
 		"check_design":
 			var trial: Model = _read_model(args)
+			# Fetch what the check will need first. Without this the web
+			# build tells the model that real catalogue parts do not
+			# exist — they are simply not loaded yet — and it goes off
+			# and picks something else.
+			await _ensure_parts(trial)
 			var report: Dictionary = _check(trial)
 			# On screen, not just counted. A design runs for minutes and
 			# checks its work two or three times along the way; those
@@ -568,8 +575,19 @@ func _check(model: Model) -> Dictionary:
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
-			_note(issues, "unknown part",
-				"no part '%s' exists" % placement.part)
+			# Two different failures wearing one message. A part that is
+			# not in the catalogue is a mistake to correct by choosing
+			# another; a part that is in the catalogue but whose
+			# geometry has not arrived is not the model's problem at
+			# all, and telling it the part does not exist sends it
+			# looking for a substitute that was never needed.
+			if library.parts.has(placement.part):
+				_note(issues, "not loaded",
+					"part '%s' exists but its geometry has not arrived — "
+					% placement.part + "keep it and try again")
+			else:
+				_note(issues, "unknown part",
+					"no part '%s' exists" % placement.part)
 			continue
 		if placement.y < 0:
 			_note(issues, "below ground",
