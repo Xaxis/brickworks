@@ -34,6 +34,7 @@ var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
 var _picker: PickImage
 var _mosaic_source: Image
+var _playback: BuildPlayback
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -485,7 +486,17 @@ func _build_ui() -> void:
 	_builder.placed.connect(func(_id: int, _part: String) -> void:
 		_on_model_changed())
 	_builder.removed.connect(func(_id: int) -> void: _on_model_changed())
-	_assistant.built.connect(func(_n: int) -> void: _on_model_changed())
+	# Watch it go up, in the order it would be built, rather than find
+	# it already there.
+	_playback = BuildPlayback.new()
+	_playback.world = _world
+	_playback.library = _library
+	add_child(_playback)
+
+	_assistant.built.connect(func(_n: int) -> void:
+		_on_model_changed()
+		if _playback.play(_store.scenery):
+			_bar.say("building…"))
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
@@ -764,6 +775,8 @@ func _toggle_parts() -> void:
 ## bricks into a model that is only half on screen, so the build steps
 ## are worked out once, on entry, from whatever is there.
 func _toggle_steps() -> void:
+	if _playback != null and _playback.is_playing():
+		_playback.stop()
 	if _steps.is_playing_back():
 		_steps.stop()
 		return
@@ -1138,6 +1151,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if _over_panel():
 		return
+	if _playback != null and _playback.is_playing():
+		# Reaching for the model ends the animation, and this click is
+		# what ended it rather than a placement.
+		_playback.stop()
+		return
 	# A finger that turned the model raises a click on release just as a
 	# tap does; without this a drag leaves a brick wherever it ended.
 	if _camera.swallowing_click():
@@ -1185,6 +1203,9 @@ func _refresh_preview() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.is_pressed():
 		return
+	# Whoever is pressing keys has stopped watching.
+	if _playback != null and _playback.is_playing():
+		_playback.stop()
 	# A single-letter shortcut must never fire while someone is typing a
 	# part name or a brief.
 	var focused: Control = get_viewport().gui_get_focus_owner()
