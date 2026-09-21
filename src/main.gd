@@ -706,6 +706,13 @@ func _export_booklet() -> void:
 	_world.show_only({})
 	$HUD.visible = had_hud
 	_camera.global_transform = camera_was
+	# Back where you were. Saving the instructions from inside the
+	# booklet stopped the playback to take its pictures and then never
+	# started it again, so asking for a copy of what you were reading
+	# closed what you were reading. The flag was recorded and never
+	# looked at.
+	if was_playing:
+		_steps.start(_world, _library, _store.scenery)
 
 	var file_name: String = title.to_snake_case() + "_instructions.html"
 	var note: String = Download.give(
@@ -917,6 +924,11 @@ func _on_part_chosen(part_id: String) -> void:
 	# the cursor reaches the model.
 	if not _library.is_resident(part_id):
 		_library.request_mesh(part_id, true)
+		# And say so. Until the bytes land there is no ghost and a click
+		# does nothing, which reads as the app being broken rather than
+		# as the app waiting — and on a slow connection that is several
+		# seconds of it.
+		_bar.say("fetching %s…" % part_id)
 	_refresh_preview()
 
 
@@ -924,6 +936,7 @@ func _on_part_fetched(part_id: String) -> void:
 	_place_awaited(part_id)
 	if _builder.held_part == part_id:
 		_refresh_preview()
+		_bar.say("%s ready" % part_id)
 
 
 func _on_color_chosen(color_code: int) -> void:

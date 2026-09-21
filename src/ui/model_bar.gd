@@ -87,6 +87,22 @@ func _button(row: HBoxContainer, text: String, action: Callable,
 	var button := Button.new()
 	button.text = text
 	button.tooltip_text = tip
+	# Never keeps the keyboard.
+	#
+	# Godot does not drop focus for a click that lands on no Control, so
+	# a toolbar button stayed focused for the rest of the session — and
+	# a focused button eats the keys the app wanted. Tab and the arrows
+	# stopped reaching the handler after the first click up here, which
+	# is two bindings the strip along the bottom promises.
+	#
+	# It was worse than that while space slid the view: space is also
+	# the key that presses a focused button, so panning after touching
+	# this row fired whichever one had been clicked. With Clear, that is
+	# the model and its undo history.
+	#
+	# Every other panel in the app already did this. This row was the
+	# one that did not.
+	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 12)
 	button.pressed.connect(action)
 	row.add_child(button)
