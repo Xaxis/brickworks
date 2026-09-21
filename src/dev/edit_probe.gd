@@ -138,6 +138,11 @@ func _initialize() -> void:
 			% assistant.built_count())
 
 	print("")
+	_someone_elses_bricks(assistant, world, builder, library)
+	_unknown_numbers(assistant, world)
+	_pieces(assistant)
+
+	print("")
 	if _failures == 0:
 		print("a model can be changed in place")
 	else:
@@ -165,7 +170,11 @@ func _shape(world: BrickWorld) -> Array:
 func _edit(assistant: Assistant, what: String, args: Dictionary,
 		want_ok: bool = true) -> void:
 	var edited: Assistant.Model = assistant._edit(args)
-	var verdict: Dictionary = assistant._check(edited)
+	# An edit is the whole of what will be on the baseplate, which is
+	# what the second argument says. Without it the check puts the
+	# hand-placed brick into the lattice as something to avoid, and the
+	# edit — which contains that brick — is refused for overlapping it.
+	var verdict: Dictionary = assistant._check(edited, true)
 	var ok: bool = bool(verdict["ok"])
 	if ok:
 		assistant._apply_edit(edited)
@@ -198,3 +207,88 @@ func _expect_colours(world: BrickWorld, what: String, want: Array) -> void:
 	else:
 		_failures += 1
 		print("  FAIL  %s: colours %s, wanted %s" % [what, got, wanted])
+
+
+## An edit that names nothing real must say so rather than say "done".
+func _unknown_numbers(assistant: Assistant, world: BrickWorld) -> void:
+	var edited: Assistant.Model = assistant._edit({
+		"recolor": [{"bricks": [90001, 90002], "color": 1}]})
+	if assistant._touched == 0 and assistant._unknown.size() == 2:
+		print("  ok    an edit that names nothing real changes nothing")
+	else:
+		_failures += 1
+		print("  FAIL  an edit naming two bricks that do not exist "
+			+ "touched %d and reported %d unknown"
+			% [assistant._touched, assistant._unknown.size()])
+	if edited.placements.size() != world.brick_count():
+		_failures += 1
+		print("  FAIL  it also changed how many bricks there are")
+
+
+## And a design in two halves is noticed, without being refused.
+func _pieces(assistant: Assistant) -> void:
+	var model := Assistant.Model.new()
+	for raw: Variant in [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0},
+		{"part": "3001", "color": 4, "x": 0, "y": 3, "z": 0},
+		{"part": "3001", "color": 1, "x": 10, "y": 0, "z": 0},
+	]:
+		model.placements.append(Assistant.Placement.from_dict(raw))
+	var verdict: Dictionary = assistant._check(model, true)
+	if int(verdict.get("pieces", 0)) == 2:
+		print("  ok    a model in two halves is counted as two pieces")
+	else:
+		_failures += 1
+		print("  FAIL  two separated stacks counted as %d piece(s)"
+			% int(verdict.get("pieces", -1)))
+	if not bool(verdict["ok"]):
+		_failures += 1
+		print("  FAIL  and it was refused for it: %s" % verdict["summary"])
+	else:
+		print("  ok    and it is not refused for it")
+
+
+## A submitted design does not get to stand where somebody else's brick
+## already is.
+##
+## A submission replaces the assistant's work and leaves the rest of the
+## baseplate alone, so the check has to know about the rest of the
+## baseplate. Checking against an empty lattice declared a design
+## buildable while it was sitting inside a brick the person had placed,
+## and then registered over its cells — leaving that brick holding no
+## cells at all once the assistant's next design released them.
+func _someone_elses_bricks(assistant: Assistant, world: BrickWorld,
+		builder: Builder, library: PartLibrary) -> void:
+	assistant.clear_built()
+	for brick: BrickWorld.Brick in world.bricks().duplicate():
+		builder.lattice.release(brick.id)
+		world.remove_brick(brick.id)
+
+	var at := Transform3D(Basis.IDENTITY, Vector3(40.0, 24.0, 20.0))
+	var hand: int = world.add_brick("3001", 2, at)
+	builder.register(hand, "3001", at)
+
+	var model := Assistant.Model.new()
+	model.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0}))
+	var verdict: Dictionary = assistant._check(model)
+	if bool(verdict["ok"]):
+		_failures += 1
+		print("  FAIL  a design standing inside a hand-placed brick "
+			+ "was called buildable")
+	else:
+		print("  ok    a design cannot stand where somebody else's brick is")
+
+	# And one beside it is fine.
+	var beside := Assistant.Model.new()
+	beside.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 4, "x": 8, "y": 0, "z": 0}))
+	if bool(assistant._check(beside)["ok"]):
+		print("  ok    and one beside it is fine")
+	else:
+		_failures += 1
+		print("  FAIL  a design clear of it was refused anyway: %s"
+			% assistant._check(beside)["feedback"])
+
+	builder.lattice.release(hand)
+	world.remove_brick(hand)

@@ -412,7 +412,9 @@ func _send() -> void:
 			if tool != "submit_design" and tool != "check_design":
 				return
 			for raw: Dictionary in scanner.feed(piece):
-				if not raw.has("part"):
+				if not raw.has("part") or _edited:
+					# Same reason a draft does not land after an edit:
+					# what is on the baseplate is real by then.
 					continue
 				if not _sketching:
 					_sketching = true
@@ -693,13 +695,21 @@ func _stop(ok: bool, summary: String) -> void:
 	if not ok and not _edited:
 		_restore()
 	# Anything the sketch left standing is not a model; the finished one
-	# either replaced it or never came.
-	if not _edited:
-		for brick_id: int in _sketched_ids:
-			builder.lattice.release(brick_id)
-			world.remove_brick(brick_id)
-		_sketched_ids = PackedInt64Array()
+	# either replaced it or never came. Skipping this when an edit had
+	# landed left those bricks behind, and the next run's snapshot
+	# adopted them as bricks the person had placed by hand.
+	for brick_id: int in _sketched_ids:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
 	_busy = false
+
+	# A failed design that started from a bare baseplate has nothing to
+	# restore to, so its last checked draft is still standing. Better
+	# than an empty baseplate, and worth saying rather than reporting
+	# that nothing happened.
+	if not ok and not _placed_ids.is_empty():
+		summary += " — the last version that held together is still there"
 	finished.emit(ok, summary)
 
 
@@ -734,7 +744,11 @@ func _run_tool(block: Dictionary) -> Variant:
 			# checks its work two or three times along the way; those
 			# are the only glimpses of the shape there are before the
 			# end, and they were being thrown away.
-			if not trial.placements.is_empty():
+			# Only while composing. Once an edit has landed, the model
+			# on the baseplate is the person's model, and a check of
+			# fifteen bricks would replace the hundred and forty that
+			# are standing — and report it as a successful check.
+			if not trial.placements.is_empty() and not _edited:
 				_apply(trial, false)
 			progress.emit("checked %d bricks: %s" % [
 				trial.placements.size(), report["summary"]])
@@ -766,11 +780,20 @@ func _run_tool(block: Dictionary) -> Variant:
 			return await _with_a_look("", "", from)
 		"edit_model":
 			var edited: Model = _edit(args)
+			if _touched == 0:
+				# Nothing changed, and saying "done" to that ends the
+				# run as a success with the model untouched.
+				if _unknown.is_empty():
+					return ("Nothing in that changed anything. Check "
+						+ "the brick numbers against look_at_model.")
+				return ("No brick has %s. Call look_at_model — the "
+					% _numbers(_unknown)
+					+ "numbers change when a model is opened or rebuilt.")
 			if edited.placements.is_empty():
 				return ("That would leave the baseplate empty. "
 					+ "If clearing it is what you meant, say so instead.")
 			await _ensure_parts(edited)
-			var verdict: Dictionary = _check(edited)
+			var verdict: Dictionary = _check(edited, true)
 			if not bool(verdict["ok"]):
 				progress.emit("tried a change: %s" % verdict["summary"])
 				return ("Not applied — the model would not hold together.\n"
@@ -779,9 +802,12 @@ func _run_tool(block: Dictionary) -> Variant:
 			_pending = null
 			_edited = true
 			progress.emit("changed it: %d bricks" % edited.placements.size())
-			return ("Done. %d bricks now. "
-				% edited.placements.size()
-				+ "Call look_at_model or view_model to see it.")
+			var said: String = "Done. %d bricks now." % edited.placements.size()
+			if not _unknown.is_empty():
+				said += " No brick has %s, so those were left alone." \
+					% _numbers(_unknown)
+			return await _with_a_look(said,
+				"That is what it looks like now.")
 		"submit_design":
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks" % _pending.placements.size())
@@ -832,14 +858,28 @@ func _model_from_world() -> Model:
 ##
 ## Removals first, so that a brick can be taken away and another put in
 ## its place in one call without the two fighting over the same cells.
+## What an edit asked for that was not there. Filled by [method _edit],
+## read by whoever reports the result: an edit that named forty bricks
+## and found none of them used to come back as "Done", with nothing
+## changed and the run ended as a success.
+var _unknown: PackedInt64Array = PackedInt64Array()
+## How many changes an edit actually made.
+var _touched: int = 0
+
+
 func _edit(args: Dictionary) -> Model:
 	var model: Model = _model_from_world()
 	var by_id: Dictionary = {}
 	for placement: Placement in model.placements:
 		by_id[placement.id] = placement
+	_unknown = PackedInt64Array()
+	_touched = 0
 
 	var gone: Dictionary = {}
 	for raw: Variant in args.get("remove", []):
+		if not by_id.has(int(raw)):
+			_unknown.append(int(raw))
+			continue
 		gone[int(raw)] = true
 	if not gone.is_empty():
 		var kept: Array[Placement] = []
@@ -853,8 +893,11 @@ func _edit(args: Dictionary) -> Model:
 		var colour: int = int(order.get("color", 7))
 		for id_raw: Variant in order.get("bricks", []):
 			var placement: Placement = by_id.get(int(id_raw))
-			if placement != null:
+			if placement == null:
+				_unknown.append(int(id_raw))
+			elif placement.color != colour:
 				placement.color = colour
+				_touched += 1
 
 	for raw: Variant in args.get("move", []):
 		var order: Dictionary = raw
@@ -862,13 +905,18 @@ func _edit(args: Dictionary) -> Model:
 			float(order.get("dy", 0)), float(order.get("dz", 0)))
 		for id_raw: Variant in order.get("bricks", []):
 			var placement: Placement = by_id.get(int(id_raw))
-			if placement != null:
+			if placement == null:
+				_unknown.append(int(id_raw))
+			elif by != Vector3.ZERO:
 				placement.x += by.x
 				placement.y += by.y
 				placement.z += by.z
+				_touched += 1
 
 	for raw: Variant in args.get("add", []):
 		model.placements.append(Placement.from_dict(raw))
+		_touched += 1
+	_touched += gone.size()
 	return model
 
 
@@ -1233,10 +1281,42 @@ func _read_model(args: Dictionary) -> Model:
 ## Runs on a scratch lattice rather than the live one, so a failing
 ## design never half-lands in the scene. Everything the app knows about
 ## collision is used here; nothing is approximated for the model's sake.
-func _check(model: Model) -> Dictionary:
+## Check a design against the real rules.
+##
+## ``alone`` says the model is the whole of what will be on the
+## baseplate — which is true of an edit, since an edit is built from a
+## reading of everything there. A submission is not: it replaces the
+## assistant's work and leaves what the person placed by hand standing,
+## so those bricks have to be in the lattice or a design can be declared
+## buildable while sitting inside one of them.
+func _check(model: Model, alone: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
+
+	if model.placements.is_empty():
+		return {
+			"ok": false,
+			"summary": "no bricks",
+			"feedback": "That design has no parts in it.",
+		}
+
+	# What will still be there afterwards, standing in the way.
+	var theirs: Dictionary = {}     ## lattice key -> part id
+	if not alone and world != null:
+		var mine: Dictionary = {}
+		for brick_id: int in _placed_ids + _sketched_ids:
+			mine[brick_id] = true
+		var key: int = -1
+		for brick: BrickWorld.Brick in world.bricks():
+			if mine.has(brick.id) or scenery.has(brick.id):
+				continue
+			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if part == null:
+				continue
+			lattice.occupy(key, builder._cells_for(part, brick.transform))
+			theirs[key] = brick.part_id
+			key -= 1
 
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
@@ -1266,16 +1346,24 @@ func _check(model: Model) -> Dictionary:
 		var cells: Array[Vector3i] = builder._cells_for(part, at)
 		var blockers: PackedInt64Array = lattice.blockers(cells)
 		if not blockers.is_empty():
+			# The lattice numbers from one, because zero means empty,
+			# and negative keys are bricks that were already there. Both
+			# were printed raw beside a zero-based list index, so a
+			# brick was told it overlapped itself.
+			var blocker: int = blockers[0]
+			var who: String = (
+				"a %s already on the baseplate" % theirs[blocker]
+				if theirs.has(blocker) else "brick %d" % (blocker - 1))
 			_note(issues, "overlap",
-				"brick %d (%s at %s) overlaps brick %d" % [
-					index, placement.part, placement.where(),
-					blockers[0]])
+				"brick %d (%s at %s) overlaps %s" % [
+					index, placement.part, placement.where(), who])
 			continue
 
 		lattice.occupy(index + 1, cells)
 		cells_of[index] = cells
 
 	_check_support(model, cells_of, lattice, issues)
+	var pieces: int = _count_pieces(model, cells_of, lattice)
 
 	var errors: int = 0
 	for kind: String in issues:
@@ -1285,11 +1373,84 @@ func _check(model: Model) -> Dictionary:
 	var summary: String = ("%d bricks, buildable" % model.placements.size()
 		if ok else "%d problem%s" % [errors, "" if errors == 1 else "s"])
 
+	var feedback: String = _feedback(issues, summary)
+	# Said, never counted.
+	#
+	# Both the tool description and the prompt promised that a design is
+	# checked for being in one piece, and nothing in this file computed
+	# it. Now it does — but as a remark rather than an error, because a
+	# model in two pieces is often exactly what was asked for (a boat
+	# and a jetty, a tree beside a house) and failing it would throw
+	# away a design that is otherwise correct.
+	if pieces > 1:
+		feedback += ("\n\nIt is in %d separate pieces that do not touch "
+			% pieces
+			+ "each other. Intended, if it is meant to be a scene; worth "
+			+ "a look otherwise, because a part of a model that touches "
+			+ "nothing falls off when it is picked up.")
+
 	return {
 		"ok": ok,
 		"summary": summary,
-		"feedback": _feedback(issues, summary),
+		"feedback": feedback,
+		"pieces": pieces,
 	}
+
+
+## How many separate pieces the design is in.
+##
+## Two bricks are in the same piece when one occupies a cell directly
+## above a cell of the other, or when a stud of one reaches into the
+## other — the same two rules that decide whether a brick is held up,
+## so a design cannot be "every brick supported" and "in five pieces"
+## for contradictory reasons.
+func _count_pieces(model: Model, cells_of: Dictionary,
+		lattice: BrickLattice) -> int:
+	if cells_of.size() <= 1:
+		return cells_of.size()
+
+	var joined: Dictionary = {}   ## index -> Array of index
+	for index: int in cells_of:
+		joined[index] = []
+	for index: int in cells_of:
+		for cell: Vector3i in cells_of[index]:
+			var above: int = lattice.brick_at(
+				Vector3i(cell.x, cell.y + 1, cell.z))
+			if above != 0 and above - 1 != index and joined.has(above - 1):
+				joined[index].append(above - 1)
+				joined[above - 1].append(index)
+
+	for index: int in cells_of:
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _transform(placement, part)
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			var tip: Vector3 = at * (connector.position
+				+ connector.axis.normalized() * 5.0)
+			var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
+			if reached != 0 and reached - 1 != index and joined.has(reached - 1):
+				joined[index].append(reached - 1)
+				joined[reached - 1].append(index)
+
+	var seen: Dictionary = {}
+	var pieces: int = 0
+	for start: int in cells_of:
+		if seen.has(start):
+			continue
+		pieces += 1
+		var stack: Array = [start]
+		seen[start] = true
+		while not stack.is_empty():
+			var here: int = stack.pop_back()
+			for next: int in joined[here]:
+				if not seen.has(next):
+					seen[next] = true
+					stack.append(next)
+	return pieces
 
 
 ## Which placements have a stud from some other part reaching into
@@ -1366,6 +1527,19 @@ func _check_support(
 			_note(issues, "floating",
 				"brick %d (%s at %s) has nothing holding it" % [
 					index, placement.part, placement.where()])
+
+
+## "number 12" or "numbers 12, 14 and 15", capped so a confused edit
+## does not answer with three hundred of them.
+static func _numbers(ids: PackedInt64Array) -> String:
+	var shown: PackedStringArray = PackedStringArray()
+	for n: int in mini(ids.size(), 8):
+		shown.append(str(ids[n]))
+	var more: String = (", and %d others" % (ids.size() - 8)
+		if ids.size() > 8 else "")
+	if shown.size() == 1:
+		return "number %s" % shown[0]
+	return "numbers %s%s" % [", ".join(shown), more]
 
 
 static func _note(issues: Dictionary, kind: String, message: String) -> void:
