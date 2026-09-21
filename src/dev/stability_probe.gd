@@ -24,7 +24,7 @@ func _initialize() -> void:
 		var info: PartLibrary.PartInfo = library.parts.get(pair[0])
 		if info:
 			print("  %-6s %5.2f g  [%.2f]  %s" % [
-				pair[0], Stability._grams(info), pair[1],
+				pair[0], Stability.grams(info), pair[1],
 				info.name.strip_edges()])
 
 	print("\narrangements:")

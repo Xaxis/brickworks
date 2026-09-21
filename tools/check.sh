@@ -39,6 +39,13 @@ run() {
   # its exit code, which doubled the slowest part of the suite to save
   # a variable.
   output=$("$@" 2>&1); status=$?
+  # Godot exits 0 when a script fails to parse. So a probe with a typo
+  # in it reported as passing, and did so for as long as it took
+  # somebody to read the file — the stability probe had not run since
+  # `_grams` was renamed, and the suite called it ok every time.
+  if echo "$output" | grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script'; then
+    status=1
+  fi
   if [ "$status" = 0 ]; then
     printf '  ok    %s\n' "$label"
   else
