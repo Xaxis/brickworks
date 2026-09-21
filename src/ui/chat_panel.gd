@@ -201,6 +201,8 @@ func _build_settings() -> void:
 		+ "More is better and slower and dearer.")
 	for level: String in Brain.EFFORTS:
 		_how_hard.add_item(level)
+		_how_hard.set_item_tooltip(_how_hard.item_count - 1,
+			str(Brain.EFFORT_BLURBS.get(level, "")))
 	_how_hard.item_selected.connect(func(at: int) -> void:
 		Brain.set_effort(Brain.EFFORTS[at]))
 	_settings.add_child(_how_hard)

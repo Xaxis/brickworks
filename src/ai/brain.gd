@@ -49,23 +49,55 @@ class Choice extends RefCounted:
 		per_cached = float(fields["cached"])
 
 
+## What the choices are actually worth, from running the same brief —
+## a post box — through each of them. src/dev/bakeoff_probe.gd does it.
+##
+##   setting            took   in / out    cost   bricks
+##   Opus 5 high        275s   203k/20k    $1.53      27
+##   Sonnet 5 low       151s   535k/8k     $1.15       8
+##   Sonnet 5 high      212s   194k/16k      55c       8
+##   Sonnet 5 max       490s   261k/37k      89c      11
+##   Haiku 4.5           57s   220k/4k       24c       9
+##
+## Two things in that table are worth knowing and neither is obvious.
+##
+## The model matters far more than the effort: Opus built three times
+## the post box the others did for the same words. Bricks are not the
+## measure of a good model, but eight of them is not a post box.
+##
+## And low effort is not the cheap setting. It cost twice what high
+## did, because it thought less and so went round more times — half a
+## million input tokens against two hundred thousand. Which is why the
+## blurb for it says so rather than implying a saving that is not
+## there.
 const CHOICES: Array[Dictionary] = [
 	{"id": "claude-opus-5", "name": "Opus 5",
-		"blurb": "The best at this. Slowest and dearest.",
+		"blurb": "The best at this by a distance. Slowest and dearest.",
 		"adaptive": true, "effort": true,
 		"in": 5.0, "out": 25.0, "cached": 0.50},
 	{"id": "claude-sonnet-5", "name": "Sonnet 5",
-		"blurb": "Most of the ability, a fraction of the cost.",
+		"blurb": "Quicker and a third of the cost. Builds smaller.",
 		"adaptive": true, "effort": true,
 		"in": 2.0, "out": 10.0, "cached": 0.20},
 	{"id": "claude-haiku-4-5-20251001", "name": "Haiku 4.5",
-		"blurb": "Quick and cheap. Small models and small changes.",
+		"blurb": "A minute and a few pence. Small models, small changes.",
 		"adaptive": false, "effort": false,
 		"in": 1.0, "out": 5.0, "cached": 0.10},
 ]
 
 ## How hard to think, for the models that take the setting. Ordered.
 const EFFORTS: Array[String] = ["low", "medium", "high", "xhigh", "max"]
+
+## What each level is for, in as many words as fit beside a dropdown.
+## "low" is not the cheap one and saying otherwise would be a lie the
+## bill contradicts an hour later.
+const EFFORT_BLURBS: Dictionary = {
+	"low": "Barely thinks. Often ends up dearer, by going round more times.",
+	"medium": "A quick answer for a simple thing.",
+	"high": "The sensible default.",
+	"xhigh": "For something intricate.",
+	"max": "Twice the time and twice the bill. Worth it rarely.",
+}
 const DEFAULT_EFFORT := "high"
 const DEFAULT_MODEL := "claude-opus-5"
 

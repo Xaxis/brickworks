@@ -18,6 +18,17 @@ class_name ControlsHint
 extends FlowContainer
 
 
+## Is the window narrow enough that this is a phone rather than a laptop
+## that happens to have a touchscreen?
+##
+## In points, not pixels: a retina window reports twice the pixels and
+## would read as roomy at any size.
+static func _is_narrow() -> bool:
+	var wide: float = DisplayServer.window_get_size().x \
+		/ maxf(DisplayServer.screen_get_scale(), 1.0)
+	return wide < 720.0
+
+
 ## One control: what to press, and what it does.
 class Binding extends RefCounted:
 	var keys: PackedStringArray
@@ -43,7 +54,11 @@ static func bindings() -> Array[Binding]:
 	# A phone has no keyboard, and a strip of keys it cannot press is
 	# worse than no strip: it reads as a list of things the app will not
 	# let you do.
-	if DisplayServer.is_touchscreen_available() and OS.has_feature("web"):
+	#
+	# Narrow, not merely touch-capable. Every laptop with a touchscreen
+	# reports one, and hiding sixteen keyboard shortcuts from somebody
+	# sitting at a keyboard is the same mistake in the other direction.
+	if DisplayServer.is_touchscreen_available() and _is_narrow():
 		return [
 			Binding.new(["tap"], "place"),
 			Binding.new(["hold"], "remove"),
@@ -55,9 +70,11 @@ static func bindings() -> Array[Binding]:
 	return [
 		Binding.new(["click"], "place"),
 		Binding.new(["right-click"], "remove"),
-		Binding.new(["right-drag"], "turn"),
-		Binding.new(["2 fingers", "shift-scroll"], "slide"),
-		Binding.new(["pinch", "scroll"], "zoom"),
+		# Turn first among the view verbs, because it is the one people
+		# reach for and the one that had nothing bound to it.
+		Binding.new(["right-drag", "2 fingers"], "turn"),
+		Binding.new(["shift-2 fingers"], "slide"),
+		Binding.new(["scroll", "pinch"], "zoom"),
 		Binding.new(["R"], "rotate"),
 		Binding.new(["T"], "tip on side"),
 		Binding.new(["[", "]"], "colour"),
@@ -72,6 +89,7 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new(["F"], "frame"),
+		Binding.new(["O"], "square on"),
 		Binding.new(["⌘Z"], "undo"),
 	]
 

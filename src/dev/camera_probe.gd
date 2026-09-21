@@ -26,20 +26,20 @@ func _run() -> void:
 	await process_frame
 
 	print("  what a trackpad sends")
-	_moves("two fingers slide the view", camera, "focus", func() -> void:
-		var swipe := InputEventPanGesture.new()
-		swipe.delta = Vector2(6.0, 0.0)
-		camera._unhandled_input(swipe))
-
 	_moves("pinching zooms", camera, "distance", func() -> void:
 		var pinch := InputEventMagnifyGesture.new()
 		pinch.factor = 1.4
 		camera._unhandled_input(pinch))
 
-	_moves("alt and two fingers turn it", camera, "yaw", func() -> void:
+	_moves("two fingers turn it", camera, "yaw", func() -> void:
 		var swipe := InputEventPanGesture.new()
 		swipe.delta = Vector2(6.0, 0.0)
-		swipe.alt_pressed = true
+		camera._unhandled_input(swipe))
+
+	_moves("shift and two fingers slide it", camera, "focus", func() -> void:
+		var swipe := InputEventPanGesture.new()
+		swipe.delta = Vector2(6.0, 0.0)
+		swipe.shift_pressed = true
 		camera._unhandled_input(swipe))
 
 	print("")
@@ -67,17 +67,29 @@ func _run() -> void:
 		_move(camera, Vector2(30.0, 0.0))
 		_press(camera, MOUSE_BUTTON_MIDDLE, false, true))
 
-	_moves("alt and left-drag turns it", camera, "yaw", func() -> void:
+	# The left button belongs to the app. A camera that also takes it
+	# with a modifier takes a share of the one button the app is about,
+	# and the modifier it used to take was space — which is also the
+	# key that presses whatever button was last clicked.
+	var still: float = camera._target_yaw
+	var focus_still: Vector3 = camera._target_focus
+	for held: String in ["alt", "space"]:
 		var down := InputEventMouseButton.new()
 		down.button_index = MOUSE_BUTTON_LEFT
 		down.pressed = true
-		down.alt_pressed = true
+		down.alt_pressed = held == "alt"
 		camera._unhandled_input(down)
-		_move(camera, Vector2(30.0, 0.0))
+		_move(camera, Vector2(40.0, 20.0))
 		var up := InputEventMouseButton.new()
 		up.button_index = MOUSE_BUTTON_LEFT
-		up.alt_pressed = true
-		camera._unhandled_input(up))
+		up.alt_pressed = held == "alt"
+		camera._unhandled_input(up)
+	if is_equal_approx(camera._target_yaw, still) \
+			and camera._target_focus.is_equal_approx(focus_still):
+		print("  ok    the left button does not move the view")
+	else:
+		_failures += 1
+		print("  FAIL  the left button still moves the view")
 
 	print("")
 	print("  a right button that means two things")
@@ -106,6 +118,12 @@ func _run() -> void:
 	else:
 		_failures += 1
 		print("  FAIL  a right click without a drag turned the model")
+
+	print("")
+	_turns_around_what_you_grabbed(camera)
+
+	print("")
+	_lets_go(camera)
 
 	print("")
 	_keeps_pace(camera)
@@ -233,7 +251,7 @@ func _keeps_pace(camera: CadCamera) -> void:
 	var was: Vector2 = camera.unproject_position(point)
 
 	var by := Vector2(120.0, -70.0)
-	camera._pan_by(by)
+	camera._slide_by(by)
 	camera._apply(1.0)
 	var now: Vector2 = camera.unproject_position(point)
 
@@ -246,3 +264,141 @@ func _keeps_pace(camera: CadCamera) -> void:
 		_failures += 1
 		print("  FAIL  a %.0f px drag moved the model %.0f px"
 			% [by.length(), moved.length()])
+
+
+## Does a drag stop when the button does?
+##
+## It did not. The release arm re-read the modifier, so letting go of
+## alt or shift before the button meant neither arm ran and the camera
+## stayed turning with nothing held — every later mouse move spinning
+## the view. The probe passed because it built a synthetic release with
+## the modifier still down, which is the one sequence fingers do not
+## perform: the hand comes off the key before it comes off the button.
+##
+## So each of these lets go in the awkward order and then moves the
+## mouse with nothing held at all.
+func _lets_go(camera: CadCamera) -> void:
+	print("  a drag ends when its button does")
+	for case: Array in [
+		["middle-drag, shift pressed before letting go",
+			MOUSE_BUTTON_MIDDLE, false, true],
+		["shift-middle-drag, shift released before letting go",
+			MOUSE_BUTTON_MIDDLE, true, false],
+		["right-drag, shift pressed before letting go",
+			MOUSE_BUTTON_RIGHT, false, true],
+	]:
+		var down := InputEventMouseButton.new()
+		down.button_index = int(case[1])
+		down.pressed = true
+		down.shift_pressed = bool(case[2])
+		camera._unhandled_input(down)
+		_move(camera, Vector2(30.0, 10.0))
+
+		var up := InputEventMouseButton.new()
+		up.button_index = int(case[1])
+		up.pressed = false
+		up.shift_pressed = bool(case[3])
+		camera._unhandled_input(up)
+
+		# Nothing is held now, so nothing should move.
+		var yaw: float = camera._target_yaw
+		var focus: Vector3 = camera._target_focus
+		_move(camera, Vector2(50.0, 50.0))
+		if is_equal_approx(camera._target_yaw, yaw) \
+				and camera._target_focus.is_equal_approx(focus):
+			print("  ok    %s" % case[0])
+		else:
+			_failures += 1
+			print("  FAIL  %s: the view kept moving" % case[0])
+
+	# And a release that never arrives at all — let go outside the
+	# window, and the press is the last event there is.
+	var lost := InputEventMouseButton.new()
+	lost.button_index = MOUSE_BUTTON_MIDDLE
+	lost.pressed = true
+	camera._unhandled_input(lost)
+	_move(camera, Vector2(20.0, 0.0))
+	camera._process(0.016)
+	var after: float = camera._target_yaw
+	_move(camera, Vector2(60.0, 0.0))
+	if is_equal_approx(camera._target_yaw, after):
+		print("  ok    a release that never arrives still ends the drag")
+	else:
+		_failures += 1
+		print("  FAIL  a drag whose release was lost keeps turning")
+
+
+## Does it turn around what is under the cursor?
+##
+## A camera that orbits the middle of whatever was last framed swings
+## the thing you grabbed out of shot, which is the difference between a
+## hand on a model and a camera on a boom. The point you started the
+## drag on should stay where it is.
+func _turns_around_what_you_grabbed(camera: CadCamera) -> void:
+	camera.focus = Vector3.ZERO
+	camera._target_focus = Vector3.ZERO
+	camera.distance = 400.0
+	camera._target_distance = 400.0
+	camera._yaw = 0.0
+	camera._target_yaw = 0.0
+	camera._pitch = 0.0
+	camera._target_pitch = 0.0
+	camera._apply(1.0)
+
+	# Something well off to the side of the middle, as a brick at the
+	# end of a long model would be.
+	var grabbed := Vector3(150.0, 30.0, 60.0)
+	camera.pick = func(_at: Vector2) -> Variant: return grabbed
+	var was_on_screen: Vector2 = camera.unproject_position(grabbed)
+	var was_where: Vector3 = camera.global_position
+	var was_facing: Vector3 = -camera.global_transform.basis.z
+
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_MIDDLE
+	down.pressed = true
+	down.position = was_on_screen
+	camera._unhandled_input(down)
+	camera._apply(1.0)
+
+	# Anchoring must not move the camera. If it does, the picture jumps
+	# the instant you press the button, before you have dragged at all.
+	var turned: float = rad_to_deg((-camera.global_transform.basis.z)
+		.angle_to(was_facing))
+	if camera.global_position.distance_to(was_where) > 0.5 or turned > 0.5:
+		_failures += 1
+		print("  FAIL  pressing the button moved the camera %.1f LDU "
+			% camera.global_position.distance_to(was_where)
+			+ "and turned it %.1f degrees" % turned)
+	else:
+		print("  ok    taking hold moves nothing and re-aims nothing")
+
+	if not camera.pivot_shown:
+		_failures += 1
+		print("  FAIL  nothing marks where it is turning")
+	else:
+		print("  ok    the point it turns around is marked")
+
+	_move(camera, Vector2(60.0, 0.0))
+	for _n: int in 40:
+		camera._apply(0.4)
+	var now_on_screen: Vector2 = camera.unproject_position(grabbed)
+	var drift: float = now_on_screen.distance_to(was_on_screen)
+	# Within a few pixels: the point turned around stays put, while
+	# everything else swings about it.
+	if drift < 4.0:
+		print("  ok    what you grabbed stays put while it turns "
+			+ "(%.1f px)" % drift)
+	else:
+		_failures += 1
+		print("  FAIL  what you grabbed slid %.0f px across the screen"
+			% drift)
+
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_MIDDLE
+	camera._unhandled_input(up)
+	if camera.pivot_shown:
+		_failures += 1
+		print("  FAIL  the mark is still up after letting go")
+	else:
+		print("  ok    and the mark goes when you let go")
+	camera.pick = Callable()

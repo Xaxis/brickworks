@@ -37,6 +37,7 @@ var _mosaic_source: Image
 var _playback: BuildPlayback
 var _outline: SelectionOutline
 var _gizmo: AxisGizmo
+var _turning: PivotMark
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -418,14 +419,23 @@ func _build_ui() -> void:
 	# Room for two lines. The strip wraps rather than truncating when the
 	# window is narrow, and a clipped area would put the wrapped line
 	# behind the viewport edge instead of showing it.
+	# Tall enough for the rows it actually needs.
+	#
+	# It was a fixed 48 pixels with clipping on, and twenty bindings
+	# wrap to three rows at this app's own default window size — so the
+	# strip that exists precisely so the controls cannot go unsaid cut
+	# its own last row off.
 	var hint_area := Control.new()
 	hint_area.custom_minimum_size = Vector2(0, 48)
-	hint_area.clip_contents = true
 	hint_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(hint_area)
 
 	# Bottom right, above the hint strip: out of the way of the model,
 	# and where every other 3D tool puts it.
+	_turning = PivotMark.new()
+	_turning.camera = _camera
+	add_child(_turning)
+
 	_gizmo = AxisGizmo.new()
 	_gizmo.camera = _camera
 	_gizmo.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -441,6 +451,11 @@ func _build_ui() -> void:
 	hint.offset_bottom = 0.0
 	hint.alignment = FlowContainer.ALIGNMENT_CENTER
 	hint_area.add_child(hint)
+	# The box grows to whatever the strip needs, however it wraps.
+	hint.resized.connect(func() -> void:
+		var wants: float = maxf(hint.get_combined_minimum_size().y, 46.0)
+		hint_area.custom_minimum_size = Vector2(0, wants + 4.0)
+		hint.offset_top = -wants)
 
 	var pad := Control.new()
 	pad.custom_minimum_size = Vector2(0, 6)
@@ -515,6 +530,22 @@ func _build_ui() -> void:
 	_playback.world = _world
 	_playback.library = _library
 	add_child(_playback)
+
+	# What the camera turns around. Without this it orbits the middle of
+	# whatever was last framed, so grabbing a chimney and dragging swings
+	# the chimney out of shot.
+	_camera.pick = func(at: Vector2) -> Variant:
+		var from: Vector3 = _camera.project_ray_origin(at)
+		var towards: Vector3 = _camera.project_ray_normal(at)
+		var hit: BrickLattice.Hit = _builder.lattice.raycast(from, towards)
+		if hit.is_valid():
+			return from + towards * hit.distance
+		# Nothing under the pointer, but there is still a baseplate to
+		# turn around: where the ray meets the ground reads as the place
+		# you pointed at far better than the middle of the model does.
+		var ground := Plane(Vector3.UP, 0.0)
+		var landing: Variant = ground.intersects_ray(from, towards)
+		return landing if landing != null else null
 
 	_outline = SelectionOutline.new()
 	_outline.world = _world
@@ -1237,10 +1268,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_builder.toggle_hovered()
 		return
-	# Space is held to slide the view, so a click while it is down is
-	# part of that and not a placement.
-	if Input.is_key_pressed(KEY_SPACE):
-		return
 	if _playback != null and _playback.is_playing():
 		# Reaching for the model ends the animation, and this click is
 		# what ended it rather than a placement.
@@ -1253,6 +1280,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	if button.button_index == MOUSE_BUTTON_LEFT:
 		_builder.place()
 		_refresh_preview()
+
+
+## A box around everything selected, for framing it.
+func _selection_bounds() -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in _builder.selection:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var here: AABB = (brick.transform * part.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
+	return _world.model_bounds() if first else box
 
 
 ## Move the selection one stud in a direction named on the screen
@@ -1328,7 +1372,25 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key: InputEventKey = event
 	match key.keycode:
 		KEY_F:
+			# The selection if there is one, everything with shift —
+			# which is what "zoom to fit" means in every tool that has
+			# both.
+			if key.shift_pressed or _builder.selection.is_empty():
+				_camera.frame(_world.model_bounds())
+			else:
+				_camera.frame(_selection_bounds())
+		KEY_HOME:
 			_camera.frame(_world.model_bounds())
+		KEY_6:
+			_camera.set_view("bottom")
+		KEY_7:
+			_camera.set_view("isometric")
+		KEY_O:
+			# Straight-on and back. A CAD drawing is read square on;
+			# a model on a table is seen in perspective.
+			_camera.square_on(not _camera.is_square_on())
+			_bar.say("square on" if _camera.is_square_on()
+				else "in perspective")
 		KEY_1: _camera.set_view("front")
 		KEY_2: _camera.set_view("back")
 		KEY_3: _camera.set_view("left")
