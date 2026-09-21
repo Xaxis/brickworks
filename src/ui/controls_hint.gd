@@ -90,6 +90,12 @@ static func for_keyboard() -> Array[Binding]:
 		# Turn first among the view verbs, because it is the one people
 		# reach for and the one that had nothing bound to it.
 		Binding.new(["right-drag", "2 fingers"], "turn"),
+		# Left drags a box. This strip said shift-drag for a while
+		# after plain drag started doing it, which is the exact failure
+		# the note at the top of this file is about — so the verb comes
+		# from the same place the handler gets it.
+		Binding.new(["drag"], "box select"),
+		Binding.new(["middle-drag"], ViewPrefs.middle_verb()),
 		Binding.new(["shift-2 fingers"], "slide"),
 		Binding.new(["scroll", "pinch"], "zoom"),
 		Binding.new(["R"], "rotate"),
@@ -101,8 +107,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["C"], "paint"),
 		Binding.new(["G"], "pick"),
 		Binding.new(["X"], "lift"),
-		Binding.new(["shift-click"], "select"),
-		Binding.new(["shift-drag"], "box select"),
+		Binding.new(["shift-click"], "add to selection"),
 		Binding.new(["arrows"], "move selection"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
@@ -122,6 +127,17 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	modulate = Color(1, 1, 1, 0.72)
 
+	rebuild()
+
+
+## Draw the strip again, for when what a control does has changed.
+##
+## The middle button is the one that can, and a strip built once at
+## startup would go on naming the old verb for the rest of the session.
+func rebuild() -> void:
+	for child: Node in get_children():
+		remove_child(child)
+		child.queue_free()
 	for binding: Binding in bindings():
 		add_child(_make(binding))
 

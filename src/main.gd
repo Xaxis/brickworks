@@ -32,6 +32,8 @@ var _account: Account
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
+var _controls: ControlsDialog
+var _hint: ControlsHint
 var _picker: PickImage
 var _mosaic_source: Image
 var _playback: BuildPlayback
@@ -83,6 +85,10 @@ func _enable_antialiasing() -> void:
 
 
 func _ready() -> void:
+	# Before anything draws: the controls strip reads these to say what
+	# the middle button does, and a strip built from the defaults and
+	# never rebuilt would be wrong for everyone who has changed them.
+	ViewPrefs.load_them()
 	_enable_antialiasing()
 	_match_screen_density()
 	_library = PartLibrary.new()
@@ -473,6 +479,7 @@ func _build_ui() -> void:
 		_tools.chose.connect(_on_touch_tool)
 
 	var hint := ControlsHint.new()
+	_hint = hint
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -46.0
 	hint.offset_bottom = 0.0
@@ -513,8 +520,19 @@ func _build_ui() -> void:
 	_inset(_inventory, 860.0, 600.0)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
+		_inset(_controls, 460.0, 560.0)
 		_inset(_mosaic, 380.0, 460.0))
 	_bar.parts_wanted.connect(_toggle_parts)
+
+	_controls = ControlsDialog.new()
+	$HUD.add_child(_controls)
+	_inset(_controls, 460.0, 560.0)
+	_bar.controls_wanted.connect(_controls.open)
+	# The strip along the bottom names what the middle button does, so
+	# it is wrong the moment somebody changes it.
+	_controls.changed.connect(func() -> void:
+		if _hint != null:
+			_hint.rebuild())
 
 	_picker = PickImage.new()
 	add_child(_picker)
@@ -1704,6 +1722,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				else:
 					_builder.undo()
 				_refresh_preview()
+		KEY_COMMA:
+			# Where a preferences panel lives in every app on this
+			# machine.
+			_controls.open()
 		KEY_SLASH:
 			if _bin:
 				_bin.focus_search()

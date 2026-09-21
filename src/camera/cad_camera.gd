@@ -282,7 +282,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMagnifyGesture:
 		var pinch: InputEventMagnifyGesture = event
 		if pinch.factor > 0.0:
-			_zoom_by(1.0 / pinch.factor, pinch.position)
+			var factor: float = pinch.factor
+			if ViewPrefs.invert_zoom:
+				factor = 1.0 / factor
+			_zoom_by(1.0 / factor, pinch.position)
 		return
 
 	if event is InputEventMouseButton:
@@ -300,11 +303,26 @@ func _unhandled_input(event: InputEvent) -> void:
 						else 1.0), 0.0))
 			MOUSE_BUTTON_MIDDLE:
 				# The CAD convention: middle turns it, shift-middle
-				# slides it.
-				if button.pressed:
-					_begin(Doing.SLIDE if button.shift_pressed
-						else Doing.ORBIT, MOUSE_BUTTON_MIDDLE,
-						button.position)
+				# slides it — or the other way round, for the people who
+				# came from a tool that does it the other way round.
+				# Shift always gives the one the plain drag does not, so
+				# neither gesture is lost whichever way this is set.
+				if button.double_click:
+					# Put the turning point where you are looking.
+					#
+					# Turning about whatever happens to be under the
+					# cursor is right while a drag is happening and
+					# wrong as a lasting choice: the model drifts out of
+					# the middle of the screen over a few turns, and the
+					# only way back is to frame the whole thing and lose
+					# your place. This re-centres on the point you name
+					# without changing how far away you are.
+					_centre_on(button.position)
+				elif button.pressed:
+					var slide: bool = (button.shift_pressed
+						!= ViewPrefs.middle_slides)
+					_begin(Doing.SLIDE if slide else Doing.ORBIT,
+						MOUSE_BUTTON_MIDDLE, button.position)
 				else:
 					_end(MOUSE_BUTTON_MIDDLE)
 			MOUSE_BUTTON_RIGHT:
@@ -335,6 +353,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			Doing.SLIDE: _slide_by(motion.relative)
 
 
+## Look at this point, from where you already are.
+##
+## The focus moves and the distance does not, so the model swings to the
+## middle of the screen rather than jumping closer.
+func _centre_on(at: Vector2) -> void:
+	var aim: Vector3 = _under(at)
+	_target_focus = aim
+	_pivot_on(aim)
+	pivot_shown = true
+
+
 ## A wheel click, which in a browser might be a finger.
 ##
 ## A desktop build knows: a trackpad sends pan and magnify gestures and
@@ -344,6 +373,8 @@ func _unhandled_input(event: InputEvent) -> void:
 ## comes through with ctrl held, which nothing else does.
 func _wheel(button: InputEventMouseButton) -> void:
 	var up: bool = button.button_index == MOUSE_BUTTON_WHEEL_UP
+	if ViewPrefs.invert_zoom:
+		up = not up
 	var kind: int = WheelKind.last()
 
 	if kind & WheelKind.PINCH:

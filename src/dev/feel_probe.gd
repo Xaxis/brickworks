@@ -49,10 +49,34 @@ func _run() -> void:
 		_builder.register(brick_id, "3001", at)
 	_middle = root.get_visible_rect().size * 0.5
 	_builder.held_part = "3005"
+
+	# Wait for the parts, not for a number of frames.
+	#
+	# Meshes arrive when they arrive, and a fixed wait is a race the
+	# machine wins while it is idle and loses while the rest of the
+	# suite is running — which is the way round that makes a test look
+	# fine here and fail there. It did: this passed on its own and
+	# failed four checks inside the suite, on a busy machine, with
+	# nothing in the output to say the parts were the reason.
+	var library: PartLibrary = main.get("_library")
+	var ready: bool = false
+	for _n: int in 2400:
+		if (library.mesh_for("3001") != null
+				and library.mesh_for("3005") != null):
+			ready = true
+			break
+		await process_frame
+	if not ready:
+		_failures += 1
+		print("  FAIL  the parts never loaded, so nothing below means "
+			+ "anything")
+		quit(1)
+		return
 	await _settle()
 
 	await _mouse()
 	await _keyboard()
+	await _settings()
 
 	print("")
 	if _failures == 0:
@@ -90,10 +114,16 @@ func _mouse() -> void:
 		not is_equal_approx(_camera._target_yaw, yaw))
 	_check("...and takes nothing off", _world.brick_count() == before)
 
+	# Turning moves the focus too — it swings about the pivot — so
+	# asking whether the focus moved does not tell a turn from a slide.
+	# This check was written that way and passed while naming the wrong
+	# verb. The angle is what separates them.
+	yaw = _camera._target_yaw
 	var focus: Vector3 = _camera._target_focus
 	await _drag(MOUSE_BUTTON_MIDDLE, _middle, _middle + Vector2(90.0, 40.0))
-	_check("a middle drag slides the view",
-		_camera._target_focus.distance_to(focus) > 1.0)
+	_check("a middle drag turns the view",
+		not is_equal_approx(_camera._target_yaw, yaw)
+			and _camera._target_focus.distance_to(focus) > 0.0)
 
 	var distance: float = _camera._target_distance
 	_wheel(MOUSE_BUTTON_WHEEL_UP)
@@ -169,6 +199,86 @@ func _settle() -> void:
 		await process_frame
 	_move_to(_middle, Vector2.ZERO, 0)
 	for _n: int in 4:
+		await process_frame
+
+
+## The two things a person can change about the controls.
+##
+## A setting that is written down, remembered, and changes nothing is
+## worse than no setting: it reads as the app ignoring you. So each one
+## is checked by doing the gesture it governs and watching the camera,
+## not by reading the value back.
+func _settings() -> void:
+	print("")
+	print("  the two settings")
+	await _settle()
+
+	ViewPrefs.invert_zoom = false
+	var near: float = _camera._target_distance
+	_wheel(MOUSE_BUTTON_WHEEL_UP)
+	await _frames(4)
+	_check("scrolling up zooms in", _camera._target_distance < near)
+
+	ViewPrefs.invert_zoom = true
+	_camera._target_distance = near
+	_wheel(MOUSE_BUTTON_WHEEL_UP)
+	await _frames(4)
+	_check("inverted, the same scroll zooms out",
+		_camera._target_distance > near)
+	ViewPrefs.invert_zoom = false
+
+	# And the middle button, which turns or slides depending.
+	ViewPrefs.middle_slides = false
+	await _settle()
+	var yaw: float = _camera._target_yaw
+	var focus: Vector3 = _camera._target_focus
+	await _drag(MOUSE_BUTTON_MIDDLE, _middle, _middle + Vector2(90.0, 30.0))
+	_check("middle turns by default",
+		not is_equal_approx(_camera._target_yaw, yaw))
+
+	ViewPrefs.middle_slides = true
+	await _settle()
+	yaw = _camera._target_yaw
+	focus = _camera._target_focus
+	await _drag(MOUSE_BUTTON_MIDDLE, _middle, _middle + Vector2(90.0, 30.0))
+	_check("set the other way, middle slides instead",
+		is_equal_approx(_camera._target_yaw, yaw)
+			and _camera._target_focus.distance_to(focus) > 1.0)
+	_check("and the hint says so",
+		_names_middle("slide"))
+	ViewPrefs.middle_slides = false
+	_check("and says the other thing when it is set back",
+		_names_middle("turn"))
+
+	# Re-centring, which is how you stop the model drifting off screen
+	# after a few turns.
+	await _settle()
+	focus = _camera._target_focus
+	var off: Vector2 = _middle + Vector2(120.0, 60.0)
+	_move_to(off, Vector2.ZERO, 0)
+	await process_frame
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_MIDDLE
+	event.pressed = true
+	event.double_click = true
+	event.position = off
+	event.global_position = off
+	Input.parse_input_event(event)
+	await _frames(4)
+	_check("double-clicking the middle button re-centres",
+		_camera._target_focus.distance_to(focus) > 1.0)
+
+
+## Whether the controls strip names this verb for the middle button.
+func _names_middle(verb: String) -> bool:
+	for binding: ControlsHint.Binding in ControlsHint.for_keyboard():
+		if binding.keys.has("middle-drag"):
+			return binding.verb == verb
+	return false
+
+
+func _frames(how_many: int) -> void:
+	for _n: int in how_many:
 		await process_frame
 
 
