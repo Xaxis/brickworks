@@ -183,5 +183,6 @@ func _on_export() -> void:
 func _on_clear() -> void:
 	world.clear()
 	builder.lattice.clear()
+	builder.forget_history()
 	cleared.emit()
 	_say("cleared")

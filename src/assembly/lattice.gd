@@ -217,8 +217,18 @@ static func snap_basis(basis: Basis) -> Basis:
 ## rounding to the nearest multiple of 20 is right for one and wrong for
 ## the other. Passing the part's footprint in studs picks the right one.
 static func snap_to_studs(position: Vector3, footprint: Vector2i) -> Vector3:
-	var phase_x: float = 0.0 if footprint.x % 2 == 1 else STUD * 0.5
-	var phase_z: float = 0.0 if footprint.y % 2 == 1 else STUD * 0.5
+	# A part's origin is its centre, so where it may sit depends on how
+	# wide it is. One stud across is centred ON a stud — an odd multiple
+	# of half a pitch. Two across is centred on the line BETWEEN two
+	# studs, which is a whole multiple.
+	#
+	# These were the other way round, which put every brick placed by
+	# hand half a stud — four millimetres — out of step with every brick
+	# the assistant placed, since the assistant builds its own transform
+	# and never comes through here. Two models of the same thing would
+	# not stack.
+	var phase_x: float = STUD * 0.5 if footprint.x % 2 == 1 else 0.0
+	var phase_z: float = STUD * 0.5 if footprint.y % 2 == 1 else 0.0
 	return Vector3(
 		round((position.x - phase_x) / STUD) * STUD + phase_x,
 		position.y,

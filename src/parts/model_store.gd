@@ -162,6 +162,7 @@ func open(path: String) -> int:
 
 	world.clear()
 	builder.lattice.clear()
+	builder.forget_history()
 	scenery.clear()
 
 	var placed: int = 0

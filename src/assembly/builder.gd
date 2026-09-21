@@ -201,6 +201,22 @@ static func _quarter_turns(basis: Basis) -> int:
 	return posmod(int(round(atan2(-right.z, right.x) / (PI * 0.5))), 4)
 
 
+## Forget what has been done, because it is about to stop being true.
+##
+## BrickWorld numbers bricks from one and starts again at one when it is
+## cleared, so a history kept across a Clear or an Open refers to ids
+## that now belong to entirely different bricks. Undo then does not fail
+## — it succeeds, on the wrong model, removing whatever happens to hold
+## the id a step remembers.
+##
+## Called wherever the world is replaced rather than left to each caller
+## to remember, which is how this was missed: every one of those sites
+## already clears the lattice on the adjacent line.
+func forget_history() -> void:
+	_history.clear()
+	_redo.clear()
+
+
 func undo() -> bool:
 	if _history.is_empty():
 		return false

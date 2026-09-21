@@ -74,7 +74,7 @@ echo "── python ──"
 run "pipeline (pytest)" python3 -m pytest tests/ -q
 
 echo "── godot probes ──"
-for name in dimensions stability store instructions search inventory mosaic world_view controls; do
+for name in dimensions snap stability history store instructions search inventory mosaic world_view controls; do
   probe "$name"
 done
 

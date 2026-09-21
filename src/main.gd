@@ -143,6 +143,7 @@ func _ready() -> void:
 func _showcase() -> void:
 	_world.clear()
 	_builder.lattice.clear()
+	_builder.forget_history()
 	var wanted: String = _argument("--showcase")
 	var row: Array = [
 		["3001", 4], ["3003", 14], ["3024", 15], ["3062b", 1],
@@ -169,6 +170,7 @@ func _ask(brief: String) -> void:
 	# and not a sample model with something new beside it.
 	_world.clear()
 	_builder.lattice.clear()
+	_builder.forget_history()
 	_lay_baseplate()
 
 	var started: int = Time.get_ticks_msec()
@@ -686,6 +688,7 @@ func _build_mosaic(across: int, dither: bool) -> void:
 
 	_world.clear()
 	_builder.lattice.clear()
+	_builder.forget_history()
 	_assistant.clear_built()
 	_store.scenery.clear()
 
