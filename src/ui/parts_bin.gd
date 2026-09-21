@@ -361,6 +361,10 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 
 
 ## Sort results for a query: match quality first, then staple-ness.
+## LDraw suffixes a printed part with p and a number: 3001p01.
+static var PRINTED: RegEx = RegEx.create_from_string("p[0-9]+[a-z]?$")
+
+
 static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void:
 	var scores: Dictionary = {}
 	for info: PartLibrary.PartInfo in found:
@@ -439,6 +443,19 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	var name: String = _squeeze(info.name.strip_edges())
 	var lowered: String = name.to_lower()
 	var score: int = 0
+
+	# A printed or renamed version of another part is the same shape
+	# with a picture on it, and there are thousands of them. Somebody
+	# searching by shape never wants one, and without this they crowd
+	# out the part they are a variant of: a query for a wedge plate
+	# answered with one usable suggestion and then four prints of a
+	# single 2 x 3 — Aquashark, a silver V, a red V, an MTron logo.
+	#
+	# A penalty rather than an exclusion. Asking for "aquashark" by name
+	# should still find it; it just should not arrive uninvited.
+	if (name.begins_with("=") or name.begins_with("~")
+			or lowered.contains("pattern") or PRINTED.search(info.id) != null):
+		score -= 400
 
 
 	# Plainness is measured by what comes *after* the size, not by the
