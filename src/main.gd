@@ -35,6 +35,7 @@ var _mosaic: MosaicDialog
 var _picker: PickImage
 var _mosaic_source: Image
 var _playback: BuildPlayback
+var _outline: SelectionOutline
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -498,6 +499,25 @@ func _build_ui() -> void:
 	_playback.world = _world
 	_playback.library = _library
 	add_child(_playback)
+
+	_outline = SelectionOutline.new()
+	_outline.world = _world
+	_outline.library = _library
+	add_child(_outline)
+	_builder.selection_changed.connect(func(count: int) -> void:
+		_outline.show_selection(_builder.selection)
+		if count == 0:
+			_bar.say("")
+		else:
+			_bar.say("%d selected — Delete, C to paint, arrows to move"
+				% count))
+	# The world is redrawn whenever anything in it changes, which
+	# includes a selected brick being removed by undo or replaced by the
+	# assistant. Without redrawing the outline then, it is a box round
+	# nothing.
+	_world.rebuilt.connect(func(_bricks: int, _batches: int, _tris: int) -> void:
+		if not _builder.selection.is_empty():
+			_outline.show_selection(_builder.selection))
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant.scenery = _store.scenery
 
@@ -1168,10 +1188,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
 	var button: InputEventMouseButton = event
-	if not button.pressed or button.alt_pressed or button.shift_pressed:
+	if not button.pressed or button.alt_pressed:
 		return
 
 	if _over_panel():
+		return
+
+	# Shift picks bricks out instead of placing them. Placing is the
+	# verb this app is mostly about, so it keeps the plain click.
+	if button.shift_pressed:
+		if button.button_index == MOUSE_BUTTON_LEFT:
+			if button.double_click:
+				_builder.select_alike()
+			else:
+				_builder.toggle_hovered()
 		return
 	if _playback != null and _playback.is_playing():
 		# Reaching for the model ends the animation, and this click is
@@ -1188,6 +1218,33 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif button.button_index == MOUSE_BUTTON_RIGHT:
 		_builder.remove_hovered()
 		_refresh_preview()
+
+
+## Move the selection one stud in a direction named on the screen
+## rather than in the world.
+##
+## Pressing left should move things left as they look, not along
+## whichever world axis happens to be called x. The model can be turned
+## to any angle, so "left" is worked out from where the camera is
+## standing and snapped to the nearest axis of the lattice.
+func _nudge(screen_way: Vector3) -> void:
+	var basis: Basis = _camera.global_transform.basis
+	var world_way: Vector3 = basis * screen_way
+	world_way.y = 0.0
+	if world_way.length_squared() < 0.0001:
+		return
+	# The nearest of the four ground directions.
+	var axis: Vector3 = (Vector3(signf(world_way.x), 0.0, 0.0)
+		if absf(world_way.x) >= absf(world_way.z)
+		else Vector3(0.0, 0.0, signf(world_way.z)))
+	_nudge_by(Vector3i(axis * BrickLattice.CELLS_PER_STUD))
+
+
+func _nudge_by(cells: Vector3i) -> void:
+	if _builder.move_selection(cells) > 0:
+		_on_model_changed()
+	else:
+		_bar.say("no room that way")
 
 
 ## True when the cursor is over a panel rather than the model.
@@ -1262,9 +1319,29 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_P:
 			_toggle_parts()
 		KEY_C:
-			# Paint what is under the cursor in the held colour.
-			if _builder.paint_hovered(_builder.held_color):
+			# Paint the selection if there is one, or what is under the
+			# cursor if there is not.
+			if not _builder.selection.is_empty():
+				var painted: int = _builder.paint_selection(_builder.held_color)
+				if painted > 0:
+					_on_model_changed()
+					_bar.say("painted %d" % painted)
+			elif _builder.paint_hovered(_builder.held_color):
 				_on_model_changed()
+		KEY_DELETE, KEY_BACKSPACE:
+			var gone: int = _builder.remove_selection()
+			if gone > 0:
+				_on_model_changed()
+				_bar.say("removed %d" % gone)
+		KEY_A:
+			# Everything the assistant built, in one go, so that
+			# "start again from mine" is one key rather than a hunt.
+			if key.meta_pressed or key.ctrl_pressed:
+				_builder.clear_selection()
+				for brick: BrickWorld.Brick in _world.bricks():
+					if not _store.scenery.has(brick.id):
+						_builder.selection[brick.id] = true
+				_builder.selection_changed.emit(_builder.selection.size())
 		KEY_G:
 			# And take a colour and part back off the model.
 			_builder.pick_hovered()
@@ -1274,14 +1351,29 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_on_model_changed()
 				_bar.say("lifted — click to put it down")
 		KEY_LEFT, KEY_RIGHT:
-			# Only while a booklet is up. Left and right otherwise belong
-			# to whatever has focus, and stealing them would break the
-			# search box and the brief.
+			# Three claims on these keys, in order. A booklet being read
+			# owns them; then a selection being nudged; then whatever
+			# has focus, because stealing them unconditionally breaks
+			# the search box and the brief.
 			if _steps.is_playing_back():
 				if key.keycode == KEY_RIGHT:
 					_steps.step_forward()
 				else:
 					_steps.step_back()
+			elif not _builder.selection.is_empty():
+				_nudge(Vector3.RIGHT if key.keycode == KEY_RIGHT
+					else Vector3.LEFT)
+		KEY_UP, KEY_DOWN:
+			if not _builder.selection.is_empty():
+				# Along the ground with no modifier; up and down with
+				# shift, which is the axis you want far less often.
+				if key.shift_pressed:
+					_nudge_by(Vector3i(0,
+						BrickLattice.CELLS_PER_PLATE
+						* (1 if key.keycode == KEY_UP else -1), 0))
+				else:
+					_nudge(Vector3.FORWARD if key.keycode == KEY_UP
+						else Vector3.BACK)
 		KEY_TAB:
 			# Both panels away, for looking at the model.
 			var showing: bool = _bin_dock.is_open() or _chat_dock.is_open()
@@ -1304,6 +1396,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Leaving playback first. Escape reads as "out of this mode",
 			# and quitting the app because someone wanted the whole model
 			# back would be a bad surprise.
+			#
+			# A selection is the innermost of these modes and so goes
+			# first. Adding it as a second arm of the same match was the
+			# obvious way and silently took the whole ladder over: one
+			# match statement runs one arm, so leaving the booklet
+			# stopped working and nobody would find out until they
+			# tried it.
+			if not _builder.selection.is_empty():
+				_builder.clear_selection()
+				return
 			if _inventory.is_showing():
 				_inventory.hide_list()
 				return

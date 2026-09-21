@@ -59,6 +59,8 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["C"], "paint"),
 		Binding.new(["G"], "pick"),
 		Binding.new(["X"], "lift"),
+		Binding.new(["shift-click"], "select"),
+		Binding.new(["arrows"], "move selection"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new(["F"], "frame"),

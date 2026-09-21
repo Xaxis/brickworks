@@ -38,6 +38,16 @@ var _ghost_valid: bool = false
 var _ghost_transform: Transform3D = Transform3D.IDENTITY
 var _hovered: int = 0
 
+## Bricks picked out to be worked on together, as id -> true.
+##
+## Every edit until now was one brick at a time, which is fine for
+## placing and hopeless for changing your mind: recolouring a roof meant
+## painting forty bricks one click at a time, and moving a wall two
+## studs left meant taking it apart and rebuilding it.
+var selection: Dictionary = {}
+
+signal selection_changed(count: int)
+
 ## Undo entries, most recent last. Each is what to do to reverse a step.
 var _history: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
@@ -242,6 +252,29 @@ func redo() -> bool:
 
 ## Carry out a history step and return the step that would reverse it.
 func _apply(step: Dictionary) -> Dictionary:
+	# A group is one step as far as undo is concerned. Recolouring
+	# forty bricks that needed forty undos to take back would not be an
+	# improvement on recolouring them one at a time.
+	if step.get("undo", "") == "group":
+		var back: Array = []
+		for inner: Variant in step.get("steps", []):
+			back.append(_apply(inner))
+		back.reverse()
+		return {"undo": "group", "steps": back}
+
+	if step.get("undo", "") == "move":
+		var moving: int = int(step["brick"])
+		var was: BrickWorld.Brick = world.get_brick(moving)
+		if was == null:
+			return step
+		var previous: Transform3D = was.transform
+		var to: Transform3D = step["transform"]
+		lattice.release(moving)
+		world.move_brick(moving, to)
+		lattice.occupy(moving,
+			_cells_for(library.mesh_for(was.part_id), to))
+		return {"undo": "move", "brick": moving, "transform": previous}
+
 	if step.get("undo", "") == "recolor":
 		# Its own reverse: put the old colour back and remember the one
 		# that was there, so redo works without a second kind of entry.
@@ -274,6 +307,152 @@ func _apply(step: Dictionary) -> Dictionary:
 	if new_id != 0:
 		lattice.occupy(new_id, _cells_for(library.mesh_for(part_id), at))
 	return {"undo": "remove", "brick": new_id}
+
+
+# -- working on several at once ------------------------------------------
+
+
+## Add the brick under the cursor to the selection, or take it out.
+func toggle_hovered() -> bool:
+	if _hovered == 0:
+		return false
+	if selection.erase(_hovered):
+		selection_changed.emit(selection.size())
+		return true
+	selection[_hovered] = true
+	selection_changed.emit(selection.size())
+	return true
+
+
+func clear_selection() -> void:
+	if selection.is_empty():
+		return
+	selection.clear()
+	selection_changed.emit(0)
+
+
+## Everything of the same part and colour as the brick under the cursor.
+##
+## The way anyone actually wants to select a roof: point at one tile of
+## it and take the lot.
+func select_alike() -> int:
+	if _hovered == 0:
+		return 0
+	var seed: BrickWorld.Brick = world.get_brick(_hovered)
+	if seed == null:
+		return 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if (brick.part_id == seed.part_id
+				and brick.color_code == seed.color_code):
+			selection[brick.id] = true
+	selection_changed.emit(selection.size())
+	return selection.size()
+
+
+## Drop from the selection anything that is no longer in the world, and
+## say how many are left. Called before every operation, because a brick
+## can go away by undo or by the assistant rebuilding the model.
+func _living_selection() -> PackedInt64Array:
+	var alive := PackedInt64Array()
+	var gone: Array = []
+	for brick_id: int in selection:
+		if world.get_brick(brick_id) == null:
+			gone.append(brick_id)
+		else:
+			alive.append(brick_id)
+	for brick_id: int in gone:
+		selection.erase(brick_id)
+	if not gone.is_empty():
+		selection_changed.emit(selection.size())
+	return alive
+
+
+func paint_selection(color_code: int) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	var steps: Array = []
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick.color_code == color_code:
+			continue
+		steps.append({"undo": "recolor", "brick": brick_id,
+			"color": brick.color_code})
+		world.recolor_brick(brick_id, color_code)
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps})
+	_redo.clear()
+	return steps.size()
+
+
+func remove_selection() -> int:
+	var alive: PackedInt64Array = _living_selection()
+	var steps: Array = []
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		steps.append({"undo": "add", "part": brick.part_id,
+			"color": brick.color_code, "transform": brick.transform})
+		lattice.release(brick_id)
+		world.remove_brick(brick_id)
+		removed.emit(brick_id)
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps})
+	_redo.clear()
+	clear_selection()
+	return steps.size()
+
+
+## Shift the selection by whole cells, or refuse and change nothing.
+##
+## All or nothing on purpose. Moving the ones that fit and leaving the
+## rest is how a wall becomes two half walls, and there is no way to see
+## that it happened until later.
+func move_selection(by: Vector3i) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or by == Vector3i.ZERO:
+		return 0
+
+	# Out of the lattice first, so the selection does not collide with
+	# where it used to be.
+	var was: Dictionary = {}
+	for brick_id: int in alive:
+		was[brick_id] = world.get_brick(brick_id).transform
+		lattice.release(brick_id)
+
+	var shift: Vector3 = BrickLattice.to_ldu(by)
+	var landing: Dictionary = {}
+	var blocked: bool = false
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var to := Transform3D(brick.transform.basis,
+			brick.transform.origin + shift)
+		var cells: Array[Vector3i] = _cells_for(
+			library.mesh_for(brick.part_id), to)
+		for cell: Vector3i in cells:
+			if cell.y < GROUND_CELL:
+				blocked = true
+				break
+		if blocked or lattice.collides(cells):
+			blocked = true
+			break
+		landing[brick_id] = {"at": to, "cells": cells}
+
+	if blocked:
+		for brick_id: int in alive:
+			lattice.occupy(brick_id, _cells_for(
+				library.mesh_for(world.get_brick(brick_id).part_id),
+				was[brick_id]))
+		return 0
+
+	var steps: Array = []
+	for brick_id: int in alive:
+		steps.append({"undo": "move", "brick": brick_id,
+			"transform": was[brick_id]})
+		world.move_brick(brick_id, landing[brick_id]["at"])
+		lattice.occupy(brick_id, landing[brick_id]["cells"])
+	_history.append({"undo": "group", "steps": steps})
+	_redo.clear()
+	return steps.size()
 
 
 ## Work out where the held part would go, given a ray from the camera.
