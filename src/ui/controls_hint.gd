@@ -32,8 +32,13 @@ class Binding extends RefCounted:
 ## order they are dropped in when the window is too narrow to hold them
 ## all — the strip wraps to a second line rather than running off the
 ## edge, and a hint you cannot finish reading is a hint that lies by
-## omission. The mouse verbs (orbit, pan, zoom) are left out entirely:
-## they are the ones people try without being told.
+## omission.
+##
+## Turning, sliding and zooming used to be left out on the grounds that
+## they are what people try without being told. They are — and what
+## people try is a middle button they do not have and a drag that did
+## nothing, so the app read as broken with nothing on screen to say
+## otherwise. They come second now, after placing and removing.
 static func bindings() -> Array[Binding]:
 	# A phone has no keyboard, and a strip of keys it cannot press is
 	# worse than no strip: it reads as a list of things the app will not
@@ -50,6 +55,9 @@ static func bindings() -> Array[Binding]:
 	return [
 		Binding.new(["click"], "place"),
 		Binding.new(["right-click"], "remove"),
+		Binding.new(["right-drag"], "turn"),
+		Binding.new(["2 fingers", "shift-scroll"], "slide"),
+		Binding.new(["pinch", "scroll"], "zoom"),
 		Binding.new(["R"], "rotate"),
 		Binding.new(["T"], "tip on side"),
 		Binding.new(["[", "]"], "colour"),

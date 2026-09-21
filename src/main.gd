@@ -1192,10 +1192,28 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
 	var button: InputEventMouseButton = event
-	if not button.pressed or button.alt_pressed:
+	if button.alt_pressed:
+		return
+	if _over_panel():
 		return
 
-	if _over_panel():
+	# The right button acts on release, not on press.
+	#
+	# Right-drag turns the model — which it has to, since a trackpad has
+	# no middle button and orbiting is not an advanced feature. Acting
+	# on the press would take a brick off at the start of every turn.
+	# The camera decides which it was by whether the pointer moved, and
+	# says so through swallowing_click.
+	if button.button_index == MOUSE_BUTTON_RIGHT:
+		if button.pressed:
+			return
+		if _camera.swallowing_click():
+			return
+		_builder.remove_hovered()
+		_refresh_preview()
+		return
+
+	if not button.pressed:
 		return
 
 	# Shift picks bricks out instead of placing them. Placing is the
@@ -1206,6 +1224,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_builder.select_alike()
 			else:
 				_builder.toggle_hovered()
+		return
+	# Space is held to slide the view, so a click while it is down is
+	# part of that and not a placement.
+	if Input.is_key_pressed(KEY_SPACE):
 		return
 	if _playback != null and _playback.is_playing():
 		# Reaching for the model ends the animation, and this click is
@@ -1218,9 +1240,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if button.button_index == MOUSE_BUTTON_LEFT:
 		_builder.place()
-		_refresh_preview()
-	elif button.button_index == MOUSE_BUTTON_RIGHT:
-		_builder.remove_hovered()
 		_refresh_preview()
 
 

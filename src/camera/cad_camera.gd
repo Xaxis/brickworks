@@ -1,10 +1,21 @@
 ## An orbit camera for looking at a model rather than standing in one.
 ##
 ## It turns around a focus point that sits in the model, the way a CAD
-## viewport does: drag to orbit, middle-drag or shift-drag to pan, wheel to
-## dolly. The focus point is the thing that makes it feel right — zooming
-## moves towards where you are looking, and orbiting keeps it centred, so
-## the model never swings out of frame.
+## viewport does. The focus point is what makes it feel right — zooming
+## moves towards where you are looking, and orbiting keeps it centred,
+## so the model never swings out of frame.
+##
+## What moves it:
+##
+##   turn    right-drag, middle-drag, alt and drag, alt and two fingers
+##   slide   two fingers, shift and scroll, shift-middle-drag, space and drag
+##   zoom    wheel, pinch
+##
+## The trackpad entries are not a nicety. macOS sends two-finger
+## scrolling as a pan gesture and pinching as a magnify gesture, not as
+## wheel clicks, so a camera that listens only for the wheel and a
+## middle button has no working controls at all on a laptop — which is
+## what most people are on, and what this was.
 ##
 ## Distances are in LDU, because everything here is. A 2x4 brick is 80 wide
 ## and a big model runs to a few thousand, so the sensible viewing range
@@ -42,6 +53,10 @@ var _target_focus: Vector3 = Vector3.ZERO
 
 var _orbiting: bool = false
 var _panning: bool = false
+## A right button held down that has not yet moved far enough to count
+## as a turn rather than a click.
+var _dragging_right: bool = false
+var _right_travel: float = 0.0
 
 ## Fingers currently down, by the index the system gives each one.
 ##
@@ -74,6 +89,21 @@ func _ready() -> void:
 ## and a tap that is read as a tiny orbit feels like the app ignoring
 ## you.
 const TAP_SLOP := 14.0
+
+## How far the pointer may move with a button down and still count as a
+## click rather than a drag, in pixels. Smaller than TAP_SLOP: a mouse
+## does not wobble the way a finger does.
+const DRAG_SLOP := 4.0
+
+## Trackpad pan deltas arrive in scroll units rather than pixels, and a
+## comfortable swipe is a few units. This turns one into the pixel
+## movement that would have felt the same.
+const TRACKPAD_PAN := 14.0
+
+## How far one wheel click slides the view when shift is held, in
+## pixels. A wheel click is a coarse thing, so this is larger than a
+## trackpad swipe of the same nominal size.
+const WHEEL_PAN := 36.0
 
 
 ## True when the last touch was a tap rather than a drag, so whoever
@@ -171,46 +201,116 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_focus += up * drag.relative.y * scale * 0.5
 		return
 
+	# A trackpad, which is what most people are on.
+	#
+	# macOS sends two-finger scrolling as a pan gesture and pinching as
+	# a magnify gesture, not as wheel clicks — so a camera that listens
+	# only for the wheel and a middle button is a camera with no working
+	# controls at all on a laptop. That is what this was.
+	if event is InputEventPanGesture:
+		var swipe: InputEventPanGesture = event
+		if swipe.alt_pressed or swipe.ctrl_pressed:
+			# Held down, the same two fingers turn the model. Somewhere
+			# to orbit from without a middle button.
+			_target_yaw -= swipe.delta.x * 0.03 * orbit_speed
+			_target_pitch = clampf(
+				_target_pitch - swipe.delta.y * 0.03 * orbit_speed,
+				-_PITCH_LIMIT, _PITCH_LIMIT)
+		else:
+			_pan_by(swipe.delta * TRACKPAD_PAN)
+		return
+
+	if event is InputEventMagnifyGesture:
+		var pinch: InputEventMagnifyGesture = event
+		if pinch.factor > 0.0:
+			_zoom_by(1.0 / pinch.factor)
+		return
+
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event
 		match button.button_index:
-			MOUSE_BUTTON_WHEEL_UP:
+			MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
+				# In a browser there are no gesture events: a trackpad
+				# arrives as wheel clicks like a mouse does, so the only
+				# way to slide the view with two fingers there is to
+				# hold shift. Which is what a web canvas usually means
+				# by shift and scroll anyway.
+				if not button.pressed:
+					pass
+				elif button.shift_pressed:
+					_pan_by(Vector2(0.0, WHEEL_PAN * (
+						1.0 if button.button_index == MOUSE_BUTTON_WHEEL_UP
+						else -1.0)))
+				else:
+					_zoom_by(1.0 / zoom_step
+						if button.button_index == MOUSE_BUTTON_WHEEL_UP
+						else zoom_step)
+			MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT:
 				if button.pressed:
-					_target_distance = maxf(min_distance, _target_distance / zoom_step)
-			MOUSE_BUTTON_WHEEL_DOWN:
-				if button.pressed:
-					_target_distance = minf(max_distance, _target_distance * zoom_step)
+					_pan_by(Vector2(WHEEL_PAN * (
+						-1.0 if button.button_index == MOUSE_BUTTON_WHEEL_LEFT
+						else 1.0), 0.0))
 			MOUSE_BUTTON_MIDDLE:
-				# Middle-drag orbits; with shift it pans.
+				# The CAD convention: middle turns it, shift-middle
+				# slides it.
 				if button.shift_pressed:
 					_panning = button.pressed
 				else:
 					_orbiting = button.pressed
+			MOUSE_BUTTON_RIGHT:
+				# Right-drag turns the model; right-click still takes a
+				# brick off. Which of the two it was is decided by
+				# whether the pointer moved, the same way a tap is told
+				# from a drag on glass — so nothing has to be chosen in
+				# advance and neither gesture is lost.
+				if button.pressed:
+					_dragging_right = true
+					_right_travel = 0.0
+				else:
+					_dragging_right = false
+					_orbiting = false
 			MOUSE_BUTTON_LEFT:
-				# Left and right click place and remove bricks, so the
-				# camera only claims the left button with a modifier: alt
-				# to orbit, shift to pan. That also covers a trackpad with
-				# no middle button.
+				# Left click places a brick, so the camera only takes it
+				# with something held: alt to turn, space to slide.
+				# Shift is spoken for — it picks bricks out.
 				if button.alt_pressed:
 					_orbiting = button.pressed
-				elif button.shift_pressed:
+				elif Input.is_key_pressed(KEY_SPACE):
 					_panning = button.pressed
 
 	elif event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event
+		if _dragging_right:
+			_right_travel += motion.relative.length()
+			if _right_travel > DRAG_SLOP:
+				if not _orbiting:
+					# It is a turn, not a click, so the release must not
+					# also take a brick off.
+					swallow_next_click()
+					_orbiting = true
 		if _orbiting:
 			_target_yaw -= motion.relative.x * 0.01 * orbit_speed
 			_target_pitch = clampf(
 				_target_pitch - motion.relative.y * 0.01 * orbit_speed,
 				-_PITCH_LIMIT, _PITCH_LIMIT)
 		elif _panning:
-			# Pan in the camera's own plane, scaled by distance so the
-			# model tracks the cursor at any zoom.
-			var scale: float = _target_distance * 0.0016 * pan_speed
-			var right: Vector3 = global_transform.basis.x
-			var up: Vector3 = global_transform.basis.y
-			_target_focus -= right * motion.relative.x * scale
-			_target_focus += up * motion.relative.y * scale
+			_pan_by(motion.relative)
+
+
+## Slide the view in its own plane, by a movement in screen pixels.
+##
+## Scaled by how far away the camera is, so the model keeps pace with
+## the pointer at any zoom rather than crawling when you are close and
+## flying when you are far.
+func _pan_by(by: Vector2) -> void:
+	var scale: float = _target_distance * 0.0016 * pan_speed
+	_target_focus -= global_transform.basis.x * by.x * scale
+	_target_focus += global_transform.basis.y * by.y * scale
+
+
+func _zoom_by(factor: float) -> void:
+	_target_distance = clampf(
+		_target_distance * factor, min_distance, max_distance)
 
 
 ## How far apart the first two fingers are.
