@@ -39,8 +39,12 @@ func _initialize() -> void:
 	# loses sideways ones is the failure worth catching.
 	var built: Array[Dictionary] = []
 	for case: Array in [
-		["3001", 4, "up", 0, Vector3(0, 0, 0)],
-		["3001", 1, "up", 1, Vector3(40, 24, 0)],
+		# Resting on the ground, not with its body through it. A part's
+		# origin is the top of its body, so origin zero puts a brick
+		# entirely below the baseplate — which the app never produces,
+		# and which opening a file now corrects by lifting the model.
+		["3001", 4, "up", 0, Vector3(0, 24, 0)],
+		["3001", 1, "up", 1, Vector3(40, 48, 0)],
 		["3024", 15, "+z", 0, Vector3(0, 40, 60)],
 		["3070b", 0, "down", 2, Vector3(80, 40, 20)],
 		["3005", 14, "-x", 3, Vector3(20, 60, 40)],

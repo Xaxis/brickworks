@@ -43,6 +43,9 @@ func _initialize() -> void:
 	_short_open(store, world)
 
 	print("")
+	_on_the_ground(store, world, builder, library)
+
+	print("")
 	if _failures == 0:
 		print("nothing is kept that should go, and nothing lost that should stay")
 	else:
@@ -130,3 +133,40 @@ func _short_open(store: ModelStore, world: BrickWorld) -> void:
 		_failures += 1
 		print("  FAIL  it is still marked short after being edited")
 	world.clear()
+
+
+## A model opens standing on the ground, not buried in it.
+##
+## The ground here is zero and nothing is meant to go under it. Other
+## people's files do not know that: the LDraw demonstration car, which
+## is what this app opens the very first time anybody runs it, is built
+## around an origin one brick lower, so it arrived sunk to the axles in
+## the baseplate. That was the first thing a new visitor saw.
+func _on_the_ground(store: ModelStore, world: BrickWorld,
+		builder: Builder, library: PartLibrary) -> void:
+	for name: String in ["car", "house", "rocket", "tree"]:
+		var path: String = "res://models/%s.ldr" % name
+		if not FileAccess.file_exists(path):
+			continue
+		world.clear()
+		builder.lattice.clear()
+		if store.open(path) == 0:
+			continue
+		var lowest: int = 0x7FFFFFFF
+		for brick: BrickWorld.Brick in world.bricks():
+			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if part == null:
+				continue
+			for cell: Vector3i in builder._cells_for(part, brick.transform):
+				lowest = mini(lowest, cell.y)
+		if lowest == 0:
+			print("  ok    %s rests on the ground" % name)
+		elif lowest > 0:
+			print("  ok    %s floats %d cells clear, which is its own affair"
+				% [name, lowest])
+		else:
+			_failures += 1
+			print("  FAIL  %s is buried %d LDU into the baseplate"
+				% [name, -lowest * 2])
+	world.clear()
+	builder.lattice.clear()

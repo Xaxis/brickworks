@@ -252,6 +252,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		if brick_id != 0:
 			builder.register(brick_id, placement.part_id, placement.transform)
 			placed += 1
+	_stand_it_on_the_ground()
+
 	# Ask for the ones that were not to hand, so a second attempt lands
 	# them rather than losing them for good.
 	for part_id: String in waiting:
@@ -261,6 +263,36 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	loaded.emit(name, placed)
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "error": ""}
+
+
+## Lift a model that opens below the ground.
+##
+## The ground here is zero and nothing is meant to go under it. Other
+## people's files do not know that: the LDraw demonstration car, which
+## is what this app opens the very first time anybody runs it, is built
+## around an origin one brick lower — so it arrived buried to the
+## axles in the baseplate, which is the first thing a new visitor saw.
+##
+## Lifting the model rather than dropping the plate, because the plate
+## is where everything else is measured from, and because this then
+## works for any file somebody imports rather than for one known car.
+func _stand_it_on_the_ground() -> void:
+	var lowest: int = 0x7FFFFFFF
+	for brick: BrickWorld.Brick in world.bricks():
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		for cell: Vector3i in builder._cells_for(part, brick.transform):
+			lowest = mini(lowest, cell.y)
+	if lowest == 0x7FFFFFFF or lowest >= 0:
+		return
+
+	var up: Vector3 = BrickLattice.to_ldu(Vector3i(0, -lowest, 0))
+	for brick: BrickWorld.Brick in world.bricks():
+		var to := Transform3D(brick.transform.basis, brick.transform.origin + up)
+		builder.lattice.release(brick.id)
+		world.move_brick(brick.id, to)
+		builder.register(brick.id, brick.part_id, to)
 
 
 ## Whether the model on screen is the whole of what was opened.
