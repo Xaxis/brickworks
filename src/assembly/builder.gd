@@ -547,21 +547,33 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 		return []
 	var boxes: Array[AABB] = part.boxes
 	if boxes.is_empty():
-		# No cover was built for this part; fall back to its bounding box,
-		# which over-reports rather than under-reports. That can refuse a
-		# legal placement but never allows an illegal one.
+		# No cover was built for this part; fall back to its bounding
+		# box, which over-reports rather than under-reports. That can
+		# refuse a legal placement but never allows an illegal one.
+		#
+		# It did under-report: the size was rounded up but measured from
+		# an origin that had been rounded down, which loses a cell
+		# whenever the box neither starts nor ends on a boundary. Both
+		# ends are taken outward now, which is what the paragraph above
+		# was always claiming.
 		var box: AABB = part.bounds
-		boxes = [AABB(
-			Vector3(
-				floor(box.position.x / BrickLattice.CELL),
-				floor(box.position.y / BrickLattice.CELL),
-				floor(box.position.z / BrickLattice.CELL)),
-			Vector3(
-				ceil(box.size.x / BrickLattice.CELL),
-				ceil(box.size.y / BrickLattice.CELL),
-				ceil(box.size.z / BrickLattice.CELL)))]
-	return BrickLattice.cells_for(
-		boxes, BrickLattice.to_cell(at.origin), at.basis)
+		var from := Vector3(
+			floor(box.position.x / BrickLattice.CELL),
+			floor(box.position.y / BrickLattice.CELL),
+			floor(box.position.z / BrickLattice.CELL))
+		var to := Vector3(
+			ceil(box.end.x / BrickLattice.CELL),
+			ceil(box.end.y / BrickLattice.CELL),
+			ceil(box.end.z / BrickLattice.CELL))
+		boxes = [AABB(from, (to - from).max(Vector3.ONE))]
+	# Snapped. cells_for takes the span between two rotated corners,
+	# which is the rotated box only for the 24 orientations it documents
+	# as its precondition; anything else spans a diagonal instead. Every
+	# basis this project makes is one of the 24, but one read out of
+	# somebody else's .ldr need not be.
+	return BrickLattice.cells_for(boxes,
+		BrickLattice.to_cell(at.origin),
+		BrickLattice.snap_basis(at.basis))
 
 
 func rotate_held(quarter_turns: int) -> void:

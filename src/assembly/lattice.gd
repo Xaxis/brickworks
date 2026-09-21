@@ -38,12 +38,23 @@ var _by_brick: Dictionary = {}
 var _columns: Dictionary = {}
 
 
+## Which cell a point is in.
+##
+## Cell i is the half-open span [i * CELL, (i + 1) * CELL), which is
+## what [method cells_for] and the occupancy hash both assume — so the
+## answer is the floor, not the nearest.
+##
+## It was the nearest, which is a different question with the same
+## shape: a point at 25 LDU is in cell 12, spanning 24 to 26, and
+## rounding said 13. Everything that converts a cell-aligned position
+## agrees either way, which is why this held for so long; what it got
+## wrong is every point in between — where a ray struck, and where the
+## tip of a stud lands.
 static func to_cell(position: Vector3) -> Vector3i:
-	"""LDU to whole cells, rounding towards negative infinity."""
 	return Vector3i(
-		int(floor(position.x / CELL + 0.5)),
-		int(floor(position.y / CELL + 0.5)),
-		int(floor(position.z / CELL + 0.5)))
+		int(floor(position.x / CELL)),
+		int(floor(position.y / CELL)),
+		int(floor(position.z / CELL)))
 
 
 static func to_ldu(cell: Vector3i) -> Vector3:

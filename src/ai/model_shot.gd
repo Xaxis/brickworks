@@ -215,12 +215,13 @@ func take(world: BrickWorld, from: String,
 	var frames: int = 0
 	var taken: Image = null
 	while frames < MOST_FRAMES:
-		# Re-staged every time round, not once before the loop. The
-		# viewport hands back the state it had at the previous staging,
-		# so a model staged once and then waited on comes back as
-		# whatever was there before it — which, the first time, is
-		# nothing.
-		_restage(world, skip)
+		# Re-staged every time round but the first, which staged it
+		# already to work out where to point the camera. The viewport
+		# hands back the state it had at the previous staging, so a
+		# model staged once and then waited on comes back as whatever
+		# was there before it — which, the first time, is nothing.
+		if frames > 0:
+			_restage(world, skip)
 		_camera.current = true
 		for _n: int in FRAMES_TO_DRAW:
 			await get_tree().process_frame

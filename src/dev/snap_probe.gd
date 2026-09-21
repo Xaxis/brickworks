@@ -59,9 +59,35 @@ func _initialize() -> void:
 			agrees)
 
 	print("")
+	_which_cell()
+
+	print("")
 	print("%d disagree" % _failures if _failures
 		else "hand placement lands where the assistant would put it")
 	quit(1 if _failures else 0)
+
+
+## Does to_cell name the cell a point is actually in?
+##
+## Cell i is the span from i * CELL up to but not including the next
+## one, which is what occupancy and cells_for both assume. to_cell used
+## to round to the nearest instead, which is a different question with
+## the same shape: a point at 25 LDU is in cell 12, spanning 24 to 26,
+## and rounding said 13.
+##
+## Every position this project builds is cell-aligned and those agree
+## either way, so nothing caught it. What it got wrong is the points in
+## between — where a ray struck a brick, and where the tip of a stud
+## lands — which is to say: what you clicked on, and what holds a part
+## on that is not sitting on anything.
+func _which_cell() -> void:
+	var cell: float = BrickLattice.CELL
+	for ldu: float in [0.0, 0.1, 1.0, 1.9, 2.0, 2.1, 24.0, 25.0, 25.9,
+			-0.1, -1.0, -2.0, -2.1, -25.0]:
+		var got: int = BrickLattice.to_cell(Vector3(ldu, ldu, ldu)).x
+		# The cell a point is in is the one whose span contains it.
+		var holds: bool = (got * cell <= ldu and ldu < (got + 1) * cell)
+		_check("%.1f LDU is in cell %d" % [ldu, got], holds)
 
 
 func _check(what: String, ok: bool) -> void:
