@@ -405,6 +405,24 @@ func _build_ui() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(spacer)
 
+	# In the viewport column, at the top, which is where every other 3D
+	# tool puts a view cube.
+	#
+	# It was anchored to the bottom right of the whole window, which
+	# meant two collisions rather than none: its square lay over the
+	# assistant panel and swallowed clicks meant for the buttons
+	# underneath, and on a tall screen it sat on top of the key strip.
+	# Anchoring it inside this column makes both impossible rather than
+	# unlikely.
+	_gizmo = AxisGizmo.new()
+	_gizmo.camera = _camera
+	_gizmo.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_gizmo.offset_left = -AxisGizmo.size_for() - 14.0
+	_gizmo.offset_top = 14.0
+	_gizmo.offset_right = -14.0
+	_gizmo.offset_bottom = AxisGizmo.size_for() + 14.0
+	spacer.add_child(_gizmo)
+
 	# The hint is wide, and a container asks its children how narrow they
 	# can get. Left to itself the strip set the middle column's minimum
 	# width and squeezed the assistant off the right edge, so it lives in
@@ -436,14 +454,6 @@ func _build_ui() -> void:
 	_turning.camera = _camera
 	add_child(_turning)
 
-	_gizmo = AxisGizmo.new()
-	_gizmo.camera = _camera
-	_gizmo.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_gizmo.offset_left = -AxisGizmo.SIZE - 16.0
-	_gizmo.offset_top = -AxisGizmo.SIZE - 16.0
-	_gizmo.offset_right = -16.0
-	_gizmo.offset_bottom = -16.0
-	$HUD.add_child(_gizmo)
 
 	var hint := ControlsHint.new()
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)

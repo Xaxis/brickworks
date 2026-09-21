@@ -34,8 +34,22 @@ const AXES: Array[Dictionary] = [
 		"tint": Color(0.33, 0.58, 0.93)},
 ]
 
+## Bigger where fingers are.
+##
+## Nine pixels is a comfortable dot for a pointer and is not a tap
+## target: Apple asks for forty-four points and everyone else asks for
+## something similar, and a gizmo whose dots cannot be hit is a gizmo
+## that only swallows the touches meant for the model behind it.
 const SIZE := 84.0
+const TOUCH_SIZE := 116.0
 const DOT := 9.0
+const TOUCH_DOT := 15.0
+
+static func size_for() -> float:
+	return TOUCH_SIZE if DisplayServer.is_touchscreen_available() else SIZE
+
+static func dot_for() -> float:
+	return TOUCH_DOT if DisplayServer.is_touchscreen_available() else DOT
 
 var camera: CadCamera
 
@@ -44,8 +58,8 @@ var _hovered: String = ""
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(SIZE, SIZE)
-	size = Vector2(SIZE, SIZE)
+	custom_minimum_size = Vector2(size_for(), size_for())
+	size = Vector2(size_for(), size_for())
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = "Click an axis for a straight-on view"
 	_font = ThemeDB.fallback_font
@@ -71,7 +85,7 @@ func _spokes() -> Array[Dictionary]:
 		return out
 	var basis: Basis = camera.global_transform.basis.orthonormalized()
 	var middle: Vector2 = size * 0.5
-	var reach: float = SIZE * 0.5 - DOT - 2.0
+	var reach: float = size_for() * 0.5 - dot_for() - 2.0
 	for entry: Dictionary in AXES:
 		var seen: Vector3 = basis.transposed() * (entry["axis"] as Vector3)
 		out.append({
@@ -106,9 +120,9 @@ func _draw() -> void:
 		var here: Vector2 = spoke["at"]
 		var lit: bool = _hovered == str(spoke["view"])
 		if near or lit:
-			draw_circle(here, DOT + (1.5 if lit else 0.0), shade)
+			draw_circle(here, dot_for() + (1.5 if lit else 0.0), shade)
 		else:
-			draw_arc(here, DOT, 0.0, TAU, 24, shade, 2.0, true)
+			draw_arc(here, dot_for(), 0.0, TAU, 24, shade, 2.0, true)
 
 		var label: String = spoke["label"]
 		if label.is_empty():
@@ -151,6 +165,6 @@ func _at(point: Vector2) -> String:
 	var spokes: Array[Dictionary] = _spokes()
 	spokes.reverse()
 	for spoke: Dictionary in spokes:
-		if point.distance_to(spoke["at"]) <= DOT + 3.0:
+		if point.distance_to(spoke["at"]) <= dot_for() + 4.0:
 			return str(spoke["view"])
 	return ""
