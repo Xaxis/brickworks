@@ -752,7 +752,8 @@ func _on_response(result: Array) -> void:
 			_looked_back = true
 			_pending = null
 			progress.emit("looking at the finished model")
-			var shown: Variant = await _from_both_sides("", CRITIQUE)
+			var shown: Variant = await _from_both_sides(
+				_will_it_hold(), CRITIQUE)
 			# Cancelled while the picture was being taken. An empty
 			# message is one the API refuses, so there would be nothing
 			# to show for it but an error.
@@ -780,6 +781,40 @@ func _on_response(result: Array) -> void:
 			+ "— only stacking connects them, so stagger the joints."),
 	})
 	_send()
+
+
+## Whether the finished model would survive being picked up.
+##
+## check_design asks whether every part is held by something. That is a
+## different question from whether the thing holds together: a tower of
+## plates on one stud passes it, and a tree whose canopy hangs out past
+## its trunk passes it, and both come apart in the hand.
+##
+## The app has always worked this out and shown it in the corner — one
+## of the models that ships says "1 weak joint (top-heavy)" — and the
+## assistant was never told. It is told at the end, where the model is
+## real and in the world and the numbers mean something.
+func _will_it_hold() -> String:
+	if world == null or world.brick_count() == 0:
+		return ""
+	var judge := Stability.new()
+	judge.library = library
+	# The same lattice the builder keeps, because that is where what
+	# rests on what is recorded. Without it every brick reads as
+	# carrying nothing.
+	judge.lattice = builder.lattice
+	var report: Stability.Report = judge.check(world)
+	if report.is_stable():
+		return "It holds together: %s." % report.summary()
+
+	var said: PackedStringArray = PackedStringArray()
+	for risk: Stability.Risk in report.risks.slice(0, 3):
+		said.append("  " + risk.message)
+	return ("It does not hold together — %s.\n%s\n\nThat is a real "
+		% [report.summary(), "\n".join(said)]
+		+ "fault and worth fixing before anything else: spread the "
+		+ "load over more studs, or move weight back over what carries "
+		+ "it.")
 
 
 ## What to ask once the thing is built.
