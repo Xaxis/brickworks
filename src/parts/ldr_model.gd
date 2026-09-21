@@ -336,7 +336,15 @@ static func write_ldr(
 		for value: float in v:
 			# Trim to something a human can read without losing a position
 			# that matters: 1/1000 LDU is 0.4 microns.
-			numbers.append(String.num(value, 4).rstrip("0").rstrip("."))
+			#
+			# And negative zero is zero. A rotation about the vertical
+			# axis leaves several matrix elements at -0.0, which prints
+			# as "-0" and is valid LDraw and unreadable in a diff: every
+			# brick in a re-saved model shows as changed when nothing
+			# has. It made a migration that touched three files look
+			# like one that had rewritten eight.
+			var shown: String = String.num(value, 4).rstrip("0").rstrip(".")
+			numbers.append("0" if shown == "-0" or shown.is_empty() else shown)
 		# A direct colour goes back out in the form it came in, or it
 		# reads as an enormous palette index that nothing has.
 		var colour: String = ("0x%07X" % placement.color_code
