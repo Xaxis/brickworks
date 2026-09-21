@@ -72,7 +72,7 @@ func _run() -> void:
 		await process_frame
 
 	print("  a tower of %d bricks, on its own" % world.brick_count())
-	for from: String in ["corner", "front", "top", "left"]:
+	for from: String in ["corner", "far corner", "front", "top", "left"]:
 		var image: Image = await shot.take(world, from)
 		pass
 		if image == null:

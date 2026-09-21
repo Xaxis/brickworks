@@ -464,5 +464,32 @@ func search(query: String, limit: int = 100) -> Array[PartInfo]:
 	return results
 
 
+## The part a number actually means today.
+##
+## LDraw keeps a stub for every number it has retired — 4073 is now
+## "~Moved to 6141" — and those stubs render perfectly well, because
+## the stub's geometry is a reference to the part it moved to. So a
+## model built on an old number looks right and is wrong underneath:
+## the parts list offers "~Moved to 3023b" where the name should be,
+## the booklet says it, and anyone reading either to buy the bricks is
+## handed a sentence instead of a part.
+##
+## Search already declines to suggest them. This is for the numbers
+## that arrive another way: out of somebody else's .ldr, or out of a
+## model that knows 4073 from memory.
+func resolve(part_id: String) -> String:
+	var at: String = part_id
+	# Chains exist — a number moved once can move again — and a cycle
+	# in somebody's data should not be an infinite loop.
+	for _hop: int in 8:
+		var info: PartInfo = parts.get(at)
+		if info == null or not info.is_redirect():
+			return at
+		if not parts.has(info.moved_to):
+			return at
+		at = info.moved_to
+	return at
+
+
 func ids() -> PackedStringArray:
 	return _ordered_ids

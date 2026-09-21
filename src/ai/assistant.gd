@@ -752,7 +752,7 @@ func _on_response(result: Array) -> void:
 			_looked_back = true
 			_pending = null
 			progress.emit("looking at the finished model")
-			var shown: Variant = await _with_a_look("", CRITIQUE)
+			var shown: Variant = await _from_both_sides("", CRITIQUE)
 			# Cancelled while the picture was being taken. An empty
 			# message is one the API refuses, so there would be nothing
 			# to show for it but an error.
@@ -1123,6 +1123,39 @@ func _forget_old_pictures() -> void:
 ## run still gets. But a design is judged on whether it reads as the
 ## thing it is meant to be, and that is a question about a picture. A
 ## rendering is also cheaper than the two elevations it replaces.
+## The same, from both three-quarters.
+##
+## One corner shows two faces of a model and hides the other two, which
+## is how a house was judged good with a blank front wall. Two opposite
+## corners between them show all four.
+func _from_both_sides(said: String, ask: String) -> Variant:
+	if _shot == null:
+		_shot = ModelShot.new()
+		add_child(_shot)
+	var near: Dictionary = await _shot.block(world, "corner", scenery)
+	if not _busy:
+		return ""
+	var far: Dictionary = await _shot.block(world, "far corner", scenery)
+	if not _busy:
+		return ""
+	if near.is_empty() or far.is_empty():
+		# No pictures to be had, so fall back to the letters — which
+		# draw the plan and an elevation and hide nothing.
+		return await _with_a_look(said, ask)
+
+	var blocks: Array = []
+	if not said.is_empty():
+		blocks.append({"type": "text", "text": said})
+	blocks.append({"type": "text", "text": "From one corner:"})
+	blocks.append(near)
+	blocks.append({"type": "text", "text": "And from the opposite one, "
+		+ "so that every side has been seen:"})
+	blocks.append(far)
+	if not ask.is_empty():
+		blocks.append({"type": "text", "text": ask})
+	return blocks
+
+
 func _with_a_look(said: String, ask: String,
 		from: String = "corner") -> Variant:
 	if _shot == null:

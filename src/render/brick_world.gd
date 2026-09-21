@@ -113,7 +113,16 @@ func add_brick(part_id: String, color_code: int, at: Transform3D) -> int:
 	if part == null:
 		return 0
 
-	var brick := Brick.new(_next_id, part_id, color_code, at)
+	# Whatever the number means today.
+	#
+	# Here rather than at each caller, because every placement comes
+	# through this door — a design, an import, a hand-placed brick, an
+	# undo. A retired number renders correctly, since its stub is a
+	# reference to the part that replaced it, so the model looks right
+	# and is wrong underneath: the parts list offers "~Moved to 3023b"
+	# where a name should be, and so does the booklet.
+	var real: String = library.resolve(part_id)
+	var brick := Brick.new(_next_id, real, color_code, at)
 	_next_id += 1
 	_bricks[brick.id] = brick
 
