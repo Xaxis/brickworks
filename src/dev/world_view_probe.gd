@@ -90,6 +90,30 @@ func _initialize() -> void:
 	_check("an empty baseplate says so",
 		assistant._describe_world().contains("empty"))
 
+	# A part whose size is a hair over a stud multiple used to be
+	# anchored a whole stud wider than it is, so two of them placed
+	# side by side reported an overlap that was not there — and the
+	# repair loop would teach the model to stop using the part.
+	for pair: Array in [["3941", "2 x 2 round brick"], ["6143", "2 x 2 round, reinforced"],
+			["3001", "2 x 4 brick"], ["3005", "1 x 1 brick"]]:
+		var part: String = pair[0]
+		var info: PartLibrary.PartInfo = library.parts.get(part)
+		if info == null:
+			continue
+		var wide: int = Assistant._cover_studs(library.mesh_for(part), info).x
+		var side_by_side := Assistant.Model.new()
+		for column: int in 2:
+			var at := Assistant.Placement.new()
+			at.part = part
+			at.color = 4
+			at.x = column * wide
+			at.y = 0
+			at.z = 0
+			side_by_side.placements.append(at)
+		var report: Dictionary = assistant._check(side_by_side)
+		_check("two %s side by side: %s" % [pair[1], report["summary"]],
+			bool(report["ok"]))
+
 	# The two routes do not take the same body, and getting that wrong
 	# refuses every request on the direct path — which is what happened.
 	assistant.direct_key = "sk-not-a-real-key"

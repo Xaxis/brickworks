@@ -568,7 +568,11 @@ const WORLD_ROWS := 220
 ## coordinates the model cannot act on is worse than none.
 func _to_studs(brick: BrickWorld.Brick, info: PartLibrary.PartInfo) -> Vector3i:
 	var rot: int = _quarter_turns(brick.transform.basis)
-	var footprint: Vector2i = info.footprint_studs()
+	# The same measure the forward transform uses. Two different
+	# footprints here is two coordinate systems, and the model would be
+	# told a brick is somewhere it is not.
+	var footprint: Vector2i = _cover_studs(
+		library.mesh_for(brick.part_id), info)
 	var across: int = footprint.y if rot % 2 == 1 else footprint.x
 	var deep: int = footprint.x if rot % 2 == 1 else footprint.y
 	var origin: Vector3 = brick.transform.origin
@@ -755,9 +759,38 @@ static func _feedback(issues: Dictionary, summary: String) -> String:
 ## hand: the anchor moves from the footprint's low corner to the part's
 ## centre, the height is measured in plates, and a part's own origin sits
 ## at the top of its body rather than the bottom.
-func _transform(placement: Placement, _part: Lbm.PartMesh) -> Transform3D:
+## How many studs a part covers, from the cover rather than the bounds.
+##
+## footprint_studs() is ceil(size / 20), and a size a hair over a stud
+## multiple rounds up a whole stud. A 2 x 2 round brick measures 40.001
+## LDU and so reports three studs across; anchored on that it lands half
+## a stud out in both axes, the validator calls it an overlap the model
+## cannot explain from its own coordinates, and three repairs later the
+## model has concluded round bricks do not work.
+##
+## The collision cover is the exact set of whole cells the part
+## occupies — the same set the lattice uses — so anchoring on it is
+## right by construction rather than by maintenance.
+static func _cover_studs(part: Lbm.PartMesh, info: PartLibrary.PartInfo) -> Vector2i:
+	if part == null or part.boxes.is_empty():
+		# Nothing was built for this part; the bounds are all there is.
+		return info.footprint_studs()
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for box: AABB in part.boxes:
+		lo = Vector2(minf(lo.x, box.position.x), minf(lo.y, box.position.z))
+		hi = Vector2(
+			maxf(hi.x, box.position.x + box.size.x),
+			maxf(hi.y, box.position.z + box.size.z))
+	var per_stud: float = STUD / part.cell_ldu
+	return Vector2i(
+		maxi(int(round((hi.x - lo.x) / per_stud)), 1),
+		maxi(int(round((hi.y - lo.y) / per_stud)), 1))
+
+
+func _transform(placement: Placement, part: Lbm.PartMesh) -> Transform3D:
 	var info: PartLibrary.PartInfo = library.parts[placement.part]
-	var footprint: Vector2i = info.footprint_studs()
+	var footprint: Vector2i = _cover_studs(part, info)
 	var across: int = footprint.y if placement.rot % 2 == 1 else footprint.x
 	var deep: int = footprint.x if placement.rot % 2 == 1 else footprint.y
 
