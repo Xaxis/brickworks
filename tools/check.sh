@@ -95,6 +95,13 @@ run "axis gizmo" godot --path . --resolution 1200x800 \
 # lands on screen, which needs a camera with a viewport to project into.
 run "box select" godot --path . --resolution 1200x800 \
   --script src/dev/marquee_probe.gd
+# And the one that asks whether the controls feel right rather than
+# whether they are wired: it drives the real scene with the gestures a
+# person reaches for by habit. It found left-drag placing a brick,
+# which every binding test had passed over because there was no
+# binding to test.
+run "feel" godot --path . --resolution 1400x900 \
+  --script src/dev/feel_probe.gd
 
 if [ "$network" = 1 ]; then
   echo "── network ──"

@@ -1300,9 +1300,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseMotion:
 		var moved: InputEventMouseMotion = event
-		# Drawing a box, which is not aiming the ghost.
-		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 \
-				and Input.is_key_pressed(KEY_SHIFT):
+		# Drawing a box, which is not aiming the ghost. Any left drag,
+		# with or without shift — shift only decides whether what it
+		# catches is added to the selection or replaces it.
+		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			if _marquee.drag_to(moved.position):
 				_builder.hide_preview()
 				return
@@ -1343,22 +1344,37 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Shift picks bricks out instead of placing them, on the press —
 	# where a double click is reported. Placing is the verb this app is
 	# mostly about, so it keeps the plain click.
-	if button.shift_pressed or _marquee.is_drawing():
-		if button.pressed:
-			# A press that might become a box. Which it is depends on
-			# whether the pointer moves, so nothing is decided here.
-			_marquee.begin(button.position)
-			if button.double_click:
-				_aim_at(button.position)
-				_builder.select_alike()
-			return
-		if _marquee.is_drawing():
-			var took: int = _builder.select_in(_marquee.box(),
-				_brick_on_screen, _marquee.takes_touching())
-			_bar.say("took %d" % took if took > 0 else "nothing in there")
-			_marquee.finish()
-			return
+	# Every left press might become a box.
+	#
+	# Which it is depends on whether the pointer moves, so nothing is
+	# decided here. A drag draws a box; a click without one places, or
+	# picks a brick out when shift is held.
+	if button.pressed:
+		_marquee.begin(button.position)
+		if button.shift_pressed and button.double_click:
+			_aim_at(button.position)
+			_builder.select_alike()
+		return
+
+	# A drag is a box, not a placement.
+	#
+	# This is the gesture everyone tries first, because it is how every
+	# other 3D viewport turns the model — and here it used to place a
+	# brick wherever the pointer happened to stop. Somebody reaching for
+	# the obvious thing was building with it, one brick per attempt,
+	# with nothing to say why. Dragging selects now, which is what the
+	# left button is for: select, place, box-select, and nothing else.
+	if _marquee.is_drawing():
+		var took: int = _builder.select_in(_marquee.box(),
+			_brick_on_screen, _marquee.takes_touching(),
+			button.shift_pressed)
 		_marquee.finish()
+		_bar.say("took %d" % took if took > 0
+			else "nothing in there — right-drag turns the view")
+		return
+	_marquee.finish()
+
+	if button.shift_pressed:
 		_aim_at(button.position)
 		_builder.toggle_hovered()
 		return
@@ -1370,8 +1386,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	# then the drag turned the model, leaving the brick wherever the
 	# finger first touched. Waiting for the release gives the camera
 	# time to see the drag and ask for the click to be thrown away.
-	if button.pressed:
-		return
 
 	if _playback != null and _playback.is_playing():
 		# Reaching for the model ends the animation, and this click is
