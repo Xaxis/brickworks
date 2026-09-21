@@ -185,6 +185,12 @@ export default async function handler(request, response) {
     response.setHeader("x-designs-budget", String(spend.budget));
   }
 
+  // Streaming is the client's choice, not ours. It asks so that it can
+  // put the design on the baseplate brick by brick as the model writes
+  // it, instead of showing a spinner for a minute and then everything
+  // at once.
+  const wantsStream = body.stream === true;
+
   const payload = {
     model,
     max_tokens: Math.min(Number(body.max_tokens) || 8000, MAX_TOKENS),
@@ -194,6 +200,7 @@ export default async function handler(request, response) {
   if (body.system) payload.system = body.system;
   if (Array.isArray(body.tools)) payload.tools = body.tools;
   if (body.output_config) payload.output_config = body.output_config;
+  if (wantsStream) payload.stream = true;
 
   try {
     const upstream = await fetch("https://api.anthropic.com/v1/messages", {
@@ -206,6 +213,26 @@ export default async function handler(request, response) {
       body: JSON.stringify(payload),
     });
 
+    if (wantsStream && upstream.ok && upstream.body) {
+      response.setHeader("content-type", "text/event-stream");
+      response.setHeader("cache-control", "no-cache, no-transform");
+      response.setHeader("connection", "keep-alive");
+      // Nginx and friends buffer an event stream by default, which
+      // turns it back into one lump delivered at the end — the exact
+      // thing the client asked not to happen.
+      response.setHeader("x-accel-buffering", "no");
+      response.status(200);
+      const reader = upstream.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        response.write(Buffer.from(value));
+      }
+      return response.end();
+    }
+
+    // An error, or a client that did not ask for a stream. Either way
+    // it is one JSON document and the client knows how to read it.
     const text = await upstream.text();
     response.setHeader("content-type", "application/json");
     return response.status(upstream.status).send(text);

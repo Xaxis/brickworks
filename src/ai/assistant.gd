@@ -53,6 +53,11 @@ var endpoint: String = DEFAULT_ENDPOINT
 ## theirs.
 var direct_key: String = ""
 
+## Whether to read the answer as it is written. Off for anything running
+## without a scene tree to wait on, and available to turn off if a
+## network somewhere refuses to pass a stream through.
+var stream_replies: bool = true
+
 
 ## The key this request will go out with, and therefore where it goes.
 ##
@@ -69,6 +74,10 @@ var _busy: bool = false
 var _repairs: int = 0
 var _turns: int = 0
 var _nudges: int = 0
+## Whether an edit has been applied this run. An edit is already built
+## by the time it returns, so a turn that ends after one has finished
+## its work rather than failed to start it.
+var _edited: bool = false
 var _pending: Model = null
 ## Names the conversation for the proxy's monthly budget. One design is
 ## a dozen round trips and sometimes forty, so the turns have to be
@@ -150,6 +159,61 @@ class Placement extends RefCounted:
 			else "%.2f" % value)
 
 
+## Bricks out of an argument list that is still being written.
+##
+## The model sends a tool call's arguments as fragments of JSON, and
+## waiting for the last of them is waiting for the whole design. Each
+## complete object inside the list is one brick, and one brick is enough
+## to put on the baseplate — so the model appears as it is thought of,
+## rather than all at once a minute later.
+##
+## Nothing here parses JSON properly. It counts braces, minds quotes and
+## escapes, and hands whole objects to [method JSON.parse_string], which
+## does parse JSON properly. Anything it gets wrong shows up as a brick
+## that does not appear early, never as a wrong brick: the real
+## arguments are parsed from the whole text at the end regardless.
+class Scanner extends RefCounted:
+	var _text: String = ""
+	var _at: int = 0
+	var _depth: int = 0
+	var _from: int = 0
+	var _in_string: bool = false
+	var _escaped: bool = false
+
+	## Add what just arrived; get back whatever objects that completed.
+	func feed(piece: String) -> Array[Dictionary]:
+		_text += piece
+		var out: Array[Dictionary] = []
+		while _at < _text.length():
+			var c: String = _text[_at]
+			_at += 1
+			if _in_string:
+				if _escaped:
+					_escaped = false
+				elif c == "\\":
+					_escaped = true
+				elif c == "\"":
+					_in_string = false
+				continue
+			match c:
+				"\"":
+					_in_string = true
+				"{":
+					_depth += 1
+					if _depth == 2:
+						_from = _at - 1
+				"}":
+					_depth -= 1
+					# Depth two is one level inside the arguments, which
+					# is where each brick of a list of them sits.
+					if _depth == 1:
+						var parsed: Variant = JSON.parse_string(
+							_text.substr(_from, _at - _from))
+						if typeof(parsed) == TYPE_DICTIONARY:
+							out.append(parsed)
+		return out
+
+
 class Model extends RefCounted:
 	var name: String = "Model"
 	var description: String = ""
@@ -202,6 +266,7 @@ func _start(text: String) -> void:
 	_repairs = 0
 	_turns = 0
 	_nudges = 0
+	_edited = false
 	_pending = null
 	_before = _snapshot()
 	# A new one per instruction, including a revision: asking for a
@@ -263,6 +328,7 @@ func _restore() -> void:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
 	_placed_ids = PackedInt64Array()
+	_sketched_ids = PackedInt64Array()
 
 	for entry: Dictionary in _before:
 		var brick_id: int = world.add_brick(
@@ -306,6 +372,32 @@ func _send() -> void:
 			return
 		headers.append("authorization: Bearer " + token)
 
+	# Streamed, so the design appears as it is written rather than a
+	# minute later all at once. What comes back at the end is the same
+	# message a plain request would have returned, so nothing below this
+	# knows the difference.
+	if stream_replies:
+		body["stream"] = true
+		var reader := Streamer.new()
+		add_child(reader)
+		var scanner := Scanner.new()
+		var sketching: bool = false
+		reader.fragment.connect(func(tool: String, piece: String) -> void:
+			if tool != "submit_design" and tool != "check_design":
+				return
+			for raw: Dictionary in scanner.feed(piece):
+				if not raw.has("part"):
+					continue
+				if not sketching:
+					sketching = true
+					_begin_sketch()
+				_sketch_one(Placement.from_dict(raw)))
+		reader.run(url, headers, JSON.stringify(body))
+		var streamed: Array = await reader.done
+		reader.queue_free()
+		_on_response(streamed)
+		return
+
 	if _http.request(url, headers, HTTPClient.METHOD_POST,
 			JSON.stringify(body)) != OK:
 		_stop(false, "could not reach the assistant")
@@ -313,6 +405,44 @@ func _send() -> void:
 
 	var result: Array = await _http.request_completed
 	_on_response(result)
+
+
+## The bricks put on the baseplate as the design was written, which the
+## finished design then replaces. Tracked apart from [member
+## _placed_ids] so that a turn which never submits anything — a search,
+## a look — leaves them be rather than half-clearing them.
+var _sketched_ids: PackedInt64Array = PackedInt64Array()
+
+
+func _begin_sketch() -> void:
+	# The previous draft goes as the new one starts, not before: a blank
+	# baseplate between two drafts reads as the model having given up.
+	for brick_id: int in _sketched_ids:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
+	for brick_id: int in _placed_ids:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_placed_ids = PackedInt64Array()
+
+
+## One brick, the moment it is written.
+##
+## No collision test and no support test: this is a sketch of what is
+## being proposed, and half a design does not stand up yet by
+## definition. The real check runs on the whole thing.
+func _sketch_one(placement: Placement) -> void:
+	var part: Lbm.PartMesh = library.mesh_for(placement.part)
+	if part == null:
+		return
+	var at: Transform3D = _transform(placement, part)
+	var brick_id: int = world.add_brick(placement.part, placement.color, at)
+	if brick_id == 0:
+		return
+	builder.register(brick_id, placement.part, at)
+	_sketched_ids.append(brick_id)
+	sketched.emit(_sketched_ids.size())
 
 
 ## The request, built where it can be looked at.
@@ -435,6 +565,13 @@ func _on_response(result: Array) -> void:
 		if _pending != null:
 			_stop(true, "done")
 			return
+		# An edit that landed is a finished piece of work. Without this
+		# a run that changed the model and then said so was nudged to
+		# build something, twice, and then recorded as having built
+		# nothing — with the change sitting on the baseplate.
+		if _edited:
+			_stop(true, "%d bricks" % world.brick_count())
+			return
 		# Nothing called and nothing submitted. Taken as "it has finished
 		# talking", which it is not: a run that looked up five parts,
 		# said what it was going to build and stopped was recorded as a
@@ -545,6 +682,9 @@ func _run_tool(block: Dictionary) -> String:
 					+ "Does it read as the thing it is meant to be? "
 					+ "If not, that is worth more than another brick.",
 			]
+		"attachment_points":
+			progress.emit("working out where things attach")
+			return _attachment_points(args)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world()
@@ -568,6 +708,7 @@ func _run_tool(block: Dictionary) -> String:
 					+ str(verdict["feedback"]))
 			_apply_edit(edited)
 			_pending = null
+			_edited = true
 			progress.emit("changed it: %d bricks" % edited.placements.size())
 			return ("Done. %d bricks now. "
 				% edited.placements.size()
@@ -656,6 +797,121 @@ func _edit(args: Dictionary) -> Model:
 	for raw: Variant in args.get("add", []):
 		model.placements.append(Placement.from_dict(raw))
 	return model
+
+
+## Where a part's studs are, and what coordinates something on one of
+## them would take.
+##
+## Built because the arithmetic is the hard part and there is no reason
+## anyone should have to do it. A stud on the side of an 87087 sits at
+## 14 LDU above the brick's base, which is one and three quarter plates,
+## and the plate that clutches it therefore starts half a plate up.
+## Nobody works that out reliably from a description, and getting it
+## wrong is not a wonky model — it is a part that touches nothing and a
+## design that comes back refused.
+##
+## Answers for a brick that is already placed, or for one that is not
+## yet: planning a wall means knowing where its studs will be before
+## committing to it.
+func _attachment_points(args: Dictionary) -> String:
+	var at: Transform3D
+	var part_id: String
+	var label: String
+
+	if args.has("brick"):
+		var brick_id: int = int(args["brick"])
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			return "There is no brick numbered %d." % brick_id
+		at = brick.transform
+		part_id = brick.part_id
+		label = "brick %d (%s)" % [brick_id, part_id]
+	else:
+		part_id = str(args.get("part", ""))
+		if not library.parts.has(part_id):
+			return "No part '%s' exists." % part_id
+		var hypothetical := Placement.from_dict(args)
+		var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+		if mesh == null:
+			return "The geometry for %s has not arrived yet." % part_id
+		at = _transform(hypothetical, mesh)
+		label = "%s at %s facing %s" % [
+			part_id, hypothetical.where(), hypothetical.face]
+
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return "The geometry for %s has not arrived yet." % part_id
+
+	var lines := PackedStringArray()
+	var found: int = 0
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind != "stud" or connector.gender != "male":
+			continue
+		var point: Vector3 = at * connector.position
+		var axis: Vector3 = (at.basis * connector.axis).normalized()
+		# A part sitting on this stud has its own up along the stud, so
+		# the face it takes is simply the direction the stud points.
+		var face: String = "up"
+		var best: float = -2.0
+		for name: String in FACES:
+			var d: float = axis.dot(FACES[name])
+			if d > best:
+				best = d
+				face = name
+		var corner: Vector3 = _corner_on(point, axis, face)
+		lines.append("  stud %d points %-4s — a 1x1 part goes at "
+			% [found, face]
+			+ "x=%s y=%s z=%s face=%s" % [
+				Placement._num(corner.x / STUD),
+				Placement._num(corner.y / PLATE),
+				Placement._num(corner.z / STUD), face])
+		found += 1
+
+	if found == 0:
+		return ("%s has no studs — nothing clutches to it. " % label
+			+ "Tiles and most sloped surfaces are like this.")
+	return ("%s has %d stud%s.\n" % [label, found, "" if found == 1 else "s"]
+		+ "\n".join(lines)
+		+ "\n\nA larger part starts at that corner and extends from it "
+		+ "the way it would on the ground: across x and z if it faces "
+		+ "up, across the other two if it faces sideways.")
+
+
+## Where a 1x1 plate's low corner falls if it clutches this stud.
+##
+## Across the two directions the stud does not point along, it is
+## centred: half a stud either side. Along the stud it starts at the
+## stud and grows away from it — which for a stud pointing down or left
+## means the corner is a plate's thickness back, because the corner is
+## the low end and the part is on the high side of it.
+##
+## That last case was wrong and every sideways attachment on a negative
+## face came back as an overlap with the very brick it was clutching.
+func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
+	# Measured, not assumed: this file has been wrong before about how
+	# thick a plate is and in which units.
+	var thickness: float = PLATE
+	var plate: Lbm.PartMesh = library.mesh_for("3024")
+	if plate != null:
+		var basis: Basis = BrickLattice.basis_for(face, 0)
+		var lo: int = 0x7FFFFFFF
+		var hi: int = -0x7FFFFFFF
+		for cell: Vector3i in builder._cells_for(
+				plate, Transform3D(basis, Vector3.ZERO)):
+			var along: int = int(round(Vector3(cell).dot(axis)))
+			lo = mini(lo, along)
+			hi = maxi(hi, along + 1)
+		thickness = float(hi - lo) * BrickLattice.CELL
+
+	# Positive: the part starts at the stud. Negative: the part is on
+	# the far side of the stud from its own low corner, so the corner is
+	# its thickness back.
+	var back: float = 0.0 if axis.x + axis.y + axis.z > 0.0 else thickness
+	var half: float = STUD * 0.5
+	return Vector3(
+		point.x - (back if absf(axis.x) > 0.5 else half),
+		point.y - (back if absf(axis.y) > 0.5 else half),
+		point.z - (back if absf(axis.z) > 0.5 else half))
 
 
 ## What is on the baseplate, in the coordinates the model speaks.
@@ -1109,6 +1365,11 @@ func _apply_edit(model: Model) -> void:
 
 	# Gone, and anything whose part changed — which is a different brick
 	# wearing the same number, not a brick that moved.
+	for brick_id: int in _sketched_ids:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
+
 	var doomed := PackedInt64Array()
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
@@ -1164,6 +1425,12 @@ func _apply(model: Model, finished: bool = true) -> void:
 	for brick_id: int in _placed_ids:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
+	# And the sketch it was drawn from, or the design lands on top of
+	# itself: every brick twice, one of them unaccounted for.
+	for brick_id: int in _sketched_ids:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
 	_placed_ids = PackedInt64Array()
 
 	# A part whose geometry never arrived used to be skipped here in
@@ -1202,10 +1469,11 @@ func built_count() -> int:
 
 
 func clear_built() -> void:
-	for brick_id: int in _placed_ids:
+	for brick_id: int in _placed_ids + _sketched_ids:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
 	_placed_ids = PackedInt64Array()
+	_sketched_ids = PackedInt64Array()
 
 
 # -- prompt --------------------------------------------------------------
@@ -1340,7 +1608,12 @@ Do not describe it again. Call look_at_model, which prints a number \
 beside every brick, then edit_model with those numbers: remove, \
 recolor, move, add. Rewriting four hundred placements to move one wall \
 costs a fortune and loses details nobody asked you to change. \
-submit_design is for starting something new."""
+submit_design is for starting something new.
+
+An edit is applied as soon as it is accepted. Once you have made one, \
+the model is built — finish by saying what you did. Calling \
+submit_design afterwards with a list that predates the edit throws the \
+edit away."""
 
 
 func _tools() -> Array:
@@ -1392,6 +1665,32 @@ func _tools() -> Array:
 				"type": "object",
 				"properties": {"bricks": {"type": "array", "items": brick}},
 				"required": ["bricks"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "attachment_points",
+			"description": ("Where a part's studs are and the exact "
+				+ "coordinates something sitting on each one would "
+				+ "take. Ask about a brick that is already placed by "
+				+ "its number, or about one you are considering by "
+				+ "giving part and position. Use this rather than "
+				+ "working out sideways positions yourself — a stud on "
+				+ "the side of a brick is not at a whole number of "
+				+ "plates and the arithmetic is easy to get wrong."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"brick": {"type": "integer", "description":
+						"the number look_at_model printed"},
+					"part": {"type": "string"},
+					"x": {"type": "number"},
+					"y": {"type": "number"},
+					"z": {"type": "number"},
+					"face": {"type": "string",
+						"enum": ["up", "down", "+x", "-x", "+z", "-z"]},
+					"rot": {"type": "integer"},
+				},
 				"additionalProperties": false,
 			},
 		},
@@ -1488,7 +1787,13 @@ func _tools() -> Array:
 		},
 		{
 			"name": "submit_design",
-			"description": "Submit the finished model, with every part.",
+			"description": ("Submit the finished model, with every "
+				+ "part. It replaces everything on the baseplate that "
+				+ "you put there — including anything you added with "
+				+ "edit_model. If you have been building with "
+				+ "edit_model, the model is already built: say so and "
+				+ "stop, rather than submitting a list that is missing "
+				+ "the additions."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
