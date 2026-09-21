@@ -161,6 +161,13 @@ func _build() -> void:
 		_on_account_changed()
 		_input.grab_focus())
 	_key_form.sign_in_wanted.connect(func() -> void:
+		# Only where there is something behind it. On a build with no
+		# accounts the link hid the key form and showed nothing in its
+		# place, with no way back short of restarting.
+		if account == null or not account.available:
+			_status.text = ("There are no accounts on this build. A key "
+				+ "of your own is the way in.")
+			return
 		_showing_sign_in = true
 		_on_account_changed())
 	root.add_child(_key_form)
@@ -314,6 +321,25 @@ func _on_account_changed() -> void:
 	var included: bool = account.signed_in() and account.assistant_included()
 	var allowed: bool = own_key or included
 
+	# Signing in worked, so stop asking for a code.
+	#
+	# An ordinary account does not include the assistant — there is no
+	# payment system yet, so everyone but the master account runs on a
+	# key of their own. That left "allowed" false after a perfectly
+	# successful sign-in, and the form stayed on screen asking for the
+	# same code it had just accepted. A success that looks exactly like
+	# a failure is worse than a failure: the second attempt is given
+	## the same code, which is by then expired, and now it really has
+	# failed.
+	if _showing_sign_in and account.signed_in():
+		_showing_sign_in = false
+
+	# And where there are no accounts at all, there is nothing behind
+	# that link. Offering it and then showing an empty panel with no way
+	# back is the worst of the three possible answers.
+	if not account.available:
+		_showing_sign_in = false
+
 	_composer.visible = allowed
 	_key_form.visible = not allowed and not _showing_sign_in
 	_gate.visible = not allowed and _showing_sign_in and account.available
@@ -341,6 +367,13 @@ func _on_account_changed() -> void:
 				_send.disabled = true
 		return
 
+	# Signed in, and still needing a key. Say so, or the form reads as
+	# the sign-in having done nothing.
+	if account.signed_in() and not included:
+		_status.text = ("Signed in as %s. The assistant runs on a key "
+			% account.email + "of your own for now — paste one below "
+			+ "and it works straight away.")
+		return
 	if not account.available and not _showing_sign_in:
 		_status.text = ""
 		return

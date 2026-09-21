@@ -293,6 +293,18 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 		fetched.emit(part_id)
 		return true
 	if _fetching.has(info.mesh_hash):
+		# Already on its way for somebody else. Join them, or this part
+		# is told "coming" and never told it came.
+		#
+		# Fetches are deduplicated by geometry, and different parts
+		# share geometry all the time — a brick and its printed
+		# variant, a part and the same part under another number. The
+		# request carried only the first asker's id, so everyone else
+		# heard a fetched() for a part they had not asked about and
+		# went on waiting for one that never came.
+		var waiting: Array = _fetching[info.mesh_hash]
+		if not waiting.has(part_id):
+			waiting.append(part_id)
 		return true
 	if _fetching.size() >= MAX_IN_FLIGHT:
 		if _queued_fetches.has(part_id):
@@ -319,7 +331,7 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 			_waiting.append(part_id)
 		return true
 
-	_fetching[info.mesh_hash] = true
+	_fetching[info.mesh_hash] = [part_id]
 	var request := HTTPRequest.new()
 	_fetch_host.add_child(request)
 	request.request_completed.connect(
@@ -374,18 +386,25 @@ func _on_fetched(
 	part_id: String
 ) -> void:
 	request.queue_free()
+	# Taken before the entry goes, not looked up after it.
+	var asked_for: Array = _fetching.get(hash_name, [part_id])
 	_fetching.erase(hash_name)
 	_next_fetch()
 
 	if code != 200 or body.is_empty():
-		fetch_failed.emit(part_id, "HTTP %d" % code)
+		for asked: String in asked_for:
+			fetch_failed.emit(asked, "HTTP %d" % code)
 		return
 	var part: Lbm.PartMesh = Lbm.parse(body, part_id)
 	if part == null:
-		fetch_failed.emit(part_id, "the geometry did not parse")
+		for asked: String in asked_for:
+			fetch_failed.emit(asked, "the geometry did not parse")
 		return
 	_mesh_cache[hash_name] = part
-	fetched.emit(part_id)
+	# Everyone who asked for this geometry, not only whoever asked
+	# first.
+	for asked: String in asked_for:
+		fetched.emit(asked)
 
 
 ## Drop cached geometry. The catalogue stays; only vertices go.
