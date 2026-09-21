@@ -99,6 +99,44 @@ func _initialize() -> void:
 		print("  FAIL  the assistant adopted a brick it did not place "
 			+ "(%d then, %d now)" % [mine_before, assistant.built_count()])
 
+	# An edit made while a streamed sketch is on the baseplate.
+	#
+	# The sketch is ordinary bricks with ordinary numbers, and an edit
+	# is built from a reading of the world that includes them. Treating
+	# them as a separate thing to be cleared first deleted the bricks
+	# the edit had just asked to keep.
+	# clear_built leaves the hand-placed brick alone, which is the whole
+	# point of it, so that one is still standing here.
+	assistant.clear_built()
+	var by_hand: int = world.brick_count()
+	var sketch: Array[Assistant.Placement] = []
+	for y: int in 3:
+		sketch.append(Assistant.Placement.from_dict({
+			"part": "3001", "color": 2, "x": 0, "y": y * 3, "z": 0}))
+	assistant._begin_sketch()
+	for placement: Assistant.Placement in sketch:
+		assistant._sketch_one(placement)
+	if world.brick_count() != by_hand + 3:
+		_failures += 1
+		print("  FAIL  the sketch put %d bricks up, wanted %d"
+			% [world.brick_count(), by_hand + 3])
+
+	var sketched_ids: Array = _ids(world)
+	_edit(assistant, "recolour a brick that is still only a sketch", {
+		"recolor": [{"bricks": [sketched_ids[0]], "color": 14}]})
+	if world.brick_count() == by_hand + 3 and _ids(world) == sketched_ids:
+		print("        all three survived, with their numbers")
+	else:
+		_failures += 1
+		print("  FAIL  editing a sketch left %d bricks, wanted %d: %s"
+			% [world.brick_count(), by_hand + 3, _ids(world)])
+	if assistant.built_count() == 3:
+		print("        and the assistant owns all three")
+	else:
+		_failures += 1
+		print("  FAIL  the assistant owns %d of 3 after editing its sketch"
+			% assistant.built_count())
+
 	print("")
 	if _failures == 0:
 		print("a model can be changed in place")

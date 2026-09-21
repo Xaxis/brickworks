@@ -768,8 +768,12 @@ func _model_from_world() -> Model:
 	var model := Model.new()
 	if world == null:
 		return model
+	# The sketch counts as the assistant's. Those bricks are on the
+	# baseplate with numbers of their own, so an edit can name one; if
+	# they were treated as somebody else's work they would survive every
+	# later design as orphans nobody could account for.
 	var mine: Dictionary = {}
-	for brick_id: int in _placed_ids:
+	for brick_id: int in _placed_ids + _sketched_ids:
 		mine[brick_id] = true
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
@@ -1467,16 +1471,16 @@ func _apply_edit(model: Model) -> void:
 			fresh.append(placement)
 
 	var mine: Dictionary = {}
-	for brick_id: int in _placed_ids:
+	for brick_id: int in _placed_ids + _sketched_ids:
 		mine[brick_id] = true
 
 	# Gone, and anything whose part changed — which is a different brick
 	# wearing the same number, not a brick that moved.
-	for brick_id: int in _sketched_ids:
-		builder.lattice.release(brick_id)
-		world.remove_brick(brick_id)
-	_sketched_ids = PackedInt64Array()
-
+	# The sketch is not cleared first. It is made of ordinary bricks
+	# with ordinary numbers, and the edit was built from a reading of
+	# the world that included them — clearing them here deleted the very
+	# bricks the edit had just asked to keep, and then skipped them as
+	# missing.
 	var doomed := PackedInt64Array()
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
@@ -1523,6 +1527,8 @@ func _apply_edit(model: Model) -> void:
 	_placed_ids = PackedInt64Array()
 	for brick_id: int in mine:
 		_placed_ids.append(brick_id)
+	# Whatever was a sketch is now built.
+	_sketched_ids = PackedInt64Array()
 	built.emit(_placed_ids.size())
 
 
