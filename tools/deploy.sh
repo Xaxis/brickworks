@@ -169,24 +169,28 @@ if [ ! -f .vercel/project.json ]; then
   exit 1
 fi
 
-echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo production || echo preview))"
+echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
-if [ "$prod" = 1 ]; then
-  # --archive=tgz sends one tarball rather than a file at a time. Both
-  # of this deploy's failures were in the per-file uploader: it aborted
-  # Node outright on fourteen thousand files, and then twice returned a
-  # 500 as an HTML page that the CLI tried to parse as JSON. Neither is
-  # something this end can fix, and neither happens with one upload.
-  npx --yes vercel@48 deploy --prebuilt --prod --yes --archive=tgz --token "$VERCEL_TOKEN" >"$log" 2>&1
-else
-  npx --yes vercel@48 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN" >"$log" 2>&1
-fi
+# Always uploaded as a preview, even when the domain is the destination.
+#
+# --prod promotes on upload, so the check that follows runs against a
+# build that is already the one everybody is getting. It did its job
+# once — caught a parse error that stopped the app loading at all — and
+# reported it as "deploy FAILED" after the broken build had been live
+# for two minutes. A check that runs after the promotion is not a gate,
+# it is a postmortem.
+#
+# --archive=tgz sends one tarball rather than a file at a time. Both of
+# this deploy's failures were in the per-file uploader: it aborted Node
+# outright on fourteen thousand files, and then twice returned a 500 as
+# an HTML page that the CLI tried to parse as JSON. Neither is
+# something this end can fix, and neither happens with one upload.
+npx --yes vercel@48 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN" >"$log" 2>&1
 code=$?
 url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' "$log" | tail -1)"
 if [ $code -ne 0 ] || [ -z "$url" ]; then
   tail -20 "$log"; echo "deploy FAILED"; rm -f "$log"; exit 1
 fi
-rm -f "$log"
 echo "deploy ok $url"
 
 if [ "$do_check" = 1 ]; then
@@ -220,8 +224,23 @@ if [ "$do_check" = 1 ]; then
   echo "deploy: landing page ok, app runs"
 fi
 if [ "$prod" = 1 ]; then
+  # Promoted only now, with the same build that just passed. Nothing
+  # is rebuilt in between, so what goes to the domain is the artefact
+  # that was checked rather than another one like it.
+  echo "deploy: promoting the checked build"
+  # --scope, which deploy does not need and promote does: deploy reads
+  # the team out of .vercel/project.json and promote looks the
+  # deployment up under whatever the token's default team is, which is
+  # not this one. "Deployment belongs to a different team" is what that
+  # looks like.
+  scope="$(sed -n 's/.*"orgId":"\([^"]*\)".*/\1/p' .vercel/project.json)"
+  if ! npx --yes vercel@48 promote "$url" --yes --scope "$scope" \
+      --token "$VERCEL_TOKEN" >"$log" 2>&1; then
+    tail -20 "$log"; echo "deploy FAILED: could not promote $url"; exit 1
+  fi
   echo "deploy done $url"
   echo "             https://brickworks.diy"
 else
   echo "deploy done $url"
 fi
+rm -f "$log"
