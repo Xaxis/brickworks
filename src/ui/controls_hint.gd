@@ -24,9 +24,7 @@ extends FlowContainer
 ## In points, not pixels: a retina window reports twice the pixels and
 ## would read as roomy at any size.
 static func _is_narrow() -> bool:
-	var wide: float = DisplayServer.window_get_size().x \
-		/ maxf(DisplayServer.screen_get_scale(), 1.0)
-	return wide < 720.0
+	return Room.across() < 720.0
 
 
 ## One control: what to press, and what it does.

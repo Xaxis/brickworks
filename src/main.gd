@@ -834,12 +834,17 @@ const ROOMY := 1040.0
 func _fit_panels() -> void:
 	if _bin_dock == null or _chat_dock == null:
 		return
-	# The real window, not the viewport. With canvas_items stretch the
-	# visible rect is the design size — 1600 wide whatever the window
-	# is — so asking it how much room there is always answers "plenty",
-	# and the panels stayed at their desktop widths on a phone.
-	var across: float = float(DisplayServer.window_get_size().x) \
-		/ maxf(get_window().content_scale_factor, 0.001)
+	# The real window, in points, not the viewport and not in pixels.
+	#
+	# With canvas_items stretch the visible rect is the design size —
+	# 1600 wide whatever the window is — so asking it how much room
+	# there is always answers "plenty". Dividing the canvas by the
+	# app's own content scale was the next attempt and is wrong above
+	# two device pixels to the point, which is every modern phone: an
+	# eight-hundred-point phone held sideways measured as roomier than
+	# the threshold and kept both panels open across a screen with room
+	# for neither.
+	var across: float = Room.across()
 	var cramped: bool = across < ROOMY
 
 	# A drawer leaves the far rail showing, so the way out is visible

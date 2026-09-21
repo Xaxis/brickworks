@@ -40,9 +40,7 @@ func _ready() -> void:
 static func wanted() -> bool:
 	if not DisplayServer.is_touchscreen_available():
 		return false
-	var wide: float = DisplayServer.window_get_size().x \
-		/ maxf(DisplayServer.screen_get_scale(), 1.0)
-	return wide < 1100.0
+	return Room.across() < 1100.0
 
 
 func _add(what: String, glyph: String, says: String) -> void:
