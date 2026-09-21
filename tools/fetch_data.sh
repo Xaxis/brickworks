@@ -45,10 +45,14 @@ if [ -f vendor/ldrawunf.zip ]; then
   unzip -q -o vendor/ldrawunf.zip -d vendor/ldraw/unofficial/ 2>/dev/null || true
 fi
 
-# The Official Model Repository: real LEGO sets as .mpd files, every part
-# placed as the designers placed it.  The reference corpus for the AI.
-fetch "LDraw OMR" "https://omr.ldraw.org/files/omr.zip" omr.zip || \
-  echo "note: OMR not fetched; see docs/DATA.md for alternatives"
+# The Official Model Repository once came down here too — real sets as
+# .mpd files, described in this script as "the reference corpus for the
+# AI".  Nothing ever read it.  It was a large download on every fetch
+# for nobody, and the line telling you where to read about it pointed at
+# a docs/DATA.md that does not exist.  If it comes back it comes back
+# with something that uses it:
+#
+#   https://omr.ldraw.org/files/omr.zip
 
 echo
 echo "vendor/ contents:"
