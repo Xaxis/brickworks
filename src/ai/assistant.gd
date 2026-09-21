@@ -67,6 +67,21 @@ var _pending: Model = null
 ## recognisable as belonging together — otherwise a single lighthouse
 ## spends six of the month's sixty.
 var _design_id: String = ""
+
+## Bricks that belong to the workspace rather than to any model — the
+## baseplate. Set by whoever owns the scene; left empty, a snapshot
+## would take the baseplate with it and put back a second one.
+var scenery: Dictionary = {}
+
+## What the world looked like before this instruction.
+##
+## Every path through a design replaces what the assistant built:
+## a finished submission, a repair, and — since drafts went on screen —
+## every check along the way. That is correct when a design succeeds
+## and ruinous when one does not, because the model being replaced is
+## the one the person already had. A design that exhausts its repairs,
+## is cancelled, or loses the network used to leave them with nothing.
+var _before: Array[Dictionary] = []
 var _placed_ids: PackedInt64Array = PackedInt64Array()
 
 signal said(text: String)
@@ -141,6 +156,7 @@ func cancel() -> void:
 	if _busy:
 		_http.cancel_request()
 		_busy = false
+		_restore()
 		finished.emit(false, "cancelled")
 
 
@@ -151,6 +167,7 @@ func _start(text: String) -> void:
 	_repairs = 0
 	_turns = 0
 	_pending = null
+	_before = _snapshot()
 	# A new one per instruction, including a revision: asking for a
 	# change starts a fresh round of turns and produces a new model, so
 	# it is a design in the sense anyone would count.
@@ -168,6 +185,57 @@ static func _new_design_id() -> String:
 	for _n: int in 12:
 		bytes.append(randi() % 256)
 	return Marshalls.raw_to_base64(bytes).replace("+", "-").replace("/", "_").replace("=", "")
+
+
+## Everything in the world that is not scenery, with who placed it.
+func _snapshot() -> Array[Dictionary]:
+	var taken: Array[Dictionary] = []
+	if world == null:
+		return taken
+	var mine: Dictionary = {}
+	for brick_id: int in _placed_ids:
+		mine[brick_id] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		taken.append({
+			"part": brick.part_id,
+			"colour": brick.color_code,
+			"at": brick.transform,
+			"mine": mine.has(brick.id),
+		})
+	return taken
+
+
+## Put back what was there before this instruction.
+##
+## Ids are minted afresh — BrickWorld numbers from one and the old ones
+## are gone — so _placed_ids is rebuilt from which bricks were the
+## assistant's, or a later design would refuse to replace its own work.
+func _restore() -> void:
+	if _before.is_empty():
+		return
+	# Everything that is not scenery, not just what the assistant built.
+	# Restoring over the survivors put a second copy of every
+	# hand-placed brick in the world — the snapshot holds them too,
+	# because they are part of what was there.
+	var doomed := PackedInt64Array()
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			doomed.append(brick.id)
+	for brick_id: int in doomed:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_placed_ids = PackedInt64Array()
+
+	for entry: Dictionary in _before:
+		var brick_id: int = world.add_brick(
+			str(entry["part"]), int(entry["colour"]), entry["at"])
+		if brick_id == 0:
+			continue
+		builder.register(brick_id, str(entry["part"]), entry["at"])
+		if bool(entry["mine"]):
+			_placed_ids.append(brick_id)
 
 
 func _send() -> void:
@@ -367,6 +435,12 @@ func _on_response(result: Array) -> void:
 
 
 func _stop(ok: bool, summary: String) -> void:
+	# A design that failed leaves the model it was asked to change
+	# exactly as it found it. Without this a revision that ran out of
+	# repairs took the original with it — and the drafts shown along the
+	# way are what removed it.
+	if not ok:
+		_restore()
 	_busy = false
 	finished.emit(ok, summary)
 
@@ -764,6 +838,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 		built.emit(_placed_ids.size())
 	else:
 		sketched.emit(_placed_ids.size())
+
+
+## How many bricks in the world the assistant considers its own.
+func built_count() -> int:
+	return _placed_ids.size()
 
 
 func clear_built() -> void:

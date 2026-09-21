@@ -340,10 +340,16 @@ func _build_ui() -> void:
 	_bar.builder = _builder
 	column.add_child(_bar)
 	_bar.bind(_store)
+	# The assistant remembers which bricks were its own by id, and
+	# BrickWorld numbers from one again after a clear — so without this
+	# those ids name the new model's bricks and the next design deletes
+	# them. Same family as the undo bug, through a different door.
 	_bar.cleared.connect(func() -> void:
+		_assistant.clear_built()
 		_lay_baseplate()
 		_on_model_changed())
 	_bar.opened.connect(func(_bricks: int) -> void:
+		_assistant.clear_built()
 		_lay_baseplate()
 		_on_model_changed()
 		_camera.frame(_world.model_bounds()))
@@ -492,6 +498,8 @@ func _build_ui() -> void:
 	_playback.world = _world
 	_playback.library = _library
 	add_child(_playback)
+	# So a snapshot does not carry the baseplate off with it.
+	_assistant.scenery = _store.scenery
 
 	_assistant.built.connect(func(_n: int) -> void:
 		_on_model_changed()
