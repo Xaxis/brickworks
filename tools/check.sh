@@ -91,6 +91,10 @@ run "model shot" godot --path . --resolution 1200x800 \
   --script src/dev/shot_probe.gd
 run "axis gizmo" godot --path . --resolution 1200x800 \
   --script src/dev/gizmo_probe.gd
+# Also a window: what a dragged box catches depends on where each brick
+# lands on screen, which needs a camera with a viewport to project into.
+run "box select" godot --path . --resolution 1200x800 \
+  --script src/dev/marquee_probe.gd
 
 if [ "$network" = 1 ]; then
   echo "── network ──"

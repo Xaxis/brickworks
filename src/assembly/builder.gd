@@ -324,6 +324,33 @@ func toggle_hovered() -> bool:
 	return true
 
 
+## Take everything a box on the screen covers.
+##
+## ``where`` turns a brick into its rectangle on screen; ``touching``
+## says whether to take what the box merely overlaps or only what falls
+## wholly inside it. Which of those a drag means is a CAD convention —
+## left to right for wholly inside, right to left for touching — and
+## the caller knows the direction, so it is passed in rather than
+## guessed at here.
+func select_in(box: Rect2, where: Callable, touching: bool,
+		add: bool = true) -> int:
+	if not add:
+		selection.clear()
+	var took: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		var on_screen: Variant = where.call(brick)
+		if not (on_screen is Rect2):
+			continue
+		var caught: bool = (box.intersects(on_screen) if touching
+			else box.encloses(on_screen))
+		if caught and not selection.has(brick.id):
+			selection[brick.id] = true
+			took += 1
+	if took > 0 or not add:
+		selection_changed.emit(selection.size())
+	return took
+
+
 func clear_selection() -> void:
 	if selection.is_empty():
 		return

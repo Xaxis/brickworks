@@ -39,6 +39,7 @@ var _outline: SelectionOutline
 var _gizmo: AxisGizmo
 var _turning: PivotMark
 var _tools: TouchTools
+var _marquee: Marquee
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -451,6 +452,9 @@ func _build_ui() -> void:
 
 	# Bottom right, above the hint strip: out of the way of the model,
 	# and where every other 3D tool puts it.
+	_marquee = Marquee.new()
+	spacer.add_child(_marquee)
+
 	_turning = PivotMark.new()
 	_turning.camera = _camera
 	add_child(_turning)
@@ -1295,6 +1299,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
+		var moved: InputEventMouseMotion = event
+		# Drawing a box, which is not aiming the ghost.
+		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 \
+				and Input.is_key_pressed(KEY_SHIFT):
+			if _marquee.drag_to(moved.position):
+				_builder.hide_preview()
+				return
 		if _over_panel():
 			_builder.hide_preview()
 			return
@@ -1332,14 +1343,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Shift picks bricks out instead of placing them, on the press —
 	# where a double click is reported. Placing is the verb this app is
 	# mostly about, so it keeps the plain click.
-	if button.shift_pressed:
-		if not button.pressed:
+	if button.shift_pressed or _marquee.is_drawing():
+		if button.pressed:
+			# A press that might become a box. Which it is depends on
+			# whether the pointer moves, so nothing is decided here.
+			_marquee.begin(button.position)
+			if button.double_click:
+				_aim_at(button.position)
+				_builder.select_alike()
 			return
+		if _marquee.is_drawing():
+			var took: int = _builder.select_in(_marquee.box(),
+				_brick_on_screen, _marquee.takes_touching())
+			_bar.say("took %d" % took if took > 0 else "nothing in there")
+			_marquee.finish()
+			return
+		_marquee.finish()
 		_aim_at(button.position)
-		if button.double_click:
-			_builder.select_alike()
-		else:
-			_builder.toggle_hovered()
+		_builder.toggle_hovered()
 		return
 
 	# Placing goes on the release, not the press.
@@ -1372,6 +1393,34 @@ func _unhandled_input(event: InputEvent) -> void:
 	_aim_at(button.position)
 	_builder.place()
 	_refresh_preview()
+
+
+## Where a brick lands on the screen, as a rectangle.
+##
+## Its eight corners projected and bounded, which is close enough for
+## deciding whether a box covers it and far cheaper than anything
+## exact. A corner behind the camera projects to nonsense, so a brick
+## with any corner behind it is left out rather than guessed at.
+func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
+	if _store != null and _store.scenery.has(brick.id):
+		return null
+	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+	if part == null:
+		return null
+	var box: AABB = part.bounds
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for n: int in 8:
+		var corner: Vector3 = brick.transform * (box.position + Vector3(
+			box.size.x if n & 1 else 0.0,
+			box.size.y if n & 2 else 0.0,
+			box.size.z if n & 4 else 0.0))
+		if _camera.is_position_behind(corner):
+			return null
+		var at: Vector2 = _camera.unproject_position(corner)
+		lo = Vector2(minf(lo.x, at.x), minf(lo.y, at.y))
+		hi = Vector2(maxf(hi.x, at.x), maxf(hi.y, at.y))
+	return Rect2(lo, hi - lo)
 
 
 ## Point the ghost at a place on the screen, whatever the pointer is

@@ -102,6 +102,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["G"], "pick"),
 		Binding.new(["X"], "lift"),
 		Binding.new(["shift-click"], "select"),
+		Binding.new(["shift-drag"], "box select"),
 		Binding.new(["arrows"], "move selection"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
