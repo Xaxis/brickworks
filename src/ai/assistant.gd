@@ -29,6 +29,21 @@ const MAX_REPAIRS := 3
 const STUD := 20.0
 const PLATE := 8.0
 
+## The six ways a part's studs can point.
+##
+## Naming them by direction rather than by rotation is deliberate: the
+## question a builder asks is "which way do the studs face", and the
+## answer is a direction. Which rotation produces it is arithmetic, and
+## arithmetic is what the model should not have to do.
+const FACES: Dictionary = {
+	"up": Vector3.UP,
+	"down": Vector3.DOWN,
+	"+x": Vector3.RIGHT,
+	"-x": Vector3.LEFT,
+	"+z": Vector3.BACK,
+	"-z": Vector3.FORWARD,
+}
+
 var library: PartLibrary
 var world: BrickWorld
 var builder: Builder
@@ -99,20 +114,39 @@ signal sketched(brick_count: int)
 class Placement extends RefCounted:
 	var part: String
 	var color: int
-	var x: int          ## studs
-	var y: int          ## plates from the ground
-	var z: int          ## studs
-	var rot: int        ## quarter turns
+	## Studs and plates, and not always whole ones. A brick turned on its
+	## side is 20 LDU tall, which is two and a half plates, so a grid of
+	## whole plates cannot say where it goes. The lattice is 2 LDU, which
+	## is a tenth of a stud across and a quarter of a plate up, and
+	## everything here snaps to it.
+	var x: float        ## studs
+	var y: float        ## plates from the ground
+	var z: float        ## studs
+	## Which way the part's studs point. Everything else in this file
+	## assumed "up", which is why a brick could never be laid on its side
+	## and a tile could never stand up as a window pane.
+	var face: String = "up"
+	var rot: int        ## quarter turns about [member face]
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
 		p.part = str(raw.get("part", ""))
 		p.color = int(raw.get("color", 7))
-		p.x = int(raw.get("x", 0))
-		p.y = int(raw.get("y", 0))
-		p.z = int(raw.get("z", 0))
-		p.rot = int(raw.get("rot", 0)) % 4
+		p.x = float(raw.get("x", 0))
+		p.y = float(raw.get("y", 0))
+		p.z = float(raw.get("z", 0))
+		p.face = str(raw.get("face", "up")).to_lower()
+		if not FACES.has(p.face):
+			p.face = "up"
+		p.rot = posmod(int(raw.get("rot", 0)), 4)
 		return p
+
+	func where() -> String:
+		return "%s,%s,%s" % [_num(x), _num(y), _num(z)]
+
+	static func _num(value: float) -> String:
+		return ("%d" % int(value) if is_equal_approx(value, round(value))
+			else "%.2f" % value)
 
 
 class Model extends RefCounted:
@@ -514,17 +548,17 @@ func _describe_world() -> String:
 
 	var rows := PackedStringArray()
 	var tally: Dictionary = {}
-	var low := Vector3i(999999, 999999, 999999)
-	var high := Vector3i(-999999, -999999, -999999)
+	var low := Vector3(999999, 999999, 999999)
+	var high := Vector3(-999999, -999999, -999999)
 	var counted: int = 0
 
 	for brick: BrickWorld.Brick in world.bricks():
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		var at: Vector3i = _to_studs(brick, info)
-		low = Vector3i(mini(low.x, at.x), mini(low.y, at.y), mini(low.z, at.z))
-		high = Vector3i(maxi(high.x, at.x), maxi(high.y, at.y), maxi(high.z, at.z))
+		var at: Vector3 = _to_studs(brick, info)
+		low = Vector3(minf(low.x, at.x), minf(low.y, at.y), minf(low.z, at.z))
+		high = Vector3(maxf(high.x, at.x), maxf(high.y, at.y), maxf(high.z, at.z))
 
 		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
 		tally[key] = int(tally.get(key, 0)) + 1
@@ -534,15 +568,20 @@ func _describe_world() -> String:
 		# context window spent on something the model mostly needs the
 		# shape of, and the tally below carries what the rows drop.
 		if rows.size() < WORLD_ROWS:
-			rows.append("  %-9s c%-3d x=%-4d y=%-4d z=%-4d rot=%d%s" % [
-				brick.part_id, brick.color_code, at.x, at.y, at.z,
-				_quarter_turns(brick.transform.basis),
+			var face: String = _face_of(brick.transform.basis)
+			rows.append("  %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
+				brick.part_id, brick.color_code,
+				Placement._num(at.x), Placement._num(at.y),
+				Placement._num(at.z), face,
+				_turns_about(brick.transform.basis, face),
 				"" if mine.has(brick.id) else "   (placed by hand)"])
 
 	var lines := PackedStringArray()
 	lines.append("%d parts are on the baseplate." % counted)
-	lines.append("They span x %d..%d, z %d..%d studs, and stand y %d..%d plates."
-		% [low.x, high.x, low.z, high.z, low.y, high.y])
+	lines.append("They span x %s..%s, z %s..%s studs, and stand y %s..%s plates."
+		% [Placement._num(low.x), Placement._num(high.x),
+			Placement._num(low.z), Placement._num(high.z),
+			Placement._num(low.y), Placement._num(high.y)])
 	lines.append("")
 	lines.append("Parts and colours, most first:")
 	var keys: Array = tally.keys()
@@ -573,20 +612,30 @@ const WORLD_ROWS := 220
 ## A brick's placement, back in studs and plates. The inverse of
 ## [method _transform], and it has to stay that way — a description in
 ## coordinates the model cannot act on is worse than none.
-func _to_studs(brick: BrickWorld.Brick, info: PartLibrary.PartInfo) -> Vector3i:
-	var rot: int = _quarter_turns(brick.transform.basis)
-	# The same measure the forward transform uses. Two different
-	# footprints here is two coordinate systems, and the model would be
-	# told a brick is somewhere it is not.
-	var footprint: Vector2i = _cover_studs(
-		library.mesh_for(brick.part_id), info)
-	var across: int = footprint.y if rot % 2 == 1 else footprint.x
-	var deep: int = footprint.x if rot % 2 == 1 else footprint.y
-	var origin: Vector3 = brick.transform.origin
-	return Vector3i(
-		int(round(origin.x / STUD - across * 0.5)),
-		int(round(origin.y / PLATE)) - _height_plates(info),
-		int(round(origin.z / STUD - deep * 0.5)))
+func _to_studs(brick: BrickWorld.Brick, _info: PartLibrary.PartInfo) -> Vector3:
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	if part == null:
+		return Vector3.ZERO
+	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	for cell: Vector3i in builder._cells_for(part, brick.transform):
+		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+	if lo.x == 0x7FFFFFFF:
+		return Vector3.ZERO
+	var ldu: Vector3 = BrickLattice.to_ldu(lo)
+	return Vector3(ldu.x / STUD, ldu.y / PLATE, ldu.z / STUD)
+
+
+## The rot that, with this face, reproduces this orientation.
+##
+## Found by trying all four rather than by trigonometry, because the
+## four are the only answers there are and trying them cannot disagree
+## with the rule that generated them.
+static func _turns_about(basis: Basis, face: String) -> int:
+	var snapped: Basis = BrickLattice.snap_basis(basis)
+	for rot: int in 4:
+		if _basis_for(face, rot).is_equal_approx(snapped):
+			return rot
+	return 0
 
 
 ## Quarter turns about Y, recovered from the basis.
@@ -685,9 +734,9 @@ func _check(model: Model) -> Dictionary:
 		var blockers: PackedInt64Array = lattice.blockers(cells)
 		if not blockers.is_empty():
 			_note(issues, "overlap",
-				"brick %d (%s at %d,%d,%d) overlaps brick %d" % [
-					index, placement.part, placement.x, placement.y,
-					placement.z, blockers[0]])
+				"brick %d (%s at %s) overlaps brick %d" % [
+					index, placement.part, placement.where(),
+					blockers[0]])
 			continue
 
 		lattice.occupy(index + 1, cells)
@@ -710,10 +759,42 @@ func _check(model: Model) -> Dictionary:
 	}
 
 
+## Which placements have a stud from some other part reaching into
+## them.
+##
+## A stud stands 4 LDU proud of the surface it rises from, so the cell
+## it reaches into is the one just beyond its tip. Whoever owns that
+## cell is being held by it — which is as true of a stud on the side of
+## a brick as of one on top, and is the whole of what makes sideways
+## building possible.
+func _studs_reaching_in(model: Model, cells_of: Dictionary,
+		lattice: BrickLattice) -> Dictionary:
+	var held: Dictionary = {}
+	for index: int in cells_of:
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _transform(placement, part)
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			# A little past the tip, so the sample lands in the part
+			# being held rather than on the boundary between them.
+			var tip: Vector3 = at * (connector.position
+				+ connector.axis.normalized() * 5.0)
+			var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
+			# brick_at returns index + 1, since zero means empty.
+			if reached != 0 and reached - 1 != index:
+				held[reached - 1] = true
+	return held
+
+
 func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
 	issues: Dictionary
 ) -> void:
+	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
 		if placement.y == 0:
@@ -731,11 +812,27 @@ func _check_support(
 			if below != 0 and below != index + 1:
 				supported = true
 				break
+
+		# Or a stud from somewhere else points into it.
+		#
+		# "Something in the cell below" is the only rule there was, and
+		# it is the rule that makes studs-not-on-top impossible: a part
+		# held by a stud on the side of a brick has air beneath it by
+		# construction. So a wall of smooth colour, a row of round
+		# plates reading as rivets, a tile standing up as a window pane
+		# — every one of them was rejected as floating, and three
+		# repairs later the model has learned not to try.
+		#
+		# The library knows where every stud is and which way it points,
+		# including the sideways ones: 87087 records its side stud at
+		# axis +Z. It was never consulted.
+		if not supported and studs.has(index):
+			supported = true
+
 		if not supported:
 			_note(issues, "floating",
-				"brick %d (%s at %d,%d,%d) has nothing beneath it" % [
-					index, placement.part, placement.x, placement.y,
-					placement.z])
+				"brick %d (%s at %s) has nothing holding it" % [
+					index, placement.part, placement.where()])
 
 
 static func _note(issues: Dictionary, kind: String, message: String) -> void:
@@ -795,28 +892,74 @@ static func _cover_studs(part: Lbm.PartMesh, info: PartLibrary.PartInfo) -> Vect
 		maxi(int(round((hi.y - lo.y) / per_stud)), 1))
 
 
-func _transform(placement: Placement, part: Lbm.PartMesh) -> Transform3D:
-	var info: PartLibrary.PartInfo = library.parts[placement.part]
-	var footprint: Vector2i = _cover_studs(part, info)
-	var across: int = footprint.y if placement.rot % 2 == 1 else footprint.x
-	var deep: int = footprint.x if placement.rot % 2 == 1 else footprint.y
+## The orientation a face and a quarter turn come to.
+##
+## Rotation is applied about the part's new up rather than about the
+## world's, so rot means the same thing whichever way the part is
+## facing: turn it on the spot.
+static func _basis_for(face: String, rot: int) -> Basis:
+	var up: Vector3 = FACES.get(face, Vector3.UP)
+	var tip: Basis
+	if up.is_equal_approx(Vector3.UP):
+		tip = Basis.IDENTITY
+	elif up.is_equal_approx(Vector3.DOWN):
+		tip = Basis(Vector3.RIGHT, PI)
+	else:
+		tip = Basis(Vector3.UP.cross(up).normalized(), PI * 0.5)
+	return BrickLattice.snap_basis(Basis(up, rot * PI * 0.5) * tip)
 
-	var basis := Basis(Vector3.UP, placement.rot * PI * 0.5)
-	# A part's own origin sits at the TOP of its body — the mesh spans
-	# -height..0 in Y, with the studs above zero — so a part resting on
-	# layer y has its origin at the top of the plates it occupies, and
-	# nothing further is subtracted.
-	#
-	# Subtracting the mesh's maximum Y here was wrong in a way that hid
-	# itself: it took off the 4 LDU of stud, so studded parts sank half a
-	# plate while tiles and slopes without studs sat correctly. The check
-	# used the same transform, so a design still validated — it was just
-	# validating the wrong arrangement.
-	var origin := Vector3(
-		(placement.x + across * 0.5) * STUD,
-		(placement.y + _height_plates(info)) * PLATE,
-		(placement.z + deep * 0.5) * STUD)
-	return Transform3D(basis, origin)
+
+## Which way the studs point, read back off an orientation.
+static func _face_of(basis: Basis) -> String:
+	var up: Vector3 = (basis * Vector3.UP).normalized()
+	var best: String = "up"
+	var best_dot: float = -2.0
+	for name: String in FACES:
+		var d: float = up.dot(FACES[name])
+		if d > best_dot:
+			best_dot = d
+			best = name
+	return best
+
+
+## Where a part's lowest, leftmost, backmost cell falls if its origin is
+## at the middle of cell zero. Cached: a design of four hundred bricks
+## asks this for each of them, twice, and the answer depends only on the
+## part and which way it is turned.
+var _corner_cache: Dictionary = {}
+
+func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
+	var key: String = "%s|%s" % [part_id, basis]
+	if _corner_cache.has(key):
+		return _corner_cache[key]
+	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	for cell: Vector3i in builder._cells_for(part, Transform3D(basis, Vector3.ZERO)):
+		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+	if lo.x == 0x7FFFFFFF:
+		lo = Vector3i.ZERO
+	_corner_cache[key] = lo
+	return lo
+
+
+## Where the part goes, given the corner it is meant to occupy.
+##
+## One rule: x, y, z name the lowest, leftmost, backmost cell of the
+## space the part takes up. Not its centre, and not its own origin,
+## which for an LDraw part sits at the top of its body and is no use at
+## all once the part is lying on its side.
+##
+## The rule this replaces read the height off the catalogue and the
+## width off the cover, and so had a second opinion about where a part
+## was for every part where those two disagreed. Reading both off the
+## cover — the same cover the collision test uses — means the forward
+## transform and [method _to_studs] cannot drift apart, because they are
+## now the same measurement taken in opposite directions.
+func _transform(placement: Placement, part: Lbm.PartMesh) -> Transform3D:
+	var basis: Basis = _basis_for(placement.face, placement.rot)
+	var corner: Vector3i = _corner_cell(part, placement.part, basis)
+	var want := BrickLattice.to_cell(Vector3(
+		placement.x * STUD, placement.y * PLATE, placement.z * STUD))
+	return Transform3D(basis, BrickLattice.to_ldu(want - corner))
 
 
 # -- applying ------------------------------------------------------------
@@ -864,15 +1007,28 @@ func _apply(model: Model, finished: bool = true) -> void:
 		world.remove_brick(brick_id)
 	_placed_ids = PackedInt64Array()
 
+	# A part whose geometry never arrived used to be skipped here in
+	# silence, and what the person got was the design minus its wheels
+	# with nothing to say so. Say so.
+	var missing: Dictionary = {}
 	for placement: Placement in model.placements:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
+			missing[placement.part] = true
 			continue
 		var at: Transform3D = _transform(placement, part)
 		var brick_id: int = world.add_brick(placement.part, placement.color, at)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
 			_placed_ids.append(brick_id)
+
+	if not missing.is_empty():
+		var names: Array = missing.keys()
+		names.sort()
+		progress.emit("%d part%s could not be loaded and %s left out: %s" % [
+			names.size(), "" if names.size() == 1 else "s",
+			"was" if names.size() == 1 else "were",
+			", ".join(PackedStringArray(names.slice(0, 6)))])
 
 	if finished:
 		built.emit(_placed_ids.size())
@@ -907,8 +1063,27 @@ Positions are in brick units, not millimetres.
   A brick is 3 plates tall. A plate is 1. A tile is 1.
   x, y, z is the LOW CORNER of the part's footprint, not its centre.
   A 2x4 brick at x=0,z=0 covers studs 0..3 across and 0..1 deep.
-  rot is quarter turns about the vertical axis: 0, 1, 2 or 3. Rotating \
+  face says which way the studs point: up (the default), down, +x, -x, \
++z or -z.
+  rot is quarter turns about the face direction: 0, 1, 2 or 3. Rotating \
 swaps the footprint but does not move the corner.
+
+SIDEWAYS
+Real models are not built only upward. A smooth wall, a grille, a row of \
+rivets, a curved bonnet, lettering on a sign — all of it is parts turned \
+on their side, and you can turn them.
+
+  A brick laid on its side is 20 LDU tall, which is two and a half \
+plates, so y takes quarters: 0, 0.25, 0.5, 0.75, 1 and so on. x and z \
+take tenths of a stud the same way. Whole numbers everywhere is still \
+right for ordinary upward building.
+  Parts that exist to let you do this: 87087 (1x1 brick with a stud on \
+one side), 4070 (1x1 headlight brick), 99207 (1x2 bracket), 44728 (1x2 \
+bracket 2x2). Put one of those in the wall and the parts that hang off \
+it get face +x, -x, +z or -z.
+  check_design accepts a part held by a stud from any direction, not \
+just one sitting on something. If it says a part has nothing holding \
+it, nothing is touching it — move it, do not give up on the idea.
 
 So a 2x4 brick at y=0 occupies plates 0,1,2. The next brick on top of it \
 goes at y=3. Two bricks side by side at y=0 go at x=0 and x=4.
@@ -1009,10 +1184,19 @@ func _tools() -> Array:
 		"properties": {
 			"part": {"type": "string", "description": "part number, e.g. 3001"},
 			"color": {"type": "integer", "description": "LDraw colour code"},
-			"x": {"type": "integer", "description": "studs across"},
-			"y": {"type": "integer", "description": "plates up from ground"},
-			"z": {"type": "integer", "description": "studs deep"},
-			"rot": {"type": "integer", "description": "quarter turns, 0-3"},
+			"x": {"type": "number", "description":
+				"studs across, to the low corner. Tenths allowed."},
+			"y": {"type": "number", "description":
+				"plates up from the ground, to the low corner. "
+				+ "Quarters allowed, for parts lying on their side."},
+			"z": {"type": "number", "description":
+				"studs deep, to the low corner. Tenths allowed."},
+			"face": {"type": "string",
+				"enum": ["up", "down", "+x", "-x", "+z", "-z"],
+				"description":
+					"which way the studs point. Omit for up."},
+			"rot": {"type": "integer", "description":
+				"quarter turns about the face direction, 0-3"},
 		},
 		"required": ["part", "color", "x", "y", "z", "rot"],
 		"additionalProperties": false,
