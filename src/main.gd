@@ -1217,9 +1217,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	# text field in the app can be focused without it.
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event
-		if _over_panel_at(touch.position):
-			return
 		if touch.pressed:
+			if _over_panel_at(touch.position):
+				return
 			# The first finger only. A second is a pinch, which belongs
 			# to the camera and must not remove anything.
 			if _touch_index == -1:
@@ -1229,7 +1229,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		if touch.index != _touch_index:
 			return
+		# Cleared wherever the finger comes up, including over a panel.
+		#
+		# The panel test used to come first and return, so a finger that
+		# started on the model and ended on a panel left this set and
+		# left its press time behind — and the next tap, measured
+		# against a timestamp from minutes ago, read as a hold and took
+		# a brick off instead of putting one on.
 		_touch_index = -1
+		if _over_panel_at(touch.position):
+			return
 		# The camera saw the same finger and knows whether it travelled.
 		# A gesture that moved has already asked for its click to be
 		# swallowed, and is not a hold either.
@@ -1275,22 +1284,37 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _camera.swallowing_click():
 			return
+		_aim_at(button.position)
 		_builder.remove_hovered()
 		_refresh_preview()
 		return
 
-	if not button.pressed:
+	if button.button_index != MOUSE_BUTTON_LEFT:
 		return
 
-	# Shift picks bricks out instead of placing them. Placing is the
-	# verb this app is mostly about, so it keeps the plain click.
+	# Shift picks bricks out instead of placing them, on the press —
+	# where a double click is reported. Placing is the verb this app is
+	# mostly about, so it keeps the plain click.
 	if button.shift_pressed:
-		if button.button_index == MOUSE_BUTTON_LEFT:
-			if button.double_click:
-				_builder.select_alike()
-			else:
-				_builder.toggle_hovered()
+		if not button.pressed:
+			return
+		_aim_at(button.position)
+		if button.double_click:
+			_builder.select_alike()
+		else:
+			_builder.toggle_hovered()
 		return
+
+	# Placing goes on the release, not the press.
+	#
+	# A finger raises an emulated press the instant it lands, so placing
+	# on the press dropped a brick before the finger had moved — and
+	# then the drag turned the model, leaving the brick wherever the
+	# finger first touched. Waiting for the release gives the camera
+	# time to see the drag and ask for the click to be thrown away.
+	if button.pressed:
+		return
+
 	if _playback != null and _playback.is_playing():
 		# Reaching for the model ends the animation, and this click is
 		# what ended it rather than a placement.
@@ -1300,9 +1324,25 @@ func _unhandled_input(event: InputEvent) -> void:
 	# tap does; without this a drag leaves a brick wherever it ended.
 	if _camera.swallowing_click():
 		return
-	if button.button_index == MOUSE_BUTTON_LEFT:
-		_builder.place()
-		_refresh_preview()
+
+	# Aimed before it is placed.
+	#
+	# A mouse moves before it clicks, so the ghost is already where the
+	# pointer is and placing first was harmless. A finger does not: it
+	# arrives, and the only position anything knows is wherever the
+	# pointer was last left. So every tap placed its brick where the
+	# previous tap had been.
+	_aim_at(button.position)
+	_builder.place()
+	_refresh_preview()
+
+
+## Point the ghost at a place on the screen, whatever the pointer is
+## doing. A finger raises no motion to do it for us.
+func _aim_at(point: Vector2) -> void:
+	_builder.update_preview(
+		_camera.project_ray_origin(point),
+		_camera.project_ray_normal(point))
 
 
 ## A box around everything selected, for framing it.
@@ -1357,21 +1397,30 @@ func _nudge_by(cells: Vector3i) -> void:
 ## Whether a point is over one of the panels rather than the model.
 ## The existing test asks where the mouse is, which on a touch screen is
 ## wherever it was last left — usually nowhere near the finger.
+## Is this point over something other than the model?
+##
+## One list, used by both the touch path and the mouse path. They used
+## to have a list each and the mouse one was shorter — it did not know
+## about the parts list, so with that open the ghost still followed the
+## cursor and a click beside the panel dropped a brick into the model
+## behind it. Nor about the axis gizmo, whose square swallows clicks
+## wherever it sits.
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar]:
-		if panel != null and panel.visible and panel.get_global_rect().has_point(point):
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo]:
+		if panel != null and panel.visible \
+				and panel.get_global_rect().has_point(point):
 			return true
+	# These cover the model rather than sitting beside it, so anywhere
+	# is over them.
 	if _inventory != null and _inventory.is_showing():
+		return true
+	if _mosaic != null and _mosaic.visible:
 		return true
 	return false
 
 
 func _over_panel() -> bool:
-	var mouse: Vector2 = get_viewport().get_mouse_position()
-	for panel: Control in [_bin_dock, _chat_dock, _bar]:
-		if panel != null and panel.get_global_rect().has_point(mouse):
-			return true
-	return false
+	return _over_panel_at(get_viewport().get_mouse_position())
 
 
 func _refresh_preview() -> void:
@@ -1523,6 +1572,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# match statement runs one arm, so leaving the booklet
 			# stopped working and nobody would find out until they
 			# tried it.
+			# Everything that is up, innermost first. A ladder that
+			# does not know about a dialog falls through to the bottom
+			# rung, and the bottom rung on the desktop is quit — so
+			# Escape with the mosaic dialog open closed the whole app.
+			if _mosaic != null and _mosaic.visible:
+				_mosaic.visible = false
+				return
 			if not _builder.selection.is_empty():
 				_builder.clear_selection()
 				return
