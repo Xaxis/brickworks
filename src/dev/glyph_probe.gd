@@ -47,10 +47,21 @@ func _run() -> void:
 	await process_frame
 	_walk(tools, font, "the touch buttons")
 
-	for binding: ControlsHint.Binding in ControlsHint.bindings():
-		for key: String in binding.keys:
-			_ask(key, font, "a key on the hint strip")
-		_ask(binding.verb, font, "a verb on the hint strip")
+	# Both lists, not whichever this platform would show.
+	#
+	# Asking bindings() on a desktop hands back the keyboard list, so
+	# the touch list was never looked at — and the touch list is where
+	# the arrows were. This probe passed with three empty boxes on a
+	# phone, which is the same blind spot it exists to close, one level
+	# up.
+	for which: Array in [
+		[ControlsHint.for_keyboard(), "the hint strip"],
+		[ControlsHint.for_touch(), "the hint strip on a touchscreen"],
+	]:
+		for binding: ControlsHint.Binding in which[0]:
+			for key: String in binding.keys:
+				_ask(key, font, "a key on %s" % which[1])
+			_ask(binding.verb, font, "a verb on %s" % which[1])
 
 	print("  looked at %d pieces of text" % _looked_at)
 	if _missing.is_empty():

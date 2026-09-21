@@ -58,7 +58,19 @@ static func bindings() -> Array[Binding]:
 	# keyboard list — sixteen shortcuts for keys it does not have,
 	# beside four controls it was not told about.
 	if TouchTools.wanted():
-		return [
+		return for_touch()
+	return for_keyboard()
+
+
+## The two lists, each reachable whatever this build is running on.
+##
+## bindings() answers with one of them, which is right for the app and
+## wrong for anything checking them: a probe running on a desktop asks
+## bindings() and is handed the keyboard list, so the touch list — the
+## one with the arrows in it — was never looked at. That is how the
+## glyph check passed with three empty boxes on screen.
+static func for_touch() -> Array[Binding]:
+	return [
 			Binding.new(["tap"], "place"),
 			Binding.new(["hold"], "remove"),
 			Binding.new(["drag"], "turn"),
@@ -66,11 +78,12 @@ static func bindings() -> Array[Binding]:
 			# The buttons down the left are the rest of it. Saying so
 			# is the difference between a control somebody finds and
 			# one they never look for.
-			Binding.new(["⟳ ⤿"], "turn and tip the part"),
-			Binding.new(["↶ ↷"], "undo"),
-			Binding.new(["◀ ▶"], "panels"),
+			Binding.new(["Turn", "Tip"], "the part"),
+			Binding.new(["Undo", "Redo"], "a step"),
+			Binding.new(["edges"], "panels"),
 		]
 
+static func for_keyboard() -> Array[Binding]:
 	return [
 		Binding.new(["click"], "place"),
 		Binding.new(["right-click"], "remove"),
