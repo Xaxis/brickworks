@@ -201,6 +201,12 @@ func _on_account_changed() -> void:
 	_composer.visible = allowed
 	_key_form.visible = not allowed and not _showing_sign_in
 	_gate.visible = not allowed and _showing_sign_in and account.available
+	# The openers only mean anything if pressing one would do something.
+	# They used to run a design for a visitor with no key and no account,
+	# which spent the panel's one explanation of what the assistant is
+	# for on a request that was never going to run — and answered with
+	# "sign in", six lines above a form saying to paste a key.
+	_suggestions.visible = allowed and not assistant.has_conversation()
 
 	if allowed:
 		_send.disabled = _working
@@ -289,18 +295,31 @@ func _on_send() -> void:
 
 
 func _on_clear() -> void:
+	# Ends the conversation, not the model. This used to call
+	# clear_built(), so a button labelled "New" with the tooltip "Start
+	# a fresh conversation" silently deleted every brick the assistant
+	# had placed — somebody's evening, gone, with nothing said and
+	# nothing to undo.
+	#
+	# The assistant still remembers which bricks were its own, so asking
+	# for something else afterwards replaces them as it always did.
 	if assistant:
 		assistant.cancel()
-		assistant.clear_built()
 	for child: Node in _log.get_children():
 		if child != _suggestions:
 			child.queue_free()
-	_suggestions.visible = true
 	_show_suggestions()
 	_status.text = ""
 	_working = false
 	_send.disabled = false
 	_send.text = "Build it"
+	# Whether the openers belong on screen is the same question as
+	# whether the composer does, so it is asked in one place rather than
+	# set true here and decided there.
+	if account != null:
+		_on_account_changed()
+	else:
+		_suggestions.visible = true
 
 
 enum _Role { PERSON, ASSISTANT, NOTE }

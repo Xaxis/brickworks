@@ -575,6 +575,11 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 		info.id, info.name.strip_edges(),
 		info.footprint_studs().x, info.footprint_studs().y,
 		_height_text(info)]
+	# The id, on the button, rather than read back out of the tooltip.
+	# The tooltip starts with the id and then a newline, so matching it
+	# by prefix lights 30055 when you pick 3005 — and there is no reason
+	# for a lookup to go through a string meant for a person.
+	button.set_meta("part", info.id)
 	button.toggle_mode = true
 	button.button_pressed = info.id == _selected_part
 	button.pressed.connect(_on_part.bind(info.id))
@@ -620,9 +625,12 @@ static func _height_text(info: PartLibrary.PartInfo) -> String:
 
 func _on_part(part_id: String) -> void:
 	_selected_part = part_id
+	# The clicked one stays lit. This set every cell unpressed including
+	# the one just pressed, so choosing a part looked like choosing
+	# nothing — the only sign anything had happened was the ghost.
 	for child: Node in _grid.get_children():
 		var button: Button = child
-		button.button_pressed = false
+		button.button_pressed = str(button.get_meta("part", "")) == part_id
 	part_chosen.emit(part_id)
 
 
@@ -660,7 +668,7 @@ func show_held(part_id: String, color_code: int) -> void:
 		_on_colour(color_code)
 	for child: Node in _grid.get_children():
 		var button: Button = child
-		button.button_pressed = button.tooltip_text.begins_with(part_id)
+		button.button_pressed = str(button.get_meta("part", "")) == part_id
 
 
 func selected_color() -> int:

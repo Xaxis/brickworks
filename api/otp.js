@@ -14,10 +14,13 @@
 //
 // Two rules shape the replies.
 //
-// It always answers the same way. "That address has no account" is a
-// sentence that turns a sign-in form into a way of asking whether
-// somebody is a member, so there isn't one: every well-formed request
-// gets {ok: true}, whether or not an email went anywhere.
+// It never says whether an address has an account. That sentence turns
+// a sign-in form into a way of asking whether somebody is a member, so
+// a request for an unknown address and one for a known address get the
+// same reply. It does say when *we* failed — a mail provider refusing
+// us is a fact about this service, not about the person, and reporting
+// it as success leaves somebody waiting for an email that was never
+// sent.
 //
 // And it is rate limited in the database rather than in memory. The
 // limit here is what stops a stranger being sent a hundred codes on our
@@ -207,17 +210,31 @@ export default async function handler(request, response) {
     });
   }
 
+  // Two different facts, and only one of them is private.
+  //
+  // Whether an address has an account is private, and nothing here will
+  // ever say. Whether our mail provider would take the message is not
+  // private at all — it is a fact about us — and reporting it as
+  // success left the app saying "check your email" about an email that
+  // was never sent, which is the most confusing failure available:
+  // the person waits, then doubts their own inbox.
+  //
+  // Both failures below happen identically whether or not the address
+  // is known to us, so saying so leaks nothing.
   const code = await mint(email);
-  if (code) {
-    const sent = await deliver(email, code);
-    if (!sent) {
-      // The caller is told nothing — the reply is the same either way
-      // on purpose — so this is the only place a delivery failure is
-      // visible at all. Without it, "the code never arrives" has no
-      // thread to pull.
-      console.error(`otp: could not deliver to ${email.replace(/(.).*(@.*)/, "$1…$2")}`);
-    }
+  if (!code) {
+    console.error("otp: Supabase would not mint a code");
+    return response.status(502).json({
+      error: "We could not start a sign-in just now. Try again in a minute.",
+    });
   }
-  // Same answer either way. See the note at the top.
+  if (!(await deliver(email, code))) {
+    console.error(
+      `otp: could not deliver to ${email.replace(/(.).*(@.*)/, "$1…$2")}`,
+    );
+    return response.status(502).json({
+      error: "We could not send the email just now. Try again in a minute.",
+    });
+  }
   return response.status(200).json({ ok: true, expires_in_minutes: TTL_MINUTES });
 }

@@ -111,6 +111,25 @@ func _run() -> void:
 		_say("a sticker keeps the colours it is printed in (moved %.3f)"
 			% moved, moved < 0.08)
 
+	# Choosing a part has to look like choosing a part. The handler set
+	# every cell unpressed including the one just pressed, so the only
+	# sign anything had happened was the ghost in the viewport.
+	bin._run_search("")
+	for _n: int in 40:
+		await process_frame
+		RenderingServer.force_draw(false)
+	bin._on_part("3001")
+	await process_frame
+
+	var lit := PackedStringArray()
+	for child: Node in (bin.get("_grid") as Node).get_children():
+		var button: Button = child
+		if button.button_pressed:
+			lit.append(str(button.get_meta("part", "?")))
+	_say("choosing 3001 lights 3001 and nothing else, lit: %s"
+		% ("none" if lit.is_empty() else ", ".join(lit)),
+		lit.size() == 1 and lit[0] == "3001")
+
 	print("")
 	print("%d failed" % _failures if _failures
 		else "every preview follows the palette")
