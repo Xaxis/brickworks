@@ -84,6 +84,11 @@ done
 echo "── on screen ──"
 run "colour" godot --path . --resolution 1400x900 \
   --script src/dev/colour_probe.gd
+# Same reason, and one more: the picture the assistant is shown only
+# exists where there is something to draw with, so a headless suite
+# would never once exercise the path the app actually takes.
+run "model shot" godot --path . --resolution 1200x800 \
+  --script src/dev/shot_probe.gd
 
 if [ "$network" = 1 ]; then
   echo "── network ──"

@@ -78,6 +78,7 @@ var _nudges: int = 0
 ## by the time it returns, so a turn that ends after one has finished
 ## its work rather than failed to start it.
 var _edited: bool = false
+var _shot: ModelShot
 var _pending: Model = null
 ## Names the conversation for the proxy's monthly budget. One design is
 ## a dozen round trips and sometimes forty, so the turns have to be
@@ -610,6 +611,7 @@ func _on_response(result: Array) -> void:
 		_send()
 		return
 
+	_forget_old_pictures()
 	_messages.append({"role": "user", "content": tool_results})
 
 	if _pending == null:
@@ -672,7 +674,12 @@ func _stop(ok: bool, summary: String) -> void:
 # -- tools ---------------------------------------------------------------
 
 
-func _run_tool(block: Dictionary) -> String:
+## What a tool hands back.
+##
+## A String for most of them. An Array of content blocks when the answer
+## includes a picture, which Anthropic accepts in a tool result exactly
+## as it does in a message.
+func _run_tool(block: Dictionary) -> Variant:
 	# Awaited by the caller, because checking a design may first have to
 	# fetch the geometry for parts this build has not loaded.
 	var name: String = block.get("name", "")
@@ -708,14 +715,10 @@ func _run_tool(block: Dictionary) -> String:
 			# thought to ask for it.
 			if trial.placements.is_empty():
 				return report["feedback"]
-			return "%s\n\nWhat that looks like:\n\n%s\n%s\n%s" % [
-				report["feedback"],
-				ModelView.draw(world, library, "top", scenery),
-				ModelView.draw(world, library, "front", scenery),
-				"Other sides: view_model from left, right or back. "
-					+ "Does it read as the thing it is meant to be? "
-					+ "If not, that is worth more than another brick.",
-			]
+			return await _with_a_look(str(report["feedback"]),
+				"Look at it. Does it read as the thing it is meant to "
+				+ "be? If not, that is worth more than another brick. "
+				+ "view_model gives any other side.")
 		"attachment_points":
 			progress.emit("working out where things attach")
 			return _attachment_points(args)
@@ -723,12 +726,12 @@ func _run_tool(block: Dictionary) -> String:
 			progress.emit("looking at what is already built")
 			return _describe_world()
 		"view_model":
-			var from: String = str(args.get("from", "front"))
+			var from: String = str(args.get("from", "corner"))
 			progress.emit("looking at the %s" % from)
-			# Drawn from what is in the world, which during a design is
-			# the last draft it checked — so this shows its own work,
-			# not a hypothetical.
-			return ModelView.draw(world, library, from, scenery)
+			# Of what is in the world, which during a design is the
+			# last draft it checked — so this is its own work, not a
+			# hypothetical.
+			return await _with_a_look("", "", from)
 		"edit_model":
 			var edited: Model = _edit(args)
 			if edited.placements.is_empty():
@@ -831,6 +834,76 @@ func _edit(args: Dictionary) -> Model:
 	for raw: Variant in args.get("add", []):
 		model.placements.append(Placement.from_dict(raw))
 	return model
+
+
+## Drop every picture but the one about to be sent.
+##
+## A rendering is a hundred kilobytes, and base64 makes it a hundred and
+## forty. The conversation is sent in full on every turn, so ten views
+## over a long design is a megabyte and a half going down the wire forty
+## times — for nine pictures of drafts that no longer exist.
+##
+## What the model is looking at is the latest one. The others are
+## replaced by a line saying there was one, which keeps the transcript
+## honest about what it saw without carrying the pixels.
+func _forget_old_pictures() -> void:
+	for message: Dictionary in _messages:
+		var content: Variant = message.get("content")
+		if typeof(content) != TYPE_ARRAY:
+			continue
+		for n: int in (content as Array).size():
+			var block: Variant = content[n]
+			if typeof(block) != TYPE_DICTIONARY:
+				continue
+			if block.get("type", "") == "image":
+				content[n] = {"type": "text",
+					"text": "(a view of an earlier draft)"}
+				continue
+			# A tool result carries its own list of blocks.
+			var inner: Variant = block.get("content")
+			if typeof(inner) != TYPE_ARRAY:
+				continue
+			for m: int in (inner as Array).size():
+				var piece: Variant = inner[m]
+				if (typeof(piece) == TYPE_DICTIONARY
+						and piece.get("type", "") == "image"):
+					inner[m] = {"type": "text",
+						"text": "(a view of an earlier draft)"}
+
+
+## An answer with a picture of the model attached, or with the model
+## drawn as letters when there is no way to take one.
+##
+## Letters were a great deal better than nothing and are what a headless
+## run still gets. But a design is judged on whether it reads as the
+## thing it is meant to be, and that is a question about a picture. A
+## rendering is also cheaper than the two elevations it replaces.
+func _with_a_look(said: String, ask: String,
+		from: String = "corner") -> Variant:
+	if _shot == null:
+		_shot = ModelShot.new()
+		add_child(_shot)
+
+	var picture: Dictionary = await _shot.block(world, from)
+	if picture.is_empty():
+		var drawn: String = "%s\n%s" % [
+			ModelView.draw(world, library, "top", scenery),
+			ModelView.draw(world, library,
+				"front" if from == "corner" else from, scenery)]
+		var parts := PackedStringArray()
+		for piece: String in [said, drawn, ask]:
+			if not piece.strip_edges().is_empty():
+				parts.append(piece)
+		return "\n\n".join(parts)
+
+	var blocks: Array = []
+	if not said.is_empty():
+		blocks.append({"type": "text", "text": said})
+	blocks.append({"type": "text", "text": "The model, from the %s:" % from})
+	blocks.append(picture)
+	if not ask.is_empty():
+		blocks.append({"type": "text", "text": ask})
+	return blocks
 
 
 ## Where a part's studs are, and what coordinates something on one of
@@ -1821,20 +1894,21 @@ func _tools() -> Array:
 		},
 		{
 			"name": "view_model",
-			"description": ("Look at what is on the baseplate, drawn as "
-				+ "text: a plan from above or an elevation from any "
-				+ "side, each square a stud across and a plate tall, "
-				+ "lettered by colour. This is the only way to see "
-				+ "whether the thing you are building looks like the "
-				+ "thing you were asked for. check_design tells you a "
-				+ "model is legal; this tells you what it is."),
+			"description": ("Look at what is on the baseplate. This is "
+				+ "the only way to see whether the thing you are "
+				+ "building looks like the thing you were asked for. "
+				+ "check_design tells you a model is legal; this tells "
+				+ "you what it is."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"from": {
 						"type": "string",
-						"enum": ["top", "front", "back", "left", "right"],
-						"description": "which side to look from",
+						"enum": ["corner", "top", "front", "back",
+							"left", "right"],
+						"description": "which side to look from. "
+							+ "corner is a three-quarter view and shows "
+							+ "the shape best",
 					},
 				},
 				"required": ["from"],
