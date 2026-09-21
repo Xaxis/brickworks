@@ -40,3 +40,10 @@ tools/web/package-lock.json
 
 # Web assets are served, not imported. web/.gdignore keeps the engine out.
 *.import
+
+# Scratch probes. A review agent that tests its own hypothesis by
+# writing a probe and running it is doing the right thing — this
+# project's rule is to measure rather than reason — but those files are
+# working notes, not the suite. Twenty-six of them reached main because
+# the commits that followed used "git add -A".
+src/dev/_*
