@@ -131,12 +131,76 @@ func _run() -> void:
 		lit.size() == 1 and lit[0] == "3001")
 
 	print("")
+	await _each_its_own(bin)
+
+	print("")
 	print("%d failed" % _failures if _failures
-		else "every preview follows the palette")
+		else "every preview follows the palette, and shows its own part")
 	quit(1 if _failures else 0)
 
 
 ## Choose a colour, wait for the grid, and average what was drawn.
+## Is each cell a picture of its own part?
+##
+## The previews share one offscreen viewport, one camera and one mesh
+## holder, and drawing is a coroutine that waits for a frame. Two of
+## them started in the same frame both wrote to that one viewport and
+## both woke on the same draw, so they read back the same image — the
+## second job's — and the first cached it under its own key. Half the
+## bin showed the wrong part, and which half changed with the scroll.
+##
+## Telling a picture of a 1x1 plate from a picture of a 2x4 brick is
+## hard; noticing that they are the same picture is not.
+func _each_its_own(bin: PartsBin) -> void:
+	# Parts that look nothing like each other, so two of them coming
+	# back identical cannot be a coincidence of framing. The first line
+	# also documents what a comment cannot: that the fix is in the
+	# thumbnailer rather than in how the bin asks for them.
+	var want: Array[String] = ["3005", "3001", "3024", "3070b", "3811"]
+	var seen: Dictionary = {}
+
+	# Drawn fresh, all of them, starting now.
+	#
+	# Asking for previews that are already cached tests nothing: the
+	# collision only happens between two that are being drawn at the
+	# same moment, and by the time the bin has settled everything on
+	# screen was drawn long ago, one at a time, correctly.
+	var thumbs: PartThumbnails = bin.thumbnails
+	(thumbs.get("_cache") as Dictionary).clear()
+	(thumbs.get("_queued") as Dictionary).clear()
+	(thumbs.get("_order") as Array).clear()
+	for part_id: String in want:
+		thumbs.request(part_id, 4)
+	for _n: int in 240:
+		await process_frame
+		RenderingServer.force_draw(false)
+
+	for part_id: String in want:
+		var texture: Texture2D = bin.thumbnails.request(part_id, 4)
+		if texture == null:
+			print("  skip  %s has no preview yet" % part_id)
+			continue
+		var image: Image = texture.get_image()
+		# A cheap fingerprint: a picture of a different part differs in
+		# thousands of pixels, so a handful of samples settles it.
+		var mark := PackedFloat32Array()
+		var step: int = maxi(image.get_width() / 12, 1)
+		for x: int in range(0, image.get_width(), step):
+			for y: int in range(0, image.get_height(), step):
+				var pixel: Color = image.get_pixel(x, y)
+				mark.append(pixel.a)
+				mark.append(pixel.get_luminance())
+		var key: String = str(mark)
+		if seen.has(key):
+			_say("%s and %s are different pictures"
+				% [part_id, seen[key]], false)
+		else:
+			seen[key] = part_id
+	if seen.size() >= 3:
+		_say("%d parts, %d different pictures" % [want.size(), seen.size()],
+			seen.size() == want.size())
+
+
 func _preview_colour(bin: PartsBin, part_id: String, code: int) -> Color:
 	bin._on_colour(code)
 	for _n: int in 90:

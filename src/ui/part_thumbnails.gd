@@ -18,7 +18,9 @@ extends Node
 const SIZE := 96
 ## How many previews to render per frame. Two is under a millisecond and
 ## keeps a fast scroll filling in without the frame time moving.
-const PER_FRAME := 2
+## Nothing is gained by starting more than one, and something is lost:
+## see _process. Kept as a constant so the reason stays written down.
+const PER_FRAME := 1
 ## Beyond this many cached textures the least recently used are dropped.
 ## A page holds about 40; this is enough for a good deal of scrollback.
 const CACHE_LIMIT := 600
@@ -38,6 +40,10 @@ var _queued: Dictionary = {}       ## key -> true, so nothing queues twice
 ## fetched for one swatch is wanted for whichever is selected when it
 ## arrives, and re-queueing by part id covers both.
 var _awaiting: Dictionary = {}
+## True while a preview is waiting on a draw. The viewport, its camera
+## and its one mesh holder are shared, so a second job started now would
+## overwrite what the first is about to read.
+var _drawing: bool = false
 
 ## Emitted when a preview someone asked for is ready.
 ## A part's geometry landed; whoever asked for a preview should ask
@@ -104,10 +110,17 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	for _n: int in PER_FRAME:
-		if _queue.is_empty():
-			return
-		_render(_queue.pop_front())
+	# One at a time, and only once the last one has finished.
+	#
+	# _render is a coroutine: it sets the holder's mesh, the tint and
+	# the camera, then waits for a draw. Starting two of them meant both
+	# wrote to the one shared viewport and both woke on the same draw,
+	# so they read back the same image — the second job's — and the
+	# first cached it under its own key. Half the bin showed the wrong
+	# part, and which half changed with the scroll.
+	if _drawing or _queue.is_empty():
+		return
+	_render(_queue.pop_front())
 
 
 ## A preview for a part, if one is already cached.
@@ -197,10 +210,12 @@ func _render(job: Dictionary) -> void:
 
 	_frame(part.bounds)
 
+	_drawing = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
 
 	var image: Image = _viewport.get_texture().get_image()
+	_drawing = false
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
 
 	_cache[key] = texture
