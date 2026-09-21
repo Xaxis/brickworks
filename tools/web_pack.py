@@ -42,6 +42,12 @@ WEB = ROOT / "assets" / "web"
 # against the part's category exactly, so "minifig" does not swallow
 # "minifig accessory" and take its budget.
 #
+# The caps are the binding constraint, not the budget, and deliberately
+# so: the problem these fix was that whole families were absent, not
+# that the ones present were thin. Everything not carried is a fetch
+# away, and it is breadth that decides whether a design can be
+# attempted at all.
+#
 # This was five families — brick, plate, tile, slope, baseplate — and
 # that is a list of the things a wall is made of. Ask for a car and the
 # library had no wheels, no tyres, one windscreen, no wedges and no
@@ -50,47 +56,47 @@ WEB = ROOT / "assets" / "web"
 # is searchable either way; this is about what is to hand.
 FAMILIES: tuple[tuple[str, int], ...] = (
     # what most building is done with
-    ("brick", 240),
-    ("plate", 260),
-    ("tile", 140),
-    ("slope", 160),
-    ("baseplate", 30),
+    ("brick", 200),
+    ("plate", 200),
+    ("tile", 120),
+    ("slope", 130),
+    ("baseplate", 24),
     # what makes a vehicle a vehicle
-    ("wheel", 70),
-    ("tyre", 40),
-    ("windscreen", 50),
-    ("panel", 60),
-    ("wedge", 50),
-    ("car", 40),
-    ("vehicle", 50),
-    ("glass", 20),
-    ("wing", 30),
+    ("wheel", 30),
+    ("tyre", 20),
+    ("windscreen", 28),
+    ("panel", 40),
+    ("wedge", 40),
+    ("car", 20),
+    ("vehicle", 24),
+    ("glass", 12),
+    ("wing", 20),
     # what makes a building a building
-    ("door", 45),
-    ("window", 45),
-    ("arch", 30),
-    ("roadsign", 25),
-    ("support", 20),
+    ("door", 24),
+    ("window", 28),
+    ("arch", 24),
+    ("roadsign", 14),
+    ("support", 12),
     # shapes that are not boxes
-    ("cylinder", 30),
-    ("cone", 20),
-    ("dish", 25),
-    ("bracket", 40),
-    ("hinge", 45),
-    ("turntable", 10),
-    ("bar", 35),
-    ("rock", 15),
+    ("cylinder", 22),
+    ("cone", 16),
+    ("dish", 18),
+    ("bracket", 30),
+    ("hinge", 24),
+    ("turntable", 8),
+    ("bar", 22),
+    ("rock", 10),
     # what makes a scene a scene
-    ("minifig", 90),
-    ("minifig accessory", 40),
-    ("minifig headwear", 30),
-    ("plant", 35),
-    ("animal", 25),
-    ("container", 30),
-    ("train", 40),
-    ("boat", 20),
-    ("flag", 15),
-    ("technic", 120),
+    ("minifig", 40),
+    ("minifig accessory", 20),
+    ("minifig headwear", 14),
+    ("plant", 24),
+    ("animal", 14),
+    ("container", 18),
+    ("train", 16),
+    ("boat", 10),
+    ("flag", 8),
+    ("technic", 50),
 )
 
 # Parts the build is not usable without, whatever they weigh. The 32x32

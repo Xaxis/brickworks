@@ -1506,12 +1506,34 @@ plates, so y takes quarters: 0, 0.25, 0.5, 0.75, 1 and so on. x and z \
 take tenths of a stud the same way. Whole numbers everywhere is still \
 right for ordinary upward building.
   Parts that exist to let you do this: 87087 (1x1 brick with a stud on \
-one side), 4070 (1x1 headlight brick), 99207 (1x2 bracket), 44728 (1x2 \
-bracket 2x2). Put one of those in the wall and the parts that hang off \
-it get face +x, -x, +z or -z.
+one side), 4070 (1x1 headlight brick), 3062b (1x1 round brick), 99207 \
+and 44728 (brackets). Put one of those in the wall and the parts that \
+hang off it get face +x, -x, +z or -z.
+  Do not work the coordinates out by hand. Call attachment_points, \
+which gives the exact x, y, z and face for every stud of a part —  \
+placed or merely considered. A stud on the side of an 87087 is one and \
+three quarter plates up and the part on it starts at half a plate; \
+that is the kind of number nobody gets right by reasoning about it.
   check_design accepts a part held by a stud from any direction, not \
 just one sitting on something. If it says a part has nothing holding \
 it, nothing is touching it — move it, do not give up on the idea.
+
+WHAT MAKES A MODEL LOOK REAL
+The difference between a model that reads as the thing and one that \
+reads as bricks is nearly always one of these.
+  Surfaces that are meant to be smooth are tiled, not studded. A roof, \
+a road, a table top, a bonnet.
+  Shapes that are meant to be curved use parts that are curved. Slopes \
+for a roof, curved slopes for a bonnet, round bricks and cones for a \
+chimney or a tree trunk, dishes for a dome.
+  Colour is used sparingly and deliberately. Two or three colours that \
+belong together, plus one for detail. Every colour you add to the \
+palette makes the model read as less of one thing.
+  Things that stick out — a handle, a lamp, an aerial, a wing mirror — \
+are what make a shape recognisable at a glance, and they are small. A \
+bar, a round plate, a 1x1 tile on a bracket.
+  Scale is consistent. If a door is four bricks tall, a window is not \
+six. Decide what a doorway is and let everything else follow from it.
 
 So a 2x4 brick at y=0 occupies plates 0,1,2. The next brick on top of it \
 goes at y=3. Two bricks side by side at y=0 go at x=0 and x=4.
