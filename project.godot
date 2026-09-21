@@ -25,11 +25,18 @@ gdscript/warnings/integer_division=0
 
 [input_devices]
 
-; Off, because the camera handles touch itself. Emulation turns one
-; finger into a held left button, which cannot tell a drag meant to turn
-; the model from a tap meant to place a brick — it does both, and leaves
-; a brick wherever the turn ended.
-pointing/emulate_mouse_from_touch=false
+; On, and it has to be. Turning it off stops a tap focusing a LineEdit:
+; a Button handles InputEventScreenTouch natively, but text fields take
+; focus from a mouse button, so without emulation the parts search, the
+; model name, the assistant composer and the sign-in code field all
+; become untypable — every text field in the app, on every touch device.
+;
+; The cost is that a finger produces both touch events and an emulated
+; click, so a drag meant to turn the model would also place a brick
+; where it ended. The camera reports when a gesture was a drag and
+; briefly suppresses the click that follows it, which is what
+; CadCamera.swallowing_click() is for.
+pointing/emulate_mouse_from_touch=true
 
 [display]
 

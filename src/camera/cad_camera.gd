@@ -82,6 +82,31 @@ func last_touch_was_a_tap() -> bool:
 	return _was_tap
 
 
+## How long after a gesture the click it produces should be ignored, in
+## milliseconds. Mouse emulation raises a click from the same finger
+## that just turned the model, and it arrives after the touch does.
+const SWALLOW_MS := 350
+
+
+## True while the click raised by a finger that was dragging — or held —
+## should be thrown away rather than acted on.
+##
+## Emulation cannot be turned off to avoid this: without it no text
+## field in the app can be focused by tapping. So both kinds of event
+## arrive, the touch decides what the gesture meant, and this says
+## whether the click that follows means anything.
+func swallowing_click() -> bool:
+	return Time.get_ticks_msec() < _swallow_until
+
+
+var _swallow_until: int = 0
+
+
+## Called when a gesture was something other than a tap.
+func swallow_next_click() -> void:
+	_swallow_until = Time.get_ticks_msec() + SWALLOW_MS
+
+
 var _was_tap: bool = false
 var _touch_started: Vector2 = Vector2.ZERO
 var _touch_travel: float = 0.0
@@ -102,8 +127,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				_was_tap = false
 				_spread = _distance_between()
 		else:
-			if _touches.size() == 1 and _touch_travel <= TAP_SLOP:
-				_was_tap = true
+			var tapped: bool = _touches.size() == 1 and _touch_travel <= TAP_SLOP
+			_was_tap = tapped
+			# A drag or a pinch raises a click on release just as a tap
+			# does. Only a tap should reach whoever places bricks.
+			if not tapped:
+				swallow_next_click()
 			_touches.erase(touch.index)
 			_spread = 0.0
 		return

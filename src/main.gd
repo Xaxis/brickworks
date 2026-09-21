@@ -1082,16 +1082,18 @@ var _touch_index: int = -1
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Touch, handled before the mouse cases, because mouse emulation is
-	# off — a finger produces no mouse events at all and everything
-	# below would simply never fire.
+	# Touch handles only what a mouse has no gesture for: holding a
+	# finger down to take a brick off, which is what a second button
+	# would have been. Placing is left to the click that emulation
+	# raises from the same tap, because emulation has to stay on — no
+	# text field in the app can be focused without it.
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event
 		if _over_panel_at(touch.position):
 			return
 		if touch.pressed:
 			# The first finger only. A second is a pinch, which belongs
-			# to the camera and must not place anything.
+			# to the camera and must not remove anything.
 			if _touch_index == -1:
 				_touch_index = touch.index
 				_touch_down_at = Time.get_ticks_msec()
@@ -1101,20 +1103,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		_touch_index = -1
 		# The camera saw the same finger and knows whether it travelled.
-		# Asking it is the only way to tell a tap from the end of a turn.
+		# A gesture that moved has already asked for its click to be
+		# swallowed, and is not a hold either.
 		if not _camera.last_touch_was_a_tap():
+			return
+		if Time.get_ticks_msec() - _touch_down_at < HOLD_MS:
 			return
 
 		_builder.update_preview(
 			_camera.project_ray_origin(touch.position),
 			_camera.project_ray_normal(touch.position))
-		if Time.get_ticks_msec() - _touch_down_at >= HOLD_MS:
-			# Held: the touch equivalent of a right-click, since there
-			# is no second button on glass.
-			_builder.remove_hovered()
-		else:
-			_builder.place()
+		_builder.remove_hovered()
 		_builder.hide_preview()
+		# The hold raises a click too, and it would put back what was
+		# just taken off.
+		_camera.swallow_next_click()
 		return
 
 	if event is InputEventMouseMotion:
@@ -1131,6 +1134,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if _over_panel():
+		return
+	# A finger that turned the model raises a click on release just as a
+	# tap does; without this a drag leaves a brick wherever it ended.
+	if _camera.swallowing_click():
 		return
 	if button.button_index == MOUSE_BUTTON_LEFT:
 		_builder.place()
