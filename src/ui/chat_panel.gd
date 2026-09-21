@@ -448,10 +448,16 @@ func _on_send() -> void:
 	# old test was whether the log had more than two children, which was
 	# true only by an accident of how many rows a message adds, and the
 	# way it fails is to throw the conversation away mid-build.
-	if assistant.has_conversation():
-		assistant.revise(text)
-	else:
-		assistant.design(text)
+	var started: bool = (assistant.revise(text)
+		if assistant.has_conversation() else assistant.design(text))
+	if not started:
+		# Refused because one is already running. The composer is meant
+		# to be disabled then, so this is the belt to that braces — but
+		# saying nothing would leave a brief typed, sent and vanished.
+		_status.text = "Still working on the last one."
+		_working = false
+		_send.disabled = false
+		_send.text = "Build it"
 
 
 func _on_clear() -> void:

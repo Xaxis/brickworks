@@ -83,6 +83,10 @@ var _nudges: int = 0
 ## by the time it returns, so a turn that ends after one has finished
 ## its work rather than failed to start it.
 var _edited: bool = false
+## Whether the finished model has been looked at once and either
+## approved or improved. One round, not a loop: a second one mostly
+## fiddles.
+var _looked_back: bool = false
 var _shot: ModelShot
 ## Tokens this design has spent, as the API reports them. Reset per
 ## instruction, because "what did that cost" is a question about the
@@ -264,9 +268,23 @@ func is_busy() -> bool:
 
 
 ## Start a fresh design, discarding any conversation so far.
-func design(brief: String) -> void:
+##
+## Refused while one is running, and refused before anything is
+## discarded. Clearing the conversation and then finding the loop busy
+## left the worst of both: the old run still going, with no history
+## behind it, appending its next turn to nothing.
+##
+## That shipped. The example generator gave up waiting on a boat that
+## had run long, started a rocket, and the boat's loop carried on into
+## the cleared history — so it went on talking about bowsprits, built
+## itself again into the cleared baseplate, and was written to disk as
+## the rocket. models/rocket.ldr was a boat.
+func design(brief: String) -> bool:
+	if _busy:
+		return false
 	_messages.clear()
 	_start(brief)
+	return true
 
 
 ## Whether there is a conversation to carry on, as against a fresh
@@ -276,11 +294,13 @@ func has_conversation() -> bool:
 
 
 ## Ask for a change to what is already built, keeping the conversation.
-func revise(instruction: String) -> void:
+func revise(instruction: String) -> bool:
+	if _busy:
+		return false
 	if _messages.is_empty():
-		design(instruction)
-		return
+		return design(instruction)
 	_start(instruction)
+	return true
 
 
 func cancel() -> void:
@@ -303,6 +323,7 @@ func _start(text: String) -> void:
 	_turns = 0
 	_nudges = 0
 	_edited = false
+	_looked_back = false
 	_spend = Brain.Spend.new()
 	_spent_on = Brain.chosen()
 	_pending = null
@@ -389,6 +410,11 @@ func _restore() -> void:
 
 
 func _send() -> void:
+	# Cancelled, finished, or superseded while a turn was in the air.
+	# _on_response already declines to act on a stale reply; this is the
+	# other end of the same guard.
+	if not _busy:
+		return
 	_turns += 1
 	if _turns > MAX_TURNS:
 		_stop(false, "gave up after %d turns" % MAX_TURNS)
@@ -663,6 +689,11 @@ func _on_response(result: Array) -> void:
 		if _pending != null:
 			_stop(true, "done")
 			return
+		# It looked, and had nothing to change. What is on the baseplate
+		# is the design it submitted a moment ago.
+		if _looked_back and not _placed_ids.is_empty():
+			_stop(true, "%d bricks" % _placed_ids.size())
+			return
 		# An edit that landed is a finished piece of work. Without this
 		# a run that changed the model and then said so was nudged to
 		# build something, twice, and then recorded as having built
@@ -702,6 +733,34 @@ func _on_response(result: Array) -> void:
 	if report["ok"]:
 		await _ensure_parts(_pending)
 		_apply(_pending)
+		if not _busy:
+			return
+		# One deliberate look before it is finished.
+		#
+		# A design stops the moment it holds together, and holding
+		# together is not the bar. The house that came out of this was
+		# checked, stood up, weighed a hundred grams and had a blank
+		# wall where the brief had asked for a door and two windows; the
+		# boat was a white box with a staircase for a sail. Both passed
+		# every test there is, because every test there is asks whether
+		# it is buildable and none asks whether it is the thing.
+		#
+		# So the last round is a look at what was built, with the
+		# failures that keep happening named. It costs one turn, and one
+		# turn is cheap against a model nobody would want.
+		if not _looked_back:
+			_looked_back = true
+			_pending = null
+			progress.emit("looking at the finished model")
+			var shown: Variant = await _with_a_look("", CRITIQUE)
+			# Cancelled while the picture was being taken. An empty
+			# message is one the API refuses, so there would be nothing
+			# to show for it but an error.
+			if not _busy or (shown is String and (shown as String).is_empty()):
+				return
+			_messages.append({"role": "user", "content": shown})
+			_send()
+			return
 		_stop(true, report["summary"])
 		return
 
@@ -721,6 +780,32 @@ func _on_response(result: Array) -> void:
 			+ "— only stacking connects them, so stagger the joints."),
 	})
 	_send()
+
+
+## What to ask once the thing is built.
+##
+## Named failures, not "does it look right". Every one of these came
+## out of looking at models this assistant actually produced, and a
+## general question got a general answer — the house was declared good
+## in the same breath as its blank front wall.
+const CRITIQUE := """This is what you built. It holds together; that \
+was never the question. Look at it and answer one: is this the thing \
+you were asked for?
+
+Four things go wrong here over and over. Check for each of them by \
+name:
+  A surface built as a staircase that should be smooth or sloped. \
+Steps of plain bricks where a roof, a hull, a nose or a wing should \
+run — use slopes, curved slopes and wedges.
+  A face left blank. A wall with nothing on it, when the brief asked \
+for a door or a window, or when every other face has something.
+  A shape that should taper or curve, built as a box.
+  Detail that cannot be seen: a colour against the same colour, or \
+something hidden inside the model.
+
+If any of those is true, fix it with edit_model and say what you \
+changed. If it is genuinely right, say so in one line and stop — do \
+not submit it again."""
 
 
 ## Something a person can act on, rather than a number.

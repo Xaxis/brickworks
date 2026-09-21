@@ -94,10 +94,26 @@ func _run() -> void:
 		assistant.clear_built()
 		_finished = false
 
-		assistant.design(str(job["brief"]))
-		var deadline: int = Time.get_ticks_msec() + 900_000
+		if not assistant.design(str(job["brief"])):
+			print("    skipped: the assistant was still busy")
+			continue
+		var deadline: int = Time.get_ticks_msec() + 1_800_000
 		while not _finished and Time.get_ticks_msec() < deadline:
 			await process_frame
+
+		# A design that ran past the deadline is not a design that
+		# worked. Treating it as one wrote whatever happened to be on
+		# the baseplate at that moment under this model's name, and left
+		# the run going — so the next brief was dropped and the previous
+		# design finished into it. One boat was saved twice, once as a
+		# rocket.
+		if not _finished:
+			print("    skipped: still going after %d minutes"
+				% ((Time.get_ticks_msec() - (deadline - 1_800_000)) / 60_000))
+			assistant.cancel()
+			while assistant.is_busy():
+				await process_frame
+			continue
 
 		if not _ok or world.brick_count() == 0:
 			print("    skipped: %s" % _summary)
