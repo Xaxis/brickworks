@@ -86,6 +86,9 @@ func _initialize() -> void:
 	_roundtrip(assistant, library, world, builder)
 
 	print("")
+	_by_hand(builder, world)
+
+	print("")
 	if _failures == 0:
 		print("sideways building works and upward building is unchanged")
 	else:
@@ -154,8 +157,8 @@ func _roundtrip(assistant: Assistant, library: PartLibrary,
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
 			var back: Vector3 = assistant._to_studs(
 				brick, library.parts["3005"])
-			var face_back: String = Assistant._face_of(at.basis)
-			var rot_back: int = Assistant._turns_about(at.basis, face_back)
+			var face_back: String = BrickLattice.face_of(at.basis)
+			var rot_back: int = BrickLattice.turns_about(at.basis, face_back)
 			world.remove_brick(brick_id)
 
 			if (not back.is_equal_approx(Vector3(2, 1.5, 5))
@@ -165,3 +168,49 @@ func _roundtrip(assistant: Assistant, library: PartLibrary,
 					% [face, rot, back, face_back, rot_back])
 				return
 	print("  ok    every face and turn reads back as itself")
+
+
+## The same thing, by hand.
+##
+## An assistant that can lay a brick on its side and a person who
+## cannot is a tool that builds models you are not allowed to edit. The
+## hand path aims a ray and settles the part onto what is below it,
+## which is entirely separate code from the assistant's, and it has to
+## come to the same orientation.
+func _by_hand(builder: Builder, world: BrickWorld) -> void:
+	builder.held_part = "3001"
+	builder.held_color = 4
+	builder.held_rotation = 0
+	builder.held_face = "up"
+
+	for want: String in BrickLattice.FACES:
+		while builder.held_face != want:
+			builder.tip_held()
+		# Straight down at the empty ground, well clear of anything.
+		builder.update_preview(
+			Vector3(600.0, 400.0, 600.0), Vector3.DOWN)
+		var brick_id: int = builder.place()
+		if brick_id == 0:
+			_failures += 1
+			print("  FAIL  nothing placed with the part tipped %s" % want)
+			return
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var got: String = BrickLattice.face_of(brick.transform.basis)
+		# And it must be standing on the ground rather than sunk into it.
+		var lowest: int = 0x7FFFFFFF
+		for cell: Vector3i in builder._cells_for(
+				builder.library.mesh_for("3001"), brick.transform):
+			lowest = mini(lowest, cell.y)
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+
+		if got != want:
+			_failures += 1
+			print("  FAIL  tipped to %s, placed as %s" % [want, got])
+			return
+		if lowest < 0:
+			_failures += 1
+			print("  FAIL  tipped %s sank %d cells below the ground"
+				% [want, -lowest])
+			return
+	print("  ok    every face can be placed by hand and rests on the ground")

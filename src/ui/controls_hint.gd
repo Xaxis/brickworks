@@ -51,6 +51,7 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["click"], "place"),
 		Binding.new(["right-click"], "remove"),
 		Binding.new(["R"], "rotate"),
+		Binding.new(["T"], "tip on side"),
 		Binding.new(["[", "]"], "colour"),
 		Binding.new(["Q", "E"], "turn model"),
 		Binding.new(["B"], "steps"),

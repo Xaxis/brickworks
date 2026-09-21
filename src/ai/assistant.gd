@@ -24,25 +24,17 @@ const MODEL := "claude-opus-5"
 ## after spending its budget on three-brick experiments.
 const MAX_TURNS := 45
 const MAX_REPAIRS := 3
+## How many times to ask again when a turn ends having built nothing.
+const MAX_NUDGES := 2
 
 ## Studs and plates, as the model speaks them.
 const STUD := 20.0
 const PLATE := 8.0
 
-## The six ways a part's studs can point.
-##
-## Naming them by direction rather than by rotation is deliberate: the
-## question a builder asks is "which way do the studs face", and the
-## answer is a direction. Which rotation produces it is arithmetic, and
-## arithmetic is what the model should not have to do.
-const FACES: Dictionary = {
-	"up": Vector3.UP,
-	"down": Vector3.DOWN,
-	"+x": Vector3.RIGHT,
-	"-x": Vector3.LEFT,
-	"+z": Vector3.BACK,
-	"-z": Vector3.FORWARD,
-}
+## The six ways a part's studs can point. Defined on the lattice, so
+## that a part laid on its side by hand and one laid on its side by the
+## assistant are laid the same way.
+const FACES: Dictionary = BrickLattice.FACE_AXIS
 
 var library: PartLibrary
 var world: BrickWorld
@@ -76,6 +68,7 @@ var _messages: Array = []
 var _busy: bool = false
 var _repairs: int = 0
 var _turns: int = 0
+var _nudges: int = 0
 var _pending: Model = null
 ## Names the conversation for the proxy's monthly budget. One design is
 ## a dozen round trips and sometimes forty, so the turns have to be
@@ -208,6 +201,7 @@ func _start(text: String) -> void:
 	_busy = true
 	_repairs = 0
 	_turns = 0
+	_nudges = 0
 	_pending = null
 	_before = _snapshot()
 	# A new one per instruction, including a revision: asking for a
@@ -438,8 +432,25 @@ func _on_response(result: Array) -> void:
 			})
 
 	if tool_results.is_empty():
-		# Nothing called and nothing submitted: it has finished talking.
-		_stop(_pending != null, "done")
+		if _pending != null:
+			_stop(true, "done")
+			return
+		# Nothing called and nothing submitted. Taken as "it has finished
+		# talking", which it is not: a run that looked up five parts,
+		# said what it was going to build and stopped was recorded as a
+		# finished design of nothing at all. Ask once, then twice, then
+		# accept that it is not going to.
+		if _nudges >= MAX_NUDGES:
+			_stop(false, "stopped without building anything")
+			return
+		_nudges += 1
+		_messages.append({
+			"role": "user",
+			"content": ("Nothing has been built yet. Place the parts and "
+				+ "call submit_design. If the request cannot be built "
+				+ "out of bricks, say why instead."),
+		})
+		_send()
 		return
 
 	_messages.append({"role": "user", "content": tool_results})
@@ -517,7 +528,23 @@ func _run_tool(block: Dictionary) -> String:
 				_apply(trial, false)
 			progress.emit("checked %d bricks: %s" % [
 				trial.placements.size(), report["summary"]])
-			return report["feedback"]
+			# With the drawing, not merely offered alongside it. Given
+			# view_model as a tool of its own, a design would check its
+			# work three times and never once look at it — which is how
+			# a house gets built with a door in the roof and passes
+			# every test, because no test is about whether it looks like
+			# a house. The picture has to arrive whether or not anyone
+			# thought to ask for it.
+			if trial.placements.is_empty():
+				return report["feedback"]
+			return "%s\n\nWhat that looks like:\n\n%s\n%s\n%s" % [
+				report["feedback"],
+				ModelView.draw(world, library, "top", scenery),
+				ModelView.draw(world, library, "front", scenery),
+				"Other sides: view_model from left, right or back. "
+					+ "Does it read as the thing it is meant to be? "
+					+ "If not, that is worth more than another brick.",
+			]
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world()
@@ -579,8 +606,8 @@ func _model_from_world() -> Model:
 		placement.x = at.x
 		placement.y = at.y
 		placement.z = at.z
-		placement.face = _face_of(brick.transform.basis)
-		placement.rot = _turns_about(brick.transform.basis, placement.face)
+		placement.face = BrickLattice.face_of(brick.transform.basis)
+		placement.rot = BrickLattice.turns_about(brick.transform.basis, placement.face)
 		placement.id = brick.id
 		placement.mine = mine.has(brick.id)
 		model.placements.append(placement)
@@ -672,12 +699,12 @@ func _describe_world() -> String:
 		# context window spent on something the model mostly needs the
 		# shape of, and the tally below carries what the rows drop.
 		if rows.size() < WORLD_ROWS:
-			var face: String = _face_of(brick.transform.basis)
+			var face: String = BrickLattice.face_of(brick.transform.basis)
 			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
 				brick.id, brick.part_id, brick.color_code,
 				Placement._num(at.x), Placement._num(at.y),
 				Placement._num(at.z), face,
-				_turns_about(brick.transform.basis, face),
+				BrickLattice.turns_about(brick.transform.basis, face),
 				"" if mine.has(brick.id) else "   (placed by hand)"])
 
 	var lines := PackedStringArray()
@@ -727,19 +754,6 @@ func _to_studs(brick: BrickWorld.Brick, _info: PartLibrary.PartInfo) -> Vector3:
 		return Vector3.ZERO
 	var ldu: Vector3 = BrickLattice.to_ldu(lo)
 	return Vector3(ldu.x / STUD, ldu.y / PLATE, ldu.z / STUD)
-
-
-## The rot that, with this face, reproduces this orientation.
-##
-## Found by trying all four rather than by trigonometry, because the
-## four are the only answers there are and trying them cannot disagree
-## with the rule that generated them.
-static func _turns_about(basis: Basis, face: String) -> int:
-	var snapped: Basis = BrickLattice.snap_basis(basis)
-	for rot: int in 4:
-		if _basis_for(face, rot).is_equal_approx(snapped):
-			return rot
-	return 0
 
 
 ## Quarter turns about Y, recovered from the basis.
@@ -996,36 +1010,6 @@ static func _cover_studs(part: Lbm.PartMesh, info: PartLibrary.PartInfo) -> Vect
 		maxi(int(round((hi.y - lo.y) / per_stud)), 1))
 
 
-## The orientation a face and a quarter turn come to.
-##
-## Rotation is applied about the part's new up rather than about the
-## world's, so rot means the same thing whichever way the part is
-## facing: turn it on the spot.
-static func _basis_for(face: String, rot: int) -> Basis:
-	var up: Vector3 = FACES.get(face, Vector3.UP)
-	var tip: Basis
-	if up.is_equal_approx(Vector3.UP):
-		tip = Basis.IDENTITY
-	elif up.is_equal_approx(Vector3.DOWN):
-		tip = Basis(Vector3.RIGHT, PI)
-	else:
-		tip = Basis(Vector3.UP.cross(up).normalized(), PI * 0.5)
-	return BrickLattice.snap_basis(Basis(up, rot * PI * 0.5) * tip)
-
-
-## Which way the studs point, read back off an orientation.
-static func _face_of(basis: Basis) -> String:
-	var up: Vector3 = (basis * Vector3.UP).normalized()
-	var best: String = "up"
-	var best_dot: float = -2.0
-	for name: String in FACES:
-		var d: float = up.dot(FACES[name])
-		if d > best_dot:
-			best_dot = d
-			best = name
-	return best
-
-
 ## Where a part's lowest, leftmost, backmost cell falls if its origin is
 ## at the middle of cell zero. Cached: a design of four hundred bricks
 ## asks this for each of them, twice, and the answer depends only on the
@@ -1059,7 +1043,7 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 ## transform and [method _to_studs] cannot drift apart, because they are
 ## now the same measurement taken in opposite directions.
 func _transform(placement: Placement, part: Lbm.PartMesh) -> Transform3D:
-	var basis: Basis = _basis_for(placement.face, placement.rot)
+	var basis: Basis = BrickLattice.basis_for(placement.face, placement.rot)
 	var corner: Vector3i = _corner_cell(part, placement.part, basis)
 	var want := BrickLattice.to_cell(Vector3(
 		placement.x * STUD, placement.y * PLATE, placement.z * STUD))

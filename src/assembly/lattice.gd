@@ -179,6 +179,71 @@ func resting_height(
 	return best
 
 
+## The six ways a part's studs can point.
+##
+## Naming them by direction rather than by rotation is deliberate: the
+## question a builder asks is "which way do the studs face", and the
+## answer is a direction. Which rotation produces it is arithmetic, and
+## arithmetic is what nobody should have to do to lay a brick on its
+## side.
+##
+## In the order the builder cycles them, which is a part rolling forward
+## about its own left-right axis and then round again.
+const FACES: Array[String] = ["up", "+z", "down", "-z", "+x", "-x"]
+
+const FACE_AXIS: Dictionary = {
+	"up": Vector3.UP,
+	"down": Vector3.DOWN,
+	"+x": Vector3.RIGHT,
+	"-x": Vector3.LEFT,
+	"+z": Vector3.BACK,
+	"-z": Vector3.FORWARD,
+}
+
+
+## The orientation a face and a quarter turn come to.
+##
+## The turn is about the part's own new up rather than the world's, so
+## that rot means the same thing whichever way the part is facing: turn
+## it on the spot.
+static func basis_for(face: String, rot: int) -> Basis:
+	var up: Vector3 = FACE_AXIS.get(face, Vector3.UP)
+	var tip: Basis
+	if up.is_equal_approx(Vector3.UP):
+		tip = Basis.IDENTITY
+	elif up.is_equal_approx(Vector3.DOWN):
+		tip = Basis(Vector3.RIGHT, PI)
+	else:
+		tip = Basis(Vector3.UP.cross(up).normalized(), PI * 0.5)
+	return snap_basis(Basis(up, rot * PI * 0.5) * tip)
+
+
+## Which way the studs point, read back off an orientation.
+static func face_of(basis: Basis) -> String:
+	var up: Vector3 = (basis * Vector3.UP).normalized()
+	var best: String = "up"
+	var best_dot: float = -2.0
+	for name: String in FACES:
+		var d: float = up.dot(FACE_AXIS[name])
+		if d > best_dot:
+			best_dot = d
+			best = name
+	return best
+
+
+## The turn that, with this face, reproduces this orientation.
+##
+## Found by trying all four rather than by trigonometry, because the
+## four are the only answers there are and trying them cannot disagree
+## with the rule that generated them.
+static func turns_about(basis: Basis, face: String) -> int:
+	var snapped: Basis = snap_basis(basis)
+	for rot: int in 4:
+		if basis_for(face, rot).is_equal_approx(snapped):
+			return rot
+	return 0
+
+
 ## The nearest of the 24 axis-aligned orientations.
 ##
 ## A brick can only be turned in quarter steps and still meet the lattice,

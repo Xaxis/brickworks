@@ -73,6 +73,11 @@ func _run() -> void:
 		_summary = said)
 	assistant.progress.connect(func(note: String) -> void:
 		print("      · %s" % note))
+	# What it says, not only what it does. A run that talked itself out
+	# of building anything looked, in the log, like a run that simply
+	# stopped.
+	assistant.said.connect(func(spoken: String) -> void:
+		print("      \" %s" % spoken.replace("\n", "\n        ")))
 
 	var wanted: PackedStringArray = PackedStringArray()
 	for argument: String in OS.get_cmdline_user_args():

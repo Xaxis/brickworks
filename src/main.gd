@@ -1246,6 +1246,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_R:
 			_builder.rotate_held(-1 if key.shift_pressed else 1)
 			_refresh_preview()
+		KEY_T:
+			_builder.tip_held(-1 if key.shift_pressed else 1)
+			_refresh_preview()
 		KEY_BRACKETLEFT, KEY_BRACKETRIGHT:
 			var step: int = 1 if key.keycode == KEY_BRACKETRIGHT else -1
 			_color_index = posmod(_color_index + step, QUICK_COLORS.size())

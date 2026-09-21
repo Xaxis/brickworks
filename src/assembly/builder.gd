@@ -26,6 +26,11 @@ var held_part: String = "3001"
 var held_color: int = 4
 ## Quarter turns about Y applied to the held part.
 var held_rotation: int = 0
+## Which way the held part's studs point. Everything used to point up,
+## so the assistant could lay a brick on its side and the person using
+## the app could not — which makes a tool that builds things you cannot
+## edit.
+var held_face: String = "up"
 
 var _ghost: MeshInstance3D
 var _ghost_material: ShaderMaterial
@@ -157,7 +162,8 @@ func lift_hovered() -> bool:
 
 	held_part = brick.part_id
 	held_color = brick.color_code
-	held_rotation = _quarter_turns(brick.transform.basis)
+	held_face = BrickLattice.face_of(brick.transform.basis)
+	held_rotation = BrickLattice.turns_about(brick.transform.basis, held_face)
 
 	_history.append({
 		"undo": "add",
@@ -188,7 +194,8 @@ func pick_hovered() -> bool:
 		return false
 	held_part = brick.part_id
 	held_color = brick.color_code
-	held_rotation = _quarter_turns(brick.transform.basis)
+	held_face = BrickLattice.face_of(brick.transform.basis)
+	held_rotation = BrickLattice.turns_about(brick.transform.basis, held_face)
 	picked.emit(brick.part_id, brick.color_code)
 	return true
 
@@ -280,7 +287,7 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	_hovered = hit.brick_id
 
-	var basis: Basis = Basis(Vector3.UP, held_rotation * PI * 0.5)
+	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
 	var target: Vector3
 
 	if hit.is_valid():
@@ -380,6 +387,14 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 
 func rotate_held(quarter_turns: int) -> void:
 	held_rotation = posmod(held_rotation + quarter_turns, 4)
+
+
+## Roll the held part onto its next face: up, forward, down, back, and
+## then over onto each side.
+func tip_held(steps: int = 1) -> void:
+	var faces: Array[String] = BrickLattice.FACES
+	var at: int = maxi(faces.find(held_face), 0)
+	held_face = faces[posmod(at + steps, faces.size())]
 
 
 func hovered_brick() -> int:
