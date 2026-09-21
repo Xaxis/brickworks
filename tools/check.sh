@@ -89,6 +89,8 @@ run "colour" godot --path . --resolution 1400x900 \
 # would never once exercise the path the app actually takes.
 run "model shot" godot --path . --resolution 1200x800 \
   --script src/dev/shot_probe.gd
+run "axis gizmo" godot --path . --resolution 1200x800 \
+  --script src/dev/gizmo_probe.gd
 
 if [ "$network" = 1 ]; then
   echo "── network ──"

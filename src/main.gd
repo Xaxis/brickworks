@@ -36,6 +36,7 @@ var _picker: PickImage
 var _mosaic_source: Image
 var _playback: BuildPlayback
 var _outline: SelectionOutline
+var _gizmo: AxisGizmo
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
 
@@ -422,6 +423,17 @@ func _build_ui() -> void:
 	hint_area.clip_contents = true
 	hint_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(hint_area)
+
+	# Bottom right, above the hint strip: out of the way of the model,
+	# and where every other 3D tool puts it.
+	_gizmo = AxisGizmo.new()
+	_gizmo.camera = _camera
+	_gizmo.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_gizmo.offset_left = -AxisGizmo.SIZE - 16.0
+	_gizmo.offset_top = -AxisGizmo.SIZE - 16.0
+	_gizmo.offset_right = -16.0
+	_gizmo.offset_bottom = -16.0
+	$HUD.add_child(_gizmo)
 
 	var hint := ControlsHint.new()
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
