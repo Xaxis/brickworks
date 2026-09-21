@@ -127,6 +127,14 @@ class Placement extends RefCounted:
 	## and a tile could never stand up as a window pane.
 	var face: String = "up"
 	var rot: int        ## quarter turns about [member face]
+	## The brick in the world this came from, when it came from one.
+	## Zero for a placement the model has just invented. What makes
+	## "remove brick 41" mean anything.
+	var id: int = 0
+	## Whether the assistant placed it. A brick the person put there by
+	## hand stays theirs across an edit, so that a later design replaces
+	## the assistant's work and leaves theirs alone.
+	var mine: bool = true
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -520,11 +528,107 @@ func _run_tool(block: Dictionary) -> String:
 			# the last draft it checked — so this shows its own work,
 			# not a hypothetical.
 			return ModelView.draw(world, library, from, scenery)
+		"edit_model":
+			var edited: Model = _edit(args)
+			if edited.placements.is_empty():
+				return ("That would leave the baseplate empty. "
+					+ "If clearing it is what you meant, say so instead.")
+			await _ensure_parts(edited)
+			var verdict: Dictionary = _check(edited)
+			if not bool(verdict["ok"]):
+				progress.emit("tried a change: %s" % verdict["summary"])
+				return ("Not applied — the model would not hold together.\n"
+					+ str(verdict["feedback"]))
+			_apply_edit(edited)
+			_pending = null
+			progress.emit("changed it: %d bricks" % edited.placements.size())
+			return ("Done. %d bricks now. "
+				% edited.placements.size()
+				+ "Call look_at_model or view_model to see it.")
 		"submit_design":
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks" % _pending.placements.size())
 			return "Received. Checking it now."
 	return "No tool called %s." % name
+
+
+## The baseplate as a model, so that changing it is a matter of
+## changing a few placements rather than writing it out again.
+##
+## Re-emitting four hundred bricks to move one is expensive in the
+## obvious way and wrong in a less obvious one: a model rewriting a long
+## list from a description of it drifts, and the change asked for
+## arrives alongside a dozen nobody asked for.
+func _model_from_world() -> Model:
+	var model := Model.new()
+	if world == null:
+		return model
+	var mine: Dictionary = {}
+	for brick_id: int in _placed_ids:
+		mine[brick_id] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		var at: Vector3 = _to_studs(brick, info)
+		var placement := Placement.new()
+		placement.part = brick.part_id
+		placement.color = brick.color_code
+		placement.x = at.x
+		placement.y = at.y
+		placement.z = at.z
+		placement.face = _face_of(brick.transform.basis)
+		placement.rot = _turns_about(brick.transform.basis, placement.face)
+		placement.id = brick.id
+		placement.mine = mine.has(brick.id)
+		model.placements.append(placement)
+	return model
+
+
+## Apply a patch to what is built, and say what it came to.
+##
+## Removals first, so that a brick can be taken away and another put in
+## its place in one call without the two fighting over the same cells.
+func _edit(args: Dictionary) -> Model:
+	var model: Model = _model_from_world()
+	var by_id: Dictionary = {}
+	for placement: Placement in model.placements:
+		by_id[placement.id] = placement
+
+	var gone: Dictionary = {}
+	for raw: Variant in args.get("remove", []):
+		gone[int(raw)] = true
+	if not gone.is_empty():
+		var kept: Array[Placement] = []
+		for placement: Placement in model.placements:
+			if not gone.has(placement.id):
+				kept.append(placement)
+		model.placements = kept
+
+	for raw: Variant in args.get("recolor", []):
+		var order: Dictionary = raw
+		var colour: int = int(order.get("color", 7))
+		for id_raw: Variant in order.get("bricks", []):
+			var placement: Placement = by_id.get(int(id_raw))
+			if placement != null:
+				placement.color = colour
+
+	for raw: Variant in args.get("move", []):
+		var order: Dictionary = raw
+		var by := Vector3(float(order.get("dx", 0)),
+			float(order.get("dy", 0)), float(order.get("dz", 0)))
+		for id_raw: Variant in order.get("bricks", []):
+			var placement: Placement = by_id.get(int(id_raw))
+			if placement != null:
+				placement.x += by.x
+				placement.y += by.y
+				placement.z += by.z
+
+	for raw: Variant in args.get("add", []):
+		model.placements.append(Placement.from_dict(raw))
+	return model
 
 
 ## What is on the baseplate, in the coordinates the model speaks.
@@ -569,8 +673,8 @@ func _describe_world() -> String:
 		# shape of, and the tally below carries what the rows drop.
 		if rows.size() < WORLD_ROWS:
 			var face: String = _face_of(brick.transform.basis)
-			rows.append("  %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
-				brick.part_id, brick.color_code,
+			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
+				brick.id, brick.part_id, brick.color_code,
 				Placement._num(at.x), Placement._num(at.y),
 				Placement._num(at.z), face,
 				_turns_about(brick.transform.basis, face),
@@ -999,9 +1103,80 @@ func _ensure_parts(model: Model) -> void:
 ## watching a shape appear beats watching a spinner — but only the
 ## finished one is worth an assembly animation, and only the finished
 ## one means anything to the rest of the app.
+## Carry out an edit, touching only the bricks it changes.
+##
+## Tearing the model down and building it again from the patched list
+## would be far less code, and it renumbers every brick — so a model
+## that reads the numbers once and then makes two changes has its second
+## change land on whatever now happens to hold those numbers. Which is
+## to say: on the wrong bricks, silently.
+func _apply_edit(model: Model) -> void:
+	var wanted: Dictionary = {}
+	var fresh: Array[Placement] = []
+	for placement: Placement in model.placements:
+		if placement.id != 0:
+			wanted[placement.id] = placement
+		else:
+			fresh.append(placement)
+
+	var mine: Dictionary = {}
+	for brick_id: int in _placed_ids:
+		mine[brick_id] = true
+
+	# Gone, and anything whose part changed — which is a different brick
+	# wearing the same number, not a brick that moved.
+	var doomed := PackedInt64Array()
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var placement: Placement = wanted.get(brick.id)
+		if placement == null:
+			doomed.append(brick.id)
+		elif placement.part != brick.part_id:
+			doomed.append(brick.id)
+			fresh.append(placement)
+			wanted.erase(brick.id)
+	for brick_id: int in doomed:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+		mine.erase(brick_id)
+
+	# Moved or recoloured, keeping the number they were given.
+	for brick_id: int in wanted:
+		var placement: Placement = wanted[brick_id]
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if brick == null or part == null:
+			continue
+		var at: Transform3D = _transform(placement, part)
+		if not brick.transform.is_equal_approx(at):
+			world.move_brick(brick_id, at)
+			builder.lattice.release(brick_id)
+			builder.register(brick_id, placement.part, at)
+		if brick.color_code != placement.color:
+			world.recolor_brick(brick_id, placement.color)
+
+	for placement: Placement in fresh:
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _transform(placement, part)
+		var brick_id: int = world.add_brick(
+			placement.part, placement.color, at)
+		if brick_id != 0:
+			builder.register(brick_id, placement.part, at)
+			if placement.mine:
+				mine[brick_id] = true
+
+	_placed_ids = PackedInt64Array()
+	for brick_id: int in mine:
+		_placed_ids.append(brick_id)
+	built.emit(_placed_ids.size())
+
+
+## Put a model on the baseplate, replacing whatever the assistant built
+## last time and leaving anything the person placed by hand alone.
 func _apply(model: Model, finished: bool = true) -> void:
-	# Replace what the assistant built last time, leaving anything the
-	# person placed by hand alone.
 	for brick_id: int in _placed_ids:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -1020,7 +1195,8 @@ func _apply(model: Model, finished: bool = true) -> void:
 		var brick_id: int = world.add_brick(placement.part, placement.color, at)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
-			_placed_ids.append(brick_id)
+			if placement.mine:
+				_placed_ids.append(brick_id)
 
 	if not missing.is_empty():
 		var names: Array = missing.keys()
@@ -1173,9 +1349,14 @@ You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
 steps, not a description of every brick. Then build it.
 
-Finish by calling submit_design with the complete list of parts. If you \
-are asked to change something, submit the whole model again with the \
-change made."""
+Finish by calling submit_design with the complete list of parts.
+
+CHANGING SOMETHING THAT IS ALREADY BUILT
+Do not describe it again. Call look_at_model, which prints a number \
+beside every brick, then edit_model with those numbers: remove, \
+recolor, move, add. Rewriting four hundred placements to move one wall \
+costs a fortune and loses details nobody asked you to change. \
+submit_design is for starting something new."""
 
 
 func _tools() -> Array:
@@ -1227,6 +1408,61 @@ func _tools() -> Array:
 				"type": "object",
 				"properties": {"bricks": {"type": "array", "items": brick}},
 				"required": ["bricks"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "edit_model",
+			"description": ("Change what is already built without "
+				+ "describing it again. Takes the numbers look_at_model "
+				+ "prints beside each brick. Use this for any change to "
+				+ "an existing model — moving a wall, recolouring a "
+				+ "roof, taking a chimney off, adding a door — and only "
+				+ "use submit_design when starting something new. "
+				+ "Everything is checked together before any of it is "
+				+ "applied, so a change that would not hold together "
+				+ "changes nothing."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"remove": {
+						"type": "array",
+						"items": {"type": "integer"},
+						"description": "brick numbers to take away",
+					},
+					"recolor": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"bricks": {"type": "array",
+									"items": {"type": "integer"}},
+								"color": {"type": "integer"},
+							},
+							"required": ["bricks", "color"],
+							"additionalProperties": false,
+						},
+					},
+					"move": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"bricks": {"type": "array",
+									"items": {"type": "integer"}},
+								"dx": {"type": "number",
+									"description": "studs"},
+								"dy": {"type": "number",
+									"description": "plates"},
+								"dz": {"type": "number",
+									"description": "studs"},
+							},
+							"required": ["bricks"],
+							"additionalProperties": false,
+						},
+					},
+					"add": {"type": "array", "items": brick},
+				},
 				"additionalProperties": false,
 			},
 		},
