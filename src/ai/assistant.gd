@@ -73,6 +73,11 @@ signal said(text: String)
 signal progress(note: String)
 signal finished(ok: bool, summary: String)
 signal built(brick_count: int)
+## A model the assistant is still working on, put on screen so the wait
+## is not a spinner. Not the same as [signal built] — nothing about a
+## sketch is finished, and whoever is watching should not be shown an
+## assembly animation for something about to be replaced.
+signal sketched(brick_count: int)
 
 
 ## One placement, in the coordinates the model speaks.
@@ -381,6 +386,12 @@ func _run_tool(block: Dictionary) -> String:
 		"check_design":
 			var trial: Model = _read_model(args)
 			var report: Dictionary = _check(trial)
+			# On screen, not just counted. A design runs for minutes and
+			# checks its work two or three times along the way; those
+			# are the only glimpses of the shape there are before the
+			# end, and they were being thrown away.
+			if not trial.placements.is_empty():
+				_apply(trial, false)
 			progress.emit("checked %d bricks: %s" % [
 				trial.placements.size(), report["summary"]])
 			return report["feedback"]
@@ -706,7 +717,14 @@ func _ensure_parts(model: Model) -> void:
 				wanted.erase(part_id)
 
 
-func _apply(model: Model) -> void:
+## Put a model in the world.
+##
+## [param finished] separates the design it submitted from the drafts it
+## checked along the way. Both are shown — a design takes minutes and
+## watching a shape appear beats watching a spinner — but only the
+## finished one is worth an assembly animation, and only the finished
+## one means anything to the rest of the app.
+func _apply(model: Model, finished: bool = true) -> void:
 	# Replace what the assistant built last time, leaving anything the
 	# person placed by hand alone.
 	for brick_id: int in _placed_ids:
@@ -724,7 +742,10 @@ func _apply(model: Model) -> void:
 			builder.register(brick_id, placement.part, at)
 			_placed_ids.append(brick_id)
 
-	built.emit(_placed_ids.size())
+	if finished:
+		built.emit(_placed_ids.size())
+	else:
+		sketched.emit(_placed_ids.size())
 
 
 func clear_built() -> void:

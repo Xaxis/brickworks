@@ -497,6 +497,13 @@ func _build_ui() -> void:
 		_on_model_changed()
 		if _playback.play(_store.scenery):
 			_bar.say("building…"))
+	# A draft appears as it is; it is about to be replaced, so animating
+	# it would be an assembly that never finishes.
+	_assistant.sketched.connect(func(count: int) -> void:
+		if _playback.is_playing():
+			_playback.stop()
+		_on_model_changed()
+		_bar.say("working — %d bricks so far" % count))
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
