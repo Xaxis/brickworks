@@ -81,6 +81,14 @@ func touch() -> void:
 	_pending = true
 
 
+## The model on screen is now what somebody meant it to be, whatever it
+## was missing when it opened. Called when they place, remove or change
+## a brick: after that the autosave is saving their work rather than
+## overwriting their file with a worse copy of it.
+func adopt() -> void:
+	whole = true
+
+
 ## Call once a frame. Writes the working model when it has settled.
 func tick() -> void:
 	if not _pending:
@@ -88,6 +96,16 @@ func tick() -> void:
 	if Time.get_ticks_msec() - _dirty_at < AUTOSAVE_DELAY_MS:
 		return
 	_pending = false
+	# Never over a model that did not open whole.
+	#
+	# On the web most geometry is fetched rather than shipped, so a
+	# model can open missing the parts that had not arrived yet. Writing
+	# that back over the file it came from turns a few seconds of
+	# network into a permanent deletion — and the autosave fires a
+	# second after the open, which is exactly when the fetches are still
+	# in flight.
+	if not whole:
+		return
 	_write(AUTOSAVE, "Working model")
 
 
@@ -155,27 +173,22 @@ func delete(path: String) -> bool:
 
 ## Replace what is on screen with a model from disk. Returns how many
 ## bricks landed.
+## Open a saved model from a path.
+##
+## The same code as [method open_text], because the difference between
+## them was doing real harm. This one placed whatever it could and said
+## nothing about the rest — and on the web most geometry is fetched
+## rather than shipped, so reopening your own model dropped every part
+## outside the packed set, reported the truncated count as a success,
+## and then the autosave wrote the truncated model back over the file.
+## Which is to say: it quietly deleted parts of somebody's model and
+## then made that permanent.
 func open(path: String) -> int:
-	var model: LdrModel = LdrModel.load_file(path)
-	if model == null:
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.is_empty():
 		return 0
-
-	world.clear()
-	builder.lattice.clear()
-	builder.forget_history()
-	scenery.clear()
-
-	var placed: int = 0
-	for item: Variant in model.flatten(library.parts):
-		var placement: LdrModel.Placement = item
-		var brick_id: int = world.add_brick(
-			placement.part_id, placement.color_code, placement.transform)
-		if brick_id != 0:
-			builder.register(brick_id, placement.part_id, placement.transform)
-			placed += 1
-
-	loaded.emit(path.get_file(), placed)
-	return placed
+	var result: Dictionary = open_text(text, path.get_file())
+	return int(result["placed"])
 
 
 ## Open a model from text rather than from a path.
@@ -244,9 +257,19 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	for part_id: String in waiting:
 		library.request_mesh(part_id, true)
 
+	whole = missing.is_empty() and waiting.is_empty()
 	loaded.emit(name, placed)
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "error": ""}
+
+
+## Whether the model on screen is the whole of what was opened.
+##
+## False when parts were missing or still arriving. The autosave checks
+## it: writing a model that is missing bricks over the file those bricks
+## came from is how a temporary failure to fetch becomes a permanent
+## loss.
+var whole: bool = true
 
 
 ## The model as LDraw text, for export or for handing to something else.

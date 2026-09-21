@@ -354,21 +354,31 @@ func _snapshot() -> Array[Dictionary]:
 func _restore() -> void:
 	if _before.is_empty():
 		return
-	# Everything that is not scenery, not just what the assistant built.
-	# Restoring over the survivors put a second copy of every
-	# hand-placed brick in the world — the snapshot holds them too,
-	# because they are part of what was there.
+	# Only the assistant's own bricks, and only its own put back.
+	#
+	# Taking down everything that was not scenery and rebuilding from
+	# the snapshot restores the model exactly — and destroys anything
+	# placed by hand while the design was running, which is minutes,
+	# during which nothing stops anyone building. Somebody adds a
+	# chimney while it works on the walls, the design fails, and the
+	# chimney is gone with no undo, because it was never in the
+	# snapshot to be put back.
 	var doomed := PackedInt64Array()
-	for brick: BrickWorld.Brick in world.bricks():
-		if not scenery.has(brick.id):
-			doomed.append(brick.id)
+	for brick_id: int in _placed_ids + _sketched_ids:
+		doomed.append(brick_id)
 	for brick_id: int in doomed:
+		if world.get_brick(brick_id) == null:
+			continue
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
 	_placed_ids = PackedInt64Array()
 	_sketched_ids = PackedInt64Array()
 
 	for entry: Dictionary in _before:
+		# Theirs is still standing; only the assistant's own work was
+		# taken down, so only the assistant's own work goes back.
+		if not bool(entry["mine"]):
+			continue
 		var brick_id: int = world.add_brick(
 			str(entry["part"]), int(entry["colour"]), entry["at"])
 		if brick_id == 0:
@@ -1854,6 +1864,18 @@ func _apply(model: Model, finished: bool = true) -> void:
 ## How many bricks in the world the assistant considers its own.
 func built_count() -> int:
 	return _placed_ids.size()
+
+
+## Forget the conversation, keeping the model.
+##
+## What "New" means. Without it the button cleared the transcript on
+## screen and left the messages behind, so the next brief was sent as a
+## revision of the conversation the person had just thrown away — and
+## the model quietly built on top of what they meant to abandon.
+func forget_conversation() -> void:
+	_messages.clear()
+	_pending = null
+	_edited = false
 
 
 ## Stop claiming any of it, without touching the world.

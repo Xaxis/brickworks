@@ -520,10 +520,12 @@ func _build_ui() -> void:
 	_bin.populate()
 	_builder.held_color = _bin.selected_color()
 
-	# Anything that changes the model marks it for saving.
+	# Anything that changes the model marks it for saving. Placing and
+	# removing are somebody's own doing, so they also settle the
+	# question of whether the model on screen is the one to keep.
 	_builder.placed.connect(func(_id: int, _part: String) -> void:
-		_on_model_changed())
-	_builder.removed.connect(func(_id: int) -> void: _on_model_changed())
+		_on_model_edited())
+	_builder.removed.connect(func(_id: int) -> void: _on_model_edited())
 	# Watch it go up, in the order it would be built, rather than find
 	# it already there.
 	_playback = BuildPlayback.new()
@@ -872,6 +874,18 @@ func _on_model_changed() -> void:
 		_store.touch()
 
 
+## Somebody changed the model by hand, so it is theirs now.
+##
+## Kept apart from _on_model_changed, which also fires for things the
+## app did to itself — opening, clearing, the assistant rebuilding. Only
+## a deliberate change should let the autosave write over a file that
+## opened short of parts.
+func _on_model_edited() -> void:
+	if _store != null:
+		_store.adopt()
+		_store.touch()
+
+
 func _on_part_chosen(part_id: String) -> void:
 	_builder.held_part = part_id
 	# On the web most parts are a request away rather than resident. Ask
@@ -1096,6 +1110,15 @@ func _build_stress(target: int) -> int:
 ## otherwise, and there is nothing for a first brick to rest against.
 func _lay_baseplate() -> void:
 	const PLATE := "3811"   # Baseplate 32 x 32
+	# Whatever was scenery before is not any more.
+	#
+	# BrickWorld numbers from one again after a clear, so a stale id in
+	# this set names an ordinary brick somebody places later — and a
+	# brick marked as scenery is left out of Save, Export, the parts
+	# list and the booklet, silently. They would build the thing, save
+	# it, and find a piece of it missing with nothing to explain why.
+	if _store != null:
+		_store.scenery.clear()
 	# At zero, not a plate below it. A part's origin sits at the top of
 	# its body, and bricks rest with their undersides on the plane that
 	# GROUND_CELL names — which is zero. Laying the baseplate at -8 put
@@ -1321,7 +1344,7 @@ func _nudge(screen_way: Vector3) -> void:
 
 func _nudge_by(cells: Vector3i) -> void:
 	if _builder.move_selection(cells) > 0:
-		_on_model_changed()
+		_on_model_edited()
 	else:
 		_bar.say("no room that way")
 
@@ -1421,14 +1444,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if not _builder.selection.is_empty():
 				var painted: int = _builder.paint_selection(_builder.held_color)
 				if painted > 0:
-					_on_model_changed()
+					_on_model_edited()
 					_bar.say("painted %d" % painted)
 			elif _builder.paint_hovered(_builder.held_color):
 				_on_model_changed()
 		KEY_DELETE, KEY_BACKSPACE:
 			var gone: int = _builder.remove_selection()
 			if gone > 0:
-				_on_model_changed()
+				_on_model_edited()
 				_bar.say("removed %d" % gone)
 		KEY_A:
 			# Everything the assistant built, in one go, so that

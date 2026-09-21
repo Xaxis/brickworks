@@ -398,6 +398,8 @@ func _on_clear() -> void:
 	# for something else afterwards replaces them as it always did.
 	if assistant:
 		assistant.cancel()
+		assistant.forget_conversation()
+	_bill = ""
 	for child: Node in _log.get_children():
 		if child != _suggestions:
 			child.queue_free()

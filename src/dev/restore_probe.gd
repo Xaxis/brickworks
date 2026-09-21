@@ -84,10 +84,26 @@ func _run() -> void:
 	_check("the draft replaced its previous work, now %d bricks"
 		% world.brick_count(), world.brick_count() < whole)
 
+	# Meanwhile the person carries on building. A design runs for
+	# minutes and nothing stops them, so this is ordinary rather than
+	# perverse — and their brick is not in the snapshot, because the
+	# snapshot was taken before they placed it.
+	var meanwhile := Transform3D(Basis.IDENTITY, Vector3(280.0, 24.0, 40.0))
+	var theirs: int = world.add_brick("3003", 14, meanwhile)
+	builder.register(theirs, "3003", meanwhile)
+
 	# And then it fails, as designs do.
 	assistant._stop(false, "ran out of repairs")
+
+	var still_there: bool = false
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == "3003" \
+				and brick.transform.origin.is_equal_approx(meanwhile.origin):
+			still_there = true
+	_check("a brick placed by hand while it worked survived the failure",
+		still_there)
 	_check("the model came back: %d bricks" % world.brick_count(),
-		world.brick_count() == whole)
+		world.brick_count() == whole + 1)
 
 	var hand_survived: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
