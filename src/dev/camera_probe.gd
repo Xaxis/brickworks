@@ -108,6 +108,10 @@ func _run() -> void:
 		print("  FAIL  a right click without a drag turned the model")
 
 	print("")
+	_keeps_pace(camera)
+	_towards_the_pointer(camera)
+
+	print("")
 	if _failures == 0:
 		print("the view can be turned, slid and zoomed")
 	else:
@@ -151,3 +155,94 @@ func _read(camera: CadCamera, which: String) -> Variant:
 		"distance": return camera._target_distance
 		"yaw": return camera._target_yaw
 	return 0.0
+
+
+## Does zooming keep what is under the pointer under the pointer?
+##
+## Zooming towards the middle of the screen is what makes a viewport
+## feel wrong without anyone being able to say why: you point at the
+## corner you want a closer look at, zoom, and it slides off the edge,
+## so every zoom costs a pan to put it right.
+func _towards_the_pointer(camera: CadCamera) -> void:
+	camera.focus = Vector3.ZERO
+	camera._target_focus = Vector3.ZERO
+	camera.distance = 400.0
+	camera._target_distance = 400.0
+	camera._yaw = 0.0
+	camera._target_yaw = 0.0
+	camera._pitch = 0.0
+	camera._target_pitch = 0.0
+	camera._apply(1.0)
+
+	# A point well off to one side of the middle.
+	var at := camera.get_viewport().get_visible_rect().size * Vector2(0.8, 0.5)
+	var before: Vector3 = _aim(camera, at)
+
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	wheel.position = at
+	camera._unhandled_input(wheel)
+	camera._apply(1.0)
+
+	if camera.distance >= 400.0:
+		_failures += 1
+		print("  FAIL  the wheel did not move the camera in")
+		return
+	var after: Vector3 = _aim(camera, at)
+	var drift: float = (after - before).length()
+	# Within a tenth of a stud of where it was.
+	if drift < 2.0:
+		print("  ok    zooming keeps what is under the pointer under it")
+	else:
+		_failures += 1
+		print("  FAIL  what was under the pointer moved %.1f LDU away"
+			% drift)
+
+
+## The world point the pointer is aiming at, on the plane the focus is
+## in — the same plane the zoom works against.
+func _aim(camera: CadCamera, at: Vector2) -> Vector3:
+	var forward: Vector3 = (camera.focus - camera.global_position).normalized()
+	var origin: Vector3 = camera.project_ray_origin(at)
+	var towards: Vector3 = camera.project_ray_normal(at)
+	return origin + towards * (
+		(camera.focus - origin).dot(forward) / towards.dot(forward))
+
+
+## Does the model keep pace with the pointer?
+##
+## Drag a stud a hundred pixels and it should be a hundred pixels
+## further along. A pan that outruns the cursor is half of why a
+## viewport feels wrong, and this one ran at about one and three
+## quarter times the pointer, because the constant was picked by eye
+## rather than worked out from the field of view.
+func _keeps_pace(camera: CadCamera) -> void:
+	camera.focus = Vector3.ZERO
+	camera._target_focus = Vector3.ZERO
+	camera.distance = 400.0
+	camera._target_distance = 400.0
+	camera._yaw = 0.0
+	camera._target_yaw = 0.0
+	camera._pitch = 0.0
+	camera._target_pitch = 0.0
+	camera._apply(1.0)
+
+	# A point sitting in the focus plane, which is where a model is.
+	var point := Vector3(0.0, 0.0, 0.0)
+	var was: Vector2 = camera.unproject_position(point)
+
+	var by := Vector2(120.0, -70.0)
+	camera._pan_by(by)
+	camera._apply(1.0)
+	var now: Vector2 = camera.unproject_position(point)
+
+	var moved: Vector2 = now - was
+	var off: float = (moved - by).length()
+	if off < 2.0:
+		print("  ok    sliding moves the model with the pointer, "
+			+ "%.0f px for %.0f" % [moved.length(), by.length()])
+	else:
+		_failures += 1
+		print("  FAIL  a %.0f px drag moved the model %.0f px"
+			% [by.length(), moved.length()])

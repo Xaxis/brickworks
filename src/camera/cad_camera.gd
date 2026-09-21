@@ -223,7 +223,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMagnifyGesture:
 		var pinch: InputEventMagnifyGesture = event
 		if pinch.factor > 0.0:
-			_zoom_by(1.0 / pinch.factor)
+			_zoom_by(1.0 / pinch.factor, pinch.position)
 		return
 
 	if event is InputEventMouseButton:
@@ -244,7 +244,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					_zoom_by(1.0 / zoom_step
 						if button.button_index == MOUSE_BUTTON_WHEEL_UP
-						else zoom_step)
+						else zoom_step, button.position)
 			MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT:
 				if button.pressed:
 					_pan_by(Vector2(WHEEL_PAN * (
@@ -299,18 +299,62 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Slide the view in its own plane, by a movement in screen pixels.
 ##
-## Scaled by how far away the camera is, so the model keeps pace with
-## the pointer at any zoom rather than crawling when you are close and
-## flying when you are far.
+## The model keeps pace with the pointer exactly: drag a stud a hundred
+## pixels and it is a hundred pixels further along. That is not a
+## nicety — a pan that outruns the cursor is the other half of why a
+## viewport feels wrong, and this one was running at about one and
+## three quarter times the pointer because the constant was picked by
+## eye.
+##
+## How far a pixel is in the world depends on the field of view, the
+## height of the window and how far away the plane is, so it is worked
+## out from those rather than guessed.
 func _pan_by(by: Vector2) -> void:
-	var scale: float = _target_distance * 0.0016 * pan_speed
+	var scale: float = _ldu_per_pixel() * pan_speed
 	_target_focus -= global_transform.basis.x * by.x * scale
 	_target_focus += global_transform.basis.y * by.y * scale
 
 
-func _zoom_by(factor: float) -> void:
-	_target_distance = clampf(
-		_target_distance * factor, min_distance, max_distance)
+## World units to one pixel, at the plane the focus sits in.
+func _ldu_per_pixel() -> float:
+	var height: float = 900.0
+	if is_inside_tree():
+		height = maxf(get_viewport().get_visible_rect().size.y, 1.0)
+	return 2.0 * _target_distance * tan(deg_to_rad(fov) * 0.5) / height
+
+
+## Move in or out, towards whatever is under the pointer.
+##
+## Zooming towards the middle of the screen is the thing that makes a
+## viewport feel wrong without anyone being able to say why: you point
+## at the corner of the model you want a closer look at, zoom, and it
+## slides off the edge, so every zoom costs a pan to put right.
+##
+## Keeping the point under the pointer still is what every CAD viewport
+## does, and for an orbit camera it is one line: the focus moves towards
+## that point by the same proportion the distance shrinks.
+func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
+	var was: float = _target_distance
+	_target_distance = clampf(was * factor, min_distance, max_distance)
+	if at_screen.x == INF or not is_inside_tree():
+		return
+	var actual: float = _target_distance / was
+	if is_equal_approx(actual, 1.0):
+		return
+
+	# Where the pointer is aiming, on the plane the focus sits in.
+	var forward: Vector3 = (focus - global_position)
+	if forward.length_squared() <= 0.0:
+		return
+	forward = forward.normalized()
+	var origin: Vector3 = project_ray_origin(at_screen)
+	var towards: Vector3 = project_ray_normal(at_screen)
+	var facing: float = towards.dot(forward)
+	if absf(facing) < 0.0001:
+		return
+	var aim: Vector3 = origin + towards * (
+		(focus - origin).dot(forward) / facing)
+	_target_focus = aim + (_target_focus - aim) * actual
 
 
 ## How far apart the first two fingers are.
