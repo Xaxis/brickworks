@@ -18,13 +18,12 @@ class_name ControlsHint
 extends FlowContainer
 
 
-## Is the window narrow enough that this is a phone rather than a laptop
-## that happens to have a touchscreen?
-##
-## In points, not pixels: a retina window reports twice the pixels and
-## would read as roomy at any size.
-static func _is_narrow() -> bool:
-	return Room.across() < 720.0
+
+
+
+## What the modifier is called here.
+static func _hold() -> String:
+	return "Cmd" if OS.get_name() == "macOS" else "Ctrl"
 
 
 ## One control: what to press, and what it does.
@@ -53,10 +52,12 @@ static func bindings() -> Array[Binding]:
 	# worse than no strip: it reads as a list of things the app will not
 	# let you do.
 	#
-	# Narrow, not merely touch-capable. Every laptop with a touchscreen
-	# reports one, and hiding sixteen keyboard shortcuts from somebody
-	# sitting at a keyboard is the same mistake in the other direction.
-	if DisplayServer.is_touchscreen_available() and _is_narrow():
+	# The same question the round buttons ask, so the strip and the
+	# buttons cannot disagree. It was a different one, with a different
+	# threshold, and a phone held sideways got the buttons and the
+	# keyboard list — sixteen shortcuts for keys it does not have,
+	# beside four controls it was not told about.
+	if TouchTools.wanted():
 		return [
 			Binding.new(["tap"], "place"),
 			Binding.new(["hold"], "remove"),
@@ -93,7 +94,10 @@ static func bindings() -> Array[Binding]:
 		Binding.new(["/"], "search"),
 		Binding.new(["F"], "frame"),
 		Binding.new(["O"], "square on"),
-		Binding.new(["⌘Z"], "undo"),
+		# The command symbol, U+2318, is not in the font this ships, so
+		# it drew as an empty box followed by a Z — which has been on
+		# screen since the strip was written. Words render everywhere.
+		Binding.new(["%s-Z" % _hold()], "undo"),
 	]
 
 
