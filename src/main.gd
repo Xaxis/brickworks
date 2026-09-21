@@ -345,12 +345,16 @@ func _build_ui() -> void:
 	# BrickWorld numbers from one again after a clear — so without this
 	# those ids name the new model's bricks and the next design deletes
 	# them. Same family as the undo bug, through a different door.
+	# Forget, not clear. By the time either of these fires the world has
+	# already been replaced, and the ids the assistant is holding name
+	# bricks of the new model — so clearing removes the first few bricks
+	# of whatever was just opened.
 	_bar.cleared.connect(func() -> void:
-		_assistant.clear_built()
+		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed())
 	_bar.opened.connect(func(_bricks: int) -> void:
-		_assistant.clear_built()
+		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed()
 		_camera.frame(_world.model_bounds()))
@@ -735,7 +739,7 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	_world.clear()
 	_builder.lattice.clear()
 	_builder.forget_history()
-	_assistant.clear_built()
+	_assistant.forget_built()
 	_store.scenery.clear()
 
 	var part: Lbm.PartMesh = _library.mesh_for(Mosaic.PIXEL_PART)

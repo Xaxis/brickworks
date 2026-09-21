@@ -190,6 +190,7 @@ export default async function handler(request, response) {
   // it, instead of showing a spinner for a minute and then everything
   // at once.
   const wantsStream = body.stream === true;
+  let streaming = false;
 
   const payload = {
     model,
@@ -214,6 +215,7 @@ export default async function handler(request, response) {
     });
 
     if (wantsStream && upstream.ok && upstream.body) {
+      streaming = true;
       response.setHeader("content-type", "text/event-stream");
       response.setHeader("cache-control", "no-cache, no-transform");
       response.setHeader("connection", "keep-alive");
@@ -237,6 +239,17 @@ export default async function handler(request, response) {
     response.setHeader("content-type", "application/json");
     return response.status(upstream.status).send(text);
   } catch (error) {
+    // Once the stream has started, the status and headers are already
+    // on the wire. Trying to send a 502 then throws
+    // ERR_HTTP_HEADERS_SENT and the response is never ended at all, so
+    // the client sits there until its own timeout rather than being
+    // told anything. Closing the connection is the only signal left,
+    // and the client already treats a stream that stops part way
+    // through as a failure to retry.
+    if (streaming) {
+      try { response.end(); } catch {}
+      return;
+    }
     return response
       .status(502)
       .json({ error: `could not reach the model: ${String(error)}` });

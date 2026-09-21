@@ -26,6 +26,9 @@ const MAX_TURNS := 45
 const MAX_REPAIRS := 3
 ## How many times to ask again when a turn ends having built nothing.
 const MAX_NUDGES := 2
+## Beyond this a list of studs is not an answer, it is a wall of text.
+## A 16x16 baseplate has 256 of them.
+const MOST_STUDS := 40
 
 ## Studs and plates, as the model speaks them.
 const STUD := 20.0
@@ -79,6 +82,13 @@ var _nudges: int = 0
 ## its work rather than failed to start it.
 var _edited: bool = false
 var _shot: ModelShot
+## True once this turn has put a brick of its own on the baseplate.
+var _sketching: bool = false
+## The reader of the answer now arriving, so that cancelling can stop
+## it. cancel() used to stop _http, which during a streamed turn holds
+## nothing at all — so the stream kept arriving and its bricks deleted
+## the model that cancel() had just put back.
+var _streaming: Streamer
 var _pending: Model = null
 ## Names the conversation for the proxy's monthly budget. One design is
 ## a dozen round trips and sometimes forty, so the turns have to be
@@ -253,11 +263,15 @@ func revise(instruction: String) -> void:
 
 
 func cancel() -> void:
-	if _busy:
-		_http.cancel_request()
-		_busy = false
-		_restore()
-		finished.emit(false, "cancelled")
+	if not _busy:
+		return
+	_busy = false
+	_http.cancel_request()
+	if _streaming != null:
+		_streaming.stop()
+		_streaming = null
+	_restore()
+	finished.emit(false, "cancelled")
 
 
 func _start(text: String) -> void:
@@ -382,20 +396,38 @@ func _send() -> void:
 		var reader := Streamer.new()
 		add_child(reader)
 		var scanner := Scanner.new()
-		var sketching: bool = false
+		# A field, not a local captured by the lambda below.
+		#
+		# GDScript lambdas capture by value and copy the capture onto
+		# the stack on every call, so an assignment inside one never
+		# survives it. Written as a local, this flag read false on every
+		# fragment, so _begin_sketch ran for every brick and took away
+		# the one before it: the live build showed exactly one brick at
+		# a time, all the way through, and the count reported to the
+		# status bar was always 1. Nothing errored, and the finished
+		# model was correct — only the feature this was written for
+		# never happened.
+		_sketching = false
 		reader.fragment.connect(func(tool: String, piece: String) -> void:
 			if tool != "submit_design" and tool != "check_design":
 				return
 			for raw: Dictionary in scanner.feed(piece):
 				if not raw.has("part"):
 					continue
-				if not sketching:
-					sketching = true
+				if not _sketching:
+					_sketching = true
 					_begin_sketch()
 				_sketch_one(Placement.from_dict(raw)))
+		_streaming = reader
 		reader.run(url, headers, JSON.stringify(body))
 		var streamed: Array = await reader.done
+		_streaming = null
 		reader.queue_free()
+
+		# Cancelled while it was reading. Everything below would undo
+		# what cancel() has already put back.
+		if not _busy:
+			return
 
 		# A connection held open for three minutes gets dropped
 		# sometimes, and losing a whole design to one is not a trade
@@ -888,7 +920,7 @@ func _with_a_look(said: String, ask: String,
 		_shot = ModelShot.new()
 		add_child(_shot)
 
-	var picture: Dictionary = await _shot.block(world, from)
+	var picture: Dictionary = await _shot.block(world, from, scenery)
 	if picture.is_empty():
 		var drawn: String = "%s\n%s" % [
 			ModelView.draw(world, library, "top", scenery),
@@ -934,6 +966,10 @@ func _attachment_points(args: Dictionary) -> String:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null:
 			return "There is no brick numbered %d." % brick_id
+		if scenery.has(brick_id):
+			return ("Brick %d is the baseplate, not part of the model. "
+				% brick_id + "It has a stud everywhere; build on it by "
+				+ "putting parts at y=0.")
 		at = brick.transform
 		part_id = brick.part_id
 		label = "brick %d (%s)" % [brick_id, part_id]
@@ -978,6 +1014,10 @@ func _attachment_points(args: Dictionary) -> String:
 				Placement._num(corner.z / STUD), face])
 		found += 1
 
+	if found > MOST_STUDS:
+		return ("%s has %d studs, which is too many to list. " % [label, found]
+			+ "It is a flat field of them: anything sitting on top goes "
+			+ "at whole studs across and at the height of its top face.")
 	if found == 0:
 		return ("%s has no studs — nothing clutches to it. " % label
 			+ "Tiles and most sloped surfaces are like this.")
@@ -1037,7 +1077,7 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 ## two sources of truth for one fact, and the one that drifts is always
 ## the one nobody is looking at.
 func _describe_world() -> String:
-	if world == null or world.brick_count() == 0:
+	if world == null or world.brick_count() <= scenery.size():
 		return "The baseplate is empty. Nothing is built yet."
 
 	var mine: Dictionary = {}
@@ -1051,6 +1091,14 @@ func _describe_world() -> String:
 	var counted: int = 0
 
 	for brick: BrickWorld.Brick in world.bricks():
+		# The baseplate is a brick like any other and is 32 studs
+		# across. Listing it gave the model a part with a brick number,
+		# a negative y and a bounding box wider than anything on it —
+		# and then invited it to move or remove the workspace. Both
+		# _snapshot and _model_from_world already skip scenery; this
+		# was the one that did not.
+		if scenery.has(brick.id):
+			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
@@ -1579,6 +1627,23 @@ func _apply(model: Model, finished: bool = true) -> void:
 ## How many bricks in the world the assistant considers its own.
 func built_count() -> int:
 	return _placed_ids.size()
+
+
+## Stop claiming any of it, without touching the world.
+##
+## For when the world has already been replaced. BrickWorld numbers from
+## one again after a clear, so ids the assistant is holding now name
+## bricks of the new model — and clear_built, called at that moment,
+## does not remove what the assistant built. It removes the first N
+## bricks of whatever was just opened.
+##
+## Same family as the undo bug and the one the comment beside the Clear
+## handler describes; the Open handler had the call in the wrong place
+## and so was an instance of it rather than a fix for it.
+func forget_built() -> void:
+	_placed_ids = PackedInt64Array()
+	_sketched_ids = PackedInt64Array()
+	_before.clear()
 
 
 func clear_built() -> void:

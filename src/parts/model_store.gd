@@ -195,8 +195,36 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 
 	var flattened: Array = model.flatten(library.parts)
 	if flattened.is_empty():
-		return {"placed": 0, "missing": 0,
+		return {"placed": 0, "missing": 0, "waiting": 0,
 			"error": "there are no parts in that file"}
+
+	# Everything decided before anything is destroyed.
+	#
+	# Tearing the world down and then discovering that not one part
+	# could be placed leaves the person with an empty baseplate where
+	# their model was, and — because the count was never checked — a
+	# message saying it opened.
+	var known: Array = []
+	var missing: Dictionary = {}
+	var waiting: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if not library.parts.has(placement.part_id):
+			missing[placement.part_id] = true
+		elif not library.is_resident(placement.part_id):
+			# In the catalogue but not yet fetched, which on the web is
+			# most of it. Counted apart from missing, because asking for
+			# it and trying again is an answer and "this part does not
+			# exist" is not.
+			waiting[placement.part_id] = true
+			known.append(placement)
+		else:
+			known.append(placement)
+
+	if known.is_empty():
+		return {"placed": 0, "missing": missing.size(), "waiting": 0,
+			"error": "none of the %d parts in that file are in the library"
+				% missing.size()}
 
 	world.clear()
 	builder.lattice.clear()
@@ -204,20 +232,21 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	scenery.clear()
 
 	var placed: int = 0
-	var missing: Dictionary = {}
-	for item: Variant in flattened:
+	for item: Variant in known:
 		var placement: LdrModel.Placement = item
-		if not library.parts.has(placement.part_id):
-			missing[placement.part_id] = true
-			continue
 		var brick_id: int = world.add_brick(
 			placement.part_id, placement.color_code, placement.transform)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part_id, placement.transform)
 			placed += 1
+	# Ask for the ones that were not to hand, so a second attempt lands
+	# them rather than losing them for good.
+	for part_id: String in waiting:
+		library.request_mesh(part_id, true)
 
 	loaded.emit(name, placed)
-	return {"placed": placed, "missing": missing.size(), "error": ""}
+	return {"placed": placed, "missing": missing.size(),
+		"waiting": waiting.size(), "error": ""}
 
 
 ## The model as LDraw text, for export or for handing to something else.

@@ -94,14 +94,28 @@ func _initialize() -> void:
 	if _failures == 0:
 		print("  ok    every part, colour and transform is unchanged")
 
-	# And a file that is not one.
-	var junk: Dictionary = store.open_text("hello, this is not a model", "x")
-	if str(junk["error"]).is_empty():
-		_failures += 1
-		print("  FAIL  opened something that was not a model")
-	else:
-		print("  ok    something that is not a model is refused: %s"
-			% junk["error"])
+	# And a file that is not one. What matters is not only that it is
+	# refused but that the model on screen is still there afterwards:
+	# tearing the world down and then discovering the file was no good
+	# leaves an empty baseplate where somebody's work was.
+	var standing: int = world.brick_count()
+	for bad: Array in [
+		["hello, this is not a model", "not a model at all"],
+		["0 Nothing\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 9999999.dat\n",
+			"parts that do not exist"],
+	]:
+		var junk: Dictionary = store.open_text(str(bad[0]), "x")
+		if str(junk["error"]).is_empty():
+			_failures += 1
+			print("  FAIL  opened a file of %s" % bad[1])
+		elif world.brick_count() != standing:
+			_failures += 1
+			print("  FAIL  a file of %s was refused but took the model "
+				% bad[1] + "with it (%d bricks left of %d)"
+				% [world.brick_count(), standing])
+		else:
+			print("  ok    a file of %s is refused, and the model stands: %s"
+				% [bad[1], junk["error"]])
 
 	print("")
 	if _failures == 0:

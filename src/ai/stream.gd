@@ -45,6 +45,19 @@ static func split_url(url: String) -> Dictionary:
 	return {"host": authority, "port": port, "tls": tls, "path": path}
 
 
+## Stop reading and give nothing back.
+##
+## The caller is awaiting [signal done]; leaving it awaiting for ever
+## would leak the turn, so a stop is reported like any other failure and
+## whoever asked for it is expected to have already decided what the
+## model should look like.
+func stop() -> void:
+	_stopped = true
+
+
+var _stopped: bool = false
+
+
 func run(url: String, headers: PackedStringArray, body: String) -> void:
 	var where: Dictionary = split_url(url)
 	var client := HTTPClient.new()
@@ -58,6 +71,9 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 			HTTPClient.STATUS_CONNECTING, HTTPClient.STATUS_RESOLVING]:
 		client.poll()
 		await get_tree().process_frame
+		if _stopped:
+			_fail("cancelled")
+			return
 		if Time.get_ticks_msec() > deadline:
 			_fail("timed out connecting to %s" % where["host"])
 			return
@@ -75,6 +91,9 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 	while client.get_status() == HTTPClient.STATUS_REQUESTING:
 		client.poll()
 		await get_tree().process_frame
+		if _stopped:
+			_fail("cancelled")
+			return
 		if Time.get_ticks_msec() > deadline:
 			_fail("timed out waiting for an answer")
 			return
@@ -105,9 +124,22 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 		return
 
 	var reader := Reader.new()
-	var pending: String = ""
+	# Kept as bytes rather than decoded chunk by chunk. A character
+	# outside ASCII is two to four bytes and the network splits where it
+	# likes, so decoding each chunk on its own turns any character
+	# unlucky enough to straddle a boundary into a replacement
+	# character — in the middle of the model's prose, or of a part
+	# number, and there is no way to tell afterwards.
+	#
+	# Events are separated by a blank line, and a newline byte cannot
+	# appear inside a multi-byte character, so splitting on bytes and
+	# decoding whole events is safe.
+	var pending := PackedByteArray()
 	deadline = _in(QUIET_SECONDS)
 	while client.get_status() == HTTPClient.STATUS_BODY:
+		if _stopped:
+			_fail("cancelled")
+			return
 		client.poll()
 		var piece: PackedByteArray = client.read_response_body_chunk()
 		if piece.is_empty():
@@ -117,24 +149,42 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 				return
 			continue
 		deadline = _in(QUIET_SECONDS)
-		pending += piece.get_string_from_utf8()
-		# Events are separated by a blank line. Anything after the last
-		# one is half an event and waits for the rest of itself.
-		var cut: int = pending.rfind("\n\n")
+		pending.append_array(piece)
+		# Anything after the last blank line is half an event and waits
+		# for the rest of itself.
+		var cut: int = _last_break(pending)
 		if cut < 0:
 			continue
-		for block: String in pending.substr(0, cut).split("\n\n", false):
+		for block: String in pending.slice(0, cut) \
+				.get_string_from_utf8().split("\n\n", false):
 			_feed(reader, block)
-		pending = pending.substr(cut + 2)
+		pending = pending.slice(cut + 2)
 
-	for block: String in pending.split("\n\n", false):
+	for block: String in pending.get_string_from_utf8().split("\n\n", false):
 		_feed(reader, block)
 
-	if not reader.started:
-		_fail("the answer was empty")
+	# Finished, not merely started.
+	#
+	# The test used to be "did a message_start arrive", which is true a
+	# second into every request — so a connection dropped three minutes
+	# later came back as a successful HTTP 200 whose message had no
+	# content at all. That skipped the retry that exists for exactly
+	# this, and put an assistant message with an empty content array
+	# into the transcript, which the API refuses on the next turn and on
+	# every turn after it.
+	if not reader.finished:
+		_fail("the answer stopped part way through")
 		return
 	done.emit([HTTPRequest.RESULT_SUCCESS, code, reply_headers,
 		JSON.stringify(reader.message).to_utf8_buffer()])
+
+
+## Where the last blank line is, in bytes. -1 when there is not one yet.
+static func _last_break(bytes: PackedByteArray) -> int:
+	for n: int in range(bytes.size() - 2, -1, -1):
+		if bytes[n] == 10 and bytes[n + 1] == 10:
+			return n
+	return -1
 
 
 func _feed(reader: Reader, block: String) -> void:
@@ -170,6 +220,9 @@ func _fail(why: String) -> void:
 class Reader extends RefCounted:
 	var message: Dictionary = {}
 	var started: bool = false
+	## Set only by message_stop. What tells a complete answer from a
+	## connection that died in the middle of one.
+	var finished: bool = false
 	var _blocks: Array = []
 	## Index -> the tool arguments so far, as text. They arrive as JSON
 	## in fragments and are only parseable once the block closes.
@@ -216,8 +269,13 @@ class Reader extends RefCounted:
 					message["usage"] = event["usage"]
 			"message_stop":
 				message["content"] = _blocks
+				finished = true
 			"error":
+				# Not finished: an error event means the answer is not
+				# coming, and saying so is what makes the caller retry
+				# rather than carry on with half a transcript.
 				message = {"error": event.get("error", {})}
+				started = false
 		return {}
 
 	func _delta(event: Dictionary) -> Dictionary:

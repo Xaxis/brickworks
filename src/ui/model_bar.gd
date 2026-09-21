@@ -194,11 +194,13 @@ func _import() -> void:
 				return
 			_name.text = file_name.get_basename().capitalize()
 			opened.emit(int(result["placed"]))
+			var note: String = "opened %d parts" % int(result["placed"])
 			if int(result["missing"]) > 0:
-				_say("opened %d parts — %d are not in the library"
-					% [int(result["placed"]), int(result["missing"])])
-			else:
-				_say("opened %d parts" % int(result["placed"])))
+				note += " — %d are not in the library" % int(result["missing"])
+			if int(result.get("waiting", 0)) > 0:
+				note += " — %d are still arriving, open it again in a moment" \
+					% int(result["waiting"])
+			_say(note))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()
 

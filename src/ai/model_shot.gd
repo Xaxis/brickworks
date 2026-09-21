@@ -64,7 +64,10 @@ static func possible() -> bool:
 func _build() -> void:
 	_viewport = SubViewport.new()
 	_viewport.size = Vector2i(SIZE, SIZE)
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Drawing only while a picture is being taken. Left on, the app
+	# renders a second full copy of the model every frame for the rest
+	# of the session, for nobody.
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_viewport.msaa_3d = Viewport.MSAA_4X
 
 	# A world of its own, with a copy of the model in it.
@@ -114,17 +117,26 @@ func _build() -> void:
 ## step: a copy that is updated by listening to the real one is a second
 ## source of truth, and the one nobody is looking at is the one that
 ## drifts.
-func _restage(world: BrickWorld) -> void:
+func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 	_stage.clear()
+	var box := AABB()
+	var first: bool = true
 	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id):
+			continue
 		_stage.add_brick(brick.part_id, brick.color_code, brick.transform)
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var here: AABB = (brick.transform * part.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
+	return box
 
 
-func take(world: BrickWorld, from: String) -> Image:
+func take(world: BrickWorld, from: String,
+		skip: Dictionary = {}) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
-		return null
-	var bounds: AABB = world.model_bounds()
-	if bounds.size.length() <= 0.0:
 		return null
 
 	if _viewport == null:
@@ -136,7 +148,17 @@ func take(world: BrickWorld, from: String) -> Image:
 		# first picture of a session is reliably of nothing.
 		for _n: int in 4:
 			await get_tree().process_frame
-	_restage(world)
+
+	# Framed on the model, with the workspace left out.
+	#
+	# The baseplate is a brick like any other and is 32 studs across.
+	# Photographing the whole world put it in every picture, filling the
+	# frame, and the model the picture was taken of was a few percent of
+	# it in one corner — so the assistant was shown, over and over, a
+	# large grey square.
+	var bounds: AABB = _restage(world, skip)
+	if bounds.size.length() <= 0.0:
+		return null
 
 	var direction: Vector3 = ANGLES.get(from, ANGLES["corner"]).normalized()
 	var centre: Vector3 = bounds.get_center()
@@ -189,14 +211,16 @@ func take(world: BrickWorld, from: String) -> Image:
 	# about twenty-five frames and every one after it takes six,
 	# because the first one is also compiling shaders. Six gave a blank
 	# picture once per session — always the first, always silently.
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	var frames: int = 0
+	var taken: Image = null
 	while frames < MOST_FRAMES:
 		# Re-staged every time round, not once before the loop. The
 		# viewport hands back the state it had at the previous staging,
 		# so a model staged once and then waited on comes back as
 		# whatever was there before it — which, the first time, is
 		# nothing.
-		_restage(world)
+		_restage(world, skip)
 		_camera.current = true
 		for _n: int in FRAMES_TO_DRAW:
 			await get_tree().process_frame
@@ -210,8 +234,10 @@ func take(world: BrickWorld, from: String) -> Image:
 		# the model is worse than none — it is a confident answer about
 		# a model nobody looked at.
 		if image != null and not _is_blank(image):
-			return image
-	return null
+			taken = image
+			break
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	return taken
 
 
 ## Whether every pixel sampled is the same. Sampled, not walked: a
@@ -230,8 +256,9 @@ static func _is_blank(image: Image) -> bool:
 ##
 ## Returns an empty dictionary when there is no picture to give, which
 ## the caller reads as "fall back to the letters".
-func block(world: BrickWorld, from: String) -> Dictionary:
-	var image: Image = await take(world, from)
+func block(world: BrickWorld, from: String,
+		skip: Dictionary = {}) -> Dictionary:
+	var image: Image = await take(world, from, skip)
 	if image == null:
 		return {}
 	var bytes: PackedByteArray = image.save_png_to_buffer()
