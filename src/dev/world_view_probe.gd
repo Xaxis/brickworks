@@ -135,6 +135,47 @@ func _initialize() -> void:
 		proxied.has("design_id"))
 	_check("...and leaves thinking to the proxy", not proxied.has("thinking"))
 
+	# And the drawing it gets back has to be a drawing — the whole point
+	# is that a shape mistake is visible in it.
+	world.clear()
+	builder.lattice.clear()
+	# A wall two studs thick and four tall, with a gap in the middle:
+	# the notch must show.
+	for level: int in 4:
+		for column: int in 5:
+			if level >= 1 and level <= 2 and column == 2:
+				continue
+			var at := Transform3D(Basis.IDENTITY,
+				Vector3(column * 20.0 + 10.0, level * 24.0 + 24.0, 10.0))
+			var id: int = world.add_brick("3005", 4, at)
+			builder.register(id, "3005", at)
+
+	var front: String = ModelView.draw(world, library, "front")
+	var rows: PackedStringArray = front.split("\n")
+	var drawn := PackedStringArray()
+	for row: String in rows:
+		if row.length() > 4 and (row.contains(".") or row.contains("a")):
+			if not row.contains("="):
+				drawn.append(row)
+	_check("the front view has %d lines of drawing" % drawn.size(),
+		drawn.size() >= 10)
+	var has_gap: bool = false
+	for row: String in drawn:
+		var inside: String = row.substr(2, row.length() - 4)
+		if inside.contains("."):
+			has_gap = true
+	_check("a hole in the wall shows as a hole", has_gap)
+	_check("the legend names the colour", front.contains("Red"))
+	_check("it says which way is up", front.to_lower().contains("up the page"))
+
+	var plan: String = ModelView.draw(world, library, "top")
+	_check("a plan from above says so", plan.to_lower().contains("looking down"))
+	_check("an unknown side is refused",
+		ModelView.draw(world, library, "sideways").contains("No view"))
+	world.clear()
+	_check("an empty baseplate draws nothing",
+		ModelView.draw(world, library, "front").contains("Nothing is built"))
+
 	print("")
 	print("%d failed" % _failures if _failures
 		else "the assistant reads back exactly what it writes")

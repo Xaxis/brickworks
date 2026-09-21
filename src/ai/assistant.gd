@@ -479,6 +479,13 @@ func _run_tool(block: Dictionary) -> String:
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world()
+		"view_model":
+			var from: String = str(args.get("from", "front"))
+			progress.emit("looking at the %s" % from)
+			# Drawn from what is in the world, which during a design is
+			# the last draft it checked — so this shows its own work,
+			# not a hypothetical.
+			return ModelView.draw(world, library, from, scenery)
 		"submit_design":
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks" % _pending.placements.size())
@@ -936,6 +943,24 @@ placed and leave out of the new submission is removed.
 Always use search_parts before using a part number you are not certain \
 of. A guessed number is not a part and the design will be rejected.
 
+LOOK AT IT
+check_design tells you a model is legal. view_model tells you what it
+is, which is the thing you are actually being judged on — a car that
+holds together and does not look like a car is a failure, and it is a
+failure you cannot see from a brick count.
+
+Look at least twice: once when the main shape is laid out, while
+changing it is cheap, and once before you submit. Choose the side that
+would show the mistake — a car from the left, a tower from the front, a
+mosaic or a floor plan from the top.
+
+Read the drawing as a drawing. If the roof line is flat where it should
+slope, if one end is taller than the other when they should match, if a
+window is a stud off centre, if the silhouette has a notch in it you
+did not intend — that is what looking is for. Then fix it and carry on.
+Do not look after every brick; each look costs a turn and you have a
+limited number.
+
 Use check_design on the whole model, or on a substantial part of it. \
 Checking three bricks tells you almost nothing and costs a turn; you \
 have a limited number of them and running out means nothing gets built. \
@@ -1032,6 +1057,28 @@ func _tools() -> Array:
 			"input_schema": {
 				"type": "object",
 				"properties": {},
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "view_model",
+			"description": ("Look at what is on the baseplate, drawn as "
+				+ "text: a plan from above or an elevation from any "
+				+ "side, each square a stud across and a plate tall, "
+				+ "lettered by colour. This is the only way to see "
+				+ "whether the thing you are building looks like the "
+				+ "thing you were asked for. check_design tells you a "
+				+ "model is legal; this tells you what it is."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"from": {
+						"type": "string",
+						"enum": ["top", "front", "back", "left", "right"],
+						"description": "which side to look from",
+					},
+				},
+				"required": ["from"],
 				"additionalProperties": false,
 			},
 		},
