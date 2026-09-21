@@ -39,7 +39,20 @@ import {
   verify,
 } from "./_auth.js";
 
-const ALLOWED_MODELS = new Set(["claude-opus-5", "claude-sonnet-5"]);
+// What each model will actually accept, measured against the API
+// rather than assumed. Haiku refuses adaptive thinking and refuses the
+// effort parameter, both with a 400, so forwarding either of them for
+// it turns "choose the quick model" into "break the assistant".
+//
+// The same table lives in src/ai/brain.gd for the client. Two copies
+// because the two sides cannot import from each other, and the copy
+// that matters is whichever one is about to send a request.
+const MODELS = {
+  "claude-opus-5": { adaptive: true, effort: true },
+  "claude-sonnet-5": { adaptive: true, effort: true },
+  "claude-haiku-4-5-20251001": { adaptive: false, effort: false },
+};
+const EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
 const MAX_TOKENS = 16000;
 const MAX_BODY_BYTES = 512 * 1024;
 const WINDOW_MS = 60_000;
@@ -154,7 +167,7 @@ export default async function handler(request, response) {
   }
 
   const model = body.model || "claude-opus-5";
-  if (!ALLOWED_MODELS.has(model)) {
+  if (!MODELS[model]) {
     return response.status(400).json({ error: `model ${model} is not allowed here` });
   }
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
@@ -192,15 +205,23 @@ export default async function handler(request, response) {
   const wantsStream = body.stream === true;
   let streaming = false;
 
+  const can = MODELS[model];
   const payload = {
     model,
     max_tokens: Math.min(Number(body.max_tokens) || 8000, MAX_TOKENS),
     messages: body.messages,
-    thinking: { type: "adaptive" },
   };
+  if (can.adaptive) payload.thinking = { type: "adaptive" };
   if (body.system) payload.system = body.system;
   if (Array.isArray(body.tools)) payload.tools = body.tools;
-  if (body.output_config) payload.output_config = body.output_config;
+
+  // Taken apart and put back rather than forwarded whole: whatever the
+  // client sent is about to be charged to this account, and an effort
+  // the model does not take is a 400 that costs a design.
+  const effort = body.output_config && body.output_config.effort;
+  if (can.effort && EFFORTS.has(effort)) {
+    payload.output_config = { effort };
+  }
   if (wantsStream) payload.stream = true;
 
   try {

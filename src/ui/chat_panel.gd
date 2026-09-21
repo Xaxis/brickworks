@@ -37,6 +37,12 @@ var _footer: HBoxContainer
 var _meter: Label
 var _spinner_at: int = 0
 var _working: bool = false
+var _settings: HBoxContainer
+var _which: OptionButton
+var _how_hard: OptionButton
+## What the last design cost, kept so it survives the status line being
+## overwritten by whatever happens next.
+var _bill: String = ""
 
 
 func _ready() -> void:
@@ -117,6 +123,8 @@ func _build() -> void:
 	_send.pressed.connect(_on_send)
 	_composer.add_child(_send)
 
+	_build_settings()
+
 	_footer = HBoxContainer.new()
 	_footer.add_theme_constant_override("separation", 8)
 	_composer.add_child(_footer)
@@ -158,12 +166,95 @@ func _build() -> void:
 	root.add_child(_key_form)
 
 
+## Which Claude, and how hard it thinks.
+##
+## A row rather than a menu behind a gear, because both settings change
+## what a design costs by a factor of ten and a setting that changes the
+## bill should not be hidden.
+##
+## Effort disappears entirely on a model that does not take it. Showing
+## it greyed out would be showing a control that does nothing, and
+## Haiku refuses the parameter outright — so the honest thing is for
+## there to be no control to reach for.
+func _build_settings() -> void:
+	_settings = HBoxContainer.new()
+	_settings.add_theme_constant_override("separation", 6)
+	_composer.add_child(_settings)
+
+	_which = OptionButton.new()
+	_which.add_theme_font_size_override("font_size", 11)
+	_which.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_which.tooltip_text = "Which Claude designs for you"
+	for choice: Brain.Choice in Brain.all():
+		_which.add_item(choice.name)
+		_which.set_item_metadata(_which.item_count - 1, choice.id)
+		_which.set_item_tooltip(_which.item_count - 1, choice.blurb)
+	_which.item_selected.connect(func(at: int) -> void:
+		Brain.choose(str(_which.get_item_metadata(at)))
+		_show_settings())
+	_settings.add_child(_which)
+
+	_how_hard = OptionButton.new()
+	_how_hard.add_theme_font_size_override("font_size", 11)
+	_how_hard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_how_hard.tooltip_text = ("How long it thinks before answering. "
+		+ "More is better and slower and dearer.")
+	for level: String in Brain.EFFORTS:
+		_how_hard.add_item(level)
+	_how_hard.item_selected.connect(func(at: int) -> void:
+		Brain.set_effort(Brain.EFFORTS[at]))
+	_settings.add_child(_how_hard)
+
+	_show_settings()
+
+
+## Put the row in step with what is saved. Called after a change as
+## well as at the start, because choosing a model can take the effort
+## control away.
+func _show_settings() -> void:
+	if _which == null:
+		return
+	var chosen: String = Brain.chosen()
+	for n: int in _which.item_count:
+		if str(_which.get_item_metadata(n)) == chosen:
+			_which.selected = n
+	var choice: Brain.Choice = Brain.find(chosen)
+	_how_hard.visible = choice.effort
+	if choice.effort:
+		_how_hard.selected = maxi(Brain.EFFORTS.find(Brain.effort()), 0)
+
+
 func bind(to: Assistant) -> void:
 	assistant = to
 	assistant.said.connect(_on_said)
 	assistant.progress.connect(_on_progress)
 	assistant.finished.connect(_on_finished)
 	assistant.built.connect(_on_built)
+	assistant.spent.connect(_on_spent)
+
+
+## What the design that just ran cost.
+##
+## Tokens and money both. The tokens are what was actually spent and
+## are true for ever; the money is this app's arithmetic on published
+## prices, which go out of date. Showing only the money would be
+## claiming more precision than there is, and showing only the tokens
+## would be answering a question nobody asked.
+##
+## Arrives before [signal finished], so it is stored rather than
+## written straight to the status line — the line is about to be
+## overwritten by whatever happened.
+func _on_spent(model_id: String, tokens: Brain.Spend) -> void:
+	var choice: Brain.Choice = Brain.find(model_id)
+	var cached: String = (" · %s of it cached"
+		% Brain.in_tokens(tokens.cached) if tokens.cached > 0 else "")
+	_bill = "%s · %s in, %s out%s · about %s" % [
+		choice.name,
+		Brain.in_tokens(tokens.total_in()),
+		Brain.in_tokens(tokens.made),
+		cached,
+		Brain.in_money(Brain.cost(model_id, tokens)),
+	]
 
 
 ## Hand the panel the account it should follow. Optional: a build with no
@@ -377,11 +468,19 @@ func _on_finished(ok: bool, summary: String) -> void:
 	_working = false
 	_send.disabled = false
 	_send.text = "Build it"
+	# The bill goes in either way. A design that failed after three
+	# repairs is the one you most want the cost of, and leaving it off
+	# would mean the only runs anyone is billed for silently are the
+	# ones that went wrong.
+	var line: String = summary
+	if not _bill.is_empty():
+		line = "%s\n%s" % [summary, _bill] if ok else _bill
+		_bill = ""
 	if ok:
-		_status.text = summary
+		_status.text = line
 	else:
 		_add(summary, _Role.NOTE)
-		_status.text = ""
+		_status.text = line if line != summary else ""
 
 
 func _process(_delta: float) -> void:

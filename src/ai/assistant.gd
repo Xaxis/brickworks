@@ -18,7 +18,9 @@ class_name Assistant
 extends Node
 
 const DEFAULT_ENDPOINT := "/api/claude"
-const MODEL := "claude-opus-5"
+## What designs when nothing has been chosen. The choosing lives in
+## [Brain], with the table of what each model will actually accept.
+const MODEL := Brain.DEFAULT_MODEL
 ## Turns, not repairs. Most of a design is looking parts up and checking
 ## work; 24 was not enough and a run ended having built nothing at all
 ## after spending its budget on three-brick experiments.
@@ -82,6 +84,14 @@ var _nudges: int = 0
 ## its work rather than failed to start it.
 var _edited: bool = false
 var _shot: ModelShot
+## Tokens this design has spent, as the API reports them. Reset per
+## instruction, because "what did that cost" is a question about the
+## thing you just asked for.
+var _spend := Brain.Spend.new()
+## The model that spent them, which is not necessarily the one chosen
+## now: somebody who changes the setting mid-design should still be
+## told what the design they ran actually cost.
+var _spent_on: String = Brain.DEFAULT_MODEL
 ## True once this turn has put a brick of its own on the baseplate.
 var _sketching: bool = false
 ## The reader of the answer now arriving, so that cancelling can stop
@@ -121,6 +131,10 @@ signal built(brick_count: int)
 ## sketch is finished, and whoever is watching should not be shown an
 ## assembly animation for something about to be replaced.
 signal sketched(brick_count: int)
+## What the finished design cost, in tokens. Emitted whether it
+## succeeded or not — a design that failed after three repairs is the
+## one you most want the bill for.
+signal spent(model_id: String, tokens: Brain.Spend)
 
 
 ## One placement, in the coordinates the model speaks.
@@ -289,6 +303,8 @@ func _start(text: String) -> void:
 	_turns = 0
 	_nudges = 0
 	_edited = false
+	_spend = Brain.Spend.new()
+	_spent_on = Brain.chosen()
 	_pending = null
 	_before = _snapshot()
 	# A new one per instruction, including a revision: asking for a
@@ -520,17 +536,24 @@ func _sketch_one(placement: Placement) -> void:
 ## Separated from _send so a probe can inspect it without a network
 ## call, which is the only way this stays fixed.
 func request_body() -> Dictionary:
+	var choice: Brain.Choice = Brain.find(Brain.chosen())
 	var body: Dictionary = {
-		"model": MODEL,
+		"model": choice.id,
 		"max_tokens": 16000,
 		"system": _system_prompt(),
 		"messages": _messages,
 		"tools": _tools(),
 	}
+	# Only where the model takes it. Haiku refuses adaptive thinking and
+	# refuses the effort parameter, each with a 400 — so sending either
+	# unconditionally turns choosing the quick model into choosing a
+	# broken assistant.
+	if choice.effort and not Brain.effort().is_empty():
+		body["output_config"] = {"effort": Brain.effort()}
 	if not key_in_use().is_empty():
-		# The proxy adds this itself, and adds it the same way for
-		# everyone; here we are the client and have to ask.
-		body["thinking"] = {"type": "adaptive"}
+		# The proxy asks for thinking itself; here we are the client.
+		if choice.adaptive:
+			body["thinking"] = {"type": "adaptive"}
 	elif account != null:
 		body["design_id"] = _design_id
 	return body
@@ -601,6 +624,8 @@ func _on_response(result: Array) -> void:
 		return
 
 	var response: Dictionary = parsed
+	if response.has("usage"):
+		_spend.add(response["usage"])
 	if response.get("stop_reason", "") == "refusal":
 		_stop(false, "the assistant declined this request")
 		return
@@ -717,6 +742,8 @@ func _stop(ok: bool, summary: String) -> void:
 	# that nothing happened.
 	if not ok and not _placed_ids.is_empty():
 		summary += " — the last version that held together is still there"
+	if not _spend.is_empty():
+		spent.emit(_spent_on, _spend)
 	finished.emit(ok, summary)
 
 
