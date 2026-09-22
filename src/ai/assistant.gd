@@ -85,6 +85,9 @@ var _repairs: int = 0
 ## finished. Read where an empty design would otherwise be blamed on the
 ## model's geometry.
 var _ran_out_of_room: bool = false
+## Sections seen so far in the reply being streamed, so a brick that
+## arrives before its section does is still drawn where it belongs.
+var _sketching_sections: Dictionary = {}
 var _turns: int = 0
 var _nudges: int = 0
 ## Whether an edit has been applied this run. An edit is already built
@@ -181,6 +184,9 @@ class Placement extends RefCounted:
 	## hand stays theirs across an edit, so that a later design replaces
 	## the assistant's work and leaves theirs alone.
 	var mine: bool = true
+	## The section this brick belongs to, or empty for the main body.
+	## Its coordinates are then that section's own, not the world's.
+	var section: String = ""
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -193,6 +199,7 @@ class Placement extends RefCounted:
 		if not FACES.has(p.face):
 			p.face = "up"
 		p.rot = posmod(int(raw.get("rot", 0)), 4)
+		p.section = str(raw.get("section", "")).strip_edges()
 		return p
 
 	func where() -> String:
@@ -258,10 +265,59 @@ class Scanner extends RefCounted:
 		return out
 
 
+## A part of the model built square and then carried at an angle.
+##
+## This is how a real set does angled structure, and how LDraw stores
+## it: the nacelle of a starship is a rigid square sub-assembly fixed to
+## the hull at thirty degrees, not forty individually-angled bricks. The
+## difference matters for whoever is building it — asked to place each
+## brick at its own angle, the positions have to be worked out by
+## trigonometry, and that is exactly the arithmetic that goes wrong.
+##
+## Inside a section the coordinates are ordinary studs and plates from
+## the section's own corner. Where the section sits, and how far it is
+## turned, is said once.
+class Section extends RefCounted:
+	var name: String
+	var x: float = 0.0        ## studs, where the section's origin sits
+	var y: float = 0.0        ## plates
+	var z: float = 0.0        ## studs
+	var axis: String = "z"    ## which way the hinge pin runs: x, y or z
+	var degrees: float = 0.0
+
+	static func from_dict(raw: Dictionary) -> Section:
+		var s := Section.new()
+		s.name = str(raw.get("name", "")).strip_edges()
+		s.x = float(raw.get("x", 0))
+		s.y = float(raw.get("y", 0))
+		s.z = float(raw.get("z", 0))
+		s.axis = str(raw.get("axis", "z")).to_lower()
+		if not ["x", "y", "z"].has(s.axis):
+			s.axis = "z"
+		s.degrees = float(raw.get("degrees", 0))
+		return s
+
+	## Where this section sits in the world, and how it is turned.
+	func placed() -> Transform3D:
+		var pin := Vector3.BACK
+		if axis == "x":
+			pin = Vector3.RIGHT
+		elif axis == "y":
+			pin = Vector3.UP
+		return Transform3D(Basis(pin, deg_to_rad(degrees)),
+			Vector3(x * STUD, y * PLATE, z * STUD))
+
+
 class Model extends RefCounted:
 	var name: String = "Model"
 	var description: String = ""
 	var placements: Array[Placement] = []
+	## Name -> Section. A placement naming one is built in that
+	## section's own square coordinates and carried where it says.
+	var sections: Dictionary = {}
+
+	func section_for(placement: Placement) -> Section:
+		return sections.get(placement.section)
 
 
 func _ready() -> void:
@@ -486,7 +542,8 @@ func _send() -> void:
 				if not _sketching:
 					_sketching = true
 					_begin_sketch()
-				_sketch_one(Placement.from_dict(raw)))
+				_sketch_one(Placement.from_dict(raw),
+					_sketching_sections))
 		_streaming = reader
 		reader.run(url, headers, JSON.stringify(body))
 		var streamed: Array = await reader.done
@@ -556,11 +613,13 @@ func _begin_sketch() -> void:
 ## No collision test and no support test: this is a sketch of what is
 ## being proposed, and half a design does not stand up yet by
 ## definition. The real check runs on the whole thing.
-func _sketch_one(placement: Placement) -> void:
+func _sketch_one(placement: Placement,
+		sections: Dictionary = {}) -> void:
 	var part: Lbm.PartMesh = library.mesh_for(placement.part)
 	if part == null:
 		return
-	var at: Transform3D = _transform(placement, part)
+	var at: Transform3D = _transform(placement, part,
+		sections.get(placement.section))
 	var brick_id: int = world.add_brick(placement.part, placement.color, at)
 	if brick_id == 0:
 		return
@@ -1142,6 +1201,21 @@ func _edit(args: Dictionary) -> Model:
 				placement.moved = true
 				_touched += 1
 
+	# An edit may add sections, or move one that is already there —
+	# which is how a hinged part gets opened further without every
+	# brick in it being described again.
+	for raw: Variant in args.get("sections", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var section: Section = Section.from_dict(raw)
+		if section.name.is_empty():
+			continue
+		model.sections[section.name] = section
+		for placement: Placement in model.placements:
+			if placement.section == section.name:
+				placement.moved = true
+		_touched += 1
+
 	for raw: Variant in args.get("add", []):
 		model.placements.append(Placement.from_dict(raw))
 		_touched += 1
@@ -1581,9 +1655,20 @@ func _read_model(args: Dictionary) -> Model:
 	var model := Model.new()
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
+	_read_sections(model, args)
 	for raw: Variant in args.get("bricks", []):
 		model.placements.append(Placement.from_dict(raw))
 	return model
+
+
+## The sections a model declares, before any brick refers to one.
+static func _read_sections(model: Model, args: Dictionary) -> void:
+	for raw: Variant in args.get("sections", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var section: Section = Section.from_dict(raw)
+		if not section.name.is_empty():
+			model.sections[section.name] = section
 
 
 # -- validation ----------------------------------------------------------
@@ -1674,7 +1759,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 					index, placement.part, placement.y])
 			continue
 
-		var at: Transform3D = _transform(placement, part)
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
 		var cells: Array[Vector3i] = builder._cells_for(part, at)
 		var blockers: PackedInt64Array = lattice.blockers(cells)
 		if not blockers.is_empty():
@@ -1706,7 +1792,30 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		lattice.occupy(index + 1, cells)
 		cells_of[index] = cells
 
+	# Support is checked in world coordinates even for a section that
+	# has been carried somewhere at an angle, and that is not an
+	# oversight.
+	#
+	# "Something in the cell below" would indeed be the wrong question
+	# for a turned section — the brick above another one can end up
+	# beside it, or under it. But that is only the cheap half of the
+	# rule. The other half asks the part library where this brick's
+	# studs actually are and which way they point, reading both off the
+	# real transform, and that half does not care which way round the
+	# section is. A stack hinged right over is still a stack.
+	#
+	# Checking each section again in its own square frame was written
+	# and then taken out: across shallow angles, steep ones and a
+	# section turned fully over, it never once changed an answer.
+
 	_check_support(model, cells_of, lattice, issues)
+
+	# Every section has to be fixed to something outside itself.
+	# Held together inside and touching nothing is a part that falls off
+	# when the model is picked up, which is the one thing a section
+	# makes easy to do by accident.
+	_check_sections_attached(model, cells_of, lattice, issues)
+
 	var pieces: int = _count_pieces(model, cells_of, lattice)
 
 	var errors: int = 0
@@ -1769,7 +1878,8 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _transform(placement, part)
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
 		for connector: Lbm.Connector in part.connectors:
 			if connector.kind != "stud" or connector.gender != "male":
 				continue
@@ -1813,7 +1923,8 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _transform(placement, part)
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
 		for connector: Lbm.Connector in part.connectors:
 			if connector.kind != "stud" or connector.gender != "male":
 				continue
@@ -1881,6 +1992,56 @@ func _ask_again(url: String, headers: PackedStringArray,
 		if int(result[0]) == HTTPRequest.RESULT_SUCCESS:
 			return result
 	return []
+
+
+## Which sections actually have bricks in this model, main body first.
+static func _sections_present(model: Model, cells_of: Dictionary) -> Array:
+	var seen: Dictionary = {"": true}
+	for index: int in cells_of:
+		seen[model.placements[index].section] = true
+	var names: Array = seen.keys()
+	names.sort()
+	return names
+
+
+## Every section must touch something that is not itself.
+##
+## Inside a section the bricks hold each other, and that check passes
+## whether or not the section is fixed to anything — so a nacelle can be
+## perfectly built and floating a stud clear of the hull, and every
+## other check will say the model is fine.
+func _check_sections_attached(model: Model, cells_of: Dictionary,
+		lattice: BrickLattice, issues: Dictionary) -> void:
+	for group: String in _sections_present(model, cells_of):
+		if group.is_empty():
+			continue
+		var touches: bool = false
+		var lowest: int = 0x7FFFFFFF
+		for index: int in cells_of:
+			if model.placements[index].section != group:
+				continue
+			for cell: Vector3i in cells_of[index]:
+				lowest = mini(lowest, cell.y)
+				for step: Vector3i in BrickLattice.NEIGHBOURS:
+					var who: int = lattice.brick_at(cell + step)
+					if who == 0:
+						continue
+					if who < 0:
+						touches = true
+						break
+					if model.placements[who - 1].section != group:
+						touches = true
+						break
+				if touches:
+					break
+			if touches:
+				break
+		# Standing on the ground counts as being fixed to something.
+		if not touches and lowest > 0:
+			_note(issues, "section adrift",
+				"section '%s' is not touching anything outside itself "
+					% group + "— it is built, but it would fall off. "
+					+ "Move it so it meets the part it is fixed to.")
 
 
 func _check_support(
@@ -2030,7 +2191,19 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 ## cover — the same cover the collision test uses — means the forward
 ## transform and [method _to_studs] cannot drift apart, because they are
 ## now the same measurement taken in opposite directions.
-func _transform(placement: Placement, part: Lbm.PartMesh) -> Transform3D:
+func _transform(placement: Placement, part: Lbm.PartMesh,
+		section: Section = null) -> Transform3D:
+	var square: Transform3D = _square_transform(placement, part)
+	# Built square, then carried. The brick's own coordinates are the
+	# section's, so the arithmetic the model has to do is the same
+	# whether the section ends up level or at thirty degrees.
+	return square if section == null else section.placed() * square
+
+
+## Where a placement sits in whatever coordinates it was written in,
+## before any section it belongs to is taken into account.
+func _square_transform(placement: Placement,
+		part: Lbm.PartMesh) -> Transform3D:
 	var basis: Basis = BrickLattice.basis_for(placement.face, placement.rot)
 	var corner: Vector3i = _corner_cell(part, placement.part, basis)
 	var want := BrickLattice.to_cell(Vector3(
@@ -2136,7 +2309,8 @@ func _apply_edit(model: Model) -> void:
 		# then true of every such brick, every time, for an edit that
 		# never mentioned it.
 		if placement.moved:
-			var at: Transform3D = _transform(placement, part)
+			var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
 			world.move_brick(brick_id, at)
 			builder.lattice.release(brick_id)
 			builder.register(brick_id, placement.part, at)
@@ -2147,7 +2321,8 @@ func _apply_edit(model: Model) -> void:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _transform(placement, part)
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
 		var brick_id: int = world.add_brick(
 			placement.part, placement.color, at)
 		if brick_id != 0:
@@ -2186,7 +2361,8 @@ func _apply(model: Model, finished: bool = true) -> void:
 		if part == null:
 			missing[placement.part] = true
 			continue
-		var at: Transform3D = _transform(placement, part)
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
 		var brick_id: int = world.add_brick(placement.part, placement.color, at)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
@@ -2310,6 +2486,39 @@ six. Decide what a doorway is and let everything else follow from it.
 
 So a 2x4 brick at y=0 occupies plates 0,1,2. The next brick on top of it \
 goes at y=3. Two bricks side by side at y=0 go at x=0 and x=4.
+
+AT AN ANGLE
+face and rot only ever give you square quarter turns. Much of what makes \
+a model look like the real thing is not square: a nacelle pylon raked \
+back, a wing swept, a hatch standing open, a roof at a pitch no slope \
+brick makes.
+
+Say those as a SECTION. A section is a part of the model you build \
+square, in its own ordinary studs and plates from its own corner, and \
+then carry somewhere at an angle:
+
+  sections: [{name: "port pylon", x: 14, y: 8, z: 6,
+              axis: "z", degrees: 35}]
+
+Every brick with section: "port pylon" is then written as though that \
+pylon were sitting flat at the origin — x from 0, y from 0 — and the \
+whole thing is tipped 35 degrees and carried to 14,8,6. This is how a \
+real set does it and how a set's instructions read: build the assembly, \
+then attach it.
+
+Do not try to angle bricks one at a time. Working out where each brick \
+lands once it is rotated is trigonometry, you would have to do it \
+forty times for one pylon, and every one of those is a chance to be a \
+tenth of a stud out.
+
+The axis is the hinge pin: z tips a thing left and right, x tips it \
+forward and back, y swings it round without tilting it.
+
+A section must touch the rest of the model somewhere, or it is a piece \
+that falls off when the model is picked up. Give a section a new \
+degrees or a new position with edit_model and everything in it moves \
+together, which is how a hatch is opened further without describing a \
+single brick again.
 
 THE RULES YOUR DESIGN MUST SATISFY
 1. Nothing may overlap. Two parts cannot share space.
@@ -2453,8 +2662,34 @@ func _tools() -> Array:
 					"which way the studs point. Omit for up."},
 			"rot": {"type": "integer", "description":
 				"quarter turns about the face direction, 0-3"},
+			"section": {"type": "string", "description":
+				"the section this brick belongs to, if any. Its x, y "
+				+ "and z are then that section's own coordinates, not "
+				+ "the model's."},
 		},
 		"required": ["part", "color", "x", "y", "z", "rot"],
+		"additionalProperties": false,
+	}
+
+	# A part of the model built square and then carried at an angle.
+	var section: Dictionary = {
+		"type": "object",
+		"properties": {
+			"name": {"type": "string", "description":
+				"what to call it, e.g. port nacelle"},
+			"x": {"type": "number", "description":
+				"studs across, where this section's own origin sits"},
+			"y": {"type": "number", "description": "plates up"},
+			"z": {"type": "number", "description": "studs deep"},
+			"axis": {"type": "string", "enum": ["x", "y", "z"],
+				"description":
+					"which way the hinge pin runs. z tips it left and "
+					+ "right, x tips it forward and back, y swings it "
+					+ "round."},
+			"degrees": {"type": "number", "description":
+				"how far it is turned about that pin. Any angle."},
+		},
+		"required": ["name", "x", "y", "z", "axis", "degrees"],
 		"additionalProperties": false,
 	}
 
@@ -2481,7 +2716,10 @@ func _tools() -> Array:
 				+ "call on a partial design while you work."),
 			"input_schema": {
 				"type": "object",
-				"properties": {"bricks": {"type": "array", "items": brick}},
+				"properties": {
+					"bricks": {"type": "array", "items": brick},
+					"sections": {"type": "array", "items": section},
+				},
 				"required": ["bricks"],
 				"additionalProperties": false,
 			},
@@ -2563,6 +2801,12 @@ func _tools() -> Array:
 						},
 					},
 					"add": {"type": "array", "items": brick},
+					"sections": {"type": "array", "items": section,
+						"description":
+							"add a section, or give one that already "
+							+ "exists a new angle or position — which "
+							+ "moves everything in it without naming a "
+							+ "single brick."},
 				},
 				"additionalProperties": false,
 			},
@@ -2645,6 +2889,7 @@ func _tools() -> Array:
 					"name": {"type": "string"},
 					"description": {"type": "string"},
 					"bricks": {"type": "array", "items": brick},
+					"sections": {"type": "array", "items": section},
 				},
 				"required": ["name", "description", "bricks"],
 				"additionalProperties": false,

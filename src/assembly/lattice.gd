@@ -92,6 +92,16 @@ static func cells_for(
 	return out
 
 
+## The six cells that share a face with a cell. Touching, rather than
+## merely being near: two cells that meet only at an edge or a corner
+## are two bricks passing, not two bricks joined.
+const NEIGHBOURS: Array[Vector3i] = [
+	Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+	Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+	Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+]
+
+
 ## Whether an orientation is one of the twenty-four [method cells_for]
 ## can answer for exactly.
 static func is_square_to_grid(basis: Basis) -> bool:
