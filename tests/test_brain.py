@@ -67,6 +67,26 @@ def test_overlap_is_caught(catalogue: Catalogue) -> None:
     assert any(i.kind == "overlap" for i in report.errors)
 
 
+def test_overlap_says_where_the_brick_it_hit_ends(
+    catalogue: Catalogue,
+) -> None:
+    """The message has to carry the arithmetic, not just the collision.
+
+    y counts plates and a brick is three of them, so the course above a
+    brick at y=0 starts at y=3.  Being told only "overlaps brick 0"
+    leaves that sum to be redone, and a design that redid it wrong
+    concluded rotation was broken -- the refused part happened to be the
+    one it had turned -- and rebuilt a windmill with no sails.
+    """
+    model = Model()
+    model.add(Placement("3001", 4, 0, 0, 0))
+    model.add(Placement("3001", 14, 0, 1, 0))   # one plate up, not three
+    report = check(model, catalogue)
+    overlaps = [i for i in report.errors if i.kind == "overlap"]
+    assert overlaps
+    assert "the course above it starts at y=3" in overlaps[0].message
+
+
 def test_touching_but_not_overlapping_is_fine(catalogue: Catalogue) -> None:
     """A 2x4 brick is four studs wide, so x=0 and x=4 abut exactly."""
     model = Model()

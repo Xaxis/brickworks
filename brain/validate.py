@@ -164,6 +164,27 @@ def _rotate(x: int, z: int, rot: int) -> tuple[int, int]:
     return (z, -x)
 
 
+def _names(model: Model, resolved: dict[int, Part], other: int) -> str:
+    """Name a brick that was hit, and say where it ends.
+
+    "overlaps brick 3" leaves the arithmetic to whoever reads it, and the
+    arithmetic is the part that goes wrong: y counts plates, a brick is
+    three of them, so the course above a brick at y=6 starts at y=9 and
+    not at y=7.  A design that got that wrong concluded the checker
+    mangled rotated parts -- because the part it had turned was the one
+    that came back refused -- and rebuilt a windmill with no rotation at
+    all, so it had no sails.  Saying where the next course starts costs
+    nothing and removes the guess.
+    """
+    hit = model.placements[other]
+    part = resolved.get(other)
+    if part is None:
+        return f"{other} ({hit.part})"
+    top = hit.y + part.height_plates
+    return (f"{other} ({hit.part}, which fills y={hit.y} up to y={top} "
+            f"-- so the course above it starts at y={top})")
+
+
 def check(model: Model, catalogue: Catalogue) -> Report:
     """Validate a design. Never raises; everything wrong becomes an issue."""
     report = Report(brick_count=len(model.placements))
@@ -203,7 +224,7 @@ def check(model: Model, catalogue: Catalogue) -> Report:
                 occupied[cell] = index
         if hit:
             names = ", ".join(
-                f"{o} ({model.placements[o].part})" for o in sorted(hit)[:3])
+                _names(model, resolved, o) for o in sorted(hit)[:3])
             report.issues.append(Issue(
                 Severity.ERROR, "overlap",
                 f"brick {index} ({placement.part} at "
