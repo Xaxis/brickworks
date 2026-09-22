@@ -238,7 +238,22 @@ try {
   );
 
   await page.waitForTimeout(3000);
-  await page.screenshot({ path: out });
+  // A picture for a person to look at afterwards, and nothing more.
+  //
+  // This gated the deploy, and grabbing a large WebGL canvas can hang
+  // — two deploys in four failed here with the build itself working
+  // perfectly, and the failure said "the build does not run", which
+  // was not true. A gate that fails at random teaches you to retry it
+  // rather than read it, which is worse than having no gate.
+  //
+  // What actually decides whether the build works is below: the canvas
+  // came up, the view controls move it, and nothing the page asked for
+  // came back an error.
+  try {
+    await page.screenshot({ path: out, timeout: 20_000 });
+  } catch {
+    console.log("  (no screenshot — the page would not hold still)");
+  }
   console.log(`the build runs at ${args.url}`);
 
   // And that the view controls do something.
@@ -253,7 +268,7 @@ try {
 } catch (error) {
   failed = error;
   try {
-    await page.screenshot({ path: out });
+    await page.screenshot({ path: out, timeout: 20_000 });
   } catch {}
 }
 
