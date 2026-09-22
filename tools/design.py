@@ -6,6 +6,21 @@
 
 Prints what it is doing as it goes, because a design takes a while and
 silence is indistinguishable from a hang.
+
+This is not the designer the application uses.  It drives the one in
+brain/, which builds studs-up and only studs-up: its rot is quarter
+turns about the vertical axis and there is no notion of a face at all.
+Anything that needs a part on its side -- a sail, a tiled wall,
+lettering, a grille, a curved bonnet -- cannot be expressed here, and a
+brief asking for one comes back as a stack of bricks with nothing to say
+why.  It also cannot look at what it built, so it never revises.
+
+For the designer with all of that, run the application headless:
+
+    godot --headless --path . -- --ask="a windmill" --out=models/windmill.ldr
+
+Kept because it is a few hundred lines of Python that the test suite can
+exercise directly, which the other one cannot be.
 """
 
 from __future__ import annotations

@@ -145,6 +145,26 @@ func _ready() -> void:
 	if not bench.is_empty():
 		await _benchmark(bench.to_int())
 
+	# Whatever ended up on the baseplate, written out and done.
+	#
+	# --ask runs the assistant the application itself uses: the one that
+	# can turn a part on its side, look at what it built and revise it.
+	# Until now it could only print, so anything wanting a file went
+	# through the second designer in brain/, which has no notion of a
+	# face at all — its rot is quarter turns about the vertical axis and
+	# nothing else. A sail, a tiled wall, lettering, a grille: all of it
+	# is out of reach there, and a brief asking for one comes back as a
+	# stack of bricks with no way to tell why.
+	var out: String = _argument("--out")
+	if not out.is_empty():
+		var written: int = _world.brick_count() - _store.scenery.size()
+		if _store.export_to(out, "Model"):
+			print("wrote %s (%d parts)" % [out, written])
+			get_tree().quit(0)
+			return
+		get_tree().quit(1)
+		return
+
 	var shot: String = _argument("--shot")
 	if not shot.is_empty():
 		await _capture(shot)
