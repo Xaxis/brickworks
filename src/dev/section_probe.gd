@@ -148,6 +148,18 @@ func _run() -> void:
 		not before.is_equal_approx(after))
 
 	print("")
+	print("  and is forgotten when the model is")
+	# These are keyed by brick id and BrickWorld numbers from one again
+	# after a clear, so a stale entry would name an ordinary brick
+	# placed later — which would then be read back as part of a section
+	# that no longer exists, and moved whenever that section moved.
+	_assistant.forget_built()
+	_check("nothing is left pointing at a brick that has gone",
+		_assistant._section_of.is_empty()
+			and _assistant._local_of.is_empty()
+			and _assistant._sections.is_empty())
+
+	print("")
 	if _failures == 0:
 		print("a section can be built square and carried at an angle")
 	else:

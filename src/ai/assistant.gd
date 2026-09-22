@@ -2663,12 +2663,25 @@ func forget_built() -> void:
 	_placed_ids = PackedInt64Array()
 	_sketched_ids = PackedInt64Array()
 	_before.clear()
+	# And which brick belonged to which section.
+	#
+	# These are keyed by brick id, and BrickWorld numbers from one
+	# again after a clear — so a stale entry names an ordinary brick
+	# somebody places later, which would then be read back as part of a
+	# section that no longer exists and moved when that section moved.
+	# The same trap the scenery set carries a warning about; I walked
+	# into it the same afternoon I read the warning.
+	_section_of.clear()
+	_local_of.clear()
+	_sections.clear()
 
 
 func clear_built() -> void:
 	for brick_id: int in _placed_ids + _sketched_ids:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
+		_section_of.erase(brick_id)
+		_local_of.erase(brick_id)
 	_placed_ids = PackedInt64Array()
 	_sketched_ids = PackedInt64Array()
 
