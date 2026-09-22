@@ -52,6 +52,7 @@ func _initialize() -> void:
 			var body: Dictionary = assistant.request_body()
 			_check(choice, level, body)
 			_room_to_write(assistant, choice, body)
+			_cached_prefix(choice, body)
 
 	print("")
 	# Anything in the body that Anthropic does not take is refused
@@ -228,3 +229,30 @@ func _room_to_write(assistant: Assistant, choice: Brain.Choice,
 		_failures += 1
 		print("  FAIL  %s asks for %d tokens unstreamed"
 			% [choice.name, quieter])
+
+
+## The rules are sent every turn and never change.
+##
+## A design runs to forty-five turns and re-sends the whole conversation
+## each time, so the system prompt alone was read and charged for at
+## full price forty-five times. It is one literal string — no date, no
+## identifier, nothing counted — which is exactly what a cache prefix
+## has to be.
+func _cached_prefix(choice: Brain.Choice, body: Dictionary) -> void:
+	var system: Variant = body.get("system")
+	if typeof(system) != TYPE_ARRAY or (system as Array).is_empty():
+		_failures += 1
+		print("  FAIL  %s sends the rules as a bare string, which "
+			% choice.name + "cannot carry a cache mark")
+		return
+	var first: Dictionary = system[0]
+	if not first.has("cache_control"):
+		_failures += 1
+		print("  FAIL  %s does not mark the rules cacheable"
+			% choice.name)
+		return
+	# The mark has to sit at the end of the last stable thing, and the
+	# request renders tools before system — so this one covers both.
+	if str(first.get("text", "")).is_empty():
+		_failures += 1
+		print("  FAIL  %s marks an empty block cacheable" % choice.name)

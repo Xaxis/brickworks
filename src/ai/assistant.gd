@@ -725,7 +725,24 @@ func request_body() -> Dictionary:
 		"model": choice.id,
 		"max_tokens": choice.most_out if stream_replies
 			else mini(choice.most_out, 16000),
-		"system": _system_prompt(),
+		# Cached, which is most of what a long design costs.
+		#
+		# The whole conversation is re-sent every turn, and a design
+		# takes up to forty-five of them. The rules above the messages
+		# never change — they are one literal string with no date, no
+		# identifier and nothing counted in them — and they were being
+		# read and charged for in full, every turn, at ten times what a
+		# cache read costs.
+		#
+		# The breakpoint goes at the end of the system block because the
+		# request renders tools, then system, then messages: one mark
+		# here covers the tool definitions as well, and those are built
+		# from a fixed list in a fixed order.
+		"system": [{
+			"type": "text",
+			"text": _system_prompt(),
+			"cache_control": {"type": "ephemeral"},
+		}],
 		"messages": _messages,
 		"tools": _tools(),
 	}
