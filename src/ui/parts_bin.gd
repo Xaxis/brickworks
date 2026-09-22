@@ -413,15 +413,52 @@ static func _match_score(info: PartLibrary.PartInfo, query: String) -> int:
 	var name: String = _squeeze(info.name)
 	var score: int = 0
 
+	# Whole words, not the starts of longer ones.
+	#
+	# A search for "bar" answered with Barrel 4.5 x 4.5, because
+	# "barrel" begins with "bar" and that scored as "the thing, plus a
+	# qualifier". "clip" answered with a solar panel, "wedge plate" with
+	# a 2 x 16 triple with an axle hole. The staples were all there and
+	# all below the oddities, which for an assistant that takes the
+	# first result is the same as their not being there at all.
+	var spaced: String = _apart(name)
+	var asked: String = _apart(wanted)
+	# Both sides carry a space at each end already, so a whole-word
+	# prefix is a plain begins_with and a whole-word hit is a plain
+	# contains. Adding another space to either made the middle tier
+	# unreachable, which quietly flattened the ranking: "panel" led with
+	# a Technic Panel 3 x 7 because the plain panels had stopped
+	# scoring as the thing itself.
 	if name == wanted:
 		score += 400                      # exactly the thing named
-	elif name.begins_with(wanted):
+	elif spaced.begins_with(asked):
 		score += 260                      # the thing, plus a qualifier
-	elif name.contains(wanted):
+	elif spaced.contains(asked):
 		score += 140                      # the words, in order, somewhere
 	if _squeeze(info.id) == wanted:
 		score += 500                      # asked for by number
+
+	# A part named for what it has not got.
+	#
+	# "Brick 1 x 2 without Centre Stud" answered a search for a jumper,
+	# which is a plate *with* a centre stud — the one word that matters
+	# is the one the match ignored. Asking for a feature and being
+	# offered its absence is worse than being offered nothing.
+	if spaced.contains(" without ") and not asked.contains(" without "):
+		score -= 300
 	return score
+
+
+## The text with its punctuation opened out into spaces and a space at
+## each end, so a whole word can be looked for by looking for it with a
+## space on both sides. "Solar/Clip-On" holds the word clip; "Barrel"
+## does not hold the word bar.
+static func _apart(text: String) -> String:
+	var out: String = ""
+	for ch: String in text:
+		out += ch if (ch >= "a" and ch <= "z") \
+			or (ch >= "0" and ch <= "9") or ch == "." else " "
+	return " " + _squeeze(out) + " "
 
 
 ## Collapse runs of whitespace, for comparing names that are padded.
@@ -455,6 +492,13 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	# should still find it; it just should not arrive uninvited.
 	if (name.begins_with("=") or name.begins_with("~")
 			or lowered.contains("pattern") or PRINTED.search(info.id) != null):
+		score -= 400
+
+	# Modulex is a different product altogether — a separate,
+	# architect's system on its own scale, filed in the same library.
+	# Nobody building with LEGO wants one, and "cheese slope" answered
+	# with a Modulex brick.
+	if lowered.begins_with("modulex"):
 		score -= 400
 
 

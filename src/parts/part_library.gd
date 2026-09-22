@@ -438,8 +438,52 @@ func color(code: int) -> BrickColor:
 ## first N matches in catalogue order — those are whatever sorts first
 ## numerically, which is never what was wanted. It collects everything,
 ## ranks, and then takes the top of the list.
+## What a builder calls a part, against what LDraw calls it.
+##
+## The library's names are not the words people use, and the difference
+## is not small. A wedge plate is filed as "Wedge 4 x 6" — searching
+## "wedge plate" finds one part out of two hundred, and it is a 2 x 16
+## triple with an axle hole. A cheese slope is "Slope Brick 31 1 x 1".
+## A jumper is a plate "with 1 Centre Stud". None of those words appear
+## in the name a designer would type.
+##
+## An assistant that takes the first result never discovers this; it
+## just builds with the wrong part, or decides the library does not have
+## one. The saucer of a starship is wedge plates, so the cost of the gap
+## is the whole shape.
+const ALSO_KNOWN_AS: Dictionary = {
+	"wedge plate": "wedge",
+	"cheese slope": "slope brick 31 1 x 1",
+	"jumper plate": "with 1 centre stud",
+	"snot brick": "with stud on 1 side",
+	"stud on side": "with stud on 1 side",
+	"headlight brick": "brick 1 x 1 with headlight",
+	"curved slope": "slope brick curved",
+	"inverted slope": "slope brick inverted",
+	"cheese": "slope brick 31 1 x 1",
+	"jumper": "with 1 centre stud",
+}
+
+
+## The query in the library's own words.
+##
+## Longest phrase first, so "cheese slope" is not taken apart by the
+## entry for "cheese" before it has been recognised.
+static func in_ldraw_words(query: String) -> String:
+	var text: String = " %s " % query.strip_edges().to_lower()
+	var phrases: Array = ALSO_KNOWN_AS.keys()
+	phrases.sort_custom(func(a: String, b: String) -> bool:
+		return a.length() > b.length())
+	for phrase: String in phrases:
+		if text.contains(" %s " % phrase):
+			text = text.replace(" %s " % phrase,
+				" %s " % ALSO_KNOWN_AS[phrase])
+	return text.strip_edges()
+
+
 func search(query: String, limit: int = 100) -> Array[PartInfo]:
-	var needles: PackedStringArray = query.strip_edges().to_lower().split(" ", false)
+	var asked: String = in_ldraw_words(query)
+	var needles: PackedStringArray = asked.split(" ", false)
 	var results: Array[PartInfo] = []
 	if needles.is_empty():
 		return results
@@ -458,7 +502,10 @@ func search(query: String, limit: int = 100) -> Array[PartInfo]:
 		if matched:
 			results.append(info)
 
-	PartsBin._sort_for(results, query.strip_edges())
+	# Ranked against the translated words too, or a query the library
+	# does not use its own words for scores nothing and the order falls
+	# back to whatever the catalogue happened to be in.
+	PartsBin._sort_for(results, asked)
 	if results.size() > limit:
 		results.resize(limit)
 	return results
