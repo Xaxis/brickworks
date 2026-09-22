@@ -29,6 +29,10 @@ const MODEL := Brain.DEFAULT_MODEL
 ## work; 24 was not enough and a run ended having built nothing at all
 ## after spending its budget on three-brick experiments.
 const MAX_TURNS := 45
+
+## How big a reference picture is sent at. Enough to read the shape and
+## the proportions off, which is all it is for.
+const REFERENCE_SIZE := 900
 const MAX_REPAIRS := 3
 ## How many times to ask again when a turn ends having built nothing.
 const MAX_NUDGES := 2
@@ -88,6 +92,43 @@ var _ran_out_of_room: bool = false
 ## Sections seen so far in the reply being streamed, so a brick that
 ## arrives before its section does is still drawn where it belongs.
 var _sketching_sections: Dictionary = {}
+## Pictures the person supplied of what they want built. Content blocks,
+## ready to send. They go at the head of the conversation and stay
+## there — see [method _forget_old_pictures].
+var references: Array = []
+
+
+## Keep a picture of what is wanted. Returns false if it cannot be used.
+func remember_reference(image: Image) -> bool:
+	if image == null or image.is_empty():
+		return false
+	# Scaled down first. A photograph off a phone is several thousand
+	# pixels wide, costs far more of the conversation than it is worth,
+	# and tells you nothing about proportion that a smaller one does
+	# not.
+	var copy: Image = image.duplicate()
+	var widest: int = maxi(copy.get_width(), copy.get_height())
+	if widest > REFERENCE_SIZE:
+		var scale: float = float(REFERENCE_SIZE) / float(widest)
+		copy.resize(maxi(int(copy.get_width() * scale), 1),
+			maxi(int(copy.get_height() * scale), 1),
+			Image.INTERPOLATE_LANCZOS)
+	var bytes: PackedByteArray = copy.save_png_to_buffer()
+	if bytes.is_empty():
+		return false
+	references.append({
+		"type": "image",
+		"source": {
+			"type": "base64",
+			"media_type": "image/png",
+			"data": Marshalls.raw_to_base64(bytes),
+		},
+	})
+	return true
+
+
+func forget_references() -> void:
+	references.clear()
 var _turns: int = 0
 var _nudges: int = 0
 ## Whether an edit has been applied this run. An edit is already built
@@ -405,7 +446,24 @@ func _start(text: String) -> void:
 	# change starts a fresh round of turns and produces a new model, so
 	# it is a design in the sense anyone would count.
 	_design_id = _new_design_id()
-	_messages.append({"role": "user", "content": text})
+	# References first, in the same message as the brief.
+	#
+	# A named real subject was designed entirely from memory of it. The
+	# loop can say a model is buildable and can look at what it built,
+	# but nothing in it could ever say "that is not what a Voyager looks
+	# like" — there was no way for a picture to come IN. Renders went
+	# out; nothing came back.
+	var opening: Array = []
+	for block: Dictionary in references:
+		opening.append(block)
+	if not references.is_empty():
+		opening.append({"type": "text", "text":
+			"The picture above is what this is meant to look like. "
+			+ "Measure the proportions off it — the relative sizes of "
+			+ "the main masses, and where they sit against each other "
+			+ "— before you choose any part."})
+	opening.append({"type": "text", "text": text})
+	_messages.append({"role": "user", "content": opening})
 	progress.emit("thinking")
 	_send()
 
@@ -1242,8 +1300,17 @@ func _edit(args: Dictionary) -> Model:
 ## What the model is looking at is the latest one. The others are
 ## replaced by a line saying there was one, which keeps the transcript
 ## honest about what it saw without carrying the pixels.
+## References survive this.
+##
+## Everything here replaced every picture in the conversation with a
+## line of text saying it was a view of an earlier draft. A reference
+## the person supplied is not a draft of anything — it is the one thing
+## in the conversation that knows what the subject looks like, and it
+## would have gone after a single turn, relabelled as the model's own
+## work. It lives in the opening message, which is left alone.
 func _forget_old_pictures() -> void:
-	for message: Dictionary in _messages:
+	for at: int in range(1, _messages.size()):
+		var message: Dictionary = _messages[at]
 		var content: Variant = message.get("content")
 		if typeof(content) != TYPE_ARRAY:
 			continue

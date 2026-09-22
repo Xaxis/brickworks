@@ -39,6 +39,8 @@ var _ask_went_well: bool = true
 ## Whether a left press this handler saw started the box being drawn.
 ## The watchdog below will not finish one it never saw begin.
 var _box_began: bool = false
+## Which of the two things that want a picture opened the file dialog.
+var _picking_reference: bool = false
 var _hint: ControlsHint
 var _picker: PickImage
 var _mosaic_source: Image
@@ -584,10 +586,26 @@ func _build_ui() -> void:
 	# awaited between. A browser only opens a file picker while it is
 	# still handling a real click, so anything deferred here would be
 	# silently ignored on the web and work perfectly on the desktop.
-	_bar.mosaic_wanted.connect(_picker.ask)
-	_picker.picked.connect(func(image: Image) -> void: _mosaic.show_for(image))
+	# One picker, two things that want a picture, so which one asked has
+	# to be remembered — the file dialog answers long after the click
+	# that opened it.
+	_bar.mosaic_wanted.connect(func() -> void:
+		_picking_reference = false
+		_picker.ask())
+	_chat.reference_wanted.connect(func() -> void:
+		_picking_reference = true
+		_picker.ask())
 	_picker.failed.connect(func(why: String) -> void: _bar.say(why))
-	_picker.picked.connect(func(image: Image) -> void: _mosaic_source = image)
+	_picker.picked.connect(func(image: Image) -> void:
+		if _picking_reference:
+			if _assistant.remember_reference(image):
+				_chat.references_are(_assistant.references.size())
+				_bar.say("kept — the proportions will be measured off it")
+			else:
+				_bar.say("could not read that picture")
+			return
+		_mosaic_source = image
+		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
 
 	# Panels sized to the window, and folded away when there is no room

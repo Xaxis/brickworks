@@ -26,6 +26,18 @@ var account: Account
 var _log: VBoxContainer
 var _scroll: ScrollContainer
 var _input: TextEdit
+var _reference: Button
+
+## Somebody wants to hand in a picture of what they are asking for.
+signal reference_wanted
+
+## How many references are in hand, so the button can say so.
+func references_are(count: int) -> void:
+	if _reference == null:
+		return
+	_reference.text = ("Add a picture of it" if count == 0
+		else "%d picture%s of it" % [count, "" if count == 1 else "s"])
+	_reference.modulate = Color(1, 1, 1, 0.6 if count == 0 else 0.95)
 var _send: Button
 var _status: Label
 var _suggestions: VBoxContainer
@@ -117,6 +129,23 @@ func _build() -> void:
 	_input.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_input.gui_input.connect(_on_input_key)
 	_composer.add_child(_input)
+
+	# A picture of what is wanted, before a word of the brief.
+	#
+	# Asked for a named real thing, the assistant works from its own
+	# memory of what that thing looks like and nothing in the loop can
+	# disagree. A photograph is the one input that can.
+	_reference = Button.new()
+	_reference.text = "Add a picture of it"
+	_reference.flat = true
+	_reference.focus_mode = Control.FOCUS_NONE
+	_reference.add_theme_font_size_override("font_size", 11)
+	_reference.modulate = Color(1, 1, 1, 0.6)
+	_reference.tooltip_text = ("A photo or drawing of the thing you want "
+		+ "built. Its proportions get measured off this rather than "
+		+ "remembered.")
+	_reference.pressed.connect(func() -> void: reference_wanted.emit())
+	_composer.add_child(_reference)
 
 	_send = Button.new()
 	_send.text = "Build it"
