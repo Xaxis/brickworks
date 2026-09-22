@@ -164,10 +164,28 @@ if (args.bypass) {
 }
 
 const problems = [];
+// Things that mean the deployment is wrong, as opposed to noisy.
+const broken = [];
 page.on("console", (m) => {
   if (m.type() === "error") problems.push(m.text().slice(0, 200));
 });
 page.on("pageerror", (e) => problems.push(String(e).slice(0, 200)));
+
+// And which resource, which the console line does not say.
+//
+// A failed fetch arrives as "Failed to load resource: the server
+// responded with a status of 404 ()" — no URL, so the one thing worth
+// knowing is the one thing missing. Chasing a message that names
+// nothing has cost this project real time more than once.
+page.on("requestfailed", (r) => {
+  problems.push(`request failed: ${r.url().slice(0, 160)} — ${
+    r.failure()?.errorText ?? "no reason given"}`);
+});
+page.on("response", (r) => {
+  if (r.status() >= 400) {
+    broken.push(`HTTP ${r.status()}: ${r.url().slice(0, 160)}`);
+  }
+});
 
 let failed = null;
 try {
@@ -221,7 +239,7 @@ try {
 
   await page.waitForTimeout(3000);
   await page.screenshot({ path: out });
-  console.log(`check ok: the build runs at ${args.url}`);
+  console.log(`the build runs at ${args.url}`);
 
   // And that the view controls do something.
   //
@@ -249,3 +267,21 @@ if (failed) {
   console.error(`check FAILED: ${failed.message}`);
   process.exit(1);
 }
+// A page that asks for something and is told 404 is a broken
+// deployment, whatever else works.
+//
+// These were collected and printed and then ignored, so a build where
+// every part outside the shipped pack came back 404 — which is most of
+// the library — passed as "the build runs". It does run. It just
+// cannot fetch a brick.
+if (broken.length) {
+  const seen = [...new Set(broken)];
+  console.error(`check FAILED: ${seen.length} request(s) the page `
+    + "made came back as errors");
+  for (const b of seen.slice(0, 8)) console.error(`  ${b}`);
+  process.exit(1);
+}
+// Said once, at the end, after everything that could contradict it.
+// It used to be printed the moment the canvas appeared, so a run that
+// went on to fail announced itself as ok first.
+console.log(`check ok: ${args.url}`);

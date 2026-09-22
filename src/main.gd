@@ -358,7 +358,16 @@ func _build_ui() -> void:
 			# only the parts it shipped with. Every other part then
 			# fetched a web page and was reported as broken geometry.
 			_library.remote_parts = _account.parts_url
-		elif _library.remote_parts.is_empty():
+		elif _account.answered and _library.remote_parts.is_empty():
+			# Only once the deployment has actually said so.
+			#
+			# This fired whenever the probe finished, including when it
+			# failed — pinning "next to the app" for the rest of the
+			# session. This deployment serves no geometry at all, so
+			# every part outside the pack it ships with was then
+			# fetched from somewhere that 404s, and the browser console
+			# filled up with parts that do exist, at an address that
+			# was never going to have them.
 			_library.remote_parts = Origin.here() + "/parts/")
 	add_child(_account)
 

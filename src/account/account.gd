@@ -49,6 +49,10 @@ var available: bool = false
 ## Where the geometry this build did not ship is served from, as the
 ## deployment reports it. Empty means beside the app.
 var parts_url: String = ""
+## Whether the deployment actually replied. False while the first probe
+## is still out and false if it failed, which are not the same thing as
+## a reply that named nothing.
+var answered: bool = false
 
 ## "included" when this deployment spends its own key for this account,
 ## "own_key" otherwise. The server decides; the app only reports it.
@@ -119,6 +123,11 @@ func boot() -> void:
 
 	var body: Variant = await _probe()
 	if typeof(body) != TYPE_DICTIONARY:
+		# Left false. Anyone who needs to tell "this deployment says it
+		# has no X" from "we never got an answer" reads this, and the
+		# difference matters most for where the geometry lives: guess
+		# wrong and every part that did not ship with the build is
+		# fetched from a place that does not have it.
 		# Offline, or a build with no functions behind it. Not an error
 		# worth showing: everything except the assistant still works.
 		# `changed` is emitted on this path too — anyone awaiting a boot
@@ -129,6 +138,7 @@ func boot() -> void:
 		changed.emit()
 		return
 
+	answered = true
 	available = bool(body.get("enabled", false))
 	_project_url = str(body.get("url", ""))
 	_project_key = str(body.get("key", ""))
