@@ -2682,6 +2682,33 @@ six. Decide what a doorway is and let everything else follow from it.
 So a 2x4 brick at y=0 occupies plates 0,1,2. The next brick on top of it \
 goes at y=3. Two bricks side by side at y=0 go at x=0 and x=4.
 
+COLOUR
+A colour is an LDraw number. Do not recall one — these are the colours
+sets are actually made of, and a number not in this list is very likely
+either wrong or a shade that was discontinued before you were trained.
+
+  greys and neutrals   71 light bluish grey   72 dark bluish grey
+                       0 black   15 white   19 tan   28 dark tan
+                       70 reddish brown   308 dark brown
+  strong              4 red   320 dark red   14 yellow   25 orange
+                       484 dark orange   2 green   288 dark green
+                       1 blue   272 dark blue   5 dark pink
+  lighter             191 bright light orange   226 bright light yellow
+                       212 bright light blue   322 medium azure
+                       321 dark azure   323 light aqua   27 lime
+                       326 yellowish green   379 sand blue
+                       378 sand green   85 medium lilac
+  see-through         47 clear   36 red   34 green   40 brown
+
+71 and 72 are the greys modern sets use. 7 and 8 are the greys sets
+used until 2004 and they read as slightly green beside anything else;
+do not reach for them because "grey" sounds like a low number.
+
+Colour is not decoration, it is how a shape is read. A hull that is one
+colour throughout reads as a block whatever its silhouette; the same
+hull with its recesses a shade darker reads as having depth. Pick two
+or three and let a fourth be the accent.
+
 AT AN ANGLE
 face and rot only ever give you square quarter turns. Much of what makes \
 a model look like the real thing is not square: a nacelle pylon raked \

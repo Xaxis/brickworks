@@ -114,6 +114,36 @@ func _initialize() -> void:
 		print("  ok    %s" % said.substr(0, 96))
 
 	print("")
+	print("  every colour the rules name is a real one")
+	# A prompt that names a colour code the palette does not have is a
+	# hint that lies: the part is placed in whatever the renderer makes
+	# of an unknown number, and nothing says so.
+	var rules: String = assistant._system_prompt()
+	var block: String = rules.substr(rules.find("COLOUR"))
+	block = block.substr(0, block.find("AT AN ANGLE"))
+	var checked: int = 0
+	for word: String in block.replace("\n", " ").split(" ", false):
+		if not word.is_valid_int():
+			continue
+		var code: int = word.to_int()
+		# Years and the like are not colours; the palette stops well
+		# below four digits.
+		if code > 999:
+			continue
+		checked += 1
+		# Asked of the table, not of color(), which never says no — it
+		# hands back a magenta stand-in for an unknown code so a bad
+		# colour is visible in the model rather than plausible. A check
+		# written against it passes for every number there is, which is
+		# how this one first reported an invented colour as real.
+		if not library.colors.has(code):
+			_fail("the rules name colour %d, which does not exist" % code)
+	if checked < 20:
+		_fail("only found %d colour codes in the rules" % checked)
+	else:
+		print("  ok    %d codes named, all of them real" % checked)
+
+	print("")
 	if _failures == 0:
 		print("the library answers in the words people use")
 	else:
