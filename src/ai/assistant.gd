@@ -998,7 +998,7 @@ func _run_tool(block: Dictionary) -> Variant:
 			return _attachment_points(args)
 		"look_at_model":
 			progress.emit("looking at what is already built")
-			return _describe_world()
+			return _describe_world(args)
 		"view_model":
 			var from: String = str(args.get("from", "corner"))
 			progress.emit("looking at the %s" % from)
@@ -1394,7 +1394,22 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 ## alongside it. Keeping a second copy of where every brick is would be
 ## two sources of truth for one fact, and the one that drifts is always
 ## the one nobody is looking at.
-func _describe_world() -> String:
+## Whether a placement is inside the section that was asked about.
+## An empty box means the whole model.
+static func _inside(at: Vector3, where: Dictionary) -> bool:
+	if where.is_empty():
+		return true
+	for pair: Array in [["x_from", "x_to", at.x], ["y_from", "y_to", at.y],
+			["z_from", "z_to", at.z]]:
+		var value: float = float(pair[2])
+		if where.has(pair[0]) and value < float(where[pair[0]]):
+			return false
+		if where.has(pair[1]) and value > float(where[pair[1]]):
+			return false
+	return true
+
+
+func _describe_world(args: Dictionary = {}) -> String:
 	if world == null or world.brick_count() <= scenery.size():
 		return "The baseplate is empty. Nothing is built yet."
 
@@ -1407,6 +1422,10 @@ func _describe_world() -> String:
 	var low := Vector3(999999, 999999, 999999)
 	var high := Vector3(-999999, -999999, -999999)
 	var counted: int = 0
+	var matched: int = 0
+	var where: Dictionary = args.get("where", {}) if typeof(
+		args.get("where")) == TYPE_DICTIONARY else {}
+	var skip: int = maxi(int(args.get("skip", 0)), 0)
 
 	for brick: BrickWorld.Brick in world.bricks():
 		# The baseplate is a brick like any other and is 32 studs
@@ -1428,6 +1447,18 @@ func _describe_world() -> String:
 		tally[key] = int(tally.get(key, 0)) + 1
 		counted += 1
 
+		# Outside the section being worked on.
+		#
+		# Counted and tallied first, so the totals and the span always
+		# describe the whole model however narrow the question — a
+		# section listed as though it were everything is how a model
+		# rebuilds something it already has.
+		if not _inside(at, where):
+			continue
+		matched += 1
+		if matched <= skip:
+			continue
+
 		# Capped. A four-hundred brick model listed in full is most of a
 		# context window spent on something the model mostly needs the
 		# shape of, and the tally below carries what the rows drop.
@@ -1442,6 +1473,9 @@ func _describe_world() -> String:
 
 	var lines := PackedStringArray()
 	lines.append("%d parts are on the baseplate." % counted)
+	if not where.is_empty() or skip > 0:
+		lines.append("%d of them are in the part you asked about%s."
+			% [matched, "" if skip == 0 else ", of which %d skipped" % skip])
 	lines.append("They span x %s..%s, z %s..%s studs, and stand y %s..%s plates."
 		% [Placement._num(low.x), Placement._num(high.x),
 			Placement._num(low.z), Placement._num(high.z),
@@ -1463,7 +1497,16 @@ func _describe_world() -> String:
 		lines.append("Where they are:")
 	lines.append_array(rows)
 	if counted > rows.size():
-		lines.append("  … %d more, not listed." % (counted - rows.size()))
+		# And how to see them, which is the whole difference between a
+		# model that can be finished and one that cannot. A set-sized
+		# build never fits in one listing, so the way through is to ask
+		# for one section at a time rather than to give up on the rest.
+		var left: int = matched - skip - rows.size()
+		lines.append("  … %d more here, not listed. Ask again with "
+			% left + "skip=%d to go on, or with where={x_from,x_to,"
+			% (skip + rows.size())
+			+ "z_from,z_to,y_from,y_to} in studs and plates to work on "
+			+ "one section at a time.")
 	return "\n".join(lines)
 
 
@@ -2298,6 +2341,29 @@ placed and leave out of the new submission is removed.
 Always use search_parts before using a part number you are not certain \
 of. A guessed number is not a part and the design will be rejected.
 
+SOMETHING BIG
+A set-sized model — a ship, a building, a vehicle with a real interior \
+— is hundreds to thousands of parts, and it does not go in one reply. \
+There is no limit on how large the finished thing may be; there is a \
+limit on how much of it you can say at once. Build it the way a set is \
+designed, in stages:
+
+  1. submit_design the structure: the masses and their proportions, a \
+     few dozen parts. Get that right first, because everything after it \
+     depends on the proportions being right, and fixing them later \
+     means moving everything.
+  2. view_model and judge those proportions against the real subject \
+     before adding a single detail.
+  3. edit_model to add one section at a time — thirty to eighty parts a \
+     call. Each one is checked against everything already there, so a \
+     section that collides or floats is caught while you still know \
+     what you meant by it.
+  4. look_at_model with where= to re-read a section before changing it, \
+     and view_model between sections to see what you have.
+
+Do not try to submit a thousand parts in one call. It will be cut off \
+part way through and nothing of it will arrive.
+
 LOOK AT IT
 check_design tells you a model is legal. view_model tells you what it
 is, which is the thing you are actually being judged on — a car that
@@ -2508,10 +2574,36 @@ func _tools() -> Array:
 				+ "first whenever the request is about what is there — "
 				+ "adding to it, changing part of it, matching its "
 				+ "colours or its height. You cannot see the model "
-				+ "otherwise."),
+				+ "otherwise.\n\nA large model will not fit in one "
+				+ "reply. Give where= to list one section, or skip= to "
+				+ "carry on from where the last listing stopped. The "
+				+ "totals and the overall span are always for the whole "
+				+ "model, whatever you ask for."),
 			"input_schema": {
 				"type": "object",
-				"properties": {},
+				"properties": {
+					"where": {
+						"type": "object",
+						"description": ("Only the part of the model "
+							+ "inside this box, in studs and plates. "
+							+ "Any side may be left out."),
+						"properties": {
+							"x_from": {"type": "number"},
+							"x_to": {"type": "number"},
+							"y_from": {"type": "number"},
+							"y_to": {"type": "number"},
+							"z_from": {"type": "number"},
+							"z_to": {"type": "number"},
+						},
+						"additionalProperties": false,
+					},
+					"skip": {
+						"type": "integer",
+						"description": ("How many matching bricks to "
+							+ "pass over before listing, for walking "
+							+ "through a model a section at a time."),
+					},
+				},
 				"additionalProperties": false,
 			},
 		},
