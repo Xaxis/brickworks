@@ -128,7 +128,7 @@ func _ready() -> void:
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
 	# real before framing them.
 	await get_tree().process_frame
-	_camera.frame(_world.model_bounds())
+	_camera.frame(_built_bounds())
 
 	var autobuild: String = _argument("--autobuild")
 	if not autobuild.is_empty():
@@ -171,7 +171,7 @@ func _showcase() -> void:
 			_builder.register(id, entry[0], at)
 		x += 60.0
 	await get_tree().process_frame
-	_camera.frame(_world.model_bounds(), 1.05)
+	_camera.frame(_built_bounds(), 1.05)
 	_camera.set_view("default")
 
 
@@ -196,7 +196,7 @@ func _ask(brief: String) -> void:
 	print("ask ok=%s bricks=%d  %s  (%.0fs)" % [
 		outcome[0], _assistant._placed_ids.size(), outcome[1],
 		(Time.get_ticks_msec() - started) / 1000.0])
-	_camera.frame(_world.model_bounds())
+	_camera.frame(_built_bounds())
 	await get_tree().process_frame
 
 
@@ -373,7 +373,7 @@ func _build_ui() -> void:
 		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed()
-		_camera.frame(_world.model_bounds()))
+		_camera.frame(_built_bounds()))
 
 	var layout := HBoxContainer.new()
 	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -763,6 +763,9 @@ func _built_bounds() -> AABB:
 		var box: AABB = brick.transform * part.bounds
 		bounds = box if first else bounds.merge(box)
 		first = false
+	# Everything, including the scenery, when nothing has been built —
+	# a box round nothing frames nothing, and the baseplate is at least
+	# somewhere to stand. Not _built_bounds(), which is this function.
 	return _world.model_bounds() if first else bounds
 
 
@@ -854,7 +857,7 @@ func _build_mosaic(across: int, dither: bool) -> void:
 		if brick_id != 0:
 			_builder.register(brick_id, Mosaic.PIXEL_PART, at)
 
-	_camera.frame(_world.model_bounds(), 1.1)
+	_camera.frame(_built_bounds(), 1.1)
 	_camera.set_view("top")
 	_on_model_changed()
 	_bar.say("%d plates — press P for what to buy" % pixels.size())
@@ -1555,7 +1558,7 @@ func _selection_bounds() -> AABB:
 		var here: AABB = (brick.transform * part.bounds).abs()
 		box = here if first else box.merge(here)
 		first = false
-	return _world.model_bounds() if first else box
+	return _built_bounds() if first else box
 
 
 ## Move the selection one stud in a direction named on the screen
@@ -1660,11 +1663,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# which is what "zoom to fit" means in every tool that has
 			# both.
 			if key.shift_pressed or _builder.selection.is_empty():
-				_camera.frame(_world.model_bounds())
+				_camera.frame(_built_bounds())
 			else:
 				_camera.frame(_selection_bounds())
 		KEY_HOME:
-			_camera.frame(_world.model_bounds())
+			_camera.frame(_built_bounds())
 		KEY_6:
 			_camera.set_view("bottom")
 		KEY_7:
