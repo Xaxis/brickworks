@@ -184,6 +184,9 @@ class Placement extends RefCounted:
 	## hand stays theirs across an edit, so that a later design replaces
 	## the assistant's work and leaves theirs alone.
 	var mine: bool = true
+	## A face that was asked for and is not one of the six. Kept so the
+	## check can say so rather than silently standing the part up.
+	var odd_face: String = ""
 	## The section this brick belongs to, or empty for the main body.
 	## Its coordinates are then that section's own, not the world's.
 	var section: String = ""
@@ -197,6 +200,12 @@ class Placement extends RefCounted:
 		p.z = float(raw.get("z", 0))
 		p.face = str(raw.get("face", "up")).to_lower()
 		if not FACES.has(p.face):
+			# Remembered, not just corrected. Quietly turning an
+			# unrecognised face into "up" hands back a square brick and
+			# no complaint, so a model that invented one — and the
+			# obvious thing to invent is an angle — sees its part land
+			# flat and has nothing to go on but the picture.
+			p.odd_face = p.face
 			p.face = "up"
 		p.rot = posmod(int(raw.get("rot", 0)), 4)
 		p.section = str(raw.get("section", "")).strip_edges()
@@ -1752,6 +1761,14 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			else:
 				_note(issues, "unknown part",
 					"no part '%s' exists" % placement.part)
+			continue
+		if not placement.odd_face.is_empty():
+			_note(issues, "no such face",
+				"brick %d (%s) asks for face '%s'. The six are up, "
+					% [index, placement.part, placement.odd_face]
+					+ "down, +x, -x, +z and -z — face cannot carry an "
+					+ "angle. For anything not square to the grid, put "
+					+ "the part in a section and turn the section.")
 			continue
 		if placement.y < 0:
 			_note(issues, "below ground",

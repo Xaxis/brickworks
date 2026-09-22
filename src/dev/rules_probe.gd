@@ -130,6 +130,14 @@ func _run() -> void:
 		"the course above it starts at y=9")
 
 	print("")
+	print("  a face that is not one of the six")
+	_refused(assistant, "an invented face says so rather than standing "
+		+ "the part up", [
+			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0,
+				"rot": 0, "face": "tilted30"},
+		], "face cannot carry an angle")
+
+	print("")
 	print("  a reply that ran out of room is not an empty design")
 	# A tool call cut off mid-placement parses as a design with nothing
 	# in it. Told "no parts", the model hunts for a geometry fault that
