@@ -92,6 +92,75 @@ static func cells_for(
 	return out
 
 
+## Whether an orientation is one of the twenty-four [method cells_for]
+## can answer for exactly.
+static func is_square_to_grid(basis: Basis) -> bool:
+	return basis.is_equal_approx(snap_basis(basis))
+
+
+## The cells a part fills when it is NOT square to the grid.
+##
+## [method cells_for] spans two rotated corners, which is the rotated
+## box only for the twenty-four orientations it documents as its
+## precondition. Anything else spans a diagonal, so the caller used to
+## square the basis up first and a brick turned thirty degrees reserved
+## exactly the cells of a brick turned none: nearly a stud of real
+## plastic outside its own reservation, and empty air inside it. Overlap,
+## floating and connectedness were all then answering about a shape that
+## was not there — which is worse than refusing to answer, because it
+## reads as a verdict.
+##
+## This walks the cells the turned box could reach and keeps the ones it
+## actually touches. The test is the cell's centre against the box grown
+## by the cell's own reach along each of the box's axes, which is the
+## standard separating-axis test with the box's three axes: it can say
+## yes to a cell the box only nearly touches, and never no to one it
+## does. Over-reserving is the safe direction — it refuses a placement
+## that would have fitted, rather than passing one that does not.
+static func cells_for_turned(
+	boxes: Array[AABB], origin_cell: Vector3i, basis: Basis
+) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	var taken: Dictionary = {}
+	var inverse: Basis = basis.inverse()
+	# How far a unit cell reaches along each of the box's own axes.
+	var reach := Vector3(
+		0.5 * (absf(inverse[0].x) + absf(inverse[1].x) + absf(inverse[2].x)),
+		0.5 * (absf(inverse[0].y) + absf(inverse[1].y) + absf(inverse[2].y)),
+		0.5 * (absf(inverse[0].z) + absf(inverse[1].z) + absf(inverse[2].z)))
+
+	for box: AABB in boxes:
+		var lo := Vector3(box.position)
+		var hi := lo + Vector3(box.size)
+		var low := Vector3(INF, INF, INF)
+		var high := Vector3(-INF, -INF, -INF)
+		for n: int in 8:
+			var corner: Vector3 = basis * Vector3(
+				hi.x if n & 1 else lo.x,
+				hi.y if n & 2 else lo.y,
+				hi.z if n & 4 else lo.z)
+			low = low.min(corner)
+			high = high.max(corner)
+
+		for x: int in range(floori(low.x), ceili(high.x)):
+			for y: int in range(floori(low.y), ceili(high.y)):
+				for z: int in range(floori(low.z), ceili(high.z)):
+					var centre: Vector3 = inverse * Vector3(
+						float(x) + 0.5, float(y) + 0.5, float(z) + 0.5)
+					if centre.x < lo.x - reach.x or centre.x > hi.x + reach.x:
+						continue
+					if centre.y < lo.y - reach.y or centre.y > hi.y + reach.y:
+						continue
+					if centre.z < lo.z - reach.z or centre.z > hi.z + reach.z:
+						continue
+					var cell: Vector3i = origin_cell + Vector3i(x, y, z)
+					if taken.has(cell):
+						continue
+					taken[cell] = true
+					out.append(cell)
+	return out
+
+
 ## Would a part placed here overlap anything already placed?
 ##
 ## ``ignore`` lets a brick being dragged not collide with itself.

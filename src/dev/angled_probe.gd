@@ -22,6 +22,10 @@ func _run() -> void:
 	var world := BrickWorld.new()
 	world.library = library
 	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
 	await process_frame
 
 	# A brick turned 30 degrees about the upright axis — the angle a
@@ -61,12 +65,62 @@ func _run() -> void:
 		back.origin.is_equal_approx(square.origin)
 			and back.basis.is_equal_approx(Basis.IDENTITY))
 
+	# And the lattice it is checked against.
+	#
+	# cells_for spans two rotated corners, which is the rotated box only
+	# for the twenty-four square orientations. The caller used to square
+	# the basis up first, so a brick turned thirty degrees reserved
+	# exactly the cells of a brick turned none — overlap, floating and
+	# connectedness all answering about a shape that was not there.
+	print("")
+	print("  the space a turned brick reserves")
+	var part: Lbm.PartMesh = library.mesh_for("3001")
+	var upright := Transform3D(Basis.IDENTITY, Vector3(0, 24, 0))
+	var flat: Array[Vector3i] = builder._cells_for(part, upright)
+	var tilted: Array[Vector3i] = builder._cells_for(part,
+		Transform3D(Basis(Vector3.UP, deg_to_rad(30.0)), Vector3(0, 24, 0)))
+	_check("a square brick still reserves cells, %d" % flat.size(),
+		flat.size() > 0)
+	_check("a turned one reserves a different set, %d against %d"
+		% [tilted.size(), flat.size()], _differ(flat, tilted))
+
+	# It must cover the plastic. A 2x4 brick turned thirty degrees
+	# reaches further in z than a square one does, and that corner is
+	# exactly what used to be left unreserved.
+	var reach_flat: int = _widest_z(flat)
+	var reach_tilt: int = _widest_z(tilted)
+	_check("and reaches further where the corner swings out, %d vs %d"
+		% [reach_tilt, reach_flat], reach_tilt > reach_flat)
+
 	print("")
 	if _failures == 0:
 		print("angled geometry survives")
 	else:
 		print("%d FAILURE(S) — angled geometry is flattened" % _failures)
 	quit(1 if _failures else 0)
+
+
+## Whether two cell sets are actually different.
+static func _differ(a: Array[Vector3i], b: Array[Vector3i]) -> bool:
+	if a.size() != b.size():
+		return true
+	var seen: Dictionary = {}
+	for cell: Vector3i in a:
+		seen[cell] = true
+	for cell: Vector3i in b:
+		if not seen.has(cell):
+			return true
+	return false
+
+
+## The half-width of a cell set along z, in cells.
+static func _widest_z(cells: Array[Vector3i]) -> int:
+	var low: int = 0x7FFFFFFF
+	var high: int = -0x7FFFFFFF
+	for cell: Vector3i in cells:
+		low = mini(low, cell.z)
+		high = maxi(high, cell.z)
+	return high - low
 
 
 ## How far this orientation is from being square to the grid.

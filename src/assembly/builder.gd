@@ -593,14 +593,17 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 			ceil(box.end.y / BrickLattice.CELL),
 			ceil(box.end.z / BrickLattice.CELL))
 		boxes = [AABB(from, (to - from).max(Vector3.ONE))]
-	# Snapped. cells_for takes the span between two rotated corners,
-	# which is the rotated box only for the 24 orientations it documents
-	# as its precondition; anything else spans a diagonal instead. Every
-	# basis this project makes is one of the 24, but one read out of
-	# somebody else's .ldr need not be.
-	return BrickLattice.cells_for(boxes,
-		BrickLattice.to_cell(at.origin),
-		BrickLattice.snap_basis(at.basis))
+	# cells_for takes the span between two rotated corners, which is the
+	# rotated box only for the 24 orientations it documents as its
+	# precondition; anything else spans a diagonal instead. Every basis
+	# this project places is one of the 24, but one read out of somebody
+	# else's .ldr need not be — and squaring it up first, which is what
+	# used to happen here, meant a brick turned thirty degrees reserved
+	# the cells of a brick turned none.
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	if BrickLattice.is_square_to_grid(at.basis):
+		return BrickLattice.cells_for(boxes, cell, at.basis)
+	return BrickLattice.cells_for_turned(boxes, cell, at.basis)
 
 
 func rotate_held(quarter_turns: int) -> void:
