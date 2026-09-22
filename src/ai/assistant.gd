@@ -2152,12 +2152,20 @@ func _check_support(
 	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
-		if placement.y == 0:
-			continue
 		var cells: Array[Vector3i] = cells_of[index]
 		var floor_y: int = 0x7FFFFFFF
 		for cell: Vector3i in cells:
 			floor_y = mini(floor_y, cell.y)
+		# Standing on the ground, read off where the brick actually
+		# ended up rather than off the number that was written.
+		#
+		# This asked whether the written y was zero, which for a brick
+		# in a section is that section's own y and not the world's — so
+		# the base course of a pylon carried thirty plates into the air
+		# was excused from needing anything to hold it up, and a whole
+		# assembly could hang there with the check calling it sound.
+		if floor_y <= 0:
+			continue
 
 		var supported: bool = false
 		for cell: Vector3i in cells:

@@ -82,6 +82,16 @@ func _run() -> void:
 		"section adrift"))
 
 	print("")
+	print("  a section lifted into the air")
+	# Its base course is written at the section's own y=0, which is not
+	# the world's. Read off the written number, that brick counts as
+	# standing on the ground however high the section is carried.
+	var lifted: Assistant.Model = _model(0.0, 0.0, 9.0)
+	var said: String = str(_assistant._check(lifted)["feedback"])
+	_check("its base course is not excused from being held up",
+		said.contains("nothing holding it"))
+
+	print("")
 	print("  and a model with no sections is unchanged")
 	var plain := Assistant.Model.new()
 	plain.placements.append(Assistant.Placement.from_dict(
