@@ -1010,20 +1010,35 @@ const CRITIQUE := """This is what you built. It holds together; that \
 was never the question. Look at it and answer one: is this the thing \
 you were asked for?
 
-Four things go wrong here over and over. Check for each of them by \
+Five things go wrong here over and over. Check for each of them by \
 name:
   A surface built as a staircase that should be smooth or sloped. \
 Steps of plain bricks where a roof, a hull, a nose or a wing should \
 run — use slopes, curved slopes and wedges.
+  Something raked, swept or hinged, built square. A pylon, a wing, a \
+windscreen, an opened hatch. Filling a staircase with slopes leaves a \
+staircase; what these want is to be a section, turned to the angle \
+they actually sit at. If you find yourself stepping a shape outward a \
+stud at a time, that shape wanted an angle.
   A face left blank. A wall with nothing on it, when the brief asked \
 for a door or a window, or when every other face has something.
   A shape that should taper or curve, built as a box.
   Detail that cannot be seen: a colour against the same colour, or \
 something hidden inside the model.
 
+Use view_model with where= to look closely at whatever you are \
+judging. A whole model in one frame makes every assembly on it a few \
+dozen pixels across, which is not enough to tell a taper from a step.
+
 If any of those is true, fix it with edit_model and say what you \
-changed. If it is genuinely right, say so in one line and stop — do \
-not submit it again."""
+changed. Replacing a shape with a better one is a fix; taking it out \
+and leaving the space empty is not — a model that got smaller has \
+usually got worse.
+
+If it is genuinely right, say so in one line and stop — do not submit \
+it again. Be honest about this: say it reads as the thing only if you \
+can name the features that make it recognisable and see each of them \
+in the picture."""
 
 
 ## Something a person can act on, rather than a number.
