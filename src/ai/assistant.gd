@@ -1144,11 +1144,14 @@ func _run_tool(block: Dictionary) -> Variant:
 			return _describe_world(args)
 		"view_model":
 			var from: String = str(args.get("from", "corner"))
-			progress.emit("looking at the %s" % from)
+			var close: AABB = _box_from(args.get("where"))
+			progress.emit("looking at the %s" % from
+				if close.size.length() <= 0.0
+				else "looking closely at the %s" % from)
 			# Of what is in the world, which during a design is the
 			# last draft it checked — so this is its own work, not a
 			# hypothetical.
-			return await _with_a_look("", "", from)
+			return await _with_a_look("", "", from, close)
 		"edit_model":
 			var edited: Model = _edit(args)
 			if _touched == 0:
@@ -1392,12 +1395,12 @@ func _from_both_sides(said: String, ask: String) -> Variant:
 
 
 func _with_a_look(said: String, ask: String,
-		from: String = "corner") -> Variant:
+		from: String = "corner", only: AABB = AABB()) -> Variant:
 	if _shot == null:
 		_shot = ModelShot.new()
 		add_child(_shot)
 
-	var picture: Dictionary = await _shot.block(world, from, scenery)
+	var picture: Dictionary = await _shot.block(world, from, scenery, only)
 	# Cancelled while the picture was being taken. Saying anything now
 	# would be answering a turn that no longer exists.
 	if not _busy:
@@ -1561,6 +1564,28 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 ## alongside it. Keeping a second copy of where every brick is would be
 ## two sources of truth for one fact, and the one that drifts is always
 ## the one nobody is looking at.
+## A box written in studs and plates, as a box in LDU. Empty when
+## nothing usable was given, which means the whole model.
+static func _box_from(raw: Variant) -> AABB:
+	if typeof(raw) != TYPE_DICTIONARY:
+		return AABB()
+	var where: Dictionary = raw
+	for side: String in ["x_from", "x_to", "y_from", "y_to",
+			"z_from", "z_to"]:
+		if not where.has(side):
+			return AABB()
+	var low := Vector3(
+		float(where["x_from"]) * STUD,
+		float(where["y_from"]) * PLATE,
+		float(where["z_from"]) * STUD)
+	var high := Vector3(
+		float(where["x_to"]) * STUD,
+		float(where["y_to"]) * PLATE,
+		float(where["z_to"]) * STUD)
+	return AABB(low.min(high), (high - low).abs().max(
+		Vector3(STUD, PLATE, STUD)))
+
+
 ## Whether a placement is inside the section that was asked about.
 ## An empty box means the whole model.
 static func _inside(at: Vector3, where: Dictionary) -> bool:
@@ -2704,6 +2729,12 @@ Do not try to submit a thousand parts in one call. It will be cut off \
 part way through and nothing of it will arrive.
 
 LOOK AT IT
+On a big model, look closely as well as from a distance. view_model \
+takes a where= box in studs and plates: a whole ship framed at once \
+makes every assembly on it a few dozen pixels across, which is not \
+enough to judge a shape by. Frame the saucer, then a nacelle, then the \
+hull, the way you would turn a real model over in your hands.
+
 check_design tells you a model is legal. view_model tells you what it
 is, which is the thing you are actually being judged on — a car that
 holds together and does not look like a car is a failure, and it is a
@@ -2998,6 +3029,27 @@ func _tools() -> Array:
 						"description": "which side to look from. "
 							+ "corner is a three-quarter view and shows "
 							+ "the shape best",
+					},
+					"where": {
+						"type": "object",
+						"description": ("Look closely at one part of "
+							+ "the model rather than all of it, in "
+							+ "studs and plates. The rest is still in "
+							+ "the picture, just not filling it. On a "
+							+ "big model a single assembly is a few "
+							+ "dozen pixels across otherwise, which is "
+							+ "not enough to judge its shape by."),
+						"properties": {
+							"x_from": {"type": "number"},
+							"x_to": {"type": "number"},
+							"y_from": {"type": "number"},
+							"y_to": {"type": "number"},
+							"z_from": {"type": "number"},
+							"z_to": {"type": "number"},
+						},
+						"required": ["x_from", "x_to", "y_from", "y_to",
+							"z_from", "z_to"],
+						"additionalProperties": false,
 					},
 				},
 				"required": ["from"],

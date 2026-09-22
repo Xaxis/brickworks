@@ -147,8 +147,15 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 	return box
 
 
+## ``only`` frames on part of the model rather than all of it.
+##
+## Everything here framed the whole thing, which was right when a model
+## was fifty bricks. On a set-sized one a nacelle is a few dozen pixels
+## across and the critique is being asked whether something it cannot
+## make out is the right shape. A designer holding a real model turns
+## it over and looks closely at one end.
 func take(world: BrickWorld, from: String,
-		skip: Dictionary = {}) -> Image:
+		skip: Dictionary = {}, only: AABB = AABB()) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
 		return null
 
@@ -172,6 +179,11 @@ func take(world: BrickWorld, from: String,
 	var bounds: AABB = _restage(world, skip)
 	if bounds.size.length() <= 0.0:
 		return null
+	# Staged in full either way, so what is around the part being looked
+	# at is still in the picture — a close look at a nacelle that had
+	# cut the hull out of it would not show whether the two meet.
+	if only.size.length() > 0.0:
+		bounds = only
 
 	var direction: Vector3 = ANGLES.get(from, ANGLES["corner"]).normalized()
 	var centre: Vector3 = bounds.get_center()
@@ -271,8 +283,8 @@ static func _is_blank(image: Image) -> bool:
 ## Returns an empty dictionary when there is no picture to give, which
 ## the caller reads as "fall back to the letters".
 func block(world: BrickWorld, from: String,
-		skip: Dictionary = {}) -> Dictionary:
-	var image: Image = await take(world, from, skip)
+		skip: Dictionary = {}, only: AABB = AABB()) -> Dictionary:
+	var image: Image = await take(world, from, skip, only)
 	if image == null:
 		return {}
 	var bytes: PackedByteArray = image.save_png_to_buffer()

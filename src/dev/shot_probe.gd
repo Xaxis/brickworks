@@ -131,9 +131,45 @@ func _run() -> void:
 		else:
 			print("  ok    a %d KB PNG, ready to send" % (bytes.size() / 1024))
 
+	# A close look at one part of it.
+	#
+	# The whole model framed is right for fifty bricks. For a thousand,
+	# an assembly is a few dozen pixels and the critique is being asked
+	# about something it cannot make out.
+	var whole: Image = await shot.take(world, "corner")
+	var close: Image = await shot.take(world, "corner", {},
+		AABB(Vector3(0, 0, 0), Vector3(40, 24, 40)))
+	if whole == null or close == null:
+		_failures += 1
+		print("  FAIL  could not take both pictures")
+	elif _share(close) <= _share(whole):
+		_failures += 1
+		print("  FAIL  looking closely filled %.0f%% against %.0f%% "
+			% [_share(close) * 100.0, _share(whole) * 100.0]
+			+ "for the whole model")
+	else:
+		print("  ok    looking closely fills more of the frame, "
+			+ "%.0f%% against %.0f%%"
+			% [_share(close) * 100.0, _share(whole) * 100.0])
+
 	print("")
 	if _failures == 0:
 		print("the assistant is shown the model it built")
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
+
+
+## How much of a picture is model rather than background.
+static func _share(image: Image) -> float:
+	var step: int = maxi(image.get_width() / 60, 1)
+	var hits: int = 0
+	for x: int in range(0, image.get_width(), step):
+		for y: int in range(0, image.get_height(), step):
+			var pixel: Color = image.get_pixel(x, y)
+			if pixel.r > 0.4 and pixel.r > pixel.g * 2.0 \
+					and pixel.r > pixel.b * 2.0:
+				hits += 1
+	var sampled: int = (image.get_width() / step) \
+		* (image.get_height() / step)
+	return float(hits) / float(maxi(sampled, 1))
