@@ -105,6 +105,7 @@ func _run() -> void:
 	await _mouse()
 	await _keyboard()
 	await _settings()
+	await _framing()
 
 	print("")
 	if _failures == 0:
@@ -382,6 +383,39 @@ func _names_middle(verb: String) -> bool:
 func _frames(how_many: int) -> void:
 	for _n: int in how_many:
 		await process_frame
+
+
+## Framing, which has to be about the model and not the ground.
+##
+## The baseplate is a brick like any other and is 32 studs across, so a
+## box round everything is a box round the baseplate. Every framing call
+## took that box, and a six-stud car opened as a speck in a green field.
+## Nothing failed; it just looked like the model had got lost.
+func _framing() -> void:
+	print("")
+	print("  framing")
+	await _settle()
+	var tight: float = _camera._target_distance
+
+	var plate := Transform3D(Basis.IDENTITY, Vector3(0.0, -8.0, 0.0))
+	var plate_id: int = _world.add_brick("3811", 2, plate)
+	if plate_id == 0:
+		_failures += 1
+		print("  FAIL  no baseplate to stand on, so the check below "
+			+ "never ran")
+		return
+	_main._store.scenery[plate_id] = true
+	await _frames(6)
+
+	# Pushed well back first, so that framing has to actually do
+	# something for this to pass.
+	_camera._target_distance = tight * 8.0
+	await _key(KEY_F)
+	await _frames(8)
+	_check("framing comes back to the model",
+		_camera._target_distance < tight * 8.0)
+	_check("...and ignores the baseplate under it",
+		_camera._target_distance < tight * 2.0)
 
 
 ## A point on screen that a panel is under, found by walking in from
