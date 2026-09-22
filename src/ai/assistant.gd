@@ -17,6 +17,10 @@
 class_name Assistant
 extends Node
 
+## How many times to ask again when the connection drops, before
+## giving up on a design that may have been running for a long time.
+const TRIES_WHEN_DROPPED := 4
+
 const DEFAULT_ENDPOINT := "/api/claude"
 ## What designs when nothing has been chosen. The choosing lives in
 ## [Brain], with the table of what each model will actually accept.
@@ -502,11 +506,13 @@ func _send() -> void:
 				builder.lattice.release(brick_id)
 				world.remove_brick(brick_id)
 			_sketched_ids = PackedInt64Array()
-			if _http.request(url, headers, HTTPClient.METHOD_POST,
-					JSON.stringify(body)) != OK:
-				_stop(false, "could not reach the assistant")
+			var again: Array = await _ask_again(url, headers, body)
+			if again.is_empty():
+				_stop(false, "could not reach the assistant after "
+					+ "several tries — the last version that held "
+					+ "together is still there")
 				return
-			_on_response(await _http.request_completed)
+			_on_response(again)
 			return
 
 		_on_response(streamed)
@@ -1756,6 +1762,36 @@ static func _ends_at(cells: Variant) -> String:
 static func _tidy(value: float) -> String:
 	return str(int(value)) if is_equal_approx(value, floor(value)) \
 		else str(snappedf(value, 0.01))
+
+
+## Ask again, more than once, before losing the whole design.
+##
+## A design runs for twenty minutes and holds each connection open for
+## up to three, so a blip somewhere in the middle is ordinary rather
+## than exceptional. Giving up on the first one threw away everything
+## built so far — twenty-four minutes and a finished windmill, one
+## revision short of done, because a socket closed.
+##
+## The pause grows between tries, because a network that has just
+## failed is not ready again a millisecond later.
+func _ask_again(url: String, headers: PackedStringArray,
+		body: Dictionary) -> Array:
+	for attempt: int in TRIES_WHEN_DROPPED:
+		if not _busy:
+			return []
+		if attempt > 0:
+			progress.emit("still trying — attempt %d of %d"
+				% [attempt + 1, TRIES_WHEN_DROPPED])
+			await get_tree().create_timer(2.0 * float(attempt)).timeout
+			if not _busy:
+				return []
+		if _http.request(url, headers, HTTPClient.METHOD_POST,
+				JSON.stringify(body)) != OK:
+			continue
+		var result: Array = await _http.request_completed
+		if int(result[0]) == HTTPRequest.RESULT_SUCCESS:
+			return result
+	return []
 
 
 func _check_support(
