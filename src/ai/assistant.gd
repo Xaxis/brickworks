@@ -1910,6 +1910,8 @@ static func _read_sections(model: Model, args: Dictionary) -> void:
 ## buildable while sitting inside one of them.
 func _check(model: Model, alone: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
+	## Section name -> a lattice of that section's own square cells.
+	var inside: Dictionary = {}
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
 
@@ -2008,7 +2010,44 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		var at: Transform3D = _transform(placement, part,
 			model.section_for(placement))
 		var cells: Array[Vector3i] = builder._cells_for(part, at)
-		var blockers: PackedInt64Array = lattice.blockers(cells)
+
+		# Inside a section, check the bricks against each other in the
+		# section's own square frame.
+		#
+		# A part that is not square to the grid cannot be rasterised
+		# onto it exactly, so it reserves every cell it touches at all —
+		# which is the safe direction against other assemblies and
+		# quite wrong within one. Two bricks that abut exactly each
+		# reach a little way into the other once the section is tipped,
+		# and the section collides with itself: a six-brick pylon came
+		# back with three overlaps at every angle but zero. A design
+		# asked for Voyager met this, wrote "the rotated sections
+		# collide with everything once tipped", and went back to
+		# building stepped slabs.
+		#
+		# Rotating an assembly rigidly cannot make its own bricks
+		# intersect. In their own frame they are square, so the exact
+		# integer path answers, and it answers correctly.
+		if not placement.section.is_empty():
+			var own: BrickLattice = inside.get(placement.section)
+			if own == null:
+				own = BrickLattice.new()
+				inside[placement.section] = own
+			var square: Transform3D = _square_transform(placement, part)
+			var here: Array[Vector3i] = builder._cells_for(part, square)
+			var near: PackedInt64Array = own.blockers(here)
+			if not near.is_empty():
+				_note(issues, "overlap",
+					"brick %d (%s at %s) overlaps brick %d inside "
+						% [index, placement.part, placement.where(),
+							near[0] - 1]
+						+ "section '%s'%s" % [placement.section,
+							_ends_at(cells_of.get(near[0] - 1))])
+				continue
+			own.occupy(index + 1, here)
+
+		var blockers: PackedInt64Array = _blockers_outside(
+			lattice, cells, model, placement)
 		if not blockers.is_empty():
 			# The lattice numbers from one, because zero means empty,
 			# and negative keys are bricks that were already there. Both
@@ -2259,6 +2298,28 @@ func _ask_again(url: String, headers: PackedStringArray,
 		if int(result[0]) == HTTPRequest.RESULT_SUCCESS:
 			return result
 	return []
+
+
+## What a placement runs into, not counting its own section.
+##
+## Its neighbours inside the section are checked exactly, in the frame
+## they were written in; here they would collide with it simply for
+## being adjacent to something that is no longer square to the grid.
+static func _blockers_outside(lattice: BrickLattice,
+		cells: Array[Vector3i], model: Model,
+		placement: Placement) -> PackedInt64Array:
+	var hit: PackedInt64Array = lattice.blockers(cells)
+	if placement.section.is_empty() or hit.is_empty():
+		return hit
+	var others := PackedInt64Array()
+	for who: int in hit:
+		# Negative keys are bricks that were already on the baseplate,
+		# which are nobody's section.
+		if who > 0 and who - 1 < model.placements.size() \
+				and model.placements[who - 1].section == placement.section:
+			continue
+		others.append(who)
+	return others
 
 
 ## Which sections actually have bricks in this model, main body first.

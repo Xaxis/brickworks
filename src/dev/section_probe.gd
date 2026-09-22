@@ -148,6 +148,35 @@ func _run() -> void:
 		not before.is_equal_approx(after))
 
 	print("")
+	print("  a tall section, tipped")
+	# The thing that blocked sections completely. A part not square to
+	# the grid cannot be rasterised onto it exactly, so it reserves
+	# every cell it touches at all — safe against other assemblies and
+	# quite wrong within one. Two bricks that abut exactly each reach a
+	# little into the other once tipped, and a six-brick pylon came back
+	# with three overlaps at every angle but zero. A design asked for
+	# Voyager hit this, wrote "the rotated sections collide with
+	# everything once tipped", and went back to stepped slabs.
+	for degrees: float in [15.0, 35.0, 60.0]:
+		var pylon := Assistant.Model.new()
+		for n: int in 6:
+			pylon.placements.append(Assistant.Placement.from_dict(
+				{"part": "3001", "color": 4, "x": 0, "y": n * 3,
+					"z": 0, "rot": 0, "section": "pylon"}))
+		pylon.sections["pylon"] = Assistant.Section.from_dict({
+			"name": "pylon", "x": 0.0, "y": 0.0, "z": 0.0,
+			"axis": "z", "degrees": degrees})
+		var pylon_said: String = str(_assistant._check(pylon)["feedback"])
+		# Any overlap at all, because this pylon stands on its own —
+		# there is nothing else in the model for it to run into, so an
+		# overlap can only be one of its own bricks. Asking only about
+		# the words "inside section" was not enough: without the fix
+		# the same collision is reported in the section's own wording
+		# and the check passed either way.
+		_check("at %.0f degrees its own bricks do not collide" % degrees,
+			not pylon_said.contains("overlap"))
+
+	print("")
 	print("  a brick claiming a section nobody declared")
 	var orphan := Assistant.Model.new()
 	orphan.placements.append(Assistant.Placement.from_dict(
