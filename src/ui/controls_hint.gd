@@ -59,7 +59,7 @@ static func bindings() -> Array[Binding]:
 	# beside four controls it was not told about.
 	if TouchTools.wanted():
 		return for_touch()
-	return for_keyboard()
+	return for_strip()
 
 
 ## The two lists, each reachable whatever this build is running on.
@@ -83,6 +83,37 @@ static func for_touch() -> Array[Binding]:
 			Binding.new(["edges"], "panels"),
 		]
 
+## Which controls the strip carries, named by the key they are pressed
+## with so that the verb beside each still comes from the one list below
+## — pick the entries, not the words, and the strip cannot come to say
+## something the handler does not do.
+##
+## Six and a pointer, which fits one row at any width worth supporting.
+const ON_THE_STRIP := ["click", "right-click", "right-drag", "drag",
+	"middle-drag", "scroll"]
+
+
+## What the strip along the bottom shows: the handful somebody reaches
+## for before they have learned anything, and where the rest live.
+##
+## It used to show all twenty-two, which wrapped to three rows of chips
+## permanently across the bottom of the window — a reference, drawn as
+## though it were a reminder, over the model. There is somewhere to read
+## the whole list now, so this can go back to being what it says at the
+## top of this file it is.
+static func for_strip() -> Array[Binding]:
+	var short: Array[Binding] = []
+	for wanted: String in ON_THE_STRIP:
+		for binding: Binding in for_keyboard():
+			if binding.keys.has(wanted):
+				short.append(binding)
+				break
+	short.append(Binding.new([","], "all controls"))
+	return short
+
+
+## Every binding there is, for the panel that lists them and for
+## anything checking that they are all reachable.
 static func for_keyboard() -> Array[Binding]:
 	return [
 		Binding.new(["click"], "place"),

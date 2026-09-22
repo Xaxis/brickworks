@@ -345,6 +345,11 @@ func _settings() -> void:
 	ViewPrefs.middle_slides = false
 	_check("and says the other thing when it is set back",
 		_names_middle("turn"))
+	# The strip picks its entries out of the full list by key, so a key
+	# that is renamed there leaves a gap here rather than an error.
+	_check("the strip carries every control it means to",
+		ControlsHint.for_strip().size()
+			== ControlsHint.ON_THE_STRIP.size() + 1)
 
 	# Re-centring, which is how you stop the model drifting off screen
 	# after a few turns.

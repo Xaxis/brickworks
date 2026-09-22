@@ -55,7 +55,8 @@ func _run() -> void:
 	# phone, which is the same blind spot it exists to close, one level
 	# up.
 	for which: Array in [
-		[ControlsHint.for_keyboard(), "the hint strip"],
+		[ControlsHint.for_keyboard(), "the list of every control"],
+		[ControlsHint.for_strip(), "the hint strip"],
 		[ControlsHint.for_touch(), "the hint strip on a touchscreen"],
 	]:
 		for binding: ControlsHint.Binding in which[0]:
