@@ -55,14 +55,22 @@ tools/deploy.sh --prod       # needs VERCEL_TOKEN
 python3 -m pytest tests/ -q
 ```
 
-Controls: click to place, right-click to remove, `R` rotate, `[` `]`
-colour, `C` paint what is under the cursor, `G` pick it up, `X` lift it
-off to move it, `Q` `E` turn the model, `B` build steps, `P` parts list,
-`Tab` panels, `/` search, `F` frame, `⌘Z` undo. Alt-drag orbits,
-shift-drag pans, the wheel zooms.
+Controls: click to place, right-click to remove, drag a box to select,
+shift-click to add to the selection, `R` rotate, `[` `]` colour, `C`
+paint what is under the cursor, `G` pick it up, `X` lift it off to move
+it, `Q` `E` turn the model, `B` build steps, `P` parts list, `Tab`
+panels, `/` search, `F` frame, `Cmd-Z` undo, `,` for the rest.
 
-Every one of those is pressed for real in `src/dev/controls_probe.gd`,
-because a hint strip that lies is worse than none.
+Right-drag turns the view, middle-drag turns it too, the wheel zooms,
+and a trackpad turns with two fingers and slides with shift. Which way
+the wheel goes, and whether the middle button turns or slides, are the
+two bindings the CAD tools disagree about, so both are settings.
+
+Every one of those is pressed for real in `src/dev/controls_probe.gd`
+and `src/dev/feel_probe.gd`, because a hint that lies is worse than
+none — and the second of those asks a different question: not whether
+each control works, but what happens when somebody reaches for what
+they are used to. It found left-drag placing a brick.
 
 ## What you can do with a model
 

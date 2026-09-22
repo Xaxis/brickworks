@@ -135,7 +135,26 @@ static func _keep(file: ConfigFile) -> void:
 	file.save(WHERE)
 
 
+## Chosen for this run only, by a command line rather than a person.
+##
+## Kept apart from the setting on purpose: a script asking for max
+## effort once should not quietly rewrite what the app opens with
+## tomorrow. Empty means "whatever is set".
+static var _model_now: String = ""
+static var _effort_now: String = ""
+
+
+static func use_model(id: String) -> void:
+	_model_now = find(id).id if not id.is_empty() else ""
+
+
+static func use_effort(level: String) -> void:
+	_effort_now = level if EFFORTS.has(level) else ""
+
+
 static func chosen() -> String:
+	if not _model_now.is_empty():
+		return _model_now
 	return find(str(_settings().get_value(
 		"assistant", "model", DEFAULT_MODEL))).id
 
@@ -150,6 +169,8 @@ static func choose(id: String) -> void:
 static func effort() -> String:
 	if not find(chosen()).effort:
 		return ""
+	if not _effort_now.is_empty():
+		return _effort_now
 	var level: String = str(_settings().get_value(
 		"assistant", "effort", DEFAULT_EFFORT))
 	return level if EFFORTS.has(level) else DEFAULT_EFFORT

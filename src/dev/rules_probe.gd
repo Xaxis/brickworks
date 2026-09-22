@@ -1,6 +1,7 @@
-## What is the assistant actually told when it turns a part?
+## The rules a design has to satisfy, and what it is told when it does
+## not.
 ##
-##   godot --headless --path . --script src/dev/rot_probe.gd
+##   godot --headless --path . --script src/dev/rules_probe.gd
 ##
 ## A design for "a windmill with four sails and a tapering tower" spent
 ## three turns probing the coordinate system, wrote "rotation behaves
@@ -79,6 +80,42 @@ func _run() -> void:
 	])
 
 	print("")
+	print("  the rules themselves")
+	# These moved here from a second validator, in Python, that used to
+	# sit behind tools/design.py. It built studs-up and only studs-up,
+	# and the two had already drifted — so the designs it passed were
+	# not the designs this one passes. It is gone; the rules it checked
+	# are checked here, against the validator that survives.
+	_refused(assistant, "a part that does not exist", [
+			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "99999zz", "color": 4, "x": 0, "y": 3, "z": 0,
+				"rot": 0},
+		], "99999zz")
+	_refused(assistant, "a brick below the ground", [
+			{"part": "3001", "color": 4, "x": 0, "y": -3, "z": 0,
+				"rot": 0},
+		], "ground")
+	_refused(assistant, "a brick floating in the air", [
+			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3001", "color": 4, "x": 0, "y": 6, "z": 0, "rot": 0},
+		], "nothing holding it")
+	_say(assistant, "two bricks abutting, which is not overlapping", [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3001", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
+	])
+	# A brick is three plates. The course above one at y=0 is y=3, and
+	# three plates stack into the same height.
+	_say(assistant, "a brick, and the course above it at y=3", [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3001", "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
+	])
+	_say(assistant, "three plates filling the same three", [
+		{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3020", "color": 1, "x": 0, "y": 1, "z": 0, "rot": 0},
+		{"part": "3020", "color": 4, "x": 0, "y": 2, "z": 0, "rot": 0},
+	])
+
+	print("")
 	print("  and when a course is put at the wrong height")
 	# The mistake that started this: y counts plates and a brick is
 	# three of them, so the course above a brick at y=6 starts at y=9.
@@ -94,15 +131,19 @@ func _run() -> void:
 
 	print("")
 	if _failures == 0:
-		print("nothing above refused a part for being turned")
+		print("the rules hold, and a refusal says enough to act on")
 	else:
-		print("%d REFUSED" % _failures)
+		print("%d WRONG" % _failures)
 	quit(1 if _failures else 0)
 
 
-## A placement that must be refused, and must say something useful
-## about why. A refusal that only names what was hit sends the reader
-## back to the arithmetic that got them here.
+## A placement that must be refused, and whose reason must contain a
+## given phrase.
+##
+## The phrase matters as much as the refusal. A reason that only names
+## what was hit sends the reader back to the arithmetic that got them
+## there, and a design that redid it wrong concluded rotation was
+## broken and built a windmill with no sails.
 func _refused(assistant: Assistant, what: String, bricks: Array,
 		must_say: String) -> void:
 	var model := Assistant.Model.new()
@@ -116,11 +157,12 @@ func _refused(assistant: Assistant, what: String, bricks: Array,
 		return
 	if not feedback.contains(must_say):
 		_failures += 1
-		print("  FAIL  %s was refused without saying where it ends" % what)
+		print("  FAIL  %s was refused without saying '%s'"
+			% [what, must_say])
 		print("        " + feedback.replace("\n", "\n        "))
 		return
-	print("  ok    %s — refused, and says where it ends" % what)
-	print("        " + feedback.strip_edges().replace("\n", "\n        "))
+	print("  ok    %s — refused, and the reason says '%s'"
+		% [what, must_say])
 
 
 func _say(assistant: Assistant, what: String, bricks: Array) -> void:

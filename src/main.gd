@@ -33,6 +33,9 @@ var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
 var _controls: ControlsDialog
+## Whether --ask finished with a design rather than an apology. Read by
+## the exit status, so a script can tell.
+var _ask_went_well: bool = true
 var _hint: ControlsHint
 var _picker: PickImage
 var _mosaic_source: Image
@@ -136,6 +139,9 @@ func _ready() -> void:
 
 	var ask: String = _argument("--ask")
 	if not ask.is_empty():
+		# For this run, not for the person's settings.
+		Brain.use_model(_argument("--model"))
+		Brain.use_effort(_argument("--effort"))
 		await _ask(ask)
 
 	if not _argument("--showcase").is_empty():
@@ -158,11 +164,15 @@ func _ready() -> void:
 	var out: String = _argument("--out")
 	if not out.is_empty():
 		var written: int = _world.brick_count() - _store.scenery.size()
-		if _store.export_to(out, "Model"):
-			print("wrote %s (%d parts)" % [out, written])
-			get_tree().quit(0)
+		if not _store.export_to(out, "Model"):
+			get_tree().quit(1)
 			return
-		get_tree().quit(1)
+		print("wrote %s (%d parts)" % [out, written])
+		# The file is written either way — a design that failed at the
+		# last revision still leaves the last version that held
+		# together, and throwing it away would be the worse answer. The
+		# status is how a script finds out.
+		get_tree().quit(0 if _ask_went_well else 1)
 		return
 
 	var shot: String = _argument("--shot")
@@ -213,6 +223,7 @@ func _ask(brief: String) -> void:
 
 	_assistant.design(brief)
 	var outcome: Array = await _assistant.finished
+	_ask_went_well = bool(outcome[0])
 	print("ask ok=%s bricks=%d  %s  (%.0fs)" % [
 		outcome[0], _assistant._placed_ids.size(), outcome[1],
 		(Time.get_ticks_msec() - started) / 1000.0])

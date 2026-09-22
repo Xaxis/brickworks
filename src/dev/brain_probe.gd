@@ -82,6 +82,7 @@ func _initialize() -> void:
 
 	print("")
 	_money()
+	_for_this_run_only()
 
 	print("")
 	if _failures == 0:
@@ -155,3 +156,40 @@ func _money() -> void:
 		_failures += 1
 		print("  FAIL  %.3f reads as '%s', wanted '%s'"
 			% [pair[0], said, pair[1]])
+
+
+## A model or an effort named on a command line lasts for that run.
+##
+## The app remembers what the person chose. A script asking for max
+## effort once must not rewrite that, or a single overnight run changes
+## what the app opens with — and nothing on screen would say why.
+func _for_this_run_only() -> void:
+	print("")
+	print("  a command line does not rewrite the settings")
+	var kept_effort: String = Brain.effort()
+	var kept_model: String = Brain.chosen()
+
+	var other: String = "low" if kept_effort != "low" else "high"
+	Brain.use_effort(other)
+	if Brain.effort() == other:
+		print("  ok    the run uses the effort it was given")
+	else:
+		_failures += 1
+		print("  FAIL  asked for %s and got %s" % [other, Brain.effort()])
+
+	Brain.use_effort("")
+	if Brain.effort() == kept_effort:
+		print("  ok    and the stored one is untouched")
+	else:
+		_failures += 1
+		print("  FAIL  the stored effort became %s" % Brain.effort())
+
+	Brain.use_model("claude-haiku-4-5-20251001")
+	var asked: String = Brain.chosen()
+	Brain.use_model("")
+	if asked != kept_model and Brain.chosen() == kept_model:
+		print("  ok    the same for the model")
+	else:
+		_failures += 1
+		print("  FAIL  model went %s -> %s -> %s"
+			% [kept_model, asked, Brain.chosen()])
