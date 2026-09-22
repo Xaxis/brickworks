@@ -96,6 +96,13 @@ var _sketching_sections: Dictionary = {}
 ## ready to send. They go at the head of the conversation and stay
 ## there — see [method _forget_old_pictures].
 var references: Array = []
+## Brick id -> the section it belongs to, and the square placement it
+## was written as. The world keeps only the composed transform, so
+## without these a section cannot be re-angled and an angled brick
+## cannot be moved. See [method _remember_section].
+var _section_of: Dictionary = {}
+var _local_of: Dictionary = {}
+var _sections: Dictionary = {}
 
 
 ## Keep a picture of what is wanted. Returns false if it cannot be used.
@@ -1198,6 +1205,7 @@ func _run_tool(block: Dictionary) -> Variant:
 ## arrives alongside a dozen nobody asked for.
 func _model_from_world() -> Model:
 	var model := Model.new()
+	model.sections = _sections.duplicate()
 	if world == null:
 		return model
 	# The sketch counts as the assistant's. Those bricks are on the
@@ -1222,6 +1230,20 @@ func _model_from_world() -> Model:
 		placement.z = at.z
 		placement.face = BrickLattice.face_of(brick.transform.basis)
 		placement.rot = BrickLattice.turns_about(brick.transform.basis, placement.face)
+		# A brick in a section is described in that section's own
+		# coordinates, which are the ones it was written in. Derived
+		# from the world instead they come back composed with the
+		# section's angle — and the face and turn read off a basis that
+		# is not square to the grid are the nearest of twenty-four,
+		# which is not where the brick is.
+		if _section_of.has(brick.id) and _local_of.has(brick.id):
+			var kept: Array = _local_of[brick.id]
+			placement.section = _section_of[brick.id]
+			placement.x = float(kept[0])
+			placement.y = float(kept[1])
+			placement.z = float(kept[2])
+			placement.face = str(kept[3])
+			placement.rot = int(kept[4])
 		placement.id = brick.id
 		placement.mine = mine.has(brick.id)
 		model.placements.append(placement)
@@ -1584,6 +1606,32 @@ static func _box_from(raw: Variant) -> AABB:
 		float(where["z_to"]) * STUD)
 	return AABB(low.min(high), (high - low).abs().max(
 		Vector3(STUD, PLATE, STUD)))
+
+
+## What the world cannot hold on to.
+##
+## A brick goes into the world as one composed transform: the section's
+## angle and the brick's own square placement multiplied together, with
+## no record that the two were ever separate. Read back, its basis is
+## snapped to the nearest of the twenty-four and the angle is gone.
+##
+## So an edit could not give a section a new angle — which the rules
+## promise it can, because that is how a hatch opens without describing
+## a brick again — and moving an angled brick re-seated it square.
+## Remembered here instead, for as long as the model is on the
+## baseplate.
+func _remember_section(brick_id: int, placement: Placement,
+		model: Model) -> void:
+	if placement.section.is_empty():
+		_section_of.erase(brick_id)
+		_local_of.erase(brick_id)
+		return
+	_section_of[brick_id] = placement.section
+	_local_of[brick_id] = [placement.x, placement.y, placement.z,
+		placement.face, placement.rot]
+	var section: Section = model.sections.get(placement.section)
+	if section != null:
+		_sections[placement.section] = section
 
 
 ## Whether a placement is inside the section that was asked about.
@@ -2507,6 +2555,9 @@ func _apply_edit(model: Model) -> void:
 			var at: Transform3D = _transform(placement, part,
 			model.section_for(placement))
 			world.move_brick(brick_id, at)
+			# Where it now sits inside its section, which is what the
+			# next edit will be written against.
+			_remember_section(brick_id, placement, model)
 			builder.lattice.release(brick_id)
 			builder.register(brick_id, placement.part, at)
 		if brick.color_code != placement.color:
@@ -2522,6 +2573,7 @@ func _apply_edit(model: Model) -> void:
 			placement.part, placement.color, at)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
+			_remember_section(brick_id, placement, model)
 			if placement.mine:
 				mine[brick_id] = true
 
@@ -2561,6 +2613,7 @@ func _apply(model: Model, finished: bool = true) -> void:
 		var brick_id: int = world.add_brick(placement.part, placement.color, at)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
+			_remember_section(brick_id, placement, model)
 			if placement.mine:
 				_placed_ids.append(brick_id)
 

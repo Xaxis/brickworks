@@ -115,6 +115,39 @@ func _run() -> void:
 	_check("two stacked bricks are still buildable", bool(verdict["ok"]))
 
 	print("")
+	print("  and a section survives being built")
+	# The world holds one composed transform per brick — the section's
+	# angle multiplied by the brick's own square placement, with no
+	# record that the two were separate. Read back, the basis snaps to
+	# the nearest of twenty-four and the angle is gone. So without
+	# somewhere to keep it, an edit cannot give a section a new angle,
+	# which the rules promise it can.
+	var built: Assistant.Model = _model(30.0, 0.0, 0.0)
+	_assistant._apply(built, false)
+	await process_frame
+	var reread: Assistant.Model = _assistant._model_from_world()
+	var kept: int = 0
+	for placement: Assistant.Placement in reread.placements:
+		if placement.section == "nacelle":
+			kept += 1
+	_check("its bricks still know which section they are in, %d" % kept,
+		kept == 2)
+	_check("and the section itself is remembered",
+		reread.sections.has("nacelle"))
+
+	print("")
+	print("  opening it further without naming a brick")
+	var before: Basis = _first_of_section(world)
+	var edited: Assistant.Model = _assistant._edit({"sections": [{
+		"name": "nacelle", "x": 4.0, "y": 0.0, "z": 0.0,
+		"axis": "z", "degrees": 70.0}]})
+	_assistant._apply_edit(edited)
+	await process_frame
+	var after: Basis = _first_of_section(world)
+	_check("a new angle on the section moves what is in it",
+		not before.is_equal_approx(after))
+
+	print("")
 	if _failures == 0:
 		print("a section can be built square and carried at an angle")
 	else:
@@ -151,6 +184,15 @@ func _pose_of(model: Assistant.Model, library: PartLibrary,
 ## Whether a check came back without a given kind of complaint.
 func _no_issue(model: Assistant.Model, kind: String) -> bool:
 	return not str(_assistant._check(model)["feedback"]).contains(kind)
+
+
+## The orientation of the first brick the assistant put in a section.
+func _first_of_section(world: BrickWorld) -> Basis:
+	for brick_id: int in _assistant._section_of:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			return brick.transform.basis
+	return Basis.IDENTITY
 
 
 static func _angle_of(basis: Basis) -> float:
