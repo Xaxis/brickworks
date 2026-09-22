@@ -1974,6 +1974,23 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 				_note(issues, "unknown part",
 					"no part '%s' exists" % placement.part)
 			continue
+		# A section that was never declared.
+		#
+		# section_for hands back null, _transform quietly returns the
+		# square placement, and the brick is built at those coordinates
+		# as though they were the world's — which for a part meant to
+		# be carried somewhere at an angle is a long way from where it
+		# belongs. Silent, and the same shape of fault as a face that
+		# is not one of the six.
+		if not placement.section.is_empty() \
+				and not model.sections.has(placement.section):
+			_note(issues, "no such section",
+				"brick %d (%s) says it is in section '%s', which is "
+					% [index, placement.part, placement.section]
+					+ "not one of the sections given. Declare it in "
+					+ "sections, or leave the field out and give the "
+					+ "brick the model's own coordinates.")
+			continue
 		if not placement.odd_face.is_empty():
 			_note(issues, "no such face",
 				"brick %d (%s) asks for face '%s'. The six are up, "

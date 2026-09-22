@@ -148,6 +148,18 @@ func _run() -> void:
 		not before.is_equal_approx(after))
 
 	print("")
+	print("  a brick claiming a section nobody declared")
+	var orphan := Assistant.Model.new()
+	orphan.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0}))
+	orphan.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0,
+			"section": "nowhere"}))
+	_check("is caught rather than quietly built square",
+		str(_assistant._check(orphan)["feedback"]).contains(
+			"not one of the sections given"))
+
+	print("")
 	print("  and is forgotten when the model is")
 	# These are keyed by brick id and BrickWorld numbers from one again
 	# after a clear, so a stale entry would name an ordinary brick
