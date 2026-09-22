@@ -89,6 +89,31 @@ func _initialize() -> void:
 			_fail("%s is answered with a Modulex part" % pair[0])
 
 	print("")
+	print("  and says where a part's studs actually are")
+	# The one line the model reads about a part used to say "N studs on
+	# top" and count every stud whichever way it pointed. So 87087 —
+	# "Brick 1 x 1 with Stud on 1 Side", whose side stud is the entire
+	# reason the part exists — was described as having two studs on
+	# top, and a bracket as having six. The feature that makes it the
+	# part being looked for was the feature misstated.
+	var assistant := Assistant.new()
+	assistant.library = library
+	get_root().add_child(assistant)
+	for pair: Array in [
+			["87087", true], ["4070", true], ["99207", true],
+			["44728", true], ["3001", false], ["3024", false]]:
+		var info: PartLibrary.PartInfo = library.parts.get(pair[0])
+		if info == null:
+			_fail("%s is not in the catalogue" % pair[0])
+			continue
+		var said: String = assistant._describe(info)
+		var sideways: bool = said.contains("facing another way")
+		if sideways != bool(pair[1]):
+			_fail("%s: %s" % [pair[0], said])
+			continue
+		print("  ok    %s" % said.substr(0, 96))
+
+	print("")
 	if _failures == 0:
 		print("the library answers in the words people use")
 	else:

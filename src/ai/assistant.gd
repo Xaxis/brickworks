@@ -1755,11 +1755,51 @@ func _search(query: String, limit: int) -> String:
 func _describe(info: PartLibrary.PartInfo) -> String:
 	var footprint: Vector2i = info.footprint_studs()
 	var plates: int = _height_plates(info)
-	var studs: String = ("%d studs on top" % info.stud_count
-		if info.stud_count > 0 else "no studs on top")
 	return "%s: %s, covers %dx%d studs, %d plate%s, %s" % [
 		info.id, info.name.strip_edges(), footprint.x, footprint.y,
-		plates, "" if plates == 1 else "s", studs]
+		plates, "" if plates == 1 else "s", _studs_of(info)]
+
+
+## Where a part's studs are, not merely how many there are.
+##
+## This said "N studs on top" and counted every stud a part has,
+## whichever way it points. So 87087 — "Brick 1 x 1 with Stud on 1
+## Side", whose side stud is the entire reason the part exists — was
+## described as having two studs on top, and a bracket, which is a
+## right angle with studs on both planes, as having six. The one line
+## the model reads about a part misstated the exact feature that makes
+## it the part it went looking for.
+##
+## The catalogue does not record which way a stud faces, but it does
+## not need to: a top face can hold one stud per stud of footprint, so
+## anything beyond that is somewhere else. It cannot over-claim, and it
+## under-claims only for parts with fewer top studs than they have room
+## for — a jumper, say — which is not a sideways part and reads
+## correctly anyway.
+## How many studs the part's top face has room for.
+##
+## Rounded, where the footprint the placement rules use is rounded up.
+## The two are different questions: a 1x1 brick with a stud on its side
+## is 24 LDU deep, because the stud sticks out, and it needs two studs
+## of clearance — but its top holds one. Ceiling that to two says it
+## has room for the side stud on top, which is exactly the part's whole
+## point going missing.
+static func _room_on_top(info: PartLibrary.PartInfo) -> int:
+	return maxi(int(round(info.size.x / STUD)), 1) \
+		* maxi(int(round(info.size.z / STUD)), 1)
+
+
+func _studs_of(info: PartLibrary.PartInfo) -> String:
+	if info.stud_count <= 0:
+		return "no studs — a smooth face"
+	var room: int = _room_on_top(info)
+	var on_top: int = mini(info.stud_count, room)
+	var elsewhere: int = info.stud_count - on_top
+	if elsewhere <= 0:
+		return "%d stud%s on top" % [on_top, "" if on_top == 1 else "s"]
+	return ("%d stud%s on top and %d facing another way — "
+		% [on_top, "" if on_top == 1 else "s", elsewhere]
+		+ "attachment_points gives the exact coordinates")
 
 
 static func _height_plates(info: PartLibrary.PartInfo) -> int:
