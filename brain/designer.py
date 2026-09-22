@@ -84,6 +84,19 @@ swaps the footprint but does not move the corner.
 So a 2x4 brick at y=0 occupies plates 0,1,2. The next brick on top of it \
 goes at y=3. Two bricks side by side at y=0 go at x=0 and x=4.
 
+WHAT THIS SYSTEM CANNOT DO
+Every part sits studs-up. There is no way to lay one on its side, on \
+its face, or at any angle — rot turns a part about the vertical axis \
+and that is the only rotation there is. A tiled wall with no studs \
+showing, lettering, a grille, a sail set at an angle, a curved bonnet: \
+none of them can be built here.
+
+Do not go looking for a way. There is not one, and the turns spent \
+finding that out are turns not spent building. Make the shape out of \
+what stacks, and where a subject really needs a part on its side, build \
+the nearest thing that reads studs-up and say in your reply what you \
+could not do.
+
 THE RULES YOUR DESIGN MUST SATISFY
 1. Nothing may overlap. Two parts cannot share space.
 2. Nothing may float. Every part needs the ground (y=0) or another part \
