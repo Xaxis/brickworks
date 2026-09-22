@@ -1884,6 +1884,27 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# that came back refused — and rebuilt a windmill with no
 			# rotation at all, so it had no sails. Saying where the next
 			# course starts costs nothing and removes the guess.
+			# In section terms when it is a section, because the answer
+			# is different.
+			#
+			# Told "brick 7 overlaps brick 3", the way out is to move
+			# brick 7 — and if it is one of forty in a pylon, the way
+			# out that actually works is to give up on the pylon and
+			# build it square. A design did exactly that: "my pylon
+			# sections dipped into the hull", and it came back with
+			# stepped pylons and no angle anywhere in it. A section
+			# collides as a whole and moves as a whole.
+			var mine: String = placement.section
+			if not mine.is_empty():
+				_note(issues, "overlap",
+					"section '%s' runs into %s at brick %d (%s at %s "
+						% [mine, who, index, placement.part,
+							placement.where()]
+						+ "in that section's own coordinates). Move the "
+						+ "section or change its angle — the bricks "
+						+ "inside it are square to each other and do "
+						+ "not need rebuilding.")
+				continue
 			_note(issues, "overlap",
 				"brick %d (%s at %s) overlaps %s%s" % [
 					index, placement.part, placement.where(), who,

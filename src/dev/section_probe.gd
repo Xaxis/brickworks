@@ -82,6 +82,19 @@ func _run() -> void:
 		"section adrift"))
 
 	print("")
+	print("  a section that runs into the hull")
+	# The answer to a section colliding is to move the section, not to
+	# rebuild its bricks — and certainly not to give up on the angle. A
+	# design told "brick 7 overlaps brick 3" did give up: "my pylon
+	# sections dipped into the hull", and it came back with stepped
+	# pylons and nothing angled anywhere.
+	var into: Assistant.Model = _model(0.0, -4.0, 0.0)
+	var complaint: String = str(_assistant._check(into)["feedback"])
+	_check("says which section, and to move the section",
+		complaint.contains("section 'nacelle' runs into")
+			and complaint.contains("Move the section"))
+
+	print("")
 	print("  a section lifted into the air")
 	# Its base course is written at the section's own y=0, which is not
 	# the world's. Read off the written number, that brick counts as

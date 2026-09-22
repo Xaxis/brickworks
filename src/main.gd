@@ -1246,12 +1246,46 @@ func _lay_baseplate() -> void:
 	# three millimetres clear of the studs it was supposed to be on.
 	# Measured: the gap was 8 LDU, and closing it moves the baseplate
 	# rather than anything built on it.
-	var at := Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0))
-	var brick_id: int = _world.add_brick(PLATE, 288, at)  # Dark Green
-	if brick_id != 0:
-		_builder.register(brick_id, PLATE, at)
-		if _store != null:
-			_store.scenery[brick_id] = true
+	# Enough ground to stand the model on.
+	#
+	# One plate is thirty-two studs across, which was the whole world
+	# back when a model was fifty bricks. A set-sized one runs off the
+	# edge and hangs in the air — the first thing anyone sees of a big
+	# model is half of it over nothing, which reads as the model being
+	# broken rather than the ground being small. Tiled to cover what is
+	# actually there, and still a single plate when there is nothing.
+	const ACROSS := 32.0 * BrickLattice.STUD
+	var box: AABB = _built_bounds()
+	var wide: int = 1
+	var deep: int = 1
+	if box.size.x > 0.0 or box.size.z > 0.0:
+		wide = maxi(int(ceil(box.size.x / ACROSS)), 1)
+		deep = maxi(int(ceil(box.size.z / ACROSS)), 1)
+	# Centred on the model rather than on the origin.
+	#
+	# A baseplate's origin is its middle, not a corner, so one laid at
+	# zero covers sixteen studs each way — and a model built outward
+	# from the origin, which is where designs start, hung off two
+	# edges of it from the beginning.
+	#
+	# Snapped to whole studs so the plates meet the grid; neighbours
+	# are a whole plate apart, so snapping the first snaps them all.
+	var middle: Vector3 = box.get_center()
+	var first_x: float = snappedf(
+		middle.x - float(wide - 1) * ACROSS * 0.5, BrickLattice.STUD)
+	var first_z: float = snappedf(
+		middle.z - float(deep - 1) * ACROSS * 0.5, BrickLattice.STUD)
+	for column: int in wide:
+		for row: int in deep:
+			var at := Transform3D(Basis.IDENTITY, Vector3(
+				first_x + float(column) * ACROSS, 0.0,
+				first_z + float(row) * ACROSS))
+			var brick_id: int = _world.add_brick(PLATE, 288, at)  # Dark Green
+			if brick_id == 0:
+				continue
+			_builder.register(brick_id, PLATE, at)
+			if _store != null:
+				_store.scenery[brick_id] = true
 
 
 ## Counted once. Walking 29,479 entries on every rebuild would be work
