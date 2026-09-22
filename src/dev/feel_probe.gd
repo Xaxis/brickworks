@@ -275,7 +275,20 @@ func _keyboard() -> void:
 ## is how long the machine takes. Asking is the only honest way: turn
 ## the view a little and see whether it turned.
 func _input_arrives() -> bool:
-	for _attempt: int in 80:
+	# Ask for the window first.
+	#
+	# Inside the suite this starts moments after another windowed probe
+	# has closed, and a window that has not been given the foreground
+	# can sit there taking nothing. That is the whole of this flake: it
+	# has never once failed on its own and fails every so often in the
+	# suite, and when it does, checks that are pure arithmetic fail
+	# alongside the rest.
+	DisplayServer.window_move_to_foreground()
+	get_root().grab_focus()
+	for _n: int in 30:
+		await process_frame
+
+	for _attempt: int in 240:
 		var yaw: float = _camera._target_yaw
 		await _drag(MOUSE_BUTTON_RIGHT, _middle,
 			_middle + Vector2(40.0, 0.0))

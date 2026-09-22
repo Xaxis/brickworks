@@ -61,6 +61,17 @@ func _run() -> void:
 	# does nothing, so checking that the transform changed would fail a
 	# working key — the question is whether F brings the camera back,
 	# not whether it moves it.
+	#
+	# Where "back" is has to be established by pressing F, not by
+	# remembering where the camera was at startup. The checks above turn
+	# the model, and F frames the model — so the place it belongs after
+	# a quarter turn is not the place it was before one. That only
+	# passed while framing took the baseplate in, which barely moves
+	# whatever is standing on it. The property worth having is that F is
+	# repeatable.
+	_press(KEY_F)
+	for _n: int in 40:
+		await process_frame
 	var framed: Transform3D = camera.global_transform
 	camera.global_position += Vector3(4000, 2000, 4000)
 	await process_frame
