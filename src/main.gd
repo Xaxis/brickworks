@@ -679,6 +679,14 @@ func _build_ui() -> void:
 	_assistant.scenery = _store.scenery
 
 	_assistant.built.connect(func(_n: int) -> void:
+		# A design can be bigger than the ground it was given.
+		#
+		# The baseplate is laid when a model is opened and when the
+		# board is cleared, and never after something is built on it —
+		# so a ship the assistant designs larger than thirty-two studs
+		# hangs off the edge into nothing, which reads as the model
+		# being broken rather than the ground being small.
+		_ground_for_the_model()
 		_on_model_changed()
 		if _playback.play(_store.scenery):
 			_bar.say("building…"))
@@ -1237,6 +1245,28 @@ func _build_stress(target: int) -> int:
 
 ## Something to build on. A model opened from a file floats in space
 ## otherwise, and there is nothing for a first brick to rest against.
+## Lay more ground if what is built has outgrown it.
+##
+## Only when it has: re-laying on every change would rebuild the plates
+## each time a brick is put down by hand, for nothing.
+func _ground_for_the_model() -> void:
+	var box: AABB = _built_bounds()
+	if box.size.length_squared() <= 0.0:
+		return
+	if _ground.size.length_squared() > 0.0 \
+			and _ground.encloses(AABB(
+				Vector3(box.position.x, 0.0, box.position.z),
+				Vector3(box.size.x, 0.0, box.size.z))):
+		return
+	_lay_baseplate()
+
+
+## The ground laid down, flattened: x and z only, since the plates are
+## all at y=0 and a model's height has nothing to do with whether it
+## fits on them.
+var _ground: AABB = AABB()
+
+
 func _lay_baseplate() -> void:
 	const PLATE := "3811"   # Baseplate 32 x 32
 	# Whatever was scenery before is not any more.
@@ -1284,6 +1314,9 @@ func _lay_baseplate() -> void:
 		middle.x - float(wide - 1) * ACROSS * 0.5, BrickLattice.STUD)
 	var first_z: float = snappedf(
 		middle.z - float(deep - 1) * ACROSS * 0.5, BrickLattice.STUD)
+	_ground = AABB(
+		Vector3(first_x - ACROSS * 0.5, 0.0, first_z - ACROSS * 0.5),
+		Vector3(float(wide) * ACROSS, 0.0, float(deep) * ACROSS))
 	for column: int in wide:
 		for row: int in deep:
 			var at := Transform3D(Basis.IDENTITY, Vector3(

@@ -435,9 +435,38 @@ func _framing() -> void:
 	_check("...and ignores the baseplate under it",
 		_camera._target_distance < tight * 2.0)
 
+	print("")
+	print("  ground for a model bigger than one plate")
+	# The baseplate is laid when a model is opened and when the board is
+	# cleared, and was never laid again after something was built on it
+	# — so a ship designed larger than thirty-two studs hung off the
+	# edge into nothing.
+	var plates_before: int = _plates()
+	for n: int in 30:
+		var far := Transform3D(Basis.IDENTITY,
+			Vector3(float(n) * 80.0 - 600.0, 24.0, 0.0))
+		var wide_id: int = _world.add_brick("3001", 4, far)
+		if wide_id != 0:
+			_builder.register(wide_id, "3001", far)
+	await _frames(4)
+	_main._ground_for_the_model()
+	await _frames(4)
+	_check("more ground is laid, %d plates against %d"
+		% [_plates(), plates_before], _plates() > plates_before)
+	var built: AABB = _world.model_bounds()
+	_check("...and the model is standing on it",
+		_main._ground.encloses(AABB(
+			Vector3(built.position.x, 0.0, built.position.z),
+			Vector3(built.size.x, 0.0, built.size.z))))
+
 
 ## A point on screen that a panel is under, found by walking in from
 ## the right edge rather than assuming a width.
+## How many baseplates are down.
+func _plates() -> int:
+	return _main._store.scenery.size()
+
+
 func _panel_point() -> Vector2:
 	var rect: Vector2 = root.get_visible_rect().size
 	var y: float = rect.y * 0.5
