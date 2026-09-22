@@ -333,9 +333,20 @@ static func write_ldr(
 			step = placement.step
 		var v: PackedFloat64Array = from_transform(placement.transform)
 		var numbers := PackedStringArray()
-		for value: float in v:
-			# Trim to something a human can read without losing a position
-			# that matters: 1/1000 LDU is 0.4 microns.
+		for n: int in v.size():
+			var value: float = v[n]
+			# The first three are a position in LDU; the nine after
+			# them are a rotation, and they do not want the same
+			# precision.
+			#
+			# Everything was trimmed to a position's worth — 1/1000 LDU
+			# is 0.4 microns, which is plenty for where a brick is. On
+			# a direction cosine the same trim is about a sixteenth of
+			# a degree, and it is not spent once: a model written and
+			# reopened comes back very slightly turned, and again the
+			# next time. Nothing in the app could author an angle when
+			# this was written, so every matrix element was a 0 or a 1
+			# and the loss was exactly zero.
 			#
 			# And negative zero is zero. A rotation about the vertical
 			# axis leaves several matrix elements at -0.0, which prints
@@ -343,7 +354,9 @@ static func write_ldr(
 			# brick in a re-saved model shows as changed when nothing
 			# has. It made a migration that touched three files look
 			# like one that had rewritten eight.
-			var shown: String = String.num(value, 4).rstrip("0").rstrip(".")
+			var places: int = 4 if n < 3 else 8
+			var shown: String = String.num(value, places) \
+				.rstrip("0").rstrip(".")
 			numbers.append("0" if shown == "-0" or shown.is_empty() else shown)
 		# A direct colour goes back out in the form it came in, or it
 		# reads as an enormous palette index that nothing has.

@@ -92,6 +92,28 @@ func _run() -> void:
 	_check("and reaches further where the corner swings out, %d vs %d"
 		% [reach_tilt, reach_flat], reach_tilt > reach_flat)
 
+	# And a save, which is the point of the rest of it.
+	#
+	# A section's angle is baked into each brick's own matrix, and an
+	# .ldr line carries a full three-by-three, so this should hold. It
+	# is worth asserting anyway: if an angle did not survive being
+	# written and read back, somebody would lose the shape of their
+	# model the first time they saved it, and nothing would say so.
+	print("")
+	print("  writing it out and reading it back")
+	var tipped := Transform3D(
+		Basis(Vector3.BACK, deg_to_rad(30.0)), Vector3(40, -24, 80))
+	var text: String = LdrModel.write_ldr(
+		[LdrModel.Placement.new("3001", 4, tipped, 0)], "Angled")
+	var reopened: LdrModel = LdrModel.parse(text, "angled.ldr")
+	if reopened == null or reopened.main.placements.is_empty():
+		_check("it can be written and read back at all", false)
+	else:
+		var got: Basis = reopened.main.placements[0].transform.basis
+		_check("the angle is the same after a save",
+			(got * Vector3.RIGHT).is_equal_approx(
+				tipped.basis * Vector3.RIGHT))
+
 	print("")
 	if _failures == 0:
 		print("angled geometry survives")
