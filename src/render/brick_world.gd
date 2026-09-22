@@ -427,7 +427,20 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		round(box.get_center().x / BrickLattice.STUD) * BrickLattice.STUD,
 		0.0,
 		round(box.get_center().z / BrickLattice.STUD) * BrickLattice.STUD)
-	var turn := Basis(Vector3.UP, turns * PI * 0.5)
+	# Snapped here, once, rather than on every result.
+	#
+	# Built from trig a quarter turn is a hair off exact, and four of
+	# them walked a model off the grid — so the composed basis used to
+	# be snapped instead. That cured the drift and flattened every part
+	# that was not square to the grid to begin with. An .ldr written
+	# anywhere else can carry any rotation at all and the reader parses
+	# it, so one press of Q straightened every angled part in an
+	# imported model, silently and with no way back but undo.
+	#
+	# Snapping the turn makes it exactly integer. Composing it drifts by
+	# nothing, and a part at thirty degrees stays at thirty degrees.
+	var turn: Basis = BrickLattice.snap_basis(
+		Basis(Vector3.UP, turns * PI * 0.5))
 
 	var moved: Array = []
 	for brick_id: int in _bricks.keys():
@@ -441,7 +454,6 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		# by a fraction of a cell otherwise, and after four of them a
 		# model no longer meets the grid it was built on.
 		at.origin = BrickLattice.to_ldu(BrickLattice.to_cell(at.origin))
-		at.basis = BrickLattice.snap_basis(at.basis)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
 		brick.transform = at
