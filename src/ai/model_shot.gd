@@ -15,7 +15,16 @@ extends Node
 
 ## Big enough to see a stud, small enough to be a modest part of a
 ## conversation. A square keeps the cost the same from every angle.
-const SIZE := 640
+## Big enough to judge a large model by.
+##
+## Six hundred and forty was chosen when a model was fifty bricks and
+## filled the frame. A set-sized one is a thousand parts in the same
+## square, so a nacelle is a few dozen pixels and the critique is being
+## asked whether something it cannot see is the right shape. The cost
+## of a picture goes up with its area — this roughly doubles it, which
+## is a fraction of what the conversation around it costs, and it is
+## the only thing in the loop that can see the model at all.
+const SIZE := 1024
 
 ## How many frames to let it draw in before looking. Two would do when
 ## the window is in front; this is for when it is not.
