@@ -36,6 +36,9 @@ var _controls: ControlsDialog
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
+## Whether a left press this handler saw started the box being drawn.
+## The watchdog below will not finish one it never saw begin.
+var _box_began: bool = false
 var _hint: ControlsHint
 var _picker: PickImage
 var _mosaic_source: Image
@@ -1276,7 +1279,15 @@ func _process(_delta: float) -> void:
 	# handles it and stops it there — so the guard above never runs and
 	# the box is still being drawn with nothing holding it. The camera
 	# keeps the same watch over its own drags, after the same bug.
-	if _marquee != null and _marquee.is_drawing() \
+	# Only a box this handler saw begin.
+	#
+	# Asking the marquee alone was enough to select an entire model on
+	# startup: a motion event arriving with a stale left-button mask
+	# puts it into drawing without any press ever reaching here, and the
+	# watchdog then dutifully finished a box nobody drew. Everything
+	# selected, "took 50" in the bar, and one keypress from deleting the
+	# lot.
+	if _box_began and _marquee != null and _marquee.is_drawing() \
 			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_finish_box(Input.is_key_pressed(KEY_SHIFT))
 	if _store != null:
@@ -1440,6 +1451,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# picks a brick out when shift is held.
 	if button.pressed:
 		_marquee.begin(button.position)
+		_box_began = true
 		if button.shift_pressed and button.double_click:
 			_aim_at(button.position)
 			_builder.select_alike()
@@ -1644,6 +1656,7 @@ func _nudge_by(cells: Vector3i) -> void:
 ## release that ends the drag, and the watchdog for when that release
 ## goes somewhere this handler never sees.
 func _finish_box(add: bool) -> void:
+	_box_began = false
 	if not _marquee.is_drawing():
 		_marquee.finish()
 		return

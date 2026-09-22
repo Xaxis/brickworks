@@ -130,6 +130,21 @@ func _run() -> void:
 		"the course above it starts at y=9")
 
 	print("")
+	print("  a reply that ran out of room is not an empty design")
+	# A tool call cut off mid-placement parses as a design with nothing
+	# in it. Told "no parts", the model hunts for a geometry fault that
+	# is not there and spends a repair on it; three of those end the
+	# run. What actually happened is that the design was too long to say
+	# in one reply, and only that wording leads anywhere useful.
+	var nothing := Assistant.Model.new()
+	var plain: Dictionary = assistant._check(nothing)
+	_check_says("an empty design says so", plain, "no parts in it")
+	assistant._ran_out_of_room = true
+	var cut: Dictionary = assistant._check(nothing)
+	_check_says("a cut-off one says it was too long", cut,
+		"too long to send in one piece")
+
+	print("")
 	if _failures == 0:
 		print("the rules hold, and a refusal says enough to act on")
 	else:
@@ -163,6 +178,15 @@ func _refused(assistant: Assistant, what: String, bricks: Array,
 		return
 	print("  ok    %s — refused, and the reason says '%s'"
 		% [what, must_say])
+
+
+func _check_says(what: String, verdict: Dictionary, phrase: String) -> void:
+	var feedback: String = str(verdict.get("feedback", ""))
+	if feedback.contains(phrase):
+		print("  ok    %s" % what)
+		return
+	_failures += 1
+	print("  FAIL  %s — said: %s" % [what, feedback])
 
 
 func _say(assistant: Assistant, what: String, bricks: Array) -> void:

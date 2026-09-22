@@ -37,6 +37,12 @@ class Choice extends RefCounted:
 	var per_in: float        ## USD per million input tokens
 	var per_out: float       ## USD per million output tokens
 	var per_cached: float    ## USD per million tokens read from cache
+	## The most it will write in one reply. A set-scale model is tens of
+	## thousands of tokens of placements, and this was a flat 16,000 for
+	## every model — about 380 bricks, which is why nothing this app
+	## built had ever been bigger than that and why it looked like a
+	## matter of taste.
+	var most_out: int
 
 	func _init(fields: Dictionary) -> void:
 		id = str(fields["id"])
@@ -44,6 +50,7 @@ class Choice extends RefCounted:
 		blurb = str(fields["blurb"])
 		adaptive = bool(fields["adaptive"])
 		effort = bool(fields["effort"])
+		most_out = int(fields.get("most_out", 16000))
 		per_in = float(fields["in"])
 		per_out = float(fields["out"])
 		per_cached = float(fields["cached"])
@@ -74,15 +81,15 @@ const CHOICES: Array[Dictionary] = [
 	{"id": "claude-opus-5", "name": "Opus 5",
 		"blurb": "The best at this by a distance. Slowest and dearest.",
 		"adaptive": true, "effort": true,
-		"in": 5.0, "out": 25.0, "cached": 0.50},
+		"in": 5.0, "out": 25.0, "cached": 0.50, "most_out": 64000},
 	{"id": "claude-sonnet-5", "name": "Sonnet 5",
 		"blurb": "Quicker and a third of the cost. Builds smaller.",
 		"adaptive": true, "effort": true,
-		"in": 2.0, "out": 10.0, "cached": 0.20},
+		"in": 2.0, "out": 10.0, "cached": 0.20, "most_out": 64000},
 	{"id": "claude-haiku-4-5-20251001", "name": "Haiku 4.5",
 		"blurb": "A minute and a few pence. Small models, small changes.",
 		"adaptive": false, "effort": false,
-		"in": 1.0, "out": 5.0, "cached": 0.10},
+		"in": 1.0, "out": 5.0, "cached": 0.10, "most_out": 32000},
 ]
 
 ## How hard to think, for the models that take the setting. Ordered.

@@ -51,6 +51,7 @@ func _initialize() -> void:
 			Brain.set_effort(level)
 			var body: Dictionary = assistant.request_body()
 			_check(choice, level, body)
+			_room_to_write(assistant, choice, body)
 
 	print("")
 	# Anything in the body that Anthropic does not take is refused
@@ -193,3 +194,37 @@ func _for_this_run_only() -> void:
 		_failures += 1
 		print("  FAIL  model went %s -> %s -> %s"
 			% [kept_model, asked, Brain.chosen()])
+
+
+## Enough room to write a set-sized model.
+##
+## This was a flat 16,000 tokens for every model, which is roughly 380
+## bricks of placements — and a real set is five hundred to two
+## thousand. Nothing built here had ever been bigger than that, and it
+## read as a matter of taste rather than an envelope, because a design
+## that ran over came back as a model with no parts in it.
+func _room_to_write(assistant: Assistant, choice: Brain.Choice,
+		body: Dictionary) -> void:
+	var asked: int = int(body.get("max_tokens", 0))
+	if asked != choice.most_out:
+		_failures += 1
+		print("  FAIL  %s streams with max_tokens %d, wanted %d"
+			% [choice.name, asked, choice.most_out])
+		return
+	# A number, not choice.most_out: measured against the value under
+	# test, the check passes however low that value goes. The point is
+	# that it is big enough to say a set in, and 16,000 is not.
+	if asked <= 16000:
+		_failures += 1
+		print("  FAIL  %s can only write %d tokens, which is a few "
+			% [choice.name, asked] + "hundred bricks")
+		return
+	# And smaller when the reply is not streamed, because that path
+	# exists for a connection that has already dropped once.
+	assistant.stream_replies = false
+	var quieter: int = int(assistant.request_body().get("max_tokens", 0))
+	assistant.stream_replies = true
+	if quieter > 16000:
+		_failures += 1
+		print("  FAIL  %s asks for %d tokens unstreamed"
+			% [choice.name, quieter])

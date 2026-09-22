@@ -81,6 +81,10 @@ var _http: HTTPRequest
 var _messages: Array = []
 var _busy: bool = false
 var _repairs: int = 0
+## Set when the last reply was cut off by the output limit rather than
+## finished. Read where an empty design would otherwise be blamed on the
+## model's geometry.
+var _ran_out_of_room: bool = false
 var _turns: int = 0
 var _nudges: int = 0
 ## Whether an edit has been applied this run. An edit is already built
@@ -579,9 +583,22 @@ func _sketch_one(placement: Placement) -> void:
 ## call, which is the only way this stays fixed.
 func request_body() -> Dictionary:
 	var choice: Brain.Choice = Brain.find(Brain.chosen())
+	# As much as the chosen model will write, when the reply is
+	# streamed.
+	#
+	# A flat 16,000 was about 380 bricks of placements — and a set is
+	# five hundred to two thousand. Nothing built here had ever been
+	# bigger than that, and it read as a matter of taste rather than an
+	# envelope, because a design that ran over came back as a model with
+	# no parts in it.
+	#
+	# Lower when the reply is not streamed, because that is the fallback
+	# path for a connection that already dropped once, and a reply that
+	# takes minutes to arrive in one piece is how it drops again.
 	var body: Dictionary = {
 		"model": choice.id,
-		"max_tokens": 16000,
+		"max_tokens": choice.most_out if stream_replies
+			else mini(choice.most_out, 16000),
 		"system": _system_prompt(),
 		"messages": _messages,
 		"tools": _tools(),
@@ -672,6 +689,16 @@ func _on_response(result: Array) -> void:
 	if response.get("stop_reason", "") == "refusal":
 		_stop(false, "the assistant declined this request")
 		return
+
+	# A reply that ran out of room mid-sentence.
+	#
+	# The half-written tool call that comes back parses as a design with
+	# no parts in it, so the model was told its geometry was empty and
+	# spent a repair on a fault that was not there. Three of those ended
+	# the run. Saying what actually happened costs nothing, and is the
+	# one thing that lets it answer by building in stages instead.
+	if response.get("stop_reason", "") == "max_tokens":
+		_ran_out_of_room = true
 
 	var content: Array = response.get("content", [])
 	_messages.append({"role": "assistant", "content": content})
@@ -1538,6 +1565,25 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
 
 	if model.placements.is_empty():
+		# Which of the two this is matters enormously.
+		#
+		# A reply cut off by the output limit arrives as a tool call
+		# that stops mid-placement, and what survives parsing is a
+		# design with nothing in it. Told "no parts", the model looks
+		# for the fault in its geometry, finds none, and spends a repair
+		# on it; three of those end the run. It is not a geometry fault
+		# at all — the design was too long to say in one reply.
+		if _ran_out_of_room:
+			_ran_out_of_room = false
+			return {
+				"ok": false,
+				"summary": "cut off",
+				"feedback": "That reply hit the length limit part way "
+					+ "through, so nothing of the design arrived. It is "
+					+ "not wrong, it is too long to send in one piece. "
+					+ "Submit the structure first and add the rest with "
+					+ "edit_model, a few dozen bricks at a time.",
+			}
 		return {
 			"ok": false,
 			"summary": "no bricks",
