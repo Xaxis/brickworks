@@ -1365,12 +1365,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	# press cleared it. You drew a box round six bricks and got
 	# nothing, with no way to tell that from having missed them.
 	#
-	# Asked of the event's own position, too, not of the pointer.
-	# _over_panel() reads the mouse where the system says it is now,
-	# which during a drag is not where the button was let go — and on
-	# the web, where the pointer can be locked or lagging a frame
-	# behind, is not reliably anywhere in particular. An event should
-	# be judged by where it says it happened.
+	# Asked of the event's own position, not of the pointer.
+	#
+	# This used to ask where the system says the mouse is now, which
+	# during a drag is not where the button was let go — and on the web,
+	# where the pointer can be locked or a frame behind, is not reliably
+	# anywhere in particular. An event should be judged by where it says
+	# it happened. The helper that asked the other way is gone rather
+	# than merely unused, because it is an easy thing to reach for
+	# again.
 	var ending_a_box: bool = (button.button_index == MOUSE_BUTTON_LEFT
 		and not button.pressed and _marquee.is_drawing())
 	if _over_panel_at(button.position) and not ending_a_box:
@@ -1632,10 +1635,6 @@ func _over_panel_at(point: Vector2) -> bool:
 	if _mosaic != null and _mosaic.visible:
 		return true
 	return false
-
-
-func _over_panel() -> bool:
-	return _over_panel_at(get_viewport().get_mouse_position())
 
 
 func _refresh_preview() -> void:

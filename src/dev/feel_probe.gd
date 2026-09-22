@@ -440,9 +440,23 @@ func _panel_point() -> Vector2:
 func _check(what: String, ok: bool) -> void:
 	if ok:
 		print("  ok    %s" % what)
-	else:
-		_failures += 1
-		print("  FAIL  %s" % what)
+		return
+	_failures += 1
+	print("  FAIL  %s" % what)
+	# And the state that most often explains one of these.
+	#
+	# This has failed twice inside the suite and never on its own,
+	# with a different set of checks each time, and both runs were on a
+	# busy machine. Guessing at it from the list of what failed got
+	# nowhere twice. A key shortcut does nothing at all while a text box
+	# has the focus, which is the first thing worth knowing and the one
+	# thing the output never said.
+	var focused: Control = root.gui_get_focus_owner()
+	print("        focus=%s playing=%s drawing=%s sel=%d bricks=%d" % [
+		"none" if focused == null else focused.get_class(),
+		_main._playback != null and _main._playback.is_playing(),
+		_main._marquee.is_drawing(), _builder.selection.size(),
+		_world.brick_count()])
 
 
 ## Through Input, not the viewport.

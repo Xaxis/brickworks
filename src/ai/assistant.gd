@@ -1591,9 +1591,21 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			var who: String = (
 				"a %s already on the baseplate" % theirs[blocker]
 				if theirs.has(blocker) else "brick %d" % (blocker - 1))
+			# And where the thing it hit actually ends.
+			#
+			# "overlaps brick 3" leaves the arithmetic to be redone by
+			# whoever reads it, and the arithmetic is the part that goes
+			# wrong: y counts plates, a brick is three of them, so the
+			# course above a brick at y=6 starts at y=9 and not at y=7.
+			# A design that got that wrong concluded the checker mangled
+			# rotated parts — because the part it had turned was the one
+			# that came back refused — and rebuilt a windmill with no
+			# rotation at all, so it had no sails. Saying where the next
+			# course starts costs nothing and removes the guess.
 			_note(issues, "overlap",
-				"brick %d (%s at %s) overlaps %s" % [
-					index, placement.part, placement.where(), who])
+				"brick %d (%s at %s) overlaps %s%s" % [
+					index, placement.part, placement.where(), who,
+					_ends_at(cells_of.get(blocker - 1))])
 			continue
 
 		lattice.occupy(index + 1, cells)
@@ -1719,6 +1731,31 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 			if reached != 0 and reached - 1 != index:
 				held[reached - 1] = true
 	return held
+
+
+## Where a brick stops, in the units the placement was written in.
+##
+## Returns a clause to hang off an overlap message, or nothing at all
+## when the brick that was hit is one already on the baseplate rather
+## than one of these placements.
+static func _ends_at(cells: Variant) -> String:
+	if typeof(cells) != TYPE_ARRAY or (cells as Array).is_empty():
+		return ""
+	var low: int = (cells[0] as Vector3i).y
+	var high: int = low
+	for cell: Vector3i in cells:
+		low = mini(low, cell.y)
+		high = maxi(high, cell.y)
+	var from_y: float = float(low) / BrickLattice.CELLS_PER_PLATE
+	var to_y: float = float(high + 1) / BrickLattice.CELLS_PER_PLATE
+	return ", which fills y=%s up to y=%s — so the course above it starts at y=%s" % [
+		_tidy(from_y), _tidy(to_y), _tidy(to_y)]
+
+
+## A number without a pointless decimal point.
+static func _tidy(value: float) -> String:
+	return str(int(value)) if is_equal_approx(value, floor(value)) \
+		else str(snappedf(value, 0.01))
 
 
 func _check_support(
