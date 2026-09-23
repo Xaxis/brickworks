@@ -1912,6 +1912,15 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
 	## Section name -> a lattice of that section's own square cells.
 	var inside: Dictionary = {}
+	## Sections that ran into something. A brick that overlaps is never
+	## occupied, so the rest of its section then looks unsupported and
+	## unattached — three complaints from one fault, two of them
+	## artefacts of the first.
+	var crowded: Dictionary = {}
+	## Section name -> the indices of the placements in it.
+	var part_of: Dictionary = {}
+	## Sections reported adrift, so the hint below can address them too.
+	var stuck: Dictionary = {}
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
 
@@ -2029,6 +2038,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# intersect. In their own frame they are square, so the exact
 		# integer path answers, and it answers correctly.
 		if not placement.section.is_empty():
+			if not part_of.has(placement.section):
+				part_of[placement.section] = []
+			part_of[placement.section].append(index)
 			var own: BrickLattice = inside.get(placement.section)
 			if own == null:
 				own = BrickLattice.new()
@@ -2037,6 +2049,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			var here: Array[Vector3i] = builder._cells_for(part, square)
 			var near: PackedInt64Array = own.blockers(here)
 			if not near.is_empty():
+				crowded[placement.section] = true
 				_note(issues, "overlap",
 					"brick %d (%s at %s) overlaps brick %d inside "
 						% [index, placement.part, placement.where(),
@@ -2080,6 +2093,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# collides as a whole and moves as a whole.
 			var mine: String = placement.section
 			if not mine.is_empty():
+				crowded[mine] = true
 				_note(issues, "overlap",
 					"section '%s' runs into %s at brick %d (%s at %s "
 						% [mine, who, index, placement.part,
@@ -2114,13 +2128,26 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# and then taken out: across shallow angles, steep ones and a
 	# section turned fully over, it never once changed an answer.
 
-	_check_support(model, cells_of, lattice, issues)
+	_check_support(model, cells_of, lattice, issues, crowded)
 
 	# Every section has to be fixed to something outside itself.
 	# Held together inside and touching nothing is a part that falls off
 	# when the model is picked up, which is the one thing a section
 	# makes easy to do by accident.
-	_check_sections_attached(model, cells_of, lattice, issues)
+	_check_sections_attached(model, cells_of, lattice, issues, crowded,
+		stuck)
+
+	# And where each section that did not fit would have fitted.
+	for group: String in _sections_present(model, cells_of):
+		if group.is_empty():
+			continue
+		if not crowded.has(group) and not stuck.has(group):
+			continue
+		var fits: String = _where_it_would_meet(model, group, lattice,
+			part_of)
+		if not fits.is_empty():
+			_note(issues, "section adrift" if stuck.has(group)
+				else "overlap", "Section '%s':%s" % [group, fits])
 
 	var pieces: int = _count_pieces(model, cells_of, lattice)
 
@@ -2300,6 +2327,71 @@ func _ask_again(url: String, headers: PackedStringArray,
 	return []
 
 
+## Where this section would actually meet the model.
+##
+## A section that is turned meets a flat surface at a line or a corner,
+## never squarely, so the offset at which it touches without digging in
+## is narrow — measured on a four-brick pylon against a flat hull, one
+## quarter of a plate wide, with overlap below it and open air above.
+##
+## Nothing finds that by reasoning. Three separate designs tried an
+## angled pylon, were told it ran into the hull, lifted it by a whole
+## plate, were told it was adrift, and concluded an angled pylon could
+## not be attached in this system at all. One of them wrote exactly
+## that. So when a section does not fit, say where it would.
+func _where_it_would_meet(model: Model, group: String,
+		lattice: BrickLattice, part_of: Dictionary) -> String:
+	var section: Section = model.sections.get(group)
+	if section == null:
+		return ""
+	var was: float = section.y
+	var tried: Array = [0.25, -0.25, 0.5, -0.5, 0.75, -0.75, 1.0, -1.0]
+	for step: float in tried:
+		section.y = was + step
+		if _section_sits(model, group, lattice, part_of):
+			section.y = was
+			return (" At y=%s it would rest against the model instead "
+				% Placement._num(was + step)
+				+ "of running into it — a turned section meets a flat "
+				+ "face at a corner, so the offset that touches is "
+				+ "narrow.")
+	section.y = was
+	return ""
+
+
+## Whether the section would sit there: nothing of it inside anything
+## else, and some of it against something else.
+func _section_sits(model: Model, group: String, lattice: BrickLattice,
+		part_of: Dictionary) -> bool:
+	var touching: bool = false
+	for index: int in part_of.get(group, []):
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var cells: Array[Vector3i] = builder._cells_for(part,
+			_transform(placement, part, model.sections.get(group)))
+		for cell: Vector3i in cells:
+			var here: int = lattice.brick_at(cell)
+			if here != 0 and not _is_ours(here, model, group):
+				return false
+			if touching:
+				continue
+			for step: Vector3i in BrickLattice.AROUND:
+				var who: int = lattice.brick_at(cell + step)
+				if who != 0 and not _is_ours(who, model, group):
+					touching = true
+					break
+	return touching
+
+
+## Whether a lattice key belongs to this section. Negative keys are
+## bricks that were already on the baseplate, which are nobody's.
+static func _is_ours(key: int, model: Model, group: String) -> bool:
+	return key > 0 and key - 1 < model.placements.size() \
+		and model.placements[key - 1].section == group
+
+
 ## What a placement runs into, not counting its own section.
 ##
 ## Its neighbours inside the section are checked exactly, in the frame
@@ -2339,9 +2431,18 @@ static func _sections_present(model: Model, cells_of: Dictionary) -> Array:
 ## perfectly built and floating a stud clear of the hull, and every
 ## other check will say the model is fine.
 func _check_sections_attached(model: Model, cells_of: Dictionary,
-		lattice: BrickLattice, issues: Dictionary) -> void:
+		lattice: BrickLattice, issues: Dictionary,
+		crowded: Dictionary = {}, stuck: Dictionary = {}) -> void:
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
+			continue
+		# A section that ran into something is not also adrift. Its
+		# overlapping bricks were never occupied, so what is left has
+		# nothing beside it — and saying both makes the two complaints
+		# contradict each other. A design read that and concluded an
+		# angled pylon could not be attached in this system at all,
+		# which was a fair reading of what it was told.
+		if crowded.has(group):
 			continue
 		var touches: bool = false
 		var lowest: int = 0x7FFFFFFF
@@ -2350,7 +2451,7 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				continue
 			for cell: Vector3i in cells_of[index]:
 				lowest = mini(lowest, cell.y)
-				for step: Vector3i in BrickLattice.NEIGHBOURS:
+				for step: Vector3i in BrickLattice.AROUND:
 					var who: int = lattice.brick_at(cell + step)
 					if who == 0:
 						continue
@@ -2366,6 +2467,7 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				break
 		# Standing on the ground counts as being fixed to something.
 		if not touches and lowest > 0:
+			stuck[group] = true
 			_note(issues, "section adrift",
 				"section '%s' is not touching anything outside itself "
 					% group + "— it is built, but it would fall off. "
@@ -2374,11 +2476,17 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 
 func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
-	issues: Dictionary
+	issues: Dictionary, crowded: Dictionary = {}
 ) -> void:
 	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
+		# Its section ran into something, so some of its neighbours were
+		# never placed. Whether this brick is held cannot be known until
+		# that is sorted out, and saying it floats is noise on top of
+		# the fault that matters.
+		if crowded.has(placement.section):
+			continue
 		var cells: Array[Vector3i] = cells_of[index]
 		var floor_y: int = 0x7FFFFFFF
 		for cell: Vector3i in cells:

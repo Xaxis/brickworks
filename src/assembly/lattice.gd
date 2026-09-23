@@ -102,6 +102,26 @@ const NEIGHBOURS: Array[Vector3i] = [
 ]
 
 
+## The twenty-six cells around a cell — faces, edges and corners.
+##
+## Touching, for something that is not square to the grid. Two cells
+## that meet only at an edge are two bricks passing when both are on
+## the grid, but a turned assembly meets a flat wall at a line or a
+## corner and never squarely, so face-adjacency alone says a pylon
+## resting against a hull is not touching it.
+const AROUND: Array[Vector3i] = [
+	Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+	Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+	Vector3i(1, 1, 0), Vector3i(1, -1, 0), Vector3i(-1, 1, 0),
+	Vector3i(-1, -1, 0), Vector3i(1, 0, 1), Vector3i(1, 0, -1),
+	Vector3i(-1, 0, 1), Vector3i(-1, 0, -1), Vector3i(0, 1, 1),
+	Vector3i(0, 1, -1), Vector3i(0, -1, 1), Vector3i(0, -1, -1),
+	Vector3i(1, 1, 1), Vector3i(1, 1, -1), Vector3i(1, -1, 1),
+	Vector3i(1, -1, -1), Vector3i(-1, 1, 1), Vector3i(-1, 1, -1),
+	Vector3i(-1, -1, 1), Vector3i(-1, -1, -1),
+]
+
+
 ## Whether an orientation is one of the twenty-four [method cells_for]
 ## can answer for exactly.
 static func is_square_to_grid(basis: Basis) -> bool:

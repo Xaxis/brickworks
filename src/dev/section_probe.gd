@@ -177,6 +177,47 @@ func _run() -> void:
 			not pylon_said.contains("overlap"))
 
 	print("")
+	print("  a tipped section that does not quite fit")
+	# The window where a turned section touches without digging in is
+	# one quarter of a plate wide — overlap below it, open air above.
+	# Nothing finds that by reasoning. Three designs tried an angled
+	# pylon, were told it ran into the hull, lifted it a whole plate,
+	# were told it was adrift, and concluded an angled pylon could not
+	# be attached in this system at all. One wrote exactly that.
+	for lift: float in [3.0, 3.5]:
+		var pylon := Assistant.Model.new()
+		for n: int in 4:
+			pylon.placements.append(Assistant.Placement.from_dict(
+				{"part": "3001", "color": 7, "x": n * 4, "y": 0,
+					"z": 0, "rot": 0}))
+		for n: int in 4:
+			pylon.placements.append(Assistant.Placement.from_dict(
+				{"part": "3001", "color": 4, "x": 0, "y": n * 3,
+					"z": 0, "rot": 0, "section": "pylon"}))
+		pylon.sections["pylon"] = Assistant.Section.from_dict({
+			"name": "pylon", "x": 2.0, "y": lift, "z": 0.0,
+			"axis": "z", "degrees": 20.0})
+		var told: String = str(_assistant._check(pylon)["feedback"])
+		_check("at y=%.1f it is told where it would fit" % lift,
+			told.contains("it would rest against the model"))
+
+	# And that the place it names actually works.
+	var fitted := Assistant.Model.new()
+	for n: int in 4:
+		fitted.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 7, "x": n * 4, "y": 0, "z": 0,
+				"rot": 0}))
+	for n: int in 4:
+		fitted.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 4, "x": 0, "y": n * 3, "z": 0,
+				"rot": 0, "section": "pylon"}))
+	fitted.sections["pylon"] = Assistant.Section.from_dict({
+		"name": "pylon", "x": 2.0, "y": 3.25, "z": 0.0,
+		"axis": "z", "degrees": 20.0})
+	_check("and a tipped section really can be attached",
+		bool(_assistant._check(fitted)["ok"]))
+
+	print("")
 	print("  a brick claiming a section nobody declared")
 	var orphan := Assistant.Model.new()
 	orphan.placements.append(Assistant.Placement.from_dict(
