@@ -1921,6 +1921,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var part_of: Dictionary = {}
 	## Sections reported adrift, so the hint below can address them too.
 	var stuck: Dictionary = {}
+	## Things worth saying that are not faults, and must not be counted
+	## as any.
+	var advice: Array = []
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
 
@@ -2146,8 +2149,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		var fits: String = _where_it_would_meet(model, group, lattice,
 			part_of)
 		if not fits.is_empty():
-			_note(issues, "section adrift" if stuck.has(group)
-				else "overlap", "Section '%s':%s" % [group, fits])
+			advice.append("Section '%s':%s" % [group, fits])
 
 	var pieces: int = _count_pieces(model, cells_of, lattice)
 
@@ -2159,7 +2161,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var summary: String = ("%d bricks, buildable" % model.placements.size()
 		if ok else "%d problem%s" % [errors, "" if errors == 1 else "s"])
 
-	var feedback: String = _feedback(issues, summary)
+	var feedback: String = _feedback(issues, summary, advice)
 	# Said, never counted.
 	#
 	# Both the tool description and the prompt promised that a design is
@@ -2349,9 +2351,18 @@ func _where_it_would_meet(model: Model, group: String,
 	# pylon rests against a flat hull is two eighths of a plate wide —
 	# so a sweep in quarters can step over it and report that there is
 	# nowhere it fits, which is worse than saying nothing.
-	var tried: Array = [
-		0.125, -0.125, 0.25, -0.25, 0.375, -0.375, 0.5, -0.5,
-		0.625, -0.625, 0.75, -0.75, 0.875, -0.875, 1.0, -1.0]
+	# Two plates either way, in eighths.
+	#
+	# One plate was not enough: a section declared a plate and a half
+	# below where it fits was told nothing at all, which reads as "there
+	# is nowhere" and is the answer that ends runs. The window itself is
+	# a fraction of a plate wide, so the step has to be small and the
+	# reach has to be long.
+	var tried: Array = []
+	for step: int in 16:
+		var away: float = float(step + 1) * 0.125
+		tried.append(away)
+		tried.append(-away)
 	for step: float in tried:
 		section.y = was + step
 		if _section_sits(model, group, lattice, part_of):
@@ -2558,9 +2569,19 @@ static func _note(issues: Dictionary, kind: String, message: String) -> void:
 	issues[kind].append(message)
 
 
-static func _feedback(issues: Dictionary, summary: String) -> String:
+## Advice is not a fault.
+##
+## The hint that says where a section would fit was being added with
+## _note, and every note is counted: errors += issues[kind].size(). So
+## the one thing in here trying to help was reported as a second
+## problem, and a design told "1 problem" saw "2". Said separately now,
+## after the faults, and counted as none of them.
+static func _feedback(issues: Dictionary, summary: String,
+		advice: Array = []) -> String:
 	if issues.is_empty():
-		return summary
+		if advice.is_empty():
+			return summary
+		return summary + "\n" + "\n".join(advice)
 	# Grouped and capped: a hundred instances of one mistake teach no more
 	# than three do, and crowd out the others.
 	var lines: PackedStringArray = PackedStringArray()
@@ -2571,6 +2592,9 @@ static func _feedback(issues: Dictionary, summary: String) -> String:
 			lines.append("  - " + str(found[n]))
 		if found.size() > 3:
 			lines.append("  - ... and %d more like it" % (found.size() - 3))
+	for word: String in advice:
+		lines.append("")
+		lines.append(str(word))
 	return "\n".join(lines)
 
 

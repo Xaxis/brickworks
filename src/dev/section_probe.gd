@@ -201,6 +201,33 @@ func _run() -> void:
 		_check("at y=%.1f it is told where it would fit" % lift,
 			told.contains("it would rest against the model"))
 
+	# Told from further away than a plate, too. One plate of reach was
+	# not enough: a section declared well below where it fits was told
+	# nothing at all, which reads as "there is nowhere" and is the
+	# answer that ends runs.
+	var distant := Assistant.Model.new()
+	for n: int in 4:
+		distant.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 7, "x": n * 4, "y": 0, "z": 0,
+				"rot": 0}))
+	for n: int in 4:
+		distant.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 4, "x": 0, "y": n * 3, "z": 0,
+				"rot": 0, "section": "pylon"}))
+	distant.sections["pylon"] = Assistant.Section.from_dict({
+		"name": "pylon", "x": 2.0, "y": 1.5, "z": 0.0,
+		"axis": "z", "degrees": 20.0})
+	var far_off: Dictionary = _assistant._check(distant)
+	_check("a section far from where it fits is still told",
+		str(far_off["feedback"]).contains("it would rest against"))
+	# And the advice is not itself counted as a fault. It was added with
+	# the same call that records a problem, and every one of those is
+	# counted — so the one thing here trying to help was reported as a
+	# second problem.
+	_check("and the advice is not counted as a problem, %s"
+		% str(far_off["summary"]),
+		str(far_off["summary"]).begins_with("1 problem"))
+
 	# And that the place it names actually works.
 	var fitted := Assistant.Model.new()
 	for n: int in 4:
