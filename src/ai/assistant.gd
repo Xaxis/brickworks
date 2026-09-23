@@ -3009,6 +3009,20 @@ tenth of a stud out.
 The axis is the hinge pin: z tips a thing left and right, x tips it \
 forward and back, y swings it round without tilting it.
 
+Something rigid and turned meets a flat face along a line, so the \
+height at which a section rests against the hull without digging into \
+it is a narrow band — a fraction of a plate, not a whole one. Do not \
+hunt for it. When a section does not fit, the checker sweeps and tells \
+you the y where it would; use that number.
+
+Keep sections for the few places the angle is what makes the shape \
+read — a raked pylon, a swept wing, an opened hatch. Everything else \
+is quicker and steadier square. And if a section still will not attach \
+after two tries, build that one assembly square and say so in your \
+reply: a model that is ninety percent right and standing is worth more \
+than a perfect pylon and nothing under it. One design spent every turn \
+it had on a fifty-degree pylon and submitted nothing at all.
+
 A section must touch the rest of the model somewhere, or it is a piece \
 that falls off when the model is picked up. Give a section a new \
 degrees or a new position with edit_model and everything in it moves \
