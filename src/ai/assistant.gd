@@ -3030,8 +3030,16 @@ lands once it is rotated is trigonometry, you would have to do it \
 forty times for one pylon, and every one of those is a chance to be a \
 tenth of a stud out.
 
-The axis is the hinge pin: z tips a thing left and right, x tips it \
-forward and back, y swings it round without tilting it.
+The axis is the hinge pin, and the sign is worth getting right first \
+time — a design that guessed it built both its pylons leaning inward \
+and spent a turn finding out. A positive angle:
+
+  about z  leans the top towards -x (leftward), keeping +z forward
+  about x  leans the top towards +z (backward)
+  about y  swings the nose from +z towards +x, without tilting
+
+Negate it to go the other way. For a pair of raked pylons, one is the \
+negative of the other.
 
 Something rigid and turned meets a flat face along a line, so the \
 height at which a section rests against the hull without digging into \
