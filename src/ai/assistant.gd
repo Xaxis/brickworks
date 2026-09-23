@@ -2345,7 +2345,13 @@ func _where_it_would_meet(model: Model, group: String,
 	if section == null:
 		return ""
 	var was: float = section.y
-	var tried: Array = [0.25, -0.25, 0.5, -0.5, 0.75, -0.75, 1.0, -1.0]
+	# Eighths, not quarters. Measured, the window where a twenty-degree
+	# pylon rests against a flat hull is two eighths of a plate wide —
+	# so a sweep in quarters can step over it and report that there is
+	# nowhere it fits, which is worse than saying nothing.
+	var tried: Array = [
+		0.125, -0.125, 0.25, -0.25, 0.375, -0.375, 0.5, -0.5,
+		0.625, -0.625, 0.75, -0.75, 0.875, -0.875, 1.0, -1.0]
 	for step: float in tried:
 		section.y = was + step
 		if _section_sits(model, group, lattice, part_of):

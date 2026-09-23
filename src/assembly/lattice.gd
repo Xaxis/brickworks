@@ -152,12 +152,6 @@ static func cells_for_turned(
 ) -> Array[Vector3i]:
 	var out: Array[Vector3i] = []
 	var taken: Dictionary = {}
-	var inverse: Basis = basis.inverse()
-	# How far a unit cell reaches along each of the box's own axes.
-	var reach := Vector3(
-		0.5 * (absf(inverse[0].x) + absf(inverse[1].x) + absf(inverse[2].x)),
-		0.5 * (absf(inverse[0].y) + absf(inverse[1].y) + absf(inverse[2].y)),
-		0.5 * (absf(inverse[0].z) + absf(inverse[1].z) + absf(inverse[2].z)))
 
 	for box: AABB in boxes:
 		var lo := Vector3(box.position)
@@ -172,16 +166,15 @@ static func cells_for_turned(
 			low = low.min(corner)
 			high = high.max(corner)
 
+		# The turned box, as a centre, three axes and three half-widths.
+		var half: Vector3 = (hi - lo) * 0.5
+		var middle: Vector3 = basis * ((lo + hi) * 0.5)
 		for x: int in range(floori(low.x), ceili(high.x)):
 			for y: int in range(floori(low.y), ceili(high.y)):
 				for z: int in range(floori(low.z), ceili(high.z)):
-					var centre: Vector3 = inverse * Vector3(
-						float(x) + 0.5, float(y) + 0.5, float(z) + 0.5)
-					if centre.x < lo.x - reach.x or centre.x > hi.x + reach.x:
-						continue
-					if centre.y < lo.y - reach.y or centre.y > hi.y + reach.y:
-						continue
-					if centre.z < lo.z - reach.z or centre.z > hi.z + reach.z:
+					if not _touches(middle, basis, half, Vector3(
+							float(x) + 0.5, float(y) + 0.5,
+							float(z) + 0.5)):
 						continue
 					var cell: Vector3i = origin_cell + Vector3i(x, y, z)
 					if taken.has(cell):
@@ -189,6 +182,45 @@ static func cells_for_turned(
 					taken[cell] = true
 					out.append(cell)
 	return out
+
+
+## Whether a unit cell centred at [param at] is touched by the turned
+## box given by its centre, its three axes and its three half-widths.
+##
+## The fifteen axes of a separating-axis test: the cell's three, the
+## box's three, and the nine cross products. Anything less is an
+## over-estimate, and the over-estimate is expensive here — measuring a
+## turned part by a box grown along its own axes swells it by nearly a
+## whole cell on every side, so a three-plate blade at an angle
+## collided with everything it merely passed near. A design that had
+## worked out a fifty-degree rake for its pylons hit exactly that,
+## spent its remaining turns opening tenth-of-a-plate clearances by
+## hand, and finished with nothing built.
+static func _touches(middle: Vector3, basis: Basis, half: Vector3,
+		at: Vector3) -> bool:
+	var apart: Vector3 = middle - at
+	var axes: Array[Vector3] = [
+		Vector3.RIGHT, Vector3.UP, Vector3.BACK,
+		basis[0].normalized(), basis[1].normalized(),
+		basis[2].normalized()]
+	for n: int in 3:
+		for m: int in 3:
+			var cross: Vector3 = axes[n].cross(axes[3 + m])
+			if cross.length_squared() > 0.000001:
+				axes.append(cross.normalized())
+
+	var widths := PackedFloat32Array([half.x, half.y, half.z])
+	for axis: Vector3 in axes:
+		# Half the cell, projected: a unit cube reaches this far along
+		# any direction.
+		var cell_reach: float = 0.5 * (absf(axis.x) + absf(axis.y)
+			+ absf(axis.z))
+		var box_reach: float = 0.0
+		for n: int in 3:
+			box_reach += widths[n] * absf(axis.dot(basis[n].normalized()))
+		if absf(apart.dot(axis)) > cell_reach + box_reach:
+			return false
+	return true
 
 
 ## Would a part placed here overlap anything already placed?
