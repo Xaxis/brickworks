@@ -686,7 +686,14 @@ func _build_ui() -> void:
 		# so a ship the assistant designs larger than thirty-two studs
 		# hangs off the edge into nothing, which reads as the model
 		# being broken rather than the ground being small.
-		_ground_for_the_model()
+		# Next frame, not inside the signal.
+		#
+		# built is emitted from the middle of applying a design, and
+		# laying fresh ground removes the old plates from the world and
+		# the lattice. Doing that while the apply is still walking its
+		# own placements is how a run reaches the last critique and
+		# then simply stops, with no error and nothing written.
+		_ground_for_the_model.call_deferred()
 		_on_model_changed()
 		if _playback.play(_store.scenery):
 			_bar.say("building…"))
