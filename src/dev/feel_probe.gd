@@ -454,6 +454,16 @@ func _framing() -> void:
 	_check("more ground is laid, %d plates against %d"
 		% [_plates(), plates_before], _plates() > plates_before)
 	var built: AABB = _world.model_bounds()
+	# And the ground it replaced is gone, not merely forgotten. Dropping
+	# a plate from the scenery record without removing the brick leaves
+	# it in the world as an ordinary part, under everything, in the way
+	# of every edit.
+	var strays: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3811" and not _main._store.scenery.has(brick.id):
+			strays += 1
+	_check("no ground is left behind as an ordinary brick, %d" % strays,
+		strays == 0)
 	_check("...and the model is standing on it",
 		_main._ground.encloses(AABB(
 			Vector3(built.position.x, 0.0, built.position.z),

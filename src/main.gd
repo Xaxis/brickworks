@@ -1269,14 +1269,27 @@ var _ground: AABB = AABB()
 
 func _lay_baseplate() -> void:
 	const PLATE := "3811"   # Baseplate 32 x 32
-	# Whatever was scenery before is not any more.
+	# The ground that was here goes, brick and record together.
 	#
-	# BrickWorld numbers from one again after a clear, so a stale id in
-	# this set names an ordinary brick somebody places later — and a
-	# brick marked as scenery is left out of Save, Export, the parts
-	# list and the booklet, silently. They would build the thing, save
-	# it, and find a piece of it missing with nothing to explain why.
+	# Clearing the record alone was harmless while this only ran just
+	# after the world was emptied — there was nothing left to be stale.
+	# Laying fresh ground under a model that has outgrown its plate
+	# runs it with the old plate still in the world, and dropping it
+	# from the set does not remove it: it becomes an ordinary brick,
+	# sitting under everything, in the way of every edit. Two designs
+	# reported exactly that — "a stray baseplate part sitting below
+	# ground level" — and I read the code that skips scenery, decided
+	# they had misdiagnosed it, and moved on. They had not.
+	#
+	# A stale id matters the other way too. BrickWorld numbers from one
+	# again after a clear, so an id left in this set names an ordinary
+	# brick somebody places later — and a brick marked as scenery is
+	# left out of Save, Export, the parts list and the booklet,
+	# silently.
 	if _store != null:
+		for old_id: int in _store.scenery.keys():
+			_builder.lattice.release(old_id)
+			_world.remove_brick(old_id)
 		_store.scenery.clear()
 	# At zero, not a plate below it. A part's origin sits at the top of
 	# its body, and bricks rest with their undersides on the plane that
