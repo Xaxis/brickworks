@@ -1,5 +1,5 @@
 [project]
-name = "lego-emulator-tools"
+name = "brickworks-tools"
 version = "0.1.0"
 description = "Offline data pipeline: LDraw geometry, catalogue, connectivity"
 requires-python = ">=3.11"

@@ -52,8 +52,9 @@ Binding consequences for naming and UI copy:
   LEGO® bricks". Always carry the ®.
 - **The mark may not appear in the domain, package name, application
   identifier or repository name.** The application is called Brickworks
-  for this reason. *The `lego-emulator` repository name still violates
-  this and should be renamed* — see docs/ARCHITECTURE.md.
+  for this reason, the repository is `Xaxis/brickworks`, the domain is
+  brickworks.diy, and the Python package is `brickworks-tools` — that
+  last one carried the old name longest, in a file nobody reads.
 - No LEGO logo, brand typography or product photography anywhere.
 - No minifigure trade dress in branding — the app icon, store banner or
   marketing. Rendering minifigure *parts* inside the app from CC BY
