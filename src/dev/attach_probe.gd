@@ -48,12 +48,65 @@ func _initialize() -> void:
 		for face: String in ["up", "+z", "-x"]:
 			_try(assistant, library, host, face)
 
+	# And the shape of a part that is not a box.
+	#
+	# A wedge plate's studs sit on its square half, so the stud list —
+	# the only thing this tool used to print — describes the half that
+	# is not the point of the part. Which way the diagonal runs could
+	# not be asked at all: not from the studs, and from a render only if
+	# you already knew which way the camera pointed. A saucer rim built
+	# on a guess is the same wedge put on backwards four times.
+	print("")
+	print("  the shape of a part that is not a box")
+	var right: String = assistant._attachment_points(
+		{"part": "41769b", "x": 0, "y": 0, "z": 0, "rot": 0})
+	var left: String = assistant._attachment_points(
+		{"part": "41770b", "x": 0, "y": 0, "z": 0, "rot": 0})
+	_look("a wedge plate is drawn as a footprint",
+		right.contains("footprint from above"))
+	# Tenths, and they have to run downhill: a column of "some of it"
+	# says the stud is cut without saying which way.
+	_look("...and the taper is readable, thick end first",
+		right.contains("8#") and right.contains("1#"))
+	_look("...and the left-handed one is its mirror",
+		left.contains("#8") and left.contains("#1"))
+	# Silent about a part that fills its box, or it is noise.
+	for box: String in ["3001", "3024", "3068b"]:
+		_look("%s fills its box, and is not drawn at all" % box,
+			not assistant._attachment_points(
+				{"part": box, "x": 0, "y": 0, "z": 0, "rot": 0})
+				.contains("Its "))
+
+	# A slope is flat in plan and shaped in its side, so the plan says
+	# nothing and the side says everything. Which way it falls is the
+	# same question as which way a wedge tapers.
+	var slope: String = assistant._attachment_points(
+		{"part": "3037", "x": 0, "y": 0, "z": 0, "rot": 0})
+	_look("a slope is drawn from the side instead",
+		slope.contains("Its side"))
+	_look("...and the fall is readable, solid at the bottom",
+		slope.contains("##") and slope.contains("#2"))
+	var arch: String = assistant._attachment_points(
+		{"part": "3659", "x": 0, "y": 0, "z": 0, "rot": 0})
+	_look("an arch shows the hole under it",
+		arch.contains("Its side") and arch.contains("#11#"))
+
 	print("")
 	if _failures == 0:
 		print("%d attachment points, every one of them real" % _checked)
 	else:
 		print("%d FAILURE(S) of %d" % [_failures, _checked])
 	quit(1 if _failures else 0)
+
+
+## A plain yes-or-no about what a tool said, counted with the rest.
+func _look(what: String, ok: bool) -> void:
+	_checked += 1
+	if ok:
+		print("  ok    %s" % what)
+		return
+	_failures += 1
+	print("  FAIL  %s" % what)
 
 
 func _try(assistant: Assistant, library: PartLibrary, host: String,

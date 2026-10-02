@@ -1520,6 +1520,8 @@ func _attachment_points(args: Dictionary) -> String:
 	if part == null:
 		return "The geometry for %s has not arrived yet." % part_id
 
+	var shape: String = _footprint_sketch(part, at)
+
 	var lines := PackedStringArray()
 	var found: int = 0
 	for connector: Lbm.Connector in part.connectors:
@@ -1551,8 +1553,9 @@ func _attachment_points(args: Dictionary) -> String:
 			+ "at whole studs across and at the height of its top face.")
 	if found == 0:
 		return ("%s has no studs — nothing clutches to it. " % label
-			+ "Tiles and most sloped surfaces are like this.")
-	return ("%s has %d stud%s.\n" % [label, found, "" if found == 1 else "s"]
+			+ "Tiles and most sloped surfaces are like this." + shape)
+	return ("%s has %d stud%s.%s\n" % [label, found,
+		"" if found == 1 else "s", shape]
 		+ "\n".join(lines)
 		+ "\n\nThose corners are for a 1x1 plate. A part that covers "
 		+ "more studs extends from the same corner, the way it would on "
@@ -1561,6 +1564,108 @@ func _attachment_points(args: Dictionary) -> String:
 		+ "-x or -z it hangs the other way, so its corner is further "
 		+ "back along that direction by its own thickness: a brick is "
 		+ "three plates, so three plates or one and a half studs.")
+
+
+## How much of each stud this part covers, looking down, in the
+## orientation it is being asked about.
+##
+## Nothing answered "which way does this wedge taper". The studs say
+## where things attach, which for a wedge plate is the square half of
+## it, and a render answers it only if you already know which way the
+## camera is pointing. So the one question a shape is bought for could
+## not be asked, and a saucer rim built from guesses comes out inside
+## out — the same wedge put on backwards four times.
+##
+## Only drawn when it tells you something: a brick, a plate and a tile
+## all fill their box, and saying so is noise.
+const SKETCH_LIMIT := 16    ## studs a side, past which this is a wall of text
+
+
+func _footprint_sketch(part: Lbm.PartMesh, at: Transform3D) -> String:
+	var cells: Array[Vector3i] = builder._cells_for(part, at)
+	if cells.is_empty():
+		return ""
+
+	var plan: String = _sketch_on(cells, 0, 2,
+		BrickLattice.CELLS_PER_STUD, BrickLattice.CELLS_PER_STUD)
+	if not plan.is_empty():
+		return ("\n\nIts footprint from above — x left to right, z top to "
+			+ "bottom. # is a whole stud, a digit is tenths of one, . is "
+			+ "nothing:\n" + plan)
+
+	# Flat in plan, which every slope is: the shape is in its side. Two
+	# of them, because a slope falls along one axis and is square across
+	# the other, and only one of the two says which.
+	for side: Array in [[0, "x left to right"], [2, "z left to right"]]:
+		var upright: String = _sketch_on(cells, int(side[0]), 1,
+			BrickLattice.CELLS_PER_STUD, BrickLattice.CELLS_PER_PLATE, true)
+		if not upright.is_empty():
+			return ("\n\nIts side, %s, y up the page — # is a whole plate, "
+				% side[1]
+				+ "a digit is tenths of one, . is nothing:\n" + upright)
+	return ""
+
+
+## The part drawn on one plane, or "" when that plane says nothing.
+##
+## [param across] and [param up] are axis numbers into a cell: 0 is x,
+## 1 is y, 2 is z. [param flip] draws the second axis bottom-up, which is
+## what makes a side view read the way a side looks.
+func _sketch_on(cells: Array[Vector3i], across: int, up: int,
+		per_across: int, per_up: int, flip: bool = false) -> String:
+	var filled: Dictionary = {}
+	var lo := Vector2i(0x7FFFFFFF, 0x7FFFFFFF)
+	var hi := Vector2i(-0x7FFFFFFF, -0x7FFFFFFF)
+	for cell: Vector3i in cells:
+		var flat := Vector2i(cell[across], cell[up])
+		filled[flat] = true
+		lo = Vector2i(mini(lo.x, flat.x), mini(lo.y, flat.y))
+		hi = Vector2i(maxi(hi.x, flat.x), maxi(hi.y, flat.y))
+	if lo.x == 0x7FFFFFFF:
+		return ""
+
+	var first := Vector2i(floori(float(lo.x) / per_across),
+		floori(float(lo.y) / per_up))
+	var last := Vector2i(floori(float(hi.x) / per_across),
+		floori(float(hi.y) / per_up))
+	if last.x - first.x + 1 > SKETCH_LIMIT or last.y - first.y + 1 > SKETCH_LIMIT:
+		return ""
+
+	var rows := PackedStringArray()
+	var anything_missing: bool = false
+	for b in range(first.y, last.y + 1):
+		var row: String = ""
+		for a in range(first.x, last.x + 1):
+			var covered: int = 0
+			for ca in range(a * per_across, a * per_across + per_across):
+				for cb in range(b * per_up, b * per_up + per_up):
+					if filled.has(Vector2i(ca, cb)):
+						covered += 1
+			var share: float = float(covered) / float(per_across * per_up)
+			if share > 0.97:
+				row += "#"
+			elif share < 0.03:
+				row += "."
+				anything_missing = true
+			else:
+				# How full, in tenths, rather than merely "partly".
+				#
+				# A wedge plate drawn with one symbol for "some of it"
+				# came back as a column of them, which says the stud is
+				# cut without saying which way — and which way is the
+				# whole question. In tenths the taper reads straight
+				# off: 9 7 4 1 down a column is a diagonal, and the
+				# thick end is where the 9 is.
+				row += str(clampi(int(share * 10.0), 1, 9))
+				anything_missing = true
+		if flip:
+			rows.insert(0, "  " + row)
+		else:
+			rows.append("  " + row)
+
+	# A full rectangle is every part anyone has ever used without
+	# wondering about its shape.
+	return "" if not anything_missing else "\n".join(rows)
 
 
 ## Where a 1x1 plate's low corner falls if it clutches this stud.
@@ -1704,9 +1809,14 @@ func _describe_world(args: Dictionary = {}) -> String:
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		var at: Vector3 = _to_studs(brick, info)
+		var corners: Array = _corners_in_studs(brick)
+		if corners.is_empty():
+			continue
+		var at: Vector3 = corners[0]
+		var reaches: Vector3 = corners[1]
 		low = Vector3(minf(low.x, at.x), minf(low.y, at.y), minf(low.z, at.z))
-		high = Vector3(maxf(high.x, at.x), maxf(high.y, at.y), maxf(high.z, at.z))
+		high = Vector3(maxf(high.x, reaches.x), maxf(high.y, reaches.y),
+			maxf(high.z, reaches.z))
 
 		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
 		tally[key] = int(tally.get(key, 0)) + 1
@@ -1785,16 +1895,37 @@ const WORLD_ROWS := 220
 ## [method _transform], and it has to stay that way — a description in
 ## coordinates the model cannot act on is worse than none.
 func _to_studs(brick: BrickWorld.Brick, _info: PartLibrary.PartInfo) -> Vector3:
+	var corners: Array = _corners_in_studs(brick)
+	return Vector3.ZERO if corners.is_empty() else corners[0] as Vector3
+
+
+## Both corners a brick really occupies, in studs and plates.
+##
+## The low one is what a placement is named by, and for a long time it
+## was the only one anyone asked for — so the span of a model was the
+## span of its corners. Four wing plates all placed at z=0 reach four
+## studs deep between them, and look_at_model said "z 0..0" about them.
+## Anything deciding whether a thing fits was told the model was the
+## size of a point.
+func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 	if part == null:
-		return Vector3.ZERO
+		return []
 	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
 	for cell: Vector3i in builder._cells_for(part, brick.transform):
 		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+		hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
 	if lo.x == 0x7FFFFFFF:
-		return Vector3.ZERO
-	var ldu: Vector3 = BrickLattice.to_ldu(lo)
-	return Vector3(ldu.x / STUD, ldu.y / PLATE, ldu.z / STUD)
+		return []
+	var near: Vector3 = BrickLattice.to_ldu(lo)
+	# One cell past the last one filled, because a cell is a step and
+	# not a point: a 1 x 1 plate fills one cell and reaches to the next.
+	var far: Vector3 = BrickLattice.to_ldu(hi + Vector3i.ONE)
+	return [
+		Vector3(near.x / STUD, near.y / PLATE, near.z / STUD),
+		Vector3(far.x / STUD, far.y / PLATE, far.z / STUD),
+	]
 
 
 ## Quarter turns about Y, recovered from the basis.
@@ -3411,7 +3542,13 @@ func _tools() -> Array:
 				+ "giving part and position. Use this rather than "
 				+ "working out sideways positions yourself — a stud on "
 				+ "the side of a brick is not at a whole number of "
-				+ "plates and the arithmetic is easy to get wrong."),
+				+ "plates and the arithmetic is easy to get wrong. It "
+				+ "also draws the shape of any part that is not a plain "
+				+ "box: which way a wedge plate tapers, which way a "
+				+ "slope falls, where an arch is open. Ask before using "
+				+ "one of those for the first time — a wedge put on "
+				+ "backwards looks exactly like a wedge until you look "
+				+ "at it."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

@@ -84,6 +84,21 @@ func _initialize() -> void:
 	_check("counts them, got '%s'" % text.split("\n")[0],
 		text.begins_with("2 parts"))
 	_check("gives the extent in studs", text.contains("span x"))
+	# And the extent covers the parts, not the corners they are named by.
+	#
+	# Two 2 x 4 bricks at x=0 and x=4 reach eight studs across and two
+	# deep. The span used to be taken from the low corners alone, so it
+	# said "x 0..4, z 0..0" — a model reported as a line. Anything
+	# deciding whether something fits beside it was told the wrong size,
+	# and four wing plates all placed at z=0 came back as "z 0..0".
+	# Two 2 x 4 bricks, side by side and resting on the ground, are eight
+	# studs across, two deep and one brick tall. Counting corners alone
+	# made that "x 0..4, z 0..0, y 0..0" — a model reported as a point,
+	# which is what anything deciding whether something fits was given.
+	_check("...and it covers the parts, not the corners: %s"
+		% text.split("\n")[1],
+		text.contains("span x -2..6") and text.contains("z -1..1")
+		and text.contains("y 0..3"))
 	_check("says which were placed by hand", text.contains("placed by hand"))
 
 	world.clear()
