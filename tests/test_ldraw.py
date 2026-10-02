@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -343,7 +344,19 @@ def test_stickers_have_no_connectors(library: Library) -> None:
 
 # -- occupancy and sockets -----------------------------------------------
 
-from ldraw import occupancy as occ  # noqa: E402
+if TYPE_CHECKING:
+    from ldraw import occupancy as occ  # noqa: E402
+else:
+    try:
+        from ldraw import occupancy as occ
+    except ImportError:  # the one module that needs numpy and scipy
+        occ = None
+
+# Six tests below voxelise a part. Without numpy they used to take the
+# whole file down at import, so thirty-three measurements that need
+# nothing but LDraw went unchecked too.
+needs_numpy = pytest.mark.skipif(
+    occ is None, reason="numpy/scipy not installed; apt install python3-numpy python3-scipy")
 
 
 def _occupancy(library: Library, part: str):
@@ -367,6 +380,7 @@ def _occupancy(library: Library, part: str):
         ("3068b.dat", 2, 1, 2),   # Tile 2 x 2
     ],
 )
+@needs_numpy
 def test_occupancy_matches_the_named_size(
     library: Library, part: str, studs_x: int, plates: int, studs_z: int
 ) -> None:
@@ -382,6 +396,7 @@ def test_occupancy_matches_the_named_size(
     assert grid.shape[2] * occ.CELL == pytest.approx(studs_z * 20.0)
 
 
+@needs_numpy
 def test_lattice_divides_every_lego_dimension() -> None:
     """The cell has to divide the stud pitch, half pitch, brick and plate.
 
@@ -403,10 +418,12 @@ def test_lattice_divides_every_lego_dimension() -> None:
         ("3070b.dat", 1),   # and the 1x1 tile declares no connector at all
     ],
 )
+@needs_numpy
 def test_socket_counts(library: Library, part: str, expected: int) -> None:
     assert len(occ.bottom_sockets(_occupancy(library, part))) == expected
 
 
+@needs_numpy
 def test_sockets_agree_with_studs(library: Library) -> None:
     """Two independent derivations must land on the same lattice.
 
@@ -427,12 +444,14 @@ def test_sockets_agree_with_studs(library: Library) -> None:
         assert sockets == tops, part
 
 
+@needs_numpy
 def test_an_arch_has_no_socket_under_its_span(library: Library) -> None:
     """Arch 1 x 4 stands on two legs; nothing attaches under the opening."""
     sockets = occ.bottom_sockets(_occupancy(library, "3659.dat"))
     assert len(sockets) == 2
 
 
+@needs_numpy
 def test_collision_is_exact_on_the_lattice(library: Library) -> None:
     """Two bricks side by side do not collide; overlapping ones do."""
     brick = _occupancy(library, "3001.dat")
