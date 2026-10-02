@@ -1,0 +1,95 @@
+# Web
+
+The same app, in a browser, at brickworks.diy — plus the small server behind
+accounts.
+
+<!-- covers: api:*, cli:web build and deploy, cli:browser check -->
+
+## Sub-features
+
+- `GET /api/account`: one request that tells the client everything about accounts.
+  Without a token: where to sign in, whether this deployment has accounts at all,
+  and the parts bucket URL. With one: who you are, your tier, designs left.
+- `POST /api/claude`: the proxy for accounts that pay in our tokens. A
+  bring-your-own-key client never comes here — **the person's own key must never
+  reach the server.**
+- `POST /api/otp`: mints a one-time code with Supabase and delivers it through
+  Resend from our own sender. No passwords anywhere.
+- `GET /api/admin`: the account list and tier changes. Fails closed, and answers
+  404 rather than 403 to anyone signed in who is not the master, so the surface
+  does not announce itself.
+- `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
+  under `/b/<sha>/`, points `/` at it and then proves it in a browser.
+- `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
+  waits for the canvas to show something other than the loading colour.
+
+## How to reach it
+
+```sh
+tools/deploy.sh                 # a preview URL
+tools/deploy.sh --prod          # the one brickworks.diy points at
+tools/deploy.sh --no-export     # deploy what is already in build/web
+node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
+python3 tools/web/serve.py build/web 8099    # locally, with the isolation headers
+```
+
+## How to check it
+
+Static: `pyright` covers `tools/web/serve.py`. Nothing static covers the endpoints.
+
+Runtime — every one of these is safe to run against production:
+
+```sh
+curl -s https://brickworks.diy/api/account | python3 -m json.tool
+curl -s -o /dev/null -w '%{http_code}\n' https://brickworks.diy/api/admin
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brickworks.diy/api/claude \
+  -H 'content-type: application/json' -d '{}'
+curl -s -w '\n%{http_code}\n' -X POST https://brickworks.diy/api/otp \
+  -H 'content-type: application/json' -d '{"email":"not-an-email"}'
+curl -s -o /dev/null -w '%{http_code}\n' https://brickworks.diy/api/otp
+```
+
+Proves it when (measured 2026-10-02):
+
+| Request | Answer |
+|---|---|
+| `GET /api/account`, no token | `200`, JSON with `enabled: true`, a `url`, a publishable `key`, `parts_url`, `signed_in: false` |
+| `GET /api/admin`, no token | `401` `{"error":"sign in to use the design assistant"}` |
+| `POST /api/claude`, no token | `401` |
+| `POST /api/otp`, `{"email":"not-an-email"}` | `422` `{"error":"That is not an email address."}` |
+| `GET /api/otp` | `405` |
+
+And the deploy, which is the only proof that counts for the web build:
+
+```sh
+node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
+```
+
+Proves it when: it exits 0 and prints `crossOriginIsolated: true`, `the build runs
+at <url>`, then four `ok` lines for the view controls it drives in the browser —
+turn (right-drag), zoom (wheel), slide (shift-scroll), turn (middle-drag) — ending
+`check ok: <url>`. The PNG shows the baseplate with the model on it, not the
+loading colour and not a blank canvas. Measured against production 2026-10-02.
+
+A signed-in path needs a real account: sign in through the app, or run
+`src/dev/account_probe.gd`, which walks a whole sign-in from the client's side
+against the real server. It sends a real email to `MASTER_EMAIL`.
+
+## Gotchas
+
+- **A successful upload proves nothing.** The threaded build refuses to start
+  unless the page is cross-origin isolated. Those headers are host config, so the
+  failure looks like a successful deploy from here and a blank page to everyone
+  else. That is why `check.mjs` exists and why `--no-check` is "not advised".
+- **Route order matters more than it looks.** `/parts/*.lbm` 404s were being
+  caught by a catch-all 308 and answered with the landing page's HTML and a 200.
+  The `/parts/` 404 route has to come *after* `{"handle":"filesystem"}`.
+- **4xx in the browser fails the deploy** and names the URL. It used to collect
+  console errors and ignore them.
+- **The screenshot is not fatal.** A hung screenshot used to fail good builds.
+- **Never POST `/api/otp` with a valid address as a check.** It emails a person.
+- **Vercel seat-checks the commit author.** Any author other than
+  `Xaxis <william.neeley@gmail.com>` fails the deploy silently —
+  `readyStateReason: seat block`, no build log, nothing in CI.
+- Vercel also has a file-count limit; the parts the web build does not carry live
+  in Supabase storage, which is what `tools/storage_parts.py` fills.

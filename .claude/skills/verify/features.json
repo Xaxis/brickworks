@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "generated_by": "featuremap (claude-core) - regenerate with `featuremap generate --write`; do not edit by hand",
+  "checks": [
+    {
+      "id": "check:test:py",
+      "kind": "test",
+      "run": "python -m pytest -q",
+      "script": "(pytest)"
+    },
+    {
+      "id": "check:typecheck:pyright",
+      "kind": "typecheck",
+      "run": "pyright",
+      "script": "(pyright)"
+    },
+    {
+      "id": "check:build:godot",
+      "kind": "build",
+      "run": "godot --headless --path . --import --quit",
+      "script": "(parses every script and scene; errors print as SCRIPT ERROR / Parse Error)"
+    }
+  ],
+  "launch": [],
+  "features": [
+    {
+      "id": "api:GET /api/account",
+      "kind": "api",
+      "entry": "api/account.js",
+      "reach": "curl -s https://brickworks.diy/api/account",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "api:GET /api/admin",
+      "kind": "api",
+      "entry": "api/admin.js",
+      "reach": "GET https://brickworks.diy/api/admin (needs the admin token)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/claude",
+      "kind": "api",
+      "entry": "api/claude.js",
+      "reach": "POST https://brickworks.diy/api/claude (needs a signed-in account)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/otp",
+      "kind": "api",
+      "entry": "api/otp.js",
+      "reach": "POST https://brickworks.diy/api/otp",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:browser check",
+      "kind": "cli",
+      "entry": "tools/web/check.mjs",
+      "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:build the meshes",
+      "kind": "cli",
+      "entry": "tools/build_meshes.py",
+      "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:design from a brief",
+      "kind": "cli",
+      "entry": "tools/design.py",
+      "reach": "tools/design.py \"a small lighthouse\" --effort low --out /tmp/x.ldr   (COSTS MONEY)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:drive the app over mcp",
+      "kind": "cli",
+      "entry": "tools/mcp_check.py",
+      "reach": "tools/mcp_check.py",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:export a model",
+      "kind": "cli",
+      "entry": "src/main.gd",
+      "reach": "godot --headless --path . -- --model=models/car.ldr --out=/tmp/out.ldr",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:mcp server",
+      "kind": "cli",
+      "entry": "tools/brickworks_mcp.py",
+      "reach": "claude mcp add brickworks -- /mnt/Projects/brickworks/tools/brickworks_mcp.py",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:pack the web parts",
+      "kind": "cli",
+      "entry": "tools/web_pack.py",
+      "reach": "tools/web_pack.py --list",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:refresh the catalogue",
+      "kind": "cli",
+      "entry": "tools/refresh_catalogue.py",
+      "reach": "tools/refresh_catalogue.py",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:upload parts to storage",
+      "kind": "cli",
+      "entry": "tools/storage_parts.py",
+      "reach": "tools/storage_parts.py --check",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:web build and deploy",
+      "kind": "cli",
+      "entry": "tools/deploy.sh",
+      "reach": "tools/deploy.sh --prod",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:angled sections",
+      "kind": "lib",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/section_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:command socket",
+      "kind": "lib",
+      "entry": "src/net/command_socket.gd",
+      "reach": "godot --path . -- --mcp   (then 127.0.0.1:8787, one JSON object per line)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "lib:design loop",
+      "kind": "lib",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:ldr read and write",
+      "kind": "lib",
+      "entry": "src/parts/ldr_model.gd",
+      "reach": "godot --headless --path . --script src/dev/import_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:mesh fetch",
+      "kind": "lib",
+      "entry": "src/parts/part_library.gd",
+      "reach": "godot --headless --path . --script src/dev/fetch_probe.gd",
+      "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "lib:model and effort settings",
+      "kind": "lib",
+      "entry": "src/ai/brain.gd",
+      "reach": "godot --headless --path . --script src/dev/brain_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:occupancy lattice",
+      "kind": "lib",
+      "entry": "src/assembly/lattice.gd",
+      "reach": "godot --headless --path . --script src/dev/snap_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:part search",
+      "kind": "lib",
+      "entry": "src/parts/part_library.gd",
+      "reach": "godot --headless --path . --script src/dev/vocab_probe.gd",
+      "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "lib:reference pictures",
+      "kind": "lib",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:renders for the critique",
+      "kind": "lib",
+      "entry": "src/ai/model_shot.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:save and reopen",
+      "kind": "lib",
+      "entry": "src/parts/model_store.gd",
+      "reach": "godot --headless --path . --script src/dev/store_probe.gd",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:sideways building",
+      "kind": "lib",
+      "entry": "src/assembly/lattice.gd",
+      "reach": "godot --headless --path . --script src/dev/snot_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:stability",
+      "kind": "lib",
+      "entry": "src/assembly/stability.gd",
+      "reach": "godot --headless --path . --script src/dev/stability_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "scene:main",
+      "kind": "scene",
+      "entry": "src/main.tscn",
+      "reach": "godot --path .",
+      "area": "game",
+      "tests": []
+    },
+    {
+      "id": "ui:box select",
+      "kind": "ui",
+      "entry": "src/ui/marquee.gd",
+      "reach": "godot --path .  (drag on the baseplate)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:build steps",
+      "kind": "ui",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --headless --path . --script src/dev/instructions_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:camera controls",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "godot --headless --path . --script src/dev/camera_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:controls panel and hint",
+      "kind": "ui",
+      "entry": "src/ui/controls_hint.gd",
+      "reach": "godot --path .  (press , or the Controls button)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:mosaic",
+      "kind": "ui",
+      "entry": "src/ui/mosaic_dialog.gd",
+      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:parts bin",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (P, or the Parts button)",
+      "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:place and remove",
+      "kind": "ui",
+      "entry": "src/main.gd",
+      "reach": "godot --path .  (click to place, right-click to remove)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:selection edits",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (shift-click, then C paint / arrows nudge / Delete)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:undo and redo",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (Cmd-Z, Cmd-Shift-Z)",
+      "area": "building",
+      "tests": []
+    }
+  ]
+}
