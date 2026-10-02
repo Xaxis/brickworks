@@ -25,6 +25,20 @@ const STUD := 20.0    ## LDU between stud centres
 const PLATE := 8.0    ## LDU per plate
 const BRICK := 24.0   ## LDU per brick, three plates
 
+## How far past a whole unit a part may measure and still belong in it.
+##
+## Curved geometry overshoots its nominal box by a hair: a 2 x 2 round
+## brick measures 40.001 LDU across where a square one measures 40.000.
+## Rounded up, that is a part two studs wide described as three — which
+## is how every round column, pillar and lamp in a model came to be
+## listed with a stud of air around it. A design reading that leaves the
+## gap.
+##
+## 0.4 LDU is the clearance LEGO designs to, 0.2 either side, so anything
+## within it is the same stud. tools/ldraw/occupancy.py has guarded the
+## same arithmetic since it was written; this side had not.
+const CLEARANCE := 0.4
+
 const CELLS_PER_STUD := 10    # 20 / 2
 const CELLS_PER_PLATE := 4    # 8 / 2
 

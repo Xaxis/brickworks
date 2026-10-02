@@ -584,14 +584,20 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 		# ends are taken outward now, which is what the paragraph above
 		# was always claiming.
 		var box: AABB = part.bounds
+		# Pulled in by the moulding clearance at both ends. A round
+		# brick's geometry overshoots its nominal box by a thousandth of
+		# an LDU, and rounding that outward gives it a cell of collision
+		# it does not have — so two of them standing side by side, which
+		# is what a colonnade is, report as overlapping.
+		var slack: float = BrickLattice.CLEARANCE
 		var from := Vector3(
-			floor(box.position.x / BrickLattice.CELL),
-			floor(box.position.y / BrickLattice.CELL),
-			floor(box.position.z / BrickLattice.CELL))
+			floor((box.position.x + slack) / BrickLattice.CELL),
+			floor((box.position.y + slack) / BrickLattice.CELL),
+			floor((box.position.z + slack) / BrickLattice.CELL))
 		var to := Vector3(
-			ceil(box.end.x / BrickLattice.CELL),
-			ceil(box.end.y / BrickLattice.CELL),
-			ceil(box.end.z / BrickLattice.CELL))
+			ceil((box.end.x - slack) / BrickLattice.CELL),
+			ceil((box.end.y - slack) / BrickLattice.CELL),
+			ceil((box.end.z - slack) / BrickLattice.CELL))
 		boxes = [AABB(from, (to - from).max(Vector3.ONE))]
 	# cells_for takes the span between two rotated corners, which is the
 	# rotated box only for the 24 orientations it documents as its

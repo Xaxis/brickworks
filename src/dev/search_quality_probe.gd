@@ -77,6 +77,34 @@ func _initialize() -> void:
 				% [query, found[0].name.strip_edges(), got, wanted])
 	print("")
 
+	# And a round part is the size it says it is.
+	#
+	# A 2 x 2 round brick's geometry measures 40.001 LDU where a square
+	# one measures 40.000, and that thousandth was rounded up into a
+	# whole stud: every round column, pillar and lamp in the catalogue
+	# was described as covering 3 x 3. Found by somebody building a
+	# lighthouse out of them and noticing the search disagreed with the
+	# model. 1,458 parts of 28,319 said the wrong size.
+	print("")
+	print("  a round part is the size it says it is")
+	for pair: Array in [["3941", Vector2i(2, 2)], ["6143", Vector2i(2, 2)],
+			["4032a", Vector2i(2, 2)], ["6141", Vector2i(1, 1)],
+			["3003", Vector2i(2, 2)], ["3001", Vector2i(4, 2)]]:
+		var info: PartLibrary.PartInfo = library.parts.get(pair[0])
+		if info == null:
+			print("  ----  %s is not in the catalogue" % pair[0])
+			continue
+		var footprint: Vector2i = info.footprint_studs()
+		if footprint == pair[1]:
+			print("  ok    %-7s covers %dx%d   %s" % [pair[0],
+				footprint.x, footprint.y, info.name.strip_edges().substr(0, 32)])
+		else:
+			_failures += 1
+			print("  FAIL  %-7s covers %dx%d, should be %dx%d   %s"
+				% [pair[0], footprint.x, footprint.y, pair[1].x, pair[1].y,
+					info.name.strip_edges()])
+	print("")
+
 	var share: float = 100.0 * float(wasted) / float(maxi(shown, 1))
 	print("")
 	print("  %d of %d suggestions are printed or alias variants (%.0f%%)"

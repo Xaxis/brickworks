@@ -54,13 +54,18 @@ static func draw(world: BrickWorld, library: PartLibrary,
 		if part == null:
 			continue
 		var box: AABB = brick.transform * part.bounds
+		# Both ends pulled in by the moulding clearance, or a round
+		# brick is drawn a stud wider than a square one of the same
+		# size: its geometry overshoots 40 LDU by a thousandth, and
+		# rounding that outward buys a whole stud of nothing.
+		var slack: float = BrickLattice.CLEARANCE
 		var span := {
-			"x0": int(floor(box.position.x / BrickLattice.STUD)),
-			"x1": int(ceil(box.end.x / BrickLattice.STUD)),
-			"y0": int(floor(box.position.y / BrickLattice.PLATE)),
-			"y1": int(ceil(box.end.y / BrickLattice.PLATE)),
-			"z0": int(floor(box.position.z / BrickLattice.STUD)),
-			"z1": int(ceil(box.end.z / BrickLattice.STUD)),
+			"x0": int(floor((box.position.x + slack) / BrickLattice.STUD)),
+			"x1": int(ceil((box.end.x - slack) / BrickLattice.STUD)),
+			"y0": int(floor((box.position.y + slack) / BrickLattice.PLATE)),
+			"y1": int(ceil((box.end.y - slack) / BrickLattice.PLATE)),
+			"z0": int(floor((box.position.z + slack) / BrickLattice.STUD)),
+			"z1": int(ceil((box.end.z - slack) / BrickLattice.STUD)),
 			"colour": brick.color_code,
 		}
 		spans.append(span)

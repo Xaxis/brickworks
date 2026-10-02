@@ -93,7 +93,9 @@ class PartInfo extends RefCounted:
 	## Footprint in whole studs, rounded up. Useful for sorting and for
 	## the assistant's reasoning; not a substitute for real collision.
 	func footprint_studs() -> Vector2i:
-		return Vector2i(int(ceil(size.x / 20.0)), int(ceil(size.z / 20.0)))
+		return Vector2i(
+			maxi(1, ceili((size.x - BrickLattice.CLEARANCE) / 20.0)),
+			maxi(1, ceili((size.z - BrickLattice.CLEARANCE) / 20.0)))
 
 
 ## A colour the palette knows about.
