@@ -135,7 +135,7 @@
     "name": "check_design"
   },
   {
-    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself \u2014 a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong.",
+    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself \u2014 a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time \u2014 a wedge put on backwards looks exactly like a wedge until you look at it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
