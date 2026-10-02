@@ -80,6 +80,14 @@
       "tests": []
     },
     {
+      "id": "cli:drive the app from a shell",
+      "kind": "cli",
+      "entry": "tools/brick.py",
+      "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:drive the app over mcp",
       "kind": "cli",
       "entry": "tools/mcp_check.py",

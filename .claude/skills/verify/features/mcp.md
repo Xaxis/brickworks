@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell -->
 
 ## Sub-features
 
@@ -17,6 +17,10 @@ asking for an API key.
   `tools/mcp_tools.json` only to answer `tools/list` while the app is closed.
 - `drive the app over mcp`: `tools/mcp_check.py` starts a headless app, drives the
   relay as a client would, and stops the app it started.
+- `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
+  answer, writing any picture to `--png=PATH`. The same socket without the MCP
+  wrapping, for a script, a person reading along, or an agent that would rather
+  open the picture as a file.
 
 Nine tools reach a session: the assistant's seven (`search_parts`, `check_design`,
 `attachment_points`, `edit_model`, `look_at_model`, `view_model`, `submit_design`)
@@ -35,9 +39,16 @@ claude mcp add brickworks -- /mnt/Projects/brickworks/tools/brickworks_mcp.py
 By hand, without MCP at all:
 
 ```sh
+tools/brick.py __tools__ --port=8787
+tools/brick.py search_parts '{"query": "wedge 4x2", "limit": 5}' --port=8787
+tools/brick.py check_design "$(cat design.json)" --png=/tmp/look.png --port=8787
+tools/brick.py clear_model --port=8787
+```
+
+Or with nothing but a shell:
+
+```sh
 printf '{"id":1,"tool":"__ping__"}\n' | timeout 5 nc 127.0.0.1 8787
-printf '{"id":2,"tool":"search_parts","input":{"query":"wedge","limit":3}}\n' \
-  | timeout 20 nc 127.0.0.1 8787
 ```
 
 ## How to check it
@@ -84,5 +95,11 @@ Both are in `tools/check.sh`.
   to the network. There is no authentication beyond that.
 - **One port per app.** Parallel sessions must pass `--mcp=PORT`; the second app on
   8787 says the port is taken and carries on without a socket.
+- **`check_design` puts the trial on the baseplate**, and the baseplate is saved
+  and restored on the next start. A design checked at the origin overlaps that
+  saved model next time, which reads as a broken checker and is not. Call
+  `clear_model` first.
+- **A picture needs something to draw with.** Over the socket from a headless app
+  the look falls back to a text elevation; from a windowed one it is a PNG.
 - Nothing about this sends the person's API key anywhere. That is the point: the
   key stays in whatever session is already holding it.

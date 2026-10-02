@@ -1437,10 +1437,20 @@ func _with_a_look(said: String, ask: String,
 		_shot = ModelShot.new()
 		add_child(_shot)
 
+	# Whether this is part of a design run, settled before the picture is
+	# drawn rather than after.
+	#
+	# The test below used to be "if not _busy", which is right during a
+	# run and wrong outside one: a session driving the app over the
+	# command socket is never busy, so every tool that answers with a
+	# picture answered with an empty string instead — check_design,
+	# view_model, edit_model, three of the nine, silent.
+	var during_a_run: bool = _busy
+
 	var picture: Dictionary = await _shot.block(world, from, scenery, only)
 	# Cancelled while the picture was being taken. Saying anything now
 	# would be answering a turn that no longer exists.
-	if not _busy:
+	if during_a_run and not _busy:
 		return ""
 	if picture.is_empty():
 		var elevation: String = "front" if from in ["corner", "top"] else from

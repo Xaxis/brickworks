@@ -257,6 +257,13 @@
       "entry": "tools/mcp_check.py",
       "reach": "tools/mcp_check.py",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "drive the app from a shell",
+      "entry": "tools/brick.py",
+      "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
+      "area": "mcp"
     }
   ]
 }

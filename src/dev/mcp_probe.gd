@@ -124,6 +124,24 @@ func _run() -> void:
 	_check("a design that cannot stand is refused",
 		_text_of(floating).begins_with("Not applied"))
 
+	# Checking a design has to come back with something to read.
+	#
+	# It did not, and nothing here noticed: every tool that answers with
+	# a picture went through a guard meant for a cancelled design run —
+	# "if not _busy, say nothing" — and a session driving from outside is
+	# never busy. check_design, view_model and edit_model all answered
+	# with an empty string. Three of the nine tools, silent, and the only
+	# way it surfaced was somebody trying to build with them.
+	var checked: Dictionary = await _ask("check_design", {
+		"bricks": [
+			{"part": "3031", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3031", "color": 71, "x": 4, "y": 0, "z": 0, "rot": 0},
+		],
+	})
+	var verdict: String = _text_of(checked)
+	_check("checking a design says something, %d characters"
+		% verdict.length(), verdict.length() > 20)
+
 	# A look at the model, which comes back as a picture in a headless
 	# run only if there is something to draw with — so here it is enough
 	# that the tool answers rather than hangs.
