@@ -117,6 +117,45 @@ func _run() -> void:
 		_verdict(assistant, wall), "steps its way")
 
 	print("")
+	print("  a line the model would come apart along")
+	# The checker knew whether a model was in one piece. It did not know
+	# whether that piece would survive being picked up, and the oldest
+	# way to get that wrong is to stack bricks with their joints in a
+	# column. Staggering is the first thing anyone is taught and the
+	# first thing a model built out of neat rectangles forgets.
+	var aligned: Array = []
+	for course: int in 5:
+		for at: int in [0, 4]:
+			aligned.append({"part": "3001", "color": 4,
+				"x": at, "y": course * 3, "z": 0, "rot": 0})
+	var split: Dictionary = _verdict(assistant, aligned)
+	_check_says("a wall whose joints line up is told so",
+		split, "Nothing bridges the line")
+	if bool(split.get("ok", false)):
+		print("  ok    ...and it is still buildable, %s" % split["summary"])
+	else:
+		_failures += 1
+		print("  FAIL  the advice was counted as a problem: %s"
+			% split["summary"])
+
+	# The same wall with the courses staggered, which must say nothing.
+	var staggered: Array = []
+	for course: int in 5:
+		if course % 2 == 0:
+			for at: int in [0, 4]:
+				staggered.append({"part": "3001", "color": 4,
+					"x": at, "y": course * 3, "z": 0, "rot": 0})
+		else:
+			staggered.append({"part": "3003", "color": 4,
+				"x": 0, "y": course * 3, "z": 0, "rot": 0})
+			staggered.append({"part": "3001", "color": 4,
+				"x": 2, "y": course * 3, "z": 0, "rot": 0})
+			staggered.append({"part": "3003", "color": 4,
+				"x": 6, "y": course * 3, "z": 0, "rot": 0})
+	_check_quiet("the same wall, staggered, is not nagged",
+		_verdict(assistant, staggered), "Nothing bridges")
+
+	print("")
 	print("  the rules themselves")
 	# These moved here from a second validator, in Python, that used to
 	# sit behind tools/design.py. It built studs-up and only studs-up,

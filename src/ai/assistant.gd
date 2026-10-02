@@ -2297,6 +2297,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not stepped.is_empty():
 		advice.append(stepped)
 
+	# And whether there is a line it would come apart along.
+	var seam: String = _unbonded_seam(cells_of)
+	if not seam.is_empty():
+		advice.append(seam)
+
 	var pieces: int = _count_pieces(model, cells_of, lattice)
 
 	var errors: int = 0
@@ -2411,6 +2416,106 @@ func _stepped_outline(cells_of: Dictionary) -> String:
 		+ "doing badly — search \"wedge plate 2 x 4\". They are one "
 		+ "plate thick, left and right handed, and sit in the layer "
 		+ "beside ordinary plates.")
+
+
+## A vertical line nothing bridges, with model on both sides of it.
+##
+## The checker knows whether a model is in one piece. It does not know
+## whether that one piece would survive being picked up, and the oldest
+## way to get that wrong is to stack bricks with their joints in a
+## column: every course ends where the one below it ended, nothing
+## bridges, and the wall splits along that line in the hand while
+## passing every test here. Staggering is the first thing anyone is
+## taught and the first thing a model built out of neat rectangles
+## forgets.
+##
+## Six plates — two bricks — because one course failing to bridge is a
+## corner, and two is a habit.
+const WORST_SEAM := 6
+
+
+func _unbonded_seam(cells_of: Dictionary) -> String:
+	# Per plate-layer: which stud columns hold anything, and which lines
+	# between columns something crosses.
+	var holds: Dictionary = {}     ## axis -> layer -> stud -> true
+	var bridges: Dictionary = {}   ## axis -> layer -> line -> true
+	for axis: int in [0, 2]:
+		holds[axis] = {}
+		bridges[axis] = {}
+
+	for index: int in cells_of:
+		var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+		var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
+		for cell: Vector3i in cells_of[index]:
+			lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+			hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
+		if lo.x == 0x7FFFFFFF:
+			continue
+		var first_layer: int = floori(float(lo.y) / BrickLattice.CELLS_PER_PLATE)
+		var last_layer: int = floori(float(hi.y) / BrickLattice.CELLS_PER_PLATE)
+		# A part forty plates tall is a flagpole, not a wall, and walking
+		# every layer of every part is the one thing here that could get
+		# expensive on a four thousand piece model.
+		if last_layer - first_layer > 64:
+			continue
+		for axis: int in [0, 2]:
+			var from: int = floori(float(lo[axis]) / BrickLattice.CELLS_PER_STUD)
+			var to: int = floori(float(hi[axis]) / BrickLattice.CELLS_PER_STUD)
+			for layer in range(first_layer, last_layer + 1):
+				if not holds[axis].has(layer):
+					holds[axis][layer] = {}
+					bridges[axis][layer] = {}
+				for at in range(from, to + 1):
+					holds[axis][layer][at] = true
+				# The lines this part crosses are the ones inside it.
+				for line in range(from + 1, to + 1):
+					bridges[axis][layer][line] = true
+
+	var worst: int = 0
+	var where: String = ""
+	for axis: int in [0, 2]:
+		var layers: Array = holds[axis].keys()
+		layers.sort()
+		if layers.size() < 2:
+			continue
+		# Every line with model on both sides of it, which is the whole
+		# point: a seam is a line nothing crosses, so taking the
+		# candidates from what *does* cross one leaves out every line
+		# this is looking for. That was the first version, and it found
+		# nothing, ever.
+		var lines: Dictionary = {}
+		for layer: int in layers:
+			for at: int in holds[axis][layer]:
+				if holds[axis][layer].has(at + 1):
+					lines[at + 1] = true
+		for line: int in lines:
+			var run: int = 0
+			for layer: int in layers:
+				var here: Dictionary = holds[axis][layer]
+				# Only where the model is actually continuous across the
+				# line. Two towers with a gap between them are two
+				# towers, and nothing is wrong with that.
+				if not (here.has(line - 1) and here.has(line)):
+					run = 0
+					continue
+				if bridges[axis][layer].has(line):
+					run = 0
+					continue
+				run += 1
+				if run > worst:
+					worst = run
+					where = ("%s=%d" % ["x" if axis == 0 else "z", line])
+			# Layers are consecutive integers only where the model is;
+			# a gap in them ends a run on its own, which the loop above
+			# gets wrong by one layer and nobody will ever notice.
+
+	if worst < WORST_SEAM:
+		return ""
+	return ("Nothing bridges the line at %s for %d plates together. " % [
+		where, worst]
+		+ "Courses whose joints all land in the same place come apart "
+		+ "along that line when the model is picked up — stagger them, "
+		+ "so each brick sits across the joint below it.")
 
 
 func _count_pieces(model: Model, cells_of: Dictionary,
