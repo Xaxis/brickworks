@@ -159,6 +159,13 @@ def main() -> int:
         todo.reverse()
     todo_bytes = sum(mesh.stat().st_size for mesh in todo)
     print(f"  to upload : {len(todo):,}  ({todo_bytes / 1e6:.0f} MB)")
+    # Which ones, not just how many. A count on its own cannot tell you
+    # whether the bucket is missing six obscure stickers or six parts a
+    # model on the front page is built from.
+    for mesh in sorted(todo, key=lambda m: -m.stat().st_size)[:10]:
+        print(f"    {mesh.name}  {mesh.stat().st_size / 1e6:.1f} MB")
+    if len(todo) > 10:
+        print(f"    ... {len(todo) - 10:,} more")
     if args.check or not todo:
         return 0
 
