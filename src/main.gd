@@ -54,6 +54,9 @@ var _thumbnails: PartThumbnails
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
+## Designing on the person's own Claude subscription, by starting the
+## Claude Code they already have and pointing it back at this app.
+var _claude_code: ClaudeCode = null
 
 var _library: PartLibrary
 
@@ -149,6 +152,13 @@ func _ready() -> void:
 	if not autobuild.is_empty():
 		_autobuild(autobuild.to_int())
 
+	# The same brief, designed by the Claude Code on this machine rather
+	# than by the loop inside the app. No API key and no account: it is
+	# the person's own subscription doing the thinking.
+	var local: String = _argument("--ask-claude-code")
+	if not local.is_empty():
+		await _ask_claude_code(local)
+
 	var ask: String = _argument("--ask")
 	if not ask.is_empty():
 		# For this run, not for the person's settings.
@@ -243,6 +253,33 @@ func _ask(brief: String) -> void:
 	await get_tree().process_frame
 
 
+## Drive a local Claude Code session and print what it does.
+func _ask_claude_code(brief: String) -> void:
+	_world.clear()
+	_builder.lattice.clear()
+	_builder.forget_history()
+	_lay_baseplate()
+	if not design_with_claude_code(brief):
+		print("claude code: could not start")
+		_ask_went_well = false
+		return
+	var started: int = Time.get_ticks_msec()
+	var session: ClaudeCode = claude_code()
+	session.progress.connect(func(note: String) -> void:
+		print("  [%5.1fs] %s" % [
+			(Time.get_ticks_msec() - started) / 1000.0, note]))
+	session.said.connect(func(text: String) -> void:
+		print("  said: %s" % text.substr(0, 300)))
+	var outcome: Array = await session.finished
+	_ask_went_well = bool(outcome[0])
+	print("claude code ok=%s bricks=%d  (%.0fs)\n  %s" % [
+		outcome[0], _world.brick_count() - _store.scenery.size(),
+		(Time.get_ticks_msec() - started) / 1000.0,
+		str(outcome[1]).substr(0, 600)])
+	_camera.frame(_built_bounds())
+	await get_tree().process_frame
+
+
 ## Measure a settled frame rate and print it, then quit.
 func _benchmark(frames: int) -> void:
 	# Without this the number is the monitor's refresh rate, not the
@@ -321,6 +358,34 @@ static func _argument(prefix: String) -> String:
 ## empty string both for --mcp and for no --mcp at all.
 static func _has_argument(name: String) -> bool:
 	return OS.get_cmdline_user_args().has(name)
+
+
+## Design on the person's Claude subscription instead of ours.
+##
+## Opens the port if it is not already open, so this works from a plain
+## double-click and not only from a command line that remembered --mcp.
+## Returns false, having said why, when it cannot start.
+func design_with_claude_code(brief: String) -> bool:
+	if ClaudeCode.found().is_empty():
+		push_warning("claude code: not installed on this machine")
+		return false
+	if _commands == null:
+		_open_commands(CommandSocket.PORT)
+	if _commands == null:
+		push_warning("claude code: no port to talk to the app on")
+		return false
+	if _claude_code == null:
+		_claude_code = ClaudeCode.new()
+		add_child(_claude_code)
+	if _claude_code.busy():
+		return false
+	_claude_code.design(brief, _commands.port(), _commands.tool_names())
+	return true
+
+
+## The one running, if one is.
+func claude_code() -> ClaudeCode:
+	return _claude_code
 
 
 ## Empty the baseplate, as starting a design does.
@@ -602,11 +667,22 @@ func _build_ui() -> void:
 	middle.add_child(pad)
 
 	_chat = ChatPanel.new()
+	# Decided before the panel is built, because it decides whether the
+	# choice appears in the composer at all.
+	_chat.claude_code_here = not ClaudeCode.found().is_empty()
 	_chat_dock = SideDock.new()
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
 	_chat.watch(_account)
+	# Designing on the person's own Claude subscription, when this
+	# machine has the Claude Code to do it with. The panel offers the
+	# choice only then.
+	_chat.design_locally.connect(func(brief: String) -> void:
+		if not design_with_claude_code(brief):
+			_chat.gave_up("Could not start Claude Code.")
+			return
+		_chat.follow(claude_code()))
 
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the

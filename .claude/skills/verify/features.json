@@ -288,6 +288,14 @@
       "tests": []
     },
     {
+      "id": "ui:design on your own subscription",
+      "kind": "ui",
+      "entry": "src/ai/claude_code.gd",
+      "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",

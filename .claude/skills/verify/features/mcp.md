@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription -->
 
 ## Sub-features
 
@@ -20,6 +20,10 @@ asking for an API key.
   session is not left working out from refusals that wedge plates exist.
 - `drive the app over mcp`: `tools/mcp_check.py` starts a headless app, drives the
   relay as a client would, and stops the app it started.
+- `design on your own subscription`: **My Claude** in the design panel. The app
+  starts the Claude Code on this machine and points it back at itself over MCP, so
+  the thinking is paid for by the person's Claude subscription — no API key, no
+  account, nothing billed by us. Desktop only; a browser cannot start a program.
 - `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
   answer, writing any picture to `--png=PATH`. The same socket without the MCP
   wrapping, for a script, a person reading along, or an agent that would rather
@@ -34,6 +38,8 @@ board itself when a design begins and a session has no such moment, and
 ## How to reach it
 
 ```sh
+godot --path .                     # then tick "My Claude" in the design panel
+godot --path . -- --ask-claude-code="a small post box"   # the same, from a script
 godot --path . -- --mcp            # the app, with the port open on 8787
 godot --path . -- --mcp=8790       # a second one, beside the first
 claude mcp add brickworks -- /mnt/Projects/brickworks/tools/brickworks_mcp.py
@@ -67,7 +73,21 @@ tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 ```
 
-Proves it when: `mcp_probe` ends on "a session outside the app can use the app's own
+For the subscription path:
+
+```sh
+godot --headless --path . --script src/dev/claude_code_probe.gd
+```
+
+Proves it when: it ends on "a design run can reach the bricks and nothing else" —
+the command carries `--strict-mcp-config`, `--tools ""` and `--restricted`, and
+never anything with "dangerously" or "bypass" in it. That is what makes the
+feature safe, and it is not the allowlist: `--allowedTools` only grants
+permission, it never takes any away. A real run spends somebody's subscription and
+is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
+tools, all of them this app's" when it connects.
+
+And `mcp_probe` ends on "a session outside the app can use the app's own
 tools" — a client connects over real TCP, gets 9 tools all carrying schemas,
 searches the real catalogue, submits a design that puts 3 bricks in the world, and
 has a floating brick refused. `mcp_check.py` ends on "a session can drive
@@ -105,5 +125,15 @@ Both are in `tools/check.sh`.
   `clear_model` first.
 - **A picture needs something to draw with.** Over the socket from a headless app
   the look falls back to a text elevation; from a windowed one it is a PNG.
+- **`--allowedTools` grants, it does not restrict.** The first run of the
+  subscription feature inherited everything the person's own Claude Code has: a
+  shell, a file writer, and whatever MCP servers they use — on the machine this
+  was built on, their email and their documents. It called `Bash` twice before
+  anybody asked it to. Three flags take away: `--strict-mcp-config`, `--tools ""`,
+  `--restricted`. The probe checks all three.
+- **Not a credential proxy.** Services exist that borrow subscription tokens and
+  serve them as an API endpoint. They break the terms the subscription is granted
+  under and would put the person's account at risk, so this runs the program they
+  installed, as them, on their machine, instead.
 - Nothing about this sends the person's API key anywhere. That is the point: the
   key stays in whatever session is already holding it.

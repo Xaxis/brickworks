@@ -392,6 +392,21 @@ func _own_tools() -> Array:
 	]
 
 
+## Every tool name this port serves, the assistant's and its own.
+##
+## Used to tell Claude Code what it may call: a headless session is
+## allowed exactly these and nothing else, so it cannot read or write a
+## file, and a design run has no reason to.
+func tool_names() -> PackedStringArray:
+	var names := PackedStringArray()
+	if assistant != null:
+		for tool: Variant in assistant.tool_catalogue():
+			names.append(str((tool as Dictionary).get("name", "")))
+	for tool: Variant in _own_tools():
+		names.append(str((tool as Dictionary).get("name", "")))
+	return names
+
+
 func _own_tools_have(tool: String) -> bool:
 	return tool in ["clear_model", "save_model"]
 

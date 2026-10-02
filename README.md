@@ -106,6 +106,20 @@ signature against the published key rather than by asking Supabase on
 every request. A design is charged per conversation rather than per round
 trip.
 
+## Or design on the Claude you already pay for
+
+If you have Claude Code installed and signed in, tick **My Claude** in
+the design panel. Brickworks starts a session on this machine and points
+it back at itself, so the thinking is done on your own Claude
+subscription: no API key, no account here, nothing billed by us.
+
+That session can reach this app's bricks and nothing else on your
+computer — no shell, no files, none of your other MCP servers. It is
+started with `--tools "" --restricted --strict-mcp-config`, so the only
+tools in front of it are the nine Brickworks serves.
+
+It is a desktop feature, because a browser cannot start a program.
+
 ## Or bring your own session
 
 The design loop lives in the app, not on a server. The real catalogue
@@ -120,7 +134,9 @@ claude mcp add brickworks -- /path/to/brickworks/tools/brickworks_mcp.py
 godot --path . -- --mcp
 ```
 
-Your session then gets the same nine tools the app's own assistant uses —
+Driving it from a session you already have open, rather than letting the
+app start one, is the same thing by hand. Your session gets the same nine
+tools the app's own assistant uses —
 search the catalogue, check a design against the lattice, look at what is
 built, submit it — and the bricks land in the window while you watch. No
 key is pasted into the app, no account is needed, and nothing is billed

@@ -243,6 +243,25 @@ func _build_settings() -> void:
 		Brain.set_effort(Brain.EFFORTS[at]))
 	_settings.add_child(_how_hard)
 
+	# Only where it would work. An option that needs a program the
+	# person has not got is worse than no option: it reads as the app
+	# being broken rather than as something they could install.
+	if claude_code_here:
+		_use_claude_code = CheckBox.new()
+		_use_claude_code.text = "My Claude"
+		_use_claude_code.add_theme_font_size_override("font_size", 11)
+		_use_claude_code.tooltip_text = ("Design with the Claude Code on "
+			+ "this machine, on your own Claude subscription. No key, no "
+			+ "account, nothing billed here — and the session can reach "
+			+ "this app's bricks and nothing else on your computer.")
+		_use_claude_code.toggled.connect(func(_on: bool) -> void:
+			# The model and effort pickers belong to the loop inside the
+			# app; the Claude on this machine brings its own.
+			_show_settings()
+			_status.text = ("Your own Claude will design it."
+				if designing_locally() else ""))
+		_settings.add_child(_use_claude_code)
+
 	_show_settings()
 
 
@@ -250,6 +269,13 @@ func _build_settings() -> void:
 ## well as at the start, because choosing a model can take the effort
 ## control away.
 func _show_settings() -> void:
+	# The model and effort belong to the loop inside the app. When the
+	# person's own Claude is doing the designing, it chooses its own.
+	if _which != null and _use_claude_code != null:
+		var mine: bool = designing_locally()
+		_which.disabled = mine
+		_how_hard.disabled = mine
+		_send.disabled = _why_not() != ""
 	if _which == null:
 		return
 	var chosen: String = Brain.chosen()
@@ -260,6 +286,37 @@ func _show_settings() -> void:
 	_how_hard.visible = choice.effort
 	if choice.effort:
 		_how_hard.selected = maxi(Brain.EFFORTS.find(Brain.effort()), 0)
+
+
+## Designing on the person's own Claude subscription instead of on a key
+## or an account. Set by the app when this machine has Claude Code; the
+## panel shows the choice only then, because offering something that is
+## not installed is worse than not offering it.
+var claude_code_here: bool = false
+signal design_locally(brief: String)
+var _use_claude_code: CheckBox = null
+
+
+## True when the person has asked for their own Claude to do it.
+func designing_locally() -> bool:
+	return _use_claude_code != null and _use_claude_code.button_pressed
+
+
+## A run that never started, said in the panel rather than swallowed.
+func gave_up(why: String) -> void:
+	_status.text = why
+	_working = false
+	_send.disabled = false
+	_send.text = "Build it"
+
+
+## The same three handlers the assistant's signals use, so a design run
+## looks the same in the panel whichever side of the window it is on.
+func follow(session: ClaudeCode) -> void:
+	if not session.progress.is_connected(_on_progress):
+		session.progress.connect(_on_progress)
+		session.said.connect(_on_said)
+		session.finished.connect(_on_finished)
 
 
 func bind(to: Assistant) -> void:
@@ -280,6 +337,10 @@ func bind(to: Assistant) -> void:
 ## answered started a conversation that could not run and spent an
 ## opener on it.
 func _why_not() -> String:
+	# Nothing to pay for and nothing to sign into: the thinking is being
+	# done by the Claude the person already has, on their own machine.
+	if designing_locally():
+		return ""
 	if OwnKey.has_key():
 		return ""
 	if account == null:
@@ -471,6 +532,10 @@ func _on_send() -> void:
 	_working = true
 	_send.disabled = true
 	_send.text = "Working…"
+
+	if designing_locally():
+		design_locally.emit(text)
+		return
 
 	# A first request designs; a later one revises what is already there.
 	# Asked of the assistant rather than counted off the transcript: the
