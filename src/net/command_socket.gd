@@ -48,13 +48,28 @@ var assistant: Assistant
 ## The app itself, for the two things only it can do.
 var app: Node = null
 
+## One connection, with everything about it in one place.
+##
+## Held as objects rather than as parallel arrays indexed by position.
+## Position is not stable: a client that goes while another is mid-tool
+## shifts every index after it, and the answer to the request in flight
+## is then written to whoever moved into that slot — a picture of the
+## model arriving on a connection that asked for a search, and nothing
+## at all arriving on the one that is waiting.
+class Client extends RefCounted:
+	var peer: StreamPeerTCP
+	var buffer := PackedByteArray()
+	## True while a tool is still being awaited for this client. A tool
+	## may take seconds — fetching geometry, drawing a picture — and a
+	## second request arriving meanwhile must not be answered first.
+	var busy: bool = false
+	## Set when the connection has gone, so a tool that finishes after
+	## that has something to check rather than writing into nothing.
+	var gone: bool = false
+
+
 var _server := TCPServer.new()
-var _clients: Array[StreamPeerTCP] = []
-var _buffers: Array[PackedByteArray] = []
-## Clients whose current request is still being answered. A tool may
-## await — fetching geometry, drawing a picture — and a second request
-## arriving meanwhile must not be answered out of order.
-var _busy: Array[bool] = []
+var _clients: Array[Client] = []
 var _port := PORT
 
 
@@ -73,11 +88,10 @@ func listen(port: int = PORT) -> bool:
 
 
 func stop() -> void:
-	for client: StreamPeerTCP in _clients:
-		client.disconnect_from_host()
+	for client: Client in _clients:
+		client.gone = true
+		client.peer.disconnect_from_host()
 	_clients.clear()
-	_buffers.clear()
-	_busy.clear()
 	_server.stop()
 
 
@@ -89,59 +103,57 @@ func _process(_delta: float) -> void:
 	if not _server.is_listening():
 		return
 	while _server.is_connection_available():
-		var client: StreamPeerTCP = _server.take_connection()
+		var client := Client.new()
+		client.peer = _server.take_connection()
 		# Nagle's algorithm batches small writes, which for a protocol
 		# of one small line per answer means the answer sits in a buffer
 		# until something else is sent.
-		client.set_no_delay(true)
+		client.peer.set_no_delay(true)
 		_clients.append(client)
-		_buffers.append(PackedByteArray())
-		_busy.append(false)
 		attached.emit(_clients.size())
 	for i in range(_clients.size() - 1, -1, -1):
-		if not _pump(i):
+		var client: Client = _clients[i]
+		if not _pump(client):
+			client.gone = true
 			_clients.remove_at(i)
-			_buffers.remove_at(i)
-			_busy.remove_at(i)
 			attached.emit(_clients.size())
 
 
 ## Read what a client sent and answer any whole line in it. Returns
 ## false when the client has gone.
-func _pump(i: int) -> bool:
-	var client: StreamPeerTCP = _clients[i]
-	client.poll()
-	if client.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+func _pump(client: Client) -> bool:
+	client.peer.poll()
+	if client.peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		return false
-	var waiting: int = client.get_available_bytes()
+	var waiting: int = client.peer.get_available_bytes()
 	if waiting > 0:
-		var got: Array = client.get_data(waiting)
+		var got: Array = client.peer.get_data(waiting)
 		if got[0] != OK:
 			return false
-		_buffers[i].append_array(got[1])
-	if _buffers[i].size() > LONGEST_LINE:
+		client.buffer.append_array(got[1])
+	if client.buffer.size() > LONGEST_LINE:
 		push_error("command socket: a client sent %d bytes with no newline"
-			% _buffers[i].size())
+			% client.buffer.size())
 		return false
 	# One at a time, in order. The rest of the buffer waits.
-	if _busy[i]:
+	if client.busy:
 		return true
-	var newline: int = _buffers[i].find(10)
+	var newline: int = client.buffer.find(10)
 	if newline < 0:
 		return true
-	var line: String = _buffers[i].slice(0, newline).get_string_from_utf8()
-	_buffers[i] = _buffers[i].slice(newline + 1)
+	var line: String = client.buffer.slice(0, newline).get_string_from_utf8()
+	client.buffer = client.buffer.slice(newline + 1)
 	if line.strip_edges().is_empty():
 		return true
-	_busy[i] = true
-	_answer(i, line)
+	client.busy = true
+	_answer(client, line)
 	return true
 
 
-func _answer(i: int, line: String) -> void:
+func _answer(client: Client, line: String) -> void:
 	var asked_for: Variant = JSON.parse_string(line)
 	if not (asked_for is Dictionary):
-		_reply(i, -1, false, "that line is not a JSON object")
+		_reply(client, -1, false, "that line is not a JSON object")
 		return
 	var request: Dictionary = asked_for
 	var id: int = int(request.get("id", -1))
@@ -150,32 +162,32 @@ func _answer(i: int, line: String) -> void:
 
 	if tool == "__tools__":
 		if assistant == null:
-			_reply(i, id, false, "the app has no assistant")
+			_reply(client, id, false, "the app has no assistant")
 			return
-		_send(i, {"id": id, "ok": true,
+		_send(client, {"id": id, "ok": true,
 			"tools": assistant.tool_catalogue() + _own_tools()})
 		return
 	if tool == "__ping__":
-		_send(i, {"id": id, "ok": true, "app": "brickworks",
+		_send(client, {"id": id, "ok": true, "app": "brickworks",
 			"port": _port, "clients": _clients.size()})
 		return
 	if assistant == null:
-		_reply(i, id, false, "the app has no assistant")
+		_reply(client, id, false, "the app has no assistant")
 		return
 	if tool.is_empty():
-		_reply(i, id, false, "no tool named")
+		_reply(client, id, false, "no tool named")
 		return
 
 	asked.emit(tool)
 	if _own_tools_have(tool):
-		_send(i, {"id": id, "ok": true,
+		_send(client, {"id": id, "ok": true,
 			"content": _as_content(_run_own(tool, input))})
 		return
 	var answer: Variant = await assistant.use_tool(tool, input)
 	# The client may have gone while a tool was drawing a picture.
-	if i >= _clients.size():
+	if client.gone:
 		return
-	_send(i, {"id": id, "ok": true, "content": _as_content(answer)})
+	_send(client, {"id": id, "ok": true, "content": _as_content(answer)})
 
 
 ## Tools an outside session needs and the design loop does not.
@@ -266,13 +278,19 @@ func _as_content(answer: Variant) -> Array:
 	return blocks
 
 
-func _reply(i: int, id: int, ok: bool, message: String) -> void:
-	_send(i, {"id": id, "ok": ok, "error": message})
+func _reply(client: Client, id: int, ok: bool, message: String) -> void:
+	_send(client, {"id": id, "ok": ok, "error": message})
 
 
-func _send(i: int, answer: Dictionary) -> void:
-	if i < _clients.size():
-		var line: PackedByteArray = (JSON.stringify(answer) + "\n").to_utf8_buffer()
-		_clients[i].put_data(line)
-	if i < _busy.size():
-		_busy[i] = false
+func _send(client: Client, answer: Dictionary) -> void:
+	if not client.gone:
+		var line: PackedByteArray = (
+			JSON.stringify(answer) + "\n").to_utf8_buffer()
+		# Said, not swallowed. A client that cannot be written to is one
+		# whose request is never answered, and the only sign of it from
+		# the other end is a session that waits for three minutes.
+		var sent: Error = client.peer.put_data(line)
+		if sent != OK:
+			push_error("command socket: could not answer (%s)"
+				% error_string(sent))
+	client.busy = false

@@ -149,6 +149,49 @@ func _run() -> void:
 	_check("the model can be read back", bool(looked.get("ok", false))
 		and not _text_of(looked).is_empty())
 
+	# An answer has to reach the client that asked for it, even when
+	# another one leaves while it is being worked out.
+	#
+	# Clients used to be parallel arrays indexed by position, and a
+	# client leaving shifted every index after it. A request already in
+	# flight then had its answer written to whoever moved into its slot:
+	# a picture arriving on a connection that asked for a search, and
+	# nothing at all on the one that was waiting. It cost three minutes
+	# of waiting and a timeout to notice, with the app running fine.
+	# Two more, in order: the one that leaves has to be the *earlier* of
+	# them, because what shifts is every index after the one removed.
+	var leaver: StreamPeerTCP = await _another(port)
+	var waiting: StreamPeerTCP = await _another(port)
+	_check("two more clients can connect",
+		leaver.get_status() == StreamPeerTCP.STATUS_CONNECTED
+		and waiting.get_status() == StreamPeerTCP.STATUS_CONNECTED)
+	# Big enough that it is certainly still being checked when the other
+	# client goes. With two bricks it finished first and the race the
+	# check exists for never happened.
+	var slab: Array = []
+	for x: int in 16:
+		for z: int in 16:
+			slab.append({"part": "3024", "color": 71,
+				"x": x, "y": 0, "z": z, "rot": 0})
+	var mine: int = 4242
+	waiting.put_data((JSON.stringify({"id": mine, "tool": "check_design",
+		"input": {"bricks": slab}}) + "\n").to_utf8_buffer())
+	# Gone while that tool is still running, from in front of it — and
+	# waited for, so the list has really shifted before the answer is due.
+	await process_frame
+	leaver.disconnect_from_host()
+	for _n: int in 600:
+		await process_frame
+		if _socket._clients.size() <= 2:
+			break
+	_check("the client in front of it has really gone, %d left"
+		% _socket._clients.size(), _socket._clients.size() == 2)
+	var still: Dictionary = await _read_from(waiting)
+	_check("...and an answer reaches the client that asked for it, id %d"
+		% int(still.get("id", -1)), int(still.get("id", -1)) == mine)
+	_check("...with its content intact", not _text_of(still).is_empty())
+	waiting.disconnect_from_host()
+
 	# An unknown tool is an answer, not a dropped connection.
 	var nonsense: Dictionary = await _ask("no_such_tool", {})
 	_check("an unknown tool is answered, not dropped",
@@ -165,13 +208,35 @@ func _ask(tool: String, input: Dictionary) -> Dictionary:
 	var line: String = JSON.stringify(
 		{"id": _next_id, "tool": tool, "input": input}) + "\n"
 	_client.put_data(line.to_utf8_buffer())
+	return await _read()
+
+
+## One more client, connected.
+func _another(port: int) -> StreamPeerTCP:
+	var peer := StreamPeerTCP.new()
+	peer.connect_to_host("127.0.0.1", port)
+	for _n: int in 120:
+		peer.poll()
+		if peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+			break
+		await process_frame
+	return peer
+
+
+## The next whole line from this probe's own client.
+func _read() -> Dictionary:
+	return await _read_from(_client)
+
+
+## The next whole line from any client.
+func _read_from(peer: StreamPeerTCP) -> Dictionary:
 	var buffer := PackedByteArray()
 	# Generous: a tool may fetch geometry over the wire before answering.
 	for _n: int in 7200:
-		_client.poll()
-		var waiting: int = _client.get_available_bytes()
-		if waiting > 0:
-			var got: Array = _client.get_data(waiting)
+		peer.poll()
+		var ready: int = peer.get_available_bytes()
+		if ready > 0:
+			var got: Array = peer.get_data(ready)
 			if got[0] == OK:
 				buffer.append_array(got[1])
 		var newline: int = buffer.find(10)
