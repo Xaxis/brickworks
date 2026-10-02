@@ -438,6 +438,24 @@ static func _match_score(info: PartLibrary.PartInfo, query: String) -> int:
 	if _squeeze(info.id) == wanted:
 		score += 500                      # asked for by number
 
+	# The size asked for, counted on its own.
+	#
+	# "slope 45 2 x 4" came back with Slope Brick 45 2 x 1. The phrase
+	# matched nothing — the name says "slope brick", the query said
+	# "slope" — so every candidate scored the same, and the tiebreak
+	# below takes the smallest part. The size is the one thing in a
+	# query that is never decoration, and it was the one thing not
+	# scored.
+	var asked_size: Vector2 = _size_named(wanted)
+	if asked_size != Vector2.ZERO:
+		var found_size: Vector2 = _size_named(name)
+		if found_size == asked_size:
+			score += 300
+		elif found_size == Vector2(asked_size.y, asked_size.x):
+			# A 4 x 2 is a 2 x 4 turned round, and LDraw picks one
+			# order per part while a builder says either.
+			score += 240
+
 	# A part named for what it has not got.
 	#
 	# "Brick 1 x 2 without Centre Stud" answered a search for a jumper,
@@ -447,6 +465,22 @@ static func _match_score(info: PartLibrary.PartInfo, query: String) -> int:
 	if spaced.contains(" without ") and not asked.contains(" without "):
 		score -= 300
 	return score
+
+
+## The first two numbers of the footprint a name or a query states, e.g.
+## "Brick 2 x 4 x 0.667" -> (2, 4). Zero when none is stated.
+##
+## Reusing SIZE below rather than a second pattern for the same thing:
+## it already finds the phrase, and the numbers are what is in it.
+static func _size_named(text: String) -> Vector2:
+	var found: RegExMatch = SIZE.search(_squeeze(text))
+	if found == null:
+		return Vector2.ZERO
+	var numbers: PackedStringArray = found.get_string().split("x", false)
+	if numbers.size() < 2:
+		return Vector2.ZERO
+	return Vector2(numbers[0].strip_edges().to_float(),
+		numbers[1].strip_edges().to_float())
 
 
 ## The text with its punctuation opened out into spaces and a space at

@@ -22,7 +22,7 @@ extends SceneTree
 ## contains it. A check that the broken behaviour also passes is not a
 ## check.
 const WANTED: Array = [
-	["wedge plate", "Wedge", "Axlehole"],
+	["wedge plate", "Wing"],
 	["cheese slope", "Slope Brick 31"],
 	["snot brick", "Stud"],
 	["headlight brick", "Headlight"],
@@ -30,6 +30,24 @@ const WANTED: Array = [
 	["bracket", "Bracket"],
 	["round plate", "Round"],
 	["technic pin", "Technic"],
+]
+
+## Words whose answer has to be the right *thickness*, not merely a
+## plausible name.
+##
+## This is where the old check went wrong. It asked that "wedge plate"
+## answer with something containing "Wedge" — and 126 of the 203 parts
+## named Wedge are three and a half plates tall, which is a wedge
+## *brick*. So the check passed on the wrong family for as long as it
+## existed, while the comment at the top of this file said the cost of
+## the gap is the whole shape. A plate is one plate thick. Nothing else
+## settles it.
+const THICKNESS: Array = [
+	["wedge plate", 1.5],    # 8 LDU of plate plus a 4 LDU stud
+	["wedge plates", 1.5],
+	["wedge brick", 3.5],    # 24 LDU of brick plus the stud
+	["jumper", 1.5],
+	["tile 2 x 2", 1.0],     # no stud on top at all
 ]
 
 ## Words that must not come back empty, whatever they return.
@@ -64,6 +82,21 @@ func _initialize() -> void:
 				% [pair[0], first])
 			continue
 		print("  ok    %-16s %s" % [pair[0], first.substr(0, 44)])
+
+	print("")
+	print("  and it is the right thickness")
+	for pair: Array in THICKNESS:
+		var hits: Array[PartLibrary.PartInfo] = library.search(pair[0], 1)
+		if hits.is_empty():
+			_fail("%s found nothing" % pair[0])
+			continue
+		var plates: float = snappedf(hits[0].size.y / 8.0, 0.1)
+		if absf(plates - float(pair[1])) > 0.2:
+			_fail("%s -> %s is %.1f plates tall, wanted %.1f"
+				% [pair[0], hits[0].name.strip_edges(), plates, pair[1]])
+			continue
+		print("  ok    %-16s %.1f plates   %s" % [pair[0], plates,
+			hits[0].name.strip_edges().substr(0, 34)])
 
 	print("")
 	print("  and the rest at least answer")

@@ -16,7 +16,8 @@ extends SceneTree
 
 ## Queries a design actually makes, taken from the logs of real runs.
 const ASKED: Array[String] = [
-	"wedge plate 4 x 2", "slope 45 2 x 2", "plate 1 x 4", "brick 2 x 4",
+	"wedge plate 4 x 2", "slope 45 2 x 2", "slope 45 2 x 4",
+	"plate 1 x 4", "brick 2 x 4",
 	"tile 1 x 2", "curved slope 2 x 1", "window 1 x 2 x 2",
 	"door frame", "round brick 1 x 1", "cone 2 x 2", "panel 1 x 4",
 	"wheel", "windscreen", "arch 1 x 6", "bracket 1 x 2",
@@ -47,6 +48,34 @@ func _initialize() -> void:
 		else:
 			print("  ——    %-22s %d of them variants: %s"
 				% [query, junk.size(), ", ".join(junk)])
+
+	# And the size asked for is the size that comes back.
+	#
+	# "slope 45 2 x 4" answered with Slope Brick 45 2 x 1. Nothing above
+	# noticed: a 2 x 1 is a distinct shape, it is not a printed variant,
+	# and the list reads perfectly well. It is simply not the part that
+	# was asked for, and a design that takes the first result builds the
+	# whole model out of the wrong size.
+	print("")
+	print("  the size asked for is the size that comes back")
+	for query: String in ASKED:
+		var wanted: Vector2 = PartsBin._size_named(query)
+		if wanted == Vector2.ZERO:
+			continue
+		var found: Array[PartLibrary.PartInfo] = library.search(query, 1)
+		if found.is_empty():
+			_failures += 1
+			print("  FAIL  %-22s found nothing" % query)
+			continue
+		var got: Vector2 = PartsBin._size_named(found[0].name)
+		if got == wanted or got == Vector2(wanted.y, wanted.x):
+			print("  ok    %-22s %s" % [query,
+				found[0].name.strip_edges().substr(0, 40)])
+		else:
+			_failures += 1
+			print("  FAIL  %-22s -> %s, which is %s not %s"
+				% [query, found[0].name.strip_edges(), got, wanted])
+	print("")
 
 	var share: float = 100.0 * float(wasted) / float(maxi(shown, 1))
 	print("")

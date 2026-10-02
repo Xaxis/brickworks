@@ -452,7 +452,15 @@ func color(code: int) -> BrickColor:
 ## one. The saucer of a starship is wedge plates, so the cost of the gap
 ## is the whole shape.
 const ALSO_KNOWN_AS: Dictionary = {
-	"wedge plate": "wedge",
+	# Measured, not guessed: of the 203 parts with "wedge" in the name,
+	# 126 are three and a half plates tall — wedge *bricks*. The one
+	# plate wedges, the ones a saucer or a swept wing is made of, are all
+	# filed as "Wing": 61 of them, Wing 2 x 2 through Wing 6 x 12. So
+	# "wedge plate" pointed at the wrong family entirely, and the word
+	# that reaches the right one is one no builder says out loud.
+	"wedge plate": "wing",
+	"wedge brick": "wedge",
+	"minifigure": "minifig",
 	"cheese slope": "slope brick 31 1 x 1",
 	"jumper plate": "with 1 centre stud",
 	"snot brick": "with stud on 1 side",
@@ -475,9 +483,13 @@ static func in_ldraw_words(query: String) -> String:
 	phrases.sort_custom(func(a: String, b: String) -> bool:
 		return a.length() > b.length())
 	for phrase: String in phrases:
-		if text.contains(" %s " % phrase):
-			text = text.replace(" %s " % phrase,
-				" %s " % ALSO_KNOWN_AS[phrase])
+		# And the plural, which is what somebody types when they want
+		# more than one of something. "wedge plates" missed the table
+		# over a trailing letter and went to the library untranslated.
+		for said: String in [phrase, phrase + "s"]:
+			if text.contains(" %s " % said):
+				text = text.replace(" %s " % said,
+					" %s " % ALSO_KNOWN_AS[phrase])
 	return text.strip_edges()
 
 
