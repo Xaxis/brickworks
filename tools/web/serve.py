@@ -30,7 +30,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
-    def log_message(self, *args) -> None:  # quiet
+    def log_message(self, format: str, *args: object) -> None:  # quiet
         pass
 
 
