@@ -35,6 +35,21 @@ need() {
   fi
 }
 
+# brotli, or node, which has it built in.
+#
+# The command is not on every machine and on Ubuntu it cannot be put
+# there without a password. Node is already needed to prove a deploy, so
+# falling back to it costs nothing and the build still ships its .br
+# files — which are not optional: the wasm is 40 MB raw and 9 MB
+# compressed, and a visitor downloads whichever one is there.
+if command -v brotli >/dev/null 2>&1; then
+  squash() { brotli -f -q 9 -o "$1.br" "$1"; }
+elif command -v node >/dev/null 2>&1; then
+  squash() { node tools/web/brotli.mjs "$1" "$1.br"; }
+else
+  squash() { echo "export FAILED: neither brotli nor node is on PATH"; return 1; }
+fi
+
 human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576; else printf "%.0f KB", b / 1024 }'; }
 bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1" 2>/dev/null || echo 0; }
 
@@ -76,7 +91,7 @@ compress_web() {
   local dir="$1" pids=() f p
   for f in "$dir"/*.wasm "$dir"/*.pck "$dir"/*.js "$dir"/*.html; do
     [ -f "$f" ] || continue
-    brotli -f -q 9 -o "$f.br" "$f" & pids+=($!)
+    squash "$f" & pids+=($!)
     gzip -9 -k -f "$f" & pids+=($!)
   done
   for p in "${pids[@]}"; do
@@ -114,7 +129,7 @@ build_mac() {
 }
 
 case "$target" in
-  web|web-nothreads|all) need godot python3 bc brotli gzip ;;
+  web|web-nothreads|all) need godot python3 bc gzip ;;
   *) need godot python3 bc ;;
 esac
 mkdir -p build && touch build/.gdignore
