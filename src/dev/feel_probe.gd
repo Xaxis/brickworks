@@ -140,6 +140,15 @@ func _mouse() -> void:
 	_builder.clear_selection()
 
 	before = _world.brick_count()
+	# Named before it is counted, because "a plain click still places"
+	# is what the failure said for a long time and it is not what was
+	# wrong. Turning the model used to throw away every click for a
+	# third of a second — so after an orbit, placing a brick placed
+	# nothing, on a machine fast enough to get back here inside that
+	# window. The failure looked like the app ignoring clicks, happened
+	# about one run in three, and said nothing about turning.
+	_check("a turn a moment ago does not swallow this click",
+		not _camera.swallowing_click())
 	await _click(MOUSE_BUTTON_LEFT, _middle)
 	_check("a plain click still places", _world.brick_count() > before)
 

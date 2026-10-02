@@ -187,6 +187,27 @@ func swallowing_click() -> bool:
 
 var _swallow_until: int = 0
 
+## Whether the right button's release ends a turn rather than a click.
+##
+## Separate from the window above, which it used to share, and the
+## sharing was wrong in a way that only showed up as flakiness. That
+## window exists because an emulated click arrives *after* the touch
+## that caused it, so it has to be a span of time. A right-drag has no
+## such delay: the release that matters is the very next one. Sharing
+## one window meant a turn also threw away any left click that landed
+## within a third of a second of it — so orbiting and then immediately
+## placing a brick placed nothing, sometimes, depending on how fast the
+## machine was drawing.
+var _turned_not_clicked: bool = false
+
+
+## True when the right release that is happening now ends a turn.
+## Reading it answers for that release and no other.
+func turned_rather_than_clicked() -> bool:
+	var was: bool = _turned_not_clicked
+	_turned_not_clicked = false
+	return was
+
 
 ## Called when a gesture was something other than a tap.
 func swallow_next_click() -> void:
@@ -334,6 +355,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				if button.pressed:
 					_dragging_right = true
 					_right_travel = 0.0
+					# A fresh press decides afresh. Without this, a
+					# release that never reached the app — let go over a
+					# panel, say — would leave the answer set for the
+					# next one.
+					_turned_not_clicked = false
 				else:
 					_dragging_right = false
 					_end(MOUSE_BUTTON_RIGHT)
@@ -346,7 +372,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _right_travel > DRAG_SLOP:
 				# It is a turn, not a click, so the release must not
 				# also take a brick off.
-				swallow_next_click()
+				_turned_not_clicked = true
 				_begin(Doing.ORBIT, MOUSE_BUTTON_RIGHT, motion.position)
 		match _doing:
 			Doing.ORBIT: _turn_by(motion.relative, 0.01)

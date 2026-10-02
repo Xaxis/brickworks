@@ -1599,7 +1599,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if button.button_index == MOUSE_BUTTON_RIGHT:
 		if button.pressed:
 			return
-		if _camera.swallowing_click():
+		if _camera.turned_rather_than_clicked():
 			return
 		_aim_at(button.position)
 		_builder.remove_hovered()

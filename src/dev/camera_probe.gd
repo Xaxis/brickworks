@@ -100,11 +100,20 @@ func _run() -> void:
 	# And having turned, the release must not also take a brick off.
 	_press(camera, MOUSE_BUTTON_RIGHT, true)
 	_move(camera, Vector2(40.0, 0.0))
-	if camera.swallowing_click():
-		print("  ok    ...and the click it raises is thrown away")
+	if camera.turned_rather_than_clicked():
+		print("  ok    ...and the release it raises is thrown away")
 	else:
 		_failures += 1
 		print("  FAIL  a right-drag turn would also remove a brick")
+	# And only that release. A turn used to throw away every click for a
+	# third of a second, so orbiting and then placing a brick placed
+	# nothing — sometimes, depending on how fast the machine was drawing.
+	_press(camera, MOUSE_BUTTON_RIGHT, false)
+	if camera.swallowing_click():
+		_failures += 1
+		print("  FAIL  a turn still swallows the clicks that follow it")
+	else:
+		print("  ok    ...and nothing after it")
 	_press(camera, MOUSE_BUTTON_RIGHT, false)
 
 	# A right click that does not move is still a right click.
