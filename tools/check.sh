@@ -31,6 +31,9 @@ for argument in "$@"; do
 done
 
 fail=0
+# Checks that could not run at all, which is neither a pass nor a
+# failure and has to be said out loud either way.
+skipped=0
 
 run() {
   local label="$1"; shift
@@ -71,7 +74,19 @@ fi
 echo "  ok    no script errors"
 
 echo "── python ──"
-run "pipeline (pytest)" python3 -m pytest tests/ -q
+# A missing tool is not a failing test, and must not read as one.
+#
+# On a machine without pytest this printed FAIL beside the pipeline
+# suite, which says the pipeline is broken. It is not: thirty-nine
+# tests simply did not run, and the verdict at the bottom has to say
+# that rather than either "all checks pass" or "something failed".
+if python3 -c 'import pytest' 2>/dev/null; then
+  run "pipeline (pytest)" python3 -m pytest tests/ -q
+else
+  printf '  ----  pipeline (pytest) NOT RUN — no pytest on this machine\n'
+  printf '          install it with:  sudo apt install -y python3-pytest\n'
+  skipped=$((skipped + 1))
+fi
 
 echo "── godot probes ──"
 for name in dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved holds; do
@@ -111,7 +126,11 @@ fi
 
 echo ""
 if [ "$fail" = 0 ]; then
-  echo "all checks pass  (${SECONDS}s)"
+  if [ "$skipped" = 0 ]; then
+    echo "all checks pass  (${SECONDS}s)"
+  else
+    echo "checks pass, $skipped NOT RUN  (${SECONDS}s)"
+  fi
 else
   echo "something failed  (${SECONDS}s)"
 fi

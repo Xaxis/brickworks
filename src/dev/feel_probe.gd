@@ -102,6 +102,17 @@ func _run() -> void:
 		return
 	await _settle()
 
+	if not await _can_pick():
+		_failures += 1
+		print("  FAIL  nothing is under the cursor yet, so nothing "
+			+ "below means anything")
+		quit(1)
+		return
+
+	print("  [where] rect=%s window=%s middle=%s as_event=%s"
+		% [root.get_visible_rect().size,
+			DisplayServer.window_get_size(), _middle,
+			_as_event(_middle)])
 	await _mouse()
 	await _keyboard()
 	await _settings()
@@ -299,6 +310,32 @@ func _input_arrives() -> bool:
 	return false
 
 
+## Wait until a ray down the middle of the screen actually finds a
+## brick.
+##
+## _input_arrives proves events reach the app by turning the view and
+## watching it turn, which is arithmetic and always works. Half of what
+## follows needs something else entirely: the meshes resident, the
+## lattice filled and the camera where it was put, so that a click
+## lands on a brick. Gating on the first and testing the second is how
+## this failed five checks, then two, then none, three runs in a row —
+## every failure in the half that picks, none in the half that does
+## sums.
+func _can_pick() -> bool:
+	for _try: int in 600:
+		# Viewport coordinates, not window ones. _as_event scales a
+		# point down for an input event to carry; a camera ray is cast
+		# in the viewport's own space, so converting here aims it
+		# somewhere else entirely.
+		_builder.update_preview(
+			_camera.project_ray_origin(_middle),
+			_camera.project_ray_normal(_middle))
+		await process_frame
+		if _builder.hovered_brick() != 0:
+			return true
+	return false
+
+
 ## The model framed and the camera settled there, so that the centre of
 ## the screen is over it.
 func _settle() -> void:
@@ -306,9 +343,16 @@ func _settle() -> void:
 	for _n: int in 40:
 		_camera._apply(0.5)
 		await process_frame
+	# Settled means the middle of the screen is over the model, which
+	# is the thing every check after this depends on — not a count of
+	# frames, which is only ever a guess about how busy the machine is.
+	_builder.hide_preview()
+	await process_frame
 	_move_to(_middle, Vector2.ZERO, 0)
-	for _n: int in 4:
+	for _n: int in 600:
 		await process_frame
+		if _builder.hovered_brick() != 0:
+			return
 
 
 ## The two things a person can change about the controls.
@@ -580,8 +624,29 @@ func _key(code: Key, command: bool = false,
 
 
 func _click(which: int, at: Vector2) -> void:
-	_move_to(at, Vector2.ZERO, 0)
+	# Let the pointer land before pressing.
+	#
+	# A real hand moves, the app aims the ghost at where the pointer
+	# now is, and only then does the button goes down. Sent too close
+	# together the press is handled against a ghost that has not been
+	# re-aimed, and the click places nothing — which reads as the app
+	# ignoring clicks and was five checks failing at once.
+	#
+	# Waited for, not counted. Four frames was enough on an idle
+	# machine and not enough with a second copy of this running beside
+	# it, which is the same mistake as counting frames for the parts to
+	# load: the thing to wait for is the ghost being aimed, so wait for
+	# that.
+	# Cleared first, or the wait below is answered by the aim before
+	# this one and returns immediately — which is how waiting for the
+	# ghost still failed under load.
+	_builder.hide_preview()
 	await process_frame
+	_move_to(at, Vector2.ZERO, 0)
+	for _settling: int in 600:
+		await process_frame
+		if _builder.hovered_brick() != 0:
+			break
 	_press(which, at, true)
 	await process_frame
 	_press(which, at, false)

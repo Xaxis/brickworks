@@ -1502,7 +1502,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _over_panel_at(moved.position):
 			_builder.hide_preview()
 			return
-		_refresh_preview()
+		_refresh_preview(moved.position)
 		return
 
 	if not (event is InputEventMouseButton):
@@ -1795,8 +1795,22 @@ func _over_panel_at(point: Vector2) -> bool:
 	return false
 
 
-func _refresh_preview() -> void:
-	var mouse: Vector2 = get_viewport().get_mouse_position()
+## Aim the ghost brick.
+##
+## ``at`` is where the pointer actually is for this event. Without it
+## the ghost is aimed wherever the system says the mouse is now, which
+## during a drag is not where the event happened, and on the web, with
+## the pointer locked or a frame behind, is not reliably anywhere. It
+## is the same fault that was fixed for deciding whether a click landed
+## on a panel, left in the one place that decides what the click is
+## aimed AT.
+##
+## Callers with no event — after an undo, after a key — pass nothing
+## and get the live pointer, which for them is right.
+func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
+	var mouse: Vector2 = at
+	if not (mouse.x < INF):
+		mouse = get_viewport().get_mouse_position()
 	_builder.update_preview(
 		_camera.project_ray_origin(mouse),
 		_camera.project_ray_normal(mouse))
