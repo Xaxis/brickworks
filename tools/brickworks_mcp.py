@@ -44,6 +44,12 @@ DEFAULT_PORT = 8787
 # Long enough for a tool that fetches geometry or draws a picture, short
 # enough that a wedged app does not hang the session forever.
 PATIENCE = 180.0
+# And long enough to get *in*. Five seconds was not: the app answers the
+# socket from its frame loop, and the first picture of a session compiles
+# shaders, which stops the loop for longer than that. The connection then
+# timed out and the session was told Brickworks was not running, while it
+# sat there in front of the person drawing their model.
+WAY_IN = 45.0
 
 PROTOCOL = "2025-06-18"
 KNOWN_PROTOCOLS = {"2024-11-05", "2025-03-26", PROTOCOL}
@@ -52,6 +58,18 @@ NOT_RUNNING = (
     "Brickworks is not running, or is not listening on port %d.\n"
     "Start it with:  godot --path %s -- --mcp\n"
     "and the window will show what you build as you build it."
+)
+# Said apart from the above on purpose. The two look identical from here
+# and mean opposite things: one is "open the app", the other is "it is
+# open and working, ask again".
+TOO_SLOW = (
+    "Brickworks is listening on port %d but did not answer within %ds. "
+    "It is busy — the first picture of a session compiles shaders, and a "
+    "large design takes a moment to check. Ask again."
+)
+DROPPED = (
+    "The connection to Brickworks on port %d dropped twice (%s). The app "
+    "is up; something went wrong mid-request."
 )
 
 
@@ -69,15 +87,19 @@ class App:
         self._next_id = 0
 
     def ask(self, tool: str, arguments: dict) -> dict:
-        """One request. Raises ConnectionError when the app is not there."""
-        for attempt in (1, 2):
+        """One request. Raises ConnectionError, saying which kind."""
+        broke: BaseException | None = None
+        for _attempt in (1, 2):
             try:
                 return self._ask_once(tool, arguments)
-            except (OSError, ValueError):
+            except ConnectionError:
+                # Already says exactly what is wrong. Retrying a refused
+                # port or a busy app just doubles the wait.
+                raise
+            except (OSError, ValueError) as wrong:
+                broke = wrong
                 self._drop()
-                if attempt == 2:
-                    raise ConnectionError(NOT_RUNNING % (self.port, ROOT))
-        raise ConnectionError(NOT_RUNNING % (self.port, ROOT))
+        raise ConnectionError(DROPPED % (self.port, broke))
 
     def _ask_once(self, tool: str, arguments: dict) -> dict:
         sock = self._connect()
@@ -89,7 +111,13 @@ class App:
     def _connect(self) -> socket.socket:
         if self._sock is not None:
             return self._sock
-        sock = socket.create_connection(("127.0.0.1", self.port), timeout=5.0)
+        try:
+            sock = socket.create_connection(
+                ("127.0.0.1", self.port), timeout=WAY_IN)
+        except (ConnectionRefusedError, socket.gaierror):
+            raise ConnectionError(NOT_RUNNING % (self.port, ROOT)) from None
+        except (socket.timeout, TimeoutError):
+            raise ConnectionError(TOO_SLOW % (self.port, int(WAY_IN))) from None
         sock.settimeout(PATIENCE)
         self._sock = sock
         self._rest = b""
@@ -97,7 +125,11 @@ class App:
 
     def _read_line(self, sock: socket.socket) -> bytes:
         while b"\n" not in self._rest:
-            chunk = sock.recv(1 << 16)
+            try:
+                chunk = sock.recv(1 << 16)
+            except (socket.timeout, TimeoutError):
+                raise ConnectionError(
+                    TOO_SLOW % (self.port, int(PATIENCE))) from None
             if not chunk:
                 raise OSError("the app closed the connection")
             self._rest += chunk
