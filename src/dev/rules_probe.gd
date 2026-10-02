@@ -80,6 +80,43 @@ func _run() -> void:
 	])
 
 	print("")
+	print("  a staircase where an edge was meant")
+	# The single most visible difference between a model that looks
+	# designed and one that looks like graph paper, and nothing used to
+	# notice it. An ellipse of 1 x 1 plates is the shape that started it:
+	# a starship saucer built the only way the assistant knew.
+	var ellipse: Array = []
+	for x in range(-8, 8):
+		for z in range(-6, 6):
+			if (float(x) + 0.5) * (float(x) + 0.5) / 64.0 \
+					+ (float(z) + 0.5) * (float(z) + 0.5) / 36.0 <= 1.0:
+				ellipse.append({"part": "3024", "color": 71,
+					"x": x, "y": 0, "z": z, "rot": 0})
+	var stepped: Dictionary = _verdict(assistant, ellipse)
+	_check_says("a stepped ellipse is told about wedge plates",
+		stepped, "wedge plate")
+	# Advice, not a fault. A stepped outline is exactly right for stairs
+	# and for a ziggurat, so it must never be the thing that makes a
+	# design fail — it is said and the design still stands.
+	if bool(stepped.get("ok", false)):
+		print("  ok    ...and the design still passes, %s"
+			% stepped["summary"])
+	else:
+		_failures += 1
+		print("  FAIL  the advice was counted as a problem: %s"
+			% stepped["summary"])
+
+	# And it must stay quiet otherwise, or it is noise and gets ignored.
+	# A plain wall has no diagonal in it at all.
+	var wall: Array = []
+	for x in range(0, 8):
+		for y in range(0, 3):
+			wall.append({"part": "3001", "color": 4,
+				"x": x * 2, "y": y * 3, "z": 0, "rot": 0})
+	_check_quiet("a plain wall is not nagged about its outline",
+		_verdict(assistant, wall), "steps its way")
+
+	print("")
 	print("  the rules themselves")
 	# These moved here from a second validator, in Python, that used to
 	# sit behind tools/design.py. It built studs-up and only studs-up,
@@ -191,6 +228,27 @@ func _refused(assistant: Assistant, what: String, bricks: Array,
 func _check_says(what: String, verdict: Dictionary, phrase: String) -> void:
 	var feedback: String = str(verdict.get("feedback", ""))
 	if feedback.contains(phrase):
+		print("  ok    %s" % what)
+		return
+	_failures += 1
+	print("  FAIL  %s — said: %s" % [what, feedback])
+
+
+## The verdict on a list of bricks, without printing it.
+func _verdict(assistant: Assistant, bricks: Array) -> Dictionary:
+	var model := Assistant.Model.new()
+	for raw: Variant in bricks:
+		model.placements.append(Assistant.Placement.from_dict(raw))
+	return assistant._check(model)
+
+
+## The opposite of _check_says: a phrase that must NOT be there.
+##
+## Advice that fires on everything is noise, and noise is read past. The
+## check that it stays quiet matters as much as the check that it speaks.
+func _check_quiet(what: String, verdict: Dictionary, phrase: String) -> void:
+	var feedback: String = str(verdict.get("feedback", ""))
+	if not feedback.contains(phrase):
 		print("  ok    %s" % what)
 		return
 	_failures += 1

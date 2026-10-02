@@ -2161,6 +2161,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		if not fits.is_empty():
 			advice.append("Section '%s':%s" % [group, fits])
 
+	# And whether the outline is a staircase where it could be an edge.
+	var stepped: String = _stepped_outline(cells_of)
+	if not stepped.is_empty():
+		advice.append(stepped)
+
 	var pieces: int = _count_pieces(model, cells_of, lattice)
 
 	var errors: int = 0
@@ -2202,6 +2207,81 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 ## other — the same two rules that decide whether a brick is held up,
 ## so a design cannot be "every brick supported" and "in five pieces"
 ## for contradictory reasons.
+## A straight run of single-stud steps in the plan view, which is a
+## diagonal built the long way round.
+##
+## Said as advice, never as a fault: a staircase is exactly right for
+## stairs, for a stepped tower, for a ziggurat. But it is also what an
+## ellipse, a swept wing, a bow and a bonnet come out as when they are
+## made of rectangles, and that is the single most visible difference
+## between a model that looks designed and one that looks like graph
+## paper. The parts that fix it exist and are one search away; what was
+## missing was anything that noticed.
+##
+## Four steps, because three is a chamfered corner and nobody wants to
+## hear about a chamfered corner.
+const SHORTEST_STAIRCASE := 4
+
+
+func _stepped_outline(cells_of: Dictionary) -> String:
+	# The plan view: for each column of studs across, how deep the model
+	# reaches at its far and near edges.
+	var far: Dictionary = {}    ## stud x -> largest stud z
+	var near: Dictionary = {}   ## stud x -> smallest stud z
+	for index: int in cells_of:
+		for cell: Vector3i in cells_of[index]:
+			var at_x: int = floori(float(cell.x) / BrickLattice.CELLS_PER_STUD)
+			var at_z: int = floori(float(cell.z) / BrickLattice.CELLS_PER_STUD)
+			far[at_x] = maxi(far.get(at_x, at_z), at_z)
+			near[at_x] = mini(near.get(at_x, at_z), at_z)
+	if far.size() < SHORTEST_STAIRCASE + 1:
+		return ""
+
+	var columns: Array = far.keys()
+	columns.sort()
+	var longest: int = 0      ## studs across
+	var deep: int = 0         ## and how far it moves in that distance
+	for edge: Dictionary in [far, near]:
+		var start: int = 0
+		while start < columns.size() - 1:
+			var steps: Array[int] = []
+			var at: int = start
+			# Extend while every step so far is one of two adjacent
+			# sizes. A straight diagonal of any slope is exactly that:
+			# 1,1,1 is forty-five degrees, 2,2,2 is steeper, and 1,0,1,0
+			# is the shallow one a 2 x 4 wedge plate makes. A curve
+			# changes slope, so its runs break where it bends — which is
+			# right, because a curve is not one wedge.
+			while at < columns.size() - 1 and columns[at + 1] == columns[at] + 1:
+				var step: int = edge[columns[at + 1]] - edge[columns[at]]
+				var with_it: Array[int] = steps.duplicate()
+				with_it.append(step)
+				if with_it.max() - with_it.min() > 1:
+					break
+				steps = with_it
+				at += 1
+			# Flat is not a staircase, and one lone step in a flat edge
+			# is a jog rather than a diagonal.
+			var moved: int = 0
+			for step: int in steps:
+				moved += absi(step)
+			if steps.size() >= SHORTEST_STAIRCASE and moved >= 2:
+				if steps.size() > longest:
+					longest = steps.size()
+					deep = moved
+			start = maxi(at, start + 1)
+
+	if longest < SHORTEST_STAIRCASE:
+		return ""
+	return ("The outline steps its way across %d studs while moving %d "
+		% [longest + 1, deep]
+		+ "deep. If that edge is meant to be a straight diagonal rather "
+		+ "than stairs, wedge plates do in one part what those steps are "
+		+ "doing badly — search \"wedge plate 2 x 4\". They are one "
+		+ "plate thick, left and right handed, and sit in the layer "
+		+ "beside ordinary plates.")
+
+
 func _count_pieces(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice) -> int:
 	if cells_of.size() <= 1:
@@ -3175,6 +3255,15 @@ that taper. A single flat slab of plates is the shape of a table: if \
 what you are building does not have a flat top, do not give it one. A \
 tree canopy, a rock, a hill, a dome — all of them are three or four \
 layers of different footprints, never one.
+
+A straight diagonal is not stepped, though. Four plates in a staircase \
+read as four plates in a staircase; one wedge plate reads as an edge. \
+Search "wedge plate 2 x 4" — they run from 2 x 2 up to 6 x 12, left and \
+right handed, and they are one plate thick, so they drop into any layer \
+beside ordinary plates. Step where the outline curves; wedge where it \
+runs straight. A saucer, a swept wing, a bow, a bonnet and a car's \
+shoulder are all the second thing, and built the first way they come \
+out looking like graph paper.
 
 Ground is part of the model or it is not there at all. Plates scattered \
 around the base at different heights read as debris, not as a lawn. \
