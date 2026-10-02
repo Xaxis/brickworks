@@ -647,8 +647,21 @@ func _click(which: int, at: Vector2) -> void:
 		await process_frame
 		if _builder.hovered_brick() != 0:
 			break
+	# Pressed and released with no frame between them, because a frame
+	# is long enough for the real mouse to speak.
+	#
+	# Every left press might become a box, and what decides it is whether
+	# a motion event arrives before the release. The physical pointer is
+	# somewhere else entirely — this window does not even have focus —
+	# so one stray motion from the window manager lands as a drag of
+	# several hundred pixels, the release ends a box, and nothing is
+	# placed. That read as "the app ignores clicks" and failed about one
+	# run in three, which is worse than not checking at all.
+	#
+	# Both events are delivered synchronously, in order, so the app sees
+	# exactly what it sees from a real click that nobody dragged. That a
+	# drag *does* draw a box instead is checked separately, above.
 	_press(which, at, true)
-	await process_frame
 	_press(which, at, false)
 	for _n: int in 4:
 		await process_frame
