@@ -2327,11 +2327,24 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# and a jetty, a tree beside a house) and failing it would throw
 	# away a design that is otherwise correct.
 	if pieces > 1:
-		feedback += ("\n\nIt is in %d separate pieces that do not touch "
+		# "Do not touch" was the wrong word, and it was the usual case:
+		# a layer of plates laid side by side is flush against itself
+		# everywhere and joined nowhere, because plastic only holds
+		# where a stud goes into a tube. A designer told those pieces do
+		# not touch goes looking for a gap there is not.
+		feedback += ("\n\nIt is in %d pieces that nothing joins. "
 			% pieces
-			+ "each other. Intended, if it is meant to be a scene; worth "
-			+ "a look otherwise, because a part of a model that touches "
-			+ "nothing falls off when it is picked up.")
+			+ "Intended, if it is meant to be a scene; worth a look "
+			+ "otherwise, because a part held by nothing falls off when "
+			+ "the model is picked up.")
+		# And the commonest way to arrive here, which has its own fix.
+		if _one_layer(cells_of):
+			feedback += (" This is one layer thick, and one layer is "
+				+ "always like this: bricks side by side are not "
+				+ "joined, however tightly they are packed. A second "
+				+ "layer over it, with its joints landing across the "
+				+ "joints below, is what makes the whole thing one "
+				+ "piece.")
 
 	return {
 		"ok": ok,
@@ -2421,6 +2434,26 @@ func _stepped_outline(cells_of: Dictionary) -> String:
 		+ "doing badly — search \"wedge plate 2 x 4\". They are one "
 		+ "plate thick, left and right handed, and sit in the layer "
 		+ "beside ordinary plates.")
+
+
+## Whether the whole design sits in a single course.
+##
+## One layer of anything is always in as many pieces as it has parts,
+## and the count on its own reads as a fault in the arrangement rather
+## than as the one thing it is: nothing on top of it.
+func _one_layer(cells_of: Dictionary) -> bool:
+	var lowest: int = 0x7FFFFFFF
+	var highest: int = -0x7FFFFFFF
+	for index: int in cells_of:
+		for cell: Vector3i in cells_of[index]:
+			lowest = mini(lowest, cell.y)
+			highest = maxi(highest, cell.y)
+	if lowest > highest:
+		return false
+	# A brick is three plates and a plate is one; either, standing alone
+	# on the ground, is one layer. Anything taller has a course above
+	# something.
+	return highest - lowest < 3 * BrickLattice.CELLS_PER_PLATE
 
 
 ## A model that is symmetric except for one or two bricks.

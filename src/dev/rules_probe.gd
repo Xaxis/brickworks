@@ -117,6 +117,24 @@ func _run() -> void:
 		_verdict(assistant, wall), "steps its way")
 
 	print("")
+	print("  one layer, which nothing can hold together")
+	# The commonest shape of early draft, and the count on its own reads
+	# as a fault in the arrangement rather than as the one thing it is:
+	# nothing on top of it. Side-by-side plates are flush against each
+	# other everywhere and joined nowhere, so "do not touch" — which is
+	# what this used to say — sent anyone reading it looking for a gap
+	# that is not there.
+	var slab: Array = []
+	for at: int in range(0, 6):
+		slab.append({"part": "3020", "color": 71,
+			"x": at * 2, "y": 0, "z": 0, "rot": 0})
+	var flat: Dictionary = _verdict(assistant, slab)
+	_check_says("a single layer is told why it is in pieces", flat,
+		"one layer is always like this")
+	_check_quiet("...and not told they fail to touch", flat,
+		"do not touch")
+
+	print("")
 	print("  a line the model would come apart along")
 	# The checker knew whether a model was in one piece. It did not know
 	# whether that piece would survive being picked up, and the oldest
