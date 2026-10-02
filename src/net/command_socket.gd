@@ -60,6 +60,12 @@ var app: Node = null
 class Client extends RefCounted:
 	var peer: StreamPeerTCP
 	var buffer := PackedByteArray()
+	## Decided from the first bytes and never revisited: a line of JSON
+	## begins with a brace, an HTTP request with a verb. One port serves
+	## both, so a shipped app needs no helper process to be an MCP
+	## server and the shell tools keep the protocol they had.
+	var speaks_http: bool = false
+	var decided: bool = false
 	## True while a tool is still being awaited for this client. A tool
 	## may take seconds — fetching geometry, drawing a picture — and a
 	## second request arriving meanwhile must not be answered first.
@@ -139,6 +145,16 @@ func _pump(client: Client) -> bool:
 	# One at a time, in order. The rest of the buffer waits.
 	if client.busy:
 		return true
+
+	if not client.decided and client.buffer.size() >= 4:
+		var opening: String = client.buffer.slice(0, 8).get_string_from_utf8()
+		client.speaks_http = (opening.begins_with("POST ")
+			or opening.begins_with("GET ") or opening.begins_with("OPTIONS ")
+			or opening.begins_with("HEAD ") or opening.begins_with("DELETE "))
+		client.decided = true
+	if client.speaks_http:
+		return _pump_http(client)
+
 	var newline: int = client.buffer.find(10)
 	if newline < 0:
 		return true
@@ -149,6 +165,148 @@ func _pump(client: Client) -> bool:
 	client.busy = true
 	_answer(client, line)
 	return true
+
+
+# -- MCP over HTTP -------------------------------------------------------
+#
+# The same tools, spoken the way an MCP client expects, so Claude Code
+# attaches to the app directly:
+#
+#   claude --mcp-config '{"mcpServers":{"brickworks":
+#     {"type":"http","url":"http://127.0.0.1:8787/mcp"}}}'
+#
+# One request, one response, no stream: every tool here answers once and
+# nothing is ever pushed the other way, which is the shape the spec calls
+# a plain JSON response rather than an event stream.
+
+
+## A whole request, or nothing yet. Returns false when the client has gone.
+func _pump_http(client: Client) -> bool:
+	var text: String = client.buffer.get_string_from_utf8()
+	var blank: int = text.find("\r\n\r\n")
+	var gap: int = 4
+	if blank < 0:
+		blank = text.find("\n\n")
+		gap = 2
+	if blank < 0:
+		return true
+	var head: String = text.substr(0, blank)
+	var wanted: int = 0
+	for line: String in head.split("\n"):
+		var at: String = line.strip_edges().to_lower()
+		if at.begins_with("content-length:"):
+			wanted = at.split(":")[1].strip_edges().to_int()
+	var body_from: int = blank + gap
+	var body: String = text.substr(body_from)
+	if body.length() < wanted:
+		return true
+	client.buffer = PackedByteArray()
+	client.busy = true
+	_serve_http(client, head, body.substr(0, wanted))
+	return true
+
+
+func _serve_http(client: Client, head: String, body: String) -> void:
+	var first: String = head.split("\n")[0].strip_edges()
+	if first.begins_with("OPTIONS"):
+		_http(client, 204, "")
+		return
+	if not first.begins_with("POST"):
+		# A browser pointed at the port, or a health check.
+		_http(client, 200, JSON.stringify({"app": "brickworks",
+			"mcp": "post JSON-RPC here"}))
+		return
+
+	var parsed: Variant = JSON.parse_string(body)
+	if not (parsed is Dictionary):
+		_http(client, 400, JSON.stringify({"jsonrpc": "2.0", "id": null,
+			"error": {"code": -32700, "message": "not JSON"}}))
+		return
+	var request: Dictionary = parsed
+	var method: String = str(request.get("method", ""))
+	var sent_id: Variant = request.get("id")
+	var params: Dictionary = request.get("params", {}) as Dictionary
+
+	# A notification has no id and wants no answer.
+	if sent_id == null:
+		_http(client, 202, "")
+		return
+
+	if method == "initialize":
+		var wanted: Variant = params.get("protocolVersion")
+		_rpc(client, sent_id, {
+			"protocolVersion": wanted if wanted is String else PROTOCOL,
+			"capabilities": {"tools": {"listChanged": false}},
+			"serverInfo": {"name": "brickworks", "version": "1"},
+			"instructions": assistant.guidance() if assistant != null else "",
+		})
+		return
+	if method == "ping":
+		_rpc(client, sent_id, {})
+		return
+	if method == "tools/list":
+		var listed: Array = []
+		if assistant != null:
+			for tool: Variant in assistant.tool_catalogue() + _own_tools():
+				var one: Dictionary = tool
+				listed.append({
+					"name": one.get("name", ""),
+					"description": one.get("description", ""),
+					"inputSchema": one.get("input_schema", {}),
+				})
+		_rpc(client, sent_id, {"tools": listed})
+		return
+	if method == "tools/call":
+		var name: String = str(params.get("name", ""))
+		var input: Dictionary = params.get("arguments", {}) as Dictionary
+		if name.is_empty() or assistant == null:
+			_rpc(client, sent_id, {"isError": true, "content": [
+				{"type": "text", "text": "no tool named"}]})
+			return
+		asked.emit(name)
+		var answer: Variant
+		if _own_tools_have(name):
+			answer = _run_own(name, input)
+		else:
+			answer = await assistant.use_tool(name, input)
+		if client.gone:
+			return
+		_rpc(client, sent_id, {"content": _as_content(answer), "isError": false})
+		return
+	if method in ["resources/list", "prompts/list"]:
+		_rpc(client, sent_id, {"resources": [], "prompts": []})
+		return
+	_http(client, 200, JSON.stringify({"jsonrpc": "2.0", "id": sent_id,
+		"error": {"code": -32601, "message": "no method %s" % method}}))
+
+
+func _rpc(client: Client, sent_id: Variant, result: Dictionary) -> void:
+	_http(client, 200, JSON.stringify(
+		{"jsonrpc": "2.0", "id": sent_id, "result": result}))
+
+
+func _http(client: Client, code: int, body: String) -> void:
+	var reason: String = {200: "OK", 202: "Accepted", 204: "No Content",
+		400: "Bad Request"}.get(code, "OK")
+	var bytes: PackedByteArray = body.to_utf8_buffer()
+	var head: String = ("HTTP/1.1 %d %s\r\n" % [code, reason]
+		+ "Content-Type: application/json\r\n"
+		+ "Content-Length: %d\r\n" % bytes.size()
+		+ "Access-Control-Allow-Origin: *\r\n"
+		+ "Access-Control-Allow-Headers: *\r\n"
+		+ "Connection: keep-alive\r\n\r\n")
+	if not client.gone:
+		client.peer.put_data(head.to_utf8_buffer())
+		if bytes.size() > 0:
+			client.peer.put_data(bytes)
+	client.busy = false
+
+
+## The MCP version this speaks when a client does not name one.
+const PROTOCOL := "2025-06-18"
+
+
+# -- the line protocol ---------------------------------------------------
 
 
 func _answer(client: Client, line: String) -> void:
