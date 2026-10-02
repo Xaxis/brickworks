@@ -259,24 +259,50 @@ things anyone should be offered, with ids like `10` and `100` that a
 language model might well guess. They are now marked, resolved through
 their chain, and excluded from every search path.
 
-## 7. Still open
+## 7. The tools are the app's, wherever the caller is
+
+The design loop is a model proposing placements and the app disposing: the
+catalogue that is loaded answers searches, the lattice that renders
+decides whether a brick fits. Only the proposing needs an API key.
+
+That makes the loop's tools worth offering to anything that can propose.
+`Assistant.use_tool` is the seam — one tool call, run exactly as a design
+run would run it — and `src/net/command_socket.gd` puts it behind a local
+port: one JSON object per line, 127.0.0.1 only, opened by `--mcp` and
+closed otherwise. `tools/brickworks_mcp.py` speaks MCP on stdio and relays
+to that port, so a Claude Code session builds here with its own tokens and
+no key ever reaches the app.
+
+Two details that are not arbitrary:
+
+- **The relay carries no tool definitions.** It asks the app for them
+  (`__tools__`) and translates `input_schema` to MCP's `inputSchema`. A
+  copy in `tools/mcp_tools.json` exists only to answer `tools/list` while
+  the app is closed. Anything else drifts the moment a schema changes.
+- **`submit_design` is two steps, not one.** Inside the loop it sets a
+  design aside and the loop then checks it and stands it up.
+  `use_tool` does that second step itself, because a caller outside the
+  loop would otherwise be told "Received. Checking it now." about a design
+  that was never checked and never built.
+
+The socket adds two tools the loop has no use for: `clear_model`, because
+a design run clears the board itself and a session has no such moment, and
+`save_model`, because the person normally saves from the window.
+
+## 8. Still open
 
 - **Web delivery.** 863 MB of geometry cannot ship wholesale. Plan: a core
   set resident, the rest fetched on demand. Threads need COOP/COEP headers,
   which the deploy sets.
-- **The catalogue is still ~10 MB of JSON.** Fine on desktop; a binary
-  format if startup needs it.
+- **The catalogue is 14 MB of JSON.** Fine on desktop, where loading it is
+  the 15-20s before the window appears; a binary format if that starts to
+  matter.
 - **Stability.** Connection counting and centre-of-mass are cheap and
   worth having before anything cleverer.
 - **The design assistant.** The LLM emits a structured placement DSL that
   is validated against the real collision and connection engine — it is
   never trusted with geometry directly.
-- **Stability is support and connection only.** No force balance. The
-  published approach is a quadratic program over friction, support and
-  normal forces at each contact, with friction capacity in the
-  *objective* rather than the constraints so that unstable layouts get a
-  gradient to repair along instead of returning "infeasible".
-- **The repository is still named `lego-emulator`**, which puts the
-  trademark in an internet address and uses it as a noun. The
-  application is called Brickworks; the repository should follow. See
-  docs/ATTRIBUTION.md.
+- **Force balance for stability.** Support and connection counting is what
+  exists. A quadratic program over friction, support and normal forces at
+  each contact would say more, and belongs here if the cheap version
+  starts being wrong about models people care about.

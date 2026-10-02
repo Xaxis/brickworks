@@ -1,0 +1,597 @@
+[
+  {
+    "description": "Find real parts by description. Returns part numbers with their footprint and height. Use this instead of guessing a part number.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "type": "integer"
+        },
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "name": "search_parts"
+  },
+  {
+    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model. Safe to call on a partial design while you work.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code",
+                "type": "integer"
+              },
+              "face": {
+                "description": "which way the studs point. Omit for up.",
+                "enum": [
+                  "up",
+                  "down",
+                  "+x",
+                  "-x",
+                  "+z",
+                  "-z"
+                ],
+                "type": "string"
+              },
+              "part": {
+                "description": "part number, e.g. 3001",
+                "type": "string"
+              },
+              "rot": {
+                "description": "quarter turns about the face direction, 0-3",
+                "type": "integer"
+              },
+              "section": {
+                "description": "the section this brick belongs to, if any. Its x, y and z are then that section's own coordinates, not the model's.",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, to the low corner. Tenths allowed.",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep, to the low corner. Tenths allowed.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "x",
+              "y",
+              "z",
+              "rot"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "how far it is turned about that pin. Any angle.",
+                "type": "number"
+              },
+              "name": {
+                "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, where this section's own origin sits",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x",
+              "y",
+              "z",
+              "axis",
+              "degrees"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "check_design"
+  },
+  {
+    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself \u2014 a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "brick": {
+          "description": "the number look_at_model printed",
+          "type": "integer"
+        },
+        "face": {
+          "enum": [
+            "up",
+            "down",
+            "+x",
+            "-x",
+            "+z",
+            "-z"
+          ],
+          "type": "string"
+        },
+        "part": {
+          "type": "string"
+        },
+        "rot": {
+          "type": "integer"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "attachment_points"
+  },
+  {
+    "description": "Change what is already built without describing it again. Takes the numbers look_at_model prints beside each brick. Use this for any change to an existing model \u2014 moving a wall, recolouring a roof, taking a chimney off, adding a door \u2014 and only use submit_design when starting something new. Everything is checked together before any of it is applied, so a change that would not hold together changes nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code",
+                "type": "integer"
+              },
+              "face": {
+                "description": "which way the studs point. Omit for up.",
+                "enum": [
+                  "up",
+                  "down",
+                  "+x",
+                  "-x",
+                  "+z",
+                  "-z"
+                ],
+                "type": "string"
+              },
+              "part": {
+                "description": "part number, e.g. 3001",
+                "type": "string"
+              },
+              "rot": {
+                "description": "quarter turns about the face direction, 0-3",
+                "type": "integer"
+              },
+              "section": {
+                "description": "the section this brick belongs to, if any. Its x, y and z are then that section's own coordinates, not the model's.",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, to the low corner. Tenths allowed.",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep, to the low corner. Tenths allowed.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "x",
+              "y",
+              "z",
+              "rot"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "move": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bricks": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "dx": {
+                "description": "studs",
+                "type": "number"
+              },
+              "dy": {
+                "description": "plates",
+                "type": "number"
+              },
+              "dz": {
+                "description": "studs",
+                "type": "number"
+              }
+            },
+            "required": [
+              "bricks"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "recolor": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bricks": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "color": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "bricks",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "remove": {
+          "description": "brick numbers to take away",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "sections": {
+          "description": "add a section, or give one that already exists a new angle or position \u2014 which moves everything in it without naming a single brick.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "how far it is turned about that pin. Any angle.",
+                "type": "number"
+              },
+              "name": {
+                "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, where this section's own origin sits",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x",
+              "y",
+              "z",
+              "axis",
+              "degrees"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "name": "edit_model"
+  },
+  {
+    "description": "See what is already on the baseplate, in the same stud and plate coordinates you use. Call this first whenever the request is about what is there \u2014 adding to it, changing part of it, matching its colours or its height. You cannot see the model otherwise.\n\nA large model will not fit in one reply. Give where= to list one section, or skip= to carry on from where the last listing stopped. The totals and the overall span are always for the whole model, whatever you ask for.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "skip": {
+          "description": "How many matching bricks to pass over before listing, for walking through a model a section at a time.",
+          "type": "integer"
+        },
+        "where": {
+          "additionalProperties": false,
+          "description": "Only the part of the model inside this box, in studs and plates. Any side may be left out.",
+          "properties": {
+            "x_from": {
+              "type": "number"
+            },
+            "x_to": {
+              "type": "number"
+            },
+            "y_from": {
+              "type": "number"
+            },
+            "y_to": {
+              "type": "number"
+            },
+            "z_from": {
+              "type": "number"
+            },
+            "z_to": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "name": "look_at_model"
+  },
+  {
+    "description": "Look at what is on the baseplate. This is the only way to see whether the thing you are building looks like the thing you were asked for. check_design tells you a model is legal; this tells you what it is.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "description": "which side to look from. corner is a three-quarter view and shows the shape best",
+          "enum": [
+            "corner",
+            "top",
+            "front",
+            "back",
+            "left",
+            "right"
+          ],
+          "type": "string"
+        },
+        "where": {
+          "additionalProperties": false,
+          "description": "Look closely at one part of the model rather than all of it, in studs and plates. The rest is still in the picture, just not filling it. On a big model a single assembly is a few dozen pixels across otherwise, which is not enough to judge its shape by.",
+          "properties": {
+            "x_from": {
+              "type": "number"
+            },
+            "x_to": {
+              "type": "number"
+            },
+            "y_from": {
+              "type": "number"
+            },
+            "y_to": {
+              "type": "number"
+            },
+            "z_from": {
+              "type": "number"
+            },
+            "z_to": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_from",
+            "x_to",
+            "y_from",
+            "y_to",
+            "z_from",
+            "z_to"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "from"
+      ],
+      "type": "object"
+    },
+    "name": "view_model"
+  },
+  {
+    "description": "Submit the finished model, with every part. It replaces everything on the baseplate that you put there \u2014 including anything you added with edit_model. If you have been building with edit_model, the model is already built: say so and stop, rather than submitting a list that is missing the additions.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code",
+                "type": "integer"
+              },
+              "face": {
+                "description": "which way the studs point. Omit for up.",
+                "enum": [
+                  "up",
+                  "down",
+                  "+x",
+                  "-x",
+                  "+z",
+                  "-z"
+                ],
+                "type": "string"
+              },
+              "part": {
+                "description": "part number, e.g. 3001",
+                "type": "string"
+              },
+              "rot": {
+                "description": "quarter turns about the face direction, 0-3",
+                "type": "integer"
+              },
+              "section": {
+                "description": "the section this brick belongs to, if any. Its x, y and z are then that section's own coordinates, not the model's.",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, to the low corner. Tenths allowed.",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep, to the low corner. Tenths allowed.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "x",
+              "y",
+              "z",
+              "rot"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "how far it is turned about that pin. Any angle.",
+                "type": "number"
+              },
+              "name": {
+                "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, where this section's own origin sits",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x",
+              "y",
+              "z",
+              "axis",
+              "degrees"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "submit_design"
+  },
+  {
+    "description": "Take everything off the baseplate and start from bare ground. Do this before building something new, or the new thing is built into the old one.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "clear_model"
+  },
+  {
+    "description": "Write what is on the baseplate to an LDraw .ldr file, which this app and other LDraw tools can both open.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "where to write it, ending .ldr",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "name": "save_model"
+  }
+]

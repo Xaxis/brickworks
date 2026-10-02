@@ -98,10 +98,36 @@ needs one, because it spends money per request and an endpoint holding
 an API key that anyone may call is a bill waiting to happen.
 
 That split is enforced by construction — nothing in `Builder`,
-`BrickWorld` or `PartsBin` imports `Account`. Sign-in is email and
-password against Supabase, verified at the edge by signature against the
-published key rather than by asking Supabase on every request, and a
-design is charged per conversation rather than per round trip.
+`BrickWorld` or `PartsBin` imports `Account`. Sign-in is a one-time code
+sent to your email: no password to choose badly, reuse, forget or reset.
+The code is minted by Supabase and delivered from our own sender, and the
+session token is Supabase's throughout — verified at the edge by
+signature against the published key rather than by asking Supabase on
+every request. A design is charged per conversation rather than per round
+trip.
+
+## Or bring your own session
+
+The design loop lives in the app, not on a server. The real catalogue
+answers searches, the real collision lattice decides whether a brick
+fits, and what holds together goes on the baseplate. None of that needs
+an API key — only the model proposing the placements does.
+
+So if you already have a Claude Code session open, it can be that model:
+
+```sh
+claude mcp add brickworks -- /path/to/brickworks/tools/brickworks_mcp.py
+godot --path . -- --mcp
+```
+
+Your session then gets the same nine tools the app's own assistant uses —
+search the catalogue, check a design against the lattice, look at what is
+built, submit it — and the bricks land in the window while you watch. No
+key is pasted into the app, no account is needed, and nothing is billed
+here, because the only thing spending tokens is the session you already
+had.
+
+The port is 127.0.0.1 only and closed unless `--mcp` asks for it.
 
 ## How it is put together
 

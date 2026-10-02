@@ -3190,6 +3190,38 @@ submit_design afterwards with a list that predates the edit throws the \
 edit away."""
 
 
+## The tools, as the model is offered them.
+##
+## Public because something other than the loop serves them now: a
+## session outside the app can be handed this same list and call into
+## the same implementations, which is the only way the two cannot drift.
+func tool_catalogue() -> Array:
+	return _tools()
+
+
+## Run one tool the way a design run would.
+##
+## submit_design gets the step the loop takes next as well. Inside the
+## loop, submitting sets a design aside and the loop then checks it and
+## stands it up; called from outside, nothing would, and a caller would
+## get "Received. Checking it now." for a design that was never checked
+## and never built.
+func use_tool(name: String, input: Dictionary) -> Variant:
+	var answer: Variant = await _run_tool({"name": name, "input": input})
+	if name != "submit_design" or _pending == null:
+		return answer
+	var design: Model = _pending
+	_pending = null
+	var report: Dictionary = _check(design)
+	if not bool(report["ok"]):
+		return "Not applied — it does not hold together yet.\n%s" \
+			% report["feedback"]
+	await _ensure_parts(design)
+	_apply(design)
+	return "Built. %d bricks on the baseplate. %s" % [
+		design.placements.size(), report["summary"]]
+
+
 func _tools() -> Array:
 	var brick: Dictionary = {
 		"type": "object",

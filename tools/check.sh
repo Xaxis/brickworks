@@ -102,7 +102,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved holds; do
+for name in dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved holds mcp; do
   probe "$name"
 done
 
@@ -130,6 +130,13 @@ run "box select" godot --path . --resolution 1200x800 \
 # binding to test.
 run "feel" godot --path . --resolution 1400x900 \
   --script src/dev/feel_probe.gd
+
+# Two processes and a socket between them, which is a different kind of
+# failure from anything a single probe can have: the app's half can be
+# perfect while the relay answers tools/list with an empty array, and a
+# session then sees a server with no tools and nothing to explain it.
+echo "── over MCP ──"
+run "a session drives the app" python3 tools/mcp_check.py
 
 if [ "$network" = 1 ]; then
   echo "── network ──"

@@ -52,6 +52,8 @@ var _tools: TouchTools
 var _marquee: Marquee
 var _thumbnails: PartThumbnails
 var _assistant: Assistant
+## Open only when --mcp asked for it. See src/net/command_socket.gd.
+var _commands: CommandSocket = null
 
 var _library: PartLibrary
 
@@ -137,6 +139,11 @@ func _ready() -> void:
 	# real before framing them.
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
+
+	var mcp: String = _argument("--mcp")
+	# Present with no value is the common case: --mcp, not --mcp=8787.
+	if not mcp.is_empty() or _has_argument("--mcp"):
+		_open_commands(CommandSocket.PORT if mcp.is_empty() else mcp.to_int())
 
 	var autobuild: String = _argument("--autobuild")
 	if not autobuild.is_empty():
@@ -308,6 +315,53 @@ static func _argument(prefix: String) -> String:
 		if argument.begins_with(prefix + "="):
 			return argument.substr(prefix.length() + 1)
 	return ""
+
+
+## A switch with no value, which _argument cannot report: it returns the
+## empty string both for --mcp and for no --mcp at all.
+static func _has_argument(name: String) -> bool:
+	return OS.get_cmdline_user_args().has(name)
+
+
+## Empty the baseplate, as starting a design does.
+##
+## Public for the command socket. A session driving from outside has no
+## moment of its own where the board is cleared — asked for a lighthouse
+## it would build one into whatever was standing — and the design loop
+## clears the board itself, so it never needed this.
+func clear_model() -> void:
+	_world.clear()
+	_builder.lattice.clear()
+	_builder.clear_selection()
+	_builder.forget_history()
+	_assistant.forget_built()
+	_lay_baseplate()
+
+
+## Write what is on the baseplate to a file. Returns false if it could not.
+func save_model(path: String) -> bool:
+	return _store.export_to(path, "Model")
+
+
+## Open the local port that lets a session outside the app drive it.
+##
+## Off unless asked for, and 127.0.0.1 only. See
+## src/net/command_socket.gd for why this exists at all.
+func _open_commands(port: int) -> void:
+	_commands = CommandSocket.new()
+	_commands.assistant = _assistant
+	_commands.app = self
+	add_child(_commands)
+	if not _commands.listen(port):
+		_commands.queue_free()
+		_commands = null
+		return
+	# What it does is narrated already: every tool emits the assistant's
+	# own progress signal, which the chat panel is bound to, so the
+	# window says "looking up \"wedge\"" while an outside session works.
+	# Only who is connected needs saying here.
+	_commands.attached.connect(func(how_many: int) -> void:
+		print("command socket: %d session(s) attached" % how_many))
 
 
 ## The panels either side of the viewport: the parts bin on the left, the
