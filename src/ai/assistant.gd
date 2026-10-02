@@ -2302,6 +2302,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not seam.is_empty():
 		advice.append(seam)
 
+	# And whether a nearly-symmetric model has a brick on one side only.
+	var lopsided: String = _lopsided(model, cells_of)
+	if not lopsided.is_empty():
+		advice.append(lopsided)
+
 	var pieces: int = _count_pieces(model, cells_of, lattice)
 
 	var errors: int = 0
@@ -2416,6 +2421,81 @@ func _stepped_outline(cells_of: Dictionary) -> String:
 		+ "doing badly — search \"wedge plate 2 x 4\". They are one "
 		+ "plate thick, left and right handed, and sit in the layer "
 		+ "beside ordinary plates.")
+
+
+## A model that is symmetric except for one or two bricks.
+##
+## Half-built-then-mirrored is how anything with two sides gets made, and
+## getting one brick wrong in the mirroring is the commonest way it goes
+## wrong — a wing a stud further out than its opposite, a nacelle a plate
+## low. It is invisible in a list of placements, it survives every check
+## here, and it is the first thing a person sees.
+##
+## The line between a mistake and a choice is how many. A house with a
+## door on one side has nine bricks with no opposite number; a wing with
+## one brick in the wrong place has two — itself, and the one it should
+## have matched. Measured on the models that ship: car 0 of 61, tree 2 of
+## 69, house 9 of 71, lighthouse 14 of 84, bench 29 of 43. So three is
+## the most this will call a mistake, and it would rather miss one than
+## argue with a door.
+const MOST_LONELY := 3
+## Below this there is no symmetry to speak of either way.
+const FEWEST_FOR_SYMMETRY := 12
+
+
+func _lopsided(model: Model, cells_of: Dictionary) -> String:
+	if cells_of.size() < FEWEST_FOR_SYMMETRY:
+		return ""
+	var filled: Dictionary = {}
+	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
+	for index: int in cells_of:
+		for cell: Vector3i in cells_of[index]:
+			filled[cell] = true
+			lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+			hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
+	if filled.is_empty():
+		return ""
+
+	for axis: int in [0, 2]:
+		var alone: Array[int] = []
+		for index: int in cells_of:
+			var cells: Array = cells_of[index]
+			if cells.is_empty():
+				continue
+			var missing: int = 0
+			for cell: Vector3i in cells:
+				var mirror: Vector3i = cell
+				mirror[axis] = lo[axis] + hi[axis] - cell[axis]
+				if not filled.has(mirror):
+					missing += 1
+			# Most of it, not all: a part is mirrored onto a part of
+			# another shape often enough that an exact match is too
+			# strict, and the studs alone would never line up.
+			if float(missing) / float(cells.size()) > 0.5:
+				alone.append(index)
+			if alone.size() > MOST_LONELY:
+				break
+		if alone.is_empty() or alone.size() > MOST_LONELY:
+			continue
+		var named := PackedStringArray()
+		for index: int in alone:
+			named.append(_name_of(model, index))
+		return ("The model is a mirror of itself about %s, except for %s. "
+			% ["its length" if axis == 0 else "its width",
+				" and ".join(named)]
+			+ "If it is meant to be symmetric, that is where it is not — "
+			+ "and one brick out of place on one side is the thing a "
+			+ "person sees first.")
+	return ""
+
+
+## A brick as the other messages name it.
+func _name_of(model: Model, index: int) -> String:
+	if index < 0 or index >= model.placements.size():
+		return "brick %d" % index
+	var placement: Placement = model.placements[index]
+	return "brick %d (%s at %s)" % [index, placement.part, placement.where()]
 
 
 ## A vertical line nothing bridges, with model on both sides of it.

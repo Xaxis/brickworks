@@ -156,6 +156,21 @@ func _run() -> void:
 		_verdict(assistant, staggered), "Nothing bridges")
 
 	print("")
+	print("  a wing that does not match its opposite")
+	# Half-built-then-mirrored is how anything with two sides gets made,
+	# and one brick wrong in the mirroring is the commonest way it goes
+	# wrong. It is invisible in a list of placements and it is the first
+	# thing a person sees.
+	_check_quiet("a symmetric aeroplane is not nagged",
+		_verdict(assistant, _aeroplane(false)), "mirror of itself")
+	var bent: Dictionary = _verdict(assistant, _aeroplane(true))
+	_check_says("...and one brick moved is pointed at", bent,
+		"mirror of itself")
+	# Named, because "it is not symmetric" about a four hundred brick
+	# model is a sentence nobody can act on.
+	_check_says("...by number", bent, "brick 23")
+
+	print("")
 	print("  the rules themselves")
 	# These moved here from a second validator, in Python, that used to
 	# sit behind tools/design.py. It built studs-up and only studs-up,
@@ -271,6 +286,22 @@ func _check_says(what: String, verdict: Dictionary, phrase: String) -> void:
 		return
 	_failures += 1
 	print("  FAIL  %s — said: %s" % [what, feedback])
+
+
+## A fuselage with a wing either side, and optionally one wing brick
+## moved a stud out — which is the whole of what this is for.
+func _aeroplane(bent: bool) -> Array:
+	var out: Array = []
+	for at: int in range(0, 10):
+		out.append({"part": "3024", "color": 4, "x": at, "y": 0, "z": 4, "rot": 0})
+		out.append({"part": "3024", "color": 4, "x": at, "y": 0, "z": 5, "rot": 0})
+	for at: int in range(3, 7):
+		for side: int in [2, 7]:
+			var z: int = side
+			if bent and side == 7 and at == 5:
+				z = 8
+			out.append({"part": "3024", "color": 1, "x": at, "y": 0, "z": z, "rot": 0})
+	return out
 
 
 ## The verdict on a list of bricks, without printing it.
