@@ -19,8 +19,9 @@
 ##   out  {"id": 7, "ok": true, "content": [{"type": "text", ...}]}
 ##   out  {"id": 7, "ok": false, "error": "..."}
 ##
-## [code]{"tool": "__tools__"}[/code] answers with the tool list, so the
-## relay never carries a copy of the schemas that could go stale.
+## [code]{"tool": "__tools__"}[/code] answers with the tool list and
+## [code]{"tool": "__about__"}[/code] with how to design well here, so
+## the relay never carries a copy of either that could go stale.
 ##
 ## 127.0.0.1 only, and off unless asked for. An open port that drives the
 ## app is not something to have running by default, and binding the
@@ -166,6 +167,13 @@ func _answer(client: Client, line: String) -> void:
 			return
 		_send(client, {"id": id, "ok": true,
 			"tools": assistant.tool_catalogue() + _own_tools()})
+		return
+	if tool == "__about__":
+		if assistant == null:
+			_reply(client, id, false, "the app has no assistant")
+			return
+		_send(client, {"id": id, "ok": true,
+			"instructions": assistant.guidance()})
 		return
 	if tool == "__ping__":
 		_send(client, {"id": id, "ok": true, "app": "brickworks",

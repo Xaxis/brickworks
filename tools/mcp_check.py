@@ -128,9 +128,17 @@ def drive(relay: Relay) -> None:
           result.get("serverInfo", {}).get("name") == "brickworks")
     check("...and declares tools",
           "tools" in result.get("capabilities", {}))
-    check("...and says what the app is, %d characters"
-          % len(result.get("instructions", "")),
-          len(result.get("instructions", "")) > 100)
+    # The app's own guidance, not a second copy written in the relay.
+    # A session outside the app has the same tools, the same lattice and
+    # the same catalogue; what it did not have was any of the knowledge
+    # of how to use them, so it had to work out from refusals that a
+    # wedge plate exists and that courses are staggered.
+    said = result.get("instructions", "")
+    check("...and hands over the app's own design guidance, %d characters"
+          % len(said), len(said) > 3000)
+    for word in ("COORDINATES", "SIDEWAYS", "COLOUR", "AT AN ANGLE",
+                 "WHAT MAKES A MODEL GOOD"):
+        check("  it covers %s" % word.lower(), word in said)
     relay.notify("notifications/initialized")
 
     check("ping answers", relay.call("ping").get("result") == {})

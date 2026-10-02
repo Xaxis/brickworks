@@ -171,6 +171,35 @@ def tool_list(app: App) -> list[dict]:
     ]
 
 
+# Said only when the app is shut, which is the one time the real thing
+# cannot be fetched. Everything specific lives in the app.
+ABOUT = (
+    "Brickworks is a dimensionally exact LEGO CAD app, open in a window the "
+    "person is looking at. These tools are the same ones its own assistant "
+    "uses: search the real part catalogue, check a design against the real "
+    "collision lattice, look at what is built, and submit a design to stand "
+    "it up on the baseplate. Coordinates are studs across (x), plates up "
+    "(y) and studs deep (z), to a brick's low corner. The app is not "
+    "running yet, so this is the short version — start it and the rest "
+    "arrives with the tools."
+)
+
+
+def guidance(app: App) -> str:
+    """How to design well here, in the app's own words.
+
+    Fetched rather than written down, for the reason the tool list is:
+    two copies of advice drift, and the one that drifts is the one
+    nobody is testing.
+    """
+    try:
+        answer = app.ask("__about__", {})
+    except ConnectionError:
+        return ABOUT
+    said = str(answer.get("instructions") or "").strip()
+    return said or ABOUT
+
+
 def call(app: App, name: str, arguments: dict) -> dict:
     """One tool call, as MCP tool-result content."""
     try:
@@ -206,17 +235,7 @@ def handle(app: App, message: dict) -> dict | None:
             "protocolVersion": wanted if wanted in KNOWN_PROTOCOLS else PROTOCOL,
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": "brickworks", "version": "1"},
-            "instructions": (
-                "Brickworks is a dimensionally exact LEGO CAD app, open in a "
-                "window the person is looking at. These tools are the same ones "
-                "its own assistant uses: search the real part catalogue, check a "
-                "design against the real collision lattice, look at what is "
-                "built, and submit a design to stand it up on the baseplate. "
-                "Coordinates are studs across (x), plates up (y) and studs deep "
-                "(z), to a brick's low corner. Check before you submit, and look "
-                "at what you built — a model that holds together is not the same "
-                "as one that reads as the thing it is meant to be."
-            ),
+            "instructions": guidance(app),
         })
     if method == "ping":
         return result({})

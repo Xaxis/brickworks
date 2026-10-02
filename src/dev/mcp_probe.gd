@@ -66,6 +66,14 @@ func _run() -> void:
 	_check("...and the connection comes up",
 		_client.get_status() == StreamPeerTCP.STATUS_CONNECTED)
 
+	# How to design well here, served rather than written down twice.
+	var about: Dictionary = await _ask("__about__", {})
+	var guidance: String = str(about.get("instructions", ""))
+	_check("the socket serves the app's design guidance, %d characters"
+		% guidance.length(), guidance.length() > 3000)
+	_check("...and it is the same words the design loop is given",
+		guidance.contains("COORDINATES") and guidance.contains("AT AN ANGLE"))
+
 	# The tools, which the relay serves rather than carrying its own copy.
 	var tools: Dictionary = await _ask("__tools__", {})
 	var names: Array = []

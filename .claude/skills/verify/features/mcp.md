@@ -14,7 +14,10 @@ asking for an API key.
 - `mcp server`: `tools/brickworks_mcp.py`, which speaks MCP on stdio and relays to
   that port. Stdlib only, no dependencies. It carries no tool definitions of its
   own: it fetches them from the app, so the two cannot drift, and keeps a copy in
-  `tools/mcp_tools.json` only to answer `tools/list` while the app is closed.
+  `tools/mcp_tools.json` only to answer `tools/list` while the app is closed. The
+  MCP `instructions` are fetched the same way (`__about__`) — all 13k characters
+  of the app's own design guidance, the same words the in-app loop is given, so a
+  session is not left working out from refusals that wedge plates exist.
 - `drive the app over mcp`: `tools/mcp_check.py` starts a headless app, drives the
   relay as a client would, and stops the app it started.
 - `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
@@ -39,6 +42,7 @@ claude mcp add brickworks -- /mnt/Projects/brickworks/tools/brickworks_mcp.py
 By hand, without MCP at all:
 
 ```sh
+tools/brick.py __about__ --port=8787      # how to design well here
 tools/brick.py __tools__ --port=8787
 tools/brick.py search_parts '{"query": "wedge 4x2", "limit": 5}' --port=8787
 tools/brick.py check_design "$(cat design.json)" --png=/tmp/look.png --port=8787

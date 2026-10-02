@@ -3638,6 +3638,20 @@ submit_design afterwards with a list that predates the edit throws the \
 edit away."""
 
 
+## Everything the app knows about designing well in it.
+##
+## The same words the design loop is given, served to whoever else is
+## driving. A session outside the app has the same tools and the same
+## lattice and the same catalogue; what it did not have was any of this,
+## so it was left to work out from refusals that a wedge plate exists,
+## that courses are staggered, that a big model goes in stages. Serving
+## it from here rather than writing it again in the relay is the same
+## reason the tool list is served from here: two copies of advice drift,
+## and the one that drifts is the one nobody is testing.
+func guidance() -> String:
+	return _system_prompt()
+
+
 ## The tools, as the model is offered them.
 ##
 ## Public because something other than the loop serves them now: a
