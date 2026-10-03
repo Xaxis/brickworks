@@ -130,6 +130,16 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   a real design run for an ordinary picture. Engine errors are what this project
   treats as a broken build, so the format is read off the first bytes now and
   only the right decoder is called.
+- **A fault nobody can act on is not a fault.** `models/car.ldr` ships with the
+  app and opens on a first visit. It has wheels: thirteen tyres at y=-3, which is
+  where wheels go, and a tyre fits *around* a hub, which a cover made of boxes
+  cannot express. So the car read as fourteen problems, and asking to recolour one
+  brick on it came back "Not applied — the model would not hold together", listing
+  thirteen wheels the edit never touched. Below-ground now applies only to a brick
+  being placed or moved, and an overlap is a fault only when at least one of the
+  two bricks is this design's. What was already there still goes into the lattice,
+  so a new or moved brick is checked against it exactly as before — `edit_probe`
+  asserts both halves.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

@@ -2493,7 +2493,19 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 					+ "angle. For anything not square to the grid, put "
 					+ "the part in a section and turn the section.")
 			continue
-		if placement.y < 0:
+		# Below the baseplate, but only for a brick this design is
+		# actually placing.
+		#
+		# The rule exists to stop a design being written underground.
+		# Applied to bricks that were already standing it stops the
+		# assistant doing anything at all: models/car.ldr, which this
+		# app ships and opens, has thirteen tyres at y=-3 — which is
+		# where a car's wheels go — and asking to change the colour of
+		# one brick on it came back "Not applied: the model would not
+		# hold together", listing thirteen wheels the edit never
+		# touched and could not have moved. A fault nobody can act on
+		# is not a fault.
+		if placement.y < 0 and (placement.id == 0 or placement.moved):
 			_note(issues, "below ground",
 				"brick %d (%s) is at y=%d, below the ground" % [
 					index, placement.part, placement.y])
@@ -2545,6 +2557,28 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 
 		var blockers: PackedInt64Array = _blockers_outside(
 			lattice, cells, model, placement)
+
+		# Two bricks that were already standing, neither of them touched
+		# by this design, are not this design's problem.
+		#
+		# models/car.ldr ships with the app and has wheels: a tyre fits
+		# around a hub, which a cover made of boxes cannot express, so
+		# the car reads as nine overlaps that are not faults and that
+		# nobody can act on. Asking to change the colour of one brick on
+		# it came back "Not applied — the model would not hold
+		# together", listing them. The rule is the same one the ground
+		# check needed: report what this design is doing, not what it
+		# found already there. They are still put in the lattice,
+		# because they are still really there and nothing new may be
+		# built inside them.
+		if not blockers.is_empty() and placement.id != 0 \
+				and not placement.moved:
+			var first: int = blockers[0]
+			if first > 0 and first - 1 < model.placements.size():
+				var other: Placement = model.placements[first - 1]
+				if other.id != 0 and not other.moved:
+					blockers = PackedInt64Array()
+
 		if not blockers.is_empty():
 			# The lattice numbers from one, because zero means empty,
 			# and negative keys are bricks that were already there. Both

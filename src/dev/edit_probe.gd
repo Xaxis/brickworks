@@ -141,6 +141,7 @@ func _initialize() -> void:
 	_someone_elses_bricks(assistant, world, builder, library)
 	_unknown_numbers(assistant, world)
 	_pieces(assistant)
+	await _a_model_that_was_already_there(assistant, world, builder)
 
 	print("")
 	if _failures == 0:
@@ -292,3 +293,97 @@ func _someone_elses_bricks(assistant: Assistant, world: BrickWorld,
 
 	builder.lattice.release(hand)
 	world.remove_brick(hand)
+
+
+## Can a model somebody already has be changed at all?
+##
+## models/car.ldr ships with this app and opens on a first visit. It has
+## wheels: thirteen tyres at y=-3, which is where wheels go, and a tyre
+## fits around a hub, which a cover made of boxes cannot express. So the
+## car read as fourteen problems, and asking to change the colour of one
+## brick on it came back "Not applied — the model would not hold
+## together", listing thirteen wheels the edit never touched and nine
+## overlaps that are not faults. A fault nobody can act on is not a
+## fault: a check reports what this design is doing, not what it found
+## already standing.
+##
+## The other half matters as much. What was already there is still in
+## the lattice, so a brick this design places inside it, or below the
+## ground, is refused exactly as before.
+func _a_model_that_was_already_there(assistant: Assistant,
+		world: BrickWorld, builder: Builder) -> void:
+	print("")
+	print("  a model that was already there, with faults of its own")
+	world.clear()
+	builder.lattice.clear()
+	assistant.forget_built()
+
+	# Placed the way opening a file places them: already there, nobody's
+	# design. One below the ground and two in the same place, which is
+	# what a wheel and its tyre look like to a cover made of boxes.
+	#
+	# Positioned through the same transform a placement goes through,
+	# because doing the arithmetic by hand gets it wrong: a part's
+	# origin is not the corner a placement names, so a brick written at
+	# x=8 by hand landed two studs from where a placement at x=8 would
+	# be and the check that was meant to find an overlap found open air.
+	var mesh: Lbm.PartMesh = assistant.library.mesh_for("3001")
+	var sunken: Array[int] = []
+	for at: Array in [[0, -3, 0], [8, 0, 0], [8, 0, 0], [16, 0, 0]]:
+		var spot: Assistant.Placement = Assistant.Placement.from_dict({
+			"part": "3001", "color": 4,
+			"x": at[0], "y": at[1], "z": at[2]})
+		var where: Transform3D = assistant._transform(spot, mesh)
+		var made: int = world.add_brick("3001", 4, where)
+		if made != 0:
+			builder.register(made, "3001", where)
+			sunken.append(made)
+	if sunken.size() < 4:
+		_failures += 1
+		print("  FAIL  only %d of the four went in" % sunken.size())
+		return
+
+	var standing: Dictionary = assistant._check(
+		assistant._model_from_world(), true)
+	if bool(standing["ok"]):
+		print("  ok    it is not called broken for what it already was")
+	else:
+		_failures += 1
+		print("  FAIL  %s: %s" % [standing["summary"],
+			str(standing["feedback"]).substr(0, 180).replace("\n", " ")])
+
+	var answer: Variant = await assistant.use_tool("edit_model",
+		{"recolor": [{"bricks": [sunken[3]], "color": 1}]})
+	var said: String = str(answer) if answer is String else "a picture"
+	if said.begins_with("Done"):
+		print("  ok    ...and one brick on it can be recoloured")
+	else:
+		_failures += 1
+		print("  FAIL  the edit was refused: %s"
+			% said.substr(0, 180).replace("\n", " "))
+
+	# And the strictness that matters is untouched.
+	var newcomer := Assistant.Model.new()
+	newcomer.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 7, "x": 8, "y": 0, "z": 0}))
+	if not bool(assistant._check(newcomer)["ok"]):
+		print("  ok    a new brick inside one of them is still refused")
+	else:
+		_failures += 1
+		print("  FAIL  a new brick was allowed inside a brick that is "
+			+ "really there")
+
+	var underground := Assistant.Model.new()
+	underground.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 7, "x": 40, "y": -1, "z": 0}))
+	var below: String = str(assistant._check(underground)["feedback"])
+	if below.contains("below the ground"):
+		print("  ok    and a new brick below the ground is still refused")
+	else:
+		_failures += 1
+		print("  FAIL  a new brick below the ground was allowed: %s"
+			% below.substr(0, 140).replace("\n", " "))
+
+	world.clear()
+	builder.lattice.clear()
+	assistant.forget_built()
