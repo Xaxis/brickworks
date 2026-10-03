@@ -300,6 +300,11 @@ func _ask_claude_code(brief: String) -> void:
 ## window is left exactly as it was — a CAD program spinning at four
 ## hundred frames a second is a laptop fan and nothing else.
 func _unthrottle_if_nobody_is_watching() -> void:
+	# A page has no command line to be driven from, and a DisplayServer
+	# call the web platform does not implement is an engine error, which
+	# this project treats as a failed deploy.
+	if OS.has_feature("web"):
+		return
 	var driven: bool = false
 	for flag: String in ["--mcp", "--ask", "--ask-claude-code", "--bench",
 			"--shot", "--autobuild", "--showcase", "--out"]:

@@ -217,6 +217,12 @@ func take(world: BrickWorld, from: String,
 ## spinning at four hundred frames a second is a laptop fan, and the
 ## person looking at it cannot see the difference.
 func _quicken() -> void:
+	# The browser decides its own frame rate and a page is never driven
+	# from a command line, so there is nothing here to win on the web —
+	# and a DisplayServer call the web platform does not implement is an
+	# engine error, which this project treats as a failed deploy.
+	if OS.has_feature("web"):
+		return
 	if _held > 0:
 		# Already quickened by an outer call. Nesting happens: block()
 		# calls take().
@@ -231,6 +237,8 @@ func _quicken() -> void:
 
 
 func _settle() -> void:
+	if OS.has_feature("web"):
+		return
 	_held = maxi(0, _held - 1)
 	if _held > 0:
 		return
