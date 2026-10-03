@@ -2273,9 +2273,51 @@ func _studs_of(info: PartLibrary.PartInfo) -> String:
 	var elsewhere: int = info.stud_count - on_top
 	if elsewhere <= 0:
 		return "%d stud%s on top" % [on_top, "" if on_top == 1 else "s"]
-	return ("%d stud%s on top and %d facing another way — "
-		% [on_top, "" if on_top == 1 else "s", elsewhere]
+	# Which way, not merely "another way".
+	#
+	# "Another way" is the whole reason somebody searched for a bracket
+	# or a headlight brick, and leaving it at that costs an
+	# attachment_points call to find out whether the part does the job.
+	# Sideways and underneath are different parts for different
+	# problems: one carries a wall, the other hangs something below a
+	# floor.
+	var way: String = _which_way(info, elsewhere)
+	return ("%d stud%s on top and %s — "
+		% [on_top, "" if on_top == 1 else "s", way]
 		+ "attachment_points gives the exact coordinates")
+
+
+## How the studs that are not on top are pointed, in the part's own
+## frame: sideways or underneath. Named in the part's frame and not in
+## the world's, because an unplaced part has no world: "+x" would be a
+## claim about where it ends up, and rot decides that.
+func _which_way(info: PartLibrary.PartInfo, elsewhere: int) -> String:
+	var mesh: Lbm.PartMesh = library.mesh_for(info.id) if library != null \
+		else null
+	if mesh == null:
+		return "%d facing another way" % elsewhere
+	var sideways: int = 0
+	var under: int = 0
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud" or connector.gender != "male":
+			continue
+		var axis: Vector3 = connector.axis.normalized()
+		# LDraw is -Y up, and a part's own studs point along its own
+		# axis; up is whatever the rest of them agree on, so this asks
+		# only whether a stud disagrees with the top face and how.
+		if axis.dot(Vector3.UP) > 0.9:
+			continue
+		if axis.dot(Vector3.UP) < -0.9:
+			under += 1
+		else:
+			sideways += 1
+	if sideways > 0 and under > 0:
+		return "%d facing sideways and %d underneath" % [sideways, under]
+	if under > 0:
+		return "%d underneath" % under
+	if sideways > 0:
+		return "%d facing sideways" % sideways
+	return "%d facing another way" % elsewhere
 
 
 static func _height_plates(info: PartLibrary.PartInfo) -> int:

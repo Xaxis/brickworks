@@ -132,19 +132,38 @@ func _initialize() -> void:
 	var assistant := Assistant.new()
 	assistant.library = library
 	get_root().add_child(assistant)
+	# And which way, not merely "another way", because that was the
+	# whole question: a bracket and a headlight brick both had studs
+	# "facing another way", and finding out whether either does the job
+	# in hand cost an attachment_points call. Sideways carries a wall;
+	# underneath hangs something below a floor. They are different
+	# parts for different problems.
 	for pair: Array in [
-			["87087", true], ["4070", true], ["99207", true],
-			["44728", true], ["3001", false], ["3024", false]]:
+			["87087", "1 facing sideways"],
+			["4070", "1 facing sideways"],
+			["99207", "4 facing sideways"],
+			["44728", "4 facing sideways"],
+			["3001", ""], ["3024", ""]]:
 		var info: PartLibrary.PartInfo = library.parts.get(pair[0])
 		if info == null:
 			_fail("%s is not in the catalogue" % pair[0])
 			continue
 		var said: String = assistant._describe(info)
-		var sideways: bool = said.contains("facing another way")
-		if sideways != bool(pair[1]):
-			_fail("%s: %s" % [pair[0], said])
+		var wanted: String = str(pair[1])
+		if wanted.is_empty():
+			if said.contains("facing") or said.contains("underneath"):
+				_fail("%s has no sideways studs and says it has: %s"
+					% [pair[0], said])
+				continue
+		elif not said.contains(wanted):
+			_fail("%s should say '%s': %s" % [pair[0], wanted, said])
 			continue
 		print("  ok    %s" % said.substr(0, 96))
+	# Nothing should still be settling for the old vague wording.
+	for part: String in ["87087", "4070", "99207", "44728"]:
+		var info: PartLibrary.PartInfo = library.parts.get(part)
+		if info != null and assistant._describe(info).contains("another way"):
+			_fail("%s still says only 'another way'" % part)
 
 	print("")
 	print("  every colour the rules name is a real one")

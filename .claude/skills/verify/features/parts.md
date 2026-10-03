@@ -51,6 +51,15 @@ it is hands-only, so say so rather than claiming it.
 
 ## Gotchas
 
+- **"Another way" was the whole question.** A search result said a part had
+  "N studs on top and M facing another way", which is true of a bracket, a
+  headlight brick and anything with a stud underneath — and whether the part
+  does the job in hand then cost an `attachment_points` call. It says which
+  way now: `87087` is "1 stud on top and 1 facing sideways", `99207` is "2 on
+  top and 4 facing sideways". Named in the part's own frame and not the
+  world's, because an unplaced part has no world and `rot` decides where it
+  ends up, so "+x" would be a claim about something nobody has chosen yet.
+
 - **The catalogue load is the 15–20s start-up.** Every probe pays it.
 - `fetch` covers the case that broke: two callers asking for the same part, one of
   them never being told it arrived.
