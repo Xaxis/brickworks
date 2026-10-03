@@ -49,6 +49,17 @@ is 61 parts, and the count printed and the count in the file must agree.
 
 ## Gotchas
 
+- **`--out` used to be written once, after the design returned.** A ninety-minute
+  Voyager run reached 371 bricks, lost its connection twice to a TLS fault, and
+  was still retrying when its clock ran out — so no file was written and the whole
+  run was wasted. The model stands on the baseplate the entire time, so a driven
+  run (`--ask`, `--ask-claude-code`) now exports on every `built` signal:
+  `_keep_as_it_builds` in `src/main.gd`. Last write wins, each one the whole model
+  as it then stood. Proved by polling the path during a real design — "kept 7
+  parts" appeared at 80 s while the run was still going. **`--autobuild` does not
+  test this**: it builds procedurally without the assistant, so `built` never
+  fires and only the final write happens. That run looked like a pass and was not.
+
 - **The file is written even when a design failed.** `--out` writes the last
   version that held together and signals failure through the exit code, because
   throwing the model away would be the worse answer. Read `$?`, not just the file.

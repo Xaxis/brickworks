@@ -154,6 +154,16 @@ func _ready() -> void:
 	if not autobuild.is_empty():
 		_autobuild(autobuild.to_int())
 
+	# Keep the model on disk as it is built, not only at the end.
+	#
+	# Measured the hard way: a ninety-minute Voyager run reached 371
+	# bricks, lost its connection twice to a TLS fault, and was still
+	# retrying when the clock ran out — so the file was never written
+	# and an hour and a half of design went in the bin. Nothing about
+	# that was the design's fault, and nothing about it needed to cost
+	# anything: the model stands on the baseplate the whole time.
+	_keep_as_it_builds(_argument("--out"))
+
 	# The same brief, designed by the Claude Code on this machine rather
 	# than by the loop inside the app. No API key and no account: it is
 	# the person's own subscription doing the thinking.
@@ -202,6 +212,29 @@ func _ready() -> void:
 	var shot: String = _argument("--shot")
 	if not shot.is_empty():
 		await _capture(shot)
+
+
+## Write the baseplate out every time something is stood up on it.
+##
+## Only when a file was asked for, and only in a run that is being
+## driven: an interactive session saves itself already, and writing
+## somebody's working file on every brick would be a surprise.
+##
+## The last write wins, which is what is wanted — each one is the whole
+## model as it then stood, and a model that got better has a better
+## file. A run that is killed, times out, or gives up still leaves the
+## best thing it had.
+func _keep_as_it_builds(keeping_to: String) -> void:
+	if keeping_to.is_empty() or _assistant == null:
+		return
+	_assistant.built.connect(func(_count: int) -> void:
+		if not _store.export_to(keeping_to, "Model"):
+			# Said once and not once a brick: a path that cannot be
+			# written will not start working later in the run.
+			push_warning("could not keep the model at %s" % keeping_to)
+			return
+		print("  kept %d parts at %s" % [
+			_world.brick_count() - _store.scenery.size(), keeping_to]))
 
 
 ## A few parts, close up, for judging how they look rather than whether
