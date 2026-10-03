@@ -2700,7 +2700,17 @@ const SHORTEST_STAIRCASE := 4
 ## voxelises the section against the lattice: 46 seconds for one
 ## failing section, measured. Four of them is three minutes, which is
 ## exactly where the relay a session talks through gives up.
-const HINTS_WITHIN := 4.0
+##
+## Eight and not four. A rotated part is voxelised the slow way — the
+## fast path wants a square basis — so one section's sweep is about
+## five and a half seconds of real work, and a four-second budget cut
+## off the useful case as well as the futile one: an eight-brick model
+## with a single tipped pylon was told the time had run out when the
+## answer was two trials away. Eight lets one section finish. Several
+## share the same eight, so the later ones are told the time ran out,
+## which is bounded and true, and the check still comes back in about
+## ten seconds with four of them failing.
+const HINTS_WITHIN := 8.0
 
 
 func _stepped_outline(cells_of: Dictionary, box_of: Dictionary) -> String:
@@ -3230,6 +3240,23 @@ func _where_it_would_meet(model: Model, group: String,
 	if section == null:
 		return ""
 	var was: float = section.y
+
+	# Is there anything in reach at all, before sweeping for it?
+	#
+	# The sweep is thirty-two trial placements and every one of them is
+	# expensive precisely when it fails, because a section that touches
+	# nothing makes the touching test look at all twenty-six
+	# neighbours of every cell it has. A section parked in mid-air
+	# fails all thirty-two that way. One pass over the box it could
+	# reach settles whether any of them could have worked, and costs
+	# about as much as a single trial.
+	if not _anything_in_reach(model, group, lattice, part_of):
+		return (" No height within two plates of where you put it "
+			+ "reaches the model at all, so this is a distance and not "
+			+ "a fine adjustment: the section is in the wrong place, or "
+			+ "the thing it should meet has not been built yet. "
+			+ "Changing the angle will not help — measured, nothing "
+			+ "within four degrees either way reaches either.")
 	# Eighths, not quarters. Measured, the window where a twenty-degree
 	# pylon rests against a flat hull is two eighths of a plate wide —
 	# so a sweep in quarters can step over it and report that there is
@@ -3271,7 +3298,48 @@ func _where_it_would_meet(model: Model, group: String,
 				+ "into it — a turned section touches a flat face at a "
 				+ "corner, so the offset that reaches is narrow.")
 	section.y = was
-	return ""
+	# Something was in reach and no height put the section against it:
+	# it fits between the offsets tried, or only on its other side.
+	return (" Nothing in two plates of travel either way sets it "
+		+ "against the model without running into it. Move the section "
+		+ "in x or z rather than in y — it is meeting the wrong face.")
+
+
+## Could any height in the sweep's reach touch anything at all?
+##
+## Grown by two plates up and down, which is how far the sweep looks,
+## and by one cell all round, because touching is adjacency. If nothing
+## of anybody else's is inside that, no trial can succeed and sweeping
+## is thirty-two expensive ways of finding that out.
+func _anything_in_reach(model: Model, group: String,
+		lattice: BrickLattice, part_of: Dictionary) -> bool:
+	var low := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	var high := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
+	var found: bool = false
+	for index: int in part_of.get(group, []):
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		for cell: Vector3i in builder._cells_for(part,
+				_transform(placement, part, model.sections.get(group))):
+			low = Vector3i(mini(low.x, cell.x), mini(low.y, cell.y),
+				mini(low.z, cell.z))
+			high = Vector3i(maxi(high.x, cell.x), maxi(high.y, cell.y),
+				maxi(high.z, cell.z))
+			found = true
+	if not found:
+		return false
+	var reach: int = BrickLattice.CELLS_PER_PLATE * 2
+	low = Vector3i(low.x - 1, low.y - reach - 1, low.z - 1)
+	high = Vector3i(high.x + 1, high.y + reach + 1, high.z + 1)
+	for x: int in range(low.x, high.x + 1):
+		for y: int in range(low.y, high.y + 1):
+			for z: int in range(low.z, high.z + 1):
+				var who: int = lattice.brick_at(Vector3i(x, y, z))
+				if who != 0 and not _is_ours(who, model, group):
+					return true
+	return false
 
 
 ## Whether the section would sit there: nothing of it inside anything

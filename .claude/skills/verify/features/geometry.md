@@ -75,8 +75,22 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   caps what one check spends on hints at four seconds and says which it was when it
   runs out (silence there reads as "there is nowhere", the answer that ends runs),
   and `_section_sits` skips the twenty-six-neighbour scan for cells strictly inside
-  a brick's own extent, which cannot touch anything outside it. Four failing
-  sections now cost 11 s, and `section_probe` fails if a check of them takes 30.
+  a brick's own extent, which cannot touch anything outside it. `_anything_in_reach`
+  then asks once, before sweeping at all, whether anything of anyone else's is
+  inside the box the sweep could reach — grown two plates each way and one cell for
+  adjacency — because a section parked in mid-air fails all thirty-two trials the
+  expensive way. Four failing sections now cost **5.9 s**, and `section_probe` fails
+  if a check of them takes 30.
+- **The budget has to be big enough for the case it exists for.** At four seconds
+  an eight-brick model with one tipped pylon was told the time had run out when the
+  answer was two trials away: a rotated part is voxelised the slow way, so one
+  section's sweep is about five and a half seconds of real work. Eight seconds,
+  shared across sections, and the later ones get the honest "ran out of time".
+- **The sweep steps in eighths of a plate, which is half a lattice cell.** A plate
+  is 8 LDU and a cell is 2, so an eighth-plate step is 1 LDU and whether it changes
+  any occupied cell depends on rounding inside `_cells_for`. Worth knowing before
+  making the sweep cheaper by translating cached cells rather than re-voxelising —
+  the obvious optimisation, and exact only on whole cells.
 - **The fit window can be a quarter of a plate wide.** `_where_it_would_meet`
   sweeps ±2 plates in eighths and says "At y=3.25 it would rest against the model
   instead of running into it", because nothing else makes it findable.

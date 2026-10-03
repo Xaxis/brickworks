@@ -303,6 +303,37 @@ func _run() -> void:
 	# brickworks server has stopped responding" on every call after one
 	# edit while it was still fighting its pylons. The app was alive the
 	# whole time; the check was not coming back.
+	# And a section nowhere near anything is told that, not left in
+	# silence.
+	#
+	# Silence was the gap that cost a real run its turns. Told "2
+	# problems" and nothing else, it decided the geometry must be
+	# subtle rather than that the section was simply too far away, and
+	# went hunting an angle: "the checker models the pylon plate as a
+	# box including stud height, so 39.81 degrees and an offset of
+	# 0.3906 should make both root and tip touch exactly." Measured on
+	# the same arrangement two plates out of reach: no angle within four
+	# degrees either way sits there. There was no angle to find.
+	print("")
+	print("  a section nowhere near anything is told which it is")
+	var stranded := Assistant.Model.new()
+	for n: int in 12:
+		stranded.placements.append(Assistant.Placement.from_dict({
+			"part": "3001", "color": 7,
+			"x": (n % 4) * 4, "y": (n / 4) * 3, "z": 0}))
+	for n: int in 4:
+		stranded.placements.append(Assistant.Placement.from_dict({
+			"part": "3001", "color": 4, "x": 0, "y": n * 3, "z": 0,
+			"section": "pylon"}))
+	stranded.sections["pylon"] = Assistant.Section.from_dict({
+		"name": "pylon", "x": 4.0, "y": 30.0, "z": 0.0,
+		"axis": "z", "degrees": 40.0})
+	var nowhere: String = str(_assistant._check(stranded)["feedback"])
+	_check("it says the trouble is a distance, not a fine adjustment",
+		nowhere.contains("a distance and not a fine adjustment"))
+	_check("...and that changing the angle will not help",
+		nowhere.contains("Changing the angle"))
+
 	print("")
 	print("  a check with four failing sections comes back")
 	var crowd := Assistant.Model.new()
