@@ -2067,6 +2067,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var advice: Array = []
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
+	var box_of: Dictionary = {}     ## index -> [low cell, high cell]
 
 	if model.placements.is_empty():
 		# Which of the two this is matters enormously.
@@ -2255,6 +2256,16 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 
 		lattice.occupy(index + 1, cells)
 		cells_of[index] = cells
+		# The corners, kept while the cells are in hand. Three checks
+		# below want them and each used to find them by walking every
+		# cell again — which on a four hundred brick model is three more
+		# passes over nearly four million of them.
+		var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+		var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
+		for cell: Vector3i in cells:
+			lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+			hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
+		box_of[index] = [lo, hi]
 
 	# Support is checked in world coordinates even for a section that
 	# has been carried somewhere at an angle, and that is not an
@@ -2298,12 +2309,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		advice.append(stepped)
 
 	# And whether there is a line it would come apart along.
-	var seam: String = _unbonded_seam(cells_of)
+	var seam: String = _unbonded_seam(box_of)
 	if not seam.is_empty():
 		advice.append(seam)
 
 	# And whether a nearly-symmetric model has a brick on one side only.
-	var lopsided: String = _lopsided(model, cells_of)
+	var lopsided: String = _lopsided(model, box_of, lattice)
 	if not lopsided.is_empty():
 		advice.append(lopsided)
 
@@ -2476,36 +2487,43 @@ const MOST_LONELY := 3
 const FEWEST_FOR_SYMMETRY := 12
 
 
-func _lopsided(model: Model, cells_of: Dictionary) -> String:
-	if cells_of.size() < FEWEST_FOR_SYMMETRY:
+func _lopsided(model: Model, box_of: Dictionary,
+		lattice: BrickLattice) -> String:
+	if box_of.size() < FEWEST_FOR_SYMMETRY:
 		return ""
-	var filled: Dictionary = {}
 	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
 	var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
-	for index: int in cells_of:
-		for cell: Vector3i in cells_of[index]:
-			filled[cell] = true
-			lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
-			hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
-	if filled.is_empty():
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var near: Vector3i = corners[0]
+		var far: Vector3i = corners[1]
+		lo = Vector3i(mini(lo.x, near.x), mini(lo.y, near.y), mini(lo.z, near.z))
+		hi = Vector3i(maxi(hi.x, far.x), maxi(hi.y, far.y), maxi(hi.z, far.z))
+	if lo.x == 0x7FFFFFFF:
 		return ""
 
 	for axis: int in [0, 2]:
 		var alone: Array[int] = []
-		for index: int in cells_of:
-			var cells: Array = cells_of[index]
-			if cells.is_empty():
-				continue
-			var missing: int = 0
-			for cell: Vector3i in cells:
-				var mirror: Vector3i = cell
-				mirror[axis] = lo[axis] + hi[axis] - cell[axis]
-				if not filled.has(mirror):
-					missing += 1
-			# Most of it, not all: a part is mirrored onto a part of
-			# another shape often enough that an exact match is too
-			# strict, and the studs alone would never line up.
-			if float(missing) / float(cells.size()) > 0.5:
+		for index: int in box_of:
+			# Sampled, not weighed cell by cell. Asking the lattice
+			# whether five points of the mirrored box are filled gives
+			# the same answer as walking every cell of it, and walking
+			# every cell of every brick was five seconds of a fourteen
+			# second check on a four hundred brick model — more than a
+			# third of it, for a question that is about where a part is
+			# rather than what shape it is.
+			var corners: Array = box_of[index]
+			var near: Vector3i = corners[0]
+			var far: Vector3i = corners[1]
+			var filled: int = 0
+			var asked: int = 0
+			for point: Vector3i in _probe_points(near, far):
+				var mirror: Vector3i = point
+				mirror[axis] = lo[axis] + hi[axis] - point[axis]
+				asked += 1
+				if lattice.brick_at(mirror) != 0:
+					filled += 1
+			if asked > 0 and float(filled) / float(asked) <= 0.5:
 				alone.append(index)
 			if alone.size() > MOST_LONELY:
 				break
@@ -2521,6 +2539,19 @@ func _lopsided(model: Model, cells_of: Dictionary) -> String:
 			+ "and one brick out of place on one side is the thing a "
 			+ "person sees first.")
 	return ""
+
+
+## Five points of a box: its middle and the middle of each face pair,
+## pulled in a cell so a part that only touches its own edge is not
+## sampled outside itself.
+static func _probe_points(near: Vector3i, far: Vector3i) -> Array[Vector3i]:
+	var mid := Vector3i((near.x + far.x) / 2, (near.y + far.y) / 2,
+		(near.z + far.z) / 2)
+	return [
+		mid,
+		Vector3i(near.x, mid.y, mid.z), Vector3i(far.x, mid.y, mid.z),
+		Vector3i(mid.x, mid.y, near.z), Vector3i(mid.x, mid.y, far.z),
+	]
 
 
 ## A brick as the other messages name it.
@@ -2547,7 +2578,7 @@ func _name_of(model: Model, index: int) -> String:
 const WORST_SEAM := 6
 
 
-func _unbonded_seam(cells_of: Dictionary) -> String:
+func _unbonded_seam(box_of: Dictionary) -> String:
 	# Per plate-layer: which stud columns hold anything, and which lines
 	# between columns something crosses.
 	var holds: Dictionary = {}     ## axis -> layer -> stud -> true
@@ -2556,14 +2587,10 @@ func _unbonded_seam(cells_of: Dictionary) -> String:
 		holds[axis] = {}
 		bridges[axis] = {}
 
-	for index: int in cells_of:
-		var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
-		var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
-		for cell: Vector3i in cells_of[index]:
-			lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
-			hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
-		if lo.x == 0x7FFFFFFF:
-			continue
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var lo: Vector3i = corners[0]
+		var hi: Vector3i = corners[1]
 		var first_layer: int = floori(float(lo.y) / BrickLattice.CELLS_PER_PLATE)
 		var last_layer: int = floori(float(hi.y) / BrickLattice.CELLS_PER_PLATE)
 		# A part forty plates tall is a flagpole, not a wall, and walking
