@@ -2833,11 +2833,17 @@ func _where_it_would_meet(model: Model, group: String,
 		section.y = was + step
 		if _section_sits(model, group, lattice, part_of):
 			section.y = was
-			return (" At y=%s it would rest against the model instead "
+			# "Rest against" was the wording, and it cost a design its
+			# nacelles. A model asked for Voyager read it, concluded
+			# that "a hinged section has to rest on something, not just
+			# touch the side", and rebuilt its angled pylons as stacks
+			# of square bricks. Nothing here is about gravity: a section
+			# is held by meeting anything outside itself, in any
+			# direction, and sideways is the usual one.
+			return (" At y=%s it meets the model instead of running "
 				% Placement._num(was + step)
-				+ "of running into it — a turned section meets a flat "
-				+ "face at a corner, so the offset that touches is "
-				+ "narrow.")
+				+ "into it — a turned section touches a flat face at a "
+				+ "corner, so the offset that reaches is narrow.")
 	section.y = was
 	return ""
 
@@ -2954,7 +2960,10 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 			_note(issues, "section adrift",
 				"section '%s' is not touching anything outside itself "
 					% group + "— it is built, but it would fall off. "
-					+ "Move it so it meets the part it is fixed to.")
+					+ "Move it so it meets the part it is fixed to. "
+					+ "Touching anywhere counts and in any direction: a "
+					+ "pylon fixed to the side of a hull is held, and "
+					+ "needs nothing underneath it.")
 
 
 func _check_support(

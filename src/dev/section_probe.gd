@@ -198,8 +198,12 @@ func _run() -> void:
 			"name": "pylon", "x": 2.0, "y": lift, "z": 0.0,
 			"axis": "z", "degrees": 20.0})
 		var told: String = str(_assistant._check(pylon)["feedback"])
+		# The height it names, rather than the sentence it names it in:
+		# the sentence has been reworded once already, because "rest
+		# against" read as a rule about gravity and cost a design its
+		# angled nacelles.
 		_check("at y=%.1f it is told where it would fit" % lift,
-			told.contains("it would rest against the model"))
+			told.contains(" At y=") and told.contains("meets the model"))
 
 	# Told from further away than a plate, too. One plate of reach was
 	# not enough: a section declared well below where it fits was told
@@ -219,7 +223,8 @@ func _run() -> void:
 		"axis": "z", "degrees": 20.0})
 	var far_off: Dictionary = _assistant._check(distant)
 	_check("a section far from where it fits is still told",
-		str(far_off["feedback"]).contains("it would rest against"))
+		str(far_off["feedback"]).contains(" At y=")
+			and str(far_off["feedback"]).contains("meets the model"))
 	# And the advice is not itself counted as a fault. It was added with
 	# the same call that records a problem, and every one of those is
 	# counted — so the one thing here trying to help was reported as a
@@ -320,6 +325,33 @@ func _run() -> void:
 				bool(held["ok"]))
 
 
+
+	# And what it says when a section really is adrift, because the
+	# wording is what a design acts on. "It would rest against the
+	# model" was the old hint, and a model asked for Voyager read that
+	# as a rule about gravity, decided a hinged section must sit on
+	# something, and rebuilt its angled pylons as square stacks.
+	var loose := Assistant.Model.new()
+	for raw: Variant in [
+			{"part": "3001", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+			{"part": "3010", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0,
+				"section": "pylon"},
+			{"part": "3010", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0,
+				"section": "pylon"}]:
+		loose.placements.append(Assistant.Placement.from_dict(raw))
+	loose.sections["pylon"] = Assistant.Section.from_dict({
+		"name": "pylon", "x": 20.0, "y": 20.0, "z": 20.0,
+		"axis": "z", "degrees": 35.0})
+	var told: String = str(_assistant._check(loose)["feedback"])
+	print("")
+	print("  what a section adrift is told")
+	_check("it is told it is adrift", told.contains("not touching anything"))
+	_check("...that touching anywhere counts, in any direction",
+		told.contains("any direction"))
+	_check("...and that nothing need be underneath it",
+		told.contains("needs nothing underneath"))
+	_check("...and nothing in it reads as a rule about resting",
+		not told.contains("rest"))
 
 	print("")
 	if _failures == 0:
