@@ -288,6 +288,22 @@ func _run() -> void:
 	world.clear()
 	builder.lattice.clear()
 
+	# And the rule is written down rather than left to be discovered.
+	#
+	# A real design run spent eight checks probing it: "still working
+	# through the checker's support rules... now testing whether a whole
+	# sub-assembly can be a section held by touch". The answer is yes
+	# and always was. Eight checks is most of the turns a design has.
+	print("")
+	print("  and the rule is stated, not left to be found by experiment")
+	var rules: String = _assistant.guidance()
+	_check("support inside a section is said to be ordinary",
+		rules.contains("in that section's own square coordinates"))
+	_check("...and that a whole sub-assembly can be one section",
+		rules.contains("whole nacelle, a whole saucer"))
+	_check("...and that nothing need be underneath it",
+		rules.contains("Nothing has to be"))
+
 	print("")
 	print("  a brick claiming a section nobody declared")
 	var orphan := Assistant.Model.new()

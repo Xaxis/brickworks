@@ -3932,6 +3932,19 @@ reply: a model that is ninety percent right and standing is worth more \
 than a perfect pylon and nothing under it. One design spent every turn \
 it had on a fifty-degree pylon and submitted nothing at all.
 
+Inside a section, support works exactly as it does anywhere else, in \
+that section's own square coordinates: a brick needs a brick beneath it \
+*in the section*, not beneath it in the world. The tipping happens after. \
+So a whole nacelle, a whole saucer, a whole wing can be one section, \
+built flat and carried — you do not have to keep sections small to keep \
+them legal.
+
+And the section as a whole has only to touch the rest of the model. \
+Anywhere, in any direction, by any part of it. Nothing has to be \
+underneath it and nothing has to rest on anything. One design spent \
+eight checks finding that out by experiment; it is written here so you \
+do not have to.
+
 A section must touch the rest of the model somewhere, or it is a piece \
 that falls off when the model is picked up. Give a section a new \
 degrees or a new position with edit_model and everything in it moves \
