@@ -143,6 +143,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
 
+	_unthrottle_if_nobody_is_watching()
+
 	var mcp: String = _argument("--mcp")
 	# Present with no value is the common case: --mcp, not --mcp=8787.
 	if not mcp.is_empty() or _has_argument("--mcp"):
@@ -278,6 +280,37 @@ func _ask_claude_code(brief: String) -> void:
 		str(outcome[1]).substr(0, 600)])
 	_camera.frame(_built_bounds())
 	await get_tree().process_frame
+
+
+## Run at full speed when the window is a formality.
+##
+## A window nothing is looking at gets one frame a second on this
+## machine — measured, 989 ms a frame — because that is how long the
+## compositor takes to accept one. For somebody using the app that is
+## correct and invisible: their window is in front of them at sixty.
+## For a run driven from the command line it is a disaster, because
+## everything the app does between calls is measured in frames. The
+## command socket polls in _process, so a tool call waits up to a second
+## each way; a picture is six frames, so it took six seconds at every
+## model size; and a design makes hundreds of calls. A real Voyager run
+## spent its last ten minutes reporting "the renderer keeps timing out".
+##
+## So: if the app was started to be driven rather than used, vsync comes
+## off for the whole run. Nothing else changes, and an interactive
+## window is left exactly as it was — a CAD program spinning at four
+## hundred frames a second is a laptop fan and nothing else.
+func _unthrottle_if_nobody_is_watching() -> void:
+	var driven: bool = false
+	for flag: String in ["--mcp", "--ask", "--ask-claude-code", "--bench",
+			"--shot", "--autobuild", "--showcase", "--out"]:
+		if _has_argument(flag) or not _argument(flag).is_empty():
+			driven = true
+			break
+	if not driven:
+		return
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	print("driven from the command line, so vsync is off for this run")
 
 
 ## Measure a settled frame rate and print it, then quit.

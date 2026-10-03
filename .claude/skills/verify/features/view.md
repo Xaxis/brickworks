@@ -54,13 +54,30 @@ godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking 
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
-leave an image — look at it; that is the point of them.
+leave an image — look at it; that is the point of them. `shot` also times a
+picture: under two seconds with vsync on, against the six seconds it used to
+take, which is what made a design run give up on looking at itself.
 
 ## Gotchas
 
 - **Four of these need a display** (`shot`, `gizmo`, `colour`, and `marquee` in
   [building](building.md)). A headless run has no rendering device for the
   SubViewport, so they are last in `tools/check.sh` and flash a window open.
+- **A window nobody is looking at runs at one frame a second.** Measured on this
+  machine: 989 ms a frame with vsync as shipped, 20 ms with it off. Everything in
+  these probes is counted in frames, so the 150-frame wait for the catalogue was
+  two and a half minutes of nothing, and a picture — six frames — took six
+  seconds at *every* model size from one brick to four hundred. The model was
+  never the cost. So: `ModelShot.take` turns vsync off for the duration and puts
+  it back; a run driven from the command line turns it off for the whole run
+  (`_unthrottle_if_nobody_is_watching` in `src/main.gd`, because the command
+  socket polls in `_process` and every tool call waited up to a second each way);
+  and the windowed probes turn it off at start-up. An interactive window is left
+  alone — a CAD program spinning at four hundred frames a second is a laptop fan.
+- **`shot_probe` puts vsync back on for its speed check, deliberately.** A check
+  that measured its own fast setting would pass however slow a picture really is.
+  It asserts under two seconds with vsync on, which is the condition that broke a
+  real design run.
 - **`glyph_probe` exists because a missing glyph is invisible.** A character the
   font cannot draw shows as nothing at all, and nothing is what an empty label
   also looks like.

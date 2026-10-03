@@ -21,6 +21,11 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame
+	# Counted in frames, and a window nothing is looking at gets one a
+	# second on this machine. Without this the probe is minutes of
+	# waiting for a compositor.
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
 	var camera := CadCamera.new()
 	get_root().add_child(camera)
 	var gizmo := AxisGizmo.new()

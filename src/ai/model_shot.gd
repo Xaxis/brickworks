@@ -193,7 +193,61 @@ func take(world: BrickWorld, from: String,
 		skip: Dictionary = {}, only: AABB = AABB()) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
 		return null
+	# A picture is a handful of frames of waiting, and how long a frame
+	# takes is not this program's business until it is. Measured on this
+	# machine: 989 ms a frame with vsync as shipped, 20 ms with it off.
+	# So a picture cost six seconds at every model size from one brick
+	# to four hundred — the model was never what made it slow — and a
+	# design that takes twenty pictures spent two minutes waiting for a
+	# compositor to look at a window nobody was looking at. When a
+	# picture needed more than one try it went past the relay's three
+	# minutes and came back as nothing at all, which is what a real
+	# Voyager run spent its last ten minutes reporting: "the renderer
+	# keeps timing out", a starship designed by somebody who never saw
+	# it. With vsync off for the duration, the same picture takes under
+	# a tenth of a second.
+	_quicken()
+	var image: Image = await _take(world, from, skip, only)
+	_settle()
+	return image
 
+
+## Run frames as fast as the machine will, and remember what to put
+## back. Only for as long as a picture takes: an interactive window
+## spinning at four hundred frames a second is a laptop fan, and the
+## person looking at it cannot see the difference.
+func _quicken() -> void:
+	if _held > 0:
+		# Already quickened by an outer call. Nesting happens: block()
+		# calls take().
+		_held += 1
+		return
+	_was_vsync = DisplayServer.window_get_vsync_mode()
+	_was_max_fps = Engine.max_fps
+	if _was_vsync != DisplayServer.VSYNC_DISABLED:
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	_held = 1
+
+
+func _settle() -> void:
+	_held = maxi(0, _held - 1)
+	if _held > 0:
+		return
+	if _was_vsync != DisplayServer.VSYNC_DISABLED:
+		DisplayServer.window_set_vsync_mode(_was_vsync)
+	Engine.max_fps = _was_max_fps
+
+
+## How many pictures are being taken, and what the display was set to
+## before the first of them.
+var _held: int = 0
+var _was_vsync: int = DisplayServer.VSYNC_ENABLED
+var _was_max_fps: int = 0
+
+
+func _take(world: BrickWorld, from: String,
+		skip: Dictionary, only: AABB) -> Image:
 	if _viewport == null:
 		if library == null:
 			library = world.library

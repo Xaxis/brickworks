@@ -22,6 +22,13 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame
+	# Everything here is counted in frames, and a window nothing is
+	# looking at gets one a second on this machine. That made this
+	# probe seven minutes of waiting, almost all of it in the hundred
+	# and fifty frames below. The speed check puts vsync back on for its
+	# own measurement, which is the only part that cares.
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
 	var main: Node = load("res://src/main.tscn").instantiate()
 	root.add_child(main)
 	for _n: int in 150:
@@ -153,6 +160,7 @@ func _run() -> void:
 			% [_share(close) * 100.0, _share(whole) * 100.0])
 
 	await _check_ruler(shot, world)
+	await _check_speed(shot, world)
 	await _check_highlight(main, world, builder, library)
 
 	print("")
@@ -408,3 +416,57 @@ static func _magenta(image: Image) -> int:
 static func _samples(image: Image) -> int:
 	var step: int = maxi(image.get_width() / 60, 1)
 	return (image.get_width() / step) * (image.get_height() / step)
+
+
+## How long does a picture take?
+##
+## It has to be a question this probe asks, because the answer was six
+## seconds and nothing said so. Six frames of waiting is a tenth of a
+## second at sixty frames and six seconds at one, and one is what this
+## machine gives a window nothing is looking at. Measured: the same six
+## seconds at every model size from one brick to four hundred, so the
+## model was never the cost. A design that takes twenty pictures spent
+## two minutes of its half hour on it, and a picture that needed more
+## than one try went past the relay's three minutes and came back as
+## nothing — a starship designed by somebody who never saw it.
+##
+## Pictures run with vsync off now. The number to watch is the second
+## one and later: the first of a session also compiles shaders.
+func _check_speed(shot: ModelShot, world: BrickWorld) -> void:
+	print("")
+	print("  and it does not take six seconds")
+	# The slow condition, put back deliberately: this probe runs with
+	# vsync off so that it finishes at all, and a check that measured
+	# its own fast setting would pass however slow a picture really is.
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED)
+	Engine.max_fps = 0
+	var idle: float = Time.get_unix_time_from_system()
+	for _n: int in 10:
+		await process_frame
+	var per: float = (Time.get_unix_time_from_system() - idle) / 10.0
+	print("  ...   with vsync on, one frame takes %.0f ms" % (per * 1000.0))
+	var first: float = await _timed(shot, world, "corner")
+	print("  ...   the first of a session, shaders and all: %.2f s" % first)
+	var worst: float = 0.0
+	for from: String in ["far corner", "front", "corner"]:
+		worst = maxf(worst, await _timed(shot, world, from))
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	if worst < 2.0:
+		print("  ok    and the ones after it in %.2f s or less, with "
+			% worst + "vsync on the whole time")
+	else:
+		_failures += 1
+		print("  FAIL  a picture takes %.1f s — at twenty pictures a "
+			% worst + "design that is most of an hour, and the relay "
+			+ "gives up at three minutes")
+
+
+## Seconds for one picture.
+func _timed(shot: ModelShot, world: BrickWorld, from: String) -> float:
+	var began: float = Time.get_unix_time_from_system()
+	var image: Image = await shot.take(world, from)
+	var took: float = Time.get_unix_time_from_system() - began
+	if image == null:
+		_failures += 1
+		print("  FAIL  no picture from the %s to time" % from)
+	return took
