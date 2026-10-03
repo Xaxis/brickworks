@@ -64,6 +64,42 @@ const COURSES: Array = [
 	[1, 1, "3005", 0],
 ]
 
+## Wedge plates, which LDraw files under "Wing": one plate thick, left
+## and right handed, largest first.
+##
+## Their shapes are not written down here. A wedge's top studs sit only
+## on the part of its footprint it really covers, so the shape is read
+## off the part itself — and the handedness falls out of that, which it
+## has to, because a table of hypotenuse directions typed by hand is how
+## a model ends up with two left wings.
+##
+## Measured, Wing 4 x 4 Left:
+##
+##   ###.
+##   ###.
+##   ##..
+##   #...
+const WEDGES: Array = [
+	"3933", "3934",        # Wing 4 x 8
+	"3544", "3545",        # Wing 3 x 8
+	"48208", "48205",      # Wing 4 x 6
+	"54384", "54383",      # Wing 3 x 6
+	"3936", "3935",        # Wing 4 x 4
+	"78443", "78444",      # Wing 2 x 6
+	"41770a", "41769a",    # Wing 2 x 4
+	"43723a", "43722a",    # Wing 2 x 3
+	"24299", "24307",      # Wing 2 x 2
+]
+
+## "part rot" -> [across, deep, Dictionary of Vector2i], worked out once
+## from the parts themselves.
+static var _wedge_shapes: Dictionary = {}
+## The same shapes by their normalised cell set, so the mirror of a
+## placement can be looked up rather than derived. Measured: all 72
+## shapes have a twin in here, which is what makes it possible to lay
+## wedges in pairs and never leave a saucer lopsided.
+static var _wedge_prints: Dictionary = {}
+
 ## A pattern that would make more bricks than this is a mistake in the
 ## numbers, and expanding it would hang the app rather than refuse.
 const MOST := 4000
@@ -353,6 +389,116 @@ static func _inside(shape: String, x: int, z: int, low_x: int, low_z: int,
 	var u: float = (float(x - low_x) + 0.5) / (float(across) / 2.0) - 1.0
 	var v: float = (float(z - low_z) + 0.5) / (float(deep) / 2.0) - 1.0
 	return u * u + v * v <= 1.0
+
+
+## Every wedge shape, in every quarter turn, worked out once.
+static func wedge_shapes(library: PartLibrary) -> Dictionary:
+	if not _wedge_shapes.is_empty():
+		return _wedge_shapes
+	for part: Variant in WEDGES:
+		var base: Array = _studs_of(library, str(part))
+		if base.is_empty():
+			continue
+		for rot: int in 4:
+			var turned: Array = _turned(base, rot)
+			var named: String = "%s %d" % [str(part), rot]
+			_wedge_shapes[named] = turned
+			var mark: String = fingerprint(turned[2])
+			if not _wedge_prints.has(mark):
+				_wedge_prints[mark] = named
+	return _wedge_shapes
+
+
+## The shape that is this one reflected, as "part rot", or "".
+##
+## Looked up by the cells rather than worked out from handedness, so
+## nothing here has to know which wedge is the left hand of which.
+static func wedge_mirror_of(library: PartLibrary, named: String) -> String:
+	wedge_shapes(library)
+	var shape: Array = _wedge_shapes.get(named, [])
+	if shape.is_empty():
+		return ""
+	return str(_wedge_prints.get(fingerprint(_reflect(shape[2])), ""))
+
+
+## Which studs a wedge has, in cells from the low corner of its
+## footprint — which is the corner a placement names.
+##
+## A stud at the footprint's minimum is cell nought, and a handed pair
+## differs only in which side the cut is on: 3936 reaches to +37 of a
+## +40 box and 3935 starts at -37 of a -40 one, so the same arithmetic
+## gives one shape and its mirror without being told about either.
+static func _studs_of(library: PartLibrary, part: String) -> Array:
+	var info: PartLibrary.PartInfo = library.parts.get(part) if library != null \
+		else null
+	var mesh: Lbm.PartMesh = library.mesh_for(part) if library != null else null
+	if info == null or mesh == null:
+		return []
+	var footprint: Vector2i = info.footprint_studs()
+	var cells: Dictionary = {}
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud" or connector.gender != "male":
+			continue
+		# Upward studs only. One on a side belongs to a different part
+		# and a different problem.
+		if connector.axis.normalized().dot(Vector3.UP) < 0.9:
+			continue
+		var at := Vector2i(
+			int(floor((connector.position.x - mesh.bounds.position.x) / 20.0)),
+			int(floor((connector.position.z - mesh.bounds.position.z) / 20.0)))
+		if at.x < 0 or at.y < 0 or at.x >= footprint.x or at.y >= footprint.y:
+			continue
+		cells[at] = true
+	# Nothing read, or it fills its own box — in which case a plate does
+	# the same job and is a plate.
+	if cells.is_empty() or cells.size() >= footprint.x * footprint.y:
+		return []
+	return [footprint.x, footprint.y, cells]
+
+
+## A shape turned. Measured against the real placement transform:
+## a quarter turn sends (i, j) to (j, across - 1 - i).
+static func _turned(shape: Array, rot: int) -> Array:
+	var across: int = shape[0]
+	var deep: int = shape[1]
+	var cells: Dictionary = shape[2]
+	for _turn: int in posmod(rot, 4):
+		var next: Dictionary = {}
+		for key: Variant in cells:
+			var at: Vector2i = key
+			next[Vector2i(at.y, across - 1 - at.x)] = true
+		cells = next
+		var swap: int = across
+		across = deep
+		deep = swap
+	return [across, deep, cells]
+
+
+## A shape reflected across its own width.
+static func _reflect(cells: Dictionary) -> Dictionary:
+	var widest: int = 0
+	for key: Variant in cells:
+		widest = maxi(widest, (key as Vector2i).x)
+	var out: Dictionary = {}
+	for key: Variant in cells:
+		var at: Vector2i = key
+		out[Vector2i(widest - at.x, at.y)] = true
+	return out
+
+
+## A set of cells as one comparable string, shifted so its lowest cell
+## is at nought. Two shapes are the same shape when these match.
+static func fingerprint(cells: Dictionary) -> String:
+	var low := Vector2i(0x7FFFFFFF, 0x7FFFFFFF)
+	for key: Variant in cells:
+		var at: Vector2i = key
+		low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
+	var said := PackedStringArray()
+	for key: Variant in cells:
+		var at: Vector2i = key
+		said.append("%d,%d" % [at.x - low.x, at.y - low.y])
+	said.sort()
+	return "|".join(said)
 
 
 ## A set of studs, laid in the largest parts that cover it.

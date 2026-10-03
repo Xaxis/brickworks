@@ -155,6 +155,7 @@ func _initialize() -> void:
 	_check("a taper that comes to a point stops there, %d plates"
 		% cone.size(), not cone.is_empty() and cone.size() < 200)
 
+	_wedges_read_off_the_parts()
 	_holds_up()
 
 	print("")
@@ -292,3 +293,67 @@ func _check(what: String, ok: bool) -> void:
 		return
 	_failures += 1
 	print("  FAIL  %s" % what)
+
+
+## Are the wedge shapes the shapes the parts actually have?
+##
+## A fill that lays wedges has to know which cells of a wedge's
+## footprint it covers and which it leaves to the outside of the shape.
+## Writing that down by hand is how a model gets two left wings, so it
+## is read off each part's own top studs — and the handedness falls out
+## of the arithmetic rather than being asserted.
+func _wedges_read_off_the_parts() -> void:
+	print("")
+	print("  wedge shapes, read off the parts themselves")
+	var shapes_read: Dictionary = Patterns.wedge_shapes(_library)
+	_check("every wedge in the list has a shape, %d of them"
+		% shapes_read.size(), shapes_read.size() == Patterns.WEDGES.size() * 4)
+
+	# The one shape worth writing out, because every other check here
+	# would pass on a table of empty sets.
+	var drawn_as: String = _draw(shapes_read.get("3936 0", []))
+	_check("Wing 4 x 4 Left is %s" % drawn_as,
+		drawn_as == "###. / ###. / ##.. / #...")
+	# And its twin is the mirror of it, which is the whole reason the
+	# shapes are derived rather than typed.
+	_check("...and Wing 4 x 4 Right is the mirror of it, %s"
+		% _draw(shapes_read.get("3935 0", [])),
+		_draw(shapes_read.get("3935 0", [])) == ".### / .### / ..## / ...#")
+
+	# Every shape has a mirror twin somewhere in the family. Without
+	# that, laying wedges in pairs could not be guaranteed — and the
+	# first attempt at this laid them greedily and threw out the ones
+	# that came up unpaired, which was all of them.
+	var twinless: int = 0
+	for named: String in shapes_read:
+		if Patterns.wedge_mirror_of(_library, named).is_empty():
+			twinless += 1
+			if twinless <= 3:
+				print("        %s has no twin" % named)
+	_check("every shape has a mirror twin, %d without" % twinless,
+		twinless == 0)
+
+	# The trap that cost the first attempt: a right hand's own corner
+	# cell is never one of its studs, so a candidate position taken
+	# from the shape's cells can only ever place left hands.
+	var right_hand: Array = shapes_read.get("3935 0", [])
+	_check("a right hand does not cover its own low corner, which is "
+		+ "why positions are tried over the whole box",
+		not right_hand.is_empty()
+			and not (right_hand[2] as Dictionary).has(Vector2i(0, 0)))
+
+
+## A shape as "###. / ##.. / ...", for a message somebody can read.
+func _draw(shape: Array) -> String:
+	if shape.is_empty():
+		return "(nothing)"
+	var across: int = shape[0]
+	var deep: int = shape[1]
+	var cells: Dictionary = shape[2]
+	var rows := PackedStringArray()
+	for j: int in deep:
+		var row: String = ""
+		for i: int in across:
+			row += "#" if cells.has(Vector2i(i, j)) else "."
+		rows.append(row)
+	return " / ".join(rows)
