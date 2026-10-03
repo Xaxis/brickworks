@@ -79,6 +79,13 @@ static func arguments(brief: String, config: String,
 
 ## Where the command is, or "" if this machine has not got it.
 static func found() -> String:
+	# A browser cannot start a program, and asking it to is not a quiet
+	# no: the engine prints "OS::execute() must be implemented in Web"
+	# into the console of every visitor. The file said "desktop only"
+	# from the first line and nothing enforced it, which the deploy's
+	# browser check found on the first run after it shipped.
+	if OS.has_feature("web"):
+		return ""
 	# `which` rather than a guess at the path: it is installed by a
 	# script that picks its own directory, and ~/.local/bin is only the
 	# usual answer.

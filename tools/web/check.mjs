@@ -166,8 +166,23 @@ if (args.bypass) {
 const problems = [];
 // Things that mean the deployment is wrong, as opposed to noisy.
 const broken = [];
+// And the engine's own complaints, which are the app asking for
+// something this build cannot do.
+const engine = [];
+// The engine complaining about itself is not noise.
+//
+// Godot prints its own errors with the C++ file and line that raised
+// them, which is how "OS::execute() must be implemented in Web" reached
+// the console of every visitor: a desktop-only feature called from the
+// web build, shipped, and reported here as something to read past. A
+// page may log all sorts of things; the engine saying it cannot do what
+// the app asked is the app being wrong.
+const ENGINE_FAULT = /\bat: .+\.(cpp|h):\d+|^ERROR:/;
 page.on("console", (m) => {
-  if (m.type() === "error") problems.push(m.text().slice(0, 200));
+  if (m.type() !== "error") return;
+  const text = m.text().slice(0, 200);
+  problems.push(text);
+  if (ENGINE_FAULT.test(text)) engine.push(text);
 });
 page.on("pageerror", (e) => problems.push(String(e).slice(0, 200)));
 
@@ -294,6 +309,12 @@ if (broken.length) {
   console.error(`check FAILED: ${seen.length} request(s) the page `
     + "made came back as errors");
   for (const b of seen.slice(0, 8)) console.error(`  ${b}`);
+  process.exit(1);
+}
+if (engine.length) {
+  const seen = [...new Set(engine)];
+  console.error(`check FAILED: the engine raised ${seen.length} error(s)`);
+  for (const e of seen.slice(0, 8)) console.error(`  ${e}`);
   process.exit(1);
 }
 // Said once, at the end, after everything that could contradict it.
