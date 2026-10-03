@@ -247,6 +247,35 @@ func _one_at_a_time(port: int) -> void:
 	_socket._hand_back()
 	_check("the app is free again", _socket._in_hand == 0)
 
+	# And a wait that never ends gives up and says so, rather than
+	# joining the queue for ever. The first version waited on a signal
+	# alone, which reads as a deadline and is not one: if whoever holds
+	# the app never finishes, the signal never comes and the line that
+	# checks the clock is never reached.
+	_socket.queued_for = 1.0
+	await _socket._take_a_turn()
+	var stuck: Dictionary = {"through": false, "got": true}
+	_gave_up(stuck)
+	var waited: float = Time.get_unix_time_from_system()
+	for _n: int in 400:
+		await process_frame
+		if bool(stuck["through"]):
+			break
+	var how_long: float = Time.get_unix_time_from_system() - waited
+	if not bool(stuck["through"]):
+		_failures += 1
+		print("  FAIL  a call behind one that never finishes waited for "
+			+ "ever instead of giving up")
+	elif bool(stuck["got"]):
+		_failures += 1
+		print("  FAIL  it gave up and took the app anyway")
+	else:
+		print("  ok    ...and one behind a call that never finishes "
+			+ "gives up after %.1f s and says so" % how_long)
+	_socket._hand_back()
+	_socket._hand_back()
+	_socket.queued_for = 100.0
+
 	# And end to end: three clients, three calls sent in the same frame,
 	# three answers, each to the client that asked.
 	var peers: Array[StreamPeerTCP] = []
@@ -272,6 +301,12 @@ func _one_at_a_time(port: int) -> void:
 ## Take a turn in the background, and say so when it comes.
 func _waiting_turn(flag: Dictionary) -> void:
 	await _socket._take_a_turn()
+	flag["through"] = true
+
+
+## Wait for a turn that will not come, and record how it ended.
+func _gave_up(flag: Dictionary) -> void:
+	flag["got"] = await _socket._take_a_turn()
 	flag["through"] = true
 
 

@@ -92,10 +92,12 @@ var _port := PORT
 ## USS Voyager reported "the renderer keeps timing out" and spent its
 ## last ten minutes unable to look at what it had built.
 var _in_hand: int = 0
-signal _handed_back
 ## How long a queued call will wait before saying so. The relay gives up
-## at three minutes, and a message is better than its silence.
-const QUEUED_FOR := 100.0
+## at three minutes, and a message is better than its silence. A
+## variable rather than a constant so that a probe can shorten it:
+## waiting a hundred seconds to watch a deadline fire is not a check
+## anybody will run.
+var queued_for: float = 100.0
 
 
 ## Start listening. Returns false, and says why, when the port is taken —
@@ -398,18 +400,23 @@ func _take_a_turn() -> bool:
 	if _in_hand == 0:
 		_in_hand += 1
 		return true
-	var until: float = Time.get_unix_time_from_system() + QUEUED_FOR
+	var until: float = Time.get_unix_time_from_system() + queued_for
+	# Frames, not the signal. Waiting on _handed_back alone looks
+	# tidier and silently drops the deadline: if whoever holds the app
+	# never finishes, the signal never comes, the line above is never
+	# reached again and the queue waits for ever — which is the hang
+	# this was written to stop, moved one layer down. A frame always
+	# comes.
 	while _in_hand > 0:
 		if Time.get_unix_time_from_system() > until:
 			return false
-		await _handed_back
+		await get_tree().process_frame
 	_in_hand += 1
 	return true
 
 
 func _hand_back() -> void:
 	_in_hand = maxi(0, _in_hand - 1)
-	_handed_back.emit()
 
 
 ## Tools an outside session needs and the design loop does not.

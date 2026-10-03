@@ -129,7 +129,12 @@ Both are in `tools/check.sh`.
   run said so out loud — "the renderer keeps timing out" — and spent its last ten
   minutes unable to look at what it had built. `_take_a_turn` / `_hand_back` queue
   them; the per-client `busy` flag was never enough, because the second call
-  arrives on a different client.
+  arrives on a different client. The queue waits on **frames**, not on a
+  hand-back signal: waiting on the signal alone reads as a deadline and is not
+  one — if whoever holds the app never finishes, the signal never comes, the line
+  that checks the clock is never reached, and the hang is back one layer down.
+  `queued_for` is a variable rather than a constant so the probe can shorten it;
+  nobody runs a check that waits a hundred seconds.
 - **`check_design` puts the trial on the baseplate**, and the baseplate is saved
   and restored on the next start. A design checked at the origin overlaps that
   saved model next time, which reads as a broken checker and is not. Call
