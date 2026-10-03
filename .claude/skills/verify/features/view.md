@@ -60,9 +60,17 @@ take, which is what made a design run give up on looking at itself.
 
 ## Gotchas
 
-- **Four of these need a display** (`shot`, `gizmo`, `colour`, and `marquee` in
-  [building](building.md)). A headless run has no rendering device for the
-  SubViewport, so they are last in `tools/check.sh` and flash a window open.
+- **Five of these need a display** (`shot`, `gizmo`, `colour`, `feel`, and
+  `marquee` in [building](building.md)). A headless run has no rendering device
+  for the SubViewport, so they are last in `tools/check.sh` and flash a window
+  open. **They no longer need a desktop session**: `check.sh` tries `xdpyinfo`
+  first and falls back to `xvfb-run -a` when there is no display, which there is
+  not from a detached shell, after the screen locks, or on a machine nobody is
+  sitting at. Without it the five fail with "X11 Display is not available",
+  which reads like a broken probe and is not. Rendering works the same there and
+  is faster — a frame costs 124 ms on Xvfb against 989 ms on the compositor.
+  A design run can have one the same way:
+  `xvfb-run -a --server-args="-screen 0 1500x950x24" godot --path . -- --ask=…`
 - **A window nobody is looking at runs at one frame a second.** Measured on this
   machine: 989 ms a frame with vsync as shipped, 20 ms with it off. Everything in
   these probes is counted in frames, so the 150-frame wait for the catalogue was

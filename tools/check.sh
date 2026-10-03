@@ -125,25 +125,46 @@ done
 # headless run has no rendering device to draw them with. It flashes a
 # window open for a few seconds, which is why it is last.
 echo "── on screen ──"
-run "colour" godot --path . --resolution 1400x900 \
+
+# A window even when nobody is logged in.
+#
+# These five need a rendering device. The desktop session is the obvious
+# one and it is not always there: a run from a detached shell, or after
+# the screen locks, or on a machine nobody is sitting at, finds no
+# display and five checks fail for a reason that has nothing to do with
+# the code — "X11 Display is not available", which reads like a broken
+# probe. Xvfb gives them one, and the pictures come out the same: a
+# frame costs 124 ms there against 989 ms on the compositor, so it is
+# faster as well.
+screen=()
+if ! timeout 5 xdpyinfo >/dev/null 2>&1; then
+  if command -v xvfb-run >/dev/null 2>&1; then
+    screen=(xvfb-run -a --server-args="-screen 0 1400x900x24")
+    echo "        no display, so these run on Xvfb"
+  else
+    echo "        no display and no xvfb-run — these will fail"
+  fi
+fi
+
+run "colour" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/colour_probe.gd
 # Same reason, and one more: the picture the assistant is shown only
 # exists where there is something to draw with, so a headless suite
 # would never once exercise the path the app actually takes.
-run "model shot" godot --path . --resolution 1200x800 \
+run "model shot" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/shot_probe.gd
-run "axis gizmo" godot --path . --resolution 1200x800 \
+run "axis gizmo" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/gizmo_probe.gd
 # Also a window: what a dragged box catches depends on where each brick
 # lands on screen, which needs a camera with a viewport to project into.
-run "box select" godot --path . --resolution 1200x800 \
+run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/marquee_probe.gd
 # And the one that asks whether the controls feel right rather than
 # whether they are wired: it drives the real scene with the gestures a
 # person reaches for by habit. It found left-drag placing a brick,
 # which every binding test had passed over because there was no
 # binding to test.
-run "feel" godot --path . --resolution 1400x900 \
+run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/feel_probe.gd
 
 # Two processes and a socket between them, which is a different kind of
