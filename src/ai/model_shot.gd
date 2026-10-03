@@ -53,6 +53,11 @@ const ANGLES: Dictionary = {
 
 var _viewport: SubViewport
 var _camera: Camera3D
+var _ruler: ShotRuler = null
+## Whether to write the studs on. Off for the pictures a person looks at
+## — the app's own screenshots and the gallery — and on for the ones a
+## design is shown, which is the only place a number helps.
+var rulers: bool = true
 var _stage: BrickWorld
 
 ## The library the copy is built from. Set by whoever owns this.
@@ -109,6 +114,16 @@ func _build() -> void:
 	_camera.near = 1.0
 	_camera.far = 60000.0
 	_viewport.add_child(_camera)
+
+	# Studs written on the picture. A render says what was built and not
+	# where it is, so a design that can see the nacelle is too far
+	# forward has to guess by how much, in a unit the picture does not
+	# carry.
+	_ruler = ShotRuler.new()
+	_ruler.camera = _camera
+	_ruler.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ruler.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_viewport.add_child(_ruler)
 
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
@@ -211,6 +226,11 @@ func take(world: BrickWorld, from: String,
 	# A tenth of margin, so nothing is cropped by a stud.
 	_camera.size = maxf(widest * 2.2, 40.0)
 	_camera.current = true
+
+	if _ruler != null:
+		_ruler.visible = rulers
+		_ruler.bounds = bounds
+		_ruler.queue_redraw()
 
 	# Drawn over the next few frames rather than awaited once.
 	#

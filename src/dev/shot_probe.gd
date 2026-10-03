@@ -152,6 +152,8 @@ func _run() -> void:
 			+ "%.0f%% against %.0f%%"
 			% [_share(close) * 100.0, _share(whole) * 100.0])
 
+	await _check_ruler(shot, world)
+
 	print("")
 	if _failures == 0:
 		print("the assistant is shown the model it built")
@@ -173,3 +175,50 @@ static func _share(image: Image) -> float:
 	var sampled: int = (image.get_width() / step) \
 		* (image.get_height() / step)
 	return float(hits) / float(maxi(sampled, 1))
+
+
+## The studs written on the picture.
+##
+## A render says what was built and not where it is, so a design that can
+## see the nacelle is too far forward has to guess by how much, in a unit
+## the picture does not carry. The ruler is two lines along the model's
+## near corner, ticked and numbered in studs, drawn by projecting world
+## positions through the same camera that took the picture — so a number
+## on the image is the number to write in a placement.
+##
+## Checked by taking the same model twice, with the ruler and without,
+## and asking whether the pictures differ. Reading the numbers off is
+## something only a person or a model can do; that something was drawn
+## is what can be checked here.
+func _check_ruler(shot: ModelShot, world: BrickWorld) -> void:
+	print("")
+	print("  the studs written on it")
+	shot.rulers = true
+	var ruled: Image = await shot.take(world, "corner")
+	shot.rulers = false
+	var plain: Image = await shot.take(world, "corner")
+	shot.rulers = true
+	if ruled == null or plain == null:
+		_failures += 1
+		print("  FAIL  no picture came back to compare")
+		return
+	if ruled.get_size() != plain.get_size():
+		_failures += 1
+		print("  FAIL  the two pictures are not the same size")
+		return
+	var differ: int = 0
+	for x: int in range(0, ruled.get_width(), 3):
+		for y: int in range(0, ruled.get_height(), 3):
+			if not ruled.get_pixel(x, y).is_equal_approx(plain.get_pixel(x, y)):
+				differ += 1
+	# A ruler is thin: a few hundred samples out of a hundred thousand.
+	if differ > 40:
+		print("  ok    the ruler draws something, %d samples differ" % differ)
+	else:
+		_failures += 1
+		print("  FAIL  the ruler drew nothing, %d samples differ" % differ)
+	if differ < 8000:
+		print("  ok    ...and it is a ruler, not a wash over the picture")
+	else:
+		_failures += 1
+		print("  FAIL  the ruler covers the picture, %d samples" % differ)

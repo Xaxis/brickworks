@@ -29,6 +29,9 @@ func _run() -> void:
 	var stability: Stability = main.get("_stability")
 
 	var shot := ModelShot.new()
+	# These are for a person to look at, not for a design to measure
+	# off, and a ruler across a gallery picture is clutter.
+	shot.rulers = false
 	shot.library = library
 	main.add_child(shot)
 	DirAccess.make_dir_recursive_absolute(OUT)
