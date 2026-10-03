@@ -116,6 +116,36 @@ func _run() -> void:
 	_check_quiet("a plain wall is not nagged about its outline",
 		_verdict(assistant, wall), "steps its way")
 
+	# And the staircase has to be found when it is one course of a
+	# model rather than the whole of it.
+	#
+	# This is the case that was silently missed. The check flattened
+	# every brick into a single plan view, so a ship whose saucer is a
+	# staircase and whose hull is wider than the saucer had the hull's
+	# straight edge for an outline and no staircase anywhere in it.
+	# Measured on a real 144-part Voyager: not one wedge in it, not one
+	# word said. A slab under the ellipse here does the same hiding.
+	var hidden: Array = []
+	for x in range(-9, 9):
+		for z in range(-7, 7):
+			hidden.append({"part": "3024", "color": 7,
+				"x": x, "y": 0, "z": z, "rot": 0})
+	for one: Variant in ellipse:
+		var up: Dictionary = (one as Dictionary).duplicate()
+		up["y"] = 1
+		hidden.append(up)
+	_check_says("a staircase one course up, under a wider slab, is "
+		+ "still found", _verdict(assistant, hidden), "wedge plate")
+
+	# A round tower is round. The lattice approximates it as steps, and
+	# saying so would be a complaint about the measuring.
+	var round_tower: Array = []
+	for y in range(0, 8):
+		round_tower.append({"part": "3941", "color": 4,
+			"x": 0, "y": y * 3, "z": 0, "rot": 0})
+	_check_quiet("a round tower is not called stepped",
+		_verdict(assistant, round_tower), "steps its way")
+
 	print("")
 	print("  one layer, which nothing can hold together")
 	# The commonest shape of early draft, and the count on its own reads

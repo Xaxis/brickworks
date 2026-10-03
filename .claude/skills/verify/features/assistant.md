@@ -109,6 +109,21 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   code and watch it fail.
 - **GDScript lambdas capture by value.** A callback that reads a counter captured
   the number, not the variable.
+- **A whole-model plan view is blind to a stepped edge.** `_stepped_outline`
+  flattened every brick into one outline, so a ship whose saucer is a staircase
+  and whose hull is wider than the saucer had the hull's straight edge for an
+  outline and no staircase in it anywhere. Measured on a real 144-part Voyager:
+  not one wedge in 27 kinds of part, and not one word said. It runs course by
+  course now, and only over parts that fill their box — the lattice approximates
+  a round brick as a staircase, and calling that stepped would be a complaint
+  about the measuring. Silent on all eight shipped models, and it finds the
+  saucer.
+- **"A straight diagonal of any slope" was not what the old rule tested.** It
+  compared step *sizes* and allowed any two adjacent ones, which rejects a
+  two-stud step alternating with a flat — the commonest wedge slope there is. It
+  asks whether the edge stays within a stud of a straight line now, and requires
+  the slope to be strictly steeper than one in two: at exactly one in two the
+  shipped tower and tree fire, and they taper on purpose.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

@@ -2601,7 +2601,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			advice.append("Section '%s':%s" % [group, fits])
 
 	# And whether the outline is a staircase where it could be an edge.
-	var stepped: String = _stepped_outline(cells_of)
+	var stepped: String = _stepped_outline(cells_of, box_of)
 	if not stepped.is_empty():
 		advice.append(stepped)
 
@@ -2685,53 +2685,33 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 const SHORTEST_STAIRCASE := 4
 
 
-func _stepped_outline(cells_of: Dictionary) -> String:
-	# The plan view: for each column of studs across, how deep the model
-	# reaches at its far and near edges.
-	var far: Dictionary = {}    ## stud x -> largest stud z
-	var near: Dictionary = {}   ## stud x -> smallest stud z
-	for index: int in cells_of:
-		for cell: Vector3i in cells_of[index]:
-			var at_x: int = floori(float(cell.x) / BrickLattice.CELLS_PER_STUD)
-			var at_z: int = floori(float(cell.z) / BrickLattice.CELLS_PER_STUD)
-			far[at_x] = maxi(far.get(at_x, at_z), at_z)
-			near[at_x] = mini(near.get(at_x, at_z), at_z)
-	if far.size() < SHORTEST_STAIRCASE + 1:
-		return ""
-
-	var columns: Array = far.keys()
-	columns.sort()
+func _stepped_outline(cells_of: Dictionary, box_of: Dictionary) -> String:
+	# One course at a time, and only the parts that are square in plan.
+	#
+	# Flattening the whole model into a single plan view was the first
+	# way of doing this, and it is blind to the thing it was written
+	# for. A starship is a saucer, a hull, two pylons, two nacelles and
+	# a stand, all on top of one another in plan; the envelope of all
+	# of them together is a blob with no staircase in it. Measured: a
+	# 144-part Voyager whose saucer is a staircase of rectangular
+	# plates, not one wedge in it, came back with no advice at all.
+	#
+	# And only square parts, because this reads lattice cells and the
+	# lattice approximates a round brick as a staircase. A tower of
+	# round bricks is round; saying it is stepped would be a complaint
+	# about the measuring, not about the model.
 	var longest: int = 0      ## studs across
 	var deep: int = 0         ## and how far it moves in that distance
-	for edge: Dictionary in [far, near]:
-		var start: int = 0
-		while start < columns.size() - 1:
-			var steps: Array[int] = []
-			var at: int = start
-			# Extend while every step so far is one of two adjacent
-			# sizes. A straight diagonal of any slope is exactly that:
-			# 1,1,1 is forty-five degrees, 2,2,2 is steeper, and 1,0,1,0
-			# is the shallow one a 2 x 4 wedge plate makes. A curve
-			# changes slope, so its runs break where it bends — which is
-			# right, because a curve is not one wedge.
-			while at < columns.size() - 1 and columns[at + 1] == columns[at] + 1:
-				var step: int = edge[columns[at + 1]] - edge[columns[at]]
-				var with_it: Array[int] = steps.duplicate()
-				with_it.append(step)
-				if with_it.max() - with_it.min() > 1:
-					break
-				steps = with_it
-				at += 1
-			# Flat is not a staircase, and one lone step in a flat edge
-			# is a jog rather than a diagonal.
-			var moved: int = 0
-			for step: int in steps:
-				moved += absi(step)
-			if steps.size() >= SHORTEST_STAIRCASE and moved >= 2:
-				if steps.size() > longest:
-					longest = steps.size()
-					deep = moved
-			start = maxi(at, start + 1)
+	for course: Variant in _courses(cells_of, box_of).values():
+		var layer: Array = course
+		var far: Dictionary = layer[0]
+		var near: Dictionary = layer[1]
+		if far.size() < SHORTEST_STAIRCASE + 1:
+			continue
+		var found: Array = _longest_staircase(far, near)
+		if int(found[0]) > longest:
+			longest = int(found[0])
+			deep = int(found[1])
 
 	if longest < SHORTEST_STAIRCASE:
 		return ""
@@ -2742,6 +2722,118 @@ func _stepped_outline(cells_of: Dictionary) -> String:
 		+ "doing badly — search \"wedge plate 2 x 4\". They are one "
 		+ "plate thick, left and right handed, and sit in the layer "
 		+ "beside ordinary plates.")
+
+
+## The plan outline of each course, as [far, near] by stud x.
+##
+## Read off each part's box rather than off its cells. The box is
+## already worked out — every other check here uses it — and a part
+## that fills its box is square in plan, which is the only kind this
+## should look at: the lattice approximates a round brick as a
+## staircase, and calling that stepped would be a complaint about the
+## measuring rather than about the model. A wedge fills its box no more
+## than a round brick does, and is excluded for the same reason, which
+## is right: a wedge edge is the thing being recommended.
+##
+## Cells are counted and never walked. The first version walked all of
+## them to find out which stud columns a part covered, which is nine
+## thousand six hundred per brick for a number the box gives for free.
+func _courses(cells_of: Dictionary, box_of: Dictionary) -> Dictionary:
+	## plate -> [far, near] by stud x
+	var courses: Dictionary = {}
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var low: Vector3i = corners[0]
+		var high: Vector3i = corners[1]
+		var volume: int = (high.x - low.x + 1) * (high.y - low.y + 1) \
+			* (high.z - low.z + 1)
+		var filled: int = 0
+		if cells_of.has(index):
+			filled = (cells_of[index] as Array).size()
+		if filled != volume:
+			continue
+		# Whole plates only, so that the stud on a part's top does not
+		# give it a presence in the course above and merge two outlines
+		# that have nothing to do with each other.
+		var first: int = ceili(float(low.y) / BrickLattice.CELLS_PER_PLATE)
+		var last: int = floori(float(high.y + 1)
+			/ BrickLattice.CELLS_PER_PLATE) - 1
+		if last < first:
+			continue
+		var from_x: int = floori(float(low.x) / BrickLattice.CELLS_PER_STUD)
+		var to_x: int = floori(float(high.x) / BrickLattice.CELLS_PER_STUD)
+		var from_z: int = floori(float(low.z) / BrickLattice.CELLS_PER_STUD)
+		var to_z: int = floori(float(high.z) / BrickLattice.CELLS_PER_STUD)
+		for plate: int in range(first, last + 1):
+			if not courses.has(plate):
+				courses[plate] = [{}, {}]
+			var layer: Array = courses[plate]
+			var far: Dictionary = layer[0]
+			var near: Dictionary = layer[1]
+			for at_x: int in range(from_x, to_x + 1):
+				far[at_x] = maxi(far.get(at_x, to_z), to_z)
+				near[at_x] = mini(near.get(at_x, from_z), from_z)
+	return courses
+
+
+## The longest run of even steps along either edge, as [studs, depth].
+func _longest_staircase(far: Dictionary, near: Dictionary) -> Array:
+	var columns: Array = far.keys()
+	columns.sort()
+	var longest: int = 0
+	var deep: int = 0
+	for edge: Dictionary in [far, near]:
+		var start: int = 0
+		while start < columns.size() - 1:
+			# Extend while the edge stays within a stud of the straight
+			# line from where the run began to where it has reached.
+			#
+			# The first version compared step *sizes* and allowed any
+			# two adjacent ones, which reads as "a straight diagonal of
+			# any slope" and is not: a two-stud step alternating with a
+			# flat one is the commonest wedge slope there is, and its
+			# sizes are 0 and 2, which that rule rejects. Measured on a
+			# 144-part Voyager whose saucer is a staircase of plain
+			# plates — every run broke at its second step and nothing
+			# was ever said. Asking whether the edge is near a line
+			# does not care how the steps are distributed, which is the
+			# whole point: a staircase is a line drawn in steps.
+			var at: int = start
+			var ran: int = start
+			while at < columns.size() - 1 \
+					and columns[at + 1] == columns[at] + 1:
+				at += 1
+				var span: int = columns[at] - columns[start]
+				var rise: float = float(edge[columns[at]]
+					- edge[columns[start]])
+				var straight: bool = true
+				for n: int in range(start + 1, at):
+					var want: float = float(edge[columns[start]]) \
+						+ rise * float(columns[n] - columns[start]) \
+						/ float(span)
+					if absf(float(edge[columns[n]]) - want) > 1.0:
+						straight = false
+						break
+				if not straight:
+					at -= 1
+					break
+				ran = at
+			var steps: int = ran - start
+			var moved: int = absi(edge[columns[ran]] - edge[columns[start]])
+			# Flat is not a staircase, and one lone step in a flat edge
+			# is a jog rather than a diagonal. Nor is a very shallow
+			# drift: steeper than one stud deep for every two across,
+			# or the shipped tower and tree — which taper two studs
+			# over five, on purpose — get told to use wedge plates, and
+			# advice that fires on good models is noise. Measured at
+			# one in two exactly: both of them fire. Strictly steeper:
+			# neither does, and a saucer still does.
+			if steps >= SHORTEST_STAIRCASE and moved * 2 > steps \
+					and moved >= 2 and steps > longest:
+				longest = steps
+				deep = moved
+			start = maxi(ran, start + 1)
+	return [longest, deep]
 
 
 ## Whether the whole design sits in a single course.
