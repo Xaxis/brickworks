@@ -1657,13 +1657,19 @@ func _with_a_look(said: String, ask: String,
 	# would be answering a turn that no longer exists.
 	if during_a_run and not _busy:
 		return ""
+	# How big it came out, which is the thing a picture is worst at and
+	# is wanted every time one is taken — not only at the critique.
+	# A trial checked at twelve studs across when the plan said twenty
+	# is cheaper to find out now than after the detail goes on.
+	var sizes: String = _measured()
+
 	if picture.is_empty():
 		var elevation: String = "front" if from in ["corner", "top"] else from
 		var drawn: String = "%s\n%s" % [
 			ModelView.draw(world, library, "top", scenery),
 			ModelView.draw(world, library, elevation, scenery)]
 		var parts := PackedStringArray()
-		for piece: String in [said, drawn, ask]:
+		for piece: String in [said, sizes, drawn, ask]:
 			if not piece.strip_edges().is_empty():
 				parts.append(piece)
 		return "\n\n".join(parts)
@@ -1671,6 +1677,8 @@ func _with_a_look(said: String, ask: String,
 	var blocks: Array = []
 	if not said.is_empty():
 		blocks.append({"type": "text", "text": said})
+	if not sizes.is_empty():
+		blocks.append({"type": "text", "text": sizes})
 	blocks.append({"type": "text", "text": "The model, from the %s:" % from})
 	blocks.append(picture)
 	if not ask.is_empty():
