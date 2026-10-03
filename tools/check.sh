@@ -34,6 +34,9 @@ fail=0
 # Checks that ran but left something out, which is neither a pass nor a
 # failure and has to be said out loud either way.
 skipped=0
+# And checks that never finished. A run with one of these in it has not
+# proven what it set out to, whatever the rest of it says.
+unproven=0
 
 run() {
   local label="$1"; shift
@@ -41,7 +44,13 @@ run() {
   # Once, not twice. This used to run each probe a second time to read
   # its exit code, which doubled the slowest part of the suite to save
   # a variable.
-  output=$("$@" 2>&1); status=$?
+  # Bounded, because a probe that hangs stops the whole run rather than
+  # failing it. One did: it forced a draw from inside a frame, deadlocked
+  # on a busy machine, and the suite sat at "on screen" until somebody
+  # noticed. The windowed probes also starve on a machine shared with
+  # other projects' suites — above about load twelve they wait for frames
+  # that never come — and that is not a pass either.
+  output=$(timeout "${PROBE_SECONDS:-420}" "$@" 2>&1); status=$?
   # Godot exits 0 when a script fails to parse. So a probe with a typo
   # in it reported as passing, and did so for as long as it took
   # somebody to read the file — the stability probe had not run since
@@ -49,7 +58,13 @@ run() {
   if echo "$output" | grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script'; then
     status=1
   fi
-  if [ "$status" = 0 ]; then
+  if [ "$status" = 124 ]; then
+    # Not a pass and not a failure: nothing was proven either way, and
+    # saying "ok" or "FAIL" would both be claims nobody can stand up.
+    printf '  ----  %s TIMED OUT after %ss\n' "$label" "${PROBE_SECONDS:-420}"
+    printf '          nothing was proven. Check the load: these starve above about 12\n'
+    unproven=$((unproven + 1))
+  elif [ "$status" = 0 ]; then
     printf '  ok    %s\n' "$label"
   else
     printf '  FAIL  %s\n' "$label"
@@ -145,6 +160,15 @@ if [ "$network" = 1 ]; then
 fi
 
 echo ""
+if [ "$unproven" != 0 ]; then
+  # Said first and counted as a failure of the run, because "everything
+  # else passed" about a run that could not finish is how a hang gets
+  # read as a pass.
+  echo "$unproven check(s) NEVER FINISHED — nothing is proven about them  (${SECONDS}s)"
+  echo "  if the machine is busy, run them again when it is not:"
+  echo "    uptime; tools/check.sh"
+  exit 1
+fi
 if [ "$fail" = 0 ]; then
   if [ "$skipped" = 0 ]; then
     echo "all checks pass  (${SECONDS}s)"
