@@ -451,6 +451,7 @@ func _check_speed(shot: ModelShot, world: BrickWorld) -> void:
 	for from: String in ["far corner", "front", "corner"]:
 		worst = maxf(worst, await _timed(shot, world, from))
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	await _check_giving_up(shot, world)
 	if worst < 2.0:
 		print("  ok    and the ones after it in %.2f s or less, with "
 			% worst + "vsync on the whole time")
@@ -470,3 +471,34 @@ func _timed(shot: ModelShot, world: BrickWorld, from: String) -> float:
 		_failures += 1
 		print("  FAIL  no picture from the %s to time" % from)
 	return took
+
+
+## And when a picture cannot be had in time, is the design left blind?
+##
+## It was. On a machine running four other copies of this engine — an
+## ordinary afternoon here — the app stalled past the relay's three
+## minutes with three view requests queued, and a real design run
+## reported it: "every request timed out, so I haven't checked those
+## proportions by eye." A picture capped in frames is not capped in
+## time. Capped in time, the caller falls back to the letters, which
+## draw the plan and an elevation and hide nothing. A worse picture
+## beats no picture.
+func _check_giving_up(shot: ModelShot, world: BrickWorld) -> void:
+	var was: float = shot.give_up_after
+	shot.give_up_after = 0.0
+	var nothing: Image = await shot.take(world, "corner")
+	var block: Dictionary = await shot.block(world, "corner")
+	shot.give_up_after = was
+	if nothing == null and block.is_empty():
+		print("  ok    ...and a picture that cannot be had in time is "
+			+ "given up on, so the caller can draw the letters instead")
+	else:
+		_failures += 1
+		print("  FAIL  no time left and it still waited for a picture, "
+			+ "which is how a design ends up blind")
+	# And it recovers: the next one is an ordinary picture again.
+	if (await shot.take(world, "corner")) != null:
+		print("  ok    ...and the one after it is a picture again")
+	else:
+		_failures += 1
+		print("  FAIL  giving up once stopped it taking pictures at all")

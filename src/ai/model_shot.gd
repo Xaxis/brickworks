@@ -35,6 +35,20 @@ const FRAMES_TO_DRAW := 6
 ## takes minutes, and only ever spent once.
 const MOST_FRAMES := 90
 
+## The same cap, in seconds, which is the one that matters.
+##
+## Ninety frames is half a second on a machine with nothing else to do
+## and ten minutes on one running four other copies of this engine —
+## which is an ordinary afternoon here. The relay gives up at three
+## minutes, so a picture that takes longer than that is not a slow
+## picture, it is a design left blind: it asked for a side view, got
+## nothing back, and said so in its own report. Twenty seconds and then
+## the letters, which draw the plan and an elevation and hide nothing.
+## A worse picture beats no picture.
+##
+## A variable so a probe can set it to nothing and watch the fallback.
+var give_up_after: float = 20.0
+
 ## Where each named view looks from, as a direction the camera sits
 ## along. The default is a three-quarter view, because an elevation
 ## flattens exactly the depth that tells you whether a shape works.
@@ -341,7 +355,8 @@ func _take(world: BrickWorld, from: String,
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	var frames: int = 0
 	var taken: Image = null
-	while frames < MOST_FRAMES:
+	var until: float = Time.get_unix_time_from_system() + give_up_after
+	while frames < MOST_FRAMES and Time.get_unix_time_from_system() < until:
 		# Re-staged every time round but the first, which staged it
 		# already to work out where to point the camera. The viewport
 		# hands back the state it had at the previous staging, so a

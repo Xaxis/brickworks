@@ -74,6 +74,14 @@ take, which is what made a design run give up on looking at itself.
   socket polls in `_process` and every tool call waited up to a second each way);
   and the windowed probes turn it off at start-up. An interactive window is left
   alone — a CAD program spinning at four hundred frames a second is a laptop fan.
+- **A picture is capped in seconds, not frames.** Ninety frames is half a second
+  on an idle machine and ten minutes on one running four other copies of the
+  engine, which is an ordinary afternoon here. The relay gives up at three
+  minutes, so a slow picture is not a slow picture — it is a design left blind,
+  and a real run said so: "every request timed out, so I haven't checked those
+  proportions by eye." `give_up_after` is twenty seconds, and then the caller
+  draws the letters, which show the plan and an elevation and hide nothing. A
+  worse picture beats no picture.
 - **`shot_probe` puts vsync back on for its speed check, deliberately.** A check
   that measured its own fast setting would pass however slow a picture really is.
   It asserts under two seconds with vsync on, which is the condition that broke a
