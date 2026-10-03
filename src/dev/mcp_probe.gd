@@ -200,6 +200,8 @@ func _run() -> void:
 	_check("...with its content intact", not _text_of(still).is_empty())
 	waiting.disconnect_from_host()
 
+	await _one_at_a_time(port)
+
 	# An unknown tool is an answer, not a dropped connection.
 	var nonsense: Dictionary = await _ask("no_such_tool", {})
 	_check("an unknown tool is answered, not dropped",
@@ -208,6 +210,69 @@ func _run() -> void:
 	_client.disconnect_from_host()
 	_socket.stop()
 	_done()
+
+
+## Does the app do one call at a time?
+##
+## It has to. A session may open several connections and send a call
+## down each in the same breath — Claude Code does — and there is one
+## baseplate, one lattice and one thing that takes pictures here. Two
+## picture takers sharing a viewport interleave their waits and at least
+## one never gets the frame it is waiting for; the call then sits until
+## the relay gives up three minutes later. A real design run of the USS
+## Voyager said so out loud: "the renderer keeps timing out", and it
+## spent its last ten minutes unable to look at what it had built.
+##
+## Checked on the turnstile itself rather than by racing three clients,
+## because a race that passes tells you nothing about the next run.
+func _one_at_a_time(port: int) -> void:
+	print("")
+	print("  one call at a time")
+	var first: bool = await _socket._take_a_turn()
+	_check("the first call takes the app", first)
+
+	# A second one waits. Watched through a flag, because what is being
+	# checked is that the coroutine has *not* finished.
+	var second: Dictionary = {"through": false}
+	_waiting_turn(second)
+	for _n: int in 20:
+		await process_frame
+	_check("a second call waits its turn", not bool(second["through"]))
+
+	_socket._hand_back()
+	for _n: int in 20:
+		await process_frame
+	_check("...and goes through when the first is done",
+		bool(second["through"]))
+	_socket._hand_back()
+	_check("the app is free again", _socket._in_hand == 0)
+
+	# And end to end: three clients, three calls sent in the same frame,
+	# three answers, each to the client that asked.
+	var peers: Array[StreamPeerTCP] = []
+	for _n: int in 3:
+		peers.append(await _another(port))
+	var ids: Array[int] = []
+	for n: int in peers.size():
+		_next_id += 1
+		ids.append(_next_id)
+		peers[n].put_data(JSON.stringify({"id": _next_id,
+			"tool": "look_at_model", "input": {}}).to_utf8_buffer()
+			+ "\n".to_utf8_buffer())
+	var answered: int = 0
+	for n: int in peers.size():
+		var back: Dictionary = await _read_from(peers[n])
+		if int(back.get("id", -1)) == ids[n] and not _text_of(back).is_empty():
+			answered += 1
+		peers[n].disconnect_from_host()
+	_check("three clients asking at once all get their own answer, %d of 3"
+		% answered, answered == 3)
+
+
+## Take a turn in the background, and say so when it comes.
+func _waiting_turn(flag: Dictionary) -> void:
+	await _socket._take_a_turn()
+	flag["through"] = true
 
 
 ## One request, and the line that comes back.

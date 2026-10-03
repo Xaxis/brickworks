@@ -79,6 +79,24 @@ var _server := TCPServer.new()
 var _clients: Array[Client] = []
 var _port := PORT
 
+## One tool at a time, across every client.
+##
+## Each client already answers its own requests in order. That is not
+## enough: a session may open several connections and send a call down
+## each at the same moment — Claude Code does, three look_at_model in
+## one breath — and the app is one app. One baseplate, one lattice, one
+## thing that takes pictures. Two picture takers sharing a viewport
+## interleave their waits and at least one never gets the frame it was
+## waiting for, so its call sits there until the relay gives up three
+## minutes later. That is not a hypothetical: a real design run of the
+## USS Voyager reported "the renderer keeps timing out" and spent its
+## last ten minutes unable to look at what it had built.
+var _in_hand: int = 0
+signal _handed_back
+## How long a queued call will wait before saying so. The relay gives up
+## at three minutes, and a message is better than its silence.
+const QUEUED_FOR := 100.0
+
 
 ## Start listening. Returns false, and says why, when the port is taken —
 ## which on this machine usually means another session got there first.
@@ -268,7 +286,14 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 		if _own_tools_have(name):
 			answer = _run_own(name, input)
 		else:
+			if not await _take_a_turn():
+				_rpc(client, sent_id, {"isError": true, "content": [
+					{"type": "text", "text": "Another call is still "
+						+ "running — the app does one at a time. Send "
+						+ "them one after another."}]})
+				return
 			answer = await assistant.use_tool(name, input)
+			_hand_back()
 		if client.gone:
 			return
 		_rpc(client, sent_id, {"content": _as_content(answer), "isError": false})
@@ -349,11 +374,42 @@ func _answer(client: Client, line: String) -> void:
 		_send(client, {"id": id, "ok": true,
 			"content": _as_content(_run_own(tool, input))})
 		return
+	if not await _take_a_turn():
+		_reply(client, id, false, "another call is still running — the "
+			+ "app does one at a time. Send them one after another.")
+		return
 	var answer: Variant = await assistant.use_tool(tool, input)
+	_hand_back()
 	# The client may have gone while a tool was drawing a picture.
 	if client.gone:
 		return
 	_send(client, {"id": id, "ok": true, "content": _as_content(answer)})
+
+
+## Wait until no other tool is running, then take the app.
+##
+## Returns false if the wait ran out, in which case nothing was taken
+## and the caller must answer rather than carry on.
+##
+## Measured in seconds and not in frames. A headless app runs frames in
+## microseconds, so a frame count is no wait at all there and a long one
+## in a window — the same mistake cost a day on the reference finder.
+func _take_a_turn() -> bool:
+	if _in_hand == 0:
+		_in_hand += 1
+		return true
+	var until: float = Time.get_unix_time_from_system() + QUEUED_FOR
+	while _in_hand > 0:
+		if Time.get_unix_time_from_system() > until:
+			return false
+		await _handed_back
+	_in_hand += 1
+	return true
+
+
+func _hand_back() -> void:
+	_in_hand = maxi(0, _in_hand - 1)
+	_handed_back.emit()
 
 
 ## Tools an outside session needs and the design loop does not.

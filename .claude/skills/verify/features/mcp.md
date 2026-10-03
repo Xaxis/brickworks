@@ -68,7 +68,7 @@ Static: `pyright` covers both Python files.
 Runtime:
 
 ```sh
-godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half
+godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queue included
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 ```
@@ -90,7 +90,8 @@ tools, all of them this app's" when it connects.
 And `mcp_probe` ends on "a session outside the app can use the app's own
 tools" — a client connects over real TCP, gets 9 tools all carrying schemas,
 searches the real catalogue, submits a design that puts 3 bricks in the world, and
-has a floating brick refused. `mcp_check.py` ends on "a session can drive
+has a floating brick refused, and three clients asking at once each get their
+own answer while the app does them one at a time. `mcp_check.py` ends on "a session can drive
 Brickworks over MCP" — initialize, ping, `tools/list` with MCP's `inputSchema`
 spelling, a search, a cleared baseplate, a design that lands, a save read back off
 disk, and the no-app case answering "not running" with the command to start it.
@@ -119,6 +120,16 @@ Both are in `tools/check.sh`.
   to the network. There is no authentication beyond that.
 - **One port per app.** Parallel sessions must pass `--mcp=PORT`; the second app on
   8787 says the port is taken and carries on without a socket.
+- **One call at a time, across every client.** A session may open several
+  connections and send a call down each in the same breath — Claude Code does,
+  three `look_at_model` in one turn. There is one baseplate, one lattice and one
+  thing that takes pictures, and two picture takers sharing a viewport interleave
+  their waits until one of them never gets the frame it is waiting for. The call
+  then sits there until the relay's three minutes run out. A real Voyager design
+  run said so out loud — "the renderer keeps timing out" — and spent its last ten
+  minutes unable to look at what it had built. `_take_a_turn` / `_hand_back` queue
+  them; the per-client `busy` flag was never enough, because the second call
+  arrives on a different client.
 - **`check_design` puts the trial on the baseplate**, and the baseplate is saved
   and restored on the next start. A design checked at the origin overlaps that
   saved model next time, which reads as a broken checker and is not. Call
