@@ -268,6 +268,59 @@ func _run() -> void:
 			and _assistant._local_of.is_empty()
 			and _assistant._sections.is_empty())
 
+	# A pylon four bricks tall, which is what a nacelle hangs off.
+	#
+	# A design asked for Voyager built one, decided that "a hinged
+	# section has to rest on something, not just touch the side", and
+	# threw its angled nacelles away for a stack of square bricks. That
+	# conclusion is wrong, and this is here to keep it wrong: a pylon of
+	# real height holds together from twenty degrees to eighty, and the
+	# bricks above the first are not called floating at any of them.
+	#
+	# At ninety it is adrift, and correctly — laid flat from that origin
+	# it no longer reaches the hull — and the message says which height
+	# would meet it. That is the answer the Voyager design misread as a
+	# rule about resting.
+	# On a bare baseplate, so what comes back is about the pylon and not
+	# about whatever the checks above left standing.
+	world.clear()
+	builder.lattice.clear()
+	_assistant.forget_built()
+	await process_frame
+
+	print("")
+	print("  a pylon tall enough to carry something")
+	for angle: float in [20.0, 35.0, 55.0, 70.0, 80.0, 90.0]:
+		var pylon := Assistant.Model.new()
+		for raw: Variant in [
+				{"part": "3001", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3001", "color": 71, "x": 4, "y": 0, "z": 0, "rot": 0},
+				{"part": "3001", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 0},
+				{"part": "3001", "color": 71, "x": 4, "y": 0, "z": 2, "rot": 0},
+				{"part": "3010", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0,
+					"section": "pylon"},
+				{"part": "3010", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0,
+					"section": "pylon"},
+				{"part": "3010", "color": 71, "x": 0, "y": 6, "z": 0, "rot": 0,
+					"section": "pylon"},
+				{"part": "3010", "color": 71, "x": 0, "y": 9, "z": 0, "rot": 0,
+					"section": "pylon"}]:
+			pylon.placements.append(Assistant.Placement.from_dict(raw))
+		pylon.sections["pylon"] = Assistant.Section.from_dict({
+			"name": "pylon", "x": 6.0, "y": 3.25, "z": 2.0,
+			"axis": "z", "degrees": angle})
+		var held: Dictionary = _assistant._check(pylon)
+		_check("a four-brick pylon at %d degrees is not called floating: %s"
+			% [int(angle), held["summary"]],
+			not str(held["feedback"]).contains("floating"))
+		# And up to eighty it is a design that could be built as it
+		# stands, not merely one that was not complained about.
+		if int(angle) < 90:
+			_check("  ...and holds together at %d" % int(angle),
+				bool(held["ok"]))
+
+
+
 	print("")
 	if _failures == 0:
 		print("a section can be built square and carried at an angle")
