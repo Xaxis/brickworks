@@ -2083,9 +2083,26 @@ func _read_model(args: Dictionary) -> Model:
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
 	_read_sections(model, args)
-	for raw: Variant in args.get("bricks", []):
+	var written: Array = args.get("bricks", [])
+	for raw: Variant in written:
 		model.placements.append(Placement.from_dict(raw))
+
+	# And the shapes it described rather than counted out. Patterns are
+	# expanded after the bricks because mirror reflects what is there.
+	var patterns: Array = args.get("patterns", [])
+	if not patterns.is_empty():
+		var trouble: Array = []
+		for raw: Variant in Patterns.expand(patterns, written, trouble,
+				library):
+			model.placements.append(Placement.from_dict(raw))
+		_pattern_trouble = trouble
+	else:
+		_pattern_trouble = []
 	return model
+
+
+## What was wrong with the last set of patterns, said by the check.
+var _pattern_trouble: Array = []
 
 
 ## The sections a model declares, before any brick refers to one.
@@ -2137,6 +2154,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
 	var box_of: Dictionary = {}     ## index -> [low cell, high cell]
+
+	for said: Variant in _pattern_trouble:
+		_note(issues, "pattern", str(said))
 
 	if model.placements.is_empty():
 		# Which of the two this is matters enormously.
@@ -2419,7 +2439,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			+ "otherwise, because a part held by nothing falls off when "
 			+ "the model is picked up.")
 		# And the commonest way to arrive here, which has its own fix.
-		if _one_layer(cells_of):
+		if _one_layer(box_of):
 			feedback += (" This is one layer thick, and one layer is "
 				+ "always like this: bricks side by side are not "
 				+ "joined, however tightly they are packed. A second "
@@ -2522,19 +2542,29 @@ func _stepped_outline(cells_of: Dictionary) -> String:
 ## One layer of anything is always in as many pieces as it has parts,
 ## and the count on its own reads as a fault in the arrangement rather
 ## than as the one thing it is: nothing on top of it.
-func _one_layer(cells_of: Dictionary) -> bool:
+func _one_layer(box_of: Dictionary) -> bool:
+	# Nothing above anything, which is not the same as "short".
+	#
+	# The test was whether the model stood less than a brick tall, and
+	# two courses of plates is two thirds of a brick — so a disc tiled in
+	# two layers, which is the first thing anybody does to make a disc
+	# hold together, was told it was one layer and to add another.
+	#
+	# One layer means the model is exactly as tall as its tallest single
+	# part: nothing is stacked on anything.
 	var lowest: int = 0x7FFFFFFF
 	var highest: int = -0x7FFFFFFF
-	for index: int in cells_of:
-		for cell: Vector3i in cells_of[index]:
-			lowest = mini(lowest, cell.y)
-			highest = maxi(highest, cell.y)
+	var tallest: int = 0
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var near: Vector3i = corners[0]
+		var far: Vector3i = corners[1]
+		lowest = mini(lowest, near.y)
+		highest = maxi(highest, far.y)
+		tallest = maxi(tallest, far.y - near.y)
 	if lowest > highest:
 		return false
-	# A brick is three plates and a plate is one; either, standing alone
-	# on the ground, is one layer. Anything taller has a course above
-	# something.
-	return highest - lowest < 3 * BrickLattice.CELLS_PER_PLATE
+	return highest - lowest <= tallest
 
 
 ## A model that is symmetric except for one or two bricks.
@@ -3635,6 +3665,23 @@ Four things before the first brick, in this order:
 
 Then lay it out layer by layer from the ground up.
 
+SAY THE SHAPE, DO NOT COUNT IT OUT
+Writing placements one at a time is the part of this you are worst at, \
+and most of a model is repetition. Three patterns do the counting, \
+alongside the bricks you write by hand:
+
+  repeat   the same bricks again, stepped each time. A colonnade, a row \
+           of windows, a stack of courses.
+  mirror   everything so far, reflected about a line. Build one side and \
+           mirror it. A wing written twice is a wing a stud out on one \
+           side, and a part with a hand is swapped for its twin for you.
+  fill     a footprint — rectangle or ellipse — tiled with the largest \
+           plates that fit. A saucer twenty studs across is one line \
+           here and a hundred and fifty plates by hand.
+
+A four thousand part model is not too large to build. It is too large to \
+dictate, which is a different problem, and this is the answer to it.
+
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
 its colours — call look_at_model first. Guessing what is there and \
@@ -4054,6 +4101,42 @@ func _tools() -> Array:
 		"additionalProperties": false,
 	}
 
+	# A shape described rather than counted out.
+	var pattern: Dictionary = {
+		"type": "object",
+		"properties": {
+			"pattern": {"type": "string",
+				"enum": ["repeat", "mirror", "fill"],
+				"description":
+					"repeat: the bricks again, stepped each time. "
+					+ "mirror: everything so far, reflected about a line "
+					+ "— build one side and mirror it rather than "
+					+ "writing both. fill: a footprint tiled with the "
+					+ "largest plates that fit."},
+			"times": {"type": "integer", "description": "repeat: how many"},
+			"step": {"type": "object", "description":
+				"repeat: how far each copy moves, in studs and plates",
+				"properties": {"x": {"type": "number"},
+					"y": {"type": "number"}, "z": {"type": "number"}},
+				"additionalProperties": false},
+			"about": {"type": "string", "enum": ["x", "z"],
+				"description": "mirror: which way the line runs"},
+			"at": {"description":
+				"mirror: the line to reflect about, in studs. fill: where "
+				+ "the footprint's low corner sits, as {x, y, z}."},
+			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
+				"description": "fill: which footprint"},
+			"across": {"type": "number", "description": "fill: studs in x"},
+			"deep": {"type": "number", "description": "fill: studs in z"},
+			"color": {"type": "integer", "description": "fill: the colour"},
+			"bricks": {"type": "array", "items": brick, "description":
+				"repeat: what to repeat. mirror: what to reflect, if not "
+				+ "everything so far."},
+		},
+		"required": ["pattern"],
+		"additionalProperties": false,
+	}
+
 	# A part of the model built square and then carried at an angle.
 	var section: Dictionary = {
 		"type": "object",
@@ -4101,6 +4184,7 @@ func _tools() -> Array:
 				"type": "object",
 				"properties": {
 					"bricks": {"type": "array", "items": brick},
+					"patterns": {"type": "array", "items": pattern},
 					"sections": {"type": "array", "items": section},
 				},
 				"required": ["bricks"],
@@ -4366,6 +4450,7 @@ func _tools() -> Array:
 					"name": {"type": "string"},
 					"description": {"type": "string"},
 					"bricks": {"type": "array", "items": brick},
+					"patterns": {"type": "array", "items": pattern},
 					"sections": {"type": "array", "items": section},
 				},
 				"required": ["name", "description", "bricks"],

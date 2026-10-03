@@ -133,6 +133,18 @@ func _run() -> void:
 		"one layer is always like this")
 	_check_quiet("...and not told they fail to touch", flat,
 		"do not touch")
+	# And two courses is not one layer. The test used to be whether the
+	# model stood less than a brick tall, and two courses of plates is
+	# two thirds of a brick — so a disc tiled in two layers, which is the
+	# first thing anybody does to make a disc hold together, was told to
+	# add the layer it already had.
+	var twice: Array = []
+	for layer: int in 2:
+		for at: int in range(0, 6):
+			twice.append({"part": "3020", "color": 71,
+				"x": at * 2, "y": layer, "z": 0, "rot": 0})
+	_check_quiet("two courses of plates are not called one layer",
+		_verdict(assistant, twice), "one layer is always like this")
 
 	print("")
 	print("  a line the model would come apart along")
