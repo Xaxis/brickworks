@@ -156,6 +156,7 @@ run "a session drives the app" python3 tools/mcp_check.py
 if [ "$network" = 1 ]; then
   echo "── network ──"
   probe remote
+  probe reference_lookup
   run "open (over the wire)" godot --path . --script src/dev/open_probe.gd
 fi
 

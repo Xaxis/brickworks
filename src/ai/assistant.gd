@@ -136,6 +136,7 @@ func remember_reference(image: Image) -> bool:
 
 func forget_references() -> void:
 	references.clear()
+	_kept_pictures.clear()
 var _turns: int = 0
 var _nudges: int = 0
 ## Whether an edit has been applied this run. An edit is already built
@@ -1161,6 +1162,10 @@ func _run_tool(block: Dictionary) -> Variant:
 		"attachment_points":
 			progress.emit("working out where things attach")
 			return _attachment_points(args)
+		"find_reference":
+			var subject: String = str(args.get("subject", ""))
+			progress.emit("looking up what a %s looks like" % subject)
+			return await _find_reference(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world(args)
@@ -1365,6 +1370,23 @@ func _edit(args: Dictionary) -> Model:
 ## in the conversation that knows what the subject looks like, and it
 ## would have gone after a single turn, relabelled as the model's own
 ## work. It lives in the opening message, which is left alone.
+## Whether this picture is of the subject rather than of a draft.
+##
+## Drafts are dropped as they age — a dozen views of a model that no
+## longer exists is most of a context window spent on nothing. The thing
+## being built is the opposite: it has to stay in front of the designer
+## while it details, which is exactly when it stops looking at it.
+func _is_reference_picture(block: Dictionary) -> bool:
+	var source: Dictionary = block.get("source", {}) as Dictionary
+	return _kept_pictures.has(str(source.get("data", "")))
+
+
+## The base64 of every picture of the subject, so the sweep above can
+## tell them from drafts. Data rather than position: a tool result moves
+## about in the conversation and its index means nothing later.
+var _kept_pictures: Dictionary = {}
+
+
 func _forget_old_pictures() -> void:
 	for at: int in range(1, _messages.size()):
 		var message: Dictionary = _messages[at]
@@ -1376,6 +1398,8 @@ func _forget_old_pictures() -> void:
 			if typeof(block) != TYPE_DICTIONARY:
 				continue
 			if block.get("type", "") == "image":
+				if _is_reference_picture(block):
+					continue
 				content[n] = {"type": "text",
 					"text": "(a view of an earlier draft)"}
 				continue
@@ -1386,7 +1410,8 @@ func _forget_old_pictures() -> void:
 			for m: int in (inner as Array).size():
 				var piece: Variant = inner[m]
 				if (typeof(piece) == TYPE_DICTIONARY
-						and piece.get("type", "") == "image"):
+						and piece.get("type", "") == "image"
+						and not _is_reference_picture(piece)):
 					inner[m] = {"type": "text",
 						"text": "(a view of an earlier draft)"}
 
@@ -3634,6 +3659,16 @@ Search once per thing you need, with plain words — "slope curved", \
 same answer.
 
 WHAT MAKES A MODEL GOOD
+Look at the thing first. find_reference brings back pictures of anything \
+real, and the proportions of a model are decided before its first brick \
+— how long against how tall, where the mass sits, what the outline does. \
+Recalling a lighthouse gives you a tapering tower with a light on top, \
+which is every lighthouse and no lighthouse. A picture gives you this \
+one: how many times its own width it stands, where the gallery sits, how \
+far the lamp room oversails it. That difference is most of what \
+separates a model somebody recognises from one they have to be told \
+about.
+
 Shape reads before detail does. Get the silhouette right first.
 Vary the colour with purpose, not at random.
 Use slopes and tiles to break up the staircase that stacked bricks make.
@@ -3691,6 +3726,101 @@ edit away."""
 ## and the one that drifts is the one nobody is testing.
 func guidance() -> String:
 	return _system_prompt()
+
+
+## Pictures of the thing it has been asked to build.
+##
+## A designer given "a lighthouse" has one in front of them. This one had
+## the word and whatever it could recall, and no way to check either
+## against anything — which is most of the distance between what it
+## builds and a set somebody would buy.
+##
+## Wikimedia Commons only, which is free to use and asks for nothing. The
+## cost of that is the thing it does not have: a famous spaceship from a
+## film is somebody's property and is not on Commons, so a search for one
+## comes back with whatever shares its name. Every picture is named and
+## credited in the answer for exactly that reason — the model can see it
+## has been handed a 1917 destroyer and say so.
+func _find_reference(subject: String) -> Variant:
+	if subject.strip_edges().is_empty():
+		return "Say what to look for."
+	if _finder == null:
+		_finder = ReferenceFinder.new()
+		add_child(_finder)
+
+	# Fields, not locals captured by the lambdas below.
+	#
+	# A GDScript lambda captures by value, so assigning to a local from
+	# inside one changes the copy and nothing else. Both of these set
+	# "we are done" on a copy, the wait ran its full forty-five seconds
+	# every time, and the answer was always "no pictures came back" — of
+	# a lookup that had in fact come back.
+	_lookup_pictures = []
+	_lookup_trouble = ""
+	_lookup_waiting = true
+	var done := func(got: Array) -> void:
+		_lookup_pictures = got
+		_lookup_waiting = false
+	var failed := func(why: String) -> void:
+		_lookup_trouble = why
+		_lookup_waiting = false
+	_finder.found.connect(done, CONNECT_ONE_SHOT)
+	_finder.missed.connect(failed, CONNECT_ONE_SHOT)
+	_finder.look_for(subject)
+	# Bounded in seconds, not in frames.
+	#
+	# Frames are not time. A headless run draws thousands a second, so
+	# eighteen hundred of them is under a second — long enough for
+	# nothing at all, and the lookup answered "no pictures came back"
+	# before the request had left the machine.
+	var give_up_at: int = Time.get_ticks_msec() + LOOKUP_MS
+	while _lookup_waiting and Time.get_ticks_msec() < give_up_at:
+		await get_tree().process_frame
+	if _finder.found.is_connected(done):
+		_finder.found.disconnect(done)
+	if _finder.missed.is_connected(failed):
+		_finder.missed.disconnect(failed)
+
+	var pictures: Array = _lookup_pictures
+	if pictures.is_empty():
+		return ("No pictures of \"%s\" came back%s. Build it from what " % [
+			subject, "" if _lookup_trouble.is_empty() else " — " + _lookup_trouble]
+			+ "you know of it, and look at what you build.")
+
+	var blocks: Array = [{"type": "text", "text":
+		("%d picture%s of \"%s\", from Wikimedia Commons. Check each one "
+			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
+			+ "is the thing you were asked for before you build to it: "
+			+ "Commons carries what is free to use, so a name can bring "
+			+ "back something else that shares it.")}]
+	for one: Variant in pictures:
+		var picture: Dictionary = one
+		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
+		# Kept, where a draft is not. The subject has to still be there
+		# when the detailing starts, which is the point at which the
+		# sweep that drops old pictures would otherwise have taken it.
+		_kept_pictures[encoded] = true
+		blocks.append({"type": "text", "text": "%s — %s"
+			% [picture["title"], picture["credit"]]})
+		blocks.append({
+			"type": "image",
+			"source": {
+				"type": "base64",
+				"media_type": "image/png",
+				"data": encoded,
+			},
+		})
+	return blocks
+
+
+## How long to wait for pictures. Four searches and three downloads over
+## somebody's connection, and then the design carries on without them.
+const LOOKUP_MS := 45000
+
+var _finder: ReferenceFinder = null
+var _lookup_pictures: Array = []
+var _lookup_trouble: String = ""
+var _lookup_waiting: bool = false
 
 
 ## The tools, as the model is offered them.
@@ -3803,6 +3933,31 @@ func _tools() -> Array:
 					"sections": {"type": "array", "items": section},
 				},
 				"required": ["bricks"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "find_reference",
+			"description": ("Pictures of a real thing, so you can build "
+				+ "to what it looks like rather than to what you recall "
+				+ "of it. Ask for this first for any subject that exists "
+				+ "— a lighthouse, a tractor, a kingfisher, a particular "
+				+ "building — and judge the proportions off the picture "
+				+ "before you place a brick. The pictures come from "
+				+ "Wikimedia Commons, which carries what is free to use: "
+				+ "each is named and credited, and a famous ship from a "
+				+ "film will not be there, so check what came back is "
+				+ "the thing before building to it."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"subject": {"type": "string", "description":
+						"what to look for, in the words you would use "
+						+ "looking it up — \"Fresnel lighthouse lantern "
+						+ "room\" rather than \"lighthouse\" when it is "
+						+ "a detail you are after"},
+				},
+				"required": ["subject"],
 				"additionalProperties": false,
 			},
 		},
