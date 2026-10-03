@@ -64,6 +64,19 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   decimals for the nine matrix elements and 4 for the position.
 - **One fault must not read as three.** An overlap also makes things float and
   come adrift; `crowded` suppresses the consequences so the report names the cause.
+- **The hint that says where a section would fit was what stopped a design run.**
+  Thirty-two trial placements per failing section, each voxelising the section
+  against the lattice: measured at 46 s for one failing section, 82 for two and
+  **182 for four** — and the relay a session talks through gives up at 180. A
+  starship has four candidates, two pylons and two nacelles, so a design fighting
+  its pylons made a `check_design` that never came back, and a real Voyager run
+  reported "the brickworks server has stopped responding" on every call after one
+  edit while the app was alive and finishing normally. Two bounds now: `HINTS_WITHIN`
+  caps what one check spends on hints at four seconds and says which it was when it
+  runs out (silence there reads as "there is nowhere", the answer that ends runs),
+  and `_section_sits` skips the twenty-six-neighbour scan for cells strictly inside
+  a brick's own extent, which cannot touch anything outside it. Four failing
+  sections now cost 11 s, and `section_probe` fails if a check of them takes 30.
 - **The fit window can be a quarter of a plate wide.** `_where_it_would_meet`
   sweeps ±2 plates in eighths and says "At y=3.25 it would rest against the model
   instead of running into it", because nothing else makes it findable.

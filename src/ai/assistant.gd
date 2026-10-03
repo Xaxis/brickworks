@@ -2589,14 +2589,24 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	_check_sections_attached(model, cells_of, lattice, issues, crowded,
 		stuck)
 
-	# And where each section that did not fit would have fitted.
+	# And where each section that did not fit would have fitted, for as
+	# long as that is worth spending.
+	#
+	# Measured: one failing section costs 46 seconds of sweeping, two
+	# 82, four 182 — and the relay a session talks through gives up at
+	# 180. A starship has four candidates, two pylons and two nacelles,
+	# so a design fighting its pylons made a check that never came
+	# back. A real run said so on every call after it: "the brickworks
+	# server has stopped responding". This is advice. A check must not
+	# spend minutes on advice.
+	var hints_until: float = Time.get_unix_time_from_system() + HINTS_WITHIN
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
 			continue
 		if not crowded.has(group) and not stuck.has(group):
 			continue
 		var fits: String = _where_it_would_meet(model, group, lattice,
-			part_of)
+			part_of, hints_until)
 		if not fits.is_empty():
 			advice.append("Section '%s':%s" % [group, fits])
 
@@ -2683,6 +2693,14 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 ## Four steps, because three is a chamfered corner and nobody wants to
 ## hear about a chamfered corner.
 const SHORTEST_STAIRCASE := 4
+
+## How long one check may spend working out where sections would fit.
+##
+## The sweep is thirty-two trial placements per section, and each trial
+## voxelises the section against the lattice: 46 seconds for one
+## failing section, measured. Four of them is three minutes, which is
+## exactly where the relay a session talks through gives up.
+const HINTS_WITHIN := 4.0
 
 
 func _stepped_outline(cells_of: Dictionary, box_of: Dictionary) -> String:
@@ -3207,7 +3225,7 @@ func _ask_again(url: String, headers: PackedStringArray,
 ## not be attached in this system at all. One of them wrote exactly
 ## that. So when a section does not fit, say where it would.
 func _where_it_would_meet(model: Model, group: String,
-		lattice: BrickLattice, part_of: Dictionary) -> String:
+		lattice: BrickLattice, part_of: Dictionary, until: float) -> String:
 	var section: Section = model.sections.get(group)
 	if section == null:
 		return ""
@@ -3229,6 +3247,15 @@ func _where_it_would_meet(model: Model, group: String,
 		tried.append(away)
 		tried.append(-away)
 	for step: float in tried:
+		if Time.get_unix_time_from_system() > until:
+			section.y = was
+			# Out of time rather than out of places. Saying nothing here
+			# reads as "there is nowhere", which is the answer that ends
+			# runs, so say which it was.
+			return (" Where it would fit was not worked out in the time "
+				+ "this check allows. Move it a quarter of a plate at a "
+				+ "time, not a whole one: the offset that reaches a "
+				+ "flat face is a fraction of a plate wide.")
 		section.y = was + step
 		if _section_sits(model, group, lattice, part_of):
 			section.y = was
@@ -3259,17 +3286,39 @@ func _section_sits(model: Model, group: String, lattice: BrickLattice,
 			continue
 		var cells: Array[Vector3i] = builder._cells_for(part,
 			_transform(placement, part, model.sections.get(group)))
+		# What it runs into, and its own extent while we are here.
+		var low := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+		var high := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
 		for cell: Vector3i in cells:
 			var here: int = lattice.brick_at(cell)
 			if here != 0 and not _is_ours(here, model, group):
 				return false
-			if touching:
+			low = Vector3i(mini(low.x, cell.x), mini(low.y, cell.y),
+				mini(low.z, cell.z))
+			high = Vector3i(maxi(high.x, cell.x), maxi(high.y, cell.y),
+				maxi(high.z, cell.z))
+		if touching:
+			continue
+		# And what it touches — but only for the cells that could touch
+		# anything. A cell strictly inside this brick's own extent has
+		# all twenty-six of its neighbours inside it too, so looking at
+		# them is twenty-six lattice lookups to learn nothing, and that
+		# is where the time went: a brick is nine thousand six hundred
+		# cells, two thirds of them interior, and the whole twenty-six
+		# ran for every one of them whenever the section touched
+		# nothing — which is exactly when this is asked.
+		for cell: Vector3i in cells:
+			if cell.x > low.x and cell.x < high.x \
+					and cell.y > low.y and cell.y < high.y \
+					and cell.z > low.z and cell.z < high.z:
 				continue
 			for step: Vector3i in BrickLattice.AROUND:
 				var who: int = lattice.brick_at(cell + step)
 				if who != 0 and not _is_ours(who, model, group):
 					touching = true
 					break
+			if touching:
+				break
 	return touching
 
 

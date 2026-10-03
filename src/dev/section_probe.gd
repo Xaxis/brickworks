@@ -294,6 +294,46 @@ func _run() -> void:
 	# through the checker's support rules... now testing whether a whole
 	# sub-assembly can be a section held by touch". The answer is yes
 	# and always was. Eight checks is most of the turns a design has.
+	# And a check with several failing sections comes back at all.
+	#
+	# Measured before this was bounded: one failing section cost 46
+	# seconds of sweeping, two 82, four 182 — and the relay a session
+	# talks through gives up at 180. A starship has four candidates,
+	# two pylons and two nacelles, and a real run reported "the
+	# brickworks server has stopped responding" on every call after one
+	# edit while it was still fighting its pylons. The app was alive the
+	# whole time; the check was not coming back.
+	print("")
+	print("  a check with four failing sections comes back")
+	var crowd := Assistant.Model.new()
+	for n: int in 60:
+		crowd.placements.append(Assistant.Placement.from_dict({
+			"part": "3001", "color": 7,
+			"x": (n % 10) * 4, "y": (n / 10) * 3, "z": 0}))
+	for pylon: int in 4:
+		var named: String = "pylon%d" % pylon
+		for n: int in 4:
+			crowd.placements.append(Assistant.Placement.from_dict({
+				"part": "3001", "color": 4, "x": 0, "y": n * 3, "z": 0,
+				"section": named}))
+		# High in the air on purpose: nothing within the sweep's reach,
+		# which is the case that costs the most.
+		crowd.sections[named] = Assistant.Section.from_dict({
+			"name": named, "x": 4.0 + float(pylon) * 8.0, "y": 30.0,
+			"z": 0.0, "axis": "z", "degrees": 40.0})
+	var began: float = Time.get_unix_time_from_system()
+	var crowded: Dictionary = _assistant._check(crowd)
+	var took: float = Time.get_unix_time_from_system() - began
+	_check("four of them are all reported, %s" % str(crowded["summary"]),
+		not bool(crowded["ok"]))
+	if took < 30.0:
+		print("  ok    ...and it took %.1f s, against the 182 it used to "
+			% took + "and the 180 the relay waits")
+	else:
+		_failures += 1
+		print("  FAIL  it took %.0f s — the relay gives up at 180, so a "
+			% took + "design gets no answer at all")
+
 	print("")
 	print("  and the rule is stated, not left to be found by experiment")
 	var rules: String = _assistant.guidance()
