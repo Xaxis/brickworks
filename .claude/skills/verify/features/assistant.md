@@ -124,6 +124,12 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   asks whether the edge stays within a stud of a straight line now, and requires
   the slope to be strictly steeper than one in two: at exactly one in two the
   shipped tower and tree fire, and they taper on purpose.
+- **A decoder handed the wrong format prints an engine error before it returns
+  its failure.** `reference_finder` used to try jpg, then png, then webp and keep
+  whichever worked, which is correct and put two engine errors in the middle of
+  a real design run for an ordinary picture. Engine errors are what this project
+  treats as a broken build, so the format is read off the first bytes now and
+  only the right decoder is called.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

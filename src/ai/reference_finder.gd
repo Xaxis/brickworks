@@ -182,12 +182,24 @@ func _on_fetched(_result: int, code: int, _headers: PackedStringArray,
 	request.queue_free()
 	if code == 200 and not body.is_empty():
 		var image := Image.new()
-		# The extension says what it is, but a thumbnail URL may serve
-		# something else, so each decoder is tried and the one that works
-		# wins. A picture that will not decode is simply not offered.
-		var ok: bool = (image.load_jpg_from_buffer(body) == OK
-			or image.load_png_from_buffer(body) == OK
-			or image.load_webp_from_buffer(body) == OK)
+		# What it is, read off its first bytes.
+		#
+		# The extension says what it should be and a thumbnail URL may
+		# serve something else, so this used to try each decoder in
+		# turn and keep whichever worked. That is right and it is loud:
+		# a decoder handed the wrong format prints an engine error
+		# before returning its failure, so an ordinary PNG produced two
+		# of them in the middle of a design run, and engine errors are
+		# what this project treats as a broken build. Every one of
+		# these formats says what it is in its first four bytes.
+		var ok: bool = false
+		match _format_of(body):
+			"jpg":
+				ok = image.load_jpg_from_buffer(body) == OK
+			"png":
+				ok = image.load_png_from_buffer(body) == OK
+			"webp":
+				ok = image.load_webp_from_buffer(body) == OK
 		if ok and image.get_width() > 0:
 			if image.get_width() > WIDTH:
 				image.resize(WIDTH,
@@ -199,3 +211,18 @@ func _on_fetched(_result: int, code: int, _headers: PackedStringArray,
 				"credit": about["credit"],
 			})
 	_fetch_next()
+
+
+## Which picture format a body holds, by its first bytes, or "".
+static func _format_of(body: PackedByteArray) -> String:
+	if body.size() < 12:
+		return ""
+	if body[0] == 0xFF and body[1] == 0xD8 and body[2] == 0xFF:
+		return "jpg"
+	if body[0] == 0x89 and body[1] == 0x50 and body[2] == 0x4E \
+			and body[3] == 0x47:
+		return "png"
+	if body.slice(0, 4).get_string_from_ascii() == "RIFF" \
+			and body.slice(8, 12).get_string_from_ascii() == "WEBP":
+		return "webp"
+	return ""

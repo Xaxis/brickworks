@@ -129,6 +129,28 @@ func _run() -> void:
 	print("  and an empty question")
 	var nothing: Variant = await assistant._run_tool({
 		"name": "find_reference", "input": {"subject": "   "}})
+	# What a body is, read off its first bytes rather than found out by
+	# handing it to each decoder in turn. The old way worked and was
+	# loud: a decoder given the wrong format prints an engine error
+	# before it returns its failure, so an ordinary PNG put two of them
+	# in the middle of a design run, and an engine error is what this
+	# project treats as a broken build.
+	print("")
+	print("  a picture says what it is in its first bytes")
+	var jpg := PackedByteArray([0xFF, 0xD8, 0xFF, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0])
+	var png := PackedByteArray([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A,
+		0x0A, 0, 0, 0, 0])
+	var webp: PackedByteArray = "RIFF".to_ascii_buffer() \
+		+ PackedByteArray([0, 0, 0, 0]) + "WEBP".to_ascii_buffer()
+	_check("a jpeg is a jpeg", ReferenceFinder._format_of(jpg) == "jpg")
+	_check("a png is a png", ReferenceFinder._format_of(png) == "png")
+	_check("a webp is a webp", ReferenceFinder._format_of(webp) == "webp")
+	_check("an html error page is none of them",
+		ReferenceFinder._format_of(
+			"<!doctype html><title>no</title>".to_ascii_buffer()).is_empty())
+	_check("and neither is a truncated one",
+		ReferenceFinder._format_of(PackedByteArray([0xFF, 0xD8])).is_empty())
+
 	_check("an empty subject is answered, not searched for",
 		nothing is String and (nothing as String).contains("Say what"))
 
