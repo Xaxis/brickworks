@@ -48,6 +48,19 @@ func _initialize() -> void:
 		for face: String in ["up", "+z", "-x"]:
 			_try(assistant, library, host, face)
 
+	# The builder's own lattice keeps the index that says where a brick
+	# would come to rest.
+	#
+	# The scratch lattices a design is checked against turn it off — it
+	# is a third of what checking costs and nothing in the check reads
+	# it. The live one must not: without it every preview lands on the
+	# ground wherever you point, which looks like a placement bug a long
+	# way from the lattice.
+	print("")
+	print("  the live lattice keeps what the preview needs")
+	_look("the builder's lattice keeps its column index",
+		builder.lattice.keeps_columns)
+
 	# And the shape of a part that is not a box.
 	#
 	# A wedge plate's studs sit on its square half, so the stud list —

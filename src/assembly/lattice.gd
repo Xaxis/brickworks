@@ -258,6 +258,17 @@ func blockers(cells: Array[Vector3i], ignore: int = 0) -> PackedInt64Array:
 	return PackedInt64Array(found.keys())
 
 
+## Whether to keep the column index that [method resting_height] reads.
+##
+## Keeping it is two thirds of what it costs to occupy a brick — 2.5
+## seconds of the 3.8 it takes to place four hundred of them, and a third
+## of the time it takes to check a design. Exactly one caller ever asks
+## for it: the builder, working out where a brick would land under the
+## pointer. The scratch lattices a design is checked against never do, so
+## they turn it off and do not pay for it.
+var keeps_columns: bool = true
+
+
 func occupy(brick_id: int, cells: Array[Vector3i]) -> void:
 	var held := PackedVector3Array()
 	held.resize(cells.size())
@@ -266,10 +277,11 @@ func occupy(brick_id: int, cells: Array[Vector3i]) -> void:
 		_cells[cell] = brick_id
 		held[n] = Vector3(cell)
 
-		var key := Vector2i(cell.x, cell.z)
-		var column: Dictionary = _columns.get(key, {})
-		column[cell.y] = int(column.get(cell.y, 0)) + 1
-		_columns[key] = column
+		if keeps_columns:
+			var key := Vector2i(cell.x, cell.z)
+			var column: Dictionary = _columns.get(key, {})
+			column[cell.y] = int(column.get(cell.y, 0)) + 1
+			_columns[key] = column
 	_by_brick[brick_id] = held
 
 
@@ -281,6 +293,8 @@ func release(brick_id: int) -> void:
 			continue
 		_cells.erase(cell)
 
+		if not keeps_columns:
+			continue
 		var key := Vector2i(cell.x, cell.z)
 		var column: Dictionary = _columns.get(key, {})
 		var remaining: int = int(column.get(cell.y, 0)) - 1
@@ -312,6 +326,14 @@ func clear() -> void:
 ## The height a part would rest at in this column: one cell above the
 ## highest thing in it, or ``floor_cell`` if the column is empty.
 func surface_height(cell_x: int, cell_z: int, floor_cell: int = 0) -> int:
+	# Said, not guessed at. Without the index this would answer
+	# "floor_cell" for every column — a brick resting on the ground
+	# wherever you pointed — and look like a placement bug a long way
+	# from here.
+	if not keeps_columns:
+		push_error("lattice: asked the height of a column on a lattice "
+			+ "that does not keep the column index")
+		return floor_cell
 	var column: Dictionary = _columns.get(Vector2i(cell_x, cell_z), {})
 	if column.is_empty():
 		return floor_cell

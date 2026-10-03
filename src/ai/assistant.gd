@@ -2051,6 +2051,10 @@ static func _read_sections(model: Model, args: Dictionary) -> void:
 ## buildable while sitting inside one of them.
 func _check(model: Model, alone: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
+	# Nothing here asks where a brick would come to rest, which is the
+	# only thing the column index is for, and keeping it is a third of
+	# what checking a design costs.
+	lattice.keeps_columns = false
 	## Section name -> a lattice of that section's own square cells.
 	var inside: Dictionary = {}
 	## Sections that ran into something. A brick that overlaps is never
@@ -2189,6 +2193,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			var own: BrickLattice = inside.get(placement.section)
 			if own == null:
 				own = BrickLattice.new()
+				own.keeps_columns = false
 				inside[placement.section] = own
 			var square: Transform3D = _square_transform(placement, part)
 			var here: Array[Vector3i] = builder._cells_for(part, square)
