@@ -25,13 +25,24 @@ func _initialize() -> void:
 	_run()
 
 
+## Waiting, not forcing.
+##
+## This used to call RenderingServer.force_draw in each of its waits, for
+## the reason main.gd still does in the two places that capture a
+## picture: a process frame is not a drawn frame, and an unattended
+## window stops being asked to redraw. Here it was only hurrying things
+## along — and forcing a draw from inside a frame re-enters the renderer,
+## which on a busy machine deadlocks. The probe then hung for ever, which
+## stops the whole suite rather than failing it, and it printed nothing
+## on the way because its output was still in a buffer.
+##
+## The previews arrive on their own. Waiting for them is enough.
 func _run() -> void:
 	await process_frame
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	for _n: int in 180:
 		await process_frame
-		RenderingServer.force_draw(false)
 
 	var bin: PartsBin = _main.get("_bin")
 	var builder: Builder = _main.get("_builder")
@@ -97,7 +108,6 @@ func _run() -> void:
 	bin._run_search("003432c")
 	for _n: int in 40:
 		await process_frame
-		RenderingServer.force_draw(false)
 	var yellow_first: Color = await _preview_colour(bin, "003432c", 4)
 	var yellow_again: Color = await _preview_colour(bin, "003432c", 1)
 	if yellow_first.a <= 0.01 or yellow_again.a <= 0.01:
@@ -117,7 +127,6 @@ func _run() -> void:
 	bin._run_search("")
 	for _n: int in 40:
 		await process_frame
-		RenderingServer.force_draw(false)
 	bin._on_part("3001")
 	await process_frame
 
@@ -173,7 +182,6 @@ func _each_its_own(bin: PartsBin) -> void:
 		thumbs.request(part_id, 4)
 	for _n: int in 240:
 		await process_frame
-		RenderingServer.force_draw(false)
 
 	for part_id: String in want:
 		var texture: Texture2D = bin.thumbnails.request(part_id, 4)
@@ -205,7 +213,6 @@ func _preview_colour(bin: PartsBin, part_id: String, code: int) -> Color:
 	bin._on_colour(code)
 	for _n: int in 90:
 		await process_frame
-		RenderingServer.force_draw(false)
 
 	var cells: Dictionary = bin.get("_cells")
 	var cell: TextureRect = cells.get(part_id)
