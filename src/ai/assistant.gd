@@ -1548,7 +1548,66 @@ func _measured() -> String:
 	if rows.size() > 1:
 		said.append("Its massing, layer by layer — compare this against "
 			+ "the sizes you planned:\n" + "\n".join(rows))
+	var named: String = _sections_measured()
+	if not named.is_empty():
+		said.append(named)
 	return " ".join(said)
+
+
+## Each named part of the model, measured on its own.
+##
+## A section is already the thing a designer thinks in — the saucer, the
+## port nacelle, the neck — and the model declares them to carry a
+## sub-assembly at an angle. Measuring them separately answers the
+## questions a whole-model box cannot: do the two nacelles match each
+## other, is the saucer wider than the hull is long, is the neck the
+## three studs it was meant to be. In world coordinates, turned as they
+## are carried, because that is the shape somebody sees.
+func _sections_measured() -> String:
+	if _section_of.is_empty():
+		return ""
+	## Section name -> [low, high] in studs and plates.
+	var boxes: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id) or not _section_of.has(brick.id):
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var box: AABB = (brick.transform * part.bounds).abs()
+		var near := Vector3(box.position.x / STUD, box.position.y / PLATE,
+			box.position.z / STUD)
+		var far := Vector3(box.end.x / STUD, box.end.y / PLATE,
+			box.end.z / STUD)
+		var name: String = str(_section_of[brick.id])
+		if not boxes.has(name):
+			boxes[name] = [near, far]
+			continue
+		var was: Array = boxes[name]
+		var low: Vector3 = was[0]
+		var high: Vector3 = was[1]
+		boxes[name] = [
+			Vector3(minf(low.x, near.x), minf(low.y, near.y),
+				minf(low.z, near.z)),
+			Vector3(maxf(high.x, far.x), maxf(high.y, far.y),
+				maxf(high.z, far.z))]
+	if boxes.is_empty():
+		return ""
+	var names: Array = boxes.keys()
+	names.sort()
+	var rows := PackedStringArray()
+	for name: String in names:
+		var pair: Array = boxes[name]
+		var low: Vector3 = pair[0]
+		var high: Vector3 = pair[1]
+		rows.append("  %-18s %s across x %s deep x %d plates, from "
+			% [name.substr(0, 18), _studs(high.x - low.x),
+				_studs(high.z - low.z),
+				int(floor(high.y - low.y + 0.001))]
+			+ "x %s, y %s, z %s" % [_studs(low.x),
+				_studs(floor(low.y + 0.001)), _studs(low.z)])
+	return ("And each named part of it, as it is carried:\n"
+		+ "\n".join(rows))
 
 
 ## A measurement, without a decimal point it does not need.

@@ -249,6 +249,45 @@ func _run() -> void:
 	_check("and a tipped section really can be attached",
 		bool(_assistant._check(fitted)["ok"]))
 
+	# And once it is standing, it can be measured by name.
+	#
+	# A section is the thing a designer thinks in — the saucer, the port
+	# nacelle, the neck — and the questions that matter are about them
+	# and not about the box round everything: do the two nacelles match
+	# each other, is the saucer wider than the hull is long. A render
+	# cannot answer either.
+	print("")
+	print("  a named part of the model, measured on its own")
+	_assistant._apply(fitted)
+	var measured: String = _assistant._measured()
+	_check("the section is named: %s" % measured.split("\n")[-1].strip_edges(),
+		measured.contains("pylon"))
+	# Four 2x4s stacked is 4 studs across and 12 plates tall as it was
+	# built. Tipped twenty degrees it leans, so its box is wider and
+	# taller than that — 5.5 and 15 — and those are the numbers that
+	# say whether it clears the hull. Measuring it in its own square
+	# coordinates would say 4 and 12 and be useless for that.
+	var leaning: PackedStringArray = PackedStringArray()
+	for line: String in measured.split("\n"):
+		if line.strip_edges().begins_with("pylon"):
+			leaning.append(line)
+	var across: float = 0.0
+	var plates: float = 0.0
+	if not leaning.is_empty():
+		var words: PackedStringArray = leaning[0].split(" ", false)
+		across = words[1].to_float()
+		for n: int in words.size():
+			if words[n].begins_with("plates"):
+				plates = words[n - 1].to_float()
+	_check("...and measured as it is carried, not as it was built: "
+		+ "%s across and %s plates, against 4 and 12 built square"
+		% [Assistant.Placement._num(across),
+			Assistant.Placement._num(plates)],
+		across > 4.5 and plates > 12.5)
+	_assistant.forget_built()
+	world.clear()
+	builder.lattice.clear()
+
 	print("")
 	print("  a brick claiming a section nobody declared")
 	var orphan := Assistant.Model.new()

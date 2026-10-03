@@ -24,6 +24,12 @@ fixing what it got wrong.
   and brings a photograph of the subject into the conversation, credited. The loop
   calls it first, before any brick: a design asked for a lighthouse and working
   from memory gets the proportions wrong in a way no later critique recovers.
+- `measured, not just photographed`: every look — `check_design`, `view_model`,
+  `edit_model` and the critique — carries the model's size in studs, its massing
+  banded by height, and each named section measured as it is carried. "Is this the
+  size I planned" is the question a render answers worst, and a section is the
+  thing a designer thinks in: whether the two nacelles match each other is not
+  something a photograph settles.
 - `shapes said as patterns`: `src/ai/patterns.gd`. Writing placements one at a
   time is the arithmetic a language model is worst at, and most of a model is
   repetition. Three verbs do the counting — `repeat`, `mirror`, `fill` — and
@@ -59,7 +65,7 @@ Runtime, all free — these are the ones to run after changing the loop:
 
 ```sh
 godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and what it is told
-godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote
+godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/scale_probe.gd       # a model too big to list in one go
 godot --headless --path . --script src/dev/scanner_probe.gd     # half-written arguments yield whole bricks
