@@ -304,6 +304,21 @@ func _run() -> void:
 		"too long to send in one piece")
 
 	print("")
+	print("  what the design is told to read")
+	# The numbers only help if it knows they are there. Every look
+	# carries them now, and the prompt has to say so, or they are three
+	# lines of text above a picture that gets looked at instead.
+	var told: String = assistant.guidance()
+	_check_text("the prompt says the numbers come with the picture", told,
+		"read the numbers beside the picture")
+	# Phrases that do not cross a line break: the prompt is wrapped, and
+	# a check for words either side of a newline fails on the wrapping
+	# rather than on the words.
+	_check_text("...and what they settle", told, "an impression")
+	_check_text("...and that the plan wins when they disagree", told,
+		"sizes are right and the model is wrong")
+
+	print("")
 	print("  choosing a scale, and being held to it")
 	# Measured: given the list of scales, a run picked one *below* the
 	# smallest on it and built a 43-stud Voyager where the list said 69,

@@ -4058,6 +4058,15 @@ did not intend — that is what looking is for. Then fix it and carry on.
 Do not look after every brick; each look costs a turn and you have a
 limited number.
 
+And read the numbers beside the picture. Every look comes with the model
+measured in studs: the whole thing, its massing course by course, and
+each named section as it is carried. Those answer what a picture answers
+worst. "Is the saucer the twenty-six studs I planned" is a number, not
+an impression; so is whether the two nacelles match each other, and
+whether the hull is deeper than it is wide. Compare them against the
+sizes you decided on before the first brick, and if they disagree, the
+sizes are right and the model is wrong.
+
 Use check_design on the whole model, or on a substantial part of it. \
 Checking three bricks tells you almost nothing and costs a turn; you \
 have a limited number of them and running out means nothing gets built. \
