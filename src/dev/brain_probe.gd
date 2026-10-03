@@ -286,14 +286,7 @@ func _cached_prefix(choice: Brain.Choice, body: Dictionary) -> void:
 func _live_ceilings() -> void:
 	print("")
 	print("  and the ceiling the table claims is the one the API has")
-	var the_key: String = OS.get_environment("ANTHROPIC_API_KEY")
-	if the_key.is_empty():
-		var file: FileAccess = FileAccess.open("res://.env", FileAccess.READ)
-		while file != null and not file.eof_reached():
-			var line: String = file.get_line().strip_edges()
-			if line.begins_with("ANTHROPIC_API_KEY="):
-				the_key = line.substr(18).strip_edges().lstrip("\"'").rstrip("\"'")
-				break
+	var the_key: String = Brain.api_key()
 	if the_key.is_empty():
 		print("  ....  no key, so this one is skipped — it needs the API "
 			+ "to say what the limit is")

@@ -151,6 +151,23 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   faithfully did. `brain_probe` now asks the API: a `max_tokens` above the limit
   is refused *before* any tokens are generated and the refusal names the limit,
   so the check is free. It skips rather than fails without a key or a network.
+- **Five paid probes read the key from the environment only, and the app reads
+  `.env` too.** So a key set up the way the app expects made `stream`, `sideways`,
+  `bakeoff`, `tier` and `brain` all print "no ANTHROPIC_API_KEY" and skip —
+  reporting no key with the key in the file beside them, which is part of why
+  those surfaces had never been driven. `Brain.api_key()` is the one
+  implementation now; `main.gd` delegates to it.
+- **`TLS handshake error: -27648` / `mbedtls -0x6c00` happens, and is not ours.**
+  That code is `MBEDTLS_ERR_SSL_INTERNAL_ERROR` — a failure inside Godot's
+  bundled TLS. Measured: about twice per run, in a 46-brick post box as readily
+  as in a 90-minute Voyager, always on a fresh connection's handshake. The app
+  retries (`_ask_again`, 4 tries, 2 s × attempt) and every run has recovered and
+  finished its design, so the symptom is a slow run rather than a lost one.
+  **A speculative fix was tried and reverted**: polling the socket hard instead of
+  once per frame, on the theory that a main thread busy for seconds was starving
+  the handshake. Two runs before, two runs after, two errors in every one — it
+  changed nothing. The damage that mattered was a timed-out run losing its file,
+  and that is fixed in `model-io.md` instead.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

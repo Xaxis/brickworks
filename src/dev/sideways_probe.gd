@@ -44,7 +44,7 @@ func _run() -> void:
 	var world: BrickWorld = main.get("_world")
 	var builder: Builder = main.get("_builder")
 	var store: ModelStore = main.get("_store")
-	assistant.direct_key = OS.get_environment("ANTHROPIC_API_KEY")
+	assistant.direct_key = Brain.api_key()
 	if assistant.direct_key.is_empty():
 		print("no ANTHROPIC_API_KEY — this one talks to the model directly")
 		quit(1)

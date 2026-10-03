@@ -64,7 +64,7 @@ func _run() -> void:
 		_summary.to_lower().contains("own anthropic key"))
 
 	# Now with a key of their own, which must go somewhere else entirely.
-	var real: String = OS.get_environment("ANTHROPIC_API_KEY")
+	var real: String = Brain.api_key()
 	if real.is_empty():
 		print("  (no ANTHROPIC_API_KEY — skipping the half that spends money)")
 	else:

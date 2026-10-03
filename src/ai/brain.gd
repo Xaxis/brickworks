@@ -118,6 +118,32 @@ const DEFAULT_EFFORT := "high"
 const DEFAULT_MODEL := "claude-opus-5-5"
 
 
+## The key for a direct call, from the environment or from a .env
+## beside the project. Never compiled in, and never used on the web.
+##
+## One place, because there were two and they disagreed. The app read
+## the environment and then fell back to .env; five probes read only
+## the environment, so a key sitting in .env — which is where the app
+## itself expects it and where anybody setting this up puts it — made
+## them all print "no ANTHROPIC_API_KEY" and skip. Five paid checks
+## that had never once run, reporting that there was no key, with the
+## key in the file beside them.
+static func api_key() -> String:
+	var from_env: String = OS.get_environment("ANTHROPIC_API_KEY")
+	if not from_env.is_empty():
+		return from_env
+	var file: FileAccess = FileAccess.open("res://.env", FileAccess.READ)
+	if file == null:
+		return ""
+	while not file.eof_reached():
+		var line: String = file.get_line().strip_edges()
+		for prefix: String in ["ANTHROPIC_API_KEY=", "AI__ANTHROPIC_API_KEY="]:
+			if line.begins_with(prefix):
+				return line.substr(prefix.length()).strip_edges() \
+					.lstrip("\"'").rstrip("\"'")
+	return ""
+
+
 static func all() -> Array[Choice]:
 	var out: Array[Choice] = []
 	for fields: Dictionary in CHOICES:

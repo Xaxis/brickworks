@@ -918,21 +918,11 @@ static func _viewport_label(size: int) -> Label:
 	return label
 
 
-## The key for a direct desktop call, from the environment or a .env
-## beside the project. Never compiled in, and never used on the web.
+## The key for a direct desktop call. Brain holds the one copy of this,
+## because five probes had their own and all five read only the
+## environment — so a key in .env made every one of them skip.
 static func _anthropic_key() -> String:
-	var from_env: String = OS.get_environment("ANTHROPIC_API_KEY")
-	if not from_env.is_empty():
-		return from_env
-	var file: FileAccess = FileAccess.open("res://.env", FileAccess.READ)
-	if file == null:
-		return ""
-	while not file.eof_reached():
-		var line: String = file.get_line().strip_edges()
-		for prefix: String in ["ANTHROPIC_API_KEY=", "AI__ANTHROPIC_API_KEY="]:
-			if line.begins_with(prefix):
-				return line.substr(prefix.length()).strip_edges().lstrip("\"'").rstrip("\"'")
-	return ""
+	return Brain.api_key()
 
 
 ## The working model is written a couple of seconds after the last

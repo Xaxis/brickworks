@@ -59,7 +59,7 @@ func _run() -> void:
 		print("no assistant")
 		quit(1)
 		return
-	assistant.direct_key = OS.get_environment("ANTHROPIC_API_KEY")
+	assistant.direct_key = Brain.api_key()
 	if assistant.direct_key.is_empty():
 		print("no ANTHROPIC_API_KEY — this one talks to the model directly")
 		quit(1)
