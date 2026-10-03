@@ -101,6 +101,42 @@ func _initialize() -> void:
 		and text.contains("y 0..3"))
 	_check("says which were placed by hand", text.contains("placed by hand"))
 
+	# How big it came out, which is the question the critique most needs
+	# answered and the one a render answers worst. Two columns of 2x4s:
+	# eight studs across, two deep, twelve plates tall — and twelve, not
+	# twelve and a half, because the stud on top is not a course.
+	world.clear()
+	builder.lattice.clear()
+	var stack := Assistant.Model.new()
+	for n: int in 8:
+		stack.placements.append(Assistant.Placement.from_dict({
+			"part": "3001", "color": 4,
+			"x": 0 if n < 4 else 4, "y": (n % 4) * 3, "z": 0}))
+	assistant._apply(stack)
+	var sizes: String = assistant._measured()
+	_check("measures the model: %s" % sizes.split("\n")[0],
+		sizes.contains("8 across") and sizes.contains("2 deep")
+		and sizes.contains("12 plates tall"))
+	# Banded by height, which is what says a saucer is too thick.
+	_check("...and bands it by height, %d rows" % (sizes.count("plates ") - 1),
+		sizes.contains("plates 0-2") and sizes.contains("plates 9-11")
+		and not sizes.contains("plates 12-14"))
+
+	# A taper has to read as one. This is the whole use of the thing: a
+	# dome that came out as a cylinder is invisible in a photograph and
+	# obvious in three numbers.
+	world.clear()
+	builder.lattice.clear()
+	assistant.forget_built()
+	var dome: Assistant.Model = assistant._read_model({"patterns": [{
+		"pattern": "fill", "shape": "ellipse", "at": {"x": 0, "y": 0, "z": 0},
+		"across": 16, "deep": 16, "layers": 8, "shrink": 2, "color": 71}]})
+	assistant._apply(dome)
+	var tapered: String = assistant._measured()
+	_check("a dome reads as a taper: %s"
+		% tapered.split("\n")[tapered.split("\n").size() - 1].strip_edges(),
+		tapered.contains("16 across") and tapered.contains("4 across"))
+
 	world.clear()
 	_check("an empty baseplate says so",
 		assistant._describe_world().contains("empty"))

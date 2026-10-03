@@ -292,6 +292,34 @@
       "entry": "export_presets.cfg",
       "reach": "tools/export.sh mac   (universal, ad-hoc signed)",
       "area": "pipeline"
+    },
+    {
+      "kind": "lib",
+      "label": "shapes said as patterns",
+      "entry": "src/ai/patterns.gd",
+      "reach": "godot --headless --path . --script src/dev/patterns_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "worked constructions",
+      "entry": "src/ai/techniques.gd",
+      "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "find a reference picture",
+      "entry": "src/ai/reference_finder.gd",
+      "reach": "godot --headless --path . --script src/dev/reference_lookup_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "studs written on the render",
+      "entry": "src/ai/shot_ruler.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
+      "area": "view"
     }
   ]
 }

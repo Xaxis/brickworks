@@ -153,6 +153,7 @@ func _run() -> void:
 			% [_share(close) * 100.0, _share(whole) * 100.0])
 
 	await _check_ruler(shot, world)
+	await _check_highlight(main, world, builder, library)
 
 	print("")
 	if _failures == 0:
@@ -222,3 +223,188 @@ func _check_ruler(shot: ModelShot, world: BrickWorld) -> void:
 	else:
 		_failures += 1
 		print("  FAIL  the ruler covers the picture, %d samples" % differ)
+
+
+## Can a design find its own change in the picture of the model?
+##
+## The honest failure here is that it cannot: an edit that moves eight
+## bricks in four hundred comes back as a render of four hundred bricks,
+## and the only way to tell which eight moved is to read the coordinate
+## list again — which is the thing the picture was supposed to replace.
+## So the bricks an edit added or moved are restaged in one colour
+## nothing nearby is built in.
+##
+## Driven through the tool a real run calls, not through ModelShot, so
+## that the wiring in between is what is being checked: ``edit_model``
+## records the numbers, the answer sets them on the stage, and the stage
+## is a copy — the model keeps the colours it was given.
+func _check_highlight(main: Node, world: BrickWorld, builder: Builder,
+		library: PartLibrary) -> void:
+	print("")
+	print("  what changed, picked out")
+	var assistant := Assistant.new()
+	assistant.library = library
+	assistant.world = world
+	assistant.builder = builder
+	main.add_child(assistant)
+	await process_frame
+
+	# Eight red bricks in two columns, so that moving two is a quarter
+	# of the model and not most of it.
+	world.clear()
+	builder.lattice.clear()
+	var start := Assistant.Model.new()
+	for n: int in 8:
+		start.placements.append(Assistant.Placement.from_dict({
+			"part": "3001", "color": 4,
+			"x": 0 if n < 4 else 4, "y": (n % 4) * 3, "z": 0}))
+	assistant._apply(start)
+	for _n: int in 10:
+		await process_frame
+	var ids: Array = _ids(world)
+	if ids.size() != 8:
+		_failures += 1
+		print("  FAIL  built %d bricks, wanted 8" % ids.size())
+		assistant.queue_free()
+		return
+
+	# Nothing has changed yet, so nothing should be picked out.
+	var before: int = _magenta(await assistant._ensure_shot().take(
+		world, "corner"))
+	if before == 0:
+		print("  ok    an unedited model has none of the colour in it")
+	else:
+		_failures += 1
+		print("  FAIL  %d samples are already the highlight colour, so "
+			% before + "finding it later proves nothing")
+
+	# One moved and one added, so that both halves of the recording are
+	# covered. Both have to stand up: an edit that would leave a brick
+	# floating is refused and changes nothing, which would make this
+	# check pass for the wrong reason — the picture would simply be of
+	# the model it already was.
+	#
+	# So the top of the first column moves across onto the second, and
+	# a new brick takes the place it left.
+	var answer: Variant = await assistant.use_tool("edit_model", {
+		"move": [{"bricks": [ids[3]], "dx": 4, "dy": 3}],
+		"add": [{"part": "3001", "color": 4, "x": 0, "y": 9, "z": 0}]})
+	if answer is String:
+		_failures += 1
+		print("  FAIL  the edit answered with words, not a picture: %s"
+			% str(answer).substr(0, 120))
+		assistant.queue_free()
+		return
+
+	var image: Image = _picture_in(answer)
+	if image == null:
+		_failures += 1
+		print("  FAIL  no picture in the edit's answer")
+		assistant.queue_free()
+		return
+	image.save_png("user://shot_highlight.png")
+	var after: int = _magenta(image)
+	if after > 0:
+		print("  ok    the two it moved are picked out, %d samples" % after)
+	else:
+		_failures += 1
+		print("  FAIL  nothing in the picture is the highlight colour, "
+			+ "so the change is as hard to find as before")
+
+	# A quarter of the model, not the model.
+	var red: float = _share(image)
+	if after > 0 and float(after) > _samples(image) * 0.5:
+		_failures += 1
+		print("  FAIL  %d of %d samples are the highlight colour — that "
+			% [after, _samples(image)] + "is a magenta model, not a change")
+	elif red <= 0.0:
+		_failures += 1
+		print("  FAIL  no red left in the picture, so the highlight "
+			+ "took the whole model")
+	else:
+		print("  ok    ...and the rest of it is still red, %.0f%% of it"
+			% (red * 100.0))
+
+	# The model itself is untouched. This is the part that would be a
+	# real bug rather than a dull picture: a highlight that recoloured
+	# the world would hand somebody a magenta brick they never chose,
+	# and the next save would keep it.
+	var wrong: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.color_code != 4:
+			wrong += 1
+	if wrong == 0:
+		print("  ok    and every brick in the model is still the colour "
+			+ "it was given")
+	else:
+		_failures += 1
+		print("  FAIL  %d bricks in the model were actually recoloured"
+			% wrong)
+
+	# And it does not stick. The next picture anybody asks for is of the
+	# model, not of the last edit.
+	var later: Variant = await assistant.use_tool("view_model", {})
+	var next_image: Image = _picture_in(later)
+	if next_image == null:
+		_failures += 1
+		print("  FAIL  no picture from view_model to check against")
+	elif _magenta(next_image) == 0:
+		print("  ok    a later look has none of it left in it")
+	else:
+		_failures += 1
+		print("  FAIL  the highlight survived into the next picture, "
+			+ "%d samples" % _magenta(next_image))
+	assistant.queue_free()
+
+
+## Brick numbers in the world, in the order they were made.
+func _ids(world: BrickWorld) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		out.append(brick.id)
+	out.sort()
+	return out
+
+
+## The image out of an answer made of blocks.
+static func _picture_in(answer: Variant) -> Image:
+	if not answer is Array:
+		return null
+	for block: Variant in answer:
+		if not block is Dictionary:
+			continue
+		if block.get("type", "") != "image":
+			continue
+		var image := Image.new()
+		if image.load_png_from_buffer(Marshalls.base64_to_raw(
+				str(block["source"]["data"]))) != OK:
+			return null
+		return image
+	return null
+
+
+## How many samples are the highlight colour.
+##
+## Matched the way the red is: much more of two channels than of the
+## third, rather than against the palette's numbers, because the shader
+## linearises colour on the way in and the viewport does not hand it
+## back the way it was written.
+static func _magenta(image: Image) -> int:
+	if image == null:
+		return 0
+	var step: int = maxi(image.get_width() / 60, 1)
+	var hits: int = 0
+	for x: int in range(0, image.get_width(), step):
+		for y: int in range(0, image.get_height(), step):
+			var pixel: Color = image.get_pixel(x, y)
+			if pixel.r > 0.25 and pixel.b > 0.1 \
+					and pixel.r > pixel.g * 2.5 \
+					and pixel.b > pixel.g * 1.5:
+				hits += 1
+	return hits
+
+
+## How many samples the counters above look at.
+static func _samples(image: Image) -> int:
+	var step: int = maxi(image.get_width() / 60, 1)
+	return (image.get_width() / step) * (image.get_height() / step)

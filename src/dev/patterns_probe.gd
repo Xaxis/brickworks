@@ -101,7 +101,74 @@ func _initialize() -> void:
 	_check("...and it is an ellipse, not the box round it", corners)
 
 	print("")
+	print("  a solid, said in one object")
+	# The shapes a model actually needs and could not say: a dome, a
+	# tube, a hull. Each of these was three hundred plates written by
+	# hand, and the hundredth plate of a dome is where a design stops
+	# being able to check its own work.
+	var dome: Array = _made([{"pattern": "fill", "shape": "ellipse",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 16, "deep": 16,
+		"layers": 8, "shrink": 2, "color": 71}])
+	_check("a dome comes back, %d plates" % dome.size(), dome.size() > 20)
+	var heights: Dictionary = {}
+	var widest: Dictionary = {}   ## height -> studs across at that height
+	for one: Variant in dome:
+		var brick: Dictionary = one
+		var y: float = float(brick["y"])
+		heights[y] = true
+		var x: float = float(brick["x"])
+		widest[y] = maxf(widest.get(y, -999.0), x)
+	_check("...eight layers of it, one plate apart, %d" % heights.size(),
+		heights.size() == 8)
+	# Narrower as it rises, which is the whole of what shrink means.
+	_check("...and each layer narrower than the one below",
+		float(widest.get(0.0, 0.0)) > float(widest.get(7.0, 99.0)))
+
+	var tube: Array = _made([{"pattern": "fill", "shape": "ellipse",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 12, "deep": 12,
+		"wall": 1, "layers": 3, "color": 71}])
+	var solid: Array = _made([{"pattern": "fill", "shape": "ellipse",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 12, "deep": 12,
+		"layers": 3, "color": 71}])
+	_check("a wall leaves the middle out, %d plates against %d solid"
+		% [tube.size(), solid.size()], not tube.is_empty())
+	# Counted in studs rather than plates: a ring is more plates than
+	# the disc it came from, because a 1-wide ring cannot be tiled in
+	# 6x4s. Area is the thing that got smaller.
+	_check("...and it is hollow, %d studs against %d"
+		% [_area(tube), _area(solid)], _area(tube) < _area(solid) / 2)
+
+	var hull: Array = _made([{"pattern": "fill", "shape": "rectangle",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 6, "deep": 4,
+		"layers": 4, "rise": 3, "color": 71}])
+	var courses: Dictionary = {}
+	for one: Variant in hull:
+		courses[float((one as Dictionary)["y"])] = true
+	_check("rise puts courses three plates apart, %s"
+		% str(courses.keys()), courses.has(0.0) and courses.has(9.0)
+		and not courses.has(1.0))
+
+	# A taper that runs out before its layers do is a cone, not an error.
+	var cone: Array = _made([{"pattern": "fill", "shape": "ellipse",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 8, "deep": 8,
+		"layers": 40, "shrink": 2, "color": 71}])
+	_check("a taper that comes to a point stops there, %d plates"
+		% cone.size(), not cone.is_empty() and cone.size() < 200)
+
+	_holds_up()
+
+	print("")
 	print("  and nonsense is refused rather than built")
+	_check("an odd shrink, which would lean the stack",
+		_trouble([{"pattern": "fill", "shape": "ellipse", "across": 10,
+			"deep": 10, "layers": 4, "shrink": 1}]).contains("even"))
+	# Each layer is inside the cap and forty of them are not, which is
+	# the one that got through: the first version only measured the
+	# footprint, so a reasonable footprint stacked forty high was six
+	# thousand plates and no complaint.
+	_check("a fill too big to be a shape",
+		_trouble([{"pattern": "fill", "shape": "rectangle", "across": 60,
+			"deep": 60, "layers": 40}]).contains("mistake in the numbers"))
 	_check("a pattern nobody has",
 		_trouble([{"pattern": "spiral"}]).contains("no pattern called"))
 	_check("a fill with no size",
@@ -117,6 +184,57 @@ func _initialize() -> void:
 	quit(1 if _failures else 0)
 
 
+## Does a shape said this way actually stand up?
+##
+## Expanding to plates is half the job and the easy half. A dome whose
+## layers do not reach the one below is a stack of floating rings, and
+## the pattern would then be worse than counting it out by hand: wrong
+## in a way the design cannot see, arriving as a refusal it cannot
+## account for. So each of the five shapes the prompt offers is run
+## through the same checker a submission goes through.
+func _holds_up() -> void:
+	print("")
+	print("  and it stands up — the same checker a submission faces")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+
+	for one: Array in [
+		["a dome", {"pattern": "fill", "shape": "ellipse",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 16, "deep": 16,
+			"layers": 8, "shrink": 2, "color": 71}],
+		["a cone", {"pattern": "fill", "shape": "ellipse",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 20, "deep": 20,
+			"layers": 10, "shrink": 4, "color": 71}],
+		["a round tower", {"pattern": "fill", "shape": "ellipse",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 12, "deep": 12,
+			"wall": 1, "layers": 12, "rise": 3, "color": 71}],
+		["a hull", {"pattern": "fill", "shape": "rectangle",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 10, "deep": 6,
+			"layers": 6, "rise": 3, "color": 71}],
+		["a bowl", {"pattern": "fill", "shape": "ellipse",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 8, "deep": 8,
+			"wall": 2, "layers": 6, "shrink": -2, "color": 71}],
+	]:
+		var model: Assistant.Model = assistant._read_model(
+			{"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model)
+		if bool(verdict["ok"]):
+			_check("%s holds together, %d parts"
+				% [one[0], model.placements.size()], true)
+		else:
+			_check("%s — %s" % [one[0], str(verdict["summary"])], false)
+
+
 func _made(patterns: Array, already: Array = []) -> Array:
 	var trouble: Array = []
 	return Patterns.expand(patterns, already, trouble, _library)
@@ -129,6 +247,19 @@ func _trouble(patterns: Array) -> String:
 	for one: Variant in trouble:
 		said.append(str(one))
 	return " ".join(said)
+
+
+## How many studs a set of plates covers.
+func _area(bricks: Array) -> int:
+	var total: int = 0
+	for one: Variant in bricks:
+		var brick: Dictionary = one
+		var info: PartLibrary.PartInfo = _library.parts.get(str(brick["part"]))
+		if info == null:
+			continue
+		var footprint: Vector2i = info.footprint_studs()
+		total += footprint.x * footprint.y
+	return total
 
 
 ## Whether the plates cover every stud of a footprint exactly once.

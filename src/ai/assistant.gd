@@ -1214,8 +1214,13 @@ func _run_tool(block: Dictionary) -> Variant:
 			if not _unknown.is_empty():
 				said += " No brick has %s, so those were left alone." \
 					% _numbers(_unknown)
-			return await _with_a_look(said,
-				"That is what it looks like now.")
+			# Set before the picture, dropped after it: a magenta
+			# brick in a check_design render a minute later would read
+			# as a colour somebody chose.
+			var ask_about_it: String = _after_an_edit(edited)
+			var answer: Variant = await _with_a_look(said, ask_about_it)
+			_shot.highlight = {}
+			return answer
 		"submit_design":
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks" % _pending.placements.size())
@@ -1288,6 +1293,10 @@ func _model_from_world() -> Model:
 var _unknown: PackedInt64Array = PackedInt64Array()
 ## How many changes an edit actually made.
 var _touched: int = 0
+## Which bricks the last edit added or moved, for the picture to pick
+## out. Numbers only — the recolouring happens on a copy of the world
+## inside [ModelShot], so nothing in the model changes colour.
+var _changed_ids: PackedInt64Array = PackedInt64Array()
 
 
 func _edit(args: Dictionary) -> Model:
@@ -1423,6 +1432,138 @@ func _forget_old_pictures() -> void:
 						"text": "(a view of an earlier draft)"}
 
 
+## Pick out what the edit just changed, and say so.
+##
+## A design that has just moved eight bricks is shown the whole model
+## and asked whether the change worked, which on four hundred bricks
+## means finding its own eight by reading coordinates. Picking them out
+## in one unmistakable colour turns that back into looking.
+##
+## Only when the change is a part of the model rather than most of it:
+## an edit that moved everything would come back as a model in one
+## colour, which says nothing about anything.
+func _after_an_edit(model: Model) -> String:
+	_ensure_shot().highlight = {}
+	var picked: Dictionary = {}
+	for brick_id: int in _changed_ids:
+		picked[brick_id] = true
+	if picked.is_empty() or picked.size() * 2 > model.placements.size():
+		return "That is what it looks like now."
+	_shot.highlight = picked
+	return ("That is what it looks like now. The %d you added or moved "
+		% picked.size()
+		+ "are bright magenta in the picture so that you can find them — "
+		+ "only in the picture. They are still the colours you gave "
+		+ "them.")
+
+
+## How big the model actually came out, in studs.
+##
+## The one question a critique most needs answered — is this the size I
+## planned? — is the one a picture answers worst. A vision model counts
+## studs in a render badly, and the research says so: on spatial tasks
+## about stacked bricks the best of them sit near half right where a
+## person is at ninety percent. So the numbers are measured here and
+## handed over, in the same units plan_scale talks in.
+##
+## Banded by height, because that is a model's massing: a saucer that
+## came out three plates thick and forty across is a different object
+## from one eight thick and twenty across, and both read as "a disc" in
+## a photograph.
+##
+## Measured off each part's own bounds rather than off the lattice. The
+## lattice is exact and costs nine thousand cells a brick, which is
+## three million for a model this is worth saying about.
+func _measured() -> String:
+	if world == null or library == null:
+		return ""
+	## Band of plates -> [low x, high x, low z, high z], in studs.
+	var bands: Dictionary = {}
+	var low := Vector3(INF, INF, INF)
+	var high := Vector3(-INF, -INF, -INF)
+	var counted: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var box: AABB = (brick.transform * part.bounds).abs()
+		var near := Vector3(box.position.x / STUD, box.position.y / PLATE,
+			box.position.z / STUD)
+		var far := Vector3(box.end.x / STUD, box.end.y / PLATE,
+			box.end.z / STUD)
+		low = Vector3(minf(low.x, near.x), minf(low.y, near.y),
+			minf(low.z, near.z))
+		high = Vector3(maxf(high.x, far.x), maxf(high.y, far.y),
+			maxf(high.z, far.z))
+		counted += 1
+		# Floor, not ceiling, so the stud on top does not put the brick
+		# in a band of its own: a brick runs from 0 to 3.5 by its own
+		# bounds and occupies plates 0, 1 and 2. A builder says three.
+		for plate: int in range(int(floor(near.y)), maxi(
+				int(floor(far.y + 0.001)), int(floor(near.y)) + 1)):
+			var was: Array = bands.get(plate, [INF, -INF, INF, -INF])
+			bands[plate] = [minf(was[0], near.x), maxf(was[1], far.x),
+				minf(was[2], near.z), maxf(was[3], far.z)]
+	if counted == 0:
+		return ""
+
+	var said := PackedStringArray()
+	said.append("Measured, in studs: the whole model is %s across, %s deep "
+		% [_studs(high.x - low.x), _studs(high.z - low.z)]
+		+ "and %d plates tall, its near corner at x %s, z %s."
+		% [int(floor(high.y - low.y + 0.001)), _studs(low.x),
+			_studs(low.z)])
+
+	# At most a dozen rows: thirty-three bands of a hundred-plate model
+	# is a wall of numbers nobody reads.
+	var plates: Array = bands.keys()
+	plates.sort()
+	if plates.is_empty():
+		return " ".join(said)
+	var tall: int = int(plates[plates.size() - 1]) - int(plates[0]) + 1
+	var step: int = maxi(3, int(ceil(float(tall) / 12.0 / 3.0)) * 3)
+	var rows := PackedStringArray()
+	var band: int = int(plates[0])
+	while band <= int(plates[plates.size() - 1]):
+		var lo_x: float = INF
+		var hi_x: float = -INF
+		var lo_z: float = INF
+		var hi_z: float = -INF
+		for plate: int in range(band, band + step):
+			if not bands.has(plate):
+				continue
+			var one: Array = bands[plate]
+			lo_x = minf(lo_x, float(one[0]))
+			hi_x = maxf(hi_x, float(one[1]))
+			lo_z = minf(lo_z, float(one[2]))
+			hi_z = maxf(hi_z, float(one[3]))
+		if lo_x < INF:
+			rows.append("  plates %-7s %s across x %s deep, at x %s, z %s"
+				% ["%d-%d" % [band, band + step - 1],
+					_studs(hi_x - lo_x), _studs(hi_z - lo_z),
+					_studs(lo_x), _studs(lo_z)])
+		band += step
+	if rows.size() > 1:
+		said.append("Its massing, layer by layer — compare this against "
+			+ "the sizes you planned:\n" + "\n".join(rows))
+	return " ".join(said)
+
+
+## A measurement, without a decimal point it does not need.
+static func _studs(value: float) -> String:
+	return Placement._num(snappedf(value, 0.1))
+
+
+## The thing that takes pictures, made on first use.
+func _ensure_shot() -> ModelShot:
+	if _shot == null:
+		_shot = ModelShot.new()
+		add_child(_shot)
+	return _shot
+
+
 ## An answer with a picture of the model attached, or with the model
 ## drawn as letters when there is no way to take one.
 ##
@@ -1436,10 +1577,8 @@ func _forget_old_pictures() -> void:
 ## is how a house was judged good with a blank front wall. Two opposite
 ## corners between them show all four.
 func _from_both_sides(said: String, ask: String) -> Variant:
-	if _shot == null:
-		_shot = ModelShot.new()
-		add_child(_shot)
-	var near: Dictionary = await _shot.block(world, "corner", scenery)
+	var near: Dictionary = await _ensure_shot().block(
+		world, "corner", scenery)
 	if not _busy:
 		return ""
 	var far: Dictionary = await _shot.block(world, "far corner", scenery)
@@ -1470,6 +1609,9 @@ func _from_both_sides(said: String, ask: String) -> Variant:
 		blocks.append({"type": "text", "text":
 			"And what you built. Compare them: the proportions first, "
 			+ "then the outline, then what is missing."})
+	var sizes: String = _measured()
+	if not sizes.is_empty():
+		blocks.append({"type": "text", "text": sizes})
 	blocks.append({"type": "text", "text": "From one corner:"})
 	blocks.append(near)
 	blocks.append({"type": "text", "text": "And from the opposite one, "
@@ -1498,9 +1640,7 @@ func _subject_pictures() -> Array:
 
 func _with_a_look(said: String, ask: String,
 		from: String = "corner", only: AABB = AABB()) -> Variant:
-	if _shot == null:
-		_shot = ModelShot.new()
-		add_child(_shot)
+	_ensure_shot()
 
 	# Whether this is part of a design run, settled before the picture is
 	# drawn rather than after.
@@ -3305,6 +3445,7 @@ func _ensure_parts(model: Model) -> void:
 ## change land on whatever now happens to hold those numbers. Which is
 ## to say: on the wrong bricks, silently.
 func _apply_edit(model: Model) -> void:
+	_changed_ids = PackedInt64Array()
 	var wanted: Dictionary = {}
 	var fresh: Array[Placement] = []
 	for placement: Placement in model.placements:
@@ -3361,6 +3502,7 @@ func _apply_edit(model: Model) -> void:
 			var at: Transform3D = _transform(placement, part,
 			model.section_for(placement))
 			world.move_brick(brick_id, at)
+			_changed_ids.append(brick_id)
 			# Where it now sits inside its section, which is what the
 			# next edit will be written against.
 			_remember_section(brick_id, placement, model)
@@ -3379,6 +3521,7 @@ func _apply_edit(model: Model) -> void:
 			placement.part, placement.color, at)
 		if brick_id != 0:
 			builder.register(brick_id, placement.part, at)
+			_changed_ids.append(brick_id)
 			_remember_section(brick_id, placement, model)
 			if placement.mine:
 				mine[brick_id] = true
@@ -3677,7 +3820,20 @@ alongside the bricks you write by hand:
            side, and a part with a hand is swapped for its twin for you.
   fill     a footprint — rectangle or ellipse — tiled with the largest \
            plates that fit. A saucer twenty studs across is one line \
-           here and a hundred and fifty plates by hand.
+           here and a hundred and fifty plates by hand. Four more keys \
+           turn that footprint into a solid: wall leaves the middle out, \
+           layers stacks it, rise says how far apart, and shrink takes \
+           studs off each layer so it tapers.
+
+             a dome          ellipse, layers 8, shrink 2
+             a cone          ellipse, layers 10, shrink 4
+             a round tower   ellipse, wall 1, layers 12, rise 3
+             a hull          rectangle, layers 6, rise 3, shrink 0
+             a bowl          ellipse, wall 2, layers 6, shrink -2
+
+           Say it that way. A dome written out by hand is three hundred \
+           plates, and the ones that go wrong are the ones nobody can \
+           check.
 
 A four thousand part model is not too large to build. It is too large to \
 dictate, which is a different problem, and this is the answer to it.
@@ -4112,7 +4268,9 @@ func _tools() -> Array:
 					+ "mirror: everything so far, reflected about a line "
 					+ "— build one side and mirror it rather than "
 					+ "writing both. fill: a footprint tiled with the "
-					+ "largest plates that fit."},
+					+ "largest plates that fit — and with layers, a "
+					+ "shrink and a wall it is a dome, a cone, a hull, "
+					+ "a tube or a bowl in one object."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -4129,6 +4287,20 @@ func _tools() -> Array:
 			"across": {"type": "number", "description": "fill: studs in x"},
 			"deep": {"type": "number", "description": "fill: studs in z"},
 			"color": {"type": "integer", "description": "fill: the colour"},
+			"wall": {"type": "number", "description":
+				"fill: leave the middle out, this many studs in from "
+				+ "every side. An ellipse with wall 1 is a round tube; "
+				+ "a rectangle with wall 1 is a room's walls."},
+			"layers": {"type": "number", "description":
+				"fill: how many of the footprint, stacked up"},
+			"rise": {"type": "number", "description":
+				"fill: plates between layers. 1 for plates, which is "
+				+ "the default; 3 for courses of bricks."},
+			"shrink": {"type": "number", "description":
+				"fill: studs off each layer, taken half from each side, "
+				+ "so the stack tapers as it rises. Must be even. 2 is "
+				+ "a dome, 4 a steep cone, 0 a straight-sided hull, and "
+				+ "-2 flares outward."},
 			"bricks": {"type": "array", "items": brick, "description":
 				"repeat: what to repeat. mirror: what to reflect, if not "
 				+ "everything so far."},

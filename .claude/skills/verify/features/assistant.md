@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, cli:design from a brief, lib:model and effort settings, lib:reference pictures -->
+<!-- covers: lib:design loop, cli:design from a brief, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
 
 ## Sub-features
 
@@ -17,7 +17,25 @@ fixing what it got wrong.
   whether the request it builds is one that model will accept — `max_tokens`
   ceilings, adaptive thinking, the cached system block.
 - `reference pictures`: a picture of what is wanted, put into the conversation,
-  and old ones dropped so the context does not grow without bound.
+  and old ones dropped so the context does not grow without bound. A reference is
+  kept when drafts are dropped, and is shown beside the renders in the critique —
+  the moment a designer holds the model up against the thing.
+- `find a reference picture`: `find_reference`, a tool. Searches Wikimedia Commons
+  and brings a photograph of the subject into the conversation, credited. The loop
+  calls it first, before any brick: a design asked for a lighthouse and working
+  from memory gets the proportions wrong in a way no later critique recovers.
+- `shapes said as patterns`: `src/ai/patterns.gd`. Writing placements one at a
+  time is the arithmetic a language model is worst at, and most of a model is
+  repetition. Three verbs do the counting — `repeat`, `mirror`, `fill` — and
+  `fill` takes `wall`, `layers`, `rise` and `shrink`, which between them say a
+  dome, a cone, a round tower, a straight hull and a flaring bowl in one object.
+  Expansion happens here, from data: nothing runs anybody's code.
+- `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
+  Eight constructions with real part numbers and real coordinates — a staggered
+  wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
+  a smooth top, a round tower, a taper. Being *told* to stagger a wall is not the
+  same as knowing where the stud sits, and the arithmetic is the part that goes
+  wrong.
 
 ## How to reach it
 
@@ -51,6 +69,9 @@ godot --headless --path . --script src/dev/dropped_probe.gd     # a dropped conn
 godot --headless --path . --script src/dev/restore_probe.gd     # a failed design leaves the model alone
 godot --headless --path . --script src/dev/brain_probe.gd       # the request carries only what the model accepts
 godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets in
+godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
+godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out
+godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```
 

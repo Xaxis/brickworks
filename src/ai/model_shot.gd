@@ -145,6 +145,17 @@ func _build() -> void:
 ## step: a copy that is updated by listening to the real one is a second
 ## source of truth, and the one nobody is looking at is the one that
 ## drifts.
+## Bricks to pick out, by number. The stage is a copy of the world, so
+## recolouring one here changes a picture and not a model.
+var highlight: Dictionary = {}
+## Dark Pink, which is to say magenta. Opaque — trans-neon green was
+## the first choice and renders as a wash you can see the brick behind,
+## which is the wrong thing when the question is "which brick" — and far
+## enough from the greys, reds and blues a model is actually built in
+## that it cannot be mistaken for a colour somebody chose.
+const PICKED_OUT := 5
+
+
 func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 	_stage.clear()
 	var box := AABB()
@@ -152,7 +163,16 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id):
 			continue
-		_stage.add_brick(brick.part_id, brick.color_code, brick.transform)
+		# What just changed, in a colour it cannot be in otherwise.
+		#
+		# A design is shown the model after an edit and has to find its
+		# own change in it, which on four hundred bricks it does by
+		# reading the list again rather than by looking. Brick-Composer
+		# renders its before-and-after with the new part picked out for
+		# the same reason.
+		var colour: int = PICKED_OUT if highlight.has(brick.id) \
+			else brick.color_code
+		_stage.add_brick(brick.part_id, colour, brick.transform)
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if part == null:
 			continue

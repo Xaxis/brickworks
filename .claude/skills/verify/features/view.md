@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, lib:renders for the critique, ui:build steps, ui:mosaic -->
+<!-- covers: ui:camera controls, ui:controls panel and hint, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic -->
 
 ## Sub-features
 
@@ -12,7 +12,16 @@ picture the assistant is shown.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
   `,` or the Controls button — and every key on it actually doing that.
 - `renders for the critique`: the image handed to the assistant so it can see what
-  it built, drawn by a SubViewport.
+  it built, drawn by a SubViewport. Two opposite corners, so every side has been
+  seen; a close look at one part of a model too big to judge whole; and, after an
+  edit, the bricks that edit added or moved restaged in magenta, so the design can
+  find its own change by looking rather than by re-reading coordinates. The stage
+  is a copy of the world — the model keeps the colours it was given.
+- `studs written on the render`: `src/ai/shot_ruler.gd`. Two ticked, numbered
+  lines along the model's near corner, drawn by projecting world positions through
+  the same camera that took the picture. A render says what was built and not
+  where it is, so a number read off the image is the number to write in a
+  placement.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it.
 - `mosaic`: a picture turned into a plate of tiles that still looks like the

@@ -192,6 +192,14 @@
       "tests": []
     },
     {
+      "id": "lib:find a reference picture",
+      "kind": "lib",
+      "entry": "src/ai/reference_finder.gd",
+      "reach": "godot --headless --path . --script src/dev/reference_lookup_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:ldr read and write",
       "kind": "lib",
       "entry": "src/parts/ldr_model.gd",
@@ -256,6 +264,14 @@
       "tests": []
     },
     {
+      "id": "lib:shapes said as patterns",
+      "kind": "lib",
+      "entry": "src/ai/patterns.gd",
+      "reach": "godot --headless --path . --script src/dev/patterns_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:sideways building",
       "kind": "lib",
       "entry": "src/assembly/lattice.gd",
@@ -269,6 +285,22 @@
       "entry": "src/assembly/stability.gd",
       "reach": "godot --headless --path . --script src/dev/stability_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:studs written on the render",
+      "kind": "lib",
+      "entry": "src/ai/shot_ruler.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:worked constructions",
+      "kind": "lib",
+      "entry": "src/ai/techniques.gd",
+      "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
+      "area": "assistant",
       "tests": []
     },
     {

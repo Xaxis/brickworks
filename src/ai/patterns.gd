@@ -13,7 +13,9 @@
 ##
 ##   repeat   the same bricks again, stepped
 ##   mirror   what is there, reflected — symmetry by construction
-##   fill     a footprint, tiled with the largest plates that fit
+##   fill     a footprint, tiled with the largest plates that fit, and
+##            with walls, layers and a taper: a dome, a cone, a tube, a
+##            hull or a bowl, said in one object
 ##
 ## Three verbs, and between them a saucer, a hull, a colonnade and a
 ## staggered wall stop being arithmetic. The idea is the one behind
@@ -35,6 +37,31 @@ const TILES: Array = [
 	[2, 2, "3022", 0], [4, 1, "3710", 0], [1, 4, "3710", 1],
 	[3, 1, "3623", 0], [1, 3, "3623", 1], [2, 1, "3023", 0],
 	[1, 2, "3023", 1], [1, 1, "3024", 0],
+]
+
+## The same, in bricks, for a layer three plates high.
+##
+## A wall is built of bricks and a floor of plates, and the difference
+## is not cosmetic: layers three plates apart tiled in plates leave two
+## plates of air between every course, so the second layer floats and
+## so does everything above it. The first version of this offered a
+## round tower and a hull in the prompt and both came back refused.
+##
+## Two studs wide before one, at the same area: a course of 1x8s is a
+## wall one brick thick with nothing bonding it to the course above.
+const COURSES: Array = [
+	[10, 2, "3006", 0], [2, 10, "3006", 1],
+	[8, 2, "3007", 0], [2, 8, "3007", 1],
+	[6, 2, "2456", 0], [2, 6, "2456", 1],
+	[4, 2, "3001", 0], [2, 4, "3001", 1],
+	[8, 1, "3008", 0], [1, 8, "3008", 1],
+	[3, 2, "3002", 0], [2, 3, "3002", 1],
+	[6, 1, "3009", 0], [1, 6, "3009", 1],
+	[2, 2, "3003", 0],
+	[4, 1, "3010", 0], [1, 4, "3010", 1],
+	[3, 1, "3622", 0], [1, 3, "3622", 1],
+	[2, 1, "3004", 0], [1, 2, "3004", 1],
+	[1, 1, "3005", 0],
 ]
 
 ## A pattern that would make more bricks than this is a mistake in the
@@ -202,6 +229,20 @@ static func _handed_twin(part: String) -> String:
 ## A hundred and fifty one-by-ones is not a design decision, it is an
 ## afternoon. This lays the same area in seventeen plates, which is what
 ## a person would have reached for.
+##
+## Three keys turn one footprint into a solid:
+##
+##   wall     leave the middle out — an ellipse with a wall is a round
+##            tower, a rectangle with one is a room
+##   layers   the same footprint again, going up
+##   shrink   studs off each layer, so the stack tapers
+##
+## Which is how a saucer section gets said. A dome is layers with a
+## positive shrink; a cone is the same with fewer studs to start from; a
+## hull is layers with no shrink at all; and a bowl is a wall with
+## layers. None of these were sayable before, and each of them is a
+## shape a model built here needs and used to write out plate by plate
+## until it ran out of reply.
 static func _fill(pattern: Dictionary, trouble: Array) -> Array:
 	var shape: String = str(pattern.get("shape", "rectangle")).to_lower()
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
@@ -211,33 +252,125 @@ static func _fill(pattern: Dictionary, trouble: Array) -> Array:
 	var across: int = int(round(float(pattern.get("across", 0))))
 	var deep: int = int(round(float(pattern.get("deep", 0))))
 	var colour: int = int(pattern.get("color", pattern.get("colour", 71)))
+	var wall: int = int(round(float(pattern.get("wall", 0))))
+	var layers: int = int(round(float(pattern.get("layers", 1))))
+	# A plate is one high, so that is what a layer steps by unless the
+	# design says otherwise — three for courses of bricks.
+	var rise: float = float(pattern.get("rise", 1.0))
+	var shrink: int = int(round(float(pattern.get("shrink", 0))))
+
 	if across < 1 or deep < 1 or across * deep > MOST:
 		trouble.append("fill wants across and deep, both at least 1 and "
 			+ "not more than %d studs between them" % MOST)
 		return []
-
-	var wanted: Dictionary = {}
-	for x: int in range(low_x, low_x + across):
-		for z: int in range(low_z, low_z + deep):
-			match shape:
-				"rectangle":
-					wanted[Vector2i(x, z)] = true
-				"ellipse":
-					# Measured at the middle of each stud, so a circle
-					# comes out round rather than lozenge-shaped.
-					var u: float = (float(x - low_x) + 0.5) / (float(across) / 2.0) - 1.0
-					var v: float = (float(z - low_z) + 0.5) / (float(deep) / 2.0) - 1.0
-					if u * u + v * v <= 1.0:
-						wanted[Vector2i(x, z)] = true
-				_:
-					trouble.append("fill knows rectangle and ellipse")
-					return []
-	if wanted.is_empty():
-		trouble.append("that fill covers nothing")
+	if shape != "rectangle" and shape != "ellipse":
+		trouble.append("fill knows rectangle and ellipse. A ring or a "
+			+ "tube is an ellipse with a wall; a dome is one with "
+			+ "layers and a shrink")
+		return []
+	if layers < 1 or layers > MOST:
+		trouble.append("layers has to be at least 1")
+		return []
+	if not is_equal_approx(rise, 1.0) and not is_equal_approx(rise, 3.0):
+		trouble.append("rise is 1 for layers of plates or 3 for courses "
+			+ "of bricks. Anything between leaves air between the "
+			+ "layers, and a layer over air is floating")
+		return []
+	if shrink % 2 != 0:
+		# Half a stud off each side is not a position a plate can take,
+		# and taking the whole stud off one side walks the stack
+		# sideways as it rises — which on a saucer is a lean.
+		trouble.append("shrink has to be an even number of studs, so "
+			+ "that each layer stays centred over the one below. Use "
+			+ "two for a steep taper and four for a steeper one")
 		return []
 
 	var made: Array = []
-	for tile: Variant in TILES:
+	## What the layer below covers, so that nothing is laid in mid-air.
+	var below: Dictionary = {}
+	for layer: int in layers:
+		var off: int = shrink * layer
+		var wide: int = across - off
+		var long: int = deep - off
+		if wide < 1 or long < 1:
+			# The taper has come to a point, which is the top of a cone
+			# and not a mistake.
+			break
+		var here: Dictionary = _footprint(shape,
+			low_x + off / 2, low_z + off / 2, wide, long, wall)
+		if here.is_empty():
+			if layer == 0:
+				trouble.append("that fill covers nothing")
+				return []
+			break
+		var laid: Dictionary = {}
+		made.append_array(_tile(here, y + rise * float(layer), colour,
+			COURSES if is_equal_approx(rise, 3.0) else TILES,
+			below, laid))
+		below = laid
+		if made.size() > MOST:
+			trouble.append("that fill would be %d bricks, which is a "
+				% made.size() + "mistake in the numbers rather than a "
+				+ "shape. Fewer layers, or a bigger shrink")
+			return []
+	return made
+
+
+## Which studs a footprint covers.
+##
+## [param wall] leaves the middle out: the same shape, [param wall]
+## studs in on every side, taken away again. Nought is solid.
+static func _footprint(shape: String, low_x: int, low_z: int,
+		across: int, deep: int, wall: int) -> Dictionary:
+	var wanted: Dictionary = {}
+	for x: int in range(low_x, low_x + across):
+		for z: int in range(low_z, low_z + deep):
+			if _inside(shape, x, z, low_x, low_z, across, deep):
+				wanted[Vector2i(x, z)] = true
+	if wall < 1:
+		return wanted
+	var inner_across: int = across - wall * 2
+	var inner_deep: int = deep - wall * 2
+	if inner_across < 1 or inner_deep < 1:
+		# Thicker than the shape is wide, so all of it is wall.
+		return wanted
+	for x: int in range(low_x + wall, low_x + wall + inner_across):
+		for z: int in range(low_z + wall, low_z + wall + inner_deep):
+			if _inside(shape, x, z, low_x + wall, low_z + wall,
+					inner_across, inner_deep):
+				wanted.erase(Vector2i(x, z))
+	return wanted
+
+
+## Is a stud inside the shape?
+##
+## Measured at the middle of each stud, so a circle comes out round
+## rather than lozenge-shaped.
+static func _inside(shape: String, x: int, z: int, low_x: int, low_z: int,
+		across: int, deep: int) -> bool:
+	if shape != "ellipse":
+		return true
+	var u: float = (float(x - low_x) + 0.5) / (float(across) / 2.0) - 1.0
+	var v: float = (float(z - low_z) + 0.5) / (float(deep) / 2.0) - 1.0
+	return u * u + v * v <= 1.0
+
+
+## A set of studs, laid in the largest parts that cover it.
+##
+## [param below] is what the layer underneath covers. Where there is
+## one, every part laid here has to reach it: a layer that flares
+## outward has studs over nothing at its rim, and a plate lying wholly
+## in that overhang is a floating brick. Reaching inward instead turns
+## the same studs into an overhanging plate that is held, which is how
+## a bowl is actually built. Studs that no part can reach are left
+## unlaid — there is nothing to build them on.
+##
+## [param laid] comes back holding what was covered, to be the next
+## layer's [param below].
+static func _tile(wanted: Dictionary, y: float, colour: int,
+		tiles: Array, below: Dictionary, laid: Dictionary) -> Array:
+	var made: Array = []
+	for tile: Variant in tiles:
 		var one: Array = tile
 		var wide: int = one[0]
 		var tall: int = one[1]
@@ -246,18 +379,23 @@ static func _fill(pattern: Dictionary, trouble: Array) -> Array:
 			if not wanted.has(cell):
 				continue
 			var fits: bool = true
+			var held: bool = below.is_empty()
 			for dx: int in wide:
 				for dz: int in tall:
-					if not wanted.has(cell + Vector2i(dx, dz)):
+					var at: Vector2i = cell + Vector2i(dx, dz)
+					if not wanted.has(at):
 						fits = false
 						break
+					if below.has(at):
+						held = true
 				if not fits:
 					break
-			if not fits:
+			if not fits or not held:
 				continue
 			for dx: int in wide:
 				for dz: int in tall:
 					wanted.erase(cell + Vector2i(dx, dz))
+					laid[cell + Vector2i(dx, dz)] = true
 			made.append({"part": one[2], "color": colour,
 				"x": cell.x, "y": y, "z": cell.y, "rot": one[3]})
 	return made
