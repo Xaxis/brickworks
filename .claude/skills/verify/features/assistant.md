@@ -15,7 +15,9 @@ fixing what it got wrong.
   `godot --path . -- --ask=... --out=...`. **This spends real money.**
 - `model and effort settings`: which Claude model and which effort level, and
   whether the request it builds is one that model will accept — `max_tokens`
-  ceilings, adaptive thinking, the cached system block.
+  ceilings, adaptive thinking, the cached system block. Opus 5.5 is the default;
+  Sonnet 5.5 and Haiku 4.5 are the alternatives. Effort rides in
+  `output_config`, not at the top level, which the API refuses outright.
 - `reference pictures`: a picture of what is wanted, put into the conversation,
   and old ones dropped so the context does not grow without bound. A reference is
   kept when drafts are dropped, and is shown beside the renders in the critique —
@@ -140,6 +142,15 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   two bricks is this design's. What was already there still goes into the lattice,
   so a new or moved brick is checked against it exactly as before — `edit_probe`
   asserts both halves.
+- **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
+  Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
+  128,000 and 64,000, so the app capped its own replies at half the room it had
+  on every model — and `max_tokens` is the ceiling on how many bricks can be
+  dictated in one reply, which is the ceiling this project cares most about. The
+  old check only asked whether the request carried the table's number, which it
+  faithfully did. `brain_probe` now asks the API: a `max_tokens` above the limit
+  is refused *before* any tokens are generated and the refusal names the limit,
+  so the check is free. It skips rather than fails without a key or a network.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

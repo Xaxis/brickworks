@@ -26,10 +26,10 @@ const BRIEF := ("a red post box: a tall narrow box on a base, with a "
 ## effort setting at all, which is the entry that proves the table is
 ## being honoured rather than the parameter being sent regardless.
 const RUNS: Array[Dictionary] = [
-	{"model": "claude-opus-5", "effort": "high"},
-	{"model": "claude-sonnet-5", "effort": "low"},
-	{"model": "claude-sonnet-5", "effort": "high"},
-	{"model": "claude-sonnet-5", "effort": "max"},
+	{"model": "claude-opus-5-5", "effort": "high"},
+	{"model": "claude-sonnet-5-5", "effort": "low"},
+	{"model": "claude-sonnet-5-5", "effort": "high"},
+	{"model": "claude-sonnet-5-5", "effort": "max"},
 	{"model": "claude-haiku-4-5-20251001", "effort": "high"},
 ]
 

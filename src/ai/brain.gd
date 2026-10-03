@@ -11,10 +11,19 @@
 ## off a page. This project has already shipped a request field that
 ## Anthropic rejected on sight.
 ##
-##   model                      adaptive thinking   effort
-##   claude-opus-5                     yes            yes
-##   claude-sonnet-5                   yes            yes
-##   claude-haiku-4-5-20251001         no             no
+##   model                      adaptive thinking   effort   output
+##   claude-opus-5-5                   yes            yes     128,000
+##   claude-sonnet-5-5                 yes            yes     128,000
+##   claude-haiku-4-5-20251001         no             no       64,000
+##
+## The output column is what the API says, not what seemed reasonable:
+## every figure in it was double what this table claimed. Opus and
+## Sonnet were recorded at 64,000 and Haiku at 32,000, so the app had
+## been capping its own replies at half the room it had — and max_tokens
+## is the ceiling on how many bricks can be said in one go, which is the
+## one ceiling this project cares most about. Ask the API rather than
+## guess: a max_tokens above the limit is refused with the limit in the
+## message, before any tokens are generated, so it costs nothing.
 ##
 ## Prices are USD per million tokens, from the published table. They go
 ## out of date, which is why what the app shows is always the token
@@ -78,18 +87,18 @@ class Choice extends RefCounted:
 ## blurb for it says so rather than implying a saving that is not
 ## there.
 const CHOICES: Array[Dictionary] = [
-	{"id": "claude-opus-5", "name": "Opus 5",
+	{"id": "claude-opus-5-5", "name": "Opus 5.5",
 		"blurb": "The best at this by a distance. Slowest and dearest.",
 		"adaptive": true, "effort": true,
-		"in": 5.0, "out": 25.0, "cached": 0.50, "most_out": 64000},
-	{"id": "claude-sonnet-5", "name": "Sonnet 5",
-		"blurb": "Quicker and a third of the cost. Builds smaller.",
+		"in": 4.0, "out": 20.0, "cached": 0.20, "most_out": 128000},
+	{"id": "claude-sonnet-5-5", "name": "Sonnet 5.5",
+		"blurb": "Quicker and half the cost. Builds smaller.",
 		"adaptive": true, "effort": true,
-		"in": 2.0, "out": 10.0, "cached": 0.20, "most_out": 64000},
+		"in": 2.0, "out": 10.0, "cached": 0.20, "most_out": 128000},
 	{"id": "claude-haiku-4-5-20251001", "name": "Haiku 4.5",
 		"blurb": "A minute and a few pence. Small models, small changes.",
 		"adaptive": false, "effort": false,
-		"in": 1.0, "out": 5.0, "cached": 0.10, "most_out": 32000},
+		"in": 1.0, "out": 5.0, "cached": 0.10, "most_out": 64000},
 ]
 
 ## How hard to think, for the models that take the setting. Ordered.
@@ -106,7 +115,7 @@ const EFFORT_BLURBS: Dictionary = {
 	"max": "Twice the time and twice the bill. Worth it rarely.",
 }
 const DEFAULT_EFFORT := "high"
-const DEFAULT_MODEL := "claude-opus-5"
+const DEFAULT_MODEL := "claude-opus-5-5"
 
 
 static func all() -> Array[Choice]:

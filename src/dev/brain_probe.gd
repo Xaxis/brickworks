@@ -19,6 +19,10 @@ var _failures: int = 0
 
 
 func _initialize() -> void:
+	_run()
+
+
+func _run() -> void:
 	var library := PartLibrary.new()
 	if not library.load_catalogue():
 		print("no catalogue")
@@ -85,6 +89,7 @@ func _initialize() -> void:
 	print("")
 	_money()
 	_for_this_run_only()
+	await _live_ceilings()
 
 	print("")
 	if _failures == 0:
@@ -126,29 +131,36 @@ func _check(choice: Brain.Choice, level: String, body: Dictionary) -> void:
 
 
 ## The arithmetic on top of the tokens, against a worked example from
-## the published table: 50,000 input and 15,000 output on Opus 5 is
-## $0.25 plus $0.375.
+## the published table: on Opus 5.5 at $4 in and $20 out, 50,000 input
+## is $0.20 and 15,000 output is $0.30.
+##
+## Worked out here on purpose rather than read back off the table the
+## code uses. Asking Brain for the price and then multiplying by it
+## would be the same multiplication twice and would pass whatever the
+## table said.
 func _money() -> void:
 	var spend := Brain.Spend.new()
 	spend.add({"input_tokens": 50000, "output_tokens": 15000})
-	var dollars: float = Brain.cost("claude-opus-5", spend)
-	if absf(dollars - 0.625) < 0.0005:
-		print("  ok    Opus 5 on 50k in and 15k out is $%.3f" % dollars)
+	var dollars: float = Brain.cost("claude-opus-5-5", spend)
+	if absf(dollars - 0.50) < 0.0005:
+		print("  ok    Opus 5.5 on 50k in and 15k out is $%.3f" % dollars)
 	else:
 		_failures += 1
-		print("  FAIL  that should be $0.625 and came to $%.4f" % dollars)
+		print("  FAIL  that should be $0.500 and came to $%.4f" % dollars)
 
-	# A cache hit is a tenth of the input price, which is the whole
-	# reason the count is kept apart from the fresh one.
+	# A cache hit is a twentieth of the input price on Opus 5.5 — $0.20
+	# against $4 — which is the whole reason the count is kept apart
+	# from the fresh one. 10,000 fresh is $0.04, 40,000 cached is
+	# $0.008, and 15,000 out is $0.30.
 	var cached := Brain.Spend.new()
 	cached.add({"input_tokens": 10000, "cache_read_input_tokens": 40000,
 		"output_tokens": 15000})
-	var less: float = Brain.cost("claude-opus-5", cached)
-	if absf(less - 0.445) < 0.0005:
+	var less: float = Brain.cost("claude-opus-5-5", cached)
+	if absf(less - 0.348) < 0.0005:
 		print("  ok    with 40k of it cached, $%.3f" % less)
 	else:
 		_failures += 1
-		print("  FAIL  that should be $0.445 and came to $%.4f" % less)
+		print("  FAIL  that should be $0.348 and came to $%.4f" % less)
 
 	for pair: Array in [[0.0, "nothing yet"], [0.004, "under a cent"],
 			[0.042, "4¢"], [1.5, "$1.50"]]:
@@ -256,3 +268,77 @@ func _cached_prefix(choice: Brain.Choice, body: Dictionary) -> void:
 	if str(first.get("text", "")).is_empty():
 		_failures += 1
 		print("  FAIL  %s marks an empty block cacheable" % choice.name)
+
+
+## Does the table's output ceiling match the one the API enforces?
+##
+## It did not, and nothing noticed. Opus and Sonnet were recorded at
+## 64,000 output tokens and Haiku at 32,000; the real figures are
+## 128,000 and 64,000, so the app had been capping its own replies at
+## half the room it had — and max_tokens is the ceiling on how many
+## bricks can be said in one reply, which is the ceiling this project
+## cares most about. The check above only asked whether the request
+## carried the table's number, which it faithfully did.
+##
+## Free, and that is not an accident: a max_tokens above the limit is
+## refused before any tokens are generated, and the refusal names the
+## limit. So this asks rather than trusting a figure somebody typed.
+func _live_ceilings() -> void:
+	print("")
+	print("  and the ceiling the table claims is the one the API has")
+	var the_key: String = OS.get_environment("ANTHROPIC_API_KEY")
+	if the_key.is_empty():
+		var file: FileAccess = FileAccess.open("res://.env", FileAccess.READ)
+		while file != null and not file.eof_reached():
+			var line: String = file.get_line().strip_edges()
+			if line.begins_with("ANTHROPIC_API_KEY="):
+				the_key = line.substr(18).strip_edges().lstrip("\"'").rstrip("\"'")
+				break
+	if the_key.is_empty():
+		print("  ....  no key, so this one is skipped — it needs the API "
+			+ "to say what the limit is")
+		return
+	for choice: Brain.Choice in Brain.all():
+		var said: String = await _ceiling_of(choice.id, the_key)
+		if said.is_empty():
+			# Offline, or the API answered something else. Not a
+			# failure: this probe is in the free suite and a machine
+			# with no network must still be able to run it.
+			print("  ....  %s: could not ask, so this one is skipped"
+				% choice.name)
+			continue
+		var real: int = said.to_int()
+		if real == choice.most_out:
+			print("  ok    %s writes up to %d, which is what the table says"
+				% [choice.name, real])
+		else:
+			_failures += 1
+			print("  FAIL  %s writes up to %d and the table says %d"
+				% [choice.name, real, choice.most_out])
+
+
+## The limit named in the refusal of a deliberately impossible request.
+func _ceiling_of(model: String, the_key: String) -> String:
+	var ask := HTTPRequest.new()
+	get_root().add_child(ask)
+	var body: String = JSON.stringify({
+		"model": model, "max_tokens": 900000,
+		"messages": [{"role": "user", "content": "hi"}]})
+	var sent: Error = ask.request("https://api.anthropic.com/v1/messages",
+		["x-api-key: " + the_key, "anthropic-version: 2023-06-01",
+			"content-type: application/json"],
+		HTTPClient.METHOD_POST, body)
+	if sent != OK:
+		ask.queue_free()
+		return ""
+	var answer: Array = await ask.request_completed
+	ask.queue_free()
+	var text: String = (answer[3] as PackedByteArray).get_string_from_utf8()
+	var parsed: Variant = JSON.parse_string(text)
+	if not (parsed is Dictionary) or not (parsed as Dictionary).has("error"):
+		return ""
+	var message: String = str((parsed as Dictionary)["error"].get("message", ""))
+	# "max_tokens: 900000 > 128000, which is the maximum allowed ..."
+	var found: RegExMatch = RegEx.create_from_string(
+		"> (\\d+), which is the maximum").search(message)
+	return found.get_string(1) if found != null else ""
