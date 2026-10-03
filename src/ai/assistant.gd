@@ -4148,12 +4148,23 @@ func _plan_scale(args: Dictionary) -> String:
 		# actually gets placed and is worth saying out loud.
 		chosen = ("\n\nAt %s scale, %s is %s studs along its longest side. "
 			% [best["name"], subject, Placement._num(snappedf(across, 0.1))]
-			+ "Lay out the main masses at that size and check the "
-			+ "proportions against a picture before adding anything. "
-			+ "One stud across is %s metres; one plate up is %s."
+			+ "Build it at that size. Lay out the main masses first and "
+			+ "check the proportions against a picture before adding "
+			+ "anything. One stud across is %s metres; one plate up is %s."
 			% [Placement._num(snappedf(1.0 / float(best["studs_per_metre"]), 0.01)),
 				Placement._num(snappedf(
-					1.0 / float(best["studs_per_metre"]) / 3.0, 0.01))])
+					1.0 / float(best["studs_per_metre"]) / 3.0, 0.01))]
+			# Measured, and the reason this paragraph exists: given the
+			# list, a run picked a scale *below* the smallest on it and
+			# built a 43-stud Voyager where the list said 69, which
+			# came to 144 parts against 297 for the same brief without
+			# the list. Nothing was wrong with the arithmetic. The
+			# model was sparing itself the typing.
+			+ " Do not go smaller than this to save yourself writing "
+			+ "placements. The patterns do the writing — one fill is a "
+			+ "saucer — and a model built too small to read is the one "
+			+ "fault no amount of revising gets out of it, because "
+			+ "every detail you then want has nowhere to go.")
 	else:
 		chosen = ("\n\nNothing on that list reads well at %s metres. "
 			% Placement._num(metres)

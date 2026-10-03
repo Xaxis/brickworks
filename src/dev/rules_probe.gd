@@ -274,6 +274,28 @@ func _run() -> void:
 		"too long to send in one piece")
 
 	print("")
+	print("  choosing a scale, and being held to it")
+	# Measured: given the list of scales, a run picked one *below* the
+	# smallest on it and built a 43-stud Voyager where the list said 69,
+	# which came to 144 parts against 297 for the same brief before the
+	# list existed. The arithmetic was right. The model was sparing
+	# itself the typing, and a model built too small to read is the one
+	# fault no amount of revising gets out of it.
+	var picked: String = assistant._plan_scale(
+		{"subject": "the USS Voyager", "longest_metres": 344.0})
+	_check_text("a long subject gets a scale and a size in studs", picked,
+		"studs")
+	_check_text("...and is told to build it at that size", picked,
+		"Build it at that size")
+	_check_text("...and not to shrink it to save itself writing", picked,
+		"save yourself writing")
+	_check_text("...and that the patterns do the writing", picked,
+		"patterns do the writing")
+	var vague: String = assistant._plan_scale({"subject": "a lighthouse"})
+	_check_text("and without a length it asks for one", vague,
+		"longest_metres")
+
+	print("")
 	if _failures == 0:
 		print("the rules hold, and a refusal says enough to act on")
 	else:
@@ -346,6 +368,15 @@ func _verdict(assistant: Assistant, bricks: Array) -> Dictionary:
 ##
 ## Advice that fires on everything is noise, and noise is read past. The
 ## check that it stays quiet matters as much as the check that it speaks.
+## A plain answer that has to contain a phrase.
+func _check_text(what: String, said: String, phrase: String) -> void:
+	if said.contains(phrase):
+		print("  ok    %s" % what)
+		return
+	_failures += 1
+	print("  FAIL  %s — said: %s" % [what, said.substr(0, 300)])
+
+
 func _check_quiet(what: String, verdict: Dictionary, phrase: String) -> void:
 	var feedback: String = str(verdict.get("feedback", ""))
 	if not feedback.contains(phrase):
