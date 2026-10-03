@@ -271,6 +271,27 @@
       "entry": "src/ai/claude_code.gd",
       "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "export for linux",
+      "entry": "export_presets.cfg",
+      "reach": "tools/export.sh linux   (~4 min, build/linux/brickworks.x86_64)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "cli",
+      "label": "export for windows",
+      "entry": "export_presets.cfg",
+      "reach": "tools/export.sh windows   (~3 min, build/windows/Brickworks.exe)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "cli",
+      "label": "export for macos",
+      "entry": "export_presets.cfg",
+      "reach": "tools/export.sh mac   (universal, ad-hoc signed)",
+      "area": "pipeline"
     }
   ]
 }

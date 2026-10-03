@@ -2,7 +2,7 @@
 
 The Python side: LDraw in, mesh cache and catalogue out.
 
-<!-- covers: cli:build the meshes, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage -->
+<!-- covers: cli:build the meshes, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:export for linux, cli:export for windows, cli:export for macos -->
 
 ## Sub-features
 
@@ -17,6 +17,11 @@ The Python side: LDraw in, mesh cache and catalogue out.
 - `upload parts to storage`: puts the rest in the Supabase bucket under
   content-hash names, cached for a year, so a name's bytes can never change.
 
+- `export for linux` / `windows` / `macos`: the downloadable builds.
+  `tools/export.sh desktop` makes all three. Each carries the whole part
+  library — a 70-104 MB binary beside a 995 MB `.pck` — so the app works with
+  no network at all, which the web build cannot.
+
 ## How to reach it
 
 ```sh
@@ -27,6 +32,8 @@ tools/web_pack.py --list              # say what would be included, write nothin
 tools/web_pack.py --budget 40         # stop at 40 MB
 tools/storage_parts.py --check        # say what would be uploaded
 tools/storage_parts.py --all          # re-upload everything
+tools/export.sh desktop               # mac, linux and windows, ~10 min
+tools/export.sh linux                 # one of them
 ```
 
 ## How to check it
@@ -52,6 +59,17 @@ tools/web_pack.py --list | tail -5        # what the web build would carry
 tools/storage_parts.py --check | tail -5  # what is missing from the bucket
 godot --headless --path . --script src/dev/dimensions_probe.gd   # what the app sees
 ```
+
+For a desktop build, run the thing you just made:
+
+```sh
+build/linux/brickworks.x86_64 --headless -- --model=models/car.ldr --out=/tmp/x.ldr
+file build/windows/Brickworks.exe     # PE32+ executable (GUI) x86-64
+```
+
+Proves those when: the Linux binary prints "wrote /tmp/x.ldr (61 parts)", and
+the Windows one is a PE32+ x86-64 executable. A Windows build cannot be run from
+here; that it links and carries its pck is what can be checked.
 
 Proves it when: `--list` ends with a part number and a count of what follows;
 `--check` prints `storage: 27,364 meshes`, `already up:` and `to upload : 0`, and

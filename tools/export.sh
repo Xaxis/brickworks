@@ -3,7 +3,10 @@
 #   tools/export.sh web             build/web/            threads (needs COOP/COEP: tools/web.sh serves them)
 #   tools/export.sh web-nothreads   build/web-nothreads/  for hosts that cannot send those headers
 #   tools/export.sh mac             build/mac/Brickworks.app universal, ad-hoc signed
-#   tools/export.sh all
+#   tools/export.sh linux           build/linux/brickworks.x86_64
+#   tools/export.sh windows         build/windows/Brickworks.exe
+#   tools/export.sh desktop         all three of those
+#   tools/export.sh all             the web builds and all three desktops
 # Add --debug for a debug template. Web builds get .br and .gz siblings of the
 # big files so a server can send them precompressed (tools/web.sh does).
 #
@@ -128,9 +131,30 @@ build_mac() {
   printf "  app %s (pck %s)\n" "$(du -sh "$app" | cut -f1)" "$(human "$(bytes "$app/Contents/Resources/Brickworks.pck")")"
 }
 
+# The other two desktops. A download page that offers one of three is a
+# download page most people bounce off.
+build_linux() {
+  export_one "Linux" "build/linux/brickworks.x86_64" || return 1
+  chmod +x build/linux/brickworks.x86_64
+  printf "  binary %s (pck %s)\n" \
+    "$(human "$(bytes build/linux/brickworks.x86_64)")" \
+    "$(human "$(bytes build/linux/brickworks.pck)")"
+}
+
+build_windows() {
+  export_one "Windows" "build/windows/Brickworks.exe" || return 1
+  printf "  exe %s (pck %s)\n" \
+    "$(human "$(bytes build/windows/Brickworks.exe)")" \
+    "$(human "$(bytes build/windows/Brickworks.pck)")"
+}
+
 case "$target" in
   web|web-nothreads|all) need godot python3 bc gzip ;;
   *) need godot python3 bc ;;
+esac
+case "$target" in
+  web|web-nothreads|mac|linux|windows|win|desktop|all) ;;
+  *) echo "export: unknown target '$target' — try web, mac, linux, windows, desktop or all"; exit 2 ;;
 esac
 mkdir -p build && touch build/.gdignore
 case "$target" in
@@ -142,6 +166,10 @@ case "$target" in
   web) build_web "Web" build/web ;;
   web-nothreads) build_web "Web (no threads)" build/web-nothreads ;;
   mac) build_mac ;;
-  all) build_web "Web" build/web && build_web "Web (no threads)" build/web-nothreads && build_mac ;;
+  linux) build_linux ;;
+  windows|win) build_windows ;;
+  desktop) build_mac && build_linux && build_windows ;;
+  all) build_web "Web" build/web && build_web "Web (no threads)" build/web-nothreads \
+    && build_mac && build_linux && build_windows ;;
   *) echo "usage: tools/export.sh web|web-nothreads|mac|all [--debug]"; exit 2 ;;
 esac

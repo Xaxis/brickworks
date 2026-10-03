@@ -104,6 +104,30 @@
       "tests": []
     },
     {
+      "id": "cli:export for linux",
+      "kind": "cli",
+      "entry": "export_presets.cfg",
+      "reach": "tools/export.sh linux   (~4 min, build/linux/brickworks.x86_64)",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:export for macos",
+      "kind": "cli",
+      "entry": "export_presets.cfg",
+      "reach": "tools/export.sh mac   (universal, ad-hoc signed)",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:export for windows",
+      "kind": "cli",
+      "entry": "export_presets.cfg",
+      "reach": "tools/export.sh windows   (~3 min, build/windows/Brickworks.exe)",
+      "area": "pipeline",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
