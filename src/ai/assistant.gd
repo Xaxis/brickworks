@@ -1162,6 +1162,13 @@ func _run_tool(block: Dictionary) -> Variant:
 		"attachment_points":
 			progress.emit("working out where things attach")
 			return _attachment_points(args)
+		"show_technique":
+			var wanted: String = str(args.get("name", ""))
+			progress.emit("looking up how to do %s" % wanted)
+			return _show_technique(wanted)
+		"plan_scale":
+			progress.emit("working out how big it should be")
+			return _plan_scale(args)
 		"find_reference":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up what a %s looks like" % subject)
@@ -1446,6 +1453,23 @@ func _from_both_sides(said: String, ask: String) -> Variant:
 	var blocks: Array = []
 	if not said.is_empty():
 		blocks.append({"type": "text", "text": said})
+
+	# The subject first, when there is one.
+	#
+	# This is the moment a designer holds the model up next to the thing
+	# and sees what is wrong with it, and it was the one moment the
+	# picture of the thing was not in front of it. Asking "is this the
+	# thing you were asked for" with nothing to compare against is
+	# asking it to remember, which is what it did badly in the first
+	# place.
+	var subject: Array = _subject_pictures()
+	if not subject.is_empty():
+		blocks.append({"type": "text", "text":
+			"What you were asked for, to hold the model up against:"})
+		blocks.append_array(subject)
+		blocks.append({"type": "text", "text":
+			"And what you built. Compare them: the proportions first, "
+			+ "then the outline, then what is missing."})
 	blocks.append({"type": "text", "text": "From one corner:"})
 	blocks.append(near)
 	blocks.append({"type": "text", "text": "And from the opposite one, "
@@ -1454,6 +1478,22 @@ func _from_both_sides(said: String, ask: String) -> Variant:
 	if not ask.is_empty():
 		blocks.append({"type": "text", "text": ask})
 	return blocks
+
+
+## Pictures of the subject, if any were ever found or given.
+##
+## Capped at one: the critique already carries two renders, and a turn
+## with five pictures in it is a turn spent on pictures.
+func _subject_pictures() -> Array:
+	for block: Dictionary in references:
+		return [block]
+	for data: String in _kept_pictures:
+		return [{
+			"type": "image",
+			"source": {"type": "base64", "media_type": "image/png",
+				"data": data},
+		}]
+	return []
 
 
 func _with_a_look(said: String, ask: String,
@@ -3579,8 +3619,21 @@ alternate courses so each part bridges the seam below it, exactly as you \
 would with real bricks.
 
 HOW TO WORK
-Think about the shape first, then lay it out layer by layer from the \
-ground up.
+Four things before the first brick, in this order:
+
+  1. plan_scale with how long the real thing is. Everything after it \
+     depends on the proportions, and changing the scale later means \
+     moving the whole model.
+  2. find_reference, for anything that exists. A lighthouse you recall \
+     is a tapering tower with a light on top, which is every lighthouse \
+     and no lighthouse. A picture gives you this one.
+  3. Decide the main masses and their sizes in studs, off that picture.
+  4. show_technique for any construction you have not built before. \
+     Being told to stagger a wall or turn a face sideways is not the \
+     same as knowing where the stud sits, and the arithmetic is the \
+     part that goes wrong.
+
+Then lay it out layer by layer from the ground up.
 
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
@@ -3726,6 +3779,124 @@ edit away."""
 ## and the one that drifts is the one nobody is testing.
 func guidance() -> String:
 	return _system_prompt()
+
+
+## How a construction is actually made, in parts and coordinates.
+##
+## Being told to stagger a wall or turn a face sideways is not the same
+## as knowing where a bracket's side stud sits, and that stud is not at a
+## whole number of plates. A design that has to work it out gets it wrong
+## twice and goes back to stacking bricks studs-up, which is the shape
+## everything it builds then has.
+func _show_technique(wanted: String) -> String:
+	if wanted.strip_edges().is_empty():
+		return ("Name one of: %s." % ", ".join(Techniques.names()))
+	var technique: Dictionary = Techniques.named(wanted)
+	if technique.is_empty():
+		return ("No technique called \"%s\". There is: %s."
+			% [wanted, ", ".join(Techniques.names())])
+
+	var rows := PackedStringArray()
+	for raw: Variant in technique["bricks"]:
+		var brick: Dictionary = raw
+		var face: String = str(brick.get("face", "up"))
+		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s" % [
+			brick["part"], brick["color"],
+			Placement._num(float(brick["x"])),
+			Placement._num(float(brick["y"])),
+			Placement._num(float(brick["z"])),
+			brick.get("rot", 0),
+			"" if face == "up" else " face=" + face])
+	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
+		% [str(technique["name"]).capitalize(), technique["when"],
+			technique["why"], "\n".join(rows)]
+		+ "Move it where you need it by adding to x, y and z. Every one "
+		+ "of these is checked against the same lattice your design is, "
+		+ "so it holds together as it stands.")
+
+
+## How big the model should be, before a brick is chosen.
+##
+## A designer settles the scale first, because everything after it
+## depends on the proportions and fixing them later means moving the
+## whole model. This one never did: it built at whatever size the first
+## few bricks implied, which is how a starship and a post box come out
+## the same length.
+##
+## The scales are the ones builders actually use. One stud to the foot
+## is minifigure scale — a minifigure is four bricks and reads as a six
+## foot person — and three studs to the metre is the same number said in
+## metric. Below that it is microscale, where a minifigure would be a
+## plate tall and the shape has to carry the whole model.
+const SCALES: Array = [
+	{"name": "minifigure", "studs_per_metre": 3.0,
+		"note": "1 stud to the foot; a minifigure fits inside it"},
+	{"name": "half minifigure", "studs_per_metre": 1.5,
+		"note": "half the above; a vehicle keeps its doors and wheels"},
+	{"name": "small", "studs_per_metre": 0.6,
+		"note": "a house is a handful of studs; detail is shape, not parts"},
+	{"name": "micro", "studs_per_metre": 0.2,
+		"note": "a building is a few studs; the outline carries it"},
+	{"name": "tiny", "studs_per_metre": 0.06,
+		"note": "a ship on a desk; masses and nothing else"},
+]
+## Below this across, a model cannot show anything but its outline.
+const TOO_SMALL := 8.0
+## Above this, it is a display piece in two thousand parts.
+const TOO_BIG := 120.0
+
+
+func _plan_scale(args: Dictionary) -> String:
+	var metres: float = float(args.get("longest_metres", 0.0))
+	var subject: String = str(args.get("subject", "it"))
+	if metres <= 0.0:
+		return ("Say how long the real thing is, in metres, as "
+			+ "longest_metres. A guess within half is enough — this is "
+			+ "about which scale, not about the decimal.")
+
+	var rows := PackedStringArray()
+	var best: Dictionary = {}
+	for one: Variant in SCALES:
+		var scale: Dictionary = one
+		var across: float = metres * float(scale["studs_per_metre"])
+		var fits: String = ""
+		if across < TOO_SMALL:
+			fits = "too small to read"
+		elif across > TOO_BIG:
+			fits = "very large"
+		elif best.is_empty():
+			best = scale
+			fits = "<- this one"
+		rows.append("  %-16s %7s studs long   %s   %s" % [
+			scale["name"], Placement._num(snappedf(across, 0.1)),
+			scale["note"], fits])
+
+	var chosen: String = ""
+	if not best.is_empty():
+		var across: float = metres * float(best["studs_per_metre"])
+		# A plate is a third of a brick, so height in plates is what
+		# actually gets placed and is worth saying out loud.
+		chosen = ("\n\nAt %s scale, %s is %s studs along its longest side. "
+			% [best["name"], subject, Placement._num(snappedf(across, 0.1))]
+			+ "Lay out the main masses at that size and check the "
+			+ "proportions against a picture before adding anything. "
+			+ "One stud across is %s metres; one plate up is %s."
+			% [Placement._num(snappedf(1.0 / float(best["studs_per_metre"]), 0.01)),
+				Placement._num(snappedf(
+					1.0 / float(best["studs_per_metre"]) / 3.0, 0.01))])
+	else:
+		chosen = ("\n\nNothing on that list reads well at %s metres. "
+			% Placement._num(metres)
+			+ "Build a part of it instead — a locomotive rather than the "
+			+ "train, a tower rather than the whole castle — or accept "
+			+ "that it will be an outline.")
+
+	# Not capitalize(), which title-cases every word and turns a double
+	# decker bus into A Double Decker Bus.
+	var named: String = subject.substr(0, 1).to_upper() + subject.substr(1)
+	return ("%s is %s metres along its longest side. At each scale "
+		% [named, Placement._num(metres)]
+		+ "builders use, the model would be:\n" + "\n".join(rows) + chosen)
 
 
 ## Pictures of the thing it has been asked to build.
@@ -3933,6 +4104,48 @@ func _tools() -> Array:
 					"sections": {"type": "array", "items": section},
 				},
 				"required": ["bricks"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "show_technique",
+			"description": ("How a construction is actually made, in "
+				+ "part numbers and coordinates: %s. "
+				% ", ".join(Techniques.names())
+				+ "Ask before building one of these for the first time "
+				+ "— a bracket's sideways stud is not at a whole number "
+				+ "of plates, and the arithmetic is the part that goes "
+				+ "wrong. Every one of them is checked against the same "
+				+ "lattice your design is."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"name": {"type": "string", "description":
+						"which one; a partial name will do"},
+				},
+				"required": ["name"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "plan_scale",
+			"description": ("How big the model should be, worked out "
+				+ "before anything is placed. Give the real thing's "
+				+ "longest dimension in metres and this answers with "
+				+ "what it comes to in studs at each scale builders "
+				+ "use, and which one is worth building at. Settle this "
+				+ "first: everything after it depends on the "
+				+ "proportions, and changing it later means moving the "
+				+ "whole model."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"subject": {"type": "string"},
+					"longest_metres": {"type": "number", "description":
+						"how long the real thing is along its longest "
+						+ "side. A guess within half is enough."},
+				},
+				"required": ["longest_metres"],
 				"additionalProperties": false,
 			},
 		},

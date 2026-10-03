@@ -1,0 +1,171 @@
+## Constructions that work, with the coordinates to build them at.
+##
+## The prompt tells a design what to aim for — stagger the courses, make
+## a smooth edge, turn a part on its side. It does not say how, and "how"
+## in this system is a part number and four numbers after it. A design
+## that has been told to use a bracket and does not know where a
+## bracket's sideways stud sits works it out from attachment_points, gets
+## it wrong twice, and goes back to stacking bricks studs-up — which is
+## the shape everything it builds ends up having.
+##
+## So: worked examples, small enough to read and exact enough to place.
+## Every one of them is checked by src/dev/techniques_probe.gd against
+## the same lattice a design is checked against, so a technique that
+## stopped holding together could not survive a run of the suite. A
+## library of things that do not build would be worse than no library.
+##
+## The parts are the ones LEGO's own designers reach for: the jumper
+## plate for a half stud, the bracket and the headlight brick for a face
+## turned sideways, wedge plates for a diagonal, staggered courses for a
+## wall that survives being picked up.
+class_name Techniques
+extends RefCounted
+
+
+## Everything in the library, in the order a model would need it.
+static func all() -> Array:
+	return [
+		{
+			"name": "staggered wall",
+			"when": "any wall, and anything that has to survive being "
+				+ "picked up",
+			"why": "Courses whose joints land in the same column come "
+				+ "apart along that line. Each brick has to sit across "
+				+ "the joint below it, which means the end of every "
+				+ "other course is a half-length brick.",
+			"bricks": [
+				{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3001", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
+				{"part": "3003", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3001", "color": 4, "x": 2, "y": 3, "z": 0, "rot": 0},
+				{"part": "3003", "color": 4, "x": 6, "y": 3, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "half stud offset",
+			"when": "centring something that will not centre, and any "
+				+ "detail that wants to sit between studs",
+			"why": "A jumper plate (3794b) carries one stud at its "
+				+ "middle, so whatever goes on it lands half a stud "
+				+ "across from the grid. This is how a door gets "
+				+ "centred in a three-stud wall.",
+			"bricks": [
+				{"part": "3020", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3794b", "color": 71, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "3024", "color": 4, "x": 0.5, "y": 2, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "face turned sideways",
+			"when": "a smooth panel, a grille, lettering, a vent — "
+				+ "anything that should face out rather than up",
+			"why": "A bracket (99207) carries studs on its side as well "
+				+ "as its top. Ask attachment_points where they are "
+				+ "rather than working it out: the side ones are not at "
+				+ "a whole number of plates.",
+			"bricks": [
+				{"part": "3001", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "99207", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3068b", "color": 1, "x": 0, "y": 3, "z": 1.2,
+					"rot": 0, "face": "+z"},
+			],
+		},
+		{
+			"name": "porthole or lamp",
+			"when": "a round detail set into a wall — a porthole, a "
+				+ "headlamp, a rivet, an instrument",
+			"why": "A headlight brick (4070) has a stud in a recess on "
+				+ "its face, so what goes on it sits half a plate into "
+				+ "the wall instead of standing proud of it.",
+			"bricks": [
+				{"part": "3001", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "4070", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "6141", "color": 0, "x": 0, "y": 3.5, "z": 0.8,
+					"rot": 0, "face": "+z"},
+			],
+		},
+		{
+			"name": "smooth diagonal",
+			"when": "any edge that runs straight and is not square to "
+				+ "the grid — a saucer rim, a swept wing, a bow, a "
+				+ "bonnet",
+			"why": "Wedge plates make a diagonal in one part. Stepping "
+				+ "it instead gives a staircase, which is the single "
+				+ "most visible difference between a model that looks "
+				+ "designed and one that looks like graph paper. They "
+				+ "are filed under Wing, left and right handed, one "
+				+ "plate thick.",
+			"bricks": [
+				{"part": "3031", "color": 71, "x": 4, "y": 0, "z": 0, "rot": 0},
+				{"part": "41769b", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1},
+				{"part": "41770b", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 1},
+			],
+		},
+		{
+			"name": "smooth top",
+			"when": "a roof, a floor, a bonnet, a deck — any surface "
+				+ "that is not meant to show studs",
+			"why": "Tiles are plates without studs. A surface left "
+				+ "studded reads as unfinished, and tiling it is the "
+				+ "cheapest thing that makes a model look built rather "
+				+ "than assembled.",
+			"bricks": [
+				{"part": "3022", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3022", "color": 71, "x": 2, "y": 0, "z": 0, "rot": 0},
+				{"part": "3068b", "color": 15, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "3068b", "color": 15, "x": 2, "y": 1, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "round tower",
+			"when": "a chimney, a lighthouse, a silo, a column, a "
+				+ "cannon — anything circular in plan",
+			"why": "Round bricks stack like square ones and read as a "
+				+ "cylinder from any angle. Stepping a circle out of "
+				+ "square bricks never does.",
+			"bricks": [
+				{"part": "3941", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3941", "color": 15, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3941", "color": 4, "x": 0, "y": 6, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "taper",
+			"when": "a tower, a funnel, a tree, a rock — anything "
+				+ "narrower at the top than the bottom",
+			"why": "Each course a stud narrower than the one below, "
+				+ "centred on it. The silhouette comes from the taper, "
+				+ "and a shape that should taper built as a box is one "
+				+ "of the five faults worth looking for by name.",
+			"bricks": [
+				{"part": "3031", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3022", "color": 71, "x": 1, "y": 1, "z": 1, "rot": 0},
+				{"part": "3024", "color": 71, "x": 1.5, "y": 2, "z": 1.5, "rot": 0},
+			],
+		},
+	]
+
+
+## One by name, or an empty dictionary.
+static func named(what: String) -> Dictionary:
+	var wanted: String = what.strip_edges().to_lower()
+	for one: Variant in all():
+		var technique: Dictionary = one
+		if str(technique["name"]).to_lower() == wanted:
+			return technique
+	# Near enough: "wedge" should find "smooth diagonal", and a design
+	# that half-remembers a name should not be told nothing exists.
+	for one: Variant in all():
+		var technique: Dictionary = one
+		if str(technique["name"]).to_lower().contains(wanted) \
+				or wanted.contains(str(technique["name"]).to_lower()):
+			return technique
+	return {}
+
+
+## The names, for when nothing matched.
+static func names() -> PackedStringArray:
+	var out := PackedStringArray()
+	for one: Variant in all():
+		out.append(str((one as Dictionary)["name"]))
+	return out
