@@ -2696,6 +2696,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not seam.is_empty():
 		advice.append(seam)
 
+	# And whether the whole thing is one colour.
+	var plain: String = _all_one_colour(model)
+	if not plain.is_empty():
+		advice.append(plain)
+
 	# And whether a nearly-symmetric model has a brick on one side only.
 	var lopsided: String = _lopsided(model, box_of, lattice)
 	if not lopsided.is_empty():
@@ -2769,6 +2774,22 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 ## Four steps, because three is a chamfered corner and nobody wants to
 ## hear about a chamfered corner.
 const SHORTEST_STAIRCASE := 4
+
+## Above this share in one colour, a model reads as unfinished rather
+## than as a thing somebody chose the colours of.
+##
+## Measured, and the two populations do not overlap. The eight models
+## that ship with the app were made by a person: their commonest colour
+## is 31 to 59 per cent of the parts, across three to eight colours.
+## Three starships the assistant built: 90, 93 and 95 per cent, across
+## four or five. Nothing a person built goes above 59 and nothing it
+## built goes below 90, so three quarters sits in the gap with room
+## either side.
+const MOSTLY_ONE_COLOUR := 0.75
+
+## And below this many parts there was no real chance to vary: a
+## fourteen-brick sign is one colour because it is a sign.
+const WORTH_COLOURING := 40
 
 ## How long one check may spend working out where sections would fit.
 ##
@@ -2938,6 +2959,52 @@ func _longest_staircase(far: Dictionary, near: Dictionary) -> Array:
 				deep = moved
 			start = maxi(ran, start + 1)
 	return [longest, deep]
+
+
+## Is the model nearly all one colour?
+##
+## The checker asks whether a model stands up and never whether it
+## reads as the thing it is meant to be, and colour is most of the
+## difference. A real set uses several greys on purpose — plating, panel
+## lines, a darker shade where a shadow would fall — and an accent or
+## two. Measured on three starships the assistant built: 387 of 407
+## parts in one grey, 93 per cent of another, 90 of a third. The eight
+## models a person built sit between 31 and 59 per cent.
+##
+## Advice and never a fault. A monochrome model is right for plenty of
+## things — a chess piece, a sculpture, a prototype — and the design is
+## the one who knows which this is.
+func _all_one_colour(model: Model) -> String:
+	if model.placements.size() < WORTH_COLOURING:
+		return ""
+	var counted: Dictionary = {}
+	var most: int = 0
+	var commonest: int = 0
+	for placement: Placement in model.placements:
+		var now: int = int(counted.get(placement.color, 0)) + 1
+		counted[placement.color] = now
+		if now > most:
+			most = now
+			commonest = placement.color
+	var share: float = float(most) / float(model.placements.size())
+	if share < MOSTLY_ONE_COLOUR:
+		return ""
+	var named: String = "colour %d" % commonest
+	if library != null:
+		var colour: PartLibrary.BrickColor = library.color(commonest)
+		if colour != null and not colour.name.is_empty():
+			named = colour.name
+	return ("%d of the %d parts are %s — %.0f%% of the model in one "
+		% [most, model.placements.size(), named, share * 100.0]
+		+ "colour, across %d altogether. A set uses several greys on "
+		% counted.size()
+		+ "purpose: a darker one where a shadow would fall, a lighter "
+		+ "one for plating, a line of tiles to break up a long face, "
+		+ "and an accent for the parts that are meant to catch the "
+		+ "eye. The eight models this app ships are 31 to 59 per cent "
+		+ "their commonest colour. If one colour is the intention — a "
+		+ "sculpture, a prototype, a chess piece — then this is not a "
+		+ "fault and nothing needs doing.")
 
 
 ## Whether the whole design sits in a single course.

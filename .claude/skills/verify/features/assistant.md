@@ -208,6 +208,15 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   complaint at all. `patterns_probe` asserts the invariant instead — reflect every
   stud the wedges cover about both middles and the set maps onto itself — over
   three ellipse sizes, because the 20 x 16 case passes even when the code is broken.
+- **The checker never asked whether a model reads as the thing.** It asks whether
+  it stands up, and colour is most of the difference. Measured, and the two
+  populations do not overlap: the eight models that ship with the app, made by a
+  person, are **31 to 59 per cent** their commonest colour across three to eight
+  colours; three starships the assistant built are **90, 93 and 95 per cent** —
+  387 of 407 parts in one grey. `MOSTLY_ONE_COLOUR` is three quarters, which sits
+  in the empty gap with room either side, and `WORTH_COLOURING` is 40 parts
+  because a fourteen-brick sign is one colour for a reason. Advice, never a fault,
+  and it says so: a sculpture or a prototype is meant to be monochrome.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

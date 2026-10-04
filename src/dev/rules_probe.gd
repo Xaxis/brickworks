@@ -147,6 +147,45 @@ func _run() -> void:
 		_verdict(assistant, round_tower), "steps its way")
 
 	print("")
+	print("  a model that is all one colour")
+	# The checker asks whether a model stands up and never whether it
+	# reads as the thing. Colour is most of the difference, and the two
+	# populations do not overlap: the eight models that ship with the
+	# app, made by a person, are 31 to 59 per cent their commonest
+	# colour; three starships the assistant built are 90, 93 and 95.
+	var monochrome: Array = []
+	for n: int in 60:
+		monochrome.append({"part": "3001", "color": 71,
+			"x": (n % 10) * 4, "y": (n / 10) * 3, "z": 0, "rot": 0})
+	_check_says("sixty bricks in one grey is mentioned",
+		_verdict(assistant, monochrome), "in one colour")
+	# Advice, not a fault: a sculpture is meant to be one colour.
+	if bool(_verdict(assistant, monochrome).get("ok", false)):
+		print("  ok    ...and it is advice, so the design still passes")
+	else:
+		_failures += 1
+		print("  FAIL  being one colour was counted as a problem")
+	_check_says("...and it says a set is not", _verdict(assistant, monochrome),
+		"31 to 59 per cent")
+
+	# Mixed, and it says nothing. Four colours evenly is what a person's
+	# model looks like.
+	var mixed_up: Array = []
+	for n: int in 60:
+		mixed_up.append({"part": "3001", "color": [71, 0, 4, 1][n % 4],
+			"x": (n % 10) * 4, "y": (n / 10) * 3, "z": 0, "rot": 0})
+	_check_quiet("a model with four colours in it is not nagged",
+		_verdict(assistant, mixed_up), "in one colour")
+
+	# And a small thing is one colour because it is small.
+	var all_grey: Array = []
+	for n: int in 12:
+		all_grey.append({"part": "3001", "color": 71,
+			"x": (n % 4) * 4, "y": (n / 4) * 3, "z": 0, "rot": 0})
+	_check_quiet("a twelve-brick model is left alone",
+		_verdict(assistant, all_grey), "in one colour")
+
+	print("")
 	print("  one layer, which nothing can hold together")
 	# The commonest shape of early draft, and the count on its own reads
 	# as a fault in the arrangement rather than as the one thing it is:
