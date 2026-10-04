@@ -106,7 +106,7 @@ the direct path, so the account path is not exercised there at all.
 ```sh
 godot --headless --path . --script src/dev/assistant_probe.gd   # a real design, through the real gate
 godot --headless --path . --script src/dev/revise_probe.gd      # add to a model it did not build
-godot --headless --path . --script src/dev/sideways_probe.gd     # build sideways when the job needs it
+godot --path . --resolution 1200x800 --script src/dev/sideways_probe.gd  # build sideways when the job needs it
 godot --headless --path . --script src/dev/stream_probe.gd       # appears while it is being written
 godot --headless --path . --script src/dev/bakeoff_probe.gd      # do the settings change anything
 godot --headless --path . --script src/dev/tier_probe.gd         # who may use it, on whose money
@@ -156,6 +156,16 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   two bricks is this design's. What was already there still goes into the lattice,
   so a new or moved brick is checked against it exactly as before — `edit_probe`
   asserts both halves.
+- **`sideways_probe` answers a question the other probes cannot.** `snot_probe`
+  proves the machinery works; this asks whether the design ever *reaches* for it,
+  with a brief that cannot be answered studs-up. First run, 2026-10-03: 16 of 39
+  parts turned onto +z, a plate on SNOT bricks with tiles over the studs. So
+  sideways building is not dead code — and that sharpens when a capability must
+  live inside a tool rather than in the prompt. The design reached for sideways
+  building because the brief made it unavoidable; it never reached for wedges
+  because a staircase of plates still satisfies "build a saucer". A technique the
+  brief demands gets used; one that merely improves the result has to be in a tool
+  the design cannot avoid.
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had
