@@ -70,7 +70,13 @@ take, which is what made a design run give up on looking at itself.
   which reads like a broken probe and is not. Rendering works the same there and
   is faster — a frame costs 124 ms on Xvfb against 989 ms on the compositor.
   A design run can have one the same way:
-  `xvfb-run -a --server-args="-screen 0 1500x950x24" godot --path . -- --ask=…`
+  `MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1500x950x24" godot --path . -- --ask=…`
+  **With that env var**, or the real GPU is not used at all: Xvfb cannot hand the
+  driver a buffer to present, so Godot falls back to lavapipe and draws on the CPU
+  — a ten-frame scene cost 8.6 s of CPU against 0.33 s with it. `check.sh` sets it
+  for the on-screen checks already; a design run has to be given it by hand. Every
+  Voyager benchmark on 2026-10-03 was measured without it, so those picture
+  timings are pessimistic.
 - **A window nobody is looking at runs at one frame a second.** Measured on this
   machine: 989 ms a frame with vsync as shipped, 20 ms with it off. Everything in
   these probes is counted in frames, so the 150-frame wait for the catalogue was
