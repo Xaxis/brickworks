@@ -304,6 +304,20 @@ func _run() -> void:
 		"too long to send in one piece")
 
 	print("")
+	print("  and that the fill lays the wedges itself")
+	# It will not reach for them. Three runs, two different prompts,
+	# twenty-six to thirty-two kinds of part each, and zero wings or
+	# slopes in any of them — while the checker said the outline was a
+	# staircase and show_technique held a worked smooth diagonal. So the
+	# tool does it, and the prompt has to say so or the one thing that
+	# solves it goes unused.
+	var about_fill: String = assistant.guidance()
+	_check_text("the prompt says fill lays wedges along an ellipse",
+		about_fill, "wedge plates along an ellipse")
+	_check_text("...and what that buys, in parts", about_fill,
+		"thirteen parts this way")
+
+	print("")
 	print("  what the design is told to read")
 	# The numbers only help if it knows they are there. Every look
 	# carries them now, and the prompt has to say so, or they are three

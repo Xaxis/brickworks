@@ -4184,7 +4184,10 @@ alongside the bricks you write by hand:
            mirror it. A wing written twice is a wing a stud out on one \
            side, and a part with a hand is swapped for its twin for you.
   fill     a footprint — rectangle or ellipse — tiled with the largest \
-           plates that fit. A saucer twenty studs across is one line \
+           plates that fit, and wedge plates along an ellipse's edge \
+           where a wedge's shape is the shape of that edge, so the \
+           outline is a cut and not a staircase. Sixteen studs by \
+           twelve is thirteen parts this way and twenty-nine by hand. A saucer twenty studs across is one line \
            here and a hundred and fifty plates by hand. Four more keys \
            turn that footprint into a solid: wall leaves the middle out, \
            layers stacks it, rise says how far apart, and shrink takes \
