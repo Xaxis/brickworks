@@ -186,6 +186,32 @@ func _run() -> void:
 		_verdict(assistant, all_grey), "in one colour")
 
 	print("")
+	print("  a model that is all structure and no detail")
+	# The other half of "holds together and does not read as the thing".
+	# Measured: the eight models a person built are 9 to 44 per cent
+	# parts of eight studs or more; three starships the assistant built
+	# are 70, 73 and 75.
+	var coarse: Array = []
+	for n: int in 60:
+		coarse.append({"part": "3032", "color": [71, 0, 4, 1][n % 4],
+			"x": (n % 6) * 6, "y": (n / 6) * 1, "z": 0, "rot": 0})
+	_check_says("sixty big plates is mentioned",
+		_verdict(assistant, coarse), "is structure")
+	if bool(_verdict(assistant, coarse).get("ok", false)):
+		print("  ok    ...and it is advice, so the design still passes")
+	else:
+		_failures += 1
+		print("  FAIL  being coarse was counted as a problem")
+
+	# Small parts, and it says nothing.
+	var detailed: Array = []
+	for n: int in 60:
+		detailed.append({"part": "3024", "color": [71, 0, 4, 1][n % 4],
+			"x": n % 10, "y": (n / 10) * 1, "z": 0, "rot": 0})
+	_check_quiet("a model made of small parts is not nagged",
+		_verdict(assistant, detailed), "is structure")
+
+	print("")
 	print("  one layer, which nothing can hold together")
 	# The commonest shape of early draft, and the count on its own reads
 	# as a fault in the arrangement rather than as the one thing it is:

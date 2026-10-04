@@ -2701,6 +2701,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not plain.is_empty():
 		advice.append(plain)
 
+	# And whether it is all structure and no detail.
+	var coarse: String = _mostly_big_plates(model)
+	if not coarse.is_empty():
+		advice.append(coarse)
+
 	# And whether a nearly-symmetric model has a brick on one side only.
 	var lopsided: String = _lopsided(model, box_of, lattice)
 	if not lopsided.is_empty():
@@ -2790,6 +2795,19 @@ const MOSTLY_ONE_COLOUR := 0.75
 ## And below this many parts there was no real chance to vary: a
 ## fourteen-brick sign is one colour because it is a sign.
 const WORTH_COLOURING := 40
+
+## A part covering this many studs or more is structure rather than
+## detail: a 2 x 4 is eight, a 4 x 6 is twenty-four.
+const BIG_PART_STUDS := 8.0
+
+## Above this share of big parts, a model is a massing study rather
+## than a thing somebody detailed.
+##
+## Measured, and the populations do not overlap again. The eight models
+## a person built are 9 to 44 per cent big parts; three starships the
+## assistant built are 70, 73 and 75. A set is mostly small parts with
+## the big plates buried inside it, which is what greebling is.
+const MOSTLY_BIG := 0.60
 
 ## How long one check may spend working out where sections would fit.
 ##
@@ -3005,6 +3023,53 @@ func _all_one_colour(model: Model) -> String:
 		+ "their commonest colour. If one colour is the intention — a "
 		+ "sculpture, a prototype, a chess piece — then this is not a "
 		+ "fault and nothing needs doing.")
+
+
+## Is it all structure and no detail?
+##
+## The other half of "holds together perfectly and does not read as the
+## thing". A hull laid in 4 x 6 plates is the right way to build a hull
+## and the wrong way to finish one: what makes a set look like a set is
+## the layer of small parts over the top — tiles, studs, a round plate
+## for a sensor, a grille for a vent — and the big plates hidden under
+## it. Measured: 284 of 407 parts on a starship were eight studs or
+## bigger, against 9 to 44 per cent on the models a person built.
+##
+## Advice, never a fault, and only once there are enough parts to have
+## had the chance.
+func _mostly_big_plates(model: Model) -> String:
+	if model.placements.size() < WORTH_COLOURING or library == null:
+		return ""
+	var big: int = 0
+	var small: int = 0
+	var counted: int = 0
+	for placement: Placement in model.placements:
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		if info == null:
+			continue
+		counted += 1
+		var footprint: Vector2i = info.footprint_studs()
+		var studs: float = float(footprint.x) * float(footprint.y)
+		if studs >= BIG_PART_STUDS:
+			big += 1
+		elif studs <= 2.0:
+			small += 1
+	if counted < WORTH_COLOURING:
+		return ""
+	var share: float = float(big) / float(counted)
+	if share < MOSTLY_BIG:
+		return ""
+	return ("%d of the %d parts cover eight studs or more — %.0f%% of it "
+		% [big, counted, share * 100.0]
+		+ "is structure, and %d parts are small enough to be detail. "
+		% small
+		+ "That is the shape of a model that is built and not yet "
+		+ "finished. What makes a set look like one is a layer of small "
+		+ "parts over the big ones: tiles across a long face, a round "
+		+ "plate for a sensor, a grille for a vent, a one-by-one in a "
+		+ "second colour where a panel line would run. The eight models "
+		+ "this app ships are 9 to 44 per cent big parts. If this is "
+		+ "meant to be a blocked-out shape, nothing needs doing.")
 
 
 ## Whether the whole design sits in a single course.

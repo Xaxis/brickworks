@@ -217,6 +217,14 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   in the empty gap with room either side, and `WORTH_COLOURING` is 40 parts
   because a fourteen-brick sign is one colour for a reason. Advice, never a fault,
   and it says so: a sculpture or a prototype is meant to be monochrome.
+- **And whether it is all structure and no detail**, the other half of the same
+  thing. Measured, and the populations do not overlap here either: the person's
+  eight models are **9 to 44 per cent** parts of eight studs or more; three
+  starships the assistant built are **70, 73 and 75** — 284 of 407 parts on one of
+  them. A set is mostly small parts with the big plates buried inside, which is
+  what greebling is. `MOSTLY_BIG` is 0.60, in the gap. `tower.ldr` is the closest
+  a person's model comes to either line — 44 per cent big, 59 per cent one colour
+  — and stays silent on both.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.
