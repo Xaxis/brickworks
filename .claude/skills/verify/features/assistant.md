@@ -94,7 +94,14 @@ Proves it when: each exits 0 with no `FAIL`. `rules` is the one that catches a
 message that reads as three problems when there is one, or advice counted as an
 error.
 
-Paid, and only when the thing they exercise has changed — each spends tokens:
+Paid, and only when the thing they exercise has changed — each spends tokens.
+**Two of these need only a key; three need an account.** `sideways` and `bakeoff`
+read `Brain.api_key()` and run with a key in the environment or in `.env`.
+`assistant`, `revise` and `tier` test the account gate rather than the design
+loop: they want a signed-in account against a real `BRICKWORKS_API`, and the
+first two refuse to start when a direct key is set, because a key bypasses the
+gate they exist to check. On a machine with a key in `.env` the app always takes
+the direct path, so the account path is not exercised there at all.
 
 ```sh
 godot --headless --path . --script src/dev/assistant_probe.gd   # a real design, through the real gate
