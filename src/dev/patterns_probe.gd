@@ -156,6 +156,7 @@ func _initialize() -> void:
 		% cone.size(), not cone.is_empty() and cone.size() < 200)
 
 	_wedges_read_off_the_parts()
+	_wedges_go_in_symmetrically()
 	_holds_up()
 
 	print("")
@@ -250,11 +251,23 @@ func _trouble(patterns: Array) -> String:
 	return " ".join(said)
 
 
-## How many studs a set of plates covers.
+## How many studs a set of parts actually covers.
+##
+## A wedge's footprint box is bigger than the studs on it — that is
+## what makes it a wedge — so counting boxes made a ring full of
+## wedges measure wider than the disc it came from while being just as
+## hollow. The wedge table knows which cells each one covers, so ask
+## it, and fall back to the footprint for anything square.
 func _area(bricks: Array) -> int:
+	var shapes: Dictionary = Patterns.wedge_shapes(_library)
 	var total: int = 0
 	for one: Variant in bricks:
 		var brick: Dictionary = one
+		var named: String = "%s %d" % [str(brick["part"]),
+			int(brick.get("rot", 0))]
+		if shapes.has(named):
+			total += (shapes[named][2] as Dictionary).size()
+			continue
 		var info: PartLibrary.PartInfo = _library.parts.get(str(brick["part"]))
 		if info == null:
 			continue
@@ -357,3 +370,48 @@ func _draw(shape: Array) -> String:
 			row += "#" if cells.has(Vector2i(i, j)) else "."
 		rows.append(row)
 	return " / ".join(rows)
+
+
+## Are the wedges laid symmetrically, as a property of the output?
+##
+## Not "does the checker complain": its symmetry advice forgives up to
+## three lonely bricks, so one unpaired wedge can slip under it — tested,
+## an ellipse laid with only the across-mirror came back eighteen parts
+## and no complaint. The invariant is stronger and deterministic: reflect
+## every cell the wedges cover about the shape's middle across, and about
+## its middle deep, and the set has to map onto itself.
+func _wedges_go_in_symmetrically() -> void:
+	print("")
+	print("  and they go in symmetrically, which is a property not an opinion")
+	for size: Array in [[16, 12], [20, 16], [26, 32]]:
+		var wanted: Dictionary = {}
+		for x: int in int(size[0]):
+			for z: int in int(size[1]):
+				var u: float = (float(x) + 0.5) / (float(size[0]) / 2.0) - 1.0
+				var v: float = (float(z) + 0.5) / (float(size[1]) / 2.0) - 1.0
+				if u * u + v * v <= 1.0:
+					wanted[Vector2i(x, z)] = true
+		var low := Vector2i(0x7FFFFFFF, 0x7FFFFFFF)
+		var high := Vector2i(-0x7FFFFFFF, -0x7FFFFFFF)
+		for key: Variant in wanted:
+			var at: Vector2i = key
+			low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
+			high = Vector2i(maxi(high.x, at.x), maxi(high.y, at.y))
+		var laid_cells: Dictionary = {}
+		var made: Array = Patterns._lay_wedges(wanted, 0.0, 71, {},
+			laid_cells, _library)
+		# Vacuous otherwise: an empty set is symmetric about anything.
+		_check("%d x %d lays wedges at all, %d of them"
+			% [size[0], size[1], made.size()], made.size() > 0)
+		if made.is_empty():
+			continue
+		var mapped: int = 0
+		for key: Variant in laid_cells:
+			var at: Vector2i = key
+			if laid_cells.has(Vector2i(low.x + high.x - at.x, at.y)) \
+					and laid_cells.has(Vector2i(at.x,
+						low.y + high.y - at.y)):
+				mapped += 1
+		_check("...and every one of its %d studs has its reflection in "
+			% laid_cells.size() + "both directions, %d of %d"
+			% [mapped, laid_cells.size()], mapped == laid_cells.size())

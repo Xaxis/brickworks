@@ -32,6 +32,13 @@ fixing what it got wrong.
   size I planned" is the question a render answers worst, and a section is the
   thing a designer thinks in: whether the two nacelles match each other is not
   something a photograph settles.
+- `wedges laid by the fill`: `fill` on an ellipse lays wedge plates — LDraw files
+  them under "Wing" — wherever the shape of a wedge is the shape of the edge, and
+  plates everywhere else. A 16 x 12 ellipse went from 29 plates with a stepped
+  outline to 13 parts with none. The shapes are read off each part's own top studs
+  rather than typed, so handedness falls out of the arithmetic; all 72 shapes (18
+  parts, 4 turns) have a mirror twin, which is what makes it possible to lay them
+  in families and never leave a saucer lopsided.
 - `shapes said as patterns`: `src/ai/patterns.gd`. Writing placements one at a
   time is the arithmetic a language model is worst at, and most of a model is
   repetition. Three verbs do the counting — `repeat`, `mirror`, `fill` — and
@@ -168,6 +175,22 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   the handshake. Two runs before, two runs after, two errors in every one — it
   changed nothing. The damage that mattered was a timed-out run losing its file,
   and that is fixed in `model-io.md` instead.
+- **Four ways to get wedge-laying wrong, all of them measured.** Studs are not the
+  body: a wedge's tapered half fills cells it has no stud on, so reserving only the
+  studded ones let two wedges put their tapers in the same place — 14 overlaps on
+  one flat ellipse, every one wedge against wedge. The fits test needs the shape as
+  it *was*, not as it is left, or the second wedge mistakes the first one's studs
+  for the outside of the shape. Candidate positions sweep the whole box, not the
+  wanted cells, because a right hand's corner cell is never one of its own studs —
+  take a wanted cell for the corner and only left hands can ever be placed. And the
+  unit is the whole **family** under reflection in x *and* z, not a pair: pairing
+  about one axis drew "a mirror of itself about its width, except brick 6 and brick
+  7" from the checker, a correct pair about the other axis.
+- **The symmetry advisory forgives three lonely bricks**, so it cannot be the test
+  for this: an ellipse laid with only the across-mirror came back 18 parts with no
+  complaint at all. `patterns_probe` asserts the invariant instead — reflect every
+  stud the wedges cover about both middles and the set maps onto itself — over
+  three ellipse sizes, because the 20 x 16 case passes even when the code is broken.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

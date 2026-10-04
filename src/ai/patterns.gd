@@ -125,7 +125,7 @@ static func expand(raw_patterns: Array, already: Array,
 			"mirror":
 				made.append_array(_mirror(pattern, from, trouble, library))
 			"fill":
-				made.append_array(_fill(pattern, trouble))
+				made.append_array(_fill(pattern, trouble, library))
 			_:
 				trouble.append("no pattern called \"%s\" — there is "
 					% kind + "repeat, mirror and fill")
@@ -279,7 +279,8 @@ static func _handed_twin(part: String) -> String:
 ## layers. None of these were sayable before, and each of them is a
 ## shape a model built here needs and used to write out plate by plate
 ## until it ran out of reply.
-static func _fill(pattern: Dictionary, trouble: Array) -> Array:
+static func _fill(pattern: Dictionary, trouble: Array,
+		library: PartLibrary) -> Array:
 	var shape: String = str(pattern.get("shape", "rectangle")).to_lower()
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
 	var low_x: int = int(round(float(at.get("x", 0.0))))
@@ -340,7 +341,15 @@ static func _fill(pattern: Dictionary, trouble: Array) -> Array:
 				return []
 			break
 		var laid: Dictionary = {}
-		made.append_array(_tile(here, y + rise * float(layer), colour,
+		var at_y: float = y + rise * float(layer)
+		# Wedges first, and only where a diagonal is what the edge is:
+		# an ellipse, laid in plates. A plate laid first takes the cells
+		# a wedge needed, a rectangle has no diagonal, and there is no
+		# wedge one brick tall.
+		if shape == "ellipse" and is_equal_approx(rise, 1.0):
+			made.append_array(_lay_wedges(here, at_y, colour, below, laid,
+				library))
+		made.append_array(_tile(here, at_y, colour,
 			COURSES if is_equal_approx(rise, 3.0) else TILES,
 			below, laid))
 		below = laid
@@ -499,6 +508,230 @@ static func fingerprint(cells: Dictionary) -> String:
 		said.append("%d,%d" % [at.x - low.x, at.y - low.y])
 	said.sort()
 	return "|".join(said)
+
+
+## Lay wedges wherever the shape of a wedge is the shape of the edge.
+##
+## Before the plates, because a plate laid first takes the cells a wedge
+## needed. Only on an ellipse laid in plates: a rectangle has no
+## diagonal and a wedge at each of its corners would round them off,
+## and there is no wedge one brick tall.
+##
+## A wedge belongs where every stud it has is wanted and every cell it
+## does not cover is outside the shape — that is what makes its cut
+## follow the edge rather than slice through the middle. And it is laid
+## with its mirror or not at all, because a saucer with one cut corner
+## is the fault the checker calls out first and the thing a person sees.
+##
+## Three things here were learned by getting them wrong:
+##
+## - studs are not the body. A wedge's tapered half fills cells it has
+##   no stud on, so reserving only the studded ones let two wedges put
+##   their tapers in the same place: fourteen overlaps on one flat
+##   ellipse, every one wedge against wedge. The whole box is reserved
+##   and only the studs are claimed as covered.
+## - the fits test needs the shape as it was, not as it is left. Against
+##   a shrinking set the second wedge mistakes the first one's studs for
+##   the outside of the shape and cuts through them.
+## - positions are tried over the whole box, not over the wanted cells.
+##   A right hand's corner cell is never one of its own studs, so taking
+##   a wanted cell for the corner can only ever place left hands.
+static func _lay_wedges(wanted: Dictionary, y: float, colour: int,
+		below: Dictionary, laid: Dictionary, library: PartLibrary) -> Array:
+	var shapes: Dictionary = wedge_shapes(library)
+	if shapes.is_empty() or wanted.is_empty():
+		return []
+	var whole: Dictionary = wanted.duplicate()
+	var taken: Dictionary = {}
+	var low := Vector2i(0x7FFFFFFF, 0x7FFFFFFF)
+	var high := Vector2i(-0x7FFFFFFF, -0x7FFFFFFF)
+	for key: Variant in whole:
+		var at: Vector2i = key
+		low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
+		high = Vector2i(maxi(high.x, at.x), maxi(high.y, at.y))
+	# The two lines a wedge's family reflects about: the shape's own
+	# middle across and its middle deep.
+	#
+	# Both, not one. Pairing about x alone laid eight wedges on an
+	# ellipse and the checker answered "a mirror of itself about its
+	# width, except for brick 6 and brick 7" — a correct pair, about
+	# the other axis. A saucer is symmetric both ways, so the unit is
+	# not a pair but the whole family a placement belongs to under both
+	# reflections: one, two or four, all of them or none.
+	var across_axis: int = low.x + high.x
+	var deep_axis: int = low.y + high.y
+
+	var order: Array = shapes.keys()
+	order.sort_custom(func(a: String, b: String) -> bool:
+		var one: int = (shapes[a][2] as Dictionary).size()
+		var two: int = (shapes[b][2] as Dictionary).size()
+		return one > two if one != two else a < b)
+
+	var made: Array = []
+	for named: String in order:
+		var shape: Array = shapes[named]
+		for corner_x: int in range(low.x - int(shape[0]) + 1, high.x + 1):
+			for corner_z: int in range(low.y - int(shape[1]) + 1, high.y + 1):
+				var corner := Vector2i(corner_x, corner_z)
+				var mine: Dictionary = _cells_at(shape, corner)
+				if not _wedge_fits(shape, corner, whole, wanted, taken):
+					continue
+				var family: Array = _family_of(shapes, named, shape,
+					corner, mine, across_axis, deep_axis)
+				if family.is_empty():
+					continue
+				var all_fit: bool = true
+				for one: Variant in family:
+					var member: Array = one
+					if not _wedge_fits(shapes[member[0]], member[1], whole,
+							wanted, taken):
+						all_fit = false
+						break
+					if not below.is_empty() and not _reaches(
+							_cells_at(shapes[member[0]], member[1]), below):
+						all_fit = false
+						break
+				if not all_fit:
+					continue
+				for n: int in family.size():
+					for m: int in range(n + 1, family.size()):
+						if _overlaps(shapes[family[n][0]], family[n][1],
+								shapes[family[m][0]], family[m][1]):
+							all_fit = false
+				if not all_fit:
+					continue
+				for one: Variant in family:
+					var member: Array = one
+					_claim(shapes[member[0]], member[1], wanted, laid, taken)
+					made.append(_placement(member[0], shapes[member[0]],
+						member[1], y, colour))
+	return made
+
+
+## Every wedge that has to go in with this one, itself included.
+##
+## A placement, its reflection across the shape's middle, its reflection
+## the other way, and the one diagonally opposite. Where a reflection
+## lands on the placement itself the family is smaller, which is what
+## happens to a wedge sitting across a middle line.
+##
+## Empty if any of the four is not a shape this family has — which
+## cannot happen for a wedge, measured, because all seventy-two shapes
+## have a mirror twin, but a missing one would mean laying an
+## unanswerable wedge and that is the fault worth refusing.
+static func _family_of(shapes: Dictionary, named: String, shape: Array,
+		corner: Vector2i, mine: Dictionary, across_axis: int,
+		deep_axis: int) -> Array:
+	var family: Array = [[named, corner]]
+	var seen: Dictionary = {"%s %d %d" % [named, corner.x, corner.y]: true}
+	for turn: int in 3:
+		var reflected: Dictionary = {}
+		for key: Variant in mine:
+			var at: Vector2i = key
+			reflected[Vector2i(
+				across_axis - at.x if turn != 1 else at.x,
+				deep_axis - at.y if turn != 0 else at.y)] = true
+		var twin: String = str(_wedge_prints.get(fingerprint(reflected), ""))
+		if twin.is_empty():
+			return []
+		var pair: Array = shapes[twin]
+		var where: Vector2i = _corner_for(pair, reflected)
+		if not _same(_cells_at(pair, where), reflected):
+			return []
+		var mark: String = "%s %d %d" % [twin, where.x, where.y]
+		if seen.has(mark):
+			continue
+		seen[mark] = true
+		family.append([twin, where])
+	return family
+
+
+## The cells a shape covers, placed at a corner.
+static func _cells_at(shape: Array, corner: Vector2i) -> Dictionary:
+	var out: Dictionary = {}
+	for key: Variant in shape[2]:
+		out[corner + (key as Vector2i)] = true
+	return out
+
+
+## Where a shape has to sit for its cells to be this set.
+static func _corner_for(shape: Array, cells: Dictionary) -> Vector2i:
+	var low := Vector2i(0x7FFFFFFF, 0x7FFFFFFF)
+	for key: Variant in cells:
+		var at: Vector2i = key
+		low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
+	var own := Vector2i(0x7FFFFFFF, 0x7FFFFFFF)
+	for key: Variant in shape[2]:
+		var at: Vector2i = key
+		own = Vector2i(mini(own.x, at.x), mini(own.y, at.y))
+	return low - own
+
+
+## Is this wedge right here? Every stud wanted and still free, every
+## cell it does not cover outside the shape, and nothing of another
+## wedge's body in its box.
+static func _wedge_fits(shape: Array, corner: Vector2i, whole: Dictionary,
+		wanted: Dictionary, taken: Dictionary) -> bool:
+	var cells: Dictionary = shape[2]
+	for i: int in int(shape[0]):
+		for j: int in int(shape[1]):
+			var at: Vector2i = corner + Vector2i(i, j)
+			if taken.has(at):
+				return false
+			var ours: bool = cells.has(Vector2i(i, j))
+			if ours != whole.has(at):
+				return false
+			if ours and not wanted.has(at):
+				return false
+	return true
+
+
+## Reserve a wedge's whole box and claim the studs it covers.
+static func _claim(shape: Array, corner: Vector2i, wanted: Dictionary,
+		laid: Dictionary, taken: Dictionary) -> void:
+	for i: int in int(shape[0]):
+		for j: int in int(shape[1]):
+			taken[corner + Vector2i(i, j)] = true
+	for key: Variant in shape[2]:
+		var at: Vector2i = corner + (key as Vector2i)
+		wanted.erase(at)
+		laid[at] = true
+
+
+## Do two placed wedges want any of the same cells?
+static func _overlaps(one: Array, here: Vector2i, two: Array,
+		there: Vector2i) -> bool:
+	for i: int in int(one[0]):
+		for j: int in int(one[1]):
+			var at: Vector2i = here + Vector2i(i, j)
+			if at.x >= there.x and at.x < there.x + int(two[0]) \
+					and at.y >= there.y and at.y < there.y + int(two[1]):
+				return true
+	return false
+
+
+## Does any of this reach the layer below?
+static func _reaches(cells: Dictionary, below: Dictionary) -> bool:
+	for key: Variant in cells:
+		if below.has(key):
+			return true
+	return false
+
+
+static func _same(one: Dictionary, two: Dictionary) -> bool:
+	if one.size() != two.size():
+		return false
+	for key: Variant in one:
+		if not two.has(key):
+			return false
+	return true
+
+
+static func _placement(named: String, shape: Array, corner: Vector2i,
+		y: float, colour: int) -> Dictionary:
+	var said: PackedStringArray = named.split(" ")
+	return {"part": said[0], "color": colour, "x": corner.x, "y": y,
+		"z": corner.y, "rot": said[1].to_int()}
 
 
 ## A set of studs, laid in the largest parts that cover it.
