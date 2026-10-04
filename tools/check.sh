@@ -136,10 +136,15 @@ echo "── on screen ──"
 # probe. Xvfb gives them one, and the pictures come out the same: a
 # frame costs 124 ms there against 989 ms on the compositor, so it is
 # faster as well.
+#
+# Xvfb cannot hand the GPU driver a buffer to present (it has no DRI3), so
+# Godot quietly fell back to lavapipe there and drew on the CPU.
+# MESA_VK_WSI_DEBUG=sw has Mesa copy each frame to Xvfb itself, and the
+# real GPU draws: a 10-frame scene took 0.33 s of CPU against 8.6 s.
 screen=()
 if ! timeout 5 xdpyinfo >/dev/null 2>&1; then
   if command -v xvfb-run >/dev/null 2>&1; then
-    screen=(xvfb-run -a --server-args="-screen 0 1400x900x24")
+    screen=(env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24")
     echo "        no display, so these run on Xvfb"
   else
     echo "        no display and no xvfb-run — these will fail"
