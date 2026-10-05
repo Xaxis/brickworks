@@ -290,6 +290,18 @@ static func _fill(pattern: Dictionary, trouble: Array,
 	var deep: int = int(round(float(pattern.get("deep", 0))))
 	var colour: int = int(pattern.get("color", pattern.get("colour", 71)))
 	var wall: int = int(round(float(pattern.get("wall", 0))))
+	# A second colour for the outside stud of every layer.
+	#
+	# Measured on three starships the assistant built: 90, 93 and 95 per
+	# cent of their parts in one colour, against 31 to 59 for the eight
+	# a person built. The rules already say to vary the colour with
+	# purpose and it does not, the same way it never reached for a wedge
+	# until the fill laid them — so the fill traces the outline instead.
+	# One stud of a darker shade around each layer is what hull plating
+	# and panel lines look like, and it costs the design nothing to ask
+	# for.
+	var edge_colour: int = int(pattern.get("edge_color",
+		pattern.get("edge_colour", -1)))
 	var layers: int = int(round(float(pattern.get("layers", 1))))
 	# A plate is one high, so that is what a layer steps by unless the
 	# design says otherwise — three for courses of bricks.
@@ -342,6 +354,17 @@ static func _fill(pattern: Dictionary, trouble: Array,
 			break
 		var laid: Dictionary = {}
 		var at_y: float = y + rise * float(layer)
+		# The outline, worked out before anything is laid and used only
+		# to choose colours afterwards.
+		#
+		# Laying it as its own ring was the first attempt and it broke
+		# the model: the wedge pass needs the whole layer to know what
+		# is outside the shape, so given a one-stud ring it judged the
+		# interior to be outside and cut straight through it — 32
+		# overlaps and 20 bricks reading as floating behind them. A
+		# colour must never decide where a part goes.
+		var rim_of: Dictionary = _rim(here) if edge_colour >= 0 else {}
+		var from_here: int = made.size()
 		# Wedges first, and only where a diagonal is what the edge is:
 		# an ellipse, laid in plates. A plate laid first takes the cells
 		# a wedge needed, a rectangle has no diagonal, and there is no
@@ -349,9 +372,29 @@ static func _fill(pattern: Dictionary, trouble: Array,
 		if shape == "ellipse" and is_equal_approx(rise, 1.0):
 			made.append_array(_lay_wedges(here, at_y, colour, below, laid,
 				library))
-		made.append_array(_tile(here, at_y, colour,
-			COURSES if is_equal_approx(rise, 3.0) else TILES,
-			below, laid))
+		var tiles: Array = COURSES if is_equal_approx(rise, 3.0) else TILES
+		if not rim_of.is_empty():
+			# A wedge that sits wholly on the outline belongs to it.
+			_colour_the_rim(made, from_here, rim_of, edge_colour, library)
+			# Then the outline's own plates, before the ones filling the
+			# middle: laid largest-first the big plates span the edge and
+			# the middle both, so almost nothing ends up wholly on the
+			# edge and the second colour never shows. Measured, that way
+			# round: one hundred per cent in one colour becoming
+			# ninety-five.
+			#
+			# The wedges above were laid against the whole layer, which
+			# is what they need to know where the shape ends. The tiler
+			# only fills a set of studs and does not care.
+			var ring: Dictionary = {}
+			for edge_cell: Variant in rim_of:
+				if here.has(edge_cell):
+					ring[edge_cell] = true
+					here.erase(edge_cell)
+			if not ring.is_empty():
+				made.append_array(_tile(ring, at_y, edge_colour, tiles,
+					below, laid))
+		made.append_array(_tile(here, at_y, colour, tiles, below, laid))
 		below = laid
 		if made.size() > MOST:
 			trouble.append("that fill would be %d bricks, which is a "
@@ -385,6 +428,67 @@ static func _footprint(shape: String, low_x: int, low_z: int,
 					inner_across, inner_deep):
 				wanted.erase(Vector2i(x, z))
 	return wanted
+
+
+## Give the parts that lie wholly on the outline their own colour.
+##
+## After the geometry and never before it. Every cell a part covers has
+## to be an outline cell, so a plate reaching into the middle keeps the
+## main colour and a one-by-one on the edge does not — which is what
+## makes it read as plating rather than as a stripe.
+static func _colour_the_rim(made: Array, from: int, rim: Dictionary,
+		edge_colour: int, library: PartLibrary) -> void:
+	var shapes: Dictionary = wedge_shapes(library)
+	for n: int in range(from, made.size()):
+		var one: Dictionary = made[n]
+		var cells: Array[Vector2i] = []
+		var named: String = "%s %d" % [str(one["part"]),
+			int(one.get("rot", 0))]
+		var corner := Vector2i(int(one["x"]), int(one["z"]))
+		if shapes.has(named):
+			for key: Variant in (shapes[named][2] as Dictionary):
+				cells.append(corner + (key as Vector2i))
+		else:
+			var info: PartLibrary.PartInfo = library.parts.get(
+				str(one["part"])) if library != null else null
+			if info == null:
+				continue
+			var footprint: Vector2i = info.footprint_studs()
+			var wide: int = footprint.x
+			var deep: int = footprint.y
+			if int(one.get("rot", 0)) % 2 == 1:
+				var swap: int = wide
+				wide = deep
+				deep = swap
+			for i: int in wide:
+				for j: int in deep:
+					cells.append(corner + Vector2i(i, j))
+		if cells.is_empty():
+			continue
+		var all_edge: bool = true
+		for at: Vector2i in cells:
+			if not rim.has(at):
+				all_edge = false
+				break
+		if all_edge:
+			one["color"] = edge_colour
+
+
+## The outside stud of a footprint: every cell with a gap beside it.
+##
+## Four neighbours and not eight, so a diagonal step counts as inside.
+## Eight would take the whole of a narrow shape and leave nothing for
+## the middle colour to fill.
+static func _rim(cells: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for key: Variant in cells:
+		var at: Vector2i = key
+		if not cells.has(at + Vector2i(1, 0)) \
+				or not cells.has(at + Vector2i(-1, 0)) \
+				or not cells.has(at + Vector2i(0, 1)) \
+				or not cells.has(at + Vector2i(0, -1)):
+			out[at] = true
+	return out
 
 
 ## Is a stud inside the shape?
