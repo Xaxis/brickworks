@@ -120,7 +120,7 @@ func save_as(name: String) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
-	if _write(SAVE_DIR + clean + ".ldr", name):
+	if _write(SAVE_DIR + clean + ".ldr", name, true):
 		saved.emit(name)
 		return true
 	return false
@@ -305,16 +305,40 @@ var whole: bool = true
 
 
 ## The model as LDraw text, for export or for handing to something else.
-func to_text(title: String = "Model") -> String:
+## The model as an .ldr file.
+##
+## [param with_steps] works out the build order and writes it as the
+## "0 STEP" lines every LDraw reader understands, so the order survives
+## leaving this app. Off by default because the autosave calls this: the
+## order costs 96 ms at 400 bricks, 552 at a thousand and 2.2 seconds at
+## two thousand — it compares every brick with every other — and the
+## autosave fires a second after each change. A saved or exported file
+## is worth that wait; a keystroke is not.
+func to_text(title: String = "Model", with_steps: bool = false) -> String:
+	## brick id -> which step it belongs to.
+	var step_of: Dictionary = {}
+	if with_steps and world.library != null:
+		var steps: Array[Instructions.Step] = Instructions.plan(
+			world, world.library, scenery)
+		for index: int in steps.size():
+			for brick_id: int in steps[index].brick_ids:
+				step_of[brick_id] = index
+
 	var placements: Array = []
 	for item: Variant in world.bricks():
 		var brick: BrickWorld.Brick = item
 		if scenery.has(brick.id):
 			continue
 		placements.append(LdrModel.Placement.new(
-			brick.part_id, brick.color_code, brick.transform, 0))
-	# Bottom to top, so the file reads in the order it would be built.
+			brick.part_id, brick.color_code, brick.transform,
+			int(step_of.get(brick.id, 0))))
+	# In build order where there is one, and bottom to top otherwise, so
+	# the file reads the way it would be built. Sorting by height alone
+	# put a pin above the beam it goes into, because a pin sits at the
+	# middle of a hole and the beam starts lower.
 	placements.sort_custom(func(a: LdrModel.Placement, b: LdrModel.Placement) -> bool:
+		if a.step != b.step:
+			return a.step < b.step
 		return a.transform.origin.y < b.transform.origin.y)
 	return LdrModel.write_ldr(placements, title, "Brickworks")
 
@@ -325,7 +349,7 @@ func to_text(title: String = "Model") -> String:
 ## so the bytes are handed to the browser as a download instead — the
 ## same model either way, by two entirely different mechanisms.
 func export_to(path: String, title: String = "Model") -> bool:
-	var text: String = to_text(title)
+	var text: String = to_text(title, true)
 	if OS.has_feature("web"):
 		JavaScriptBridge.download_buffer(
 			text.to_utf8_buffer(), path.get_file(), "text/plain")
@@ -339,12 +363,12 @@ func export_to(path: String, title: String = "Model") -> bool:
 	return true
 
 
-func _write(path: String, title: String) -> bool:
+func _write(path: String, title: String, with_steps: bool = false) -> bool:
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	file.store_string(to_text(title))
+	file.store_string(to_text(title, with_steps))
 	file.close()
 	return true
 

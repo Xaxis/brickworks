@@ -29,6 +29,7 @@ Runtime:
 
 ```sh
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
+#   also: the build order is written as 0 STEP, and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given
 godot --headless --path . --script src/dev/restore_probe.gd  # a failed design changes nothing
 godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still mean something
@@ -44,10 +45,24 @@ grep -c '^1 ' /tmp/car.ldr
 ```
 
 Proves it when: it prints `wrote /tmp/car.ldr (61 parts)`, exits 0, and the grep
-says `61`. Every one of the eight files in `models/` is a fair target; `car.ldr`
+says `61`. Every one of the nine files in `models/` is a fair target; `car.ldr`
 is 61 parts, and the count printed and the count in the file must agree.
 
 ## Gotchas
+
+- **The build order is written to the file, but not by the autosave.** Working it
+  out compares every brick with every other: measured at 96 ms for 400 bricks,
+  552 ms for a thousand and **2.2 s for two thousand**, and the autosave fires a
+  second after every change. So `to_text(title, with_steps)` defaults to off, and
+  `save_as` and `export_to` pass true. Without the `0 STEP` lines an exported
+  model opens in Stud.io or LDCad as one flat pile, and for a mechanism the order
+  is not recoverable by eye — a pin has to follow the part it goes into.
+
+- **Sections are flattened on save.** An angled sub-assembly is written as loose
+  bricks at their world transforms, not as an LDraw sub-model, so the grouping
+  the designer worked in is lost on reopening. The geometry is exact; the
+  structure is not. Nothing depends on it yet, and `LdrModel` can already *read*
+  sub-models, so writing them is the missing half.
 
 - **`--out` used to be written once, after the design returned.** A ninety-minute
   Voyager run reached 371 bricks, lost its connection twice to a TLS fault, and

@@ -51,6 +51,40 @@ func _initialize() -> void:
 	var before: Array = _snapshot(world)
 	print("wrote %d bricks" % before.size())
 
+	# The build order has to leave the app with the model. It is worked
+	# out here and nowhere else, so a file without it opens in Stud.io
+	# or LDCad as one flat pile — and the order is not obvious for a
+	# mechanism, where a pin has to follow the part it goes into.
+	#
+	# Not in the autosave, though: working it out compares every brick
+	# with every other, which is 2.2 seconds at two thousand bricks, and
+	# the autosave fires a second after every change.
+	var saved: String = store.to_text("round trip", true)
+	var auto: String = store.to_text("round trip", false)
+	_expect(saved.count("0 STEP") > 0,
+		"a saved model carries its build order (%d STEP lines)"
+		% saved.count("0 STEP"))
+	_expect(auto.count("0 STEP") == 0,
+		"the autosave does not pay for it (%d STEP lines)"
+		% auto.count("0 STEP"))
+	# And a pin is written after the part it goes into, which is the
+	# order's whole purpose.
+	var pinned := BrickWorld.new()
+	pinned.library = library
+	get_root().add_child(pinned)
+	var technic: LdrModel = LdrModel.load_file("res://models/kart.ldr")
+	for piece: LdrModel.Placement in technic.flatten():
+		var part_id: String = piece.part_id.to_lower().trim_suffix(".dat")
+		if library.mesh_for(part_id) != null:
+			pinned.add_brick(part_id, piece.color_code, piece.transform)
+	var kart_store := ModelStore.new()
+	kart_store.world = pinned
+	kart_store.library = library
+	var kart_text: String = kart_store.to_text("kart", true)
+	_expect(kart_text.count("0 STEP") >= 10,
+		"a Technic model is written in steps (%d)" % kart_text.count("0 STEP"))
+	pinned.queue_free()
+
 	if not store.save_as("round trip"):
 		print("  XX could not save")
 		quit(1)
