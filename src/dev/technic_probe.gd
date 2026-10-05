@@ -140,6 +140,34 @@ func _check_a_pin_holds(assistant: Assistant) -> void:
 	_ok(not _joins(assistant, 4.0, 0.75, 4.0, "up", 1),
 		"...nor one four studs away")
 
+	# Forgiving the joint must forgive only the joint. A third brick
+	# driven through the same space is still an overlap, or the
+	# suppression would be a hole anything could be hidden in.
+	var model := Assistant.Model.new()
+	var brick := Assistant.Placement.new()
+	brick.part = "3700"
+	brick.color = 4
+	model.placements.append(brick)
+	var pin := Assistant.Placement.new()
+	pin.part = "3673"
+	pin.color = 0
+	pin.x = 0.6
+	pin.y = 0.75
+	pin.z = -0.5
+	pin.face = "up"
+	pin.rot = 1
+	model.placements.append(pin)
+	var intruder := Assistant.Placement.new()
+	intruder.part = "3005"       # a 1x1 brick, square in the pin's way
+	intruder.color = 2
+	intruder.x = 0.6
+	intruder.y = 0.75
+	intruder.z = -0.5
+	model.placements.append(intruder)
+	var said: String = str(assistant._check(model, true).get("feedback", ""))
+	_ok(said.contains("overlap"),
+		"a third brick in the same space is still an overlap")
+
 
 ## Whether this pair stands up: no overlap, nothing floating.
 func _joins(assistant: Assistant, x: float, y: float, z: float,

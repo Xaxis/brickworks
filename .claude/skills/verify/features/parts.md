@@ -108,6 +108,16 @@ it is hands-only, so say so rather than claiming it.
   some test that the cylinder is *exposed* with a free end, which is geometry
   work rather than a tree walk.
 
+- **Hinges have no connector kind, and adding one buys little.** The old
+  hinges — 3937/3938, 4213/4214, the ones `models/car.ldr` is built with — are
+  drawn from plain cylinders and boxes, so there is nothing to detect by name.
+  The click-lock family does have primitives (`clh1`..`clh15`, `arm1`..`arm3`,
+  `4-4crh1/2`), but only **78 parts in the library reference them**, which is
+  not worth a new ConnectorKind, a format bump and a 90-minute rebuild. Some
+  hinge plates (2430) already get a `pin` because they are drawn with
+  `connect2`. Until this changes, a hinge holds in the checker only because
+  there is material in the cell below it.
+
 - **`npeghol*` is subtracted geometry, not a connector.** "Technic Peg Hole
   Negative" marks where material is *missing*, which is not the same as where a
   pin can go: Technic Beam 2 draws one at its waist, between its two real holes,
