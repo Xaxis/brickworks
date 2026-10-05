@@ -110,11 +110,24 @@ size, so what you see here is the size it will be on the table.</p>""" % [
 static func _parts(stock: Inventory) -> String:
 	var rows := PackedStringArray()
 	rows.append("<h2>What you need</h2>")
+	# The element number earns its column: a part number and a colour
+	# name is something to search for, an element number is something to
+	# order. The column is only drawn when at least one row has one,
+	# because a table of blanks says the elements do not exist when the
+	# truth is that the index does not know them.
+	var ordered: bool = false
+	for lot: Inventory.Lot in stock.lots:
+		if not lot.element.is_empty():
+			ordered = true
+			break
 	rows.append("<table><thead><tr><th class=\"n\">Qty</th><th>Part</th>"
+		+ ("<th>Element</th>" if ordered else "")
 		+ "<th>Name</th><th>Colour</th></tr></thead><tbody>")
 	for lot: Inventory.Lot in stock.lots:
-		rows.append("<tr><td class=\"n\">%d</td><td>%s</td><td>%s</td>"
-			% [lot.count, _escape(lot.part_id), _escape(lot.name)]
+		rows.append("<tr><td class=\"n\">%d</td><td>%s</td>"
+			% [lot.count, _escape(lot.part_id)]
+			+ ("<td>%s</td>" % _escape(lot.element) if ordered else "")
+			+ "<td>%s</td>" % _escape(lot.name)
 			+ "<td><span class=\"chip\" style=\"background:%s\"></span>%s</td></tr>"
 			% [_hex(lot), _escape(lot.color_name)])
 	rows.append("</tbody></table>")

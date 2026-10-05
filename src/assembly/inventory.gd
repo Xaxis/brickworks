@@ -23,6 +23,12 @@ class Lot extends RefCounted:
 	var color_code: int
 	var color_name: String
 	var count: int = 0
+	## The LEGO element number, which is what a shop or a warehouse
+	## actually picks: "Brick 2 x 4 in Bright Red" is a description,
+	## 300121 is the thing you can order. Empty where the index has no
+	## entry, which is most of the library — never shown as a dash or a
+	## zero, because that reads as "no such element".
+	var element: String = ""
 	## The colour as six hex digits, for anywhere that wants markup
 	## rather than a Color.
 	var rgb_hex: String = "888888"
@@ -71,6 +77,7 @@ static func of(world: BrickWorld, library: PartLibrary,
 					int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
 					int(color.rgb.b * 255.0)]
 			lot.each_grams = Stability.grams(info) if info != null else 0.0
+			lot.element = library.element_for(brick.part_id, brick.color_code)
 			by_key[key] = lot
 			inventory.lots.append(lot)
 		lot.count += 1
@@ -125,10 +132,11 @@ static func _tidy(raw: String) -> String:
 ## can be guessed wrong.
 func to_csv() -> String:
 	var rows := PackedStringArray()
-	rows.append("part,name,ldraw_colour,colour,quantity,grams_each,grams_total")
+	rows.append("part,element,name,ldraw_colour,colour,quantity,"
+		+ "grams_each,grams_total")
 	for lot: Lot in lots:
-		rows.append("%s,%s,%d,%s,%d,%.2f,%.2f" % [
-			_csv(lot.part_id), _csv(lot.name), lot.color_code,
+		rows.append("%s,%s,%s,%d,%s,%d,%.2f,%.2f" % [
+			_csv(lot.part_id), lot.element, _csv(lot.name), lot.color_code,
 			_csv(lot.color_name), lot.count, lot.each_grams, lot.total_grams()])
 	return "\n".join(rows) + "\n"
 
@@ -146,8 +154,9 @@ func to_text(title: String = "Model") -> String:
 		title, pieces, lots.size(), weight()])
 	lines.append("")
 	for lot: Lot in lots:
-		lines.append("%4d x  %-9s %-34s %s" % [
-			lot.count, lot.part_id, lot.name.substr(0, 34), lot.color_name])
+		lines.append("%4d x  %-9s %-8s %-32s %s" % [
+			lot.count, lot.part_id, lot.element,
+			lot.name.substr(0, 32), lot.color_name])
 	return "\n".join(lines) + "\n"
 
 

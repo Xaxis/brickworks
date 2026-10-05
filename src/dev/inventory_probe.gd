@@ -72,7 +72,8 @@ func _initialize() -> void:
 	var rows: PackedStringArray = csv.strip_edges().split("\n")
 	_check("csv has a header and one row per lot, got %d" % rows.size(),
 		rows.size() == stock.lot_count() + 1)
-	_check("csv header names its columns", rows[0].begins_with("part,name,"))
+	_check("csv header names its columns",
+		rows[0].begins_with("part,element,name,"))
 
 	world.clear()
 	for id: String in ["3626bp01", "2431", "3070b"]:
@@ -84,9 +85,34 @@ func _initialize() -> void:
 		# Seven columns, unless a quoted field is hiding a comma — in
 		# which case the naive split finds more, which is the bug.
 		if not line.contains("\""):
-			_check("a plain row has seven fields, got %d in '%s'"
+			_check("a plain row has eight fields, got %d in '%s'"
 				% [line.split(",").size(), line.substr(0, 40)],
-				line.split(",").size() == 7)
+				line.split(",").size() == 8)
+
+	# What makes the list orderable rather than descriptive. A 2x4 brick
+	# in red is LEGO element 300121, and without that a parts list is
+	# something to search a shop for rather than something to buy.
+	world.clear()
+	world.add_brick("3001", 4, Transform3D.IDENTITY)
+	world.add_brick("3024", 0, Transform3D(Basis.IDENTITY, Vector3(100, 0, 0)))
+	# A part nothing has an element number for, which must stay blank
+	# rather than read as "no such element".
+	world.add_brick("3001", 9, Transform3D(Basis.IDENTITY, Vector3(200, 0, 0)))
+	var ordered: Inventory = Inventory.of(world, library)
+	var found: Dictionary = {}
+	for lot: Inventory.Lot in ordered.lots:
+		found["%s/%d" % [lot.part_id, lot.color_code]] = lot.element
+	print("     3001 in red  -> '%s'" % found.get("3001/4", ""))
+	print("     3024 in black-> '%s'" % found.get("3024/0", ""))
+	print("     3001 in light blue -> '%s'" % found.get("3001/9", ""))
+	_check("a 2x4 brick in red names element 300121",
+		str(found.get("3001/4", "")) == "300121")
+	_check("a 1x1 plate in black names element 302426",
+		str(found.get("3024/0", "")) == "302426")
+	_check("a colour with no element number stays blank, not zero",
+		str(found.get("3001/9", "x")) == "")
+	_check("and the booklet draws the column",
+		Booklet.html("t", [], ordered).contains("<th>Element</th>"))
 
 	print("")
 	print("%d failed" % _failures if _failures else "the parts list adds up")

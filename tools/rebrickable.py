@@ -211,6 +211,84 @@ def _lines() -> dict[str, str]:
     return lines
 
 
+def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
+    """LDraw part and colour -> the LEGO element number you would order.
+
+    A design is not orderable until each line of its parts list names a
+    real element.  "Brick 2x4 in Bright Red" is a description; 300521 is
+    the thing a warehouse picks.  Rebrickable's elements table carries
+    them, keyed by their part number and colour.
+
+    Returns {"pairs": {"<id>/<code>": "<element>"}, "counts": {...}}.
+    Only exact and corroborated matches go in: ordering the wrong brick
+    is worse than ordering from a description, so a part whose number
+    only matches after a mould suffix is dropped has to agree by name
+    as well, exactly as availability() requires.
+    """
+    codes = colour_codes(ldraw_colours)
+    rb_name = {r["part_num"]: r["name"] for r in _rows("parts")}
+
+    ## Rebrickable spelling -> the LDraw entry it belongs to.
+    exact: dict[str, dict] = {}
+    loose: dict[str, dict] = {}
+    whole: dict[str, dict] = {e["id"].lower(): e for e in entries}
+    for entry in entries:
+        if not _guessable(entry):
+            continue
+        low = entry["id"].lower()
+        exact.setdefault(low, entry)
+        exact.setdefault(low.lstrip("0") or low, entry)
+        bare = _bare(low)
+        if bare != low and bare not in loose:
+            loose[bare] = entry
+
+    # Which moulding a bare number means, according to LDraw rather than
+    # according to the alphabet.  3023a and 3023b are both "Plate 1 x 2"
+    # and both reduce to 3023, so the first one seen took the number and
+    # every 3023 element went to 3023a — while every model in the repo
+    # uses 3023b.  LDraw settles it: part 3023 is "~Moved to 3023b", so
+    # the redirect names the current part and the guess becomes a fact.
+    for entry in entries:
+        target = entry.get("moved_to")
+        if not target:
+            continue
+        current = whole.get(target.lower())
+        if current is not None and _guessable(current):
+            low = entry["id"].lower()
+            loose[low] = current
+            loose[low.lstrip("0") or low] = current
+
+    pairs: dict[str, str] = {}
+    how = {"exact": 0, "by mould variant": 0, "no colour": 0, "no part": 0}
+    for row in _rows("elements"):
+        code = codes.get(int(row["color_id"] or -1))
+        if code is None:
+            how["no colour"] += 1
+            continue
+        entry = None
+        route = "exact"
+        for candidate in (row["part_num"], row["design_id"]):
+            if not candidate:
+                continue
+            entry = exact.get(candidate.lower())
+            if entry is not None:
+                break
+            guess = loose.get(candidate.lower())
+            if guess is not None and _agrees(
+                    guess.get("name", ""), rb_name.get(row["part_num"], "")):
+                entry = guess
+                route = "by mould variant"
+                break
+        if entry is None:
+            how["no part"] += 1
+            continue
+        key = "%s/%d" % (entry["id"], code)
+        if key not in pairs:
+            pairs[key] = row["element_id"]
+            how[route] += 1
+    return {"source": "Rebrickable elements", "counts": how, "pairs": pairs}
+
+
 def availability(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     """Join the two libraries.
 

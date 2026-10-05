@@ -49,6 +49,29 @@ func _resolve_root() -> String:
 	return _root
 
 
+## The LEGO element number for a part in a colour, or "" when there is
+## none.
+##
+## Empty is the common case and means nothing is known: the table has
+## 40,474 pairs and real sets contain millions, so a design is still
+## perfectly buildable without one. It must never be shown as though the
+## element did not exist.
+func element_for(part_id: String, code: int) -> String:
+	if not _looked_for_elements:
+		_looked_for_elements = true
+		var path: String = _resolve_root() + "elements.json"
+		if FileAccess.file_exists(path):
+			var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+			if file != null:
+				var raw: Variant = JSON.parse_string(file.get_as_text())
+				file.close()
+				if typeof(raw) == TYPE_DICTIONARY:
+					var pairs: Variant = (raw as Dictionary).get("pairs", {})
+					if typeof(pairs) == TYPE_DICTIONARY:
+						_elements = pairs
+	return str(_elements.get("%s/%d" % [part_id, code], ""))
+
+
 ## What a part is, without its geometry.
 class PartInfo extends RefCounted:
 	var id: String              ## LDraw number, e.g. "3001"
@@ -168,6 +191,12 @@ var _ordered_ids: PackedStringArray = PackedStringArray()
 ## built without it, which a clone that has not fetched the tables is.
 var recent_since: int = 0
 var availability_source: String = ""
+## Part and colour -> the LEGO element number to order, read from
+## elements.json the first time anything asks. Its own file and loaded
+## on demand because it is 0.8 MB that only a parts list needs, where
+## the catalogue is loaded at start-up by everything.
+var _elements: Dictionary = {}
+var _looked_for_elements: bool = false
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
 var _fetching: Dictionary = {}      ## hash -> true, so nothing fetches twice

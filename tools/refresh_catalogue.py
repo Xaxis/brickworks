@@ -75,6 +75,7 @@ def main() -> int:
     (GENERATED / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
 
     made = _availability(document, colors)
+    ordered = _elements(document, colors)
 
     document["generated"] = int(time.time())
     path.write_text(json.dumps(document, separators=(",", ":")))
@@ -86,7 +87,34 @@ def main() -> int:
     print(f"colours: {len(colors)} — " +
           ", ".join(f"{k} {v}" for k, v in buckets.most_common()))
     print(made)
+    print(ordered)
     return 0
+
+
+def _elements(document: dict, colors: list[dict]) -> str:
+    """Write the part-and-colour to LEGO element number index.
+
+    Kept out of the catalogue and in its own file: it is 0.8 MB that only
+    a parts list needs, and the catalogue is loaded at start-up by
+    everything.
+    """
+    path = GENERATED / "elements.json"
+    try:
+        import rebrickable
+    except ImportError:
+        return "elements: skipped (tools/rebrickable.py missing)"
+    try:
+        found = rebrickable.elements(document["parts"], colors)
+    except FileNotFoundError as missing:
+        return f"elements: skipped ({missing})"
+    path.write_text(json.dumps(found, separators=(",", ":")))
+    counts = found["counts"]
+    return ("elements: %d part-and-colour pairs over %d parts, %d by mould "
+            "variant, %.1f MB"
+            % (len(found["pairs"]),
+               len({key.split("/")[0] for key in found["pairs"]}),
+               counts["by mould variant"],
+               path.stat().st_size / 1e6))
 
 
 def _availability(document: dict, colors: list[dict]) -> str:

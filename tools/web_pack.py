@@ -248,6 +248,13 @@ def main() -> int:
     (out / "catalogue.json").write_text(
         json.dumps(document, separators=(",", ":")))
     shutil.copy2(GENERATED / "colors.json", out / "colors.json")
+    # The element index, so a parts list on the web names orderable
+    # elements rather than descriptions.  Optional: a catalogue built
+    # without tools/fetch_data.sh has no such file, and the parts list
+    # falls back to naming the part and the colour.
+    elements = GENERATED / "elements.json"
+    if elements.exists():
+        shutil.copy2(elements, out / "elements.json")
 
     # One fact decides this, not a flag. PARTS_URL is what the app is
     # told at run time, so letting the same value decide whether the
