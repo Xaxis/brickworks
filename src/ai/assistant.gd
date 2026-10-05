@@ -2248,14 +2248,25 @@ func _made_in(info: PartLibrary.PartInfo) -> String:
 	if not info.availability_known():
 		return ""
 	if info.still_made():
-		return ", made in %d colour%s" % [
-			info.colors_recent.size(),
-			"" if info.colors_recent.size() == 1 else "s"]
+		var how_many: int = info.colors_recent.size()
+		# A count is only useful when it is large. "37 colours" says the
+		# part is versatile and the choice is free; "3 colours" decides
+		# the colour of whatever is built from it, and which three is
+		# then the only thing worth knowing.
+		if how_many <= NAME_THEM:
+			var names: PackedStringArray = PackedStringArray()
+			for code: int in info.colors_recent:
+				names.append(_colour_name(code))
+			return ", made in %d colour%s, %s" % [
+				how_many, "" if how_many == 1 else "s", ", ".join(names)]
+		return ", made in %d colours" % how_many
 	if info.last_year > 0:
 		return ", retired — last in a set in %d" % info.last_year
 	return ""
 
 
+## Up to how many available colours are worth naming rather than counting.
+const NAME_THEM := 6
 ## How many of one colour mistake to mention before it is repetition.
 const WORTH_SAYING := 4
 ## How many substitute colours to name. Enough to choose from, not a
@@ -4448,6 +4459,15 @@ placed and leave out of the new submission is removed.
 Always use search_parts before using a part number you are not certain \
 of. A guessed number is not a part and the design will be rejected.
 
+A search result says what colours the part was really moulded in, and \
+that is a fact about the factory, not a preference. "made in 3 colours, \
+white, black and dark bluish grey" means those three and nothing else: \
+choose the colour of a wall from what its parts come in, rather than \
+choosing a colour and hoping. "retired" means it has not been in a set \
+for years, so prefer a current part where there is one. Results that \
+say nothing about colour are parts nobody has records for, which is \
+most of the library — not parts that were never sold.
+
 SOMETHING BIG
 A set-sized model — a ship, a building, a vehicle with a real interior \
 — is hundreds to thousands of parts, and it does not go in one reply. \
@@ -4951,8 +4971,9 @@ func _tools() -> Array:
 		{
 			"name": "search_parts",
 			"description": ("Find real parts by description. Returns part "
-				+ "numbers with their footprint and height. Use this "
-				+ "instead of guessing a part number."),
+				+ "numbers with their footprint, height and the colours "
+				+ "they were really made in. Use this instead of "
+				+ "guessing a part number."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

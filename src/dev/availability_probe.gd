@@ -139,6 +139,24 @@ func _check_the_search_line(library: PartLibrary) -> void:
 	_ok(gone.contains("retired") and gone.contains("2004"),
 		"a retired part says when it was last in a set")
 
+	# A part made in only a couple of colours: the count alone is no use
+	# there, because which two decides the colour of whatever is built
+	# from it. 10928 is the 8-tooth reinforced gear, in dark bluish grey.
+	var scarce: String = assistant._describe(library.parts["10928"])
+	print("     %s" % scarce)
+	_ok(scarce.contains("Dark Bluish Grey"),
+		"a part made in few colours names them instead of counting")
+	_ok(not current.contains("Black,"),
+		"...and one made in many does not recite thirty-seven")
+
+	# And the model is told the line means something. Reporting a colour
+	# the model has no reason to act on is a line of tokens for nothing.
+	var rules: String = assistant._system_prompt()
+	_ok(rules.contains("really moulded") or rules.contains("really made in"),
+		"the rules say the colours on a search result are real")
+	_ok(rules.contains("not parts that were never sold"),
+		"...and that a part with no colour note is unknown, not unavailable")
+
 	var unknown: String = assistant._describe(library.parts["3068p10"])
 	_ok(not unknown.contains("made in") and not unknown.contains("retired"),
 		"a part nothing is known about says nothing about colours")
