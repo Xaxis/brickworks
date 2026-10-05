@@ -117,6 +117,12 @@ func _check_smooth(assistant: Assistant) -> void:
 func _check_the_known_good(assistant: Assistant, library: PartLibrary) -> void:
 	print("\nthe eight models that ship with the app")
 	var noisy: int = 0
+	# models/kart.ldr is deliberately not in this list. It carries its
+	# steering column as an angled section, and the conversion below is
+	# square-only — a section's bricks come back with placements that
+	# mean nothing, so it would measure the conversion rather than the
+	# advice. instructions_probe drives the kart instead, where the
+	# ordering question does not need placements at all.
 	for name: String in ["bench", "boat", "car", "house", "lighthouse",
 			"rocket", "tower", "tree"]:
 		var ldr: LdrModel = LdrModel.load_file("res://models/%s.ldr" % name)

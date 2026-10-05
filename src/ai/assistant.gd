@@ -3674,116 +3674,22 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 	return held
 
 
-## Which kind of connector accepts which, male to female or neutral.
-const MATES: Dictionary = {
-	"pin": "pin_hole",
-	"axle": "axle_hole",
-	"ball": "socket",
-	"bar": "clip",
-}
-## How far off the mate's axis line a connector may sit, in LDU. A pin
-## bore is 6 LDU, so 4 keeps it inside the hole it claims to be in and
-## stops a pin matching the hole one stud over.
-const OFF_AXIS := 4.0
-## How far along that line the two may be apart, in LDU. A pin's own
-## connector sits at the pin's middle while a hole's sits at the hole's
-## middle, and a pin joining two beams is half a stud from each.
-const ALONG_AXIS := 20.0
-
-
 ## Which placements are held by something pushed into them, or by
 ## something they are pushed into.
 ##
-## Studs are handled separately and geometrically: a stud ends up inside
-## the part above it, so sampling past its tip finds the part it holds.
-## A pin cannot be found that way, because the hole it goes into is
-## empty space — deliberately, since otherwise the pin would read as a
-## collision — so the two connectors have to be matched to each other.
-##
-## Without this, a Technic assembly reads as a pile of floating parts: a
-## liftarm pinned to another liftarm has nothing beneath it and no stud
-## anywhere near it, and that is most of how complex models are built.
+## The matching itself lives in [Joints], because the booklet needs the
+## same answer from a world of bricks rather than a model of placements,
+## and two copies of it would drift.
 func _connectors_mating(model: Model) -> Dictionary:
-	## Sockets bucketed by the stud-sized box they fall in, so a pin is
-	## compared with the holes near it rather than with every hole in the
-	## model. A thousand-part Technic chassis has hundreds of each, and
-	## all-against-all is their product.
-	var sockets: Dictionary = {}  ## Vector3i -> Array of [index, kind, at, way]
-	var plugs: Array = []         ## the male ones
+	var entries: Array = []
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var at: Transform3D = _transform(placement, part,
-			model.section_for(placement))
-		for connector: Lbm.Connector in part.connectors:
-			if connector.kind == "stud" or connector.kind == "tube" \
-					or connector.kind == "ridge":
-				continue
-			var where: Vector3 = at * connector.position
-			var way: Vector3 = (at.basis * connector.axis).normalized()
-			if connector.gender == "male":
-				if MATES.has(connector.kind):
-					plugs.append([index, connector.kind, where, way])
-			else:
-				var box: Vector3i = _bucket(where)
-				if not sockets.has(box):
-					sockets[box] = []
-				sockets[box].append([index, connector.kind, where, way])
-
-	var held: Dictionary = {}
-	for plug: Array in plugs:
-		var wanted: String = MATES[plug[1]]
-		var home: Vector3i = _bucket(plug[2])
-		# ALONG_AXIS is one bucket wide, so a mate is in this box or one
-		# of the twenty-six touching it.
-		for dx: int in [-1, 0, 1]:
-			for dy: int in [-1, 0, 1]:
-				for dz: int in [-1, 0, 1]:
-					var near: Variant = sockets.get(
-						home + Vector3i(dx, dy, dz))
-					if near == null:
-						continue
-					for socket: Array in near:
-						if socket[0] == plug[0] or socket[1] != wanted:
-							continue
-						if not _lines_up(plug[2], plug[3],
-								socket[2], socket[3]):
-							continue
-						# Both ends of a joint are held by it, and
-						# each knows the other, because a joint has to
-						# be allowed to interpenetrate a little.
-						_joins(held, plug[0], socket[0])
-						_joins(held, socket[0], plug[0])
-	return held
-
-
-## Record that these two are joined, in both directions.
-static func _joins(held: Dictionary, one: int, other: int) -> void:
-	if not held.has(one):
-		held[one] = {}
-	(held[one] as Dictionary)[other] = true
-
-
-## Which stud-sized box a point falls in.
-static func _bucket(at: Vector3) -> Vector3i:
-	return Vector3i(floori(at.x / STUD), floori(at.y / STUD),
-		floori(at.z / STUD))
-
-
-## Whether a plug at one place, pointing one way, is inside a socket.
-static func _lines_up(plug_at: Vector3, plug_way: Vector3,
-		socket_at: Vector3, socket_way: Vector3) -> bool:
-	# Collinear, either nose to nose or the same way round: a hole is
-	# neutral and its recorded direction is whichever face was read first.
-	if absf(plug_way.dot(socket_way)) < 0.95:
-		return false
-	var gap: Vector3 = plug_at - socket_at
-	var along: float = gap.dot(socket_way)
-	if absf(along) > ALONG_AXIS:
-		return false
-	return (gap - socket_way * along).length() <= OFF_AXIS
+		entries.append([index, _transform(placement, part,
+			model.section_for(placement)), part])
+	return Joints.both_ways(entries)
 
 
 ## Where a brick stops, in the units the placement was written in.

@@ -47,6 +47,7 @@ godot --headless --path . --script src/dev/camera_probe.gd        # the view con
 godot --headless --path . --script src/dev/controls_probe.gd      # every advertised key works
 godot --headless --path . --script src/dev/glyph_probe.gd         # the font can draw every character shown
 godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet could be followed
+#   covers the Technic ordering case via models/kart.ldr
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face

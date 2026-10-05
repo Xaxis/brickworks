@@ -29,10 +29,69 @@ func _initialize() -> void:
 	_tower(world, library)
 	_wall(world, library)
 	_two_towers(world, library)
+	_a_pin_goes_in_last(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
 	quit(1 if _failures else 0)
+
+
+## A pin cannot go into a hole that is not on the table yet.
+##
+## _find_supports only knows what sits on what, and a pin goes in
+## sideways: nothing is under it, so it had no prerequisites at all and
+## was free to be step one. On models/kart.ldr, 20 of its 40 joints came
+## out inserted before the part they go into — pins at step 2 reaching
+## into beams placed at step 7.
+##
+## The kart is the fixture because a two-part toy will not do it. With a
+## brick and one pin, both are ready at once and the brick happens to be
+## chosen first, so the check passes whether the dependency exists or
+## not. What makes the kart bite is that its pins sit *lower* than the
+## beams they enter — they go into the wheels — and the sequencer
+## prefers whatever is lowest.
+func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	var ldr: LdrModel = LdrModel.load_file("res://models/kart.ldr")
+	if ldr == null:
+		_assert("models/kart.ldr can be read", false)
+		return
+	for piece: LdrModel.Placement in ldr.flatten():
+		var id: String = piece.part_id.to_lower().trim_suffix(".dat")
+		if library.mesh_for(id) == null:
+			continue
+		world.add_brick(id, piece.color_code, piece.transform)
+
+	var entries: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh != null:
+			entries.append([brick.id, brick.transform, mesh])
+	var joints: Array = Joints.pairs(entries)
+
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	# Where each part comes in the booklet read straight through. One
+	# step may hold both ends of a joint — "add this beam and pin it" is
+	# a single instruction — so what matters is which comes first.
+	var order: Dictionary = {}
+	var place: int = 0
+	for step: Instructions.Step in steps:
+		for id: int in step.brick_ids:
+			order[id] = place
+			place += 1
+
+	var early: int = 0
+	for pair: Array in joints:
+		if int(order.get(pair[0], 0)) < int(order.get(pair[1], 0)):
+			early += 1
+
+	print("\n  a Technic go-kart, %d parts in %d steps" % [
+		world.bricks().size(), steps.size()])
+	_assert("its joints are found (%d)" % joints.size(), joints.size() > 20)
+	_assert("every part gets a step (%d of %d)" % [
+		order.size(), world.bricks().size()],
+		order.size() == world.bricks().size())
+	_assert("no pin goes in before the hole exists (%d do)" % early, early == 0)
 
 
 ## Ten bricks stacked. There is only one legal order, and it is bottom up.

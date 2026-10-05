@@ -74,7 +74,43 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	if nodes.is_empty():
 		return []
 	_find_supports(nodes)
+	_find_joints(nodes, world, library)
 	return _sequence(nodes)
+
+
+## A pin cannot go into a hole that is not on the table yet.
+##
+## _find_supports only knows what sits on what, which is the whole story
+## for a stack of bricks and none of it for a mechanism: a pin goes in
+## sideways, so nothing is under it and it was free to be step one. The
+## go-kart came out with its pins at steps 4 and 5 and the beams they
+## pin into at 7, 8 and 9 — and nothing flagged it, because a wheel
+## happened to have its top near the pin's underside, so the vertical
+## test found "support" that had nothing to do with it.
+##
+## The direction is not arbitrary. A joint is symmetric but inserting
+## one is not: the hole has to exist, so the pin needs the part it goes
+## into.
+static func _find_joints(nodes: Array[Node2], world: BrickWorld,
+		library: PartLibrary) -> void:
+	var entries: Array = []
+	for node: Node2 in nodes:
+		var brick: BrickWorld.Brick = world.get_brick(node.id)
+		if brick == null:
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		entries.append([node.id, brick.transform, part])
+	if entries.is_empty():
+		return
+	var by_id: Dictionary = {}
+	for node: Node2 in nodes:
+		by_id[node.id] = node
+	for pair: Array in Joints.pairs(entries):
+		var plug: Node2 = by_id.get(pair[0])
+		if plug != null and not plug.needs.has(pair[1]):
+			plug.needs.append(pair[1])
 
 
 static func _survey(world: BrickWorld, library: PartLibrary,
