@@ -25,9 +25,9 @@ The Python side: LDraw in, mesh cache and catalogue out.
 ## How to reach it
 
 ```sh
-tools/fetch_data.sh                   # vendor/ldraw, first of all
+tools/fetch_data.sh                   # vendor/ldraw and vendor/rebrickable, first of all
 tools/build_meshes.py                 # ~45 min; needs numpy and scipy
-tools/refresh_catalogue.py
+tools/refresh_catalogue.py            # also joins colour availability, ~10s of it
 tools/web_pack.py --list              # say what would be included, write nothing
 tools/web_pack.py --budget 40         # stop at 40 MB
 tools/storage_parts.py --check        # say what would be uploaded

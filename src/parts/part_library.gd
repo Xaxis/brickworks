@@ -80,6 +80,42 @@ class PartInfo extends RefCounted:
 
 	func is_redirect() -> bool:
 		return not moved_to.is_empty()
+
+	## The colours LEGO really moulded this part in, as LDraw codes, and
+	## the subset still appearing in sets since PartLibrary.recent_since.
+	## Empty means nobody knows: two thirds of the library has no
+	## inventory data behind it, so emptiness is never evidence.
+	var colors: PackedInt32Array
+	var colors_recent: PackedInt32Array
+	## The years this part first and last appeared in a catalogued set.
+	var first_year: int = 0
+	var last_year: int = 0
+	## True when `colors` is known to be short. Sixty-nine Rebrickable
+	## colours have no LDraw counterpart — BrickLink's "Dark Purple" is
+	## LEGO's "Medium Lilac", and matching them by swatch was measured and
+	## does not work — so a part made in one of them has a list that is
+	## right as far as it goes. Nothing may read a gap in a short list as
+	## proof the colour was never made.
+	var colors_partial: bool = false
+
+	## Whether anything is known about what this part was moulded in.
+	func availability_known() -> bool:
+		return not colors.is_empty()
+
+	## Whether this part is known *never* to have been made in a colour.
+	## Deliberately hard to get a true out of: it wants a colour list
+	## that is both present and complete. Everything else is silence,
+	## because telling a designer a part does not exist in a colour it
+	## does exist in costs more than saying nothing.
+	func never_made_in(code: int) -> bool:
+		if colors.is_empty() or colors_partial:
+			return false
+		return not colors.has(code)
+
+	## Whether the part has been in a set recently enough to buy. Only
+	## meaningful when something is known about it at all.
+	func still_made() -> bool:
+		return not colors_recent.is_empty()
 	var keywords: PackedStringArray
 	## Counts by connector kind. The connectors themselves live in the
 	## .lbm beside the geometry and arrive with it; keeping them here took
@@ -127,6 +163,11 @@ var _waiting: PackedStringArray = PackedStringArray()
 var parts: Dictionary = {}          ## String id -> PartInfo
 var colors: Dictionary = {}         ## int code -> BrickColor
 var _ordered_ids: PackedStringArray = PackedStringArray()
+## The year from which PartInfo.colors_recent counts as current, and
+## where the availability data came from. Zero when the catalogue was
+## built without it, which a clone that has not fetched the tables is.
+var recent_since: int = 0
+var availability_source: String = ""
 var _mesh_cache: Dictionary = {}    ## String hash -> Lbm.PartMesh
 var _missing: Dictionary = {}       ## hashes already reported, to log once
 var _fetching: Dictionary = {}      ## hash -> true, so nothing fetches twice
@@ -160,6 +201,9 @@ func load_catalogue(path: String = "") -> bool:
 		return false
 
 	var document: Dictionary = raw
+	var made: Dictionary = document.get("availability", {})
+	recent_since = int(made.get("recent_since", 0))
+	availability_source = str(made.get("source", ""))
 	var entries: Array = document.get("parts", [])
 	for entry: Variant in entries:
 		var info: PartInfo = _read_part(entry)
@@ -190,6 +234,15 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	info.reachable = bool(entry.get("reachable", true))
 	info.moved_to = entry.get("moved_to", "")
 	info.unofficial = bool(entry.get("unofficial", false))
+	for code: Variant in entry.get("colors", []):
+		info.colors.append(int(code))
+	for code: Variant in entry.get("colors_recent", []):
+		info.colors_recent.append(int(code))
+	info.colors_partial = bool(entry.get("colors_partial", false))
+	var span: Array = entry.get("years", [])
+	if span.size() == 2:
+		info.first_year = int(span[0])
+		info.last_year = int(span[1])
 
 	var size: Array = entry.get("size_ldu", [0, 0, 0])
 	info.size = Vector3(size[0], size[1], size[2])

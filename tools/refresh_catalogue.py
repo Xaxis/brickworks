@@ -53,9 +53,6 @@ def main() -> int:
         if entry != before:
             changed += 1
 
-    document["generated"] = int(time.time())
-    path.write_text(json.dumps(document, separators=(",", ":")))
-
     palette = Palette.from_file(LDRAW / "LDConfig.ldr")
     colors = []
     for color in palette:
@@ -77,13 +74,56 @@ def main() -> int:
         colors.append(item)
     (GENERATED / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
 
+    made = _availability(document, colors)
+
+    document["generated"] = int(time.time())
+    path.write_text(json.dumps(document, separators=(",", ":")))
+
     from collections import Counter
     buckets = Counter(c["finish"] for c in colors)
     print(f"catalogue: {len(document['parts']):,} parts, {changed:,} updated, "
           f"{redirects:,} redirects marked")
     print(f"colours: {len(colors)} — " +
           ", ".join(f"{k} {v}" for k, v in buckets.most_common()))
+    print(made)
     return 0
+
+
+def _availability(document: dict, colors: list[dict]) -> str:
+    """Write onto each part the colours it was really made in.
+
+    Optional on purpose.  A clone that has not run tools/fetch_data.sh
+    still gets a working catalogue; it just cannot say what is buyable,
+    and every reader treats a missing list as "no idea" rather than as
+    "never made".
+    """
+    entries = document["parts"]
+    document.pop("availability", None)
+    for entry in entries:                 # never leave a stale answer behind
+        for field in ("colors", "colors_recent", "colors_partial", "years"):
+            entry.pop(field, None)
+    try:
+        import rebrickable
+    except ImportError:
+        return "availability: skipped (tools/rebrickable.py missing)"
+    try:
+        made = rebrickable.availability(entries, colors)
+    except FileNotFoundError as missing:
+        return f"availability: skipped ({missing})"
+
+    for entry in entries:
+        entry.update(made["parts"].get(entry["id"], {}))
+    document["availability"] = {
+        "source": made["source"],
+        "recent_since": made["recent_since"],
+        "colours_mapped": made["colours_mapped"],
+    }
+    counts = made["counts"]
+    known = len(made["parts"])
+    return ("availability: %d parts of %d with a colour list (%d of those "
+            "partial), %d colours named, recent means %d or later"
+            % (known, known + counts["unknown"], counts["partial"],
+               made["colours_mapped"], made["recent_since"]))
 
 
 if __name__ == "__main__":

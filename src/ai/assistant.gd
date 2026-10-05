@@ -2231,9 +2231,100 @@ func _search(query: String, limit: int) -> String:
 func _describe(info: PartLibrary.PartInfo) -> String:
 	var footprint: Vector2i = info.footprint_studs()
 	var plates: int = _height_plates(info)
-	return "%s: %s, covers %dx%d studs, %d plate%s, %s" % [
+	return "%s: %s, covers %dx%d studs, %d plate%s, %s%s" % [
 		info.id, info.name.strip_edges(), footprint.x, footprint.y,
-		plates, "" if plates == 1 else "s", _studs_of(info)]
+		plates, "" if plates == 1 else "s", _studs_of(info),
+		_made_in(info)]
+
+
+## What can be had, on the one line the model reads about a part.
+##
+## Silent when nothing is known, which is most of the library: a part
+## with no inventory behind it must not read as a part that was never
+## sold. A retired part says so with its last year, because "there are
+## no current colours" and "nobody knows" are not the same answer and
+## the model cannot tell them apart from a count of zero.
+func _made_in(info: PartLibrary.PartInfo) -> String:
+	if not info.availability_known():
+		return ""
+	if info.still_made():
+		return ", made in %d colour%s" % [
+			info.colors_recent.size(),
+			"" if info.colors_recent.size() == 1 else "s"]
+	if info.last_year > 0:
+		return ", retired — last in a set in %d" % info.last_year
+	return ""
+
+
+## How many of one colour mistake to mention before it is repetition.
+const WORTH_SAYING := 4
+## How many substitute colours to name. Enough to choose from, not a
+## recitation of eighty.
+const ENOUGH_COLOURS := 8
+
+
+## Parts specified in a colour LEGO never moulded them in.
+##
+## Advice, not a fault, and for a reason: the join behind this knows
+## 6,419 of the 8,591 plain parts in the library, and 846 of those have
+## a colour list that is short because sixty-nine Rebrickable colours
+## have no LDraw counterpart. PartInfo.never_made_in refuses to answer
+## for either case, so what is left is parts whose list is both present
+## and complete — but a design is still buildable in another colour, and
+## failing one over a data join would be the join overreaching.
+func _never_made(model: Model) -> String:
+	## "part|colour" -> how many bricks say it.
+	var wrong: Dictionary = {}
+	for placement: Placement in model.placements:
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		if info == null or not info.never_made_in(placement.color):
+			continue
+		var key: String = "%s|%d" % [placement.part, placement.color]
+		wrong[key] = int(wrong.get(key, 0)) + 1
+	if wrong.is_empty():
+		return ""
+
+	# Worst first: the mistake repeated across forty bricks matters more
+	# than the one brick that got an odd colour.
+	var keys: Array = wrong.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool:
+		return int(wrong[a]) > int(wrong[b]))
+
+	var lines: PackedStringArray = PackedStringArray()
+	for key: String in keys.slice(0, WORTH_SAYING):
+		var bits: PackedStringArray = key.split("|")
+		var info: PartLibrary.PartInfo = library.parts.get(bits[0])
+		var count: int = int(wrong[key])
+		lines.append("%s in %s (%d brick%s) — %s was never moulded in it. %s" % [
+			bits[0], _colour_name(int(bits[1])), count,
+			"" if count == 1 else "s", info.name.strip_edges(),
+			_instead(info)])
+	if keys.size() > WORTH_SAYING:
+		lines.append("and %d more part-and-colour pairs like that."
+			% (keys.size() - WORTH_SAYING))
+	return "Colours that were never made:\n" + "\n".join(lines)
+
+
+func _colour_name(code: int) -> String:
+	var colour: PartLibrary.BrickColor = library.colors.get(code)
+	return colour.name if colour != null else "colour %d" % code
+
+
+## The colours to offer instead, preferring ones still in production.
+func _instead(info: PartLibrary.PartInfo) -> String:
+	var pick: PackedInt32Array = info.colors_recent
+	var when: String = "comes in"
+	if pick.is_empty():
+		pick = info.colors
+		when = "only ever came in"
+	var names: PackedStringArray = PackedStringArray()
+	for code: int in pick:
+		if names.size() >= ENOUGH_COLOURS:
+			break
+		names.append(_colour_name(code))
+	var tail: String = "" if pick.size() <= names.size() \
+		else ", and %d more" % (pick.size() - names.size())
+	return "It %s %s%s." % [when, ", ".join(names), tail]
 
 
 ## Where a part's studs are, not merely how many there are.
@@ -2685,6 +2776,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			part_of, hints_until)
 		if not fits.is_empty():
 			advice.append("Section '%s':%s" % [group, fits])
+
+	# And whether anything is specified in a colour it was never made in.
+	var unmade: String = _never_made(model)
+	if not unmade.is_empty():
+		advice.append(unmade)
 
 	# And whether the outline is a staircase where it could be an edge.
 	var stepped: String = _stepped_outline(cells_of, box_of)

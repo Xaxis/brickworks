@@ -45,6 +45,33 @@ if [ -f vendor/ldrawunf.zip ]; then
   unzip -q -o vendor/ldrawunf.zip -d vendor/ldraw/unofficial/ 2>/dev/null || true
 fi
 
+# Rebrickable's parts tables, which record which part was ever actually
+# made in which colour.  LDraw models geometry and has no idea what LEGO
+# ever moulded: it will happily render a 4x12 wedge plate in sand green
+# that never existed.  These tables are what let the checker say so, and
+# what gives a bill of materials real element numbers.
+#
+# https://rebrickable.com/downloads/ — we fetch and derive a part->colours
+# index locally (tools/build_availability.py) rather than redistributing
+# their tables.  Read the .csv.gz directly; unpacked they are much larger
+# and nothing needs them unpacked.
+# Their grant permits automated downloading "at most once a day", so
+# --force does not apply to them until the files are a day old.  That
+# is a condition of the licence, not a courtesy, which is why it is
+# here and not in docs/ATTRIBUTION.md.
+mkdir -p vendor/rebrickable
+for table in colors parts elements \
+             inventories inventory_parts sets; do
+  out="vendor/rebrickable/$table.csv.gz"
+  if [ -e "$out" ] && [ -z "$(find "$out" -mtime +0 2>/dev/null)" ]; then
+    echo "have  Rebrickable $table (fetched today)"
+    continue
+  fi
+  fetch "Rebrickable $table" \
+    "https://cdn.rebrickable.com/media/downloads/$table.csv.gz" \
+    "rebrickable/$table.csv.gz"
+done
+
 # The Official Model Repository once came down here too — real sets as
 # .mpd files, described in this script as "the reference corpus for the
 # AI".  Nothing ever read it.  It was a large download on every fetch

@@ -146,7 +146,8 @@ static func _page(page: Page, total: int) -> String:
 static func _foot() -> String:
 	return """<footer>
   Part geometry from the LDraw&trade; Parts Library, &copy; the LDraw
-  community, licensed CC BY 4.0. LEGO&reg; is a trademark of the LEGO
+  community, licensed CC BY 4.0. Catalog data: Rebrickable.
+  LEGO&reg; is a trademark of the LEGO
   Group, which does not sponsor or endorse this.
   <a href="https://brickworks.diy">brickworks.diy</a>
 </footer>

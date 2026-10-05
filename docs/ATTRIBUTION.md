@@ -79,9 +79,21 @@ downloads page grants:
 > provided you acknowledge Rebrickable as your source of data.
 
 with the condition that automated downloading happens "at most once a
-day". This is a custom informal grant rather than a named licence, so a
-dated snapshot of the terms text is pinned beside any vendored data.
-Required credit: "Catalog data: Rebrickable".
+day". This is a custom informal grant rather than a named licence, so
+the quotation above is the pinned snapshot, read 2026-10-05.
+
+In use since 2026-10-05, and the reason: LDraw models geometry and has
+no idea what LEGO ever moulded, so it will render a wedge plate in a
+colour that never existed. `tools/fetch_data.sh` fetches six of their
+tables into `vendor/rebrickable/`, and `tools/rebrickable.py` joins them
+to the LDraw library to give each part the colours it was really made in
+and the years it appeared in a set. Nothing of theirs is redistributed:
+the index is derived at build time and the tables are gitignored. The
+once-a-day condition is enforced in the fetch itself, where `--force`
+will not re-download a table less than a day old.
+
+Required credit: "Catalog data: Rebrickable" — in `web/index.html`'s
+footer and on every instruction booklet (`src/assembly/booklet.gd`).
 
 **BrickLink** — do not redistribute. The API is OAuth-gated and catalog
 downloads are login-gated; the LEGO Group has owned BrickLink since
