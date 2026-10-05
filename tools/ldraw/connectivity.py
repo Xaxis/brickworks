@@ -111,27 +111,106 @@ _register("ridge ridgea ridgee ridges ridgesu", ConnectorKind.RIDGE, Gender.FEMA
 # -- Technic -------------------------------------------------------------
 # A pin hole takes a pin from either end; an axle hole keys an axle that
 # may pass straight through.  Both are NEUTRAL.
+#
+# Every name below is one that exists in vendor/ldraw/p, classified from
+# the primitive's own description line rather than from its filename,
+# because the filenames mislead: "axlehol8" is "Technic Axle Perimeter",
+# part of a solid axle, and registering it as a hole made every Technic
+# axle in the library report an axle_hole it does not have — part 3705,
+# a plain Axle 4, came out as {axle: 2, axle_hole: 1}.
+#
+# The deliberate exclusions are the pieces that are not a place another
+# part attaches: a pin's ribs and stop rings (confricrib*, connectring),
+# the middles of long pins (confric8, confric9, connectslit*,
+# connectcollar*), axle endcaps (axlecap*), and the many "... Side
+# Edges" / "... Tooth Outer Edges" / "... Perimeter" sub-primitives that
+# draw one hole's detail and would each count as another hole.
 _register(
     """
-    peghole peghole2 peghole3 npeghol1 npeghol2 npeghol3 npeghol4
-    confric confric2 beamhole
+    peghole peghole2 peghole3 peghole4 peghole5 peghole6
+    connhole connhol2 connhol3
+    beamhole beamhol2
     """,
     ConnectorKind.PIN_HOLE,
     Gender.NEUTRAL,
 )
+# Pins, friction and plain.  The friction family was represented by two
+# of its eleven members, which is why 2780 — the Technic pin with
+# friction, one of the most used parts there is — had no connectors at
+# all: it is drawn as two mirrored confric5 halves and nothing else.
 _register(
-    "connect connect2 connect3 connect4 connect5 connect6 connect7 connect8 connect10",
+    """
+    connect connect2 connect3 connect4 connect5 connect6 connect7
+    connect8 connect10
+    confric confric2 confric3 confric4 confric5 confric6
+    confric10 confric11 confric12
+    """,
     ConnectorKind.PIN,
     Gender.MALE,
 )
-_register("axlehole axlehol2 axlehol3 axlehol4 axlehol8 axl2hole", ConnectorKind.AXLE_HOLE, Gender.NEUTRAL)
-_register("axle axle2 axlebeam axleend axleend2 axleend20", ConnectorKind.AXLE, Gender.MALE)
+# Every primitive whose own description begins "Technic Axle Hole",
+# including the tooth, edge and perimeter pieces.  Listing only the
+# "closed" ones missed holes outright: part 5686, a crystal with an axle
+# hole, draws it from axl3hol3 and axl3hol6 and nothing else, and 83497
+# from five such pieces.  One hole's pieces are all coaxial and within a
+# brick of each other, so _merge_half_holes collapses them back into the
+# one hole they describe.
+_register(
+    """
+    axlehole axlehol0 axlehol2 axlehol3 axlehol4 axlehol5 axlehol6 axlehol7
+    axl2hole axl2end axl2ho10 axl2hol2 axl2hol3 axl2hol8 axl2hol9
+    axl3hole axl3end axl3ho10 axl3hol2 axl3hol3 axl3hol6 axl3hol8 axl3hol9
+    axl4hole axl4hol2 axl4hol3
+    axl5end axl5ho10 axl5hol8 axl5hol9
+    """,
+    ConnectorKind.AXLE_HOLE,
+    Gender.NEUTRAL,
+)
+# And the ones that begin "Technic Axle" without "Hole", which are the
+# shaft's own surfaces.  The two families are a letter apart and mean
+# opposite things: axlehol8 is "Technic Axle Perimeter" and belongs
+# here, axl2hol8 is "Technic Axle Hole Reduced Perimeter" and belongs
+# above.  Endcaps are in neither, because axlecaph is "Endcap with Hole"
+# and would invent whichever it was filed under.
+_register(
+    """
+    axle axles axlesphe axlebeam axleend axleend2 axleend20
+    axlehalfedge axleho10 axleho12 axlehol8 axlehol9
+    """,
+    ConnectorKind.AXLE,
+    Gender.MALE,
+)
 
-# -- bars, clips, balls --------------------------------------------------
-_register("bar bar2 barhole", ConnectorKind.BAR, Gender.MALE)
-_register("clip1 clip2 clip3 clip4 clip5 clip6 clip7 clip8 clip9", ConnectorKind.CLIP, Gender.FEMALE)
-_register("ball balljnt", ConnectorKind.BALL, Gender.MALE)
-_register("socket socket2", ConnectorKind.SOCKET, Gender.FEMALE)
+# -- clips, balls and the bar problem ------------------------------------
+_register(
+    """
+    clip1 clip2 clip3 clip4 clip5 clip6 clip7 clip8 clip9
+    clip10 clip11 clip12 clip13 clip14 clip15 clip16
+    """,
+    ConnectorKind.CLIP,
+    Gender.FEMALE,
+)
+_register("joint8ball", ConnectorKind.BALL, Gender.MALE)
+_register("joint8socket1 joint8socket2 joint8socket3", ConnectorKind.SOCKET,
+          Gender.FEMALE)
+
+# BAR has no entry, and cannot have one.  There is no bar primitive in
+# the library: a bar is a plain 3.2 mm cylinder drawn from 4-4cyli and
+# friends, indistinguishable by name from any other cylinder, so finding
+# one means measuring a radius rather than reading a filename.  Until
+# that is written, a clip has nothing to grip and BAR is never produced.
+#
+# This was previously registered as "bar bar2 barhole", none of which
+# exist, along with "ball balljnt socket socket2" and "axle2" and
+# "npeghol1" — nine dead names, so BAR, BALL and SOCKET had never once
+# been detected anywhere in the library.
+#
+# The npeghol* family is gone from PIN_HOLE for a different reason: a
+# "Technic Peg Hole Negative" is subtracted geometry, the material a
+# hole removes, and it is placed wherever material is missing — not only
+# where a pin can go.  Technic Beam 2 draws one at its waist, midway
+# between its two real holes, so the beam reported three holes and the
+# middle one took no pin.
 
 
 @dataclass(slots=True)
@@ -197,6 +276,14 @@ def _merge_half_holes(connections: list[Connection]) -> list[Connection]:
     line, which is identified by the direction (taken to a canonical sign)
     and the foot of the perpendicular from the origin.  Holes spaced along
     a beam sit on parallel but distinct lines, so they are never merged.
+
+    Being on one line is not enough, though, and assuming it was lost
+    holes.  Two holes facing each other across a gap — opposite sides of
+    a round brick, or of a ring — are exactly coaxial, so "Ring 7 x 7
+    with 2 Axle Holes" came out with one hole and a swashplate with four
+    pin holes came out with two.  So the faces also have to be close
+    enough together to be the same hole: within MERGE_WITHIN along the
+    line, which is one brick, where a gap is several.
     """
     mergeable = (ConnectorKind.PIN_HOLE, ConnectorKind.AXLE_HOLE)
 
@@ -210,28 +297,63 @@ def _merge_half_holes(connections: list[Connection]) -> list[Connection]:
 
     merged: list[Connection] = []
     for group in lines.values():
-        if len(group) == 1:
-            merged.append(group[0])
-            continue
-        # The hole's centre is the midpoint of the faces that describe it.
-        count = float(len(group))
-        centre = Vec3(
-            sum(c.position.x for c in group) / count,
-            sum(c.position.y for c in group) / count,
-            sum(c.position.z for c in group) / count,
-        )
-        first = group[0]
-        merged.append(
-            Connection(
-                kind=first.kind,
-                gender=first.gender,
-                position=centre,
-                axis=first.axis,
-                source=first.source,
+        for cluster in _clusters_along(group):
+            count = float(len(cluster))
+            # The hole's centre is the midpoint of the faces describing it.
+            centre = Vec3(
+                sum(c.position.x for c in cluster) / count,
+                sum(c.position.y for c in cluster) / count,
+                sum(c.position.z for c in cluster) / count,
             )
-        )
+            first = cluster[0]
+            merged.append(
+                Connection(
+                    kind=first.kind,
+                    gender=first.gender,
+                    position=centre,
+                    axis=first.axis,
+                    source=first.source,
+                )
+            )
 
     return passthrough + merged
+
+
+## How far apart two faces of one hole can be, in LDU.
+##
+## Measured rather than reasoned, because the physical cases overlap: a
+## hole through a Technic beam is 20 LDU deep but one through a thick
+## panel is more, while the gap across a 2x2 round brick is only 40.  So
+## no threshold is exactly right.  Swept against the 67 parts whose own
+## name states how many holes they have, 44 is the peak: 42 exact, where
+## merging every coaxial face regardless of distance scores 40 and a
+## 24 LDU limit scores 38.  It is the low end of a plateau that runs to
+## 60, taken low because merging two distinct holes loses a connection
+## while splitting one invents a duplicate of a real one.  16 is much
+## worse (22).
+MERGE_WITHIN = 44.0
+
+
+def _clusters_along(group: list[Connection]) -> list[list[Connection]]:
+    """Split connectors on one axis line into the holes they describe."""
+    if len(group) == 1:
+        return [group]
+    axis = group[0].axis
+    ordered = sorted(
+        group,
+        key=lambda c: c.position.x * axis.x + c.position.y * axis.y
+        + c.position.z * axis.z,
+    )
+    def along(c: Connection) -> float:
+        return c.position.x * axis.x + c.position.y * axis.y + c.position.z * axis.z
+
+    clusters: list[list[Connection]] = [[ordered[0]]]
+    for connection in ordered[1:]:
+        if along(connection) - along(clusters[-1][-1]) <= MERGE_WITHIN:
+            clusters[-1].append(connection)
+        else:
+            clusters.append([connection])
+    return clusters
 
 
 def _axis_line_key(connection: Connection) -> tuple:

@@ -1819,15 +1819,25 @@ func _attachment_points(args: Dictionary) -> String:
 				Placement._num(corner.z / STUD), face])
 		found += 1
 
+	# Holes, which are the other way parts join and were not reported at
+	# all. A Technic beam has no studs, so this said "no studs — nothing
+	# clutches to it. Tiles and most sloped surfaces are like this" about
+	# the part the whole of Technic is built from.
+	var holes: String = _holes_in(part, at)
+
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
 			+ "It is a flat field of them: anything sitting on top goes "
-			+ "at whole studs across and at the height of its top face.")
+			+ "at whole studs across and at the height of its top face."
+			+ holes)
 	if found == 0:
+		if not holes.is_empty():
+			return ("%s has no studs. It joins to things through its "
+				% label + "holes instead." + shape + holes)
 		return ("%s has no studs — nothing clutches to it. " % label
 			+ "Tiles and most sloped surfaces are like this." + shape)
-	return ("%s has %d stud%s.%s\n" % [label, found,
-		"" if found == 1 else "s", shape]
+	return ("%s has %d stud%s.%s%s\n" % [label, found,
+		"" if found == 1 else "s", shape, holes]
 		+ "\n".join(lines)
 		+ "\n\nThose corners are for a 1x1 plate. A part that covers "
 		+ "more studs extends from the same corner, the way it would on "
@@ -1836,6 +1846,60 @@ func _attachment_points(args: Dictionary) -> String:
 		+ "-x or -z it hangs the other way, so its corner is further "
 		+ "back along that direction by its own thickness: a brick is "
 		+ "three plates, so three plates or one and a half studs.")
+
+
+## Where a part's holes are, in the coordinates a pin would be written
+## in, and which way each one runs.
+##
+## A hole's position is the one coordinate nobody gets right by
+## reasoning: it sits at the middle of the part's thickness, so on a
+## beam lying flat it is half a stud up and on a 1x2 brick with a hole
+## it is one and a half plates up. The whole point of this tool is not
+## having to work that out, and until now it only did it for studs.
+##
+## Said as a position rather than as a placement for a particular pin,
+## because which pin goes in is the caller's choice and each has its own
+## length: 2780 and 3673 reach through two beams, 4274 through one.
+func _holes_in(part: Lbm.PartMesh, at: Transform3D) -> String:
+	var lines: PackedStringArray = PackedStringArray()
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind != "pin_hole" and connector.kind != "axle_hole":
+			continue
+		if lines.size() >= MOST_HOLES:
+			lines.append("  ...and more, a hole every stud along it.")
+			break
+		var point: Vector3 = at * connector.position
+		var axis: Vector3 = (at.basis * connector.axis).normalized()
+		lines.append("  %s at x=%s y=%s z=%s, running %s" % [
+			"pin hole" if connector.kind == "pin_hole" else "axle hole",
+			Placement._num(point.x / STUD),
+			Placement._num(point.y / PLATE),
+			Placement._num(point.z / STUD),
+			_which_axis(axis)])
+	if lines.is_empty():
+		return ""
+	return ("\n\nHoles — a pin goes in at the position given, turned to "
+		+ "run the same way:\n" + "\n".join(lines))
+
+
+## How many holes are worth listing before it is a wall of text. A
+## Technic baseplate has 195.
+const MOST_HOLES := 12
+
+
+## The axis a direction lies along, named without claiming a sign: a
+## hole takes a pin from either end, so "along z" is the whole truth and
+## "+z" would be half of it presented as all.
+static func _which_axis(axis: Vector3) -> String:
+	# Thirty holes in the library run diagonally, and calling one of
+	# those "along z" would be a direction nobody could pin to.
+	if absf(axis.x) > 0.99:
+		return "along x"
+	if absf(axis.y) > 0.99:
+		return "up and down"
+	if absf(axis.z) > 0.99:
+		return "along z"
+	return "at an angle, so put the pin in a section turned to match"
 
 
 ## How much of each stud this part covers, looking down, in the
@@ -2542,6 +2606,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			"feedback": "That design has no parts in it.",
 		}
 
+	## Which placements a pin, axle or ball joins to which. Needed before
+	## the first brick goes into the lattice, because a joint is allowed
+	## to overlap and the lattice finds out in placement order.
+	var joined: Dictionary = _connectors_mating(model)
+
 	# What will still be there afterwards, standing in the way.
 	var theirs: Dictionary = {}     ## lattice key -> part id
 	if not alone and world != null:
@@ -2680,6 +2749,29 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# found already there. They are still put in the lattice,
 		# because they are still really there and nothing new may be
 		# built inside them.
+		# A pin in a hole is meant to overlap, and by a measurable
+		# amount. A Technic pin's shaft is 12 LDU across but its collar
+		# is 16, and the collar is what sits in the chamfer at the hole's
+		# mouth — which a lattice of 2 LDU cells cannot represent. Put
+		# 3673 into 3700's hole and 42 of the pin's 500 cells land inside
+		# the brick, all of them the collar ring.
+		#
+		# Widening the bore to swallow it was measured and is worse: at
+		# radius 8 a Technic beam 3 loses a third of its cells, 1,472 to
+		# 992, and other parts would pass straight through a liftarm. So
+		# the bore stays at the shaft's radius and the joint is forgiven
+		# instead — only between the two parts the joint actually names,
+		# so every other overlap still reports.
+		if not blockers.is_empty() and joined.has(index):
+			var mates: Dictionary = joined[index]
+			var rest: PackedInt64Array = PackedInt64Array()
+			for key: int in blockers:
+				if key > 0 and not mates.has(key - 1):
+					rest.append(key)
+				elif key <= 0:
+					rest.append(key)
+			blockers = rest
+
 		if not blockers.is_empty() and placement.id != 0 \
 				and not placement.moved:
 			var first: int = blockers[0]
@@ -2765,7 +2857,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# and then taken out: across shallow angles, steep ones and a
 	# section turned fully over, it never once changed an answer.
 
-	_check_support(model, cells_of, lattice, issues, crowded)
+	_check_support(model, cells_of, lattice, issues, crowded, joined)
 
 	# Every section has to be fixed to something outside itself.
 	# Held together inside and touching nothing is a part that falls off
@@ -3489,6 +3581,118 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 	return held
 
 
+## Which kind of connector accepts which, male to female or neutral.
+const MATES: Dictionary = {
+	"pin": "pin_hole",
+	"axle": "axle_hole",
+	"ball": "socket",
+	"bar": "clip",
+}
+## How far off the mate's axis line a connector may sit, in LDU. A pin
+## bore is 6 LDU, so 4 keeps it inside the hole it claims to be in and
+## stops a pin matching the hole one stud over.
+const OFF_AXIS := 4.0
+## How far along that line the two may be apart, in LDU. A pin's own
+## connector sits at the pin's middle while a hole's sits at the hole's
+## middle, and a pin joining two beams is half a stud from each.
+const ALONG_AXIS := 20.0
+
+
+## Which placements are held by something pushed into them, or by
+## something they are pushed into.
+##
+## Studs are handled separately and geometrically: a stud ends up inside
+## the part above it, so sampling past its tip finds the part it holds.
+## A pin cannot be found that way, because the hole it goes into is
+## empty space — deliberately, since otherwise the pin would read as a
+## collision — so the two connectors have to be matched to each other.
+##
+## Without this, a Technic assembly reads as a pile of floating parts: a
+## liftarm pinned to another liftarm has nothing beneath it and no stud
+## anywhere near it, and that is most of how complex models are built.
+func _connectors_mating(model: Model) -> Dictionary:
+	## Sockets bucketed by the stud-sized box they fall in, so a pin is
+	## compared with the holes near it rather than with every hole in the
+	## model. A thousand-part Technic chassis has hundreds of each, and
+	## all-against-all is their product.
+	var sockets: Dictionary = {}  ## Vector3i -> Array of [index, kind, at, way]
+	var plugs: Array = []         ## the male ones
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind == "stud" or connector.kind == "tube" \
+					or connector.kind == "ridge":
+				continue
+			var where: Vector3 = at * connector.position
+			var way: Vector3 = (at.basis * connector.axis).normalized()
+			if connector.gender == "male":
+				if MATES.has(connector.kind):
+					plugs.append([index, connector.kind, where, way])
+			else:
+				var box: Vector3i = _bucket(where)
+				if not sockets.has(box):
+					sockets[box] = []
+				sockets[box].append([index, connector.kind, where, way])
+
+	var held: Dictionary = {}
+	for plug: Array in plugs:
+		var wanted: String = MATES[plug[1]]
+		var home: Vector3i = _bucket(plug[2])
+		# ALONG_AXIS is one bucket wide, so a mate is in this box or one
+		# of the twenty-six touching it.
+		for dx: int in [-1, 0, 1]:
+			for dy: int in [-1, 0, 1]:
+				for dz: int in [-1, 0, 1]:
+					var near: Variant = sockets.get(
+						home + Vector3i(dx, dy, dz))
+					if near == null:
+						continue
+					for socket: Array in near:
+						if socket[0] == plug[0] or socket[1] != wanted:
+							continue
+						if not _lines_up(plug[2], plug[3],
+								socket[2], socket[3]):
+							continue
+						# Both ends of a joint are held by it, and
+						# each knows the other, because a joint has to
+						# be allowed to interpenetrate a little.
+						_joins(held, plug[0], socket[0])
+						_joins(held, socket[0], plug[0])
+	return held
+
+
+## Record that these two are joined, in both directions.
+static func _joins(held: Dictionary, one: int, other: int) -> void:
+	if not held.has(one):
+		held[one] = {}
+	(held[one] as Dictionary)[other] = true
+
+
+## Which stud-sized box a point falls in.
+static func _bucket(at: Vector3) -> Vector3i:
+	return Vector3i(floori(at.x / STUD), floori(at.y / STUD),
+		floori(at.z / STUD))
+
+
+## Whether a plug at one place, pointing one way, is inside a socket.
+static func _lines_up(plug_at: Vector3, plug_way: Vector3,
+		socket_at: Vector3, socket_way: Vector3) -> bool:
+	# Collinear, either nose to nose or the same way round: a hole is
+	# neutral and its recorded direction is whichever face was read first.
+	if absf(plug_way.dot(socket_way)) < 0.95:
+		return false
+	var gap: Vector3 = plug_at - socket_at
+	var along: float = gap.dot(socket_way)
+	if absf(along) > ALONG_AXIS:
+		return false
+	return (gap - socket_way * along).length() <= OFF_AXIS
+
+
 ## Where a brick stops, in the units the placement was written in.
 ##
 ## Returns a clause to hang off an overlap message, or nothing at all
@@ -3806,7 +4010,8 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 
 func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
-	issues: Dictionary, crowded: Dictionary = {}
+	issues: Dictionary, crowded: Dictionary = {},
+	joined: Dictionary = {}
 ) -> void:
 	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
@@ -3855,6 +4060,11 @@ func _check_support(
 		# including the sideways ones: 87087 records its side stud at
 		# axis +Z. It was never consulted.
 		if not supported and studs.has(index):
+			supported = true
+
+		# Or a pin, axle or ball joins it to something.
+		if not supported and joined.has(index) \
+				and not (joined[index] as Dictionary).is_empty():
 			supported = true
 
 		if not supported:
@@ -4274,6 +4484,29 @@ that is the kind of number nobody gets right by reasoning about it.
   check_design accepts a part held by a stud from any direction, not \
 just one sitting on something. If it says a part has nothing holding \
 it, nothing is touching it — move it, do not give up on the idea.
+
+BUILDING WITH PINS AND AXLES
+Studs are not the only way parts join, and for anything with a \
+mechanism — a chassis, a steering linkage, a hinge, an arm that moves — \
+they are the wrong way. Technic beams join to each other with pins, \
+and check_design accepts a part held by a pin, an axle or a ball joint \
+exactly as it accepts one held by a stud. A beam pinned to another \
+beam with nothing underneath either of them is held.
+  The parts: 32523, 32316 and 32524 are Technic beams 3, 5 and 7, with \
+a hole every stud along their length. 3700, 3701 and 3894 are ordinary \
+bricks 1x2, 1x4 and 1x6 with holes through them, which is how a \
+mechanism meets a studded wall. 2780 is the friction pin that holds \
+two beams together and is the single most used Technic part there is; \
+3673 is the frictionless version for something that must turn; 4274 \
+is a pin with a stud on one end, which joins a hole to a stud. 3705 \
+and 4519 are axles 4 and 3, which turn inside an axle hole rather \
+than gripping it.
+  Call search_parts for "technic beam" or "technic pin", and \
+attachment_points for where the holes are. It lists every hole with \
+its x, y and z and which way the hole runs, and a pin goes in at that \
+position turned to run the same way. Do not work it out instead: a \
+hole sits at the middle of the part's thickness, which is not a whole \
+number of plates and is not the same on a beam as on a brick.
 
 WHAT MAKES A MODEL LOOK REAL
 The difference between a model that reads as the thing and one that \

@@ -226,7 +226,15 @@ def voxelise(mesh: Mesh, *, cell: float = CELL) -> Occupancy:
     )
 
 
-def fill_cavities(occupancy: Occupancy) -> Occupancy:
+## The bore of a Technic pin or axle hole, in LDU.  peghole draws its
+## mouth as a ring scaled to 8 with an inner edge at 6, and a pin is
+## 4.8 mm across, which is 12 LDU of diameter.
+HOLE_RADIUS = 6.0
+
+
+def fill_cavities(
+    occupancy: Occupancy, connections: list[Connection] | None = None
+) -> Occupancy:
     """Close the voids inside a part, layer by layer.
 
     Voxelising a brick gives its walls and tubes, because that is what the
@@ -243,15 +251,99 @@ def fill_cavities(occupancy: Occupancy) -> Occupancy:
     Taking the layers separately is also what keeps an arch honest: under
     its span the gap runs out to the edge of the part in that layer, so it
     is open to the outside rather than enclosed, and stays open.
+
+    It is not honest about a Technic hole that runs *vertically*, though,
+    and that is what ``connections`` is for.  A horizontal hole reaches
+    the edge of the part in its own layer and survives; a vertical one is
+    a closed circle in every layer it passes through, so it filled, and
+    every Technic liftarm in the library came out solid.  A pin pushed
+    into one read as a collision — which is most of modern Technic
+    refused outright, since the beam is what the rest bolts to.
+
+    So where a connector says there is a hole, the hole's bore is cleared.
+
+    Clearing only the *fill's* additions was the first attempt and is not
+    enough.  A Technic brick's hole is drawn as two peghole mouths with a
+    negative cylinder between them, and the negative is surface like any
+    other to a voxeliser: part 3700 came out open at both mouths and
+    solid through the middle, which is exactly as unusable as being solid
+    throughout.  Its hole was never a cavity the fill closed, so there
+    was nothing to put back.
+
+    The cost of clearing outright is that a connector is now trusted
+    against the geometry: a wrongly detected hole carves a 12 LDU channel
+    through a part that has none.  That is why the connector table is
+    classified from each primitive's own description rather than its
+    filename, and why holes are counted against the parts whose names
+    state how many they have.  The bore is also clamped to the part's own
+    cells, so a hole on a surface cannot reach beyond the plastic.
     """
     if occupancy.cell_count == 0:
         return occupancy
 
-    grid = occupancy.to_grid().copy()
+    before = occupancy.to_grid()
+    grid = before.copy()
     for y in range(grid.shape[1]):
         filled = binary_fill_holes(grid[:, y, :])
         if filled is not None:
             grid[:, y, :] = filled
+
+    holes = [
+        c for c in (connections or [])
+        if c.kind in (ConnectorKind.PIN_HOLE, ConnectorKind.AXLE_HOLE)
+    ]
+    if holes:
+        ox, oy, oz = occupancy.origin
+        shape = occupancy.shape
+        centres = [
+            (np.arange(shape[n]) + (ox, oy, oz)[n] + 0.5) * CELL for n in range(3)
+        ]
+        bore = np.zeros(shape, dtype=bool)
+        for hole in holes:
+            # extract() reports in LDraw's axes, where -Y is up, and the
+            # grid is in the application's; remove_studs flips the same way.
+            point = np.array([hole.position.x, -hole.position.y, -hole.position.z])
+            axis = np.array([hole.axis.x, -hole.axis.y, -hole.axis.z])
+            length = float(np.linalg.norm(axis))
+            if length < 1e-9:
+                continue
+            axis = axis / length
+
+            # Only the slab the hole can possibly touch, which for an
+            # axis-aligned hole is a few cells across.  Testing the whole
+            # grid per hole made the 19x11 Technic baseplate — 209 holes
+            # over a 110x12x190 grid — take 0.87s to fill where it took
+            # 0.01s before, and it is the same answer either way.
+            # A hole at an angle to the grid has no thin slab: its channel
+            # runs diagonally, so the whole grid is the honest window.
+            # Rare — a handful of parts in the library — and correctness
+            # there is worth more than the speed, which is what the whole
+            # fast path is guarding.
+            square = max(abs(axis[0]), abs(axis[1]), abs(axis[2])) > 0.99
+            window = []
+            for n in range(3):
+                if not square or abs(axis[n]) > 0.99:
+                    window.append(slice(0, shape[n]))
+                    continue
+                middle = point[n] / CELL - (ox, oy, oz)[n]
+                reach = (HOLE_RADIUS / CELL) + 1.0
+                window.append(slice(
+                    max(0, int(np.floor(middle - reach))),
+                    min(shape[n], int(np.ceil(middle + reach)) + 1)))
+            if any(w.start >= w.stop for w in window):
+                continue
+
+            local = [centres[n][window[n]] for n in range(3)]
+            gx, gy, gz = np.meshgrid(*local, indexing="ij")
+            dx, dy, dz = gx - point[0], gy - point[1], gz - point[2]
+            along = dx * axis[0] + dy * axis[1] + dz * axis[2]
+            # Perpendicular distance to the hole's infinite axis line.
+            px = dx - along * axis[0]
+            py = dy - along * axis[1]
+            pz = dz - along * axis[2]
+            inside = (px * px + py * py + pz * pz) <= HOLE_RADIUS * HOLE_RADIUS
+            bore[window[0], window[1], window[2]] |= inside
+        grid = grid & ~bore
 
     return Occupancy(
         origin=occupancy.origin, shape=occupancy.shape, bits=grid.reshape(-1))

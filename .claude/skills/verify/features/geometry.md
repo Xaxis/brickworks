@@ -21,6 +21,10 @@ can occupy the same millimetre.
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
   cantilever.
+- `technic joints`: pins, axles and ball joints as real attachments, alongside
+  studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
+  pin is not a collision), and the two connectors have to be *matched*
+  (`Assistant._connectors_mating`, so the pinned part is not floating).
 
 ## How to reach it
 
@@ -41,6 +45,7 @@ Runtime:
 godot --headless --path . --script src/dev/dimensions_probe.gd   # in millimetres
 godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
+godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
@@ -55,6 +60,28 @@ Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
 
 ## Gotchas
+
+- **A vertical hole was being filled solid, which refused most of Technic.**
+  `fill_cavities` closes voids layer by horizontal layer, which is right for a
+  brick's underside and for an arch. A hole running *horizontally* reaches the
+  edge of the part within its own layer and stays open; one running *vertically*
+  is a closed circle in every layer it crosses, so it filled. Technic beam holes
+  run vertically, so every liftarm in the library was solid and a pin pushed into
+  one read as a collision — measured: beam 2 went from 752 voxelised cells to
+  1368 filled, with both holes sealed. `fill_cavities` now takes the connector
+  list and puts back its own additions inside each hole's bore, and only its own
+  additions, so a wrong connector can leave a cavity open but can never remove
+  plastic. Plain bricks are untouched: a 2x4 is still 9,600 cells and one box.
+  The cost is box count on Technic parts only — beam 3 went 25 to 36, beam 5
+  37 to 54.
+
+- **A pin cannot be found the way a stud is found.** `_studs_reaching_in` samples
+  just past a stud's tip and asks who owns that lattice cell, which works because
+  a stud ends up inside the part above it. A pin ends up in a hole, which is
+  deliberately *empty*, so the sample finds nothing. Pins, axles and balls are
+  matched connector-to-connector instead: collinear within 0.95 of a dot product,
+  within `OFF_AXIS` 4 LDU of the mate's axis line and `ALONG_AXIS` 20 LDU along
+  it. Do not "simplify" one into the other.
 
 - **A section is checked against itself in its own frame.** Checked against the
   world, a tipped section collides with itself at every angle — three overlaps,

@@ -26,7 +26,9 @@ The Python side: LDraw in, mesh cache and catalogue out.
 
 ```sh
 tools/fetch_data.sh                   # vendor/ldraw and vendor/rebrickable, first of all
-tools/build_meshes.py                 # ~45 min; needs numpy and scipy
+tools/build_meshes.py                 # ~90 min on 20 cores; needs numpy and scipy
+tools/build_meshes.py --only 3001 ... --out DIR   # just those parts
+tools/merge_subbuild.py DIR ids.txt   # merge such a build back, with a safety check
 tools/refresh_catalogue.py            # also joins colour availability, ~10s of it
 tools/web_pack.py --list              # say what would be included, write nothing
 tools/web_pack.py --budget 40         # stop at 40 MB
@@ -35,6 +37,26 @@ tools/storage_parts.py --all          # re-upload everything
 tools/export.sh desktop               # mac, linux and windows, ~10 min
 tools/export.sh linux                 # one of them
 ```
+
+## Gotchas
+
+- **The Python tests silently skip the half that matters without numpy.** `python
+  -m pytest -q` reports "42 passed, 25 skipped" on a bare interpreter, and the
+  skipped ones are `test_collision_is_exact_on_the_lattice`,
+  `test_lattice_divides_every_lego_dimension` and the rest of the occupancy
+  cover — exactly what a change to `tools/ldraw/occupancy.py` needs. There is no
+  `pip` or `ensurepip` here, so use `uv venv` and run pytest from it: all 67
+  pass. A green suite with 25 skips is not a green suite.
+
+- **A full mesh build is ~90 minutes and writes nothing until the end.** An
+  interrupted run therefore costs the whole thing, but leaves the old catalogue
+  consistent. `tools/merge_subbuild.py` exists for that: build the affected
+  parts with `--only`, include a few hundred parts that did *not* change, and it
+  refuses to merge unless every one of those comes out identical.
+
+- **`build_meshes.py` rewrites `catalogue.json` from scratch**, which drops the
+  colour availability and element fields. Always follow it with
+  `tools/refresh_catalogue.py`.
 
 ## How to check it
 

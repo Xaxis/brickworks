@@ -16,9 +16,18 @@ Geometry is de-duplicated by content hash.  Aliases ("~Moved to ...") and
 parts that differ only in metadata then share one file, and the catalogue
 points several ids at it.
 
-Parts are independent, so this fans out across cores.  A full build is a
-few minutes; it is incremental only in the sense that it is cheap enough
-not to need to be.
+Parts are independent, so this fans out across cores, and a full build
+is still about an hour and a half on twenty of them.  Measured: 3,653
+parts took 622 s, and the rate falls towards the end because the newer
+parts are the complicated ones.  This said "a few minutes", which is
+wrong by two orders of magnitude and sends whoever is waiting on it
+looking for a hang.
+
+Nothing is written until the end, so an interrupted run leaves the old
+catalogue intact and some orphan meshes.  If a full run is impractical,
+tools/merge_subbuild.py takes a --only build of the parts that changed
+and merges it, refusing unless unchanged control parts come out
+identical.
 """
 
 from __future__ import annotations
@@ -112,7 +121,8 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         # Occupancy: solid volume for collision, and the underside sockets
         # the primitives cannot tell us about.
         connections = extract_connections(_LIBRARY, name)
-        solid = occ.fill_cavities(occ.remove_studs(occ.voxelise(mesh), connections))
+        solid = occ.fill_cavities(
+            occ.remove_studs(occ.voxelise(mesh), connections), connections)
 
         counts: dict[str, int] = {}
         for connection in connections:
@@ -210,7 +220,12 @@ def main() -> int:
 
             if n % 2000 == 0:
                 rate = n / (time.time() - started)
-                print(f"  {n:6,}/{len(names):,}  {rate:5.0f}/s  {len(written):,} meshes")
+                # Flushed, because stdout is block-buffered the moment
+                # it is redirected to a file, and a forty-five minute
+                # build that prints nothing is indistinguishable from a
+                # hung one.
+                print(f"  {n:6,}/{len(names):,}  {rate:5.0f}/s  "
+                      f"{len(written):,} meshes", flush=True)
 
     # Meshes from a previous build that nothing points at any more. The
     # content hash means most survive a rebuild untouched, so this is

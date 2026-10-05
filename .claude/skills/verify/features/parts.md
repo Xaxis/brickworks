@@ -19,6 +19,11 @@ geometry in front of them.
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /
   `never_made_in()`; surfaced on the search line and as `check_design` advice.
+- `element numbers`: the LEGO element a part in a colour actually is —
+  `3001` in red is `300121` — so a parts list is orderable rather than
+  descriptive. `rebrickable.elements()` writes `assets/generated/elements.json`
+  (0.8 MB, 40,474 pairs over 5,298 parts); `PartLibrary.element_for()` loads it
+  lazily; `Inventory.Lot.element` carries it into the CSV and the booklet.
 
 ## How to reach it
 
@@ -64,6 +69,49 @@ it is hands-only, so say so rather than claiming it.
   top and 4 facing sideways". Named in the part's own frame and not the
   world's, because an unplaced part has no world and `rot` decides where it
   ends up, so "+x" would be a claim about something nobody has chosen yet.
+
+- **Which moulding a bare part number means is settled by LDraw's redirects, not
+  by the alphabet.** `3023a` and `3023b` are both "Plate 1 x 2" and both reduce
+  to `3023`, so whichever was indexed first took the number — and every `3023`
+  element went to `3023a`, while every model in the repo uses `3023b`. LDraw
+  itself answers it: part `3023` is "~Moved to 3023b". Following the redirect
+  took element coverage on the pairs real models use from 94% to 97%.
+
+- **The element join is confirmed by LEGO's own numbering, independently.** An
+  old-style element number is the design number with a two-digit colour
+  appended, so `3001` + red is `300121` and `3024` + black is `302426`. Of the
+  3,846 pairs whose element is six digits or fewer, **98.4%** begin with the
+  design number — a check the join never consulted. Do not run that test over
+  7-digit elements: those are sequential and carry no design number, and
+  including them scores 14% and looks like a broken join.
+
+- **The connector table is classified from the primitives' own descriptions,
+  not their filenames.** `axlehol8` is "Technic Axle Perimeter" — part of a solid
+  axle — and registering it as a hole made every Technic axle report an
+  `axle_hole`: part 3705, a plain Axle 4, came out as `{axle: 2, axle_hole: 1}`.
+  `axl2hol8` is "Technic Axle Hole Reduced Perimeter" and really is a hole. One
+  letter apart, opposite meanings. Nine registered names (`bar`, `bar2`,
+  `barhole`, `ball`, `balljnt`, `socket`, `socket2`, `axle2`, `npeghol1`) did not
+  exist in the library at all, so BAR, BALL and SOCKET had never been detected
+  once. There is still **no bar primitive**: a bar is a plain 3.2 mm cylinder, so
+  finding one needs a radius measured, not a filename read — which is why a clip
+  has nothing to grip.
+
+  **Measuring the radius was tried and is not enough.** Part 30374, "Bar 4L
+  Lightsaber Blade", is a single `4-4cyli` scaled `(4, 80, 4)`, so the obvious
+  test is a cylinder whose two perpendicular scales are ~4 LDU with a third at
+  least half a stud long. Measured against the 570 parts whose name says bar,
+  antenna or rod, that finds 45% of them — and fires on **19.8% of a 400-part
+  sample of everything else**: minifig arms, torsos and heads are full of
+  radius-4 cylinders. A false bar lets a clip hold thin air, which is the
+  direction that costs something, so radius alone cannot ship. What it needs is
+  some test that the cylinder is *exposed* with a free end, which is geometry
+  work rather than a tree walk.
+
+- **`npeghol*` is subtracted geometry, not a connector.** "Technic Peg Hole
+  Negative" marks where material is *missing*, which is not the same as where a
+  pin can go: Technic Beam 2 draws one at its waist, between its two real holes,
+  so the beam reported three holes and the middle one took no pin.
 
 - **Unknown is not "never made", and the whole feature turns on that.** The join
   knows 6,419 of the 8,591 plain parts, and 846 of those have a *short* list
