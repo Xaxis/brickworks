@@ -21,6 +21,11 @@ can occupy the same millimetre.
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
   cantilever.
+- `clutch`: whether two parts that touch could really hold each other. The
+  lattice is 2 LDU and the connection system is 20, so a position can be legal
+  on the grid and impossible in plastic — a brick three tenths of a stud across
+  from the one below, or standing on a tile. Advice, not faults
+  (`Assistant._note_loose`).
 - `technic joints`: pins, axles and ball joints as real attachments, alongside
   studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
   pin is not a collision), and the two connectors have to be *matched*
@@ -46,6 +51,7 @@ godot --headless --path . --script src/dev/dimensions_probe.gd   # in millimetre
 godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes
+godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
@@ -60,6 +66,25 @@ Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
 
 ## Gotchas
+
+- **"No studs on top" is not the same as "nothing grips".** The smooth-face
+  advice first fired whenever no stud *reached* the part, which
+  `_studs_reaching_in` answers by sampling 5 LDU past a stud's tip — and for a
+  part whose underside the occupancy left open, that sample lands in the cavity.
+  A flower correctly pressed onto a 2x2 round brick was told the brick had no
+  studs; it has four. Then, basing it on `stud_count == 0` instead, it
+  complained about both hinges in `models/car.ldr`, because a hinge base holds
+  by a hinge and the library has no connector kind for one. It is now limited to
+  `SMOOTH_ON_TOP` — Tile, Slope, Panel, Baseplate — which is a positive list on
+  purpose. The regression guard is that all eight shipped models produce **zero**
+  complaints; mutate the category guard away and `clutch_probe` reports the
+  car's two hinges.
+
+- **Reconstructing a placement from an LDraw transform needs `_corner_cell`.**
+  A placement's x is the part's *corner*; an LDraw origin is wherever the author
+  put it. Dividing the origin by a stud puts a 1x1 plate half a stud out and
+  invents off-grid offsets — six of them, across models that have none. Invert
+  `_square_transform`: `to_cell(origin) + _corner_cell(part, id, basis)`.
 
 - **A vertical hole was being filled solid, which refused most of Technic.**
   `fill_cavities` closes voids layer by horizontal layer, which is right for a

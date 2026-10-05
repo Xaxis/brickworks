@@ -2409,6 +2409,89 @@ func _instead(info: PartLibrary.PartInfo) -> String:
 	return "It %s %s%s." % [when, ", ".join(names), tail]
 
 
+## Categories where no stud on top really does mean nothing grips.
+##
+## A positive list on purpose. "No studs" is true of a hinge base, a
+## turntable and most of Technic as well, and those hold perfectly well
+## by a hinge or a pin — the library simply has no connector kind for a
+## hinge. Firing on "no studs" alone complained about both hinges in
+## models/car.ldr, which is how the roof and the doors are attached.
+const SMOOTH_ON_TOP: Dictionary = {
+	"Tile": true, "Slope": true, "Panel": true, "Baseplate": true,
+}
+
+
+## Legal sideways offsets between two stacked parts, in studs. Zero is
+## square on, and a half is what a jumper plate exists to give. Anything
+## between is a position no stud can reach a tube from.
+const STUD_GRID := 0.5
+## How far off that grid still counts as on it, in studs. The lattice
+## snaps to tenths, so this is tighter than one cell.
+const GRID_SLACK := 0.02
+
+
+## Note that a brick rests on another without being attached to it.
+##
+## Two different faults wear the same shape. If no stud reaches the brick
+## at all, it is standing on a smooth face — a tile, a slope — and
+## nothing clutches. If one does reach it but the two parts are offset by
+## a fraction of a stud, a stud is inside the brick's footprint without
+## being inside a tube, which is a position that exists on the lattice
+## and not in plastic.
+func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
+		reached: bool) -> void:
+	var placement: Placement = model.placements[index]
+	var below: Placement = model.placements[under]
+
+	# Whether the thing underneath has any stud at all, which is a fact
+	# about the part rather than about the lattice.
+	#
+	# The first version of this asked whether a stud reached the brick,
+	# which _studs_reaching_in answers by sampling five LDU past the
+	# stud's tip. For a part whose underside the occupancy left open —
+	# a flower, a round tile — that sample lands in the cavity and finds
+	# nothing, so a flower correctly pressed onto a 2x2 round brick was
+	# reported as resting on something with no studs. It has four. Two
+	# to four such complaints per model, on the eight that ship with the
+	# app and are known good.
+	var holder: PartLibrary.PartInfo = library.parts.get(below.part)
+	if holder != null and holder.stud_count == 0 \
+			and SMOOTH_ON_TOP.has(holder.category):
+		_note(loose, "Resting on a smooth face, held by nothing:",
+			"  brick %d (%s at %s) stands on brick %d (%s), which has no "
+			% [index, placement.part, placement.where(), under, below.part]
+			+ "stud anywhere to grip it. Put it on something studded, or "
+			+ "hold it another way.")
+		return
+	if not reached:
+		return
+	# Only the ordinary stacking case. A part carried on the side of
+	# something, or in a section turned to an angle, is off the stud grid
+	# for a good reason and is not what this is about.
+	if placement.face != "up" and placement.face != "down":
+		return
+	if below.face != "up" and below.face != "down":
+		return
+	if placement.section != below.section:
+		return
+	var across: float = absf(placement.x - below.x)
+	var along: float = absf(placement.z - below.z)
+	if _on_the_grid(across) and _on_the_grid(along):
+		return
+	_note(loose, "Offsets no stud can reach:",
+		"  brick %d (%s at %s) sits %s studs across and %s along from "
+		% [index, placement.part, placement.where(),
+			Placement._num(across), Placement._num(along)]
+		+ "brick %d, so its tubes land between that part's studs. Whole "
+		% under + "studs grip; so does a half, on a jumper. Nothing in "
+		+ "between does.")
+
+
+static func _on_the_grid(offset: float) -> bool:
+	var over: float = fposmod(offset, STUD_GRID)
+	return over <= GRID_SLACK or over >= STUD_GRID - GRID_SLACK
+
+
 ## Where a part's studs are, not merely how many there are.
 ##
 ## This said "N studs on top" and counted every stud a part has,
@@ -2857,7 +2940,17 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# and then taken out: across shallow angles, steep ones and a
 	# section turned fully over, it never once changed an answer.
 
-	_check_support(model, cells_of, lattice, issues, crowded, joined)
+	## Bricks that rest on something without being attached to it.
+	## kind -> Array of sentences, said as advice once the faults are in.
+	var loose: Dictionary = {}
+	_check_support(model, cells_of, lattice, issues, crowded, joined, loose)
+	for kind: String in loose:
+		var said: Array = loose[kind]
+		advice.append("%s\n%s" % [kind, "\n".join(
+			PackedStringArray(said.slice(0, WORTH_SAYING)))])
+		if said.size() > WORTH_SAYING:
+			advice[advice.size() - 1] += \
+				"\n  ...and %d more like that." % (said.size() - WORTH_SAYING)
 
 	# Every section has to be fixed to something outside itself.
 	# Held together inside and touching nothing is a part that falls off
@@ -4011,7 +4104,7 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
 	issues: Dictionary, crowded: Dictionary = {},
-	joined: Dictionary = {}
+	joined: Dictionary = {}, loose: Dictionary = {}
 ) -> void:
 	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
@@ -4038,12 +4131,15 @@ func _check_support(
 			continue
 
 		var supported: bool = false
+		var sitting_on: int = 0        ## the placement underneath, if one
 		for cell: Vector3i in cells:
 			if cell.y != floor_y:
 				continue
 			var below: int = lattice.brick_at(Vector3i(cell.x, cell.y - 1, cell.z))
 			if below != 0 and below != index + 1:
 				supported = true
+				if below > 0 and sitting_on == 0:
+					sitting_on = below
 				break
 
 		# Or a stud from somewhere else points into it.
@@ -4071,6 +4167,25 @@ func _check_support(
 			_note(issues, "floating",
 				"brick %d (%s at %s) has nothing holding it" % [
 					index, placement.part, placement.where()])
+			continue
+
+		# It is held. Whether it is actually *attached* is a different
+		# question, and the lattice cannot answer it: cells are 2 LDU and
+		# the connection system is 20, so a part can rest on another
+		# without a single stud lining up with a single tube. Both of the
+		# things below were reported "buildable" before this:
+		#
+		#   a 2x4 on a 2x4 shifted sideways by three tenths of a stud
+		#   a brick standing on a tile, clutching nothing
+		#
+		# Advice rather than a fault, because a real design does stand
+		# parts on tiles and trap them between walls, and because the
+		# tube side of a connection is not completely modelled in the
+		# library — bottom_sockets exists in occupancy.py precisely
+		# because the primitives do not say where every socket is.
+		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
+			_note_loose(loose, model, index, sitting_on - 1,
+				studs.has(index))
 
 
 ## "number 12" or "numbers 12, 14 and 15", capped so a confused edit
@@ -4472,6 +4587,15 @@ on their side, and you can turn them.
 plates, so y takes quarters: 0, 0.25, 0.5, 0.75, 1 and so on. x and z \
 take tenths of a stud the same way. Whole numbers everywhere is still \
 right for ordinary upward building.
+  Those tenths exist for sideways work and nothing else. A part \
+stacked on top of another has to be a whole stud across from it, or \
+exactly half a one — a half is what a jumper plate is for. Three \
+tenths of a stud is a position on the grid and not a position in \
+plastic: the studs underneath land between the tubes above, gripping \
+nothing, and the model falls apart when it is picked up.
+  A tile, a slope and a panel have nothing on top to grip. Something \
+standing on one is resting, not attached, and needs holding another \
+way — a wall beside it, a bracket, a stud from the side.
   Parts that exist to let you do this: 87087 (1x1 brick with a stud on \
 one side), 4070 (1x1 headlight brick), 3062b (1x1 round brick), 99207 \
 and 44728 (brackets). Put one of those in the wall and the parts that \
