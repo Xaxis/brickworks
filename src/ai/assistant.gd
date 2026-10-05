@@ -2246,6 +2246,13 @@ func _describe(info: PartLibrary.PartInfo) -> String:
 ## the model cannot tell them apart from a count of zero.
 func _made_in(info: PartLibrary.PartInfo) -> String:
 	if not info.availability_known():
+		# Geometry somebody drew that may not be a real element. The
+		# flag was being loaded and never read, so in-review parts read
+		# exactly like mass-produced ones. Only worth saying when there
+		# is also no record of the part in any set: 346 unofficial parts
+		# are demonstrably in recent sets and are simply new.
+		if info.unofficial:
+			return ", drawn but unreviewed — no record of it in any set"
 		return ""
 	if info.still_made():
 		var how_many: int = info.colors_recent.size()

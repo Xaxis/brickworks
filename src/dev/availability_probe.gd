@@ -157,6 +157,14 @@ func _check_the_search_line(library: PartLibrary) -> void:
 	_ok(rules.contains("not parts that were never sold"),
 		"...and that a part with no colour note is unknown, not unavailable")
 
+	# 3137c is in-review geometry with no record of ever being sold. The
+	# unofficial flag was loaded and never read anywhere, so this read
+	# exactly like a mass-produced brick.
+	var unreviewed: String = assistant._describe(library.parts["3137c"])
+	print("     %s" % unreviewed)
+	_ok(unreviewed.contains("unreviewed"),
+		"in-review geometry with no record says so")
+
 	var unknown: String = assistant._describe(library.parts["3068p10"])
 	_ok(not unknown.contains("made in") and not unknown.contains("retired"),
 		"a part nothing is known about says nothing about colours")
