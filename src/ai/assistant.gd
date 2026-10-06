@@ -2253,13 +2253,22 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 	if part == null:
 		return []
-	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
-	var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
-	for cell: Vector3i in builder._cells_for(part, brick.transform):
-		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
-		hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
-	if lo.x == 0x7FFFFFFF:
+	# From the boxes, which already know where the part begins and ends.
+	# This walked every cell to find two corners — nine thousand six
+	# hundred of them for a 2x4 — and it is called once per brick every
+	# time the model is described. On a two thousand brick model that
+	# was nine seconds to answer "what is on the baseplate", which is
+	# the question a design asks most.
+	var packed: PackedInt32Array = builder.boxes_for(part, brick.transform)
+	if packed.is_empty():
 		return []
+	var lo := Vector3i(packed[0], packed[1], packed[2])
+	var hi := Vector3i(packed[3] - 1, packed[4] - 1, packed[5] - 1)
+	for n: int in range(6, packed.size(), 6):
+		lo = Vector3i(mini(lo.x, packed[n]), mini(lo.y, packed[n + 1]),
+			mini(lo.z, packed[n + 2]))
+		hi = Vector3i(maxi(hi.x, packed[n + 3] - 1),
+			maxi(hi.y, packed[n + 4] - 1), maxi(hi.z, packed[n + 5] - 1))
 	var near: Vector3 = BrickLattice.to_ldu(lo)
 	# One cell past the last one filled, because a cell is a step and
 	# not a point: a 1 x 1 plate fills one cell and reaches to the next.

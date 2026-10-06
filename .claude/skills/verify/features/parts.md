@@ -114,6 +114,16 @@ it is hands-only, so say so rather than claiming it.
   tool. So the bar has to be found *inside* the part, which is the same geometry
   problem again.
 
+  **Nor by the shape of its collision boxes.** The boxes are the
+  stud-removed cover, so a bar ought to stand out: part 30374 is two of them,
+  4x40x2 and 2x40x4, a cross approximating a 4 LDU rod. Testing for a box thin
+  in two axes and long in the third finds 63% of bar-named parts and fires on
+  **39.3%** of everything else — worse than the radius test, because the greedy
+  cover produces thin slivers for any part that is not boxy. Four approaches
+  have now been measured and rejected; what would work is a curated list of
+  which parts are bars, gated by name, using the rod-shaped box for the
+  position. That is semantic knowledge, not geometry.
+
   **And clips cannot be inverted to avoid it.** The tempting shortcut is to skip
   bars and say a clip grips whatever occupies its jaw. Two things stop it: the
   bar part itself has no connectors at all, so there is no pair to confirm; and a
