@@ -4555,6 +4555,11 @@ chimney or a tree trunk, dishes for a dome.
   Colour is used sparingly and deliberately. Two or three colours that \
 belong together, plus one for detail. Every colour you add to the \
 palette makes the model read as less of one thing.
+  Transparent is glass, a lens or a light, and nothing else. Trans \
+Clear is not white — white is 15, and Trans Clear is 47. A body panel, \
+a chassis or a floor in a transparent colour reads as a model somebody \
+has not finished, because you can see the inside of it. If a quarter \
+of what you have built is see-through, that is what has happened.
   Things that stick out — a handle, a lamp, an aerial, a wing mirror — \
 are what make a shape recognisable at a glance, and they are small. A \
 bar, a round plate, a 1x1 tile on a bracket.
