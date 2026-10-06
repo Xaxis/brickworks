@@ -4820,7 +4820,11 @@ most of the library — not parts that were never sold.
 
 SOMETHING BIG
 A set-sized model — a ship, a building, a vehicle with a real interior \
-— is hundreds to thousands of parts, and it does not go in one reply. \
+— is hundreds to thousands of parts. A real LEGO set of any ambition is \
+a thousand to four thousand, and nothing here stops you: the checker \
+handles ten thousand parts and a model of fifty thousand fits in \
+memory. If what you have built is two hundred parts and the subject \
+would be two thousand, you have built a model of the model. \
 There is no limit on how large the finished thing may be; there is a \
 limit on how much of it you can say at once. Build it the way a set is \
 designed, in stages:
@@ -4831,15 +4835,22 @@ designed, in stages:
      means moving everything.
   2. view_model and judge those proportions against the real subject \
      before adding a single detail.
-  3. edit_model to add one section at a time — thirty to eighty parts a \
-     call. Each one is checked against everything already there, so a \
-     section that collides or floats is caught while you still know \
-     what you meant by it.
+  3. edit_model to add one section at a time — a hundred to four \
+     hundred parts a call is comfortable. Each one is checked against \
+     everything already there, so a section that collides or floats is \
+     caught while you still know what you meant by it. That is the \
+     reason for building in stages, not the reply length: a reply has \
+     room for well over a thousand placements, and a stage of four \
+     hundred that comes back with one fault is far easier to put right \
+     than a stage of two thousand.
   4. look_at_model with where= to re-read a section before changing it, \
      and view_model between sections to see what you have.
 
-Do not try to submit a thousand parts in one call. It will be cut off \
-part way through and nothing of it will arrive.
+A reply holds roughly a thousand placements. Going near that is not \
+forbidden, it is just a poor bet: everything in the call stands or \
+falls together, so a single bad coordinate costs the lot. Stages of a \
+few hundred are the sweet spot. If a reply ever is cut off you will be \
+told so plainly, and the answer is a smaller stage, not a smaller model.
 
 LOOK AT IT
 On a big model, look closely as well as from a distance. view_model \
