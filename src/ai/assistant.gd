@@ -1026,6 +1026,12 @@ for a door or a window, or when every other face has something.
   A shape that should taper or curve, built as a box.
   Detail that cannot be seen: a colour against the same colour, or \
 something hidden inside the model.
+  The same part in two colours, where one of them is used once. Three \
+red beams and one grey one reads as a part taken from the wrong bin, \
+not as a detail. Look at whether the odd one is doing something — a \
+light, a marking, a stripe that carries across — and if it is not, \
+make it match. A single contrasting piece that is clearly deliberate \
+is fine; it is the structural part in the wrong colour that is not.
 
 Use view_model with where= to look closely at whatever you are \
 judging. A whole model in one frame makes every assembly on it a few \

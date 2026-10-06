@@ -41,10 +41,17 @@ func _run() -> void:
 	for entry: ModelStore.Entry in examples:
 		world.clear()
 		main.get("_builder").lattice.clear()
+		# The ghost brick follows the pointer, and a pointer parked over
+		# the viewport puts a translucent green 2x4 in the lower left of
+		# every picture. These are the pictures somebody judges a model
+		# by, and an extra brick in the frame is exactly the kind of
+		# thing they would read as part of the model.
+		main.get("_builder").hide_preview()
 		store.open(entry.path)
 		for _n: int in 40:
 			await process_frame
 			RenderingServer.force_draw(false)
+		main.get("_builder").hide_preview()
 		main.get("_camera").frame(world.model_bounds(), 1.05)
 		for _n: int in 60:
 			await process_frame

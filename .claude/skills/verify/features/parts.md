@@ -108,6 +108,21 @@ it is hands-only, so say so rather than claiming it.
   some test that the cylinder is *exposed* with a free end, which is geometry
   work rather than a tree walk.
 
+  **Nor by shape and name.** Of the 313 parts whose name says bar, antenna or
+  rod, only **six** are thin rods by their bounding box — 104, 30374, 87994 and
+  three others. The rest are a bar with something on the end: a hilt, a flag, a
+  tool. So the bar has to be found *inside* the part, which is the same geometry
+  problem again.
+
+  **And clips cannot be inverted to avoid it.** The tempting shortcut is to skip
+  bars and say a clip grips whatever occupies its jaw. Two things stop it: the
+  bar part itself has no connectors at all, so there is no pair to confirm; and a
+  clip's own position is often inside its own plastic (4085b, Plate 1x1 with Clip
+  Vertical), so a gripped bar *overlaps* the clip rather than sitting in free
+  space. Forgiving that overlap would need a far looser rule than the pin's —
+  which demands collinear axes within 4 LDU — and a loose rule here would hide
+  real faults. 213 parts carry a clip and none of them can grip anything yet.
+
 - **Hinges have no connector kind, and adding one buys little.** The old
   hinges — 3937/3938, 4213/4214, the ones `models/car.ldr` is built with — are
   drawn from plain cylinders and boxes, so there is nothing to detect by name.
