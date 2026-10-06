@@ -2664,6 +2664,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var advice: Array = []
 	var issues: Dictionary = {}     ## kind -> Array[String]
 	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
+	var boxes_of: Dictionary = {}   ## index -> its boxes, six ints each
 	var box_of: Dictionary = {}     ## index -> [low cell, high cell]
 
 	for said: Variant in _pattern_trouble:
@@ -2713,7 +2714,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			if part == null:
 				continue
-			lattice.occupy(key, builder._cells_for(part, brick.transform))
+			lattice.occupy_boxes(key,
+				builder.boxes_for(part, brick.transform))
 			theirs[key] = brick.part_id
 			key -= 1
 
@@ -2780,7 +2782,13 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 
 		var at: Transform3D = _transform(placement, part,
 			model.section_for(placement))
-		var cells: Array[Vector3i] = builder._cells_for(part, at)
+		var packed: PackedInt32Array = builder.boxes_for(part, at)
+		# Cells out of the boxes, not worked out a second time. For a
+		# turned part the cover costs a separating-axis test on every
+		# candidate cell, and asking for it twice — once as boxes, once
+		# as cells — is what made a model with four sections take
+		# thirty-five seconds to check against six and a half.
+		var cells: Array[Vector3i] = BrickLattice.cells_in(packed)
 
 		# Inside a section, check the bricks against each other in the
 		# section's own square frame.
@@ -2809,8 +2817,13 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 				own.keeps_columns = false
 				inside[placement.section] = own
 			var square: Transform3D = _square_transform(placement, part)
-			var here: Array[Vector3i] = builder._cells_for(part, square)
-			var near: PackedInt64Array = own.blockers(here)
+			# In boxes, and worked out once. In cells this was nine
+			# thousand six hundred of them per brick, merged back into
+			# boxes twice over — once to ask what it ran into and once
+			# to put it in — and on a model with four sections that was
+			# the whole cost of checking it.
+			var here: PackedInt32Array = builder.boxes_for(part, square)
+			var near: PackedInt64Array = own.blockers_boxes(here)
 			if not near.is_empty():
 				crowded[placement.section] = true
 				_note(issues, "overlap",
@@ -2820,10 +2833,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 						+ "section '%s'%s" % [placement.section,
 							_ends_at(cells_of.get(near[0] - 1))])
 				continue
-			own.occupy(index + 1, here)
+			own.occupy_boxes(index + 1, here)
 
 		var blockers: PackedInt64Array = _blockers_outside(
-			lattice, cells, model, placement)
+			lattice, packed, model, placement)
 
 		# Two bricks that were already standing, neither of them touched
 		# by this design, are not this design's problem.
@@ -2917,8 +2930,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 					_ends_at(cells_of.get(blocker - 1))])
 			continue
 
-		lattice.occupy(index + 1, cells)
+		lattice.occupy_boxes(index + 1, packed)
 		cells_of[index] = cells
+		boxes_of[index] = packed
 		# The corners, kept while the cells are in hand. Three checks
 		# below want them and each used to find them by walking every
 		# cell again — which on a four hundred brick model is three more
@@ -2949,7 +2963,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## Bricks that rest on something without being attached to it.
 	## kind -> Array of sentences, said as advice once the faults are in.
 	var loose: Dictionary = {}
-	_check_support(model, cells_of, lattice, issues, crowded, joined, loose)
+	_check_support(model, cells_of, lattice, issues, crowded, joined,
+		loose, boxes_of)
 	for kind: String in loose:
 		var said: Array = loose[kind]
 		advice.append("%s\n%s" % [kind, "\n".join(
@@ -2963,7 +2978,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# when the model is picked up, which is the one thing a section
 	# makes easy to do by accident.
 	_check_sections_attached(model, cells_of, lattice, issues, crowded,
-		stuck)
+		stuck, boxes_of)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -3016,7 +3031,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not lopsided.is_empty():
 		advice.append(lopsided)
 
-	var pieces: int = _count_pieces(model, cells_of, lattice)
+	var pieces: int = _count_pieces(model, cells_of, lattice, boxes_of)
 
 	var errors: int = 0
 	for kind: String in issues:
@@ -3599,18 +3614,31 @@ func _unbonded_seam(box_of: Dictionary) -> String:
 
 
 func _count_pieces(model: Model, cells_of: Dictionary,
-		lattice: BrickLattice) -> int:
+		lattice: BrickLattice, boxes_of: Dictionary = {}) -> int:
 	if cells_of.size() <= 1:
 		return cells_of.size()
 
 	var joined: Dictionary = {}   ## index -> Array of index
 	for index: int in cells_of:
 		joined[index] = []
-	for index: int in cells_of:
-		for cell: Vector3i in cells_of[index]:
-			var above: int = lattice.brick_at(
-				Vector3i(cell.x, cell.y + 1, cell.z))
-			if above != 0 and above - 1 != index and joined.has(above - 1):
+	# What sits directly on each brick, asked as a slab across its top
+	# rather than cell by cell. A brick is nine thousand six hundred
+	# cells and each was a question for the lattice: free while a cell
+	# was a dictionary key, and the cost of the whole check once a cell
+	# became a search of the boxes near it.
+	for index: int in boxes_of:
+		var packed: PackedInt32Array = boxes_of[index]
+		var over := PackedInt32Array()
+		over.resize(packed.size())
+		for n: int in range(0, packed.size(), 6):
+			over[n] = packed[n]
+			over[n + 1] = packed[n + 4]
+			over[n + 2] = packed[n + 2]
+			over[n + 3] = packed[n + 3]
+			over[n + 4] = packed[n + 4] + 1
+			over[n + 5] = packed[n + 5]
+		for above: int in lattice.blockers_boxes(over, index + 1):
+			if above > 0 and joined.has(above - 1):
 				joined[index].append(above - 1)
 				joined[above - 1].append(index)
 
@@ -3852,24 +3880,29 @@ func _anything_in_reach(model: Model, group: String,
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		for cell: Vector3i in builder._cells_for(part,
-				_transform(placement, part, model.sections.get(group))):
-			low = Vector3i(mini(low.x, cell.x), mini(low.y, cell.y),
-				mini(low.z, cell.z))
-			high = Vector3i(maxi(high.x, cell.x), maxi(high.y, cell.y),
-				maxi(high.z, cell.z))
+		var packed: PackedInt32Array = builder.boxes_for(part,
+			_transform(placement, part, model.sections.get(group)))
+		for n: int in range(0, packed.size(), 6):
+			low = Vector3i(mini(low.x, packed[n]), mini(low.y, packed[n + 1]),
+				mini(low.z, packed[n + 2]))
+			high = Vector3i(maxi(high.x, packed[n + 3]),
+				maxi(high.y, packed[n + 4]), maxi(high.z, packed[n + 5]))
 			found = true
 	if not found:
 		return false
 	var reach: int = BrickLattice.CELLS_PER_PLATE * 2
-	low = Vector3i(low.x - 1, low.y - reach - 1, low.z - 1)
-	high = Vector3i(high.x + 1, high.y + reach + 1, high.z + 1)
-	for x: int in range(low.x, high.x + 1):
-		for y: int in range(low.y, high.y + 1):
-			for z: int in range(low.z, high.z + 1):
-				var who: int = lattice.brick_at(Vector3i(x, y, z))
-				if who != 0 and not _is_ours(who, model, group):
-					return true
+	# One box, asked once.
+	#
+	# This walked the whole grown volume cell by cell asking who was
+	# there, which for a nacelle is hundreds of thousands of questions.
+	# Each was a dictionary lookup once and is a search of the boxes
+	# nearby now, and the section probe stopped finishing.
+	var around := PackedInt32Array([
+		low.x - 1, low.y - reach - 1, low.z - 1,
+		high.x + 1, high.y + reach + 1, high.z + 1])
+	for who: int in lattice.blockers_boxes(around):
+		if not _is_ours(who, model, group):
+			return true
 	return false
 
 
@@ -3878,45 +3911,49 @@ func _anything_in_reach(model: Model, group: String,
 func _section_sits(model: Model, group: String, lattice: BrickLattice,
 		part_of: Dictionary) -> bool:
 	var touching: bool = false
+	# The section's own bricks, so the lattice can drop them before
+	# comparing boxes rather than after. Lattice keys count from one.
+	var ours: Dictionary = {}
+	for index: int in part_of.get(group, []):
+		ours[index + 1] = true
 	for index: int in part_of.get(group, []):
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		var cells: Array[Vector3i] = builder._cells_for(part,
+		var packed: PackedInt32Array = builder.boxes_for(part,
 			_transform(placement, part, model.sections.get(group)))
-		# What it runs into, and its own extent while we are here.
-		var low := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
-		var high := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
-		for cell: Vector3i in cells:
-			var here: int = lattice.brick_at(cell)
-			if here != 0 and not _is_ours(here, model, group):
+
+		# Asked of the boxes, not cell by cell.
+		#
+		# This walked every cell of every brick asking the lattice who
+		# was there, and then walked the outer ones again asking about
+		# all twenty-six neighbours. That was affordable while a cell
+		# was a dictionary key and is not now that a cell is answered by
+		# searching the boxes near it — a brick is nine thousand six
+		# hundred cells, and the hint search does this thirty-two times
+		# per section. The section probe stopped finishing.
+		#
+		# One query says what it runs into. A second, on the same boxes
+		# grown by a cell on every side, says what it touches: anything
+		# that meets the grown box but not the original is alongside it.
+		for who: int in lattice.blockers_boxes(packed, 0, ours):
+			if not _is_ours(who, model, group):
 				return false
-			low = Vector3i(mini(low.x, cell.x), mini(low.y, cell.y),
-				mini(low.z, cell.z))
-			high = Vector3i(maxi(high.x, cell.x), maxi(high.y, cell.y),
-				maxi(high.z, cell.z))
 		if touching:
 			continue
-		# And what it touches — but only for the cells that could touch
-		# anything. A cell strictly inside this brick's own extent has
-		# all twenty-six of its neighbours inside it too, so looking at
-		# them is twenty-six lattice lookups to learn nothing, and that
-		# is where the time went: a brick is nine thousand six hundred
-		# cells, two thirds of them interior, and the whole twenty-six
-		# ran for every one of them whenever the section touched
-		# nothing — which is exactly when this is asked.
-		for cell: Vector3i in cells:
-			if cell.x > low.x and cell.x < high.x \
-					and cell.y > low.y and cell.y < high.y \
-					and cell.z > low.z and cell.z < high.z:
-				continue
-			for step: Vector3i in BrickLattice.AROUND:
-				var who: int = lattice.brick_at(cell + step)
-				if who != 0 and not _is_ours(who, model, group):
-					touching = true
-					break
-			if touching:
+		var grown := PackedInt32Array()
+		grown.resize(packed.size())
+		for n: int in range(0, packed.size(), 6):
+			grown[n] = packed[n] - 1
+			grown[n + 1] = packed[n + 1] - 1
+			grown[n + 2] = packed[n + 2] - 1
+			grown[n + 3] = packed[n + 3] + 1
+			grown[n + 4] = packed[n + 4] + 1
+			grown[n + 5] = packed[n + 5] + 1
+		for who: int in lattice.blockers_boxes(grown, 0, ours):
+			if not _is_ours(who, model, group):
+				touching = true
 				break
 	return touching
 
@@ -3934,9 +3971,9 @@ static func _is_ours(key: int, model: Model, group: String) -> bool:
 ## they were written in; here they would collide with it simply for
 ## being adjacent to something that is no longer square to the grid.
 static func _blockers_outside(lattice: BrickLattice,
-		cells: Array[Vector3i], model: Model,
+		packed: PackedInt32Array, model: Model,
 		placement: Placement) -> PackedInt64Array:
-	var hit: PackedInt64Array = lattice.blockers(cells)
+	var hit: PackedInt64Array = lattice.blockers_boxes(packed)
 	if placement.section.is_empty() or hit.is_empty():
 		return hit
 	var others := PackedInt64Array()
@@ -3968,7 +4005,8 @@ static func _sections_present(model: Model, cells_of: Dictionary) -> Array:
 ## other check will say the model is fine.
 func _check_sections_attached(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice, issues: Dictionary,
-		crowded: Dictionary = {}, stuck: Dictionary = {}) -> void:
+		crowded: Dictionary = {}, stuck: Dictionary = {},
+		boxes_of: Dictionary = {}) -> void:
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
 			continue
@@ -3982,22 +4020,30 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 			continue
 		var touches: bool = false
 		var lowest: int = 0x7FFFFFFF
-		for index: int in cells_of:
+		# Grown by a cell on every side and asked once per brick.
+		#
+		# This asked about all twenty-six neighbours of every cell —
+		# nine thousand six hundred cells for a 2x4, a quarter of a
+		# million questions for one brick — which was affordable only
+		# while a cell was a dictionary key.
+		for index: int in boxes_of:
 			if model.placements[index].section != group:
 				continue
-			for cell: Vector3i in cells_of[index]:
-				lowest = mini(lowest, cell.y)
-				for step: Vector3i in BrickLattice.AROUND:
-					var who: int = lattice.brick_at(cell + step)
-					if who == 0:
-						continue
-					if who < 0:
-						touches = true
-						break
-					if model.placements[who - 1].section != group:
-						touches = true
-						break
-				if touches:
+			var packed: PackedInt32Array = boxes_of[index]
+			var grown := PackedInt32Array()
+			grown.resize(packed.size())
+			for n: int in range(0, packed.size(), 6):
+				lowest = mini(lowest, packed[n + 1])
+				grown[n] = packed[n] - 1
+				grown[n + 1] = packed[n + 1] - 1
+				grown[n + 2] = packed[n + 2] - 1
+				grown[n + 3] = packed[n + 3] + 1
+				grown[n + 4] = packed[n + 4] + 1
+				grown[n + 5] = packed[n + 5] + 1
+			for who: int in lattice.blockers_boxes(grown):
+				if who < 0 or (who > 0
+						and model.placements[who - 1].section != group):
+					touches = true
 					break
 			if touches:
 				break
@@ -4016,7 +4062,8 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
 	issues: Dictionary, crowded: Dictionary = {},
-	joined: Dictionary = {}, loose: Dictionary = {}
+	joined: Dictionary = {}, loose: Dictionary = {},
+	boxes_of: Dictionary = {}
 ) -> void:
 	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
@@ -4044,15 +4091,28 @@ func _check_support(
 
 		var supported: bool = false
 		var sitting_on: int = 0        ## the placement underneath, if one
-		for cell: Vector3i in cells:
-			if cell.y != floor_y:
-				continue
-			var below: int = lattice.brick_at(Vector3i(cell.x, cell.y - 1, cell.z))
-			if below != 0 and below != index + 1:
-				supported = true
-				if below > 0 and sitting_on == 0:
-					sitting_on = below
-				break
+		# One query for the whole underside rather than one per cell.
+		#
+		# This asked the lattice what was under each cell of the bottom
+		# face, which is eight hundred questions for a 2x4 and was free
+		# while a cell was a dictionary key. It is not free now that a
+		# cell is answered by searching the boxes near it, and the shape
+		# of the question was always wrong: what is wanted is "is
+		# anything in the slab one cell under me", which is one box.
+		var under := PackedInt32Array()
+		var at: int = 0
+		while at < boxes_of[index].size():
+			var box: PackedInt32Array = boxes_of[index]
+			if box[at + 1] == floor_y:
+				under.append_array(PackedInt32Array([
+					box[at], floor_y - 1, box[at + 2],
+					box[at + 3], floor_y, box[at + 5]]))
+			at += 6
+		for below: int in lattice.blockers_boxes(under, index + 1):
+			supported = true
+			if below > 0 and sitting_on == 0:
+				sitting_on = below
+			break
 
 		# Or a stud from somewhere else points into it.
 		#

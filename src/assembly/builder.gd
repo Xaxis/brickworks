@@ -84,7 +84,7 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 	if part == null:
 		return false
 	var cells: Array[Vector3i] = _cells_for(part, at)
-	lattice.occupy(brick_id, cells)
+	lattice.occupy_boxes(brick_id, boxes_for(part, at))
 	return true
 
 
@@ -97,7 +97,7 @@ func place() -> int:
 		return 0
 
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
-	lattice.occupy(brick_id, _cells_for(part, _ghost_transform))
+	lattice.occupy_boxes(brick_id, boxes_for(part, _ghost_transform))
 
 	_history.append({"undo": "remove", "brick": brick_id})
 	_redo.clear()
@@ -271,8 +271,8 @@ func _apply(step: Dictionary) -> Dictionary:
 		var to: Transform3D = step["transform"]
 		lattice.release(moving)
 		world.move_brick(moving, to)
-		lattice.occupy(moving,
-			_cells_for(library.mesh_for(was.part_id), to))
+		lattice.occupy_boxes(moving,
+			boxes_for(library.mesh_for(was.part_id), to))
 		return {"undo": "move", "brick": moving, "transform": previous}
 
 	if step.get("undo", "") == "recolor":
@@ -305,7 +305,8 @@ func _apply(step: Dictionary) -> Dictionary:
 	var at: Transform3D = step.get("transform", Transform3D.IDENTITY)
 	var new_id: int = world.add_brick(part_id, int(step.get("color", 0)), at)
 	if new_id != 0:
-		lattice.occupy(new_id, _cells_for(library.mesh_for(part_id), at))
+		lattice.occupy_boxes(new_id,
+			boxes_for(library.mesh_for(part_id), at))
 	return {"undo": "remove", "brick": new_id}
 
 
@@ -453,20 +454,25 @@ func move_selection(by: Vector3i) -> int:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var to := Transform3D(brick.transform.basis,
 			brick.transform.origin + shift)
-		var cells: Array[Vector3i] = _cells_for(
+		var packed: PackedInt32Array = boxes_for(
 			library.mesh_for(brick.part_id), to)
-		for cell: Vector3i in cells:
-			if cell.y < GROUND_CELL:
+		# Through the floor if any box starts below it. The low corner
+		# is every sixth int, so the test is the box's bottom rather
+		# than every cell inside it.
+		var n: int = 1
+		while n < packed.size():
+			if packed[n] < GROUND_CELL:
 				blocked = true
 				break
-		if blocked or lattice.collides(cells):
+			n += 6
+		if blocked or lattice.collides_boxes(packed):
 			blocked = true
 			break
-		landing[brick_id] = {"at": to, "cells": cells}
+		landing[brick_id] = {"at": to, "boxes": packed}
 
 	if blocked:
 		for brick_id: int in alive:
-			lattice.occupy(brick_id, _cells_for(
+			lattice.occupy_boxes(brick_id, boxes_for(
 				library.mesh_for(world.get_brick(brick_id).part_id),
 				was[brick_id]))
 		return 0
@@ -476,7 +482,7 @@ func move_selection(by: Vector3i) -> int:
 		steps.append({"undo": "move", "brick": brick_id,
 			"transform": was[brick_id]})
 		world.move_brick(brick_id, landing[brick_id]["at"])
-		lattice.occupy(brick_id, landing[brick_id]["cells"])
+		lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
 	_history.append({"undo": "group", "steps": steps})
 	_redo.clear()
 	return steps.size()
@@ -511,8 +517,8 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		target = landing
 
 	_ghost_transform = _settle(part, basis, target, hit)
-	var cells: Array[Vector3i] = _cells_for(part, _ghost_transform)
-	_ghost_valid = not lattice.collides(cells)
+	_ghost_valid = not lattice.collides_boxes(
+		boxes_for(part, _ghost_transform))
 
 	_ghost.mesh = part.surfaces[0]
 	_ghost.transform = _ghost_transform
@@ -569,6 +575,54 @@ func _rotated_bounds(part: Lbm.PartMesh, basis: Basis) -> AABB:
 
 
 ## The lattice cells a part's collision cover fills at a placement.
+## The same cover as [method _cells_for], kept as boxes.
+##
+## This is what everything that touches the lattice should use. A 2x4
+## brick is one box and nine thousand six hundred cells, and the cells
+## were being built, handed over, and merged straight back into the one
+## box they came from.
+## Turned covers already worked out, by part and angle.
+var _turned_cache: Dictionary = {}
+
+
+func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
+	if part == null:
+		return PackedInt32Array()
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	if part.boxes.is_empty():
+		# No cover was built for this part, so fall back to the bounding
+		# box by way of the cell path, which already handles the
+		# clearance that keeps two round bricks from touching.
+		return BrickLattice.compress(_cells_for(part, at))
+	if BrickLattice.is_square_to_grid(at.basis):
+		return BrickLattice.boxes_for(part.boxes, cell, at.basis)
+
+	# A turned part has no box image, so its cover is worked out cell by
+	# cell and merged back into runs, which is far too slow to repeat per
+	# brick. The shape depends only on the part and the angle and never
+	# on where it sits, so it is worked out once and shifted. Every brick
+	# in a section shares one angle, so a section of two hundred costs
+	# one.
+	var key: String = "%d|%s" % [part.get_instance_id(), at.basis]
+	var shape: PackedInt32Array = _turned_cache.get(key, PackedInt32Array())
+	if shape.is_empty():
+		shape = BrickLattice.boxes_for_turned(
+			part.boxes, Vector3i.ZERO, at.basis)
+		_turned_cache[key] = shape
+	var out := PackedInt32Array()
+	out.resize(shape.size())
+	var n: int = 0
+	while n < shape.size():
+		out[n] = shape[n] + cell.x
+		out[n + 1] = shape[n + 1] + cell.y
+		out[n + 2] = shape[n + 2] + cell.z
+		out[n + 3] = shape[n + 3] + cell.x
+		out[n + 4] = shape[n + 4] + cell.y
+		out[n + 5] = shape[n + 5] + cell.z
+		n += 6
+	return out
+
+
 func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 	if part == null:
 		return []

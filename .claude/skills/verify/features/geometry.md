@@ -7,7 +7,10 @@ can occupy the same millimetre.
 
 ## Sub-features
 
-- `occupancy lattice`: every part is a set of 2 LDU cells. A stud is 20 LDU
+- `occupancy lattice`: every part is a set of 2 LDU cells, **stored as the boxes
+  those cells came from**. `BrickLattice` keeps six ints per box, a coarse
+  two-stud bucket index, and an exact box-overlap test. An ordinary brick is one
+  box; a Technic beam is 36. A stud is 20 LDU
   across (10 cells), a plate 8 LDU tall (4 cells), a brick three plates. A
   placement names its lowest-leftmost-backmost cell.
 - `sideways building`: a part can be held by a stud that does not point up —
@@ -66,6 +69,38 @@ Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
 
 ## Gotchas
+
+- **The lattice stores boxes, and anything that asks it per *cell* is a bug.**
+  It used to be a Dictionary with one entry per 2 LDU cell — 9,600 for a single
+  2x4 brick — plus `_columns` holding the same volume again. Eight thousand
+  bricks took **9.24 GB**, which is more than a browser gives the whole app, so
+  the size of a model was capped by how collision was stored rather than by
+  anything about LEGO. Fifty thousand bricks now cost **180 MB** and 938 ms.
+
+  The migration's whole difficulty is that `brick_at` was a dictionary lookup
+  and is now a search of the boxes near a cell. Four places asked it per cell
+  and each had to become one box query — `_check_support` (the whole underside,
+  800 questions for a 2x4), `_section_sits` (every cell, then all 26 neighbours
+  of each), `_anything_in_reach` (a whole grown bounding volume), and
+  `_count_pieces` (every cell, to find what sits on top). If you add a fifth,
+  it will not look slow in review; it will quietly take the checker from three
+  seconds to forty. Ask the lattice about a box.
+
+- **Cells come *out* of the boxes, never worked out twice.** A turned part's
+  cover costs a separating-axis test on every candidate cell, so computing it
+  once as boxes and again as cells runs the expensive half twice:
+  `BrickLattice.cells_in(packed)` expands, and `Builder.boxes_for` caches turned
+  covers by part and angle, so a section of two hundred bricks pays for one.
+
+- **`PackedInt32Array` is a value type.** `(dict[key] as PackedInt32Array)
+  .append(x)` appends to a copy and throws it away. That made `compress()`
+  return almost nothing, so collisions and support silently vanished — 82
+  failures in `attach`. Read it out, append, put it back.
+
+- **Measure the baseline before optimising this.** `section_probe` was 28 s and
+  its four-failing-sections case 6.5 s before any of this. Three rounds were
+  spent optimising the hint sweep on the strength of a guess; disabling hints
+  entirely still took 42 s, which proved the time had never been there.
 
 - **"No studs on top" is not the same as "nothing grips".** The smooth-face
   advice first fired whenever no stud *reached* the part, which
