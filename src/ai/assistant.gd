@@ -2697,7 +2697,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 					+ "through, so nothing of the design arrived. It is "
 					+ "not wrong, it is too long to send in one piece. "
 					+ "Submit the structure first and add the rest with "
-					+ "edit_model, a few dozen bricks at a time.",
+					+ "edit_model, a few hundred bricks at a time.",
 			}
 		return {
 			"ok": false,
@@ -3047,8 +3047,24 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		errors += issues[kind].size()
 
 	var ok: bool = errors == 0 and not model.placements.is_empty()
-	var summary: String = ("%d bricks, buildable" % model.placements.size()
-		if ok else "%d problem%s" % [errors, "" if errors == 1 else "s"])
+	# What kind of problem, not merely how many.
+	#
+	# "156 problems" is what a run's log recorded about the worst
+	# submission of a five hundred brick building, and it says nothing
+	# anyone can act on — whether the design is colliding with itself,
+	# hanging things in the air, or naming parts that do not exist are
+	# three different faults with three different answers. The kinds are
+	# already counted; this says them.
+	var summary: String = "%d bricks, buildable" % model.placements.size()
+	if not ok:
+		var kinds: PackedStringArray = PackedStringArray()
+		var named: Array = issues.keys()
+		named.sort_custom(func(a: String, b: String) -> bool:
+			return (issues[a] as Array).size() > (issues[b] as Array).size())
+		for kind: String in named:
+			kinds.append("%s %d" % [kind, (issues[kind] as Array).size()])
+		summary = "%d problem%s (%s)" % [errors, "" if errors == 1 else "s",
+			", ".join(kinds)]
 
 	var feedback: String = _feedback(issues, summary, advice)
 	# Said, never counted.
