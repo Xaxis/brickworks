@@ -5311,10 +5311,21 @@ alongside the bricks you write by hand:
              a round tower   ellipse, wall 1, layers 12, rise 3
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
+             a wall          rectangle, wall 1, layers 12, rise 3
+             a room          rectangle, wall 1, layers 4, rise 3
 
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
+           Walls especially. Measured: a curtain wall 40 by 24 studs and \
+           twelve courses high is 192 parts out of fill — a hundred and \
+           sixty-eight 1x8 bricks and twenty-four 1x6, staggered and \
+           bonded, because fill lays the longest brick that fits each \
+           run. A castle run that wrote its walls out by hand instead \
+           used two hundred and twenty-three 1x2 bricks: more parts, \
+           every joint in a column, and a model made of two shapes \
+           where a real set of that size has a hundred and seventy. If \
+           a surface is a rectangle or a ring, fill it.
 
 A four thousand part model is not too large to build. It is too large to \
 dictate, which is a different problem, and this is the answer to it.

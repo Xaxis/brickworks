@@ -155,6 +155,7 @@ func _initialize() -> void:
 	_check("a taper that comes to a point stops there, %d plates"
 		% cone.size(), not cone.is_empty() and cone.size() < 200)
 
+	_a_wall_is_long_bricks()
 	_wedges_read_off_the_parts()
 	_wedges_go_in_symmetrically()
 	_holds_up()
@@ -310,6 +311,43 @@ func _check(what: String, ok: bool) -> void:
 
 ## Are the wedge shapes the shapes the parts actually have?
 ##
+## A wall is the shape fill is best at and the one a design was most
+## likely to write out by hand.
+##
+## Measured on a castle run: it dictated its curtain walls as two hundred
+## and twenty-three 1x2 bricks, every joint in a column, giving a
+## thousand-part model made of twenty-two shapes where a real set of that
+## size has a hundred and seventy. fill lays the longest brick that fits
+## each run, so the same wall is far fewer parts and bonded — and the
+## prompt now quotes these numbers, which is why they are asserted here
+## rather than left to drift.
+func _a_wall_is_long_bricks() -> void:
+	print("")
+	print("  a curtain wall, which fill is best at")
+	var trouble: Array = []
+	var made: Array = Patterns.expand([{
+		"pattern": "fill", "shape": "rectangle",
+		"at": {"x": 0, "y": 0, "z": 0},
+		"across": 40, "deep": 24, "wall": 1,
+		"layers": 12, "rise": 3, "color": 71,
+	}], [], trouble, _library)
+	_check("a 40 by 24 wall twelve courses high is said in one object, "
+		+ "%d parts%s" % [made.size(), "" if trouble.is_empty()
+			else " — but %s" % str(trouble)],
+		trouble.is_empty() and made.size() == 192)
+	var counted: Dictionary = {}
+	for raw: Variant in made:
+		var id: String = str((raw as Dictionary).get("part", "?"))
+		counted[id] = int(counted.get(id, 0)) + 1
+	_check("laid as %d 1x8 and %d 1x6 bricks"
+		% [int(counted.get("3008", 0)), int(counted.get("3009", 0))],
+		int(counted.get("3008", 0)) == 168
+			and int(counted.get("3009", 0)) == 24)
+	# The thing the castle did, which must not be what fill does.
+	_check("and not one 1x2, which is what writing it out by hand gave",
+		not counted.has("3004"))
+
+
 ## A fill that lays wedges has to know which cells of a wedge's
 ## footprint it covers and which it leaves to the outside of the shape.
 ## Writing that down by hand is how a model gets two left wings, so it

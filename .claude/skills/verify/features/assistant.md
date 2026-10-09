@@ -257,6 +257,24 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   version put the counts on one path and the complaints on another, and neither
   was the path that mattered.
 
+- **The monotony was the design's choice, not the shorthand's — measured.** A
+  castle run reached **1,106 bricks buildable** (against 713 and 496 earlier the
+  same evening) and was *less* like a set than the smaller one: 22 shapes against
+  the 173 a real set of that size has, 4 colours against 22, and **223 of one
+  1x2 brick**. The obvious suspect was `fill` and `repeat` — the shorthand that
+  makes a thousand parts sayable — so it was tested directly: `fill` on a 40×24
+  wall, one stud thick, twelve courses, gives **192 parts, 168 of them 1x8 and 24
+  of them 1x6, and not one 1x2.** Staggered and bonded, because it lays the
+  longest brick that fits each run. The design wrote its walls out by hand
+  instead, and got more parts, every joint in a column, and two shapes.
+
+  So the lever is guidance, not the tiler: `fill`'s worked examples listed a
+  dome, a cone, a tower, a hull and a bowl, and **no wall** — the one shape it is
+  best at and the one most likely to be dictated by hand. The table names a wall
+  and a room now, with those measured numbers in the prose, and
+  `patterns_probe._a_wall_is_long_bricks` asserts them so the prompt cannot drift
+  from what the code does.
+
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had
