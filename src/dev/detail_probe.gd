@@ -161,6 +161,8 @@ func _run() -> void:
 		"...and why: it is on the tail of real sets its size")
 	_ok(back.contains("pieces it uses once or twice: the whole model has 0"),
 		"...and where the gap is: the pieces a real set uses once or twice")
+	_ok(back.contains("the whole model is 100% Light Bluish Grey"),
+		"...and that it is all one colour, against real sets its size")
 	_ok(not _said("detailing the wall"), "the wall waits")
 	await _reply(assistant, [{"type": "text", "text": "Still done."}])
 	_ok(_said("detailing the wall (2 of 2)"),

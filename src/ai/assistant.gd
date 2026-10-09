@@ -1375,7 +1375,15 @@ func _detail_next(also: Array = []) -> bool:
 		var real: Dictionary = library.normal_for(whole.size())
 		var once: int = _once_or_twice(whole)
 		var few: bool = once < int(real.get("accents_thin", 0))
-		if thin or few:
+		# Or it is mostly one colour, on the tail of real sets. A real
+		# castle set is a median 31% its main colour; every castle built
+		# here was 49-55%, with 72-86% in its top two colours where a
+		# real one has 49% — and the one that read best was the least
+		# grey of them.
+		var colour: Array = _main_colour(whole)
+		var high: int = int(real.get("main_colour_high", 0))
+		var grey: bool = high > 0 and int(colour[1]) > high
+		if thin or few or grey:
 			_sent_back = true
 			var name: String = _detailing["name"]
 			progress.emit("sent the %s back: %d shapes in %d parts, %d "
@@ -1399,6 +1407,15 @@ func _detail_next(also: Array = []) -> bool:
 						+ "set in twenty" if few else "")
 					+ ". A detail copied onto every tower counts as one "
 					+ "shape however many towers there are.")
+			if grey:
+				said.append("And the whole model is %d%% %s, where a real "
+					% [int(colour[1]), _colour_name(int(colour[0]))]
+					+ "set its size is about %d%% its main colour and more "
+					% int(real.get("main_colour", 0))
+					+ "than %d%% is more one colour than all but one set in " % high
+					+ "twenty. A second colour where something changes — "
+					+ "a band, a roof, a door, a trim — is what a real set "
+					+ "does with it.")
 			said.append("One more round on the %s: where does something " % name
 				+ "change that is still the same piece? Then stop.")
 			_messages.append({"role": "user", "content": " ".join(said)})
@@ -1659,6 +1676,20 @@ func _bounds_of(bricks: Array[BrickWorld.Brick]) -> AABB:
 		box = one if first else box.merge(one)
 		first = false
 	return box
+
+
+## The commonest colour among some bricks, and its share in percent.
+func _main_colour(bricks: Array[BrickWorld.Brick]) -> Array:
+	var per: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		per[brick.color_code] = int(per.get(brick.color_code, 0)) + 1
+	var best: int = 0
+	var most: int = 0
+	for code: int in per:
+		if int(per[code]) > most:
+			most = int(per[code])
+			best = code
+	return [best, 0 if bricks.is_empty() else 100 * most / bricks.size()]
 
 
 ## How many shapes some bricks use only once or twice.

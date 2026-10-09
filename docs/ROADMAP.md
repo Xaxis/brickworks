@@ -205,7 +205,13 @@ How big the first structure comes out is mostly the run, not the code:
    within sets. **Needs: a measurement of which parts appear together,
    conditioned on kind.**
 
-5. **Colour as structure.** 13 against 28 at best. The kinds data gives each kind
+5. **Colour as structure — measured 2026-10-09, and on the tail.** A
+   real castle set is a median 31% its main colour (52% at the 95th) and
+   49% in its top two. Every castle built here was 49-55% one colour and
+   72-86% in its top two — and run 14, the best picture, was the least
+   grey of the recent ones. Each band carries the main-colour median and
+   tail now, and a pass is sent back when the whole model is past it.
+   Run 19 measures it. Colours, counted, are 13 against 28 at best. The kinds data gives each kind
    its palette by lift; nothing says a second colour belongs at a string
    course, a lintel, a roof band. Likely falls out of (3).
 

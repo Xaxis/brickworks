@@ -300,7 +300,7 @@ def set_norms() -> dict:
 
     bands = []
     for low, high in SET_BANDS:
-        lots, shapes, most, colours, accents = [], [], [], [], []
+        lots, shapes, most, colours, accents, main = [], [], [], [], [], []
         for items in per_set.values():
             total = sum(q for _, _, q in items)
             if not (low <= total < high):
@@ -318,6 +318,14 @@ def set_norms() -> dict:
             for p, _, q in items:
                 per_part[p] = per_part.get(p, 0) + q
             accents.append(float(sum(1 for q in per_part.values() if q <= 2)))
+            # How much of it is its commonest colour, by parts.  A real
+            # castle set is a median 31% its main colour and 52% at the
+            # 95th; every castle built here was 49-55%, with 72-86% in its
+            # top two where a real one has 49%.
+            per_colour: dict[str, int] = {}
+            for _p, c, q in items:
+                per_colour[c] = per_colour.get(c, 0) + q
+            main.append(100.0 * max(per_colour.values()) / total)
         if len(lots) < 25:          # too few to be a norm
             continue
         # The medians say what a real set of this size is like, and are
@@ -345,6 +353,8 @@ def set_norms() -> dict:
             "most_of_one_high": round(at(most, 0.95)),
             "accents": round(middle(accents)),
             "accents_thin": round(at(accents, 0.05)),
+            "main_colour": round(middle(main)),
+            "main_colour_high": round(at(main, 0.95)),
         })
     return {"source": "Rebrickable set inventories", "bands": bands}
 
