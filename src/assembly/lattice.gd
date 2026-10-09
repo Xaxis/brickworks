@@ -224,6 +224,27 @@ static func _note_run(runs: Dictionary, from_x: int, to_x: int,
 ## against the turned box, and doing that once for the boxes and again
 ## for the cells runs the expensive half twice. The boxes already know
 ## the answer.
+## The lowest and highest cell a set of boxes covers, as [low, high].
+##
+## The same two corners walking every cell would find, in six reads per
+## box instead of nine thousand six hundred per brick. A box already is
+## its corners; expanding it to cells to find them back was most of what
+## checking a large model cost.
+static func corners_in(packed: PackedInt32Array) -> Array:
+	if packed.is_empty():
+		return []
+	var lo := Vector3i(packed[0], packed[1], packed[2])
+	var hi := Vector3i(packed[3] - 1, packed[4] - 1, packed[5] - 1)
+	var n: int = 6
+	while n < packed.size():
+		lo = Vector3i(mini(lo.x, packed[n]), mini(lo.y, packed[n + 1]),
+			mini(lo.z, packed[n + 2]))
+		hi = Vector3i(maxi(hi.x, packed[n + 3] - 1),
+			maxi(hi.y, packed[n + 4] - 1), maxi(hi.z, packed[n + 5] - 1))
+		n += 6
+	return [lo, hi]
+
+
 static func cells_in(packed: PackedInt32Array) -> Array[Vector3i]:
 	var out: Array[Vector3i] = []
 	var n: int = 0

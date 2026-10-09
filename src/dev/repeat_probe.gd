@@ -1,0 +1,167 @@
+## Can a model say something too large to dictate?
+##
+##   godot --headless --path . --script src/dev/repeat_probe.gd
+##
+## The lattice holds fifty thousand bricks. A reply holds about a
+## thousand. Everything between those two numbers was unreachable, not
+## because it could not be built but because it could not be said.
+##
+## A real seven thousand part set is a few hundred distinct parts and a
+## great deal of repetition, so the way to say one is to describe a
+## module and repeat it. This is the proof that a short description
+## reaches ten thousand bricks and that the copies land where they
+## should.
+extends SceneTree
+
+var _failures: int = 0
+
+
+func _initialize() -> void:
+	var library := PartLibrary.new()
+	if not library.load_catalogue():
+		print("no catalogue")
+		quit(1)
+		return
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+
+	print("\none bay, said seven times")
+	var row: Assistant.Model = assistant._read_model(_bay(1, 6, {
+		"from": "bay", "times": 6, "dx": 20.0}))
+	_ok(assistant._repeat_trouble.is_empty(),
+		"no complaint: %s" % _said(assistant))
+	_ok(row.placements.size() == 7 * 5,
+		"35 bricks from 5 described (%d)" % row.placements.size())
+	_ok(row.sections.size() == 7,
+		"seven sections (%d)" % row.sections.size())
+	var furthest: Assistant.Section = row.sections.get("bay 7")
+	_ok(furthest != null and is_equal_approx(furthest.x, 120.0),
+		"the last copy is 120 studs along (%s)"
+		% ("missing" if furthest == null else str(furthest.x)))
+	var ids: int = 0
+	for put: Assistant.Placement in row.placements:
+		if put.id != 0:
+			ids += 1
+	_ok(ids == 0, "no copy carries a brick number, so none can be removed by one")
+
+	print("\nturned about its own origin, not slid along")
+	var ring: Assistant.Model = assistant._read_model(_bay(1, 7, {
+		"from": "bay", "times": 7, "degrees": 45.0, "axis": "y"}))
+	var round_the_back: Assistant.Section = ring.sections.get("bay 5")
+	_ok(round_the_back != null and is_equal_approx(round_the_back.degrees, 180.0),
+		"the fifth of eight faces backwards (%s)"
+		% ("missing" if round_the_back == null else str(round_the_back.degrees)))
+
+	print("\nwhat it says when it cannot")
+	var nothing: Assistant.Model = assistant._read_model(_bay(1, 1, {
+		"from": "nacelle", "times": 4}))
+	_ok(_said(assistant).contains("no section called"),
+		"a section that was never declared is named as such")
+	_ok(_said(assistant).contains("bay"),
+		"...along with the ones that were")
+	_ok(nothing.placements.size() == 5, "and nothing is copied")
+
+	var empty: Dictionary = _bay(1, 1, {"from": "annexe", "times": 4})
+	empty["sections"].append({"name": "annexe", "x": 0, "y": 0, "z": 0,
+		"axis": "y", "degrees": 0})
+	assistant._read_model(empty)
+	_ok(_said(assistant).contains("no bricks in it"),
+		"a section declared but never filled is told so")
+
+	assistant._read_model(_bay(1, 1, {"from": "bay", "times": 9999}))
+	_ok(_said(assistant).contains("is the most"),
+		"a mistyped times= is refused: %s" % _said(assistant).substr(0, 60))
+
+	print("\nten thousand bricks from two hundred and fifty")
+	var began: int = Time.get_ticks_msec()
+	var wall: Assistant.Model = assistant._read_model(_bay(50, 39, {
+		"from": "bay", "times": 39, "dx": 20.0}))
+	var spent: int = Time.get_ticks_msec() - began
+	_ok(assistant._repeat_trouble.is_empty(),
+		"no complaint: %s" % _said(assistant))
+	_ok(wall.placements.size() == 10000,
+		"%d bricks, said in 250" % wall.placements.size())
+	print("     expanded in %d ms" % spent)
+	began = Time.get_ticks_msec()
+	var report: Dictionary = assistant._check(wall, true)
+	var checked: int = Time.get_ticks_msec() - began
+	print("     checked in %d ms — %s" % [checked, report.get("summary", "")])
+	_ok(bool(report.get("ok", false)),
+		"and the whole wall holds together")
+	_ok(checked < 60000, "checked in under a minute (%d ms)" % checked)
+
+	print("\nand reaches the baseplate")
+	began = Time.get_ticks_msec()
+	assistant._apply(wall)
+	await process_frame
+	print("     built in %d ms" % (Time.get_ticks_msec() - began))
+	var built: int = 0
+	var furthest_x: float = 0.0
+	var tallest: float = 0.0
+	for brick: BrickWorld.Brick in world.bricks():
+		built += 1
+		furthest_x = maxf(furthest_x, brick.transform.origin.x)
+		tallest = maxf(tallest, brick.transform.origin.y)
+	_ok(built == 10000, "%d bricks really on the baseplate" % built)
+	# 39 copies at 20 studs is 780, and the far brick of a bay is 16
+	# studs further along again. One stud is 20 LDU.
+	_ok(absf(furthest_x - (780.0 + 18.0) * 20.0) < 60.0,
+		"the last bay stands 780 studs along (%.0f LDU)" % furthest_x)
+	_ok(tallest > 48.0 * 8.0,
+		"and the wall is fifty courses high (%.0f LDU)" % tallest)
+
+	print("\nand the model is told it exists")
+	# A capability nothing mentions is a capability nothing uses. This
+	# is the only thing standing between the mechanism and a design
+	# that dictates a stadium by hand because it does not know better.
+	var rules: String = assistant.guidance()
+	_ok(rules.contains("repeat_section"), "the prompt names it")
+	_ok(rules.contains("from: \"bay\", times: 39"),
+		"...with a worked example of a wall")
+	_ok(rules.contains("decide what the"),
+		"...and says to work at the scale the thing is")
+
+	print("")
+	if _failures == 0:
+		print("a model too large to dictate is one module and a count")
+	else:
+		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
+	quit(1 if _failures > 0 else 0)
+
+
+## A wall bay: 2x4 bricks, five to a course, so many courses high.
+func _bay(courses: int, _times: int, repeat: Dictionary) -> Dictionary:
+	var bricks: Array = []
+	for layer: int in courses:
+		for across: int in 5:
+			bricks.append({"part": "3001", "color": 7,
+				"x": across * 4.0 + (2.0 if layer % 2 == 1 else 0.0),
+				"y": layer * 3.0, "z": 0.0, "section": "bay"})
+	return {
+		"name": "wall", "description": "a wall of bays",
+		"sections": [{"name": "bay", "x": 0, "y": 0, "z": 0,
+			"axis": "y", "degrees": 0}],
+		"bricks": bricks,
+		"repeat_section": [repeat],
+	}
+
+
+func _said(assistant: Assistant) -> String:
+	return " ".join(PackedStringArray(assistant._repeat_trouble))
+
+
+func _ok(passed: bool, said: String) -> void:
+	print("  %s  %s" % ["ok  " if passed else "FAIL", said])
+	if not passed:
+		_failures += 1

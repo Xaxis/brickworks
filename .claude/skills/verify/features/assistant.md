@@ -45,6 +45,13 @@ fixing what it got wrong.
   `fill` takes `wall`, `layers`, `rise` and `shrink`, which between them say a
   dome, a cone, a round tower, a straight hull and a flaring bowl in one object.
   Expansion happens here, from data: nothing runs anybody's code.
+- `a module said again`: `repeat_section`, on both `submit_design` and
+  `edit_model`, over `Assistant._expand_repeats`. Build the repeating unit once
+  as a section, then give `{from, times, dx, dy, dz, degrees, axis}` and get a
+  copy per step — each one a section of its own, so a later edit can turn one
+  without touching the rest. `degrees` turns about the section's own origin, so
+  it walks a module round a tower. Capped at `MOST_COPIES` 400 and
+  `MOST_BRICKS` 50,000, which is the lattice's own ceiling and not a guess.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   Eight constructions with real part numbers and real coordinates — a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
@@ -86,6 +93,7 @@ godot --headless --path . --script src/dev/brain_probe.gd       # the request ca
 godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets in
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out
+godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```
@@ -166,6 +174,29 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   because a staircase of plates still satisfies "build a saucer". A technique the
   brief demands gets used; one that merely improves the result has to be in a tool
   the design cannot avoid.
+- **The ceiling on model size was never the lattice — and it was never the
+  reply either.** The lattice holds 50,000 bricks in 180 MB. A reply holds about
+  a thousand placements. Everything between was unreachable, and `patterns`
+  only reaches shapes it has verbs for: a dome, a hull, a row. A castle wall of
+  forty bays is none of those. `repeat_section` closes it, and the measured
+  claim is the probe's: **250 placements described, 10,000 bricks built**, 780
+  studs along and fifty courses high, checked in one piece and really on the
+  baseplate.
+
+  What it cost to find out: checking those 10,000 bricks took **108 seconds**,
+  and two thirds of that was work nobody needed. Walking all 9,600 cells of
+  every brick to find its two corners was 20s — a box *is* its corners, so
+  `BrickLattice.corners_in` reads them in six reads per box. `_longest_staircase`
+  was 36s: quadratic in the width of the model, because a flat edge never breaks
+  the run and every extension rechecks everything before it. A run of equal
+  steps lies exactly on its chord, so there is nothing to measure; the scan now
+  skips it and carries a 2-second budget besides, the same way the hint sweep
+  does. **22 seconds** now, with every staircase answer unchanged — `rules_probe`
+  is what says so.
+
+  Measure before you cut. The first guess was the cell expansion itself, which
+  turned out to be 10.9s of the 108.
+
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had

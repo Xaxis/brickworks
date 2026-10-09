@@ -260,6 +260,22 @@ class Placement extends RefCounted:
 		p.section = str(raw.get("section", "")).strip_edges()
 		return p
 
+	## This brick again, in another section. A copy is a new brick, so
+	## it carries no id: "remove 41" must never reach forty other
+	## bricks because one was repeated.
+	func copied_into(into: String) -> Placement:
+		var p := Placement.new()
+		p.part = part
+		p.color = color
+		p.x = x
+		p.y = y
+		p.z = z
+		p.face = face
+		p.rot = rot
+		p.odd_face = odd_face
+		p.section = into
+		return p
+
 	func where() -> String:
 		return "%s,%s,%s" % [_num(x), _num(y), _num(z)]
 
@@ -1370,6 +1386,13 @@ func _edit(args: Dictionary) -> Model:
 	for raw: Variant in args.get("add", []):
 		model.placements.append(Placement.from_dict(raw))
 		_touched += 1
+
+	# After the adds, so one call can declare a section, fill it and
+	# repeat it — which is the whole point of being able to repeat.
+	var before: int = model.placements.size()
+	_repeat_trouble = []
+	_expand_repeats(model, args, _repeat_trouble)
+	_touched += model.placements.size() - before
 	_touched += gone.size()
 	return model
 
@@ -2698,11 +2721,116 @@ func _read_model(args: Dictionary) -> Model:
 		_pattern_trouble = trouble
 	else:
 		_pattern_trouble = []
+
+	_repeat_trouble = []
+	_expand_repeats(model, args, _repeat_trouble)
 	return model
 
 
 ## What was wrong with the last set of patterns, said by the check.
 var _pattern_trouble: Array = []
+
+## And with the last set of repeats. Kept apart from the patterns so the
+## summary can name which of the two went wrong: a model told only that
+## something was wrong with its shorthand has two shorthands to check.
+var _repeat_trouble: Array = []
+
+
+## How many copies one repeat may make, and how many bricks they may
+## come to. The lattice holds fifty thousand bricks in 180 MB, so the
+## ceiling is the lattice's and not a guess; these stop a mistyped
+## times= from asking for a model nothing can hold.
+const MOST_COPIES := 400
+const MOST_BRICKS := 50000
+
+
+## Copy a section that is already built to new places and angles.
+##
+## This is what makes a large model sayable. A castle wall of forty bays
+## is ten thousand bricks, which is more than a reply holds — and it is
+## also one bay described once and repeated thirty-nine times. Real sets
+## are built the second way: a 7,000 part model is a few hundred distinct
+## parts and a great deal of repetition. Nothing here could say that, so
+## every large model had to be dictated brick by brick, and the limit on
+## how big a model could be was the limit on how much fits in one reply.
+##
+## Copies are expanded after the bricks, so one call can declare a
+## section, fill it, and repeat it.
+##
+## The step is applied per copy, so times=7 with dx=24 lays seven bays in
+## a row. degrees= steps too, and a section turns about its own origin:
+## put the origin at the centre of a tower and degrees=45 with times=7
+## walks a module round it.
+static func _expand_repeats(model: Model, args: Dictionary,
+		trouble: Array) -> void:
+	for raw: Variant in args.get("repeat_section", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var order: Dictionary = raw
+		var from: String = str(order.get("from", "")).strip_edges()
+		if not model.sections.has(from):
+			# Naming what there is, because the likeliest mistake is a
+			# section that was never declared and the second likeliest
+			# is a near miss on its name.
+			var known: String = ", ".join(
+				PackedStringArray(model.sections.keys()))
+			trouble.append(("There is no section called \"%s\". " % from)
+				+ ("The sections here are: %s." % known if not known.is_empty()
+					else "This model has no sections yet.")
+				+ " Only a section can be repeated: build the piece you"
+				+ " want copied with section= on each of its bricks,"
+				+ " declare that section, then repeat it.")
+			continue
+		var source: Section = model.sections[from]
+		var body: Array[Placement] = []
+		for placement: Placement in model.placements:
+			if placement.section == from:
+				body.append(placement)
+		if body.is_empty():
+			trouble.append(("Section \"%s\" has no bricks in it, so " % from)
+				+ "repeating it would copy nothing. Place its bricks "
+				+ ("first, with section=\"%s\" on each." % from))
+			continue
+
+		var times: int = maxi(1, int(order.get("times", 1)))
+		if times > MOST_COPIES:
+			trouble.append("times=%d is more copies than %s can "
+				% [times, from] + "take; %d is the most." % MOST_COPIES)
+			continue
+		var room: int = MOST_BRICKS - model.placements.size()
+		if body.size() * times > room:
+			trouble.append(("%d copies of \"%s\" is %d bricks, and there "
+				% [times, from, body.size() * times])
+				+ ("is room for %d. " % maxi(0, room))
+				+ "Build it in pieces, or make the section smaller.")
+			continue
+
+		var step := Vector3(float(order.get("dx", 0)),
+			float(order.get("dy", 0)), float(order.get("dz", 0)))
+		var turn: float = float(order.get("degrees", 0))
+		var axis: String = str(order.get("axis", source.axis)).to_lower()
+		if not ["x", "y", "z"].has(axis):
+			axis = source.axis
+		var base: String = str(order.get("name", from)).strip_edges()
+		if base.is_empty():
+			base = from
+
+		for n: int in range(1, times + 1):
+			var name: String = "%s %d" % [base, n + 1]
+			var at: int = 2
+			while model.sections.has(name):
+				at += 1
+				name = "%s %d" % [base, at]
+			var copy := Section.new()
+			copy.name = name
+			copy.x = source.x + step.x * n
+			copy.y = source.y + step.y * n
+			copy.z = source.z + step.z * n
+			copy.axis = axis
+			copy.degrees = source.degrees + turn * n
+			model.sections[name] = copy
+			for placement: Placement in body:
+				model.placements.append(placement.copied_into(name))
 
 
 ## The sections a model declares, before any brick refers to one.
@@ -2758,6 +2886,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 
 	for said: Variant in _pattern_trouble:
 		_note(issues, "pattern", str(said))
+	for said: Variant in _repeat_trouble:
+		_note(issues, "repeat", str(said))
 
 	if model.placements.is_empty():
 		# Which of the two this is matters enormously.
@@ -3022,16 +3152,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		lattice.occupy_boxes(index + 1, packed)
 		cells_of[index] = cells
 		boxes_of[index] = packed
-		# The corners, kept while the cells are in hand. Three checks
-		# below want them and each used to find them by walking every
-		# cell again — which on a four hundred brick model is three more
-		# passes over nearly four million of them.
-		var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
-		var hi := Vector3i(-0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF)
-		for cell: Vector3i in cells:
-			lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
-			hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
-		box_of[index] = [lo, hi]
+		# The corners, read off the boxes. Three checks below want them,
+		# and finding them by walking every cell is nine thousand six
+		# hundred reads for a number six of them give: on a ten thousand
+		# brick wall that one loop was twenty seconds of the check.
+		box_of[index] = BrickLattice.corners_in(packed)
 
 	# Support is checked in world coordinates even for a section that
 	# has been carried somewhere at an angle, and that is not an
@@ -3210,6 +3335,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 ## hear about a chamfered corner.
 const SHORTEST_STAIRCASE := 4
 
+## How long the outline scan may take. Advice, so seconds and not
+## minutes.
+const OUTLINE_WITHIN := 2.0
+
 ## Above this share in one colour, a model reads as unfinished rather
 ## than as a thing somebody chose the colours of.
 ##
@@ -3275,7 +3404,16 @@ func _stepped_outline(cells_of: Dictionary, box_of: Dictionary) -> String:
 	# about the measuring, not about the model.
 	var longest: int = 0      ## studs across
 	var deep: int = 0         ## and how far it moves in that distance
+	# And a budget, for the same reason the hint sweep has one: this is
+	# advice, and a check must not spend minutes on advice. A genuine
+	# staircase is as deep as it is long, so a run long enough to cost
+	# real time describes a diagonal hundreds of studs across — and the
+	# longest one found by then is still true, merely not provably the
+	# longest.
+	var until: float = Time.get_unix_time_from_system() + OUTLINE_WITHIN
 	for course: Variant in _courses(cells_of, box_of).values():
+		if Time.get_unix_time_from_system() > until:
+			break
 		var layer: Array = course
 		var far: Dictionary = layer[0]
 		var near: Dictionary = layer[1]
@@ -3373,12 +3511,33 @@ func _longest_staircase(far: Dictionary, near: Dictionary) -> Array:
 			# whole point: a staircase is a line drawn in steps.
 			var at: int = start
 			var ran: int = start
+			# Whether every step so far has been the same size, which
+			# makes the run exactly a line and the scan below pointless.
+			#
+			# An edge that does not move is the commonest case there is
+			# — any flat wall — and it is also the worst for the scan,
+			# because the run never breaks and every extension rechecks
+			# everything before it. Quadratic in the width of the model:
+			# invisible on forty studs, thirty-six seconds on a wall
+			# eight hundred studs long. A run of equal steps has every
+			# point exactly on its chord, deviation zero, so there is
+			# nothing to measure.
+			var level: bool = true
+			var step_size: int = 0
 			while at < columns.size() - 1 \
 					and columns[at + 1] == columns[at] + 1:
 				at += 1
 				var span: int = columns[at] - columns[start]
 				var rise: float = float(edge[columns[at]]
 					- edge[columns[start]])
+				var moved_by: int = edge[columns[at]] - edge[columns[at - 1]]
+				if at == start + 1:
+					step_size = moved_by
+				elif level and moved_by != step_size:
+					level = false
+				if level:
+					ran = at
+					continue
 				var straight: bool = true
 				for n: int in range(start + 1, at):
 					var want: float = float(edge[columns[start]]) \
@@ -4644,7 +4803,7 @@ func clear_built() -> void:
 
 
 func _system_prompt() -> String:
-	return _rules() + _what_a_set_is_made_of()
+	return _rules() + _what_a_set_is_made_of() + _what_sets_are_built_from()
 
 
 ## The shape of a real set, read out of the catalogue rather than
@@ -4673,6 +4832,44 @@ func _what_a_set_is_made_of() -> String:
 		+ "detailed. The way out is not more parts, it is more different "
 		+ "parts — a tile where the wall turns, a bracket for a sign, a "
 		+ "slope where the roof meets the gutter.")
+
+
+## The parts real sets are built from, and nothing about taste.
+##
+## Everything else in this prompt about what to reach for was written by
+## me: tile a roof, curve a bonnet, use a bracket for a sign. Good
+## advice, and still only advice. This is the catalogue counting every
+## set inventory there is, and the first thing it says is that a LEGO set
+## is mostly plates — the 2x4 brick that everybody pictures when they
+## think of LEGO is twenty-second on the list.
+##
+## Worth the room it takes because a design reaches for what it can
+## remember, and what a model remembers about LEGO is bricks.
+func _what_sets_are_built_from() -> String:
+	if library == null:
+		return ""
+	var staples: Array[PartLibrary.PartInfo] = library.staples(30)
+	if staples.size() < 10:
+		return ""
+	var lines: PackedStringArray = PackedStringArray()
+	for info: PartLibrary.PartInfo in staples:
+		var name: String = " ".join(
+			PackedStringArray(info.name.split(" ", false)))
+		lines.append("  %-8s %-42s %d sets" % [info.id, name, info.in_sets])
+	return ("\n\nTHE PARTS REAL SETS ARE MADE OF\nThe thirty most used "
+		+ "parts in LEGO history, counted over every catalogued set "
+		+ "inventory:\n" + "\n".join(lines)
+		+ "\n\nRead the shape of that list, not the individual numbers. A "
+		+ "LEGO set is mostly plates: the 2x4 brick everyone pictures is "
+		+ "twenty-second, under the 1x1 round plate and four sizes of "
+		+ "tile. Plates let a shape be refined a plate at a time where "
+		+ "bricks force it in threes, and tiles are what makes a surface "
+		+ "read as a surface. If your design is mostly bricks, it is "
+		+ "built the way a child builds and not the way a set is "
+		+ "designed.\nThese are the parts to reach for when nothing "
+		+ "special is wanted. Reach past them deliberately, not by "
+		+ "accident: search_parts ranks by what sets really use, so the "
+		+ "first result for a shape is usually the right one.")
 
 
 func _rules() -> String:
@@ -4927,6 +5124,30 @@ alongside the bricks you write by hand:
 
 A four thousand part model is not too large to build. It is too large to \
 dictate, which is a different problem, and this is the answer to it.
+
+AND BEYOND THAT, A MODULE SAID AGAIN
+Above a few thousand parts even patterns are not enough, because the \
+reply itself runs out of room. Real large sets are not large \
+descriptions: a seven thousand part model is a few hundred distinct \
+parts and a great deal of repetition — a wall is one bay forty times, a \
+hull is one rib twenty times, a roof is one truss again and again.
+  Build the module once as a section, then repeat_section it:
+
+    sections        [{name: "bay", x: 0, y: 0, z: 0, axis: "y", degrees: 0}]
+    bricks          the bay, each brick with section: "bay"
+    repeat_section  [{from: "bay", times: 39, dx: 20}]
+
+Two hundred and fifty bricks described, ten thousand built, and they \
+are checked together like anything else. Each copy is a section of its \
+own named "bay 2", "bay 3", and so on, so a later edit can move or turn \
+one of them without touching the rest.
+  dx, dy and dz step each copy further than the last. degrees turns \
+each copy further, about the section's own origin — so put that origin \
+at the centre of a tower and degrees: 45, times: 7 walks the module \
+round it. Both at once makes a spiral.
+  Work at the scale the thing is. Do not dictate a stadium stand by \
+hand because you can dictate four hundred bricks of it: decide what the \
+repeating unit is, build that one well, and say how many.
 
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
@@ -5461,6 +5682,36 @@ func _tools() -> Array:
 		"additionalProperties": false,
 	}
 
+	# One built section, said again somewhere else. A large model is
+	# repetition, and this is how it is said.
+	var repeat_section: Dictionary = {
+		"type": "object",
+		"properties": {
+			"from": {"type": "string", "description":
+				"the name of a section that already has bricks in it"},
+			"times": {"type": "integer", "description":
+				"how many copies to make, each one step further than "
+				+ "the last"},
+			"dx": {"type": "number", "description":
+				"studs across, per copy"},
+			"dy": {"type": "number", "description": "plates up, per copy"},
+			"dz": {"type": "number", "description":
+				"studs deep, per copy"},
+			"degrees": {"type": "number", "description":
+				"turned this much further per copy, about the section's "
+				+ "own origin. Put that origin at the centre of a tower "
+				+ "and this walks the copies round it."},
+			"axis": {"type": "string", "enum": ["x", "y", "z"],
+				"description":
+					"which way that pin runs. Defaults to the source "
+					+ "section's."},
+			"name": {"type": "string", "description":
+				"what to call the copies. They are numbered from 2."},
+		},
+		"required": ["from", "times"],
+		"additionalProperties": false,
+	}
+
 	return [
 		{
 			"name": "search_parts",
@@ -5650,6 +5901,11 @@ func _tools() -> Array:
 							+ "exists a new angle or position — which "
 							+ "moves everything in it without naming a "
 							+ "single brick."},
+					"repeat_section": {"type": "array",
+						"items": repeat_section, "description":
+							"say a section again somewhere else. One bay "
+							+ "of a wall, repeated — rather than forty "
+							+ "bays dictated."},
 				},
 				"additionalProperties": false,
 			},
@@ -5755,6 +6011,7 @@ func _tools() -> Array:
 					"bricks": {"type": "array", "items": brick},
 					"patterns": {"type": "array", "items": pattern},
 					"sections": {"type": "array", "items": section},
+					"repeat_section": {"type": "array", "items": repeat_section},
 				},
 				"required": ["name", "description", "bricks"],
 				"additionalProperties": false,

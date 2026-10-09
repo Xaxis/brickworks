@@ -1,6 +1,6 @@
 [
   {
-    "description": "Find real parts by description. Returns part numbers with their footprint and height. Use this instead of guessing a part number.",
+    "description": "Find real parts by description. Returns part numbers with their footprint, height and the colours they were really made in. Use this instead of guessing a part number.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -80,6 +80,152 @@
           },
           "type": "array"
         },
+        "patterns": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "about": {
+                "description": "mirror: which way the line runs",
+                "enum": [
+                  "x",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "across": {
+                "description": "fill: studs in x",
+                "type": "number"
+              },
+              "at": {
+                "description": "mirror: the line to reflect about, in studs. fill: where the footprint's low corner sits, as {x, y, z}."
+              },
+              "bricks": {
+                "description": "repeat: what to repeat. mirror: what to reflect, if not everything so far.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "color": {
+                      "description": "LDraw colour code",
+                      "type": "integer"
+                    },
+                    "face": {
+                      "description": "which way the studs point. Omit for up.",
+                      "enum": [
+                        "up",
+                        "down",
+                        "+x",
+                        "-x",
+                        "+z",
+                        "-z"
+                      ],
+                      "type": "string"
+                    },
+                    "part": {
+                      "description": "part number, e.g. 3001",
+                      "type": "string"
+                    },
+                    "rot": {
+                      "description": "quarter turns about the face direction, 0-3",
+                      "type": "integer"
+                    },
+                    "section": {
+                      "description": "the section this brick belongs to, if any. Its x, y and z are then that section's own coordinates, not the model's.",
+                      "type": "string"
+                    },
+                    "x": {
+                      "description": "studs across, to the low corner. Tenths allowed.",
+                      "type": "number"
+                    },
+                    "y": {
+                      "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                      "type": "number"
+                    },
+                    "z": {
+                      "description": "studs deep, to the low corner. Tenths allowed.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "part",
+                    "color",
+                    "x",
+                    "y",
+                    "z",
+                    "rot"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "color": {
+                "description": "fill: the colour",
+                "type": "integer"
+              },
+              "deep": {
+                "description": "fill: studs in z",
+                "type": "number"
+              },
+              "layers": {
+                "description": "fill: how many of the footprint, stacked up",
+                "type": "number"
+              },
+              "pattern": {
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
+                "enum": [
+                  "repeat",
+                  "mirror",
+                  "fill"
+                ],
+                "type": "string"
+              },
+              "rise": {
+                "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
+                "type": "number"
+              },
+              "shape": {
+                "description": "fill: which footprint",
+                "enum": [
+                  "rectangle",
+                  "ellipse"
+                ],
+                "type": "string"
+              },
+              "shrink": {
+                "description": "fill: studs off each layer, taken half from each side, so the stack tapers as it rises. Must be even. 2 is a dome, 4 a steep cone, 0 a straight-sided hull, and -2 flares outward.",
+                "type": "number"
+              },
+              "step": {
+                "additionalProperties": false,
+                "description": "repeat: how far each copy moves, in studs and plates",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "times": {
+                "description": "repeat: how many",
+                "type": "integer"
+              },
+              "wall": {
+                "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
         "sections": {
           "items": {
             "additionalProperties": false,
@@ -133,6 +279,60 @@
       "type": "object"
     },
     "name": "check_design"
+  },
+  {
+    "description": "How a construction is actually made, in part numbers and coordinates: staggered wall, half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, round tower, taper. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "which one; a partial name will do",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "name": "show_technique"
+  },
+  {
+    "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "longest_metres": {
+          "description": "how long the real thing is along its longest side. A guess within half is enough.",
+          "type": "number"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "longest_metres"
+      ],
+      "type": "object"
+    },
+    "name": "plan_scale"
+  },
+  {
+    "description": "Pictures of a real thing, so you can build to what it looks like rather than to what you recall of it. Ask for this first for any subject that exists \u2014 a lighthouse, a tractor, a kingfisher, a particular building \u2014 and judge the proportions off the picture before you place a brick. The pictures come from Wikimedia Commons, which carries what is free to use: each is named and credited, and a famous ship from a film will not be there, so check what came back is the thing before building to it.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "description": "what to look for, in the words you would use looking it up \u2014 \"Fresnel lighthouse lantern room\" rather than \"lighthouse\" when it is a detail you are after",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject"
+      ],
+      "type": "object"
+    },
+    "name": "find_reference"
   },
   {
     "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself \u2014 a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time \u2014 a wedge put on backwards looks exactly like a wedge until you look at it.",
@@ -292,6 +492,57 @@
           "description": "brick numbers to take away",
           "items": {
             "type": "integer"
+          },
+          "type": "array"
+        },
+        "repeat_section": {
+          "description": "say a section again somewhere else. One bay of a wall, repeated \u2014 rather than forty bays dictated.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way that pin runs. Defaults to the source section's.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "turned this much further per copy, about the section's own origin. Put that origin at the centre of a tower and this walks the copies round it.",
+                "type": "number"
+              },
+              "dx": {
+                "description": "studs across, per copy",
+                "type": "number"
+              },
+              "dy": {
+                "description": "plates up, per copy",
+                "type": "number"
+              },
+              "dz": {
+                "description": "studs deep, per copy",
+                "type": "number"
+              },
+              "from": {
+                "description": "the name of a section that already has bricks in it",
+                "type": "string"
+              },
+              "name": {
+                "description": "what to call the copies. They are numbered from 2.",
+                "type": "string"
+              },
+              "times": {
+                "description": "how many copies to make, each one step further than the last",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "from",
+              "times"
+            ],
+            "type": "object"
           },
           "type": "array"
         },
@@ -511,6 +762,202 @@
         },
         "name": {
           "type": "string"
+        },
+        "patterns": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "about": {
+                "description": "mirror: which way the line runs",
+                "enum": [
+                  "x",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "across": {
+                "description": "fill: studs in x",
+                "type": "number"
+              },
+              "at": {
+                "description": "mirror: the line to reflect about, in studs. fill: where the footprint's low corner sits, as {x, y, z}."
+              },
+              "bricks": {
+                "description": "repeat: what to repeat. mirror: what to reflect, if not everything so far.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "color": {
+                      "description": "LDraw colour code",
+                      "type": "integer"
+                    },
+                    "face": {
+                      "description": "which way the studs point. Omit for up.",
+                      "enum": [
+                        "up",
+                        "down",
+                        "+x",
+                        "-x",
+                        "+z",
+                        "-z"
+                      ],
+                      "type": "string"
+                    },
+                    "part": {
+                      "description": "part number, e.g. 3001",
+                      "type": "string"
+                    },
+                    "rot": {
+                      "description": "quarter turns about the face direction, 0-3",
+                      "type": "integer"
+                    },
+                    "section": {
+                      "description": "the section this brick belongs to, if any. Its x, y and z are then that section's own coordinates, not the model's.",
+                      "type": "string"
+                    },
+                    "x": {
+                      "description": "studs across, to the low corner. Tenths allowed.",
+                      "type": "number"
+                    },
+                    "y": {
+                      "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                      "type": "number"
+                    },
+                    "z": {
+                      "description": "studs deep, to the low corner. Tenths allowed.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "part",
+                    "color",
+                    "x",
+                    "y",
+                    "z",
+                    "rot"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "color": {
+                "description": "fill: the colour",
+                "type": "integer"
+              },
+              "deep": {
+                "description": "fill: studs in z",
+                "type": "number"
+              },
+              "layers": {
+                "description": "fill: how many of the footprint, stacked up",
+                "type": "number"
+              },
+              "pattern": {
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
+                "enum": [
+                  "repeat",
+                  "mirror",
+                  "fill"
+                ],
+                "type": "string"
+              },
+              "rise": {
+                "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
+                "type": "number"
+              },
+              "shape": {
+                "description": "fill: which footprint",
+                "enum": [
+                  "rectangle",
+                  "ellipse"
+                ],
+                "type": "string"
+              },
+              "shrink": {
+                "description": "fill: studs off each layer, taken half from each side, so the stack tapers as it rises. Must be even. 2 is a dome, 4 a steep cone, 0 a straight-sided hull, and -2 flares outward.",
+                "type": "number"
+              },
+              "step": {
+                "additionalProperties": false,
+                "description": "repeat: how far each copy moves, in studs and plates",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "times": {
+                "description": "repeat: how many",
+                "type": "integer"
+              },
+              "wall": {
+                "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "repeat_section": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way that pin runs. Defaults to the source section's.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "turned this much further per copy, about the section's own origin. Put that origin at the centre of a tower and this walks the copies round it.",
+                "type": "number"
+              },
+              "dx": {
+                "description": "studs across, per copy",
+                "type": "number"
+              },
+              "dy": {
+                "description": "plates up, per copy",
+                "type": "number"
+              },
+              "dz": {
+                "description": "studs deep, per copy",
+                "type": "number"
+              },
+              "from": {
+                "description": "the name of a section that already has bricks in it",
+                "type": "string"
+              },
+              "name": {
+                "description": "what to call the copies. They are numbered from 2.",
+                "type": "string"
+              },
+              "times": {
+                "description": "how many copies to make, each one step further than the last",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "from",
+              "times"
+            ],
+            "type": "object"
+          },
+          "type": "array"
         },
         "sections": {
           "items": {

@@ -121,6 +121,13 @@ class PartInfo extends RefCounted:
 	## inventory data behind it, so emptiness is never evidence.
 	var colors: PackedInt32Array
 	var colors_recent: PackedInt32Array
+	## How many catalogued sets this part is in. Zero means nobody knows
+	## — four fifths of the library does not join to a set inventory — so
+	## it may never be read as "never used", only as "not known to be a
+	## staple". What a name cannot tell you: 3062b, the 1x1 round brick,
+	## is in 4,496 sets and 71075a is in seventeen, and both are named
+	## like the ordinary thing.
+	var in_sets: int = 0
 	## The years this part first and last appeared in a catalogued set.
 	var first_year: int = 0
 	var last_year: int = 0
@@ -278,6 +285,7 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	var counts: Variant = entry.get("connector_counts", {})
 	if typeof(counts) == TYPE_DICTIONARY:
 		info.connector_counts = counts
+	info.in_sets = int(entry.get("in_sets", 0))
 	info.recolourable = bool(entry.get("recolourable", true))
 	info.packed = bool(entry.get("packed", true))
 	info.reachable = bool(entry.get("reachable", true))
@@ -595,6 +603,28 @@ static func in_ldraw_words(query: String) -> String:
 				text = text.replace(" %s " % said,
 					" %s " % ALSO_KNOWN_AS[phrase])
 	return text.strip_edges()
+
+
+## The parts real sets are most often made of, most used first.
+##
+## Not a taste. It is the catalogue's own in_sets, counted over every
+## catalogued set inventory, and it says something a designer does not
+## guess: a LEGO set is mostly plates and tiles. The 2x4 brick everybody
+## pictures is twenty-second.
+##
+## Redirects are left out, or the list leads with the same part twice
+## under two numbers.
+func staples(most: int = 30) -> Array[PartInfo]:
+	var ranked: Array[PartInfo] = []
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		if info.in_sets > 0 and not info.is_redirect():
+			ranked.append(info)
+	ranked.sort_custom(func(a: PartInfo, b: PartInfo) -> bool:
+		return a.in_sets > b.in_sets)
+	if ranked.size() > most:
+		ranked.resize(most)
+	return ranked
 
 
 func search(query: String, limit: int = 100) -> Array[PartInfo]:
