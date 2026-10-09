@@ -34,6 +34,12 @@ const MAX_TURNS := 45
 ## the proportions off, which is all it is for.
 const REFERENCE_SIZE := 900
 const MAX_REPAIRS := 3
+## Turns one assembly gets to be detailed in, once the model holds
+## together, and how many assemblies get a look of their own. Twelve is
+## a castle's gatehouse, four towers, four walls, a keep and a yard with
+## one to spare; the turns are what an edit, a look and a search cost.
+const TURNS_PER_ASSEMBLY := 8
+const MOST_ASSEMBLIES := 12
 ## How many times to ask again when a turn ends having built nothing.
 const MAX_NUDGES := 2
 ## Beyond this a list of studs is not an answer, it is a wall of text.
@@ -147,6 +153,21 @@ var _edited: bool = false
 ## approved or improved. One round, not a loop: a second one mostly
 ## fiddles.
 var _looked_back: bool = false
+## The assemblies still to be looked at one by one, the one being
+## detailed now, and how many turns it has had. See [method _detail_next].
+var _to_detail: Array[Dictionary] = []
+var _detailing: Dictionary = {}
+var _detail_turns: int = 0
+var _detail_count: int = 0
+## The whole model as it stood when detailing began, to say what the
+## passes came to.
+var _before_detail: String = ""
+## What a run may spend in turns. MAX_TURNS, until detailing begins and
+## each assembly brings its own.
+var _turn_cap: int = MAX_TURNS
+## What was asked for, so a pass can say what real sets of that kind are
+## built from.
+var _brief: String = ""
 var _shot: ModelShot
 ## Tokens this design has spent, as the API reports them. Reset per
 ## instruction, because "what did that cost" is a question about the
@@ -389,6 +410,10 @@ class Model extends RefCounted:
 	## Name -> Section. A placement naming one is built in that
 	## section's own square coordinates and carried where it says.
 	var sections: Dictionary = {}
+	## The parts of it a person would name — the gatehouse, a tower —
+	## each {name, where}, where being a box in studs and plates as
+	## look_at_model takes one. Detailed one at a time once it holds.
+	var assemblies: Array[Dictionary] = []
 
 	func section_for(placement: Placement) -> Section:
 		return sections.get(placement.section)
@@ -462,6 +487,13 @@ func _start(text: String) -> void:
 	_nudges = 0
 	_edited = false
 	_looked_back = false
+	_to_detail = []
+	_detailing = {}
+	_detail_turns = 0
+	_detail_count = 0
+	_before_detail = ""
+	_turn_cap = MAX_TURNS
+	_brief = text
 	_spend = Brain.Spend.new()
 	_spent_on = Brain.chosen()
 	_pending = null
@@ -604,8 +636,8 @@ func _send() -> void:
 	if not _busy:
 		return
 	_turns += 1
-	if _turns > MAX_TURNS:
-		_stop(false, "gave up after %d turns" % MAX_TURNS)
+	if _turns > _turn_cap:
+		_stop(false, "gave up after %d turns" % _turn_cap)
 		return
 
 	var body: Dictionary = request_body()
@@ -922,6 +954,9 @@ func _on_response(result: Array) -> void:
 		if _pending != null:
 			_stop(true, "done")
 			return
+		# Finished with the whole model, or with one assembly of it.
+		if _looked_back and await _detail_next():
+			return
 		# It looked, and had nothing to change. What is on the baseplate
 		# is the design it submitted a moment ago.
 		if _looked_back and not _placed_ids.is_empty():
@@ -953,6 +988,19 @@ func _on_response(result: Array) -> void:
 		return
 
 	_forget_old_pictures()
+	# One assembly has had its turns. The next rides in with the answers
+	# to this one's tools, so nothing it asked goes unanswered.
+	if _pending == null and not _detailing.is_empty():
+		_detail_turns += 1
+		if _detail_turns >= TURNS_PER_ASSEMBLY:
+			progress.emit("out of turns for the %s" % _detailing["name"])
+			var moved_on: Array = tool_results.duplicate()
+			moved_on.append({"type": "text", "text": "That is as many "
+				+ "turns as one assembly gets, so on to the next."})
+			if await _detail_next(moved_on):
+				return
+			_stop(true, "%d bricks" % world.brick_count())
+			return
 	_messages.append({"role": "user", "content": tool_results})
 
 	if _pending == null:
@@ -983,8 +1031,10 @@ func _on_response(result: Array) -> void:
 		# turn is cheap against a model nobody would want.
 		if not _looked_back:
 			_looked_back = true
+			_to_detail = _queue_assemblies(_pending.assemblies)
 			_pending = null
-			progress.emit("looking at the finished model")
+			progress.emit("looking at the finished model: %s"
+				% _texture(_bricks_inside({})))
 			# With what the check had to say that was not a fault.
 			#
 			# It was computing the advice and throwing it away on
@@ -1006,7 +1056,18 @@ func _on_response(result: Array) -> void:
 			if not measured.is_empty():
 				noticed += "\n\nAnd what the check measured about it:\n" \
 					+ "\n".join(PackedStringArray(measured))
-			var shown: Variant = await _from_all_round(noticed, CRITIQUE)
+			var ask: String = CRITIQUE
+			if not _to_detail.is_empty():
+				var names := PackedStringArray()
+				for one: Dictionary in _to_detail:
+					names.append(str(one["name"]))
+				ask += ("\n\nAfter this, each of the %d assemblies you "
+					% names.size() + "named — %s — comes to you on its "
+					% ", ".join(names) + "own, close up, with what it is "
+					+ "made of, to detail one at a time. So judge the "
+					+ "whole here: its proportions, its outline, and "
+					+ "anything that runs across more than one of them.")
+			var shown: Variant = await _from_all_round(noticed, ask)
 			# Cancelled while the picture was being taken. An empty
 			# message is one the API refuses, so there would be nothing
 			# to show for it but an error.
@@ -1014,6 +1075,14 @@ func _on_response(result: Array) -> void:
 				return
 			_messages.append({"role": "user", "content": shown})
 			_send()
+			return
+		# Submitted again during the whole look, so the assemblies it
+		# names now are the ones to detail.
+		if _detailing.is_empty() and _detail_count == 0 \
+				and not _pending.assemblies.is_empty():
+			_to_detail = _queue_assemblies(_pending.assemblies)
+		_pending = null
+		if await _detail_next():
 			return
 		_stop(true, report["summary"])
 		return
@@ -1124,6 +1193,216 @@ If it is genuinely right, say so in one line and stop — do not submit \
 it again. Be honest about this: say it reads as the thing only if you \
 can name the features that make it recognisable and see each of them \
 in the picture."""
+
+
+## Hand the design the next assembly to detail, or say it is finished.
+##
+## Detailing happened once, in the whole look, and that one pass took a
+## castle from 20 shapes to 30 and from 2 castle parts to 12 — the most
+## any single change has moved texture. But a castle is a gatehouse,
+## four towers and four runs of wall, and a look at all of it at once
+## frames each of them a few dozen pixels across and asks one question
+## about the lot. A set designer finishes a gatehouse and then starts on
+## a tower. So after the whole look each assembly the design named comes
+## back to it on its own, close up, with what it is made of.
+##
+## [param also] is what has to go first in the message: the answers to
+## the tools of a pass that ran out of turns.
+func _detail_next(also: Array = []) -> bool:
+	if not _detailing.is_empty():
+		progress.emit("the %s, detailed: %s" % [_detailing["name"],
+			_texture(_bricks_inside(_detailing["where"]))])
+		_detailing = {}
+		_detail_count += 1
+	while not _to_detail.is_empty():
+		var one: Dictionary = _to_detail.pop_front()
+		var inside: Array[BrickWorld.Brick] = _bricks_inside(one["where"])
+		if inside.is_empty():
+			progress.emit("nothing inside the box of the %s" % one["name"])
+			continue
+		if _before_detail.is_empty():
+			_before_detail = _texture(_bricks_inside({}))
+			_turn_cap = maxi(_turn_cap, _turns + 2
+				+ TURNS_PER_ASSEMBLY * (_to_detail.size() + 1))
+		_detailing = one
+		_detail_turns = 0
+		_repairs = 0
+		progress.emit("detailing the %s (%d of %d): %s" % [one["name"],
+			_detail_count + 1, _detail_count + 1 + _to_detail.size(),
+			_texture(inside)])
+		var shown: Array = await _assembly_look(one, inside)
+		if not _busy:
+			return true
+		_forget_old_pictures()
+		_messages.append({"role": "user", "content": also + shown})
+		_send()
+		return true
+	if not _before_detail.is_empty():
+		progress.emit("detailed %d assemblies: from %s to %s" % [
+			_detail_count, _before_detail, _texture(_bricks_inside({}))])
+		_before_detail = ""
+	return false
+
+
+## One assembly, close up from two opposite corners, measured.
+func _assembly_look(one: Dictionary,
+		inside: Array[BrickWorld.Brick]) -> Array:
+	var name: String = one["name"]
+	var box: AABB = _bounds_of(inside)
+	var said: String = _assembly_measured(name, inside, box)
+	var ask: String = ASSEMBLY_CRITIQUE.replace("{name}", name)
+	var near: Dictionary = await _ensure_shot().block(
+		world, "corner", scenery, box)
+	if not _busy:
+		return []
+	var far: Dictionary = await _shot.block(
+		world, "far corner", scenery, box)
+	if not _busy:
+		return []
+	if near.is_empty() or far.is_empty():
+		var drawn: Variant = await _with_a_look(said, ask, "corner", box)
+		if drawn is String:
+			return [{"type": "text", "text": drawn}]
+		return drawn
+	return [
+		{"type": "text", "text": said},
+		{"type": "text", "text": "The %s from one corner:" % name},
+		near,
+		{"type": "text", "text": "And from the opposite one:"},
+		far,
+		{"type": "text", "text": ask},
+	]
+
+
+## What one assembly is made of, against a real set its size, and which
+## of the parts real sets of this kind reach for it has not used yet.
+##
+## Against a set the size of the assembly, not of the model: a 200-part
+## gatehouse is detailed like a 200-part gatehouse set or it is not, and
+## the model's own norm says nothing about where its variety is missing.
+func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
+		box: AABB) -> String:
+	var said := PackedStringArray()
+	said.append("The %s: %s, from x %s to %s, z %s to %s, plates %d to %d."
+		% [name, _texture(inside), _studs(box.position.x / STUD),
+			_studs(box.end.x / STUD), _studs(box.position.z / STUD),
+			_studs(box.end.z / STUD), int(floor(box.position.y / PLATE)),
+			int(floor(box.end.y / PLATE + 0.001))])
+	var normal: Dictionary = library.normal_for(inside.size())
+	if not normal.is_empty():
+		said.append("A real set of %d parts — this one assembly on its "
+			% inside.size() + "own — has about %d different shapes in %d "
+			% [int(normal.get("shapes", 0)), int(normal.get("colours", 0))]
+			+ "colours, and at most about %d of any one piece."
+			% int(normal.get("most_of_one", 0)))
+
+	var used: Dictionary = {}
+	var colours: Dictionary = {}
+	for brick: BrickWorld.Brick in inside:
+		used[brick.part_id] = true
+		colours[brick.color_code] = true
+	# The kinds the brief named, as the opening message gave them: a
+	# castle brief that mentions towers is tower and castle both.
+	var kinds := PackedStringArray()
+	var missing := PackedStringArray()
+	var present := PackedStringArray()
+	var palette := PackedStringArray()
+	var listed: Dictionary = {}
+	for raw: Variant in library.kinds_for(_brief):
+		var kind: Dictionary = raw
+		kinds.append(str(kind.get("kind", "")))
+		for entry: Variant in kind.get("parts", []):
+			var part_id: String = str((entry as Array)[0])
+			if listed.has(part_id):
+				continue
+			listed[part_id] = true
+			if used.has(part_id):
+				present.append(part_id)
+			else:
+				missing.append("  %s %s" % [part_id, _part_called(part_id)])
+		for entry: Variant in kind.get("colors", []):
+			var code: int = int((entry as Array)[0])
+			var called: String = _colour_name(code)
+			if not colours.has(code) and not palette.has(called):
+				palette.append(called)
+	if not missing.is_empty():
+		said.append("Real %s sets reach for these far more than other "
+			% " and ".join(kinds) + "sets do, and the %s has none of "
+			% name + "them yet:\n" + "\n".join(missing))
+	if not present.is_empty():
+		said.append("It already has %s." % ", ".join(present))
+	if not palette.is_empty():
+		said.append("And they build in %s, which it does not use."
+			% ", ".join(palette))
+	return "\n".join(said)
+
+
+## Every brick of the model whose corner is inside a box in studs and
+## plates, the way look_at_model reads where=. An empty box is all of it.
+func _bricks_inside(where: Dictionary) -> Array[BrickWorld.Brick]:
+	var out: Array[BrickWorld.Brick] = []
+	if world == null:
+		return out
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		if _inside(_to_studs(brick, info), where):
+			out.append(brick)
+	return out
+
+
+## The space a set of bricks really takes up, in LDU.
+func _bounds_of(bricks: Array[BrickWorld.Brick]) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in bricks:
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var one: AABB = (brick.transform * part.bounds).abs()
+		box = one if first else box.merge(one)
+		first = false
+	return box
+
+
+## Parts, shapes, colours and the commonest piece, in one line.
+func _texture(bricks: Array[BrickWorld.Brick]) -> String:
+	var of_one: Dictionary = {}
+	var colours: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		of_one[brick.part_id] = int(of_one.get(brick.part_id, 0)) + 1
+		colours[brick.color_code] = true
+	var most: int = 0
+	var commonest: String = ""
+	for part_id: String in of_one:
+		if int(of_one[part_id]) > most:
+			most = int(of_one[part_id])
+			commonest = part_id
+	return "%d parts, %d shapes, %d colours, %d of %s" % [bricks.size(),
+		of_one.size(), colours.size(), most, commonest]
+
+
+## What to ask of one assembly, close up.
+const ASSEMBLY_CRITIQUE := """This is one assembly of the model, the \
+{name}, close up. Judge it the way you would judge a set that was only \
+this: does it read as a {name}, and is it detailed like one?
+
+Give it the detail it is missing, with edit_model. Where something \
+changes is where a different piece goes: the course where a wall meets \
+its walkway, the sill and head of a window, the top of a tower, a \
+corner, a doorway, a base. Use the parts real sets of this kind reach \
+for, above, where the shape calls for them. A different piece is the \
+point; more of the same one is not.
+
+Keep to the {name}; every other assembly gets its own turn. look_at_model \
+with where= lists its bricks and their numbers, if you need to take any \
+out or recolour them. Do not call submit_design: it replaces the whole \
+model.
+
+When it is done, say in a line what you changed, and stop."""
 
 
 ## Something a person can act on, rather than a number.
@@ -1313,7 +1592,14 @@ func _run_tool(block: Dictionary) -> Variant:
 			# brick in a check_design render a minute later would read
 			# as a colour somebody chose.
 			var ask_about_it: String = _after_an_edit(edited)
-			var answer: Variant = await _with_a_look(said, ask_about_it)
+			# Framed on the assembly being detailed, if one is: the
+			# whole castle in one picture is what the pass is for not
+			# having to judge by.
+			var framed := AABB()
+			if not _detailing.is_empty():
+				framed = _bounds_of(_bricks_inside(_detailing["where"]))
+			var answer: Variant = await _with_a_look(said, ask_about_it,
+				"corner", framed)
 			_shot.highlight = {}
 			return answer
 		"submit_design":
@@ -2848,7 +3134,36 @@ func _read_model(args: Dictionary) -> Model:
 
 	_repeat_trouble = []
 	_expand_repeats(model, args, _repeat_trouble)
+	model.assemblies = _read_assemblies(args)
 	return model
+
+
+## The assemblies a design named, each a name and a box in studs and
+## plates. A side left out is open, as it is for look_at_model.
+static func _read_assemblies(args: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for raw: Variant in args.get("assemblies", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var one: Dictionary = raw
+		var name: String = str(one.get("name", "")).strip_edges()
+		if name.is_empty():
+			continue
+		var where: Dictionary = {}
+		for side: String in ["x_from", "x_to", "y_from", "y_to",
+				"z_from", "z_to"]:
+			if one.has(side):
+				where[side] = float(one[side])
+		out.append({"name": name, "where": where})
+	return out
+
+
+## What a run will detail, one assembly at a time. Nothing for a model
+## that is one thing: its whole look is already the look at it.
+static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
+	if named.size() < 2:
+		return []
+	return named.slice(0, MOST_ASSEMBLIES)
 
 
 ## What was wrong with the last set of patterns, said by the check.
@@ -5430,6 +5745,11 @@ designed, in stages:
      than a stage of two thousand.
   4. look_at_model with where= to re-read a section before changing it, \
      and view_model between sections to see what you have.
+  5. Name its assemblies when you submit. Once the whole model holds \
+     together and you have looked at it, each assembly also comes back \
+     to you on its own, close up, with what it is made of, for a second \
+     look at its detail — the way a set designer turns a gatehouse over \
+     in their hands before moving on to a tower.
 
 A reply holds roughly a thousand placements. Going near that is not \
 forbidden, it is just a poor bet: everything in the call stands or \
@@ -5943,6 +6263,25 @@ func _tools() -> Array:
 		"additionalProperties": false,
 	}
 
+	# A named part of the model and the box it sits in, for detailing
+	# one at a time. Not a section: nothing is moved or turned by it.
+	var assembly: Dictionary = {
+		"type": "object",
+		"properties": {
+			"name": {"type": "string", "description":
+				"what a person would call it, e.g. north-east tower"},
+			"x_from": {"type": "number"},
+			"x_to": {"type": "number"},
+			"y_from": {"type": "number", "description":
+				"may be left out, for all of its height"},
+			"y_to": {"type": "number"},
+			"z_from": {"type": "number"},
+			"z_to": {"type": "number"},
+		},
+		"required": ["name", "x_from", "x_to", "z_from", "z_to"],
+		"additionalProperties": false,
+	}
+
 	return [
 		{
 			"name": "search_parts",
@@ -6273,8 +6612,18 @@ func _tools() -> Array:
 					"patterns": {"type": "array", "items": pattern},
 					"sections": {"type": "array", "items": section},
 					"repeat_section": {"type": "array", "items": repeat_section},
+					"assemblies": {"type": "array", "items": assembly,
+						"description":
+							"the parts of this model a person would "
+							+ "name — the gatehouse, each tower, each run "
+							+ "of wall, the keep — each a box in studs "
+							+ "and plates. Once the model holds together "
+							+ "and you have looked at it whole, each one "
+							+ "is shown to you close up, on its own, to "
+							+ "detail. A model that is one thing is one "
+							+ "assembly."},
 				},
-				"required": ["name", "description", "bricks"],
+				"required": ["name", "description", "bricks", "assemblies"],
 				"additionalProperties": false,
 			},
 		},

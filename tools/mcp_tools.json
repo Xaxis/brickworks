@@ -717,6 +717,46 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "assemblies": {
+          "description": "the parts of this model a person would name \u2014 the gatehouse, each tower, each run of wall, the keep \u2014 each a box in studs and plates. Once the model holds together and you have looked at it whole, each one is shown to you close up, on its own, to detail. A model that is one thing is one assembly.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "what a person would call it, e.g. north-east tower",
+                "type": "string"
+              },
+              "x_from": {
+                "type": "number"
+              },
+              "x_to": {
+                "type": "number"
+              },
+              "y_from": {
+                "description": "may be left out, for all of its height",
+                "type": "number"
+              },
+              "y_to": {
+                "type": "number"
+              },
+              "z_from": {
+                "type": "number"
+              },
+              "z_to": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x_from",
+              "x_to",
+              "z_from",
+              "z_to"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
         "bricks": {
           "items": {
             "additionalProperties": false,
@@ -1026,7 +1066,8 @@
       "required": [
         "name",
         "description",
-        "bricks"
+        "bricks",
+        "assemblies"
       ],
       "type": "object"
     },

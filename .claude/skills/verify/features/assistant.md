@@ -52,6 +52,14 @@ fixing what it got wrong.
   without touching the rest. `degrees` turns about the section's own origin, so
   it walks a module round a tower. Capped at `MOST_COPIES` 400 and
   `MOST_BRICKS` 50,000, which is the lattice's own ceiling and not a guess.
+- `detailed one assembly at a time`: `submit_design` takes `assemblies`, the
+  parts of the model a person would name, each a box in studs. Once the model
+  holds together and has had its whole look, `Assistant._detail_next` hands each
+  one back on its own: framed close from two corners, measured against a real set
+  the size of *that assembly*, with the parts of the brief's kinds it does not use
+  yet. Each pass has `TURNS_PER_ASSEMBLY` turns and edits are framed on it; at
+  most `MOST_ASSEMBLIES`. A model that names one assembly gets the whole look only.
+  The progress lines say what each pass came to, which is how a run is measured.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
@@ -98,6 +106,7 @@ godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
+godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```
@@ -126,7 +135,10 @@ godot --headless --path . --script src/dev/account_probe.gd      # a whole sign-
 ```
 
 A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
---effort low`, then open the `.ldr` and count the parts. Report that you spent.
+--effort low`, then `tools/texture.py <the .ldr> --brief "<the brief>"` once the
+run has *ended* — parts, shapes, colours, lots and the commonest piece against a
+real set of its size, and how many of the brief's kind parts it uses. A driven run
+prints what it spent before its verdict; report it.
 
 ## Gotchas
 
