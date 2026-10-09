@@ -31,6 +31,7 @@ result is worse.  Use --headless only where there is no display.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -82,6 +83,7 @@ def main() -> int:
         command.append("--headless")
     else:
         command += ["--resolution", "1400x900"]
+        command = _on_a_screen(command)
     command += ["--", f"--ask={args.brief}", f"--out={out}"]
     if args.effort:
         command.append(f"--effort={args.effort}")
@@ -96,15 +98,49 @@ def main() -> int:
     return _run(command, quiet=args.quiet, started=started)
 
 
+def _on_a_screen(command: list[str]) -> list[str]:
+    """Give the run a display of its own when there is no usable one.
+
+    A run needs a window: the picture the design judges its own work by
+    only exists where there is something to draw with, and --headless
+    buys a run that cannot revise what it built.  But the desktop
+    session is not always there, and the failure is not a clean one.
+    Measured: a castle run finished designing, reached "looking at the
+    finished model", and then sat burning 120% of a core for
+    twenty-five minutes with the only clue being
+    `gdk_monitor_get_scale_factor: assertion 'GDK_IS_MONITOR (monitor)'
+    failed` repeated in its output — a window whose monitor has gone.
+
+    tools/check.sh has done this since the same thing cost it five
+    probes, and the knowledge was written down and then not applied
+    here.  Xvfb is also the faster of the two: a frame costs 124 ms
+    there against 989 on the compositor.  MESA_VK_WSI_DEBUG=sw has Mesa
+    copy each frame itself so the real GPU still draws.
+    """
+    if subprocess.run(["xdpyinfo"], capture_output=True,
+                      timeout=5).returncode == 0:
+        return command
+    xvfb = shutil.which("xvfb-run")
+    if xvfb is None:
+        print("  (no display and no xvfb-run: it will not be able to look "
+              "at what it builds)", file=sys.stderr)
+        return command
+    print("  (no display, so this runs on Xvfb)")
+    return [xvfb, "-a", "--server-args=-screen 0 1500x950x24"] + command
+
+
 def _run(command: list[str], *, quiet: bool, started: float) -> int:
     """Run it, passing its progress through as it happens.
 
     A design takes many minutes and silence is indistinguishable from a
     hang, which is the whole reason the old one printed as it went.
     """
+    environment = dict(os.environ)
+    if any("xvfb-run" in part for part in command):
+        environment.setdefault("MESA_VK_WSI_DEBUG", "sw")
     process = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, bufsize=1,
+        text=True, bufsize=1, env=environment,
     )
     assert process.stdout is not None
     for line in process.stdout:
