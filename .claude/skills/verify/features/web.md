@@ -93,3 +93,17 @@ against the real server. It sends a real email to `MASTER_EMAIL`.
   `readyStateReason: seat block`, no build log, nothing in CI.
 - Vercel also has a file-count limit; the parts the web build does not carry live
   in Supabase storage, which is what `tools/storage_parts.py` fills.
+- **No GDScript string literal is greppable in a `.pck`.** Compiled scripts go in
+  as bytecode, so looking for a tool name or a line of the system prompt to prove
+  it shipped reads 0 for code that has been live for weeks. `search_parts`,
+  `submit_design` and `attachment_points` all read 0 in a build serving them.
+  **Control-test with a string that has shipped for ages before concluding
+  anything.** What *is* greppable is packed data: `assets/generated/catalogue.json`
+  goes in as JSON, so
+  `curl --compressed <build>/index.pck | grep -a '"castle":{"sets"'` really does
+  prove the catalogue that shipped. For code, the honest proof is the stamp — `/`
+  308s to `/b/<sha>/`, and that sha names the tree.
+- **A wrong path under `/b/<sha>/` answers with a 308 to `/`,** not a 404, so a
+  typo in a filename reads as "the file is missing" when it is the URL that is
+  wrong. Read the deployed page for the real names: `index.js`, `index.pck`,
+  `index.wasm`.
