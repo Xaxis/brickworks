@@ -47,6 +47,7 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 15, and the one-off count | 828 | 56 | 7 | 112 |
 | 16, the count in the send-back | 1,159 | **95** | 10 | 213 |
 | 17, and the accents named | 797 | 57 | 9 | 139 |
+| 18, sent back on the model's one-off tail | 1,077 | 78 | 10 | 364 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
@@ -172,6 +173,12 @@ How big the first structure comes out is mostly the run, not the code:
    (fewer than 31 at 800-1,800 parts) — every model but run 16 was. Each
    pass is also told, by name, the accents real sets of the kind use one
    or two of: a goblet, a torch, a hinge, a bracket. Run 18 measures both.
+
+   **Run 18: 78 shapes and 41 one-off, and the log shows the mechanism.**
+   Every pass was sent back, and the whole model's one-off count rose with
+   each: 7, 13, 18, 25, 34, 40. With the count in the send-back, runs 16
+   and 18 reached 54 and 41 one-off shapes; without it, runs 14, 15 and 17
+   had 21, 13 and 17. This one holds.
 
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
