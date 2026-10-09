@@ -180,6 +180,18 @@ How big the first structure comes out is mostly the run, not the code:
    and 18 reached 54 and 41 one-off shapes; without it, runs 14, 15 and 17
    had 21, 13 and 17. This one holds.
 
+   **But the pictures say the next lever is not texture.** Run 18 (78
+   shapes) and run 16 (95) both read plainer than run 14 (71): an empty
+   courtyard, towers alike in silhouette, little colour. Their one-off
+   pieces are small things on tower tops. What makes run 14 read as a set
+   is the big read — a great hall filling the courtyard, four crowns of
+   different shapes, a red roof — and that is fixed by the first
+   structure, before any pass. Nothing measures it yet. **Next: find a
+   measure of the big read** (how much of its own footprint a model
+   fills, how far its siblings' silhouettes differ, how much of it is the
+   main colour) the way the shape count was found, by comparing real sets
+   with these runs, and aim the whole look at it.
+
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
    out stickers and prints moves the medians 3% (180 to 173). The 180 is
