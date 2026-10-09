@@ -9,6 +9,24 @@ by measuring, lifted, and written down in `.claude/skills/verify/`, which
 is the right place for *how to prove a thing works* and the wrong place
 for *what to do next*. What follows is ranked by evidence, not by appeal.
 
+## The product, end to end
+
+A set is more than a model, so the goal is a chain, and each link is
+judged on its own:
+
+| | what a real set has | where it stands, 2026-10-09 |
+|---|---|---|
+| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 64 shapes, 9-13 colours; the gap, below |
+| **its parts** | named sub-assemblies, bag by bag | assemblies named by the design, kept as `.mpd` sub-models |
+| **the booklet** | built a sub-assembly at a time, pictured close | built and framed by those assemblies; `--booklet` writes one |
+| **the parts list** | element numbers you can order | CSV with element numbers; the `.mpd` imports into Rebrickable to buy |
+| **any subject** | castles, cities, ships, vehicles | castle, fire station and space cruiser all hold; angled structure is the weak joint |
+
+The model is the weakest link by a distance, which is why the levers
+below are all about it. When it is within reach of a real set, the next
+link to look at is the booklet's pictures — whether a person can follow
+350 of them on a table — measured the same way, by building from one.
+
 ## Where it stands
 
 Four runs of the same castle brief, 2026-10-08/09, each buildable:
