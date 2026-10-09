@@ -275,11 +275,24 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   `patterns_probe._a_wall_is_long_bricks` asserts them so the prompt cannot drift
   from what the code does.
 
-- **Four castle runs got steadily bigger and steadily worse.** 496 → 713 → 1,106
-  → 1,552 bricks, all buildable, against a previous project best of 456 — and
-  28 → 23 → 22 → **20 shapes**, where a real set of the largest one's size has
-  173. The most-repeated piece went 70 → 208 → 223 → **354**. Scale and texture
-  moved in opposite directions, which is a measurement, not an impression.
+- **Four castle runs, and the fourth is where texture finally moved.** 496 → 713
+  → 1,106 → **1,828 bricks**, all buildable, against a previous project best of
+  456. For the first three, scale and texture moved in *opposite* directions:
+  28 → 23 → 22 shapes and a most-repeated piece of 70 → 208 → 223. The fourth
+  reversed it **inside the run, at the final look** — 1,552 parts with 20 shapes,
+  4 colours and 2 castle-characteristic pieces before it; **1,828 parts with 30
+  shapes, 8 colours and 12** after. It went back and added five rounded-top
+  castle windows, four wave flags and an arch, and brought Tan, Dark Tan and
+  Reddish Brown into a model that had been grey and green.
+
+  So carrying the check's own measurements into that look is the one change of
+  the day that moved texture, and it was the cheapest: the numbers already
+  existed and were being discarded on any design that held together. Still far
+  short of the 242 shapes a real 1,800-part set has.
+
+  (The interim 1,552-part figure is what the model looked like *before* its final
+  look. Read a design run's output after it ends, not when it first says
+  "buildable" — `--out` is written on every build, so the file moves under you.)
 
   The fourth run named its own cause: **354 Brick 1x1**, which is four round
   towers. And the prompt's own fill table said **"a round tower → ellipse,
