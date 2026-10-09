@@ -1422,6 +1422,33 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 	if not palette.is_empty():
 		said.append("And they build in %s, which it does not use."
 			% ", ".join(palette))
+
+	# What most real sets of the kind use at all, which lift cannot say.
+	# The parts above are what makes a castle a castle; a castle of 1,895
+	# parts also has some 260 shapes, and most are ordinary. The best one
+	# built here had 24 of the 40 parts castle sets use most — no 1 x 1
+	# plate, no 2 x 3, neither jumper, neither cheese slope, each in more
+	# than half of them. Against the whole model, because a 1 x 1 plate
+	# the gatehouse has is one the tower need not be told about.
+	var have: Dictionary = {}
+	for part_id: String in whole:
+		have[library.resolve(part_id)] = true
+	var lacking := PackedStringArray()
+	var offered: Dictionary = {}
+	for raw: Variant in library.kinds_for(_brief):
+		for entry: Variant in (raw as Dictionary).get("common", []):
+			var part_id: String = str((entry as Array)[0])
+			if offered.has(part_id) or have.has(library.resolve(part_id)):
+				continue
+			offered[part_id] = true
+			lacking.append("  %s %s — in %d%% of them" % [part_id,
+				_part_called(part_id), int((entry as Array)[1])])
+	if not lacking.is_empty():
+		said.append("And the parts most real %s sets use at all, which " 
+			% " and ".join(kinds) + "the whole model has none of yet. "
+			+ "Ordinary pieces, and where most of a set's different shapes "
+			+ "come from — the smaller part where the edge or the surface "
+			+ "changes:\n" + "\n".join(lacking.slice(0, 15)))
 	return "\n".join(said)
 
 

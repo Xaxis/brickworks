@@ -389,6 +389,9 @@ A_PROP = {"Minifig", "Minifig Accessory", "Minifig Headwear", "Animal"}
 ## of it rather than an accident of one set.
 KIND_FLOOR = 20
 PART_FLOOR = 0.15
+## How many of a kind's most used parts to keep, by how many of its sets
+## use them rather than by lift.  See kinds().
+COMMON = 40
 REAL_MODEL = 20          # parts; below this a "set" is merchandise
 
 
@@ -468,7 +471,11 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     colour_everywhere: collections.Counter = collections.Counter()
     all_pieces = 0
     for items in per_set.values():
-        for part, colour, quantity in {(p, c, q) for p, c, q in items}:
+        # Sets, not lots: a set with the 1 x 2 plate in four colours is
+        # one set that uses it.  Counted by lot, the castle's "share" of
+        # 1 x 2 plates came to 346%, and the 15% floor below was a floor
+        # on lots.
+        for part in {p for p, _c, _q in items}:
             everywhere[part] += 1
         for part, colour, quantity in items:
             colour_everywhere[colour] += quantity
@@ -481,7 +488,7 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
         colours: collections.Counter = collections.Counter()
         pieces = 0
         for set_num in members:
-            for part, _c, _q in {(p, c, q) for p, c, q in per_set[set_num]}:
+            for part in {p for p, _c, _q in per_set[set_num]}:
                 in_sets[part] += 1
             for _p, colour, quantity in per_set[set_num]:
                 colours[colour] += quantity
@@ -523,10 +530,25 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
         tinted.sort(reverse=True)
         if not ranked:
             continue
+        # And what most of them use at all, which lift cannot say.  Lift
+        # finds what makes a castle a castle; a castle of 1,895 parts also
+        # has some 260 shapes, and most of them are ordinary — the 1 x 2
+        # plate is in 80% of castle sets.  Measured on the best castle the
+        # assistant had built: 24 of the 40 parts castle sets use most,
+        # missing the 1 x 1 and 2 x 3 plates, both jumpers and both cheese
+        # slopes, each in more than half of them.
+        common = []
+        for part, count in in_sets.most_common():
+            if part not in ldraw_of or a_prop[ldraw_of[part]]:
+                continue
+            common.append([ldraw_of[part], round(100 * count / len(members))])
+            if len(common) == COMMON:
+                break
         out[word] = {
             "sets": len(members),
             "parts": [[part, lift] for lift, part in ranked[:12]],
             "colors": [[code, lift] for lift, code in tinted[:6]],
+            "common": common,
         }
         if props:
             out[word]["props"] = [[part, lift] for lift, part in props[:5]]

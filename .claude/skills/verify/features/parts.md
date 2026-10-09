@@ -27,7 +27,13 @@ geometry in front of them.
 - `how a kind of set is built`: `rebrickable.kinds()` measures, for every word
   that names 20+ real models, the parts those sets reach for *more often than
   sets in general* and the colours they build in — 267 kinds in 86 KB of the
-  catalogue, over models only (see `set norms` below for what is not one). `PartLibrary.kinds_for(brief)` matches a brief's words against it
+  catalogue, over models only (see `set norms` below for what is not one). Each
+  kind also carries `common`: its 40 most used parts by the share of its sets
+  that use them at all, which lift cannot say — lift finds what makes a castle a
+  castle, and a 1,895-part castle also has some 260 shapes, mostly ordinary ones.
+  Both are counted in **sets, not lots**: counted by lot, a set with the 1 x 2
+  plate in four colours used it four times, and the castle's share of 1 x 2
+  plates came to 346%. `PartLibrary.kinds_for(brief)` matches a brief's words against it
   and `how_real_sets_build_this`, a tool, is how the assistant asks.
 - `set norms`: what a real LEGO set of a given size is made of — lots, shapes,
   colours, and how many of one piece is normal — measured over every catalogued

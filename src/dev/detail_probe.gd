@@ -86,6 +86,10 @@ func _run() -> void:
 	_ok(not gatehouse.contains("The tower"), "...and only the gatehouse")
 	_ok(gatehouse.contains("Real tower and castle sets reach for these"),
 		"it is told the parts of every kind the brief named that it lacks")
+	# And the ordinary parts most castle sets use, which a model of one
+	# brick and nothing else lacks — the 1 x 2 plate is in 80% of them.
+	_ok(gatehouse.contains("3023b Plate 1 x 2 — in"),
+		"told the ordinary parts most real sets of its kind use and it lacks")
 	_ok(gatehouse.contains("does it read as a gatehouse"),
 		"and asked whether it reads as a gatehouse")
 	_ok(_said("detailing the gatehouse (1 of 2): 4 parts"),
