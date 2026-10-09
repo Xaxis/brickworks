@@ -90,6 +90,8 @@ func _run() -> void:
 	# brick and nothing else lacks — the 1 x 2 plate is in 80% of them.
 	_ok(gatehouse.contains("3023b Plate 1 x 2 — in"),
 		"told the ordinary parts most real sets of its kind use and it lacks")
+	_ok(not gatehouse.contains("used only once or twice"),
+		"a model too small for a real set's measure is not given one")
 	_ok(gatehouse.contains("does it read as a gatehouse"),
 		"and asked whether it reads as a gatehouse")
 	_ok(_said("detailing the gatehouse (1 of 2): 4 parts"),
@@ -146,6 +148,9 @@ func _run() -> void:
 	await _reply(assistant, [{"type": "text", "text": "The whole is right."}])
 	_ok(_said("detailing the keep (1 of 2): 61 parts, 1 shapes"),
 		"the keep comes up, 61 parts of one shape")
+	_ok(_text_of(assistant._messages.back()).contains(
+			"0 shapes are used only once or twice; a real set of 63 parts has about"),
+		"told how few shapes the model uses once or twice, against a real set")
 	await _reply(assistant, [{"type": "text", "text": "The keep is done."}])
 	var back: String = _text_of(assistant._messages.back())
 	_ok(back.contains("The keep is 1 different shapes in 61 parts"),

@@ -300,7 +300,7 @@ def set_norms() -> dict:
 
     bands = []
     for low, high in SET_BANDS:
-        lots, shapes, most, colours = [], [], [], []
+        lots, shapes, most, colours, accents = [], [], [], [], []
         for items in per_set.values():
             total = sum(q for _, _, q in items)
             if not (low <= total < high):
@@ -309,6 +309,15 @@ def set_norms() -> dict:
             shapes.append(float(len({p for p, _, _ in items})))
             most.append(float(max(q for _, _, q in items)))
             colours.append(float(len({c for _, c, _ in items})))
+            # Shapes a set uses only once or twice.  This is where most
+            # of a set's variety is: a real set of 1,100 parts has some
+            # 177 shapes and 85 of them are one or two of a part, where
+            # the best castle built here had 71 and 21.  The shapes used
+            # many times were close; the gap was nearly all of this.
+            per_part: dict[str, int] = {}
+            for p, _, q in items:
+                per_part[p] = per_part.get(p, 0) + q
+            accents.append(float(sum(1 for q in per_part.values() if q <= 2)))
         if len(lots) < 25:          # too few to be a norm
             continue
         # The medians say what a real set of this size is like, and are
@@ -334,6 +343,7 @@ def set_norms() -> dict:
             "shapes_thin": round(at(shapes, 0.05)),
             "colours_thin": round(at(colours, 0.05)),
             "most_of_one_high": round(at(most, 0.95)),
+            "accents": round(middle(accents)),
         })
     return {"source": "Rebrickable set inventories", "bands": bands}
 

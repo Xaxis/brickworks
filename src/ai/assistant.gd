@@ -1563,6 +1563,24 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 			offered[part_id] = true
 			lacking.append("  %s %s — in %d%% of them" % [part_id,
 				_part_called(part_id), int((entry as Array)[1])])
+	# And how many shapes it uses once or twice, where nearly all of the
+	# gap to a real set was: a set of 1,100 parts has some 177 shapes, 85
+	# of them one or two of a part; the best castle built here had 71
+	# shapes and 21 such. The shapes it used many times were close.
+	var per_part: Dictionary = {}
+	for brick: BrickWorld.Brick in everything:
+		var id: String = library.resolve(brick.part_id)
+		per_part[id] = int(per_part.get(id, 0)) + 1
+	var once: int = per_part.values().filter(func(n: int) -> bool:
+		return n <= 2).size()
+	var normal_whole: Dictionary = library.normal_for(everything.size())
+	if int(normal_whole.get("accents", 0)) > once:
+		said.append("Across the whole model, %d shapes are used only once "
+			% once + "or twice; a real set of %d parts has about %d. "
+			% [everything.size(), int(normal_whole.get("accents", 0))]
+			+ "That is where most of a set's variety is — one of a part, "
+			+ "where something happens — and where this model is "
+			+ "furthest from one.")
 	if not lacking.is_empty():
 		said.append("And the parts most real %s sets use at all, which " 
 			% " and ".join(kinds) + "the whole model has none of yet. "
