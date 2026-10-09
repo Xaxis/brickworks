@@ -15,7 +15,10 @@
 ## nothing in the system said so.
 extends SceneTree
 
-const SHAPES: Array[String] = ["10247", "10313", "109373", "11002", "11203", "11211", "11212", "11213", "11290", "11301", "11399", "11458", "11476", "11833", "122c01", "122c02", "13269", "13547", "13548", "14413", "14417", "14716", "15070", "15071", "15092", "15108", "15208", "15397", "15400", "15403", "15411", "15444", "15456", "15469", "15533", "15573", "15624", "15625", "15672", "15706", "16968", "17114", "1745", "17485", "1750", "18601", "18646", "18649", "18674", "18677", "18759", "18892", "18897", "18922", "18975", "18980", "20310", "2048", "20952", "20953", "21445", "22885", "22886", "22888", "22889", "22890", "2310", "2341", "2342", "2356", "2357", "23949", "2397", "2401", "2415", "2419", "2420", "24201", "2434", "2444", "2445", "2449", "2450", "2453a", "2453b", "2454a", "2454b", "2456", "2458", "2462", "2463", "2464", "2465", "2476a", "2476b", "24866", "2508", "25195", "2539", "2540", "2577", "25893a", "26047", "2605c01", "2612", "2628", "2629", "2639", "2653", "2655", "26597", "26599", "26601", "26604", "27255", "27259", "27261", "27266", "2752", "27928"]
+## Real part numbers to build fixtures from, read off the catalogue. A
+## typed list of 120 ran out the day the median for 500 parts became 123,
+## and a script error does not end a probe — it sits there.
+var _shapes: Array[String] = []
 
 var _failures: int = 0
 
@@ -39,6 +42,10 @@ func _initialize() -> void:
 	assistant.builder = builder
 	get_root().add_child(assistant)
 	await process_frame
+	var ids: Array = library.parts.keys()
+	ids.sort()
+	for id: String in ids.slice(0, 400):
+		_shapes.append(id)
 
 	print("\nwhat the catalogue knows about real sets")
 	_ok(library.set_norms.size() >= 4,
@@ -111,7 +118,7 @@ func _initialize() -> void:
 	var ordinary := Assistant.Model.new()
 	for n: int in 500:
 		var put := Assistant.Placement.new()
-		put.part = SHAPES[n % int(middling.get("shapes", 117))]
+		put.part = _shapes[n % int(middling.get("shapes", 117))]
 		put.color = [4, 1, 2, 14, 15, 0, 71, 72, 70, 28,
 			288, 484, 191, 212, 226, 308, 320, 326][n % 18]
 		ordinary.placements.append(put)
@@ -123,7 +130,7 @@ func _initialize() -> void:
 	var repeated := Assistant.Model.new()
 	for n: int in 500:
 		var put := Assistant.Placement.new()
-		put.part = "3001" if n < 58 else SHAPES[n % SHAPES.size()]
+		put.part = "3001" if n < 58 else _shapes[n % _shapes.size()]
 		put.color = [4, 1, 2, 14, 15, 0, 71, 72, 70,
 			28, 288, 484, 191, 212, 226, 308, 320, 326][n % 18]
 		repeated.placements.append(put)
@@ -134,11 +141,32 @@ func _initialize() -> void:
 	var rich := Assistant.Model.new()
 	for n: int in 400:
 		var put := Assistant.Placement.new()
-		put.part = SHAPES[n % SHAPES.size()]
+		put.part = _shapes[n % _shapes.size()]
 		put.color = [4, 1, 2, 14, 15, 0, 71, 72, 70, 28,
 			288, 484, 191, 212, 226, 308, 320, 326][(n / 7) % 18]
 		rich.placements.append(put)
 	_ok(assistant._variety(rich).is_empty(), "is left alone")
+
+	print("\na big model, measured against big models rather than mosaics")
+	# The castle that got to 1,828 parts with 30 shapes and 320 of one
+	# brick, and was told nothing. Sets of that size were measured with
+	# the mosaics, LEGO Art and bulk tubs among them, so the thin end was
+	# 21 shapes — 2,305 tiles in two shapes is a set — and 660 of one.
+	var castle := Assistant.Model.new()
+	for n: int in 1828:
+		var put := Assistant.Placement.new()
+		put.part = "3010" if n < 320 else _shapes[n % 29]
+		put.color = [71, 72, 19, 28, 70, 2, 4, 0][n % 8]
+		castle.placements.append(put)
+	var big: Dictionary = library.normal_for(1828)
+	var verdict: String = assistant._variety(castle)
+	print("     %s" % verdict.replace("\n", "\n     "))
+	_ok(verdict.contains("30 different shapes"),
+		"30 shapes in 1,828 parts is thin (below %d, where the median is %d)"
+			% [int(big.get("shapes_thin", 0)), int(big.get("shapes", 0))])
+	_ok(int(big.get("most_of_one_high", 0)) < 600,
+		"and the most of one piece a big set uses is not a mosaic's (%d)"
+			% int(big.get("most_of_one_high", 0)))
 
 	print("")
 	if _failures == 0:

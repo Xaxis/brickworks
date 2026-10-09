@@ -131,7 +131,7 @@ def _usage(document: dict) -> str:
 def _kinds(document: dict, colors: list[dict]) -> str:
     """Record what real sets of each kind are built from.
 
-    115 KB for 367 kinds, which is worth the room: it is the only thing
+    86 KB for 267 kinds, which is worth the room: it is the only thing
     in the catalogue that knows a castle is arches in tan and a fire
     station is trans-blue and taps.
     """

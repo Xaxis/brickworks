@@ -215,6 +215,48 @@ def _lines() -> dict[str, str]:
 ## The sizes real sets come in, as the bands norms are measured over.
 SET_BANDS = ((60, 150), (150, 350), (350, 800), (800, 1800), (1800, 5000))
 
+## Themes whose sets are not a model of anything: a pile of parts to
+## build from, a picture made of tiles, or another system's bricks.
+## A set is left out if any theme above it is one of these.
+##
+## Decided by what the product is, never by how varied it is, because
+## leaving out the thin sets for being thin would move the threshold
+## for thinness.  What it fixes was measured: the thinnest twenty sets
+## of 1,800 parts or more were mosaics, LEGO Art and bulk tubs, so the
+## fifth percentile of shapes there was 21 — where the median is 240 —
+## and a 1,828-part castle with 30 shapes was never told it was thin.
+NOT_A_MODEL = frozenset({
+    "Universal Building Set", "Educational and Dacta", "Service Packs",
+    "Supplemental", "Bulk Bricks", "Make & Create", "Classic", "DOTS",
+    "LEGO Art", "Mosaic", "Brick Sketches", "Database Sets",
+    "FIRST LEGO League", "Collectible Minifigures", "Gear", "Books",
+    "Duplo", "Primo", "Quatro", "Soft Bricks", "Jumbo Bricks", "Scala",
+    "Clikits", "Modulex", "Znap",
+})
+## And the same said in a set's name, for the ones filed elsewhere:
+## LEGO put its bulk tubs under Creator in the 2000s, and a mosaic of a
+## film character goes under the film.
+NAMED_NOT_A_MODEL = frozenset({"mosaic", "bucket", "tub", "canister", "bulk"})
+
+
+def _models() -> set[str]:
+    """The set numbers whose product is a model."""
+    themes = {r["id"]: (r["name"], r["parent_id"]) for r in _rows("themes")}
+
+    def is_model(theme: str) -> bool:
+        while theme:
+            name, theme = themes.get(theme, ("", ""))
+            if name in NOT_A_MODEL:
+                return False
+        return True
+
+    def named_one(name: str) -> bool:
+        return not NAMED_NOT_A_MODEL.isdisjoint(
+            re.split(r"[^a-z0-9]+", name.lower()))
+
+    return {r["set_num"] for r in _rows("sets")
+            if is_model(r["theme_id"]) and not named_one(r["name"])}
+
 
 def set_norms() -> dict:
     """What a real LEGO set of a given size is actually made of.
@@ -233,10 +275,11 @@ def set_norms() -> dict:
 
     Spare parts are left out: they are packaging, not design.  Only the
     first version of each inventory is counted, so a set revised later
-    is one set.
+    is one set.  And only models: see NOT_A_MODEL.
     """
+    models = _models()
     inventories = {r["id"]: r["set_num"] for r in _rows("inventories")
-                   if r["version"] == "1"}
+                   if r["version"] == "1" and r["set_num"] in models}
     per_set: dict[str, list] = {}
     for row in _rows("inventory_parts"):
         set_num = inventories.get(row["inventory_id"])
@@ -275,12 +318,12 @@ def set_norms() -> dict:
         # of real LEGO sets, band by band.  A third of real sets told
         # they are repetitive is noise, not advice.
         #
-        # The fifth and ninety-fifth bring it to 7-11%, and still catch
-        # models/station.ldr, whose thirty shapes sit at the 4.2nd
-        # percentile and whose eighty-six of one brick at the 95.8th.
-        # The second and ninety-eighth would be rarer, at 4%, and miss
-        # it on both counts — which is the fixture the whole measurement
-        # exists for.
+        # The fifth and ninety-fifth bring it to 8.5-10%, and catch
+        # models/station.ldr, whose thirty shapes sit at the 1.1st
+        # percentile of real models and whose eighty-six of one brick at
+        # the 95.8th.  Measured with the mosaics still in, the thirty
+        # shapes sat at the 4.2nd and the second and ninety-eighth missed
+        # it on both counts.
         bands.append({
             "from": low, "to": high, "sets": len(lots),
             "lots": round(middle(lots)),
@@ -398,8 +441,11 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
                 and other_line.get(found) is None:
             ldraw_of[found] = entry["id"]
 
+    # A castle mosaic or a castle bucket is not how a castle is built.
+    models = _models()
     big = {r["set_num"]: r["name"] for r in _rows("sets")
-           if r["num_parts"] and int(r["num_parts"]) >= REAL_MODEL}
+           if r["num_parts"] and int(r["num_parts"]) >= REAL_MODEL
+           and r["set_num"] in models}
     inventories = {r["id"]: r["set_num"] for r in _rows("inventories")
                    if r["version"] == "1" and r["set_num"] in big}
     per_set: dict[str, list] = {}

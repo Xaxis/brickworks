@@ -60,7 +60,7 @@ fi
 # is a condition of the licence, not a courtesy, which is why it is
 # here and not in docs/ATTRIBUTION.md.
 mkdir -p vendor/rebrickable
-for table in colors parts elements \
+for table in colors parts elements themes \
              inventories inventory_parts sets; do
   out="vendor/rebrickable/$table.csv.gz"
   if [ -e "$out" ] && [ -z "$(find "$out" -mtime +0 2>/dev/null)" ]; then

@@ -26,8 +26,8 @@ geometry in front of them.
   the top thirty in the system prompt.
 - `how a kind of set is built`: `rebrickable.kinds()` measures, for every word
   that names 20+ real models, the parts those sets reach for *more often than
-  sets in general* and the colours they build in — 367 kinds in 115 KB of the
-  catalogue. `PartLibrary.kinds_for(brief)` matches a brief's words against it
+  sets in general* and the colours they build in — 267 kinds in 86 KB of the
+  catalogue, over models only (see `set norms` below for what is not one). `PartLibrary.kinds_for(brief)` matches a brief's words against it
   and `how_real_sets_build_this`, a tool, is how the assistant asks.
 - `set norms`: what a real LEGO set of a given size is made of — lots, shapes,
   colours, and how many of one piece is normal — measured over every catalogued
@@ -153,9 +153,9 @@ it is hands-only, so say so rather than claiming it.
   plates; the 2x4 brick everyone pictures is number 22. A design reaches for what
   it remembers, and what a model remembers about LEGO is bricks.
 
-- **"Does it read as a set" is measured, not judged.** Banded by size over 9,866
-  sets: one of 350-800 parts has about 153 part-and-colour lots, 117 shapes, 18
-  colours, and at most about 24 of any one piece. `models/station.ldr` is the
+- **"Does it read as a set" is measured, not judged.** Banded by size over 8,243
+  models: one of 350-800 parts has about 158 part-and-colour lots, 123 shapes, 19
+  colours, and at most about 23 of any one piece. `models/station.ldr` is the
   fixture because it provoked this — 535 parts, 45 lots, 30 shapes, **86 of one
   brick**: the right size, the wrong texture, and nothing said so.
 
@@ -165,13 +165,25 @@ it is hands-only, so say so rather than claiming it.
   A third of real sets told they are repetitive is noise, and this project holds
   advice to the standard that it must not fire on good models. The bands carry
   their tails now — 5th percentile for lots, shapes and colours, 95th for the
-  largest lot — which is **8.5% overall, worst band 11%**. The medians are still
-  what gets *reported*, because "a real set this size has about 117 shapes" is
-  the useful sentence; the percentile only decides whether to speak.
+  largest lot — which is **9.1% of real models overall, worst band 10.2%**. The
+  medians are still what gets *reported*, because "a real set this size has
+  about 123 shapes" is the useful sentence; the percentile only decides whether
+  to speak.
 
-  2nd/98th would be rarer at 4% and was rejected on evidence: it misses the fire
-  station on both counts (30 shapes is the 4.2nd percentile, 86-of-one the
-  95.8th). `variety_probe` asserts both directions, including that a model with a
+  **A tail is only as good as the population under it.** The norms were first
+  measured over every set, and the thinnest sets of every size are not models:
+  mosaics, LEGO Art, DOTS, bulk tubs, education packs, Duplo. Over 1,800 parts
+  that put the 5th percentile at **21 shapes** (2,305 tiles in two shapes is a
+  "set") and the 95th of one piece at 660, so a 1,828-part castle with 30 shapes
+  and 320 of one brick was told nothing at all. `rebrickable.NOT_A_MODEL` leaves
+  them out by theme, and `NAMED_NOT_A_MODEL` by name for the ones filed
+  elsewhere (Creator bulk tubs, a film character's mosaic). Decided by what the
+  product is, never by how varied it is, or the cut would move the threshold it
+  sets. Over 1,800 parts it is **134 shapes** now, median 262, and 511 of one.
+  The station's 30 shapes moved from the 4.2nd percentile to the 1.1st.
+
+  2nd/98th would be rarer and was rejected on evidence, measured with the
+  mosaics in: it missed the fire station on both counts. `variety_probe` asserts both directions, including that a model with a
   real set's median spread is left alone and so is one using 58 of a piece, which
   nine real sets in ten are under and the old rule called repetitive at 48.
 
