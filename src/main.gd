@@ -277,6 +277,13 @@ func _ask(brief: String) -> void:
 		print("  [%5.1fs] %s" % [(Time.get_ticks_msec() - started) / 1000.0, note]))
 	_assistant.said.connect(func(text: String) -> void:
 		print("  said: %s" % text.substr(0, 300)))
+	# What it cost, because a run from here is a measurement somebody
+	# paid for and the bill was being counted and never printed.
+	_assistant.spent.connect(func(model_id: String, tokens: Brain.Spend) -> void:
+		print("spent %s on %s: %s fresh, %s cached, %s written, %s made" % [
+			Brain.in_money(Brain.cost(model_id, tokens)), model_id,
+			Brain.in_tokens(tokens.fresh), Brain.in_tokens(tokens.cached),
+			Brain.in_tokens(tokens.written), Brain.in_tokens(tokens.made)]))
 
 	_assistant.design(brief)
 	var outcome: Array = await _assistant.finished
