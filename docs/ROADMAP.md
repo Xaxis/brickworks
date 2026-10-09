@@ -156,6 +156,13 @@ How big the first structure comes out is mostly the run, not the code:
    22 — more than four times. The first castle outside the thin tail of
    real sets its size. One run; repeat it.
 
+   **And a caution from looking at it:** run 16 (95 shapes) reads plainer
+   at a glance than run 14 (71) — square towers alike, a bare courtyard —
+   because its one-off pieces are small, and what carries the picture is
+   the big read: run 14's great hall and four different crowns. The count
+   measures texture, not whether a model reads as the thing. Keep judging
+   both: the number, and the picture.
+
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
    out stickers and prints moves the medians 3% (180 to 173). The 180 is
