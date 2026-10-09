@@ -936,7 +936,7 @@ func _on_response(result: Array) -> void:
 			_looked_back = true
 			_pending = null
 			progress.emit("looking at the finished model")
-			var shown: Variant = await _from_both_sides(
+			var shown: Variant = await _from_all_round(
 				_will_it_hold(), CRITIQUE)
 			# Cancelled while the picture was being taken. An empty
 			# message is one the API refuses, so there would be nothing
@@ -1641,12 +1641,24 @@ func _ensure_shot() -> ModelShot:
 ## One corner shows two faces of a model and hides the other two, which
 ## is how a house was judged good with a blank front wall. Two opposite
 ## corners between them show all four.
-func _from_both_sides(said: String, ask: String) -> Variant:
+func _from_all_round(said: String, ask: String) -> Variant:
 	var near: Dictionary = await _ensure_shot().block(
 		world, "corner", scenery)
 	if not _busy:
 		return ""
 	var far: Dictionary = await _shot.block(world, "far corner", scenery)
+	if not _busy:
+		return ""
+	# And from directly above.
+	#
+	# Both of the other two are oblique, and a flat surface seen from a
+	# corner is a sliver. So the one thing the rules ask for by name —
+	# "surfaces that are meant to be smooth are tiled, not studded" —
+	# was being judged on a view that could not show it. A five hundred
+	# brick fire station came back with its roof and its whole forecourt
+	# in bare studs, nearly six hundred of them in one plane, and the
+	# critique had no way to see them.
+	var over: Dictionary = await _shot.block(world, "top", scenery)
 	if not _busy:
 		return ""
 	if near.is_empty() or far.is_empty():
@@ -1682,6 +1694,12 @@ func _from_both_sides(said: String, ask: String) -> Variant:
 	blocks.append({"type": "text", "text": "And from the opposite one, "
 		+ "so that every side has been seen:"})
 	blocks.append(far)
+	if not over.is_empty():
+		blocks.append({"type": "text", "text": "And from straight above. "
+			+ "This is where a roof, a road, a floor or a forecourt "
+			+ "shows what it is made of: bare studs read as unfinished, "
+			+ "and tiles read as a surface."})
+		blocks.append(over)
 	if not ask.is_empty():
 		blocks.append({"type": "text", "text": ask})
 	return blocks
@@ -1689,7 +1707,7 @@ func _from_both_sides(said: String, ask: String) -> Variant:
 
 ## Pictures of the subject, if any were ever found or given.
 ##
-## Capped at one: the critique already carries two renders, and a turn
+## Capped at one: the critique already carries three renders, and a turn
 ## with five pictures in it is a turn spent on pictures.
 func _subject_pictures() -> Array:
 	for block: Dictionary in references:
@@ -2351,6 +2369,68 @@ func _made_in(info: PartLibrary.PartInfo) -> String:
 	return ""
 
 
+## How far below a real set's variety is worth remarking on. Set models
+## vary, so this only fires when a design is well under — six tenths.
+const THIN_AT := 0.6
+## And how far above the normal count of one repeated part. A real set
+## of five hundred uses at most about two dozen of any one piece.
+const REPETITIVE_AT := 2.0
+
+
+## Whether the model is made of as many different things as a real set.
+##
+## The checker can say a model stands up. Whether it reads as a set is a
+## different question and it was resting on taste, so it is measured
+## instead: every catalogued LEGO set, banded by size, gives the number
+## of part-and-colour lots, the number of different shapes and how many
+## of one part is normal. A five hundred part set has about a hundred
+## and fifty lots and a hundred and twenty shapes, and uses at most two
+## dozen of any one piece.
+##
+## A fire station this built came to five hundred and thirty five parts
+## in forty five lots, thirty shapes, and eighty six of one brick. It
+## stands up and it is the right size; it is the wrong texture, and
+## nothing said so.
+func _variety(model: Model) -> String:
+	var parts: int = model.placements.size()
+	var normal: Dictionary = library.normal_for(parts)
+	if normal.is_empty():
+		return ""
+	var lots: Dictionary = {}
+	var shapes: Dictionary = {}
+	var of_one: Dictionary = {}
+	for placement: Placement in model.placements:
+		lots["%s/%d" % [placement.part, placement.color]] = true
+		shapes[placement.part] = true
+		of_one[placement.part] = int(of_one.get(placement.part, 0)) + 1
+	var most: int = 0
+	var commonest: String = ""
+	for part_id: String in of_one:
+		if int(of_one[part_id]) > most:
+			most = int(of_one[part_id])
+			commonest = part_id
+
+	var said: PackedStringArray = PackedStringArray()
+	var want_lots: int = int(normal.get("lots", 0))
+	var want_shapes: int = int(normal.get("shapes", 0))
+	var want_most: int = int(normal.get("most_of_one", 0))
+	if want_lots > 0 and float(lots.size()) < float(want_lots) * THIN_AT:
+		said.append("%d different part-and-colour combinations, where a real "
+			% lots.size() + "set of %d parts has about %d" % [parts, want_lots])
+	if want_shapes > 0 and float(shapes.size()) < float(want_shapes) * THIN_AT:
+		said.append("%d different shapes, against about %d"
+			% [shapes.size(), want_shapes])
+	if want_most > 0 and float(most) > float(want_most) * REPETITIVE_AT:
+		said.append("%d of one part (%s), where about %d is usual"
+			% [most, commonest, want_most])
+	if said.is_empty():
+		return ""
+	return ("Thinner than a set of this size:\n  " + "\n  ".join(said)
+		+ "\nThis is what separates a model that is built from one that is "
+		+ "designed — the detail that needs a different piece. Measured "
+		+ "over %d real sets of this size." % int(normal.get("sets", 0)))
+
+
 ## Up to how many available colours are worth naming rather than counting.
 const NAME_THEM := 6
 ## How many of one colour mistake to mention before it is repetition.
@@ -3009,6 +3089,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			part_of, hints_until)
 		if not fits.is_empty():
 			advice.append("Section '%s':%s" % [group, fits])
+
+	# And whether it is made of enough different things to read as a set.
+	var thin: String = _variety(model)
+	if not thin.is_empty():
+		advice.append(thin)
 
 	# And whether anything is specified in a colour it was never made in.
 	var unmade: String = _never_made(model)
@@ -4559,6 +4644,38 @@ func clear_built() -> void:
 
 
 func _system_prompt() -> String:
+	return _rules() + _what_a_set_is_made_of()
+
+
+## The shape of a real set, read out of the catalogue rather than
+## asserted here, because it is measured from every catalogued LEGO set
+## and changes when the tables are refreshed.
+func _what_a_set_is_made_of() -> String:
+	if library == null or library.set_norms.is_empty():
+		return ""
+	var lines: PackedStringArray = PackedStringArray()
+	for band: Variant in library.set_norms:
+		var entry: Dictionary = band
+		lines.append("  %d to %d parts: about %d part-and-colour lots, "
+			% [int(entry.get("from", 0)), int(entry.get("to", 0)),
+				int(entry.get("lots", 0))]
+			+ "%d different shapes, %d colours, and at most about %d of "
+			% [int(entry.get("shapes", 0)), int(entry.get("colours", 0)),
+				int(entry.get("most_of_one", 0))]
+			+ "any one piece")
+	return ("\n\nWHAT A SET IS MADE OF\nMeasured over every LEGO set there "
+		+ "is, by size:\n" + "\n".join(lines)
+		+ "\nThese are medians of real sets, not a target to hit exactly. "
+		+ "What they are for is the shape of the mistake: a model that is "
+		+ "the right size with a third of the variety is repetitive, and it "
+		+ "reads as built rather than designed. Eighty of one brick where "
+		+ "two dozen is usual means a wall was extruded instead of "
+		+ "detailed. The way out is not more parts, it is more different "
+		+ "parts — a tile where the wall turns, a bracket for a sign, a "
+		+ "slope where the roof meets the gutter.")
+
+
+func _rules() -> String:
 	return """You design models out of real bricks, inside an application \
 that builds whatever you submit. Your designs get built, so they have to \
 hold together.

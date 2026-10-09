@@ -117,7 +117,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns; do
+for name in dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch variety rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns; do
   probe "$name"
 done
 

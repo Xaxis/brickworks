@@ -19,6 +19,11 @@ geometry in front of them.
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /
   `never_made_in()`; surfaced on the search line and as `check_design` advice.
+- `set norms`: what a real LEGO set of a given size is made of — lots, shapes,
+  colours, and how many of one piece is normal — measured over every catalogued
+  set by `rebrickable.set_norms()` and written into the catalogue header.
+  `PartLibrary.normal_for(parts)` gives the band; `Assistant._variety()` says
+  when a design is well under it; the system prompt carries the whole table.
 - `element numbers`: the LEGO element a part in a colour actually is —
   `3001` in red is `300121` — so a parts list is orderable rather than
   descriptive. `rebrickable.elements()` writes `assets/generated/elements.json`
@@ -48,6 +53,7 @@ godot --headless --path . --script src/dev/search_quality_probe.gd  # how much i
 godot --headless --path . --script src/dev/inventory_probe.gd       # parts lists of known models
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
+godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 tools/check.sh --network    # adds remote_probe: geometry over the wire
 ```
 
@@ -69,6 +75,21 @@ it is hands-only, so say so rather than claiming it.
   top and 4 facing sideways". Named in the part's own frame and not the
   world's, because an unplaced part has no world and `rot` decides where it
   ends up, so "+x" would be a claim about something nobody has chosen yet.
+
+- **"Does it read as a set" is measured, not judged.** The checker could always
+  say whether a model holds together; whether it looks like a set rested on
+  taste. It is now measured over 9,866 catalogued sets, banded by size: one of
+  350–800 parts has about 153 part-and-colour lots, 117 different shapes, 18
+  colours, and at most about 24 of any one piece. `models/station.ldr` is the
+  fixture because it provoked this — 535 parts, 45 lots, 30 shapes, **86 of one
+  brick**. The right size and the wrong texture, and nothing said so.
+
+  Advice, never a fault: a repetitive model still builds, and refusing one would
+  throw away a design that is merely plain. `THIN_AT` is 0.6 and `REPETITIVE_AT`
+  is 2.0, so it only speaks when a design is well outside what real sets do —
+  a 400-part model with 120 shapes and 18 colours is left alone. Beware testing
+  it with a control that is itself thin: mine had 20 shapes, the check correctly
+  flagged it, and for a moment that looked like a false positive.
 
 - **Which moulding a bare part number means is settled by LDraw's redirects, not
   by the alphabet.** `3023a` and `3023b` are both "Plate 1 x 2" and both reduce

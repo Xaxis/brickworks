@@ -49,6 +49,17 @@ func _resolve_root() -> String:
 	return _root
 
 
+## What a real set of this many parts is made of, or an empty Dictionary
+## when nothing is known or the model is smaller than any real set.
+func normal_for(parts: int) -> Dictionary:
+	for band: Variant in set_norms:
+		var entry: Dictionary = band
+		if parts >= int(entry.get("from", 0)) \
+				and parts < int(entry.get("to", 0)):
+			return entry
+	return {}
+
+
 ## The LEGO element number for a part in a colour, or "" when there is
 ## none.
 ##
@@ -191,6 +202,11 @@ var _ordered_ids: PackedStringArray = PackedStringArray()
 ## built without it, which a clone that has not fetched the tables is.
 var recent_since: int = 0
 var availability_source: String = ""
+## What a real LEGO set of a given size is made of, measured over every
+## catalogued set. Each band is {from, to, sets, lots, shapes,
+## most_of_one, colours}. Empty when the catalogue was built without the
+## Rebrickable tables.
+var set_norms: Array = []
 ## Part and colour -> the LEGO element number to order, read from
 ## elements.json the first time anything asks. Its own file and loaded
 ## on demand because it is 0.8 MB that only a parts list needs, where
@@ -230,6 +246,10 @@ func load_catalogue(path: String = "") -> bool:
 		return false
 
 	var document: Dictionary = raw
+	var norms: Dictionary = document.get("set_norms", {})
+	var bands: Variant = norms.get("bands", [])
+	if typeof(bands) == TYPE_ARRAY:
+		set_norms = bands
 	var made: Dictionary = document.get("availability", {})
 	recent_since = int(made.get("recent_since", 0))
 	availability_source = str(made.get("source", ""))

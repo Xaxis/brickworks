@@ -211,6 +211,66 @@ def _lines() -> dict[str, str]:
     return lines
 
 
+## The sizes real sets come in, as the bands norms are measured over.
+SET_BANDS = ((60, 150), (150, 350), (350, 800), (800, 1800), (1800, 5000))
+
+
+def set_norms() -> dict:
+    """What a real LEGO set of a given size is actually made of.
+
+    The checker can say whether a model stands up.  It cannot say
+    whether it reads as a set, and that judgement was resting on taste.
+    This measures it instead, over every catalogued set: how many
+    distinct part-and-colour lots a set of five hundred parts has, how
+    many different shapes, and how many of one part is normal.
+
+    The numbers are worth stating plainly because they are not what a
+    designer guesses.  A real five hundred part set has about a hundred
+    and forty lots and a hundred different shapes, and its most repeated
+    part appears about twenty times — where a model built to be merely
+    buildable will happily use eighty-six of one brick.
+
+    Spare parts are left out: they are packaging, not design.  Only the
+    first version of each inventory is counted, so a set revised later
+    is one set.
+    """
+    inventories = {r["id"]: r["set_num"] for r in _rows("inventories")
+                   if r["version"] == "1"}
+    per_set: dict[str, list] = {}
+    for row in _rows("inventory_parts"):
+        set_num = inventories.get(row["inventory_id"])
+        if set_num is None or row["is_spare"] != "False":
+            continue
+        per_set.setdefault(set_num, []).append(
+            (row["part_num"], row["color_id"], int(row["quantity"])))
+
+    def middle(values: list[float]) -> float:
+        values.sort()
+        return values[len(values) // 2] if values else 0.0
+
+    bands = []
+    for low, high in SET_BANDS:
+        lots, shapes, most, colours = [], [], [], []
+        for items in per_set.values():
+            total = sum(q for _, _, q in items)
+            if not (low <= total < high):
+                continue
+            lots.append(float(len(items)))
+            shapes.append(float(len({p for p, _, _ in items})))
+            most.append(float(max(q for _, _, q in items)))
+            colours.append(float(len({c for _, c, _ in items})))
+        if len(lots) < 25:          # too few to be a norm
+            continue
+        bands.append({
+            "from": low, "to": high, "sets": len(lots),
+            "lots": round(middle(lots)),
+            "shapes": round(middle(shapes)),
+            "most_of_one": round(middle(most)),
+            "colours": round(middle(colours)),
+        })
+    return {"source": "Rebrickable set inventories", "bands": bands}
+
+
 def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     """LDraw part and colour -> the LEGO element number you would order.
 

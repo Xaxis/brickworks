@@ -76,6 +76,7 @@ def main() -> int:
 
     made = _availability(document, colors)
     ordered = _elements(document, colors)
+    normal = _set_norms(document)
 
     document["generated"] = int(time.time())
     path.write_text(json.dumps(document, separators=(",", ":")))
@@ -88,7 +89,35 @@ def main() -> int:
           ", ".join(f"{k} {v}" for k, v in buckets.most_common()))
     print(made)
     print(ordered)
+    print(normal)
     return 0
+
+
+def _set_norms(document: dict) -> str:
+    """Record what a real set of each size is made of.
+
+    Small enough to live in the catalogue header — five bands of four
+    numbers — and it has to travel with the app, because the question it
+    answers is asked while designing.
+    """
+    document.pop("set_norms", None)
+    try:
+        import rebrickable
+    except ImportError:
+        return "set norms: skipped (tools/rebrickable.py missing)"
+    try:
+        norms = rebrickable.set_norms()
+    except FileNotFoundError as missing:
+        return f"set norms: skipped ({missing})"
+    document["set_norms"] = norms
+    bands = norms["bands"]
+    counted = sum(band["sets"] for band in bands)
+    middle = bands[len(bands) // 2] if bands else {}
+    return ("set norms: %d bands over %d real sets — one of %d-%d parts has "
+            "%d lots, %d shapes, at most %d of any one part"
+            % (len(bands), counted, middle.get("from", 0), middle.get("to", 0),
+               middle.get("lots", 0), middle.get("shapes", 0),
+               middle.get("most_of_one", 0)))
 
 
 def _elements(document: dict, colors: list[dict]) -> str:
