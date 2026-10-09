@@ -36,6 +36,13 @@ const AUTOSAVE := "user://autosave.ldr"
 ## short enough that nothing meaningful is lost.
 const AUTOSAVE_DELAY_MS := 2500
 
+## Whether this run keeps the person's working model. Off for a run
+## driven from the command line: a design from tools/design.py writes its
+## own --out, and writing the autosave as well replaced whatever the
+## person had open in the app with a castle they never asked for — and
+## two runs at once raced each other for the one file.
+var keeps: bool = true
+
 
 class Entry extends RefCounted:
 	var name: String
@@ -91,7 +98,7 @@ func adopt() -> void:
 
 ## Call once a frame. Writes the working model when it has settled.
 func tick() -> void:
-	if not _pending:
+	if not _pending or not keeps:
 		return
 	if Time.get_ticks_msec() - _dirty_at < AUTOSAVE_DELAY_MS:
 		return

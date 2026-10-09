@@ -25,6 +25,9 @@ func _run() -> void:
 	var world: BrickWorld = main.get("_world")
 	var builder: Builder = main.get("_builder")
 	var store: ModelStore = main.get("_store")
+	# A gallery is not somebody's session: opening every model in turn
+	# would leave whichever came last as their working model.
+	store.keeps = false
 	var library: PartLibrary = main.get("_library")
 	var stability: Stability = main.get("_stability")
 

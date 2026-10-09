@@ -345,17 +345,19 @@ func _unthrottle_if_nobody_is_watching() -> void:
 	# this project treats as a failed deploy.
 	if OS.has_feature("web"):
 		return
-	var driven: bool = false
-	for flag: String in ["--mcp", "--ask", "--ask-claude-code", "--bench",
-			"--shot", "--autobuild", "--showcase", "--out"]:
-		if _has_argument(flag) or not _argument(flag).is_empty():
-			driven = true
-			break
-	if not driven:
+	if not _given_any(["--mcp", "--ask", "--ask-claude-code", "--bench",
+			"--shot", "--autobuild", "--showcase", "--out"]):
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 	print("driven from the command line, so vsync is off for this run")
+
+
+func _given_any(flags: Array[String]) -> bool:
+	for flag: String in flags:
+		if _has_argument(flag) or not _argument(flag).is_empty():
+			return true
+	return false
 
 
 ## Measure a settled frame rate and print it, then quit.
@@ -524,6 +526,12 @@ func _build_ui() -> void:
 			_bar.say("could not load %s — %s" % [part_id, why]))
 
 	_store = ModelStore.new()
+	# A run driven from the command line is not somebody's session, so it
+	# leaves their working model alone. Set before anything opens, or the
+	# open's own autosave gets in first. A session over MCP is somebody's:
+	# it builds in front of them.
+	_store.keeps = not _given_any(["--ask", "--ask-claude-code", "--bench",
+		"--shot", "--autobuild", "--showcase", "--out"])
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
