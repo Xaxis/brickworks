@@ -5,16 +5,14 @@
 //
 //   node tools/web/boot_shot.mjs --url=... --out=shots/boot.png [--at=2500]
 
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
 
-const browser = await chromium.launch({
-  args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
-});
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
 
 // Throttle so the wall is caught mid-build rather than fully laid.

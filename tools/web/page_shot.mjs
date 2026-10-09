@@ -2,7 +2,7 @@
 // deploying it first.
 //
 //   node tools/web/page_shot.mjs --file=web/index.html --out=shots/landing.png
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 import { resolve } from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -10,7 +10,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 
-const browser = await chromium.launch();
+const browser = await launch();
 const page = await browser.newPage({
   viewport: { width: Number(args.width || 1280), height: Number(args.height || 900) },
 });

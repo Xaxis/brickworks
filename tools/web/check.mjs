@@ -11,7 +11,7 @@
 //
 //   node tools/web/check.mjs --url=https://... [--out=shots/deploy.png]
 
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -149,9 +149,7 @@ async function controls(page, problems) {
   }
 }
 
-const browser = await chromium.launch({
-  args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
-});
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 // A preview deployment is behind the team's sign-in, so without this the

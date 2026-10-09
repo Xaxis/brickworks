@@ -6,7 +6,7 @@
 // the site uses and changing the tagline is changing one string. 1200 by
 // 630 is what every card reader crops to; anything else gets trimmed
 // somewhere unpredictable.
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 import { resolve, dirname } from "node:path";
 import { unlinkSync } from "node:fs";
 
@@ -55,7 +55,7 @@ const page_html = `<!doctype html>
 </div>
 <div class="shot"><img src="_og_model.png"><div class="fade"></div></div>`;
 
-const browser = await chromium.launch();
+const browser = await launch();
 const page = await browser.newPage({
   viewport: { width: 1200, height: 630 },
   deviceScaleFactor: 1,

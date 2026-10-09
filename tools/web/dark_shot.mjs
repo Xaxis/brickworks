@@ -1,6 +1,6 @@
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 import { resolve } from "node:path";
-const b = await chromium.launch();
+const b = await launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
 await p.goto("file://" + resolve("web/index.html"), { waitUntil: "load" });
 await p.waitForTimeout(700);

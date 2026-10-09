@@ -9,7 +9,7 @@
 // Playwright rather than a rasteriser, because it is already here for
 // the deploy check and it renders the SVG with the same engine the tab
 // will.
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 import { readFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 
@@ -26,7 +26,7 @@ const WANTED = [
   ["assets/icon.png", 128],
 ];
 
-const browser = await chromium.launch();
+const browser = await launch();
 for (const [where, size] of WANTED) {
   const page = await browser.newPage({
     viewport: { width: size, height: size },

@@ -9,7 +9,7 @@
 // in a 358px bar and the nav does not wrap, so on a phone the document
 // came out 566px wide and the whole page scrolled sideways. A status
 // code cannot see that. A browser at 390px can.
-import { chromium } from "playwright";
+import { launch } from "./browser.mjs";
 import { resolve } from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -19,7 +19,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const target = args.url || ("file://" + resolve(args.file || "web/index.html"));
 const bypass = process.env.VERCEL_BYPASS;
 
-const browser = await chromium.launch();
+const browser = await launch();
 const problems = [];
 
 // A phone first, because that is where it was broken, then a laptop.

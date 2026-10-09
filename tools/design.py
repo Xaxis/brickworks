@@ -138,6 +138,14 @@ def _run(command: list[str], *, quiet: bool, started: float) -> int:
     environment = dict(os.environ)
     if any("xvfb-run" in part for part in command):
         environment.setdefault("MESA_VK_WSI_DEBUG", "sw")
+    # On the GPU, through the box's lease, unless headless.  This machine's
+    # godot renders in software otherwise, so that nothing piles onto the
+    # GPU unasked — and a design is judged by its pictures, which in
+    # software take long enough on a thousand-brick model to hit the
+    # twenty-second cap and come back as letters.  The lease queues the
+    # run behind whatever else is on the GPU rather than beside it.
+    if "--headless" not in command:
+        environment.setdefault("GODOT_GPU", "1")
     process = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, bufsize=1, env=environment,
