@@ -21,6 +21,7 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 4 | **1,828** | **30** | **8** | 320 |
 | 5, detailed per assembly | 975 | **41** | **11** | 176 |
 | 6, detailed per assembly | 795 | 33 | 8 | 144 |
+| 7, siblings told what the others got | 803 | 33 | 6 | 162 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
@@ -66,6 +67,18 @@ How big the first structure comes out is mostly the run, not the code:
    have a crown, and copies that can be perturbed without dictating each
    one.** `repeat_section` has the same problem by construction.
 
+   *Tried in run 7, unproven:* each pass is now told what earlier passes
+   brought to the model and which kind parts are nowhere in it yet, and
+   asked to stop only once the assembly reads as detailed as a set its
+   size. Shapes went 30 -> 33. But the four tower passes never got to
+   detail: up close, each found its tower built inside-out (every 48092
+   turned so the shaft bowed inward) and spent the pass turning them
+   half a turn. A real fault the whole look had missed, caught by the
+   close one — and towers that added no new part leave nothing for the
+   next sibling to be told about. One run; the mechanism is in and
+   measured nothing yet. Towers under 60 parts also get no size norm,
+   because the smallest band starts there.
+
 2. **More than one idea per pass.** Every pass in runs 5 and 6 made one
    change and stopped — a tower in twelve seconds, a wall in sixty — with
    eight turns available. The pass is told what is missing, measured
@@ -109,10 +122,12 @@ than one ceiling: siblings converge (lever 1) and each pass does one idea
 (lever 2). Neither is a capacity limit. Both are the next experiments,
 in that order, before decomposing the loop itself.
 
-**Cost.** Run 6 spent $9.67 on Opus 5.5 at high effort, and $8 of it was
-input tokens sent fresh: 2.04M against 575k read from the cache. Only the
-system prompt and tools are cached, so every turn pays full price for
-the whole conversation again. More passes multiply exactly that.
+**Cost, fixed 2026-10-09.** Run 6 spent $9.67 on Opus 5.5 at high
+effort, and $8 of it was input tokens sent fresh: 2.04M against 575k
+read from the cache, because only the rules were cached and old pictures
+were rewritten every turn. With the conversation cached and pictures
+kept until they add up, run 7 spent **$3.99** on a longer run: 82 tokens
+fresh, 3.53M from the cache. Passes are now cheap enough to add more.
 
 ## How progress is judged
 

@@ -159,6 +159,11 @@ var _to_detail: Array[Dictionary] = []
 var _detailing: Dictionary = {}
 var _detail_turns: int = 0
 var _detail_count: int = 0
+## What each pass brought to the model that it did not have before, as
+## [name, part ids], and the part ids the model had when the current one
+## began. See [method _assembly_measured].
+var _detail_added: Array = []
+var _parts_before_pass: Dictionary = {}
 ## The whole model as it stood when detailing began, to say what the
 ## passes came to.
 var _before_detail: String = ""
@@ -491,6 +496,8 @@ func _start(text: String) -> void:
 	_detailing = {}
 	_detail_turns = 0
 	_detail_count = 0
+	_detail_added = []
+	_parts_before_pass = {}
 	_before_detail = ""
 	_turn_cap = MAX_TURNS
 	_brief = text
@@ -1223,6 +1230,11 @@ func _detail_next(also: Array = []) -> bool:
 	if not _detailing.is_empty():
 		progress.emit("the %s, detailed: %s" % [_detailing["name"],
 			_texture(_bricks_inside(_detailing["where"]))])
+		var added := PackedStringArray()
+		for part_id: String in _parts_in(_bricks_inside({})):
+			if not _parts_before_pass.has(part_id):
+				added.append(part_id)
+		_detail_added.append([_detailing["name"], added])
 		_detailing = {}
 		_detail_count += 1
 	while not _to_detail.is_empty():
@@ -1238,6 +1250,7 @@ func _detail_next(also: Array = []) -> bool:
 		_detailing = one
 		_detail_turns = 0
 		_repairs = 0
+		_parts_before_pass = _parts_in(_bricks_inside({}))
 		progress.emit("detailing the %s (%d of %d): %s" % [one["name"],
 			_detail_count + 1, _detail_count + 1 + _to_detail.size(),
 			_texture(inside)])
@@ -1307,6 +1320,37 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 			+ "colours, and at most about %d of any one piece."
 			% int(normal.get("most_of_one", 0)))
 
+	# What the passes before this one brought, because the design gives
+	# siblings the same treatment: four towers got "the same crown, so
+	# they match", and each tower went from 6 shapes to 11 while the
+	# model went from 27 to 33. A part another assembly already has adds
+	# nothing to the model's count of different shapes, and that count
+	# is where it is furthest from a real set.
+	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
+	var whole: Dictionary = _parts_in(everything)
+	var before := PackedStringArray()
+	for entry: Array in _detail_added:
+		var brought: PackedStringArray = entry[1]
+		if brought.is_empty():
+			continue
+		var named := PackedStringArray()
+		for part_id: String in brought.slice(0, 8):
+			named.append("%s %s" % [part_id, _part_called(part_id)])
+		before.append("  the %s: %s" % [entry[0], "; ".join(named)])
+	if not before.is_empty():
+		var count: String = "The whole model is %d different shapes" \
+			% whole.size()
+		var normal_whole: Dictionary = library.normal_for(everything.size())
+		if not normal_whole.is_empty():
+			count += ", where a real set of %d parts has about %d" % [
+				everything.size(), int(normal_whole.get("shapes", 0))]
+		said.append("What the assemblies before this one brought to the "
+			+ "model:\n" + "\n".join(before) + "\n" + count + ". Another "
+			+ "assembly's parts again add nothing to that count. A pair "
+			+ "that frames something can match; past that, real sets give "
+			+ "siblings different jobs, and a different job is a different "
+			+ "piece.")
+
 	var used: Dictionary = {}
 	var colours: Dictionary = {}
 	for brick: BrickWorld.Brick in inside:
@@ -1330,7 +1374,8 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 			if used.has(part_id):
 				present.append(part_id)
 			else:
-				missing.append("  %s %s" % [part_id, _part_called(part_id)])
+				missing.append("  %s %s%s" % [part_id, _part_called(part_id),
+					"" if whole.has(part_id) else "  — nowhere in the model yet"])
 		for entry: Variant in kind.get("colors", []):
 			var code: int = int((entry as Array)[0])
 			var called: String = _colour_name(code)
@@ -1379,6 +1424,14 @@ func _bounds_of(bricks: Array[BrickWorld.Brick]) -> AABB:
 	return box
 
 
+## The different parts among some bricks, as a set of ids.
+static func _parts_in(bricks: Array[BrickWorld.Brick]) -> Dictionary:
+	var found: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		found[brick.part_id] = true
+	return found
+
+
 ## Parts, shapes, colours and the commonest piece, in one line.
 func _texture(bricks: Array[BrickWorld.Brick]) -> String:
 	var of_one: Dictionary = {}
@@ -1413,7 +1466,8 @@ with where= lists its bricks and their numbers, if you need to take any \
 out or recolour them. Do not call submit_design: it replaces the whole \
 model.
 
-When it is done, say in a line what you changed, and stop."""
+When it reads as detailed as a set of its size would be — not after \
+the first change — say in a line what you changed, and stop."""
 
 
 ## Something a person can act on, rather than a number.

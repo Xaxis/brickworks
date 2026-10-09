@@ -104,6 +104,12 @@ func _run() -> void:
 		"what the gatehouse came to is said when it is done")
 	var tower: String = _text_of(assistant._messages.back())
 	_ok(tower.contains("The tower: 6 parts"), "and the tower comes next")
+	# Four towers were given "the same crown, so they match", and the
+	# model's count of shapes barely moved for four passes.
+	_ok(tower.contains("the gatehouse: 3659"),
+		"told what the gatehouse brought, so it need not bring it again")
+	_ok(tower.contains("nowhere in the model yet"),
+		"...and which of the kind's parts the whole model still lacks")
 	_ok(_said("detailing the tower (2 of 2)"), "...as the second of two")
 
 	print("\na pass that keeps calling tools is moved on")
