@@ -16,7 +16,7 @@ judged on its own:
 
 | | what a real set has | where it stands, 2026-10-09 |
 |---|---|---|
-| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 95 shapes, 10-13 colours; the gap, below |
+| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 113 shapes, 16 colours; the gap, below |
 | **its parts** | named sub-assemblies, bag by bag | assemblies named by the design, kept as `.mpd` sub-models |
 | **the booklet** | built a sub-assembly at a time, pictured close | built and framed by those assemblies; `--booklet` writes one |
 | **the parts list** | element numbers you can order | CSV with element numbers; the `.mpd` imports into Rebrickable to buy |
@@ -48,13 +48,14 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 16, the count in the send-back | 1,159 | **95** | 10 | 213 |
 | 17, and the accents named | 797 | 57 | 9 | 139 |
 | 18, sent back on the model's one-off tail | 1,077 | 78 | 10 | 364 |
+| 19, and on its colour tail | **1,329** | **113** | **16** | 216 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
 Previous project best was 456 parts. Scale is no longer the constraint.
-**The whole remaining gap is one number: 95 shapes at best where a real
-set of that size has 180** — and 95 is the first castle out of the thin
-tail of real sets its size. Colours are 13 against 28 at best. Everything below
+**The whole remaining gap is one number: 113 shapes at best where a real
+set of that size has 180** — well clear of the thin tail of real sets its
+size, as is its colour. Colours are 13 against 28 at best. Everything below
 is about closing that and nothing else. Count a run with
 `tools/texture.py model.ldr --brief "..."`, after it ends.
 
@@ -211,7 +212,11 @@ How big the first structure comes out is mostly the run, not the code:
    72-86% in its top two — and run 14, the best picture, was the least
    grey of the recent ones. Each band carries the main-colour median and
    tail now, and a pass is sent back when the whole model is past it.
-   Run 19 measures it. Colours, counted, are 13 against 28 at best. The kinds data gives each kind
+   **Run 19: 37% its main colour and 60% in its top two, 16 colours, 113
+   shapes and 65 one-off** — the best on every count, and the best
+   picture: trees round a green base, a market stall under a striped
+   awning, red roofs, every tower crowned differently. It is on the
+   landing page. The kinds data gives each kind
    its palette by lift; nothing says a second colour belongs at a string
    course, a lintel, a roof band. Likely falls out of (3).
 

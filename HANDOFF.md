@@ -24,10 +24,10 @@ ranked by evidence.
   ships.
 - Full suite green: `tools/check.sh` (it queues itself on the machine's
   `heavy` pool).
-- Best design: castle run 14, **1,120 parts, 71 shapes, 12 colours**, in
-  ten named assemblies — on the landing page, shipped as
-  `models/castle.ldr`. A real set that size has 180 shapes. 30 was the
-  best before this work.
+- Best design: castle run 19, **1,329 parts, 113 shapes, 16 colours**, 37%
+  its main colour, in ten named assemblies — on the landing page, shipped
+  as `models/castle.ldr`. A real set that size has 180 shapes and is 28%
+  its main colour. 30 shapes was the best before this work.
 - Not exercised: the proxy's conversation caching for signed-in accounts
   (`api/claude.js`). Deployed; proving it needs an account.
 
