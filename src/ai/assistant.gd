@@ -500,6 +500,7 @@ func _start(text: String) -> void:
 	_looked_back = false
 	_to_detail = []
 	_declared = []
+	_left_out = ""
 	_detailing = {}
 	_detail_turns = 0
 	_detail_count = 0
@@ -1036,6 +1037,8 @@ func _on_response(result: Array) -> void:
 	# A design arrived. Check it against the real lattice.
 	var report: Dictionary = _check(_pending)
 	progress.emit(report["summary"])
+	if not report["ok"] and _repairs >= MAX_REPAIRS and not _looked_back:
+		report = _salvage(report)
 
 	if report["ok"]:
 		await _ensure_parts(_pending)
@@ -1079,7 +1082,7 @@ func _on_response(result: Array) -> void:
 			# design was deciding whether it was finished, it was shown
 			# none of them, and it finished.
 			var measured: Array = report.get("advice", [])
-			var noticed: String = _will_it_hold()
+			var noticed: String = _left_out + _will_it_hold()
 			if not measured.is_empty():
 				noticed += "\n\nAnd what the check measured about it:\n" \
 					+ "\n".join(PackedStringArray(measured))
@@ -1224,10 +1227,62 @@ can name the features that make it recognisable and see each of them \
 in the picture."""
 
 
+## What a design that ran out of repairs had to leave behind, said at the
+## start of its look. See [method _salvage].
+var _left_out: String = ""
+
+
+## Keep what holds of a design that has run out of repairs.
+##
+## A space cruiser's last submission was 641 bricks, of which two would
+## not hold, and the run ended with nothing at all: three repairs spent,
+## and a design that stood but for two bricks thrown away whole. Bricks
+## that float hold nothing up — anything resting only on one floats too —
+## so leaving them out cannot loosen the rest. Only when floating is the
+## whole complaint, and at most a quarter of the design: past that it is
+## not the same model any more. The design is told what went, at its
+## look, and carries on to it.
+func _salvage(report: Dictionary) -> Dictionary:
+	var floating: Array = report.get("floating", [])
+	if report.get("kinds", []) != ["floating"] or floating.is_empty() \
+			or floating.size() * 4 > _pending.placements.size():
+		return report
+	var gone: Dictionary = {}
+	for index: Variant in floating:
+		gone[int(index)] = true
+	var kept := Model.new()
+	kept.name = _pending.name
+	kept.description = _pending.description
+	kept.sections = _pending.sections
+	kept.assemblies = _pending.assemblies
+	var said := PackedStringArray()
+	for index: int in _pending.placements.size():
+		if gone.has(index):
+			if said.size() < 6:
+				said.append("%s at %s" % [_pending.placements[index].part,
+					_pending.placements[index].where()])
+			continue
+		kept.placements.append(_pending.placements[index])
+	var again: Dictionary = _check(kept)
+	if not again["ok"]:
+		return report
+	_pending = kept
+	_left_out = ("After three repairs %d brick%s still had nothing holding "
+		% [gone.size(), "" if gone.size() == 1 else "s"]
+		+ "them, so they were left out and the rest stands: %s%s. Put back "
+		% [", ".join(said), "" if gone.size() <= 6 else " and more"]
+		+ "whatever the model needs of them, held this time.\n\n")
+	progress.emit("left out %d brick%s that would not hold; the rest stands"
+		% [gone.size(), "" if gone.size() == 1 else "s"])
+	return again
+
+
 ## The last design submitted, exactly as it was sent.
 var _last_submitted: Dictionary = {}
-## Where a design that could not be made to hold together is written.
-const FAILED_DESIGN := "user://failed_design.json"
+## Where a design that could not be made to hold together is written. A
+## variable so a probe can write somewhere else: sharing the path, a probe
+## run overwrote a real run's 641-brick failure before it was read.
+var failed_design: String = "user://failed_design.json"
 
 
 ## Write down the design that ran out of repairs, and say where.
@@ -1241,7 +1296,7 @@ const FAILED_DESIGN := "user://failed_design.json"
 func _keep_the_failure(report: Dictionary) -> void:
 	if _last_submitted.is_empty():
 		return
-	var file: FileAccess = FileAccess.open(FAILED_DESIGN, FileAccess.WRITE)
+	var file: FileAccess = FileAccess.open(failed_design, FileAccess.WRITE)
 	if file == null:
 		return
 	file.store_string(JSON.stringify({"brief": _brief,
@@ -1250,7 +1305,7 @@ func _keep_the_failure(report: Dictionary) -> void:
 		"design": _last_submitted}, "\t"))
 	file.close()
 	progress.emit("kept the design that would not hold at %s"
-		% ProjectSettings.globalize_path(FAILED_DESIGN))
+		% ProjectSettings.globalize_path(failed_design))
 
 
 ## Mark every brick with the assembly it is part of, as the run ends.
@@ -3818,8 +3873,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## Bricks that rest on something without being attached to it.
 	## kind -> Array of sentences, said as advice once the faults are in.
 	var loose: Dictionary = {}
+	var floating: Dictionary = {}
 	_check_support(model, cells_of, lattice, issues, crowded, joined,
-		loose, boxes_of)
+		loose, boxes_of, floating)
 	for kind: String in loose:
 		var said: Array = loose[kind]
 		advice.append("%s\n%s" % [kind, "\n".join(
@@ -3952,6 +4008,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		"feedback": feedback,
 		"advice": advice,
 		"pieces": pieces,
+		"kinds": issues.keys(),
+		"floating": floating.keys(),
 	}
 
 
@@ -4974,7 +5032,7 @@ func _check_support(
 	model: Model, cells_of: Dictionary, lattice: BrickLattice,
 	issues: Dictionary, crowded: Dictionary = {},
 	joined: Dictionary = {}, loose: Dictionary = {},
-	boxes_of: Dictionary = {}
+	boxes_of: Dictionary = {}, floating: Dictionary = {}
 ) -> void:
 	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
 	for index: int in cells_of:
@@ -5047,6 +5105,7 @@ func _check_support(
 			supported = true
 
 		if not supported:
+			floating[index] = true
 			_note(issues, "floating",
 				"brick %d (%s at %s) has nothing holding it" % [
 					index, placement.part, placement.where()])

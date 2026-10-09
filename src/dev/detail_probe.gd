@@ -163,7 +163,8 @@ func _run() -> void:
 
 	print("\na design that will not hold is kept where it can be read back")
 	ended.clear()
-	DirAccess.remove_absolute(Assistant.FAILED_DESIGN)
+	assistant.failed_design = "user://failed_design_probe.json"
+	DirAccess.remove_absolute(assistant.failed_design)
 	assistant.design("a brick in mid-air")
 	var adrift: Dictionary = {"name": "adrift", "description": "floats",
 		"bricks": [{"part": "3001", "color": 4, "x": 0, "y": 30, "z": 0}],
@@ -173,12 +174,29 @@ func _run() -> void:
 	_ok(not ended.is_empty() and not bool(ended[0][0]),
 		"it runs out of repairs and fails")
 	var kept: Variant = JSON.parse_string(
-		FileAccess.get_file_as_string(Assistant.FAILED_DESIGN))
+		FileAccess.get_file_as_string(assistant.failed_design))
 	_ok(typeof(kept) == TYPE_DICTIONARY
 			and str(kept.get("brief", "")) == "a brick in mid-air"
 			and (kept.get("design", {}) as Dictionary).get("bricks", []).size() == 1,
 		"...and what it sent is written down, with the brief, to reproduce")
 	_ok(_said("kept the design that would not hold"), "...and the log says where")
+
+	print("\na design that holds but for a few bricks keeps what holds")
+	ended.clear()
+	assistant.design("a short tower")
+	var nearly: Dictionary = {"name": "nearly", "description": "one loose",
+		"bricks": _stack(0, 4) + [{"part": "3001", "color": 4,
+			"x": 10, "y": 30, "z": 0}],
+		"assemblies": [{"name": "it", "x_from": 0, "x_to": 14, "z_from": 0, "z_to": 2}]}
+	for attempt: int in Assistant.MAX_REPAIRS + 1:
+		await _reply(assistant, [_tool("submit_design", nearly)])
+	_ok(ended.is_empty() and assistant._looked_back,
+		"it is not thrown away: the run goes on to its look")
+	_ok(world.brick_count() == 4, "with the four that hold standing (%d)"
+		% world.brick_count())
+	_ok(_text_of(assistant._messages.back()).contains("left out"),
+		"...and the look says what was left out, to put back")
+	await _reply(assistant, [{"type": "text", "text": "Done."}])
 
 	print("\na model that is one thing gets one look")
 	_ok(Assistant._queue_assemblies([{"name": "lighthouse", "where": {}}]).is_empty(),
