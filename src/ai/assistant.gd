@@ -1247,6 +1247,7 @@ func _run_tool(block: Dictionary) -> Variant:
 			return await _with_a_look("", "", from, close)
 		"edit_model":
 			var edited: Model = _edit(args)
+			_say_shorthand_trouble()
 			if _touched == 0:
 				# Nothing changed, and saying "done" to that ends the
 				# run as a success with the model untouched.
@@ -1282,7 +1283,9 @@ func _run_tool(block: Dictionary) -> Variant:
 			return answer
 		"submit_design":
 			_pending = _read_model(args)
-			progress.emit("submitted %d bricks" % _pending.placements.size())
+			progress.emit("submitted %d bricks%s"
+				% [_pending.placements.size(), _shorthand_used(args)])
+			_say_shorthand_trouble()
 			return "Received. Checking it now."
 	return "No tool called %s." % name
 
@@ -1432,6 +1435,39 @@ func _edit(args: Dictionary) -> Model:
 	_touched += model.placements.size() - before
 	_touched += gone.size()
 	return model
+
+
+## What shorthand a design used, for the run's own log.
+##
+## A real castle run reported in its own words that "the repeats didn't
+## fire" and there was no way to find out what it had sent: nothing
+## logged a tool's arguments, so the first use of a new feature in anger
+## could say it had failed and leave no evidence at all. Counts in the
+## progress line, and the complaint itself said out loud.
+static func _shorthand_used(args: Dictionary) -> String:
+	var said: PackedStringArray = PackedStringArray()
+	var patterns: int = (args.get("patterns", []) as Array).size()
+	if patterns > 0:
+		said.append("%d pattern%s" % [patterns, "" if patterns == 1 else "s"])
+	var copies: int = 0
+	for raw: Variant in args.get("repeat_section", []):
+		if typeof(raw) == TYPE_DICTIONARY:
+			copies += maxi(1, int((raw as Dictionary).get("times", 1)))
+	if copies > 0:
+		said.append("%d section copies" % copies)
+	var sections: int = (args.get("sections", []) as Array).size()
+	if sections > 0:
+		said.append("%d section%s" % [sections, "" if sections == 1 else "s"])
+	return "" if said.is_empty() else ", " + ", ".join(said)
+
+
+## And why a piece of shorthand came to nothing, in the log rather than
+## only in the reply the model gets.
+func _say_shorthand_trouble() -> void:
+	for said: Variant in _repeat_trouble:
+		progress.emit("repeat_section came to nothing: %s" % str(said))
+	for said: Variant in _pattern_trouble:
+		progress.emit("a pattern came to nothing: %s" % str(said))
 
 
 ## Drop every picture but the one about to be sent.
