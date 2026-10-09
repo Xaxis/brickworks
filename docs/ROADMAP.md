@@ -46,6 +46,7 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 14, told the 100 most used | 1,120 | **71** | 12 | 216 |
 | 15, and the one-off count | 828 | 56 | 7 | 112 |
 | 16, the count in the send-back | 1,159 | **95** | 10 | 213 |
+| 17, and the accents named | 797 | 57 | 9 | 139 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
@@ -162,6 +163,15 @@ How big the first structure comes out is mostly the run, not the code:
    the big read: run 14's great hall and four different crowns. The count
    measures texture, not whether a model reads as the thing. Keep judging
    both: the number, and the picture.
+
+   **Run 17 fell back — 57 shapes, 17 one-off — and why is in the log:**
+   its towers came out rich on the first try (20-22 shapes each), so no
+   pass was thin, none was sent back, and the one message that moves
+   one-off pieces never ran. It rode on thinness. A pass is now sent back
+   also when the whole model's one-off count is on the tail of real sets
+   (fewer than 31 at 800-1,800 parts) — every model but run 16 was. Each
+   pass is also told, by name, the accents real sets of the kind use one
+   or two of: a goblet, a torch, a hinge, a bracket. Run 18 measures both.
 
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
