@@ -1368,14 +1368,30 @@ func _detail_next(also: Array = []) -> bool:
 			_sent_back = true
 			progress.emit("sent the %s back: %d shapes in %d parts"
 				% [_detailing["name"], shapes, here.size()])
+			# With where the gap is. Told once, in the long message the
+			# pass opens with, the count of one-off pieces did not move
+			# (21, then 13); this short one is the message that has made
+			# passes act. And symmetry is why: a detail copied to four
+			# towers is one shape used four times.
+			var whole: Array[BrickWorld.Brick] = _bricks_inside({})
+			var accents: int = int(library.normal_for(whole.size()).get(
+				"accents", 0))
+			var gap: String = ""
+			if accents > 0:
+				gap = (" Most of a real set's different shapes are pieces "
+					+ "it uses once or twice: the whole model has %d, a "
+					% _once_or_twice(whole) + "real set its size about "
+					+ "%d. A detail copied onto every tower counts as one "
+					% accents + "shape however many towers there are.")
 			_messages.append({"role": "user", "content": ("The %s is %d "
 				% [_detailing["name"], shapes] + "different shapes in %d "
 				% here.size() + "parts. A real set of that size has about "
 				+ "%d, and fewer than %d is thinner than all but one set "
 				% [int(normal.get("shapes", 0)),
 					int(normal.get("shapes_thin", 0))]
-				+ "in twenty. One more round on it: where does something "
-				+ "change that is still the same piece? Then stop.")})
+				+ "in twenty.%s One more round on it: where does " % gap
+				+ "something change that is still the same piece? Then "
+				+ "stop.")})
 			_send()
 			return true
 	if not _detailing.is_empty():
@@ -1567,12 +1583,7 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 	# gap to a real set was: a set of 1,100 parts has some 177 shapes, 85
 	# of them one or two of a part; the best castle built here had 71
 	# shapes and 21 such. The shapes it used many times were close.
-	var per_part: Dictionary = {}
-	for brick: BrickWorld.Brick in everything:
-		var id: String = library.resolve(brick.part_id)
-		per_part[id] = int(per_part.get(id, 0)) + 1
-	var once: int = per_part.values().filter(func(n: int) -> bool:
-		return n <= 2).size()
+	var once: int = _once_or_twice(everything)
 	var normal_whole: Dictionary = library.normal_for(everything.size())
 	if int(normal_whole.get("accents", 0)) > once:
 		said.append("Across the whole model, %d shapes are used only once "
@@ -1619,6 +1630,16 @@ func _bounds_of(bricks: Array[BrickWorld.Brick]) -> AABB:
 		box = one if first else box.merge(one)
 		first = false
 	return box
+
+
+## How many shapes some bricks use only once or twice.
+func _once_or_twice(bricks: Array[BrickWorld.Brick]) -> int:
+	var per_part: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		var id: String = library.resolve(brick.part_id)
+		per_part[id] = int(per_part.get(id, 0)) + 1
+	return per_part.values().filter(func(n: int) -> bool:
+		return n <= 2).size()
 
 
 ## The different parts among some bricks, as a set of ids.

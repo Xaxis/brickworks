@@ -44,6 +44,7 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 9, the same, again | 818 | 58 | 9 | 122 |
 | 10, and told the ordinary parts | 1,178 | 64 | 9 | 133 |
 | 14, told the 100 most used | 1,120 | **71** | 12 | 216 |
+| 15, and the one-off count | 828 | 56 | 7 | 112 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
@@ -143,7 +144,12 @@ How big the first structure comes out is mostly the run, not the code:
    or twice**. Run 14 had 71 shapes and 21 such; its shapes used many
    times (about 39 against a real set's 57) were close. Nearly the whole
    remaining gap is one-off pieces. Each band now carries that count and
-   each pass is told the model's own against it — run 15 measures it.
+   each pass is told the model's own against it. **Run 15: 13 such
+   shapes, against run 14's 21 — told the number, nothing moved.** The
+   likely reason is symmetry: a detail added to four towers is a part
+   used four times, never once. A sentence in a long pass message did
+   not act; the one lever that reliably has is the short send-back, so
+   the count goes there next.
 
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
