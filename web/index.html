@@ -215,6 +215,9 @@ h2 {
 	gap: 12px;
 	grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
 }
+/* Below a picture rather than above one, as in the hero. */
+.shot + .stats { margin-top: 16px; }
+.stats + .actions { margin-top: 24px; }
 .stat {
 	background: var(--panel);
 	border: 1px solid var(--line);
@@ -434,6 +437,30 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 					bounding box.
 				</p>
 			</div>
+		</div>
+	</section>
+
+	<section id="designed" class="wrap">
+		<h2>Designed from one sentence</h2>
+		<p class="sub">
+			“A medieval castle with a gatehouse, four corner towers and a
+			long curtain wall between them.” The assistant laid it out,
+			checked every brick against the real lattice, then went back over
+			the gatehouse, each tower and each wall on its own, close up,
+			reaching for the parts real castle sets are built from.
+		</p>
+		<div class="shot">
+			<img src="castle.png" width="1024" height="768" loading="lazy"
+				alt="A grey brick castle on a green baseplate with a tan border, designed by the assistant: an arched gatehouse between two round towers flying red flags, four round corner towers each crowned differently, crenellated curtain walls with buttresses, and a courtyard with a timber-roofed arcade and a stair up to the wall-walk.">
+		</div>
+		<div class="stats">
+			<div class="stat"><b>1,895</b><span>parts, and every one holds</span></div>
+			<div class="stat"><b>9</b><span>assemblies, each detailed on its own</span></div>
+			<div class="stat"><b>350</b><span>steps in its booklet, a part at a time</span></div>
+			<div class="stat"><b>41 min</b><span>from the sentence to the model</span></div>
+		</div>
+		<div class="actions">
+			<a class="cta ghost" href="/app?model=res://models/castle.ldr">Open it in the builder</a>
 		</div>
 	</section>
 
