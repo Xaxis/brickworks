@@ -225,6 +225,26 @@ func _run() -> void:
 	_check("a section far from where it fits is still told",
 		str(far_off["feedback"]).contains(" At y=")
 			and str(far_off["feedback"]).contains("meets the model"))
+	# And across, not only up. A pod on a pylon meets the hull's side,
+	# and two space cruisers ran out of repairs finding the sideways
+	# offset by hand — one was 0.8 studs inboard, moved, and was a
+	# hairline out the other way.
+	var beside := Assistant.Model.new()
+	for n: int in 4:
+		beside.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 7, "x": 0, "y": n * 3, "z": 0,
+				"rot": 0}))
+	for n: int in 2:
+		beside.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 4, "x": 0, "y": n * 3, "z": 0,
+				"rot": 0, "section": "pod"}))
+	beside.sections["pod"] = Assistant.Section.from_dict({
+		"name": "pod", "x": 0.0, "y": 3.0, "z": 2.8,
+		"axis": "x", "degrees": 15.0})
+	var sideways: String = str(_assistant._check(beside)["feedback"])
+	print("     %s" % sideways.replace("\n", " ").substr(0, 400))
+	_check("a pod clear of the hull's side is told the sideways offset that meets",
+		sideways.contains(" At z=") or sideways.contains(" At x="))
 	# And the advice is not itself counted as a fault. It was added with
 	# the same call that records a problem, and every one of those is
 	# counted — so the one thing here trying to help was reported as a

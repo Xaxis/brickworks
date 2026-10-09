@@ -4782,6 +4782,10 @@ func _where_it_would_meet(model: Model, group: String,
 	# reach settles whether any of them could have worked, and costs
 	# about as much as a single trial.
 	if not _anything_in_reach(model, group, lattice, part_of):
+		var across: String = _sideways(model, group, lattice, part_of,
+			until)
+		if not across.is_empty():
+			return across
 		return (" No height within two plates of where you put it "
 			+ "reaches the model at all, so this is a distance and not "
 			+ "a fine adjustment: the section is in the wrong place, or "
@@ -4831,9 +4835,52 @@ func _where_it_would_meet(model: Model, group: String,
 	section.y = was
 	# Something was in reach and no height put the section against it:
 	# it fits between the offsets tried, or only on its other side.
+	var across: String = _sideways(model, group, lattice, part_of, until)
+	if not across.is_empty():
+		return across
 	return (" Nothing in two plates of travel either way sets it "
 		+ "against the model without running into it. Move the section "
 		+ "in x or z rather than in y — it is meeting the wrong face.")
+
+
+## The same, across rather than up: where in x or z the section meets.
+##
+## The height sweep said "move it in x or z" and left the arithmetic to
+## the design. Two space cruisers spent their repairs on exactly that —
+## one measured its starboard pylon 0.8 studs inboard, moved it, and was
+## a hairline out the other way — and both ended with nothing kept. A
+## pod on a pylon meets the hull's side, so the offset that matters is
+## sideways, and the lattice step is a tenth of a stud.
+func _sideways(model: Model, group: String, lattice: BrickLattice,
+		part_of: Dictionary, until: float) -> String:
+	var section: Section = model.sections.get(group)
+	if section == null:
+		return ""
+	for axis: String in ["x", "z"]:
+		var was: float = section.x if axis == "x" else section.z
+		for step: int in 20:
+			for sign: float in [1.0, -1.0]:
+				if Time.get_unix_time_from_system() > until:
+					_put(section, axis, was)
+					return ""
+				var at: float = snappedf(was + sign * (step + 1) * 0.1, 0.1)
+				_put(section, axis, at)
+				if _section_sits(model, group, lattice, part_of):
+					_put(section, axis, was)
+					return (" At %s=%s it meets the model — a pylon "
+						% [axis, Placement._num(at)]
+						+ "meets the hull's side, so the offset that "
+						+ "matters is sideways, a tenth of a stud at a "
+						+ "time.")
+		_put(section, axis, was)
+	return ""
+
+
+static func _put(section: Section, axis: String, value: float) -> void:
+	if axis == "x":
+		section.x = value
+	else:
+		section.z = value
 
 
 ## Could any height in the sweep's reach touch anything at all?
