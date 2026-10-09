@@ -134,6 +134,29 @@ How big the first structure comes out is mostly the run, not the code:
    its palette by lift; nothing says a second colour belongs at a string
    course, a lintel, a roof band. Likely falls out of (3).
 
+## A third kind, and the first failures
+
+The space cruiser brief failed twice (runs 11 and 12), on the one thing
+the castle and the station never needed: **angled pylons**. Each spent
+its repairs placing an engine pod against the hull's side — one measured
+its starboard pylon 0.8 studs inboard, moved it, and was a hairline out
+the other way — and each ended with nothing kept, the second with 639 of
+641 bricks holding. Three fixes, each proven by a probe:
+
+- **What holds is kept.** When repairs run out and floating is the whole
+  complaint, covering at most a quarter of the design, those bricks are
+  left out, the rest is checked again, and the run goes on to its look,
+  told what went so it can put it back.
+- **The sideways offset is measured, not guessed.** The check named the
+  height at which a turned section meets and, when none did, said "move
+  it in x or z". It sweeps x and z now, a tenth of a stud at a time.
+- **A failure is written down** (`user://failed_design.json`) with the
+  brief, so it can be read back through the same check.
+
+The brief also exposed the kind lookup: "engine pods" brought fire-engine
+ladders and "pod" X-Pod storage tubs, with space pushed out for having
+more sets. Kinds are taken in the order the brief names them now.
+
 ## The open question, measured 2026-10-09
 
 Whether detailing per assembly is the multiplier. **It is not.** Runs 5
