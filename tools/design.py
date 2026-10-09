@@ -66,6 +66,9 @@ def main() -> int:
                              "design by — worse results, for machines "
                              "without a display")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--gpu", action="store_true",
+                        help="render on the GPU, holding this machine's GPU "
+                             "lease for the whole run")
     args = parser.parse_args()
 
     godot = shutil.which("godot")
@@ -95,7 +98,7 @@ def main() -> int:
         print("  (headless: it cannot look at what it builds, so it "
               "cannot revise it)")
     started = time.time()
-    return _run(command, quiet=args.quiet, started=started)
+    return _run(command, quiet=args.quiet, started=started, gpu=args.gpu)
 
 
 def _on_a_screen(command: list[str]) -> list[str]:
@@ -129,7 +132,8 @@ def _on_a_screen(command: list[str]) -> list[str]:
     return [xvfb, "-a", "--server-args=-screen 0 1500x950x24"] + command
 
 
-def _run(command: list[str], *, quiet: bool, started: float) -> int:
+def _run(command: list[str], *, quiet: bool, started: float,
+         gpu: bool = False) -> int:
     """Run it, passing its progress through as it happens.
 
     A design takes many minutes and silence is indistinguishable from a
@@ -138,13 +142,12 @@ def _run(command: list[str], *, quiet: bool, started: float) -> int:
     environment = dict(os.environ)
     if any("xvfb-run" in part for part in command):
         environment.setdefault("MESA_VK_WSI_DEBUG", "sw")
-    # On the GPU, through the box's lease, unless headless.  This machine's
-    # godot renders in software otherwise, so that nothing piles onto the
-    # GPU unasked — and a design is judged by its pictures, which in
-    # software take long enough on a thousand-brick model to hit the
-    # twenty-second cap and come back as letters.  The lease queues the
-    # run behind whatever else is on the GPU rather than beside it.
-    if "--headless" not in command:
+    # In software unless asked, because the box has one GPU lease and a
+    # design run held it for twelve to twenty minutes while it waited on
+    # the API, with other projects queued behind it.  Software pictures
+    # measured 2.6 s against a twenty-second cap; a run that misses it
+    # says "no picture in time" in its log.  --gpu takes the lease.
+    if gpu:
         environment.setdefault("GODOT_GPU", "1")
     process = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

@@ -12,7 +12,11 @@ fixing what it got wrong.
   a render; it places bricks, is told what collides, floats or will not survive
   being lifted, and revises. Sections let it carry a sub-assembly at an angle.
 - `design from a brief`: `tools/design.py "<sentence>"`, which shells out to
-  `godot --path . -- --ask=... --out=...`. **This spends real money.**
+  `godot --path . -- --ask=... --out=...`. **This spends real money.** It renders
+  in software unless given `--gpu`: this machine has one GPU lease, and a run
+  holding it for twenty minutes while it waits on the API queued every other
+  project behind it. A software picture measured 2.6 s against the 20 s cap; a
+  run that misses it logs "no picture in time".
 - `model and effort settings`: which Claude model and which effort level, and
   whether the request it builds is one that model will accept — `max_tokens`
   ceilings, adaptive thinking, the cached system block. Opus 5.5 is the default;
@@ -60,6 +64,10 @@ fixing what it got wrong.
   yet. Each pass has `TURNS_PER_ASSEMBLY` turns and edits are framed on it; at
   most `MOST_ASSEMBLIES`. A model that names one assembly gets the whole look only.
   The progress lines say what each pass came to, which is how a run is measured.
+  Each pass is told what earlier passes brought (siblings converged: four towers
+  given "the same crown, so they match"), and a pass that says it is done while
+  its assembly is thinner than all but one real set in twenty of its size is
+  sent back once ("sent the keep back" in the log).
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See

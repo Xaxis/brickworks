@@ -22,12 +22,13 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 5, detailed per assembly | 975 | **41** | **11** | 176 |
 | 6, detailed per assembly | 795 | 33 | 8 | 144 |
 | 7, siblings told what the others got | 803 | 33 | 6 | 162 |
+| 8, and thin passes sent back once | **1,895** | **53** | **13** | 361 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
 Previous project best was 456 parts. Scale is no longer the constraint.
-**The whole remaining gap is one number: 41 shapes at best where a real
-set of that size has 180.** Colours are 11 against 23. Everything below
+**The whole remaining gap is one number: 53 shapes at best where a real
+set of that size has 262.** Colours are 13 against 28. Everything below
 is about closing that and nothing else. Count a run with
 `tools/texture.py model.ldr --brief "..."`, after it ends.
 
@@ -79,13 +80,18 @@ How big the first structure comes out is mostly the run, not the code:
    measured nothing yet. Towers under 60 parts also get no size norm,
    because the smallest band starts there.
 
-2. **More than one idea per pass.** Every pass in runs 5 and 6 made one
-   change and stopped — a tower in twelve seconds, a wall in sixty — with
-   eight turns available. The pass is told what is missing, measured
-   against a real set the size of the assembly (a 70-part tower against
-   38 shapes), and answers with one edit. Whether that is the prompt's
-   "say what you changed and stop" or the model judging one idea enough
-   is not yet measured.
+2. **More than one idea per pass — first evidence it works.** Every pass
+   in runs 5 and 6 made one change and stopped, with eight turns in hand.
+   Run 8 sends a pass back once when it says it is done and its assembly
+   is still thinner than all but one real set in twenty of its size
+   (`sent the keep back` in the log). Five of nine were sent back, four
+   of them added shapes on the second round, and the passes took the
+   model from **23 shapes to 53** — the first doubling, and the roadmap's
+   own bar. Its towers also came out different from each other (16 to 19
+   shapes each, four different crowns), where runs 5-7 made four copies.
+   One run. **Next: repeat it, because six runs of this brief have shown
+   how much one run varies.** Then raise what a pass is for: 53 against
+   262 is still a fifth.
 
 3. **A surface-treatment vocabulary, measured rather than invented.**
    `kinds` says *which* parts a castle reaches for. Nothing yet says
@@ -121,6 +127,11 @@ What the passes showed instead is *why*, and it is two things rather
 than one ceiling: siblings converge (lever 1) and each pass does one idea
 (lever 2). Neither is a capacity limit. Both are the next experiments,
 in that order, before decomposing the loop itself.
+
+**Pictures in software, 2026-10-09.** This machine leases its one GPU a
+job at a time, and a design run held it for twenty minutes while it
+waited on the API. Run 8 rendered every picture in software at load ~80
+with none missed; `tools/design.py` is software unless given `--gpu`.
 
 **Cost, fixed 2026-10-09.** Run 6 spent $9.67 on Opus 5.5 at high
 effort, and $8 of it was input tokens sent fresh: 2.04M against 575k

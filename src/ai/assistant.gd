@@ -164,6 +164,9 @@ var _detail_count: int = 0
 ## began. See [method _assembly_measured].
 var _detail_added: Array = []
 var _parts_before_pass: Dictionary = {}
+## Whether the assembly being detailed has been sent back once already
+## for being thin. See [method _detail_next].
+var _sent_back: bool = false
 ## The whole model as it stood when detailing began, to say what the
 ## passes came to.
 var _before_detail: String = ""
@@ -498,6 +501,7 @@ func _start(text: String) -> void:
 	_detail_count = 0
 	_detail_added = []
 	_parts_before_pass = {}
+	_sent_back = false
 	_before_detail = ""
 	_turn_cap = MAX_TURNS
 	_brief = text
@@ -1227,6 +1231,33 @@ in the picture."""
 ## [param also] is what has to go first in the message: the answers to
 ## the tools of a pass that ran out of turns.
 func _detail_next(also: Array = []) -> bool:
+	# Once, when a pass says it is done and its assembly is still thinner
+	# than all but one real set in twenty of its size. Every pass in
+	# three runs made one change and stopped, with eight turns in hand
+	# and the gap in front of it in numbers — a tower of 70 parts and 10
+	# shapes, told a set of that size has 38. Said at the moment it is
+	# deciding it has finished, and only on the tail, like all the
+	# advice here: an assembly within the range of real sets is left
+	# alone, and under 60 parts there is no range to be outside.
+	if not _detailing.is_empty() and not _sent_back and also.is_empty():
+		var here: Array[BrickWorld.Brick] = _bricks_inside(
+			_detailing["where"])
+		var normal: Dictionary = library.normal_for(here.size())
+		var shapes: int = _parts_in(here).size()
+		if not normal.is_empty() and shapes < int(normal.get("shapes_thin", 0)):
+			_sent_back = true
+			progress.emit("sent the %s back: %d shapes in %d parts"
+				% [_detailing["name"], shapes, here.size()])
+			_messages.append({"role": "user", "content": ("The %s is %d "
+				% [_detailing["name"], shapes] + "different shapes in %d "
+				% here.size() + "parts. A real set of that size has about "
+				+ "%d, and fewer than %d is thinner than all but one set "
+				% [int(normal.get("shapes", 0)),
+					int(normal.get("shapes_thin", 0))]
+				+ "in twenty. One more round on it: where does something "
+				+ "change that is still the same piece? Then stop.")})
+			_send()
+			return true
 	if not _detailing.is_empty():
 		progress.emit("the %s, detailed: %s" % [_detailing["name"],
 			_texture(_bricks_inside(_detailing["where"]))])
@@ -1249,6 +1280,7 @@ func _detail_next(also: Array = []) -> bool:
 				+ TURNS_PER_ASSEMBLY * (_to_detail.size() + 1))
 		_detailing = one
 		_detail_turns = 0
+		_sent_back = false
 		_repairs = 0
 		_parts_before_pass = _parts_in(_bricks_inside({}))
 		progress.emit("detailing the %s (%d of %d): %s" % [one["name"],
@@ -2251,6 +2283,9 @@ func _with_a_look(said: String, ask: String,
 	var sizes: String = _measured()
 
 	if picture.is_empty():
+		# Said, because the run is otherwise silent about it: a design
+		# that went blind reads in its log exactly like one that looked.
+		progress.emit("no picture in time, so it is shown the letters")
 		var elevation: String = "front" if from in ["corner", "top"] else from
 		var drawn: String = "%s\n%s" % [
 			ModelView.draw(world, library, "top", scenery),

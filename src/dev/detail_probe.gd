@@ -123,6 +123,35 @@ func _run() -> void:
 	_ok(_said("detailed 2 assemblies: from 10 parts"),
 		"saying what the passes came to, from first to last")
 
+	print("\na thin assembly that says it is done is sent back once")
+	ended.clear()
+	assistant.design("a keep and a wall")
+	await _reply(assistant, [_tool("submit_design", {
+		"name": "keep", "description": "a keep and a wall",
+		"bricks": _stack(0, 61) + _stack(20, 2),
+		"assemblies": [
+			{"name": "keep", "x_from": 0, "x_to": 8, "z_from": 0, "z_to": 4},
+			{"name": "wall", "x_from": 18, "x_to": 26, "z_from": 0, "z_to": 4},
+		],
+	})])
+	await _reply(assistant, [{"type": "text", "text": "The whole is right."}])
+	_ok(_said("detailing the keep (1 of 2): 61 parts, 1 shapes"),
+		"the keep comes up, 61 parts of one shape")
+	await _reply(assistant, [{"type": "text", "text": "The keep is done."}])
+	var back: String = _text_of(assistant._messages.back())
+	_ok(back.contains("The keep is 1 different shapes in 61 parts"),
+		"it is sent back with its own numbers")
+	_ok(back.contains("thinner than all but one set in twenty"),
+		"...and why: it is on the tail of real sets its size")
+	_ok(not _said("detailing the wall"), "the wall waits")
+	await _reply(assistant, [{"type": "text", "text": "Still done."}])
+	_ok(_said("detailing the wall (2 of 2)"),
+		"only once: the second time it says done, the wall comes next")
+	_ok(not _text_of(assistant._messages.back()).contains("One more round"),
+		"...and the wall, too small to have a norm, is not sent back")
+	await _reply(assistant, [{"type": "text", "text": "Done."}])
+	_ok(not ended.is_empty() and bool(ended[0][0]), "and the run ends well")
+
 	print("\na model that is one thing gets one look")
 	_ok(Assistant._queue_assemblies([{"name": "lighthouse", "where": {}}]).is_empty(),
 		"a single assembly is not looked at twice")
