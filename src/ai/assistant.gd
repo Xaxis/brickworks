@@ -1364,34 +1364,44 @@ func _detail_next(also: Array = []) -> bool:
 			_detailing["where"])
 		var normal: Dictionary = library.normal_for(here.size())
 		var shapes: int = _parts_in(here).size()
-		if not normal.is_empty() and shapes < int(normal.get("shapes_thin", 0)):
+		var thin: bool = not normal.is_empty() \
+			and shapes < int(normal.get("shapes_thin", 0))
+		# Or the whole model is short of one-off pieces, on the same tail.
+		# Keyed on the assembly alone, the message that moved them never
+		# reached a run whose assemblies were rich enough on their own:
+		# run 16 was sent back and came to 54 one-off shapes, run 17's
+		# towers were not and it came to 17.
+		var whole: Array[BrickWorld.Brick] = _bricks_inside({})
+		var real: Dictionary = library.normal_for(whole.size())
+		var once: int = _once_or_twice(whole)
+		var few: bool = once < int(real.get("accents_thin", 0))
+		if thin or few:
 			_sent_back = true
-			progress.emit("sent the %s back: %d shapes in %d parts"
-				% [_detailing["name"], shapes, here.size()])
-			# With where the gap is. Told once, in the long message the
-			# pass opens with, the count of one-off pieces did not move
-			# (21, then 13); this short one is the message that has made
-			# passes act. And symmetry is why: a detail copied to four
-			# towers is one shape used four times.
-			var whole: Array[BrickWorld.Brick] = _bricks_inside({})
-			var accents: int = int(library.normal_for(whole.size()).get(
-				"accents", 0))
-			var gap: String = ""
-			if accents > 0:
-				gap = (" Most of a real set's different shapes are pieces "
-					+ "it uses once or twice: the whole model has %d, a "
-					% _once_or_twice(whole) + "real set its size about "
-					+ "%d. A detail copied onto every tower counts as one "
-					% accents + "shape however many towers there are.")
-			_messages.append({"role": "user", "content": ("The %s is %d "
-				% [_detailing["name"], shapes] + "different shapes in %d "
-				% here.size() + "parts. A real set of that size has about "
-				+ "%d, and fewer than %d is thinner than all but one set "
-				% [int(normal.get("shapes", 0)),
-					int(normal.get("shapes_thin", 0))]
-				+ "in twenty.%s One more round on it: where does " % gap
-				+ "something change that is still the same piece? Then "
-				+ "stop.")})
+			var name: String = _detailing["name"]
+			progress.emit("sent the %s back: %d shapes in %d parts, %d "
+				% [name, shapes, here.size(), once]
+				+ "used once or twice in the whole model")
+			var said := PackedStringArray()
+			if thin:
+				said.append("The %s is %d different shapes in %d parts. A "
+					% [name, shapes, here.size()] + "real set of that "
+					+ "size has about %d, and fewer than %d is thinner "
+					% [int(normal.get("shapes", 0)),
+						int(normal.get("shapes_thin", 0))]
+					+ "than all but one set in twenty.")
+			if int(real.get("accents", 0)) > once:
+				said.append("Most of a real set's different shapes are "
+					+ "pieces it uses once or twice: the whole model has "
+					+ "%d, a real set its size about %d" % [once,
+						int(real.get("accents", 0))]
+					+ (", and fewer than %d is thinner than all but one "
+						% int(real.get("accents_thin", 0))
+						+ "set in twenty" if few else "")
+					+ ". A detail copied onto every tower counts as one "
+					+ "shape however many towers there are.")
+			said.append("One more round on the %s: where does something " % name
+				+ "change that is still the same piece? Then stop.")
+			_messages.append({"role": "user", "content": " ".join(said)})
 			_send()
 			return true
 	if not _detailing.is_empty():

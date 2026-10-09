@@ -166,7 +166,14 @@ func _run() -> void:
 	_ok(_said("detailing the wall (2 of 2)"),
 		"only once: the second time it says done, the wall comes next")
 	_ok(not _text_of(assistant._messages.back()).contains("One more round"),
-		"...and the wall, too small to have a norm, is not sent back")
+		"...and the wall is not sent back before it has had its look")
+	await _reply(assistant, [{"type": "text", "text": "Done."}])
+	# The wall is too small to be thin by its own shapes, but the whole
+	# model has no one-off pieces at all, which is the tail of real sets.
+	_ok(_said("sent the wall back") and _text_of(assistant._messages.back())
+			.contains("thinner than all but one set in twenty. A detail copied"),
+		"a rich enough assembly is still sent back when the whole model "
+			+ "has too few one-off pieces")
 	await _reply(assistant, [{"type": "text", "text": "Done."}])
 	_ok(not ended.is_empty() and bool(ended[0][0]), "and the run ends well")
 

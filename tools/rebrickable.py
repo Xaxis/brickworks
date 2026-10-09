@@ -344,6 +344,7 @@ def set_norms() -> dict:
             "colours_thin": round(at(colours, 0.05)),
             "most_of_one_high": round(at(most, 0.95)),
             "accents": round(middle(accents)),
+            "accents_thin": round(at(accents, 0.05)),
         })
     return {"source": "Rebrickable set inventories", "bands": bands}
 
