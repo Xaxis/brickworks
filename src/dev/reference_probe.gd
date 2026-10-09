@@ -53,11 +53,23 @@ func _run() -> void:
 		{"type": "image", "source": {"type": "base64",
 			"media_type": "image/png", "data": "x"}}]})
 
+	# Kept while there are few: rewriting an earlier message every turn
+	# meant nothing after it could be read back from the cache.
+	assistant._forget_old_pictures()
+	_check("a draft is kept while the pictures are few",
+		_pictures_in(assistant._messages[1]) == 1)
+
+	# And once they add up, every draft goes in one sweep.
+	assistant._messages.append({"role": "user", "content": [
+		{"type": "image", "source": {"type": "base64",
+			"media_type": "image/png",
+			"data": "x".repeat(Assistant.MOST_PICTURE_BYTES)}}]})
 	assistant._forget_old_pictures()
 	_check("the reference is still a picture afterwards",
 		_pictures_in(assistant._messages[0]) == 1)
-	_check("...while a view of a draft is not",
-		_pictures_in(assistant._messages[1]) == 0)
+	_check("...while the views of drafts are not",
+		_pictures_in(assistant._messages[1]) == 0
+			and _pictures_in(assistant._messages[2]) == 0)
 
 	print("")
 	if _failures == 0:

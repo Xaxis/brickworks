@@ -92,7 +92,8 @@ func _run() -> void:
 			{"role": "user", "content": [
 				{"type": "tool_result", "content": answer},
 				{"type": "image", "source": {"type": "base64",
-					"media_type": "image/png", "data": "a-draft"}},
+					"media_type": "image/png",
+					"data": "a".repeat(Assistant.MOST_PICTURE_BYTES + 1)}},
 			]},
 		]
 		assistant._forget_old_pictures()

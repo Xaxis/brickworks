@@ -214,6 +214,9 @@ export default async function handler(request, response) {
   if (can.adaptive) payload.thinking = { type: "adaptive" };
   if (body.system) payload.system = body.system;
   if (Array.isArray(body.tools)) payload.tools = body.tools;
+  // The conversation cached up to its last block, whatever the client
+  // asked: this account pays, and every turn re-sends the whole design.
+  payload.cache_control = { type: "ephemeral" };
 
   // Taken apart and put back rather than forwarded whole: whatever the
   // client sent is about to be charged to this account, and an effort

@@ -325,6 +325,17 @@ prints what it spent before its verdict; report it.
   what greebling is. `MOSTLY_BIG` is 0.60, in the gap. `tower.ldr` is the closest
   a person's model comes to either line — 44 per cent big, 59 per cent one colour
   — and stays silent on both.
+- **Only the rules were cached, so every turn paid for the whole design again.**
+  A castle run spent $9.67, and $8 was input sent fresh: 2.04M tokens against
+  575k from the cache. The request now carries top-level `cache_control` (and
+  the proxy adds it for accounts), which caches the conversation up to its last
+  block. That only pays if nothing before it changes, and `_forget_old_pictures`
+  rewrote the previous turn's pictures every turn — it now waits until drafts
+  pass `MOST_PICTURE_BYTES` and drops them in one sweep. On Opus 5.5 an edited
+  history also drops the thinking after the edit, so rewriting is worth avoiding
+  for more than money. Proven directly: an appended second turn read 4,815
+  tokens from the cache and wrote 17. A driven run's `spent` line shows the
+  split; `cached` should dwarf `fresh`.
 - **`advice` is not `issues`.** Hints live in their own array, because
   `errors += issues[kind].size()` counted the hint as a problem and the model spent
   turns fixing it.

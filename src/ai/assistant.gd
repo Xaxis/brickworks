@@ -834,6 +834,17 @@ func request_body() -> Dictionary:
 		}],
 		"messages": _messages,
 		"tools": _tools(),
+		# And the conversation, up to whatever was added last.
+		#
+		# The mark above covers the rules and nothing after them, so every
+		# turn paid full price for the whole design so far: a castle run
+		# sent 2.04M tokens fresh against 575k from the cache, which was
+		# $8 of its $9.67. Top-level, the mark goes on the last block of
+		# the request and moves forward with it, and next turn reads back
+		# everything up to there — as long as nothing before it has
+		# changed, which is why old pictures are no longer rewritten every
+		# turn.
+		"cache_control": {"type": "ephemeral"},
 	}
 	# Only where the model takes it. Haiku refuses adaptive thinking and
 	# refuses the effort parameter, each with a 400 — so sending either
@@ -858,7 +869,7 @@ func request_body() -> Dictionary:
 static var ANTHROPIC_FIELDS := PackedStringArray([
 	"model", "max_tokens", "messages", "system", "tools", "tool_choice",
 	"thinking", "temperature", "top_p", "top_k", "stop_sequences",
-	"stream", "metadata", "service_tier", "output_config",
+	"stream", "metadata", "service_tier", "output_config", "cache_control",
 ])
 
 
@@ -1800,24 +1811,6 @@ func _say_shorthand_trouble() -> void:
 		progress.emit("a pattern came to nothing: %s" % str(said))
 
 
-## Drop every picture but the one about to be sent.
-##
-## A rendering is a hundred kilobytes, and base64 makes it a hundred and
-## forty. The conversation is sent in full on every turn, so ten views
-## over a long design is a megabyte and a half going down the wire forty
-## times — for nine pictures of drafts that no longer exist.
-##
-## What the model is looking at is the latest one. The others are
-## replaced by a line saying there was one, which keeps the transcript
-## honest about what it saw without carrying the pixels.
-## References survive this.
-##
-## Everything here replaced every picture in the conversation with a
-## line of text saying it was a view of an earlier draft. A reference
-## the person supplied is not a draft of anything — it is the one thing
-## in the conversation that knows what the subject looks like, and it
-## would have gone after a single turn, relabelled as the model's own
-## work. It lives in the opening message, which is left alone.
 ## Whether this picture is of the subject rather than of a draft.
 ##
 ## Drafts are dropped as they age — a dozen views of a model that no
@@ -1835,7 +1828,30 @@ func _is_reference_picture(block: Dictionary) -> bool:
 var _kept_pictures: Dictionary = {}
 
 
+## How much picture the conversation may carry before the old ones go,
+## in base64 bytes. A request is refused above 32 MB, and a render is a
+## few hundred kilobytes once it is base64, so this is a couple of dozen
+## views with room left for a thousand-brick submission beside them.
+const MOST_PICTURE_BYTES := 8_000_000
+
+
+## Drop the pictures of earlier drafts, once there are enough of them to
+## matter. Each becomes a line saying there was one, which keeps the
+## transcript honest about what was seen without carrying the pixels. A
+## reference the person supplied is not a draft and is never dropped.
+##
+## This used to run every turn, and it was the most expensive line in the
+## loop. Rewriting an earlier message changes the conversation from that
+## point on, so nothing after it could ever be read from the cache: a
+## castle run spent $9.67, and $8 of it was the conversation sent fresh
+## — 2.04M tokens, against 575k read from the cache. On Opus 5.5 an
+## edited history also drops the design's thinking from that point. So
+## the pictures stay until they add up, and then go in one sweep: one
+## turn pays for the rewrite instead of every turn.
 func _forget_old_pictures() -> void:
+	## [content array, index] of every draft picture, and their weight.
+	var drafts: Array = []
+	var carried: int = 0
 	for at: int in range(1, _messages.size()):
 		var message: Dictionary = _messages[at]
 		var content: Variant = message.get("content")
@@ -1846,12 +1862,10 @@ func _forget_old_pictures() -> void:
 			if typeof(block) != TYPE_DICTIONARY:
 				continue
 			if block.get("type", "") == "image":
-				if _is_reference_picture(block):
-					continue
-				content[n] = {"type": "text",
-					"text": "(a view of an earlier draft)"}
+				if not _is_reference_picture(block):
+					drafts.append([content, n])
+					carried += _picture_bytes(block)
 				continue
-			# A tool result carries its own list of blocks.
 			var inner: Variant = block.get("content")
 			if typeof(inner) != TYPE_ARRAY:
 				continue
@@ -1860,8 +1874,18 @@ func _forget_old_pictures() -> void:
 				if (typeof(piece) == TYPE_DICTIONARY
 						and piece.get("type", "") == "image"
 						and not _is_reference_picture(piece)):
-					inner[m] = {"type": "text",
-						"text": "(a view of an earlier draft)"}
+					drafts.append([inner, m])
+					carried += _picture_bytes(piece)
+	if carried <= MOST_PICTURE_BYTES:
+		return
+	for found: Array in drafts:
+		(found[0] as Array)[int(found[1])] = {"type": "text",
+			"text": "(a view of an earlier draft)"}
+
+
+static func _picture_bytes(block: Dictionary) -> int:
+	var source: Dictionary = block.get("source", {}) as Dictionary
+	return str(source.get("data", "")).length()
 
 
 ## Pick out what the edit just changed, and say so.
