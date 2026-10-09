@@ -42,7 +42,11 @@ fi
 [ -f "$dir/index.html" ] || { echo "deploy FAILED: no build in $dir (tools/export.sh web)"; exit 1; }
 
 sha="$(git rev-parse --short HEAD)"
-[ -n "$(git status --porcelain --untracked-files=no)" ] && sha="$sha-dirty"
+# Dirty means a change to something that ships. Docs, tools, tests and the
+# verify skill do not, and a roadmap edited while a deploy sat in the
+# machine's queue stamped two builds "-dirty" whose code was exactly HEAD.
+[ -n "$(git status --porcelain --untracked-files=no -- . \
+    ':!docs' ':!tools' ':!tests' ':!.claude' ':!*.md')" ] && sha="$sha-dirty"
 
 rm -rf .vercel/output
 mkdir -p ".vercel/output/static/b/$sha"
