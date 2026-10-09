@@ -25,7 +25,12 @@ The design assistant takes a sentence and returns a model. It never
 touches geometry: it proposes placements in studs and plates, and a
 deterministic validator resolves every one against the real lattice —
 overlap, support, connection — and hands back the specific brick and the
-specific reason when something will not hold.
+specific reason when something will not hold. Once the model holds, it
+goes back over each part of it on its own — the gatehouse, each tower,
+each run of wall — close up, measured against what real sets of that
+size and kind are made of. "A medieval castle with a gatehouse, four
+corner towers and a long curtain wall between them" came back as 1,895
+parts that stand up (`models/castle.ldr`).
 
 ## Where the numbers land
 
@@ -36,6 +41,7 @@ specific reason when something will not hold.
 | Connectors | 196,541 studs · 44,656 tubes · 8,679 pin holes · 1,319 axle holes |
 | Renderer | 200,000 bricks · 14 draw calls · 131 fps (M3 Max, Forward+) |
 | Web build | 10.4 MB over the wire, 881 resident, the rest fetched |
+| Largest design | 1,895 parts from one sentence, in 41 minutes |
 | Desktop build | 1.1 GB, the whole library on disk |
 
 The difference between 28,319 and 29,479 is 1,160 redirect stubs —
@@ -82,13 +88,16 @@ have to stay one.
 - **Build instructions** — the step order is recovered from the geometry
   rather than the order things were placed: every brick rests on
   something already there, and a step stays in one part of the model.
-  Out as a single printable page with a picture per step.
+  A big model is built a part at a time, as a set is — the gatehouse,
+  then a tower — with each part pictured on its own. Out as a single
+  printable page with a picture per step.
 - **A mosaic** — a photograph matched to the forty-four colours a
   1×1 plate is really moulded in, perceptually rather than
   arithmetically, and dithered because against a palette that small flat
   matching gives bands.
 - **LDraw `.ldr`** — what you build here opens in LDView, LeoCAD, Studio
-  or Mecabricks, and what you made there opens here.
+  or Mecabricks, and what you made there opens here. A design in
+  assemblies goes out as an `.mpd`, a sub-model per assembly.
 
 ## Accounts
 
