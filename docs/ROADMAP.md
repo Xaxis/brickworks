@@ -23,12 +23,13 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 6, detailed per assembly | 795 | 33 | 8 | 144 |
 | 7, siblings told what the others got | 803 | 33 | 6 | 162 |
 | 8, and thin passes sent back once | **1,895** | 53 | **13** | 361 |
-| 9, the same, again | 818 | **58** | 9 | 122 |
+| 9, the same, again | 818 | 58 | 9 | 122 |
+| 10, and told the ordinary parts | 1,178 | **64** | 9 | 133 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
 Previous project best was 456 parts. Scale is no longer the constraint.
-**The whole remaining gap is one number: 58 shapes at best where a real
+**The whole remaining gap is one number: 64 shapes at best where a real
 set of that size has 180.** Colours are 13 against 28 at best. Everything below
 is about closing that and nothing else. Count a run with
 `tools/texture.py model.ldr --brief "..."`, after it ends.
@@ -101,7 +102,7 @@ How big the first structure comes out is mostly the run, not the code:
    thin is below 54, so **this is the first design out of the thin tail of
    real sets**. The median is still 123.
 
-3. **The ordinary parts — measured 2026-10-09, in, not yet run.** The kind
+3. **The ordinary parts — measured 2026-10-09, and it works.** The kind
    lists say what makes a castle a castle, by lift. They cannot say what a
    castle is mostly made of: a real 1,895-part castle has some 260 shapes
    and most of them are ordinary. The best castle had **24 of the 40 parts
@@ -111,6 +112,10 @@ How big the first structure comes out is mostly the run, not the code:
    of its sets using them, and each pass is told the ones the whole model
    has none of yet. (Counting this found the old counts were of lots, not
    sets: the castle's "share" of 1 x 2 plates came to 346%.)
+
+   **Run 10: 37 of the 40**, against 24 and 22, and 64 shapes — the most
+   any castle has had. It is aimed at the gap and closes most of it: what
+   is left between 64 and 180 is no longer the ordinary parts.
 
 4. **A surface-treatment vocabulary, measured rather than invented.**
    `kinds` says *which* parts a castle reaches for. Nothing yet says
