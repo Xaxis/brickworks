@@ -22,13 +22,14 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 5, detailed per assembly | 975 | **41** | **11** | 176 |
 | 6, detailed per assembly | 795 | 33 | 8 | 144 |
 | 7, siblings told what the others got | 803 | 33 | 6 | 162 |
-| 8, and thin passes sent back once | **1,895** | **53** | **13** | 361 |
+| 8, and thin passes sent back once | **1,895** | 53 | **13** | 361 |
+| 9, the same, again | 818 | **58** | 9 | 122 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
 Previous project best was 456 parts. Scale is no longer the constraint.
-**The whole remaining gap is one number: 53 shapes at best where a real
-set of that size has 262.** Colours are 13 against 28. Everything below
+**The whole remaining gap is one number: 58 shapes at best where a real
+set of that size has 180.** Colours are 13 against 28 at best. Everything below
 is about closing that and nothing else. Count a run with
 `tools/texture.py model.ldr --brief "..."`, after it ends.
 
@@ -89,11 +90,29 @@ How big the first structure comes out is mostly the run, not the code:
    model from **23 shapes to 53** — the first doubling, and the roadmap's
    own bar. Its towers also came out different from each other (16 to 19
    shapes each, four different crowns), where runs 5-7 made four copies.
-   One run. **Next: repeat it, because six runs of this brief have shown
-   how much one run varies.** Then raise what a pass is for: 53 against
-   262 is still a fifth.
+   **Repeated in run 9: the passes took it from 34 shapes to 58**, the
+   most yet. Two runs, 2.3x and 1.7x, against 1.1-1.5x for runs 5-7
+   without it. This lever holds.
 
-3. **A surface-treatment vocabulary, measured rather than invented.**
+   **And it is not a castle trick.** The fire station brief (a building
+   with floors, not a walled compound) came out 669 parts, **62 shapes**
+   and 15 colours, its passes taking it from 39 shapes to 62 — against 30
+   shapes for the station that ships with the app. For a set of 669 parts
+   thin is below 54, so **this is the first design out of the thin tail of
+   real sets**. The median is still 123.
+
+3. **The ordinary parts — measured 2026-10-09, in, not yet run.** The kind
+   lists say what makes a castle a castle, by lift. They cannot say what a
+   castle is mostly made of: a real 1,895-part castle has some 260 shapes
+   and most of them are ordinary. The best castle had **24 of the 40 parts
+   castle sets use most**, run 9 had 22 — no 1 x 1 plate, no 2 x 3 plate,
+   neither jumper, neither cheese slope, each in more than half of castle
+   sets. Each kind now carries `common`, its most used parts by the share
+   of its sets using them, and each pass is told the ones the whole model
+   has none of yet. (Counting this found the old counts were of lots, not
+   sets: the castle's "share" of 1 x 2 plates came to 346%.)
+
+4. **A surface-treatment vocabulary, measured rather than invented.**
    `kinds` says *which* parts a castle reaches for. Nothing yet says
    where they go, and "a wall wants masonry bricks, an arrow slit, a
    corbel course and a tile walkway" is currently my taste. The data to
@@ -101,7 +120,7 @@ How big the first structure comes out is mostly the run, not the code:
    within sets. **Needs: a measurement of which parts appear together,
    conditioned on kind.**
 
-4. **Colour as structure.** 11 against 23 at best. The kinds data gives each kind
+5. **Colour as structure.** 13 against 28 at best. The kinds data gives each kind
    its palette by lift; nothing says a second colour belongs at a string
    course, a lintel, a roof band. Likely falls out of (3).
 
@@ -139,6 +158,35 @@ read from the cache, because only the rules were cached and old pictures
 were rewritten every turn. With the conversation cached and pictures
 kept until they add up, run 7 spent **$3.99** on a longer run: 82 tokens
 fresh, 3.53M from the cache. Passes are now cheap enough to add more.
+
+## The other half: a set is also how it is built
+
+A set LEGO would ship is the model, a parts list and a booklet you can
+follow on a table. The first two hold at any size. The booklet does not
+yet, measured on run 8's castle, 2026-10-09: `Instructions.plan` orders
+its 1,895 parts into **281 steps in 3.3 s, none of them out of order**
+— and that is the problem. The order is course by course across the
+whole model, so consecutive steps jump a median of **12.5 studs and up
+to 61** across a castle 72 studs wide, and every step is photographed
+framed on all of it: eight new bricks somewhere in a picture of 1,895.
+
+A real set is built the other way: bag 1 is the gatehouse, built to the
+top, then a tower, and the pictures follow the part being built. The
+design now names exactly those parts. **Needs: the assemblies to travel
+with the model** (LDraw's own way is a submodel per sub-assembly, an
+`.mpd`, which Studio, LeoCAD and LPub all read), **the planner to finish
+one before starting the next, and each section of the booklet framed on
+its own assembly.** Judged by the same numbers: the jump between steps
+and how much of each picture the new bricks fill.
+
+*First half done, 2026-10-09.* The planner builds a model wider than 24
+studs a region at a time — tiles of its plan, borrowing only the bricks a
+region is directly waiting on — and the booklet frames each region on its
+own: the castle's steps now jump a median of **6.2 studs (90th 12, max
+35)**, in 350 steps across 12 parts. Borrowing deeper than one brick was
+tried and measured as one part swallowing 1,175 of 1,483 steps. Still to
+do: the assemblies the design named, carried in the file as submodels,
+used as the parts instead of tiles.
 
 ## How progress is judged
 
