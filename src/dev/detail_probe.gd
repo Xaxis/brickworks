@@ -126,6 +126,11 @@ func _run() -> void:
 		"and with nothing left to detail the run ends well")
 	_ok(_said("detailed 2 assemblies: from 10 parts"),
 		"saying what the passes came to, from first to last")
+	var grouped: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		grouped[brick.group] = int(grouped.get(brick.group, 0)) + 1
+	_ok(int(grouped.get("gatehouse", 0)) == 5 and int(grouped.get("tower", 0)) == 6,
+		"every brick ends the run marked with its assembly (%s)" % str(grouped))
 
 	print("\na thin assembly that says it is done is sent back once")
 	ended.clear()

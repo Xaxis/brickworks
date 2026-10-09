@@ -11,6 +11,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   camera. A design that fails must leave the model it was asked to change alone.
 - `ldr read and write`: real LDraw `.ldr`. Written files open in other LDraw
   tools, and files from them open here.
+- `assemblies in the file`: a brick's `group` — the assembly a design named,
+  tagged as the run ends (`Assistant._tag_assemblies`), or the sub-model it was
+  read from — goes out as an `.mpd` with one sub-model per group, titled as the
+  design wrote it ("north-east tower" in `north_east_tower.ldr`), and comes back
+  in with every brick in its group. The booklet builds by those groups and names
+  them. `store_probe` asserts the round trip and the named parts.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is.
 

@@ -40,6 +40,9 @@ class Brick extends RefCounted:
 	## Kept out of the picture without being removed, so step playback
 	## can walk a finished model forwards and back without rebuilding it.
 	var hidden: bool = false
+	## The part of the model it belongs to — an assembly a design named,
+	## or a sub-model of the file it came from. Empty for most bricks.
+	var group: String = ""
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id

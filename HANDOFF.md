@@ -24,8 +24,12 @@ solved twice, and ranks the levers by the evidence for each.
   machine's `heavy` pool (see below).
 - Not exercised: the proxy's conversation caching for signed-in accounts
   (`api/claude.js`). It is deployed; proving it needs an account.
-- Best castle so far, run 8: **1,895 parts, 53 shapes, 13 colours**,
-  against 30 shapes before this session. A real set that size has 262.
+- Best designs so far: castle run 8, **1,895 parts, 53 shapes, 13
+  colours**; castle run 9, 818 parts and **58 shapes**; a fire station,
+  669 parts and **62 shapes** — the first outside the thin tail of real
+  sets its size. 30 shapes was the best before this work.
+- The landing page shows the run 8 castle, which ships as
+  `models/castle.ldr` and opens from `/app?model=res://models/castle.ldr`.
 
 ## What this session did, and what it found
 
@@ -39,8 +43,16 @@ solved twice, and ranks the levers by the evidence for each.
   real set its own size. On its own it was worth 1.2-1.5x, not the 2x
   the roadmap asked for: siblings converged (four towers, "the same
   crown") and each pass made one change and stopped.
-- **Thin passes sent back once** (run 8) took a castle from 23 shapes to
-  53 in its passes — the first doubling. One run. Repeat it first.
+- **Thin passes sent back once** took a castle from 23 shapes to 53 in
+  run 8 and from 34 to 58 in run 9, and a fire station from 39 to 62.
+  It holds.
+- **Booklets are built a region at a time** for any model wider than 24
+  studs, each region framed on its own; the castle's steps jump a median
+  of 6.2 studs instead of 12.5. `--booklet=PATH --model=X` writes one.
+- **Each pass is told the ordinary parts** most real sets of its kind use
+  that the model has none of (the 1 x 1 plate, jumpers, cheese slopes).
+  In, not yet measured — run 10 was in progress at handoff.
+- **A driven run no longer overwrites the person's working model.**
 - **A design cost $9.67 and $8 of it was re-sending the conversation.**
   The conversation is cached now and old pictures are no longer
   rewritten every turn; the same kind of run costs about $4-6.
@@ -49,12 +61,11 @@ solved twice, and ranks the levers by the evidence for each.
 
 ## What is next
 
-Read `docs/ROADMAP.md`. In order: rerun the castle brief to see whether
-53 holds (`tools/design.py "a medieval castle with a gatehouse, four
-corner towers and a long curtain wall between them" --effort high`, then
-`tools/texture.py` on the file once the run has ended); then try a
-different brief, because every number here is one castle; then raise what
-a pass is for, since 53 against 262 is still a fifth.
+Read `docs/ROADMAP.md`. Measure the ordinary-parts lever (run the castle
+brief, `tools/texture.py` on the result once the run has ended, and count
+the kind's `common` parts it uses against run 9's 22 of 40). Then the
+booklet's second half: carry the assemblies a design names in the file as
+LDraw submodels and build the booklet by those instead of tiles.
 
 ## Gotchas that will cost you hours
 

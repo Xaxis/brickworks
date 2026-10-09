@@ -65,7 +65,8 @@ func _build() -> void:
 
 	_button(row, "Save", _on_save, "Keep this model under its name")
 	_button(row, "Open…", _on_open, "Reopen a saved model")
-	_button(row, "Export", _on_export, "Write an .ldr file, which any brick tool reads")
+	_button(row, "Export", _on_export,
+		"Write an LDraw file, which any brick tool reads — an .mpd of its assemblies when it has them")
 	_button(row, "Parts", func() -> void: parts_wanted.emit(),
 		"Every part this model needs, by colour and count")
 	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
@@ -230,7 +231,12 @@ func _on_export() -> void:
 	if world.brick_count() == 0:
 		_say("nothing to export")
 		return
-	var file_name: String = model_name().to_snake_case() + ".ldr"
+	# A model in assemblies is written as a multi-part document, and LDraw
+	# names those .mpd so that whatever opens it knows to look for them.
+	var grouped: bool = world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
+		return not brick.group.is_empty())
+	var file_name: String = model_name().to_snake_case() \
+		+ (".mpd" if grouped else ".ldr")
 	if OS.has_feature("web"):
 		store.export_to(file_name, model_name())
 		_say("downloaded %s" % file_name)

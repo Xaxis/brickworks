@@ -90,9 +90,10 @@ class Node2 extends RefCounted:
 ## planning around it would also make every brick above it "supported"
 ## and flatten the order.
 ##
-## [param regions] names the part of the model each brick belongs to — the
-## assemblies a design named — and a big model given none is divided by
-## area instead.
+## [param regions] names the part of the model each brick belongs to.
+## Without it a brick's own group is used — the assembly a design named,
+## or the sub-model it was read from — and a big model with none is
+## divided by area instead.
 static func plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}, regions: Dictionary = {}) -> Array[Step]:
 	var nodes: Array[Node2] = _survey(world, library, skip)
@@ -100,8 +101,7 @@ static func plan(world: BrickWorld, library: PartLibrary,
 		return []
 	_find_supports(nodes)
 	_find_joints(nodes, world, library)
-	_assign_regions(nodes, regions)
-	return _sequence(nodes)
+	return _sequence(nodes, _assign_regions(nodes, regions))
 
 
 ## Which region each brick is built with.
@@ -109,18 +109,25 @@ static func plan(world: BrickWorld, library: PartLibrary,
 ## By area, a big model is cut into equal tiles of the plan no wider than
 ## REGION. Equal rather than fixed, so a model 30 studs wide is two
 ## halves and not a 24-stud region and a 6-stud sliver.
-static func _assign_regions(nodes: Array[Node2], given: Dictionary) -> void:
+##
+## Returns whether the regions have names a person gave them, which the
+## booklet uses as they are, rather than tiles it numbers.
+static func _assign_regions(nodes: Array[Node2], given: Dictionary) -> bool:
 	if not given.is_empty():
 		for node: Node2 in nodes:
 			node.region = str(given.get(node.id, ""))
-		return
+	if nodes.any(func(node: Node2) -> bool: return not node.region.is_empty()):
+		for node: Node2 in nodes:
+			if node.region.is_empty():
+				node.region = "the rest"
+		return true
 	var bounds: AABB = nodes[0].box
 	for node: Node2 in nodes:
 		bounds = bounds.merge(node.box)
 	var across: int = maxi(1, int(ceil(bounds.size.x / REGION)))
 	var deep: int = maxi(1, int(ceil(bounds.size.z / REGION)))
 	if across * deep == 1:
-		return
+		return false
 	for node: Node2 in nodes:
 		var centre: Vector3 = node.box.get_center() - bounds.position
 		var column: int = clampi(int(centre.x / bounds.size.x * across),
@@ -128,6 +135,7 @@ static func _assign_regions(nodes: Array[Node2], given: Dictionary) -> void:
 		var row: int = clampi(int(centre.z / bounds.size.z * deep),
 			0, deep - 1)
 		node.region = "%d,%d" % [column, row]
+	return false
 
 
 ## A pin cannot go into a hole that is not on the table yet.
@@ -178,6 +186,7 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 		node.id = brick.id
 		node.part_id = brick.part_id
 		node.box = brick.transform * part.bounds
+		node.region = brick.group
 		nodes.append(node)
 	return nodes
 
@@ -218,7 +227,7 @@ static func _overlaps_flat(a: AABB, b: AABB) -> bool:
 		and a.position.z < b.end.z - EDGE and b.position.z < a.end.z - EDGE)
 
 
-static func _sequence(nodes: Array[Node2]) -> Array[Step]:
+static func _sequence(nodes: Array[Node2], named: bool = false) -> Array[Step]:
 	var by_id: Dictionary = {}
 	for node: Node2 in nodes:
 		by_id[node.id] = node
@@ -232,11 +241,6 @@ static func _sequence(nodes: Array[Node2]) -> Array[Step]:
 	## booklet: its own name, or "part n" in the order they are reached.
 	var current: String = ""
 	var called: Dictionary = {}
-	var named: bool = false
-	for node: Node2 in nodes:
-		if not node.region.is_empty() and not node.region.contains(","):
-			named = true
-			break
 
 	while not remaining.is_empty():
 		var step := Step.new()

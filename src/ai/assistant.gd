@@ -156,6 +156,9 @@ var _looked_back: bool = false
 ## The assemblies still to be looked at one by one, the one being
 ## detailed now, and how many turns it has had. See [method _detail_next].
 var _to_detail: Array[Dictionary] = []
+## Every assembly the design named, which the bricks are tagged with when
+## the run ends. See [method _tag_assemblies].
+var _declared: Array[Dictionary] = []
 var _detailing: Dictionary = {}
 var _detail_turns: int = 0
 var _detail_count: int = 0
@@ -496,6 +499,7 @@ func _start(text: String) -> void:
 	_edited = false
 	_looked_back = false
 	_to_detail = []
+	_declared = []
 	_detailing = {}
 	_detail_turns = 0
 	_detail_count = 0
@@ -1054,6 +1058,7 @@ func _on_response(result: Array) -> void:
 		if not _looked_back:
 			_looked_back = true
 			_to_detail = _queue_assemblies(_pending.assemblies)
+			_declared = _pending.assemblies
 			_pending = null
 			progress.emit("looking at the finished model: %s"
 				% _texture(_bricks_inside({})))
@@ -1103,6 +1108,7 @@ func _on_response(result: Array) -> void:
 		if _detailing.is_empty() and _detail_count == 0 \
 				and not _pending.assemblies.is_empty():
 			_to_detail = _queue_assemblies(_pending.assemblies)
+			_declared = _pending.assemblies
 		_pending = null
 		if await _detail_next():
 			return
@@ -1215,6 +1221,30 @@ If it is genuinely right, say so in one line and stop — do not submit \
 it again. Be honest about this: say it reads as the thing only if you \
 can name the features that make it recognisable and see each of them \
 in the picture."""
+
+
+## Mark every brick with the assembly it is part of, as the run ends.
+##
+## The design knows its model is a gatehouse, four towers and the walls
+## between, and that was thrown away with the conversation. Kept on the
+## bricks it goes into the file as sub-models and into the booklet as
+## its parts — "the gatehouse" rather than "part 3". A brick belongs to
+## the first assembly whose box holds its corner, the way look_at_model
+## reads where=. A model that is one thing is left as one thing.
+func _tag_assemblies() -> void:
+	if _declared.size() < 2 or world == null:
+		return
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		if info == null:
+			continue
+		var at: Vector3 = _to_studs(brick, info)
+		for one: Dictionary in _declared:
+			if _inside(at, one["where"]):
+				brick.group = str(one["name"])
+				break
 
 
 ## Hand the design the next assembly to detail, or say it is finished.
@@ -1567,6 +1597,7 @@ static func _what_went_wrong(code: int) -> String:
 ## happened. Restoring over it threw away a hundred and forty bricks
 ## that were sitting on the baseplate at the time.
 func _stop(ok: bool, summary: String) -> void:
+	_tag_assemblies()
 	# A design that failed leaves the model it was asked to change
 	# exactly as it found it. Without this a revision that ran out of
 	# repairs took the original with it — and the drafts shown along the

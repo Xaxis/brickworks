@@ -32,6 +32,9 @@ class Placement extends RefCounted:
 	var color_code: int
 	var transform: Transform3D
 	var step: int              ## which build step it belongs to, from 0
+	## The sub-model of the document it was placed in at the top level,
+	## by that sub-model's title: which assembly of the model it is.
+	var group: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -43,6 +46,9 @@ class Placement extends RefCounted:
 ## A model, or one sub-assembly of a multi-part document.
 class SubModel extends RefCounted:
 	var name: String
+	## Its first line, which LDraw makes the description: "front-left
+	## tower" where the file is front_left_tower.ldr.
+	var title: String = ""
 	var placements: Array[Placement] = []
 	var step_count: int = 1
 	## References this sub-model makes to other sub-models rather than to
@@ -121,6 +127,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				current.step_count = step + 1
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
+			elif (current.title.is_empty() and current.placements.is_empty()
+					and not keyword.begins_with("!") and keyword != "BFC"
+					and keyword != "NAME:" and keyword != "NOFILE"
+					and not tokens[1].begins_with("//")):
+				current.title = " ".join(tokens.slice(1)).strip_edges()
 			continue
 
 		if line_type != 1 or tokens.size() < 15:
@@ -273,7 +284,7 @@ static func from_transform(at: Transform3D) -> PackedFloat64Array:
 func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
 	if main != null:
-		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0)
+		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "")
 	return out
 
 
@@ -284,7 +295,8 @@ func _inline(
 	out: Array[Placement],
 	known_parts: Dictionary,
 	visiting: Dictionary,
-	depth: int
+	depth: int,
+	group: String
 ) -> void:
 	if depth > 32 or visiting.has(_key(sub.name)):
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
@@ -297,32 +309,80 @@ func _inline(
 		# A name is a sub-model only if it is not a real part: published
 		# models occasionally name a sub-assembly after a part number.
 		if nested != null and not known_parts.has(placement.part_id):
+			# A sub-model referenced by the model itself is one of its
+			# assemblies; what that sub-model nests stays part of it.
+			var named: String = group
+			if depth == 0:
+				named = (nested.title if not nested.title.is_empty()
+					else _key(nested.name))
 			_inline(
 				nested,
 				at * placement.transform,
 				placement.color_code if placement.color_code != 16 else color,
-				out, known_parts, visiting.duplicate(), depth + 1)
+				out, known_parts, visiting.duplicate(), depth + 1, named)
 			continue
 
 		var resolved: int = placement.color_code
 		if resolved == 16:
 			resolved = color
-		out.append(Placement.new(
-			placement.part_id, resolved, at * placement.transform, placement.step))
+		var placed := Placement.new(
+			placement.part_id, resolved, at * placement.transform, placement.step)
+		placed.group = group
+		out.append(placed)
 
 	visiting.erase(sub.name.to_lower())
 
 
 ## Serialise placements back to .ldr text.
+##
+## A model whose bricks belong to groups goes out as a multi-part
+## document, a sub-model per group, which is how LDraw says "this is the
+## gatehouse": Studio, LeoCAD and LPub all show it as an assembly, and it
+## comes back in here with every brick in its group.
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = ""
 ) -> String:
+	var groups: Array[String] = []
+	for item: Variant in placements:
+		var group: String = (item as Placement).group
+		if not group.is_empty() and not groups.has(group):
+			groups.append(group)
+	if groups.is_empty():
+		return _write_one(placements, title, author_name, [])
+
+	var main_file: String = title.to_snake_case() + ".ldr"
+	var file_of: Dictionary = {}
+	for group: String in groups:
+		var file: String = group.to_snake_case() + ".ldr"
+		while file == main_file or file_of.values().has(file):
+			file = file.get_basename() + "_.ldr"
+		file_of[group] = file
+	var loose: Array = placements.filter(func(p: Placement) -> bool:
+		return p.group.is_empty())
+	var refs: Array[String] = []
+	for group: String in groups:
+		refs.append("1 16 0 0 0 1 0 0 0 1 0 0 0 1 " + str(file_of[group]))
+	var text: String = "0 FILE " + main_file + "\n" \
+		+ _write_one(loose, title, author_name, refs) + "0 NOFILE\n"
+	for group: String in groups:
+		var own: Array = placements.filter(func(p: Placement) -> bool:
+			return p.group == group)
+		text += "0 FILE " + str(file_of[group]) + "\n" \
+			+ _write_one(own, group, author_name, [],
+				str(file_of[group])) + "0 NOFILE\n"
+	return text
+
+
+static func _write_one(placements: Array, title: String, author_name: String,
+		refs: Array[String], file_name: String = "") -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
-	lines.append("0 Name: " + title.to_snake_case() + ".ldr")
+	lines.append("0 Name: " + (file_name if not file_name.is_empty()
+		else title.to_snake_case() + ".ldr"))
 	if not author_name.is_empty():
 		lines.append("0 Author: " + author_name)
 	lines.append("")
+	lines.append_array(PackedStringArray(refs))
 
 	var step: int = -1
 	for item: Variant in placements:

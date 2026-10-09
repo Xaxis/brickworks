@@ -257,6 +257,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		var brick_id: int = world.add_brick(
 			placement.part_id, placement.color_code, placement.transform)
 		if brick_id != 0:
+			world.get_brick(brick_id).group = placement.group
 			builder.register(brick_id, placement.part_id, placement.transform)
 			placed += 1
 	_stand_it_on_the_ground()
@@ -336,9 +337,11 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 		var brick: BrickWorld.Brick = item
 		if scenery.has(brick.id):
 			continue
-		placements.append(LdrModel.Placement.new(
+		var placement := LdrModel.Placement.new(
 			brick.part_id, brick.color_code, brick.transform,
-			int(step_of.get(brick.id, 0))))
+			int(step_of.get(brick.id, 0)))
+		placement.group = brick.group
+		placements.append(placement)
 	# In build order where there is one, and bottom to top otherwise, so
 	# the file reads the way it would be built. Sorting by height alone
 	# put a pin above the beam it goes into, because a pin sits at the

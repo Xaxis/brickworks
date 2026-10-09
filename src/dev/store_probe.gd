@@ -110,6 +110,38 @@ func _initialize() -> void:
 			"brick %d orientation changed" % n)
 
 	DirAccess.remove_absolute(ModelStore.SAVE_DIR + "round trip.ldr")
+
+	# The assemblies a design named, kept in the file. Two groups of
+	# bricks become two sub-models, titled as a person wrote them, and
+	# come back with every brick in its own.
+	world.clear()
+	builder.lattice.clear()
+	for tower: int in 2:
+		for level: int in 3:
+			var at := Transform3D(Basis.IDENTITY,
+				Vector3(tower * 600.0, level * 24.0, 0))
+			var id: int = world.add_brick("3001", 4, at)
+			builder.register(id, "3001", at)
+			world.get_brick(id).group = ["north-east tower", "gatehouse"][tower]
+	var grouped: String = store.to_text("castle", true)
+	_expect(grouped.contains("0 FILE north_east_tower.ldr")
+			and grouped.contains("0 FILE gatehouse.ldr"),
+		"a grouped model is written as one sub-model per group")
+	var parsed: LdrModel = LdrModel.parse(grouped, "castle.mpd")
+	var by_group: Dictionary = {}
+	for piece: LdrModel.Placement in parsed.flatten(library.parts):
+		by_group[piece.group] = int(by_group.get(piece.group, 0)) + 1
+	_expect(int(by_group.get("north-east tower", 0)) == 3
+			and int(by_group.get("gatehouse", 0)) == 3,
+		"read back with every brick in its group, by name: %s" % str(by_group))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	_expect(steps[0].section in ["north-east tower", "gatehouse"]
+			and steps[-1].section != steps[0].section,
+		"the booklet builds them as its parts: %s, then %s"
+			% [steps[0].section, steps[-1].section])
+	print("grouped: %s; booklet parts %s then %s" % [str(by_group),
+		steps[0].section, steps[-1].section])
+
 	if _failures == 0:
 		print("round trip is lossless")
 	else:
