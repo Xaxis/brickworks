@@ -88,31 +88,25 @@ it is hands-only, so say so rather than claiming it.
   world's, because an unplaced part has no world and `rot` decides where it
   ends up, so "+x" would be a claim about something nobody has chosen yet.
 
-- **A name can only say so much about a part.** Search ranking was built out of
-  what a name looks like — plainness, qualifiers, prints, sizes — carefully and
-  over many measured queries. It cannot tell you that 3062b, "Brick 1 x 1 Round
+- **A name can only say so much about a part.** Ranking built out of plainness,
+  qualifiers, prints and sizes cannot tell you that 3062b, "Brick 1 x 1 Round
   with Hollow Stud", is in 4,496 sets while 71075a, named just as plainly, is in
-  seventeen. Measured over 35 ordinary queries: **12 led with the part real sets
-  use most and the leader carried 71% of the usage the best match had; 16 and 81%
-  once `in_sets` counted.** It fixed "round brick 1 x 1" (71075a → 3062b),
-  "hinge" (4625, 190 sets → 3937, 2,174), "antenna" (104, 5 sets → 3957a, 918)
-  and "jumper" (1745, 367 → 87580, 2,941).
+  seventeen. Over 35 ordinary queries: **12 led with the part real sets use most
+  and the leader carried 71% of the usage the best match had; 16 and 81% once
+  `in_sets` counted.** It fixed "round brick 1 x 1", "hinge" (4625, 190 sets ->
+  3937, 2,174), "antenna" (104, 5 -> 3957a, 918) and "jumper" (1745, 367 ->
+  87580, 2,941).
 
-  Two disciplines hold it up, and `usage_probe` asserts both. **It promotes and
-  never demotes**: only 5,988 of 29,479 parts join to a set inventory, so a zero
-  is silence, not evidence. And it is **capped under the weakest name tier** (100
-  against 140), so it orders parts *within* what was asked for — "plate 4 x 4"
-  must still lead with the 4x4 in 3,603 sets and not the 2x4 in 7,969.
+  Two disciplines hold it up, both asserted. **It promotes and never demotes**:
+  5,988 of 29,479 parts join to an inventory, so a zero is silence. And it is
+  **capped under the weakest name tier** (100 against 140), so "plate 4 x 4"
+  still leads with the 4x4 in 3,603 sets, not the 2x4 in 7,969. Filling the gap
+  with explicit zeros to push down parts no set contains moved 221 parts and
+  changed no ranking; it is not here.
 
-  Measured and taken out: filling the gap with explicit zeros, so a part
-  Rebrickable knows and no set contains could be pushed down. It moved 221 parts
-  and changed no ranking.
-
-  Beware scoring a ranking against a differently-counted usage number. The first
+  Score a ranking against the same usage number the ranking reads. The first
   diagnostic counted inventory *rows* and reported 3023 in "25,944 sets" and 7891
-  in none; the honest figures are 9,285 distinct sets and 1. Both runs above are
-  scored off the catalogue's own `in_sets`, which is what the ranking reads.
-
+  in none; the honest figures are 9,285 distinct sets and 1.
 - **The one join between the libraries is `rebrickable._matcher`.** Colours and
   usage both need to know which Rebrickable part an LDraw id is, and two copies
   of a join drift apart. Extracting it changed nothing: 6,419 parts with colour
@@ -120,56 +114,37 @@ it is hands-only, so say so rather than claiming it.
   check that made the refactor safe to keep.
 
 - **Lift, not count, or every kind of set is the same list of plates.** Counted
-  plainly, a castle set and a spaceship are both mostly 1x2 plates — true and
-  useless. `kinds()` divides by what sets in general do, so a castle comes back
-  as the arch door at **26×**, arched window panels at 15×, lattice windows at
-  14×, in tan, dark tan and pearl gold; a spaceship as the round brick with fins
-  at 9.5×, 2x2 brackets at 7×, inverted dishes and antennas, in white and grey.
-  `kinds_probe` asserts the thing that could fail: **a castle and a spaceship
-  share 0 of twelve parts.**
+  plainly a castle and a spaceship are both mostly 1x2 plates — true and useless.
+  Dividing by what sets in general do gives a castle the arch door at **26x**,
+  arched window panels at 15x, lattice windows at 14x, in tan and pearl gold; a
+  spaceship the round brick with fins at 9.5x, 2x2 brackets at 7x, in white and
+  grey. `kinds_probe` asserts the thing that could fail: **a castle and a
+  spaceship share 0 of twelve parts.**
 
-  Three defects the probe found, each fixed in the data rather than papered over:
-  LDraw files Duplo train track under "Train", so `train` came back led by two
-  Duplo tracks at 70×; minifig accessories took the top four places for `pirate`
-  and buried the hull, so categories now split what a set is *built from* from
-  what it *carries*; and 68 entries across the 367 kinds had lift ≤ 1.0 — the
-  thinner kinds padding their twelve out with ordinary plates.
+  Four defects it found, each fixed in the data: LDraw files Duplo train track
+  under "Train", so `train` led with two Duplo tracks at 70x; minifig
+  accessories took the top four places for `pirate` and buried the hull, so
+  categories split what a set is *built from* from what it *carries*; 68 entries
+  across 367 kinds had lift <= 1.0, the thinner kinds padding their twelve out
+  with ordinary plates; and `REAL_MODEL = 20` parts, or the kinds are keychains,
+  backpacks and Adidas shoes. Only parts that join to a placeable LDraw id, which
+  is asserted over all of them.
 
   **A kind of thing is a meaning, and the meaning is not in the inventories.**
-  Generic words got through — `large`, `play`, `version`, `battle`, `advent` —
-  and it mattered because a brief matching several kinds puts the most
-  specific-looking first, so **"a large castle" led with `large` over 88 sets
-  instead of `castle` over 175**. The obvious fix was to drop kinds whose parts
-  are not distinctive, and that was measured and **refuted**: across all 367,
-  `play` topped out at 190× the base rate and `version` at 121× — above castle's
-  26× — while `farm` is 3.3, `car` 4.2 and `fire` 4.5. A distinctiveness
-  threshold deletes farm and car and keeps play. So `NOT_A_KIND` is a word list,
-  which is whack-a-mole and is also the honest shape of the problem. 343 kinds
-  now, and the probe asserts both halves: the generics are gone and the three
-  least distinctive real kinds are still there.
+  Generic words got through — `large`, `play`, `version` — and it mattered because
+  the most specific-looking kind goes first, so "a large castle" led with `large`
+  over 88 sets instead of `castle` over 175. Dropping kinds whose parts are not
+  distinctive was measured and **refuted**: `play` tops out at 190x and `version`
+  at 121x, above castle's 26x, while `farm` is 3.3, `car` 4.2 and `fire` 4.5. So
+  `NOT_A_KIND` is a word list, 343 kinds, and the probe asserts both halves.
 
-  `REAL_MODEL = 20` parts, or the kinds are keychains, backpacks and Adidas
-  shoes. Only parts that join to a placeable LDraw id, because a part this app
-  cannot place is not a recommendation — asserted over all 367 kinds.
-
-  **It arrives with the brief, not as a tool to call.** This project has measured
-  twice what happens to a capability a design can get by without: it reached for
-  sideways building because a smooth sign face is impossible studs-up, and it
-  never once reached for a wedge plate across three runs, because a staircase of
-  plates still satisfies "build a saucer". Knowing a castle is arch doors in tan
-  is exactly that second kind, so `Assistant.opening_for()` puts it in the first
-  message of the run. `how_real_sets_build_this` stays for anything else. A
-  revision that names no kind gets nothing — asserted, or every "make it taller"
-  would drag an unrelated kind in.
-
-  (`opening_for` is its own function so a check can read what a run opens with
-  without driving `_start`, which reaches the API and needs a key.)
-
-  It admits ignorance: a lighthouse matches nothing, and says so, with "not a
-  verdict on the idea". A kind is a word in a real set's name, which is crude
-  and is also what a brief says — plus a prefix match at 4+ letters, so
-  "spaceship" finds `space`, which is the word real sets use.
-
+  **It arrives with the brief, not as a tool to call.** Measured twice on this
+  project: a capability a design can get by without is one it never uses — it
+  reached for sideways building because a smooth sign face is impossible
+  studs-up, and never for a wedge plate across three runs. `opening_for()` puts
+  it in the first message; a revision naming no kind gets nothing, asserted. It
+  admits ignorance: a lighthouse matches nothing and says so. A prefix match at
+  4+ letters makes "spaceship" find `space`, the word real sets use.
 - **The prompt now says what a set is made of, not what I think it should be.**
   Every other piece of advice in it about what to reach for was mine: tile a
   roof, curve a bonnet, use a bracket for a sign. `_what_sets_are_built_from()`
@@ -178,45 +153,31 @@ it is hands-only, so say so rather than claiming it.
   plates; the 2x4 brick everyone pictures is number 22. A design reaches for what
   it remembers, and what a model remembers about LEGO is bricks.
 
-- **"Does it read as a set" is measured, not judged.** The checker could always
-  say whether a model holds together; whether it looks like a set rested on
-  taste. It is now measured over 9,866 catalogued sets, banded by size: one of
-  350–800 parts has about 153 part-and-colour lots, 117 different shapes, 18
+- **"Does it read as a set" is measured, not judged.** Banded by size over 9,866
+  sets: one of 350-800 parts has about 153 part-and-colour lots, 117 shapes, 18
   colours, and at most about 24 of any one piece. `models/station.ldr` is the
   fixture because it provoked this — 535 parts, 45 lots, 30 shapes, **86 of one
-  brick**. The right size and the wrong texture, and nothing said so.
+  brick**: the right size, the wrong texture, and nothing said so.
 
-  **A multiple of the median read like a tolerance and was not one.** The first
-  version fired below 0.6× the median shapes and above 2× the median repeat, and
-  measured against the same inventories the norms come from, that **fires on 29
-  to 34 per cent of real LEGO sets**, band by band. A third of real sets told
-  they are repetitive is noise, and this project already holds advice to the
-  standard that it must not fire on good models — the staircase rule was measured
-  against the eight shipped models for exactly this reason. I checked this one
-  against one bad model and one synthetic control, and never against the 9,866
-  real sets I already had.
+  **A multiple of the median read like a tolerance and was not one.** Firing
+  below 0.6x the median shapes and above 2x the median repeat fires on **29-34%
+  of real LEGO sets**, measured against the same inventories the norms come from.
+  A third of real sets told they are repetitive is noise, and this project holds
+  advice to the standard that it must not fire on good models. The bands carry
+  their tails now — 5th percentile for lots, shapes and colours, 95th for the
+  largest lot — which is **8.5% overall, worst band 11%**. The medians are still
+  what gets *reported*, because "a real set this size has about 117 shapes" is
+  the useful sentence; the percentile only decides whether to speak.
 
-  So the bands carry the tails as well as the medians: `lots_thin`,
-  `shapes_thin`, `colours_thin` at the 5th percentile and `most_of_one_high` at
-  the 95th. **8.5% overall now, worst band 11%**, measured off the shipped
-  numbers. The medians are still what gets *reported*, because "a real set of
-  this size has about 117 shapes" is the useful sentence; the percentile is only
-  what decides whether to speak.
+  2nd/98th would be rarer at 4% and was rejected on evidence: it misses the fire
+  station on both counts (30 shapes is the 4.2nd percentile, 86-of-one the
+  95.8th). `variety_probe` asserts both directions, including that a model with a
+  real set's median spread is left alone and so is one using 58 of a piece, which
+  nine real sets in ten are under and the old rule called repetitive at 48.
 
-  The 2nd/98th percentiles would be rarer still, at 4%, and were rejected on
-  evidence: they miss `models/station.ldr` on both counts — its 30 shapes sit at
-  the 4.2nd percentile and its 86-of-one at the 95.8th — and that model is the
-  fixture the whole measurement exists for. `variety_probe` now asserts both
-  directions: the station fires, a model with a real set's median spread does
-  not, and neither does one using 58 of a piece, which nine real sets in ten are
-  under and the old rule called repetitive at 48.
-
-  Advice, never a fault: a repetitive model still builds, and refusing one would
-  throw away a design that is merely plain. A 400-part model with 120 shapes and
-  18 colours is left alone. Beware testing it with a control that is itself thin:
+  Advice, never a fault. Beware testing it with a control that is itself thin:
   mine had 20 shapes, the check correctly flagged it, and for a moment that
   looked like a false positive.
-
 - **Which moulding a bare part number means is settled by LDraw's redirects, not
   by the alphabet.** `3023a` and `3023b` are both "Plate 1 x 2" and both reduce
   to `3023`, so whichever was indexed first took the number — and every `3023`

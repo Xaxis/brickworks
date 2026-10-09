@@ -178,142 +178,82 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   because a staircase of plates still satisfies "build a saucer". A technique the
   brief demands gets used; one that merely improves the result has to be in a tool
   the design cannot avoid.
-- **The ceiling on model size was never the lattice — and it was never the
-  reply either.** The lattice holds 50,000 bricks in 180 MB. A reply holds about
-  a thousand placements. Everything between was unreachable, and `patterns`
-  only reaches shapes it has verbs for: a dome, a hull, a row. A castle wall of
-  forty bays is none of those. `repeat_section` closes it, and the measured
-  claim is the probe's: **250 placements described, 10,000 bricks built**, 780
-  studs along and fifty courses high, checked in one piece and really on the
-  baseplate.
+- **The ceiling on model size was never the lattice, and never the reply.** The
+  lattice holds 50,000 bricks in 180 MB; a reply holds about a thousand
+  placements; `patterns` only reaches shapes it has verbs for, and a castle wall
+  of forty bays is none of them. `repeat_section` closes it: **250 placements
+  described, 10,000 bricks built**, 780 studs along, checked in one piece and
+  really on the baseplate.
 
-  What it cost to find out: checking those 10,000 bricks took **108 seconds**,
-  and two thirds of that was work nobody needed. Walking all 9,600 cells of
-  every brick to find its two corners was 20s — a box *is* its corners, so
-  `BrickLattice.corners_in` reads them in six reads per box. `_longest_staircase`
-  was 36s: quadratic in the width of the model, because a flat edge never breaks
-  the run and every extension rechecks everything before it. A run of equal
-  steps lies exactly on its chord, so there is nothing to measure; the scan now
-  skips it and carries a 2-second budget besides, the same way the hint sweep
-  does. **22 seconds** now, with every staircase answer unchanged — `rules_probe`
-  is what says so.
+  Checking those 10,000 took 108s, two thirds of it waste. Walking all 9,600
+  cells of a brick to find its two corners was 20s — a box *is* its corners
+  (`BrickLattice.corners_in`). `_longest_staircase` was 36s, quadratic in the
+  model's *width*: a flat edge never breaks the run, and a run of equal steps
+  lies exactly on its chord so there is nothing to measure. **22s now**, every
+  staircase answer unchanged, which `rules_probe` is what says.
 
-  Measure before you cut. The first guess was the cell expansion itself, which
-  turned out to be 10.9s of the 108.
+  The first guess was the cell expansion. It was 10.9s of the 108. Measure the
+  phases before cutting.
+- **The check measured what was wrong and threw it away on the designs that
+  needed it.** A failing design gets `report["feedback"]`, which carries faults
+  *and* advice. A buildable one went straight to the final look — stability plus
+  five named visual faults — which never mentioned texture. The castle was 713
+  bricks, 23 shapes against 117, and 208 of one brick where 81 is the 95th
+  percentile; the check knew all three and showed none of them at the moment the
+  design was deciding it was finished. `_check` returns `advice` now, the look
+  carries it, and monotony is in the critique's named failures.
+- **Do not put a wall clock in a suite check.** Three flapped in one day on a
+  box shared with another project's video encode at load average 104-171; the
+  suite says it itself — "nothing was proven. Check the load: these starve above
+  about 12". `repeat_probe`'s became a ratio of four-times-the-bricks to
+  four-times-the-work, threshold 10, because the ratio itself read 4.2, 4.9 and
+  7.3 on identical code. `shot_probe`'s already measured what a frame costs on
+  that machine in the same run, so it counts frames: 8 of a 101 ms frame when
+  quiet, `MOST_FRAMES` 20, and above `A_FRAME_IS_HOPELESS` it reports
+  nothing-proven rather than failing.
 
-  **That 108→22 is a direct measurement, made once, and `rules_probe` is what
-  guards the answers it gave.** What `repeat_probe` guards is weaker and worth
-  stating plainly: the check staying about linear in the number of bricks. It
-  does not pin the staircase scan — with the quadratic restored the ratio reads
-  5.0 against 4.2, because the same quadratic sits in both measurements and
-  nearly divides out. Isolating width at a fixed brick count was tried and
-  confounds width with height: hold the bricks and narrow the wall and it gets
-  taller.
+  Know what a ratio pins. With the quadratic staircase scan restored,
+  four-times-the-bricks reads 5.0 against 4.2 — the same quadratic sits in both
+  measurements and nearly divides out. Isolating width at a fixed brick count was
+  tried and confounds width with height.
+- **One call's complaint was the next call's problem.** A run reported "155
+  problems (floating 125, overlap 17, **pattern 13**)" about an `edit_model`, and
+  an edit takes no patterns at all: `_check` reads `_pattern_trouble` whatever
+  filled it, and only `_read_model` cleared it, so a `check_design`'s thirteen
+  complaints were re-reported as every later edit's own. `_edit` clears both now.
+  Found by the logging, not by reading: the progress line started saying how much
+  shorthand a call carried, and an edit was claiming patterns. Patterns expand in
+  `_read_model`, so `check_design` and `submit_design` are where a complaint has
+  something to say; `repeat_section` in both that and `_edit`.
+- **`fill` is right for a straight wall and was not being used for one.** A
+  castle dictated its curtain walls as 223 1x2 bricks, every joint in a column.
+  `fill` on the same 40x24 wall, one stud thick, twelve courses: **192 parts, 168
+  of them 1x8 and 24 of them 1x6, and not one 1x2**, staggered and bonded,
+  because it lays the longest brick that fits each run. Its worked examples
+  listed a dome, a cone, a tower, a hull and a bowl and **no wall** — the shape
+  it is best at. The table names a wall and a room now, and
+  `patterns_probe._a_wall_is_long_bricks` pins the numbers so the prompt cannot
+  drift from the code.
 
-  **And do not put a wall clock in a suite check.** The first version asserted
-  "under a minute". It measured 22s alone and 68s in a suite run beside another
-  session's video encode, on a box at load average 164 — a failure with nothing
-  changed. The suite says so itself for the on-screen probes: "Check the load:
-  these starve above about 12". A ratio divides the machine out; the threshold is
-  10, between linear's 4 and quadratic's 16, because the ratio itself read 4.2,
-  4.9 and 7.3 on three runs of identical code.
-
-- **The check measured what was wrong with a model and threw it away on exactly
-  the designs that needed it.** A design that fails gets `report["feedback"]`,
-  which carries faults *and* advice. A design that holds together went straight
-  to the one deliberate look — stability plus five named visual faults — and that
-  look never mentioned texture. Measured on a castle: **713 bricks, buildable,
-  23 different shapes where a real set of its size has 117, and 208 of one corner
-  brick where 81 is the 95th percentile.** The check knew all three; at the one
-  moment the design was deciding whether it was finished, it was shown none of
-  them, and it finished. `_check` returns `advice` now and the final look carries
-  it, with monotony added to the critique's named failures. `variety_probe` pins
-  both.
-
-- **Three wall-clock checks flapped in one day on a box shared with another
-  project's video encode.** Load average 104 to 171, and the suite's own words
-  for its windowed probes are "nothing was proven. Check the load: these starve
-  above about 12." `repeat_probe`'s was new and became a ratio. `shot_probe`'s
-  was "a picture takes more than 2.0 s", and it **already measured what a frame
-  costs on this machine in the same run** — so it counts frames now: a picture is
-  8 frames of a 101 ms frame when quiet, `MOST_FRAMES` is 20, and above
-  `A_FRAME_IS_HOPELESS` it reports nothing-proven rather than failing. Verified
-  both ways: tightening the constant to 3 makes it fail. The original cost it was
-  written for — six seconds a picture at every model size — was a 989 ms frame,
-  which shows up in frames too.
-
-- **One call's complaint was the next call's problem.** A real run reported "155
-  problems (floating 125, overlap 17, **pattern 13**)" about an `edit_model` —
-  and an edit takes no patterns at all. `_check` reads `_pattern_trouble`
-  whatever produced it, and only `_read_model` ever cleared it, so the thirteen
-  complaints belonged to the `check_design` before it and were re-reported as the
-  edit's own for the rest of the run. `_edit` clears both troubles now.
-
-  **This was found by the logging, not by reading the code.** The progress line
-  started saying how much shorthand a call carried, and an edit was claiming
-  patterns it could not have sent. Worth knowing where each piece of shorthand
-  actually expands: patterns in `_read_model`, so `check_design` and
-  `submit_design`; `repeat_section` in both `_read_model` and `_edit`. The first
-  version put the counts on one path and the complaints on another, and neither
-  was the path that mattered.
-
-- **The monotony was the design's choice, not the shorthand's — measured.** A
-  castle run reached **1,106 bricks buildable** (against 713 and 496 earlier the
-  same evening) and was *less* like a set than the smaller one: 22 shapes against
-  the 173 a real set of that size has, 4 colours against 22, and **223 of one
-  1x2 brick**. The obvious suspect was `fill` and `repeat` — the shorthand that
-  makes a thousand parts sayable — so it was tested directly: `fill` on a 40×24
-  wall, one stud thick, twelve courses, gives **192 parts, 168 of them 1x8 and 24
-  of them 1x6, and not one 1x2.** Staggered and bonded, because it lays the
-  longest brick that fits each run. The design wrote its walls out by hand
-  instead, and got more parts, every joint in a column, and two shapes.
-
-  So the lever is guidance, not the tiler: `fill`'s worked examples listed a
-  dome, a cone, a tower, a hull and a bowl, and **no wall** — the one shape it is
-  best at and the one most likely to be dictated by hand. The table names a wall
-  and a room now, with those measured numbers in the prose, and
-  `patterns_probe._a_wall_is_long_bricks` asserts them so the prompt cannot drift
-  from what the code does.
-
-- **Four castle runs, and the fourth is where texture finally moved.** 496 → 713
-  → 1,106 → **1,828 bricks**, all buildable, against a previous project best of
-  456. For the first three, scale and texture moved in *opposite* directions:
-  28 → 23 → 22 shapes and a most-repeated piece of 70 → 208 → 223. The fourth
-  reversed it **inside the run, at the final look** — 1,552 parts with 20 shapes,
-  4 colours and 2 castle-characteristic pieces before it; **1,828 parts with 30
-  shapes, 8 colours and 12** after. It went back and added five rounded-top
+  The same table said "a round tower → ellipse", which is where 354 1x1 bricks
+  came from: an ellipse with a wall has no room for a long brick once it curves.
+  It says "a round tube" now, with a `wide round tower` technique — four 48092
+  corner-round bricks a course, the part real castle sets reach for second-most.
+  Its rotation was measured, not guessed: all four assignments stack and check
+  buildable, and only one leaves the middle hollow, which turning the finished
+  ring a quarter about its own centre settles (93% of cells map onto themselves,
+  against 0-19%).
+- **Detailing happens once, at the final look, and that one pass is worth 10
+  shapes.** Run 4 of the castle brief: 1,552 parts with 20 shapes, 4 colours and
+  2 castle-characteristic pieces when it first reported buildable; **1,828 parts
+  with 30 shapes, 8 colours and 12** after the look. It added five rounded-top
   castle windows, four wave flags and an arch, and brought Tan, Dark Tan and
   Reddish Brown into a model that had been grey and green.
 
-  So carrying the check's own measurements into that look is the one change of
-  the day that moved texture, and it was the cheapest: the numbers already
-  existed and were being discarded on any design that held together. Still far
-  short of the 242 shapes a real 1,800-part set has.
-
-  (The interim 1,552-part figure is what the model looked like *before* its final
-  look. Read a design run's output after it ends, not when it first says
-  "buildable" — `--out` is written on every build, so the file moves under you.)
-
-  The fourth run named its own cause: **354 Brick 1x1**, which is four round
-  towers. And the prompt's own fill table said **"a round tower → ellipse,
-  wall 1, layers 12, rise 3"**. An ellipse with a wall has no room for a long
-  brick in any run once it curves, so a small one comes out as a staircase of
-  1x1s — the same table gives a 40×24 *straight* wall as 192 parts of 1x8 and
-  1x6. So `fill` is right for a tube and was being recommended for a tower.
-
-  It says "a round tube" now, and there is a `wide round tower` technique: four
-  4x4 corner-round bricks a course, 48092, **which is the part real castle sets
-  reach for second-most often** and which an earlier run had already found on its
-  own. `techniques_probe` asserts the technique builds, is findable by name, and
-  that the table no longer offers a tower to fill.
-
-  **The rotation could not be guessed and was not.** All four assignments of the
-  rotations to the quadrants stack and check as buildable; only one leaves a
-  hollow tower rather than filling the middle. Settled by turning the finished
-  ring a quarter about its own centre and counting how many of its cells map onto
-  itself: 93% the right way round, 0–19% the wrong way. This is the same trap as
-  the two left wings.
-
+  The run progression and what to do about it live in `docs/ROADMAP.md`. What
+  belongs here: read a design run's output **after it ends**, not when it first
+  says "buildable" — `--out` is rewritten on every build, so the file moves under
+  you, and that is how the 1,552 figure got reported as final.
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had
