@@ -120,6 +120,29 @@ func _initialize() -> void:
 	_ok(said.contains("not a verdict on the idea"),
 		"...and the design is not told to build something else")
 
+	print("\nand a word that is not a kind of thing does not outrank one")
+	# The harm this does if it is wrong: a brief matches several kinds
+	# and the most specific-looking goes first, so "a large castle" led
+	# with "large" over 88 sets instead of castle over 175.
+	#
+	# It is a word list and not a measurement, and that was measured:
+	# across all 367 kinds "play" topped out at 190 times the base rate
+	# and "version" at 121 — above castle's 26 — while farm is 3.3, car
+	# 4.2 and fire 4.5. A distinctiveness threshold deletes farm and car
+	# and keeps play.
+	var big: Array = library.kinds_for("a large castle")
+	_ok(not big.is_empty() and str(big[0].get("kind", "")) == "castle",
+		"\"a large castle\" leads with castle (%s)"
+			% ("nothing" if big.is_empty() else str(big[0].get("kind", ""))))
+	for word: String in ["large", "small", "play", "version", "fun",
+			"battle", "team", "advent"]:
+		_ok(not library.kinds.has(word),
+			"\"%s\" is not offered as a kind of thing" % word)
+	# And the real ones are still there, including the three with the
+	# least distinctive parts, which a threshold would have taken.
+	for word: String in ["castle", "farm", "car", "fire", "tractor"]:
+		_ok(library.kinds.has(word), "\"%s\" still is" % word)
+
 	print("\nand it arrives with the brief, unasked")
 	# The capability that can be got by without is the one that never
 	# gets used. Measured twice on this project: sideways building was

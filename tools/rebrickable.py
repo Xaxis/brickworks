@@ -290,7 +290,22 @@ red blue green yellow black white grey gray orange purple pink brown
 tan silver gold bronze clear trans transparent light dark bright medium
 sand metallic pearl classic basic creator ideas super world movie
 adidas nike levi puma reebok vans converse
+large small big giant huge tiny first second final ultimate deluxe
+starter grand great opening play playset fun creative challenge
+version variant alternate battle attack defence defense chase rescue
+team man woman boy girl kids adult plates baseplate calendar advent
+mobile portable transformable buildable collectible display
 """.split())
+
+# Why this is a word list and not a measurement.  A kind whose parts are
+# not distinctive ought to be the useless one, and it is not: measured
+# over all 367, "play" tops out at 190x and "version" at 121x — above
+# castle's 26 — while farm is 3.3, car 4.2 and fire 4.5.  A lift
+# threshold deletes farm and car and keeps play.  "A kind of thing
+# somebody builds" is a meaning, and the meaning is not in the
+# inventories.  It mattered because a brief like "a large castle"
+# matched both and the most specific-looking kind goes first, so the
+# useless word outranked the real one.
 
 # Categories that are never an answer to "what is this built from":
 # decals, retired numbers, and another product line's bricks.

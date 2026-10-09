@@ -135,6 +135,19 @@ it is hands-only, so say so rather than claiming it.
   what it *carries*; and 68 entries across the 367 kinds had lift ≤ 1.0 — the
   thinner kinds padding their twelve out with ordinary plates.
 
+  **A kind of thing is a meaning, and the meaning is not in the inventories.**
+  Generic words got through — `large`, `play`, `version`, `battle`, `advent` —
+  and it mattered because a brief matching several kinds puts the most
+  specific-looking first, so **"a large castle" led with `large` over 88 sets
+  instead of `castle` over 175**. The obvious fix was to drop kinds whose parts
+  are not distinctive, and that was measured and **refuted**: across all 367,
+  `play` topped out at 190× the base rate and `version` at 121× — above castle's
+  26× — while `farm` is 3.3, `car` 4.2 and `fire` 4.5. A distinctiveness
+  threshold deletes farm and car and keeps play. So `NOT_A_KIND` is a word list,
+  which is whack-a-mole and is also the honest shape of the problem. 343 kinds
+  now, and the probe asserts both halves: the generics are gone and the three
+  least distinctive real kinds are still there.
+
   `REAL_MODEL = 20` parts, or the kinds are keychains, backpacks and Adidas
   shoes. Only parts that join to a placeable LDraw id, because a part this app
   cannot place is not a recommendation — asserted over all 367 kinds.
