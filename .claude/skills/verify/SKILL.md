@@ -118,6 +118,24 @@ Godot runs exit on their own; a windowed probe closes its window. If one hangs,
 kill **only** the pid you started — parallel sessions share this checkout and
 another one's Godot looks exactly like yours in `pgrep godot`.
 
+**Use `tools/running.py` to find a run, and `--stop` to end one.** Neither
+`pgrep -f` nor `ps | grep` works here: both match the command line of the shell
+that asked, so they report a run that has already exited — and stopping what
+they return kills the shells *waiting* on the run too, because an `until` loop
+polling for it holds the pattern in its own command line. That happened here and
+ended two background waiters along with the run.
+
+```sh
+python3 tools/running.py design.py          # what is running, excluding the asker
+python3 tools/running.py --stop design.py   # ends the run, spares the waiters
+```
+
+`tests/test_running.py` pins both halves, and the sparing half was claimed in a
+docstring before it was true — the test is what said so. Watch out for one more
+trap in testing it: `os.kill(pid, 0)` succeeds on a child that has died and not
+been reaped, so the first version reported the run as surviving while holding its
+exit status of `-SIGTERM`.
+
 Probe runs write to `models/design.ldr`, `shots/` and the app's own saved state
 (`user://`), all of which are gitignored or deliberately kept. Nothing needs
 undoing, but `git status --porcelain | grep -v '^??'` before committing tells you
