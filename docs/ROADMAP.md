@@ -16,7 +16,7 @@ judged on its own:
 
 | | what a real set has | where it stands, 2026-10-09 |
 |---|---|---|
-| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 64 shapes, 9-13 colours; the gap, below |
+| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 71 shapes, 12 colours; the gap, below |
 | **its parts** | named sub-assemblies, bag by bag | assemblies named by the design, kept as `.mpd` sub-models |
 | **the booklet** | built a sub-assembly at a time, pictured close | built and framed by those assemblies; `--booklet` writes one |
 | **the parts list** | element numbers you can order | CSV with element numbers; the `.mpd` imports into Rebrickable to buy |
@@ -42,12 +42,13 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 7, siblings told what the others got | 803 | 33 | 6 | 162 |
 | 8, and thin passes sent back once | **1,895** | 53 | **13** | 361 |
 | 9, the same, again | 818 | 58 | 9 | 122 |
-| 10, and told the ordinary parts | 1,178 | **64** | 9 | 133 |
+| 10, and told the ordinary parts | 1,178 | 64 | 9 | 133 |
+| 14, told the 100 most used | 1,120 | **71** | 12 | 216 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
 Previous project best was 456 parts. Scale is no longer the constraint.
-**The whole remaining gap is one number: 64 shapes at best where a real
+**The whole remaining gap is one number: 71 shapes at best where a real
 set of that size has 180.** Colours are 13 against 28 at best. Everything below
 is about closing that and nothing else. Count a run with
 `tools/texture.py model.ldr --brief "..."`, after it ends.
@@ -132,7 +133,9 @@ How big the first structure comes out is mostly the run, not the code:
    sets: the castle's "share" of 1 x 2 plates came to 346%.)
 
    **Run 10: 37 of the 40**, against 24 and 22, and 64 shapes — the most
-   any castle has had. It is aimed at the gap and closes most of it: what
+   any castle has had. With the list at 100, **run 14 used 54 of the 100**
+   (run 10, 48; run 8, 35) and came to 71 shapes, its passes taking it from
+   25 — nearly three times. It is aimed at the gap and closes most of it: what
    is left between 64 and 180 is no longer the ordinary parts.
 
    *Checked and not the gap:* minifigures, stickers and printed parts.

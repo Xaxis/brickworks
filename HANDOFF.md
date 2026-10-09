@@ -28,8 +28,9 @@ solved twice, and ranks the levers by the evidence for each.
   colours**; castle run 9, 818 parts and **58 shapes**; a fire station,
   669 parts and **62 shapes** — the first outside the thin tail of real
   sets its size. 30 shapes was the best before this work.
-- The landing page shows the run 8 castle, which ships as
-  `models/castle.ldr` and opens from `/app?model=res://models/castle.ldr`.
+- The landing page shows the run 14 castle (1,120 parts, 71 shapes, ten
+  named assemblies), which ships as `models/castle.ldr` and opens from
+  `/app?model=res://models/castle.ldr`.
 
 ## What this session did, and what it found
 
