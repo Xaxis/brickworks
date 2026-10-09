@@ -87,10 +87,12 @@ def main() -> int:
 
     count = Counter(p for p, _ in parts)
     commonest, most = count.most_common(1)[0]
+    accents = sum(1 for n in count.values() if n <= 2)
     colours = {c for _, c in parts}
     lots = set(parts)
     print(f"{args.model.name}: {len(parts)} parts, {len(count)} shapes, "
-          f"{len(colours)} colours, {len(lots)} lots, {most} of {commonest}")
+          f"{len(colours)} colours, {len(lots)} lots, {most} of {commonest}, "
+          f"{accents} shapes used once or twice")
     if unknown:
         print(f"  {len(unknown)} shapes are not in the catalogue, so nothing "
               f"below knows them: {', '.join(unknown[:8])}")
@@ -104,7 +106,8 @@ def main() -> int:
               f"{band['shapes']} shapes (thin below {band['shapes_thin']}), "
               f"{band['colours']} colours, {band['lots']} lots, "
               f"{band['most_of_one']} of one (high above "
-              f"{band['most_of_one_high']})")
+              f"{band['most_of_one_high']}), {band.get('accents', '?')} "
+              f"used once or twice")
 
     if args.brief:
         kinds = catalogue["kinds"]["kinds"]

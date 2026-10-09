@@ -138,6 +138,13 @@ How big the first structure comes out is mostly the run, not the code:
    25 — nearly three times. It is aimed at the gap and closes most of it: what
    is left between 64 and 180 is no longer the ordinary parts.
 
+   **Where the rest of the gap is, measured:** a real set of 800-1,500
+   parts has a median of 177 shapes, and **85 of them are used only once
+   or twice**. Run 14 had 71 shapes and 21 such; its shapes used many
+   times (about 39 against a real set's 57) were close. Nearly the whole
+   remaining gap is one-off pieces. Each band now carries that count and
+   each pass is told the model's own against it — run 15 measures it.
+
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
    out stickers and prints moves the medians 3% (180 to 173). The 180 is
