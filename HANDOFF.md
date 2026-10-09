@@ -7,66 +7,62 @@ pushed and live; nothing is half-finished.
 
 Designs as good as a set LEGO would actually release, with no
 architectural ceiling on size. The owner's words: a real set may be four
-thousand pieces or more, so do not design to a target number.
+thousand pieces or more, so do not design to a target number. And, from
+the same day: keep planning ahead, refine the vision, and update the
+website when something is worth showing.
 
-`docs/ROADMAP.md` is the plan and is the **first thing to read**. It
-states the gap as one number, lists what is already solved so it is not
-solved twice, and ranks the levers by the evidence for each.
+`docs/ROADMAP.md` is the plan and is the **first thing to read**: the
+product end to end, the gap as one number, what is solved, and the levers
+ranked by evidence.
 
 ## Where it stands
 
-- Clean tree, pushed, live at **brickworks.diy**, serving `/b/87537ed/`,
-  which is `main` minus this file — a docs-only commit does not earn a
-  deploy. Confirm with:
+- Clean tree, pushed, live at **brickworks.diy**. Confirm with
   `curl -sI "https://brickworks.diy/app?v=$(date +%s)" | grep -i location`
-  against `git log --oneline -3`.
-- Full suite green: `tools/check.sh`, which now queues itself on the
-  machine's `heavy` pool (see below).
+  against `git log --oneline -3`; a docs-only commit does not earn a
+  deploy, and the stamp only says `-dirty` for a change to something that
+  ships.
+- Full suite green: `tools/check.sh` (it queues itself on the machine's
+  `heavy` pool).
+- Best design: castle run 14, **1,120 parts, 71 shapes, 12 colours**, in
+  ten named assemblies — on the landing page, shipped as
+  `models/castle.ldr`. A real set that size has 180 shapes. 30 was the
+  best before this work.
 - Not exercised: the proxy's conversation caching for signed-in accounts
-  (`api/claude.js`). It is deployed; proving it needs an account.
-- Best designs so far: castle run 8, **1,895 parts, 53 shapes, 13
-  colours**; castle run 9, 818 parts and **58 shapes**; a fire station,
-  669 parts and **62 shapes** — the first outside the thin tail of real
-  sets its size. 30 shapes was the best before this work.
-- The landing page shows the run 14 castle (1,120 parts, 71 shapes, ten
-  named assemblies), which ships as `models/castle.ldr` and opens from
-  `/app?model=res://models/castle.ldr`.
+  (`api/claude.js`). Deployed; proving it needs an account.
 
-## What this session did, and what it found
+## What the work found
 
-- **The size norms were measured against mosaics.** The thinnest real
-  sets of every size are mosaics, LEGO Art, bulk tubs, education packs
-  and Duplo. Over 1,800 parts that put "thin" at 21 shapes, so a castle
-  of 1,828 parts and 30 shapes was told nothing. `rebrickable.NOT_A_MODEL`
-  and `NAMED_NOT_A_MODEL` leave them out; thin there is 134 now.
-- **Detailing per assembly** — the roadmap's decisive experiment. Each
-  assembly a design names comes back to it close up, measured against a
-  real set its own size. On its own it was worth 1.2-1.5x, not the 2x
-  the roadmap asked for: siblings converged (four towers, "the same
-  crown") and each pass made one change and stopped.
-- **Thin passes sent back once** took a castle from 23 shapes to 53 in
-  run 8 and from 34 to 58 in run 9, and a fire station from 39 to 62.
-  It holds.
-- **Booklets are built a region at a time** for any model wider than 24
-  studs, each region framed on its own; the castle's steps jump a median
-  of 6.2 studs instead of 12.5. `--booklet=PATH --model=X` writes one.
-- **Each pass is told the ordinary parts** most real sets of its kind use
-  that the model has none of (the 1 x 1 plate, jumpers, cheese slopes).
-  In, not yet measured — run 10 was in progress at handoff.
-- **A driven run no longer overwrites the person's working model.**
-- **A design cost $9.67 and $8 of it was re-sending the conversation.**
-  The conversation is cached now and old pictures are no longer
-  rewritten every turn; the same kind of run costs about $4-6.
-- **The GPU is shared.** Design runs render in software now and took
-  zero blind looks at load ~80.
+- **The gap is one-off pieces.** A real set of 1,100 parts has some 177
+  shapes and 85 of them are used once or twice. Run 14 had 21. Its shapes
+  used many times were close to a real set's. Each pass is now told the
+  model's count against the real one — **run 15 was measuring that at
+  handoff** (`tools/texture.py` prints the count).
+- **The levers that worked, each measured:** detailing per assembly
+  (1.2-1.5x on its own); sending a thin pass back once (2.3x, 1.7x, and on
+  a fire station 1.6x); telling passes the parts most real sets of the
+  kind use (37 of the top 40 against 24; 54 of the top 100).
+- **The levers that did not, also measured:** telling siblings what the
+  others got (passes went to fixing instead); a filter for kinds that do
+  not suit the subject (not in the data).
+- **Angled structure is the weak joint.** Two space cruisers failed on
+  pods on angled pylons. A design that holds but for a few floating
+  bricks now keeps what holds, the check sweeps sideways for where a
+  turned section meets, and a failed design is written to
+  `user://failed_design.json`.
+- **The booklet builds by the design's named assemblies**, carried in the
+  file as `.mpd` sub-models, each part framed on its own.
+- **Cost**: the conversation is cached; a 40-minute castle is ~$6-8.
 
 ## What is next
 
-Read `docs/ROADMAP.md`. Measure the ordinary-parts lever (run the castle
-brief, `tools/texture.py` on the result once the run has ended, and count
-the kind's `common` parts it uses against run 9's 22 of 40). Then the
-booklet's second half: carry the assemblies a design names in the file as
-LDraw submodels and build the booklet by those instead of tiles.
+1. Read run 15's result (`tools/texture.py` on the saved `.ldr` once the
+   run has ended): did the one-off count move from 21 toward 86?
+2. If it did, repeat once, then try the station and the cruiser briefs.
+   If not, the next attempt at accents is a list of what real sets of
+   the kind use one or two of (goblets, torches, hinges, brackets, bars),
+   filtered so that base plates are not mistaken for accents.
+3. Colour is 12 against 23 and nothing has been aimed at it yet.
 
 ## Gotchas that will cost you hours
 
