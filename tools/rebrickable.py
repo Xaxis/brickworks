@@ -26,6 +26,7 @@ import csv
 import gzip
 import io
 import re
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -271,6 +272,184 @@ def set_norms() -> dict:
     return {"source": "Rebrickable set inventories", "bands": bands}
 
 
+# Words in a set's name that say nothing about what it is: product
+# lines, packaging, sizes, and the colours a set happens to be named for.
+# A kind has to be a thing somebody builds.
+NOT_A_KIND = set("""
+the a an and or of with for in on at to from set mini micro midi maxi
+build buildable ii iii jr junior polybag promo pack edition exclusive
+series collection value kit box bag blister foil card cards sticker
+stickers magnet keychain key chain backpack pencil pen eraser case
+bucket tub canister shoes shoe watch clock lamp torch light up bricks
+brick lego duplo belville scala znap primo quatro fabuland modulex
+accessory accessories figure figures minifigure minifig polybags
+exclusive limited anniversary special promotional giveaway sample
+assorted miscellaneous other spare spares replacement part parts piece
+pieces random bulk lot lots sealed new used complete incomplete
+red blue green yellow black white grey gray orange purple pink brown
+tan silver gold bronze clear trans transparent light dark bright medium
+sand metallic pearl classic basic creator ideas super world movie
+adidas nike levi puma reebok vans converse
+""".split())
+
+# Categories that are never an answer to "what is this built from":
+# decals, retired numbers, and another product line's bricks.
+NOT_A_PART = {"Sticker", "Sticker Shortcut", "Moved", "Obsolete",
+              "Duplo", "Figure"}
+# And the ones that are what a set carries rather than what it is made
+# of.  A pirate set really does have four cutlasses, and a designer
+# asking what a pirate set is built from should not be told about them
+# first: measured, swords and flintlocks took the top four places and
+# the hull and the barrels came after.
+A_PROP = {"Minifig", "Minifig Accessory", "Minifig Headwear", "Animal"}
+
+## How many sets a kind has to cover before it is a kind at all, and how
+## much of a kind's sets a part has to be in before it is characteristic
+## of it rather than an accident of one set.
+KIND_FLOOR = 20
+PART_FLOOR = 0.15
+REAL_MODEL = 20          # parts; below this a "set" is merchandise
+
+
+def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
+    """What real sets of a kind are actually built from.
+
+    The prompt can tell a designer to tile a roof and curve a bonnet.
+    It cannot tell it that castle sets reach for 40066, the arch panel,
+    sixty-five times as often as sets at large do, and build in tan and
+    pearl gold; that space sets reach for brackets, antennas and
+    cut-corner wedge plates in white and light grey; that a tractor is
+    Technic gears and bent beams.  Nothing in this project knew that,
+    and thirty thousand set inventories do.
+
+    A "kind" is a word in a set's name — castle, fire, space, tractor,
+    pirate, train — which is crude and is also what a brief says.  What
+    makes it useful is lift rather than count: the parts a kind reaches
+    for *more than other kinds do*, so the answer is what is
+    characteristic and not the plates every set is made of.
+
+    Only sets of REAL_MODEL parts or more, or the kinds are keychains
+    and backpacks.  Only parts that join to an LDraw id, because a part
+    this app cannot place is not a recommendation.  Only colours with an
+    LDraw code, for the same reason.
+
+    Returns {"kinds": {word: {"sets": n, "parts": [[ldraw id, lift]],
+    "colors": [[code, lift]], "props": [[ldraw id, lift]]}}, ...}.
+    """
+    import collections
+    import re
+
+    codes = colour_codes(ldraw_colours)
+    other_line = _lines()
+    ldraw_of: dict[str, str] = {}
+    a_prop: dict[str, bool] = {}
+    for entry in entries:
+        if entry.get("category") in NOT_A_PART:
+            continue
+        a_prop[entry["id"]] = entry.get("category") in A_PROP
+    seen, _newest = _seen()
+    match = _matcher(seen)
+    for entry in entries:
+        if entry["id"] not in a_prop:
+            continue
+        found = match(entry)
+        # Another product line's brick is not an answer either, and
+        # LDraw files Duplo train track under Train: "train" came back
+        # led by two Duplo tracks at seventy times the base rate.
+        if found is not None and found not in ldraw_of \
+                and other_line.get(found) is None:
+            ldraw_of[found] = entry["id"]
+
+    big = {r["set_num"]: r["name"] for r in _rows("sets")
+           if r["num_parts"] and int(r["num_parts"]) >= REAL_MODEL}
+    inventories = {r["id"]: r["set_num"] for r in _rows("inventories")
+                   if r["version"] == "1" and r["set_num"] in big}
+    per_set: dict[str, list] = {}
+    for row in _rows("inventory_parts"):
+        set_num = inventories.get(row["inventory_id"])
+        if set_num is None or row["is_spare"] != "False":
+            continue
+        per_set.setdefault(set_num, []).append(
+            (row["part_num"], int(row["color_id"]), int(row["quantity"])))
+
+    words: dict[str, list[str]] = {}
+    for set_num in per_set:
+        for word in re.split(r"[^a-z0-9]+", big[set_num].lower()):
+            if len(word) >= 3 and word not in NOT_A_KIND and not word.isdigit():
+                words.setdefault(word, []).append(set_num)
+    words = {w: s for w, s in words.items() if len(s) >= KIND_FLOOR}
+
+    # What every kind does, to divide out of what one kind does.
+    everywhere: collections.Counter = collections.Counter()
+    colour_everywhere: collections.Counter = collections.Counter()
+    all_pieces = 0
+    for items in per_set.values():
+        for part, colour, quantity in {(p, c, q) for p, c, q in items}:
+            everywhere[part] += 1
+        for part, colour, quantity in items:
+            colour_everywhere[colour] += quantity
+            all_pieces += quantity
+    sets_total = len(per_set)
+
+    out: dict[str, dict] = {}
+    for word, members in words.items():
+        in_sets: collections.Counter = collections.Counter()
+        colours: collections.Counter = collections.Counter()
+        pieces = 0
+        for set_num in members:
+            for part, _c, _q in {(p, c, q) for p, c, q in per_set[set_num]}:
+                in_sets[part] += 1
+            for _p, colour, quantity in per_set[set_num]:
+                colours[colour] += quantity
+                pieces += quantity
+        if not pieces:
+            continue
+        floor = max(3, int(len(members) * PART_FLOOR))
+        ranked: list[tuple[float, str]] = []
+        props: list[tuple[float, str]] = []
+        for part, count in in_sets.items():
+            if count < floor or part not in ldraw_of:
+                continue
+            base = everywhere[part] / sets_total
+            if base <= 0:
+                continue
+            lift = round((count / len(members)) / base, 1)
+            # A part no more common here than anywhere else says nothing
+            # about the kind.  Without this the thinner kinds padded
+            # their twelve out with ordinary plates: 68 entries across
+            # the 367 kinds, every one of them true and useless.
+            if lift <= 1.0:
+                continue
+            id_of = ldraw_of[part]
+            (props if a_prop[id_of] else ranked).append((lift, id_of))
+        ranked.sort(reverse=True)
+        props.sort(reverse=True)
+        tinted = []
+        for colour, quantity in colours.items():
+            code = codes.get(colour)
+            if code is None or quantity < pieces * 0.01:
+                continue
+            base = colour_everywhere[colour] / all_pieces
+            if base <= 0:
+                continue
+            lift = round((quantity / pieces) / base, 1)
+            if lift <= 1.0:               # as above, for the palette
+                continue
+            tinted.append((lift, code))
+        tinted.sort(reverse=True)
+        if not ranked:
+            continue
+        out[word] = {
+            "sets": len(members),
+            "parts": [[part, lift] for lift, part in ranked[:12]],
+            "colors": [[code, lift] for lift, code in tinted[:6]],
+        }
+        if props:
+            out[word]["props"] = [[part, lift] for lift, part in props[:5]]
+    return {"source": "Rebrickable set inventories",
+            "measured_over": sets_total, "kinds": out}
+
+
 def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     """LDraw part and colour -> the LEGO element number you would order.
 
@@ -349,27 +528,24 @@ def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     return {"source": "Rebrickable elements", "counts": how, "pairs": pairs}
 
 
-def availability(entries: list[dict], ldraw_colours: list[dict]) -> dict:
-    """Join the two libraries.
+def _matcher(rb_parts: Iterable[str]) -> Callable[[dict], str | None]:
+    """An LDraw catalogue entry -> the Rebrickable part it is, or None.
 
-    Returns {"recent_since": year, "parts": {ldraw id: {"colors": [...],
-    "colors_recent": [...], "years": [first, last]}}, "counts": {...}}.
-    Only matched parts appear; the rest are unknown and get no entry.
+    The one join between the two libraries.  Two readers want it — which
+    colours a part was moulded in, and how many sets it is in — and two
+    copies of a join drift apart, so it is built once here.
+
+    Every spelling of a Rebrickable part that an LDraw id might use.  The
+    loose index keeps the shortest candidate for each key, which is the
+    undecorated base part when there is one; picking whichever row came
+    first gave a printed tile some sibling print's colours.
     """
-    codes = colour_codes(ldraw_colours)
-    seen, newest = _seen()
     other_line = _lines()
     _line_of = other_line.get
     rb_name = {r["part_num"]: r["name"] for r in _rows("parts")}
-    recent_since = newest - RECENT_YEARS
-
-    # Every spelling of a Rebrickable part that an LDraw id might use.
-    # The loose index keeps the shortest candidate for each key, which is
-    # the undecorated base part when there is one; picking whichever row
-    # came first gave a printed tile some sibling print's colours.
     direct: dict[str, str] = {}
     loose: dict[str, str] = {}
-    for part in seen:
+    for part in rb_parts:
         low = part.lower()
         direct.setdefault(low, part)
         direct.setdefault(low.lstrip("0") or low, part)
@@ -379,21 +555,88 @@ def availability(entries: list[dict], ldraw_colours: list[dict]) -> dict:
         if key not in loose or len(part) < len(loose[key]):
             loose[key] = part
 
+    def match(entry: dict) -> str | None:
+        if not _guessable(entry):
+            return None
+        low = entry["id"].lower()
+        found = direct.get(low) or direct.get(low.lstrip("0") or low)
+        if found is not None:
+            return found
+        guess = loose.get(_bare(entry["id"]))
+        if guess and _agrees(entry.get("name", ""), rb_name.get(guess, "")):
+            return guess
+        return None
+
+    return match
+
+
+def usage(entries: list[dict]) -> dict:
+    """How many catalogued sets each part is really in.
+
+    Returns {ldraw id: sets}, and only for the parts that join, because
+    a part with no entry is one nobody has data about rather than one
+    nobody used.  Four fifths of the LDraw library is in that position,
+    so an absence may never be read as "never used": this promotes the
+    parts known to be staples and says nothing at all about the rest.
+
+    Filling the gap with explicit zeros, so that a part Rebrickable
+    knows and no set contains could be pushed down, was written and
+    measured and taken out.  It moved 221 parts and changed no ranking.
+
+    Why it is worth having: a search ranked by what a name looks like
+    led "round brick 1 x 1" with 71075a, which is in seventeen sets,
+    over 3062b, which is in four and a half thousand — and both are
+    named like the ordinary thing.  A name cannot tell you that.  Thirty
+    thousand set inventories can.
+
+    Spare parts are left out and only the first version of each
+    inventory is counted, the same way set_norms does it, so a set
+    revised later is one set.
+    """
+    inventories = {r["id"]: r["set_num"] for r in _rows("inventories")
+                   if r["version"] == "1"}
+    in_sets: dict[str, set] = {}
+    for row in _rows("inventory_parts"):
+        set_num = inventories.get(row["inventory_id"])
+        if set_num is None or row["is_spare"] != "False":
+            continue
+        in_sets.setdefault(row["part_num"], set()).add(set_num)
+    counts = {part: len(sets) for part, sets in in_sets.items()}
+    match = _matcher(counts)
+    out: dict[str, int] = {}
+    for entry in entries:
+        found = match(entry)
+        if found is not None:
+            out[entry["id"]] = counts[found]
+    # A redirect is not a dead end, for the same reason as in
+    # availability: the target's count is exactly this part's count.
+    for entry in entries:
+        target = entry.get("moved_to")
+        if target and target in out and entry["id"] not in out:
+            out[entry["id"]] = out[target]
+    return out
+
+
+def availability(entries: list[dict], ldraw_colours: list[dict]) -> dict:
+    """Join the two libraries.
+
+    Returns {"recent_since": year, "parts": {ldraw id: {"colors": [...],
+    "colors_recent": [...], "years": [first, last]}}, "counts": {...}}.
+    Only matched parts appear; the rest are unknown and get no entry.
+    """
+    codes = colour_codes(ldraw_colours)
+    seen, newest = _seen()
+    recent_since = newest - RECENT_YEARS
+
+    matched = _matcher(seen)
     parts: dict[str, dict] = {}
-    how = {"direct": 0, "loose": 0, "unknown": 0, "not a part": 0}
+    how = {"matched": 0, "unknown": 0, "not a part": 0}
     for entry in entries:
         part_id = entry["id"]
         if not _guessable(entry):
             how["not a part"] += 1
             continue
-        low = part_id.lower()
-        match = direct.get(low) or direct.get(low.lstrip("0") or low)
-        route = "direct"
-        if match is None:
-            guess = loose.get(_bare(part_id))
-            if guess and _agrees(entry.get("name", ""), rb_name.get(guess, "")):
-                match = guess
-            route = "loose"
+        match = matched(entry)
         if match is None:
             how["unknown"] += 1
             continue
@@ -418,7 +661,7 @@ def availability(entries: list[dict], ldraw_colours: list[dict]) -> dict:
             how["unknown"] += 1
             continue
 
-        how[route] += 1
+        how["matched"] += 1
         made: dict[str, object] = {
             "colors": sorted(set(ever)),
             "colors_recent": sorted(set(lately)),

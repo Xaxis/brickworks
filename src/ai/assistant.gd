@@ -1195,6 +1195,10 @@ func _run_tool(block: Dictionary) -> Variant:
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up what a %s looks like" % subject)
 			return await _find_reference(subject)
+		"how_real_sets_build_this":
+			var subject: String = str(args.get("subject", ""))
+			progress.emit("looking up how real sets build a %s" % subject)
+			return _how_real_sets_build_this(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world(args)
@@ -4809,6 +4813,75 @@ func _system_prompt() -> String:
 ## The shape of a real set, read out of the catalogue rather than
 ## asserted here, because it is measured from every catalogued LEGO set
 ## and changes when the tables are refreshed.
+## What real sets of this kind are built from.
+##
+## The one thing in here that is neither geometry nor my taste. Every
+## other piece of advice about what to reach for was written by me —
+## tile a roof, curve a bonnet — and a castle is not arches because I
+## say so. It is arches because a hundred and seventy-five real castle
+## sets use the arch door twenty-six times as often as sets at large do,
+## and build in tan and pearl gold.
+##
+## Lift and not count, or every answer would be the same list of plates.
+func _how_real_sets_build_this(subject: String) -> Dictionary:
+	if library == null or library.kinds.is_empty():
+		return {"content": "This build has no set data, so there is "
+			+ "nothing to compare against. Design it from the "
+			+ "reference and the rules."}
+	var found: Array = library.kinds_for(subject)
+	if found.is_empty():
+		return {"content": ("No kind of real set matches \"%s\". That is "
+			% subject) + "not a verdict on the idea — it means no "
+			+ "catalogued set has that word in its name, which is "
+			+ "true of most specific subjects. Try the plainer word "
+			+ "for the thing: a word like castle, fire, space, train, "
+			+ "house, tractor, pirate, dragon or police."}
+	var said: PackedStringArray = PackedStringArray()
+	for raw: Variant in found:
+		var kind: Dictionary = raw
+		said.append("\n%s — measured over %d real sets of %d"
+			% [str(kind.get("kind", "")).to_upper(),
+				int(kind.get("sets", 0)), library.kinds_measured_over])
+		said.append("  What they are built from, and how much more often "
+			+ "than sets in general:")
+		for entry: Variant in kind.get("parts", []):
+			var pair: Array = entry
+			said.append("    %-9s x%-5s %s" % [str(pair[0]), str(pair[1]),
+				_part_called(str(pair[0]))])
+		var palette: PackedStringArray = PackedStringArray()
+		for entry: Variant in kind.get("colors", []):
+			var pair: Array = entry
+			palette.append("%s (%d) x%s" % [
+				_colour_name(int(pair[0])), int(pair[0]), str(pair[1])])
+		if not palette.is_empty():
+			said.append("  Colours they use more than other sets do: "
+				+ ", ".join(palette))
+		var props: Array = kind.get("props", [])
+		if not props.is_empty():
+			var carried: PackedStringArray = PackedStringArray()
+			for entry: Variant in props:
+				var pair: Array = entry
+				carried.append("%s (%s)" % [_part_called(str(pair[0])),
+					str(pair[0])])
+			said.append("  And what they carry: " + ", ".join(carried))
+	return {"content": "\n".join(said)
+		+ "\n\nA multiplier is how much more often sets of this kind use "
+		+ "the part than sets in general do, so a high one is what makes "
+		+ "the kind look like itself. Use these where the shape calls for "
+		+ "them — they are what a real designer reached for, not a list "
+		+ "to fill. Check a part with search_parts before placing it."}
+
+
+## A part's name as a person would read it, or its number if unknown.
+func _part_called(part_id: String) -> String:
+	if library == null:
+		return part_id
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if info == null:
+		return part_id
+	return " ".join(PackedStringArray(info.name.split(" ", false)))
+
+
 func _what_a_set_is_made_of() -> String:
 	if library == null or library.set_norms.is_empty():
 		return ""
@@ -5148,6 +5221,21 @@ round it. Both at once makes a spiral.
   Work at the scale the thing is. Do not dictate a stadium stand by \
 hand because you can dictate four hundred bricks of it: decide what the \
 repeating unit is, build that one well, and say how many.
+
+BEFORE YOU DESIGN A KIND OF THING
+Call how_real_sets_build_this with the plain word for it. It answers \
+out of fifteen thousand real sets: the parts sets of that kind reach \
+for far more often than sets in general, and the colours they build \
+in. A castle is arch doors and lattice windows in tan and pearl gold. \
+A fire station is trans-blue lights, a tap, a steering stand, and red. \
+A spaceship is brackets, antennas, cones and inverted dishes in white \
+and grey. None of that follows from the shape, and all of it is the \
+difference between a model of the thing and a model of bricks.
+  It is measurement, not instruction. Use what the shape calls for and \
+ignore the rest; a part that is characteristic of a kind is not a part \
+every set of that kind has. But do not skip the call because you \
+already have a picture in mind: the picture is what you remember of \
+LEGO, and this is what LEGO did.
 
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
@@ -5807,6 +5895,36 @@ func _tools() -> Array:
 						+ "looking it up — \"Fresnel lighthouse lantern "
 						+ "room\" rather than \"lighthouse\" when it is "
 						+ "a detail you are after"},
+				},
+				"required": ["subject"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "how_real_sets_build_this",
+			"description": ("What real LEGO sets of this kind are "
+				+ "actually built from — the parts they reach for far "
+				+ "more often than sets in general, and the colours "
+				+ "they use. Measured over fifteen thousand real sets, "
+				+ "so it is what LEGO's own designers did and not "
+				+ "advice.\n\nCall it for any subject that is a kind of "
+				+ "set: a castle, a fire station, a spaceship, a train, "
+				+ "a house, a tractor, a police car. A castle set is "
+				+ "arch doors and lattice windows in tan and pearl "
+				+ "gold; a fire station is trans-blue lights, taps and "
+				+ "red; a spaceship is brackets, antennas, cones and "
+				+ "inverted dishes in white and grey. That is the "
+				+ "difference between a model of the thing and a model "
+				+ "of bricks, and you cannot get it from the shape "
+				+ "alone.\n\nGive the plain word for the thing. Nothing "
+				+ "matches a specific name."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"subject": {"type": "string", "description":
+						"the kind of thing being built, in plain words "
+						+ "— \"fire station\", \"medieval castle\", "
+						+ "\"spaceship\""},
 				},
 				"required": ["subject"],
 				"additionalProperties": false,

@@ -335,6 +335,23 @@
     "name": "find_reference"
   },
   {
+    "description": "What real LEGO sets of this kind are actually built from \u2014 the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what LEGO's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "description": "the kind of thing being built, in plain words \u2014 \"fire station\", \"medieval castle\", \"spaceship\"",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject"
+      ],
+      "type": "object"
+    },
+    "name": "how_real_sets_build_this"
+  },
+  {
     "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself \u2014 a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time \u2014 a wedge put on backwards looks exactly like a wedge until you look at it.",
     "input_schema": {
       "additionalProperties": false,

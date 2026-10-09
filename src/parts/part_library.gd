@@ -49,6 +49,51 @@ func _resolve_root() -> String:
 	return _root
 
 
+## The kinds of real set a brief is describing, most specific first.
+##
+## Matching a brief's words against the names of fifteen thousand real
+## sets, which is crude and works: "a medieval fire station" finds the
+## fire kind, and what fire sets are built from is a tap, a steering
+## stand and trans-blue.
+##
+## Most specific first — fewest sets — because the narrow kind is the
+## informative one. "castle" over 175 sets says more than "house" over
+## 208, and a brief that matches both wants the castle.
+func kinds_for(words: String, most: int = 3) -> Array:
+	if kinds.is_empty():
+		return []
+	var found: Array = []
+	var seen: Dictionary = {}
+	for word: String in words.to_lower().split(" ", false):
+		var bare: String = ""
+		for ch: String in word:
+			if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
+				bare += ch
+		# A brief says castles and the catalogue says castle. And a
+		# brief says spaceship where the catalogue, which is reading
+		# real set names, says space — so a kind that the word begins
+		# with counts too, at four letters or more. Four because
+		# "car" would otherwise match "cargo" and "cart", and a
+		# prefix that short says nothing.
+		var tries: Array[String] = [bare, bare.trim_suffix("s"),
+			bare.trim_suffix("es")]
+		for at: int in range(bare.length() - 1, 3, -1):
+			tries.append(bare.substr(0, at))
+		for form: String in tries:
+			if form.length() < 3 or seen.has(form) or not kinds.has(form):
+				continue
+			seen[form] = true
+			var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
+			entry["kind"] = form
+			found.append(entry)
+			break
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a.get("sets", 0)) < int(b.get("sets", 0)))
+	if found.size() > most:
+		found.resize(most)
+	return found
+
+
 ## What a real set of this many parts is made of, or an empty Dictionary
 ## when nothing is known or the model is smaller than any real set.
 func normal_for(parts: int) -> Dictionary:
@@ -214,6 +259,15 @@ var availability_source: String = ""
 ## most_of_one, colours}. Empty when the catalogue was built without the
 ## Rebrickable tables.
 var set_norms: Array = []
+## Word -> what real sets of that kind are built from:
+## {sets, parts: [[id, lift]], colors: [[code, lift]], props: [...]}.
+## A "kind" is a word in a real set's name, which is crude and is also
+## what a brief says. Lift rather than count, so the answer is what is
+## characteristic of castle sets and not the plates every set is made
+## of. Empty when the catalogue was built without the Rebrickable
+## tables.
+var kinds: Dictionary = {}
+var kinds_measured_over: int = 0
 ## Part and colour -> the LEGO element number to order, read from
 ## elements.json the first time anything asks. Its own file and loaded
 ## on demand because it is 0.8 MB that only a parts list needs, where
@@ -257,6 +311,11 @@ func load_catalogue(path: String = "") -> bool:
 	var bands: Variant = norms.get("bands", [])
 	if typeof(bands) == TYPE_ARRAY:
 		set_norms = bands
+	var builds: Dictionary = document.get("kinds", {})
+	var by_word: Variant = builds.get("kinds", {})
+	if typeof(by_word) == TYPE_DICTIONARY:
+		kinds = by_word
+		kinds_measured_over = int(builds.get("measured_over", 0))
 	var made: Dictionary = document.get("availability", {})
 	recent_since = int(made.get("recent_since", 0))
 	availability_source = str(made.get("source", ""))

@@ -19,6 +19,16 @@ geometry in front of them.
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /
   `never_made_in()`; surfaced on the search line and as `check_design` advice.
+- `how often a part is really used`: `rebrickable.usage()` counts the distinct
+  catalogued sets each part appears in and writes `in_sets` onto every part that
+  joins. `PartLibrary.staples(n)` gives the most used, `PartsBin._usage_score`
+  folds it into search ranking, and `Assistant._what_sets_are_built_from()` puts
+  the top thirty in the system prompt.
+- `how a kind of set is built`: `rebrickable.kinds()` measures, for every word
+  that names 20+ real models, the parts those sets reach for *more often than
+  sets in general* and the colours they build in — 367 kinds in 115 KB of the
+  catalogue. `PartLibrary.kinds_for(brief)` matches a brief's words against it
+  and `how_real_sets_build_this`, a tool, is how the assistant asks.
 - `set norms`: what a real LEGO set of a given size is made of — lots, shapes,
   colours, and how many of one piece is normal — measured over every catalogued
   set by `rebrickable.set_norms()` and written into the catalogue header.
@@ -54,6 +64,8 @@ godot --headless --path . --script src/dev/inventory_probe.gd       # parts list
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
+godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
+godot --headless --path . --script src/dev/kinds_probe.gd         # whether a castle knows it is arches
 tools/check.sh --network    # adds remote_probe: geometry over the wire
 ```
 
@@ -75,6 +87,70 @@ it is hands-only, so say so rather than claiming it.
   top and 4 facing sideways". Named in the part's own frame and not the
   world's, because an unplaced part has no world and `rot` decides where it
   ends up, so "+x" would be a claim about something nobody has chosen yet.
+
+- **A name can only say so much about a part.** Search ranking was built out of
+  what a name looks like — plainness, qualifiers, prints, sizes — carefully and
+  over many measured queries. It cannot tell you that 3062b, "Brick 1 x 1 Round
+  with Hollow Stud", is in 4,496 sets while 71075a, named just as plainly, is in
+  seventeen. Measured over 35 ordinary queries: **12 led with the part real sets
+  use most and the leader carried 71% of the usage the best match had; 16 and 81%
+  once `in_sets` counted.** It fixed "round brick 1 x 1" (71075a → 3062b),
+  "hinge" (4625, 190 sets → 3937, 2,174), "antenna" (104, 5 sets → 3957a, 918)
+  and "jumper" (1745, 367 → 87580, 2,941).
+
+  Two disciplines hold it up, and `usage_probe` asserts both. **It promotes and
+  never demotes**: only 5,988 of 29,479 parts join to a set inventory, so a zero
+  is silence, not evidence. And it is **capped under the weakest name tier** (100
+  against 140), so it orders parts *within* what was asked for — "plate 4 x 4"
+  must still lead with the 4x4 in 3,603 sets and not the 2x4 in 7,969.
+
+  Measured and taken out: filling the gap with explicit zeros, so a part
+  Rebrickable knows and no set contains could be pushed down. It moved 221 parts
+  and changed no ranking.
+
+  Beware scoring a ranking against a differently-counted usage number. The first
+  diagnostic counted inventory *rows* and reported 3023 in "25,944 sets" and 7891
+  in none; the honest figures are 9,285 distinct sets and 1. Both runs above are
+  scored off the catalogue's own `in_sets`, which is what the ranking reads.
+
+- **The one join between the libraries is `rebrickable._matcher`.** Colours and
+  usage both need to know which Rebrickable part an LDraw id is, and two copies
+  of a join drift apart. Extracting it changed nothing: 6,419 parts with colour
+  lists and 40,474 element pairs before and after, **0 answers different** — the
+  check that made the refactor safe to keep.
+
+- **Lift, not count, or every kind of set is the same list of plates.** Counted
+  plainly, a castle set and a spaceship are both mostly 1x2 plates — true and
+  useless. `kinds()` divides by what sets in general do, so a castle comes back
+  as the arch door at **26×**, arched window panels at 15×, lattice windows at
+  14×, in tan, dark tan and pearl gold; a spaceship as the round brick with fins
+  at 9.5×, 2x2 brackets at 7×, inverted dishes and antennas, in white and grey.
+  `kinds_probe` asserts the thing that could fail: **a castle and a spaceship
+  share 0 of twelve parts.**
+
+  Three defects the probe found, each fixed in the data rather than papered over:
+  LDraw files Duplo train track under "Train", so `train` came back led by two
+  Duplo tracks at 70×; minifig accessories took the top four places for `pirate`
+  and buried the hull, so categories now split what a set is *built from* from
+  what it *carries*; and 68 entries across the 367 kinds had lift ≤ 1.0 — the
+  thinner kinds padding their twelve out with ordinary plates.
+
+  `REAL_MODEL = 20` parts, or the kinds are keychains, backpacks and Adidas
+  shoes. Only parts that join to a placeable LDraw id, because a part this app
+  cannot place is not a recommendation — asserted over all 367 kinds.
+
+  It admits ignorance: a lighthouse matches nothing, and says so, with "not a
+  verdict on the idea". A kind is a word in a real set's name, which is crude
+  and is also what a brief says — plus a prefix match at 4+ letters, so
+  "spaceship" finds `space`, which is the word real sets use.
+
+- **The prompt now says what a set is made of, not what I think it should be.**
+  Every other piece of advice in it about what to reach for was mine: tile a
+  roof, curve a bonnet, use a bracket for a sign. `_what_sets_are_built_from()`
+  is the catalogue counting instead, and the first thing it says is not advice at
+  all — **a LEGO set is mostly plates.** Eight of the ten most used parts are
+  plates; the 2x4 brick everyone pictures is number 22. A design reaches for what
+  it remembers, and what a model remembers about LEGO is bricks.
 
 - **"Does it read as a set" is measured, not judged.** The checker could always
   say whether a model holds together; whether it looks like a set rested on

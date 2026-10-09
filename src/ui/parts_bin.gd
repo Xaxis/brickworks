@@ -368,7 +368,8 @@ static var PRINTED: RegEx = RegEx.create_from_string("p[0-9]+[a-z]?$")
 static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void:
 	var scores: Dictionary = {}
 	for info: PartLibrary.PartInfo in found:
-		scores[info.id] = _staple_score(info) + _match_score(info, query)
+		scores[info.id] = _staple_score(info) + _match_score(info, query) \
+			+ _usage_score(info)
 
 	found.sort_custom(func(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
 		var a_score: int = scores[a.id]
@@ -383,8 +384,8 @@ static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void
 
 
 static func _rank_shared(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
-	var a_score: int = _staple_score(a)
-	var b_score: int = _staple_score(b)
+	var a_score: int = _staple_score(a) + _usage_score(a)
+	var b_score: int = _staple_score(b) + _usage_score(b)
 	if a_score != b_score:
 		return a_score > b_score
 	# Within a tier, the smaller part first: a bin reads better going up
@@ -394,6 +395,35 @@ static func _rank_shared(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bo
 	if a_area != b_area:
 		return a_area < b_area
 	return a.id.naturalnocasecmp_to(b.id) < 0
+
+
+## How much real sets reach for this part.
+##
+## The ranking above this was built out of what a name looks like, and a
+## name cannot tell you that 3062b, the 1x1 round brick, is in 4,496
+## catalogued sets and 71075a is in seventeen, and both are named like
+## the ordinary thing. Measured over thirty-five ordinary queries: twelve
+## led with the part real sets use most, and the leader carried 73% of
+## the usage the best match had. Sixteen and 81% with this.
+##
+## It promotes and never demotes. Four fifths of the library does not
+## join to a set inventory, so those parts are told nothing either way;
+## a rule that pushed them down would bury the library on no evidence.
+## Filling the gap with explicit zeros, to push down the parts
+## Rebrickable knows and no set contains, was measured: 221 parts moved
+## and no ranking changed. It is not here.
+##
+## Capped well under the weakest name tier on purpose, so it orders
+## parts *within* what was asked for and never over it. A search for
+## "plate 4 x 4" must still lead with the 4 x 4 — 3031, in 4,688 sets —
+## and not with the 2 x 4 that is in seventeen thousand.
+static func _usage_score(info: PartLibrary.PartInfo) -> int:
+	if info.in_sets <= 0:
+		return 0                          # nobody knows, so say nothing
+	# Logarithmic, because the gap between a part in ten sets and one in
+	# a hundred matters and the gap between five thousand and nine
+	# thousand does not: both are staples.
+	return mini(100, int(log(float(info.in_sets)) * 11.0))
 
 
 ## How well a part answers a particular query, on top of how staple it is.

@@ -101,8 +101,21 @@ func _run() -> void:
 		{"query": "wedge", "limit": 5})
 	_check("a search answers", bool(found.get("ok", false)))
 	var text: String = _text_of(found)
-	_check("...with part numbers in it, %d characters" % text.length(),
-		text.length() > 20 and text.contains("."))
+	# What this asserts and why it is not "contains a full stop".
+	#
+	# It was. A full stop was in the reply because the fifth result for
+	# "wedge" happened to be Wedge 4 x 6 x 2.333, a part in four
+	# catalogued sets, and ranking by what sets really use dropped it
+	# for two wedges in nearly three hundred each. The ranking got
+	# better and the check failed, which is the signature of a check
+	# riding on something incidental.
+	var numbers: int = 0
+	for word: String in text.replace("\n", " ").split(" ", false):
+		if word.length() >= 4 and word.left(1) >= "0" and word.left(1) <= "9":
+			numbers += 1
+	_check("...naming wedges by number, %d of them in %d characters"
+		% [numbers, text.length()],
+		numbers >= 3 and text.to_lower().contains("wedge"))
 
 	# And a design, which has to land on the baseplate — the step the
 	# design loop does after submit_design and nothing else would.

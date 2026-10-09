@@ -77,6 +77,8 @@ def main() -> int:
     made = _availability(document, colors)
     ordered = _elements(document, colors)
     normal = _set_norms(document)
+    used = _usage(document)
+    builds = _kinds(document, colors)
 
     document["generated"] = int(time.time())
     path.write_text(json.dumps(document, separators=(",", ":")))
@@ -90,7 +92,64 @@ def main() -> int:
     print(made)
     print(ordered)
     print(normal)
+    print(used)
+    print(builds)
     return 0
+
+
+def _usage(document: dict) -> str:
+    """Write onto each part how many real sets it is in.
+
+    One integer per part, and only for the parts that join, because a
+    part with no number is one nobody has data about.  It is what lets
+    search prefer the part a designer would actually reach for over the
+    one whose name happens to read plainest: "round brick 1 x 1" led
+    with 71075a, which is in seventeen sets, over 3062b, which is in
+    four and a half thousand.
+    """
+    entries = document["parts"]
+    for entry in entries:                 # never leave a stale answer behind
+        entry.pop("in_sets", None)
+    try:
+        import rebrickable
+    except ImportError:
+        return "usage: skipped (tools/rebrickable.py missing)"
+    try:
+        counts = rebrickable.usage(entries)
+    except FileNotFoundError as missing:
+        return f"usage: skipped ({missing})"
+    for entry in entries:
+        found = counts.get(entry["id"])
+        if found:
+            entry["in_sets"] = found
+    ranked = sorted(counts.items(), key=lambda kv: -kv[1])[:3]
+    return ("usage: %d parts of %d with a set count, led by %s"
+            % (len(counts), len(entries),
+               ", ".join("%s in %d" % (p, n) for p, n in ranked)))
+
+
+def _kinds(document: dict, colors: list[dict]) -> str:
+    """Record what real sets of each kind are built from.
+
+    115 KB for 367 kinds, which is worth the room: it is the only thing
+    in the catalogue that knows a castle is arches in tan and a fire
+    station is trans-blue and taps.
+    """
+    document.pop("kinds", None)
+    try:
+        import rebrickable
+    except ImportError:
+        return "kinds: skipped (tools/rebrickable.py missing)"
+    try:
+        made = rebrickable.kinds(document["parts"], colors)
+    except FileNotFoundError as missing:
+        return f"kinds: skipped ({missing})"
+    document["kinds"] = made
+    biggest = max(made["kinds"].items(), key=lambda kv: kv[1]["sets"],
+                  default=("none", {"sets": 0}))
+    return ("kinds: %d kinds of set over %d real models, commonest %r in "
+            "%d sets" % (len(made["kinds"]), made["measured_over"],
+                         biggest[0], biggest[1]["sets"]))
 
 
 def _set_norms(document: dict) -> str:
