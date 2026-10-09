@@ -139,6 +139,19 @@ it is hands-only, so say so rather than claiming it.
   shoes. Only parts that join to a placeable LDraw id, because a part this app
   cannot place is not a recommendation — asserted over all 367 kinds.
 
+  **It arrives with the brief, not as a tool to call.** This project has measured
+  twice what happens to a capability a design can get by without: it reached for
+  sideways building because a smooth sign face is impossible studs-up, and it
+  never once reached for a wedge plate across three runs, because a staircase of
+  plates still satisfies "build a saucer". Knowing a castle is arch doors in tan
+  is exactly that second kind, so `Assistant.opening_for()` puts it in the first
+  message of the run. `how_real_sets_build_this` stays for anything else. A
+  revision that names no kind gets nothing — asserted, or every "make it taller"
+  would drag an unrelated kind in.
+
+  (`opening_for` is its own function so a check can read what a run opens with
+  without driving `_start`, which reaches the API and needs a key.)
+
   It admits ignorance: a lighthouse matches nothing, and says so, with "not a
   verdict on the idea". A kind is a word in a real set's name, which is crude
   and is also what a brief says — plus a prefix match at 4+ letters, so

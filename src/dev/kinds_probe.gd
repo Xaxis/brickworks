@@ -120,7 +120,30 @@ func _initialize() -> void:
 	_ok(said.contains("not a verdict on the idea"),
 		"...and the design is not told to build something else")
 
-	print("\nand the model is told to ask")
+	print("\nand it arrives with the brief, unasked")
+	# The capability that can be got by without is the one that never
+	# gets used. Measured twice on this project: sideways building was
+	# reached for because a smooth sign face is impossible studs-up, and
+	# wedge plates never were across three runs, because a staircase of
+	# plates still satisfies "build a saucer".
+	var opening: Array = assistant.opening_for(
+		"build a medieval castle with a gatehouse")
+	var sent: String = ""
+	for block: Variant in opening:
+		sent += str((block as Dictionary).get("text", ""))
+	_ok(sent.contains("CASTLE"),
+		"the castle data is in the first message of the run")
+	_ok(sent.contains("40066"), "...naming the arch door")
+	_ok(sent.contains("measured over every"),
+		"...and saying it is measurement rather than advice")
+	# A brief that names no kind must not drag an unrelated one in.
+	var second: String = ""
+	for block: Variant in assistant.opening_for("make it two studs taller"):
+		second += str((block as Dictionary).get("text", ""))
+	_ok(not second.contains("measured over"),
+		"while a revision that names no kind gets nothing")
+
+	print("\nand the model is told what it is looking at")
 	var rules: String = assistant.guidance()
 	_ok(rules.contains("how_real_sets_build_this"), "the prompt names the tool")
 	_ok(rules.contains("tan and pearl gold"),

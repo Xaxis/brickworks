@@ -477,6 +477,18 @@ func _start(text: String) -> void:
 	# but nothing in it could ever say "that is not what a Voyager looks
 	# like" — there was no way for a picture to come IN. Renders went
 	# out; nothing came back.
+	_messages.append({"role": "user", "content": opening_for(text)})
+	progress.emit("thinking")
+	_send()
+
+
+## The first message of a run: the references, the brief, and what real
+## sets of this kind are built from.
+##
+## Its own function so that what a run opens with can be read without
+## opening one — a check that drives _start to see this reaches the API,
+## which is both slow and a thing to need a key for.
+func opening_for(text: String) -> Array:
 	var opening: Array = []
 	for block: Dictionary in references:
 		opening.append(block)
@@ -487,9 +499,30 @@ func _start(text: String) -> void:
 			+ "the main masses, and where they sit against each other "
 			+ "— before you choose any part."})
 	opening.append({"type": "text", "text": text})
-	_messages.append({"role": "user", "content": opening})
-	progress.emit("thinking")
-	_send()
+	# And what real sets of this kind are built from, unasked.
+	#
+	# This project has measured twice what happens to a capability the
+	# design can get by without. It reached for sideways building
+	# because a smooth sign face is impossible studs-up, and it never
+	# once reached for a wedge plate across three runs, because a
+	# staircase of plates still satisfies "build a saucer". The lesson
+	# written down then: a technique the brief demands gets used, and a
+	# technique that merely makes the result better has to be somewhere
+	# the design cannot avoid it.
+	#
+	# Knowing that a castle set is arch doors in tan is exactly the
+	# second kind. Offered as a tool it would be skipped by a design
+	# that already has a picture in mind — and the picture is what it
+	# remembers of LEGO. So it arrives with the brief.
+	var kind: Dictionary = _how_real_sets_build_this(text)
+	var measured: String = str(kind.get("content", ""))
+	if not measured.is_empty() and not measured.begins_with("No kind") \
+			and not measured.begins_with("This build"):
+		opening.append({"type": "text", "text":
+			"Before you choose parts, this is how real LEGO sets of this "
+			+ "kind are actually built. It is measured over every "
+			+ "catalogued set, not advice.\n" + measured})
+	return opening
 
 
 ## Unguessable, and in the alphabet the proxy accepts. Not a secret —
@@ -5222,20 +5255,23 @@ round it. Both at once makes a spiral.
 hand because you can dictate four hundred bricks of it: decide what the \
 repeating unit is, build that one well, and say how many.
 
-BEFORE YOU DESIGN A KIND OF THING
-Call how_real_sets_build_this with the plain word for it. It answers \
-out of fifteen thousand real sets: the parts sets of that kind reach \
-for far more often than sets in general, and the colours they build \
-in. A castle is arch doors and lattice windows in tan and pearl gold. \
-A fire station is trans-blue lights, a tap, a steering stand, and red. \
-A spaceship is brackets, antennas, cones and inverted dishes in white \
-and grey. None of that follows from the shape, and all of it is the \
-difference between a model of the thing and a model of bricks.
+HOW REAL SETS OF THIS KIND ARE BUILT
+If the brief names a kind of thing real sets exist of, what those sets \
+are built from arrives with it: the parts they reach for far more often \
+than sets in general, and the colours they build in. A castle is arch \
+doors and lattice windows in tan and pearl gold. A fire station is \
+trans-blue lights, a tap, a steering stand, and red. A spaceship is \
+brackets, antennas, cones and inverted dishes in white and grey. None \
+of that follows from the shape, and all of it is the difference between \
+a model of the thing and a model of bricks.
   It is measurement, not instruction. Use what the shape calls for and \
 ignore the rest; a part that is characteristic of a kind is not a part \
-every set of that kind has. But do not skip the call because you \
-already have a picture in mind: the picture is what you remember of \
-LEGO, and this is what LEGO did.
+every set of that kind has. But do not pass over it because you already \
+have a picture in mind — the picture is what you remember of LEGO, and \
+this is what LEGO did.
+  how_real_sets_build_this asks the same question about anything else: \
+a part of the model that is its own kind of thing, or a subject the \
+brief did not name in plain words.
 
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
