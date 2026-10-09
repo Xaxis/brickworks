@@ -218,6 +218,30 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   10, between linear's 4 and quadratic's 16, because the ratio itself read 4.2,
   4.9 and 7.3 on three runs of identical code.
 
+- **The check measured what was wrong with a model and threw it away on exactly
+  the designs that needed it.** A design that fails gets `report["feedback"]`,
+  which carries faults *and* advice. A design that holds together went straight
+  to the one deliberate look — stability plus five named visual faults — and that
+  look never mentioned texture. Measured on a castle: **713 bricks, buildable,
+  23 different shapes where a real set of its size has 117, and 208 of one corner
+  brick where 81 is the 95th percentile.** The check knew all three; at the one
+  moment the design was deciding whether it was finished, it was shown none of
+  them, and it finished. `_check` returns `advice` now and the final look carries
+  it, with monotony added to the critique's named failures. `variety_probe` pins
+  both.
+
+- **Three wall-clock checks flapped in one day on a box shared with another
+  project's video encode.** Load average 104 to 171, and the suite's own words
+  for its windowed probes are "nothing was proven. Check the load: these starve
+  above about 12." `repeat_probe`'s was new and became a ratio. `shot_probe`'s
+  was "a picture takes more than 2.0 s", and it **already measured what a frame
+  costs on this machine in the same run** — so it counts frames now: a picture is
+  8 frames of a 101 ms frame when quiet, `MOST_FRAMES` is 20, and above
+  `A_FRAME_IS_HOPELESS` it reports nothing-proven rather than failing. Verified
+  both ways: tightening the constant to 3 makes it fail. The original cost it was
+  written for — six seconds a picture at every model size — was a 989 ms frame,
+  which shows up in frames too.
+
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had

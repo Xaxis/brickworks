@@ -69,6 +69,25 @@ func _initialize() -> void:
 	_ok(bool(report.get("ok", false)) or str(report.get("summary", "")).contains("problem"),
 		"the design is still judged on whether it holds together")
 
+	print("\nand the design is told while it can still act on it")
+	# The check was computing this and throwing it away on exactly the
+	# designs that needed it: a design that fails gets feedback carrying
+	# both faults and advice, and a design that holds together went
+	# straight to the final look — which says whether it would survive
+	# being picked up and lists visual faults, and never once mentioned
+	# that the model was made of too few different things.
+	var judged: Dictionary = assistant._check(station, true)
+	var measured: Array = judged.get("advice", [])
+	var all_of_it: String = " ".join(PackedStringArray(measured))
+	_ok(not measured.is_empty(),
+		"the check hands back what it measured, not only the faults")
+	_ok(all_of_it.contains("different shapes"),
+		"...including the texture, so the last look can show it")
+	_ok(Assistant.CRITIQUE.contains("One shape doing the work of twenty"),
+		"and the critique names monotony among the things to check by name")
+	_ok(Assistant.CRITIQUE.contains("not more bricks"),
+		"...and says the way out is a different piece, not more of them")
+
 	print("\nand what it must not fire on")
 	# The check this was missing, and it cost the whole threshold.
 	#

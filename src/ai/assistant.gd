@@ -985,8 +985,28 @@ func _on_response(result: Array) -> void:
 			_looked_back = true
 			_pending = null
 			progress.emit("looking at the finished model")
-			var shown: Variant = await _from_all_round(
-				_will_it_hold(), CRITIQUE)
+			# With what the check had to say that was not a fault.
+			#
+			# It was computing the advice and throwing it away on
+			# exactly the designs that needed it. A design that fails
+			# gets report["feedback"], which carries both; a design that
+			# holds together went straight to this look, which says
+			# whether it would survive being picked up and lists five
+			# visual faults to check by name — and never once mentioned
+			# that it was made of too few different things.
+			#
+			# Measured on a castle: 713 bricks, buildable, 23 different
+			# shapes where a real set of that size has 117, and 208 of
+			# one piece where 81 is as many as all but one set in
+			# twenty. The check knew all three. At the one moment the
+			# design was deciding whether it was finished, it was shown
+			# none of them, and it finished.
+			var measured: Array = report.get("advice", [])
+			var noticed: String = _will_it_hold()
+			if not measured.is_empty():
+				noticed += "\n\nAnd what the check measured about it:\n" \
+					+ "\n".join(PackedStringArray(measured))
+			var shown: Variant = await _from_all_round(noticed, CRITIQUE)
 			# Cancelled while the picture was being taken. An empty
 			# message is one the API refuses, so there would be nothing
 			# to show for it but an error.
@@ -1075,6 +1095,15 @@ for a door or a window, or when every other face has something.
   A shape that should taper or curve, built as a box.
   Detail that cannot be seen: a colour against the same colour, or \
 something hidden inside the model.
+  One shape doing the work of twenty. A wall extruded out of one \
+brick, a tower stacked out of one corner piece, a roof of one slope. \
+If the measurements above say the model is made of far fewer different \
+things than a real set of its size, this is why, and the way out is \
+not more bricks — it is a different piece where something changes: a \
+tile course where the wall meets the walkway, a window a third of the \
+way up, a band in a second colour, a bracket carrying a lamp. Measured \
+on a castle that stood up perfectly: 23 shapes against the 117 a real \
+set of its size has, and 208 of one corner brick against 81.
   The same part in two colours, where one of them is used once. Three \
 red beams and one grey one reads as a part taken from the wrong bin, \
 not as a detail. Look at whether the odd one is doing something — a \
@@ -3390,6 +3419,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		"ok": ok,
 		"summary": summary,
 		"feedback": feedback,
+		"advice": advice,
 		"pieces": pieces,
 	}
 
