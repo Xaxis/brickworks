@@ -89,6 +89,17 @@ func _run() -> void:
 		not Techniques.named("diagonal").is_empty())
 	_check("a name nobody has finds nothing",
 		Techniques.named("hyperdrive").is_empty())
+	# The prompt's fill table used to send a round tower to an ellipse,
+	# which is where the 354 1x1 bricks came from. Both halves asserted:
+	# the technique exists under a findable name, and the table no longer
+	# offers a tower as something to fill.
+	_check("a wide round tower is a technique you can look up",
+		not Techniques.named("wide round tower").is_empty())
+	_check("...and the fill table does not offer a tower instead",
+		not assistant.guidance().contains("a round tower   ellipse"))
+	_check("...and says what to call for instead",
+		assistant.guidance().contains("wide round tower"))
+
 	_check("there are enough of them to be worth having",
 		Techniques.names().size() >= 6)
 

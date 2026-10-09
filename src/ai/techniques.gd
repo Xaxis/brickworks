@@ -130,6 +130,41 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "wide round tower",
+			"when": "a castle tower, a silo, a turret — anything round "
+				+ "and more than a couple of studs across",
+			"why": "Four 4x4 corner-round bricks make one course of an "
+				+ "8x8 round tower, each turned a quarter further than "
+				+ "the last. This is the part real castle sets reach "
+				+ "for: 427 of them use it, and it is the second thing "
+				+ "they reach for more often than sets in general do.\n"
+				+ "The alternative is what a design falls into without "
+				+ "it. A fill of an ellipse this small has no room for "
+				+ "a long brick in any run, so it comes out as a "
+				+ "staircase of 1x1s — measured on a castle run: 354 "
+				+ "1x1 bricks, four towers' worth, in a 1,552 part model "
+				+ "made of twenty shapes where a real set of that size "
+				+ "has a hundred and seventy-three. Round out of square "
+				+ "bricks never reads as round.\n"
+				+ "The turn matters and cannot be guessed: stepping the "
+				+ "rotations the other way round the quadrants still "
+				+ "stacks, still checks as buildable, and fills the "
+				+ "middle instead of leaving a tower. Measured by "
+				+ "turning the finished ring a quarter about its own "
+				+ "centre — the right way maps onto itself, the wrong "
+				+ "way does not.",
+			"bricks": [
+				{"part": "48092", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "48092", "color": 71, "x": 4, "y": 0, "z": 0, "rot": 1},
+				{"part": "48092", "color": 71, "x": 4, "y": 0, "z": 4, "rot": 2},
+				{"part": "48092", "color": 71, "x": 0, "y": 0, "z": 4, "rot": 3},
+				{"part": "48092", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "48092", "color": 71, "x": 4, "y": 3, "z": 0, "rot": 1},
+				{"part": "48092", "color": 71, "x": 4, "y": 3, "z": 4, "rot": 2},
+				{"part": "48092", "color": 71, "x": 0, "y": 3, "z": 4, "rot": 3},
+			],
+		},
+		{
 			"name": "taper",
 			"when": "a tower, a funnel, a tree, a rock — anything "
 				+ "narrower at the top than the bottom",

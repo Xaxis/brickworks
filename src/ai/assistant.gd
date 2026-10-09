@@ -5308,7 +5308,7 @@ alongside the bricks you write by hand:
 
              a dome          ellipse, layers 8, shrink 2
              a cone          ellipse, layers 10, shrink 4
-             a round tower   ellipse, wall 1, layers 12, rise 3
+             a round tube    ellipse, wall 1, layers 12, rise 3
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
              a wall          rectangle, wall 1, layers 12, rise 3
@@ -5317,6 +5317,14 @@ alongside the bricks you write by hand:
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
+           A round *tower* is the exception, and it used to say tower \
+           here. An ellipse with a wall has no room for a long brick in \
+           any run once it curves, so a small one comes out as a \
+           staircase of 1x1 bricks: measured on a castle, 354 of them, \
+           four towers' worth. Anything round and more than a couple of \
+           studs across wants show_technique("wide round tower") — four \
+           4x4 corner-round bricks a course, which is what real castle \
+           sets use.
            Walls especially. Measured: a curtain wall 40 by 24 studs and \
            twelve courses high is 192 parts out of fill — a hundred and \
            sixty-eight 1x8 bricks and twenty-four 1x6, staggered and \

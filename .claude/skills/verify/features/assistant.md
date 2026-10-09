@@ -275,6 +275,32 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   `patterns_probe._a_wall_is_long_bricks` asserts them so the prompt cannot drift
   from what the code does.
 
+- **Four castle runs got steadily bigger and steadily worse.** 496 → 713 → 1,106
+  → 1,552 bricks, all buildable, against a previous project best of 456 — and
+  28 → 23 → 22 → **20 shapes**, where a real set of the largest one's size has
+  173. The most-repeated piece went 70 → 208 → 223 → **354**. Scale and texture
+  moved in opposite directions, which is a measurement, not an impression.
+
+  The fourth run named its own cause: **354 Brick 1x1**, which is four round
+  towers. And the prompt's own fill table said **"a round tower → ellipse,
+  wall 1, layers 12, rise 3"**. An ellipse with a wall has no room for a long
+  brick in any run once it curves, so a small one comes out as a staircase of
+  1x1s — the same table gives a 40×24 *straight* wall as 192 parts of 1x8 and
+  1x6. So `fill` is right for a tube and was being recommended for a tower.
+
+  It says "a round tube" now, and there is a `wide round tower` technique: four
+  4x4 corner-round bricks a course, 48092, **which is the part real castle sets
+  reach for second-most often** and which an earlier run had already found on its
+  own. `techniques_probe` asserts the technique builds, is findable by name, and
+  that the table no longer offers a tower to fill.
+
+  **The rotation could not be guessed and was not.** All four assignments of the
+  rotations to the quadrants stack and check as buildable; only one leaves a
+  hollow tower rather than filling the middle. Settled by turning the finished
+  ring a quarter about its own centre and counting how many of its cells map onto
+  itself: 93% the right way round, 0–19% the wrong way. This is the same trap as
+  the two left wings.
+
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had
