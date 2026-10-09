@@ -16,7 +16,7 @@ judged on its own:
 
 | | what a real set has | where it stands, 2026-10-09 |
 |---|---|---|
-| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 71 shapes, 12 colours; the gap, below |
+| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 95 shapes, 10-13 colours; the gap, below |
 | **its parts** | named sub-assemblies, bag by bag | assemblies named by the design, kept as `.mpd` sub-models |
 | **the booklet** | built a sub-assembly at a time, pictured close | built and framed by those assemblies; `--booklet` writes one |
 | **the parts list** | element numbers you can order | CSV with element numbers; the `.mpd` imports into Rebrickable to buy |
@@ -45,12 +45,14 @@ Four runs of the same castle brief, 2026-10-08/09, each buildable:
 | 10, and told the ordinary parts | 1,178 | 64 | 9 | 133 |
 | 14, told the 100 most used | 1,120 | **71** | 12 | 216 |
 | 15, and the one-off count | 828 | 56 | 7 | 112 |
+| 16, the count in the send-back | 1,159 | **95** | 10 | 213 |
 | a real set of 1,828 parts | — | **262** | **28** | 90 |
 | a real set of 975 parts | — | 180 | 23 | 43 |
 
 Previous project best was 456 parts. Scale is no longer the constraint.
-**The whole remaining gap is one number: 71 shapes at best where a real
-set of that size has 180.** Colours are 13 against 28 at best. Everything below
+**The whole remaining gap is one number: 95 shapes at best where a real
+set of that size has 180** — and 95 is the first castle out of the thin
+tail of real sets its size. Colours are 13 against 28 at best. Everything below
 is about closing that and nothing else. Count a run with
 `tools/texture.py model.ldr --brief "..."`, after it ends.
 
@@ -149,7 +151,10 @@ How big the first structure comes out is mostly the run, not the code:
    likely reason is symmetry: a detail added to four towers is a part
    used four times, never once. A sentence in a long pass message did
    not act; the one lever that reliably has is the short send-back, so
-   the count goes there next.
+   the count goes there next. **Run 16, with it there: 54 one-off shapes
+   (21, then 13 before) and 95 shapes in all**, its passes taking it from
+   22 — more than four times. The first castle outside the thin tail of
+   real sets its size. One run; repeat it.
 
    *Checked and not the gap:* minifigures, stickers and printed parts.
    Rebrickable lists minifigures apart from part inventories, and leaving
