@@ -22,6 +22,15 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
+# In this machine's queue for heavy jobs, where it has one. Several
+# projects share the box, and the windowed probes starve above a load of
+# about twelve: run beside another project's encode, the suite measures
+# the encode. `heavy` waits for a slot and runs at batch priority.
+heavy="$HOME/.claude/claude-core/bin/heavy"
+if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$heavy" ]; then
+  exec "$heavy" "$PWD/tools/check.sh" "$@"
+fi
+
 network=0
 for argument in "$@"; do
   case "$argument" in
