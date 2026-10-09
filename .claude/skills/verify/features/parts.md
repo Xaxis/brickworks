@@ -186,12 +186,36 @@ it is hands-only, so say so rather than claiming it.
   fixture because it provoked this — 535 parts, 45 lots, 30 shapes, **86 of one
   brick**. The right size and the wrong texture, and nothing said so.
 
+  **A multiple of the median read like a tolerance and was not one.** The first
+  version fired below 0.6× the median shapes and above 2× the median repeat, and
+  measured against the same inventories the norms come from, that **fires on 29
+  to 34 per cent of real LEGO sets**, band by band. A third of real sets told
+  they are repetitive is noise, and this project already holds advice to the
+  standard that it must not fire on good models — the staircase rule was measured
+  against the eight shipped models for exactly this reason. I checked this one
+  against one bad model and one synthetic control, and never against the 9,866
+  real sets I already had.
+
+  So the bands carry the tails as well as the medians: `lots_thin`,
+  `shapes_thin`, `colours_thin` at the 5th percentile and `most_of_one_high` at
+  the 95th. **8.5% overall now, worst band 11%**, measured off the shipped
+  numbers. The medians are still what gets *reported*, because "a real set of
+  this size has about 117 shapes" is the useful sentence; the percentile is only
+  what decides whether to speak.
+
+  The 2nd/98th percentiles would be rarer still, at 4%, and were rejected on
+  evidence: they miss `models/station.ldr` on both counts — its 30 shapes sit at
+  the 4.2nd percentile and its 86-of-one at the 95.8th — and that model is the
+  fixture the whole measurement exists for. `variety_probe` now asserts both
+  directions: the station fires, a model with a real set's median spread does
+  not, and neither does one using 58 of a piece, which nine real sets in ten are
+  under and the old rule called repetitive at 48.
+
   Advice, never a fault: a repetitive model still builds, and refusing one would
-  throw away a design that is merely plain. `THIN_AT` is 0.6 and `REPETITIVE_AT`
-  is 2.0, so it only speaks when a design is well outside what real sets do —
-  a 400-part model with 120 shapes and 18 colours is left alone. Beware testing
-  it with a control that is itself thin: mine had 20 shapes, the check correctly
-  flagged it, and for a moment that looked like a false positive.
+  throw away a design that is merely plain. A 400-part model with 120 shapes and
+  18 colours is left alone. Beware testing it with a control that is itself thin:
+  mine had 20 shapes, the check correctly flagged it, and for a moment that
+  looked like a false positive.
 
 - **Which moulding a bare part number means is settled by LDraw's redirects, not
   by the alphabet.** `3023a` and `3023b` are both "Plate 1 x 2" and both reduce

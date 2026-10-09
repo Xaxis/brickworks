@@ -1199,8 +1199,9 @@ func _run_tool(block: Dictionary) -> Variant:
 			# are standing — and report it as a successful check.
 			if not trial.placements.is_empty() and not _edited:
 				_apply(trial, false)
-			progress.emit("checked %d bricks: %s" % [
-				trial.placements.size(), report["summary"]])
+			progress.emit("checked %d bricks%s: %s" % [
+				trial.placements.size(), _shorthand_used(args),
+				report["summary"]])
 			# With the drawing, not merely offered alongside it. Given
 			# view_model as a tool of its own, a design would check its
 			# work three times and never once look at it — which is how
@@ -2465,12 +2466,6 @@ func _made_in(info: PartLibrary.PartInfo) -> String:
 	return ""
 
 
-## How far below a real set's variety is worth remarking on. Set models
-## vary, so this only fires when a design is well under — six tenths.
-const THIN_AT := 0.6
-## And how far above the normal count of one repeated part. A real set
-## of five hundred uses at most about two dozen of any one piece.
-const REPETITIVE_AT := 2.0
 
 
 ## Whether the model is made of as many different things as a real set.
@@ -2506,19 +2501,32 @@ func _variety(model: Model) -> String:
 			most = int(of_one[part_id])
 			commonest = part_id
 
+	# What it fires on is the tails, and what it reports is the median.
+	#
+	# A multiple of the median read like a tolerance and was not one.
+	# Six tenths of the median shapes and twice the median repeat fired
+	# on **29 to 34 per cent of real LEGO sets**, band by band — and the
+	# standard this project already holds advice to is that it must not
+	# fire on good models. The fifth and ninety-fifth percentiles of the
+	# same measurements bring that to 7-11%, which is what advice should
+	# cost, and still catch the fire station this was written for.
 	var said: PackedStringArray = PackedStringArray()
 	var want_lots: int = int(normal.get("lots", 0))
 	var want_shapes: int = int(normal.get("shapes", 0))
 	var want_most: int = int(normal.get("most_of_one", 0))
-	if want_lots > 0 and float(lots.size()) < float(want_lots) * THIN_AT:
+	var thin_lots: int = int(normal.get("lots_thin", 0))
+	var thin_shapes: int = int(normal.get("shapes_thin", 0))
+	var high_most: int = int(normal.get("most_of_one_high", 0))
+	if thin_lots > 0 and lots.size() < thin_lots:
 		said.append("%d different part-and-colour combinations, where a real "
 			% lots.size() + "set of %d parts has about %d" % [parts, want_lots])
-	if want_shapes > 0 and float(shapes.size()) < float(want_shapes) * THIN_AT:
+	if thin_shapes > 0 and shapes.size() < thin_shapes:
 		said.append("%d different shapes, against about %d"
 			% [shapes.size(), want_shapes])
-	if want_most > 0 and float(most) > float(want_most) * REPETITIVE_AT:
-		said.append("%d of one part (%s), where about %d is usual"
-			% [most, commonest, want_most])
+	if high_most > 0 and most > high_most:
+		said.append("%d of one part (%s), where about %d is usual and %d "
+			% [most, commonest, want_most, high_most]
+			+ "is as many as all but one set in twenty uses")
 	if said.is_empty():
 		return ""
 	return ("Thinner than a set of this size:\n  " + "\n  ".join(said)

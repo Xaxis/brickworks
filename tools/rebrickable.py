@@ -245,9 +245,15 @@ def set_norms() -> dict:
         per_set.setdefault(set_num, []).append(
             (row["part_num"], row["color_id"], int(row["quantity"])))
 
-    def middle(values: list[float]) -> float:
+    def at(values: list[float], share: float) -> float:
+        """The value this far along the sorted list, 0.5 being the median."""
+        if not values:
+            return 0.0
         values.sort()
-        return values[len(values) // 2] if values else 0.0
+        return values[min(len(values) - 1, int(len(values) * share))]
+
+    def middle(values: list[float]) -> float:
+        return at(values, 0.5)
 
     bands = []
     for low, high in SET_BANDS:
@@ -262,12 +268,29 @@ def set_norms() -> dict:
             colours.append(float(len({c for _, c, _ in items})))
         if len(lots) < 25:          # too few to be a norm
             continue
+        # The medians say what a real set of this size is like, and are
+        # what a designer wants told.  The tails are what a *check* must
+        # use, and that distinction cost something: thresholds set at
+        # six tenths of the median and twice the median fired on 29-34%
+        # of real LEGO sets, band by band.  A third of real sets told
+        # they are repetitive is noise, not advice.
+        #
+        # The fifth and ninety-fifth bring it to 7-11%, and still catch
+        # models/station.ldr, whose thirty shapes sit at the 4.2nd
+        # percentile and whose eighty-six of one brick at the 95.8th.
+        # The second and ninety-eighth would be rarer, at 4%, and miss
+        # it on both counts — which is the fixture the whole measurement
+        # exists for.
         bands.append({
             "from": low, "to": high, "sets": len(lots),
             "lots": round(middle(lots)),
             "shapes": round(middle(shapes)),
             "most_of_one": round(middle(most)),
             "colours": round(middle(colours)),
+            "lots_thin": round(at(lots, 0.05)),
+            "shapes_thin": round(at(shapes, 0.05)),
+            "colours_thin": round(at(colours, 0.05)),
+            "most_of_one_high": round(at(most, 0.95)),
         })
     return {"source": "Rebrickable set inventories", "bands": bands}
 

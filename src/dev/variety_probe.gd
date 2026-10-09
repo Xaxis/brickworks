@@ -69,6 +69,48 @@ func _initialize() -> void:
 	_ok(bool(report.get("ok", false)) or str(report.get("summary", "")).contains("problem"),
 		"the design is still judged on whether it holds together")
 
+	print("\nand what it must not fire on")
+	# The check this was missing, and it cost the whole threshold.
+	#
+	# Six tenths of the median shapes and twice the median repeat read
+	# like a tolerance and were not one: measured against the same
+	# inventories the norms come from, they fired on 29 to 34 per cent
+	# of real LEGO sets, band by band. A third of real sets told they
+	# are repetitive is noise. The thresholds are the fifth and
+	# ninety-fifth percentiles now, at 7-11%.
+	var middling: Dictionary = library.normal_for(500)
+	_ok(int(middling.get("shapes_thin", 0)) > 0
+			and int(middling.get("most_of_one_high", 0)) > 0,
+		"the norms carry the tails as well as the medians (thin below %d "
+			% int(middling.get("shapes_thin", 0))
+			+ "shapes, high above %d of one)"
+			% int(middling.get("most_of_one_high", 0)))
+	_ok(int(middling.get("shapes_thin", 0))
+			< int(middling.get("shapes", 0)) * 0.6,
+		"and the thin end is stricter than six tenths of the median was")
+	# A set at the median of real sets must be left entirely alone.
+	var ordinary := Assistant.Model.new()
+	for n: int in 500:
+		var put := Assistant.Placement.new()
+		put.part = SHAPES[n % int(middling.get("shapes", 117))]
+		put.color = [4, 1, 2, 14, 15, 0, 71, 72, 70, 28,
+			288, 484, 191, 212, 226, 308, 320, 326][n % 18]
+		ordinary.placements.append(put)
+	_ok(assistant._variety(ordinary).is_empty(),
+		"a model with a real set's own median spread is not remarked on")
+	# And one repeating a part as much as a normal real set does. 58 of
+	# one piece is the ninetieth percentile for this size: common, and
+	# the old rule called it repetitive at 48.
+	var repeated := Assistant.Model.new()
+	for n: int in 500:
+		var put := Assistant.Placement.new()
+		put.part = "3001" if n < 58 else SHAPES[n % SHAPES.size()]
+		put.color = [4, 1, 2, 14, 15, 0, 71, 72, 70,
+			28, 288, 484, 191, 212, 226, 308, 320, 326][n % 18]
+		repeated.placements.append(put)
+	_ok(not assistant._variety(repeated).contains("of one part"),
+		"nor one using 58 of a piece, which nine real sets in ten are under")
+
 	print("\na model with the spread of a real set")
 	var rich := Assistant.Model.new()
 	for n: int in 400:
