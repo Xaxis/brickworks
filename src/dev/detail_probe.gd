@@ -161,6 +161,25 @@ func _run() -> void:
 	await _reply(assistant, [{"type": "text", "text": "Done."}])
 	_ok(not ended.is_empty() and bool(ended[0][0]), "and the run ends well")
 
+	print("\na design that will not hold is kept where it can be read back")
+	ended.clear()
+	DirAccess.remove_absolute(Assistant.FAILED_DESIGN)
+	assistant.design("a brick in mid-air")
+	var adrift: Dictionary = {"name": "adrift", "description": "floats",
+		"bricks": [{"part": "3001", "color": 4, "x": 0, "y": 30, "z": 0}],
+		"assemblies": [{"name": "it", "x_from": 0, "x_to": 4, "z_from": 0, "z_to": 2}]}
+	for attempt: int in Assistant.MAX_REPAIRS + 1:
+		await _reply(assistant, [_tool("submit_design", adrift)])
+	_ok(not ended.is_empty() and not bool(ended[0][0]),
+		"it runs out of repairs and fails")
+	var kept: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(Assistant.FAILED_DESIGN))
+	_ok(typeof(kept) == TYPE_DICTIONARY
+			and str(kept.get("brief", "")) == "a brick in mid-air"
+			and (kept.get("design", {}) as Dictionary).get("bricks", []).size() == 1,
+		"...and what it sent is written down, with the brief, to reproduce")
+	_ok(_said("kept the design that would not hold"), "...and the log says where")
+
 	print("\na model that is one thing gets one look")
 	_ok(Assistant._queue_assemblies([{"name": "lighthouse", "where": {}}]).is_empty(),
 		"a single assembly is not looked at twice")

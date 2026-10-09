@@ -1116,6 +1116,7 @@ func _on_response(result: Array) -> void:
 		return
 
 	if _repairs >= MAX_REPAIRS:
+		_keep_the_failure(report)
 		_stop(false, "could not make it hold together: " + report["summary"])
 		return
 
@@ -1221,6 +1222,35 @@ If it is genuinely right, say so in one line and stop — do not submit \
 it again. Be honest about this: say it reads as the thing only if you \
 can name the features that make it recognisable and see each of them \
 in the picture."""
+
+
+## The last design submitted, exactly as it was sent.
+var _last_submitted: Dictionary = {}
+## Where a design that could not be made to hold together is written.
+const FAILED_DESIGN := "user://failed_design.json"
+
+
+## Write down the design that ran out of repairs, and say where.
+##
+## A space cruiser's run spent its three repairs on a pod that would not
+## attach and ended with nothing kept and nothing recorded: the summary
+## said 46 floating, and the design that floated was gone with the
+## conversation. A failure that cannot be reproduced cannot be fixed, so
+## the arguments go to a file a probe can read back through _read_model
+## and _check, with what the check said about them.
+func _keep_the_failure(report: Dictionary) -> void:
+	if _last_submitted.is_empty():
+		return
+	var file: FileAccess = FileAccess.open(FAILED_DESIGN, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify({"brief": _brief,
+		"summary": report.get("summary", ""),
+		"feedback": report.get("feedback", ""),
+		"design": _last_submitted}, "\t"))
+	file.close()
+	progress.emit("kept the design that would not hold at %s"
+		% ProjectSettings.globalize_path(FAILED_DESIGN))
 
 
 ## Mark every brick with the assembly it is part of, as the run ends.
@@ -1758,6 +1788,7 @@ func _run_tool(block: Dictionary) -> Variant:
 			_shot.highlight = {}
 			return answer
 		"submit_design":
+			_last_submitted = args
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
