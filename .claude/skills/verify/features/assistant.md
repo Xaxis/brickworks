@@ -52,6 +52,10 @@ fixing what it got wrong.
   without touching the rest. `degrees` turns about the section's own origin, so
   it walks a module round a tower. Capped at `MOST_COPIES` 400 and
   `MOST_BRICKS` 50,000, which is the lattice's own ceiling and not a guess.
+- `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
+  thing the assistant can ask that is neither geometry nor my taste — what real
+  sets of a kind are built from, by lift over sets in general. See
+  `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   Eight constructions with real part numbers and real coordinates — a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
@@ -196,6 +200,23 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
 
   Measure before you cut. The first guess was the cell expansion itself, which
   turned out to be 10.9s of the 108.
+
+  **That 108→22 is a direct measurement, made once, and `rules_probe` is what
+  guards the answers it gave.** What `repeat_probe` guards is weaker and worth
+  stating plainly: the check staying about linear in the number of bricks. It
+  does not pin the staircase scan — with the quadratic restored the ratio reads
+  5.0 against 4.2, because the same quadratic sits in both measurements and
+  nearly divides out. Isolating width at a fixed brick count was tried and
+  confounds width with height: hold the bricks and narrow the wall and it gets
+  taller.
+
+  **And do not put a wall clock in a suite check.** The first version asserted
+  "under a minute". It measured 22s alone and 68s in a suite run beside another
+  session's video encode, on a box at load average 164 — a failure with nothing
+  changed. The suite says so itself for the on-screen probes: "Check the load:
+  these starve above about 12". A ratio divides the machine out; the threshold is
+  10, between linear's 4 and quadratic's 16, because the ratio itself read 4.2,
+  4.9 and 7.3 on three runs of identical code.
 
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are

@@ -93,13 +93,47 @@ func _initialize() -> void:
 	_ok(wall.placements.size() == 10000,
 		"%d bricks, said in 250" % wall.placements.size())
 	print("     expanded in %d ms" % spent)
+
+	# A quarter of the wall first, because what this has to prove is the
+	# shape of the curve and not a number on a clock.
+	#
+	# A wall clock measures the machine. This one said 22 seconds alone
+	# and 68 in a suite run beside somebody else's video encode, on a
+	# box at load 164 — and the threshold failed while nothing about the
+	# check had changed. A ratio divides the machine out.
+	#
+	# What it pins is that the check stays about linear in the number of
+	# bricks. What it does not pin is the staircase scan, and it is
+	# worth saying so rather than letting it look guarded: that scan was
+	# quadratic in the model's *width*, and with it restored this ratio
+	# reads 5.0 against 4.2 — the same quadratic sits in both
+	# measurements and nearly divides out. Isolating width at a fixed
+	# brick count was tried and confounds width with height, because
+	# holding the bricks and narrowing the wall makes it taller. The
+	# 108-second-to-22 improvement was measured directly, once, and
+	# rules_probe is what guards the answers it gave.
+	var quarter: Assistant.Model = assistant._read_model(_bay(50, 9, {
+		"from": "bay", "times": 9, "dx": 20.0}))
+	_ok(quarter.placements.size() == 2500,
+		"%d bricks to compare against" % quarter.placements.size())
+	began = Time.get_ticks_msec()
+	assistant._check(quarter, true)
+	var small: int = maxi(1, Time.get_ticks_msec() - began)
 	began = Time.get_ticks_msec()
 	var report: Dictionary = assistant._check(wall, true)
-	var checked: int = Time.get_ticks_msec() - began
-	print("     checked in %d ms — %s" % [checked, report.get("summary", "")])
+	var checked: int = maxi(1, Time.get_ticks_msec() - began)
+	print("     2,500 bricks checked in %d ms, 10,000 in %d — %.1f times"
+		% [small, checked, float(checked) / float(small)])
 	_ok(bool(report.get("ok", false)),
 		"and the whole wall holds together")
-	_ok(checked < 60000, "checked in under a minute (%d ms)" % checked)
+	# Ten, between the four of linear and the sixteen of quadratic. The
+	# ratio read 4.2, 4.9 and 7.3 on three runs of the same code on a
+	# loaded machine, so a threshold near four is a flapping check
+	# rather than a strict one.
+	_ok(float(checked) / float(small) < 10.0,
+		"four times the bricks costs %.1f times the work" \
+			% (float(checked) / float(small)))
+
 
 	print("\nand reaches the baseplate")
 	began = Time.get_ticks_msec()
