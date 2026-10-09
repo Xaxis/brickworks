@@ -118,6 +118,7 @@ func remove_hovered() -> bool:
 		"part": brick.part_id,
 		"color": brick.color_code,
 		"transform": brick.transform,
+		"group": brick.group,
 	})
 	_redo.clear()
 
@@ -180,6 +181,7 @@ func lift_hovered() -> bool:
 		"part": brick.part_id,
 		"color": brick.color_code,
 		"transform": brick.transform,
+		"group": brick.group,
 	})
 	_redo.clear()
 
@@ -296,6 +298,7 @@ func _apply(step: Dictionary) -> Dictionary:
 			"part": brick.part_id,
 			"color": brick.color_code,
 			"transform": brick.transform,
+			"group": brick.group,
 		}
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -305,6 +308,7 @@ func _apply(step: Dictionary) -> Dictionary:
 	var at: Transform3D = step.get("transform", Transform3D.IDENTITY)
 	var new_id: int = world.add_brick(part_id, int(step.get("color", 0)), at)
 	if new_id != 0:
+		world.get_brick(new_id).group = str(step.get("group", ""))
 		lattice.occupy_boxes(new_id,
 			boxes_for(library.mesh_for(part_id), at))
 	return {"undo": "remove", "brick": new_id}
@@ -418,7 +422,8 @@ func remove_selection() -> int:
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		steps.append({"undo": "add", "part": brick.part_id,
-			"color": brick.color_code, "transform": brick.transform})
+			"color": brick.color_code, "transform": brick.transform,
+			"group": brick.group})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)

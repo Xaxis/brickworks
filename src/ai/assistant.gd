@@ -599,6 +599,7 @@ func _snapshot() -> Array[Dictionary]:
 			"colour": brick.color_code,
 			"at": brick.transform,
 			"mine": mine.has(brick.id),
+			"group": brick.group,
 		})
 	return taken
 
@@ -640,6 +641,7 @@ func _restore() -> void:
 			str(entry["part"]), int(entry["colour"]), entry["at"])
 		if brick_id == 0:
 			continue
+		world.get_brick(brick_id).group = str(entry.get("group", ""))
 		builder.register(brick_id, str(entry["part"]), entry["at"])
 		if bool(entry["mine"]):
 			_placed_ids.append(brick_id)

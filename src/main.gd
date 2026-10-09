@@ -1324,6 +1324,10 @@ func _open(path: String) -> int:
 		var brick_id: int = _world.add_brick(
 			placement.part_id, placement.color_code, placement.transform)
 		if brick_id != 0:
+			# Which assembly it is, from the sub-model it was read from:
+			# without this a castle opened here was built in tiles and
+			# its booklet said "part 3" where the file said "gatehouse".
+			_world.get_brick(brick_id).group = placement.group
 			_builder.register(brick_id, placement.part_id, placement.transform)
 			placed += 1
 			continue
@@ -1368,6 +1372,7 @@ func _place_awaited(part_id: String) -> void:
 		var brick_id: int = _world.add_brick(
 			placement.part_id, placement.color_code, placement.transform)
 		if brick_id != 0:
+			_world.get_brick(brick_id).group = placement.group
 			_builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	_awaited = still

@@ -32,13 +32,24 @@ CATALOGUE = ROOT / "assets" / "generated" / "catalogue.json"
 
 
 def read_ldr(path: Path) -> list[tuple[str, int]]:
-    """(part id, colour code) for every part line in a flat .ldr."""
+    """(part id, colour code) for every part line, in an .ldr or an .mpd.
+
+    A design in assemblies is a multi-part document: the model's own
+    lines refer to its sub-models by file name, and those references are
+    not parts.  Counted as parts they read as five unknown shapes and
+    inflated a cruiser's 49 to 54.
+    """
+    text = path.read_text(errors="replace").splitlines()
+    files = {" ".join(line.split()[2:]).lower()
+             for line in text if line.split()[:2] == ["0", "FILE"]}
     parts = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in text:
         bits = line.split()
         if len(bits) >= 15 and bits[0] == "1":
-            part = " ".join(bits[14:]).lower().removesuffix(".dat")
-            parts.append((part, int(bits[1])))
+            name = " ".join(bits[14:]).lower()
+            if name in files:
+                continue
+            parts.append((name.removesuffix(".dat"), int(bits[1])))
     return parts
 
 

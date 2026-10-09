@@ -139,6 +139,18 @@ func _initialize() -> void:
 			and steps[-1].section != steps[0].section,
 		"the booklet builds them as its parts: %s, then %s"
 			% [steps[0].section, steps[-1].section])
+	# And undoing a deletion puts the brick back in its group: undo
+	# re-adds it from what the history recorded, which was its part, its
+	# colour and its place, and not which assembly it was.
+	var some: int = world.bricks()[0].id
+	var its: String = world.get_brick(some).group
+	builder.selection = {some: true}
+	builder.remove_selection()
+	builder.undo()
+	var back: Array = world.bricks().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.group == its)
+	_expect(back.size() == 3, "undoing a deletion puts it back in %s (%d of 3)"
+		% [its, back.size()])
 	print("grouped: %s; booklet parts %s then %s" % [str(by_group),
 		steps[0].section, steps[-1].section])
 
