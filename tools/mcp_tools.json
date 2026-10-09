@@ -170,7 +170,7 @@
                 "type": "number"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -910,7 +910,7 @@
                 "type": "number"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
                 "enum": [
                   "repeat",
                   "mirror",
