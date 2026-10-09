@@ -155,7 +155,15 @@ the other way — and each ended with nothing kept, the second with 639 of
 
 The brief also exposed the kind lookup: "engine pods" brought fire-engine
 ladders and "pod" X-Pod storage tubs, with space pushed out for having
-more sets. Kinds are taken in the order the brief names them now.
+more sets. Kinds are taken in the order the brief names them now. A
+filter for a later kind that does not suit the subject ("bridge tower"
+still brings castle towers to a spaceship) was looked for and is not in
+the data: sets rarely name two kinds together, and kinds' most used parts
+overlap as much for space and tower (0.56) as for space and cruiser (0.53).
+
+**Run 13, with the fixes: the cruiser holds** — 619 parts, 49 shapes, 10
+colours, its passes taking it from 33 to 49. It still fought the pylons
+in its trial checks and in the end laid its pods flush.
 
 ## The open question, measured 2026-10-09
 
@@ -212,14 +220,16 @@ one before starting the next, and each section of the booklet framed on
 its own assembly.** Judged by the same numbers: the jump between steps
 and how much of each picture the new bricks fill.
 
-*First half done, 2026-10-09.* The planner builds a model wider than 24
+*Both halves done, 2026-10-09.* The planner builds a model wider than 24
 studs a region at a time — tiles of its plan, borrowing only the bricks a
 region is directly waiting on — and the booklet frames each region on its
 own: the castle's steps now jump a median of **6.2 studs (90th 12, max
 35)**, in 350 steps across 12 parts. Borrowing deeper than one brick was
-tried and measured as one part swallowing 1,175 of 1,483 steps. Still to
-do: the assemblies the design named, carried in the file as submodels,
-used as the parts instead of tiles.
+tried and measured as one part swallowing 1,175 of 1,483 steps. And the
+assemblies the design names now travel with the model, as an `.mpd` of
+sub-models, and the booklet builds by them: the cruiser's builds its
+landing legs, hull, port pod, bridge tower and starboard pod, each
+entered once and named, in 117 steps where tiles took 171.
 
 ## How progress is judged
 
