@@ -155,6 +155,28 @@ func _initialize() -> void:
 	_ok(tallest > 48.0 * 8.0,
 		"and the wall is fifty courses high (%.0f LDU)" % tallest)
 
+	print("\nand one call's complaint is not the next call's problem")
+	# A real run reported "155 problems (floating 125, overlap 17,
+	# pattern 13)" about an edit. An edit takes no patterns at all, and
+	# _check reads _pattern_trouble whatever produced it — so the
+	# thirteen complaints belonged to the check_design before it and
+	# were being re-reported as the edit's own, every time, for the rest
+	# of the run.
+	assistant._read_model({
+		"name": "x", "description": "x", "bricks": [],
+		"patterns": [{"pattern": "repeat", "times": 2}],
+	})
+	_ok(not assistant._pattern_trouble.is_empty(),
+		"a pattern with nothing to repeat is complained about")
+	var after: Assistant.Model = assistant._edit({"add": [
+		{"part": "3001", "color": 7, "x": 0, "y": 0, "z": 0}]})
+	_ok(assistant._pattern_trouble.is_empty(),
+		"and an edit does not inherit it")
+	var verdict: Dictionary = assistant._check(after, true)
+	_ok(not str(verdict.get("summary", "")).contains("pattern"),
+		"so the edit is not told about a pattern it never sent: %s"
+			% str(verdict.get("summary", "")))
+
 	print("\nand the model is told it exists")
 	# A capability nothing mentions is a capability nothing uses. This
 	# is the only thing standing between the mechanism and a design

@@ -242,6 +242,21 @@ A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
   written for — six seconds a picture at every model size — was a 989 ms frame,
   which shows up in frames too.
 
+- **One call's complaint was the next call's problem.** A real run reported "155
+  problems (floating 125, overlap 17, **pattern 13**)" about an `edit_model` —
+  and an edit takes no patterns at all. `_check` reads `_pattern_trouble`
+  whatever produced it, and only `_read_model` ever cleared it, so the thirteen
+  complaints belonged to the `check_design` before it and were re-reported as the
+  edit's own for the rest of the run. `_edit` clears both troubles now.
+
+  **This was found by the logging, not by reading the code.** The progress line
+  started saying how much shorthand a call carried, and an edit was claiming
+  patterns it could not have sent. Worth knowing where each piece of shorthand
+  actually expands: patterns in `_read_model`, so `check_design` and
+  `submit_design`; `repeat_section` in both `_read_model` and `_edit`. The first
+  version put the counts on one path and the complaints on another, and neither
+  was the path that mattered.
+
 - **A number somebody typed is not a measurement.** `brain.gd` recorded Opus and
   Sonnet at 64,000 output tokens and Haiku at 32,000. The real figures are
   128,000 and 64,000, so the app capped its own replies at half the room it had

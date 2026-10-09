@@ -1231,6 +1231,10 @@ func _run_tool(block: Dictionary) -> Variant:
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
 				report["summary"]])
+			# Here rather than only on a submission: this is where a
+			# pattern is expanded, so this is where one that came to
+			# nothing has something to say.
+			_say_shorthand_trouble()
 			# With the drawing, not merely offered alongside it. Given
 			# view_model as a tool of its own, a design would check its
 			# work three times and never once look at it — which is how
@@ -1299,7 +1303,8 @@ func _run_tool(block: Dictionary) -> Variant:
 			_apply_edit(edited)
 			_pending = null
 			_edited = true
-			progress.emit("changed it: %d bricks" % edited.placements.size())
+			progress.emit("changed it: %d bricks%s"
+				% [edited.placements.size(), _shorthand_used(args)])
 			var said: String = "Done. %d bricks now." % edited.placements.size()
 			if not _unknown.is_empty():
 				said += " No brick has %s, so those were left alone." \
@@ -1459,8 +1464,17 @@ func _edit(args: Dictionary) -> Model:
 
 	# After the adds, so one call can declare a section, fill it and
 	# repeat it — which is the whole point of being able to repeat.
+	#
+	# Both troubles are cleared here, and the pattern one matters most:
+	# an edit takes no patterns at all, and _check reads _pattern_trouble
+	# whatever produced it. So a check_design or a submission that left
+	# thirteen pattern complaints behind had every later edit report them
+	# as its own — thirteen problems with an edit that could not have
+	# caused one. Found because the progress line started saying how much
+	# shorthand a call carried, and an edit was claiming patterns.
 	var before: int = model.placements.size()
 	_repeat_trouble = []
+	_pattern_trouble = []
 	_expand_repeats(model, args, _repeat_trouble)
 	_touched += model.placements.size() - before
 	_touched += gone.size()
