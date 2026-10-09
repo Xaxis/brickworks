@@ -28,6 +28,21 @@ const MAX_PER_STEP := 8
 ## enough that a step never spans the model.
 const NEAR := 80.0
 
+## How wide a region of a big model is, in LDU: twenty-four studs. Built
+## course by course across the whole of it, a 1,895-part castle came to
+## 281 steps whose bricks jumped a median of 12.5 studs and up to 61
+## from one step to the next, across a model 72 wide, and every picture
+## of them was the whole castle. A real set finishes the gatehouse before
+## it starts a tower. A model no wider than this is one region, built
+## exactly as before.
+const REGION := 480.0
+
+## How [method _next] chose: in the region being built, a brick it was
+## waiting for, or a move to another region.
+const HERE := 0
+const BORROWED := 1
+const MOVED := 2
+
 
 class Step extends RefCounted:
 	var index: int = 0
@@ -37,6 +52,10 @@ class Step extends RefCounted:
 	## True when this step had to be taken out of order because nothing
 	## remaining was supported.
 	var unsupported: bool = false
+	## The part of the model this step builds, when it is built a part at
+	## a time: an assembly the design named, or "part 2". Empty for a
+	## model built in one go.
+	var section: String = ""
 
 	## "2 × 3001, 1 × 3024", for the panel.
 	func summary(library: PartLibrary) -> String:
@@ -57,6 +76,8 @@ class Node2 extends RefCounted:
 	var id: int
 	var box: AABB
 	var part_id: String
+	## Which part of the model it is built with. See [constant REGION].
+	var region: String = ""
 	## Bricks that must be placed before this one.
 	var needs: PackedInt64Array = PackedInt64Array()
 
@@ -68,14 +89,45 @@ class Node2 extends RefCounted:
 ## screen from the first step rather than being placed in one, and
 ## planning around it would also make every brick above it "supported"
 ## and flatten the order.
+##
+## [param regions] names the part of the model each brick belongs to — the
+## assemblies a design named — and a big model given none is divided by
+## area instead.
 static func plan(world: BrickWorld, library: PartLibrary,
-		skip: Dictionary = {}) -> Array[Step]:
+		skip: Dictionary = {}, regions: Dictionary = {}) -> Array[Step]:
 	var nodes: Array[Node2] = _survey(world, library, skip)
 	if nodes.is_empty():
 		return []
 	_find_supports(nodes)
 	_find_joints(nodes, world, library)
+	_assign_regions(nodes, regions)
 	return _sequence(nodes)
+
+
+## Which region each brick is built with.
+##
+## By area, a big model is cut into equal tiles of the plan no wider than
+## REGION. Equal rather than fixed, so a model 30 studs wide is two
+## halves and not a 24-stud region and a 6-stud sliver.
+static func _assign_regions(nodes: Array[Node2], given: Dictionary) -> void:
+	if not given.is_empty():
+		for node: Node2 in nodes:
+			node.region = str(given.get(node.id, ""))
+		return
+	var bounds: AABB = nodes[0].box
+	for node: Node2 in nodes:
+		bounds = bounds.merge(node.box)
+	var across: int = maxi(1, int(ceil(bounds.size.x / REGION)))
+	var deep: int = maxi(1, int(ceil(bounds.size.z / REGION)))
+	if across * deep == 1:
+		return
+	for node: Node2 in nodes:
+		var centre: Vector3 = node.box.get_center() - bounds.position
+		var column: int = clampi(int(centre.x / bounds.size.x * across),
+			0, across - 1)
+		var row: int = clampi(int(centre.z / bounds.size.z * deep),
+			0, deep - 1)
+		node.region = "%d,%d" % [column, row]
 
 
 ## A pin cannot go into a hole that is not on the table yet.
@@ -176,18 +228,36 @@ static func _sequence(nodes: Array[Node2]) -> Array[Step]:
 	var steps: Array[Step] = []
 	var last_at: Vector3 = Vector3.ZERO
 	var have_last: bool = false
+	## The region being built, and what each one is called in the
+	## booklet: its own name, or "part n" in the order they are reached.
+	var current: String = ""
+	var called: Dictionary = {}
+	var named: bool = false
+	for node: Node2 in nodes:
+		if not node.region.is_empty() and not node.region.contains(","):
+			named = true
+			break
 
 	while not remaining.is_empty():
 		var step := Step.new()
 		step.index = steps.size() + 1
 
 		while step.brick_ids.size() < MAX_PER_STEP:
-			var pick: int = _next(remaining, placed, last_at, have_last,
-				not step.brick_ids.is_empty())
+			var chosen: Array = _next(remaining, placed, last_at, have_last,
+				not step.brick_ids.is_empty(), current)
+			var pick: int = chosen[0]
 			if pick < 0:
 				break
 
 			var node: Node2 = remaining[pick]
+			# A brick from next door that this region was waiting for is
+			# built as part of it; anything else is a move.
+			if node.region != current and int(chosen[1]) == MOVED:
+				current = node.region
+				if not called.has(current) and not current.is_empty():
+					called[current] = (current if named
+						else "part %d" % (called.size() + 1))
+			step.section = str(called.get(current, ""))
 			# A step that had to break the support rule says so, and ends
 			# there: whatever comes next is resting on a brick that is
 			# only just in place, and running them together would hide
@@ -223,42 +293,81 @@ static func _sequence(nodes: Array[Node2]) -> Array[Step]:
 ## [param same_step] tightens the choice to something near the last brick
 ## placed, so a step stays in one place. The first brick of a step is free
 ## to go anywhere, which is what lets the build move on to a new area.
+##
+## Within the region being built while anything in it can be placed. When
+## nothing in it is ready, the bricks it is directly waiting for come
+## next and are built as part of it — a wall brick across a region's edge
+## rests on its neighbour's. Past that the build moves to the nearest
+## region and comes back later: borrowing further than one brick deep
+## measured as one section swallowing 1,175 of a castle's 1,483 steps.
+##
+## Returns [index, how]: how is [constant HERE], [constant BORROWED] or
+## [constant MOVED], and index is −1 when the step should end.
 static func _next(remaining: Array[Node2], placed: Dictionary,
-		last_at: Vector3, have_last: bool, same_step: bool) -> int:
-	var best: int = -1
-	var best_score: float = INF
+		last_at: Vector3, have_last: bool, same_step: bool,
+		current: String = "") -> Array:
 	var fallback: int = -1
 	var fallback_height: float = INF
-
 	for index: int in remaining.size():
-		var node: Node2 = remaining[index]
 		# Lowest first. With +Y up the underside is box.position.y, so
 		# the smallest value is the one nearest the table.
-		if node.box.position.y < fallback_height:
-			fallback_height = node.box.position.y
+		if remaining[index].box.position.y < fallback_height:
+			fallback_height = remaining[index].box.position.y
 			fallback = index
-		if not _ready(node, placed):
-			continue
 
+	var here: int = _best(remaining, placed, last_at, have_last, same_step,
+		func(node: Node2) -> bool: return node.region == current, false)
+	if here >= 0:
+		return [here, HERE]
+	# Nothing legal is near enough: end the step rather than reaching
+	# across the model, or into another region, for the sake of filling it.
+	if same_step:
+		return [-1, HERE]
+
+	var wanted: Dictionary = {}
+	for node: Node2 in remaining:
+		if node.region != current:
+			continue
+		for need: int in node.needs:
+			if not placed.has(need):
+				wanted[need] = true
+	var borrowed: int = _best(remaining, placed, last_at, have_last, false,
+		func(node: Node2) -> bool: return wanted.has(node.id), false)
+	if borrowed >= 0:
+		return [borrowed, BORROWED]
+
+	var moved: int = _best(remaining, placed, last_at, have_last, false,
+		func(_node: Node2) -> bool: return true, true)
+	return [moved if moved >= 0 else fallback, MOVED]
+
+
+## The best ready brick among those [param allowed] admits, or −1.
+##
+## Height dominates; distance only breaks ties within a layer, so a
+## nearby brick two layers up never jumps the queue. Moving to a new
+## region it is the other way round: nothing is built there yet, so
+## whatever is ready is near the table anyway, and the nearest one keeps
+## the build moving to the region next door rather than across the model.
+static func _best(remaining: Array[Node2], placed: Dictionary,
+		last_at: Vector3, have_last: bool, same_step: bool,
+		allowed: Callable, nearest_first: bool) -> int:
+	var best: int = -1
+	var best_score: float = INF
+	for index: int in remaining.size():
+		var node: Node2 = remaining[index]
+		if not allowed.call(node) or not _ready(node, placed):
+			continue
 		var distance: float = (node.box.get_center().distance_to(last_at)
 			if have_last else 0.0)
 		if same_step and distance > NEAR:
 			continue
-		# Height dominates; distance only breaks ties within a layer, so
-		# a nearby brick two layers up never jumps the queue. Lower is a
-		# smaller score, and the smallest score wins.
-		var score: float = node.box.position.y * 1000.0 + distance
+		var score: float = (distance * 1000.0 + node.box.position.y
+			if nearest_first
+			else node.box.position.y * 1000.0 + distance)
 		if score < best_score:
 			best_score = score
 			best = index
-
-	if best >= 0:
-		return best
-	# Nothing legal is near enough: end the step rather than reaching
-	# across the model for the sake of filling it.
-	if same_step:
-		return -1
-	return fallback
+	return best
 
 
 static func _ready(node: Node2, placed: Dictionary) -> bool:

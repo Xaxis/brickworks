@@ -23,7 +23,13 @@ picture the assistant is shown.
   where it is, so a number read off the image is the number to write in a
   placement.
 - `build steps`: the model split into steps a person could follow in order,
-  nothing placed before what holds it.
+  nothing placed before what holds it. A model wider than 24 studs is built a
+  region at a time (`Instructions.REGION`): one tile of its plan finished before
+  the next, borrowing only the bricks a region is directly waiting on, and the
+  booklet frames each region on its own and names it ("Step 39 of 350 · part 2").
+  On a 1,895-part castle the jump between consecutive steps went from a median
+  of 12.5 studs (90th 38) to 6.2 (90th 12). `--booklet=PATH` with `--model=`
+  writes the booklet and quits — about three minutes for that castle on the GPU.
 - `mosaic`: a picture turned into a plate of tiles that still looks like the
   picture.
 
@@ -33,6 +39,7 @@ picture the assistant is shown.
 godot --path .             # right-drag turns, scroll zooms, F frames, O squares on,
                            # middle-drag slides or turns (a preference), , lists every key
 godot --path . -- --shot=/tmp/model.png --model=models/car.ldr   # one render, then quit
+godot --path . -- --booklet=/tmp/b.html --model=models/station.ldr  # the booklet, then quit
 tools/shot.sh              # the screenshots used in the README and the site
 ```
 

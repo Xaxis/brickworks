@@ -213,6 +213,15 @@ func _ready() -> void:
 	if not shot.is_empty():
 		await _capture(shot)
 
+	# The booklet for whatever --model opened, then quit: how a booklet is
+	# checked without a person pressing the button, and how one is made
+	# for the site.
+	var booklet: String = _argument("--booklet")
+	if not booklet.is_empty():
+		var said: String = await _export_booklet(booklet)
+		print("booklet %s" % said)
+		get_tree().quit(0 if said.begins_with("wrote") else 1)
+
 
 ## Write the baseplate out every time something is stood up on it.
 ##
@@ -346,7 +355,7 @@ func _unthrottle_if_nobody_is_watching() -> void:
 	if OS.has_feature("web"):
 		return
 	if not _given_any(["--mcp", "--ask", "--ask-claude-code", "--bench",
-			"--shot", "--autobuild", "--showcase", "--out"]):
+			"--shot", "--booklet", "--autobuild", "--showcase", "--out"]):
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
@@ -531,7 +540,7 @@ func _build_ui() -> void:
 	# open's own autosave gets in first. A session over MCP is somebody's:
 	# it builds in front of them.
 	_store.keeps = not _given_any(["--ask", "--ask-claude-code", "--bench",
-		"--shot", "--autobuild", "--showcase", "--out"])
+		"--shot", "--booklet", "--autobuild", "--showcase", "--out"])
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
@@ -960,12 +969,12 @@ func _turn_model(quarter_turns: int) -> void:
 ## moves between steps is unreadable — the whole way you see what a step
 ## added is that everything else stayed where it was — so the framing is
 ## taken once, from the finished model, and held.
-func _export_booklet() -> void:
+func _export_booklet(to: String = "") -> String:
 	var steps: Array[Instructions.Step] = Instructions.plan(
 		_world, _library, _store.scenery)
 	if steps.is_empty():
 		_bar.say("nothing to write instructions for")
-		return
+		return "nothing to write instructions for"
 
 	var stock: Inventory = Inventory.of(_world, _library, _store.scenery)
 	var title: String = _bar.model_name()
@@ -992,12 +1001,34 @@ func _export_booklet() -> void:
 		await get_tree().process_frame
 		RenderingServer.force_draw(false)
 
+	# A model built a part at a time is photographed a part at a time:
+	# framed on the part being built, and framed the same way every time
+	# the build comes back to it. Eight new bricks in a picture of a
+	# 1,895-part castle are a few pixels; the camera holding still is
+	# still what shows what a step added, so it holds within a part.
+	var section_bounds: Dictionary = {}
+	for step: Instructions.Step in steps:
+		if step.section.is_empty():
+			continue
+		for brick_id: int in step.brick_ids:
+			var box: AABB = _box_of(brick_id)
+			section_bounds[step.section] = (box
+				if not section_bounds.has(step.section)
+				else (section_bounds[step.section] as AABB).merge(box))
+	var framed: String = ""
+
 	var pages: Array[Booklet.Page] = []
 	var showing: Dictionary = _store.scenery.duplicate()
 	for step: Instructions.Step in steps:
 		for brick_id: int in step.brick_ids:
 			showing[brick_id] = true
 		_world.show_only(showing)
+		if not step.section.is_empty() and step.section != framed:
+			framed = step.section
+			_camera.frame(section_bounds[step.section], 1.12)
+			for _n: int in 8:
+				await get_tree().process_frame
+				RenderingServer.force_draw(false)
 
 		# Forced, not awaited. A process frame is not a drawn frame, and
 		# an unattended window stops being asked to redraw — which is how
@@ -1009,6 +1040,7 @@ func _export_booklet() -> void:
 		var page := Booklet.Page.new()
 		page.index = step.index
 		page.awkward = step.unsupported
+		page.section = step.section
 		page.image = _snapshot()
 		page.adds = _step_parts(step)
 		pages.append(page)
@@ -1025,9 +1057,29 @@ func _export_booklet() -> void:
 		_steps.start(_world, _library, _store.scenery)
 
 	var file_name: String = title.to_snake_case() + "_instructions.html"
-	var note: String = Download.give(
-		Booklet.html(title, pages, stock), file_name, "text/html")
+	var html: String = Booklet.html(title, pages, stock)
+	var note: String
+	if to.is_empty():
+		note = Download.give(html, file_name, "text/html")
+	else:
+		var file: FileAccess = FileAccess.open(to, FileAccess.WRITE)
+		if file == null:
+			note = "could not write %s" % to
+		else:
+			file.store_string(html)
+			file.close()
+			note = "wrote %s, %d steps" % [to, pages.size()]
 	_bar.say(note)
+	return note
+
+
+## Where one brick is, as a box in the world.
+func _box_of(brick_id: int) -> AABB:
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+	if part == null:
+		return AABB(brick.transform.origin, Vector3.ZERO)
+	return brick.transform * part.bounds
 
 
 ## What was built, without the baseplate it was built on. Falls back to

@@ -121,6 +121,9 @@ func _tower(world: BrickWorld, library: PartLibrary) -> void:
 	_assert("stack starts at the bottom, at y=%.0f of %.0f"
 		% [first.transform.origin.y, lowest],
 		is_equal_approx(first.transform.origin.y, lowest))
+	_assert("a model one region wide is built in one go, with no parts",
+		steps.all(func(step: Instructions.Step) -> bool:
+			return step.section.is_empty()))
 
 
 ## A wall two courses high, laid in staggered rows so the upper course
@@ -161,6 +164,22 @@ func _two_towers(world: BrickWorld, library: PartLibrary) -> void:
 		if left and right:
 			split = false
 	_assert("no step spans both towers", split)
+
+	# Built a region at a time: one tower to the top, then the other. Run
+	# course by course across the model, a 1,895-part castle's steps
+	# jumped a median of 12.5 studs, and up to 61, from one to the next.
+	var switches: int = 0
+	var was: bool = world.get_brick(steps[0].brick_ids[0]).transform.origin.x < 300.0
+	for step: Instructions.Step in steps:
+		var here: bool = world.get_brick(step.brick_ids[0]).transform.origin.x < 300.0
+		if here != was:
+			switches += 1
+			was = here
+	_assert("one tower is finished before the other is begun (%d switches)"
+		% switches, switches == 1)
+	_assert("...and each is a named part of the booklet (%s, %s)" % [
+		steps[0].section, steps[-1].section],
+		steps[0].section == "part 1" and steps[-1].section == "part 2")
 
 
 ## Walk the booklet the way a person would, and complain about anything

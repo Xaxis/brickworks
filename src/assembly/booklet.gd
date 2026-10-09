@@ -25,6 +25,9 @@ class Page extends RefCounted:
 	var image: String = ""     ## a data: URI, ready to drop into <img>
 	var adds: Array = []       ## [{count, part, name, colour, rgb}]
 	var awkward: bool = false  ## the step had to be taken out of order
+	## The part of the model this step builds, for a model built a part
+	## at a time; empty otherwise. See Instructions.Step.section.
+	var section: String = ""
 
 
 ## Build the whole document.
@@ -148,11 +151,14 @@ static func _page(page: Page, total: int) -> String:
 		warning = ("<p class=\"warn\">Hold this one in place — it does not "
 			+ "rest on anything until the next step.</p>")
 
+	var where: String = ""
+	if not page.section.is_empty():
+		where = " · %s" % _escape(page.section)
 	return """<section class="step">
-  <div class="num">Step %d of %d</div>
+  <div class="num">Step %d of %d%s</div>
   <img src="%s" alt="The model after step %d.">
   <div class="adds">%s</div>%s
-</section>""" % [page.index, total, page.image, page.index,
+</section>""" % [page.index, total, where, page.image, page.index,
 		" ".join(adds), warning]
 
 
