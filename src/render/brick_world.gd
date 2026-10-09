@@ -313,7 +313,14 @@ func _create_batch(
 	batch.instance.name = key
 	var material_class: int = _material_class_for(part, surface_index, color_code)
 	var two_sided: bool = part.surface_two_sided[surface_index] == 1
-	batch.instance.material_override = _material(material_class, two_sided)
+	# A copy per batch, carrying the part's box, so the shader can draw
+	# the seam where this part meets the next: see plastic_body. Every
+	# surface of a part gets the whole part's box, which is what an edge
+	# of the part is measured against.
+	var material: ShaderMaterial = _material(material_class, two_sided).duplicate()
+	material.set_shader_parameter("part_box_min", part.bounds.position)
+	material.set_shader_parameter("part_box_max", part.bounds.end)
+	batch.instance.material_override = material
 	add_child(batch.instance)
 	return batch
 

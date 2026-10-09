@@ -17,6 +17,15 @@ picture the assistant is shown.
   edit, the bricks that edit added or moved restaged in magenta, so the design can
   find its own change by looking rather than by re-reading coordinates. The stage
   is a copy of the world — the model keeps the colours it was given.
+- `seams between bricks`: `src/render/plastic_body.gdshaderinc`. A real brick
+  is 0.2 mm short of its pitch, so two that meet show a seam; the meshes carry no
+  edge lines, and without one a wall of forty bricks and a wall of four drew as
+  the same grey slab. Each batch's material copy carries its part's box
+  (`BrickWorld._create_batch`), and a fragment near two of the box's faces is on
+  an edge and is darkened, half an LDU or one pixel wide, whichever is wider. A
+  zero box draws none, so parts-bin previews have none. Check it by eye: the
+  gallery's castle and house show their courses, under Forward+ and under
+  `--rendering-method gl_compatibility` (what the web build uses, under Xvfb).
 - `studs written on the render`: `src/ai/shot_ruler.gd`. Two ticked, numbered
   lines along the model's near corner, drawn by projecting world positions through
   the same camera that took the picture. A render says what was built and not
