@@ -117,6 +117,11 @@ How big the first structure comes out is mostly the run, not the code:
    any castle has had. It is aimed at the gap and closes most of it: what
    is left between 64 and 180 is no longer the ordinary parts.
 
+   *Checked and not the gap:* minifigures, stickers and printed parts.
+   Rebrickable lists minifigures apart from part inventories, and leaving
+   out stickers and prints moves the medians 3% (180 to 173). The 180 is
+   real, buildable variety.
+
 4. **A surface-treatment vocabulary, measured rather than invented.**
    `kinds` says *which* parts a castle reaches for. Nothing yet says
    where they go, and "a wall wants masonry bricks, an arrow slit, a

@@ -390,8 +390,10 @@ A_PROP = {"Minifig", "Minifig Accessory", "Minifig Headwear", "Animal"}
 KIND_FLOOR = 20
 PART_FLOOR = 0.15
 ## How many of a kind's most used parts to keep, by how many of its sets
-## use them rather than by lift.  See kinds().
-COMMON = 40
+## use them rather than by lift.  See kinds().  Forty was used up: a
+## castle told about them came out with 37 of the 40, so a pass now
+## reaches down the list as the top of it is used.
+COMMON = 100
 REAL_MODEL = 20          # parts; below this a "set" is merchandise
 
 
