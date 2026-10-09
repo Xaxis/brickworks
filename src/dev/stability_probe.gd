@@ -33,9 +33,136 @@ func _initialize() -> void:
 	_case(library, "a properly bonded arm, 2 studs of overlap", _arm(7), false)
 	_case(library, "a slab resting on a single 1x1", _pillar(), false)
 
+	await _contacts_are_what_the_lattice_says(library)
+	await _checking_costs_about_what_building_costs(library)
+
 	if _failures > 0:
 		print("\n%d case(s) wrong" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+## The contact graph has to be the lattice's own view of what touches
+## what, because collision already is.
+##
+## It used to be neither: the lower brick's cells came from the box
+## *span* of its parts and the upper brick's from the lattice, which
+## holds the exact cells. On the kart that reported 41 joints where
+## there are 42.
+##
+## Walking the lattice cell by cell is the authoritative count and the
+## reason the whole thing was slow, so it is used here on small models
+## only, as the thing to agree with. The lighthouse is the one model it
+## cannot settle: `brick_at` names one owner per cell, so where two
+## parts are registered over the same cells — a tyre around a hub — the
+## walk sees one relationship and the boxes see both. 58 is the rule as
+## stated; 56 is what an index with one owner per cell can report.
+func _contacts_are_what_the_lattice_says(library: PartLibrary) -> void:
+	print("\nthe contact graph against a cell-by-cell walk of the lattice:")
+	for pair: Array in [["kart.ldr", 0], ["car.ldr", 0],
+			["bench.ldr", 0], ["house.ldr", 0], ["lighthouse.ldr", 2]]:
+		var name: String = pair[0]
+		var allowed: int = pair[1]
+		var ldr: LdrModel = LdrModel.load_file("res://models/" + name)
+		if ldr == null:
+			continue
+		var world := BrickWorld.new()
+		world.library = library
+		get_root().add_child(world)
+		var builder := Builder.new()
+		builder.world = world
+		builder.library = library
+		get_root().add_child(builder)
+		await process_frame
+		for piece: LdrModel.Placement in ldr.flatten():
+			var part_id: String = piece.part_id.to_lower().trim_suffix(".dat")
+			if library.mesh_for(part_id) == null:
+				continue
+			var id: int = world.add_brick(part_id, piece.color_code,
+				piece.transform)
+			if id != 0:
+				builder.register(id, part_id, piece.transform)
+		var walked: int = 0
+		for item: Variant in world.bricks():
+			var brick: BrickWorld.Brick = item
+			for cell: Vector3i in BrickLattice.cells_in(
+					builder.lattice.boxes_of(brick.id)):
+				var over: int = builder.lattice.brick_at(
+					Vector3i(cell.x, cell.y + 1, cell.z))
+				if over != 0 and over != brick.id:
+					walked += 1
+					break
+		var judge := Stability.new()
+		judge.library = library
+		judge.lattice = builder.lattice
+		var report: Stability.Report = judge.check(world)
+		var differ: int = report.joints - walked
+		if differ == allowed:
+			print("  ok    %-16s %d joints, the walk says %d"
+				% [name, report.joints, walked])
+		else:
+			_failures += 1
+			print("  FAIL  %-16s %d joints against the walk's %d, "
+				% [name, report.joints, walked]
+				+ "a difference of %d where %d is expected"
+					% [differ, allowed])
+		world.queue_free()
+		builder.queue_free()
+		await process_frame
+
+
+## Checking a model must not cost much more than building one.
+##
+## Not a wall clock, because a loaded machine makes any number look like
+## a regression. Not a ratio of one size to another either: the version
+## this replaced asked the lattice what was in the cell above every cell
+## of every brick — nine thousand six hundred lookups a brick — and that
+## is *linear in bricks* too, just with a constant four hundred times
+## larger. A hundred bricks took 3.7 s and eight hundred took 29.5, which
+## is the same shape of curve as the fast one.
+##
+## What tells them apart is the constant, and what measures a constant
+## without a clock is something else on the same machine. Laying the
+## bricks is the natural yardstick: the old check cost **84 times** the
+## cost of building the model it was checking, the new one costs about a
+## tenth of it.
+func _checking_costs_about_what_building_costs(library: PartLibrary) -> void:
+	print("\nand what it costs, against the cost of building the model:")
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	await process_frame
+	var began: int = Time.get_ticks_usec()
+	for n: int in 800:
+		var at := Transform3D(Basis(), Vector3(
+			float(n % 20) * 40.0 + (20.0 if (n / 20) % 2 == 1 else 0.0),
+			float(n / 20) * 24.0, 0.0))
+		var id: int = world.add_brick("3001", 4, at)
+		if id != 0:
+			builder.register(id, "3001", at)
+	var built: int = maxi(1, Time.get_ticks_usec() - began)
+	began = Time.get_ticks_usec()
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = builder.lattice
+	judge.check(world)
+	var checked: int = Time.get_ticks_usec() - began
+	var times: float = float(checked) / float(built)
+	if times < 3.0:
+		print("  ok    800 bricks: built in %d ms, checked in %d — %.2f times"
+			% [built / 1000, checked / 1000, times])
+	else:
+		_failures += 1
+		print("  FAIL  checking 800 bricks costs %.1f times building them "
+			% times + "(%d ms against %d) — it was 84 times when the "
+				% [checked / 1000, built / 1000]
+			+ "check asked the lattice about every cell of every brick")
+	world.queue_free()
+	builder.queue_free()
+	await process_frame
 
 
 func _case(library: PartLibrary, label: String,

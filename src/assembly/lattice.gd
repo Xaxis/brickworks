@@ -224,6 +224,57 @@ static func _note_run(runs: Dictionary, from_x: int, to_x: int,
 ## against the turned box, and doing that once for the boxes and again
 ## for the cells runs the expensive half twice. The boxes already know
 ## the answer.
+## The boxes a brick occupies here, or nothing if it is not here.
+func boxes_of(brick_id: int) -> PackedInt32Array:
+	return _boxes.get(brick_id, PackedInt32Array())
+
+
+## The same boxes, moved by whole cells.
+##
+## For asking what sits on top of something: a brick's boxes lifted one
+## cell is exactly the space its studs would reach into, and whatever
+## overlaps that is resting on it.
+static func moved_by(packed: PackedInt32Array, by: Vector3i) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(packed.size())
+	var n: int = 0
+	while n < packed.size():
+		out[n] = packed[n] + by.x
+		out[n + 1] = packed[n + 1] + by.y
+		out[n + 2] = packed[n + 2] + by.z
+		out[n + 3] = packed[n + 3] + by.x
+		out[n + 4] = packed[n + 4] + by.y
+		out[n + 5] = packed[n + 5] + by.z
+		n += 6
+	return out
+
+
+## How many cells two sets of boxes have in common.
+##
+## The number a joint's strength is measured in, and the reason it is
+## here: counting it by walking cells is nine thousand six hundred
+## lattice lookups per brick, which is thirty-seven milliseconds a brick
+## and six minutes for a ten thousand brick model. The overlap of two
+## boxes is a box, so the count is a product of three subtractions.
+static func shared_cells(a: PackedInt32Array, b: PackedInt32Array) -> int:
+	var total: int = 0
+	var i: int = 0
+	while i < a.size():
+		var j: int = 0
+		while j < b.size():
+			var wide: int = mini(a[i + 3], b[j + 3]) - maxi(a[i], b[j])
+			if wide > 0:
+				var high: int = mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1])
+				if high > 0:
+					var deep: int = mini(a[i + 5], b[j + 5]) \
+						- maxi(a[i + 2], b[j + 2])
+					if deep > 0:
+						total += wide * high * deep
+			j += 6
+		i += 6
+	return total
+
+
 ## The lowest and highest cell a set of boxes covers, as [low, high].
 ##
 ## The same two corners walking every cell would find, in six reads per

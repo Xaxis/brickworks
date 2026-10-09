@@ -70,6 +70,46 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
 
 ## Gotchas
 
+- **Checking whether a model stands up cost 37 ms a brick.** `Stability.check`
+  walked every cell of every brick and asked the lattice what was in the cell
+  above it — a 2x4 brick is 9,600 cells, so a thousand-brick model is ten million
+  lookups. Measured: **41 s for a 1,106-brick castle, 30 s for the 535-brick fire
+  station, and six minutes for the ten thousand bricks the lattice can hold.** The
+  app shows this on every change and the design loop runs it on the one look it
+  takes at its finished work, which is where it was found: a run sat on 120% of a
+  core for 25 minutes after reporting its model buildable.
+
+  A brick's boxes lifted one cell is exactly the space whatever rests on it
+  occupies, so one bucket query finds the candidates and the overlap of two boxes
+  is a box — `BrickLattice.shared_cells`, three subtractions and a product.
+  **87 ms for the castle, 58 ms for the station**: 730× and 520×. Verified against
+  the cell-by-cell count on seven real pairs of parts before anything was changed:
+  identical.
+
+  **Two answers changed, and the old ones were wrong.** The contact graph took the
+  box *span* of a turned part for the lower brick and the lattice's exact cells
+  for the upper one, so it disagreed with itself: the kart reported 41 joints
+  where a cell-by-cell walk of the lattice finds 42. Both sides come from
+  `lattice.boxes_of` now. On the lighthouse the boxes find 58 where the walk finds
+  56, and that difference is the index rather than the model — `brick_at` names
+  one owner per cell, so where two parts are registered over the same cells (a
+  tyre around a hub) the walk sees one relationship and the boxes see both. No
+  risk appeared or disappeared on any of the eleven models.
+
+  **Measured and rejected:** skipping pairs whose boxes already overlap, on the
+  theory that a part inside another is not resting on it. A stud belongs to the
+  brick below and reaches into the brick above, so nearly every real joint
+  overlaps — the kart went from 42 joints to 14 and the car from 53 to 44.
+
+  **How the cost is guarded without a wall clock.** A ratio of one size to
+  another does not work: the old version was linear in bricks too, just with a
+  constant 400× larger (100 bricks 3.7 s, 800 bricks 29.5 s — the same shape of
+  curve). What tells them apart is the constant, and what measures a constant
+  without a clock is something else on the same machine. Laying the bricks is the
+  yardstick: **the old check cost 84× the cost of building the model it was
+  checking; the new one costs about a tenth.** `stability_probe` asserts under 3×,
+  and the old code fails it.
+
 - **The lattice stores boxes, and anything that asks it per *cell* is a bug.**
   It used to be a Dictionary with one entry per 2 LDU cell — 9,600 for a single
   2x4 brick — plus `_columns` holding the same volume again. Eight thousand

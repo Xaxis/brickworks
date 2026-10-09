@@ -103,9 +103,9 @@ func check(world: BrickWorld) -> Report:
 	if bricks.is_empty():
 		return report
 
-	# Mass per brick, and the cells each occupies, once.
+	# Mass per brick, and the boxes each occupies, once.
 	var mass: Dictionary = {}          ## id -> grams
-	var cells_of: Dictionary = {}      ## id -> Array[Vector3i]
+	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
@@ -116,22 +116,48 @@ func check(world: BrickWorld) -> Report:
 
 	# Who rests on whom. A brick supports another when one of its cells
 	# sits directly beneath one of theirs.
-	var above: Dictionary = {}         ## id -> { id: shared column count }
+	# In boxes, and asked of the lattice once per brick.
+	#
+	# This walked every cell of every brick and asked the lattice what
+	# was in the cell above it. A 2x4 brick is nine thousand six hundred
+	# cells, so a thousand-brick model is ten million lookups: measured
+	# at 37 ms a brick, 41 seconds for the 1,106-brick castle that
+	# provoked this, and six minutes for the ten thousand the lattice
+	# can hold. The app shows this on every change and the design loop
+	# runs it on the one look it takes at its finished work.
+	#
+	# A brick's boxes lifted one cell is exactly the space whatever
+	# rests on it occupies, so one bucket query finds the candidates and
+	# the overlap of two boxes is a box — three subtractions and a
+	# product, rather than a lookup per cell. Verified against the
+	# cell-by-cell count on seven real pairs of parts: identical.
+	var above: Dictionary = {}         ## id -> { id: shared cell count }
 	var below: Dictionary = {}
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
-		var cells: Array[Vector3i] = _cells(brick)
-		cells_of[brick.id] = cells
-		for cell: Vector3i in cells:
-			var over: int = lattice.brick_at(Vector3i(cell.x, cell.y + 1, cell.z))
-			if over == 0 or over == brick.id:
+		var mine: PackedInt32Array = _boxes(brick)
+		boxes_of[brick.id] = mine
+		if mine.is_empty():
+			continue
+		var lid: PackedInt32Array = BrickLattice.moved_by(
+			mine, Vector3i(0, 1, 0))
+		for over: int in lattice.blockers_boxes(lid, brick.id):
+			# Skipping pairs whose boxes already overlap was tried, on
+			# the theory that a part inside another is not resting on
+			# it. It is wrong, and measurably: a stud belongs to the
+			# brick below and reaches into the brick above, so nearly
+			# every real joint overlaps. The kart went from 42 joints to
+			# 14 and the car from 53 to 44.
+			var shared: int = BrickLattice.shared_cells(
+				lid, lattice.boxes_of(over))
+			if shared <= 0:
 				continue
 			if not above.has(brick.id):
 				above[brick.id] = {}
-			above[brick.id][over] = int(above[brick.id].get(over, 0)) + 1
+			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared
 			if not below.has(over):
 				below[over] = {}
-			below[over][brick.id] = int(below[over].get(brick.id, 0)) + 1
+			below[over][brick.id] = int(below[over].get(brick.id, 0)) + shared
 
 	# Push the load downward, sharing it among supporters.
 	#
@@ -186,11 +212,11 @@ func check(world: BrickWorld) -> Report:
 			continue
 		var centre: Vector3 = load_centre.get(brick.id, Vector3.ZERO) / grams
 
-		var risk: Risk = _assess(brick, grams, centre, cells_of, above)
+		var risk: Risk = _assess(brick, grams, centre, above)
 		if risk != null:
 			report.risks.append(risk)
 
-	_check_levels(world, mass, cells_of, report)
+	_check_levels(world, mass, boxes_of, report)
 
 	report.risks.sort_custom(func(a: Risk, b: Risk) -> bool:
 		return a.margin < b.margin)
@@ -201,7 +227,7 @@ func check(world: BrickWorld) -> Report:
 
 func _assess(
 	brick: BrickWorld.Brick, grams: float, centre: Vector3,
-	cells_of: Dictionary, above: Dictionary
+	above: Dictionary
 ) -> Risk:
 	# The joint's strength is the number of stud-sized columns shared
 	# with what sits directly on it.
@@ -242,7 +268,7 @@ func _assess(
 ## decides whether a thing tips, and it catches a leaning tower and a
 ## cantilevered arm without libelling a wall.
 func _check_levels(
-	world: BrickWorld, mass: Dictionary, cells_of: Dictionary, report: Report
+	world: BrickWorld, mass: Dictionary, boxes_of: Dictionary, report: Report
 ) -> void:
 	var bricks: Array = world.bricks()
 	if bricks.size() < 2:
@@ -250,14 +276,16 @@ func _check_levels(
 
 	# Group by the height each brick starts at, in whole cells.
 	var levels: Dictionary = {}        ## cell y -> Array[Brick]
+	## id -> the lowest cell it occupies, worked out once.
+	var stands_at: Dictionary = {}
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
-		var cells: Array[Vector3i] = cells_of.get(brick.id, [])
-		if cells.is_empty():
+		var boxes: PackedInt32Array = boxes_of.get(brick.id, PackedInt32Array())
+		if boxes.is_empty():
 			continue
-		var floor_y: int = 0x7FFFFFFF
-		for cell: Vector3i in cells:
-			floor_y = mini(floor_y, cell.y)
+		var corners: Array = BrickLattice.corners_in(boxes)
+		var floor_y: int = (corners[0] as Vector3i).y
+		stands_at[brick.id] = floor_y
 		if not levels.has(floor_y):
 			levels[floor_y] = []
 		levels[floor_y].append(brick)
@@ -275,13 +303,9 @@ func _check_levels(
 		var centre := Vector3.ZERO
 		for item: Variant in bricks:
 			var brick: BrickWorld.Brick = item
-			var cells: Array[Vector3i] = cells_of.get(brick.id, [])
-			if cells.is_empty() or cells[0].y < cut:
+			if not stands_at.has(brick.id):
 				continue
-			var floor_y: int = 0x7FFFFFFF
-			for cell: Vector3i in cells:
-				floor_y = mini(floor_y, cell.y)
-			if floor_y < cut:
+			if int(stands_at[brick.id]) < cut:
 				continue
 			var w: float = mass.get(brick.id, 0.0)
 			grams += w
@@ -295,13 +319,21 @@ func _check_levels(
 		var hi := Vector2(-INF, -INF)
 		for item: Variant in bricks:
 			var brick: BrickWorld.Brick = item
-			for cell: Vector3i in cells_of.get(brick.id, []):
-				if cell.y >= cut:
-					continue
-				var x: float = cell.x * BrickLattice.CELL
-				var z: float = cell.z * BrickLattice.CELL
-				lo = Vector2(minf(lo.x, x), minf(lo.y, z))
-				hi = Vector2(maxf(hi.x, x), maxf(hi.y, z))
+			var boxes: PackedInt32Array = boxes_of.get(
+				brick.id, PackedInt32Array())
+			var at: int = 0
+			# A box's plan extent does not depend on how much of it is
+			# below the cut, only on whether any of it is — so the box
+			# itself answers what every one of its cells used to.
+			while at < boxes.size():
+				if boxes[at + 1] < cut:
+					var x_from: float = boxes[at] * BrickLattice.CELL
+					var z_from: float = boxes[at + 2] * BrickLattice.CELL
+					var x_to: float = (boxes[at + 3] - 1) * BrickLattice.CELL
+					var z_to: float = (boxes[at + 5] - 1) * BrickLattice.CELL
+					lo = Vector2(minf(lo.x, x_from), minf(lo.y, z_from))
+					hi = Vector2(maxf(hi.x, x_to), maxf(hi.y, z_to))
+				at += 6
 		if lo.x == INF:
 			continue
 
@@ -386,12 +418,41 @@ static func grams(info: PartLibrary.PartInfo) -> float:
 	return (material / CUBIC_LDU_PER_CM3) * DENSITY_G_PER_CM3
 
 
-func _cells(brick: BrickWorld.Brick) -> Array[Vector3i]:
+## The cells a brick occupies, as boxes — the lattice's own answer where
+## it has one.
+##
+## Both sides of "is this resting on that" have to come from the same
+## account of where a brick is, and the version this replaced did not:
+## it took the *span* of a turned part's boxes for the lower brick and
+## asked the lattice, which holds the exact cells, about the upper one.
+## Measured over the eleven models here, that disagreed on two — the
+## kart and the lighthouse, the two with turned parts — reporting 41
+## joints where there are 42 and 56 where there are 58. No verdict
+## changed on any of them, because `joints` is a count and not a
+## judgement, but a contact graph that disagrees with the collision
+## lattice about what is touching what is a bug waiting for a model that
+## cares.
+##
+## Deriving it is the fallback, for a world holding a brick the lattice
+## does not: scenery, or a model opened without being registered. A
+## brick with no boxes would otherwise read as weightless rather than as
+## unknown.
+func _boxes(brick: BrickWorld.Brick) -> PackedInt32Array:
+	if lattice != null:
+		var known: PackedInt32Array = lattice.boxes_of(brick.id)
+		if not known.is_empty():
+			return known
+	return _derive_boxes(brick)
+
+
+func _derive_boxes(brick: BrickWorld.Brick) -> PackedInt32Array:
 	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 	if part == null:
-		return []
+		return PackedInt32Array()
 	var boxes: Array[AABB] = part.boxes
 	if boxes.is_empty():
-		return []
-	return BrickLattice.cells_for(
-		boxes, BrickLattice.to_cell(brick.transform.origin), brick.transform.basis)
+		return PackedInt32Array()
+	var at: Vector3i = BrickLattice.to_cell(brick.transform.origin)
+	if BrickLattice.is_square_to_grid(brick.transform.basis):
+		return BrickLattice.boxes_for(boxes, at, brick.transform.basis)
+	return BrickLattice.boxes_for_turned(boxes, at, brick.transform.basis)
