@@ -404,6 +404,12 @@ PART_FLOOR = 0.15
 ## castle told about them came out with 37 of the 40, so a pass now
 ## reaches down the list as the top of it is used.
 COMMON = 100
+## And the accents: parts a kind's sets use one or two of, in at least a
+## tenth of them, no bigger than a 2 x 3 — a big plate is used once as a
+## base, which is not what an accent is.
+ACCENTS = 40
+ACCENT_SHARE = 0.10
+ACCENT_AREA = 6.5
 REAL_MODEL = 20          # parts; below this a "set" is merchandise
 
 
@@ -438,6 +444,8 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
     codes = colour_codes(ldraw_colours)
     other_line = _lines()
     ldraw_of: dict[str, str] = {}
+    size_of = {entry["id"]: entry.get("size_ldu") for entry in entries
+               if entry.get("size_ldu")}
     a_prop: dict[str, bool] = {}
     for entry in entries:
         if entry.get("category") in NOT_A_PART:
@@ -556,11 +564,36 @@ def kinds(entries: list[dict], ldraw_colours: list[dict]) -> dict:
             common.append([ldraw_of[part], round(100 * count / len(members))])
             if len(common) == COMMON:
                 break
+        # The one-off pieces, which is where nearly all of the gap to a
+        # real set was: a set of 1,100 parts has some 85 shapes it uses
+        # once or twice, and the best castle built here had 21.  Props
+        # are kept here, unlike above: a goblet on a table is an accent.
+        how_many: dict[str, list[int]] = {}
+        for set_num in members:
+            per_part: dict[str, int] = {}
+            for p, _c, q in per_set[set_num]:
+                per_part[p] = per_part.get(p, 0) + q
+            for p, q in per_part.items():
+                how_many.setdefault(p, []).append(q)
+        accents = []
+        for part, counts in sorted(how_many.items(),
+                                   key=lambda kv: -len(kv[1])):
+            if len(counts) < len(members) * ACCENT_SHARE:
+                break
+            if part not in ldraw_of or sorted(counts)[len(counts) // 2] > 2:
+                continue
+            size = size_of.get(ldraw_of[part])
+            if size is None or (size[0] / 20) * (size[2] / 20) > ACCENT_AREA:
+                continue
+            accents.append([ldraw_of[part], round(100 * len(counts) / len(members))])
+            if len(accents) == ACCENTS:
+                break
         out[word] = {
             "sets": len(members),
             "parts": [[part, lift] for lift, part in ranked[:12]],
             "colors": [[code, lift] for lift, code in tinted[:6]],
             "common": common,
+            "accents": accents,
         }
         if props:
             out[word]["props"] = [[part, lift] for lift, part in props[:5]]

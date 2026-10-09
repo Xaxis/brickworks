@@ -1592,6 +1592,25 @@ func _assembly_measured(name: String, inside: Array[BrickWorld.Brick],
 			+ "That is where most of a set's variety is — one of a part, "
 			+ "where something happens — and where this model is "
 			+ "furthest from one.")
+	# And what those pieces are, for this kind: the parts real sets of it
+	# use one or two of, where something happens — a goblet, a torch, a
+	# hinge, a bracket — measured, not chosen. The count alone, told in
+	# the message above, did not move: 21 one-off shapes, then 13.
+	var accents := PackedStringArray()
+	var named_accent: Dictionary = {}
+	for raw: Variant in library.kinds_for(_brief):
+		for entry: Variant in (raw as Dictionary).get("accents", []):
+			var part_id: String = str((entry as Array)[0])
+			if named_accent.has(part_id) or have.has(library.resolve(part_id)):
+				continue
+			named_accent[part_id] = true
+			accents.append("  %s %s — one or two, in %d%% of them" % [part_id,
+				_part_called(part_id), int((entry as Array)[1])])
+	if not accents.is_empty():
+		said.append("The pieces real %s sets use one or two of, which the "
+			% " and ".join(kinds) + "whole model has none of — the "
+			+ "accents, where something happens:\n"
+			+ "\n".join(accents.slice(0, 12)))
 	if not lacking.is_empty():
 		said.append("And the parts most real %s sets use at all, which " 
 			% " and ".join(kinds) + "the whole model has none of yet. "

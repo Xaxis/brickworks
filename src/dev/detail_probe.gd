@@ -88,6 +88,8 @@ func _run() -> void:
 		"it is told the parts of every kind the brief named that it lacks")
 	# And the ordinary parts most castle sets use, which a model of one
 	# brick and nothing else lacks — the 1 x 2 plate is in 80% of them.
+	_ok(gatehouse.contains("one or two, in") and gatehouse.contains("2343"),
+		"told the accents real castle sets use one or two of, a goblet among them")
 	_ok(gatehouse.contains("3023b Plate 1 x 2 — in"),
 		"told the ordinary parts most real sets of its kind use and it lacks")
 	_ok(not gatehouse.contains("used only once or twice"),
