@@ -13,9 +13,10 @@
 ##
 ##   repeat   the same bricks again, stepped
 ##   mirror   what is there, reflected — symmetry by construction
-##   fill     a footprint, tiled with the largest plates that fit, and
-##            with walls, layers and a taper: a dome, a cone, a tube, a
-##            hull or a bowl, said in one object
+##   fill     a footprint, tiled with the largest plates that fit or
+##            in courses of short bricks in a bond, and with walls,
+##            layers and a taper: a dome, a cone, a tube, a hull or a
+##            bowl, said in one object
 ##
 ## Three verbs, and between them a saucer, a hull, a colonnade and a
 ## staggered wall stop being arithmetic. The idea is the one behind
@@ -47,22 +48,36 @@ const TILES: Array = [
 ## so does everything above it. The first version of this offered a
 ## round tower and a hull in the prompt and both came back refused.
 ##
-## Two studs wide before one, at the same area: a course of 1x8s is a
-## wall one brick thick with nothing bonding it to the course above.
+## Two studs wide before one, so a wall two thick is tied across.
+##
+## And no longer than a real set lays a wall. This list used to start at
+## 2 x 10 and 1 x 8 and lay the longest brick that fitted, and every
+## castle built with it was 39-56% pieces as big as a 2 x 4 brick, where
+## a real set is a median 10% and more than about 20% is coarser than
+## all but one in twenty. A wall of long bricks is also a wall nothing
+## can happen in: no window, masonry brick or second grey, because there
+## is no small piece in it to be one.
 const COURSES: Array = [
-	[10, 2, "3006", 0], [2, 10, "3006", 1],
-	[8, 2, "3007", 0], [2, 8, "3007", 1],
-	[6, 2, "2456", 0], [2, 6, "2456", 1],
-	[4, 2, "3001", 0], [2, 4, "3001", 1],
-	[8, 1, "3008", 0], [1, 8, "3008", 1],
 	[3, 2, "3002", 0], [2, 3, "3002", 1],
-	[6, 1, "3009", 0], [1, 6, "3009", 1],
 	[2, 2, "3003", 0],
 	[4, 1, "3010", 0], [1, 4, "3010", 1],
 	[3, 1, "3622", 0], [1, 3, "3622", 1],
 	[2, 1, "3004", 0], [1, 2, "3004", 1],
 	[1, 1, "3005", 0],
 ]
+
+## The bricks of a course that keep to the bond, and how long they are.
+##
+## The longest of each width may only start where its joints fall on a
+## grid along the wall, and the grid moves on by half a brick each
+## course, so every joint sits over the middle of a brick below — a
+## running bond, which is how a wall of short bricks holds together. The
+## shorter ones fill what is left at the ends, wherever it is.
+##
+## Without it the same bricks are laid from the same corner every
+## course and every joint lines up: a wall of columns, which is what a
+## castle laid by hand came to, and why fill had been laying long bricks.
+const BONDED: Dictionary = {"3002": 3, "3010": 4}
 
 ## Wedge plates, which LDraw files under "Wing": one plate thick, left
 ## and right handed, largest first.
@@ -373,6 +388,7 @@ static func _fill(pattern: Dictionary, trouble: Array,
 			made.append_array(_lay_wedges(here, at_y, colour, below, laid,
 				library))
 		var tiles: Array = COURSES if is_equal_approx(rise, 3.0) else TILES
+		var course: int = layer if is_equal_approx(rise, 3.0) else -1
 		if not rim_of.is_empty():
 			# A wedge that sits wholly on the outline belongs to it.
 			_colour_the_rim(made, from_here, rim_of, edge_colour, library)
@@ -393,8 +409,9 @@ static func _fill(pattern: Dictionary, trouble: Array,
 					here.erase(edge_cell)
 			if not ring.is_empty():
 				made.append_array(_tile(ring, at_y, edge_colour, tiles,
-					below, laid))
-		made.append_array(_tile(here, at_y, colour, tiles, below, laid))
+					below, laid, course))
+		made.append_array(_tile(here, at_y, colour, tiles, below, laid,
+			course))
 		below = laid
 		if made.size() > MOST:
 			trouble.append("that fill would be %d bricks, which is a "
@@ -838,7 +855,8 @@ static func _placement(named: String, shape: Array, corner: Vector2i,
 		"z": corner.y, "rot": said[1].to_int()}
 
 
-## A set of studs, laid in the largest parts that cover it.
+## A set of studs, laid in the largest parts that cover it — or, for a
+## course of bricks, in a bond.
 ##
 ## [param below] is what the layer underneath covers. Where there is
 ## one, every part laid here has to reach it: a layer that flares
@@ -850,16 +868,26 @@ static func _placement(named: String, shape: Array, corner: Vector2i,
 ##
 ## [param laid] comes back holding what was covered, to be the next
 ## layer's [param below].
+##
+## [param course] is which course of bricks this is, counting from the
+## first, and lays them in a bond: see [constant BONDED]. Plates, at -1,
+## are laid largest first wherever they fit.
 static func _tile(wanted: Dictionary, y: float, colour: int,
-		tiles: Array, below: Dictionary, laid: Dictionary) -> Array:
+		tiles: Array, below: Dictionary, laid: Dictionary,
+		course: int = -1) -> Array:
 	var made: Array = []
-	for tile: Variant in tiles:
+	for tile: Variant in _corners_turn(tiles, course):
 		var one: Array = tile
 		var wide: int = one[0]
 		var tall: int = one[1]
+		var bond: int = int(BONDED.get(one[2], 0)) if course >= 0 else 0
+		var shift: int = (bond / 2) * (course % 2) if bond > 0 else 0
 		for key: Variant in wanted.keys():
 			var cell: Vector2i = key
 			if not wanted.has(cell):
+				continue
+			if bond > 0 and posmod((cell.x if wide > tall else cell.y)
+					- shift, bond) != 0:
 				continue
 			var fits: bool = true
 			var held: bool = below.is_empty()
@@ -882,3 +910,27 @@ static func _tile(wanted: Dictionary, y: float, colour: int,
 			made.append({"part": one[2], "color": colour,
 				"x": cell.x, "y": y, "z": cell.y, "rot": one[3]})
 	return made
+
+
+## The tiles in the order to try them, which on every other course puts
+## each brick turned across before the same brick along.
+##
+## Whichever is tried first takes the corner of a ring, and with the same
+## one first every course the joint beside the corner is in the same
+## place all the way up: measured on a curtain wall, every stacked joint
+## left after the bond was a corner. A real wall alternates which side
+## owns the corner brick, and so does this.
+static func _corners_turn(tiles: Array, course: int) -> Array:
+	if course < 0 or course % 2 == 0:
+		return tiles
+	var order: Array = []
+	var n: int = 0
+	while n < tiles.size():
+		if n + 1 < tiles.size() and tiles[n][2] == tiles[n + 1][2]:
+			order.append(tiles[n + 1])
+			order.append(tiles[n])
+			n += 2
+		else:
+			order.append(tiles[n])
+			n += 1
+	return order

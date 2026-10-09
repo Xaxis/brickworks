@@ -258,7 +258,32 @@ def _models() -> set[str]:
             if is_model(r["theme_id"]) and not named_one(r["name"])}
 
 
-def set_norms() -> dict:
+## How big a piece has to be to count as a big one: a 2 x 4 brick, in
+## plates — studs across, by studs deep, by plates tall with its studs.
+## A 1 x 8 brick and a 4 x 4 plate are as big; a 1 x 6 and a 2 x 3 are not.
+BIG_PIECE = 24
+## What is not a building piece, so has no size worth counting.
+NOT_BUILT = {"Baseplate", "Figure", "Animal"}
+
+
+def piece_size(entry: dict) -> float | None:
+    """How big a building piece is, in plates; None for what is not one.
+
+    A box measure, so a corner brick counts as its square.  The app
+    measures a design with the same rule (Assistant._piece_size), which
+    is the only reason a design and a real set can be compared on it.
+    """
+    category = entry.get("category", "")
+    if category in NOT_BUILT or category.startswith(("Minifig", "Sticker")):
+        return None
+    size = entry.get("size_ldu")
+    if not size:
+        return None
+    across, tall, deep = size
+    return (across / 20) * (deep / 20) * max(tall, 8) / 8
+
+
+def set_norms(entries: list[dict] | None = None) -> dict:
     """What a real LEGO set of a given size is actually made of.
 
     The checker can say whether a model stands up.  It cannot say
@@ -280,6 +305,15 @@ def set_norms() -> dict:
     models = _models()
     inventories = {r["id"]: r["set_num"] for r in _rows("inventories")
                    if r["version"] == "1" and r["set_num"] in models}
+    # How big each Rebrickable part is, through the one join there is.
+    size_of: dict[str, float] = {}
+    if entries:
+        match = _matcher(r["part_num"] for r in _rows("parts"))
+        for entry in entries:
+            found = match(entry)
+            size = piece_size(entry)
+            if found is not None and size is not None:
+                size_of.setdefault(found, size)
     per_set: dict[str, list] = {}
     for row in _rows("inventory_parts"):
         set_num = inventories.get(row["inventory_id"])
@@ -301,6 +335,7 @@ def set_norms() -> dict:
     bands = []
     for low, high in SET_BANDS:
         lots, shapes, most, colours, accents, main = [], [], [], [], [], []
+        big = []
         for items in per_set.values():
             total = sum(q for _, _, q in items)
             if not (low <= total < high):
@@ -326,6 +361,15 @@ def set_norms() -> dict:
             for _p, c, q in items:
                 per_colour[c] = per_colour.get(c, 0) + q
             main.append(100.0 * max(per_colour.values()) / total)
+            # How many of its pieces are as big as a 2 x 4 brick.  A real
+            # set is a median 10% at every size from 350 parts up, and
+            # more than about 20% is coarser than all but one in twenty;
+            # every castle built here was 39-56%, its walls laid in 2 x 10
+            # bricks.  Only pieces whose size is known are counted.
+            sized = [(size_of[p], q) for p, _c, q in items if p in size_of]
+            if sized:
+                big.append(100.0 * sum(q for v, q in sized if v >= BIG_PIECE)
+                           / sum(q for _v, q in sized))
         if len(lots) < 25:          # too few to be a norm
             continue
         # The medians say what a real set of this size is like, and are
@@ -356,6 +400,9 @@ def set_norms() -> dict:
             "main_colour": round(middle(main)),
             "main_colour_high": round(at(main, 0.95)),
         })
+        if big:
+            bands[-1]["big"] = round(middle(big))
+            bands[-1]["big_high"] = round(at(big, 0.95))
     return {"source": "Rebrickable set inventories", "bands": bands}
 
 

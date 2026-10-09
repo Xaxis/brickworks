@@ -27,6 +27,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from rebrickable import BIG_PIECE, piece_size
+
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = ROOT / "assets" / "generated" / "catalogue.json"
 
@@ -93,10 +95,16 @@ def main() -> int:
     top_two = round(100 * sum(by_colour[:2]) / len(parts))
     colours = {c for _, c in parts}
     lots = set(parts)
+    by_id = {entry["id"]: entry for entry in catalogue["parts"]}
+    sizes = [piece_size(by_id[p]) for p, _ in parts if p in by_id]
+    sizes = [size for size in sizes if size is not None]
+    big = round(100 * sum(1 for size in sizes if size >= BIG_PIECE)
+                / max(1, len(sizes)))
     print(f"{args.model.name}: {len(parts)} parts, {len(count)} shapes, "
           f"{len(colours)} colours, {len(lots)} lots, {most} of {commonest}, "
           f"{accents} shapes used once or twice, {main}% its main colour "
-          f"({top_two}% in two)")
+          f"({top_two}% in two), {big}% of its pieces as big as a 2x4 "
+          f"brick")
     if unknown:
         print(f"  {len(unknown)} shapes are not in the catalogue, so nothing "
               f"below knows them: {', '.join(unknown[:8])}")
@@ -112,7 +120,9 @@ def main() -> int:
               f"{band['most_of_one']} of one (high above "
               f"{band['most_of_one_high']}), {band.get('accents', '?')} "
               f"used once or twice, {band.get('main_colour', '?')}% its main "
-              f"colour (high above {band.get('main_colour_high', '?')}%)")
+              f"colour (high above {band.get('main_colour_high', '?')}%), "
+              f"{band.get('big', '?')}% as big as a 2x4 brick (high above "
+              f"{band.get('big_high', '?')}%)")
 
     if args.brief:
         kinds = catalogue["kinds"]["kinds"]

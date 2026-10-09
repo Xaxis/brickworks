@@ -147,6 +147,9 @@ func _run() -> void:
 			{"name": "wall", "x_from": 18, "x_to": 26, "z_from": 0, "z_to": 4},
 		],
 	})])
+	_ok(_text_of(assistant._messages.back()).contains("100% of its pieces "
+			+ "as big as a 2 x 4 brick or bigger, most of them 3001"),
+		"the look says the model is built of big pieces, against real sets")
 	await _reply(assistant, [{"type": "text", "text": "The whole is right."}])
 	_ok(_said("detailing the keep (1 of 2): 61 parts, 1 shapes"),
 		"the keep comes up, 61 parts of one shape")
@@ -163,6 +166,11 @@ func _run() -> void:
 		"...and where the gap is: the pieces a real set uses once or twice")
 	_ok(back.contains("the whole model is 100% Light Bluish Grey"),
 		"...and that it is all one colour, against real sets its size")
+	_ok(back.contains("(100% of the keep's, most of them 3001"),
+		"...and that it is all big pieces, the keep's own share named")
+	_ok(_said("sent the keep back: 1 shapes in 61 parts, 0 used once or "
+			+ "twice in the whole model, 100% its main colour, 100% big pieces"),
+		"...and the progress line says both")
 	_ok(not _said("detailing the wall"), "the wall waits")
 	await _reply(assistant, [{"type": "text", "text": "Still done."}])
 	_ok(_said("detailing the wall (2 of 2)"),
@@ -215,6 +223,16 @@ func _run() -> void:
 	_ok(_text_of(assistant._messages.back()).contains("left out"),
 		"...and the look says what was left out, to put back")
 	await _reply(assistant, [{"type": "text", "text": "Done."}])
+
+	print("\nwhat counts as a big piece")
+	_ok(assistant._coarse(PackedStringArray(["3004", "3004", "3001"]))
+			== [33, "3001"],
+		"a 2 x 4 brick is one and a 1 x 2 is not")
+	_ok(assistant._coarse(PackedStringArray(["3008", "3009", "3031", "3795"]))
+			== [50, "3008"],
+		"...a 1 x 8 and a 4 x 4 plate are, a 1 x 6 and a 2 x 6 plate not")
+	_ok(assistant._coarse(PackedStringArray(["3811", "3004"])) == [0, ""],
+		"...and a base plate is not counted at all")
 
 	print("\na model that is one thing gets one look")
 	_ok(Assistant._queue_assemblies([{"name": "lighthouse", "where": {}}]).is_empty(),

@@ -67,7 +67,13 @@ fixing what it got wrong.
   Each pass is told what earlier passes brought (siblings converged: four towers
   given "the same crown, so they match"), and a pass that says it is done while
   its assembly is thinner than all but one real set in twenty of its size is
-  sent back once ("sent the keep back" in the log).
+  sent back once ("sent the keep back" in the log). It is also sent back when
+  the whole model is on the tail of real sets for one-off pieces, for one
+  colour, or for big pieces — the share as big as a 2 x 4 brick
+  (`Assistant._coarse`, the same rule as `rebrickable.piece_size`; a real set is
+  a median 10%, every castle built before this was 39-56%). The look's measured
+  advice (`_variety`) names the same tail. `detail_probe` asserts all three
+  messages and what counts as a big piece.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
@@ -144,9 +150,12 @@ godot --headless --path . --script src/dev/account_probe.gd      # a whole sign-
 
 A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
 --effort low`, then `tools/texture.py <the .ldr> --brief "<the brief>"` once the
-run has *ended* — parts, shapes, colours, lots and the commonest piece against a
-real set of its size, and how many of the brief's kind parts it uses. A driven run
-prints what it spent before its verdict; report it.
+run has *ended* — parts, shapes, colours, lots, the commonest piece, one-off
+shapes, main colour and the share of big pieces against a real set of its size,
+and how many of the brief's kind parts it uses. `tools/layout.py <the .ldr>` says
+how it stands: footprint, height, towers over walls, against real sets measured
+from LDraw's model repository (numbers in its docstring). A driven run prints
+what it spent before its verdict; report it.
 
 ## Gotchas
 
@@ -247,9 +256,15 @@ prints what it spent before its verdict; report it.
   something to say; `repeat_section` in both that and `_edit`.
 - **`fill` is right for a straight wall and was not being used for one.** A
   castle dictated its curtain walls as 223 1x2 bricks, every joint in a column.
-  `fill` on the same 40x24 wall, one stud thick, twelve courses: **192 parts, 168
-  of them 1x8 and 24 of them 1x6, and not one 1x2**, staggered and bonded,
-  because it lays the longest brick that fits each run. Its worked examples
+  `fill` then laid the same 40x24 wall in 168 1x8s and 24 1x6s, and the castles
+  built that way were 39-56% pieces as big as a 2 x 4 brick against a real set's
+  10%: slabs. Its courses are now a real set's sizes (`Patterns.COURSES`, 1x4
+  down, 2x3 and 2x2 where a wall is two thick) on a running bond
+  (`Patterns.BONDED`: the longest brick of each width starts only where its
+  joints fall on a grid that moves half a brick each course, and the side that
+  owns a ring's corner alternates). The same wall: **408 parts, 336 of them 1x4,
+  and 0 of 376 joints over a joint in the course below**; it and a wall two
+  studs thick pass the checker. Its worked examples
   listed a dome, a cone, a tower, a hull and a bowl and **no wall** — the shape
   it is best at. The table names a wall and a room now, and
   `patterns_probe._a_wall_is_long_bricks` pins the numbers so the prompt cannot

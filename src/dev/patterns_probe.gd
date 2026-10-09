@@ -227,6 +227,14 @@ func _holds_up() -> void:
 		["a bowl", {"pattern": "fill", "shape": "ellipse",
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 8, "deep": 8,
 			"wall": 2, "layers": 6, "shrink": -2, "color": 71}],
+		# Laid in short bricks, which only hold as one thing if the bond
+		# carries every course across the joints of the one below.
+		["a curtain wall", {"pattern": "fill", "shape": "rectangle",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 40, "deep": 24,
+			"wall": 1, "layers": 12, "rise": 3, "color": 71}],
+		["a wall two studs thick", {"pattern": "fill", "shape": "rectangle",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 30, "deep": 18,
+			"wall": 2, "layers": 8, "rise": 3, "color": 71}],
 	]:
 		var model: Assistant.Model = assistant._read_model(
 			{"patterns": [one[1]]})
@@ -309,18 +317,15 @@ func _check(what: String, ok: bool) -> void:
 	print("  FAIL  %s" % what)
 
 
-## Are the wedge shapes the shapes the parts actually have?
-##
 ## A wall is the shape fill is best at and the one a design was most
 ## likely to write out by hand.
 ##
 ## Measured on a castle run: it dictated its curtain walls as two hundred
-## and twenty-three 1x2 bricks, every joint in a column, giving a
-## thousand-part model made of twenty-two shapes where a real set of that
-## size has a hundred and seventy. fill lays the longest brick that fits
-## each run, so the same wall is far fewer parts and bonded — and the
-## prompt now quotes these numbers, which is why they are asserted here
-## rather than left to drift.
+## and twenty-three 1x2 bricks, every joint in a column. fill then laid
+## the longest brick that fitted — 1x8s and 2x10s — and every castle
+## built that way was 39-56% pieces as big as a 2 x 4 brick, where a real
+## set is 10%. So it lays a real set's sizes now, in a bond, and what is
+## asserted is both halves: no long bricks, and no columns.
 func _a_wall_is_long_bricks() -> void:
 	print("")
 	print("  a curtain wall, which fill is best at")
@@ -334,18 +339,65 @@ func _a_wall_is_long_bricks() -> void:
 	_check("a 40 by 24 wall twelve courses high is said in one object, "
 		+ "%d parts%s" % [made.size(), "" if trouble.is_empty()
 			else " — but %s" % str(trouble)],
-		trouble.is_empty() and made.size() == 192)
+		trouble.is_empty() and made.size() > 0 and made.size() < 500)
 	var counted: Dictionary = {}
 	for raw: Variant in made:
 		var id: String = str((raw as Dictionary).get("part", "?"))
 		counted[id] = int(counted.get(id, 0)) + 1
-	_check("laid as %d 1x8 and %d 1x6 bricks"
-		% [int(counted.get("3008", 0)), int(counted.get("3009", 0))],
-		int(counted.get("3008", 0)) == 168
-			and int(counted.get("3009", 0)) == 24)
-	# The thing the castle did, which must not be what fill does.
-	_check("and not one 1x2, which is what writing it out by hand gave",
-		not counted.has("3004"))
+	_check("laid in the sizes a real set uses: %s" % str(counted),
+		int(counted.get("3010", 0)) > made.size() / 2
+			and not counted.has("3008") and not counted.has("3006"))
+	# The bond: where two bricks of a course meet is a joint, and a joint
+	# directly over a joint in the course below is how a wall becomes
+	# columns. A half brick at the end of a run is fine — it is the
+	# joints that must not stack.
+	var at: Dictionary = {}          ## course -> {cell: index}
+	for n: int in made.size():
+		var one: Dictionary = made[n]
+		var course: int = int(round(float(one["y"]) / 3.0))
+		if not at.has(course):
+			at[course] = {}
+		for cell: Vector2i in _cells_of(one):
+			(at[course] as Dictionary)[cell] = n
+	var joints: Dictionary = {}      ## course -> {"cell|step": true}
+	for course: Variant in at:
+		var here: Dictionary = at[course]
+		var found: Dictionary = {}
+		for key: Variant in here:
+			var cell: Vector2i = key
+			for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+				if here.has(cell + step) and here[cell + step] != here[cell]:
+					found["%s|%s" % [cell, step]] = true
+		joints[course] = found
+	var stacked: int = 0
+	var all_joints: int = 0
+	for course: Variant in joints:
+		if int(course) == 0:
+			continue
+		for joint: Variant in joints[course]:
+			all_joints += 1
+			if (joints[int(course) - 1] as Dictionary).has(joint):
+				stacked += 1
+	_check("bonded: %d of %d joints stand on a joint in the course below"
+		% [stacked, all_joints], all_joints > 0 and stacked * 20 < all_joints)
+
+
+func _cells_of(one: Dictionary) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
+	if info == null:
+		return cells
+	var footprint: Vector2i = info.footprint_studs()
+	var wide: int = footprint.x
+	var deep: int = footprint.y
+	if int(one.get("rot", 0)) % 2 == 1:
+		var swap: int = wide
+		wide = deep
+		deep = swap
+	for i: int in wide:
+		for j: int in deep:
+			cells.append(Vector2i(int(one["x"]) + i, int(one["z"]) + j))
+	return cells
 
 
 ## A fill that lays wedges has to know which cells of a wedge's

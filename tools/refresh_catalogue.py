@@ -155,7 +155,7 @@ def _kinds(document: dict, colors: list[dict]) -> str:
 def _set_norms(document: dict) -> str:
     """Record what a real set of each size is made of.
 
-    Small enough to live in the catalogue header — five bands of four
+    Small enough to live in the catalogue header — five bands of a dozen
     numbers — and it has to travel with the app, because the question it
     answers is asked while designing.
     """
@@ -165,7 +165,7 @@ def _set_norms(document: dict) -> str:
     except ImportError:
         return "set norms: skipped (tools/rebrickable.py missing)"
     try:
-        norms = rebrickable.set_norms()
+        norms = rebrickable.set_norms(document["parts"])
     except FileNotFoundError as missing:
         return f"set norms: skipped ({missing})"
     document["set_norms"] = norms

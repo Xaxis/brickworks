@@ -17,7 +17,9 @@ extends SceneTree
 
 ## Real part numbers to build fixtures from, read off the catalogue. A
 ## typed list of 120 ran out the day the median for 500 parts became 123,
-## and a script error does not end a probe — it sits there.
+## and a script error does not end a probe — it sits there. Building
+## pieces smaller than a 2 x 4 brick only: the first 400 ids taken as
+## they came were a third big pieces, and a real set is a tenth.
 var _shapes: Array[String] = []
 
 var _failures: int = 0
@@ -44,8 +46,12 @@ func _initialize() -> void:
 	await process_frame
 	var ids: Array = library.parts.keys()
 	ids.sort()
-	for id: String in ids.slice(0, 400):
-		_shapes.append(id)
+	for id: String in ids:
+		var size: float = assistant._piece_size(id)
+		if size >= 0.0 and size < Assistant.BIG_PIECE:
+			_shapes.append(id)
+		if _shapes.size() == 400:
+			break
 
 	print("\nwhat the catalogue knows about real sets")
 	_ok(library.set_norms.size() >= 4,

@@ -1383,12 +1383,20 @@ func _detail_next(also: Array = []) -> bool:
 		var colour: Array = _main_colour(whole)
 		var high: int = int(real.get("main_colour_high", 0))
 		var grey: bool = high > 0 and int(colour[1]) > high
-		if thin or few or grey:
+		# Or it is built of big pieces, on the tail of real sets: see
+		# _coarse. Said with the assembly's own share, because that is
+		# what this pass can change.
+		var coarse: Array = _coarse(_ids_of(whole))
+		var big_high: int = int(real.get("big_high", 0))
+		var rough: bool = big_high > 0 and int(coarse[0]) > big_high
+		if thin or few or grey or rough:
 			_sent_back = true
 			var name: String = _detailing["name"]
 			progress.emit("sent the %s back: %d shapes in %d parts, %d "
 				% [name, shapes, here.size(), once]
-				+ "used once or twice in the whole model")
+				+ "used once or twice in the whole model, %d%% its main "
+				% int(colour[1]) + "colour, %d%% big pieces"
+				% int(coarse[0]))
 			var said := PackedStringArray()
 			if thin:
 				said.append("The %s is %d different shapes in %d parts. A "
@@ -1416,6 +1424,20 @@ func _detail_next(also: Array = []) -> bool:
 					+ "twenty. A second colour where something changes — "
 					+ "a band, a roof, a door, a trim — is what a real set "
 					+ "does with it.")
+			if rough:
+				var own: Array = _coarse(_ids_of(here))
+				said.append("And %d%% of the whole model's pieces are as "
+					% int(coarse[0]) + "big as a 2 x 4 brick or bigger "
+					+ "(%d%% of the %s's, most of them %s %s), where a "
+					% [int(own[0]), name, own[1] if not str(own[1]).is_empty()
+						else coarse[1], _part_called(str(own[1])
+							if not str(own[1]).is_empty() else str(coarse[1]))]
+					+ "real set its size has about %d%% and more than %d%% "
+					% [int(real.get("big", 0)), big_high]
+					+ "is coarser than all but one set in twenty. A long "
+					+ "brick is a stretch of wall where nothing can happen; "
+					+ "in short ones, one can be a window, a masonry brick "
+					+ "or a second grey.")
 			said.append("One more round on the %s: where does something " % name
 				+ "change that is still the same piece? Then stop.")
 			_messages.append({"role": "user", "content": " ".join(said)})
@@ -1700,6 +1722,61 @@ func _once_or_twice(bricks: Array[BrickWorld.Brick]) -> int:
 		per_part[id] = int(per_part.get(id, 0)) + 1
 	return per_part.values().filter(func(n: int) -> bool:
 		return n <= 2).size()
+
+
+## How big a piece has to be to count as a big one, in plates: studs
+## across by studs deep by plates tall with its studs. A 2 x 4 brick, a
+## 1 x 8 and a 4 x 4 plate are as big; a 1 x 6 and a 2 x 3 are not. The
+## same rule as piece_size in tools/rebrickable.py, which the norm in
+## set_norms is measured with, and the comparison is only fair because
+## of that.
+const BIG_PIECE := 24.0
+
+
+## How big a building piece is, in plates, or -1 for what is not one: a
+## figure, a sticker, a base plate.
+func _piece_size(part_id: String) -> float:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if info == null or info.category in ["Baseplate", "Figure", "Animal"] \
+			or info.category.begins_with("Minifig") \
+			or info.category.begins_with("Sticker"):
+		return -1.0
+	return (info.size.x / 20.0) * (info.size.z / 20.0) \
+		* maxf(info.size.y, 8.0) / 8.0
+
+
+## What share of some parts, by id, are as big as a 2 x 4 brick, as
+## [per cent, the commonest big one].
+##
+## A real set is a median 10% at every size from 350 parts up, and more
+## than about 20% is coarser than all but one set in twenty. Every
+## castle built here was 39-56%: curtain walls in 2 x 10 bricks, which
+## is a wall nothing can happen in — no window, no masonry brick, no
+## second grey — because there is no small piece in it to be one.
+func _coarse(part_ids: PackedStringArray) -> Array:
+	var sized: int = 0
+	var big: Dictionary = {}
+	var count: int = 0
+	for part_id: String in part_ids:
+		var size: float = _piece_size(part_id)
+		if size < 0.0:
+			continue
+		sized += 1
+		if size >= BIG_PIECE:
+			count += 1
+			big[part_id] = int(big.get(part_id, 0)) + 1
+	var commonest: String = ""
+	for part_id: String in big:
+		if commonest.is_empty() or int(big[part_id]) > int(big[commonest]):
+			commonest = part_id
+	return [0 if sized == 0 else 100 * count / sized, commonest]
+
+
+static func _ids_of(bricks: Array[BrickWorld.Brick]) -> PackedStringArray:
+	var ids := PackedStringArray()
+	for brick: BrickWorld.Brick in bricks:
+		ids.append(brick.part_id)
+	return ids
 
 
 ## The different parts among some bricks, as a set of ids.
@@ -3217,6 +3294,20 @@ func _variety(model: Model) -> String:
 		said.append("%d of one part (%s), where about %d is usual and %d "
 			% [most, commonest, want_most, high_most]
 			+ "is as many as all but one set in twenty uses")
+	var ids := PackedStringArray()
+	for placement: Placement in model.placements:
+		ids.append(placement.part)
+	var coarse: Array = _coarse(ids)
+	var big_high: int = int(normal.get("big_high", 0))
+	if big_high > 0 and int(coarse[0]) > big_high:
+		said.append("%d%% of its pieces as big as a 2 x 4 brick or bigger, "
+			% int(coarse[0]) + "most of them %s %s, where a real set has "
+			% [coarse[1], _part_called(str(coarse[1]))]
+			+ "about %d%% and more than %d%% is coarser than all but one "
+			% [int(normal.get("big", 0)), big_high] + "set in twenty. A "
+			+ "real set lays a wall in 1 x 2, 1 x 3 and 1 x 4 bricks, and "
+			+ "that is what lets one of them be a window, a masonry brick "
+			+ "or a second grey")
 	if said.is_empty():
 		return ""
 	return ("Thinner than a set of this size:\n  " + "\n  ".join(said)
@@ -5739,10 +5830,11 @@ func _what_a_set_is_made_of() -> String:
 		lines.append("  %d to %d parts: about %d part-and-colour lots, "
 			% [int(entry.get("from", 0)), int(entry.get("to", 0)),
 				int(entry.get("lots", 0))]
-			+ "%d different shapes, %d colours, and at most about %d of "
+			+ "%d different shapes, %d colours, at most about %d of "
 			% [int(entry.get("shapes", 0)), int(entry.get("colours", 0)),
 				int(entry.get("most_of_one", 0))]
-			+ "any one piece")
+			+ "any one piece, and %d%% of its pieces as big as a 2 x 4 "
+			% int(entry.get("big", 10)) + "brick")
 	return ("\n\nWHAT A SET IS MADE OF\nMeasured over every LEGO set there "
 		+ "is, by size:\n" + "\n".join(lines)
 		+ "\nThese are medians of real sets, not a target to hit exactly. "
@@ -5752,7 +5844,10 @@ func _what_a_set_is_made_of() -> String:
 		+ "two dozen is usual means a wall was extruded instead of "
 		+ "detailed. The way out is not more parts, it is more different "
 		+ "parts — a tile where the wall turns, a bracket for a sign, a "
-		+ "slope where the roof meets the gutter.")
+		+ "slope where the roof meets the gutter. And small ones: one "
+		+ "piece in ten as big as a 2 x 4 brick is what a real set is, at "
+		+ "every size. Its walls are 1 x 2, 1 x 3 and 1 x 4 bricks, and "
+		+ "its texture is what those small pieces are free to be.")
 
 
 ## The parts real sets are built from, and nothing about taste.
@@ -6053,14 +6148,17 @@ alongside the bricks you write by hand:
            4x4 corner-round bricks a course, which is what real castle \
            sets use.
            Walls especially. Measured: a curtain wall 40 by 24 studs and \
-           twelve courses high is 192 parts out of fill — a hundred and \
-           sixty-eight 1x8 bricks and twenty-four 1x6, staggered and \
-           bonded, because fill lays the longest brick that fits each \
-           run. A castle run that wrote its walls out by hand instead \
-           used two hundred and twenty-three 1x2 bricks: more parts, \
-           every joint in a column, and a model made of two shapes \
-           where a real set of that size has a hundred and seventy. If \
-           a surface is a rectangle or a ring, fill it.
+           twelve courses high is 408 parts out of fill — 1x4 bricks \
+           in a running bond, 1x3, 1x2 and 1x1 at the ends, and not one \
+           joint over a joint in the course below. Those are the sizes \
+           a real set lays a wall in; every castle that fill built in \
+           1x8s and 2x10s was coarser than all but one real set in \
+           twenty, and its walls were slabs nothing could happen in. A \
+           castle run that wrote its walls out by hand instead used two \
+           hundred and twenty-three 1x2 bricks with every joint in a \
+           column, which is a wall of separate towers. If a surface is \
+           a rectangle or a ring, fill it, and then make some of its \
+           short bricks something else.
 
 A four thousand part model is not too large to build. It is too large to \
 dictate, which is a different problem, and this is the answer to it.
@@ -6582,7 +6680,9 @@ func _tools() -> Array:
 					+ "mirror: everything so far, reflected about a line "
 					+ "— build one side and mirror it rather than "
 					+ "writing both. fill: a footprint tiled with the "
-					+ "largest plates that fit — and with layers, a "
+					+ "largest plates that fit, or with rise 3 a wall "
+					+ "of short bricks in a running bond — and with "
+					+ "layers, a "
 					+ "shrink and a wall it is a dome, a cone, a hull, "
 					+ "a tube or a bowl in one object."},
 			"times": {"type": "integer", "description": "repeat: how many"},

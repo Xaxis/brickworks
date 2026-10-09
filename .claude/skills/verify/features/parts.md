@@ -36,8 +36,11 @@ geometry in front of them.
   plates came to 346%. `PartLibrary.kinds_for(brief)` matches a brief's words against it
   and `how_real_sets_build_this`, a tool, is how the assistant asks.
 - `set norms`: what a real LEGO set of a given size is made of — lots, shapes,
-  colours, and how many of one piece is normal — measured over every catalogued
-  set by `rebrickable.set_norms()` and written into the catalogue header.
+  colours, how many of one piece is normal, shapes used once or twice, its main
+  colour's share, and the share of its pieces as big as a 2 x 4 brick (`big`,
+  sized through the one LDraw join by `rebrickable.piece_size`; a median 9-11%
+  at every size) — measured over every catalogued model set by
+  `rebrickable.set_norms(entries)` and written into the catalogue header.
   `PartLibrary.normal_for(parts)` gives the band; `Assistant._variety()` says
   when a design is well under it; the system prompt carries the whole table.
 - `element numbers`: the LEGO element a part in a colour actually is —
