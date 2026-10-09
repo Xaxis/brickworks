@@ -1266,6 +1266,9 @@ func _salvage(report: Dictionary) -> Dictionary:
 	var again: Dictionary = _check(kept)
 	if not again["ok"]:
 		return report
+	# Kept as it was sent as well: what would not hold is the thing to
+	# debug, and the run going on does not make it any less of a failure.
+	_keep_the_failure(report)
 	_pending = kept
 	_left_out = ("After three repairs %d brick%s still had nothing holding "
 		% [gone.size(), "" if gone.size() == 1 else "s"]
