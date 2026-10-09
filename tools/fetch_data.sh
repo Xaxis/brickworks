@@ -77,9 +77,12 @@ done
 # AI".  Nothing ever read it.  It was a large download on every fetch
 # for nobody, and the line telling you where to read about it pointed at
 # a docs/DATA.md that does not exist.  If it comes back it comes back
-# with something that uses it:
+# with something that uses it.
 #
-#   https://omr.ldraw.org/files/omr.zip
+# The zip is gone (404, 2026-10-09).  The repository now serves one .mpd
+# per set, listed at https://library.ldraw.org/omr/sets; tools/layout.py
+# measured nineteen of them, which is a direction and not yet a
+# reason to fetch the 1,470.
 
 echo
 echo "vendor/ contents:"

@@ -85,26 +85,41 @@ plainer — see the first lever below.
 
 ## What is next, ranked by evidence
 
-1. **The big read.** What makes run 19 and run 14 read as sets and runs
-   16 and 18 not is fixed by the first structure: a hall or a market
-   filling the courtyard, towers of different silhouettes, a base with
-   trees. Colour was one part of it and is now measured and moved. The
-   rest is not measured. **Needs: a measure of composition from real
-   models** — how much of its footprint a set fills, how its sibling
-   assemblies differ in outline — which set inventories cannot give.
-   LDraw's Official Model Repository has real sets as geometry; it was
-   dropped from `tools/fetch_data.sh` for having no use, and this is one.
-2. **Repeat and generalise.** Run 19 is one run of one brief. The fire
-   station (run 20) is the test that the stack is not a castle trick;
-   the space cruiser after it.
-3. **The texture still missing, 113 to 180.** The ordinary parts are
+1. **The big read: pieces the size a real set uses.** Measured
+   2026-10-09 over every model set in the inventories: **a real set is a
+   median 10% pieces as big as a 2 x 4 brick, at every size from 350
+   parts up, and more than about 20% is coarser than all but one in
+   twenty.** Modern castle sets: 10%, 4-16%. Every castle built here was
+   39-56%, run 19 46%: curtain walls in 2 x 10 bricks, because `fill`
+   laid the longest brick that fitted, and slabs are what the pictures
+   show. It is the largest gap found against real sets, and it is what
+   the eye reads as plain. `fill` now lays a real set's sizes in a
+   running bond; the look and the send-back fire on the tail. **Run 21
+   is the test.**
+2. **Proportion and composition.** Five real castles and fourteen modular
+   buildings from LDraw's model repository, measured with
+   `tools/layout.py`: a real castle's towers stand about three times its
+   walls (10176, 6080, 6085: 2.8-3.3) and it is 0.34-0.74 as tall as it
+   is wide; every castle here is 1.3-1.9 and 0.21-0.35 — low and
+   sprawling. Modular buildings stand 28-43 bricks; both fire stations
+   here 17-20. A direction, not yet a norm: nineteen sets. The repository
+   serves sets one file at a time now (the zip is gone); the URL is in
+   the tool.
+3. **Generalise.** The fire station (run 20) with every lever came to
+   737 parts and 67 shapes against the first station's 62 — the levers
+   that took the castle from 71 to 113 did not carry. The difference is
+   passes, not what a pass does: the castle named ten assemblies and
+   gained about 8 shapes a pass, the station four of ~250 parts and
+   gained about 13 a pass. A big assembly gets the turns of a small one.
+   **Needs: more, smaller assemblies on a big model**, and a cruiser run.
+4. **The texture still missing, 113 to 180.** The ordinary parts are
    mostly used (54 of the castle's top 100). What is left is where parts
    go together: which parts real sets put beside which — the
    co-occurrence data, downloaded and unread.
-4. **Angled structure.** Two of three cruiser runs failed on pods on
+5. **Angled structure.** Two of three cruiser runs failed on pods on
    pylons; the third laid them flush. The tools now say where a section
    meets, but no run has yet built a raked pylon that held.
-5. **The booklet's pictures.** A castle's booklet enters its parts 18-30
+6. **The booklet's pictures.** A castle's booklet enters its parts 18-30
    times because walls stand on a shared base; whether a person can
    follow 250 pages is the next thing to measure, by building from one.
 
