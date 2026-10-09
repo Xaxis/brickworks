@@ -134,6 +134,13 @@ header {
 	border-radius: 8px;
 }
 .bar nav a:hover { color: var(--ink); background: var(--panel); }
+/* On a phone the five links are 405px in a 358px bar, and the nav does
+   not wrap: the document ends up 566px wide and the whole page scrolls
+   sideways. Measured at 390px, and it predates this layout. What a
+   phone wants from a header is the name and the way in. */
+@media (max-width: 720px) {
+	.bar nav a:not(.cta) { display: none; }
+}
 
 .cta {
 	display: inline-flex;
@@ -222,6 +229,32 @@ h2 {
 }
 .stat span { font-size: 13.5px; color: var(--ink-soft); }
 
+/* The dimension table is proof, not the pitch: it sits behind a
+   disclosure so the product comes first, and this is what makes that
+   disclosure look like part of the page rather than a browser default. */
+details {
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--panel);
+	padding: 0 18px;
+}
+summary {
+	cursor: pointer;
+	padding: 14px 0;
+	color: var(--ink-soft);
+	font-size: 15px;
+}
+summary:hover { color: var(--ink); }
+details[open] summary {
+	border-bottom: 1px solid var(--line);
+	margin-bottom: 14px;
+}
+/* A table cannot shrink below its min-content, so on a phone it would
+   push the whole document wider and take the sticky nav with it. This
+   lets the figures scroll inside their own panel instead. */
+.scroller { overflow-x: auto; margin-bottom: 4px; }
+details > .note { padding-bottom: 16px; }
+
 table {
 	width: 100%;
 	border-collapse: collapse;
@@ -296,8 +329,8 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 	<div class="wrap bar">
 		<span class="mark"><span class="chip"></span>Brickworks</span>
 		<nav>
-			<a href="#exact">Exactness</a>
 			<a href="#what">What it does</a>
+			<a href="#exact">Exactness</a>
 			<a href="#tiers">Tiers</a>
 			<a href="https://github.com/Xaxis/brickworks">Source</a>
 			<a class="cta" href="/app">Open the app</a>
@@ -319,130 +352,123 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		</div>
 		<p class="note">Runs in the browser. No account needed to build.</p>
 
+		<div class="stats">
+			<div class="stat"><b>28,319</b><span>parts, every one modelled</span></div>
+			<div class="stat"><b>322</b><span>colours, with real finishes</span></div>
+			<div class="stat"><b>251,000</b><span>connection points recovered</span></div>
+			<div class="stat"><b>200,000</b><span>bricks at 130 fps</span></div>
+		</div>
+
 		<div class="shot">
 			<img src="shot-app.png" width="1600" height="900"
 				alt="The Brickworks builder: a parts panel on the left listing thousands of parts with 3D previews, a red and white lighthouse standing on a green baseplate in the centre, and the design assistant on the right. The lighthouse was designed by the assistant.">
 		</div>
 	</div>
 
-	<section id="exact" class="wrap">
-		<h2>Measured, not approximated</h2>
-		<p class="sub">
-			The dimensions were read off the part geometry rather than copied
-			from a reference, and the tests assert them so a library update
-			cannot move them quietly.
-		</p>
-		<table>
-			<caption>1 LDU = 0.4 mm exactly. Measured against the published specification.</caption>
-			<thead>
-				<tr><th>Feature</th><th>Brickworks</th><th>Specification</th><th></th></tr>
-			</thead>
-			<tbody>
-				<tr><td>Stud pitch</td><td>8.00 mm</td><td>8.0</td><td class="ok">exact</td></tr>
-				<tr><td>Brick height</td><td>9.60 mm</td><td>9.6</td><td class="ok">exact</td></tr>
-				<tr><td>Plate height</td><td>3.20 mm</td><td>3.2</td><td class="ok">exact</td></tr>
-				<tr><td>Stud diameter</td><td>4.80 mm</td><td>4.8</td><td class="ok">exact</td></tr>
-				<tr><td>Wall thickness</td><td>1.60 mm</td><td>1.6</td><td class="ok">exact</td></tr>
-				<tr><td>2 × 4 brick</td><td>32.00 × 16.00 mm</td><td>32 × 16</td><td class="ok">exact</td></tr>
-				<tr><td>Stud height</td><td>1.60 mm</td><td>1.8</td><td class="off">a convention</td></tr>
-			</tbody>
-		</table>
-		<p class="note">
-			Two places this differs from a moulded brick, both on purpose.
-			Sizes are nominal rather than as-moulded — a real 2 × 4 measures
-			31.8 mm, because there is about 0.1 mm of clearance per side so
-			bricks do not jam — and nominal is what makes parts tile exactly
-			on the lattice instead of leaving a gap that accumulates across a
-			long wall. And a stud is drawn 1.6 mm tall where LEGO moulds 1.8,
-			which is the library's own convention; every part follows it, so
-			they remain consistent with each other. Run
-			<code>src/dev/dimensions_probe.gd</code> to measure any of this
-			from the geometry that shipped.
-		</p>
-
-		<div class="stats" style="margin-top:26px">
-			<div class="stat"><b>28,319</b><span>parts, every one modelled</span></div>
-			<div class="stat"><b>322</b><span>colours, with real finishes</span></div>
-			<div class="stat"><b>251,000</b><span>connection points recovered</span></div>
-			<div class="stat"><b>200,000</b><span>bricks at 130 fps</span></div>
-		</div>
-	</section>
-
 	<section id="what" class="wrap">
 		<h2>What it does</h2>
 		<p class="sub">
-			The engine underneath is exact, and everything above it is built on
-			that rather than on an approximation of it.
+			Everything here is built on the exact engine rather than on an
+			approximation of it.
 		</p>
 		<div class="grid">
 			<div class="card">
 				<h3><span class="dot" style="background:var(--red)"></span>Build by hand</h3>
 				<p>
 					Point at a face and the part goes against it. Positions are
-					whole numbers on a 2 LDU lattice, so collision is exact
-					comparison with no tolerance and a model saved today loads
-					identically tomorrow.
+					whole numbers on a 2 LDU lattice, so a model saved today
+					loads identically tomorrow.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:var(--yellow)"></span>Every part, findable</h3>
 				<p>
-					All 28,319 searchable as you type, with previews rendered live
-					from the real geometry in whichever colour you have picked.
+					All 28,319, searchable as you type, previewed from the real
+					geometry in the colour you picked.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:var(--blue)"></span>A design assistant</h3>
 				<p>
-					Describe something and watch it appear. It proposes placements;
-					the app checks every one against the real lattice and hands back
-					the specific brick and reason when something will not hold.
+					Describe something and watch it appear. Every placement is
+					checked against the real lattice, and you get the brick and
+					the reason when one will not hold.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:var(--green)"></span>Will it stand up?</h3>
 				<p>
-					Live checks for a joint carrying more than its studs hold, a load
-					hanging past its footprint, and a build stacked too high over too
-					small a base.
+					Live checks for a joint carrying more than its studs hold, a
+					load hanging past its footprint, a build too tall for its
+					base.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:#9a4fc4"></span>Yours to take away</h3>
 				<p>
-					Models are saved as LDraw <code>.ldr</code>, so what you build
-					here opens in LDView, LeoCAD, Studio or Mecabricks — and what you
-					made there opens here.
+					Saved as LDraw <code>.ldr</code>, so it opens in LDView,
+					LeoCAD, Studio or Mecabricks — and theirs opens here.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:#2f9e8f"></span>Build it for real</h3>
 				<p>
-					A parts list says what to buy: every part in every colour, by
-					the lot, which is the unit a shop sells. And the build steps
-					save out as one printable page — a picture per step and the
-					parts it adds — because you build on a table, not at a screen.
+					A parts list by the lot, which is how a shop sells them, and
+					build steps that print as one page — because you build on a
+					table, not at a screen.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:#c0457a"></span>A photograph, in plates</h3>
 				<p>
-					Drop in a picture and it comes back as a mosaic, matched
-					against the colours a 1&nbsp;×&nbsp;1 plate is really moulded
-					in — and matched perceptually, so a grey goes to a grey
-					rather than to whatever is nearest in arithmetic. It is a
-					model like any other: parts list, instructions, all of it.
+					Drop in a picture, get a mosaic in the colours a
+					1&nbsp;×&nbsp;1 plate is really made in — a model like any
+					other, parts list and instructions and all.
 				</p>
 			</div>
 			<div class="card">
 				<h3><span class="dot" style="background:#e08b2a"></span>Real connections</h3>
 				<p>
-					Studs, tubes, Technic pin holes and axle holes, recovered from
-					the primitives each part is drawn with rather than guessed at
-					from its bounding box.
+					Studs, tubes, Technic pin holes and axle holes, read from the
+					primitives each part is drawn with rather than guessed from a
+					bounding box.
 				</p>
 			</div>
 		</div>
+	</section>
+
+	<section id="exact" class="wrap">
+		<h2>Measured, not approximated</h2>
+		<p class="sub">
+			1 LDU = 0.4 mm exactly. Every dimension was read off the part
+			geometry rather than copied from a reference, and the tests assert
+			them, so a library update cannot move them quietly.
+		</p>
+		<details>
+			<summary>The figures, against the published specification</summary>
+			<div class="scroller">
+			<table>
+				<thead>
+					<tr><th>Feature</th><th>Brickworks</th><th>Specification</th><th></th></tr>
+				</thead>
+				<tbody>
+					<tr><td>Stud pitch</td><td>8.00 mm</td><td>8.0</td><td class="ok">exact</td></tr>
+					<tr><td>Brick height</td><td>9.60 mm</td><td>9.6</td><td class="ok">exact</td></tr>
+					<tr><td>Plate height</td><td>3.20 mm</td><td>3.2</td><td class="ok">exact</td></tr>
+					<tr><td>Stud diameter</td><td>4.80 mm</td><td>4.8</td><td class="ok">exact</td></tr>
+					<tr><td>Wall thickness</td><td>1.60 mm</td><td>1.6</td><td class="ok">exact</td></tr>
+					<tr><td>2 × 4 brick</td><td>32.00 × 16.00 mm</td><td>32 × 16</td><td class="ok">exact</td></tr>
+					<tr><td>Stud height</td><td>1.60 mm</td><td>1.8</td><td class="off">a convention</td></tr>
+				</tbody>
+			</table>
+			</div>
+			<p class="note">
+				Sizes are nominal rather than as-moulded, which is what makes
+				parts tile exactly instead of leaving a gap that accumulates
+				across a long wall. The stud height is the LDraw library's own
+				convention, and every part follows it.
+			</p>
+		</details>
 	</section>
 
 	<section id="tiers" class="wrap">

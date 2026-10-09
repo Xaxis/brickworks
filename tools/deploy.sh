@@ -221,6 +221,16 @@ if [ "$do_check" = 1 ]; then
   if [ "$landing" != "200" ]; then
     echo "deploy FAILED: the landing page answers $landing at $url/"; exit 1
   fi
+  # A status code cannot see a page that renders wrong. This one loads it
+  # in a browser at phone width and at laptop width: the page had been
+  # scrolling sideways on every phone for as long as it has existed,
+  # because five header links are 405px in a 358px bar and nothing
+  # wrapped them, and a 200 said nothing about it.
+  if ! VERCEL_BYPASS="${VERCEL_BYPASS:-}" node tools/web/landing_check.mjs \
+      --url="$url/"; then
+    echo "deploy FAILED: the landing page does not hold together at $url/"
+    exit 1
+  fi
   echo "deploy: landing page ok, app runs"
 fi
 if [ "$prod" = 1 ]; then

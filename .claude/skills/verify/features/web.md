@@ -103,6 +103,21 @@ against the real server. It sends a real email to `MASTER_EMAIL`.
   `curl --compressed <build>/index.pck | grep -a '"castle":{"sets"'` really does
   prove the catalogue that shipped. For code, the honest proof is the stamp — `/`
   308s to `/b/<sha>/`, and that sha names the tree.
+- **A 200 from the landing page says nothing about how it renders.** That was
+  the whole of the deploy's landing check, and what it missed for as long as the
+  page has existed: five header links are 405px wide in a 358px bar, the nav does
+  not wrap, so at 390px the document came out **566px wide and the whole page
+  scrolled sideways**. `tools/web/landing_check.mjs` loads it in a browser at
+  phone and laptop width and fails the deploy on a sideways scroll, on nothing
+  visible linking to `/app`, or on a missing heading. Run it on a file while
+  editing: `node tools/web/landing_check.mjs --file=web/index.html`.
+
+  Measure a page where its assets resolve. Comparing the edited page against a
+  copy kept in the scratchpad "proved" the overflow was mine — the copy had no
+  `shot-app.png` beside it, so the screenshot collapsed and the page fitted.
+  Three single-change bisects all showing the same 566px is what exposed the
+  baseline rather than the change.
+
 - **A wrong path under `/b/<sha>/` answers with a 308 to `/`,** not a 404, so a
   typo in a filename reads as "the file is missing" when it is the URL that is
   wrong. Read the deployed page for the real names: `index.js`, `index.pck`,
