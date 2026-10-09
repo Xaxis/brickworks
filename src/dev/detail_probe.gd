@@ -84,7 +84,7 @@ func _run() -> void:
 	_ok(gatehouse.contains("The gatehouse: 4 parts, 1 shapes"),
 		"the gatehouse is measured on its own, not the whole model")
 	_ok(not gatehouse.contains("The tower"), "...and only the gatehouse")
-	_ok(gatehouse.contains("Real tower and castle sets reach for these"),
+	_ok(gatehouse.contains("Real castle and tower sets reach for these"),
 		"it is told the parts of every kind the brief named that it lacks")
 	# And the ordinary parts most castle sets use, which a model of one
 	# brick and nothing else lacks — the 1 x 2 plate is in 80% of them.

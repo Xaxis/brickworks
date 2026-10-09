@@ -130,6 +130,16 @@ func _initialize() -> void:
 	# and "version" at 121 — above castle's 26 — while farm is 3.3, car
 	# 4.2 and fire 4.5. A distinctiveness threshold deletes farm and car
 	# and keeps play.
+	# The subject is named first; a word naming a feature is not the
+	# kind. "engine" is fire engines — ladders — and "pod" is a storage
+	# tub, and both outranked "space" when the narrowest kind went first.
+	var cruiser: Array = library.kinds_for("a large space cruiser with a "
+		+ "bridge tower, two engine pods on angled pylons and landing legs")
+	_ok(not cruiser.is_empty() and str(cruiser[0].get("kind")) == "space",
+		"a space cruiser leads with space (%s)" % ", ".join(
+			cruiser.map(func(k: Dictionary) -> String: return str(k.get("kind")))))
+	_ok(not cruiser.any(func(k: Dictionary) -> bool: return k.get("kind") == "engine"),
+		"...and is not handed fire-engine ladders for its engine pods")
 	var big: Array = library.kinds_for("a large castle")
 	_ok(not big.is_empty() and str(big[0].get("kind", "")) == "castle",
 		"\"a large castle\" leads with castle (%s)"

@@ -64,7 +64,9 @@ func kinds_for(words: String, most: int = 3) -> Array:
 		return []
 	var found: Array = []
 	var seen: Dictionary = {}
+	var place: int = 0
 	for word: String in words.to_lower().split(" ", false):
+		place += 1
 		var bare: String = ""
 		for ch: String in word:
 			if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
@@ -85,10 +87,17 @@ func kinds_for(words: String, most: int = 3) -> Array:
 			seen[form] = true
 			var entry: Dictionary = (kinds[form] as Dictionary).duplicate()
 			entry["kind"] = form
+			entry["place"] = place
 			found.append(entry)
 			break
+	# In the order the brief names them, because a brief names its subject
+	# first and its features after. Fewest sets first was the rule, and
+	# "a large space cruiser with ... two engine pods" came back as engine,
+	# cruiser and pod: fire-engine ladders and X-Pod storage tubs, with
+	# space pushed out for having more sets. Generic words that once
+	# needed the specific rule are a word list now (NOT_A_KIND).
 	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a.get("sets", 0)) < int(b.get("sets", 0)))
+		return int(a["place"]) < int(b["place"]))
 	if found.size() > most:
 		found.resize(most)
 	return found

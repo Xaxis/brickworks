@@ -46,7 +46,7 @@ def kinds_for(brief: str, kinds: dict, most: int = 3) -> list[str]:
     """The kinds a brief names, the way PartLibrary.kinds_for reads it."""
     found: list[tuple[int, str]] = []
     seen: set[str] = set()
-    for word in brief.lower().split():
+    for place, word in enumerate(brief.lower().split()):
         bare = re.sub(r"[^a-z0-9]", "", word)
         tries = [bare, bare.removesuffix("s"), bare.removesuffix("es")]
         tries += [bare[:n] for n in range(len(bare) - 1, 3, -1)]
@@ -54,7 +54,7 @@ def kinds_for(brief: str, kinds: dict, most: int = 3) -> list[str]:
             if len(form) < 3 or form in seen or form not in kinds:
                 continue
             seen.add(form)
-            found.append((kinds[form]["sets"], form))
+            found.append((place, form))     # in the order the brief names them
             break
     return [kind for _, kind in sorted(found)[:most]]
 
