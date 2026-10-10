@@ -20,7 +20,10 @@ as the client.
   brickworks.diy, or `BRICKWORKS_API` when set. **The person's own key never
   reaches the server** — there is nothing on it that could take one.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
-  under `/b/<sha>/`, points `/` at it and then proves it in a browser.
+  under `/b/<sha>/`, points `/` at it and then proves it in a browser. With
+  `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
+  lagged `vercel promote` by up to a minute, twice, and checks run on "done"
+  measured the previous build.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan turns
   on Connect Claude in the app, adds the tab's private address
   (`/api/mcp?t=<token>`) to Claude as a custom connector (claude.ai, the Claude

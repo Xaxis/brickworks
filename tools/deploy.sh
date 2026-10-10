@@ -277,6 +277,20 @@ if [ "$prod" = 1 ]; then
       --token "$VERCEL_TOKEN" >"$log" 2>&1; then
     tail -20 "$log"; echo "deploy FAILED: could not promote $url"; exit 1
   fi
+  # Promoted is not the same as live. The domain went on answering with
+  # the previous build for seconds to a minute after promote returned,
+  # twice, and a check run straight after "done" measured the old build
+  # and nearly reported it as the new one. Done means the domain says so.
+  live=""
+  for _ in $(seq 1 60); do
+    live="$(curl -s -o /dev/null -w '%{redirect_url}' https://brickworks.diy/app || true)"
+    case "$live" in */b/"$sha"/*) break ;; esac
+    sleep 3
+  done
+  case "$live" in
+    */b/"$sha"/*) echo "deploy: brickworks.diy serves $sha" ;;
+    *) echo "deploy FAILED: promoted, but brickworks.diy still serves ${live:-nothing} after 3 minutes"; exit 1 ;;
+  esac
   echo "deploy done $url"
   echo "             https://brickworks.diy"
 else
