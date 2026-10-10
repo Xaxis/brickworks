@@ -283,6 +283,15 @@ static func advice(found: Dictionary, group: String) -> String:
 				% [_share(found[key]), pair[1], _share(edges[1]), _share(edges[2])])
 	if said.is_empty():
 		return ""
+	# The calls that do it, by name: designs take up a technique when it
+	# is one call they are told of — the finishing pass was used in two runs
+	# running once the advice named it, and a prism once in four without.
+	var calls := PackedStringArray()
+	if found.has("snot") and band.has("snot") and float(found["snot"]) < float((band["snot"] as Array)[0]) \
+			or found.has("plain") and band.has("plain") and float(found["plain"]) > float((band["plain"] as Array)[2]):
+		calls.append("restyle_model, for the plain faces already built")
+	if found.has("angled") and band.has("angled") and float(found["angled"]) < float((band["angled"] as Array)[0]):
+		calls.append("a prism pattern, for a tower, a pier or a turret that should have more than four sides")
 	var who: String = "real sets since 2010" if group == "since_2010" else (
 		"real %s sets%s" % [group.replace("_since_2010", ""),
 			" since 2010" if group.ends_with("_since_2010") else ""])
@@ -294,9 +303,8 @@ static func advice(found: Dictionary, group: String) -> String:
 		+ "bricks to turn a face, sections turned to the angle a thing really "
 		+ "has, curved slopes and arches where an edge can round, the rock "
 		+ "pattern where the ground is irregular — and symmetry only where the "
-		+ "subject has it. For a model already built of plain walls, one call "
-		+ "does most of the sideways and the texture: restyle_model, with a "
-		+ "where= to keep it to one part.")
+		+ "subject has it."
+		+ ("\nOne call each: " + "; ".join(calls) + "." if not calls.is_empty() else ""))
 
 
 static func _share(value: Variant) -> String:
