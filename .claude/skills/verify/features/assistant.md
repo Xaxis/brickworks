@@ -35,6 +35,15 @@ fixing what it got wrong.
   key is all there is.
 - `the key form`: says what the assistant does and what a design costs before
   asking for anything, at the top of the panel rather than under an empty one.
+  A pasted key is checked with Anthropic's free models call before it is kept
+  (`KeyForm.check_key`, replaceable for the probe), so a typo is caught there and
+  not after a brief. "Remember it on this device" can be unticked to keep it
+  for this visit only (`OwnKey._this_visit`, never written). A subscription's
+  `sk-ant-oat` token is refused with the reason. It recommends a key of its own
+  in a Console workspace with a spend limit and an expiry. `chat_probe` tests
+  only the refusals: remembering a key would touch the one this machine holds.
+- `a finished design's next steps`: the Done card offers Build steps and Parts
+  list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and
   whether the request it builds is one that model will accept — `max_tokens`
   ceilings, adaptive thinking, the cached system block. Opus 5.5 is the default;

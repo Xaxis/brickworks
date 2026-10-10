@@ -35,7 +35,10 @@ accounts.
   reported as "the assistant doesn't work at all"; it was answering — four 200s
   in ninety seconds — while showing nothing, and no check had ever pressed
   Build. On a preview set `BW_BYPASS`; it goes in the first address only, as a
-  cookie for that domain, never to Anthropic.
+  cookie for that domain, never to Anthropic. It clicks controls by name: the
+  web build publishes their centres as `window.brickworksControls`
+  (`main._tell_page`), after a fixed-position click landed on a paragraph and
+  typed the key into the app as shortcuts.
 
 ## How to reach it
 
