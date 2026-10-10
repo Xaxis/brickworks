@@ -1106,6 +1106,20 @@
     "name": "submit_design"
   },
   {
+    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind \u2014 shapes, colours, the one-off pieces, how coarse \u2014 and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of. Call it after submit_design, then once per assembly, detailing each with edit_model before the next.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "assembly": {
+          "description": "an assembly's name as given in submit_design; omit for the whole model",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "review_model"
+  },
+  {
     "description": "Take everything off the baseplate and start from bare ground. Do this before building something new, or the new thing is built into the old one.",
     "input_schema": {
       "additionalProperties": false,
