@@ -27,6 +27,8 @@ signal cleared()
 signal parts_wanted()
 ## Someone wants to turn a picture into bricks.
 signal mosaic_wanted()
+## The timeline: the build from empty to finished and back.
+signal timeline_wanted()
 signal controls_wanted()
 signal opened(bricks: int)
 
@@ -74,6 +76,8 @@ func _build() -> void:
 	row.add_child(VSeparator.new())
 	_button(row, "Parts list", func() -> void: parts_wanted.emit(),
 		"Every part this model needs, by colour and count")
+	_button(row, "Timeline", func() -> void: timeline_wanted.emit(),
+		"Play the build from an empty baseplate to the finished model and back, or drag along it (B)")
 	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
 		"Turn a picture into a wall of plates")
 	row.add_child(VSeparator.new())

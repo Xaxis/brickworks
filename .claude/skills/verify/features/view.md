@@ -65,6 +65,16 @@ picture the assistant is shown.
   the same camera that took the picture. A render says what was built and not
   where it is, so a number read off the image is the number to write in a
   placement.
+- `the timeline`: `StepsBar` (`src/ui/steps_bar.gd`), opened by B, the toolbar's
+  Timeline or a design's Build steps. A slider over every brick, from an empty
+  baseplate to the finished model: drag it, Start/End (Home/End), Back/Next a
+  step (arrows), Play and Reverse (space plays), at 0.5x-4x, the whole build
+  taking 6-40 s at 1x. Two orders: Build order (`Instructions.plan`, the
+  booklet's, with its step captions) and As made (brick numbers, the order
+  bricks were placed — by hand, or the order Claude thought of them). Asked for
+  by the owner; it was a forward-only step player. `controls_probe` plays it
+  forward and back, pauses, jumps to both ends and checks As made is placement
+  order.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it. A model wider than 24 studs is built a
   region at a time (`Instructions.REGION`): one tile of its plan finished before

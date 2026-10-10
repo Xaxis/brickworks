@@ -257,6 +257,37 @@ func _run() -> void:
 	await process_frame
 	_assert("left arrow takes them back off", _drawn(world) == world_before)
 
+	# The timeline: brick by brick, both ways, in either order.
+	_press(KEY_END)
+	await process_frame
+	_assert("End shows the whole model on the timeline, %d of %d"
+		% [steps.shown(), _drawn(world)], _drawn(world) == world.brick_count())
+	_press(KEY_HOME)
+	await process_frame
+	_assert("Home goes back to an empty baseplate, %d drawn" % _drawn(world),
+		steps.shown() == 0)
+	_press(KEY_SPACE)
+	# Real time, not frames: a headless frame is a millisecond, and a small
+	# model plays at a brick or two a second.
+	await create_timer(2.0).timeout
+	_assert("space plays it forward, brick by brick: %d shown" % steps.shown(),
+		steps.shown() > 0 and steps.is_playing())
+	_press(KEY_SPACE)
+	var paused_at: int = steps.shown()
+	for _n: int in 10:
+		await process_frame
+	_assert("...and space again pauses it", steps.shown() == paused_at and not steps.is_playing())
+	steps.to_end()
+	steps._toggle(-1)
+	await create_timer(2.0).timeout
+	_assert("Reverse plays it coming apart: %d of %d" % [steps.shown(), world.brick_count()],
+		steps.shown() < world.brick_count() - _main.get("_store").scenery.size())
+	steps._stop_play()
+	steps.set_as_made(true)
+	_assert("As made orders it by when each brick was placed",
+		steps._order.size() > 0 and steps._order == steps._order.duplicate().map(
+			func(n: int) -> int: return n) and _is_sorted(steps._order))
+	steps.set_as_made(false)
 	_press(KEY_ESCAPE)
 	await process_frame
 	_assert("escape leaves the steps rather than quitting",
@@ -283,6 +314,13 @@ func _run() -> void:
 
 ## How many bricks are actually on screen, which is not the same as how
 ## many exist while a booklet is up.
+func _is_sorted(values: Array) -> bool:
+	for n: int in range(1, values.size()):
+		if int(values[n]) < int(values[n - 1]):
+			return false
+	return true
+
+
 func _drawn(world: BrickWorld) -> int:
 	var n: int = 0
 	for brick: BrickWorld.Brick in world.bricks():

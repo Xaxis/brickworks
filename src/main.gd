@@ -872,6 +872,7 @@ func _build_ui() -> void:
 		_inset(_controls, 460.0, 560.0)
 		_inset(_mosaic, 380.0, 460.0))
 	_bar.parts_wanted.connect(_toggle_parts)
+	_bar.timeline_wanted.connect(_toggle_steps)
 
 	_controls = ControlsDialog.new()
 	$HUD.add_child(_controls)
@@ -2243,7 +2244,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			else:
 				_camera.frame(_selection_bounds())
 		KEY_HOME:
-			_camera.frame(_built_bounds())
+			# On the timeline, the start of the build; otherwise the model.
+			if _steps.is_playing_back():
+				_steps.to_start()
+			else:
+				_camera.frame(_built_bounds())
+		KEY_END:
+			if _steps.is_playing_back():
+				_steps.to_end()
+		KEY_SPACE:
+			if _steps.is_playing_back() and not key.echo:
+				_steps.toggle_play()
 		KEY_6:
 			_camera.set_view("bottom")
 		KEY_7:
