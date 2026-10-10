@@ -307,6 +307,7 @@ colours at the median):
 | 9 | prism faces take masonry and sideways | 2,869 | **13%** | 0% | 64% | 58% | 41 | 4 |
 | 10 | open prisms, rooms inside; both calls named | 2,838 | 0% | 0% | 80% | 57% | 34 | 6 |
 | 11 | run 10 again, the MCP port fixed | 4,437 | **16%** | 9% | 62% | 56% | 35 | 5 |
+| 12 | minifigures, 59 worked examples, dressing gives way, true lighting | 4,167 | **18%** | 0.3% | **38%** | 42% | **46** | 6 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -364,6 +365,16 @@ keeps every unchanged brick's number). Judged by eye it is still a box with
 horns on a pale wedding-cake rock: the rock is light grey banded in white,
 and the shaft's faces are flat. Variety has not moved in eleven runs; what
 moves it in real sets is the interior, the details and the figures.
+
+Run 12 had the minifigure builder and the 59 worked examples, and used both
+unprompted: Saruman and Gandalf face each other on the summit, Uruk-hai at the
+door, the shaft ribbed and tied with plate rings, glowing slit windows up its
+grooves, horns leaning out on hinged sections, rock outcrops round a paved
+court. Plain fell to 38% (the lowest of twelve, against a median of 28%),
+curve 22% and texture 20% are in or past the real range, sideways 18%, and
+shapes reached 46, the most yet. Angled fell to 0.3%: no prism this run. It is
+still a square shaft where Orthanc is a faceted spire, and six colours where a
+set has twenty-three; and it saved itself, by name, with the app's own models.
 
 The worked examples, 2026-10-10. The runs say a technique is taken up
 when it is shaped like what the design is doing, and run 23 said a
