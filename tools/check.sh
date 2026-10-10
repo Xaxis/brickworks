@@ -105,7 +105,7 @@ echo "── python ──"
 if python3 -c 'import pytest' 2>/dev/null; then
   suite=(python3 -m pytest tests/ -q)
 else
-  suite=(python3 tools/minitest.py tests/test_ldraw.py)
+  suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped

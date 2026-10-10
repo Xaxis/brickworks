@@ -119,6 +119,13 @@
       "area": "assistant"
     },
     {
+      "kind": "cli",
+      "label": "measure how a model is built",
+      "entry": "tools/style.py",
+      "reach": "tools/style.py models/castle.ldr --against castle   (norms: tools/style.py norms)",
+      "area": "assistant"
+    },
+    {
       "kind": "lib",
       "label": "model and effort settings",
       "entry": "src/ai/brain.gd",
