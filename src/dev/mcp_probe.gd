@@ -161,6 +161,13 @@ func _run() -> void:
 		and told.contains("west wall, east wall"))
 	_check("...with what the check measured against real sets",
 		told.contains("What the check measured") and told.contains("real set"))
+	# A check from outside, once a design stands, is a check: it must not
+	# replace the model with its handful of trial bricks.
+	var standing: int = _world.brick_count()
+	await _ask("check_design", {"bricks": [
+		{"part": "3001", "color": 4, "x": 200, "y": 0, "z": 200, "rot": 0}]})
+	_check("a check after a build leaves the model standing, %d bricks"
+		% _world.brick_count(), _world.brick_count() == standing)
 	var whole: String = _text_of(await _ask("review_model", {}))
 	_check("review_model looks the whole over: %d characters" % whole.length(),
 		whole.begins_with("The whole model:") and whole.contains("is this the thing")

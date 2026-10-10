@@ -1885,7 +1885,12 @@ func _run_tool(block: Dictionary) -> Variant:
 			# on the baseplate is the person's model, and a check of
 			# fifteen bricks would replace the hundred and forty that
 			# are standing — and report it as a successful check.
-			if not trial.placements.is_empty() and not _edited:
+			# Nor from outside once a design has been built: a session
+			# testing how one part seats wiped a 2,900 part Orthanc this
+			# way, and had to submit the whole of it again.
+			var standing: bool = _outside_standing and not _busy \
+				and world != null and world.brick_count() > scenery.size()
+			if not trial.placements.is_empty() and not _edited and not standing:
 				_apply(trial, false)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
@@ -7089,6 +7094,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	await _ensure_parts(design)
 	_apply(design)
 	if not _busy:
+		_outside_standing = true
 		_outside_assemblies = design.assemblies.duplicate()
 		_outside_reviewing = {}
 		_detail_added = []
@@ -7105,6 +7111,9 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 ## answer threw the measurements away. So the answer carries them, and
 ## review_model is the rest of the loop, one call at a time.
 var _outside_assemblies: Array[Dictionary] = []
+## A design built from outside stands on the baseplate, so a check is a
+## check and not a replacement for it.
+var _outside_standing: bool = false
 ## The assembly being reviewed, and the parts the model had before, so the
 ## next review can say what this one brought.
 var _outside_reviewing: Dictionary = {}
