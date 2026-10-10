@@ -266,8 +266,9 @@ fixing what it got wrong.
   lanterns), panes in frames `NESTS` does not list (3854 in 6556, 60607 and
   86210 in 60594, 38320 in 60592, 57895 in 57894), hinge bricks 3830/3831,
   hinge plates, parts in hollow studs, and the 2x2 turntable, whose top 3679
-  sits over its base 3680 at one origin — the way twelve real angled walls
-  and corner entrances stand, and why there is no angled example yet.
+  sits over its base 3680 at one origin — how 10182 Cafe Corner stands its
+  corner entrance, corner windows and tower at 45 degrees (13 turned
+  assemblies in six sets), and why there is no angled example yet.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a

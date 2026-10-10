@@ -1330,9 +1330,10 @@ static func names() -> PackedStringArray:
 ## grouped, it reads one group.
 ##
 ## No angles and no banners yet, and not for want of real ones: real
-## sets turn a wall on a turntable (3679 over 3680 at one origin, twelve
-## times in seven modular and Creator sets), on hinge bricks or hinge
-## plates, and hang banners and torches on clips on bars, and the
+## sets turn a wall on a turntable (3679 over 3680 at one origin: 13
+## assemblies turned 45 degrees in six sets, seven of them 10182 Cafe
+## Corner's corner entrance, corner windows and tower), on hinge bricks
+## or hinge plates, and hang banners and torches on clips on bars, and the
 ## checker reads every one of those as two parts in one place. A worked
 ## example that only passes by being built wrong would teach it wrong.
 const GROUPS: Array[String] = ["basics", "walls and stone",
