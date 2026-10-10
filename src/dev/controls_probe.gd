@@ -82,6 +82,68 @@ func _run() -> void:
 		camera.global_position.distance_to(framed.origin),
 		camera.global_position.distance_to(framed.origin) < 50.0)
 
+	# The view from the keyboard: + and - (and the keypad, and Page Up and
+	# Down) zoom, arrows turn it when nothing is selected, shift and the
+	# arrows slide it, and holding any of them keeps it moving. Asked for
+	# by the owner: the view only moved with a mouse, a trackpad or fingers.
+	builder.clear_selection()
+	var distance := func() -> float: return float(camera.get("_target_distance"))
+	var was_far: float = distance.call()
+	_press(KEY_EQUAL)
+	await process_frame
+	_assert("+ (the = key) zooms in, %.0f -> %.0f" % [was_far, distance.call()],
+		distance.call() < was_far)
+	was_far = distance.call()
+	_press(KEY_MINUS)
+	await process_frame
+	_assert("- zooms out, %.0f -> %.0f" % [was_far, distance.call()],
+		distance.call() > was_far)
+	was_far = distance.call()
+	_press(KEY_KP_ADD)
+	await process_frame
+	_assert("the keypad's + zooms in too", distance.call() < was_far)
+	was_far = distance.call()
+	_press(KEY_PAGEDOWN)
+	await process_frame
+	_assert("and Page Down zooms out", distance.call() > was_far)
+	var yaw: float = float(camera.get("_target_yaw"))
+	_press(KEY_RIGHT)
+	await process_frame
+	_assert("with nothing selected, the right arrow turns the view",
+		not is_equal_approx(float(camera.get("_target_yaw")), yaw))
+	var pitch: float = float(camera.get("_target_pitch"))
+	_press(KEY_UP)
+	await process_frame
+	_assert("...and the up arrow tilts it",
+		not is_equal_approx(float(camera.get("_target_pitch")), pitch))
+	var focus: Vector3 = camera.get("_target_focus")
+	var slide := InputEventKey.new()
+	slide.keycode = KEY_LEFT
+	slide.pressed = true
+	slide.shift_pressed = true
+	root.push_input(slide)
+	await process_frame
+	_assert("shift and an arrow slide it",
+		not (camera.get("_target_focus") as Vector3).is_equal_approx(focus))
+	# Held: past one step, it keeps going.
+	was_far = distance.call()
+	var held := InputEventKey.new()
+	held.keycode = KEY_EQUAL
+	held.physical_keycode = KEY_EQUAL
+	held.pressed = true
+	Input.parse_input_event(held)
+	for _n: int in 60:
+		await process_frame
+	var one_step: float = was_far / float(camera.get("zoom_step"))
+	var let_go := InputEventKey.new()
+	let_go.keycode = KEY_EQUAL
+	let_go.physical_keycode = KEY_EQUAL
+	let_go.pressed = false
+	Input.parse_input_event(let_go)
+	await process_frame
+	_assert("holding + keeps zooming in, %.0f -> %.0f, past one step's %.0f"
+		% [was_far, distance.call(), one_step], distance.call() < one_step * 0.97)
+
 	var bin_dock: SideDock = _main.get("_bin_dock")
 	var chat_dock: SideDock = _main.get("_chat_dock")
 	var was_open: bool = bin_dock.is_open()
@@ -98,6 +160,11 @@ func _run() -> void:
 	_press(KEY_SLASH)
 	await process_frame
 	var focused: Control = root.gui_get_focus_owner()
+	var typing: float = float(camera.get("_target_distance"))
+	_press(KEY_MINUS)
+	await process_frame
+	_assert("while typing in the search box, - is a minus, not a zoom",
+		is_equal_approx(float(camera.get("_target_distance")), typing))
 	_assert("/ puts the caret in the search box, got %s" % [focused],
 		focused is LineEdit)
 	if focused != null:

@@ -576,6 +576,72 @@ func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
 	_target_focus = aim + (_target_focus - aim) * actual
 
 
+# -- from the keyboard -----------------------------------------------------
+#
+# Asked for by the owner: "why can't I use standard + and - for zoom?" The
+# view moved only with a mouse, a trackpad or fingers, which is three ways
+# and none of them on the keys every other viewer answers to. A tap is one
+# step, the size a wheel notch is; holding keeps it going, smoothly, at a
+# rate per second rather than per key repeat, so it is the same on a fast
+# machine and a slow one and does not stutter at the repeat rate.
+
+## Degrees a tap of an arrow turns the view, and how many a held one turns
+## each second.
+const KEY_TURN_STEP := 10.0
+const KEY_TURN_PER_SECOND := 90.0
+## A tap's share of the view slid, and a held key's each second.
+const KEY_SLIDE_STEP := 0.08
+const KEY_SLIDE_PER_SECOND := 0.6
+## How much a held zoom key closes in each second: to a third.
+const KEY_ZOOM_PER_SECOND := 3.0
+
+
+## One step in or out, as a wheel notch is, towards the middle of the view.
+func key_zoom(steps: int) -> void:
+	if steps == 0:
+		return
+	_zoom_by(1.0 / zoom_step if steps > 0 else zoom_step)
+
+
+## One step of turning: +x round to the right, +y tilting up.
+func key_turn(direction: Vector2) -> void:
+	_turn_degrees(direction * KEY_TURN_STEP)
+
+
+## One step of sliding the view the way asked: +x right, +y up.
+func key_slide(direction: Vector2) -> void:
+	_slide_share(direction * KEY_SLIDE_STEP)
+
+
+## Keys being held, a frame's worth: zoom +1 in or -1 out, and a direction
+## to turn and to slide in.
+func key_hold(delta: float, zoom: int, turn: Vector2, slide: Vector2) -> void:
+	if zoom != 0:
+		_zoom_by(pow(KEY_ZOOM_PER_SECOND, -float(zoom) * delta))
+	if turn != Vector2.ZERO:
+		_turn_degrees(turn * KEY_TURN_PER_SECOND * delta)
+	if slide != Vector2.ZERO:
+		_slide_share(slide * KEY_SLIDE_PER_SECOND * delta)
+
+
+## Turn by degrees round the up axis and about the view's own right, the
+## way a drag the same way would: right turns as dragging right does, up
+## as dragging up.
+func _turn_degrees(by: Vector2) -> void:
+	_target_yaw -= deg_to_rad(by.x)
+	_target_pitch = clampf(_target_pitch + deg_to_rad(by.y), -_PITCH_LIMIT,
+		_PITCH_LIMIT)
+
+
+## Slide by a share of what the view shows, so a step is the same on
+## screen at any zoom.
+func _slide_share(by: Vector2) -> void:
+	var across: float = _ldu_per_pixel() * (get_viewport().get_visible_rect().size.y
+		if is_inside_tree() else 900.0)
+	_target_focus += global_transform.basis.x * by.x * across
+	_target_focus += global_transform.basis.y * by.y * across
+
+
 ## How far apart the first two fingers are.
 func _distance_between() -> float:
 	var points: Array = _touches.values()

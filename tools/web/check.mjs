@@ -114,6 +114,31 @@ async function controls(page, problems) {
       }
       await page.mouse.up({ button: "middle" });
     }],
+    // From the keyboard, as the owner asked: the view moved only with a
+    // mouse, a trackpad or fingers. Pressed the way a hand presses them,
+    // a few taps apart, and one held.
+    ["zoom (- key)", async () => {
+      await page.mouse.move(at.x, at.y);
+      for (let n = 0; n < 5; n += 1) {
+        await page.keyboard.press("Minus");
+        await page.waitForTimeout(90);
+      }
+    }],
+    ["turn (arrow keys, held)", async () => {
+      await page.mouse.move(at.x, at.y);
+      await page.keyboard.down("ArrowRight");
+      await page.waitForTimeout(700);
+      await page.keyboard.up("ArrowRight");
+    }],
+    ["slide (shift and arrows)", async () => {
+      await page.mouse.move(at.x, at.y);
+      await page.keyboard.down("Shift");
+      for (let n = 0; n < 5; n += 1) {
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(90);
+      }
+      await page.keyboard.up("Shift");
+    }],
   ];
 
   for (const [what, doing] of gestures) {

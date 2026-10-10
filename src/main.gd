@@ -1730,7 +1730,57 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 		_stability_text = _stability.check(_world).summary()
 
 
+## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.
+static func _zoom_key(key: InputEventKey) -> int:
+	if key.keycode in [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_PAGEUP] \
+			or key.unicode == "+".unicode_at(0):
+		return 1
+	if key.keycode in [KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN] \
+			or key.unicode == "-".unicode_at(0):
+		return -1
+	return 0
+
+
+## How long the view keys have been held, so a tap is one step and only
+## a key kept down goes on moving.
+var _held_for: float = 0.0
+## A tap is shorter than this; past it, the view moves while held.
+const HOLD_AFTER := 0.22
+
+
+## Keep moving the view while a view key is held: + or - zooming, arrows
+## turning, shift and arrows sliding — but never while someone is typing,
+## and the arrows only when a selection or the booklet is not using them.
+func _steer_from_keys(delta: float) -> void:
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit or _camera == null:
+		_held_for = 0.0
+		return
+	var zoom: int = 0
+	if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_PLUS) \
+			or Input.is_key_pressed(KEY_KP_ADD) or Input.is_key_pressed(KEY_PAGEUP):
+		zoom += 1
+	if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT) \
+			or Input.is_key_pressed(KEY_PAGEDOWN):
+		zoom -= 1
+	var arrows := Vector2.ZERO
+	if _builder.selection.is_empty() and not _steps.is_playing_back():
+		arrows = Vector2(
+			float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
+			float(Input.is_key_pressed(KEY_UP)) - float(Input.is_key_pressed(KEY_DOWN)))
+	if zoom == 0 and arrows == Vector2.ZERO:
+		_held_for = 0.0
+		return
+	_held_for += delta
+	if _held_for < HOLD_AFTER:
+		return
+	var sliding: bool = Input.is_key_pressed(KEY_SHIFT)
+	_camera.key_hold(delta, zoom, Vector2.ZERO if sliding else arrows,
+		arrows if sliding else Vector2.ZERO)
+
+
 func _process(_delta: float) -> void:
+	_steer_from_keys(_delta)
 	# A box whose ending went somewhere else.
 	#
 	# Letting go over a button hands the release to that button, which
@@ -2174,6 +2224,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if focused is LineEdit or focused is TextEdit:
 		return
 	var key: InputEventKey = event
+	# Zoom from the keys every viewer answers to: + and -, on the main keys
+	# or the keypad, and Page Up and Down. A tap is a wheel notch; holding
+	# goes on in _steer_from_keys. "+" is shift and = on most keyboards and
+	# a key of its own on others, so the character is asked as well.
+	var zoom: int = _zoom_key(key)
+	if zoom != 0:
+		if not key.echo and not key.ctrl_pressed and not key.meta_pressed:
+			_camera.key_zoom(zoom)
+		return
 	match key.keycode:
 		KEY_F:
 			# The selection if there is one, everything with shift —
@@ -2264,6 +2323,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			elif not _builder.selection.is_empty():
 				_nudge(Vector3.RIGHT if key.keycode == KEY_RIGHT
 					else Vector3.LEFT)
+			elif not key.echo:
+				# Nothing else wants them: they move the view. Turn, or
+				# slide with shift; holding goes on in _steer_from_keys.
+				var way := Vector2(1 if key.keycode == KEY_RIGHT else -1, 0)
+				if key.shift_pressed:
+					_camera.key_slide(way)
+				else:
+					_camera.key_turn(way)
 		KEY_UP, KEY_DOWN:
 			if not _builder.selection.is_empty():
 				# Along the ground with no modifier; up and down with
@@ -2275,6 +2342,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				else:
 					_nudge(Vector3.FORWARD if key.keycode == KEY_UP
 						else Vector3.BACK)
+			elif not _steps.is_playing_back() and not key.echo:
+				var way := Vector2(0, 1 if key.keycode == KEY_UP else -1)
+				if key.shift_pressed:
+					_camera.key_slide(way)
+				else:
+					_camera.key_turn(way)
 		KEY_TAB:
 			# Both panels away, for looking at the model.
 			var showing: bool = _bin_dock.is_open() or _chat_dock.is_open()

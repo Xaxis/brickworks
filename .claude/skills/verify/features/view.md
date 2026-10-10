@@ -9,6 +9,15 @@ picture the assistant is shown.
 
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded.
+- `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
+  and Down; `Main._zoom_key`) zoom a wheel notch a tap; arrows turn the view
+  and shift-arrows slide it, unless a selection (nudged) or the booklet (stepped)
+  has them; held past `HOLD_AFTER` (0.22 s) the view keeps moving at a rate per
+  second (`Main._steer_from_keys`, `CadCamera.key_hold`); nothing fires while a
+  text field has the caret. Asked for by the owner. `controls_probe` presses each
+  (zoom in, out, keypad, Page Down, turn, tilt, slide, held +, typed -), and the
+  deploy's browser check (`tools/web/check.mjs`) moves the real web build with
+  -, a held arrow and shift-arrows.
 - `status line`: bricks, whether it stands and what it weighs. Batches,
   triangles, the catalogue count and the frame rate come back with `--stats`;
   they were the first line every visitor read.
