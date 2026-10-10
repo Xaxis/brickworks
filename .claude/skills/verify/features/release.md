@@ -123,6 +123,15 @@ committed (empty) manifest it reads `no release yet` for all four.
 
 ## Gotchas
 
+- **Public only by promoting a checked draft.** `publish` without `--draft`
+  refuses to create a release: it only promotes a draft that exists, which is
+  the one the three-system workflow ran. It used to create a public "latest"
+  release in one step, and it ignored flags it did not know, so `publish
+  --help` (or a typo such as `--drfat`) began exactly that; it was stopped part
+  way through the upload, while GitHub still held it as a draft. Every command
+  now refuses a flag it does not take, and `--help` anywhere prints help.
+  `tests/test_release.py` holds all three.
+
 - **`quit()` ends the run after the frame, not at once.** `--about` returned
   from `_ready` before the UI was built, `_process` ran once more and called
   into a playback bar that did not exist: a `SCRIPT ERROR` on every `--about`.

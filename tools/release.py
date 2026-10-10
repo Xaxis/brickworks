@@ -1318,6 +1318,14 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         commit = full
     files = [out / f["name"] for f in facts["files"]] + [out / "SHA256SUMS"]
     existing = release_view(tag)
+    # Public only by promoting a draft that was checked. Creating it public
+    # in one step skipped the run on macOS and Windows, and one mistyped
+    # flag was all it took: "publish --help" started exactly that, and was
+    # stopped part way through its upload.
+    if existing is None and not draft:
+        raise Failed("there is no draft %s to publish: publish --draft first, check it "
+                     "on all three systems (gh workflow run release.yml -f tag=%s), "
+                     "then publish it" % (tag, tag))
     if existing is None:
         # Uploaded once. A draft is how a release is checked on the
         # systems it is for before anyone can see it; publishing then
@@ -1396,11 +1404,29 @@ def option(args: list[str], name: str, default: str = "") -> str:
     return default
 
 
+## What each command takes. Anything else is refused rather than ignored:
+## an ignored "--drfat" is a public release.
+TAKES: dict[str, tuple[str, ...]] = {
+    "version": ("--set",),
+    "notes": (),
+    "build": ("--assets=",),
+    "inspect": (),
+    "smoke": ("--window", "--expect="),
+    "publish": ("--draft", "--no-manifest", "--tag=", "--target="),
+    "manifest": ("--local", "--out="),
+}
+
+
 def main(argv: list[str]) -> int:
-    if not argv or argv[0] in ("-h", "--help", "help"):
+    if not argv or argv[0] in ("-h", "--help", "help") or "-h" in argv or "--help" in argv:
         print(__doc__)
         return 0
     command, args = argv[0], argv[1:]
+    for arg in args:
+        if arg.startswith("-") and command in TAKES and not any(
+                arg == known or (known.endswith("=") and arg.startswith(known))
+                for known in TAKES[command]):
+            raise Failed("%s does not take %s: see tools/release.py --help" % (command, arg))
     if command == "version":
         new = option(args, "set") or (args[args.index("--set") + 1] if "--set" in args else "")
         if new:

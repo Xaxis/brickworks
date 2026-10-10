@@ -128,3 +128,45 @@ def test_every_package_name_says_its_system():
         "Brickworks-1.2.3-macos-universal.zip": {"os": "macos", "arch": "universal", "kind": "zip"},
         "Brickworks-1.2.3-windows-x86_64.zip": {"os": "windows", "arch": "x86_64", "kind": "zip"},
     }
+
+
+def test_help_after_a_command_is_help_and_does_nothing():
+    called = []
+    kept = release.publish
+    release.publish = lambda *a, **k: called.append(a) or 0
+    try:
+        assert release.main(["publish", "--help"]) == 0
+    finally:
+        release.publish = kept
+    assert called == [], "publish --help ran publish"
+
+
+def test_a_flag_a_command_does_not_take_is_refused():
+    called = []
+    kept = release.publish
+    release.publish = lambda *a, **k: called.append(a) or 0
+    try:
+        try:
+            release.main(["publish", "--drfat"])
+            refused = False
+        except release.Failed:
+            refused = True
+    finally:
+        release.publish = kept
+    assert refused and called == []
+
+
+def test_nothing_is_made_public_without_a_draft_first():
+    kept_view, kept_check, kept_built = release.release_view, release.check_version, release.built
+    release.release_view = lambda tag: None
+    release.check_version = lambda: []
+    release.built = lambda version: (Path("/nonexistent"), {"commit": "x", "files": []})
+    try:
+        try:
+            release.publish(False, "v9.9.9", "deadbeef", False)
+            refused = False
+        except release.Failed as failure:
+            refused = "publish --draft first" in str(failure)
+    finally:
+        release.release_view, release.check_version, release.built = kept_view, kept_check, kept_built
+    assert refused
