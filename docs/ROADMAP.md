@@ -300,6 +300,9 @@ colours at the median):
 | 2 | the guidance teaches craft, in words | 1,674 | 0% | 0% | 77% | 71% | 40 | 10 |
 | 3 | style measured in every check; `rock` | 2,769 | 0% | 0% | 51% | 70% | 36 | 4 |
 | 4 | `studs_out` offered | 2,909 | 0% | 0% | 76% | 65% | 34 | 7 |
+| 5 | stone-wall recipe with `sideways` | 2,355 | 0% | **26%** | 70% | 62% | 37 | 5 |
+| 6 | turned parts place 19x faster | 2,559 | 0% | 0% | 83% | 65% | 43 | 6 |
+| 7 | `restyle_model`, named in the advice | 2,390 | **14%** | 0% | 63% | 60% | 33 | 6 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -312,6 +315,20 @@ flaring at the top, boulders and a moat); none is close to 10237 in craft.
 Also found by these runs: a check from outside replaced the standing
 model, a finished session spun a core and held the GPU lease for an hour,
 and the renderer draws black as navy and dark grey as near white.
+
+Runs 5-7. Run 5 built octagonal piers from ~150 turned sections — 26%
+angled, the fantasy median — and finished blind: turned parts took three
+minutes to place on the app's one thread and every look timed out (fixed:
+19x faster, same cells). Run 6 went back to plain walls, 978 1x2 bricks.
+**Run 7 used the finishing pass when it was one call that edits what
+stands** ("applying the detail pass"): 14% sideways, the first designed
+run inside the real range. So the rule holds a third time: a technique is
+taken up when it is one call shaped like what the design is already doing
+— a wall recipe, a base, an edit. Next on that rule: a many-sided shaft as
+one pattern (`prism`), since run 5's silhouette was the best and cost it
+everything else. Shapes (33-47 against 109) and colours (4-8 against 23)
+have not moved in any run; the real set has rooms inside, and these are
+solid shells.
 
 ## Long term: custom elements
 
