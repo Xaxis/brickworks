@@ -39,7 +39,7 @@ await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 await page.waitForTimeout(Number(args.load || 90000));
 
 async function click(name) {
-  for (let tries = 0; tries < 40; tries++) {
+  for (let tries = 0; tries < 240; tries++) {  // two minutes: a loaded machine drew the panel late
     const where = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
     if (where) return page.mouse.click(where.x, where.y);
     await page.waitForTimeout(500);

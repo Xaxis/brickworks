@@ -69,7 +69,7 @@ await page.screenshot({ path: `${out}/1_first_screen.png` });
 // at fixed positions broke the first time a paragraph above the key field
 // grew, and the key went into the app as keyboard shortcuts.
 async function click(name) {
-  for (let tries = 0; tries < 40; tries++) {
+  for (let tries = 0; tries < 240; tries++) {  // two minutes: a loaded machine drew the panel late
     const where = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
     if (where) {
       await page.mouse.click(where.x, where.y);
