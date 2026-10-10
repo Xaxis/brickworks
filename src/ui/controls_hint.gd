@@ -135,6 +135,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["Q", "E"], "turn model"),
 		Binding.new(["B"], "steps"),
 		Binding.new(["P"], "parts"),
+		Binding.new(["M"], "minifigure"),
 		Binding.new(["C"], "paint"),
 		Binding.new(["G"], "pick"),
 		Binding.new(["X"], "lift"),

@@ -327,6 +327,41 @@
       "entry": "src/render/brick_world.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "minifig builder",
+      "entry": "src/ui/minifig_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   (by hand: M, or the Minifig button)",
+      "area": "minifig"
+    },
+    {
+      "kind": "lib",
+      "label": "minifig assembly",
+      "entry": "src/minifig/minifig.gd",
+      "reach": "godot --headless --path . --script src/dev/minifig_probe.gd",
+      "area": "minifig"
+    },
+    {
+      "kind": "lib",
+      "label": "add a minifig",
+      "entry": "src/minifig/figure_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/minifig_probe.gd   (its design assistant section)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "measure minifig offsets",
+      "entry": "tools/minifig.py",
+      "reach": "tools/minifig.py measure   (and grips, data)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "minifig browser flow",
+      "entry": "tools/web/minifig_flow.mjs",
+      "reach": "node tools/web/minifig_flow.mjs --url=https://brickworks.diy/app --out=shots/minifig_web",
+      "area": "minifig"
     }
   ]
 }

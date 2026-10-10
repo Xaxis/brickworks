@@ -109,6 +109,23 @@ func _ready() -> void:
 	_viewport.add_child(_holder)
 
 
+## The surfaces past the first, drawn only for a preview that asks for
+## its print. One holder each, in its own fixed colour.
+var _print_holders: Array[MeshInstance3D] = []
+
+
+func _print_holder(n: int) -> MeshInstance3D:
+	while _print_holders.size() <= n:
+		var holder := MeshInstance3D.new()
+		var material := ShaderMaterial.new()
+		material.shader = BrickWorld.SHADERS["opaque"]
+		material.set_shader_parameter("linearise", BrickWorld._linearise_colors())
+		holder.material_override = material
+		_viewport.add_child(holder)
+		_print_holders.append(holder)
+	return _print_holders[n]
+
+
 func _process(_delta: float) -> void:
 	# One at a time, and only once the last one has finished.
 	#
@@ -128,14 +145,19 @@ func _process(_delta: float) -> void:
 ## Returns null and queues the work otherwise; listen for [signal
 ## ready_for]. Callers want a texture *now* to fill a grid cell, and a
 ## placeholder that fills in shortly is better than a stalled frame.
-func request(part_id: String, color_code: int) -> ImageTexture:
-	var key: String = "%s:%d" % [part_id, color_code]
+##
+## [param printed] draws the part's print as well. The bin leaves it off
+## (see _render); a minifigure's head is chosen by its face, and every
+## printed head drawn without its print is the same yellow blank.
+func request(part_id: String, color_code: int, printed: bool = false) -> ImageTexture:
+	var key: String = "%s:%d%s" % [part_id, color_code, ":printed" if printed else ""]
 	if _cache.has(key):
 		_touch(key)
 		return _cache[key]
 	if not _queued.has(key):
 		_queued[key] = true
-		_queue.append({"part": part_id, "color": color_code, "key": key})
+		_queue.append({"part": part_id, "color": color_code, "key": key,
+			"printed": printed})
 	return null
 
 
@@ -209,7 +231,22 @@ func _render(job: Dictionary) -> void:
 	_material.set_shader_parameter("tint_override", color.shown)
 	_material.set_shader_parameter("finish_override", color.instance_custom)
 
-	_frame(part.bounds)
+	var printed: bool = bool(job.get("printed", false))
+	for n: int in _print_holders.size():
+		_print_holders[n].visible = false
+	if printed:
+		for n: int in range(1, part.surfaces.size()):
+			var holder: MeshInstance3D = _print_holder(n - 1)
+			holder.mesh = part.surfaces[n]
+			var own: int = part.surface_colors[n]
+			var ink: PartLibrary.BrickColor = library.color(
+				int(job["color"]) if own == Lbm.COLOR_INHERIT else own)
+			var material: ShaderMaterial = holder.material_override
+			material.set_shader_parameter("tint_override", ink.shown)
+			material.set_shader_parameter("finish_override", ink.instance_custom)
+			holder.visible = true
+
+	_frame(part.bounds, printed)
 
 	_drawing = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -231,11 +268,16 @@ func _render(job: Dictionary) -> void:
 ## Point the camera at the part from a three-quarter view, sized so the
 ## part fills the frame whatever its extent — a 1x1 plate and a 32x32
 ## baseplate both want to read at 96 pixels.
-func _frame(bounds: AABB) -> void:
+##
+## A print is looked at nearer face on: it is on a figure's front, and
+## from three-quarters a face is half a face.
+func _frame(bounds: AABB, printed: bool = false) -> void:
 	var centre: Vector3 = bounds.get_center()
 	var radius: float = maxf(bounds.size.length() * 0.5, 4.0)
 
 	var direction := Vector3(0.72, 0.52, 0.86).normalized()
+	if printed:
+		direction = Vector3(0.34, 0.26, 0.9).normalized()
 	_camera.global_position = centre + direction * (radius * 4.0 + 80.0)
 	_camera.look_at(centre, Vector3.UP)
 	# A little margin so nothing touches the edge of the cell.

@@ -339,8 +339,15 @@ func _inline(
 ## document, a sub-model per group, which is how LDraw says "this is the
 ## gatehouse": Studio, LeoCAD and LPub all show it as an assembly, and it
 ## comes back in here with every brick in its group.
+##
+## [param frames] gives a group a frame of its own, group -> Transform3D:
+## its sub-model is then written in that frame and placed by it, the way
+## a real set's file keeps a minifigure — standing at the origin of
+## "Saruman.ldr", and that file put where he stands. Any other group is
+## written where its bricks are and placed where it already is.
 static func write_ldr(
-	placements: Array, title: String = "Model", author_name: String = ""
+	placements: Array, title: String = "Model", author_name: String = "",
+	frames: Dictionary = {}
 ) -> String:
 	var groups: Array[String] = []
 	for item: Variant in placements:
@@ -361,12 +368,20 @@ static func write_ldr(
 		return p.group.is_empty())
 	var refs: Array[String] = []
 	for group: String in groups:
-		refs.append("1 16 0 0 0 1 0 0 0 1 0 0 0 1 " + str(file_of[group]))
+		var frame: Transform3D = frames.get(group, Transform3D.IDENTITY)
+		refs.append("1 16 %s %s" % [_line_numbers(frame), str(file_of[group])])
 	var text: String = "0 FILE " + main_file + "\n" \
 		+ _write_one(loose, title, author_name, refs) + "0 NOFILE\n"
 	for group: String in groups:
 		var own: Array = placements.filter(func(p: Placement) -> bool:
 			return p.group == group)
+		if frames.has(group):
+			var back: Transform3D = (frames[group] as Transform3D).affine_inverse()
+			own = own.map(func(p: Placement) -> Placement:
+				var local := Placement.new(p.part_id, p.color_code,
+					back * p.transform, p.step)
+				local.group = p.group
+				return local)
 		text += "0 FILE " + str(file_of[group]) + "\n" \
 			+ _write_one(own, group, author_name, [],
 				str(file_of[group])) + "0 NOFILE\n"
@@ -391,40 +406,45 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			if step >= 0:
 				lines.append("0 STEP")
 			step = placement.step
-		var v: PackedFloat64Array = from_transform(placement.transform)
-		var numbers := PackedStringArray()
-		for n: int in v.size():
-			var value: float = v[n]
-			# The first three are a position in LDU; the nine after
-			# them are a rotation, and they do not want the same
-			# precision.
-			#
-			# Everything was trimmed to a position's worth — 1/1000 LDU
-			# is 0.4 microns, which is plenty for where a brick is. On
-			# a direction cosine the same trim is about a sixteenth of
-			# a degree, and it is not spent once: a model written and
-			# reopened comes back very slightly turned, and again the
-			# next time. Nothing in the app could author an angle when
-			# this was written, so every matrix element was a 0 or a 1
-			# and the loss was exactly zero.
-			#
-			# And negative zero is zero. A rotation about the vertical
-			# axis leaves several matrix elements at -0.0, which prints
-			# as "-0" and is valid LDraw and unreadable in a diff: every
-			# brick in a re-saved model shows as changed when nothing
-			# has. It made a migration that touched three files look
-			# like one that had rewritten eight.
-			var places: int = 4 if n < 3 else 8
-			var shown: String = String.num(value, places) \
-				.rstrip("0").rstrip(".")
-			numbers.append("0" if shown == "-0" or shown.is_empty() else shown)
 		# A direct colour goes back out in the form it came in, or it
 		# reads as an enormous palette index that nothing has.
 		var colour: String = ("0x%07X" % placement.color_code
 			if is_direct_colour(placement.color_code)
 			else str(placement.color_code))
 		lines.append("1 %s %s %s.dat" % [
-			colour, " ".join(numbers), placement.part_id])
+			colour, _line_numbers(placement.transform), placement.part_id])
 
 	lines.append("0")
 	return "\n".join(lines) + "\n"
+
+
+## The twelve numbers of a type-1 line for a placement.
+static func _line_numbers(at: Transform3D) -> String:
+	var v: PackedFloat64Array = from_transform(at)
+	var numbers := PackedStringArray()
+	for n: int in v.size():
+		var value: float = v[n]
+		# The first three are a position in LDU; the nine after
+		# them are a rotation, and they do not want the same
+		# precision.
+		#
+		# Everything was trimmed to a position's worth — 1/1000 LDU
+		# is 0.4 microns, which is plenty for where a brick is. On
+		# a direction cosine the same trim is about a sixteenth of
+		# a degree, and it is not spent once: a model written and
+		# reopened comes back very slightly turned, and again the
+		# next time. Nothing in the app could author an angle when
+		# this was written, so every matrix element was a 0 or a 1
+		# and the loss was exactly zero.
+		#
+		# And negative zero is zero. A rotation about the vertical
+		# axis leaves several matrix elements at -0.0, which prints
+		# as "-0" and is valid LDraw and unreadable in a diff: every
+		# brick in a re-saved model shows as changed when nothing
+		# has. It made a migration that touched three files look
+		# like one that had rewritten eight.
+		var places: int = 4 if n < 3 else 8
+		var shown: String = String.num(value, places) \
+			.rstrip("0").rstrip(".")
+		numbers.append("0" if shown == "-0" or shown.is_empty() else shown)
+	return " ".join(numbers)

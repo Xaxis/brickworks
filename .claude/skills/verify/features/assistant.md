@@ -153,6 +153,11 @@ fixing what it got wrong.
   every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
   to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
   and checks bricks are turned, dressed and stoned, and the edit applied.
+- `people in it`: `add_minifig` stands a figure made of real parts on whatever is
+  under its feet; declared and passed through here, made in
+  `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
+  model without its figures' bodies, as real sets' inventories are counted, and
+  `_tag_assemblies` leaves a figure in its own group.
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,

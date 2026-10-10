@@ -497,10 +497,17 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		var offset: Vector3 = brick.transform.origin - pivot
 		var at := Transform3D(
 			turn * brick.transform.basis, pivot + turn * offset)
-		# Land exactly on the lattice: an accumulated quarter turn drifts
-		# by a fraction of a cell otherwise, and after four of them a
-		# model no longer meets the grid it was built on.
-		at.origin = BrickLattice.to_ldu(BrickLattice.to_cell(at.origin))
+		# Exact already: the turn is whole numbers and the pivot is on a
+		# stud, so a part on the lattice lands on the lattice. Only the
+		# float dust is taken off, to the 1/10000 LDU a file keeps.
+		#
+		# This used to floor every origin onto a cell, which is the
+		# basis bug of the paragraph above over again for positions: a
+		# part that was never on the 2 LDU lattice was moved onto it. A
+		# minifigure is nine such parts — an arm 15.552 out from its
+		# torso — and one press of Q moved its arms up to 2 LDU off its
+		# shoulders and its hands out of its arms.
+		at.origin = at.origin.snapped(Vector3.ONE * 0.0001)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
 		brick.transform = at

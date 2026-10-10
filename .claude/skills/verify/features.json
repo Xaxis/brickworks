@@ -120,6 +120,24 @@
       "tests": []
     },
     {
+      "id": "cli:measure minifig offsets",
+      "kind": "cli",
+      "entry": "tools/minifig.py",
+      "reach": "tools/minifig.py measure   (and grips, data)",
+      "area": "minifig",
+      "tests": [
+        "tests/test_minifig.py"
+      ]
+    },
+    {
+      "id": "cli:minifig browser flow",
+      "kind": "cli",
+      "entry": "tools/web/minifig_flow.mjs",
+      "reach": "node tools/web/minifig_flow.mjs --url=https://brickworks.diy/app --out=shots/minifig_web",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
@@ -149,6 +167,14 @@
       "entry": "tools/deploy.sh",
       "reach": "tools/deploy.sh --prod",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:add a minifig",
+      "kind": "lib",
+      "entry": "src/minifig/figure_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/minifig_probe.gd   (its design assistant section)",
+      "area": "minifig",
       "tests": []
     },
     {
@@ -206,6 +232,16 @@
       "reach": "godot --headless --path . --script src/dev/fetch_probe.gd",
       "area": "parts",
       "tests": []
+    },
+    {
+      "id": "lib:minifig assembly",
+      "kind": "lib",
+      "entry": "src/minifig/minifig.gd",
+      "reach": "godot --headless --path . --script src/dev/minifig_probe.gd",
+      "area": "minifig",
+      "tests": [
+        "tests/test_minifig.py"
+      ]
     },
     {
       "id": "lib:model and effort settings",
@@ -349,6 +385,14 @@
       "entry": "src/ai/claude_code.gd",
       "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "ui:minifig builder",
+      "kind": "ui",
+      "entry": "src/ui/minifig_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   (by hand: M, or the Minifig button)",
+      "area": "minifig",
       "tests": []
     },
     {

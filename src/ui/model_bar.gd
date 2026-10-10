@@ -27,6 +27,8 @@ signal cleared()
 signal parts_wanted()
 ## Someone wants to turn a picture into bricks.
 signal mosaic_wanted()
+## Someone wants to make a minifigure.
+signal minifig_wanted()
 signal controls_wanted()
 signal opened(bricks: int)
 
@@ -76,6 +78,8 @@ func _build() -> void:
 		"Every part this model needs, by colour and count")
 	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
 		"Turn a picture into a wall of plates")
+	_button(row, "Minifig", func() -> void: minifig_wanted.emit(),
+		"Make a minifigure from real parts and stand it in the model (M)")
 	row.add_child(VSeparator.new())
 	_button(row, "Help", func() -> void: controls_wanted.emit(),
 		"What every button and key does, and how to change two of them")
