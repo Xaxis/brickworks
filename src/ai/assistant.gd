@@ -6145,8 +6145,9 @@ alongside the bricks you write by hand:
            staircase of 1x1 bricks: measured on a castle, 354 of them, \
            four towers' worth. Anything round and more than a couple of \
            studs across wants show_technique("wide round tower") — four \
-           4x4 corner-round bricks a course, which is what real castle \
-           sets use.
+           4x4 corner-round bricks a course. But round is a choice: 15 \
+           of 54 castle sets since 2010 use that brick at all, none \
+           more than eight, and every castle built here had two hundred.
            Walls especially. Measured: a curtain wall 40 by 24 studs and \
            twelve courses high is 408 parts out of fill — 1x4 bricks \
            in a running bond, 1x3, 1x2 and 1x1 at the ends, and not one \
@@ -7132,8 +7133,13 @@ func _tools() -> Array:
 							+ "and plates. Once the model holds together "
 							+ "and you have looked at it whole, each one "
 							+ "is shown to you close up, on its own, to "
-							+ "detail. A model that is one thing is one "
-							+ "assembly."},
+							+ "detail. A pass adds about as much to a "
+							+ "big assembly as to a small one, so name "
+							+ "them at about a hundred parts each: on a "
+							+ "building, a floor's front is one and its "
+							+ "sides another, the roof one and the sign "
+							+ "on it another. A model that is one thing "
+							+ "is one assembly."},
 				},
 				"required": ["name", "description", "bricks", "assemblies"],
 				"additionalProperties": false,

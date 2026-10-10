@@ -718,7 +718,7 @@
       "additionalProperties": false,
       "properties": {
         "assemblies": {
-          "description": "the parts of this model a person would name \u2014 the gatehouse, each tower, each run of wall, the keep \u2014 each a box in studs and plates. Once the model holds together and you have looked at it whole, each one is shown to you close up, on its own, to detail. A model that is one thing is one assembly.",
+          "description": "the parts of this model a person would name \u2014 the gatehouse, each tower, each run of wall, the keep \u2014 each a box in studs and plates. Once the model holds together and you have looked at it whole, each one is shown to you close up, on its own, to detail. A pass adds about as much to a big assembly as to a small one, so name them at about a hundred parts each: on a building, a floor's front is one and its sides another, the roof one and the sign on it another. A model that is one thing is one assembly.",
           "items": {
             "additionalProperties": false,
             "properties": {

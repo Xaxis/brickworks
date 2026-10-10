@@ -273,7 +273,11 @@ what it spent before its verdict; report it.
   The same table said "a round tower → ellipse", which is where 354 1x1 bricks
   came from: an ellipse with a wall has no room for a long brick once it curves.
   It says "a round tube" now, with a `wide round tower` technique — four 48092
-  corner-round bricks a course, the part real castle sets reach for second-most.
+  corner-round bricks a course. It also said that was "the part real castle sets
+  reach for second-most", from the kinds before they were counted by set over
+  models only; counted properly 48092 is in none of castle's lists, and 15 of 54
+  castle sets since 2010 use it, none more than eight. Every castle built here
+  had 200-240 of it. The prompt and technique now say round is a choice.
   Its rotation was measured, not guessed: all four assignments stack and check
   buildable, and only one leaves the middle hollow, which turning the finished
   ring a quarter about its own centre settles (93% of cells map onto themselves,
