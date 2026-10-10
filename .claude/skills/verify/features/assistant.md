@@ -166,6 +166,16 @@ fixing what it got wrong.
   every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
   to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
   and checks bricks are turned, dressed and stoned, and the edit applied.
+- `dressing gives way`: every tile, round tile or plate `_dress` lays on a side
+  stud is marked `Placement.dressing`, and in `_check` it is the thing left out
+  where it would overlap a brick, whichever came first (`_give_way`, in the world
+  lattice and in a section's own). The check then runs again without it
+  (`_without_dressing`), so every brick number it reports is one in the model as
+  built, and says how many tiles were left out. Found by the eleventh Orthanc:
+  its prism core's sideways tiles hit the piers, and the run dropped the dressing
+  from the whole core to get past them. `patterns_probe`: a wall of 1x1s where a
+  studs_out face's 18 tiles go is buildable built before or after it, and says
+  so; with give-way off it is 18 overlaps.
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,

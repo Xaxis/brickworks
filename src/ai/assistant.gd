@@ -268,6 +268,10 @@ class Placement extends RefCounted:
 	## The section this brick belongs to, or empty for the main body.
 	## Its coordinates are then that section's own, not the world's.
 	var section: String = ""
+	## A tile or round plate laid on a side stud to finish a face
+	## (Assistant._dress). Finish, not structure: where it would overlap
+	## a brick, it is the thing left out (Assistant._give_way).
+	var dressing: bool = false
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -287,6 +291,7 @@ class Placement extends RefCounted:
 			p.face = "up"
 		p.rot = posmod(int(raw.get("rot", 0)), 4)
 		p.section = str(raw.get("section", "")).strip_edges()
+		p.dressing = bool(raw.get("dressing", false))
 		return p
 
 	## This brick again, in another section. A copy is a new brick, so
@@ -303,6 +308,7 @@ class Placement extends RefCounted:
 		p.rot = rot
 		p.odd_face = odd_face
 		p.section = into
+		p.dressing = dressing
 		return p
 
 	func where() -> String:
@@ -4115,7 +4121,8 @@ func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
 	var part: String = faces[int(Patterns._scatter(x, y, z, 23) * faces.size()) % faces.size()]
 	return {"part": part, "color": tone if tone >= 0 else int(brick.get("color", DEFAULT_COLOUR)),
 		"x": snappedf(corner.x / STUD, 0.1), "y": snappedf(corner.y / PLATE, 0.25),
-		"z": snappedf(corner.z / STUD, 0.1), "face": facing, "rot": 0}
+		"z": snappedf(corner.z / STUD, 0.1), "face": facing, "rot": 0,
+		"dressing": true}
 
 
 ## The assemblies a design named, each a name and a box in studs and
@@ -4298,6 +4305,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## unattached — three complaints from one fault, two of them
 	## artefacts of the first.
 	var crowded: Dictionary = {}
+	## Dressing that would have overlapped a brick: index -> true.
+	var gave_way: Dictionary = {}
 	## Section name -> the indices of the placements in it.
 	var part_of: Dictionary = {}
 	## Sections reported adrift, so the hint below can address them too.
@@ -4483,7 +4492,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# to put it in — and on a model with four sections that was
 			# the whole cost of checking it.
 			var here: PackedInt32Array = builder.boxes_for(part, square)
-			var near: PackedInt64Array = own.blockers_boxes(here)
+			var near: PackedInt64Array = _give_way(own.blockers_boxes(here),
+				placement, index, model, gave_way)
+			if gave_way.has(index):
+				continue
 			if not near.is_empty():
 				crowded[placement.section] = true
 				_note(issues, "overlap",
@@ -4555,6 +4567,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 				if other.id != 0 and not other.moved:
 					blockers = PackedInt64Array()
 
+		blockers = _give_way(blockers, placement, index, model, gave_way)
+		if gave_way.has(index):
+			continue
+
 		if not blockers.is_empty():
 			# The lattice numbers from one, because zero means empty,
 			# and negative keys are bricks that were already there. Both
@@ -4611,6 +4627,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# hundred reads for a number six of them give: on a ten thousand
 		# brick wall that one loop was twenty seconds of the check.
 		box_of[index] = BrickLattice.corners_in(packed)
+
+	# Without the dressing that gave way, and checked again, so that every
+	# brick number said from here on is a number in the model as built.
+	if not gave_way.is_empty():
+		return _without_dressing(model, gave_way, alone)
 
 	# Support is checked in world coordinates even for a section that
 	# has been carried somewhere at an angle, and that is not an
@@ -4788,6 +4809,53 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 ## other — the same two rules that decide whether a brick is held up,
 ## so a design cannot be "every brick supported" and "in five pieces"
 ## for contradictory reasons.
+## Dressing gives way: what is left of [param blockers] once the dressing
+## among them, or the placement itself if it is dressing, has stepped
+## aside into [param gave_way].
+##
+## A tile on a side stud is the finish on a face. Where the face meets
+## something — a prism's core against the piers that hold it — a real
+## build simply has no tile there, and refusing the whole design for it
+## is refusing it for decoration. A run did exactly what that taught:
+## "its sideways tiles were what hit them. I'll drop those tiles from the
+## core", and the tower lost its texture to get past one corner.
+static func _give_way(blockers: PackedInt64Array, placement: Placement,
+		index: int, model: Model, gave_way: Dictionary) -> PackedInt64Array:
+	if blockers.is_empty():
+		return blockers
+	if placement.dressing:
+		gave_way[index] = true
+		return PackedInt64Array()
+	var solid := PackedInt64Array()
+	for key: int in blockers:
+		if key > 0 and key - 1 < model.placements.size() \
+				and model.placements[key - 1].dressing:
+			gave_way[key - 1] = true
+		else:
+			solid.append(key)
+	return solid
+
+
+## The design without the dressing that gave way, checked again, and
+## saying how much was left out.
+func _without_dressing(model: Model, gave_way: Dictionary,
+		alone: bool) -> Dictionary:
+	var kept: Array[Placement] = []
+	for index: int in model.placements.size():
+		if not gave_way.has(index):
+			kept.append(model.placements[index])
+	model.placements = kept
+	var report: Dictionary = _check(model, alone)
+	var left: int = gave_way.size()
+	var said: String = ("%d dressing tile%s on side studs would have "
+		% [left, "" if left == 1 else "s"]
+		+ "overlapped a brick and %s left out; the faces keep the rest."
+		% ("was" if left == 1 else "were"))
+	report["feedback"] = "%s\n%s" % [report["feedback"], said]
+	(report["advice"] as Array).append(said)
+	return report
+
+
 ## A straight run of single-stud steps in the plan view, which is a
 ## diagonal built the long way round.
 ##

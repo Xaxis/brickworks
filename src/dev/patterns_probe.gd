@@ -351,6 +351,45 @@ func _holds_up() -> void:
 			_check("...with a part on its side on every one of its %d side studs, %d"
 				% [studs, sideways], sideways == studs)
 
+	# Dressing gives way: a face of tiles on side studs, and a wall of
+	# 1 x 1s standing where the tiles go — the prism core against its
+	# piers that a run stripped of all its dressing to get past. Both
+	# orders, because the check meets whichever comes first first.
+	var face: Dictionary = {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0},
+		"length": 6, "courses": 3, "facing": "+z", "color": 0}
+	var wall: Array = []
+	for x: int in 6:
+		for course: int in 3:
+			wall.append({"part": "3005", "color": 71, "x": x, "y": course * 3,
+				"z": 1, "rot": 0})
+	for wall_first: bool in [false, true]:
+		var both: Assistant.Model = assistant._read_model(
+			{"patterns": [face], "bricks": wall})
+		var dressing: Array[Assistant.Placement] = []
+		var solid: Array[Assistant.Placement] = []
+		var walls: Array[Assistant.Placement] = []
+		for placement: Assistant.Placement in both.placements:
+			if placement.dressing:
+				dressing.append(placement)
+			elif placement.part == "3005":
+				walls.append(placement)
+			else:
+				solid.append(placement)
+		both.placements = (walls + solid + dressing) if wall_first \
+			else (solid + dressing + walls)
+		var tiles: int = dressing.size()
+		var verdict: Dictionary = assistant._check(both)
+		var left: int = 0
+		for placement: Assistant.Placement in both.placements:
+			if placement.dressing:
+				left += 1
+		_check("a wall where a face's %d tiles go, %s: %s, %d tiles left"
+			% [tiles, "built first" if wall_first else "built after",
+				str(verdict["summary"]), left],
+			bool(verdict["ok"]) and tiles > 0 and left < tiles)
+		_check("...and it says what was left out",
+			str(verdict["feedback"]).contains("left out"))
+
 
 func _made(patterns: Array, already: Array = []) -> Array:
 	var trouble: Array = []
