@@ -132,19 +132,37 @@ plainer — see the first lever below.
    Asked for assemblies of about a hundred parts (run 22), it named five
    instead of four — one of them still 424 parts — started far richer
    (42 shapes at the first look against 16) and ended in the same place:
-   797 parts, 70 shapes. Three stations, 62, 67, 70: **the station has a
-   plateau, and what it is short of is what a building is made of** —
-   its windows are 42 aeroplane windows in white surrounds that read as
-   blanks. Real windows are a frame, glass, a sill and a lintel, and no
-   technique says so. A cruiser run is still owed.
-4. **The texture still missing, 113 to 180.** The ordinary parts are
+   797 parts, 70 shapes. Three stations, 62, 67, 70: **the station had a
+   plateau, and what it was short of is what a building is made of** —
+   its windows were 42 aeroplane windows in white surrounds that read as
+   blanks. Given a `window in a wall` technique (a 60593 frame, the bond
+   laid short past it, an arch over it), run 23 looked it up in its
+   first minute and came to **1,003 parts, 87 shapes, 48 used once or
+   twice** — 16 of that frame, six 1x2x2s, two 1x4x3s, three door
+   frames, arched lintels — and reads as a building. One run, well
+   outside the three before it. Its frames have no glass: the checker
+   reads a pane in its frame as an overlap (next). A cruiser run is
+   still owed.
+4. **Worked examples for what real sets are made of.** Run 23 is the
+   evidence: a part list named the window frames for every station run
+   and none used them; one technique did, and the station gained 17
+   shapes. A door in its frame, a roof with a ridge, a balcony and its
+   railing, a lamp post, a tree, a market stall are each a construction
+   real sets repeat. Which ones is in the model repository, whose real
+   sets name their sub-models. Counted over the 253 downloaded
+   2026-10-09 (models whose sub-model names say it): **roof 46, door 37,
+   seat 27, lamp 22, window 21, tree 20**, then furniture — table 14,
+   bed 10, chair 8, bench 8, desk 7 — plant 9, sign 7. So: a roof, a
+   door in its frame, a lamp, a tree, and interiors, which every
+   building here has been without.
+5. **The texture still missing, 113 to 180.** The ordinary parts are
    mostly used (54 of the castle's top 100). What is left is where parts
    go together: which parts real sets put beside which — the
    co-occurrence data, downloaded and unread.
-5. **Angled structure.** Two of three cruiser runs failed on pods on
+6. **Angled structure.** Two of three cruiser runs failed on pods on
    pylons; the third laid them flush. The tools now say where a section
    meets, but no run has yet built a raked pylon that held.
-6. **The booklet's pictures.** A castle's booklet enters its parts 18-30
+7. **The booklet's pictures.** A castle's booklet enters its parts 18-30
    times because walls stand on a shared base; whether a person can
    follow 250 pages is the next thing to measure, by building from one.
 
@@ -181,6 +199,11 @@ Each line is a run of the castle brief unless it says otherwise.
   planner that goes to the part a stalled one waits on (19 entries to 18);
   asking for assemblies of about a hundred parts (station run 22: five
   passes for four, 70 shapes for 67).
+- **What a building is made of** (station run 23): a window technique
+  took the station from a plateau of 62-70 shapes to 87, and one-off
+  pieces from ~30 to 48. The kind's parts had named the frames all
+  along; a list of part numbers did not get them used, a worked example
+  did.
 - **Piece size** (run 21): `fill` in a real set's sizes on a running bond
   took big pieces from 46% to 17%, and the seams it needed to be seen
   were then drawn. Shapes and colours fell in the same run (78, 10).
