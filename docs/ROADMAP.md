@@ -303,6 +303,8 @@ colours at the median):
 | 5 | stone-wall recipe with `sideways` | 2,355 | 0% | **26%** | 70% | 62% | 37 | 5 |
 | 6 | turned parts place 19x faster | 2,559 | 0% | 0% | 83% | 65% | 43 | 6 |
 | 7 | `restyle_model`, named in the advice | 2,390 | **14%** | 0% | 63% | 60% | 33 | 6 |
+| 8 | `prism` | 1,463 | 0% | **31%** | 94% | 87% | 36 | 10 |
+| 9 | prism faces take masonry and sideways | 2,869 | **13%** | 0% | 64% | 58% | 41 | 4 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -329,6 +331,17 @@ one pattern (`prism`), since run 5's silhouette was the best and cost it
 everything else. Shapes (33-47 against 109) and colours (4-8 against 23)
 have not moved in any run; the real set has rooms inside, and these are
 solid shells.
+
+Runs 8-9. Run 8 used `prism` and could not finish its faces (the finishing
+pass skips sections and two-wide bricks: fixed, prism faces take masonry
+and sideways themselves). Run 9 used the finishing pass unprompted for the
+second run running — 13% sideways — and no prism. **The two craft numbers
+have each reached the real range, in different runs; no run has both, and
+variety has not moved in nine.** The style advice now names both calls
+when its numbers want them. Run 8 also ended silently at 46 minutes: the
+desktop app quits on Escape and on closing its window, and the run's
+window was on the owner's screen — runs go off-screen now
+(`tools/claude_run.sh`).
 
 ## Long term: custom elements
 
