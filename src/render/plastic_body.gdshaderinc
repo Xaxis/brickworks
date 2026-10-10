@@ -31,7 +31,10 @@
 // The finish rides in per brick, beside the colour, so a chrome brick
 // and a red one of the same part share one batch and one draw.
 
-uniform float base_roughness : hint_range(0.0, 1.0) = 0.22;
+// Not mirror-smooth: at 0.22 a flat face at the mirror angle to the sun
+// went white from edge to edge, and a dark grey rock read as banded in
+// white (src/dev/highlight_probe.gd).
+uniform float base_roughness : hint_range(0.0, 1.0) = 0.28;
 uniform float roughness_variation : hint_range(0.0, 0.5) = 0.10;
 uniform float specular_level : hint_range(0.0, 1.0) = 0.5;
 
@@ -270,7 +273,9 @@ void fragment() {
 	// vanishing.
 	float base_alpha = tint_override.r >= 0.0 ? tint_override.a : COLOR.a;
 	float alpha = clamp(base_alpha + pow(grazing, 3.0) * (1.0 - base_alpha) * 0.85, 0.0, 1.0);
-	float glass_roughness = base_roughness * 0.4;
+	// About 0.09, as it was when opaque plastic was 0.22: glazing stays
+	// glassy, and its glint is what tells it from trans rubber.
+	float glass_roughness = base_roughness * 0.31;
 	vec3 glass_backlight = instance_color * 0.4;
 
 	if (finish != FINISH_PLASTIC) {

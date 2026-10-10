@@ -521,6 +521,7 @@ func _light_for_this_renderer() -> void:
 		var light: DirectionalLight3D = get_node(light_name)
 		light.light_energy = BrickWorld.light_energy(light.light_energy,
 			light.shadow_enabled)
+		light.light_specular = BrickWorld.light_specular(light.light_specular)
 	var environment: Environment = ($WorldEnvironment as WorldEnvironment).environment
 	environment.ambient_light_energy = BrickWorld.light_energy(
 		environment.ambient_light_energy)

@@ -111,6 +111,20 @@ static func light_energy(forward_plus: float, casts_shadows: bool = false) -> fl
 	return forward_plus * (0.11 if casts_shadows else 0.6)
 
 
+## A light's specular, set for Forward+, for whichever renderer is
+## drawing. The energy above is cut to calibrate the diffuse, and the
+## glint goes with it: at the specular that keeps a dark slope from going
+## white under Forward+, transparent plastic on the web lost the glint
+## that tells it from transparent rubber. Measured with
+## src/dev/finish_probe.gd and src/dev/highlight_probe.gd on both: at
+## one times, trans rubber stopped differing; at four, slopes went pale
+## here too; at two, both hold.
+static func light_specular(forward_plus: float) -> float:
+	if _linearise_colors():
+		return forward_plus
+	return forward_plus * 2.0
+
+
 ## Materials are shared, not per batch: four of them cover everything, and
 ## sharing them lets Godot group the draws.
 func _material(material_class: int, two_sided: bool) -> ShaderMaterial:
