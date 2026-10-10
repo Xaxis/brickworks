@@ -73,6 +73,13 @@ and a trackpad turns with two fingers and slides with shift. Which way
 the wheel goes, and whether the middle button turns or slides, are the
 two bindings the CAD tools disagree about, so both are settings.
 
+The pointer says which of these is about to happen: an arrow with a plus
+where a click will place, a minus while the right button is down over a
+brick, a turning or sliding mark while the view moves, a magnifier as it
+zooms, a brush while `C` is held. `,` lists every control with a picture
+of the gesture and the pointer it shows; `src/dev/cursor_probe.gd` reads
+each pointer back from the window.
+
 Every one of those is pressed for real in `src/dev/controls_probe.gd`
 and `src/dev/feel_probe.gd`, because a hint that lies is worse than
 none — and the second of those asks a different question: not whether

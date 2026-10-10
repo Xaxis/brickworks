@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Turning the view: two arrows chasing round the point it turns about. Hotspot 16,16. -->
+  <g fill="#16181d" stroke="#16181d" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M6.13 12.41 A10.5 10.5 0 0 1 25.09 10.75" fill="none" stroke-width="5.2"/>
+    <path d="M25.87 19.59 A10.5 10.5 0 0 1 6.91 21.25" fill="none" stroke-width="5.2"/>
+    <path d="M26.69 13.52 L27.61 7.91 L21.37 11.51 Z" stroke-width="2.6"/>
+    <path d="M5.31 18.48 L4.39 24.09 L10.63 20.49 Z" stroke-width="2.6"/>
+    <circle cx="16" cy="16" r="3.9"/>
+  </g>
+  <g fill="#ffffff" stroke="#ffffff" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M6.13 12.41 A10.5 10.5 0 0 1 25.09 10.75" fill="none" stroke-width="2.6"/>
+    <path d="M25.87 19.59 A10.5 10.5 0 0 1 6.91 21.25" fill="none" stroke-width="2.6"/>
+    <path d="M26.69 13.52 L27.61 7.91 L21.37 11.51 Z" stroke="none"/>
+    <path d="M5.31 18.48 L4.39 24.09 L10.63 20.49 Z" stroke="none"/>
+    <circle cx="16" cy="16" r="2.6" stroke="none"/>
+  </g>
+</svg>

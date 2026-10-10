@@ -161,6 +161,13 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "pointer cursors",
+      "entry": "src/ui/cursors.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "renders for the critique",
       "entry": "src/ai/model_shot.gd",

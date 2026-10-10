@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Letting go of the right button takes this brick off: the pointer, with a minus. Hotspot 2.5,2.5. -->
+  <path d="M2.5 2.5 L2.5 21 L7.2 16.6 L10.6 24.2 L13.8 22.8 L10.5 15.4 L16.8 15.4 Z"
+        fill="#ffffff" stroke="#16181d" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="23" cy="23" r="7.4" fill="#16181d"/>
+  <circle cx="23" cy="23" r="6.3" fill="#ffffff"/>
+  <circle cx="23" cy="23" r="5.1" fill="#e5484d"/>
+  <path d="M19.9 23 H26.1" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+</svg>

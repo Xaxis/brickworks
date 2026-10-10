@@ -137,10 +137,10 @@ echo "── on screen ──"
 
 # A window even when nobody is logged in.
 #
-# These seven need a rendering device. The desktop session is the obvious
+# These eight need a rendering device. The desktop session is the obvious
 # one and it is not always there: a run from a detached shell, or after
 # the screen locks, or on a machine nobody is sitting at, finds no
-# display and seven checks fail for a reason that has nothing to do with
+# display and eight checks fail for a reason that has nothing to do with
 # the code — "X11 Display is not available", which reads like a broken
 # probe. Xvfb gives them one, and the pictures come out the same: a
 # frame costs 124 ms there against 989 ms on the compositor, so it is
@@ -189,6 +189,19 @@ run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
 # binding to test.
 run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/feel_probe.gd
+# And whether the pointer says what the mouse will do. The shape is read
+# back from the display server, and a headless one has no cursor at all:
+# it answers "arrow" whatever was asked for, so this passes nothing there.
+#
+# On Xvfb even when there is a desktop, because it moves the system's
+# pointer (see _move_to in the probe), and on a desktop that pointer is
+# the hand of whoever is sitting at it.
+cursor_screen=("${screen[@]}")
+if command -v xvfb-run >/dev/null 2>&1; then
+  cursor_screen=(env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24")
+fi
+run "cursors" "${cursor_screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/cursor_probe.gd
 
 # Two processes and a socket between them, which is a different kind of
 # failure from anything a single probe can have: the app's half can be

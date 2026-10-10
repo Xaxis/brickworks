@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+  <!-- One finger kept down: hold. The ring fills as the time passes. -->
+  <circle cx="10" cy="10" r="6.3" fill="none" stroke="#e2e5ec" stroke-opacity="0.3" stroke-width="1.6"/>
+  <path d="M10 3.7 A6.3 6.3 0 1 1 3.7 10" fill="none" stroke="#5b9dff" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="10" cy="10" r="2.8" fill="#e2e5ec"/>
+</svg>

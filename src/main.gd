@@ -49,6 +49,11 @@ var _ask_went_well: bool = true
 ## Whether a left press this handler saw started the box being drawn.
 ## The watchdog below will not finish one it never saw begin.
 var _box_began: bool = false
+## A box Escape threw away while the button was still down. Its release
+## is not a click, and the rest of the drag does not start another box.
+var _box_dropped: bool = false
+## What the pointer says. See src/ui/cursors.gd.
+var _cursors: Cursors
 ## Which of the two things that want a picture opened the file dialog.
 var _picking_reference: bool = false
 var _hint: ControlsHint
@@ -869,14 +874,14 @@ func _build_ui() -> void:
 	_inset(_inventory, 860.0, 600.0)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
-		_inset(_controls, 460.0, 560.0)
+		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 		_inset(_mosaic, 380.0, 460.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 	_bar.timeline_wanted.connect(_toggle_steps)
 
 	_controls = ControlsDialog.new()
 	$HUD.add_child(_controls)
-	_inset(_controls, 460.0, 560.0)
+	_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 	_bar.controls_wanted.connect(_controls.open)
 	# The strip along the bottom names what the middle button does, so
 	# it is wrong the moment somebody changes it.
@@ -1003,6 +1008,12 @@ func _build_ui() -> void:
 			_playback.stop()
 		_on_model_changed()
 		_bar.say("working — %d bricks so far" % count))
+
+	# Last, so the buttons above are all there for it to give a
+	# pointing hand to; any made later are caught as they arrive.
+	_cursors = Cursors.new()
+	add_child(_cursors)
+	_cursors.looked_again.connect(_hover_again)
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
@@ -1782,6 +1793,8 @@ func _steer_from_keys(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	_steer_from_keys(_delta)
+	if _cursors != null:
+		_cursors.show_state(_cursor_state())
 	# A box whose ending went somewhere else.
 	#
 	# Letting go over a button hands the release to that button, which
@@ -1892,7 +1905,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Drawing a box, which is not aiming the ghost. Any left drag,
 		# with or without shift — shift only decides whether what it
 		# catches is added to the selection or replaces it.
-		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 and not _box_dropped:
 			if _marquee.drag_to(moved.position):
 				_builder.hide_preview()
 				return
@@ -1961,6 +1974,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# decided here. A drag draws a box; a click without one places, or
 	# picks a brick out when shift is held.
 	if button.pressed:
+		_box_dropped = false
 		_marquee.begin(button.position)
 		_box_began = true
 		if button.shift_pressed and button.double_click:
@@ -1980,6 +1994,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_finish_box(button.shift_pressed)
 		return
 	_marquee.finish()
+	if _box_dropped:
+		# The end of a box Escape already threw away, not a click.
+		_box_dropped = false
+		return
 
 	if button.shift_pressed:
 		_aim_at(button.position)
@@ -2213,6 +2231,51 @@ func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 		_camera.project_ray_normal(mouse))
 
 
+## Aim the ghost where the pointer already is, as a movement there would.
+##
+## For when what is under a still pointer may have changed: a box let go
+## or thrown away, a dialog closed, a panel folded. The ghost was hidden
+## for the box, and nothing put it back until the mouse moved — so the
+## pointer said there was nothing to click where a click would place.
+## Godot replays a motion for the interface (Cursors asks it to), but a
+## motion it makes up is marked internal and never reaches any
+## _unhandled_input, so this does here what that motion would have.
+func _hover_again() -> void:
+	if _marquee.is_drawing() or _camera.is_turning() or _camera.is_sliding():
+		return
+	var at: Vector2 = get_viewport().get_mouse_position()
+	if _over_panel_at(at):
+		_builder.hide_preview()
+		return
+	_refresh_preview(at)
+
+
+## What the pointer should say over the model, from what is true this
+## frame. Cursors.choose decides; this only gathers.
+func _cursor_state() -> String:
+	var now := Cursors.Situation.new()
+	now.turning = _camera.is_turning()
+	now.sliding = _camera.is_sliding()
+	now.boxing = _marquee != null and _marquee.is_drawing()
+	now.aimed = _builder.has_preview()
+	now.can_place = _builder.can_place()
+	# The ghost is only up over the model, so a brick the builder still
+	# remembers from before the pointer went over a panel is not one a
+	# click there would touch.
+	var over_brick: bool = now.aimed and _builder.hovered_brick() != 0
+	now.removing = over_brick and _camera.right_pending()
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	var typing: bool = focused is LineEdit or focused is TextEdit
+	# Held, C paints whatever comes under the pointer: the key repeats,
+	# and each repeat paints what is there.
+	now.painting = not typing and Input.is_key_pressed(KEY_C)
+	now.moment = _camera.moment()
+	now.playing = _playback != null and _playback.is_playing()
+	now.selecting = over_brick and Input.is_key_pressed(KEY_SHIFT)
+	now.loading = _library.is_on_its_way(_builder.held_part)
+	return Cursors.choose(now)
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.is_pressed():
 		return
@@ -2405,6 +2468,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# run forty-six minutes in ended on one stray press. Escape
 			# means "out of this"; leaving the app is Ctrl+Q or the
 			# window's close button.
+			# A box being drawn is the innermost of all: the button is
+			# still down. Thrown away, and the release that ends the
+			# drag is not taken for a click.
+			if _marquee != null and _marquee.is_drawing():
+				_marquee.finish()
+				_box_began = false
+				_box_dropped = true
+				return
+			# The controls panel was missing from this ladder, so
+			# Escape walked straight past it to whatever was behind.
+			if _controls != null and _controls.visible:
+				_controls.visible = false
+				return
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
 				return

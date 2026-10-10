@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic, lib:finishes, lib:true colour -->
+<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic, lib:finishes, lib:true colour -->
 
 ## Sub-features
 
@@ -31,7 +31,40 @@ picture the assistant is shown.
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,` or the Help button — and every key on it actually doing that.
+  `,` or the Help button — and every key on it actually doing that. One table,
+  `ControlsHint.for_keyboard()`, in sections (Building, Selecting, The view, The
+  timeline, Panels), holds every control the handlers answer to, redo, Ctrl-A,
+  Delete, Escape, the numbered views, shift-middle-drag, shift-scroll and the
+  double-clicks included. Keys are drawn as caps; the mouse, trackpad and fingers
+  as pictures (`assets/ui/controls/*.svg`: a mouse with the button lit, a drag
+  with four arrows, the wheel, two fingers, a pinch, the arrow keys), chosen by
+  `ControlsHint.pieces()`. The panel adds, beside each row, the cursor that
+  control shows (`Binding.cursor`), and the words as tooltips. The middle-drag and
+  shift-middle-drag rows change verb and cursor with the "middle button slides"
+  box, and so does the strip. Asked for by the owner ("shouldnt their be a list of
+  controls with corresponding icons"). `cursor_probe` checks the panel draws
+  pictures and caps and that its middle row follows the setting, and saves
+  `shots/cursors/help_dialog.png` and `strip.png` to look at.
+- `pointer cursors`: `src/ui/cursors.gd`. The pointer over the model says what a
+  click does and what a drag is doing: place (arrow with a blue plus), blocked
+  (forbidden), busy (the held part still fetching), select (shift over a brick:
+  pointing hand), remove (right button down over a brick, not yet moved: arrow
+  with a red minus), orbit, slide, zoom in/out (for 350 ms after a wheel notch,
+  swipe, pinch or key), box (crosshair with a dashed box), paint (C held: a
+  brush). Text fields keep the I-beam; every `BaseButton` and `Slider` gets a
+  pointing hand (`Cursors._point_at`, on `node_added`). `Cursors.choose()` picks
+  the state from a `Situation` that `Main._cursor_state()` fills from live state
+  every frame — polled, so a drag ended outside the window, a dialog closed by a
+  key and Escape cannot leave a stale cursor. It is shown as Godot's default
+  cursor shape; custom pictures are hung on shapes the interface never uses
+  (`Cursors.SHAPES`). During a drag a full-window `MOUSE_FILTER_PASS` sheet
+  (`_shield`) carries the drag's shape so a turn across a panel stays a turn.
+  Pictures are `assets/ui/cursors/*.svg`, drawn by `Icons` at 1x, 1.5x or 2x by
+  screen DPI on Windows and X11, 1x on a Mac (NSCursor takes pixels as points),
+  and in a browser as CSS `image-set()` with 1x and 2x so a 2x screen is sharp.
+  Escape now also throws away a box being drawn (its release is not a click) and
+  closes the controls panel. Asked for by the owner ("the app's cursor should
+  change based on which function is being performed").
 - `renders for the critique`: the image handed to the assistant so it can see what
   it built, drawn by a SubViewport. Two opposite corners, so every side has been
   seen; a close look at one part of a model too big to judge whole; and, after an
@@ -121,6 +154,7 @@ Runtime:
 ```sh
 godot --headless --path . --script src/dev/camera_probe.gd        # the view controls do something
 godot --headless --path . --script src/dev/controls_probe.gd      # every advertised key works
+godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd  # the pointer in every state, and back
 godot --headless --path . --script src/dev/glyph_probe.gd         # the font can draw every character shown
 godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet could be followed
 #   covers the Technic ordering case via models/kart.ldr
@@ -135,7 +169,14 @@ godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd # bla
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
-leave an image — look at it; that is the point of them. So do `finish`
+leave an image — look at it; that is the point of them. So does `cursor`:
+`shots/cursors/cursor_sheet.png` (every cursor at 1x and 2x on dark and light,
+hotspot in red), `help_dialog.png` and `strip.png`. In a browser,
+`node tools/web/cursor_check.mjs --url=http://127.0.0.1:PORT/` (a web export
+served by `tools/web/serve.py`) reads the canvas's computed CSS cursor in each
+state, checks the picture's 1x and 2x decode to 32 and 64 px, and leaves
+`shots/cursors/web_<state>.png` with the computed cursor drawn where the pointer
+is (Playwright's screenshots do not draw the pointer). So do `finish`
 (`shots/finishes_<renderer>.png`, a row of one real colour per finish, and
 `finishes_shot_<renderer>.png`, the same in the critique render) and
 `true colour` (`shots/true_colour_<renderer>.png`, with the sampled boxes drawn). `shot` also times a
@@ -194,13 +235,32 @@ take, which is what made a design run give up on looking at itself.
   it starts.** On a loaded machine that is minutes later. Do not edit while
   measuring, or the numbers belong to neither version.
 
-- **Five of these need a display** (`shot`, `gizmo`, `colour`, `feel`, and
+- **The cursor is read back from the display server, which a headless run
+  does not have.** `DisplayServerHeadless` answers "arrow" to every shape, so
+  `cursor_probe` runs in a window like the ones below. It asserts both the app's
+  state (`Cursors.shown()`) and `DisplayServer.cursor_get_shape()`, because the
+  default shape only shows where no control is under the pointer, and a state the
+  window never showed is the bug.
+- **Godot picks the cursor shape when the pointer moves.** Anything that changes
+  what is under a still pointer — a dialog closing on Escape or Done, Tab folding
+  a panel — left the old shape (the Done button's hand) until the mouse was
+  nudged. `Cursors._input` marks a recheck on every key and button release and
+  `Viewport.update_mouse_cursor_state()` replays a motion where the pointer is.
+  **That replay never reaches GDScript**: Godot marks a motion it makes up
+  `DEVICE_ID_INTERNAL` and `Node._call_unhandled_input` drops it, so it fixes the
+  interface's shape and not the model's ghost. `Cursors.looked_again` has
+  `Main._hover_again` re-aim the ghost itself; without it, after a box the pointer
+  said "arrow" where a click would place. It aims at `get_mouse_position()`,
+  which for the root window is the system pointer, not the last event — so
+  `cursor_probe` moves the system pointer too (`Input.warp_mouse`), only under
+  Xvfb, and `check.sh` always runs it there.
+- **Six of these need a display** (`shot`, `gizmo`, `colour`, `feel`, `cursor`, and
   `marquee` in [building](building.md)). A headless run has no rendering device
   for the SubViewport, so they are last in `tools/check.sh` and flash a window
   open. **They no longer need a desktop session**: `check.sh` tries `xdpyinfo`
   first and falls back to `xvfb-run -a` when there is no display, which there is
   not from a detached shell, after the screen locks, or on a machine nobody is
-  sitting at. Without it the five fail with "X11 Display is not available",
+  sitting at. Without it the six fail with "X11 Display is not available",
   which reads like a broken probe and is not. Rendering works the same there and
   is faster — a frame costs 124 ms on Xvfb against 989 ms on the compositor.
   A design run can have one the same way:

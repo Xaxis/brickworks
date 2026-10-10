@@ -9,10 +9,29 @@
 ## function, so the two cannot drift apart. That has gone wrong before —
 ## the strip went on claiming shift-drag boxed a selection for a while
 ## after a plain drag started doing it.
+##
+## Each row is drawn the way the strip draws it — keys as keys, the mouse
+## and fingers as pictures of themselves — with the pointer that control
+## shows beside it, so the cursor seen over the model can be looked up
+## here. Both follow the two settings below: change what the middle
+## button does and its row changes picture and verb at once.
 class_name ControlsDialog
 extends PanelContainer
 
-var _rows: GridContainer
+## How big it would like to be, before the window has its say.
+const WIDE := 520.0
+const TALL := 720.0
+
+## Interface units: a key or a picture in a row, the column the keys are
+## right-aligned in (wide enough for 1 to 7), and the pointer's column.
+const KEY_TALL := 20.0
+const KEYS_WIDE := 178.0
+const POINTER_WIDE := 28.0
+## The cursor's own picture is mostly air around a pointer, so it is
+## drawn a little larger than a key to read at the same size.
+const POINTER_TALL := 26.0
+
+var _rows: VBoxContainer
 
 signal changed
 
@@ -48,11 +67,9 @@ func _build() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
 
-	_rows = GridContainer.new()
-	_rows.columns = 2
+	_rows = VBoxContainer.new()
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rows.add_theme_constant_override("h_separation", 18)
-	_rows.add_theme_constant_override("v_separation", 6)
+	_rows.add_theme_constant_override("separation", 5)
 	scroll.add_child(_rows)
 	_fill()
 
@@ -90,22 +107,70 @@ func _build() -> void:
 ## The bindings, read from the one place they are written down.
 func _fill() -> void:
 	for child: Node in _rows.get_children():
+		_rows.remove_child(child)
 		child.queue_free()
+	var density: float = Icons.density(self)
+	var section: String = ""
 	for binding: ControlsHint.Binding in ControlsHint.for_keyboard():
-		var keys := Label.new()
-		keys.text = " / ".join(binding.keys)
-		keys.add_theme_font_size_override("font_size", 12)
-		keys.add_theme_color_override("font_color", Color(0.85, 0.87, 0.92))
-		keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		keys.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_rows.add_child(keys)
+		if binding.section != section:
+			section = binding.section
+			_rows.add_child(_heading(section, _rows.get_child_count() > 0))
+		_rows.add_child(_row(binding, density))
 
-		var verb := Label.new()
-		verb.text = binding.verb
-		verb.add_theme_font_size_override("font_size", 12)
-		verb.add_theme_color_override("font_color", Color(0.62, 0.65, 0.72))
-		verb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_rows.add_child(verb)
+
+func _heading(text: String, after_something: bool) -> Control:
+	var heading := Label.new()
+	heading.text = text
+	heading.add_theme_font_size_override("font_size", 12)
+	heading.add_theme_color_override("font_color", Color(0.56, 0.6, 0.68))
+	# Room above every heading but the first, so a section reads as a
+	# group rather than as one more row.
+	if after_something:
+		var spaced := MarginContainer.new()
+		spaced.add_theme_constant_override("margin_top", 8)
+		spaced.add_child(heading)
+		return spaced
+	return heading
+
+
+## Keys, the pointer it shows, and what it does.
+func _row(binding: ControlsHint.Binding, density: float) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+
+	var keys := HBoxContainer.new()
+	keys.alignment = BoxContainer.ALIGNMENT_END
+	keys.custom_minimum_size = Vector2(KEYS_WIDE, 0)
+	keys.add_theme_constant_override("separation", 6)
+	for key: String in binding.keys:
+		var drawn: Control = ControlsHint.draw_key(key, KEY_TALL, 12, density)
+		# The words are still there for anyone who wants them, under
+		# the pointer: a picture of a mouse is quicker to read than
+		# "middle-drag" and slower to be sure of.
+		drawn.tooltip_text = key
+		drawn.mouse_filter = Control.MOUSE_FILTER_PASS
+		keys.add_child(drawn)
+	row.add_child(keys)
+
+	var pointer := CenterContainer.new()
+	pointer.custom_minimum_size = Vector2(POINTER_WIDE, KEY_TALL)
+	if not binding.cursor.is_empty() and Cursors.HOTSPOTS.has(binding.cursor):
+		var picture: TextureRect = Icons.picture(
+			Icons.CURSORS + binding.cursor + ".svg", POINTER_TALL, density)
+		picture.tooltip_text = "the pointer while it happens"
+		picture.mouse_filter = Control.MOUSE_FILTER_PASS
+		pointer.add_child(picture)
+	row.add_child(pointer)
+
+	var verb := Label.new()
+	verb.text = binding.verb
+	verb.add_theme_font_size_override("font_size", 12)
+	verb.add_theme_color_override("font_color", Color(0.72, 0.75, 0.82))
+	verb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	verb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	verb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(verb)
+	return row
 
 
 func _toggle(column: VBoxContainer, text: String, why: String,

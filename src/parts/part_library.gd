@@ -619,6 +619,18 @@ func is_resident(part_id: String) -> bool:
 	return info != null and _mesh_cache.has(info.mesh_hash)
 
 
+## True while the part's geometry has been asked for and has not arrived:
+## being fetched, queued behind other fetches, or waiting to be told
+## where to fetch it from. Not true of a part that failed, which is not
+## coming at all.
+func is_on_its_way(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	if info == null or _mesh_cache.has(info.mesh_hash):
+		return false
+	return (_fetching.has(info.mesh_hash) or _queued_fetches.has(part_id)
+		or _waiting.has(part_id))
+
+
 ## Ask for a part this build did not ship.
 ##
 ## The web build carries a working set of a few hundred parts, because

@@ -114,6 +114,48 @@ var pivot_shown: bool = false
 func pivot() -> Vector3:
 	return _pivot if _has_pivot else focus
 
+
+## A drag is turning the view.
+func is_turning() -> bool:
+	return _doing == Doing.ORBIT
+
+
+## A drag is sliding it.
+func is_sliding() -> bool:
+	return _doing == Doing.SLIDE
+
+
+## The right button is down and has not moved far enough to be a turn,
+## so letting go now is a click and takes a brick off.
+func right_pending() -> bool:
+	return _dragging_right and _doing == Doing.NOTHING
+
+
+## How long the pointer goes on saying what a wheel notch, a swipe or a
+## key did, in milliseconds. Each of those is over in an instant, and a
+## cursor that changed for one frame would be a flicker rather than an
+## answer; this is long enough to read and short enough that it is gone
+## by the time the hand moves on.
+const MOMENT_MS := 350
+
+var _moment: String = ""
+var _moment_until: int = 0
+
+
+## What the view did a moment ago without a button held — "orbit",
+## "slide", "zoom_in", "zoom_out" — or "" once that has passed. Drags
+## are not in it: they are [method is_turning] and [method is_sliding]
+## for exactly as long as they last, and a turn that went on claiming
+## the pointer after its button came up would be a stale cursor.
+func moment() -> String:
+	return _moment if Time.get_ticks_msec() < _moment_until else ""
+
+
+func _note(kind: String) -> void:
+	_moment = kind
+	_moment_until = Time.get_ticks_msec() + MOMENT_MS
+
+
 ## Fingers currently down, by the index the system gives each one.
 ##
 ## Tracked here rather than relying on the engine's mouse emulation,
@@ -296,8 +338,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		# takes shift, which is where every tool that has both puts it.
 		if swipe.shift_pressed:
 			_slide_by(swipe.delta * TRACKPAD_PAN)
+			_note("slide")
 		else:
 			_turn_by(swipe.delta * TRACKPAD_PAN, 0.004)
+			_note("orbit")
 		return
 
 	if event is InputEventMagnifyGesture:
@@ -322,6 +366,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_slide_by(Vector2(WHEEL_PAN * (
 						-1.0 if button.button_index == MOUSE_BUTTON_WHEEL_LEFT
 						else 1.0), 0.0))
+					_note("slide")
 			MOUSE_BUTTON_MIDDLE:
 				# The CAD convention: middle turns it, shift-middle
 				# slides it — or the other way round, for the people who
@@ -411,11 +456,14 @@ func _wheel(button: InputEventMouseButton) -> void:
 		var by := Vector2(0.0, -WHEEL_PAN if up else WHEEL_PAN)
 		if button.shift_pressed:
 			_slide_by(-by)
+			_note("slide")
 		else:
 			_turn_by(by, 0.004)
+			_note("orbit")
 		return
 	if button.shift_pressed:
 		_slide_by(Vector2(0.0, WHEEL_PAN if up else -WHEEL_PAN))
+		_note("slide")
 		return
 	_zoom_by(1.0 / zoom_step if up else zoom_step, button.position)
 
@@ -549,6 +597,10 @@ func _ldu_per_pixel(at_depth: float = -1.0) -> float:
 ## does, and for an orbit camera it is one line: the focus moves towards
 ## that point by the same proportion the distance shrinks.
 func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
+	# Every caller is a wheel, a pinch or a key, none of them a drag, so
+	# this is the one place to say so.
+	if not is_equal_approx(factor, 1.0):
+		_note("zoom_in" if factor < 1.0 else "zoom_out")
 	var was: float = _target_distance
 	_target_distance = clampf(was * factor, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
@@ -628,6 +680,7 @@ func key_hold(delta: float, zoom: int, turn: Vector2, slide: Vector2) -> void:
 ## way a drag the same way would: right turns as dragging right does, up
 ## as dragging up.
 func _turn_degrees(by: Vector2) -> void:
+	_note("orbit")
 	_target_yaw -= deg_to_rad(by.x)
 	_target_pitch = clampf(_target_pitch + deg_to_rad(by.y), -_PITCH_LIMIT,
 		_PITCH_LIMIT)
@@ -636,6 +689,7 @@ func _turn_degrees(by: Vector2) -> void:
 ## Slide by a share of what the view shows, so a step is the same on
 ## screen at any zoom.
 func _slide_share(by: Vector2) -> void:
+	_note("slide")
 	var across: float = _ldu_per_pixel() * (get_viewport().get_visible_rect().size.y
 		if is_inside_tree() else 900.0)
 	_target_focus += global_transform.basis.x * by.x * across
