@@ -170,7 +170,10 @@ func _say(text: String, wrong: bool) -> void:
 ## key is, and never anywhere else.
 func _ask_anthropic(key: String, done: Callable) -> void:
 	var http := HTTPRequest.new()
-	http.timeout = 15.0
+	# Generous: a slow phone, or a browser drawing in software on a busy
+	# machine, took longer than fifteen seconds to hear the answer, and a
+	# check that gives up keeps the key unchecked.
+	http.timeout = 30.0
 	add_child(http)
 	http.request_completed.connect(func(result: int, code: int,
 			_headers: PackedStringArray, _body: PackedByteArray) -> void:
