@@ -167,6 +167,14 @@ fixing what it got wrong.
   every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
   to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
   and checks bricks are turned, dressed and stoned, and the edit applied.
+- `a resubmit keeps its numbers`: `_apply` matches each placement to a brick
+  already standing from the last submit or sketch by part, colour and transform
+  (`_same_key`, to a hundredth of an LDU) and keeps it under its number; only
+  what changed comes down or goes up. A session that read the numbers, resubmitted
+  and then edited by them was editing other bricks (the eleventh Orthanc), and
+  every resubmit wrote the whole model into the timeline's History twice.
+  `mcp_probe`: a 300-brick wall resubmitted with one brick recoloured keeps the
+  other numbers and adds 2 history events; before, 600.
 - `dressing gives way`: every tile, round tile or plate `_dress` lays on a side
   stud is marked `Placement.dressing`, and in `_check` it is the thing left out
   where it would overlap a brick, whichever came first (`_give_way`, in the world

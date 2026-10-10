@@ -305,6 +305,8 @@ colours at the median):
 | 7 | `restyle_model`, named in the advice | 2,390 | **14%** | 0% | 63% | 60% | 33 | 6 |
 | 8 | `prism` | 1,463 | 0% | **31%** | 94% | 87% | 36 | 10 |
 | 9 | prism faces take masonry and sideways | 2,869 | **13%** | 0% | 64% | 58% | 41 | 4 |
+| 10 | open prisms, rooms inside; both calls named | 2,838 | 0% | 0% | 80% | 57% | 34 | 6 |
+| 11 | run 10 again, the MCP port fixed | 4,437 | **16%** | 9% | 62% | 56% | 35 | 5 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -342,6 +344,26 @@ when its numbers want them. Run 8 also ended silently at 46 minutes: the
 desktop app quits on Escape and on closing its window, and the run's
 window was on the owner's screen — runs go off-screen now
 (`tools/claude_run.sh`).
+
+Run 10 does not count. Both its submits had "the palantír" in a note,
+and the app's MCP port read a request's body in characters against a
+Content-Length in bytes, so one accented letter left it a byte short for
+ever: the app never saw the call and the session waited out the ten-minute
+tool timeout. It built through `check_design` and `edit_model` instead, and
+none of the lever reached the model (fixed: counted in bytes, with a probe
+that sends an accent).
+
+Run 11, the same lever with the port fixed, is the first with sideways in
+the real range and angles in the same model (16% and 9%), and the first to
+detail unprompted from the review: 22 lit windows, braziers at the door,
+forge fires on the rock. Its prism core's sideways tiles hit the piers and it
+dropped the dressing from the whole core to get past them (fixed: dressing
+gives way and the check says so), and after a resubmit it edited by brick
+numbers it had read before, which a resubmit renumbered (fixed: a resubmit
+keeps every unchanged brick's number). Judged by eye it is still a box with
+horns on a pale wedding-cake rock: the rock is light grey banded in white,
+and the shaft's faces are flat. Variety has not moved in eleven runs; what
+moves it in real sets is the interior, the details and the figures.
 
 ## Long term: custom elements
 

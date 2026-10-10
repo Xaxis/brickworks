@@ -6422,34 +6422,67 @@ func _apply_edit(model: Model) -> void:
 ## Put a model on the baseplate, replacing whatever the assistant built
 ## last time and leaving anything the person placed by hand alone.
 func _apply(model: Model, finished: bool = true) -> void:
-	for brick_id: int in _placed_ids:
-		builder.lattice.release(brick_id)
-		world.remove_brick(brick_id)
-	# And the sketch it was drawn from, or the design lands on top of
-	# itself: every brick twice, one of them unaccounted for.
-	for brick_id: int in _sketched_ids:
-		builder.lattice.release(brick_id)
-		world.remove_brick(brick_id)
-	_sketched_ids = PackedInt64Array()
-	_placed_ids = PackedInt64Array()
+	# What stands already and is the same as before stays, under its
+	# number; only what changed comes down or goes up.
+	#
+	# Every submit, and every check from outside, took the whole design
+	# down and put it back renumbered. A session that read the numbers,
+	# resubmitted to fix one corner and then edited by them was editing
+	# other bricks: the eleventh Orthanc said so, "the rock's brick
+	# numbers changed when I resubmitted". And the history the timeline
+	# replays was every brick removed and added again per resubmit, with
+	# the real changes lost among them. The sketch counts too, or a
+	# design lands on top of its own draft: every brick twice.
+	var standing: Dictionary = {}  ## _same_key -> brick ids
+	for brick_id: int in _placed_ids + _sketched_ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var key: String = _same_key(brick.part_id, brick.color_code,
+			brick.transform)
+		if not standing.has(key):
+			standing[key] = []
+		standing[key].append(brick_id)
 
 	# A part whose geometry never arrived used to be skipped here in
 	# silence, and what the person got was the design minus its wheels
 	# with nothing to say so. Say so.
 	var missing: Dictionary = {}
-	for placement: Placement in model.placements:
+	var at_of: Dictionary = {}  ## placement index -> where it goes
+	var kept: Dictionary = {}   ## placement index -> the brick it already is
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			missing[placement.part] = true
 			continue
 		var at: Transform3D = _transform(placement, part,
 			model.section_for(placement))
-		var brick_id: int = world.add_brick(placement.part, placement.color, at)
-		if brick_id != 0:
-			builder.register(brick_id, placement.part, at)
-			_remember_section(brick_id, placement, model)
-			if placement.mine:
-				_placed_ids.append(brick_id)
+		at_of[index] = at
+		var same: Array = standing.get(_same_key(
+			library.resolve(placement.part), placement.color, at), [])
+		if not same.is_empty():
+			kept[index] = same.pop_back()
+	# Down first, so nothing new is registered inside what is leaving.
+	for key: String in standing:
+		for brick_id: int in standing[key]:
+			builder.lattice.release(brick_id)
+			world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
+	_placed_ids = PackedInt64Array()
+
+	for index: int in at_of:
+		var placement: Placement = model.placements[index]
+		var brick_id: int = kept.get(index, 0)
+		if brick_id == 0:
+			brick_id = world.add_brick(placement.part, placement.color,
+				at_of[index])
+			if brick_id == 0:
+				continue
+			builder.register(brick_id, placement.part, at_of[index])
+		_remember_section(brick_id, placement, model)
+		if placement.mine:
+			_placed_ids.append(brick_id)
 
 	if not missing.is_empty():
 		var names: Array = missing.keys()
@@ -6463,6 +6496,15 @@ func _apply(model: Model, finished: bool = true) -> void:
 		built.emit(_placed_ids.size())
 	else:
 		sketched.emit(_placed_ids.size())
+
+
+## The same brick, as far as putting a design down again goes: the part,
+## the colour and where it is, to a hundredth of an LDU.
+static func _same_key(part_id: String, colour: int, at: Transform3D) -> String:
+	var b: Basis = at.basis
+	return "%s|%d|%.2f %.2f %.2f|%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" % [
+		part_id, colour, at.origin.x, at.origin.y, at.origin.z,
+		b.x.x, b.x.y, b.x.z, b.y.x, b.y.y, b.y.z, b.z.x, b.z.y, b.z.z]
 
 
 ## How many bricks in the world the assistant considers its own.

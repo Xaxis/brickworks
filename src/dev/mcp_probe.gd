@@ -146,14 +146,14 @@ func _run() -> void:
 		for n: int in 30:
 			bricks.append({"part": "3001", "color": 71,
 				"x": 4 * n + (2 if course % 2 else 0), "y": 3 * course, "z": 20, "rot": 0})
+	var walls: Array = [
+		{"name": "west wall", "x_from": 0, "x_to": 60, "z_from": 20, "z_to": 22},
+		# Sent in a where= of its own, as look_at_model takes a box.
+		{"name": "east wall", "where": {"x_from": 61, "x_to": 130, "z_from": 20, "z_to": 22}},
+	]
 	var towers: Dictionary = await _ask("submit_design", {
 		"name": "A long wall", "description": "a castle wall",
-		"bricks": bricks,
-		"assemblies": [
-			{"name": "west wall", "x_from": 0, "x_to": 60, "z_from": 20, "z_to": 22},
-			# Sent in a where= of its own, as look_at_model takes a box.
-			{"name": "east wall", "where": {"x_from": 61, "x_to": 130, "z_from": 20, "z_to": 22}},
-		],
+		"bricks": bricks, "assemblies": walls,
 	})
 	var told: String = _text_of(towers)
 	_check("built from outside, it is told to review it, assembly by assembly",
@@ -168,6 +168,24 @@ func _run() -> void:
 		{"part": "3001", "color": 4, "x": 200, "y": 0, "z": 200, "rot": 0}]})
 	_check("a check after a build leaves the model standing, %d bricks"
 		% _world.brick_count(), _world.brick_count() == standing)
+	# Submitted again with one brick changed, the rest keep their numbers,
+	# and the history gains that change rather than the whole wall twice.
+	var numbered: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		numbered[brick.id] = brick.transform.origin
+	var events: int = _world.history.size()
+	bricks[0]["color"] = 72
+	await _ask("submit_design", {
+		"name": "A long wall", "description": "a castle wall",
+		"bricks": bricks, "assemblies": walls})
+	var same: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if numbered.has(brick.id) and numbered[brick.id] == brick.transform.origin:
+			same += 1
+	_check("submitted again with one brick changed, the other %d keep their numbers"
+		% same, same == standing - 1 and _world.brick_count() == standing)
+	_check("...and the history gains that change, %d events, not the whole wall"
+		% (_world.history.size() - events), _world.history.size() - events == 2)
 	var whole: String = _text_of(await _ask("review_model", {}))
 	_check("review_model looks the whole over: %d characters" % whole.length(),
 		whole.begins_with("The whole model:") and whole.contains("is this the thing")
