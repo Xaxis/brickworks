@@ -139,6 +139,9 @@ func _tell_page() -> void:
 		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	if not _page_title.is_empty():
+		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
+			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
 	# And how many parts are standing, so a browser check can tell that a
 	# click put something down rather than guess it from the pixels.
 	if _world != null:
@@ -155,9 +158,16 @@ func _tell_page() -> void:
 ## The model's name where a window shows one: the browser tab, or the
 ## title bar. "Untitled" on a model saved as something else was the
 ## owner's complaint; the tab says the same name the bar does.
+var _page_title: String = ""
+
+
 func _show_name(name: String) -> void:
 	var text: String = "%s — Brickworks" % name
 	if OS.has_feature("web"):
+		# Kept and put back by _tell_page as well: the engine titles the
+		# page itself as it starts, after the model it restored had been
+		# named, and the tab said "Brickworks" over a model called Flow Tower.
+		_page_title = text
 		JavaScriptBridge.eval("document.title = %s" % JSON.stringify(text), true)
 	else:
 		# With the version, as the title said before it had a name to say.

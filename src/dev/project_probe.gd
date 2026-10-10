@@ -50,7 +50,7 @@ func _run() -> void:
 	bar._on_clear()
 	await process_frame
 	for n: int in 3:
-		var placed := Transform3D(Basis.IDENTITY, Vector3(0, -24 - 24 * n, 0))
+		var placed := Transform3D(Basis.IDENTITY, Vector3(0, 24 + 24 * n, 0))
 		var brick_id: int = world.add_brick("3001", 4, placed)
 		builder.register(brick_id, "3001", placed)
 	bar._name.text = NAME
@@ -77,9 +77,11 @@ func _run() -> void:
 		bar.model_name() == NAME)
 	_check("...and so does the window's title: %s" % main.get_window().title,
 		main.get_window().title.begins_with(NAME))
+	_check("...and, saved and unchanged, it is nothing a new model would lose",
+		not store.has_unsaved_work())
 
 	# Something changed and not saved: New asks, and leaves it alone.
-	var more := Transform3D(Basis.IDENTITY, Vector3(40, -24, 0))
+	var more := Transform3D(Basis.IDENTITY, Vector3(40, 24, 0))
 	builder.register(world.add_brick("3001", 1, more), "3001", more)
 	_check("a change after saving is work a new model would lose",
 		store.has_unsaved_work())
@@ -116,6 +118,35 @@ func _run() -> void:
 	await process_frame
 	_check("an autosave from before reopens as %s" % bar.model_name(),
 		bar.model_name() == ModelStore.UNTITLED)
+
+	# The way the owner met it: the sample car, as a first visit opens it,
+	# named, saved, written to the autosave and opened again. New then
+	# said it was not saved.
+	var sample: String = main.get("SAMPLE_MODEL")
+	store.open(sample)
+	await process_frame
+	bar._name.text = NAME
+	bar._name.text_changed.emit(NAME)
+	bar._on_save()
+	store.touch()
+	store.set("_dirty_at", 0)
+	store.tick()
+	store.restore()
+	for _n: int in 5:
+		await process_frame
+	var now_lines: PackedStringArray = ModelStore._brick_lines(store.to_text(ModelStore.UNTITLED))
+	var kept_lines: PackedStringArray = ModelStore._brick_lines(FileAccess.get_file_as_string(kept_at))
+	var differ: PackedStringArray = PackedStringArray()
+	for line: String in now_lines:
+		if not kept_lines.has(line):
+			differ.append("now  " + line)
+	for line: String in kept_lines:
+		if not now_lines.has(line):
+			differ.append("kept " + line)
+	_check("the sample, saved and reopened, is nothing a new model would lose (%d of %d lines differ%s)"
+			% [differ.size() / 2, now_lines.size(),
+				": " + differ[0] if not differ.is_empty() else ""],
+		not store.has_unsaved_work())
 
 	# Leave the machine as it was.
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(kept_at))

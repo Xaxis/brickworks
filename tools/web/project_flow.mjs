@@ -46,6 +46,51 @@ async function controlAt(name) {
   throw new Error(`the app never showed its ${name} control`);
 }
 
+// The page's user:// is IndexedDB, written behind the engine's back after
+// each change: a reload before that has happened opens what was there
+// before the save. Measured at 44 s on a machine at a load of eighty,
+// drawing in software, which is why this waits for it rather than for a
+// fixed time.
+async function storedModels() {
+  return page.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open("/userfs");
+    req.onerror = () => resolve([]);
+    req.onsuccess = () => {
+      const names = [];
+      const db = req.result;
+      if (!db.objectStoreNames.contains("FILE_DATA")) { resolve(names); return; }
+      db.transaction("FILE_DATA", "readonly").objectStore("FILE_DATA").openCursor().onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) { resolve(names); return; }
+        if (String(c.key).includes("/models/")) names.push(String(c.key));
+        c.continue();
+      };
+    };
+  }));
+}
+
+// The first line of the autosave as the browser holds it: the title the
+// app will reopen under.
+async function storedAutosaveTitle() {
+  return page.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open("/userfs");
+    req.onerror = () => resolve("");
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("FILE_DATA")) { resolve(""); return; }
+      db.transaction("FILE_DATA", "readonly").objectStore("FILE_DATA").openCursor().onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) { resolve(""); return; }
+        if (String(c.key).endsWith("/autosave.ldr") && c.value && c.value.contents) {
+          resolve(new TextDecoder().decode(c.value.contents).split("\n")[0]);
+          return;
+        }
+        c.continue();
+      };
+    };
+  }));
+}
+
 async function titleBecomes(wanted, seconds = 60) {
   for (let n = 0; n < seconds * 2; n++) {
     if ((await page.title()) === wanted) return true;
@@ -69,9 +114,22 @@ await page.keyboard.press("Enter");
 check(`typing a name puts it in the tab: "${await page.title()}"`,
   await titleBecomes(`${NAME} — Brickworks`, 10));
 const save = await controlAt("save");
+const savedAt = Date.now();
 await page.mouse.click(save.x, save.y);
-// Past the autosave's settling time, so what reloads is what was saved.
-await page.waitForTimeout(6000);
+let kept = -1;
+for (let n = 0; n < 240; n++) {
+  if ((await storedModels()).some((k) => k.includes(NAME))) { kept = (Date.now() - savedAt) / 1000; break; }
+  await page.waitForTimeout(500);
+}
+check(`the saved model reaches the browser's storage${kept >= 0 ? ` after ${kept.toFixed(1)} s` : " — not within two minutes"}`,
+  kept >= 0);
+// And the autosave, which is what a reload opens.
+let named = false;
+for (let n = 0; n < 240 && !named; n++) {
+  named = (await storedAutosaveTitle()) === `0 ${NAME}`;
+  if (!named) await page.waitForTimeout(500);
+}
+check("...and so does the autosave, under its name", named);
 await page.screenshot({ path: `${out}/1_saved.png` });
 
 await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });

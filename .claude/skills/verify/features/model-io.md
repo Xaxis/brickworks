@@ -28,8 +28,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   when the model is not saved as it stands (`has_unsaved_work`: Untitled with
   bricks, or bricks unlike the saved file's). There was no way to begin another
   model. `project_probe` (headless; puts this machine's autosave back) and
-  `tools/web/project_flow.mjs` (types a name, saves, reloads, reads the tab,
-  presses New).
+  `tools/web/project_flow.mjs` (types a name, saves, waits until the save and
+  the named autosave are in the browser's storage, reloads, reads the tab,
+  presses New). On the web the engine titles the page itself as it starts, after
+  the restored model was named, so `_tell_page` puts the title back when it has
+  drifted. A save on the web is in IndexedDB only once the engine's sync has run:
+  44 s at a load of eighty drawing in software. A reload before then reopens the
+  autosave, and New rightly says the model is not saved.
 - `made parts in the file`: a model that uses a part made in the element
   maker carries it as an LDraw `0 FILE bw-….dat` section, and opening one
   builds the part first — see [elements](elements.md). `element_probe` saves
