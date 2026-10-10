@@ -23,6 +23,26 @@ All part geometry derives from the LDraw Parts Library.
 
 - Source: https://library.ldraw.org/
 
+## LDraw Official Model Repository
+
+Some of the worked constructions the assistant can look up
+(`src/ai/techniques.gd`) are sub-models of real sets as modelled in
+LDraw's Official Model Repository (https://library.ldraw.org/omr), read
+into this app's coordinates. Those files carry
+`0 !LICENSE Redistributable under CCAL version 2.0`, which is CC BY 2.0;
+files marked "free for non-commercial use" were left out. Each technique
+names its set and modeller in its own text, and here:
+
+- `lamp post`: 4886 Building Bonanza, modelled by Robert Paciorek, CC BY 2.0.
+- `tree`: 4956 House, modelled by Marc Giraudet, CC BY 2.0.
+- `bed`: 10297 Boutique Hotel, modelled by Philippe Hurbain, CC BY 2.0.
+- `bench`: 2150 Train Station, modelled by Robert Paciorek, CC BY 2.0.
+- `armchair`: 10246 Detective’s Office, modelled by Willy Tschager, CC BY 2.0.
+- `table`: 31025 Mountain Hut, modelled by Stefan Frenz, CC BY 2.0.
+- `planter`: 4956 House, modelled by Marc Giraudet, CC BY 2.0.
+- `chimney`: 10182 Cafe Corner, modelled by Max Martin Richter, CC BY 2.0.
+- `fence`: 3189 Heartlake Stables, modelled by Takeshi Takahashi, CC BY 2.0.
+
 ## LEGO trademarks
 
 Quoted from the LEGO Group's Fair Play guidelines

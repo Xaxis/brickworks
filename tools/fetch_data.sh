@@ -80,9 +80,9 @@ done
 # with something that uses it.
 #
 # The zip is gone (404, 2026-10-09).  The repository now serves one .mpd
-# per set, listed at https://library.ldraw.org/omr/sets; tools/layout.py
-# measured nineteen of them, which is a direction and not yet a
-# reason to fetch the 1,470.
+# per set, and tools/omr.py fetches the themes it is asked for into
+# vendor/omr/ — separately, because nothing the app ships needs them:
+# they are where worked examples and measurements come from.
 
 echo
 echo "vendor/ contents:"

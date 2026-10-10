@@ -297,7 +297,7 @@
     "name": "check_design"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates: staggered wall, half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, round tower, wide round tower, taper, window in a wall, door in a wall. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates: staggered wall, half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, round tower, wide round tower, taper, window in a wall, door in a wall, lamp post, tree, bed, bench, armchair, table, planter, chimney, fence. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {

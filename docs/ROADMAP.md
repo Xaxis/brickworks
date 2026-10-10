@@ -16,7 +16,7 @@ judged on its own:
 
 | | what a real set has | where it stands, 2026-10-09 |
 |---|---|---|
-| **the model** | ~180 shapes, ~23 colours at 1,200 parts | 113 shapes, 16 colours; the gap, below |
+| **the model** | ~180 shapes, ~23 colours at 1,200 parts; ~260 and ~28 at 2,400 | 113 and 16 at 1,329 parts; 121 and 13 at 2,438; the gap, below |
 | **its parts** | named sub-assemblies, bag by bag | assemblies named by the design, kept as `.mpd` sub-models |
 | **the booklet** | built a sub-assembly at a time, pictured close | built and framed by those assemblies; `--booklet` writes one |
 | **the parts list** | element numbers you can order | CSV with element numbers; the `.mpd` imports into Rebrickable to buy |
@@ -43,14 +43,19 @@ landed, 2026-10-08/09. Every run held together. Counted with
 | 18 | sent back on the model's one-off tail | 1,077 | 78 | 10 | 41 | 55% | 46% |
 | **19** | **and on its colour tail** | **1,329** | **113** | **16** | **65** | **37%** | 46% |
 | 21 | walls in short bricks, bonded | 1,650 | 78 | 10 | 30 | 47% | **17%** |
+| **24** | **masonry, a second grey, windows, real-set techniques** | **2,438** | **121** | 13 | **83** | 53% | 15% |
 | | *a real set of ~1,300 parts* | — | *180* | *23* | *86* | *28%* | *10%* |
+| | *a real set of ~2,400 parts* | — | *262* | *28* | *105* | *30%* | *9%* |
 
 "Big pieces" is the share as big as a 2 x 4 brick; see lever 1.
 
-Run 19 is on the landing page and ships as `models/castle.ldr`. **The gap
-is now 113 shapes against 180, 16 colours against 23**, with the thin and
-grey tails of real sets both cleared. Previous project best was 456
-parts; scale is not the constraint.
+Run 24 is on the landing page and ships as `models/castle.ldr`: the first
+castle whose walls read as a real set's, and the most shapes and one-off
+pieces of any. **Against its own size it is still thin — 121 shapes
+where a real set of 2,400 parts has 262, 13 colours against 28** — so the
+model grew faster than it varied; run 19 sat closer to its size's norm
+(113 against 180). Previous project best was 456 parts; scale is not the
+constraint, and variety at scale is.
 
 Two cautions every reading of this table needs. **A run varies a lot**:
 the first structure alone came out 449 to 1,552 parts across runs of one
@@ -152,9 +157,31 @@ plainer — see the first lever below.
    sets name their sub-models. Counted over the 253 downloaded
    2026-10-09 (models whose sub-model names say it): **roof 46, door 37,
    seat 27, lamp 22, window 21, tree 20**, then furniture — table 14,
-   bed 10, chair 8, bench 8, desk 7 — plant 9, sign 7. So: a roof, a
-   door in its frame, a lamp, a tree, and interiors, which every
-   building here has been without.
+   bed 10, chair 8, bench 8, desk 7 — plant 9, sign 7. Doors and glass
+   are in (inserts seated as real sets seat them). Nine more are real
+   sets' own sub-models — lamp post, tree, bed, bench, armchair, table,
+   planter, chimney, fence — opened in the app, read back as placements
+   and kept where the checker passes them: 96 of 162 candidates did.
+   **The 66 it refused are real LEGO constructions** — 34 overlaps,
+   mostly clips on bars, 32 sideways parts read as floating — so they
+   are a ready corpus of the checker's false positives. The floating
+   ones were mostly one rule: clutch held only the part a stud reaches
+   into, not the part it belongs to, so a plate pressed up under an
+   overhang floated. Clutch holds both ways now — and support is a walk
+   out from the ground, because counting it both ways and only looking
+   one part down let a stack in mid-air hold itself up (the suite caught
+   that). Measured on the same 162, grounded exactly: the old rule passed
+   107, this one 110 — eight hung constructions newly pass, and the five
+   it newly refuses are upside-down sub-models hanging from a ceiling
+   that is not in them, which the old rule passed only because each of
+   their parts held another. **The overlaps are the parts pipeline: it records no bar
+   connector anywhere** — not on a handle, a minifig arm's clip or a
+   round brick's hollow stud — though the joint matcher has a rule
+   waiting for bars in clips. Recognising bars (cylinders 4 LDU in
+   radius) and hollow studs in `tools/ldraw/connectivity.py`, then a
+   sub-build of the parts that gain them, is the next unit: clips on
+   bars are how a real set hangs a lantern, a flag, a tool or a railing.
+   Roofs (32 of 55 passed) after that.
 5. **The texture still missing, 113 to 180.** The ordinary parts are
    mostly used (54 of the castle's top 100). What is left is where parts
    go together: which parts real sets put beside which — the
