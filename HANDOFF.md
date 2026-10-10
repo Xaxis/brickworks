@@ -17,52 +17,55 @@ ranked by evidence.
 
 ## Where it stands
 
-- Clean tree, pushed, live at **brickworks.diy**. Confirm with
+- Pushed, live at **brickworks.diy**. Confirm with
   `curl -sI "https://brickworks.diy/app?v=$(date +%s)" | grep -i location`
   against `git log --oneline -3`; a docs-only commit does not earn a
   deploy, and the stamp only says `-dirty` for a change to something that
   ships.
-- Full suite green: `tools/check.sh` (it queues itself on the machine's
-  `heavy` pool).
-- Best design: castle run 19, **1,329 parts, 113 shapes, 16 colours**, 37%
-  its main colour, in ten named assemblies — on the landing page, shipped
-  as `models/castle.ldr`. A real set that size has 180 shapes and is 28%
-  its main colour. 30 shapes was the best before this work.
+- Full suite: `tools/check.sh` (it queues itself on the machine's `heavy`
+  pool). Above a load of about 12 the on-screen checks starve and report
+  TIMED OUT, which proves nothing either way: rerun that one alone under
+  `heavy` with `xvfb-run` (see `tools/check.sh` for the command).
+- Best design by the numbers: castle run 19, **1,329 parts, 113 shapes,
+  16 colours**, 37% its main colour — on the landing page, shipped as
+  `models/castle.ldr`. A real set that size has 180 shapes and 23 colours.
 - Not exercised: the proxy's conversation caching for signed-in accounts
   (`api/claude.js`). Deployed; proving it needs an account.
 
 ## What the work found
 
-- **The gap is one-off pieces.** A real set of 1,100 parts has some 177
-  shapes and 85 of them are used once or twice. Run 14 had 21. Its shapes
-  used many times were close to a real set's. Each pass is now told the
-  model's count against the real one — **run 15 was measuring that at
-  handoff** (`tools/texture.py` prints the count).
-- **The levers that worked, each measured:** detailing per assembly
-  (1.2-1.5x on its own); sending a thin pass back once (2.3x, 1.7x, and on
-  a fire station 1.6x); telling passes the parts most real sets of the
-  kind use (37 of the top 40 against 24; 54 of the top 100).
-- **The levers that did not, also measured:** telling siblings what the
-  others got (passes went to fixing instead); a filter for kinds that do
-  not suit the subject (not in the data).
-- **Angled structure is the weak joint.** Two space cruisers failed on
-  pods on angled pylons. A design that holds but for a few floating
-  bricks now keeps what holds, the check sweeps sideways for where a
-  turned section meets, and a failed design is written to
-  `user://failed_design.json`.
-- **The booklet builds by the design's named assemblies**, carried in the
-  file as `.mpd` sub-models, each part framed on its own.
-- **Cost**: the conversation is cached; a 40-minute castle is ~$6-8.
+- **The levers that moved runs**, each measured: detailing per assembly;
+  sending a pass back once when the assembly or the whole model is on
+  the tail of real sets (thin shapes, few one-off pieces, one colour, big
+  pieces); telling passes the parts real sets of the kind use. The run
+  table and how each was found is in `docs/ROADMAP.md`.
+- **Pieces too big, and invisible in every picture.** A real set is 10%
+  pieces as big as a 2 x 4 brick at every size; every castle was 39-56%,
+  its walls in 2 x 10s, because `fill` laid the longest brick that fit.
+  `fill` now lays courses in short bricks on a running bond (run 21: 17%).
+  And the renderer drew no seam between two same-coloured bricks, so the
+  difference could not be seen: it draws them now, desktop and web.
+- **The 4 x 4 corner-round brick was recommended on a stale number.**
+  Every castle built ~200 of it for round towers; real castle sets since
+  2010 use at most eight. The prompt and technique now say round is a
+  choice.
+- **Real sets as geometry**: LDraw's model repository serves one `.mpd`
+  per set (the zip is gone). `tools/layout.py` measures how a model
+  stands; real castles' towers stand ~3x their walls, ours ~1.5x.
+- **The fire station has a plateau**: 62, 67 and 70 shapes over three
+  runs, whatever the passes. Asking for assemblies of about a hundred
+  parts (run 22) gave five passes instead of four and a richer first
+  structure, and the same end. Its windows read as blanks.
 
 ## What is next
 
-1. Read run 15's result (`tools/texture.py` on the saved `.ldr` once the
-   run has ended): did the one-off count move from 21 toward 86?
-2. If it did, repeat once, then try the station and the cruiser briefs.
-   If not, the next attempt at accents is a list of what real sets of
-   the kind use one or two of (goblets, torches, hinges, brackets, bars),
-   filtered so that base plates are not mistaken for accents.
-3. Colour is 12 against 23 and nothing has been aimed at it yet.
+1. What a building's openings are: a window technique (frame, glass,
+   sill, lintel) and a door one, measured on the station brief.
+2. What a wall's short bricks are: masonry bricks and a second grey in
+   some of them, as real castles do — a `fill` option is the likely
+   shape, because a detail pass cannot re-lay a wall (`edit_model` takes
+   no patterns).
+3. Proportion: towers over walls, measured against more real castles.
 
 ## Gotchas that will cost you hours
 
@@ -106,6 +109,7 @@ ranked by evidence.
 | The design loop and its prompt | `src/ai/assistant.gd` |
 | Detailing per assembly | `Assistant._detail_next`, `src/dev/detail_probe.gd` |
 | Count a model against real sets | `tools/texture.py model.ldr --brief "..."` |
+| How a model stands, against real sets | `tools/layout.py model.ldr` |
 | Real-set data, joined to LDraw | `tools/rebrickable.py` |
 | Catalogue build | `tools/refresh_catalogue.py` |
 | Drive a real design | `tools/design.py "a brief" --out m.ldr` |

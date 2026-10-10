@@ -34,15 +34,18 @@ towers and a long curtain wall between them" — run again as each lever
 landed, 2026-10-08/09. Every run held together. Counted with
 `tools/texture.py model.ldr --brief "..."`, after the run ends:
 
-| run | what was new | parts | shapes | colours | used once or twice | main colour |
-|---|---|---|---|---|---|---|
-| 4 | the look carries what the check measured | 1,828 | 30 | 8 | — | — |
-| 8 | thin passes sent back once | 1,895 | 53 | 13 | — | 49% |
-| 14 | told the 100 parts castle sets use most | 1,120 | 71 | 12 | 21 | 51% |
-| 16 | the one-off count in the send-back | 1,159 | 95 | 10 | 54 | 53% |
-| 18 | sent back on the model's one-off tail | 1,077 | 78 | 10 | 41 | 55% |
-| **19** | **and on its colour tail** | **1,329** | **113** | **16** | **65** | **37%** |
-| | *a real set of ~1,300 parts* | — | *180* | *23* | *86* | *28%* |
+| run | what was new | parts | shapes | colours | used once or twice | main colour | big pieces |
+|---|---|---|---|---|---|---|---|
+| 4 | the look carries what the check measured | 1,828 | 30 | 8 | — | — | — |
+| 8 | thin passes sent back once | 1,895 | 53 | 13 | — | 49% | 51% |
+| 14 | told the 100 parts castle sets use most | 1,120 | 71 | 12 | 21 | 51% | 56% |
+| 16 | the one-off count in the send-back | 1,159 | 95 | 10 | 54 | 53% | 39% |
+| 18 | sent back on the model's one-off tail | 1,077 | 78 | 10 | 41 | 55% | 46% |
+| **19** | **and on its colour tail** | **1,329** | **113** | **16** | **65** | **37%** | 46% |
+| 21 | walls in short bricks, bonded | 1,650 | 78 | 10 | 30 | 47% | **17%** |
+| | *a real set of ~1,300 parts* | — | *180* | *23* | *86* | *28%* | *10%* |
+
+"Big pieces" is the share as big as a 2 x 4 brick; see lever 1.
 
 Run 19 is on the landing page and ships as `models/castle.ldr`. **The gap
 is now 113 shapes against 180, 16 colours against 23**, with the thin and
@@ -79,6 +82,10 @@ plainer — see the first lever below.
 - **Cost and the shared machine.** The conversation is cached (a castle is
   $5-10); design runs render in software; the suite and builds queue on
   the machine's `heavy` pool.
+- **Seeing what a model is built from.** Bricks are drawn with the seam
+  a real brick shows where it meets the next (`plastic_body`), so
+  courses, bonds and plate outlines read in the app, the booklet and
+  every picture, on the desktop and the web renderer both.
 - **Angled sections that miss** are told the sideways offset that meets;
   a design that holds but for a few floating bricks keeps what holds; a
   failure is written to `user://failed_design.json`.
@@ -94,8 +101,19 @@ plainer — see the first lever below.
    laid the longest brick that fitted, and slabs are what the pictures
    show. It is the largest gap found against real sets, and it is what
    the eye reads as plain. `fill` now lays a real set's sizes in a
-   running bond; the look and the send-back fire on the tail. **Run 21
-   is the test.**
+   running bond; the look and the send-back fire on the tail.
+   **Run 21: 17%, inside the range of real sets** — and the pictures
+   showed nothing, because the renderer drew no seam between two bricks
+   of one colour: a wall of forty and a wall of four were the same slab.
+   It draws them now (see Solved), and run 21's walls read as masonry
+   where run 19's read as planks. What did not follow: 78 shapes and 10
+   colours against run 19's 113 and 16, and 349 of one 2 x 3 brick,
+   because a wall two studs thick is laid in 2 x 3s. One run; the
+   monotony moved rather than went. **Next: what the short bricks are**
+   — a real castle lays some of them as masonry bricks (Lion Knights'
+   Castle: 281 of the 1 x 2) and some in a second grey, and almost
+   never uses the 4 x 4 corner-round brick every castle here built its
+   towers from (15 of 54 modern castle sets, at most 8 each).
 2. **Proportion and composition.** Five real castles and fourteen modular
    buildings from LDraw's model repository, measured with
    `tools/layout.py`: a real castle's towers stand about three times its
@@ -111,7 +129,14 @@ plainer — see the first lever below.
    passes, not what a pass does: the castle named ten assemblies and
    gained about 8 shapes a pass, the station four of ~250 parts and
    gained about 13 a pass. A big assembly gets the turns of a small one.
-   **Needs: more, smaller assemblies on a big model**, and a cruiser run.
+   Asked for assemblies of about a hundred parts (run 22), it named five
+   instead of four — one of them still 424 parts — started far richer
+   (42 shapes at the first look against 16) and ended in the same place:
+   797 parts, 70 shapes. Three stations, 62, 67, 70: **the station has a
+   plateau, and what it is short of is what a building is made of** —
+   its windows are 42 aeroplane windows in white surrounds that read as
+   blanks. Real windows are a frame, glass, a sill and a lintel, and no
+   technique says so. A cruiser run is still owed.
 4. **The texture still missing, 113 to 180.** The ordinary parts are
    mostly used (54 of the castle's top 100). What is left is where parts
    go together: which parts real sets put beside which — the
@@ -153,7 +178,12 @@ Each line is a run of the castle brief unless it says otherwise.
 - *Refuted or not in the data:* minifigures, stickers and prints are not
   the gap (3%); a filter for kinds that do not suit the subject (kinds
   overlap as much for space and tower as for space and cruiser); a booklet
-  planner that goes to the part a stalled one waits on (19 entries to 18).
+  planner that goes to the part a stalled one waits on (19 entries to 18);
+  asking for assemblies of about a hundred parts (station run 22: five
+  passes for four, 70 shapes for 67).
+- **Piece size** (run 21): `fill` in a real set's sizes on a running bond
+  took big pieces from 46% to 17%, and the seams it needed to be seen
+  were then drawn. Shapes and colours fell in the same run (78, 10).
 - **The cruiser** (runs 11-13): failed twice on angled pylons, ending with
   nothing kept — the second with 639 of 641 bricks holding. With the fixes
   in Solved it held: 619 parts, 49 shapes. "Engine pods" had brought
