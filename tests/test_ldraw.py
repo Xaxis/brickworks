@@ -243,6 +243,71 @@ def test_unknown_code_is_loud_not_silent(palette: Palette) -> None:
     assert unknown.value == (255, 0, 255)
 
 
+def test_lego_numbers_and_groups_are_read(palette: Palette) -> None:
+    """LDConfig says LEGO's own number and name only in a comment above
+    each colour, and which colours are not plastic only by section."""
+    grey = palette.get(71)
+    assert grey.lego_ids == (194,)
+    assert grey.lego_name == "Medium Stone Grey"
+    assert palette.get(15).lego_ids == (1, 426)       # "1 / 426 - White"
+    assert palette.get(85).lego_name == "Medium Lilac"
+    assert palette.get(4).group == "solid"
+    assert palette.get(4).is_plastic
+    # 16 and 24 are declared, under "Internal Common Material".
+    for code in (16, 24, 10047):
+        assert palette.get(code).group == "internal common material"
+        assert not palette.get(code).is_plastic
+    # And a comment belongs only to the colour straight after it.
+    assert palette.get(11015).lego_ids == ()          # Trans_White has none
+
+
+def test_rubber_and_canvas_say_their_plain_colour(palette: Palette) -> None:
+    """Rebrickable files a black tyre under Black, so the rubber variant
+    has to be answerable as the colour it is."""
+    plain = {e["code"]: e.get("plain_code") for e in palette.entries()}
+    assert plain[256] == 0          # Rubber_Black
+    assert plain[10002] == 2        # Rubber_Green
+    assert plain[67] == 47          # Rubber_Trans_Clear
+    assert plain[20004] == 4        # Canvas_Red
+    assert plain[4] is None         # an ordinary colour carries none
+    assert plain[20500] is None     # Canvas_Cream has no plain twin
+
+
+REBRICKABLE = ROOT / "vendor" / "rebrickable" / "colors.csv.gz"
+
+
+@pytest.mark.skipif(not REBRICKABLE.exists(),
+                    reason="Rebrickable tables not present; run tools/fetch_data.sh")
+def test_rebrickable_colours_join_on_evidence(palette: Palette) -> None:
+    """Each pair here was wrong or missing before, and each is decided by
+    something on disk: the id, LEGO's name, LDraw's name or exact RGB."""
+    import rebrickable
+
+    codes = rebrickable.colour_codes(palette.entries())
+    # Renamed in LDraw since Rebrickable took the number: the id stands.
+    assert codes[85] == 85          # Dark Purple is Medium_Lilac, 17k parts
+    assert codes[89] == 89          # Royal Blue, not 2026's Blue Violet
+    assert codes[69] == 69
+    assert codes[137] == 137
+    # Moved to a new code in LDraw: the name wins over a stale id.
+    assert codes[41] == 43          # Trans-Light Blue
+    assert codes[179] == 315        # Flat Silver
+    # LEGO's own name, from LDConfig's comments.
+    assert codes[1147] == 431       # Blue Violet, 2026
+    assert codes[1062] == 368       # Vibrant Yellow
+    assert codes[125] == 125        # Light Orange: id and LEGO name, not 121
+    assert codes[1056] == 363       # Opal Trans-Brown
+    # One RGB shared by three LDraw colours, narrowed by finish and name.
+    assert codes[1103] == 316       # Pearl Titanium, not a metallic paint
+    # Two Rebrickable entries for one LEGO colour share its code.
+    assert codes[1051] == 313       # Pastel Blue, the 2005-11 Maersk blue
+    # Never a code that is not plastic, and never HO.
+    internal = {c.code for c in palette if not c.is_plastic}
+    assert not internal & set(codes.values())
+    assert 1143 not in codes        # Glitter Milky White was "Trans_Sticker"
+    assert not [rb for rb in codes if 1104 <= rb <= 1134]
+
+
 def test_srgb_is_converted_to_linear(palette: Palette) -> None:
     """Mid grey must darken when linearised; skipping this washes out renders."""
     grey = palette.get(7)

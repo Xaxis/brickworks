@@ -22,6 +22,16 @@ class Lot extends RefCounted:
 	var name: String
 	var color_code: int
 	var color_name: String
+	## LEGO's own name for the colour, from LDConfig: what LDraw and
+	## BrickLink call Light Bluish Grey, LEGO calls Medium Stone Grey, and
+	## LEGO's name is what its own shop and a Pick a Brick order use.
+	## Empty where LDConfig gives none.
+	var lego_colour: String = ""
+	## Rebrickable's number for the colour, which is what its parts-list
+	## import reads. -1 where the colour join reaches none. BrickLink's
+	## numbers are not on disk anywhere, so there are none here: a
+	## guessed one would order the wrong colour.
+	var rebrickable_colour: int = -1
 	var count: int = 0
 	## The LEGO element number, which is what a shop or a warehouse
 	## actually picks: "Brick 2 x 4 in Bright Red" is a description,
@@ -76,6 +86,11 @@ static func of(world: BrickWorld, library: PartLibrary,
 				lot.rgb_hex = "%02x%02x%02x" % [
 					int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
 					int(color.rgb.b * 255.0)]
+				# A tyre in Rubber Black is sold as a Black one.
+				var plain: PartLibrary.BrickColor = library.color(
+					library.plain_code(brick.color_code))
+				lot.lego_colour = plain.lego_name
+				lot.rebrickable_colour = plain.rebrickable_id
 			lot.each_grams = Stability.grams(info) if info != null else 0.0
 			lot.element = library.element_for(brick.part_id, brick.color_code)
 			by_key[key] = lot
@@ -125,19 +140,24 @@ static func _tidy(raw: String) -> String:
 
 ## For a spreadsheet, or for pasting into a shop's bulk-add box.
 ##
-## The colour goes out as both the LDraw number and its name. The number
-## is exact and the name is what a shop's own list is keyed on, and
-## neither alone is enough: LDraw codes mean nothing to a seller, and
-## colour names differ enough between catalogues that a name on its own
-## can be guessed wrong.
+## The colour goes out as the LDraw number and its name, LEGO's name for
+## it, and Rebrickable's number. The LDraw number is exact and the name
+## is what a shop's own list is keyed on, and neither alone is enough:
+## LDraw codes mean nothing to a seller, and colour names differ enough
+## between catalogues that a name on its own can be guessed wrong — the
+## same grey is Light Bluish Grey to BrickLink and Medium Stone Grey to
+## LEGO. The two added columns go last, so a reader of the first eight
+## still finds them where they were. Blank where unknown.
 func to_csv() -> String:
 	var rows := PackedStringArray()
 	rows.append("part,element,name,ldraw_colour,colour,quantity,"
-		+ "grams_each,grams_total")
+		+ "grams_each,grams_total,lego_colour,rebrickable_colour")
 	for lot: Lot in lots:
-		rows.append("%s,%s,%s,%d,%s,%d,%.2f,%.2f" % [
+		rows.append("%s,%s,%s,%d,%s,%d,%.2f,%.2f,%s,%s" % [
 			_csv(lot.part_id), lot.element, _csv(lot.name), lot.color_code,
-			_csv(lot.color_name), lot.count, lot.each_grams, lot.total_grams()])
+			_csv(lot.color_name), lot.count, lot.each_grams, lot.total_grams(),
+			_csv(lot.lego_colour),
+			"" if lot.rebrickable_colour < 0 else str(lot.rebrickable_colour)])
 	return "\n".join(rows) + "\n"
 
 

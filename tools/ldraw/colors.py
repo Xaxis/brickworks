@@ -19,6 +19,18 @@ say how the plastic behaves rather than just what hue it is:
 The MATERIAL forms carry a second colour: the flecks suspended in the
 otherwise-translucent body.  A shader needs both, plus the fraction, to
 look like the real part rather than a flat approximation.
+
+Two things LDConfig says only in comments are kept as well.  A colour is
+preceded by the LEGO number and name it was taken from:
+
+    0                              // LEGOID 194 - Medium Stone Grey
+    0 !COLOUR Light_Bluish_Grey  CODE 71  VALUE #969696 ...
+
+which is the only place on disk that says LDraw's "Light Bluish Grey" is
+LEGO's "Medium Stone Grey", and the strongest evidence there is for which
+Rebrickable colour an LDraw code is.  And every colour sits under a
+section header ("0 // LDraw Internal Common Material Colours"), which is
+how 16, 24 and the sticker film are told apart from plastic.
 """
 
 from __future__ import annotations
@@ -28,10 +40,17 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-# The two inheritance codes are not real colours and never appear in
-# LDConfig; they are resolved during flattening.  See parser.py.
+# The two inheritance codes are not real colours; they are resolved
+# during flattening (see parser.py).  LDConfig does declare them, as
+# Main_Colour and Edge_Colour under "Internal Common Material", so they
+# are in the palette and have to be recognised by their group.
 CODE_INHERIT = 16
 CODE_EDGE_INHERIT = 24
+
+# The LDConfig sections whose codes are not something a brick is
+# moulded in: the two inheritance codes, sticker film, magnets and
+# electrical contacts, and a code LDraw itself retired.
+NOT_PLASTIC = frozenset({"internal common material", "obsolete"})
 
 # LDraw's fallback when a file names a code that is not in the palette.
 DEFAULT_CODE = 16
@@ -76,14 +95,23 @@ class Color:
     luminance: int = 0
     finish: Finish = Finish.SOLID
     material: Material | None = None
-    # Cross-references, filled in by the catalogue build from Rebrickable.
-    rebrickable_id: int | None = None
-    bricklink_id: int | None = None
+    # From the "// LEGOID n - Name" comment above the colour: LEGO's own
+    # numbers and name.  "1 / 426 - White" is two numbers for one name.
+    lego_ids: tuple[int, ...] = ()
     lego_name: str = ""
+    # The LDConfig section it is declared in, lower case without "LDraw"
+    # and "Colours": "solid", "transparent", "internal common material".
+    group: str = ""
 
     @property
     def is_transparent(self) -> bool:
         return self.alpha < 255
+
+    @property
+    def is_plastic(self) -> bool:
+        """Whether a part can be this colour, rather than a code LDraw uses
+        internally (16, 24, sticker film, contacts) or has retired."""
+        return self.group not in NOT_PLASTIC
 
     @property
     def hex(self) -> str:
@@ -112,6 +140,8 @@ def _parse_hex(token: str) -> tuple[int, int, int]:
 
 
 _COLOUR_RE = re.compile(r"^0\s+!COLOUR\s+(.*)$", re.IGNORECASE)
+_LEGOID_RE = re.compile(r"^0\s+//\s*LEGOID\s+([\d\s/]+?)\s+-\s+(.*?)\s*$")
+_GROUP_RE = re.compile(r"^0\s+//\s*LDraw\s+(.+?)\s+Colou?rs\s*$", re.IGNORECASE)
 
 
 class Palette:
@@ -128,13 +158,32 @@ class Palette:
     @classmethod
     def from_text(cls, text: str) -> "Palette":
         colors: dict[int, Color] = {}
+        group = ""
+        lego: tuple[tuple[int, ...], str] | None = None
         for raw in text.splitlines():
-            match = _COLOUR_RE.match(raw.strip())
+            line = raw.strip()
+            header = _GROUP_RE.match(line)
+            if header:
+                group = header.group(1).lower()
+                lego = None
+                continue
+            said = _LEGOID_RE.match(line)
+            if said:
+                ids = tuple(int(n) for n in re.findall(r"\d+", said.group(1)))
+                lego = (ids, said.group(2))
+                continue
+            match = _COLOUR_RE.match(line)
             if not match:
                 continue
             color = _parse_colour_line(match.group(1))
             if color is not None:
+                color.group = group
+                if lego is not None:
+                    color.lego_ids, color.lego_name = lego
                 colors[color.code] = color
+            # A comment belongs to the colour straight after it, and to
+            # no other: a colour LDConfig gives no LEGO number has none.
+            lego = None
         return cls(colors)
 
     def get(self, code: int) -> Color:
@@ -168,6 +217,53 @@ class Palette:
 
     def transparents(self) -> list[Color]:
         return [c for c in self if c.is_transparent]
+
+    def entries(self) -> list[dict]:
+        """Every colour as the app's colors.json describes it, from LDraw
+        alone.  tools/refresh_catalogue.py adds what Rebrickable knows.
+
+        A rubber or canvas colour also says which ordinary colour it is
+        ("plain_code"): LDConfig's rubber colours "got their value from
+        the corresponding solid or transparent colour" and are named and
+        numbered after it — Rubber_Black is 256, Rubber_Green 10002 — and
+        Rebrickable files a black tyre under Black.  Asked whether a tyre
+        came in Rubber Black, the answer is whether it came in Black.
+        """
+        by_name = {c.name: c.code for c in self if c.group not in
+                   ("rubber", "transparent rubber", "fabric")}
+        out = []
+        for color in self:
+            item = _entry(color)
+            for prefix in ("Rubber_", "Canvas_"):
+                if color.name.startswith(prefix):
+                    plain = by_name.get(color.name[len(prefix):])
+                    if plain is not None:
+                        item["plain_code"] = plain
+            out.append(item)
+        return out
+
+
+def _entry(color: Color) -> dict:
+    item: dict = {
+        "code": color.code,
+        "name": color.name.replace("_", " "),
+        "rgb": list(color.value),
+        "edge": list(color.edge),
+        "alpha": color.alpha,
+        "luminance": color.luminance,
+        "finish": color.finish.value,
+        "group": color.group,
+    }
+    if color.material:
+        item["material"] = {
+            "kind": color.material.kind.lower(),
+            "rgb": list(color.material.value),
+            "fraction": color.material.fraction,
+        }
+    if color.lego_ids:
+        item["lego_ids"] = list(color.lego_ids)
+        item["lego_name"] = color.lego_name
+    return item
 
 
 def _parse_colour_line(body: str) -> Color | None:

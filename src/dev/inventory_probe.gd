@@ -82,12 +82,12 @@ func _initialize() -> void:
 	var balanced: bool = quoted.count("\"") % 2 == 0
 	_check("quotes in the csv are balanced", balanced)
 	for line: String in quoted.strip_edges().split("\n"):
-		# Seven columns, unless a quoted field is hiding a comma — in
+		# Ten columns, unless a quoted field is hiding a comma — in
 		# which case the naive split finds more, which is the bug.
 		if not line.contains("\""):
-			_check("a plain row has eight fields, got %d in '%s'"
+			_check("a plain row has ten fields, got %d in '%s'"
 				% [line.split(",").size(), line.substr(0, 40)],
-				line.split(",").size() == 8)
+				line.split(",").size() == 10)
 
 	# What makes the list orderable rather than descriptive. A 2x4 brick
 	# in red is LEGO element 300121, and without that a parts list is
@@ -113,6 +113,38 @@ func _initialize() -> void:
 		str(found.get("3001/9", "x")) == "")
 	_check("and the booklet draws the column",
 		Booklet.html("t", [], ordered).contains("<th>Element</th>"))
+
+	# LEGO's name for a colour, which is not LDraw's: the grey modern sets
+	# are built in is Light Bluish Grey to LDraw and BrickLink and Medium
+	# Stone Grey to LEGO. And Rebrickable's number, which its import reads.
+	# A tyre in Rubber Black is a Black tyre to both, and a colour nothing
+	# knows stays blank rather than borrowing a neighbour's.
+	world.clear()
+	world.add_brick("3001", 71, Transform3D.IDENTITY)
+	world.add_brick("3001", 85, Transform3D(Basis.IDENTITY, Vector3(100, 0, 0)))
+	world.add_brick("3641", 256, Transform3D(Basis.IDENTITY, Vector3(200, 0, 0)))
+	world.add_brick("3001", 87, Transform3D(Basis.IDENTITY, Vector3(300, 0, 0)))
+	var named: Dictionary = {}
+	for lot: Inventory.Lot in Inventory.of(world, library).lots:
+		named[lot.color_code] = lot
+	var grey: Inventory.Lot = named.get(71)
+	var lilac: Inventory.Lot = named.get(85)
+	var tyre: Inventory.Lot = named.get(256)
+	var paint: Inventory.Lot = named.get(87)
+	_check("71 is LEGO's Medium Stone Grey, Rebrickable 71",
+		grey != null and grey.lego_colour == "Medium Stone Grey"
+			and grey.rebrickable_colour == 71)
+	_check("85 is LEGO's Medium Lilac, Rebrickable 85 (Dark Purple)",
+		lilac != null and lilac.lego_colour == "Medium Lilac"
+			and lilac.rebrickable_colour == 85)
+	_check("a tyre in Rubber Black is Rebrickable's Black, got %s"
+		% ("none" if tyre == null else str(tyre.rebrickable_colour)),
+		tyre != null and tyre.rebrickable_colour == 0
+			and tyre.lego_colour == "Black")
+	_check("a paint colour no Rebrickable colour is stays blank",
+		paint != null and paint.rebrickable_colour == -1
+			and Inventory.of(world, library).to_csv().contains(
+				",Titanium,\n"))
 
 	print("")
 	print("%d failed" % _failures if _failures else "the parts list adds up")

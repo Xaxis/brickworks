@@ -47,14 +47,30 @@ def _rows(table: str) -> list[dict[str, str]]:
         return list(csv.DictReader(text))
 
 
-def _plain(name: str) -> str:
-    """A colour name reduced to what both projects agree on.
+## Rebrickable's abbreviations, and LEGO's word for what both projects
+## call "trans".  "Trans-Very Lt Blue" is LDraw's Trans_Very_Light_Blue,
+## "Speckle DBGray-Silver" its Speckle_Dark_Bluish_Grey_Silver, and LEGO
+## writes "Transparent Brown Opal" for Rebrickable's "Opal Trans-Brown".
+_SPELLED = {"lt": "light", "dk": "dark", "dbgrey": "dark bluish grey",
+            "transparent": "trans"}
 
-    LDraw writes "Dark_Bluish_Gray", Rebrickable "Dark Bluish Gray", and
-    one of them spells several colours the British way.
+
+def _words(name: str) -> list[str]:
+    """A colour name as words both projects agree on.
+
+    LDraw writes "Dark_Bluish_Grey", Rebrickable "Dark Bluish Gray".
     """
-    name = name.lower().replace("gray", "grey")
-    return re.sub(r"[^a-z0-9]", "", name)
+    out: list[str] = []
+    for word in re.split(r"[^a-z0-9]+", name.lower().replace("gray", "grey")):
+        if word:
+            out.extend(_SPELLED.get(word, word).split())
+    return out
+
+
+def _named(name: str) -> tuple[str, ...]:
+    """The key two names of one colour share: the same words, in any
+    order.  "Trans-Light Bright Green" is LDraw's Trans_Bright_Light_Green."""
+    return tuple(sorted(_words(name)))
 
 
 # What an *undecorated* part is numbered like: an optional u or x prefix,
@@ -111,33 +127,237 @@ def _guessable(entry: dict) -> bool:
     return bool(PLAIN.match(entry["id"].lower()))
 
 
-def colour_codes(ldraw_colours: list[dict]) -> dict[int, int]:
-    """Rebrickable colour id -> LDraw colour code.
+## Rebrickable's two entries that are not a colour: "[Unknown]" and
+## "[No Color/Any Color]", which is what figures, stickers and gear are
+## filed under.
+NOT_A_COLOUR = frozenset({-1, 9999})
 
-    By name first, because names are what both projects curate, then by
-    exact RGB for the ones named differently.  A Rebrickable colour that
-    matches neither is dropped: guessing a colour is how a designer ends
-    up told a part comes in a shade it does not.
+## LDConfig sections that are not plastic (see tools/ldraw/colors.py).
+## Glitter Milky White was matched to the sticker film that shares its
+## #FFFFFF.
+NOT_PLASTIC = frozenset({"internal common material", "obsolete"})
+
+## LDraw colour families kept for one material or one product line, and
+## the word a Rebrickable name has to carry to match inside one.
+## Rebrickable has no rubber colours — a tyre is Black.
+_LINES = {"rubber": "rubber", "transparent rubber": "rubber",
+          "fabric": "canvas", "modulex": "modulex"}
+
+## Words that say how light or how finished a colour is rather than
+## which colour it is.
+_MODIFIERS = frozenset("light dark medium bright very trans pearl metallic "
+                       "flat chrome glitter opal speckle".split())
+
+## What each kind of evidence is worth.  See colour_matches.
+_WEIGHT = {"LDraw name": 4, "LEGO name": 3, "id": 6, "id, renamed since": 1,
+           "RGB": 2}
+_ENOUGH = 2
+
+
+def _line_ok(words: list[str], colour: dict) -> bool:
+    line = _LINES.get(colour.get("group", ""))
+    if line is not None:
+        return line in words
+    return "modulex" not in words
+
+
+def _finishes(words: list[str]) -> set[str]:
+    """The LDraw finishes a Rebrickable colour of this name can have."""
+    for word, finish in (("chrome", {"chrome"}), ("opal", {"opalescent"}),
+                         ("glitter", {"glitter"}), ("speckle", {"speckle"}),
+                         ("glow", {"glow"}), ("pearl", {"pearlescent", "metal"}),
+                         ("metallic", {"pearlescent", "metal"}),
+                         ("trans", {"transparent"})):
+        if word in words:
+            return finish
+    return {"solid"}
+
+
+def _narrowed(alike: list[dict], words: list[str]) -> list[dict]:
+    """Of several LDraw colours with one RGB value, the ones this name
+    can mean.  #3E3C39 is three of them; "Pearl Titanium" is the
+    pearlescent one called titanium, not the paint or Conductive Black."""
+    if len(alike) > 1:
+        finish = [c for c in alike if c.get("finish") in _finishes(words)]
+        alike = finish or alike
+    if len(alike) > 1:
+        def extra(c: dict) -> int:
+            return len(set(_words(c["name"])) - set(words) - _MODIFIERS)
+        fewest = min(extra(c) for c in alike)
+        alike = [c for c in alike if extra(c) == fewest]
+    return alike
+
+
+def colour_matches(ldraw_colours: list[dict]) -> dict[int, dict]:
+    """Which LDraw colour each Rebrickable colour is, and on what evidence.
+
+    Returns {rebrickable id: {"code": LDraw code, "why": [...]}}.
+
+    Rebrickable numbered its colours by LDraw's codes when it began, and
+    LDraw has changed since in two ways that point opposite ways.  It
+    renamed some codes, so the id is right and the name is stale: LDraw
+    85 was Dark_Purple and is Medium_Lilac now, the colour of 17,000
+    Rebrickable parts.  And it moved some plastics to new codes, so the
+    name is right and the id is stale: Rebrickable's 41 "Trans-Light
+    Blue" is LDraw's 43 now, and LDraw 41 is another colour.  The two
+    are told apart by asking whether the name belongs to some other code
+    today.  If it does, the plastic moved; if no LDraw colour has the
+    name, the code was only renamed and the id stands.
+
+    The evidence, worth what _WEIGHT says: LDraw's name; LEGO's own name
+    for the colour, from LDConfig's LEGOID comments ("Vibrant Yellow"
+    is LDraw 368 Neon_Yellow); the id, as above; and an exact RGB value,
+    which Rebrickable copied from LDraw for many colours it added later
+    ("Pearl Blue" #0059A3 is LDraw 185).  An RGB shared by several LDraw
+    colours is narrowed by finish and by name, and is no evidence if
+    that leaves more than one.
+
+    Then one Rebrickable colour per LDraw code, strongest claim first,
+    and two kinds of evidence beating one at equal weight: Rebrickable's
+    125 "Light Orange" is LDraw 125 by its id and LEGO's name, not LDraw
+    121, which is only called Light_Orange.  A claim below _ENOUGH, or
+    a colour whose best two claims tie, is left out rather than guessed.
     """
-    by_name: dict[str, int] = {}
-    by_rgb: dict[str, int] = {}
-    for colour in ldraw_colours:
-        code = int(colour["code"])
-        by_name.setdefault(_plain(colour["name"]), code)
-        red, green, blue = colour["rgb"]
-        by_rgb.setdefault("%02x%02x%02x" % (red, green, blue), code)
+    real = [c for c in ldraw_colours if c.get("group", "") not in NOT_PLASTIC]
+    by_code = {int(c["code"]): c for c in real}
+    by_name: dict[tuple[str, ...], set[int]] = {}
+    by_rgb: dict[str, list[dict]] = {}
+    lego_names: dict[int, set[tuple[str, ...]]] = {}
+    for c in real:
+        by_name.setdefault(_named(c["name"]), set()).add(int(c["code"]))
+        by_rgb.setdefault("%02x%02x%02x" % tuple(c["rgb"]), []).append(c)
+        lego_names[int(c["code"])] = {
+            _named(n) for n in c.get("lego_name", "").split(" / ") if n.strip()}
 
-    codes: dict[int, int] = {}
+    claims: list[tuple[int, int, int, int, list[str]]] = []
     for row in _rows("colors"):
         rb = int(row["id"])
-        if rb < 0:                       # [Unknown] and [No Colour]
+        if rb in NOT_A_COLOUR:
             continue
-        hit = by_name.get(_plain(row["name"]))
-        if hit is None:
-            hit = by_rgb.get(row["rgb"].strip().lower())
-        if hit is not None:
-            codes[rb] = hit
-    return codes
+        words = _words(row["name"])
+        key = tuple(sorted(words))
+        trans = row["is_trans"] == "True"
+        found: dict[int, list[str]] = {}
+        for c in real:
+            if not _line_ok(words, c):
+                continue
+            code = int(c["code"])
+            if code in by_name.get(key, ()):
+                found.setdefault(code, []).append("LDraw name")
+            if key in lego_names[code]:
+                found.setdefault(code, []).append("LEGO name")
+        same = by_code.get(rb) if rb < 1000 else None
+        if same is not None and _line_ok(words, same) \
+                and (same["alpha"] < 255) == trans:
+            moved = any(code != rb for code in by_name.get(key, ()))
+            found.setdefault(rb, []).append("id, renamed since" if moved else "id")
+        alike = [c for c in by_rgb.get(row["rgb"].strip().lower(), [])
+                 if (c["alpha"] < 255) == trans and _line_ok(words, c)]
+        alike = _narrowed(alike, words)
+        if len(alike) == 1:
+            found.setdefault(int(alike[0]["code"]), []).append("RGB")
+        for code, why in found.items():
+            claims.append((sum(_WEIGHT[w] for w in why), len(why), rb, code, why))
+
+    claims.sort(key=lambda c: (-c[0], -c[1], c[2], c[3]))
+    matched: dict[int, dict] = {}
+    taken: set[int] = set()
+    refused: set[int] = set()
+    for score, kinds_of, rb, code, why in claims:
+        if rb in matched or rb in refused or code in taken:
+            continue
+        if score < _ENOUGH:
+            continue
+        rival = any(s == score and k == kinds_of and r == rb and other != code
+                    and other not in taken
+                    for s, k, r, other, _w in claims)
+        if rival:
+            refused.add(rb)
+            continue
+        matched[rb] = {"code": code, "why": why}
+        taken.add(code)
+
+    # Then the colours Rebrickable keeps twice.  It has two entries for
+    # one LEGO colour where the colour changed era or vendor: "Maersk
+    # Blue" for the 1974-2006 ships and "Pastel Blue" — LEGO's name for
+    # LDraw 313 — for the 2005-2011 ones, which is 47 of the 200 most
+    # used parts.  A colour left with nowhere to go may share a code, but
+    # only on a name: a shared RGB is not enough, which keeps HO Medium
+    # Blue off LDraw's Medium Blue.
+    named = [c for c in claims if c[0] >= _ENOUGH
+             and ("LDraw name" in c[4] or "LEGO name" in c[4])]
+    for score, kinds_of, rb, code, why in named:
+        if rb in matched or rb in refused:
+            continue
+        if any(s == score and k == kinds_of and r == rb and other != code
+               for s, k, r, other, _w in named):
+            refused.add(rb)
+            continue
+        matched[rb] = {"code": code, "why": why + ["shared"]}
+    return matched
+
+
+def colour_codes(ldraw_colours: list[dict]) -> dict[int, int]:
+    """Rebrickable colour id -> LDraw colour code.  See colour_matches."""
+    return {rb: found["code"]
+            for rb, found in colour_matches(ldraw_colours).items()}
+
+
+## How recent a colour's last set has to be for it to count as current:
+## within this many years of the newest set in the tables.  The tables
+## run a little ahead of the calendar — they list 2027 sets in October
+## 2026 — so the newest year alone would retire every colour that has
+## not yet been announced for next year.
+CURRENT_YEARS = 2
+
+
+def colour_facts(ldraw_colours: list[dict]) -> dict[int, dict]:
+    """LDraw code -> what Rebrickable knows about that colour.
+
+    {"rebrickable_id", "rebrickable_name", "years": [first, last], "sets",
+    "current", "matched_by"} for every LDraw colour the join reaches.
+    The years and the count of sets are measured from the set
+    inventories, spare parts included — a spare is still that colour in
+    that box — rather than read from colors.csv's summary.
+    """
+    matched = colour_matches(ldraw_colours)
+    year_of = _years()
+    newest = max(year_of.values(), default=0)
+    set_of = {r["id"]: r["set_num"] for r in _rows("inventories")}
+    first: dict[int, int] = {}
+    last: dict[int, int] = {}
+    sets: dict[int, set] = {}
+    for row in _rows("inventory_parts"):
+        colour = int(row["color_id"])
+        year = year_of.get(row["inventory_id"], 0)
+        if colour not in matched or not year:
+            continue
+        first[colour] = min(first.get(colour, year), year)
+        last[colour] = max(last.get(colour, 0), year)
+        sets.setdefault(colour, set()).add(set_of.get(row["inventory_id"]))
+    name = {int(r["id"]): r["name"] for r in _rows("colors")}
+    facts: dict[int, dict] = {}
+    in_sets: dict[int, set] = {}
+    # The colour that holds a code first, then any that share it, whose
+    # years and sets are the same LDraw colour's too.
+    for rb, found in sorted(matched.items(),
+                            key=lambda kv: ("shared" in kv[1]["why"], kv[0])):
+        code = found["code"]
+        fact = facts.get(code)
+        if fact is None:
+            fact = facts[code] = {"rebrickable_id": rb,
+                                  "rebrickable_name": name[rb],
+                                  "matched_by": found["why"]}
+            in_sets[code] = set()
+        else:
+            fact.setdefault("rebrickable_also", []).append(rb)
+        if rb in last:
+            low, high = fact.get("years", [first[rb], last[rb]])
+            fact["years"] = [min(low, first[rb]), max(high, last[rb])]
+            in_sets[code] |= sets[rb]
+            fact["sets"] = len(in_sets[code])
+        fact["current"] = fact.get("years", [0, 0])[1] >= newest - CURRENT_YEARS
+    return facts
 
 
 def _years() -> dict[str, int]:
@@ -164,7 +384,7 @@ def _seen() -> tuple[dict[str, dict[int, tuple[int, int]]], int]:
     seen: dict[str, dict[int, tuple[int, int]]] = {}
     for row in _rows("inventory_parts"):
         colour = int(row["color_id"])
-        if colour < 0:
+        if colour in NOT_A_COLOUR:
             continue
         year = year_of.get(row["inventory_id"], 0)
         colours = seen.setdefault(row["part_num"], {})
@@ -175,7 +395,7 @@ def _seen() -> tuple[dict[str, dict[int, tuple[int, int]]], int]:
         )
     for row in _rows("elements"):
         colour = int(row["color_id"] or -1)
-        if colour < 0:
+        if colour in NOT_A_COLOUR:
             continue
         for part in (row["part_num"], row["design_id"]):
             if part:
@@ -707,9 +927,14 @@ def elements(entries: list[dict], ldraw_colours: list[dict]) -> dict:
             loose[low.lstrip("0") or low] = current
 
     pairs: dict[str, str] = {}
-    how = {"exact": 0, "by mould variant": 0, "no colour": 0, "no part": 0}
+    how = {"exact": 0, "by mould variant": 0, "not a colour": 0,
+           "no colour": 0, "no part": 0}
     for row in _rows("elements"):
-        code = codes.get(int(row["color_id"] or -1))
+        colour = int(row["color_id"] or -1)
+        if colour in NOT_A_COLOUR:      # figures, stickers and gear
+            how["not a colour"] += 1
+            continue
+        code = codes.get(colour)
         if code is None:
             how["no colour"] += 1
             continue
@@ -876,13 +1101,21 @@ def availability(entries: list[dict], ldraw_colours: list[dict]) -> dict:
             "colors_recent": sorted(set(lately)),
             "years": [first_year, last_year],
         }
-        # Sixty-nine Rebrickable colours have no LDraw name — BrickLink's
-        # "Dark Purple" is LEGO's "Medium Lilac", and the two swatches are
-        # too far apart to match on RGB.  Nothing here guesses at them, so
-        # a part made in one of them has a list that is right as far as it
-        # goes and silent beyond.  Whoever reads it must not read a gap in
-        # a partial list as proof the colour was never made.
-        if unnamed:
+        # A part made in a Rebrickable colour the join cannot name has a
+        # list that is right as far as it goes and silent beyond, and
+        # whoever reads it must not read a gap in it as proof the colour
+        # was never made.  That was sixty-nine colours, Dark Purple among
+        # them, and 49 of the 50 most used parts; with the join reading
+        # LEGO's names and Rebrickable's ids it is sixty-one colours, all
+        # HO, vintage, Clikits, Duplo-only and the like, and two of the
+        # fifty.
+        #
+        # And a list from element numbers alone is short by nature: the
+        # elements table is the parts somebody gave a LEGO number, not
+        # every colour a part came in, and with no set inventory behind
+        # it a missing colour is merely unrecorded.  Panel 30413 is listed
+        # in four trans colours that way and is in real sets in grey.
+        if unnamed or not last_year:
             made["colors_partial"] = True
         parts[part_id] = made
 
