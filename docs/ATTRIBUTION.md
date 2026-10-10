@@ -28,10 +28,11 @@ All part geometry derives from the LDraw Parts Library.
 Some of the worked constructions the assistant can look up
 (`src/ai/techniques.gd`) are sub-models of real sets as modelled in
 LDraw's Official Model Repository (https://library.ldraw.org/omr), read
-into this app's coordinates. Those files carry
-`0 !LICENSE Redistributable under CCAL version 2.0`, which is CC BY 2.0;
-files marked "free for non-commercial use" were left out. Each technique
-names its set and modeller in its own text, and here:
+into this app's coordinates, or groups of parts cut from inside them.
+Those files carry `0 !LICENSE Redistributable under CCAL version 2.0`,
+which is CC BY 2.0, or `Licenced under CC BY 4.0` (10359 Fountain
+Garden); files marked "free for non-commercial use" were left out. Each
+technique names its set and modeller in its own text, and here:
 
 - `lamp post`: 4886 Building Bonanza, modelled by Robert Paciorek, CC BY 2.0.
 - `tree`: 4956 House, modelled by Marc Giraudet, CC BY 2.0.
@@ -42,6 +43,32 @@ names its set and modeller in its own text, and here:
 - `planter`: 4956 House, modelled by Marc Giraudet, CC BY 2.0.
 - `chimney`: 10182 Cafe Corner, modelled by Max Martin Richter, CC BY 2.0.
 - `fence`: 3189 Heartlake Stables, modelled by Takeshi Takahashi, CC BY 2.0.
+- `rough stone wall`, `cobbled path`, `log pile`: 21325 Medieval Blacksmith, modelled by Vincent Messenet, CC BY 2.0.
+- `weathered stone wall`: 9471 Uruk-hai Army, modelled by Philippe Hurbain, CC BY 2.0.
+- `corbelled wall walk`, `postern arch`: 6080 King's Castle, modelled by Stefan Frenz, CC BY 2.0.
+- `oversail on inverted slopes`: 10176 Royal King's Castle, modelled by Marc Giraudet, CC BY 2.0.
+- `stone corbel`: 7327 Scorpion Pyramid, modelled by Christian Neumann, CC BY 2.0.
+- `balustrade`, `clipped hedge`: 10359 Fountain Garden, modelled by Orion Pobursky, CC BY 4.0.
+- `embossed brick wall`: 75980 Attack on The Burrow, modelled by Stefan Frenz, CC BY 2.0.
+- `columns with capitals`, `striped awning`, `staircase`: 10278 Police Station, modelled by Philippe Hurbain, CC BY 2.0.
+- `stone column`: 4954 Model Town House, modelled by Marc Giraudet, CC BY 2.0.
+- `turned wooden pillar`: 10182 Cafe Corner, modelled by Max Martin Richter, CC BY 2.0.
+- `turret spire`: 75969 Hogwarts Astronomy Tower, modelled by Stefan Frenz, CC BY 2.0.
+- `roof ridge`: 75954 Hogwarts Great Hall, modelled by Stefan Frenz, CC BY 2.0.
+- `arched window`, `bookcase`: 10270 Bookshop, modelled by Ulrich Röder, CC BY 2.0.
+- `window with shutters`, `dresser`: 10243 Parisian Restaurant, modelled by Willy Tschager, CC BY 2.0.
+- `rock outcrop`, `anvil`: 9476 The Orc Forge, modelled by Philippe Hurbain, CC BY 2.0.
+- `rocky ground with plants`: 6066 Camouflaged Outpost, modelled by Takeshi Takahashi, CC BY 2.0.
+- `stone with ivy`: 6071 Forestmen's Crossing, modelled by Takeshi Takahashi, CC BY 2.0.
+- `hedge with flowers`, `sofa`: 10297 Boutique Hotel, modelled by Philippe Hurbain, CC BY 2.0.
+- `leafy plant`, `fireplace`, `wall lantern`, `campfire`: 5766 Log Cabin, modelled by Marc Giraudet, CC BY 2.0.
+- `flower bed`: 5891 Apple Tree House, modelled by Marc Giraudet, CC BY 2.0.
+- `hearth`: 30210 Frodo with Cooking Corner, modelled by Stan Isachenko, CC BY 2.0.
+- `chest`: 10267 Gingerbread House, modelled by Orion Pobursky, CC BY 2.0.
+- `potion shelf`: 75953 Hogwarts Whomping Willow, modelled by Stefan Frenz, CC BY 2.0.
+- `four-poster bed`: 21318 Tree House, modelled by Orion Pobursky, CC BY 2.0.
+- `hanging lamp`: 10246 Detective’s Office, modelled by Willy Tschager, CC BY 2.0.
+- `bedside lamp`: 75948 Hogwarts Clock Tower, modelled by Stefan Frenz, CC BY 2.0.
 
 ## LEGO trademarks
 

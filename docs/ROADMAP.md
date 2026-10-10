@@ -343,6 +343,24 @@ desktop app quits on Escape and on closing its window, and the run's
 window was on the owner's screen — runs go off-screen now
 (`tools/claude_run.sh`).
 
+The worked examples, 2026-10-10. The runs say a technique is taken up
+when it is shaped like what the design is doing, and run 23 said a
+worked example moves a design where words do not; the library had
+twenty, mostly furniture and basics. It has 59 now, 39 more as LEGO built
+them in real castle, fantasy and modular sets — rough and weathered stone
+faces, corbels and an oversail, a turret spire, rock, ivy, a cobbled
+path, a bookcase, a fireplace, an anvil, lanterns — found by
+`tools/omr.py clusters` inside big models as well as by sub-model name,
+and listed by what they are for. Laid out as one model the library is
+18% sideways (fantasy median 9%) and 31% plain, where the twenty were 4%
+and 46%. **Angled is still 0%, and the library is not why**: every way
+real sets turn a wall — a 2x2 turntable (twelve real angled walls and
+corner entrances), hinge bricks, hinge plates, clips on bars — is
+refused by the checker as two parts in one place, so no honest angled
+example passes. That checker work (turntables and bars in
+`tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
+angled example can. Not yet measured on an Orthanc run.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
