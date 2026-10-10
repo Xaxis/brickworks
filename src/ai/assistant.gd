@@ -3810,6 +3810,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## the first brick goes into the lattice, because a joint is allowed
 	## to overlap and the lattice finds out in placement order.
 	var joined: Dictionary = _connectors_mating(model)
+	## index -> where that placement went, for the inserts below.
+	var placed_at: Dictionary = {}
 
 	# What will still be there afterwards, standing in the way.
 	var theirs: Dictionary = {}     ## lattice key -> part id
@@ -3892,6 +3894,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 
 		var at: Transform3D = _transform(placement, part,
 			model.section_for(placement))
+		placed_at[index] = at
 		var packed: PackedInt32Array = builder.boxes_for(part, at)
 		# Cells out of the boxes, not worked out a second time. For a
 		# turned part the cover costs a separating-axis test on every
@@ -3983,6 +3986,19 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 				elif key <= 0:
 					rest.append(key)
 			blockers = rest
+
+		# A pane in its window frame, or a door in its door frame, where
+		# real sets put it. See [constant NESTS].
+		if not blockers.is_empty():
+			var kept: PackedInt64Array = PackedInt64Array()
+			for key: int in blockers:
+				var other: int = key - 1
+				if key > 0 and placed_at.has(other) and _seated(
+						placement.part, at, model.placements[other].part,
+						placed_at[other]):
+					continue
+				kept.append(key)
+			blockers = kept
 
 		if not blockers.is_empty() and placement.id != 0 \
 				and not placement.moved:
@@ -5370,6 +5386,85 @@ func _check_support(
 		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
 			_note_loose(loose, model, index, sitting_on - 1,
 				studs.has(index))
+
+
+## Parts made to sit inside another, and where real sets put them.
+##
+## A pane clips into a window frame and a door hangs in a door frame,
+## and the frame's collision boxes are coarser than the groove: cells
+## are 2 LDU and a pane is 4 thick, so the two meet as a one-cell
+## overlap and the checker refused every glazed window. Measured over
+## the LDraw model repository's sets, 2026-10-09: 185 panes in 60592
+## and 110 in 60593 at the frame's own origin and turn; doors 32 LDU
+## either side of a 60596's middle and 5 in (46, the far one turned
+## half round); 57895 glass 4 down and 5 in (19).
+##
+## Insert -> [frame, x, y, z, quarter turns about the frame's up] in
+## the frame's own LDraw coordinates. Only there is the overlap
+## forgiven, to within an LDU: a pane anywhere else is a fault as
+## before.
+const NESTS: Dictionary = {
+	"60601": [["60592", 0, 0, 0, 0]],
+	"60602": [["60593", 0, 0, 0, 0]],
+	"57895": [["60596", 0, 4, 5, 0]],
+	"60623": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
+	"60616a": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
+	"60616b": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
+	"60603": [["60594", 0, 8, 5, 2]],
+	"60608": [["60594", -32, 4, 4, 3], ["60594", 32, 4, 4, 1]],
+}
+
+
+## Whether two parts are an insert and its frame, seated as real sets
+## seat them, whichever of the two was placed first.
+func _seated(one: String, at_one: Transform3D, two: String,
+		at_two: Transform3D) -> bool:
+	return _seated_in(library.resolve(one), at_one, library.resolve(two),
+		at_two) or _seated_in(library.resolve(two), at_two,
+			library.resolve(one), at_one)
+
+
+static func _seated_in(insert: String, at_insert: Transform3D,
+		frame: String, at_frame: Transform3D) -> bool:
+	if not NESTS.has(insert):
+		return false
+	var f: PackedFloat64Array = LdrModel.from_transform(at_frame)
+	var g: PackedFloat64Array = LdrModel.from_transform(at_insert)
+	# The insert in the frame's own coordinates: its offset carried back
+	# through the frame's turn, and the turn between the two.
+	var offset := Vector3(g[0] - f[0], g[1] - f[1], g[2] - f[2])
+	var rows: Array = [Vector3(f[3], f[4], f[5]), Vector3(f[6], f[7], f[8]),
+		Vector3(f[9], f[10], f[11])]
+	var local := Vector3.ZERO
+	var turn: Array = [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO]
+	for k: int in 3:
+		local += (rows[k] as Vector3) * offset[k]
+	var theirs: Array = [Vector3(g[3], g[4], g[5]), Vector3(g[6], g[7], g[8]),
+		Vector3(g[9], g[10], g[11])]
+	for i: int in 3:
+		for k: int in 3:
+			turn[i] = (turn[i] as Vector3) + Vector3(
+				(rows[k] as Vector3)[i] * (theirs[k] as Vector3).x,
+				(rows[k] as Vector3)[i] * (theirs[k] as Vector3).y,
+				(rows[k] as Vector3)[i] * (theirs[k] as Vector3).z)
+	for raw: Variant in NESTS[insert]:
+		var seat: Array = raw
+		if str(seat[0]) != frame:
+			continue
+		if local.distance_to(Vector3(seat[1], seat[2], seat[3])) > 1.01:
+			continue
+		# A quarter turn q about LDraw's up: cos in the corners, sin
+		# off them.
+		var angle: float = int(seat[4]) * PI * 0.5
+		var want: Array = [Vector3(cos(angle), 0, sin(angle)),
+			Vector3(0, 1, 0), Vector3(-sin(angle), 0, cos(angle))]
+		var same: bool = true
+		for i: int in 3:
+			if not (turn[i] as Vector3).is_equal_approx(want[i] as Vector3):
+				same = false
+		if same:
+			return true
+	return false
 
 
 ## "number 12" or "numbers 12, 14 and 15", capped so a confused edit

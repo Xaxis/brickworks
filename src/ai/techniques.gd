@@ -198,14 +198,17 @@ static func all() -> Array:
 				+ "three courses tall here; the courses either side are "
 				+ "laid short so the bond still runs past it, and the "
 				+ "course over it has to bridge it — a 1x4 arch is that "
-				+ "and a lintel at once. In a real set glass clips into "
-				+ "the frame (60602 for this one); the checker here "
-				+ "reads glass as an overlap, so leave it out.",
+				+ "and a lintel at once. The glass, 60602 in "
+				+ "trans-clear, clips into the frame where real sets put "
+				+ "it — at the frame's own origin, which in these "
+				+ "numbers is the frame's plus 0.2 across, 1 up and 0.6 "
+				+ "in. Anywhere else it is an overlap.",
 			"bricks": [
 				{"part": "3010", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "3010", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
 				{"part": "3622", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
 				{"part": "60593", "color": 15, "x": 3, "y": 3, "z": 0, "rot": 0},
+				{"part": "60602", "color": 47, "x": 3.2, "y": 4, "z": 0.6, "rot": 0},
 				{"part": "3622", "color": 4, "x": 5, "y": 3, "z": 0, "rot": 0},
 				{"part": "3004", "color": 4, "x": 0, "y": 6, "z": 0, "rot": 0},
 				{"part": "3005", "color": 4, "x": 2, "y": 6, "z": 0, "rot": 0},
@@ -218,6 +221,50 @@ static func all() -> Array:
 				{"part": "3004", "color": 4, "x": 6, "y": 12, "z": 0, "rot": 0},
 				{"part": "3010", "color": 4, "x": 0, "y": 15, "z": 0, "rot": 0},
 				{"part": "3010", "color": 4, "x": 4, "y": 15, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "door in a wall",
+			"when": "a building's way in — a house, a shop, a station's "
+				+ "side door, a castle's postern",
+			"why": "A door is a frame in the wall and a door in the "
+				+ "frame. 60596, the 1x4x6 frame, is in a third of real "
+				+ "house sets; 60623 (with panes) and 60616 (plain) hang "
+				+ "in it. Real sets hang the door 32 LDU from the "
+				+ "frame's middle and 5 in, which in these numbers is "
+				+ "the frame's plus 0.2 across, 1 up and 0.2 out, at the "
+				+ "frame's own turn — or turned half round for the "
+				+ "other hand, same numbers. Anywhere else it is an "
+				+ "overlap. The frame is six courses tall and the wall "
+				+ "either side keeps its bond. Finish the wall level "
+				+ "with its top: its two outer studs are notched for the "
+				+ "hinge and drawn without LDraw's stud primitive, so "
+				+ "the checker here takes them for solid plastic and "
+				+ "refuses anything laid on them.",
+			"bricks": [
+				{"part": "3010", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 8, "y": 0, "z": 0, "rot": 0},
+				{"part": "60596", "color": 15, "x": 4, "y": 3, "z": 0, "rot": 0},
+				{"part": "60623", "color": 1, "x": 4.2, "y": 4, "z": -0.2, "rot": 0},
+				{"part": "3010", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 8, "y": 3, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 0, "y": 6, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 2, "y": 6, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 8, "y": 6, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 10, "y": 6, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 0, "y": 9, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 8, "y": 9, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 0, "y": 12, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 2, "y": 12, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 8, "y": 12, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 10, "y": 12, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 0, "y": 15, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 8, "y": 15, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 0, "y": 18, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 2, "y": 18, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 8, "y": 18, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 10, "y": 18, "z": 0, "rot": 0},
 			],
 		},
 	]

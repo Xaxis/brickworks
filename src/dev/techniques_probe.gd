@@ -103,6 +103,37 @@ func _run() -> void:
 	_check("there are enough of them to be worth having",
 		Techniques.names().size() >= 6)
 
+	# A pane in its frame is forgiven its overlap only where real sets
+	# seat it. A rule that let glass pass through anything would let
+	# every technique above pass too, so the same window with its pane
+	# a plate too high has to be refused.
+	print("")
+	print("  and an insert is forgiven only in its seat")
+	var window: Dictionary = Techniques.named("window in a wall")
+	var high := Assistant.Model.new()
+	var panes: int = 0
+	for raw: Variant in window["bricks"]:
+		var put: Assistant.Placement = Assistant.Placement.from_dict(raw)
+		if put.part == "60602":
+			put.y += 1
+			panes += 1
+		high.placements.append(put)
+	var refused: Dictionary = assistant._check(high)
+	_check("a pane a plate above its seat is an overlap: %s"
+		% refused["summary"], panes == 1 and not bool(refused["ok"])
+			and str(refused["summary"]).contains("overlap"))
+	var door: Dictionary = Techniques.named("door in a wall")
+	var wide := Assistant.Model.new()
+	for raw: Variant in door["bricks"]:
+		var put: Assistant.Placement = Assistant.Placement.from_dict(raw)
+		if put.part == "60623":
+			put.x += 0.5
+		wide.placements.append(put)
+	var swung: Dictionary = assistant._check(wide)
+	_check("...and a door half a stud along its frame: %s"
+		% swung["summary"], not bool(swung["ok"])
+			and str(swung["summary"]).contains("overlap"))
+
 	print("")
 	if _failures == 0:
 		print("every technique in the library builds")

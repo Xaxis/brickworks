@@ -79,14 +79,24 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  Ten constructions with real part numbers and real coordinates — a staggered
+  Eleven constructions with real part numbers and real coordinates — a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
-  a smooth top, a round tower, a wide round tower, a taper, and a window in a
-  wall (a 60593 frame three courses tall, the bond laid short past it, a 1x4
-  arch over it). Glass (60602 in that frame) sits at the frame's own LDraw
-  origin — frame + (0.2, 1, 0.6) at rot 0 — and the checker calls it an
-  overlap, because the frame's collision boxes fill the groove; so the
-  technique leaves it out and says why. Being *told* to stagger a wall is not the
+  a smooth top, a round tower, a wide round tower, a taper, a window in a wall
+  (a 60593 frame three courses tall with its 60602 glass, the bond laid short
+  past it, a 1x4 arch over it) and a door in a wall (60596 and a 60623 door).
+- `inserts in their frames`: `Assistant.NESTS`, `_seated`. A pane's groove is
+  narrower than a collision cell, so glass in its frame read as an overlap and
+  every glazed window was refused. Measured over the model repository's sets
+  (2026-10-09): panes in 60592/60593 at the frame's own origin and turn (185 and
+  110 of them), doors at (±32, 0, 5) in a 60596, the far hand turned half round
+  (46), 57895 glass at (0, 4, 5) (19). The overlap is forgiven only there, to an
+  LDU, in the frame's LDraw coordinates; `techniques_probe` asserts a pane a
+  plate high and a door half a stud along are still refused.
+  Known: nothing can be laid on a 60596. Its two outer top studs are notched for
+  the hinge and drawn with `3-4cylc` rather than a stud primitive, so
+  `occupancy.remove_studs` never sees a stud there and keeps them as solid. The
+  fix belongs in `tools/ldraw/connectivity.py` plus a sub-build of the parts it
+  changes; the door technique ends the wall level with the frame meanwhile. Being *told* to stagger a wall is not the
   same as knowing where the stud sits, and the arithmetic is the part that goes
   wrong.
 
