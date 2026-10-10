@@ -42,6 +42,12 @@ fixing what it got wrong.
   `sk-ant-oat` token is refused with the reason. It recommends a key of its own
   in a Console workspace with a spend limit and an expiry. `chat_probe` tests
   only the refusals: remembering a key would touch the one this machine holds.
+- `design on your Claude plan`: `ConnectorForm` in the panel turns on a
+  `ClaudeConnector` for this tab and shows the address to add to Claude, the
+  steps for claude.ai, the Claude app and Claude Code, and what Claude is doing
+  as it calls the tools. The brief is typed in Claude, not here. Turning it off
+  forgets the address. `chat_probe` covers the form (pointed at a closed port);
+  `connector_probe` the protocol through the relay (see `web.md`).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and

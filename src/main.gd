@@ -35,6 +35,7 @@ var _chat: ChatPanel
 var _sample_untouched: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
+var _connector: ClaudeConnector
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
 var _account: Account
@@ -812,6 +813,18 @@ func _build_ui() -> void:
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
 	_chat.watch(_account)
+	# Claude as the client, on the person's own plan: this tab offered as
+	# a connector. Its requests are answered by a CommandSocket that never
+	# listens on a port — only its answer_rpc is used, the same code the
+	# desktop's MCP port answers with.
+	var answering := CommandSocket.new()
+	answering.assistant = _assistant
+	answering.app = self
+	add_child(answering)
+	_connector = ClaudeConnector.new()
+	_connector.rpc = answering
+	add_child(_connector)
+	_chat.use_connector(_connector)
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
 	_chat.designing.connect(func(_brief: String) -> void:

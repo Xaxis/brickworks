@@ -20,6 +20,31 @@ accounts.
   does not announce itself.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
   under `/b/<sha>/`, points `/` at it and then proves it in a browser.
+- `POST /api/mcp` — the Claude connector relay: someone on a Claude plan turns
+  on Connect Claude in the app, adds the tab's private address
+  (`/api/mcp?t=<token>`) to Claude as a custom connector (claude.ai, the Claude
+  app, or `claude mcp add --transport http`), and asks Claude to build. Claude
+  is the client, on the person's own plan; Brickworks never sees a login, a
+  token or a key, and never calls a model — Anthropic's terms allow exactly
+  this (a product may not offer Claude.ai login or route plan credentials;
+  an end user using Anthropic's own apps is ordinary use). The function only
+  carries JSON-RPC between Claude and the tab through `supabase/relay.sql`
+  (rows keyed by the token's SHA-256, swept after ten minutes, row security on
+  with no policies, public keys refused). The tab answers with
+  `CommandSocket.answer_rpc`, the code behind the desktop's MCP port, so tools
+  added later reach Claude unchanged. A closed tab is told so at once, in words.
+  Prove it: `node tools/web/relay_server.mjs 8790` (real handler, real queue,
+  needs `.env`) and `godot --headless --path . --script
+  src/dev/connector_probe.gd -- 8790` — initialize with the app's guidance, 13
+  tools, a real call, then the tab off. claude.ai's help centre says custom
+  connectors accept authless servers (support.claude.com/en/articles/11503834);
+  OAuth can follow if that changes.
+- `content security policy`: every page may connect only to itself, Anthropic,
+  Wikimedia and the parts store's origin (from `PARTS_URL`); the page's one
+  inline script is allowed by a hash computed at deploy; `unsafe-eval` stays
+  for Godot's JavaScript bridge. The defence for a key held in a browser is
+  that it has nowhere else to go. `assistant_flow.mjs` fails on any refusal in
+  the console.
 - `which build this is`: the deploy writes `version.json` (commit, UTC time)
   beside the build and the Help panel shows "This build: <commit>, updated
   <local time>". The owner, looking at the live site, could not tell when it had

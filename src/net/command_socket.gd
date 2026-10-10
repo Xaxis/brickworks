@@ -243,27 +243,37 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 			"error": {"code": -32700, "message": "not JSON"}}))
 		return
 	var request: Dictionary = parsed
+	var answer: Variant = await answer_rpc(request)
+	if answer == null:
+		# A notification has no id and wants no answer.
+		_http(client, 202, "")
+		return
+	if client.gone:
+		return
+	_http(client, 200, JSON.stringify(answer))
+
+
+## One JSON-RPC request answered, or null for a notification, which wants
+## none. The desktop's HTTP port and the web's connector relay
+## (src/net/claude_connector.gd) both come here, so the two cannot answer the
+## protocol differently.
+func answer_rpc(request: Dictionary) -> Variant:
 	var method: String = str(request.get("method", ""))
 	var sent_id: Variant = request.get("id")
 	var params: Dictionary = request.get("params", {}) as Dictionary
-
-	# A notification has no id and wants no answer.
 	if sent_id == null:
-		_http(client, 202, "")
-		return
+		return null
 
 	if method == "initialize":
 		var wanted: Variant = params.get("protocolVersion")
-		_rpc(client, sent_id, {
+		return _result(sent_id, {
 			"protocolVersion": wanted if wanted is String else PROTOCOL,
 			"capabilities": {"tools": {"listChanged": false}},
 			"serverInfo": {"name": "brickworks", "version": "1"},
 			"instructions": assistant.guidance() if assistant != null else "",
 		})
-		return
 	if method == "ping":
-		_rpc(client, sent_id, {})
-		return
+		return _result(sent_id, {})
 	if method == "tools/list":
 		var listed: Array = []
 		if assistant != null:
@@ -274,42 +284,35 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 					"description": one.get("description", ""),
 					"inputSchema": one.get("input_schema", {}),
 				})
-		_rpc(client, sent_id, {"tools": listed})
-		return
+		return _result(sent_id, {"tools": listed})
 	if method == "tools/call":
 		var name: String = str(params.get("name", ""))
 		var input: Dictionary = params.get("arguments", {}) as Dictionary
 		if name.is_empty() or assistant == null:
-			_rpc(client, sent_id, {"isError": true, "content": [
+			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": "no tool named"}]})
-			return
 		asked.emit(name)
 		var answer: Variant
 		if _own_tools_have(name):
 			answer = _run_own(name, input)
 		else:
 			if not await _take_a_turn():
-				_rpc(client, sent_id, {"isError": true, "content": [
+				return _result(sent_id, {"isError": true, "content": [
 					{"type": "text", "text": "Another call is still "
 						+ "running — the app does one at a time. Send "
 						+ "them one after another."}]})
-				return
 			answer = await assistant.use_tool(name, input)
 			_hand_back()
-		if client.gone:
-			return
-		_rpc(client, sent_id, {"content": _as_content(answer), "isError": false})
-		return
+		return _result(sent_id, {"content": _as_content(answer),
+			"isError": false})
 	if method in ["resources/list", "prompts/list"]:
-		_rpc(client, sent_id, {"resources": [], "prompts": []})
-		return
-	_http(client, 200, JSON.stringify({"jsonrpc": "2.0", "id": sent_id,
-		"error": {"code": -32601, "message": "no method %s" % method}}))
+		return _result(sent_id, {"resources": [], "prompts": []})
+	return {"jsonrpc": "2.0", "id": sent_id,
+		"error": {"code": -32601, "message": "no method %s" % method}}
 
 
-func _rpc(client: Client, sent_id: Variant, result: Dictionary) -> void:
-	_http(client, 200, JSON.stringify(
-		{"jsonrpc": "2.0", "id": sent_id, "result": result}))
+static func _result(sent_id: Variant, result: Dictionary) -> Dictionary:
+	return {"jsonrpc": "2.0", "id": sent_id, "result": result}
 
 
 func _http(client: Client, code: int, body: String) -> void:

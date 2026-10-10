@@ -51,6 +51,8 @@ var _meter: Label
 ## there is an account. It was "Sign out" either way, which is not what
 ## anyone looks for to replace a key.
 var _out: Button
+## Design on a Claude plan instead of a key: see [ConnectorForm].
+var _connector_form: ConnectorForm
 var _spinner_at: int = 0
 var _working: bool = false
 var _settings: HBoxContainer
@@ -466,6 +468,10 @@ func _on_account_changed() -> void:
 
 	_composer.visible = allowed
 	_key_form.visible = not allowed and not _showing_sign_in
+	# The other way in, offered beside the key, and kept on screen while it
+	# is on so the address and what Claude is doing stay in view.
+	if _connector_form != null:
+		_connector_form.visible = not allowed or _connector_form.is_on()
 	# With nothing to show, the conversation took the panel's height and
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
@@ -835,11 +841,24 @@ func _close_run(how: String, summary: String, built: bool = false) -> void:
 
 ## The controls a person uses to design, by name, for whatever drives the
 ## app from outside to find them as a person would: by where they are.
+## Offer the Claude connector, below the key form.
+func use_connector(connector: ClaudeConnector) -> void:
+	_connector_form = ConnectorForm.new()
+	_connector_form.setup(connector)
+	_key_form.get_parent().add_child(_connector_form)
+	_key_form.get_parent().move_child(_connector_form, _key_form.get_index() + 1)
+	connector.listening.connect(func(_on: bool, _address: String) -> void:
+		_on_account_changed())
+	_on_account_changed()
+
+
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"brief": _input, "build": _send,
 		"change_key": _out}
 	if _key_form != null:
 		named.merge(_key_form.controls_by_name())
+	if _connector_form != null:
+		named.merge(_connector_form.controls_by_name())
 	if _run != null and is_instance_valid(_run):
 		named["stop"] = _run_stop
 	return named

@@ -169,6 +169,34 @@ func _run() -> void:
 	_check(form._field.text.length() > 0,
 		"...and stays in the box to be corrected")
 
+	print("\nyour Claude plan, through a connector")
+	# Pointed at a port nothing listens on: this checks the form, not the
+	# relay (connector_probe does that), and the suite stays off the network.
+	var connector := ClaudeConnector.new()
+	get_root().add_child(connector)
+	connector.base_url = "http://127.0.0.1:9"
+	var offer := ConnectorForm.new()
+	get_root().add_child(offer)
+	offer.setup(connector)
+	offer._turn_on.pressed.emit()
+	await process_frame
+	_check(offer._address.text.begins_with("http://127.0.0.1:9/api/mcp?t=")
+			and offer._address.text.length() > 60,
+		"Connect Claude shows this tab's private address")
+	_check(offer._status.text == "Waiting for Claude…" and not offer._turn_on.visible,
+		"...and says it is waiting for Claude")
+	var first: String = offer._address.text
+	offer._on_box.find_children("*", "Button", true, false).filter(
+		func(b: Button) -> bool: return b.text.begins_with("Turn off"))[0].pressed.emit()
+	await process_frame
+	_check(offer._address.text.is_empty() and offer._turn_on.visible
+			and connector.address().is_empty(),
+		"turning it off forgets the address")
+	offer._turn_on.pressed.emit()
+	await process_frame
+	_check(offer._address.text != first, "...and the next one is new")
+	connector.stop()
+
 	print("")
 	if _failures == 0:
 		print("a running design looks like one")
