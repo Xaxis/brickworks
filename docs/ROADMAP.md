@@ -394,6 +394,25 @@ example passes. That checker work (turntables and bars in
 `tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
 angled example can. Not yet measured on an Orthanc run.
 
+Round joints, 2026-10-10. A clip on a bar, a bar in a hollow stud, a
+hinge's pin in its eye and a turntable's top on its base are one joint,
+something round in something round that fits it, and the parts pipeline
+now records it: each part's shafts and bores, read off the cylinders it
+is drawn with and which way their winding faces. The checker forgives an
+overlap between a shaft and a coaxial bore of its size only inside the
+bore, so the same parts meeting anywhere else still collide
+(`Joints.rounds`, `src/dev/joints_probe.gd`). Over the same 880 real
+sub-models: 564 pass → 617, refused for overlaps 232 → 182, none newly
+refused; hollow studs 20 of 75 now pass, clips 6 of 36, bars and axles
+through holes 6 of 57, hinges 3 of 10, panes 5 of 25. The library has its
+first angled example, Cafe Corner's corner entrance steps on their
+turntable at 45 degrees (`corner on a turntable`). Still refused: handles
+and gates whose cover fills the opening a clip passes through, 75937 (its
+cover is its bounding box), and a long tail of covers. **The shipped
+catalogue predates the rounds**: 17,539 parts need rebuilding to carry
+them (`.claude/skills/verify/features/pipeline.md`); until then the
+checker forgives none of these. Not yet measured on an Orthanc run.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

@@ -62,6 +62,7 @@ technique names its set and modeller in its own text, and here:
 - `columns with capitals`, `striped awning`, `staircase`: 10278 Police Station, modelled by Philippe Hurbain, CC BY 2.0.
 - `stone column`: 4954 Model Town House, modelled by Marc Giraudet, CC BY 2.0.
 - `turned wooden pillar`: 10182 Cafe Corner, modelled by Max Martin Richter, CC BY 2.0.
+- `corner on a turntable`: 10182 Cafe Corner (the corner entrance's steps, turned 45 degrees on its turntable), modelled by Max Martin Richter, CC BY 2.0.
 - `turret spire`: 75969 Hogwarts Astronomy Tower, modelled by Stefan Frenz, CC BY 2.0.
 - `roof ridge`: 75954 Hogwarts Great Hall, modelled by Stefan Frenz, CC BY 2.0.
 - `arched window`, `bookcase`: 10270 Bookshop, modelled by Ulrich Röder, CC BY 2.0.

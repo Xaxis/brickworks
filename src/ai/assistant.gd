@@ -7405,16 +7405,26 @@ func _show_technique(wanted: String) -> String:
 			% [wanted, Techniques.listing()])
 
 	var rows := PackedStringArray()
+	# An angled one is a section, said first so the bricks that name it
+	# read as being in it.
+	for raw: Variant in technique.get("sections", []):
+		var section: Dictionary = raw
+		rows.append("  section \"%s\" at x=%s y=%s z=%s, turned %s degrees about %s"
+			% [section["name"], Placement._num(float(section["x"])),
+				Placement._num(float(section["y"])), Placement._num(float(section["z"])),
+				Placement._num(float(section["degrees"])), section["axis"]])
 	for raw: Variant in technique["bricks"]:
 		var brick: Dictionary = raw
 		var face: String = str(brick.get("face", "up"))
-		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s" % [
+		var inside: String = str(brick.get("section", ""))
+		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s%s" % [
 			brick["part"], brick["color"],
 			Placement._num(float(brick["x"])),
 			Placement._num(float(brick["y"])),
 			Placement._num(float(brick["z"])),
 			brick.get("rot", 0),
-			"" if face == "up" else " face=" + face])
+			"" if face == "up" else " face=" + face,
+			"" if inside.is_empty() else " section=" + inside])
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
 		% [str(technique["name"]).capitalize(), technique["when"],
 			technique["why"], "\n".join(rows)]

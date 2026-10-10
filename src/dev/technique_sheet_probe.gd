@@ -143,7 +143,8 @@ func _items(verdicts: String, only: PackedStringArray) -> Array:
 				if str(technique.get("group", "")) != group:
 					continue
 				out.append({"label": str(technique["name"]), "group": group,
-					"bricks": technique["bricks"]})
+					"bricks": technique["bricks"],
+					"sections": technique.get("sections", [])})
 	else:
 		var file := FileAccess.open(verdicts.path_join("verdicts.jsonl"), FileAccess.READ)
 		while file != null and not file.eof_reached():
@@ -165,18 +166,28 @@ func _items(verdicts: String, only: PackedStringArray) -> Array:
 	return kept
 
 
-## Built the way a design is, offset across the ground.
+## Built the way a design is, offset across the ground. A section moves
+## with the offset and its bricks stay in it, so an angled construction
+## is laid down turned, as it is built.
 func _place(item: Dictionary, offset: Vector3, world: BrickWorld,
 		builder: Builder, assistant: Assistant, library: PartLibrary) -> void:
+	var sections: Dictionary = {}
+	for raw: Variant in item.get("sections", []):
+		var section: Assistant.Section = Assistant.Section.from_dict(raw)
+		section.x += offset.x
+		section.z += offset.z
+		sections[section.name] = section
 	for raw: Variant in item["bricks"]:
 		var put: Assistant.Placement = Assistant.Placement.from_dict(raw)
-		put.x += offset.x
-		put.z += offset.z
+		var section: Assistant.Section = sections.get(put.section)
+		if section == null:
+			put.x += offset.x
+			put.z += offset.z
 		var part: Lbm.PartMesh = library.mesh_for(put.part)
 		if part == null:
 			print("  %s: no part %s" % [item["label"], put.part])
 			continue
-		var at: Transform3D = assistant._transform(put, part)
+		var at: Transform3D = assistant._transform(put, part, section)
 		var id: int = world.add_brick(put.part, put.color, at)
 		if id != 0:
 			builder.register(id, put.part, at)

@@ -256,14 +256,19 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  59 constructions with real part numbers and real coordinates, each in a group
-  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, roofs and
-  spires, windows and doors, rock and ground, plants, furniture and interiors,
-  lights), and the tool's description and its answer to an empty or unknown name
+  60 constructions with real part numbers and real coordinates, each in a group
+  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, angles,
+  roofs and spires, windows and doors, rock and ground, plants, furniture and
+  interiors, lights). An entry may carry `sections` and its bricks a `section`,
+  as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
+  entrance steps, taken off their 2x2 turntable and put back on at the set's 45
+  degrees by a section turned about the turntable's middle, and
+  `show_technique` says the section before the bricks that name it. The
+  tool's description and its answer to an empty or unknown name
   list them by group (`Techniques.listing()`). Eleven are hand-made (a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
   a smooth top, a round tower, a wide round tower, a taper, a window and a door
-  in a wall); 48 are real sets as LEGO built them, from LDraw's model repository,
+  in a wall); 49 are real sets as LEGO built them, from LDraw's model repository,
   each naming its set and modeller (CC BY 2.0 or 4.0; `docs/ATTRIBUTION.md`):
   named sub-models (`tools/omr.py harvest WORD... --most 40`; a set number as
   the word takes every small sub-model of that set) and, since 2026-10-10, the

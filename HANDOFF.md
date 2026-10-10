@@ -151,11 +151,15 @@ says whether everything agrees with it.
    slopes). Still out: control icons and context cursors (an agent's
    worktree). Desktop signing waits on the owner: an Apple Developer ID and a
    Windows code-signing certificate (`docs/RELEASING.md`).
-4. **The checker refuses real techniques:** of 880 real sub-models, 247 are
-   refused for overlaps that are real LEGO (bars through holes, clips on
-   bars, hinges, panes in frames `Assistant.NESTS` lacks, the 2x2 turntable).
-   The turntable is how real sets turn a wall, so no angled worked example
-   can pass until it is understood.
+4. **Round joints need the catalogue rebuilt.** The checker forgives a clip
+   on a bar, a bar in a hollow stud, a hinge and a turntable's top on its
+   base, inside the round only (`Joints.rounds`, `joints_probe`): of 880 real
+   sub-models 617 pass where 564 did, and the first angled worked example is
+   in (`corner on a turntable`). Those joints are records in each part's
+   `.lbm`, and the shipped catalogue predates them, so until the 17,539 parts
+   that have them are rebuilt the checker forgives none and `joints_probe` and
+   `techniques_probe` fail (`.claude/skills/verify/features/pipeline.md`).
+   Next on the same corpus: handles whose opening the cover fills, and 75937.
 5. Roofs, from the 32 real roof sub-models that pass.
 
 ## Gotchas that will cost you hours
