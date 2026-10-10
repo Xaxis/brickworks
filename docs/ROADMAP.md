@@ -272,6 +272,31 @@ sub-models, and the booklet builds by them: the cruiser's builds its
 landing legs, hull, port pod, bridge tower and starboard pod, each
 entered once and named, in 117 steps where tiles took 171.
 
+## Beyond variety: beauty (2026-10-10)
+
+The owner had Claude build the Tower of Orthanc from claude.ai, through the
+connector. It held together and was "okay", and **"still ultimately sucked":
+too symmetric, functional square bricks studs-up, no creative use of parts.**
+Every lever above measures variety; none measures style. What real sets and
+good builders do that this does not, to be measured on the official models
+(their transforms say it) before anything is told to the designer: parts on
+their sides and upside down (SNOT), parts at angles, curves where a box
+would do, texture, organic shapes for rock and growth, and asymmetry where
+the subject is not symmetric. `tools/style.py` is that measure; the norms go
+into the check and `review_model` the way `_variety`'s did, and the guidance
+learns the techniques with worked examples from real sets (`show_technique`,
+`tools/omr.py harvest`). Judged by building Orthanc again against 10237;
+the first one that is master level replaces the castle on the landing page.
+
+## Long term: custom elements
+
+A LEGO designer can ask for a new element, or a change to one. Brickworks
+should let its designer do the same: a part editor that makes real LDraw
+geometry, keeps to the system's dimensions and moulding rules (1.6 mm walls,
+4.8 mm studs, the clutch), gives the part its connection points, and puts it
+in the catalogue, the checks and the design loop. How LEGO's own element
+design works is to be found out, not assumed, before this is planned.
+
 ## How progress is judged
 
 Rerun a brief and measure the model, never read the diff. `tools/design.py`

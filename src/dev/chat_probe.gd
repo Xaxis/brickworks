@@ -268,6 +268,26 @@ func _run() -> void:
 	_check(not offer._address.text.is_empty() and offer._address.text != first,
 		"Make a new address forgets the old one; the next is new")
 
+	# Added to Claude before, from another browser: that address, pasted,
+	# is this tab's, on, with nothing to change in Claude.
+	var elsewhere: String = "https://brickworks.diy/api/mcp?t=" + "Ab3_-x".repeat(8)
+	offer._reuse.pressed.emit()
+	offer._reuse_field.text = "not an address"
+	offer._adopt()
+	_check(offer._status.text.begins_with("That is not") and offer._reuse_box.visible,
+		"a pasted address that is not one is refused, in words")
+	offer._reuse_field.text = elsewhere
+	offer._adopt()
+	_check(connector.is_on() and connector.address().ends_with("Ab3_-x".repeat(8))
+			and connector.used() and not offer._on_box.visible
+			and not offer._reuse.visible,
+		"an address already added to Claude, pasted, is this tab's, on and connected")
+	var adopted := ClaudeConnector.new()
+	get_root().add_child(adopted)
+	_check(adopted.address().ends_with("Ab3_-x".repeat(8)),
+		"...and kept for the next visit")
+	adopted.queue_free()
+
 	print("\nClaude connects, and builds")
 	panel.use_connector(connector)
 	panel._show_for_key(false)

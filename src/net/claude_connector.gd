@@ -140,6 +140,25 @@ func stop() -> void:
 	_tell("close")
 
 
+## Use an address already added to Claude — from another browser, or
+## before this one's storage was cleared — so nothing changes in Claude.
+## Takes the whole address or just its token. Returns "" or why not.
+func adopt(given: String) -> String:
+	var token: String = given.strip_edges()
+	if token.contains("t="):
+		token = token.get_slice("t=", 1).get_slice("&", 0)
+	var shape := RegEx.create_from_string("^[A-Za-z0-9_-]{40,96}$")
+	if shape.search(token) == null:
+		return "That is not a Brickworks connector address."
+	stop()
+	_token = token
+	# Claude has it already; that is the point.
+	_used = true
+	_save()
+	start()
+	return ""
+
+
 ## Forget the address altogether: anyone who had it can no longer reach
 ## this tab, and the next one is new. For an address that got out.
 func forget() -> void:

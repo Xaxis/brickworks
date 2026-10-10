@@ -29,6 +29,9 @@ var _copied: Label
 var _copy: Button
 var _in_view: Label
 var _new_address: Button
+var _reuse: Button
+var _reuse_box: HBoxContainer
+var _reuse_field: LineEdit
 var _calls: int = 0
 var _since: int = 0
 var _heard: String = ""
@@ -69,6 +72,33 @@ func setup(with: ClaudeConnector) -> void:
 		+ "to Claude, then ask Claude to build. It builds here, on your "
 		+ "plan's usage.", 11, 0.8)
 	add_child(_intro)
+
+	# Added to Claude already, from another browser or before this one's
+	# storage was cleared: paste that address rather than add a new one.
+	_reuse = Button.new()
+	_reuse.text = "Added Brickworks to Claude before? Use that address"
+	_reuse.flat = true
+	_reuse.focus_mode = Control.FOCUS_NONE
+	_reuse.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_reuse.add_theme_font_size_override("font_size", 11)
+	_reuse.pressed.connect(func() -> void:
+		_reuse_box.visible = not _reuse_box.visible
+		if _reuse_box.visible:
+			_reuse_field.grab_focus())
+	add_child(_reuse)
+	_reuse_box = HBoxContainer.new()
+	_reuse_box.visible = false
+	add_child(_reuse_box)
+	_reuse_field = LineEdit.new()
+	_reuse_field.placeholder_text = "https://brickworks.diy/api/mcp?t=…"
+	_reuse_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_reuse_field.text_submitted.connect(func(_t: String) -> void: _adopt())
+	_reuse_box.add_child(_reuse_field)
+	var use := Button.new()
+	use.text = "Use it"
+	use.focus_mode = Control.FOCUS_NONE
+	use.pressed.connect(_adopt)
+	_reuse_box.add_child(use)
 
 	_state_row = HBoxContainer.new()
 	_state_row.add_theme_constant_override("separation", 8)
@@ -162,6 +192,15 @@ func is_on() -> bool:
 	return connector != null and connector.is_on()
 
 
+func _adopt() -> void:
+	var why: String = connector.adopt(_reuse_field.text)
+	if not why.is_empty():
+		_say(why, TROUBLE)
+		return
+	_reuse_field.text = ""
+	_reuse_box.visible = false
+
+
 ## Titled as the only way on screen, or as the second of two.
 func alone(only: bool) -> void:
 	if _title != null:
@@ -243,6 +282,10 @@ func _show() -> void:
 	var on: bool = connector.is_on()
 	var has_address: bool = not connector.address().is_empty()
 	_intro.visible = not on and not connector.used()
+	# Only until this browser has an address Claude has used.
+	_reuse.visible = not connector.used()
+	if connector.used():
+		_reuse_box.visible = false
 	_in_view.visible = on
 	_steps_toggle.visible = on and connector.used()
 	_steps_toggle.text = ("Hide how to connect" if _on_box.visible

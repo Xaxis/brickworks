@@ -61,7 +61,10 @@ fixing what it got wrong.
   a clock, trouble (red), or taken over by another tab — and the address and
   steps until Claude has used the address once, then folds them away. It says
   to keep the tab in view. The address is kept on this device and the switch
-  comes back on by itself; "Make a new address" forgets it. Claude's calls go
+  comes back on by itself; "Make a new address" forgets it. An address added
+  to Claude before — another browser, cleared storage — can be pasted ("Added
+  Brickworks to Claude before? Use that address", `ClaudeConnector.adopt`),
+  so nothing changes in Claude. Claude's calls go
   into the conversation as a run card ("Claude is building"), every step kept
   with what came of it ("— refused: …" when a tool said no), and the card says
   Done with Build steps and Parts list once Claude has been quiet 90 s, or
