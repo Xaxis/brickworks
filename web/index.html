@@ -13,7 +13,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <title>Brickworks — design it here, build it on your table</title>
-<meta name="description" content="Design in bricks and leave with something you can build: 28,319 parts at true size, a design assistant that only produces models which hold together, and printable instructions with a parts list.">
+<meta name="description" content="Describe a model and Claude designs it in real bricks, on your own Claude plan or API key — or place it brick by brick. 28,319 parts at true size, every brick checked to hold, and a parts list and printable instructions at the end. Free, with no account.">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/favicon-180.png">
@@ -21,7 +21,7 @@
 <meta name="theme-color" content="#11151b">
 
 <meta property="og:title" content="Brickworks — design it here, build it on your table">
-<meta property="og:description" content="Describe what you want or place it brick by brick, then leave with a parts list and printable instructions. 28,319 parts at the size real ones are.">
+<meta property="og:description" content="Describe a model and Claude designs it in real bricks, on your own Claude plan or API key — or place it brick by brick. Then leave with a parts list and printable instructions.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://brickworks.diy">
 <!-- Absolute, and a real file. A card reader fetches this on its own
@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A red and white brick lighthouse beside the words: design it here, build it on your table.">
+<meta property="og:image:alt" content="A grey stone castle in bricks, designed by Claude, beside the words: design it here, build it on your table.">
 <meta property="og:site_name" content="Brickworks">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Brickworks">
@@ -309,11 +309,63 @@ td.off { color: var(--ink-faint); }
 	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3);
 }
 
-.tiers { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
-.tier { position: relative; }
-.tier ul { margin: 12px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 14.5px; }
-.tier li { margin: 5px 0; }
-.tier .price { font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
+/* -- the two ways to design ----------------------------------------- */
+
+.ways { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.way { display: flex; flex-direction: column; }
+.way .for { font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
+/* Numbered because they are done in order, and each number is a brick
+   stud rather than a browser's "1." so the steps read as steps. */
+.steps { list-style: none; counter-reset: step; margin: 16px 0 0; padding: 0; }
+.steps li {
+	counter-increment: step;
+	position: relative;
+	padding: 0 0 12px 36px;
+	color: var(--ink-soft);
+	font-size: 14.5px;
+}
+.steps li::before {
+	content: counter(step);
+	position: absolute;
+	left: 0;
+	top: 1px;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: 12.5px;
+	font-weight: 650;
+	color: var(--ink);
+	background: var(--bg-soft);
+	border: 1px solid var(--line);
+}
+.steps b { color: var(--ink); font-weight: 600; }
+.way .cost {
+	margin-top: auto;
+	padding-top: 12px;
+	border-top: 1px solid var(--line);
+	font-size: 13.5px;
+	color: var(--ink-soft);
+}
+code.cmd {
+	display: block;
+	margin-top: 6px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--bg-soft);
+	border: 1px solid var(--line);
+	font-size: 12.5px;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+.which { margin: 18px 0 0; color: var(--ink-soft); max-width: 70ch; font-size: 15px; }
+
+/* -- what it never sees --------------------------------------------- */
+
+.never { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.never .card h3 { font-size: 15.5px; }
+.never .card p { font-size: 14px; }
 
 footer {
 	border-top: 1px solid var(--line);
@@ -332,9 +384,9 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 	<div class="wrap bar">
 		<span class="mark"><span class="chip"></span>Brickworks</span>
 		<nav>
+			<a href="#how">Design with Claude</a>
 			<a href="#what">What it does</a>
-			<a href="#exact">Exactness</a>
-			<a href="#claude">Design with Claude</a>
+			<a href="#private">Private</a>
 			<a href="https://github.com/Xaxis/brickworks">Source</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
@@ -345,16 +397,19 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 	<div class="wrap hero">
 		<h1>Design it here. Build it on your table.</h1>
 		<p class="lede">
-			28,319 parts at the size real ones are. Place it brick by brick, or
-			ask Claude to design it — on your Claude plan or your own API key —
-			then leave with a parts list and printable instructions, because a
-			model you cannot build is a picture.
+			Say what you want and watch Claude build it from 28,319 real parts,
+			every brick checked to hold — or place them yourself. Then leave
+			with a parts list and printable instructions, because a model you
+			cannot build is a picture.
 		</p>
 		<div class="actions">
-			<a class="cta" href="/app">Start building</a>
-			<a class="cta ghost" href="#exact">How exact?</a>
+			<a class="cta" href="/app">Open the app</a>
+			<a class="cta ghost" href="#how">How designing works</a>
 		</div>
-		<p class="note">Runs in the browser. Free, with no account — ever.</p>
+		<p class="note">
+			Free and in your browser, with no account to make. Claude runs on
+			your own Claude plan or API key, billed by Anthropic — never by us.
+		</p>
 
 		<div class="stats">
 			<div class="stat"><b>28,319</b><span>parts, every one modelled</span></div>
@@ -365,9 +420,70 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 
 		<div class="shot">
 			<img src="shot-app.png" width="1600" height="900"
-				alt="The Brickworks builder: a parts panel on the left listing thousands of parts with 3D previews, a red and white lighthouse standing on a green baseplate in the centre, and the design assistant on the right. The lighthouse was designed by the assistant.">
+				alt="The Brickworks builder: the parts panel on the left, a grey stone castle Claude designed standing on a green baseplate in the centre, and on the right the panel that starts a design — paste your own API key, or connect Claude on your plan.">
 		</div>
 	</div>
+
+	<section id="how" class="wrap">
+		<h2>Design with Claude, on what you already pay for</h2>
+		<p class="sub">
+			Brickworks has no accounts and sells nothing. Claude does the
+			designing, and Anthropic bills it the way you already pay for
+			Claude. Pick whichever you have.
+		</p>
+		<div class="ways">
+			<div class="card way">
+				<h3><span class="dot" style="background:var(--blue)"></span>Your Claude plan</h3>
+				<div class="for">Claude Pro or Max · no key, nothing to install</div>
+				<ol class="steps">
+					<li>In the app, press <b>Connect Claude</b> and copy the private address it gives this tab.</li>
+					<li>Add it to Claude as a custom connector: on claude.ai or in the Claude app under <b>Settings → Connectors</b>, or in Claude Code:
+						<code class="cmd">claude mcp add --transport http brickworks "&lt;the address&gt;"</code></li>
+					<li>Ask Claude to “build a small red house in Brickworks”. It builds in your tab while you watch.</li>
+				</ol>
+				<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
+			</div>
+			<div class="card way">
+				<h3><span class="dot" style="background:var(--yellow)"></span>Your own API key</h3>
+				<div class="for">Pay as you go · from the Anthropic Console</div>
+				<ol class="steps">
+					<li>Make a key at <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a> — safest in a workspace of its own, with a spend limit, set to expire.</li>
+					<li>Paste it into the app. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
+					<li>Describe what you want in the app and press <b>Build it</b>. Choose the model and how hard it thinks.</li>
+				</ol>
+				<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
+			</div>
+		</div>
+		<p class="which">
+			Either way the model is built in front of you, a brick at a time,
+			and every brick is checked against the real lattice before it is
+			placed — so what Claude designs stands up, and you can build it.
+		</p>
+	</section>
+
+	<section id="designed" class="wrap">
+		<h2>Designed from one sentence</h2>
+		<p class="sub">
+			“A medieval castle with a gatehouse, four corner towers and a
+			long curtain wall between them.” The assistant laid it out,
+			checked every brick against the real lattice, then went back over
+			the gatehouse, each tower and each wall on its own, close up,
+			reaching for the parts real castle sets are built from.
+		</p>
+		<div class="shot">
+			<img src="castle.png" width="1024" height="768" loading="lazy"
+				alt="A stone castle laid in two greys of masonry brick, ringed by a moat on a green baseplate, designed by the assistant: square corner towers with crenellations and red pennants, one under a timber hoarding, an arched gatehouse, buttresses along the front wall and a paved courtyard with a stair up to the wall walk.">
+		</div>
+		<div class="stats">
+			<div class="stat"><b>2,438</b><span>parts, and every one holds</span></div>
+			<div class="stat"><b>10</b><span>assemblies, each detailed on its own</span></div>
+			<div class="stat"><b>446</b><span>steps in its booklet, gatehouse, towers and walls in turn</span></div>
+			<div class="stat"><b>46 min</b><span>from the sentence to the model</span></div>
+		</div>
+		<div class="actions">
+			<a class="cta ghost" href="/app?model=res://models/castle.ldr">Open it in the builder</a>
+		</div>
+	</section>
 
 	<section id="what" class="wrap">
 		<h2>What it does</h2>
@@ -392,11 +508,11 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 				</p>
 			</div>
 			<div class="card">
-				<h3><span class="dot" style="background:var(--blue)"></span>Designed by Claude</h3>
+				<h3><span class="dot" style="background:var(--blue)"></span>Designed like a set</h3>
 				<p>
-					Describe something and watch Claude build it. Every placement
-					is checked against the real lattice, and you get the brick and
-					the reason when one will not hold.
+					Claude lays a model out, then details each part of it close
+					up, reaching for the pieces real sets of the kind are built
+					from — bonded courses, masonry, windows seated in frames.
 				</p>
 			</div>
 			<div class="card">
@@ -441,28 +557,54 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		</div>
 	</section>
 
-	<section id="designed" class="wrap">
-		<h2>Designed from one sentence</h2>
+	<section id="private" class="wrap">
+		<h2>What Brickworks never sees</h2>
 		<p class="sub">
-			“A medieval castle with a gatehouse, four corner towers and a
-			long curtain wall between them.” The assistant laid it out,
-			checked every brick against the real lattice, then went back over
-			the gatehouse, each tower and each wall on its own, close up,
-			reaching for the parts real castle sets are built from.
+			There is nothing to sign up for, so there is nothing of yours to
+			keep. What that means for each thing you bring:
 		</p>
-		<div class="shot">
-			<img src="castle.png" width="1024" height="768" loading="lazy"
-				alt="A stone castle laid in two greys of masonry brick, ringed by a moat on a green baseplate, designed by the assistant: square corner towers with crenellations and red pennants, one under a timber hoarding, an arched gatehouse, buttresses along the front wall and a paved courtyard with a stair up to the wall walk.">
+		<div class="never">
+			<div class="card">
+				<h3>Your API key</h3>
+				<p>
+					Kept in your browser, or for this visit only, and sent only
+					to Anthropic. The page’s security policy lets it talk to
+					itself, Anthropic, Wikimedia for reference pictures, and its
+					own parts store — the browser refuses anything else, so a key
+					has nowhere else to go.
+				</p>
+			</div>
+			<div class="card">
+				<h3>Your Claude login</h3>
+				<p>
+					Never asked for. With a connector, Claude is the one calling,
+					signed in its own way. The address is random, made in your
+					tab, and only works while that tab is open and connected;
+					turning it off forgets it.
+				</p>
+			</div>
+			<div class="card">
+				<h3>Your conversations</h3>
+				<p>
+					A small relay carries Claude’s tool calls to your tab and the
+					answers back. It knows your tab by a hash of its address,
+					never the address, and deletes each message the moment it is
+					answered.
+				</p>
+			</div>
+			<div class="card">
+				<h3>Your models</h3>
+				<p>
+					Saved in your browser, not on a server. Export them as LDraw
+					<code>.ldr</code> to keep, share or open in Studio, LeoCAD or
+					Mecabricks.
+				</p>
+			</div>
 		</div>
-		<div class="stats">
-			<div class="stat"><b>2,438</b><span>parts, and every one holds</span></div>
-			<div class="stat"><b>10</b><span>assemblies, each detailed on its own</span></div>
-			<div class="stat"><b>446</b><span>steps in its booklet, gatehouse, towers and walls in turn</span></div>
-			<div class="stat"><b>46 min</b><span>from the sentence to the model</span></div>
-		</div>
-		<div class="actions">
-			<a class="cta ghost" href="/app?model=res://models/castle.ldr">Open it in the builder</a>
-		</div>
+		<p class="which">
+			Every line of it is <a href="https://github.com/Xaxis/brickworks">open
+			source</a>, so none of this has to be taken on trust.
+		</p>
 	</section>
 
 	<section id="exact" class="wrap">
@@ -499,43 +641,6 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		</details>
 	</section>
 
-	<section id="claude" class="wrap">
-		<h2>Design with Claude</h2>
-		<p class="sub">
-			Brickworks is free and has no accounts. The designing is done by
-			Claude, and Anthropic bills it the way you already pay for Claude —
-			against your plan, or against your own API key. Never through us.
-		</p>
-		<div class="tiers">
-			<div class="card tier">
-				<h3>Your Claude plan</h3>
-				<div class="price">Pro or Max · nothing to install</div>
-				<ul>
-					<li>Turn on <b>Connect Claude</b> in the app and copy the address it gives this tab</li>
-					<li>Add it to Claude as a custom connector — claude.ai, the Claude app, or Claude Code</li>
-					<li>Ask Claude: “build a small red house in Brickworks”. It builds in your tab, on your plan’s usage</li>
-					<li>No key, and no Claude login ever reaches Brickworks: Claude is the one calling, signed in its own way</li>
-				</ul>
-			</div>
-			<div class="card tier">
-				<h3>Your own API key</h3>
-				<div class="price">Pay as you go · from the Anthropic Console</div>
-				<ul>
-					<li>Paste it in the app; it is checked with Anthropic before it is kept</li>
-					<li>Kept in your browser, or for this visit only, and sent only to Anthropic — never to us</li>
-					<li>Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort is about a third of that</li>
-					<li>Safest: a key just for this, in a Console workspace with a spend limit, set to expire</li>
-				</ul>
-			</div>
-		</div>
-		<p class="note">
-			The app is only allowed to talk to itself, Anthropic, Wikimedia
-			(for reference pictures) and its own parts store — the browser
-			enforces that, so a key has nowhere else to go. The connector’s
-			relay carries Claude’s tool calls to your tab and the answers back,
-			and nothing else. Models are saved in your browser, not on a server.
-		</p>
-	</section>
 </main>
 
 <footer>

@@ -69,6 +69,11 @@ stats on the status line; a grouped toolbar with Clear asking first.
   by default until its owner has both. Brickworks' "My Claude" is a checkbox,
   off by default; turning it on by default needs the owner to accept the
   Commercial Terms and ask Anthropic. The connector does not have this question.
+- **The site says so** (2026-10-09): brickworks.diy leads with the two ways as
+  numbered steps, then the castle, what the app does, and "What Brickworks never
+  sees" (key, login, relay, models — each claim traceable to the code). Its
+  pictures are made, not taken by hand: `tools/web/app_shot.mjs` for the app,
+  `tools/web/make_share.mjs` for the link card.
 - **Vercel's environment, after accounts went:** the relay reads
   `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, so they stay. Nothing reads
   `ANTHROPIC_API_KEY` any more; removing it from the project is yours to do

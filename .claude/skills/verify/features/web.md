@@ -148,6 +148,15 @@ loading colour and not a blank canvas. Measured against production 2026-10-02.
   visible linking to `/app`, or on a missing heading. Run it on a file while
   editing: `node tools/web/landing_check.mjs --file=web/index.html`.
 
+  What the page says, in order: the two ways to design with Claude (`#how`:
+  the plan through Connect Claude, or an API key, each as numbered steps with
+  what it costs), the castle, what the app does, what Brickworks never sees
+  (`#private`: key, login, the relay, models — each claim is in `api/mcp.js`,
+  `own_key.gd` and the CSP in `deploy.sh`; change one, change the page), and the
+  dimensions. The picture at the top is retaken from a deployment with
+  `tools/web/app_shot.mjs --url=<build>/app --out=web/shot-app.png` (the castle,
+  a clean browser, 1600x900), not by hand.
+
   Measure a page where its assets resolve. Comparing the edited page against a
   copy kept in the scratchpad "proved" the overflow was mine — the copy had no
   `shot-app.png` beside it, so the screenshot collapsed and the page fitted.

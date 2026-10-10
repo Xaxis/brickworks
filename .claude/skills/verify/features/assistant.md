@@ -37,7 +37,12 @@ fixing what it got wrong.
   no accounts, so nothing is asked of a server first and nothing offers to sign
   in (`ChatPanel._show_for_key`). It says what the assistant does and what a
   design costs before asking for anything, at the top of the panel rather than
-  under an empty one.
+  under an empty one. Then the two ways in, each under its own heading — "With
+  your Anthropic API key", and below a rule "Or with your Claude plan" — kept
+  short enough that Connect Claude is on screen at 860px tall. A refusal is said
+  right under Use this key, and cleared when the form is shown again. In a
+  browser, `tools/web/assistant_flow.mjs` shows it (`2_key_taken.png` with a
+  fake key: the refusal under the button, the key still in the box).
   A pasted key is checked with Anthropic's free models call before it is kept
   (`KeyForm.check_key`, replaceable for the probe), so a typo is caught there and
   not after a brief. "Remember it on this device" can be unticked to keep it

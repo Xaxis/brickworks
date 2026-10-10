@@ -27,10 +27,9 @@ signal accepted()
 ## measured rather than guessed, 2026-10-09, Opus 5.5: "a small red house"
 ## at high effort took 684 s and $2.42 for 260 parts, at medium 249 s and
 ## $0.72 for 127; castles at high took 30-46 minutes and $5-10.
-const EXPECT := ("Anthropic bills your key for what each design uses. At "
-	+ "the default setting a small house took 11 minutes and $2.40, a castle "
-	+ "45 minutes and $5–10. Medium effort is about a third of the time and "
-	+ "cost, with less detail.")
+const EXPECT := ("Anthropic bills it per design. At the default setting a "
+	+ "small house took 11 minutes and $2.40, a castle 45 minutes and $5–10; "
+	+ "medium effort is about a third.")
 
 
 func setup() -> void:
@@ -46,19 +45,17 @@ func setup() -> void:
 	add_child(title)
 
 	var what := Label.new()
-	what.text = ("Describe a model — “a lighthouse on a rocky base” — and "
-		+ "the assistant designs it brick by brick, checking every brick "
-		+ "holds. Watch it build, then ask for changes or carry on by hand.")
+	what.text = ("Describe a model and Claude designs it brick by brick, "
+		+ "checking every brick holds. Watch it build, then ask for "
+		+ "changes or carry on by hand.")
 	what.add_theme_font_size_override("font_size", 13)
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(what)
 
-	var how := Label.new()
-	how.text = "It runs on your own Anthropic API key. " + EXPECT
-	how.add_theme_font_size_override("font_size", 12)
-	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	how.modulate = Color(1, 1, 1, 0.75)
-	add_child(how)
+	# Two ways in, side by side in the reading order, each under its own
+	# heading. Before, the key's form ran to seven paragraphs and the
+	# other way, the person's Claude plan, started below the fold.
+	add_child(_line("With your Anthropic API key", 14, 1.0))
 
 	_field = LineEdit.new()
 	_field.placeholder_text = "Paste your key: sk-ant-…"
@@ -71,8 +68,9 @@ func setup() -> void:
 	_remember.text = "Remember it on this device"
 	_remember.button_pressed = true
 	_remember.add_theme_font_size_override("font_size", 12)
-	_remember.tooltip_text = ("Untick to keep it for this visit only — "
-		+ "the right choice on a computer someone else uses.")
+	_remember.tooltip_text = ("Kept so you need not paste it again, where "
+		+ "other programs running as you could read it. Untick to keep it "
+		+ "for this visit only — the right choice on a shared computer.")
 	add_child(_remember)
 
 	_use = Button.new()
@@ -81,28 +79,25 @@ func setup() -> void:
 	_use.pressed.connect(_keep)
 	add_child(_use)
 
-	# The safest key to give any app, this one included: its own, in a
-	# workspace with a spend limit, set to expire. Anthropic's Console
-	# does all three; nobody does them unless told.
-	var safer := Label.new()
-	safer.text = ("Safest: make a key just for Brickworks, in a Console "
-		+ "workspace with a monthly spend limit, set to expire. Then the "
-		+ "most it can ever cost is the limit you chose.")
-	safer.add_theme_font_size_override("font_size", 12)
-	safer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	safer.modulate = Color(1, 1, 1, 0.75)
-	add_child(safer)
+	# Right under the button that caused it. At the foot of the form it
+	# was below two paragraphs, and read as one more of them.
+	_note = Label.new()
+	_note.add_theme_font_size_override("font_size", 12)
+	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_note.visible = false
+	add_child(_note)
+	# A note is about the last key pasted. Shown again later, the form
+	# starts clean rather than answering a question nobody just asked.
+	visibility_changed.connect(func() -> void:
+		if visible:
+			_note.visible = false)
 
-	# The three facts, in the order people want them.
-	var terms := Label.new()
-	terms.text = ("It goes from this machine straight to Anthropic — never "
-		+ "to us, so there is nothing of yours on our server to log or "
-		+ "leak. It is kept on this device so you need not type it again, "
-		+ "and anything else running as you can read it. Forget it and "
-		+ "nothing of it remains. Anthropic bills you for what it uses.")
-	terms.add_theme_font_size_override("font_size", 11)
-	terms.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	terms.modulate = Color(1, 1, 1, 0.6)
+	# Where it goes and the safest key to give it, in one breath: its own,
+	# in a workspace with a spend limit. The Console does both; nobody
+	# does them unless told.
+	add_child(_line("Sent only to Anthropic, never to us. Safest is a key "
+		+ "just for this, in a Console workspace with a spend limit.", 11, 0.65))
+	add_child(_line(EXPECT, 11, 0.65))
 
 	var where := LinkButton.new()
 	where.text = "No key yet? Get one at console.anthropic.com"
@@ -110,13 +105,15 @@ func setup() -> void:
 	where.add_theme_font_size_override("font_size", 12)
 	where.modulate = Color(0.65, 0.8, 1.0, 1.0)
 	add_child(where)
-	add_child(terms)
 
-	_note = Label.new()
-	_note.add_theme_font_size_override("font_size", 11)
-	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_note.visible = false
-	add_child(_note)
+
+func _line(text: String, size: int, alpha: float) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", size)
+	label.modulate = Color(1, 1, 1, alpha)
+	return label
 
 
 func controls_by_name() -> Dictionary:

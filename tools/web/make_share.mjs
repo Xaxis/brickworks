@@ -49,11 +49,11 @@ const page_html = `<!doctype html>
 <div class="words">
   <div class="mark"><img src="favicon-192.png"><b>Brickworks</b></div>
   <h1>Design it here. Build it on your table.</h1>
-  <p>28,319 parts at the size real ones are, and a parts list and
-     instructions for whatever you make.</p>
+  <p>Describe it and Claude designs it in real bricks, on your own
+     Claude plan or API key. Then build it.</p>
   <div class="url">brickworks.diy</div>
 </div>
-<div class="shot"><img src="_og_model.png"><div class="fade"></div></div>`;
+<div class="shot"><img src="castle.png"><div class="fade"></div></div>`;
 
 const browser = await launch();
 const page = await browser.newPage({

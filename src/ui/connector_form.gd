@@ -32,16 +32,17 @@ func setup(with: ClaudeConnector) -> void:
 	connector = with
 	add_theme_constant_override("separation", 8)
 
+	add_child(HSeparator.new())
 	var title := Label.new()
-	title.text = "Or use your Claude plan"
+	title.text = "Or with your Claude plan"
 	title.add_theme_font_size_override("font_size", 14)
 	add_child(title)
 
 	_intro = Label.new()
-	_intro.text = ("On Claude Pro or Max? No key needed: add this tab to "
-		+ "Claude as a connector, then ask Claude to build. It builds here, "
-		+ "on your plan's usage. Nothing to install.")
-	_intro.add_theme_font_size_override("font_size", 12)
+	_intro.text = ("On Claude Pro or Max, no key needed: connect this tab "
+		+ "to Claude, then ask Claude to build. It builds here, on your "
+		+ "plan's usage.")
+	_intro.add_theme_font_size_override("font_size", 11)
 	_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_intro.modulate = Color(1, 1, 1, 0.8)
 	add_child(_intro)
