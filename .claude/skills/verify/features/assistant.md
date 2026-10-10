@@ -17,6 +17,24 @@ fixing what it got wrong.
   holding it for twenty minutes while it waits on the API queued every other
   project behind it. A software picture measured 2.6 s against the 20 s cap; a
   run that misses it logs "no picture in time".
+- `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
+  the conversation: what it is doing now, the steps before it, a clock, what to
+  expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
+  with the reason in the card. Before it, a design showed one line of 11-point
+  grey text and nothing on the baseplate for minutes. The expectations are
+  measured (Opus 5.5, "a small red house": high 684 s and $2.42 for 260 parts,
+  first check at 4 minutes; medium 249 s and $0.72 for 127). `chat_probe`.
+- `a clear baseplate for a first design`: the example car of a first visit is
+  taken off when a design starts on it untouched (`main._sample_untouched`,
+  `ChatPanel.designing`), with a line saying so; anything placed, opened or
+  cleared first leaves the baseplate alone.
+- `errors in plain words`: `Assistant._what_went_wrong` leads, with Anthropic's
+  own words after it only where they add something; they used to replace it, so
+  a mistyped key read "invalid x-api-key". A refused key (`KEY_REFUSED`) is
+  forgotten and the key form comes back. The footer says "Change key" when a
+  key is all there is.
+- `the key form`: says what the assistant does and what a design costs before
+  asking for anything, at the top of the panel rather than under an empty one.
 - `model and effort settings`: which Claude model and which effort level, and
   whether the request it builds is one that model will accept — `max_tokens`
   ceilings, adaptive thinking, the cached system block. Opus 5.5 is the default;
@@ -79,11 +97,34 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  Eleven constructions with real part numbers and real coordinates — a staggered
+  Twenty constructions with real part numbers and real coordinates — a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
   a smooth top, a round tower, a wide round tower, a taper, a window in a wall
   (a 60593 frame three courses tall with its 60602 glass, the bond laid short
-  past it, a 1x4 arch over it) and a door in a wall (60596 and a 60623 door).
+  past it, a 1x4 arch over it) and a door in a wall (60596 and a 60623 door);
+  and nine taken from real sets' own sub-models in LDraw's model repository —
+  lamp post, tree, bed, bench, armchair, table, planter, chimney, fence — each
+  naming its set and modeller (CC BY 2.0; `docs/ATTRIBUTION.md`). They were
+  chosen by what real sets' sub-models are named most (roof, door, seat, lamp,
+  window, tree, then furniture), read into this app's numbers by opening each
+  in the app and reading it back, and kept only where the checker passes them.
+  The ones it refuses are real constructions, so a test corpus for its false
+  positives: `tools/omr.py harvest ... --out DIR` then `harvest_probe.gd -- DIR`
+  (110 of 162 pass, 2026-10-09; the overlaps are clips on bars and hollow
+  studs, for which the parts pipeline records no connector).
+- `held from the ground`: `_check_support`. A part is held if a chain of
+  resting-on, clutch (both ways: a stud holds the part it reaches into and
+  the part it belongs to) and pin/axle/ball joints reaches the ground or a
+  brick already standing. It used to look one part down and count only the
+  part a stud reaches into, so a plate pressed up under an overhang floated
+  — the commonest reason it refused a real set's sub-model. Counting clutch
+  both ways while still looking one part down let a stack in mid-air hold
+  itself up, which `section_probe` caught. On 162 real sub-models grounded
+  exactly: 107 passed before, 110 now — 8 hung constructions newly pass,
+  5 upside-down ones hanging from an absent ceiling are newly refused.
+  `holds_probe` asserts a hung plate holds and a loose plate floats (and
+  fails with the clutch half taken out); a part on a floating part is told
+  it "stands on parts that are not held up themselves".
 - `inserts in their frames`: `Assistant.NESTS`, `_seated`. A pane's groove is
   narrower than a collision cell, so glass in its frame read as an overlap and
   every glazed window was refused. Measured over the model repository's sets

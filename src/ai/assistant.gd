@@ -4856,17 +4856,24 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 	return pieces
 
 
-## Which placements have a stud from some other part reaching into
-## them.
+## Every stud that reaches into another part, as [whose stud, which part
+## it reaches into]. Both are held by it: see [method _check_support].
 ##
 ## A stud stands 4 LDU proud of the surface it rises from, so the cell
 ## it reaches into is the one just beyond its tip. Whoever owns that
 ## cell is being held by it — which is as true of a stud on the side of
 ## a brick as of one on top, and is the whole of what makes sideways
 ## building possible.
+##
+## And clutch holds both ways. A plate pressed up under an overhang has
+## nothing beneath it and is held by its own studs, and this counted
+## only the part above, so the plate was "floating". Real sets hang parts
+## like that constantly: of 162 small sub-models of real sets in LDraw's
+## model repository, 32 were refused as floating, and the commonest were
+## plates — a 1x3 under a sign, a 2x2 under a lantern.
 func _studs_reaching_in(model: Model, cells_of: Dictionary,
-		lattice: BrickLattice) -> Dictionary:
-	var held: Dictionary = {}
+		lattice: BrickLattice) -> Array:
+	var held: Array = []      ## [the stud's part, the part it reaches into]
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
@@ -4884,7 +4891,7 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 			var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
 			# brick_at returns index + 1, since zero means empty.
 			if reached != 0 and reached - 1 != index:
-				held[reached - 1] = true
+				held.append([index, reached - 1])
 	return held
 
 
@@ -5292,7 +5299,30 @@ func _check_support(
 	joined: Dictionary = {}, loose: Dictionary = {},
 	boxes_of: Dictionary = {}, floating: Dictionary = {}
 ) -> void:
-	var studs: Dictionary = _studs_reaching_in(model, cells_of, lattice)
+	# Who holds whom. A part is held if a chain of these reaches the
+	# ground: resting on a part, a stud reaching into it or its own stud
+	# reaching into another — clutch holds both ways — or a pin, axle or
+	# ball. The rule this replaced looked one part down. A plate pressed
+	# up under an overhang has nothing beneath it and was called
+	# floating, which was the commonest reason the check refused a real
+	# set's sub-model; and counting clutch both ways without asking
+	# about the ground let a stack hanging in mid-air hold itself up.
+	var gives: Dictionary = {}       ## index -> indices it holds up
+	var clutched: Dictionary = {}    ## index -> true, held by some stud
+	for pair: Array in _studs_reaching_in(model, cells_of, lattice):
+		var owner: int = pair[0]
+		var into: int = pair[1]
+		if into >= model.placements.size():
+			continue
+		_gives(gives, owner, into)
+		_gives(gives, into, owner)
+		clutched[owner] = true
+		clutched[into] = true
+	for index: int in joined:
+		for mate: Variant in (joined[index] as Dictionary):
+			_gives(gives, int(mate), index)
+	var grounded: Array[int] = []
+	var resting: Dictionary = {}     ## index -> the part it rests on
 	for index: int in cells_of:
 		var placement: Placement = model.placements[index]
 		# Its section ran into something, so some of its neighbours were
@@ -5313,10 +5343,13 @@ func _check_support(
 		# the base course of a pylon carried thirty plates into the air
 		# was excused from needing anything to hold it up, and a whole
 		# assembly could hang there with the check calling it sound.
-		if floor_y <= 0:
+		# On the ground, or already standing before this design and not
+		# touched by it — which, like an overlap between two such bricks,
+		# is not this design's to answer for.
+		if floor_y <= 0 or (placement.id != 0 and not placement.moved):
+			grounded.append(index)
 			continue
 
-		var supported: bool = false
 		var sitting_on: int = 0        ## the placement underneath, if one
 		# One query for the whole underside rather than one per cell.
 		#
@@ -5336,39 +5369,55 @@ func _check_support(
 					box[at + 3], floor_y, box[at + 5]]))
 			at += 6
 		for below: int in lattice.blockers_boxes(under, index + 1):
-			supported = true
-			if below > 0 and sitting_on == 0:
-				sitting_on = below
-			break
+			# A brick that was already standing holds it as the ground
+			# does.
+			if below < 0:
+				grounded.append(index)
+			elif below - 1 != index:
+				_gives(gives, below - 1, index)
+				if sitting_on == 0:
+					sitting_on = below
+		resting[index] = sitting_on
 
-		# Or a stud from somewhere else points into it.
-		#
-		# "Something in the cell below" is the only rule there was, and
-		# it is the rule that makes studs-not-on-top impossible: a part
-		# held by a stud on the side of a brick has air beneath it by
-		# construction. So a wall of smooth colour, a row of round
-		# plates reading as rivets, a tile standing up as a window pane
-		# — every one of them was rejected as floating, and three
-		# repairs later the model has learned not to try.
-		#
-		# The library knows where every stud is and which way it points,
-		# including the sideways ones: 87087 records its side stud at
-		# axis +Z. It was never consulted.
-		if not supported and studs.has(index):
-			supported = true
+	# Out from the ground. Studs, not only what is underneath: "something
+	# in the cell below" was once the only rule, and it made studs-not-on-
+	# top impossible — a wall of smooth colour, round plates as rivets, a
+	# tile standing up as a pane, all rejected as floating, until three
+	# repairs taught the model not to try. 87087 records its side stud at
+	# axis +Z and a pin knows its hole; this asks them.
+	var held: Dictionary = {}
+	var queue: Array[int] = grounded.duplicate()
+	for index: int in grounded:
+		held[index] = true
+	while not queue.is_empty():
+		var here: int = queue.pop_back()
+		for next: int in gives.get(here, []):
+			if not held.has(next):
+				held[next] = true
+				queue.append(next)
 
-		# Or a pin, axle or ball joins it to something.
-		if not supported and joined.has(index) \
-				and not (joined[index] as Dictionary).is_empty():
-			supported = true
-
-		if not supported:
-			floating[index] = true
-			_note(issues, "floating",
-				"brick %d (%s at %s) has nothing holding it" % [
-					index, placement.part, placement.where()])
+	for index: int in cells_of:
+		var placement: Placement = model.placements[index]
+		if crowded.has(placement.section) or held.has(index):
 			continue
+		floating[index] = true
+		# Said by what it touches. A brick on a floating one stands on
+		# something that is not held up; a part clutched or pinned to one
+		# is held, by something that is not; only a part touching nothing
+		# has nothing holding it.
+		var how: String = "has nothing holding it"
+		if int(resting.get(index, 0)) > 0:
+			how = "stands on parts that are not held up themselves"
+		elif gives.values().any(func(them: Variant) -> bool:
+				return (them as Array).has(index)):
+			how = "is held only by parts that are not held up themselves"
+		_note(issues, "floating", "brick %d (%s at %s) %s" % [index,
+			placement.part, placement.where(), how])
 
+	for index: int in resting:
+		if not held.has(index):
+			continue
+		var sitting_on: int = resting[index]
 		# It is held. Whether it is actually *attached* is a different
 		# question, and the lattice cannot answer it: cells are 2 LDU and
 		# the connection system is 20, so a part can rest on another
@@ -5385,7 +5434,13 @@ func _check_support(
 		# because the primitives do not say where every socket is.
 		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
 			_note_loose(loose, model, index, sitting_on - 1,
-				studs.has(index))
+				clutched.has(index))
+
+
+static func _gives(gives: Dictionary, holder: int, held: int) -> void:
+	if not gives.has(holder):
+		gives[holder] = []
+	(gives[holder] as Array).append(held)
 
 
 ## Parts made to sit inside another, and where real sets put them.

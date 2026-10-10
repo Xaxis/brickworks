@@ -38,6 +38,31 @@ func _initialize() -> void:
 	get_root().add_child(assistant)
 	await process_frame
 
+	# Clutch holds both ways. A plate pressed up under an overhang has
+	# nothing beneath it and is held by its own studs; the check counted
+	# only the part a stud reaches into, and called the plate floating.
+	# Real sets do this all the time — it was the commonest reason the
+	# check refused a real set's sub-model.
+	var hung := Assistant.Model.new()
+	for raw: Dictionary in [
+			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0},
+			{"part": "3001", "color": 4, "x": 2, "y": 3, "z": 0},
+			{"part": "3022", "color": 1, "x": 4, "y": 2, "z": 0}]:
+		hung.placements.append(Assistant.Placement.from_dict(raw))
+	var under: Dictionary = assistant._check(hung)
+	_say(bool(under["ok"]), "a plate pressed up under an overhang is held "
+		+ "by its own studs: %s" % under["summary"])
+	# And a part with nothing at all around it still floats.
+	var adrift := Assistant.Model.new()
+	for raw: Dictionary in [
+			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0},
+			{"part": "3022", "color": 1, "x": 8, "y": 2, "z": 0}]:
+		adrift.placements.append(Assistant.Placement.from_dict(raw))
+	var lost: Dictionary = assistant._check(adrift)
+	_say(str(lost["summary"]).contains("floating"),
+		"...and one with nothing above or below it still floats: %s"
+			% lost["summary"])
+
 	var store := ModelStore.new()
 	store.world = world
 	store.builder = builder
@@ -66,7 +91,7 @@ func _initialize() -> void:
 	print("  the tree, %d bricks: %s" % [placed, report.summary()])
 	if report.is_stable():
 		print("  skip  this tree is sound, so there is nothing to report")
-		quit(0)
+		quit(1 if _failures else 0)
 		return
 
 	# And the design check is satisfied by it, which is the whole point:
@@ -113,3 +138,11 @@ func _initialize() -> void:
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
+
+
+func _say(passed: bool, what: String) -> void:
+	if passed:
+		print("  ok    " + what)
+	else:
+		_failures += 1
+		print("  FAIL  " + what)

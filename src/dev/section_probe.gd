@@ -102,7 +102,7 @@ func _run() -> void:
 	var lifted: Assistant.Model = _model(0.0, 0.0, 9.0)
 	var said: String = str(_assistant._check(lifted)["feedback"])
 	_check("its base course is not excused from being held up",
-		said.contains("nothing holding it"))
+		said.contains("floating") and said.contains("brick 2 "))
 
 	print("")
 	print("  and a model with no sections is unchanged")

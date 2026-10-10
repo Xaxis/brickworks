@@ -152,10 +152,15 @@ func _try(assistant: Assistant, library: PartLibrary, host: String,
 				"x": at["x"], "y": at["y"], "z": at["z"],
 				"face": at["face"], "rot": 0}]:
 			model.placements.append(Assistant.Placement.from_dict(raw))
+		# The host as a brick already standing, which the check grounds:
+		# support is now a walk out from the ground, and a host floating
+		# on purpose would leave the plate on it floating too — which is
+		# true and is not what this asks.
+		model.placements[0].id = 1
 		var verdict: Dictionary = assistant._check(model)
 
-		# Brick 1 is the plate. The host is brick 0 and is expected to
-		# be floating, since nothing holds it up.
+		# Brick 1 is the plate, and anything said about it is a fault in
+		# the coordinates it was given.
 		var wrong := PackedStringArray()
 		for complaint: String in str(verdict["feedback"]).split("\n"):
 			if complaint.contains("brick 1 "):
