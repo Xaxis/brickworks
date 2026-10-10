@@ -181,7 +181,10 @@ fixing what it got wrong.
   (`_assembly_measured` plus `ASSEMBLY_CRITIQUE`) with one, each told what the
   last one brought. Found on the first Orthanc from claude.ai, which was told
   only "Built". An assembly's box is read from its own sides or a nested
-  `where`. `mcp_probe` asserts it on a 300-brick wall.
+  `where`. `mcp_probe` asserts it on a 300-brick wall. Once an outside design
+  stands (`_outside_standing`), `check_design` no longer puts its trial on the
+  baseplate — a session testing one part's seat wiped a 2,900-part Orthanc
+  that way; `mcp_probe` checks a later check leaves the model standing.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
