@@ -334,7 +334,7 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		<nav>
 			<a href="#what">What it does</a>
 			<a href="#exact">Exactness</a>
-			<a href="#tiers">Tiers</a>
+			<a href="#claude">Design with Claude</a>
 			<a href="https://github.com/Xaxis/brickworks">Source</a>
 			<a class="cta" href="/app">Open the app</a>
 		</nav>
@@ -345,15 +345,16 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 	<div class="wrap hero">
 		<h1>Design it here. Build it on your table.</h1>
 		<p class="lede">
-			28,319 parts at the size real ones are. Describe what you want or
-			place it brick by brick, then leave with a parts list and printable
-			instructions — because a model you cannot build is a picture.
+			28,319 parts at the size real ones are. Place it brick by brick, or
+			ask Claude to design it — on your Claude plan or your own API key —
+			then leave with a parts list and printable instructions, because a
+			model you cannot build is a picture.
 		</p>
 		<div class="actions">
 			<a class="cta" href="/app">Start building</a>
 			<a class="cta ghost" href="#exact">How exact?</a>
 		</div>
-		<p class="note">Runs in the browser. No account needed to build.</p>
+		<p class="note">Runs in the browser. Free, with no account — ever.</p>
 
 		<div class="stats">
 			<div class="stat"><b>28,319</b><span>parts, every one modelled</span></div>
@@ -391,10 +392,10 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 				</p>
 			</div>
 			<div class="card">
-				<h3><span class="dot" style="background:var(--blue)"></span>A design assistant</h3>
+				<h3><span class="dot" style="background:var(--blue)"></span>Designed by Claude</h3>
 				<p>
-					Describe something and watch it appear. Every placement is
-					checked against the real lattice, and you get the brick and
+					Describe something and watch Claude build it. Every placement
+					is checked against the real lattice, and you get the brick and
 					the reason when one will not hold.
 				</p>
 			</div>
@@ -498,43 +499,41 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		</details>
 	</section>
 
-	<section id="tiers" class="wrap">
-		<h2>Tiers</h2>
+	<section id="claude" class="wrap">
+		<h2>Design with Claude</h2>
 		<p class="sub">
-			Building is free and always will be. The assistant costs real money
-			to run and there is no payment system here yet, so it runs on a key
-			of your own — which goes from your machine straight to Anthropic
-			and never to us.
+			Brickworks is free and has no accounts. The designing is done by
+			Claude, and Anthropic bills it the way you already pay for Claude —
+			against your plan, or against your own API key. Never through us.
 		</p>
 		<div class="tiers">
 			<div class="card tier">
-				<h3>Free</h3>
-				<div class="price">No account needed</div>
+				<h3>Your Claude plan</h3>
+				<div class="price">Pro or Max · nothing to install</div>
 				<ul>
-					<li>The whole builder</li>
-					<li>All 28,319 placeable parts and 322 colours</li>
-					<li>Save, reopen and export as <code>.ldr</code></li>
-					<li>Stability checking</li>
-					<li>Build instructions, printable</li>
-					<li>A parts list of what to buy</li>
-					<li>No design assistant</li>
+					<li>Turn on <b>Connect Claude</b> in the app and copy the address it gives this tab</li>
+					<li>Add it to Claude as a custom connector — claude.ai, the Claude app, or Claude Code</li>
+					<li>Ask Claude: “build a small red house in Brickworks”. It builds in your tab, on your plan’s usage</li>
+					<li>No key, and no Claude login ever reaches Brickworks: Claude is the one calling, signed in its own way</li>
 				</ul>
 			</div>
 			<div class="card tier">
-				<h3>With the assistant</h3>
-				<div class="price">Your own Anthropic key</div>
+				<h3>Your own API key</h3>
+				<div class="price">Pay as you go · from the Anthropic Console</div>
 				<ul>
-					<li>Everything above</li>
-					<li>The design assistant</li>
-					<li>Billed by Anthropic, at cost, to you</li>
+					<li>Paste it in the app; it is checked with Anthropic before it is kept</li>
+					<li>Kept in your browser, or for this visit only, and sent only to Anthropic — never to us</li>
+					<li>Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort is about a third of that</li>
+					<li>Safest: a key just for this, in a Console workspace with a spend limit, set to expire</li>
 				</ul>
 			</div>
 		</div>
 		<p class="note">
-			Models are saved on your own machine, not ours — which is what
-			lets the free tier keep them without an account at all. Signing in,
-			when you do, is a code by email; there is no password to choose,
-			reuse or forget.
+			The app is only allowed to talk to itself, Anthropic, Wikimedia
+			(for reference pictures) and its own parts store — the browser
+			enforces that, so a key has nowhere else to go. The connector’s
+			relay carries Claude’s tool calls to your tab and the answers back,
+			and nothing else. Models are saved in your browser, not on a server.
 		</p>
 	</section>
 </main>
