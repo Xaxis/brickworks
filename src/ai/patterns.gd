@@ -17,6 +17,8 @@
 ##            in courses of short bricks in a bond, and with walls,
 ##            layers and a taper: a dome, a cone, a tube, a hull or a
 ##            bowl, said in one object
+##   rock     a crag: courses that step in unevenly towards a peak off
+##            the middle, faced with slopes, in two greys
 ##
 ## Three verbs, and between them a saucer, a hull, a colonnade and a
 ## staggered wall stop being arithmetic. The idea is the one behind
@@ -141,9 +143,11 @@ static func expand(raw_patterns: Array, already: Array,
 				made.append_array(_mirror(pattern, from, trouble, library))
 			"fill":
 				made.append_array(_fill(pattern, trouble, library))
+			"rock":
+				made.append_array(_rock(pattern, trouble))
 			_:
 				trouble.append("no pattern called \"%s\" — there is "
-					% kind + "repeat, mirror and fill")
+					% kind + "repeat, mirror, fill and rock")
 		if made.size() > MOST:
 			trouble.append("that would be %d bricks or more, which is a "
 				% made.size() + "mistake in the numbers rather than a model")
@@ -436,6 +440,163 @@ static func _fill(pattern: Dictionary, trouble: Array,
 				+ "shape. Fewer layers, or a bigger shrink")
 			return []
 	return made
+
+
+## A crag, said in one object.
+##
+## Rock is the hardest thing to dictate and the easiest to get wrong: a
+## stack of plates, each a stud smaller and centred on the last, is a
+## wedding cake, and every rocky base built here was one. Real sets build
+## rock the other way — courses that step in unevenly, the mass leaning
+## to one side, faced with slopes so the steps read as rock and not as
+## stairs, in two or three greys. Owner's verdict on an Orthanc that stood
+## on a flat plaza: "creative usage of blocks, not just functional square
+## bricks".
+##
+## So the outline wobbles with the angle round it, each course shrinks
+## and drifts towards a peak off the middle (the seed chooses where), and
+## where a course steps in its edge gets a 1 x 2 slope, or a 1 x 1 cheese
+## slope where there is not room, facing out. A ledge with nothing above
+## it keeps its studs, which is what rough ground looks like. Every course
+## is cut to the one below it, so nothing hangs in the air.
+##
+##   {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0}, "across": 16,
+##    "deep": 12, "height": 12, "color": 72, "mix_color": 71, "seed": 3}
+static func _rock(pattern: Dictionary, trouble: Array) -> Array:
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var low_x: int = int(round(float(at.get("x", 0.0))))
+	var low_z: int = int(round(float(at.get("z", 0.0))))
+	var y: float = float(at.get("y", 0.0))
+	var across: int = int(round(float(pattern.get("across", 0))))
+	var deep: int = int(round(float(pattern.get("deep", 0))))
+	var height: float = float(pattern.get("height", 9))
+	var colour: int = int(pattern.get("color", pattern.get("colour", 72)))
+	var mix_colour: int = int(pattern.get("mix_color",
+		pattern.get("mix_colour", 71 if colour == 72 else -1)))
+	var mix: float = clampf(float(pattern.get("mix",
+		0.3 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	var seed: int = int(pattern.get("seed", 0))
+	if across < 2 or deep < 2 or across * deep > MOST:
+		trouble.append("rock wants across and deep of at least 2 studs, "
+			+ "and not more than %d between them" % MOST)
+		return []
+	var courses: int = maxi(1, int(ceil(height / 3.0)))
+	var middle := Vector2(low_x + across / 2.0, low_z + deep / 2.0)
+	# Where the peak leans: off the middle, by the seed, so two rocks are
+	# not the same rock and no rock is a cone.
+	var lean := Vector2(_scatter(seed, 0, 0, 7) - 0.5,
+		_scatter(seed, 0, 0, 8) - 0.5) * Vector2(across, deep) * 0.6
+
+	# How far each course steps in, unevenly: some by a stud, some by two
+	# or three. Even steps are a wedding cake; a ledge two studs deep is
+	# where a real slope fits and a stud of rough ground shows.
+	var weights: Array[float] = [0.0]
+	var total: float = 0.0
+	for k: int in range(1, courses):
+		var weight: float = 0.4 + 1.6 * _scatter(k, seed, 0, 13)
+		total += weight
+		weights.append(total)
+	var steps: Array[Dictionary] = []
+	for k: int in courses:
+		var t: float = float(k) / float(courses)
+		if total > 0.0:
+			t = weights[k] / total * float(courses - 1) / float(courses)
+		var size: float = 1.0 - 0.72 * t
+		var centre: Vector2 = middle + lean * t
+		var rx: float = maxf(across / 2.0 * size, 0.6)
+		var rz: float = maxf(deep / 2.0 * size, 0.6)
+		var cells: Dictionary = {}
+		for x: int in range(low_x, low_x + across):
+			for z: int in range(low_z, low_z + deep):
+				var u: float = (x + 0.5 - centre.x) / rx
+				var v: float = (z + 0.5 - centre.y) / rz
+				if sqrt(u * u + v * v) <= _wobble(atan2(v, u), k, seed):
+					var cell := Vector2i(x, z)
+					if k == 0 or (steps[k - 1] as Dictionary).has(cell):
+						cells[cell] = true
+		if cells.is_empty():
+			break
+		steps.append(cells)
+	if steps.is_empty():
+		trouble.append("that rock covers nothing")
+		return []
+
+	var made: Array = []
+	var below: Dictionary = {}
+	for k: int in steps.size():
+		var laid: Dictionary = {}
+		var from_here: int = made.size()
+		made.append_array(_tile((steps[k] as Dictionary).duplicate(),
+			y + 3.0 * k, colour, COURSES, below, laid, k))
+		if mix > 0.0:
+			_texture(made, from_here, colour, mix_colour, mix, 0.0, middle)
+		below = laid
+
+	# The faces: a slope on every edge where the rock steps in, facing
+	# away from the course above it.
+	var outward: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0),
+		Vector2i(0, -1), Vector2i(-1, 0)]
+	for k: int in steps.size():
+		var here: Dictionary = steps[k]
+		var above: Dictionary = steps[k + 1] if k + 1 < steps.size() else {}
+		var top_y: float = y + 3.0 * (k + 1)
+		var used: Dictionary = {}
+		var order: Array = here.keys()
+		order.sort()
+		for key: Variant in order:
+			var cell: Vector2i = key
+			if above.has(cell) or used.has(cell):
+				continue
+			var facing := Vector2i.ZERO
+			for step: Vector2i in outward:
+				if above.is_empty():
+					if not here.has(cell + step):
+						facing = step
+						break
+				elif above.has(cell - step):
+					facing = step
+					break
+			if facing == Vector2i.ZERO:
+				continue
+			var tone: int = colour
+			if mix_colour >= 0 and _scatter(cell.x, top_y, cell.y, 5) < mix:
+				tone = mix_colour
+			var rot: int = outward.find(facing)
+			var low: Vector2i = cell + facing
+			if here.has(low) and not above.has(low) and not used.has(low):
+				made.append({"part": "3040b", "color": tone,
+					"x": mini(cell.x, low.x), "y": top_y,
+					"z": mini(cell.y, low.y), "rot": rot})
+				used[low] = true
+			else:
+				# One stud of ledge: a cheese slope most often, otherwise a
+				# pebble, a smooth patch or the bare stud — the same piece
+				# on every edge is a texture of its own, and not rock's.
+				var pick: float = _scatter(cell.x, top_y, cell.y, 17)
+				if pick < 0.5:
+					made.append({"part": "54200", "color": tone,
+						"x": cell.x, "y": top_y, "z": cell.y, "rot": rot})
+				elif pick < 0.68:
+					made.append({"part": "4073", "color": tone,
+						"x": cell.x, "y": top_y, "z": cell.y, "rot": 0})
+				elif pick < 0.82:
+					made.append({"part": "3070b", "color": tone,
+						"x": cell.x, "y": top_y, "z": cell.y, "rot": 0})
+			used[cell] = true
+	return made
+
+
+## How far out the rock reaches at an angle round it, from 0.78 to 1.1 of
+## its size: eight bumps round the outline, a different eight each course
+## and each seed, blended so the edge wanders rather than jumps.
+static func _wobble(angle: float, course: int, seed: int) -> float:
+	var at: float = (angle + PI) / TAU * 8.0
+	var first: int = int(floor(at)) % 8
+	var second: int = (first + 1) % 8
+	var blend: float = at - floor(at)
+	var one: float = _scatter(first, course, seed, 11)
+	var two: float = _scatter(second, course, seed, 11)
+	return 0.78 + 0.32 * lerpf(one, two, blend)
 
 
 ## How much of a fill a second colour takes when none is said: real

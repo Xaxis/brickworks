@@ -252,6 +252,12 @@ def main() -> int:
     # elements rather than descriptions.  Optional: a catalogue built
     # without tools/fetch_data.sh has no such file, and the parts list
     # falls back to naming the part and the colour.
+    # How real sets are built, which the design loop measures every design
+    # against. Leaving it behind made the style advice say nothing on the
+    # web, which is where Claude on a person's plan builds.
+    style = GENERATED / "style_norms.json"
+    if style.exists():
+        shutil.copy2(style, out / "style_norms.json")
     elements = GENERATED / "elements.json"
     if elements.exists():
         shutil.copy2(elements, out / "elements.json")

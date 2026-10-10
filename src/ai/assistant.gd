@@ -1144,6 +1144,12 @@ tile course where the wall meets the walkway, a window a third of the \
 way up, a band in a second colour, a bracket carrying a lamp. Measured \
 on a castle that stood up perfectly: 23 shapes against the 117 a real \
 set of its size has, and 208 of one corner brick against 81.
+  Craft. Is anything in it not studs-up, not square, not mirrored where \
+the subject is not? Is there one part used for what it looks like rather \
+than what it is for? Does the texture change where the material does, \
+and does any face have depth — something set in, something standing \
+out? A model that holds together and has none of these is a correct \
+model nobody would buy.
   The same part in two colours, where one of them is used once. Three \
 red beams and one grey one reads as a part taken from the wrong bin, \
 not as a detail. Look at whether the odd one is doing something — a \
@@ -3182,6 +3188,21 @@ func _made_in(info: PartLibrary.PartInfo) -> String:
 
 
 
+## Whether the model is built like real sets of its kind: see Style.
+func _style(model: Model) -> String:
+	if model.placements.size() < Style.LEAST or library == null:
+		return ""
+	var parts: Array = []
+	for placement: Placement in model.placements:
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		parts.append([placement.part, placement.color,
+			_transform(placement, mesh, model.section_for(placement)), mesh.bounds])
+	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	return Style.advice(Style.measure(parts), Style.group_for(about))
+
+
 ## Whether the model is made of as many different things as a real set.
 ##
 ## The checker can say a model stands up. Whether it reads as a set is a
@@ -4082,6 +4103,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not thin.is_empty():
 		advice.append(thin)
 
+	# And whether it is built the way real sets of its kind are: on its
+	# side, at an angle, curved, and mirrored only where they are.
+	var square: String = _style(model)
+	if not square.is_empty():
+		advice.append(square)
+
 	# And whether anything is specified in a colour it was never made in.
 	var unmade: String = _never_made(model)
 	if not unmade.is_empty():
@@ -4626,7 +4653,10 @@ func _lopsided(model: Model, box_of: Dictionary,
 				" and ".join(named)]
 			+ "If it is meant to be symmetric, that is where it is not — "
 			+ "and one brick out of place on one side is the thing a "
-			+ "person sees first.")
+			+ "person sees first. If it is not meant to be — rock, a "
+			+ "ruin, a tree, a tower grown out of a crag — a few bricks "
+			+ "do not make it asymmetric, they make it look like a "
+			+ "mistake: make the difference large and deliberate.")
 	return ""
 
 
@@ -6071,9 +6101,11 @@ a road, a table top, a bonnet.
   Shapes that are meant to be curved use parts that are curved. Slopes \
 for a roof, curved slopes for a bonnet, round bricks and cones for a \
 chimney or a tree trunk, dishes for a dome.
-  Colour is used sparingly and deliberately. Two or three colours that \
-belong together, plus one for detail. Every colour you add to the \
-palette makes the model read as less of one thing.
+  Colour is chosen, not scattered. A main colour, two or three close \
+tones of it for texture and wear, and accents where something changes — \
+a door, a band, a roof, a lamp. Real sets are not two-colour: one of \
+2,000 parts uses about twenty-five, most of them on a handful of small \
+parts each. What reads as random is colour with no reason to be there.
   Transparent is glass, a lens or a light, and nothing else. Trans \
 Clear is not white — white is 15, and Trans Clear is 47. A body panel, \
 a chassis or a floor in a transparent colour reads as a model somebody \
@@ -6240,6 +6272,15 @@ alongside the bricks you write by hand:
              a wall          rectangle, wall 1, layers 12, rise 3
              a stone wall    the same, mix_color 72, masonry 0.5
              a room          rectangle, wall 1, layers 4, rise 3
+
+           Rock is its own pattern, because stepped plates centred on \
+           each other are a wedding cake, never a crag: \
+           {"pattern": "rock", "at": {...}, "across": 16, "deep": 12, \
+           "height": 15, "seed": 3}. The courses step in unevenly and \
+           lean to one side, every edge gets a slope, a cheese slope, a \
+           pebble or a bare ledge, in two greys (72 and 71 unless \
+           said). Several rocks with different seeds, overlapping, make \
+           a base nobody would take for a pattern; then build on it.
 
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
@@ -6460,6 +6501,41 @@ Ground is part of the model or it is not there at all. Plates scattered \
 around the base at different heights read as debris, not as a lawn. \
 Either lay a deliberate shape — an even layer, a definite edge — or \
 leave the baseplate bare and let the model stand on it.
+
+WHAT MAKES A MODEL BEAUTIFUL
+Holding together and reading as the thing are the floor, not the goal. \
+What makes a person stop and look is craft, and it can be learned:
+  Not everything is studs-up. Real sets turn a good share of their parts \
+on their sides and upside down — brackets, bricks with studs on the \
+side, headlight bricks — to lay tiles, grilles and slopes across a \
+face, and that is where most of a wall's detail comes from \
+(show_technique "face turned sideways").
+  Not everything is square. A wall that bends, a roof pitched where no \
+slope is, a rock face, a horn, a buttress leaning in: hinges, clips on \
+bars, and sections turned to the angle the thing really has.
+  Symmetry is a choice, not a default. A vehicle or a formal front is \
+mirrored; rock, ruins, trees, a tower grown out of a crag, a wall that \
+has been fought over are not, and built mirrored they look \
+manufactured. Where the subject is irregular, make the irregularity \
+large and deliberate — a shoulder higher on one side, a spur, a \
+fissure, a change of texture — rather than a brick out of place.
+  Use a part for what it looks like, not what it is for. Builders call it \
+nice part usage and it is the mark of a good model: claws and horns for \
+spikes and thorns, tooth plates for battlements, ingots and cheese \
+slopes for dressed stone, 1x1 round plates for rivets, a bar for a \
+spire, a leaf for a flame. One unexpected part, well placed, does more \
+than a hundred plain bricks.
+  Texture changes where the material changes. Tiles for dressed stone or \
+metal, studs left showing for rough ground, masonry bricks and grilles \
+for worked stone, two or three close colours — black, dark bluish grey, \
+dark grey — mixed for weathering. One grey over everything reads as \
+plastic.
+  Depth makes the detail. A face on one plane is flat, however much is on \
+it. Set windows in, let a cornice oversail, recess a doorway a plate, \
+stand a buttress out: the shadows are what the eye reads.
+  A focal point. Somewhere the eye goes first — the top of a tower, a \
+gate, a figure on a balcony — gets the most interesting parts in the \
+model.
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -6883,7 +6959,7 @@ func _tools() -> Array:
 		"type": "object",
 		"properties": {
 			"pattern": {"type": "string",
-				"enum": ["repeat", "mirror", "fill"],
+				"enum": ["repeat", "mirror", "fill", "rock"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -6893,7 +6969,11 @@ func _tools() -> Array:
 					+ "of short bricks in a running bond — and with "
 					+ "layers, a "
 					+ "shrink and a wall it is a dome, a cone, a hull, "
-					+ "a tube or a bowl in one object."},
+					+ "a tube or a bowl in one object. rock: a crag in "
+					+ "one object — courses stepping in unevenly towards "
+					+ "a peak off the middle, faced with slopes, cheese "
+					+ "slopes, pebbles and bare ledges in two greys; a "
+					+ "different seed is a different rock."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -6907,9 +6987,14 @@ func _tools() -> Array:
 				+ "the footprint's low corner sits, as {x, y, z}."},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
 				"description": "fill: which footprint"},
-			"across": {"type": "number", "description": "fill: studs in x"},
-			"deep": {"type": "number", "description": "fill: studs in z"},
-			"color": {"type": "integer", "description": "fill: the colour"},
+			"across": {"type": "number", "description": "fill, rock: studs in x"},
+			"deep": {"type": "number", "description": "fill, rock: studs in z"},
+			"color": {"type": "integer", "description":
+				"fill, rock: the colour (rock: 72 if not said)"},
+			"height": {"type": "number", "description":
+				"rock: how tall, in plates"},
+			"seed": {"type": "integer", "description":
+				"rock: which rock — each number leans and wanders its own way"},
 			"wall": {"type": "number", "description":
 				"fill: leave the middle out, this many studs in from "
 				+ "every side. An ellipse with wall 1 is a round tube; "
@@ -6928,7 +7013,7 @@ func _tools() -> Array:
 				"fill: a second colour for the outside stud of every "
 				+ "layer — hull plating, a trim, a kerb."},
 			"mix_color": {"type": "integer", "description":
-				"fill: a second colour through some of its bricks, "
+				"fill, rock: a second colour through some of its bricks, "
 				+ "chosen by where they are, the same every time — a "
 				+ "weathered wall. Real castle walls are 9-19% their "
 				+ "second grey."},

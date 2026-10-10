@@ -162,6 +162,33 @@ func _initialize() -> void:
 	_holds_up()
 
 	print("")
+	print("  rock")
+	var crag: Array = _made([{"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
+		"across": 16, "deep": 12, "height": 15, "seed": 1}])
+	var faces: Dictionary = {}
+	var greys: Dictionary = {}
+	var high := Vector2.ZERO
+	var counted: int = 0
+	for one: Dictionary in crag:
+		faces[str(one["part"])] = true
+		greys[int(one["color"])] = true
+		if float(one["y"]) >= 6.0:
+			high += Vector2(float(one["x"]) + 0.5, float(one["z"]) + 0.5)
+			counted += 1
+	var drift: float = (high / maxf(counted, 1.0)).distance_to(Vector2(8, 6))
+	_check("a crag comes back, %d parts" % crag.size(), crag.size() > 100)
+	_check("...faced with slopes, not left as steps: %s" % ", ".join(faces.keys()),
+		faces.has("3040b") and faces.has("54200"))
+	_check("...in two greys", greys.has(72) and greys.has(71))
+	_check("...leaning one way, not a cone: its upper half %.1f studs off the middle"
+		% drift, drift > 1.0)
+	var other: Array = _made([{"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
+		"across": 16, "deep": 12, "height": 15, "seed": 2}])
+	_check("...and another seed is another rock", JSON.stringify(other) != JSON.stringify(crag))
+	_check("a rock too small to be one is refused",
+		_trouble([{"pattern": "rock", "across": 1, "deep": 1}]).contains("rock wants"))
+
+	print("")
 	print("  and nonsense is refused rather than built")
 	_check("an odd shrink, which would lean the stack",
 		_trouble([{"pattern": "fill", "shape": "ellipse", "across": 10,
@@ -240,6 +267,12 @@ func _holds_up() -> void:
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 40, "deep": 24,
 			"wall": 1, "layers": 12, "rise": 3, "color": 71,
 			"mix_color": 72, "masonry": 0.5}],
+		["a crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
+			"across": 16, "deep": 12, "height": 15, "seed": 1}],
+		["another crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
+			"across": 24, "deep": 20, "height": 21, "seed": 7}],
+		["a boulder", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
+			"across": 5, "deep": 4, "height": 6, "seed": 3}],
 	]:
 		var model: Assistant.Model = assistant._read_model(
 			{"patterns": [one[1]]})

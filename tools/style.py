@@ -325,6 +325,10 @@ class Parts:
         self._info[part] = found
         return found
 
+    def catalogued(self) -> list[str]:
+        """Every part id the catalogue has."""
+        return [part for part, info in self._info.items() if info is not None]
+
     def canonical(self, part: str) -> str:
         """The part's current number: 41770 has moved to 41770a."""
         return self._moved.get(part, part)
@@ -871,6 +875,25 @@ def norms(measured: list[dict]) -> dict:
     }
 
 
+# One letter a kind, for the app to read rather than keep a second copy of
+# the rules above, which would drift from these.
+KIND_LETTERS = {"curve": "c", "slope": "s", "snot_parts": "n", "angle_parts": "a",
+                "texture": "t", "tile": "i", "organic": "o", "plain": "p"}
+
+
+def part_kinds(parts: "Parts") -> dict[str, str]:
+    """Every catalogued building part's kinds, as letters, plus "u" when
+    its studs say which way is up, so turning it is a technique."""
+    out: dict[str, str] = {}
+    for part_id in parts.catalogued():
+        info = parts.get(part_id)
+        if info is None or not building(info):
+            continue
+        letters = "".join(sorted(KIND_LETTERS[k] for k in kinds(info)))
+        out[part_id] = letters + ("u" if info.oriented else "")
+    return out
+
+
 # -- the command line -----------------------------------------------------
 
 
@@ -912,6 +935,7 @@ def main() -> int:
     if args.what[0] == "norms":
         measured = real_sets(parts)
         made = norms(measured)
+        made["part_kinds"] = part_kinds(parts)
         args.norms.parent.mkdir(parents=True, exist_ok=True)
         args.norms.write_text(json.dumps(made, separators=(",", ":")) + "\n")
         print(f"{made['measured_over']} real models of {LEAST}+ parts -> {args.norms} "

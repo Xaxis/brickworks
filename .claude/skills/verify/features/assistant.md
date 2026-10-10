@@ -106,6 +106,30 @@ fixing what it got wrong.
   rather than typed, so handedness falls out of the arithmetic; all 72 shapes (18
   parts, 4 turns) have a mirror twin, which is what makes it possible to lay them
   in families and never leave a saucer lopsided.
+- `built like real sets`: `src/ai/style.gd` (class `Style`), in every check's
+  advice (`Assistant._style`) and so in `review_model` and the loop's look.
+  Measures a design from its placements' transforms as `tools/style.py` measures
+  official models: share sideways or upside down, at an angle, curved, plain,
+  and the best mirror plane's share (planes voted by like pairs, as the tool
+  does — the middle alone read the castle 0% mirrored). Part kinds come from
+  `style_norms.json` (`part_kinds`, written by `tools/style.py norms`, packed
+  for the web by `tools/web_pack.py`), not a second copy of the rules. Said only
+  past the 10th/90th percentile of real sets of the brief's kind
+  (`Style.group_for`: castles and Orthanc against fantasy). Found by the
+  Orthanc baselines: 0% sideways, 0% angled, 57% plain, 88% mirrored against
+  fantasy's 19%, 27%, 28%, 31% — and words in the guidance moved none of it.
+  `style_probe`: hand-made cases, the square Orthanc fixture
+  (`src/dev/fixtures/orthanc_square.ldr`) told all three, the shipped castle
+  not called over-symmetric (54% here, 55% in the tool).
+- `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
+  step in unevenly (per-course weights by seed) and drift towards a peak off
+  the middle, each cut to the one below so nothing floats; where a course steps
+  in, a 1x2 slope (3040b) where there are two studs of ledge, else a cheese
+  slope, a 1x1 round plate, a 1x1 tile or the bare stud, facing out (rot 0 +z,
+  1 +x, 2 -z, 3 -x); two greys (72, 71). Found by the Orthanc baselines, which
+  stood on flat plazas and stepped "wedding cakes". `patterns_probe` checks it
+  holds together at three sizes, is faced, in two greys, leans (its upper half's
+  centre more than a stud off the middle), and that seeds differ.
 - `shapes said as patterns`: `src/ai/patterns.gd`. Writing placements one at a
   time is the arithmetic a language model is worst at, and most of a model is
   repetition. Three verbs do the counting — `repeat`, `mirror`, `fill` — and

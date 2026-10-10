@@ -93,7 +93,7 @@
                 "type": "string"
               },
               "across": {
-                "description": "fill: studs in x",
+                "description": "fill, rock: studs in x",
                 "type": "number"
               },
               "at": {
@@ -158,16 +158,20 @@
                 "type": "array"
               },
               "color": {
-                "description": "fill: the colour",
+                "description": "fill, rock: the colour (rock: 72 if not said)",
                 "type": "integer"
               },
               "deep": {
-                "description": "fill: studs in z",
+                "description": "fill, rock: studs in z",
                 "type": "number"
               },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
+              },
+              "height": {
+                "description": "rock: how tall, in plates",
+                "type": "number"
               },
               "layers": {
                 "description": "fill: how many of the footprint, stacked up",
@@ -182,21 +186,26 @@
                 "type": "number"
               },
               "mix_color": {
-                "description": "fill: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock.",
                 "enum": [
                   "repeat",
                   "mirror",
-                  "fill"
+                  "fill",
+                  "rock"
                 ],
                 "type": "string"
               },
               "rise": {
                 "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
                 "type": "number"
+              },
+              "seed": {
+                "description": "rock: which rock \u2014 each number leans and wanders its own way",
+                "type": "integer"
               },
               "shape": {
                 "description": "fill: which footprint",
@@ -849,7 +858,7 @@
                 "type": "string"
               },
               "across": {
-                "description": "fill: studs in x",
+                "description": "fill, rock: studs in x",
                 "type": "number"
               },
               "at": {
@@ -914,16 +923,20 @@
                 "type": "array"
               },
               "color": {
-                "description": "fill: the colour",
+                "description": "fill, rock: the colour (rock: 72 if not said)",
                 "type": "integer"
               },
               "deep": {
-                "description": "fill: studs in z",
+                "description": "fill, rock: studs in z",
                 "type": "number"
               },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
+              },
+              "height": {
+                "description": "rock: how tall, in plates",
+                "type": "number"
               },
               "layers": {
                 "description": "fill: how many of the footprint, stacked up",
@@ -938,21 +951,26 @@
                 "type": "number"
               },
               "mix_color": {
-                "description": "fill: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock.",
                 "enum": [
                   "repeat",
                   "mirror",
-                  "fill"
+                  "fill",
+                  "rock"
                 ],
                 "type": "string"
               },
               "rise": {
                 "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
                 "type": "number"
+              },
+              "seed": {
+                "description": "rock: which rock \u2014 each number leans and wanders its own way",
+                "type": "integer"
               },
               "shape": {
                 "description": "fill: which footprint",
