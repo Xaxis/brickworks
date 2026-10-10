@@ -180,6 +180,10 @@ run "true colour" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/true_colour_probe.gd
 run "finishes" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/finish_probe.gd
+# And whether a glossy face catching the light keeps its colour: the
+# eleventh Orthanc's dark grey rock was drawn ringed in white.
+run "highlights" "${screen[@]}" godot --path . --resolution 1200x800 \
+  --script src/dev/highlight_probe.gd
 # Same reason, and one more: the picture the assistant is shown only
 # exists where there is something to draw with, so a headless suite
 # would never once exercise the path the app actually takes.

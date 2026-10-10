@@ -146,6 +146,7 @@ func _build() -> void:
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
 	key.light_energy = BrickWorld.light_energy(0.95)
+	key.light_specular = BrickWorld.light_specular(0.25)
 	_viewport.add_child(key)
 
 	var fill := DirectionalLight3D.new()
