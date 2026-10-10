@@ -327,6 +327,13 @@
       "entry": "src/render/brick_world.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "say which build this is",
+      "entry": "src/main.gd",
+      "reach": "godot --headless --path . -- --about",
+      "area": "release"
     }
   ]
 }

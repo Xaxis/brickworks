@@ -64,6 +64,8 @@ Never driven from here:
   the catalogue, the web pack and the storage bucket.
 - [mcp](mcp.md): the local port, the MCP server, and designing on the person's own
   Claude subscription instead of the app asking for an API key.
+- [release](release.md): the version, the desktop packages and their smoke test,
+  the GitHub release, and the download page.
 
 ## Entry contract
 

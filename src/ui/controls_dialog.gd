@@ -69,11 +69,13 @@ func _build() -> void:
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
-	# deploy writes version.json beside the build, and this reads it.
+	# deploy writes version.json beside the build, and this reads it. A
+	# downloaded desktop build says its version and the release it came
+	# from (BuildInfo), so a report about it can say which one.
 	_version = Label.new()
 	_version.add_theme_font_size_override("font_size", 11)
 	_version.modulate = Color(1, 1, 1, 0.6)
-	_version.text = "Development build" if not OS.has_feature("web") else ""
+	_version.text = BuildInfo.describe()
 	column.add_child(_version)
 	if OS.has_feature("web"):
 		_read_version.call_deferred()
@@ -154,8 +156,8 @@ func _read_version() -> void:
 		var when: Variant = JavaScriptBridge.eval(
 			"new Date(%s).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})"
 			% JSON.stringify(str(parsed.get("deployed", ""))))
-		_version.text = "This build: %s, updated %s" % [
-			str(parsed.get("commit", "?")),
+		_version.text = "%s. This build: %s, updated %s" % [
+			BuildInfo.describe(), str(parsed.get("commit", "?")),
 			str(when) if typeof(when) == TYPE_STRING else str(parsed.get("deployed", "?"))])
 	http.request(str(where))
 

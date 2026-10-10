@@ -136,6 +136,14 @@
       "tests": []
     },
     {
+      "id": "cli:say which build this is",
+      "kind": "cli",
+      "entry": "src/main.gd",
+      "reach": "godot --headless --path . -- --about",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:upload parts to storage",
       "kind": "cli",
       "entry": "tools/storage_parts.py",

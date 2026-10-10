@@ -25,7 +25,12 @@ picture the assistant is shown.
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,` or the Help button — and every key on it actually doing that.
+  `,` or the Help button — and every key on it actually doing that. Its last
+  line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
+  released 2026-10-10 (3f2a9c1)" in a release, ", development build" from
+  source, and on the web the version before the deploy's commit and time. The
+  desktop window title carries the version too. `--about` prints the same line
+  ([release](release.md)).
 - `renders for the critique`: the image handed to the assistant so it can see what
   it built, drawn by a SubViewport. Two opposite corners, so every side has been
   seen; a close look at one part of a model too big to judge whole; and, after an
