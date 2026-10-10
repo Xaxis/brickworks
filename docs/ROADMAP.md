@@ -394,6 +394,20 @@ example passes. That checker work (turntables and bars in
 `tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
 angled example can. Not yet measured on an Orthanc run.
 
+Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
+bare open backs though the guidance asked for rooms in words, and variety
+(shapes, colours) moved least of all. `add_rooms` lays a floor at each
+storey of a building that stands and furnishes each room by its kind —
+library, study, bedchamber, hall, throne room, forge, armoury, dungeon,
+kitchen, lookout, palantír room — from the worked examples, against the
+walls and facing in, with a stair or a ladder where asked. An edit of what
+stands, like the finishing pass and the figures (the two calls runs took up
+unprompted), named in the recipes and in the variety advice. On an
+octagonal prism open at the back, a dungeon, a forge, a library and a study
+take the model from 5 shapes and 2 colours to 55 and 23. On run 12's own
+shaft it finds the inside and furnishes four floors, and says none of it
+shows: that shaft was closed all round. Not yet measured on an Orthanc run.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

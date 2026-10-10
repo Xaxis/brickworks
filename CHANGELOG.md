@@ -13,6 +13,13 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- The design assistant can give a building that stands floors and
+  furnished rooms in one call (`add_rooms`): a library, a forge, a dungeon,
+  a bedchamber and more, furnished from real sets' furniture, with stairs
+  or ladders between them.
+
 ## [0.1.0] - 2026-10-10
 
 The first desktop release: Brickworks for Linux, macOS and Windows, with

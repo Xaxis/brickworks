@@ -1158,7 +1158,8 @@ on a castle that stood up perfectly: 23 shapes against the 117 a real \
 set of its size has, and 208 of one corner brick against 81.
   Inside. If it is a building, can you see in? Real sets are open at the \
 back with furnished rooms on floors; a closed shell is the one place a \
-model of this kind is plainer than every set of its kind.
+model of this kind is plainer than every set of its kind. add_rooms lays \
+the floors and furnishes them in one call.
   Craft. Is anything in it not studs-up, not square, not mirrored where \
 the subject is not? Is there one part used for what it looks like rather \
 than what it is for? Does the texture change where the material does, \
@@ -1973,6 +1974,23 @@ func _run_tool(block: Dictionary) -> Variant:
 			if said is Array:
 				return [{"type": "text", "text": change["summary"]}] + (said as Array)
 			return "%s\n%s" % [change["summary"], str(said)]
+		"add_rooms":
+			progress.emit("laying floors and furnishing the rooms")
+			var rooms: Dictionary = await _rooms(args)
+			if rooms.has("trouble"):
+				return str(rooms["trouble"])
+			# Seen from the side the rooms open to, in their own colours: an
+			# edit's picture is from a corner with what it added in magenta,
+			# which is a picture of where the rooms are and not of them.
+			_look_after_edit = {"from": rooms["view"], "only": rooms["box"],
+				"ask": "That is what it looks like now, from the side the rooms "
+					+ "open to. Does each read as the room it is?"}
+			var laid: Variant = await _run_tool({"name": "edit_model",
+				"input": {"add": rooms["bricks"]}})
+			_look_after_edit = {}
+			if laid is Array:
+				return [{"type": "text", "text": rooms["summary"]}] + (laid as Array)
+			return "%s\n%s" % [rooms["summary"], str(laid)]
 		"add_minifig":
 			# The figure is made and stood up in src/minifig/figure_tool.gd.
 			# Its parts are this design's, so a new submission replaces
@@ -2029,8 +2047,14 @@ func _run_tool(block: Dictionary) -> Variant:
 			var framed := AABB()
 			if not _detailing.is_empty():
 				framed = _bounds_of(_bricks_inside(_detailing["where"]))
+			var from: String = "corner"
+			if not _look_after_edit.is_empty():
+				_shot.highlight = {}
+				ask_about_it = str(_look_after_edit["ask"])
+				from = str(_look_after_edit["from"])
+				framed = _look_after_edit["only"]
 			var answer: Variant = await _with_a_look(said, ask_about_it,
-				"corner", framed)
+				from, framed)
 			_shot.highlight = {}
 			return answer
 		"submit_design":
@@ -3353,10 +3377,24 @@ func _variety(model: Model) -> String:
 			+ "or a second grey")
 	if said.is_empty():
 		return ""
+	# The call that does it, by name, for a building: a real set's different
+	# pieces and colours are its interior, and twelve Orthancs that were told
+	# so in words built solid shells. The style advice naming restyle_model
+	# is what got the finishing pass used.
+	var rooms: String = ""
+	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	if Style.group_for(about) in ["fantasy", "buildings_since_2010"] \
+			and (thin_shapes > 0 and shapes.size() < thin_shapes
+				or thin_lots > 0 and lots.size() < thin_lots):
+		rooms = ("\nOne call for a tower, a keep or a house: add_rooms, a "
+			+ "floor at each storey inside it, each a furnished room — a "
+			+ "library, a forge, a dungeon — which is where a real set's "
+			+ "different pieces and colours are.")
 	return ("Thinner than a set of this size:\n  " + "\n  ".join(said)
 		+ "\nThis is what separates a model that is built from one that is "
 		+ "designed — the detail that needs a different piece. Measured "
-		+ "over %d real sets of this size." % int(normal.get("sets", 0)))
+		+ "over %d real sets of this size." % int(normal.get("sets", 0))
+		+ rooms)
 
 
 ## Up to how many available colours are worth naming rather than counting.
@@ -3820,6 +3858,54 @@ func _restyle(args: Dictionary) -> Dictionary:
 	return {"edit": {"remove": removed, "add": added},
 		"summary": "Restyled %d brick%s: %d turned out and dressed on their side, %d laid as masonry."
 			% [turned + stoned, "" if turned + stoned == 1 else "s", turned, stoned]}
+
+
+## How the picture after an edit is taken when the edit was not the
+## design's own bricks: {"from", "only", "ask"}, or {} for the usual corner
+## with what changed in magenta. Set by add_rooms around its edit.
+var _look_after_edit: Dictionary = {}
+## What the last add_rooms laid, floor by floor (Rooms.answer's "floors"),
+## for rooms_probe to hold it to.
+var _last_rooms: Array = []
+
+
+## Floors and furnished rooms in what stands (see [Rooms]), checked the way
+## the edit that lays them will be. What the check finds floating is taken
+## back out, a piece of furniture or a floor at a time, and the rest checked
+## again: a room short of a chest is still a room, and an edit refused whole
+## for one is no rooms at all. Returns Rooms.plan's answer.
+func _rooms(args: Dictionary) -> Dictionary:
+	if world == null or builder == null or builder.lattice == null:
+		return {"trouble": "There is no model standing to put rooms in."}
+	var wanted := Model.new()
+	for part: String in Rooms.parts_wanted():
+		wanted.placements.append(Placement.from_dict({"part": part}))
+	await _ensure_parts(wanted)
+	var rooms := Rooms.new(self)
+	var plan: Dictionary = rooms.plan(args)
+	if plan.has("trouble"):
+		return plan
+	for _try: int in 3:
+		var trial: Model = _model_from_world()
+		var standing: int = trial.placements.size()
+		for brick: Dictionary in rooms.bricks():
+			trial.placements.append(Placement.from_dict(brick))
+		_pattern_trouble = []
+		_repeat_trouble = []
+		var report: Dictionary = _check(trial, true)
+		if bool(report["ok"]):
+			break
+		var ours: Array = []
+		for index: Variant in report.get("floating", []):
+			if int(index) >= standing:
+				ours.append(int(index) - standing)
+		if ours.is_empty() or rooms.drop(ours) == 0:
+			break
+		plan = rooms.answer()
+	_last_rooms = plan["floors"]
+	if (plan["bricks"] as Array).is_empty():
+		return {"trouble": "Nothing would fit: %s" % str(plan["summary"])}
+	return plan
 
 
 ## Whether every stud of a one-wide brick has a part directly under it
@@ -6979,6 +7065,9 @@ alongside the bricks you write by hand:
              a stone wall    the same, mix_color 72, masonry 0.5,
                              sideways 0.15
              a room          rectangle, wall 1, layers 4, rise 3
+             what is in it   add_rooms once it stands, where= its box,
+                             floors= [{"room": "hall"}, {"room":
+                             "bedchamber"}]
 
            Rock is its own pattern, because stepped plates centred on \
            each other are a wedding cake, never a crag: \
@@ -7014,7 +7103,12 @@ alongside the bricks you write by hand:
            core inside to build on. It takes masonry and sideways as a \
            wall does — "masonry": 0.3, "sideways": 0.2 — for a face of \
            worked stone with things on its side, which the finishing \
-           pass cannot reach once the faces are turned.
+           pass cannot reach once the faces are turned. Leave its back \
+           open ("open": 3) and, once it stands, add_rooms with "prism": \
+           the same at, sides and radius, and "floors": [{"room": \
+           "dungeon"}, {"room": "forge", "stair": true}, {"room": \
+           "library"}, {"room": "study"}] lays a floor at each storey and \
+           furnishes each room, in one call.
 
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
@@ -7276,9 +7370,11 @@ model.
 rooms: a library, a stair, a throne, a forge, a figure at a table. That \
 is where most of a set's different pieces and colours are — furniture, \
 books, lamps, tools — and a solid shell has none of them. Leave the back \
-open (a prism takes "open"), lay floors, and furnish them \
-(show_technique: bookcase, fireplace, anvil, four-poster bed, wall \
-lantern, and the rest of furniture and interiors).
+open (a prism takes "open"; a house leaves its back wall out), and then \
+add_rooms lays the floors and furnishes every room, one call for the lot, \
+from the furniture real sets built (show_technique: bookcase, fireplace, \
+anvil, four-poster bed, wall lantern, and the rest of furniture and \
+interiors).
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -8074,6 +8170,75 @@ func _tools() -> Array:
 					"face_color": {"type": "integer", "description":
 						"colour of what is laid on the side studs; the brick's own if not said"},
 				},
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "add_rooms",
+			"description": ("Floors and furnished rooms inside a building that "
+				+ "already stands — a tower, a keep, a house — in one call, as "
+				+ "a real set opens at the back onto them (10237 Orthanc: a "
+				+ "library, Saruman's chamber, a dungeon, the palantír). Give "
+				+ "the building's box (where) or, for a prism, the prism's own "
+				+ "at, sides and radius (prism), and the floors bottom up, each "
+				+ "a kind of room: %s. Each floor is laid as plates and tiles "
+				% ", ".join(PackedStringArray(Rooms.KINDS.keys()))
+				+ "held up on columns; each room is furnished from the worked "
+				+ "examples real sets built — bookcases, a fireplace, an anvil, "
+				+ "a four-poster bed, lamps, chests, barrels — against its walls "
+				+ "and facing in, varied by the seed; stair: true climbs to the "
+				+ "next floor. The shell is left as it is and the edit is "
+				+ "checked like any other, so build it open at the back (a "
+				+ "prism's open, or no back wall) for the rooms to be seen. "
+				+ "This is where a real set's different pieces and colours "
+				+ "are, and a solid shell has none of them."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"where": {"type": "object", "description":
+						"the building, in studs and plates, as look_at_model "
+						+ "takes a box: its walls and the inside between them. "
+						+ "y_from is where the lowest floor goes if no floor says",
+						"properties": {
+							"x_from": {"type": "number"}, "x_to": {"type": "number"},
+							"y_from": {"type": "number"}, "y_to": {"type": "number"},
+							"z_from": {"type": "number"}, "z_to": {"type": "number"},
+						},
+						"additionalProperties": false},
+					"prism": {"type": "object", "description":
+						"for a prism's inside: the same at, sides and radius "
+						+ "(and thickness, if not 2) as the prism pattern, so "
+						+ "the floors follow its faces",
+						"properties": {
+							"at": {"type": "object", "properties": {
+								"x": {"type": "number"}, "y": {"type": "number"},
+								"z": {"type": "number"}},
+								"additionalProperties": false},
+							"sides": {"type": "integer"},
+							"radius": {"type": "number"},
+							"thickness": {"type": "integer"},
+						},
+						"additionalProperties": false},
+					"floors": {"type": "array", "description":
+						"bottom up, one a floor",
+						"items": {"type": "object", "properties": {
+							"room": {"type": "string", "description":
+								"what the room is, e.g. library or Saruman's chamber"},
+							"y": {"type": "number", "description":
+								"plates up, where its floor is laid; left out, "
+								+ "floors stack up from the bottom"},
+							"stair": {"type": "boolean", "description":
+								"a stair from this floor up to the next"},
+						},
+						"required": ["room"],
+						"additionalProperties": false}},
+					"height": {"type": "number", "description":
+						"plates from one floor to the next when no y is said; "
+						+ "24 where the building is tall enough"},
+					"seed": {"type": "integer", "description":
+						"another seed is another arrangement and other colours"},
+				},
+				"required": ["floors"],
 				"additionalProperties": false,
 			},
 		},
