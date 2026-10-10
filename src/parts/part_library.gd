@@ -231,15 +231,124 @@ class PartInfo extends RefCounted:
 
 ## A colour the palette knows about.
 class BrickColor extends RefCounted:
+	## How the plastic is drawn. The shader reads this number per brick
+	## (plastic_body.gdshaderinc, FINISH_*), so the two lists are one list
+	## and the order matters.
+	enum Finish {
+		PLASTIC, CHROME, METAL, PEARL, SPECKLE, GLITTER, OPAL, GLOW,
+		FLUORESCENT, RUBBER, FABRIC, MILKY,
+	}
+
 	var code: int
 	var name: String
 	var rgb: Color
+	## The colour the renderer draws, which is rgb but for black: see
+	## PartLibrary.shown_for(). Drawing only — a parts list, an export and
+	## the mosaic's matching all keep to rgb.
+	var shown: Color
 	var edge: Color
 	var alpha: int
-	var finish: String          ## solid / transparent / chrome / ...
+	var finish: String          ## LDConfig's word: solid / transparent / chrome / ...
+	## LDConfig's LUMINANCE, 0-255: how much the plastic gives off light.
+	var luminance: int = 0
+	## The second colour in the plastic — a speckle's or a glitter's
+	## flecks — and how much of the surface it covers. From LDConfig's
+	## MATERIAL line; black and nothing for most colours.
+	var fleck: Color = Color.BLACK
+	var fleck_fraction: float = 0.0
+	## Years the colour was in sets, when the colour data says; 0 when it
+	## does not, and then PartLibrary.is_current() asks the parts instead.
+	var first_year: int = 0
+	var last_year: int = 0
+	var drawn_as: int = Finish.PLASTIC
+	## What BrickWorld hands the shader for every brick in this colour:
+	## the fleck colour, and the finish number plus the fleck fraction in
+	## the fourth channel. Packed once here rather than per brick.
+	var instance_custom: Color = Color(0, 0, 0, 0)
 
+	## Fill in instance_custom from the finish and the fleck. The fraction
+	## is kept below one so the finish number survives in the integer
+	## part, which the Compatibility renderer carries as a half float.
+	func pack_finish() -> void:
+		instance_custom = Color(fleck.r, fleck.g, fleck.b,
+			float(drawn_as) + minf(fleck_fraction, 0.95))
+
+	## Whether it is drawn see-through. Glow-in-the-dark plastic is filed
+	## at alpha 245 and is milky-opaque in the hand ("Glow In Dark
+	## Opaque" is its name); drawn transparent it was a ghost of a brick.
 	func is_transparent() -> bool:
-		return alpha < 255
+		return alpha < 255 and not (drawn_as == Finish.GLOW and alpha >= 240)
+
+	## What it is, said the way a builder would: "chrome", "glitter".
+	func finish_name() -> String:
+		if drawn_as == Finish.PLASTIC and is_transparent():
+			return "transparent"
+		return FINISH_NAMES[drawn_as]
+
+
+const FINISH_NAMES: Array[String] = [
+	"solid", "chrome", "metallic", "pearl", "speckle", "glitter",
+	"opal", "glow in the dark", "fluorescent", "rubber", "fabric", "milky",
+]
+
+
+## What the renderer draws for a palette value: the value itself, except
+## for black.
+##
+## LDraw's black is #1B2A34 and LEGO's own is #05131D, both blue-blacks,
+## chosen so black reads as black on a screen with nothing around it.
+## Lit, which every face in the app is, the dark is what the light lifts
+## and the blue is what is left: a black tower read as navy. So plastic
+## both dark and nearly grey — which is the black family and nothing
+## else in the palette — keeps its lightness and loses most of its tint.
+## A real colour that is dark is not nearly grey: Dark Blue and Dark
+## Brown are untouched.
+static func shown_for(rgb: Color) -> Color:
+	var lab: Vector3 = Mosaic._oklab(rgb)
+	if lab.x >= 0.35 or Vector2(lab.y, lab.z).length() >= 0.04:
+		return rgb
+	var drawn: Color = Mosaic._from_oklab(
+		Vector3(lab.x, lab.y * 0.25, lab.z * 0.25)).linear_to_srgb()
+	return Color(clampf(drawn.r, 0.0, 1.0), clampf(drawn.g, 0.0, 1.0),
+		clampf(drawn.b, 0.0, 1.0), rgb.a)
+
+
+## How a colour's plastic is drawn, from what LDConfig says of it.
+##
+## LDConfig names chrome, metal, pearl, rubber and the rest as finishes,
+## and carries glitter and speckle as a MATERIAL with its own colour.
+## Two it does not name, and both are visibly their own plastic: the
+## trans-neon colours fluoresce, and milky white scatters light like a
+## lampshade. Those are known by name, which is how LEGO tells them apart.
+static func finish_for(finish: String, name: String, material_kind: String) -> int:
+	match finish:
+		"chrome":
+			return BrickColor.Finish.CHROME
+		"metal":
+			return BrickColor.Finish.METAL
+		"pearlescent":
+			return BrickColor.Finish.PEARL
+		"speckle":
+			return BrickColor.Finish.SPECKLE
+		"glitter":
+			return BrickColor.Finish.GLITTER
+		"opalescent":
+			return BrickColor.Finish.OPAL
+		"glow":
+			return BrickColor.Finish.GLOW
+		"rubber":
+			return BrickColor.Finish.RUBBER
+		"fabric":
+			return BrickColor.Finish.FABRIC
+	if material_kind == "glitter":
+		return BrickColor.Finish.GLITTER
+	if material_kind == "speckle":
+		return BrickColor.Finish.SPECKLE
+	if name.contains("Neon"):
+		return BrickColor.Finish.FLUORESCENT
+	if name.contains("Milky"):
+		return BrickColor.Finish.MILKY
+	return BrickColor.Finish.PLASTIC
 
 
 ## Where a part's geometry is fetched from when this build does not
@@ -400,11 +509,34 @@ func _load_colors() -> void:
 		color.name = entry.get("name", "")
 		color.alpha = int(entry.get("alpha", 255))
 		color.finish = entry.get("finish", "solid")
+		color.luminance = int(entry.get("luminance", 0))
 		var rgb: Array = entry.get("rgb", [255, 0, 255])
 		var edge: Array = entry.get("edge", [0, 0, 0])
 		# Stored as 0-255 sRGB; the shader linearises, so keep it raw here.
 		color.rgb = Color(rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0, color.alpha / 255.0)
+		color.shown = shown_for(color.rgb)
 		color.edge = Color(edge[0] / 255.0, edge[1] / 255.0, edge[2] / 255.0)
+
+		var material_kind: String = ""
+		var material: Variant = entry.get("material", null)
+		if typeof(material) == TYPE_DICTIONARY:
+			var stuff: Dictionary = material
+			material_kind = str(stuff.get("kind", ""))
+			var fleck: Variant = stuff.get("rgb", null)
+			if typeof(fleck) == TYPE_ARRAY and (fleck as Array).size() >= 3:
+				var parts_of: Array = fleck
+				color.fleck = Color(parts_of[0] / 255.0, parts_of[1] / 255.0,
+					parts_of[2] / 255.0)
+			color.fleck_fraction = clampf(float(stuff.get("fraction", 0.0)), 0.0, 1.0)
+		color.drawn_as = finish_for(color.finish, color.name, material_kind)
+		color.pack_finish()
+
+		# Optional, and read only if present: [first, last], the shape
+		# a part's years already take in the catalogue.
+		var span: Variant = entry.get("years", null)
+		if typeof(span) == TYPE_ARRAY and (span as Array).size() == 2:
+			color.first_year = int(span[0])
+			color.last_year = int(span[1])
 		colors[color.code] = color
 
 
@@ -606,9 +738,50 @@ func color(code: int) -> BrickColor:
 	fallback.code = code
 	fallback.name = "Unknown %d" % code
 	fallback.rgb = Color.MAGENTA
+	fallback.shown = Color.MAGENTA
 	fallback.alpha = 255
 	fallback.finish = "solid"
 	return fallback
+
+
+## How many parts were made in a colour: x since recent_since, y ever.
+## Counted over every part's availability the first time anything asks.
+var _colour_use: Dictionary = {}
+
+
+func colour_use(code: int) -> Vector2i:
+	if _colour_use.is_empty():
+		for id: String in _ordered_ids:
+			var info: PartInfo = parts[id]
+			for made: int in info.colors:
+				var was: Vector2i = _colour_use.get(made, Vector2i.ZERO)
+				_colour_use[made] = Vector2i(was.x, was.y + 1)
+			for made: int in info.colors_recent:
+				var was: Vector2i = _colour_use.get(made, Vector2i.ZERO)
+				_colour_use[made] = Vector2i(was.x + 1, was.y)
+		# So an empty answer is not mistaken for "not counted yet".
+		_colour_use[-1] = Vector2i.ZERO
+	return _colour_use.get(code, Vector2i.ZERO)
+
+
+## Whether a colour is in LEGO's palette now: in a set since
+## recent_since.
+##
+## The colour's own years decide when the colour data carries them.
+## Otherwise it is current if any part has been in a set in it since
+## then. A colour no part's list mentions is not called current — the
+## join cannot place sixty-nine of Rebrickable's colours, so silence is
+## not knowing — and a catalogue built with no availability at all
+## calls everything current rather than nothing.
+func is_current(code: int) -> bool:
+	var color_of: BrickColor = colors.get(code)
+	if color_of == null:
+		return false
+	if color_of.last_year > 0 and recent_since > 0:
+		return color_of.last_year >= recent_since
+	if recent_since == 0:
+		return true
+	return colour_use(code).x > 0
 
 
 ## Parts whose name, category or id contains every word of the query.

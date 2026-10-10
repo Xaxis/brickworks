@@ -47,13 +47,34 @@ const LEADING: Array[String] = [
 ## "show me the parts".
 const BURIED: Array[String] = ["Sticker", "Obsolete", "Moved"]
 
-## The colours offered as swatches: the standard palette a set is
-## actually moulded in, rather than all 322 including one-offs.
-const SWATCHES: Array[int] = [
-	15, 71, 7, 72, 0, 4, 5, 27, 2, 10, 1, 9, 14, 25, 70, 28,
-	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308,
-	47, 40, 36, 33, 34, 43, 41, 46, 379, 378, 383, 297, 80, 135,
+## The palette: every colour, grouped by what kind of plastic it is.
+##
+## It was a fixed row of 44, chosen once, which held five colours LEGO
+## stopped making (Light Grey, Brown, Purple...) and left out Medium
+## Azure, Dark Orange, Coral and the rest of what sets are built in
+## today — 278 colours could only be had through a model that already
+## used them. Now every one is here. What a set is built in now comes
+## first; the rest are a press away, not gone.
+##
+## Each group is [title, the finishes in it, transparent or not or
+## either (null)].
+const GROUPS: Array = [
+	["Solid", [PartLibrary.BrickColor.Finish.PLASTIC,
+		PartLibrary.BrickColor.Finish.FLUORESCENT], false],
+	["Transparent", [PartLibrary.BrickColor.Finish.PLASTIC,
+		PartLibrary.BrickColor.Finish.FLUORESCENT,
+		PartLibrary.BrickColor.Finish.MILKY], true],
+	["Chrome, metallic, pearl", [PartLibrary.BrickColor.Finish.CHROME,
+		PartLibrary.BrickColor.Finish.METAL,
+		PartLibrary.BrickColor.Finish.PEARL], null],
+	["Glitter, opal, speckle, glow, rubber, fabric", [
+		PartLibrary.BrickColor.Finish.GLITTER, PartLibrary.BrickColor.Finish.OPAL,
+		PartLibrary.BrickColor.Finish.SPECKLE, PartLibrary.BrickColor.Finish.GLOW,
+		PartLibrary.BrickColor.Finish.RUBBER, PartLibrary.BrickColor.Finish.FABRIC], null],
 ]
+## LDraw's two meta-colours, "the colour of whatever contains me" and
+## "the edge colour". Not plastic; choosing one would be a bug.
+const NOT_A_COLOUR: Array[int] = [16, 24]
 
 var library: PartLibrary
 var thumbnails: PartThumbnails
@@ -68,7 +89,11 @@ var _search: LineEdit
 var _grid: GridContainer
 var _scroll: ScrollContainer
 var _status: Label
-var _swatch_row: FlowContainer
+var _palette: VBoxContainer
+var _palette_scroll: ScrollContainer
+var _all_colours: Button
+var _colour_note: Label
+var _swatches: Dictionary = {}         ## int code -> Swatch
 var _category_row: FlowContainer
 
 var _category: String = "All"
@@ -152,15 +177,37 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 
+	var colour_head := HBoxContainer.new()
+	root.add_child(colour_head)
 	var colour_title := Label.new()
 	colour_title.text = "Colour"
 	colour_title.add_theme_font_size_override("font_size", 13)
-	root.add_child(colour_title)
+	colour_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	colour_head.add_child(colour_title)
+	_all_colours = Button.new()
+	_all_colours.toggle_mode = true
+	_all_colours.flat = true
+	_all_colours.focus_mode = Control.FOCUS_NONE
+	_all_colours.add_theme_font_size_override("font_size", 11)
+	_all_colours.toggled.connect(func(_on: bool) -> void: _build_swatches())
+	colour_head.add_child(_all_colours)
 
-	_swatch_row = FlowContainer.new()
-	_swatch_row.add_theme_constant_override("h_separation", 3)
-	_swatch_row.add_theme_constant_override("v_separation", 3)
-	root.add_child(_swatch_row)
+	# Scrolls rather than grows: three hundred colours shown at once would
+	# push the parts grid off the bottom of the panel.
+	_palette_scroll = ScrollContainer.new()
+	_palette_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_palette_scroll.custom_minimum_size = Vector2(0, 168)
+	root.add_child(_palette_scroll)
+	_palette = VBoxContainer.new()
+	_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_palette.add_theme_constant_override("separation", 2)
+	_palette_scroll.add_child(_palette)
+
+	_colour_note = Label.new()
+	_colour_note.add_theme_font_size_override("font_size", 11)
+	_colour_note.modulate = Color(1, 1, 1, 0.7)
+	_colour_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_colour_note)
 
 
 ## Fill in once the library is available.
@@ -227,50 +274,279 @@ func _build_categories() -> void:
 
 
 func _build_swatches() -> void:
-	for child: Node in _swatch_row.get_children():
+	for child: Node in _palette.get_children():
+		_palette.remove_child(child)
 		child.queue_free()
-	for code: int in SWATCHES:
-		var color: PartLibrary.BrickColor = library.color(code)
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(22, 22)
-		button.tooltip_text = "%s (%d)" % [color.name, code]
-		button.toggle_mode = true
-		button.button_pressed = code == _selected_color
+	_swatches.clear()
+	var everything: bool = _all_colours.button_pressed
 
-		var style := StyleBoxFlat.new()
-		style.bg_color = color.rgb
-		style.corner_radius_top_left = 3
-		style.corner_radius_top_right = 3
-		style.corner_radius_bottom_left = 3
-		style.corner_radius_bottom_right = 3
-		# Transparent plastic needs to read as transparent in a swatch, or
-		# trans-clear and white are the same square.
-		if color.is_transparent():
-			style.border_width_bottom = 4
-			style.border_color = Color(color.rgb, 1.0).darkened(0.35)
-		button.add_theme_stylebox_override("normal", style)
+	var current: int = 0
+	var total: int = 0
+	for group: Array in GROUPS:
+		var now: Array[PartLibrary.BrickColor] = []
+		var rest: Array[PartLibrary.BrickColor] = []
+		for code: int in library.colors:
+			var color: PartLibrary.BrickColor = library.colors[code]
+			if not _in_group(color, group):
+				continue
+			total += 1
+			if library.is_current(code):
+				now.append(color)
+				current += 1
+			else:
+				rest.append(color)
+		now.sort_custom(_in_palette_order)
+		rest.sort_custom(_in_palette_order)
+		var showing_rest: bool = everything and not rest.is_empty()
+		if now.is_empty() and not showing_rest:
+			continue
 
-		var chosen: StyleBoxFlat = style.duplicate()
-		chosen.border_width_left = 2
-		chosen.border_width_right = 2
-		chosen.border_width_top = 2
-		chosen.border_width_bottom = 2
-		chosen.border_color = Color(1, 1, 1, 0.95)
-		button.add_theme_stylebox_override("pressed", chosen)
-		button.add_theme_stylebox_override("hover", chosen)
+		var title := Label.new()
+		title.text = group[0]
+		title.add_theme_font_size_override("font_size", 10)
+		title.modulate = Color(1, 1, 1, 0.55)
+		_palette.add_child(title)
+		if not now.is_empty():
+			_palette.add_child(_flow_of(now))
+		if showing_rest:
+			if not now.is_empty():
+				var line := HSeparator.new()
+				line.modulate = Color(1, 1, 1, 0.35)
+				_palette.add_child(line)
+			_palette.add_child(_flow_of(rest))
 
-		button.pressed.connect(_on_colour.bind(code))
-		_swatch_row.add_child(button)
+	_all_colours.text = "Current only" if everything else "All %d" % total
+	if library.recent_since > 0:
+		_all_colours.tooltip_text = (
+			"Only the %d colours in sets since %d" % [current, library.recent_since]
+			if everything else
+			"Also the %d colours not in a set since %d, or in no set inventory"
+				% [total - current, library.recent_since])
+	_mark_swatches()
+
+
+func _flow_of(colors: Array[PartLibrary.BrickColor]) -> FlowContainer:
+	var flow := FlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 2)
+	flow.add_theme_constant_override("v_separation", 2)
+	for color: PartLibrary.BrickColor in colors:
+		var swatch := Swatch.new(color)
+		swatch.set_pressed_no_signal(color.code == _selected_color)
+		swatch.pressed.connect(_on_colour.bind(color.code))
+		_swatches[color.code] = swatch
+		flow.add_child(swatch)
+	return flow
+
+
+func _in_group(color: PartLibrary.BrickColor, group: Array) -> bool:
+	if color.code in NOT_A_COLOUR:
+		return false
+	if not (group[1] as Array).has(color.drawn_as):
+		return false
+	var wanted: Variant = group[2]
+	return wanted == null or bool(wanted) == color.is_transparent()
+
+
+## Whether the palette shows a colour: the short one, or the long one.
+func _is_offered(code: int, everything: bool) -> bool:
+	if library == null or not library.colors.has(code) or code in NOT_A_COLOUR:
+		return false
+	return everything or library.is_current(code)
+
+
+## Greys first, white to black, then the rest round the colour wheel
+## from red, light before dark within a hue: a colour is found by what
+## it looks like, and its name is on the tooltip.
+static func _in_palette_order(a: PartLibrary.BrickColor, b: PartLibrary.BrickColor) -> bool:
+	var ka: Vector3 = _palette_key(a)
+	var kb: Vector3 = _palette_key(b)
+	if ka.x != kb.x:
+		return ka.x < kb.x
+	if ka.y != kb.y:
+		return ka.y < kb.y
+	return ka.z < kb.z
+
+
+static func _palette_key(color: PartLibrary.BrickColor) -> Vector3:
+	var lab: Vector3 = Mosaic._oklab(Color(color.rgb, 1.0))
+	var chroma: float = Vector2(lab.y, lab.z).length()
+	if chroma < 0.035:
+		return Vector3(0.0, -lab.x, float(color.code))
+	# In steps of twenty degrees from just before red, so one hue's light
+	# and dark shades sit together.
+	var hue: float = fposmod(rad_to_deg(atan2(lab.z, lab.y)) + 15.0, 360.0)
+	return Vector3(1.0, floorf(hue / 20.0), -lab.x)
 
 
 func _on_colour(code: int) -> void:
 	_selected_color = code
-	for child: Node in _swatch_row.get_children():
-		var button: Button = child
-		button.button_pressed = button.tooltip_text.ends_with("(%d)" % code)
+	# A colour chosen elsewhere — the eyedropper on an old model — that
+	# the short palette does not show opens the long one, or the palette
+	# would say nothing is chosen. Here, where the choice changes, and
+	# not on every rebuild, or "Current only" could never be pressed
+	# while holding one.
+	if not _swatches.has(code) and _is_offered(code, true):
+		_all_colours.set_pressed_no_signal(true)
+		_build_swatches()
+	for key: int in _swatches:
+		var swatch: Swatch = _swatches[key]
+		swatch.set_pressed_no_signal(key == code)
+		swatch.queue_redraw()
+	_say_colour()
 	color_chosen.emit(code)
 	# Previews are per colour, so the grid has to be redrawn.
 	_fill_grid()
+
+
+## Which colours the part in hand was really made in: those carry a dot.
+## A colour it was never made in is dimmed, not hidden — a builder may
+## want it anyway — and only where the part's list is complete, which
+## for every one of the forty most used parts it is not (some of their
+## colours have no LDraw counterpart), so the dot is what mostly shows.
+func _mark_swatches() -> void:
+	if library == null:
+		return
+	var info: PartLibrary.PartInfo = library.parts.get(_selected_part)
+	for code: int in _swatches:
+		var swatch: Swatch = _swatches[code]
+		var made: int = 0
+		if info != null and info.availability_known():
+			if info.colors.has(code):
+				made = 1
+			elif info.never_made_in(code):
+				made = -1
+		if swatch.made_in != made:
+			swatch.made_in = made
+			swatch.queue_redraw()
+		swatch.tooltip_text = _swatch_tip(swatch.color, info, made)
+	_say_colour()
+
+
+func _swatch_tip(color: PartLibrary.BrickColor, info: PartLibrary.PartInfo,
+		made: int) -> String:
+	var tip: String = "%s (%d), %s" % [color.name, color.code, color.finish_name()]
+	if not library.is_current(color.code) and library.recent_since > 0:
+		if library.colour_use(color.code).y > 0:
+			tip += "\nnot in a set since %d" % library.recent_since
+		else:
+			tip += "\nin no set inventory"
+	if info != null:
+		if made > 0:
+			tip += "\n%s comes in it" % info.id
+		elif made < 0:
+			tip += "\n%s was never made in it" % info.id
+	return tip
+
+
+## The colour in hand, in words, under the palette.
+func _say_colour() -> void:
+	if _colour_note == null or library == null:
+		return
+	var color: PartLibrary.BrickColor = library.color(_selected_color)
+	var text: String = "%s, %s" % [color.name, color.finish_name()]
+	var info: PartLibrary.PartInfo = library.parts.get(_selected_part)
+	if info != null and info.availability_known():
+		text += ". A dot marks the %d colours %s comes in" % [info.colors.size(), info.id]
+		if not info.colors_partial:
+			text += "; it was made in no other"
+	_colour_note.text = text
+
+
+## One colour in the palette, drawn as what it is: see-through over a
+## check, chrome and metal with a highlight across them, glitter and
+## speckle with their flecks. A flat square of the body colour made
+## chrome silver and light grey the same swatch.
+class Swatch extends Button:
+	const SIZE := 17
+	var color: PartLibrary.BrickColor
+	## 1 the part in hand was made in this colour, -1 it is known never
+	## to have been, 0 nobody knows.
+	var made_in: int = 0
+
+	func _init(of: PartLibrary.BrickColor) -> void:
+		color = of
+		custom_minimum_size = Vector2(SIZE, SIZE)
+		toggle_mode = true
+		focus_mode = Control.FOCUS_NONE
+		var nothing := StyleBoxEmpty.new()
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+			add_theme_stylebox_override(state, nothing)
+		set_meta("code", of.code)
+
+	# Filled rectangles and nothing else. A polygon, a circle or a line
+	# between them breaks the 2D batch, and 84 swatches drawn that way cost
+	# 149 draw calls a frame — two to four milliseconds measured on a
+	# 200,000-brick model, more than the finishes themselves cost in 3D.
+	func _draw() -> void:
+		var box := Rect2(Vector2.ONE, size - Vector2(2, 2))
+		var body := Color(color.shown, 1.0)
+		const F := PartLibrary.BrickColor.Finish
+		var corner: Vector2 = box.position
+		var across: Vector2 = box.size
+		if color.is_transparent():
+			var light := Color(0.82, 0.83, 0.85)
+			var dark := Color(0.45, 0.46, 0.5)
+			var half: Vector2 = across * 0.5
+			draw_rect(Rect2(corner, half), light)
+			draw_rect(Rect2(corner + half, half), light)
+			draw_rect(Rect2(corner + Vector2(half.x, 0), half), dark)
+			draw_rect(Rect2(corner + Vector2(0, half.y), half), dark)
+			draw_rect(box, Color(body, 0.62))
+		else:
+			draw_rect(box, body)
+		var finish: int = color.drawn_as
+		if finish == F.CHROME or finish == F.METAL:
+			# Bright above, dark below, the way a polished face reflects a
+			# room: sharp on chrome, soft on metallic paint.
+			var strength: float = 0.75 if finish == F.CHROME else 0.4
+			draw_rect(Rect2(corner, Vector2(across.x, across.y * 0.38)), Color(1, 1, 1, strength))
+			draw_rect(Rect2(corner + Vector2(0, across.y * 0.62), Vector2(across.x, across.y * 0.38)),
+				Color(0, 0, 0, strength * 0.6))
+		elif finish == F.PEARL:
+			draw_rect(Rect2(corner, Vector2(across.x, across.y * 0.4)), Color(1, 1, 1, 0.28))
+		elif finish == F.SPECKLE or finish == F.GLITTER or finish == F.OPAL:
+			var dot: Color = Color(color.fleck, 1.0)
+			if finish == F.GLITTER:
+				dot = dot.lightened(0.5)
+			elif finish == F.OPAL:
+				dot = Color(1, 1, 1, 0.8)
+			for at: Vector2 in [Vector2(0.25, 0.3), Vector2(0.7, 0.2), Vector2(0.5, 0.55),
+					Vector2(0.2, 0.75), Vector2(0.78, 0.72)]:
+				draw_rect(Rect2(corner + across * at - Vector2.ONE, Vector2(2, 2)), dot)
+		elif finish == F.GLOW or finish == F.FLUORESCENT:
+			_frame(box.grow(-1.0), 1.5, Color(body.lightened(0.6), 0.9))
+		elif finish == F.MILKY:
+			draw_rect(box, Color(1, 1, 1, 0.3))
+		elif finish == F.RUBBER:
+			draw_rect(Rect2(corner + Vector2(0, across.y * 0.7), Vector2(across.x, across.y * 0.3)),
+				Color(0, 0, 0, 0.3))
+		elif finish == F.FABRIC:
+			for n: int in 3:
+				draw_rect(Rect2(corner + Vector2(across.x * (0.2 + 0.3 * n), 0),
+					Vector2(1, across.y)), Color(0, 0, 0, 0.25))
+		if made_in > 0:
+			# The part in hand comes in it: a dot in the corner, ringed so
+			# it shows on white as well as on black.
+			var spot: Vector2 = corner + across - Vector2(5, 5)
+			draw_rect(Rect2(spot, Vector2(5, 5)), Color(0, 0, 0, 0.7))
+			draw_rect(Rect2(spot + Vector2.ONE, Vector2(3, 3)), Color(1, 1, 1, 0.95))
+		elif made_in < 0:
+			# Never made in it: dimmed.
+			draw_rect(box, Color(0.11, 0.12, 0.14, 0.6))
+		if button_pressed:
+			_frame(Rect2(Vector2.ZERO, size), 2.0, Color(1, 1, 1, 0.95))
+		elif is_hovered():
+			_frame(Rect2(Vector2.ZERO, size), 1.0, Color(1, 1, 1, 0.6))
+		else:
+			_frame(Rect2(Vector2.ZERO, size), 1.0, Color(0, 0, 0, 0.35))
+
+	## An outline as four filled strips, for the same reason.
+	func _frame(area: Rect2, width: float, tint: Color) -> void:
+		draw_rect(Rect2(area.position, Vector2(area.size.x, width)), tint)
+		draw_rect(Rect2(area.position + Vector2(0, area.size.y - width), Vector2(area.size.x, width)), tint)
+		draw_rect(Rect2(area.position + Vector2(0, width), Vector2(width, area.size.y - 2 * width)), tint)
+		draw_rect(Rect2(area.position + Vector2(area.size.x - width, width),
+			Vector2(width, area.size.y - 2 * width)), tint)
 
 
 func _on_category(name: String) -> void:
@@ -758,6 +1034,7 @@ func _on_part(part_id: String) -> void:
 	for child: Node in _grid.get_children():
 		var button: Button = child
 		button.button_pressed = str(button.get_meta("part", "")) == part_id
+	_mark_swatches()
 	part_chosen.emit(part_id)
 
 
@@ -796,6 +1073,7 @@ func show_held(part_id: String, color_code: int) -> void:
 	for child: Node in _grid.get_children():
 		var button: Button = child
 		button.button_pressed = str(button.get_meta("part", "")) == part_id
+	_mark_swatches()
 
 
 func selected_color() -> int:

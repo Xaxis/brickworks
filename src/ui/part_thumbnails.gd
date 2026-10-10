@@ -206,7 +206,8 @@ func _render(job: Dictionary) -> void:
 	var color: PartLibrary.BrickColor = library.color(shown)
 	# The shader takes the colour through COLOR, which a lone MeshInstance
 	# has no instance data for — so it rides in as a material tint here.
-	_material.set_shader_parameter("tint_override", color.rgb)
+	_material.set_shader_parameter("tint_override", color.shown)
+	_material.set_shader_parameter("finish_override", color.instance_custom)
 
 	_frame(part.bounds)
 

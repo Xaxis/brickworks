@@ -24,6 +24,16 @@ extends RefCounted
 ## The part every pixel is made of.
 const PIXEL_PART := "3024"
 
+## The colours a mosaic is laid in: the standard palette a set is
+## moulded in, rather than all 322 including one-offs. It was the parts
+## bin's swatch row until the bin offered every colour; a mosaic still
+## wants only colours a 1 x 1 plate is really made in.
+const PALETTE: Array[int] = [
+	15, 71, 7, 72, 0, 4, 5, 27, 2, 10, 1, 9, 14, 25, 70, 28,
+	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308,
+	47, 40, 36, 33, 34, 43, 41, 46, 379, 378, 383, 297, 80, 135,
+]
+
 ## How wide a mosaic may be, in studs. A 96 x 96 is 9,216 plates, which
 ## the renderer takes in its stride and a person would take a fortnight
 ## to build.

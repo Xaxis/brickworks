@@ -142,6 +142,7 @@ func _ready() -> void:
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
 	ViewPrefs.load_them()
+	_light_for_this_renderer()
 	_enable_antialiasing()
 	_match_screen_density()
 	_library = PartLibrary.new()
@@ -475,6 +476,18 @@ func _capture(path: String) -> void:
 	else:
 		print("shot %s  %dx%d" % [path, image.get_width(), image.get_height()])
 	get_tree().quit(0 if error == OK else 1)
+
+
+## The scene's lights are set for Forward+; the web build's renderer
+## needs them weaker to show the same colours (BrickWorld.light_energy).
+func _light_for_this_renderer() -> void:
+	for light_name: String in ["Sun", "Fill", "Rim"]:
+		var light: DirectionalLight3D = get_node(light_name)
+		light.light_energy = BrickWorld.light_energy(light.light_energy,
+			light.shadow_enabled)
+	var environment: Environment = ($WorldEnvironment as WorldEnvironment).environment
+	environment.ambient_light_energy = BrickWorld.light_energy(
+		environment.ambient_light_energy)
 
 
 static func _argument(prefix: String) -> String:
@@ -1226,7 +1239,7 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	await get_tree().process_frame
 
 	var pixels: Array[Mosaic.Pixel] = Mosaic.lay_out(
-		_mosaic_source, across, PackedInt32Array(PartsBin.SWATCHES),
+		_mosaic_source, across, PackedInt32Array(Mosaic.PALETTE),
 		_library, dither)
 	if pixels.is_empty():
 		_bar.say("nothing to lay out")

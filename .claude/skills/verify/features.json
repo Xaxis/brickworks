@@ -176,6 +176,14 @@
       "tests": []
     },
     {
+      "id": "lib:finishes",
+      "kind": "lib",
+      "entry": "src/render/plastic_body.gdshaderinc",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:ldr read and write",
       "kind": "lib",
       "entry": "src/parts/ldr_model.gd",
@@ -272,6 +280,14 @@
       "tests": []
     },
     {
+      "id": "lib:true colour",
+      "kind": "lib",
+      "entry": "src/render/brick_world.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:worked constructions",
       "kind": "lib",
       "entry": "src/ai/techniques.gd",
@@ -333,6 +349,14 @@
       "entry": "src/ui/mosaic_dialog.gd",
       "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:palette",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd",
+      "area": "parts",
       "tests": []
     },
     {

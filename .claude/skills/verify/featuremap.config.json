@@ -77,6 +77,13 @@
       "area": "parts"
     },
     {
+      "kind": "ui",
+      "label": "palette",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd",
+      "area": "parts"
+    },
+    {
       "kind": "lib",
       "label": "mesh fetch",
       "entry": "src/parts/part_library.gd",
@@ -298,6 +305,20 @@
       "label": "studs written on the render",
       "entry": "src/ai/shot_ruler.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "finishes",
+      "entry": "src/render/plastic_body.gdshaderinc",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "true colour",
+      "entry": "src/render/brick_world.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd",
       "area": "view"
     }
   ]

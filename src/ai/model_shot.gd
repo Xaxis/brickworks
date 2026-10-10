@@ -116,9 +116,13 @@ func _build() -> void:
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color(0.93, 0.94, 0.96)
+	# Neutral, and about half what it was: lit at twice its own colour,
+	# light bluish grey came out white on the web, which lights in sRGB,
+	# and the design was shown one grey where it had built two. The same
+	# correction as the main view's (see main.tscn).
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.86, 0.88, 0.94)
-	environment.ambient_light_energy = 1.3
+	environment.ambient_light_color = Color(0.87, 0.87, 0.88)
+	environment.ambient_light_energy = BrickWorld.light_energy(0.65)
 	world.environment = environment
 	_viewport.world_3d = world
 	add_child(_viewport)
@@ -141,13 +145,13 @@ func _build() -> void:
 
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
-	key.light_energy = 1.9
+	key.light_energy = BrickWorld.light_energy(0.95)
 	_viewport.add_child(key)
 
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-14.0, 132.0, 0.0)
-	fill.light_energy = 0.7
-	fill.light_color = Color(0.86, 0.9, 1.0)
+	fill.light_energy = BrickWorld.light_energy(0.35)
+	fill.light_color = Color(0.95, 0.96, 1.0)
 	_viewport.add_child(fill)
 
 	_stage = BrickWorld.new()

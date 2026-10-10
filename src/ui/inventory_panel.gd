@@ -124,7 +124,7 @@ func _row(lot: Inventory.Lot) -> Control:
 	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var style := StyleBoxFlat.new()
 	var color: PartLibrary.BrickColor = library.color(lot.color_code)
-	style.bg_color = color.rgb if color != null else Color.MAGENTA
+	style.bg_color = color.shown if color != null else Color.MAGENTA
 	style.set_corner_radius_all(3)
 	if color != null and color.is_transparent():
 		style.set_border_width_all(2)
