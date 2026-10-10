@@ -11,7 +11,9 @@ geometry in front of them.
   14 MB). Matches the LDraw title, the category and the number, and is judged on
   whether the *first* few answers are usable rather than on recall.
 - `parts bin`: the panel that shows the results, with a category filter and the
-  current colour applied to the thumbnails.
+  current colour applied to the thumbnails. **Make a part…** in its header
+  opens the element maker, and made parts lead the categories as Custom —
+  see [elements](elements.md).
 - `palette`: every colour can be chosen by hand, grouped by kind of plastic
   (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
   rubber, fabric), greys first and then round the colour wheel. What sets are

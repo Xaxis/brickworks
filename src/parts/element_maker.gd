@@ -41,9 +41,11 @@ const LIP := 4.0
 const TUBE_RADIUS := 8.0
 const PIN_RADIUS := 4.0
 const STUD_RADIUS := 6.0
-## The largest element the maker will draw, in studs. A 48 x 48 baseplate
-## is the biggest thing LEGO moulds; beyond that a part is a model.
-const MOST_STUDS := 48
+## The largest element the maker will draw, in studs a side. LEGO's
+## largest plates are 16 x 16 and its baseplates go to 48 x 48, which the
+## library has; past 32 the app's own build of the part takes long enough
+## (13 s for a 32 x 32 plate on a busy machine) that the dialog stalls.
+const MOST_STUDS := 32
 const MOST_PLATES := 36
 
 ## The families, by the word a designer would use.

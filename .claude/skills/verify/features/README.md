@@ -10,7 +10,7 @@ files here hold the recipes. Each declares the ids it covers in a
 `<!-- covers: -->` line, and `featuremap check` fails when an id has no recipe or
 a recipe covers an id that no longer exists.
 
-Thirty-nine features in nine areas. The analyser sees Python, the API routes and
+Fifty-two features in ten areas. The analyser sees Python, the API routes and
 the main scene; **everything inside the Godot app is declared by hand** in
 `../featuremap.config.json`, because `featuremap` has no GDScript or `.tscn`
 reader. If you add a scene, a panel or a probe-worth-of-behaviour, add it there —
@@ -62,6 +62,9 @@ Never driven from here:
 - [web](web.md): the five API endpoints, the Vercel deploy, and the browser proof.
 - [pipeline](pipeline.md): the Python tools that turn LDraw into the mesh cache,
   the catalogue, the web pack and the storage bucket.
+- [elements](elements.md): making a part LEGO has not made — the element
+  maker, its dialog, the in-app build of a part, and made parts carried in
+  model files.
 - [mcp](mcp.md): the local port, the MCP server, and designing on the person's own
   Claude subscription instead of the app asking for an API key.
 

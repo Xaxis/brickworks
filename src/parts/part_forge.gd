@@ -485,110 +485,132 @@ func _corner(t: int, c: int) -> PackedFloat64Array:
 
 
 ## One normal per triangle corner, three floats each.
+##
+## Written for speed as well as for agreement: a 16 x 16 plate is 34,000
+## triangles, and this took 1.3 s of a 2.9 s build when every face normal
+## and every corner was a small array of its own. Scalars and flat packed
+## arrays now, and the same arithmetic in the same order.
 func _normals() -> PackedFloat64Array:
 	var count: int = _tri_color.size()
 	var cos_crease: float = cos(deg_to_rad(CREASE_DEGREES))
-	var face_normals: Array[PackedFloat64Array] = []
-	var face_areas := PackedFloat64Array()
-	var corner_keys: Array = []
+	var face := PackedFloat64Array()
+	face.resize(count * 3)
+	var areas := PackedFloat64Array()
+	areas.resize(count)
+	var keys: Array[Vector3i] = []
+	keys.resize(count * 3)
 	for t: int in count:
-		var a: PackedFloat64Array = _corner(t, 0)
-		var n: PackedFloat64Array = _cross(_sub(_corner(t, 1), a), _sub(_corner(t, 2), a))
-		var length: float = _length(n)
-		if length < 1e-12:
-			face_normals.append(PackedFloat64Array([0.0, 0.0, 0.0]))
-		else:
+		var o: int = t * 9
+		var ux: float = _tri[o + 3] - _tri[o]
+		var uy: float = _tri[o + 4] - _tri[o + 1]
+		var uz: float = _tri[o + 5] - _tri[o + 2]
+		var vx: float = _tri[o + 6] - _tri[o]
+		var vy: float = _tri[o + 7] - _tri[o + 1]
+		var vz: float = _tri[o + 8] - _tri[o + 2]
+		var nx: float = uy * vz - uz * vy
+		var ny: float = uz * vx - ux * vz
+		var nz: float = ux * vy - uy * vx
+		var length: float = pow(nx * nx + ny * ny + nz * nz, 0.5)
+		if length >= 1e-12:
 			var inv: float = 1.0 / length
-			face_normals.append(PackedFloat64Array([n[0] * inv, n[1] * inv, n[2] * inv]))
-		face_areas.append(length * 0.5)
-		var keys: Array[Vector3i] = []
+			face[t * 3] = nx * inv
+			face[t * 3 + 1] = ny * inv
+			face[t * 3 + 2] = nz * inv
+		areas[t] = length * 0.5
 		for c: int in 3:
-			var p: PackedFloat64Array = _corner(t, c)
-			keys.append(_key(p[0], p[1], p[2]))
-		corner_keys.append(keys)
+			keys[t * 3 + c] = _key(_tri[o + c * 3], _tri[o + c * 3 + 1], _tri[o + c * 3 + 2])
 
 	# Which triangles own each undirected welded edge: lo -> {hi -> [t]}.
 	var by_edge: Dictionary = {}
 	for t: int in count:
-		var keys: Array[Vector3i] = corner_keys[t]
 		for n: int in 3:
-			var ka: Vector3i = keys[n]
-			var kb: Vector3i = keys[(n + 1) % 3]
+			var ka: Vector3i = keys[t * 3 + n]
+			var kb: Vector3i = keys[t * 3 + (n + 1) % 3]
 			if ka == kb:
 				continue
 			var lo: Vector3i = ka if ka < kb else kb
 			var hi: Vector3i = kb if ka < kb else ka
-			if not by_edge.has(lo):
-				by_edge[lo] = {}
-			var row: Dictionary = by_edge[lo]
-			if not row.has(hi):
-				row[hi] = []
-			(row[hi] as Array).append(t)
+			var row: Dictionary = by_edge.get(lo, {})
+			if row.is_empty():
+				by_edge[lo] = row
+			var owners: Array = row.get(hi, [])
+			if owners.is_empty():
+				row[hi] = owners
+			owners.append(t)
 
 	var at_position: Dictionary = {}
-	for t: int in count:
-		var keys: Array[Vector3i] = corner_keys[t]
-		for c: int in 3:
-			if not at_position.has(keys[c]):
-				at_position[keys[c]] = []
-			(at_position[keys[c]] as Array).append(t * 3 + c)
+	for corner: int in count * 3:
+		var here: Array = at_position.get(keys[corner], [])
+		if here.is_empty():
+			at_position[keys[corner]] = here
+		here.append(corner)
 
 	var normals := PackedFloat64Array()
 	normals.resize(count * 9)
 	for position: Vector3i in at_position:
 		var corners: Array = at_position[position]
+		var size: int = corners.size()
 		var members := PackedInt32Array()
+		members.resize(size)
 		var index_of: Dictionary = {}
-		for n: int in corners.size():
-			var t: int = int(corners[n]) / 3
-			members.append(t)
-			index_of[t] = n
 		var parent := PackedInt32Array()
-		for n: int in members.size():
-			parent.append(n)
+		parent.resize(size)
+		for n: int in size:
+			var t: int = int(corners[n]) / 3
+			members[n] = t
+			index_of[t] = n
+			parent[n] = n
 		for corner: int in corners:
 			var t: int = corner / 3
 			var c: int = corner % 3
-			var keys: Array[Vector3i] = corner_keys[t]
-			for other: Vector3i in [keys[(c + 1) % 3], keys[(c + 2) % 3]]:
+			for step: int in [1, 2]:
+				var other: Vector3i = keys[t * 3 + (c + step) % 3]
 				if other == position:
 					continue
 				var lo: Vector3i = position if position < other else other
 				var hi: Vector3i = other if position < other else position
-				if _edges.has(lo) and (_edges[lo] as Dictionary).has(hi):
+				var creased: Dictionary = _edges.get(lo, {})
+				if creased.has(hi):
 					continue
 				var row: Dictionary = by_edge.get(lo, {})
 				for tj: int in row.get(hi, []):
 					if tj == t or not index_of.has(tj):
 						continue
-					var fi: PackedFloat64Array = face_normals[t]
-					var fj: PackedFloat64Array = face_normals[tj]
-					if fi[0] * fj[0] + fi[1] * fj[1] + fi[2] * fj[2] < cos_crease:
+					if face[t * 3] * face[tj * 3] + face[t * 3 + 1] * face[tj * 3 + 1] \
+							+ face[t * 3 + 2] * face[tj * 3 + 2] < cos_crease:
 						continue
 					var ra: int = _find(parent, int(index_of[t]))
 					var rb: int = _find(parent, int(index_of[tj]))
 					if ra != rb:
 						parent[rb] = ra
-		var sums: Dictionary = {}
-		for n: int in members.size():
+		# One sum per group, kept at its root's index: 0.0 + x is x, so
+		# starting every sum at zero is what Python's Vec3(0, 0, 0) did.
+		var sums := PackedFloat64Array()
+		sums.resize(size * 3)
+		for n: int in size:
 			var root: int = _find(parent, n)
 			var t: int = members[n]
-			var f: PackedFloat64Array = face_normals[t]
-			var area: float = face_areas[t]
-			var was: PackedFloat64Array = sums.get(root, PackedFloat64Array([0.0, 0.0, 0.0]))
-			sums[root] = PackedFloat64Array([was[0] + f[0] * area,
-				was[1] + f[1] * area, was[2] + f[2] * area])
-		for n: int in corners.size():
+			var area: float = areas[t]
+			sums[root * 3] = sums[root * 3] + face[t * 3] * area
+			sums[root * 3 + 1] = sums[root * 3 + 1] + face[t * 3 + 1] * area
+			sums[root * 3 + 2] = sums[root * 3 + 2] + face[t * 3 + 2] * area
+		for n: int in size:
 			var corner: int = corners[n]
-			var acc: PackedFloat64Array = sums[_find(parent, n)]
-			var length: float = _length(acc)
-			var out: PackedFloat64Array = face_normals[corner / 3]
+			var root: int = _find(parent, n)
+			var x: float = sums[root * 3]
+			var y: float = sums[root * 3 + 1]
+			var z: float = sums[root * 3 + 2]
+			var length: float = pow(x * x + y * y + z * z, 0.5)
 			if length > 1e-12:
 				var inv: float = 1.0 / length
-				out = PackedFloat64Array([acc[0] * inv, acc[1] * inv, acc[2] * inv])
-			normals[corner * 3] = out[0]
-			normals[corner * 3 + 1] = out[1]
-			normals[corner * 3 + 2] = out[2]
+				normals[corner * 3] = x * inv
+				normals[corner * 3 + 1] = y * inv
+				normals[corner * 3 + 2] = z * inv
+			else:
+				var t: int = corner / 3
+				normals[corner * 3] = face[t * 3]
+				normals[corner * 3 + 1] = face[t * 3 + 1]
+				normals[corner * 3 + 2] = face[t * 3 + 2]
 	return normals
 
 
@@ -723,6 +745,9 @@ class Surface extends RefCounted:
 	var positions := PackedFloat64Array()
 	var normals := PackedFloat64Array()
 	var indices := PackedInt32Array()
+	## Welded position -> { welded normal -> index }: meshfile.build's
+	## six-number key, in two halves, because formatting it as a string
+	## was a sixth of the whole build.
 	var lookup: Dictionary = {}
 
 
@@ -731,33 +756,41 @@ func _surfaces(normals: PackedFloat64Array) -> Array:
 	var order: Array = []
 	for t: int in _tri_color.size():
 		var key: int = _tri_color[t] * 2 + _tri_two_sided[t]
-		if not groups.has(key):
-			var made := Surface.new()
-			made.color = _tri_color[t]
-			made.two_sided = _tri_two_sided[t] == 1
-			groups[key] = made
-			order.append(made)
-		var surface: Surface = groups[key]
+		var surface: Surface = groups.get(key)
+		if surface == null:
+			surface = Surface.new()
+			surface.color = _tri_color[t]
+			surface.two_sided = _tri_two_sided[t] == 1
+			groups[key] = surface
+			order.append(surface)
 		# Written a, c, b — the winding the engine wants — each corner with
 		# its own normal.
 		for ci: int in [0, 2, 1]:
-			var p: PackedFloat64Array = _corner(t, ci)
-			var ni: int = t * 3 + ci
-			var px: float = p[0]
-			var py: float = -p[1]
-			var pz: float = -p[2]
-			var nx: float = normals[ni * 3]
-			var ny: float = -normals[ni * 3 + 1]
-			var nz: float = -normals[ni * 3 + 2]
-			var vkey: String = "%d,%d,%d,%d,%d,%d" % [_rint(px * WELD_SCALE),
-				_rint(py * WELD_SCALE), _rint(pz * WELD_SCALE),
-				_rint(nx * NORMAL_SCALE), _rint(ny * NORMAL_SCALE), _rint(nz * NORMAL_SCALE)]
-			var index: int = surface.lookup.get(vkey, -1)
+			var o: int = t * 9 + ci * 3
+			var ni: int = (t * 3 + ci) * 3
+			var px: float = _tri[o]
+			var py: float = -_tri[o + 1]
+			var pz: float = -_tri[o + 2]
+			var nx: float = normals[ni]
+			var ny: float = -normals[ni + 1]
+			var nz: float = -normals[ni + 2]
+			var at := Vector3i(_rint(px * WELD_SCALE), _rint(py * WELD_SCALE),
+				_rint(pz * WELD_SCALE))
+			var facing := Vector3i(_rint(nx * NORMAL_SCALE), _rint(ny * NORMAL_SCALE),
+				_rint(nz * NORMAL_SCALE))
+			var there: Dictionary = surface.lookup.get(at, {})
+			if there.is_empty():
+				surface.lookup[at] = there
+			var index: int = there.get(facing, -1)
 			if index < 0:
 				index = surface.positions.size() / 3
-				surface.lookup[vkey] = index
-				surface.positions.append_array(PackedFloat64Array([px, py, pz]))
-				surface.normals.append_array(PackedFloat64Array([nx, ny, nz]))
+				there[facing] = index
+				surface.positions.append(px)
+				surface.positions.append(py)
+				surface.positions.append(pz)
+				surface.normals.append(nx)
+				surface.normals.append(ny)
+				surface.normals.append(nz)
 			surface.indices.append(index)
 	# The recolourable surface first, then by colour, then one-sided first.
 	order.sort_custom(func(a: Surface, b: Surface) -> bool:

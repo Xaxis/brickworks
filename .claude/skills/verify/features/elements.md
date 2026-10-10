@@ -4,13 +4,13 @@ Making a part LEGO has not made — a brick, plate, tile, slope, inverted slope
 or round part of any size — as a real LDraw part, and building it into the
 same geometry, connectors and collision the library's own parts have.
 
-<!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts -->
+<!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts, ui:make a part, lib:made parts in the library and in files -->
 
 ## Sub-features
 
 - `element maker` (`ElementMaker`): a family and its dimensions in, an
-  LDraw `.dat` out. Brick/plate/tile at any width x length and any height in
-  plates; slopes by width, depth, run and height, with LEGO's four named
+  LDraw `.dat` out. Brick/plate/tile at any width x length up to 32 studs a
+  side and any height in plates; slopes by width, depth, run and height, with LEGO's four named
   angles (33, 45, 65, 75) as presets that set the run and height of 3298,
   3039, 60481 and 4460b; inverted slopes; round bricks, plates and tiles by
   diameter. Every part is drawn the way the library draws the part it
@@ -28,13 +28,41 @@ same geometry, connectors and collision the library's own parts have.
   studs, fill cavities, boxes, sockets — ending in the same `.lbm` bytes.
   Needed because neither a desktop export nor a browser has Python.
   Primitives: the nine in `assets/ldraw/` (shipped in every export) and
-  `vendor/ldraw` when present.
+  `vendor/ldraw` when present. Measured at load 70: 2 x 7 brick 0.14 s,
+  8 x 8 plate 0.8 s, 16 x 16 plate about 2.2 s (normals are the largest
+  stage), 32 x 32 about 10 s — hence the cap, and the dialog saying
+  "Building the part…" before anything over 48 studs.
+- `make a part` (`ElementDialog`): **Make a part…** in the parts bin. Family,
+  sizes (two to a row), LEGO's four named angles for a slope, studs on or
+  off, a name, and "Resize a part" — a part number, or the part in hand when
+  the dialog opens. The preview is the part built by `PartForge`, turning; a
+  sentence under it gives the size in mm, the studs, the places a stud goes
+  in underneath and a slope's true angle. **Add to parts** makes it, keeps
+  it, holds it, and shows the bin's Custom category.
+- `made parts in the library and in files` (`CustomParts`, and the custom
+  half of `PartLibrary`, `LdrModel`, `ModelStore`): a made part is kept as
+  its `.dat` only, in `user://custom_parts/` (IndexedDB on the web), and
+  rebuilt at start-up. `PartLibrary.add_custom` files it under category
+  "Custom" (`PartInfo.custom`, `ldraw_category` keeps Tile/Slope for the
+  smooth-top advice) with geometry `release_geometry()` does not drop. Saving
+  a model that uses one embeds its source as `0 FILE <id>.dat`; `LdrModel`
+  reads a section whose header declares a part (`!LDRAW_ORG …Part`) into
+  `embedded_parts`, never into sub-models — by header, not name, because
+  older files call sub-models `door.dat`;
+  `ModelStore.open_text` and main's `_open` build them before placing, so a
+  file opens on a machine that never made the part. A file cannot redefine a
+  LEGO part: an embedded `3001.dat` is ignored. The same shape under another
+  name is another part (`bw-b2x7x3-2`). The parts list says "(custom
+  element)" and gives no element number.
 - `build custom parts` (`tools/build_custom.py`): the Python pipeline for just
   the given parts — `.dat` files, or the parts embedded in an `.mpd` — in
   seconds rather than the full build's ninety minutes. `--out DIR` writes
   meshes and `custom.json` entries; `--into DIR` merges into a catalogue
-  (replacing same ids, leaving the rest); `--summary FILE` writes the numbers
-  the app's build is held against.
+  (replacing same ids, leaving the rest; the entries carry `custom`,
+  `ldraw_category` and `source`, which `PartLibrary` reads); `--summary FILE`
+  writes the numbers the app's build is held against; `--check` reads a model
+  file strictly and says whether every part it carries is complete (no
+  numpy needed).
 
 ## How to reach it
 
@@ -43,21 +71,51 @@ godot --headless --path . --script src/dev/element_files_probe.gd            # c
 godot --headless --path . --script src/dev/element_files_probe.gd -- --write  # rewrite fixtures
 tools/build_custom.py tests/fixtures/elements/*.dat --out /tmp/custom       # needs numpy
 tools/build_custom.py model.mpd --into /tmp/copy-of-generated
+tools/build_custom.py model.mpd --check                                     # no numpy
+godot --path .        # Parts bin > Make a part…
+# the web: export, serve on a port of your own, drive it (heavy: a browser)
+godot --headless --path . --export-release "Web" /tmp/web/index.html
+tools/web/serve.py /tmp/web 8147 &
+node tools/web/element_flow.mjs --url=http://localhost:8147/index.html --out=shots/element_web
 ```
+
+The flow ends "a part made in the browser is placed, kept and back after a
+reload" and leaves `shots/element_web/{1_dialog,2_placed,3_reloaded}.png`.
 
 ## How to check it
 
 ```sh
 python3 tools/minitest.py tests/test_elements.py
 godot --headless --path . --script src/dev/element_files_probe.gd
+godot --headless --path . --script src/dev/element_probe.gd       # ~10 s
+# windowed, on Xvfb — never on somebody's screen; tools/check.sh does this
+env -u DISPLAY -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw \
+  xvfb-run -a --server-args="-screen 0 1400x900x24" \
+  godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd
 ```
 
-Proves it when: the tests say `179 passed, 2 skipped` without numpy and
-`181 passed` with it (`uv venv` + `uv pip install numpy scipy`; see
+Proves it when: the tests say `180 passed, 3 skipped` without numpy and
+`183 passed` with it (`uv venv` + `uv pip install numpy scipy`; see
 pipeline.md), and the probe ends on "the maker makes the measured files, and
 the app builds them as the pipeline does" with every line `ok`: each of the
 19 fixtures "the same .lbm, byte for byte" built from only the shipped
 primitives, and the 16 library parts the same from vendor/ldraw.
+
+`element_probe` proves it when it ends "a made part is placed, clutched,
+checked, listed and saved like any other": the 2 x 7 brick, 1 x 5 plate and
+3 x 3 x 2/3 slope made through the dialog's controls (and 3001 resized to
+2 x 7), each found in the bin's Custom category, placed by the mouse's ray on
+a 2 x 4 on a baseplate with a 2 x 4 on top, the lower brick's studs reaching
+into it at its own sockets (8, 4 and 6) and its studs into the upper one (8,
+4 and 3), a 1 x 1 plate fitting against each side and refused one cell
+closer, the slope's cover following its face, the assistant's checker
+passing it and counting three pieces (one per stack), the parts list saying
+"(custom element)", and the saved file carrying all three, read strictly by
+`tools/build_custom.py --check`, and reopened into a fresh library 9 of 9
+bricks where they were. `element_shot_probe` ends "the dialog makes parts in
+the window" and leaves `shots/element_dialog.png` and
+`shots/element_beside.png` (made parts red, their library cousins grey) —
+look at them.
 
 What the tests measure, each by stabbing the flattened geometry with a
 vertical line the way the voxeliser does: the header lines in order; every
@@ -75,6 +133,28 @@ Mutations that each test was seen to catch: a slope face wound inside out
 tube under a stud (`tubes`).
 
 ## Gotchas
+
+- **A packed array read out of a Dictionary is a copy.** `LdrModel.parse`
+  collected each FILE section's lines with `(sections[x] as
+  PackedStringArray).append(...)`, which appended to a temporary: every part
+  a file carried came back empty and "has no faces". Arrays now; the round
+  trip in `element_probe` is what caught it. Same trap as geometry.md's.
+- **This machine's display is live.** `DISPLAY=:0` and `WAYLAND_DISPLAY` are
+  set, so `tools/check.sh`'s "no display, use Xvfb" test passes and windowed
+  probes would open on the owner's screen. Unset both (as above) before
+  running anything windowed, including the suite.
+- **The web build works, and is only proven from a local export.** Nothing in
+  making or placing a part needs Python, the network or the desktop:
+  primitives ship in the pck (`assets/ldraw/*` is in every export preset's
+  include filter; the export log names all nine) and `user://` is IndexedDB.
+  `tools/web/element_flow.mjs` drives it in Chromium on SwiftShader: Make a
+  part…, type 7 into Length, Add, click the baseplate (61 bricks, then 62),
+  reload, and the part is still made and the model still 62 bricks. Run
+  2026-10-10 against `godot --export-release "Web"` served by
+  `tools/web/serve.py` — not against brickworks.diy, which this branch is not
+  deployed to. The app tells the page where the controls are
+  (`window.brickworksControls`, now with "make part" and "element …") and
+  what is going on (`window.brickworksState`: bricks, held, custom).
 
 - **LDraw parts are not closed solids, and a test that assumes they are
   fails on 3001.** A stud is an open cylinder stood on the top face; a

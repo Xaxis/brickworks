@@ -126,7 +126,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns style turned detail chat; do
+for name in element_files element dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns style turned detail chat; do
   probe "$name"
 done
 
@@ -189,6 +189,11 @@ run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
 # binding to test.
 run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/feel_probe.gd
+# The element maker pressed from the parts bin, its preview drawn, and
+# made parts beside the library's: shots/element_dialog.png and
+# shots/element_beside.png are worth a look.
+run "make a part" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/element_shot_probe.gd
 
 # Two processes and a socket between them, which is a different kind of
 # failure from anything a single probe can have: the app's half can be

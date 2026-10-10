@@ -5,6 +5,7 @@
     tools/build_custom.py MODEL.mpd --out DIR          the parts embedded in it
     tools/build_custom.py PART.dat ... --summary FILE  what the pipeline made
     tools/build_custom.py PART.dat ... --into DIR      add them to a catalogue
+    tools/build_custom.py MODEL.mpd --check            does it carry its parts?
 
 A full tools/build_meshes.py run is ninety minutes for twenty-seven
 thousand parts. A part made in the element maker is one file the library
@@ -27,6 +28,11 @@ is *not* assumed: name it), copies the meshes into DIR/parts and the
 sources into DIR/custom, so a made part can ship as one of the library's
 own. It replaces an entry of the same id and leaves every other entry as
 it was, so tools/refresh_catalogue.py is not needed after it.
+
+--check reads a model file the way any LDraw tool would — every line
+strictly, then each part it carries flattened against the library — and
+says whether anything is missing. It needs no numpy, so it is what proves a
+file saved in the app opens somewhere else.
 
 --summary writes what the pipeline made of each part as plain numbers —
 bounds, connectors, collision boxes, sockets, cells — which is what
@@ -70,8 +76,9 @@ def parts_in(paths: list[Path], into: Path) -> list[Path]:
 
 def embedded_parts(text: str) -> dict[str, str]:
     """The `0 FILE` sections of a multi-part document that are parts
-    rather than sub-models: named .dat, or declaring themselves a part in
-    !LDRAW_ORG. Keyed by file name, lower case."""
+    rather than sub-models: the ones whose header declares a part in
+    !LDRAW_ORG, as LdrModel decides it. Not by name: older model files
+    call sub-models "door.dat". Keyed by file name, lower case."""
     sections: dict[str, list[str]] = {}
     current: list[str] | None = None
     for line in text.splitlines():
@@ -90,8 +97,8 @@ def embedded_parts(text: str) -> dict[str, str]:
         body = "\n".join(lines) + "\n"
         declared = any(
             l.split()[:2] == ["0", "!LDRAW_ORG"] and "part" in l.lower()
-            for l in lines[:12] if l.strip())
-        if name.endswith(".dat") or declared:
+            for l in lines[:16] if l.strip())
+        if declared:
             parts[name if name.endswith(".dat") else name + ".dat"] = body
     return parts
 
@@ -113,6 +120,33 @@ def build(files: list[Path]) -> list[tuple[str, bytes, dict, str]]:
             raise SystemExit(f"{path}: {record.get('error')}")
         out.append((part_id, blob, record, path.read_text(encoding="latin-1")))
     return out
+
+
+def check(paths: list[Path]) -> int:
+    """Read each file strictly and flatten every part it carries.
+
+    Prints a line per part and a last line "N lines, M parts, all
+    complete" — or names what did not resolve and returns 1.
+    """
+    from ldraw.geometry import flatten
+    from ldraw.parser import parse_text
+
+    failed = 0
+    for path in paths:
+        text = path.read_text(encoding="latin-1")
+        lines = len(list(parse_text(text, strict=True)))
+        with tempfile.TemporaryDirectory() as scratch:
+            files = parts_in([path], Path(scratch))
+            library = Library(LDRAW, extra=[scratch])
+            for part in files:
+                mesh = flatten(library, part.name)
+                state = "complete" if not mesh.missing else \
+                    "MISSING " + ", ".join(sorted(mesh.missing))
+                failed += bool(mesh.missing)
+                print(f"  {part.name:20} {len(mesh.triangles):6} triangles  {state}")
+        print(f"{path.name}: {lines} lines, {len(files)} parts, "
+              + ("all complete" if not failed else f"{failed} incomplete"))
+    return 1 if failed else 0
 
 
 def summary(part_id: str, blob: bytes) -> dict:
@@ -180,9 +214,12 @@ def main() -> int:
     parser.add_argument("--out", type=Path)
     parser.add_argument("--into", type=Path)
     parser.add_argument("--summary", type=Path)
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
+    if args.check:
+        return check(args.files)
     if not (args.out or args.into or args.summary):
-        parser.error("say where: --out, --into or --summary")
+        parser.error("say where: --out, --into, --summary or --check")
 
     with tempfile.TemporaryDirectory() as scratch:
         files = parts_in(args.files, Path(scratch))

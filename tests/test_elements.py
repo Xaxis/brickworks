@@ -466,14 +466,34 @@ def test_parts_are_taken_out_of_a_model_file() -> None:
     section, and build_custom finds it there and not the sub-models."""
     import build_custom
     part = (FIXTURES / "bw-b2x7x3.dat").read_text()
+    # The sub-model is called wall.dat, as older model files call theirs:
+    # a name is not what makes a section a part, its header is.
     mpd = ("0 FILE model.ldr\n0 Model\n0 Name: model.ldr\n"
            "1 4 0 0 0 1 0 0 0 1 0 0 0 1 bw-b2x7x3.dat\n"
-           "1 16 0 0 0 1 0 0 0 1 0 0 0 1 wall.ldr\n0\n0 NOFILE\n"
-           "0 FILE wall.ldr\n0 Wall\n1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 NOFILE\n"
+           "1 16 0 0 0 1 0 0 0 1 0 0 0 1 wall.dat\n0\n0 NOFILE\n"
+           "0 FILE wall.dat\n0 Wall\n1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 NOFILE\n"
            "0 FILE bw-b2x7x3.dat\n" + part + "0 NOFILE\n")
     found = build_custom.embedded_parts(mpd)
     assert list(found) == ["bw-b2x7x3.dat"]
     assert found["bw-b2x7x3.dat"].strip() == part.strip()
+
+
+def test_check_says_whether_a_file_carries_its_parts_whole() -> None:
+    """--check, which needs no numpy: a file with a made part in it reads
+    strictly and builds whole; one whose part names a primitive nobody has
+    is refused, by name."""
+    import build_custom
+    part = (FIXTURES / "bw-b1x5x1.dat").read_text()
+    whole = ("0 FILE model.ldr\n0 Model\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 bw-b1x5x1.dat\n"
+             "0 NOFILE\n0 FILE bw-b1x5x1.dat\n" + part + "0 NOFILE\n")
+    import tempfile
+    with tempfile.TemporaryDirectory() as scratch:
+        good = Path(scratch) / "good.mpd"
+        good.write_text(whole)
+        assert build_custom.check([good]) == 0
+        bad = Path(scratch) / "bad.mpd"
+        bad.write_text(whole.replace("stud3.dat", "no-such-primitive.dat"))
+        assert build_custom.check([bad]) == 1
 
 
 @needs_numpy
@@ -501,3 +521,36 @@ def test_the_made_brick_occupies_its_size_and_takes_studs_where_it_has_them() ->
     plate = kept["bw-b1x5x1"]
     assert plate["boxes"] == [[-25, -4, -5, 50, 4, 10]]
     assert len(plate["sockets"]) == 5
+
+
+@needs_numpy
+def test_into_adds_made_parts_to_a_catalogue_and_leaves_the_rest() -> None:
+    """--into: the parts join the catalogue under Custom with their meshes
+    and sources beside it, an older entry of the same id is replaced, and
+    every other entry is left exactly as it was."""
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory() as scratch:
+        root = Path(scratch)
+        other = {"id": "3001", "name": "Brick  2 x  4", "category": "Brick", "mesh": "abc"}
+        stale = {"id": "bw-b2x7x3", "name": "old", "category": "Custom", "mesh": "old"}
+        (root / "catalogue.json").write_text(json.dumps(
+            {"format": 1, "counts": {"parts": 2}, "parts": [other, stale]}))
+        done = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "build_custom.py"),
+             str(FIXTURES / "bw-b2x7x3.dat"), str(FIXTURES / "bw-s3x3x2r2.dat"),
+             "--into", str(root)], capture_output=True, text=True)
+        assert done.returncode == 0, done.stdout + done.stderr
+        merged = json.loads((root / "catalogue.json").read_text())
+        by_id = {e["id"]: e for e in merged["parts"]}
+        assert by_id["3001"] == other
+        assert merged["counts"]["parts"] == 3
+        for part_id in ("bw-b2x7x3", "bw-s3x3x2r2"):
+            entry = by_id[part_id]
+            assert entry["category"] == "Custom" and entry["custom"] is True
+            assert entry["source"] == f"custom/{part_id}.dat"
+            assert (root / "parts" / f"{entry['mesh']}.lbm").exists()
+            assert (root / entry["source"]).read_text() == (FIXTURES / f"{part_id}.dat").read_text()
+        assert by_id["bw-b2x7x3"]["name"] == "Brick  2 x  7"
+        assert by_id["bw-b2x7x3"]["ldraw_category"] == "Brick"
+        assert by_id["bw-s3x3x2r2"]["ldraw_category"] == "Slope"

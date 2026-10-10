@@ -17,6 +17,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   design wrote it ("north-east tower" in `north_east_tower.ldr`), and comes back
   in with every brick in its group. The booklet builds by those groups and names
   them. `store_probe` asserts the round trip and the named parts.
+- `made parts in the file`: a model that uses a part made in the element
+  maker carries it as an LDraw `0 FILE bw-….dat` section, and opening one
+  builds the part first — see [elements](elements.md). `element_probe` saves
+  three, reopens them into a fresh library, and has the Python reader check
+  the file.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is.
 

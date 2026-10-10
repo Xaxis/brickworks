@@ -212,6 +212,11 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	var model: LdrModel = LdrModel.parse(text, name)
 	if model == null:
 		return {"placed": 0, "missing": 0, "error": "that is not an LDraw file"}
+	# Parts the file brought with it, made here or somewhere else, join
+	# the library before anything asks whether the library has them.
+	var carried: Dictionary = CustomParts.take_from(library, model)
+	for problem: String in carried["problems"]:
+		push_warning("could not build a part the file carries: " + problem)
 
 	var flattened: Array = model.flatten(library.parts)
 	if flattened.is_empty():
@@ -350,7 +355,13 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 		if a.step != b.step:
 			return a.step < b.step
 		return a.transform.origin.y < b.transform.origin.y)
-	return LdrModel.write_ldr(placements, title, "Brickworks")
+	# A made part goes out inside the file, or the file means nothing
+	# anywhere the part was not made.
+	var used: Dictionary = {}
+	for item: Variant in placements:
+		used[(item as LdrModel.Placement).part_id] = true
+	return LdrModel.write_ldr(placements, title, "Brickworks",
+		CustomParts.sources_for(library, used.keys()))
 
 
 ## Send the model to the person as a file.
@@ -388,10 +399,26 @@ static func _count_bricks(path: String) -> int:
 	if file == null:
 		return 0
 	var count: int = 0
+	# Not the lines inside a part the file carries: a made 2 x 7 brick is
+	# twenty-odd references to studs and tubes, and one brick. A section
+	# is counted when it ends, once its header has said what it is.
+	var section: int = 0
+	var head := PackedStringArray()
 	while not file.eof_reached():
-		if file.get_line().begins_with("1 "):
-			count += 1
+		var line: String = file.get_line()
+		if line.begins_with("0 FILE ") or line.begins_with("0 NOFILE"):
+			if not LdrModel.declares_part(head):
+				count += section
+			section = 0
+			head = PackedStringArray()
+			continue
+		if head.size() < 16:
+			head.append(line)
+		if line.begins_with("1 "):
+			section += 1
 	file.close()
+	if not LdrModel.declares_part(head):
+		count += section
 	return count
 
 

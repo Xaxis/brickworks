@@ -42,6 +42,8 @@ var _deployment: Deployment
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
+## The element maker: a part that is not in the library, made.
+var _elements: ElementDialog
 var _controls: ControlsDialog
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
@@ -122,6 +124,9 @@ func _tell_page() -> void:
 	var to_window: Transform2D = get_viewport().get_final_transform()
 	var where: Dictionary = {}
 	var named: Dictionary = _chat.controls_by_name()
+	if _elements != null:
+		named.merge(_bin.controls_by_name())
+		named.merge(_elements.controls_by_name())
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -129,6 +134,13 @@ func _tell_page() -> void:
 		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	# And what a test cannot see in the canvas: how many bricks there are,
+	# what is in hand, which parts were made here.
+	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
+		"bricks": _world.brick_count() - _store.scenery.size(),
+		"held": _builder.held_part,
+		"custom": _library.custom.keys(),
+	}), true)
 
 
 func _enable_antialiasing() -> void:
@@ -152,6 +164,9 @@ func _ready() -> void:
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
 		return
 	_catalogue_ms = Time.get_ticks_msec() - started
+	# Parts made here before, built again from their LDraw files, so they
+	# are in the bin and so a model that uses them reopens.
+	CustomParts.load_all(_library)
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
@@ -870,7 +885,8 @@ func _build_ui() -> void:
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
 		_inset(_controls, 460.0, 560.0)
-		_inset(_mosaic, 380.0, 460.0))
+		_inset(_mosaic, 380.0, 460.0)
+		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 	_bar.timeline_wanted.connect(_toggle_steps)
 
@@ -915,6 +931,22 @@ func _build_ui() -> void:
 		_mosaic_source = image
 		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
+
+	_elements = ElementDialog.new()
+	_elements.library = _library
+	$HUD.add_child(_elements)
+	_inset(_elements, 440.0, 760.0)
+	_bin.make_wanted.connect(func() -> void:
+		_elements.color_code = _builder.held_color
+		_elements.open(_builder.held_part))
+	_elements.made.connect(func(part_id: String) -> void:
+		_bin.populate()
+		_bin.show_category("Custom")
+		_bin.show_held(part_id, _builder.held_color)
+		_on_part_chosen(part_id)
+		var info: PartLibrary.PartInfo = _library.parts.get(part_id)
+		_bar.say("made %s — it is in the parts bin under Custom" % (
+			Inventory._tidy(info.name) if info != null else part_id)))
 
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its
@@ -1390,6 +1422,7 @@ func _open(path: String) -> int:
 	var model: LdrModel = LdrModel.load_file(path)
 	if model == null:
 		return 0
+	CustomParts.take_from(_library, model)
 
 	var placed: int = 0
 	var missing: Dictionary = {}
@@ -2189,6 +2222,8 @@ func _over_panel_at(point: Vector2) -> bool:
 		return true
 	if _mosaic != null and _mosaic.visible:
 		return true
+	if _elements != null and _elements.visible:
+		return true
 	return false
 
 
@@ -2398,6 +2433,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Escape with the mosaic dialog open closed the whole app.
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
+				return
+			if _elements != null and _elements.visible:
+				_elements.visible = false
 				return
 			if not _builder.selection.is_empty():
 				_builder.clear_selection()

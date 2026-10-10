@@ -38,7 +38,7 @@ const SEARCH_DEBOUNCE := 160
 ## because LDraw has 94 categories and most of them are not things you
 ## would think to type.
 const LEADING: Array[String] = [
-	"Brick", "Plate", "Tile", "Slope", "Technic", "Wedge", "Panel",
+	"Custom", "Brick", "Plate", "Tile", "Slope", "Technic", "Wedge", "Panel",
 	"Bracket", "Arch", "Hinge", "Plant", "Animal", "Minifig",
 ]
 
@@ -97,6 +97,7 @@ var _swatches: Dictionary = {}         ## int code -> Swatch
 var _category_row: FlowContainer
 
 var _category: String = "All"
+var _make_button: Button
 var _results: Array[PartLibrary.PartInfo] = []
 var _shown: int = 0
 var _categories: Array[String] = []
@@ -108,6 +109,9 @@ var _pending: bool = false
 
 signal part_chosen(part_id: String)
 signal color_chosen(color_code: int)
+## "Make a part" was pressed: the element maker, for a part that is not
+## in the library yet.
+signal make_wanted
 
 
 func _ready() -> void:
@@ -131,10 +135,21 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", 8)
 	add_child(root)
 
+	var head := HBoxContainer.new()
+	root.add_child(head)
 	var title := Label.new()
 	title.text = "Parts"
 	title.add_theme_font_size_override("font_size", 16)
-	root.add_child(title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var make := Button.new()
+	_make_button = make
+	make.text = "Make a part…"
+	make.tooltip_text = ("A brick, plate, tile, slope or round part of any "
+		+ "size, or a part here resized — it joins the bin under Custom")
+	make.add_theme_font_size_override("font_size", 12)
+	make.pressed.connect(func() -> void: make_wanted.emit())
+	head.add_child(make)
 
 	_search = LineEdit.new()
 	# Filled in once the catalogue is loaded; the count differs between
@@ -547,6 +562,17 @@ class Swatch extends Button:
 		draw_rect(Rect2(area.position + Vector2(0, width), Vector2(width, area.size.y - 2 * width)), tint)
 		draw_rect(Rect2(area.position + Vector2(area.size.x - width, width),
 			Vector2(width, area.size.y - 2 * width)), tint)
+
+
+## Where a browser test finds the bin's own button.
+func controls_by_name() -> Dictionary:
+	return {"make part": _make_button} if _make_button != null else {}
+
+
+## Show one category's parts, as its button would.
+func show_category(name: String) -> void:
+	if _categories.has(name):
+		_on_category(name)
 
 
 func _on_category(name: String) -> void:
