@@ -1943,6 +1943,17 @@ func _run_tool(block: Dictionary) -> Variant:
 			# last draft it checked — so this is its own work, not a
 			# hypothetical.
 			return await _with_a_look("", "", from, close)
+		"restyle_model":
+			progress.emit("dressing the plain faces")
+			var change: Dictionary = _restyle(args)
+			if change.is_empty():
+				return ("Nothing to restyle: no plain one-stud-wide brick "
+					+ "with an open face in that box.")
+			var said: Variant = await _run_tool({"name": "edit_model",
+				"input": change["edit"]})
+			if said is Array:
+				return [{"type": "text", "text": change["summary"]}] + (said as Array)
+			return "%s\n%s" % [change["summary"], str(said)]
 		"edit_model":
 			var edited: Model = _edit(args)
 			_say_shorthand_trouble()
@@ -3700,6 +3711,126 @@ func _read_model(args: Dictionary) -> Model:
 	_expand_repeats(model, args, _repeat_trouble)
 	model.assemblies = _read_assemblies(args)
 	return model
+
+
+## Lay a share of the plain one-wide bricks with an open long face again,
+## in place, as dressed side-stud bricks or as masonry, facing out.
+##
+## The designs built here write their walls brick by brick and then edit
+## them; the sixth Orthanc was 978 plain 1x2 bricks and nothing on its
+## side, though every check said real fantasy sets are a fifth sideways
+## and a pattern for it was there to be used. What it does reliably is
+## edit what stands, so this is an edit: the finishing pass a builder
+## gives a plain wall, worked out from what is actually open to the air.
+## Returns {} when nothing qualifies, or {"edit": edit_model's input,
+## "summary": what it will do}.
+func _restyle(args: Dictionary) -> Dictionary:
+	if world == null or builder == null or builder.lattice == null:
+		return {}
+	var where: Dictionary = args.get("where", {}) if args.get("where") is Dictionary else {}
+	var sideways: float = clampf(float(args.get("sideways", 0.15)), 0.0, 0.5)
+	var masonry: float = clampf(float(args.get("masonry", 0.25)), 0.0, 1.0)
+	var face_colour: int = int(args.get("face_color", args.get("face_colour", -1)))
+	var long_of: Dictionary = Patterns.ONE_WIDE
+	var removed: Array = []
+	var added: Array = []
+	var turned: int = 0
+	var stoned: int = 0
+	var middle := Vector3.ZERO
+	var standing: Array[BrickWorld.Brick] = _bricks_inside({})
+	for brick: BrickWorld.Brick in standing:
+		middle += brick.transform.origin
+	if not standing.is_empty():
+		middle /= float(standing.size())
+	for placement: Placement in _model_from_world().placements:
+		var long: int = int(long_of.get(placement.part, 0))
+		if long == 0 or placement.face != "up" or not placement.section.is_empty():
+			continue
+		if not _inside(Vector3(placement.x, placement.y, placement.z), where):
+			continue
+		var along_x: bool = placement.rot % 2 == 0
+		var facing: String = _open_side(placement, long, along_x, middle)
+		if facing.is_empty():
+			continue
+		var pick: float = Patterns._scatter(placement.x, placement.y, placement.z, 41)
+		if pick < sideways and _each_stud_held(placement, long, along_x):
+			removed.append(placement.id)
+			for step: int in long:
+				var one := {"part": "87087", "color": placement.color,
+					"x": placement.x + (step if along_x else 0), "y": placement.y,
+					"z": placement.z + (0 if along_x else step), "rot": 0}
+				var dressing: Dictionary = _dress(one, facing, face_colour)
+				added.append(one)
+				if not dressing.is_empty():
+					added.append(dressing)
+			turned += 1
+		elif pick < sideways + masonry and Patterns.MASONRY.has(placement.part):
+			removed.append(placement.id)
+			added.append({"part": Patterns.MASONRY[placement.part],
+				"color": placement.color, "x": placement.x, "y": placement.y,
+				"z": placement.z,
+				"rot": ["+z", "+x", "-z", "-x"].find(facing)})
+			stoned += 1
+	if removed.is_empty():
+		return {}
+	return {"edit": {"remove": removed, "add": added},
+		"summary": "Restyled %d brick%s: %d turned out and dressed on their side, %d laid as masonry."
+			% [turned + stoned, "" if turned + stoned == 1 else "s", turned, stoned]}
+
+
+## Whether every stud of a one-wide brick has a part directly under it
+## or on top of it, so the brick can be split into 1x1s and each still be
+## held. A course's end brick in a bonded wall overhangs the course below
+## and is held only through its own length: split, its end floated, and
+## the first restyle of a wall was refused for it.
+func _each_stud_held(placement: Placement, long: int, along_x: bool) -> bool:
+	for step: int in long:
+		var x: float = placement.x + (step + 0.5 if along_x else 0.5)
+		var z: float = placement.z + (0.5 if along_x else step + 0.5)
+		var under := Vector3(x * STUD, (placement.y - 0.5) * PLATE, z * STUD)
+		var over := Vector3(x * STUD, (placement.y + 3.5) * PLATE, z * STUD)
+		var held: bool = placement.y <= 0.01 \
+			or builder.lattice.brick_at(BrickLattice.to_cell(under)) != 0 \
+			or builder.lattice.brick_at(BrickLattice.to_cell(over)) != 0
+		if not held:
+			return false
+	return true
+
+
+## Which way a one-wide brick's long face is open to the air, with room
+## in front of it for a part laid on its side: "+z", "-z", "+x", "-x" or
+## "" when neither is. When both are — a wall one stud thick standing on
+## its own — the side away from the middle of the model.
+func _open_side(placement: Placement, long: int, along_x: bool,
+		middle: Vector3) -> String:
+	var sides: Array = ["+z", "-z"] if along_x else ["+x", "-x"]
+	var open: Array = []
+	for side: String in sides:
+		var out: Vector3 = FACES[side]
+		var clear: bool = true
+		for step: int in long:
+			for up: float in [0.75, 2.25]:
+				# The middle of this stud of the face, a little and then a
+				# plate's thickness out.
+				var x: float = placement.x + (step + 0.5 if along_x else 0.5)
+				var z: float = placement.z + (0.5 if along_x else step + 0.5)
+				var at := Vector3(x * STUD, (placement.y + up) * PLATE, z * STUD)
+				at += out * (STUD * 0.5)
+				for reach: float in [2.0, 7.0]:
+					var cell: Vector3i = BrickLattice.to_cell(at + out * reach)
+					if builder.lattice.brick_at(cell) != 0:
+						clear = false
+		if clear:
+			open.append(side)
+	if open.size() == 1:
+		return str(open[0])
+	if open.size() == 2:
+		var centre := Vector3((placement.x + 0.5) * STUD, 0, (placement.z + 0.5) * STUD)
+		var away: Vector3 = centre - middle
+		if along_x:
+			return "+z" if away.z >= 0.0 else "-z"
+		return "+x" if away.x >= 0.0 else "-x"
+	return ""
 
 
 ## A face of studs turned outward, dressed with tiles, round tiles,
@@ -7586,6 +7717,39 @@ func _tools() -> Array:
 					"face": {"type": "string",
 						"enum": ["up", "down", "+x", "-x", "+z", "-z"]},
 					"rot": {"type": "integer"},
+				},
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "restyle_model",
+			"description": ("A finishing pass over what is already built: "
+				+ "plain one-stud-wide bricks (1x1 to 1x4) whose long face "
+				+ "is open to the air are laid again, in place, as bricks "
+				+ "with a stud on the side carrying a tile, round tile, round "
+				+ "plate or cheese slope facing out (sideways), or as masonry "
+				+ "bricks with their stonework out (masonry). What a builder "
+				+ "does to a plain wall, and how real sets come to have a "
+				+ "fifth of their parts on their side — done for you, in one "
+				+ "call, checked like any edit."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"where": {"type": "object", "description":
+						"only bricks inside this box, in studs and plates, "
+						+ "as look_at_model takes one; the whole model if left out",
+						"properties": {
+							"x_from": {"type": "number"}, "x_to": {"type": "number"},
+							"y_from": {"type": "number"}, "y_to": {"type": "number"},
+							"z_from": {"type": "number"}, "z_to": {"type": "number"},
+						},
+						"additionalProperties": false},
+					"sideways": {"type": "number", "description":
+						"share of those bricks turned out and dressed, 0 to 0.5; 0.15 if not said"},
+					"masonry": {"type": "number", "description":
+						"share laid as masonry, 0 to 1; 0.25 if not said"},
+					"face_color": {"type": "integer", "description":
+						"colour of what is laid on the side studs; the brick's own if not said"},
 				},
 				"additionalProperties": false,
 			},

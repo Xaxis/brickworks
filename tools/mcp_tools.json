@@ -444,6 +444,53 @@
     "name": "attachment_points"
   },
   {
+    "description": "A finishing pass over what is already built: plain one-stud-wide bricks (1x1 to 1x4) whose long face is open to the air are laid again, in place, as bricks with a stud on the side carrying a tile, round tile, round plate or cheese slope facing out (sideways), or as masonry bricks with their stonework out (masonry). What a builder does to a plain wall, and how real sets come to have a fifth of their parts on their side \u2014 done for you, in one call, checked like any edit.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "face_color": {
+          "description": "colour of what is laid on the side studs; the brick's own if not said",
+          "type": "integer"
+        },
+        "masonry": {
+          "description": "share laid as masonry, 0 to 1; 0.25 if not said",
+          "type": "number"
+        },
+        "sideways": {
+          "description": "share of those bricks turned out and dressed, 0 to 0.5; 0.15 if not said",
+          "type": "number"
+        },
+        "where": {
+          "additionalProperties": false,
+          "description": "only bricks inside this box, in studs and plates, as look_at_model takes one; the whole model if left out",
+          "properties": {
+            "x_from": {
+              "type": "number"
+            },
+            "x_to": {
+              "type": "number"
+            },
+            "y_from": {
+              "type": "number"
+            },
+            "y_to": {
+              "type": "number"
+            },
+            "z_from": {
+              "type": "number"
+            },
+            "z_to": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "name": "restyle_model"
+  },
+  {
     "description": "Change what is already built without describing it again. Takes the numbers look_at_model prints beside each brick. Use this for any change to an existing model \u2014 moving a wall, recolouring a roof, taking a chimney off, adding a door \u2014 and only use submit_design when starting something new. Everything is checked together before any of it is applied, so a change that would not hold together changes nothing.",
     "input_schema": {
       "additionalProperties": false,

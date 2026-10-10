@@ -294,7 +294,9 @@ static func advice(found: Dictionary, group: String) -> String:
 		+ "bricks to turn a face, sections turned to the angle a thing really "
 		+ "has, curved slopes and arches where an edge can round, the rock "
 		+ "pattern where the ground is irregular — and symmetry only where the "
-		+ "subject has it.")
+		+ "subject has it. For a model already built of plain walls, one call "
+		+ "does most of the sideways and the texture: restyle_model, with a "
+		+ "where= to keep it to one part.")
 
 
 static func _share(value: Variant) -> String:

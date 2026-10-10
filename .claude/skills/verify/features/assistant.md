@@ -132,6 +132,18 @@ fixing what it got wrong.
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
   a band measures 43% sideways in `tools/style.py`.
+- `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
+  `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
+  studs up, not in a section) whose long face is open — the live lattice empty
+  2 and 7 LDU out along the whole face at two heights (`_open_side`; both open
+  means the side away from the model's middle) — are laid again in place: a
+  `sideways` share (0.15) as 87087s dressed by `_dress`, only where every stud
+  is held from below or above (`_each_stud_held`: a bonded course's end brick
+  overhangs, and split it floated), and a `masonry` share (0.25) as 98283/15533
+  facing out. Found by the sixth Orthanc: 978 plain 1x2s, 0% sideways, though
+  every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
+  to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
+  and checks bricks are turned, dressed and stoned, and the edit applied.
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,
