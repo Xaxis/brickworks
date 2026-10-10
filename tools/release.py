@@ -1007,7 +1007,7 @@ def run_app(command: list[str], env: dict[str, str], seconds: int = 420) -> tupl
             if os.name != "nt":
                 os.killpg(process.pid, signal.SIGKILL)
             else:
-                process.kill()
+                end_tree(process.pid)
             process.wait()
             code = 124
         log.seek(0)
@@ -1021,6 +1021,16 @@ def free_port() -> int:
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         return probe.getsockname()[1]
+
+
+def end_tree(pid: int) -> None:
+    """End a Windows process and everything it started.
+
+    Brickworks.console.exe is a wrapper that starts Brickworks.exe as a
+    child. Ending the wrapper alone left the app running and holding its
+    files, so the smoke run on Windows could not remove its clean home.
+    """
+    subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True)
 
 
 def smoke(package: Path, window: bool, expect: str) -> int:
@@ -1038,7 +1048,10 @@ def smoke(package: Path, window: bool, expect: str) -> int:
     def clean(output: str) -> bool:
         return not re.search(r"SCRIPT ERROR|Parse Error|Failed to load script", output)
 
-    with tempfile.TemporaryDirectory(prefix="brickworks-smoke-") as scratch:
+    # Removing the clean home is tidying, not a verdict on the package: a
+    # file Windows still had open failed a run whose every check had passed.
+    with tempfile.TemporaryDirectory(prefix="brickworks-smoke-",
+                                     ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
         (root / "unpacked").mkdir()
         program = unpack(package.resolve(), root / "unpacked")
@@ -1103,15 +1116,17 @@ def smoke(package: Path, window: bool, expect: str) -> int:
                 check("a session places bricks in it over MCP: %s" % built,
                       drive.returncode == 0, drive.stdout + drive.stderr)
         finally:
-            if app.poll() is None:
-                if os.name != "nt":
-                    os.killpg(os.getpgid(app.pid), signal.SIGTERM)
-                else:
-                    app.terminate()
-                try:
-                    app.wait(timeout=30)
-                except subprocess.TimeoutExpired:
-                    app.kill()
+            if os.name == "nt":
+                # Always, and the whole tree: the wrapper may have gone and
+                # left the app it started running.
+                end_tree(app.pid)
+            elif app.poll() is None:
+                os.killpg(os.getpgid(app.pid), signal.SIGTERM)
+            try:
+                app.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                app.kill()
+                app.wait()
             log.close()
         check("the app kept its state in the clean home", any((root / "home").rglob("Brickworks")))
 
