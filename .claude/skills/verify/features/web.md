@@ -20,6 +20,10 @@ accounts.
   does not announce itself.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
   under `/b/<sha>/`, points `/` at it and then proves it in a browser.
+- `which build this is`: the deploy writes `version.json` (commit, UTC time)
+  beside the build and the Help panel shows "This build: <commit>, updated
+  <local time>". The owner, looking at the live site, could not tell when it had
+  last been deployed. Desktop builds say "Development build".
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
 - `the assistant, as a person uses it`: `tools/web/assistant_flow.mjs` pastes a

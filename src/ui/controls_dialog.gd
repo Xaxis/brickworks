@@ -67,6 +67,17 @@ func _build() -> void:
 		ViewPrefs.middle_slides,
 		func(on: bool) -> void: ViewPrefs.middle_slides = on)
 
+	# Which build this is and when it went out. The owner, looking at the
+	# live site, had no way to tell when it had last been deployed; the
+	# deploy writes version.json beside the build, and this reads it.
+	_version = Label.new()
+	_version.add_theme_font_size_override("font_size", 11)
+	_version.modulate = Color(1, 1, 1, 0.6)
+	_version.text = "Development build" if not OS.has_feature("web") else ""
+	column.add_child(_version)
+	if OS.has_feature("web"):
+		_read_version.call_deferred()
+
 	var done := Button.new()
 	done.text = "Done"
 	# Or the next press of a letter runs whatever this button is,
@@ -119,6 +130,34 @@ func _toggle(column: VBoxContainer, text: String, why: String,
 	note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(note)
+
+
+var _version: Label
+
+
+func _read_version() -> void:
+	var where: Variant = JavaScriptBridge.eval(
+		"new URL('version.json', location.href).href")
+	if typeof(where) != TYPE_STRING:
+		return
+	var http := HTTPRequest.new()
+	add_child(http)
+	http.request_completed.connect(func(result: int, code: int,
+			_headers: PackedStringArray, body: PackedByteArray) -> void:
+		http.queue_free()
+		if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+			return
+		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+		if typeof(parsed) != TYPE_DICTIONARY:
+			return
+		# In the reader's own time zone, which only the browser knows.
+		var when: Variant = JavaScriptBridge.eval(
+			"new Date(%s).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})"
+			% JSON.stringify(str(parsed.get("deployed", ""))))
+		_version.text = "This build: %s, updated %s" % [
+			str(parsed.get("commit", "?")),
+			str(when) if typeof(when) == TYPE_STRING else str(parsed.get("deployed", "?"))])
+	http.request(str(where))
 
 
 func open() -> void:

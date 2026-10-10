@@ -55,6 +55,11 @@ for f in "$dir"/*; do
   case "$f" in *.br|*.gz|*/build.json) continue ;; esac
   cp "$f" ".vercel/output/static/b/$sha/"
 done
+# What this build is and when it went out, read by the app's Help panel.
+# The owner, looking at the live site, could not tell when it had last
+# been deployed.
+printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > ".vercel/output/static/b/$sha/version.json"
 
 # The serverless endpoints, packaged the way the Build Output API wants
 # them. A prebuilt deploy has no build step to discover api/, so each is
