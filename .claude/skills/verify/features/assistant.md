@@ -283,16 +283,26 @@ fixing what it got wrong.
   Measured as a library with `tools/style.py shots/techniques/library.ldr`:
   156 parts, 48 shapes, sideways 3.9%, plain 46% with the twenty; 658 parts,
   129 shapes, 34 colours, sideways 18%, plain 31%, organic 2% with 59. Angled
-  is still 0%: the ones the checker refuses are real constructions, so a corpus
-  for its false positives. Of 880 distinct real sub-models (2026-10-10) 583
-  pass, 247 are refused for overlaps and 50 for floating; the overlaps are
-  bars and axles through holes, clips on bars (flags, lances,
-  lanterns), panes in frames `NESTS` does not list (3854 in 6556, 60607 and
-  86210 in 60594, 38320 in 60592, 57895 in 57894), hinge bricks 3830/3831,
-  hinge plates, parts in hollow studs, and the 2x2 turntable, whose top 3679
-  sits over its base 3680 at one origin — how 10182 Cafe Corner stands its
-  corner entrance, corner windows and tower at 45 degrees (13 turned
-  assemblies in six sets), and why there is no angled example yet.
+  was 0% until the checker learned round joints: the ones it refuses are real
+  constructions, so a corpus for its false positives. Of 880 distinct real
+  sub-models (`named2` and `fantasy_subs`, harvested 2026-10-10) the checker
+  at 24c3422 passed 564, refused 232 for overlaps and 84 for floating or below
+  ground. With shafts and bores (`geometry.md`, `round joints`) and the panes
+  NESTS lacked, on a catalogue rebuilt for the parts they use: **617 pass, 182
+  are refused for overlaps, none newly refused**. By the family of what
+  overlapped (a model in more than one counts in each; passing after, of those
+  refused for it): parts in hollow studs 20 of 75, clips on bars 6 of 36, bars
+  and axles through holes 6 of 57, hinges 3 of 10, the one square turntable 1
+  of 1, panes 5 of 25. What still refuses them, measured: a handle or a gate
+  whose cover fills the opening a clip's fingers pass through (60478, 48336,
+  42448 — inside the joint's length, 5.8 to 7.6 LDU off the bar); 75937, whose
+  cover is its bounding box (over 64 boxes), with every axle and plate on it;
+  a bar loose in a tube (4 in 6, not a joint); a pane its modeller mirrored;
+  and parts beside the joint that overlap for reasons of their own. The
+  turntable is how 10182 Cafe Corner stands its corner entrance, corner
+  windows and tower at 45 degrees (13 turned assemblies in six sets); the
+  harvest only takes square sub-models, so `joints_probe` is where a turntable
+  turned 10, 30 and 45 degrees is checked.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a
@@ -311,9 +321,12 @@ fixing what it got wrong.
   every glazed window was refused. Measured over the model repository's sets
   (2026-10-09): panes in 60592/60593 at the frame's own origin and turn (185 and
   110 of them), doors at (±32, 0, 5) in a 60596, the far hand turned half round
-  (46), 57895 glass at (0, 4, 5) (19). The overlap is forgiven only there, to an
-  LDU, in the frame's LDraw coordinates; `techniques_probe` asserts a pane a
-  plate high and a door half a stud along are still refused.
+  (46), 57895 glass at (0, 4, 5) (19). And on 2026-10-10 the panes still
+  refused: 3854 in 6556 and 60594, 60607 and 86210 in 60594, 38320 in 60592,
+  57895 in 57894, with the seats sets use both ways round. The overlap is
+  forgiven only there, to an LDU, in the frame's LDraw coordinates;
+  `techniques_probe` asserts a pane a plate high and a door half a stud along
+  are still refused, and `joints_probe` a 3854 not turned into its groove.
   Known: nothing can be laid on a 60596. Its two outer top studs are notched for
   the hinge and drawn with `3-4cylc` rather than a stud primitive, so
   `occupancy.remove_studs` never sees a stud there and keeps them as solid. The
