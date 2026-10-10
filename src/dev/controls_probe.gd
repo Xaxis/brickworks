@@ -15,6 +15,7 @@
 extends SceneTree
 
 var _failures: int = 0
+var _finished: bool = false
 var _main: Node
 
 
@@ -335,6 +336,13 @@ func _run() -> void:
 	_assert("escape leaves the steps rather than quitting",
 		not steps.is_playing_back())
 	_assert("...and puts the whole model back", _drawn(world) == world.brick_count())
+	# With nothing open, Escape does nothing. It used to quit the desktop
+	# app, which ended a design run forty-six minutes in. Were it to quit
+	# again, the probe stops here and _finalize says so.
+	_press(KEY_ESCAPE)
+	for _n: int in 5:
+		await process_frame
+	_assert("escape with nothing open leaves the app running", true)
 
 	# Undo is the one that has to be checked by doing, not by pressing:
 	# it needs something to undo first.
@@ -351,7 +359,16 @@ func _run() -> void:
 
 	print("")
 	print("%d failed" % _failures if _failures else "every advertised key does something")
+	_finished = true
 	quit(1 if _failures else 0)
+
+
+## The app quitting part way through ends the probe with exit code 0 and
+## every check after it unrun, which reads as a pass.
+func _finalize() -> void:
+	if not _finished:
+		print("  FAIL the app quit before the probe finished")
+		quit(1)
 
 
 ## How many bricks are actually on screen, which is not the same as how

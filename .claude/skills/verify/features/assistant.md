@@ -13,8 +13,9 @@ fixing what it got wrong.
   being lifted, and revises. Sections let it carry a sub-assembly at an angle.
 - `design from a brief, on a Claude plan`: `tools/claude_run.sh NAME [--brief
   "..."]` — the desktop app off-screen (Xvfb, on the GPU, a free port) running
-  `--ask-claude-code`, then `tools/style.py` on the model. A run in a visible
-  window was ended by a stray Escape, which quits the desktop app.
+  `--ask-claude-code`, then `tools/style.py` on the model. Off-screen because a
+  run in a visible window was ended by a stray Escape, which then quit the
+  desktop app (it no longer does).
 - `design from a brief`: `tools/design.py "<sentence>"`, which shells out to
   `godot --path . -- --ask=... --out=...`. **This spends real money.** It renders
   in software unless given `--gpu`: this machine has one GPU lease, and a run

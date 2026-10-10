@@ -2284,6 +2284,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_bin._on_colour(QUICK_COLORS[_color_index])
 			_refresh_preview()
 		KEY_Q, KEY_E:
+			# Ctrl+Q quits, the way it does in every desktop app here. The
+			# web page is closed by its tab.
+			if key.keycode == KEY_Q and (key.ctrl_pressed or key.meta_pressed):
+				if not OS.has_feature("web"):
+					get_tree().quit()
+				return
 			_turn_model(1 if key.keycode == KEY_E else -1)
 		KEY_B:
 			_toggle_steps()
@@ -2392,10 +2398,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# match statement runs one arm, so leaving the booklet
 			# stopped working and nobody would find out until they
 			# tried it.
-			# Everything that is up, innermost first. A ladder that
-			# does not know about a dialog falls through to the bottom
-			# rung, and the bottom rung on the desktop is quit — so
-			# Escape with the mosaic dialog open closed the whole app.
+			# Everything that is up, innermost first, and nothing below
+			# it. The bottom rung was quit on the desktop, and it cost
+			# work three times: a ladder that did not know about the
+			# mosaic dialog closed the whole app from it, and a design
+			# run forty-six minutes in ended on one stray press. Escape
+			# means "out of this"; leaving the app is Ctrl+Q or the
+			# window's close button.
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
 				return
@@ -2407,10 +2416,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				return
 			if _steps.is_playing_back():
 				_steps.stop()
-				return
-			if OS.has_feature("web"):
-				return
-			get_tree().quit()
 
 
 static func _comma(value: int) -> String:

@@ -18,6 +18,12 @@ picture the assistant is shown.
   (zoom in, out, keypad, Page Down, turn, tilt, slide, held +, typed -), and the
   deploy's browser check (`tools/web/check.mjs`) moves the real web build with
   -, a held arrow and shift-arrows.
+- `escape and quitting`: Escape steps out of whatever is up, innermost first (the
+  mosaic dialog, a selection, the parts list, the timeline) and with nothing up
+  does nothing. It used to quit the desktop app, which closed it from the mosaic
+  dialog once and ended a design run 46 minutes in. Ctrl+Q (Cmd+Q) quits on the
+  desktop. `controls_probe` presses Escape with nothing open and fails, from
+  `_finalize`, if the app quit under it.
 - `status line`: bricks, whether it stands and what it weighs. Batches,
   triangles, the catalogue count and the frame rate come back with `--stats`;
   they were the first line every visitor read.
