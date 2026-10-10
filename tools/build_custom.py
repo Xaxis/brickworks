@@ -172,10 +172,13 @@ def summary(part_id: str, blob: bytes) -> dict:
     connections = extract(library, name)
     solid = occ.fill_cavities(
         occ.remove_studs(occ.voxelise(mesh), connections), connections)
+    # A shaft or a bore also has a length and a radius, and they are what
+    # the checker matches on, so they are compared too.
     connectors = sorted(
         [c.kind.value, c.gender.value,
          [_r(c.position.x), _r(-c.position.y), _r(-c.position.z)],
          [_r(c.axis.x), _r(-c.axis.y), _r(-c.axis.z)]]
+        + ([_r(c.length), _r(c.radius)] if c.kind.value in ("shaft", "bore") else [])
         for c in connections)
     return {
         "bounds_min": [_r(v) for v in part.bounds_min],

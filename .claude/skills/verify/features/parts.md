@@ -292,6 +292,22 @@ colours carry the dot. It leaves `shots/palette.png` — look at it.
   which parts are bars, gated by name, using the rod-shaped box for the
   position. That is semantic knowledge, not geometry.
 
+  **What did work (2026-10-10): the winding, and a pair.** A cylinder's BFC
+  winding says which side is plastic, so `connectivity.rounds` records a
+  *shaft* (facing out) or a *bore* (facing in, after INVERTNEXT) with its radius
+  and length, merged end to end along each axis — a clip's eye is a radius-4
+  bore in every clip primitive, a hollow stud's is 4, a pin's barrel is 6 with a
+  bore of 4 inside it. A minifig arm's radius-4 cylinder is still a shaft, and
+  that is no longer the danger it was, because nothing is forgiven for a shaft
+  alone: a joint is a shaft in a *coaxial* bore of another part, the same size
+  to 1 LDU, and only the overlap inside that bore is forgiven. A clip on thin
+  air has no shaft in it; a clip on a minifig arm is a clip on a 3.2 mm round,
+  which it really does grip. Tubes and studs give bores only where they carry
+  on a bore of the part itself (3062b is bored right through, 3709b's holes run
+  down through the tubes under them), which keeps every plain brick out: 3001,
+  3003, 3005, 3020, 3024 and 3068b get nothing. 17,539 of 29,591 parts do, so
+  the whole catalogue has to be rebuilt to carry them (`pipeline.md`).
+
   **And clips cannot be inverted to avoid it.** The tempting shortcut is to skip
   bars and say a clip grips whatever occupies its jaw. Two things stop it: the
   bar part itself has no connectors at all, so there is no pair to confirm; and a
@@ -301,15 +317,16 @@ colours carry the dot. It leaves `shots/palette.png` — look at it.
   which demands collinear axes within 4 LDU — and a loose rule here would hide
   real faults. 213 parts carry a clip and none of them can grip anything yet.
 
-- **Hinges have no connector kind, and adding one buys little.** The old
+- **Hinges have no connector kind of their own, and need none.** The old
   hinges — 3937/3938, 4213/4214, the ones `models/car.ldr` is built with — are
-  drawn from plain cylinders and boxes, so there is nothing to detect by name.
-  The click-lock family does have primitives (`clh1`..`clh15`, `arm1`..`arm3`,
-  `4-4crh1/2`), but only **78 parts in the library reference them**, which is
-  not worth a new ConnectorKind, a format bump and a 90-minute rebuild. Some
-  hinge plates (2430) already get a `pin` because they are drawn with
-  `connect2`. Until this changes, a hinge holds in the checker only because
-  there is material in the cell below it.
+  drawn from plain cylinders and boxes, so there is nothing to detect by name,
+  and that is exactly what the shafts and bores read: a hinge brick's top
+  (3830) has a radius-6 pin and its base (3831) a radius-6 eye on the same axis
+  through both origins, a hinge plate's (2430 in 2429) 3.9 in 4, and 3938's
+  two radius-4 pins sit in 3937's two eyes. 4213/4214, the car roof, are
+  fingers on both halves (shafts, no bore), so they make no joint. The
+  click-lock family's primitives (`clh1`..`clh15`, `arm1`..`arm3`,
+  `4-4crh1/2`) are still unread; 78 parts use them.
 
 - **`npeghol*` is subtracted geometry, not a connector.** "Technic Peg Hole
   Negative" marks where material is *missing*, which is not the same as where a

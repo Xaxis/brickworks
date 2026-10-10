@@ -64,8 +64,11 @@ class Result extends RefCounted:
 	func summary() -> Dictionary:
 		var joined: Array = []
 		for c: Array in connectors:
-			joined.append([c[0], c[1], [_r(c[2]), _r(c[3]), _r(c[4])],
-				[_r(c[5]), _r(c[6]), _r(c[7])]])
+			var row: Array = [c[0], c[1], [_r(c[2]), _r(c[3]), _r(c[4])],
+				[_r(c[5]), _r(c[6]), _r(c[7])]]
+			if c.size() > 8:
+				row.append_array([_r(c[8]), _r(c[9])])
+			joined.append(row)
 		joined.sort_custom(PartForge._before)
 		var box_list: Array = boxes.duplicate(true)
 		box_list.sort_custom(PartForge._before)
@@ -697,7 +700,227 @@ func _connectors(name: String) -> Array:
 			continue
 		seen[key] = true
 		unique.append(c)
+	unique.append_array(_rounds(name))
 	return unique
+
+
+# -- shafts and bores, as connectivity.rounds --------------------------------
+#
+# A made round brick has a shaft (its wall) and a bore (its cavity) like the
+# library's, and one embedded from a model file may have a bar or a clip, so
+# these are found the same way here. Each round comes out as [kind, gender,
+# x, y, z, ax, ay, az, length, radius] in LDraw's axes, start then a unit
+# direction.
+
+## connectivity._SURFACE: n-dcyli and n-dcyli2.
+static var _surface := RegEx.create_from_string("^(\\d+)-(\\d+)cyli2?$")
+const AXLE_SIDE: Array[String] = ["axle", "axlehol8"]
+## connectivity._WALKED_INTO, kind -> [shafts kept, bores kept].
+const WALKED_INTO: Dictionary = {
+	"pin": [true, true], "clip": [false, true], "pin_hole": [false, true]}
+## connectivity._CONTINUES.
+const CONTINUES: Array[String] = ["stud", "tube", "ridge"]
+const ROUND_ARC := 0.5         ## connectivity.ROUND_ARC
+const ROUND_LENGTH := 1.0      ## connectivity.ROUND_LENGTH
+const ROUND_WIDEST := 63.75    ## connectivity.ROUND_WIDEST
+
+
+func _rounds(name: String) -> Array:
+	var pieces: Array = []
+	_round_walk(name, PackedFloat64Array(IDENTITY), false, true, [true, true, false],
+		pieces, 0, {})
+	return _merge_rounds(pieces)
+
+
+## A piece: [kind, radius, start, end, arc, continues], points as
+## PackedFloat64Array.
+func _round_walk(name: String, transform: PackedFloat64Array, invert: bool,
+		certified: bool, keep: Array, found: Array, depth: int,
+		stack: Dictionary) -> void:
+	if depth > 64 or stack.has(name):
+		return
+	var source: Source = _source_for(name)
+	if source == null:
+		return
+	var inner: Dictionary = stack.duplicate()
+	inner[name] = true
+	var sure: bool = certified and source.bfc_certified
+	var invert_next: bool = false
+	for command: Array in source.commands:
+		if int(command[0]) == 0:
+			if command[1] != "BFC":
+				continue
+			for word: String in command[2]:
+				if word.to_upper() == "INVERTNEXT":
+					invert_next = true
+			continue
+		if int(command[0]) != 1:
+			continue
+		var child: PackedFloat64Array = _compose(transform, command[2])
+		# The INVERTNEXTs and not the mirror: see connectivity._round_walk.
+		var child_invert: bool = invert != invert_next
+		invert_next = false
+		var file: String = command[3]
+		var stem: String = file.get_file()
+		if stem.ends_with(".dat"):
+			stem = stem.substr(0, stem.length() - 4)
+		var surface: RegExMatch = _surface.search(stem)
+		if surface != null:
+			if sure and (bool(keep[1]) if child_invert else bool(keep[0])):
+				var arc: float = float(surface.get_string(1)) / float(surface.get_string(2))
+				_add_piece(found, child, child_invert, arc, 1.0, bool(keep[2]))
+			continue
+		if AXLE_SIDE.has(stem):
+			if bool(keep[0]):
+				_add_piece(found, child, false, 1.0, 6.0, bool(keep[2]))
+			continue
+		var below: Array = keep
+		if CONNECTORS.has(stem):
+			var kind: String = (CONNECTORS[stem] as Array)[0]
+			if WALKED_INTO.has(kind):
+				var kept: Array = WALKED_INTO[kind]
+				below = [bool(keep[0]) and bool(kept[0]), bool(keep[1]) and bool(kept[1]),
+					bool(keep[2])]
+			elif CONTINUES.has(kind):
+				below = [false, bool(keep[1]), true]
+			else:
+				continue
+		_round_walk(file, child, child_invert, sure, below, found, depth + 1, inner)
+
+
+static func _add_piece(found: Array, at: PackedFloat64Array, inward: bool, arc: float,
+		scale: float, continues: bool) -> void:
+	# transform_direction of the three unit vectors, term for term.
+	var across := PackedFloat64Array([at[0] * 1.0 + at[1] * 0.0 + at[2] * 0.0,
+		at[3] * 1.0 + at[4] * 0.0 + at[5] * 0.0, at[6] * 1.0 + at[7] * 0.0 + at[8] * 0.0])
+	var along := PackedFloat64Array([at[0] * 0.0 + at[1] * 1.0 + at[2] * 0.0,
+		at[3] * 0.0 + at[4] * 1.0 + at[5] * 0.0, at[6] * 0.0 + at[7] * 1.0 + at[8] * 0.0])
+	var deep := PackedFloat64Array([at[0] * 0.0 + at[1] * 0.0 + at[2] * 1.0,
+		at[3] * 0.0 + at[4] * 0.0 + at[5] * 1.0, at[6] * 0.0 + at[7] * 0.0 + at[8] * 1.0])
+	var r1: float = _length(across)
+	var r2: float = _length(deep)
+	var length: float = _length(along)
+	if length < 1e-6 or r1 < 1e-6 or r2 < 1e-6:
+		return
+	if absf(r1 - r2) > 0.02 * maxf(r1, r2):
+		return
+	if absf(_dot(across, deep)) > 0.01 * r1 * r2 \
+			or absf(_dot(across, along)) > 0.01 * r1 * length \
+			or absf(_dot(deep, along)) > 0.01 * r2 * length:
+		return
+	var start: PackedFloat64Array = _point(at, 0.0, 0.0, 0.0)
+	var end := PackedFloat64Array([start[0] + along[0], start[1] + along[1],
+		start[2] + along[2]])
+	found.append(["bore" if inward else "shaft", scale * 0.5 * (r1 + r2), start, end,
+		arc, continues])
+
+
+static func _dot(a: PackedFloat64Array, b: PackedFloat64Array) -> float:
+	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+static func _scaled(a: PackedFloat64Array, s: float) -> PackedFloat64Array:
+	return PackedFloat64Array([a[0] * s, a[1] * s, a[2] * s])
+
+
+static func _merge_rounds(pieces: Array) -> Array:
+	## [kind, radius, way, foot, members]; a member is [low, high, piece, n].
+	var lines: Array = []
+	var order: int = 0
+	for piece: Array in pieces:
+		var start: PackedFloat64Array = piece[2]
+		var end: PackedFloat64Array = piece[3]
+		var span: PackedFloat64Array = _sub(end, start)
+		var length: float = _length(span)
+		var way: PackedFloat64Array = _scaled(span, 1.0 / length)
+		for n: int in 3:
+			if absf(way[n]) > 1e-6:
+				if way[n] < 0:
+					way = _scaled(way, -1.0)
+					var swap: PackedFloat64Array = start
+					start = end
+					end = swap
+				break
+		var along: float = _dot(start, way)
+		var foot: PackedFloat64Array = _sub(start, _scaled(way, along))
+		var member: Array = [along, along + length, piece, order]
+		order += 1
+		var placed: bool = false
+		for line: Array in lines:
+			if line[0] == piece[0] and absf(float(line[1]) - float(piece[1])) <= 0.1 \
+					and _dot(way, line[2]) >= 0.9999 \
+					and _length(_sub(foot, line[3])) <= 0.1:
+				(line[4] as Array).append(member)
+				placed = true
+				break
+		if not placed:
+			lines.append([piece[0], piece[1], way, foot, [member]])
+
+	## [kind, radius, way, foot, low, high, continues only].
+	var found: Array = []
+	for line: Array in lines:
+		var members: Array = line[4]
+		# Python's sort is stable; this one is told the original order.
+		members.sort_custom(func(a: Array, b: Array) -> bool:
+			return float(a[0]) < float(b[0]) or (float(a[0]) == float(b[0]) and int(a[3]) < int(b[3])))
+		var clusters: Array = [[members[0]]]
+		var reach: float = members[0][1]
+		for n: int in range(1, members.size()):
+			var member: Array = members[n]
+			if float(member[0]) <= reach + 0.5:
+				(clusters[-1] as Array).append(member)
+				reach = maxf(reach, float(member[1]))
+			else:
+				clusters.append([member])
+				reach = float(member[1])
+		for cluster: Array in clusters:
+			var low: float = INF
+			var high: float = -INF
+			for m: Array in cluster:
+				low = minf(low, float(m[0]))
+				high = maxf(high, float(m[1]))
+			var arc: float = -INF
+			for p: Array in cluster:
+				var total: float = 0.0
+				for q: Array in cluster:
+					if minf(float(p[1]), float(q[1])) - maxf(float(p[0]), float(q[0])) > 0.01:
+						total += float((q[2] as Array)[4])
+				arc = maxf(arc, total)
+			if minf(arc, 1.0) < ROUND_ARC or high - low < ROUND_LENGTH:
+				continue
+			var radius: float = 0.0
+			var continues: bool = true
+			for m: Array in cluster:
+				radius += float((m[2] as Array)[1])
+				continues = continues and bool((m[2] as Array)[5])
+			found.append([line[0], radius / cluster.size(), line[2], line[3], low, high,
+				continues])
+
+	var out: Array = []
+	for f: Array in found:
+		if bool(f[6]):
+			var carried: bool = false
+			for other: Array in found:
+				if not bool(other[6]) and other[0] == "bore" \
+						and absf(_dot(f[2], other[2])) >= 0.9999 \
+						and _length(_sub(f[3], other[3])) <= 0.1 \
+						and float(other[4]) <= float(f[5]) + 0.5 \
+						and float(f[4]) <= float(other[5]) + 0.5:
+					carried = true
+					break
+			if not carried:
+				continue
+		if float(f[1]) > ROUND_WIDEST:
+			continue
+		var way: PackedFloat64Array = f[2]
+		var at: PackedFloat64Array = _add(f[3], _scaled(way, float(f[4])))
+		out.append([f[0], "male" if f[0] == "shaft" else "female", at[0], at[1], at[2],
+			way[0], way[1], way[2], float(f[5]) - float(f[4]), f[1]])
+	return out
+
+
+static func _add(a: PackedFloat64Array, b: PackedFloat64Array) -> PackedFloat64Array:
+	return PackedFloat64Array([a[0] + b[0], a[1] + b[1], a[2] + b[2]])
 
 
 func _find_connectors(name: String, transform: PackedFloat64Array, found: Array,
@@ -882,9 +1105,17 @@ static func encode(surfaces: Array, lo: PackedFloat64Array, hi: PackedFloat64Arr
 		var kind: int = Lbm.KINDS.find(str(c[0]))
 		var gender: int = Lbm.GENDERS.find(str(c[1]))
 		row.encode_u8(0, kind if kind >= 0 else 255)
+		# A round's gender byte is its radius, and its axis runs its length:
+		# meshfile.write.
+		var is_round: bool = Lbm.ROUNDS.has(str(c[0]))
+		if is_round:
+			gender = clampi(_rint(float(c[9]) * Lbm.ROUND_STEPS), 0, 255)
 		row.encode_u8(1, gender if gender >= 0 else 255)
-		for n: int in 6:
+		for n: int in 3:
 			row.encode_float(2 + n * 4, float(c[2 + n]))
+		for n: int in 3:
+			row.encode_float(14 + n * 4,
+				float(c[5 + n]) * float(c[8]) if is_round else float(c[5 + n]))
 		out.append_array(row)
 	for b: Array in boxes:
 		var row := PackedByteArray()
@@ -1314,8 +1545,11 @@ func _build(text: String, id: String, others: Dictionary) -> Result:
 	var found: Array = _connectors(key)
 	for c: Array in found:
 		result.connector_counts[c[0]] = int(result.connector_counts.get(c[0], 0)) + 1
-		result.connectors.append([c[0], c[1], c[2], -float(c[3]), -float(c[4]),
-			c[5], -float(c[6]), -float(c[7])])
+		var row: Array = [c[0], c[1], c[2], -float(c[3]), -float(c[4]),
+			c[5], -float(c[6]), -float(c[7])]
+		if c.size() > 8:
+			row.append_array([c[8], c[9]])     # a round's length and radius
+		result.connectors.append(row)
 
 	var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found))
 	result.cells = solid.count()

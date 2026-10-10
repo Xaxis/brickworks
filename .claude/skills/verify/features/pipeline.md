@@ -67,6 +67,25 @@ tools/export.sh linux                 # one of them
   colour availability and element fields. Always follow it with
   `tools/refresh_catalogue.py`.
 
+- **The shipped catalogue predates shafts and bores (2026-10-10).** The round
+  joints the checker forgives (`geometry.md`, `round joints`) are records in
+  each part's `.lbm`, kinds `shaft` and `bore`, whose gender byte is a radius in
+  quarter LDU and whose axis runs the round's length (`meshfile.py`). 17,539 of
+  29,591 parts gain at least one, so until the meshes are rebuilt the checker
+  forgives none of them and `joints_probe` fails its first five lines. The way
+  in that was measured: the 2,379 of them the harvest, the shipped models and the
+  techniques use, plus every bar, clip, hinge, turntable, antenna, flag,
+  handle and holder by name, with 261 unchanged controls, built with `--only`
+  in **343 s on 8 jobs**, then `merge_subbuild.py`: all 261 controls agreed.
+  That leaves 15,160 parts without their rounds, so a full build is still owed
+  (then `refresh_catalogue.py`, then `storage_parts.py` for the web, which has
+  every changed mesh under a new name to upload).
+
+- **`merge_subbuild.py` dropped a field it did not know refresh added.** It
+  carries over a fixed list of refresh-only fields, and `in_sets` was missing,
+  so the merge above first took it off 1,239 parts, which search and the bin
+  rank by. It is in the list now; check a merge with a diff of the field names.
+
 ## How to check it
 
 Static:
