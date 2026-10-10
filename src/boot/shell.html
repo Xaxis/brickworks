@@ -375,6 +375,62 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 
 	say("Fetching parts…");
 
+	// Writes the app has made to user://, until the browser has stored
+	// them. user:// is IndexedDB, written by the engine on its own
+	// schedule: a save landed 25 to 52 s after Save on a loaded machine,
+	// and a tab closed before then lost it. The app reports each write
+	// (ModelStore._tell_page_wrote), asks whether it has landed before
+	// saying "saved", and closing the tab with one on its way asks first.
+	const unstored = new Map(); // path -> { size, at }
+	let watching = false;
+	function stamp(value) {
+		return value instanceof Date ? value.getTime() : Number(value || 0);
+	}
+	function watch() {
+		watching = true;
+		const opened = indexedDB.open("/userfs");
+		opened.onerror = function () { watching = false; };
+		opened.onsuccess = function () {
+			const db = opened.result;
+			if (!db.objectStoreNames.contains("FILE_DATA")) {
+				db.close();
+				setTimeout(watch, 1000);
+				return;
+			}
+			const tx = db.transaction("FILE_DATA", "readonly");
+			const files = tx.objectStore("FILE_DATA");
+			unstored.forEach(function (wrote, path) {
+				const read = files.get(path);
+				read.onsuccess = function () {
+					const entry = read.result;
+					// The same size, written no earlier than a moment before
+					// the app said so: an older copy of the file is not it.
+					if (entry && entry.contents && entry.contents.length === wrote.size
+							&& stamp(entry.timestamp) >= wrote.at - 10000) {
+						unstored.delete(path);
+					}
+				};
+			});
+			tx.oncomplete = function () {
+				db.close();
+				if (unstored.size) setTimeout(watch, 1000);
+				else watching = false;
+			};
+		};
+	}
+	window.brickworksWrote = function (path, size) {
+		unstored.set(path, { size: size, at: Date.now() });
+		if (!watching) watch();
+	};
+	window.brickworksStored = function (path) { return !unstored.has(path); };
+	window.brickworksUnstored = function () { return unstored.size; };
+	window.addEventListener("beforeunload", function (event) {
+		if (unstored.size) {
+			event.preventDefault();
+			event.returnValue = "";
+		}
+	});
+
 	const engine = new Engine(GODOT_CONFIG);
 	engine.startGame({
 		onProgress: function (current, total) {

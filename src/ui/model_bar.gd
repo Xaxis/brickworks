@@ -174,7 +174,7 @@ func bind(to: ModelStore) -> void:
 	store = to
 	store.saved.connect(func(name: String) -> void:
 		model_named.emit(name)
-		_say("saved “%s”" % name))
+		_say_when_stored(name))
 	store.loaded.connect(func(name: String, bricks: int) -> void:
 		_name.text = name
 		model_named.emit(name)
@@ -215,6 +215,23 @@ func _on_save() -> void:
 		return
 	if not store.save_as(model_name()):
 		_say("could not save that name")
+
+
+## "Saved" once it is: on the web a save is in the browser's storage only
+## some seconds after it is written (ModelStore.stored), and saying so
+## sooner told a person their work was safe while closing the tab lost it.
+func _say_when_stored(name: String) -> void:
+	var path: String = ModelStore.SAVE_DIR + ModelStore._safe_name(name) + ".ldr"
+	if ModelStore.stored(path):
+		_say("saved “%s”" % name)
+		return
+	_status.text = "saving “%s” in this browser…" % name
+	for _n: int in 240:
+		await get_tree().create_timer(0.5).timeout
+		if ModelStore.stored(path):
+			break
+	_say("saved “%s”" % name if ModelStore.stored(path)
+		else "“%s” is not in this browser's storage yet — keep this tab open" % name)
 
 
 func _on_open() -> void:

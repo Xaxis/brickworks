@@ -518,9 +518,37 @@ func _write(path: String, title: String, with_steps: bool = false) -> bool:
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	file.store_string(to_text(title, with_steps))
+	var text: String = to_text(title, with_steps)
+	file.store_string(text)
 	file.close()
+	_tell_page_wrote(path, text.to_utf8_buffer().size())
 	return true
+
+
+## On the web, tell the page a file was written, so it can watch for it
+## to reach the browser's storage (the shell's brickworksWrote).
+##
+## user:// there is IndexedDB, written by the engine on its own schedule:
+## a save reached it 25 to 52 s after Save on a loaded machine, and a tab
+## closed before then lost the save. The page knows when it has really
+## landed; the app says "saved" only then (stored), and the page warns
+## before a tab with a write still on its way is closed.
+static func _tell_page_wrote(path: String, size: int) -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval("window.brickworksWrote && window.brickworksWrote(%s, %d)"
+		% [JSON.stringify(ProjectSettings.globalize_path(path)), size], true)
+
+
+## Whether a file written here has reached the browser's storage. Always
+## true off the web, where a written file is on disk.
+static func stored(path: String) -> bool:
+	if not OS.has_feature("web"):
+		return true
+	var answer: Variant = JavaScriptBridge.eval(
+		"window.brickworksStored ? window.brickworksStored(%s) : true"
+		% JSON.stringify(ProjectSettings.globalize_path(path)), true)
+	return answer == null or bool(answer)
 
 
 static func _count_bricks(path: String) -> int:

@@ -33,8 +33,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   presses New). On the web the engine titles the page itself as it starts, after
   the restored model was named, so `_tell_page` puts the title back when it has
   drifted. A save on the web is in IndexedDB only once the engine's sync has run:
-  44 s at a load of eighty drawing in software. A reload before then reopens the
-  autosave, and New rightly says the model is not saved.
+  25 to 52 s at a load of thirty to eighty drawing in software. So the page
+  watches for it: the store reports each write (`_tell_page_wrote`), the shell
+  polls IndexedDB until that path holds that many bytes written since
+  (`brickworksWrote`, `brickworksStored`, `brickworksUnstored`), the bar says
+  "saving … in this browser" until then and "saved" after, and closing the tab
+  with a write on its way asks first (`beforeunload`). The flow checks the page
+  sees the save land and that closing mid-save asks.
 - `made parts in the file`: a model that uses a part made in the element
   maker carries it as an LDraw `0 FILE bw-….dat` section, and opening one
   builds the part first — see [elements](elements.md). `element_probe` saves
