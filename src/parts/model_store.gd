@@ -393,11 +393,46 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 	# the file reads the way it would be built. Sorting by height alone
 	# put a pin above the beam it goes into, because a pin sits at the
 	# middle of a hole and the beam starts lower.
+	#
+	# And the same file every time for the same model: parts at one
+	# height went out in whatever order the world held them, which a
+	# reopen changes, so saving a model twice wrote two files. Two
+	# figures standing on one plate swapped places in it.
 	placements.sort_custom(func(a: LdrModel.Placement, b: LdrModel.Placement) -> bool:
 		if a.step != b.step:
 			return a.step < b.step
-		return a.transform.origin.y < b.transform.origin.y)
-	return LdrModel.write_ldr(placements, title, "Brickworks")
+		if not is_equal_approx(a.transform.origin.y, b.transform.origin.y):
+			return a.transform.origin.y < b.transform.origin.y
+		if a.group != b.group:
+			return a.group < b.group
+		if a.part_id != b.part_id:
+			return a.part_id < b.part_id
+		if not is_equal_approx(a.transform.origin.x, b.transform.origin.x):
+			return a.transform.origin.x < b.transform.origin.x
+		if not is_equal_approx(a.transform.origin.z, b.transform.origin.z):
+			return a.transform.origin.z < b.transform.origin.z
+		return a.color_code < b.color_code)
+	return LdrModel.write_ldr(placements, title, "Brickworks", figure_frames())
+
+
+## Each minifigure in the model, by its group, and the frame it stands
+## in: so a figure goes out as a sub-model of its own, standing at its
+## origin and placed where it stands, the way real sets' files keep them.
+func figure_frames() -> Dictionary:
+	var members: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.group.is_empty() or scenery.has(brick.id):
+			continue
+		if not members.has(brick.group):
+			members[brick.group] = []
+		(members[brick.group] as Array).append(brick)
+	var frames: Dictionary = {}
+	for group: String in members:
+		if Minifig.is_figure(members[group]):
+			var frame: Variant = Minifig.frame_of(members[group])
+			if frame != null:
+				frames[group] = frame
+	return frames
 
 
 ## Send the model to the person as a file.

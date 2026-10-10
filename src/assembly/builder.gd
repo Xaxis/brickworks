@@ -32,6 +32,15 @@ var held_rotation: int = 0
 ## edit.
 var held_face: String = "up"
 
+## A minifigure about to be put down, as its parts in the figure's own
+## frame ([{part, color, at}], what Minifig.assemble gives), and the name
+## its parts will carry as their group. Empty while a single part is
+## held. A figure is put down the way a part is — pointed at a stud,
+## turned with R — and its parts go in together, as one step to undo.
+var held_figure: Array = []
+var held_figure_name: String = ""
+var _figure_ghosts: Array[MeshInstance3D] = []
+
 var _ghost: MeshInstance3D
 var _ghost_material: ShaderMaterial
 var _ghost_valid: bool = false
@@ -83,7 +92,6 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(part_id)
 	if part == null:
 		return false
-	var cells: Array[Vector3i] = _cells_for(part, at)
 	lattice.occupy_boxes(brick_id, boxes_for(part, at))
 	return true
 
@@ -92,6 +100,8 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 func place() -> int:
 	if not _ghost_valid:
 		return 0
+	if not held_figure.is_empty():
+		return _place_figure()
 	var brick_id: int = world.add_brick(held_part, held_color, _ghost_transform)
 	if brick_id == 0:
 		return 0
@@ -170,6 +180,8 @@ func lift_hovered() -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(_hovered)
 	if brick == null:
 		return false
+	if _lift_figure(_hovered):
+		return true
 
 	held_part = brick.part_id
 	held_color = brick.color_code
@@ -321,6 +333,21 @@ func _apply(step: Dictionary) -> Dictionary:
 func toggle_hovered() -> bool:
 	if _hovered == 0:
 		return false
+	# A figure is one thing to whoever points at it. Picking out its
+	# arm alone and moving it would leave the arm floating beside the
+	# figure, which is not an edit anybody means.
+	var members: PackedInt64Array = figure_of(_hovered)
+	if members.size() > 1:
+		var all_in: bool = true
+		for brick_id: int in members:
+			all_in = all_in and selection.has(brick_id)
+		for brick_id: int in members:
+			if all_in:
+				selection.erase(brick_id)
+			else:
+				selection[brick_id] = true
+		selection_changed.emit(selection.size())
+		return true
 	if selection.erase(_hovered):
 		selection_changed.emit(selection.size())
 		return true
@@ -495,6 +522,10 @@ func move_selection(by: Vector3i) -> int:
 
 ## Work out where the held part would go, given a ray from the camera.
 func update_preview(origin: Vector3, direction: Vector3) -> void:
+	if not held_figure.is_empty():
+		_preview_figure(origin, direction)
+		return
+	_hide_figure_ghosts()
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
 	if part == null:
 		_ghost.visible = false
@@ -690,6 +721,214 @@ func hovered_brick() -> int:
 func hide_preview() -> void:
 	_ghost.visible = false
 	_ghost_valid = false
+	_hide_figure_ghosts()
+
+
+# -- a minifigure, as one thing ------------------------------------------
+
+
+## Hold a figure to put down: its parts in its own frame, as
+## Minifig.assemble gives them, and the name its parts will carry.
+func hold_figure(parts: Array, called: String) -> void:
+	held_figure = parts.duplicate()
+	held_figure_name = called if not called.strip_edges().is_empty() else "Minifig"
+	held_face = "up"
+
+
+## Go back to holding the part that was held before.
+func drop_figure() -> void:
+	held_figure = []
+	held_figure_name = ""
+	_hide_figure_ghosts()
+
+
+func is_holding_figure() -> bool:
+	return not held_figure.is_empty()
+
+
+## Where a figure facing a quarter turn would stand, aimed at a point:
+## centred on a pair of studs, on whatever is highest under its feet.
+##
+## A figure stands on two studs side by side, one under each leg, so it
+## snaps the way a 1 x 2 plate does — across a pair of studs, along a
+## row of them — and rests on the highest surface under either foot.
+func settle_figure(target: Vector3, rotation: int,
+		hit: BrickLattice.Hit = null) -> Transform3D:
+	var basis: Basis = BrickLattice.basis_for("up", rotation)
+	var footprint := Vector2i(1, 2) if posmod(rotation, 2) == 1 else Vector2i(2, 1)
+	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
+	var half := Vector3(footprint.x, 0.0, footprint.y) * (BrickLattice.STUD * 0.5)
+	var from: Vector3i = BrickLattice.to_cell(snapped - half)
+	var to: Vector3i = BrickLattice.to_cell(snapped + half)
+	var columns: Array[Vector2i] = []
+	for x: int in range(from.x, to.x):
+		for z: int in range(from.z, to.z):
+			columns.append(Vector2i(x, z))
+	var rest_cell: int = lattice.resting_height(columns, GROUND_CELL)
+	if hit != null and hit.is_valid() and hit.normal.y == 0:
+		rest_cell = maxi(rest_cell, hit.adjacent().y)
+	return Transform3D(basis, Vector3(snapped.x, rest_cell * BrickLattice.CELL,
+		snapped.z))
+
+
+## Whether a figure fits where it would stand: every part's geometry to
+## hand and none of them in anything already there. Its own parts are
+## not tested against each other — a head is meant to sit on its neck.
+func figure_fits(parts: Array, at: Transform3D) -> bool:
+	for item: Dictionary in parts:
+		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
+		if part == null:
+			return false
+		if lattice.collides_boxes(boxes_for(part, at * (item["at"] as Transform3D))):
+			return false
+	return true
+
+
+## Put a figure's parts in the world and the lattice, as one group, and
+## return their numbers. No history: whoever calls it decides what an
+## undo takes back.
+func put_figure(parts: Array, called: String, at: Transform3D) -> PackedInt64Array:
+	var group: String = unused_group(called)
+	var ids := PackedInt64Array()
+	for item: Dictionary in parts:
+		var where: Transform3D = at * (item["at"] as Transform3D)
+		var brick_id: int = world.add_brick(str(item["part"]), int(item["color"]), where)
+		if brick_id == 0:
+			continue
+		world.get_brick(brick_id).group = group
+		lattice.occupy_boxes(brick_id,
+			boxes_for(library.mesh_for(str(item["part"])), where))
+		ids.append(brick_id)
+	return ids
+
+
+## A group name no part of the model carries yet: a second Guard is
+## "Guard 2", so the two stay two figures in the file and in a selection.
+func unused_group(wanted: String) -> String:
+	var taken: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		taken[brick.group] = true
+	var base: String = wanted.strip_edges()
+	if base.is_empty():
+		base = "Minifig"
+	if not taken.has(base):
+		return base
+	var n: int = 2
+	while taken.has("%s %d" % [base, n]):
+		n += 1
+	return "%s %d" % [base, n]
+
+
+## The bricks of the figure a brick belongs to, or nothing when it is not
+## part of one: the bricks sharing its group, when they are a figure.
+func figure_of(brick_id: int) -> PackedInt64Array:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null or brick.group.is_empty():
+		return PackedInt64Array()
+	var members: Array = []
+	for other: BrickWorld.Brick in world.bricks():
+		if other.group == brick.group:
+			members.append(other)
+	if not Minifig.is_figure(members):
+		return PackedInt64Array()
+	var ids := PackedInt64Array()
+	for other: BrickWorld.Brick in members:
+		ids.append(other.id)
+	return ids
+
+
+func _place_figure() -> int:
+	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform)
+	if ids.is_empty():
+		return 0
+	var steps: Array = []
+	for brick_id: int in ids:
+		steps.append({"undo": "remove", "brick": brick_id})
+	_history.append({"undo": "group", "steps": steps})
+	_redo.clear()
+	placed.emit(ids[0], held_figure_name)
+	return ids[0]
+
+
+## Take a whole figure off the model and hold it, facing the way it
+## faced, so the next click puts it down somewhere else.
+func _lift_figure(brick_id: int) -> bool:
+	var members: PackedInt64Array = figure_of(brick_id)
+	if members.size() < 2:
+		return false
+	var bricks: Array = []
+	for member: int in members:
+		bricks.append(world.get_brick(member))
+	var frame: Variant = Minifig.frame_of(bricks)
+	if frame == null:
+		return false
+	var home: Transform3D = frame
+	var parts: Array = []
+	var steps: Array = []
+	for brick: BrickWorld.Brick in bricks:
+		parts.append({"part": brick.part_id, "color": brick.color_code,
+			"at": home.affine_inverse() * brick.transform})
+		steps.append({"undo": "add", "part": brick.part_id,
+			"color": brick.color_code, "transform": brick.transform,
+			"group": brick.group})
+		lattice.release(brick.id)
+		world.remove_brick(brick.id)
+		selection.erase(brick.id)
+		removed.emit(brick.id)
+	_history.append({"undo": "group", "steps": steps})
+	_redo.clear()
+	hold_figure(parts, (bricks[0] as BrickWorld.Brick).group)
+	held_rotation = BrickLattice.turns_about(BrickLattice.snap_basis(home.basis), "up")
+	_hovered = 0
+	return true
+
+
+func _preview_figure(origin: Vector3, direction: Vector3) -> void:
+	_ghost.visible = false
+	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
+	_hovered = hit.brick_id
+	var target: Vector3
+	if hit.is_valid():
+		target = BrickLattice.to_ldu(hit.adjacent())
+	else:
+		var ground := Plane(Vector3.UP, GROUND_CELL * BrickLattice.CELL)
+		var landing: Variant = ground.intersects_ray(origin, direction)
+		if landing == null:
+			_hide_figure_ghosts()
+			_ghost_valid = false
+			return
+		target = landing
+	_ghost_transform = settle_figure(target, held_rotation, hit)
+	_ghost_valid = figure_fits(held_figure, _ghost_transform)
+	for n: int in held_figure.size():
+		if n >= _figure_ghosts.size():
+			var made := MeshInstance3D.new()
+			var tinted := ShaderMaterial.new()
+			tinted.shader = GHOST_SHADER
+			made.material_override = tinted
+			made.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(made)
+			_figure_ghosts.append(made)
+		var item: Dictionary = held_figure[n]
+		var ghost: MeshInstance3D = _figure_ghosts[n]
+		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
+		if part == null or part.surfaces.is_empty():
+			ghost.visible = false
+			continue
+		ghost.mesh = part.surfaces[0]
+		ghost.transform = _ghost_transform * (item["at"] as Transform3D)
+		var material: ShaderMaterial = ghost.material_override
+		material.set_shader_parameter("tint", library.color(int(item["color"])).shown)
+		material.set_shader_parameter("valid", _ghost_valid)
+		ghost.visible = true
+	for n: int in range(held_figure.size(), _figure_ghosts.size()):
+		_figure_ghosts[n].visible = false
+	preview_changed.emit(held_figure_name, _ghost_valid)
+
+
+func _hide_figure_ghosts() -> void:
+	for ghost: MeshInstance3D in _figure_ghosts:
+		ghost.visible = false
 
 
 func history_depth() -> int:

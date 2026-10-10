@@ -36,6 +36,8 @@ signal parts_wanted()
 signal mosaic_wanted()
 ## The timeline: the build from empty to finished and back.
 signal timeline_wanted()
+## Someone wants to make a minifigure.
+signal minifig_wanted()
 signal controls_wanted()
 signal opened(bricks: int)
 
@@ -97,6 +99,8 @@ func _build() -> void:
 		"Play the build from an empty baseplate to the finished model and back, or drag along it (B)")
 	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
 		"Turn a picture into a wall of plates")
+	_button(row, "Minifig", func() -> void: minifig_wanted.emit(),
+		"Make a minifigure from real parts and stand it in the model (M)")
 	row.add_child(VSeparator.new())
 	_button(row, "Help", func() -> void: controls_wanted.emit(),
 		"What every button and key does, and how to change two of them")

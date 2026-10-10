@@ -185,6 +185,11 @@ fixing what it got wrong.
   from the whole core to get past them. `patterns_probe`: a wall of 1x1s where a
   studs_out face's 18 tiles go is buildable built before or after it, and says
   so; with give-way off it is 18 overlaps.
+- `people in it`: `add_minifig` stands a figure made of real parts on whatever is
+  under its feet; declared and passed through here, made in
+  `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
+  model without its figures' bodies, as real sets' inventories are counted, and
+  `_tag_assemblies` leaves a figure in its own group.
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,

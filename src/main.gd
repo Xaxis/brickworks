@@ -43,6 +43,7 @@ var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
 var _controls: ControlsDialog
+var _figures: MinifigDialog
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -124,6 +125,8 @@ func _tell_page() -> void:
 	var named: Dictionary = _chat.controls_by_name()
 	if _bar != null:
 		named.merge(_bar.controls_by_name())
+	if _figures != null and _figures.visible:
+		named.merge(_figures.controls_by_name())
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -131,6 +134,10 @@ func _tell_page() -> void:
 		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	# And how many parts are standing, so a browser check can tell that a
+	# click put something down rather than guess it from the pixels.
+	if _world != null:
+		JavaScriptBridge.eval("window.brickworksBricks = %d" % _world.brick_count(), true)
 
 
 ## The model's name where a window shows one: the browser tab, or the
@@ -908,9 +915,20 @@ func _build_ui() -> void:
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
 		_inset(_controls, 460.0, 560.0)
-		_inset(_mosaic, 380.0, 460.0))
+		_inset(_mosaic, 380.0, 460.0)
+		_inset(_figures, 1040.0, 660.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 	_bar.timeline_wanted.connect(_toggle_steps)
+
+	# Over the model rather than beside it, like the parts list: making
+	# a figure wants the room, and is done before going back to build.
+	_figures = MinifigDialog.new()
+	_figures.library = _library
+	_figures.thumbnails = _thumbnails
+	$HUD.add_child(_figures)
+	_inset(_figures, 1040.0, 660.0)
+	_bar.minifig_wanted.connect(_open_figures)
+	_figures.place_wanted.connect(_hold_figure)
 
 	_controls = ControlsDialog.new()
 	$HUD.add_child(_controls)
@@ -1394,7 +1412,26 @@ func _on_model_edited() -> void:
 		_store.touch()
 
 
+func _open_figures() -> void:
+	_builder.hide_preview()
+	_figures.open()
+
+
+## Hold a figure from the builder the way a part is held: the next click
+## on a stud stands it there.
+func _hold_figure(figure: Minifig) -> void:
+	_builder.hold_figure(figure.assemble(_library), figure.name)
+	var fetching: int = 0
+	for part_id: String in figure.part_ids():
+		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):
+			fetching += 1
+	_bar.say("placing %s — point at a stud, R to turn, click to stand it there, Esc to stop%s"
+		% [figure.name, " (fetching %d parts…)" % fetching if fetching > 0 else ""])
+	_refresh_preview()
+
+
 func _on_part_chosen(part_id: String) -> void:
+	_builder.drop_figure()
 	_builder.held_part = part_id
 	# On the web most parts are a request away rather than resident. Ask
 	# for it as soon as it is picked, so it is usually there by the time
@@ -2227,6 +2264,8 @@ func _over_panel_at(point: Vector2) -> bool:
 		return true
 	if _mosaic != null and _mosaic.visible:
 		return true
+	if _figures != null and _figures.visible:
+		return true
 	return false
 
 
@@ -2333,6 +2372,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_steps()
 		KEY_P:
 			_toggle_parts()
+		KEY_M:
+			_open_figures()
 		KEY_C:
 			# Paint the selection if there is one, or what is under the
 			# cursor if there is not.
@@ -2450,6 +2491,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# window's close button.
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
+				return
+			if _figures != null and _figures.visible:
+				_figures.close()
+				return
+			if _builder.is_holding_figure():
+				_builder.drop_figure()
+				_bar.say("")
+				_refresh_preview()
 				return
 			if not _builder.selection.is_empty():
 				_builder.clear_selection()

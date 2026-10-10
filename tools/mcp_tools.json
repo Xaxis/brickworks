@@ -1259,6 +1259,82 @@
     "name": "submit_design"
   },
   {
+    "description": "Stand a minifigure in the model, made from real parts in their real places: who lives in it, guards it, works in it. Add them once the model is built \u2014 submitting a whole new design replaces them. Each slot takes a part number or a few words matched against the names of the parts made for it (\"wizard hat\", \"long beard\", \"robe\", \"staff\"); leave a slot out for a plain one. It stands on whatever is highest under its feet, two studs side by side, and is refused if something is in the way. Its parts are not counted in the model's variety, as a set's figures are not.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "accessory": {
+          "description": "what it holds in its right hand",
+          "type": "string"
+        },
+        "colors": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "LDraw colour codes by slot: headwear, head, neck, torso, arms, hands, hips, legs, accessory. A printed torso brings arm and hand colours of its own.",
+          "type": "object"
+        },
+        "facing": {
+          "description": "which way its face looks: +z, the default, is towards the front view",
+          "enum": [
+            "+z",
+            "-z",
+            "+x",
+            "-x"
+          ],
+          "type": "string"
+        },
+        "head": {
+          "description": "a face: \"beard\", \"smile\", \"angry\"",
+          "type": "string"
+        },
+        "headwear": {
+          "description": "hair, hat or helmet, or \"none\"",
+          "type": "string"
+        },
+        "hips": {
+          "description": "a printed belt or sash, or left out",
+          "type": "string"
+        },
+        "legs": {
+          "description": "plain, printed, or \"short\" for a child",
+          "type": "string"
+        },
+        "name": {
+          "description": "who it is; the name of its sub-model in the saved file",
+          "type": "string"
+        },
+        "neck": {
+          "description": "cape, armour, backpack, or left out",
+          "type": "string"
+        },
+        "torso": {
+          "description": "what is printed on the chest",
+          "type": "string"
+        },
+        "x": {
+          "description": "studs: the first of the two studs it stands on",
+          "type": "number"
+        },
+        "y": {
+          "description": "plates: the height of the floor it stands on, which a room or a balcony with anything over it needs; left out, it stands on whatever is highest at that spot",
+          "type": "number"
+        },
+        "z": {
+          "description": "studs",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "x",
+        "z"
+      ],
+      "type": "object"
+    },
+    "name": "add_minifig"
+  },
+  {
     "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind \u2014 shapes, colours, the one-off pieces, how coarse \u2014 and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of. Call it after submit_design, then once per assembly, detailing each with edit_model before the next.",
     "input_schema": {
       "additionalProperties": false,

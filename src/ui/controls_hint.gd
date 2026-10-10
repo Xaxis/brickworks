@@ -137,6 +137,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["space"], "play the timeline"),
 		Binding.new(["Home", "End"], "its start and end"),
 		Binding.new(["P"], "parts"),
+		Binding.new(["M"], "minifigure"),
 		Binding.new(["C"], "paint"),
 		Binding.new(["G"], "pick"),
 		Binding.new(["X"], "lift"),

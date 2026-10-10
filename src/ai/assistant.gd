@@ -1282,8 +1282,18 @@ func _keep_the_failure(report: Dictionary) -> void:
 func _tag_assemblies() -> void:
 	if _declared.size() < 2 or world == null:
 		return
+	# A figure is its own sub-model wherever it stands; renamed after the
+	# tower it is in, it would be three arms and a hat in "tower".
+	var members: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not brick.group.is_empty():
+			if not members.has(brick.group):
+				members[brick.group] = []
+			(members[brick.group] as Array).append(brick)
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
+			continue
+		if members.has(brick.group) and Minifig.is_figure(members[brick.group]):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
@@ -1963,6 +1973,18 @@ func _run_tool(block: Dictionary) -> Variant:
 			if said is Array:
 				return [{"type": "text", "text": change["summary"]}] + (said as Array)
 			return "%s\n%s" % [change["summary"], str(said)]
+		"add_minifig":
+			# The figure is made and stood up in src/minifig/figure_tool.gd.
+			# Its parts are this design's, so a new submission replaces
+			# them along with everything else it built.
+			progress.emit("standing %s in the model" % str(args.get("name", "a figure")))
+			var stood: Dictionary = await FigureTool.add(args, library, world, builder)
+			_placed_ids.append_array(stood["ids"])
+			if not bool(stood["ok"]) or not ModelShot.possible():
+				return str(stood["text"])
+			return await _with_a_look(str(stood["text"]), "Is it where it "
+				+ "should be, the right size for the place, facing the right way?",
+				"corner", (stood["box"] as AABB).grow(60.0))
 		"edit_model":
 			var edited: Model = _edit(args)
 			_say_shorthand_trouble()
@@ -3265,14 +3287,20 @@ func _style(model: Model) -> String:
 ## stands up and it is the right size; it is the wrong texture, and
 ## nothing said so.
 func _variety(model: Model) -> String:
-	var parts: int = model.placements.size()
+	# Without its figures, as real sets are counted: their inventories
+	# keep a figure's body in the figure's own (Minifig.is_body_part), so
+	# a castle with a dozen guards must not read as richer for them.
+	var building: Array = model.placements.filter(
+		func(placement: Placement) -> bool:
+			return not Minifig.is_body_part(library.parts.get(placement.part)))
+	var parts: int = building.size()
 	var normal: Dictionary = library.normal_for(parts)
 	if normal.is_empty():
 		return ""
 	var lots: Dictionary = {}
 	var shapes: Dictionary = {}
 	var of_one: Dictionary = {}
-	for placement: Placement in model.placements:
+	for placement: Placement in building:
 		lots["%s/%d" % [placement.part, placement.color]] = true
 		shapes[placement.part] = true
 		of_one[placement.part] = int(of_one.get(placement.part, 0)) + 1
@@ -3310,7 +3338,7 @@ func _variety(model: Model) -> String:
 			% [most, commonest, want_most, high_most]
 			+ "is as many as all but one set in twenty uses")
 	var ids := PackedStringArray()
-	for placement: Placement in model.placements:
+	for placement: Placement in building:
 		ids.append(placement.part)
 	var coarse: Array = _coarse(ids)
 	var big_high: int = int(normal.get("big_high", 0))
@@ -8237,4 +8265,4 @@ func _tools() -> Array:
 				"additionalProperties": false,
 			},
 		},
-	]
+	] + [FigureTool.schema()]
