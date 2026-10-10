@@ -48,6 +48,7 @@ func _run() -> void:
 	# A port of its own, so this can run beside an app with --mcp open.
 	_socket = CommandSocket.new()
 	_socket.assistant = assistant
+	_socket.app = main
 	main.add_child(_socket)
 	var port: int = 8791
 	if not _socket.listen(port):
@@ -301,6 +302,7 @@ func _run() -> void:
 
 	await _one_at_a_time(port)
 	await _over_http(port)
+	await _saving()
 
 	# An unknown tool is an answer, not a dropped connection.
 	var nonsense: Dictionary = await _ask("no_such_tool", {})
@@ -455,6 +457,60 @@ func _over_http(port: int) -> void:
 	_check("...and the request sent straight after it is answered too",
 		ids.size() == 2 and ids[1] == 72)
 	peer.disconnect_from_host()
+
+	# A web page may not drive it. Any page open in a browser could reach
+	# the port, and it answered every origin: clear the baseplate, save
+	# over any file. A page's requests carry an Origin; a program's do not.
+	var standing: int = _world.brick_count()
+	for header: String in ["Origin: https://example.com", "Host: rebound.example:%d" % port]:
+		var page: StreamPeerTCP = await _another(port)
+		var clearing: PackedByteArray = JSON.stringify({"jsonrpc": "2.0", "id": 73,
+			"method": "tools/call", "params": {"name": "clear_model",
+				"arguments": {}}}).to_utf8_buffer()
+		var host: String = "" if header.begins_with("Host:") else "Host: 127.0.0.1\r\n"
+		var asked := PackedByteArray()
+		asked.append_array(("POST /mcp HTTP/1.1\r\n%s%s\r\n" % [host, header]
+			+ "Content-Type: application/json\r\n"
+			+ "Content-Length: %d\r\n\r\n" % clearing.size()).to_utf8_buffer())
+		asked.append_array(clearing)
+		page.put_data(asked)
+		var refused: Array = await _read_http(page, 1)
+		_check("a request with \"%s\" is refused, and the baseplate keeps its %d bricks"
+				% [header.get_slice(":", 0), _world.brick_count()],
+			refused.size() == 1 and not (refused[0] as Dictionary).has("result")
+				and _world.brick_count() == standing and standing > 0)
+		page.disconnect_from_host()
+
+
+## Does save_model keep to the app's own models, and off the person's?
+##
+## It wrote wherever it was told. A design run left orthanc.ldr in the
+## directory the app was started from, and a path climbing out of it
+## would have been written just the same.
+func _saving() -> void:
+	print("")
+	var escape: String = "/tmp/brickworks_mcp_probe_escape.ldr"
+	DirAccess.remove_absolute(escape)
+	var said: String = _text_of(await _ask("save_model",
+		{"path": "../../../../../../tmp/brickworks_mcp_probe_escape.ldr"}))
+	var landed: String = ModelStore.SAVE_DIR + "brickworks_mcp_probe_escape.ldr"
+	_check("a path that climbs out is saved by its name with the app's models: %s"
+			% said.get_slice(",", 0),
+		FileAccess.file_exists(landed) and not FileAccess.file_exists(escape))
+	var again: String = _text_of(await _ask("save_model",
+		{"name": "brickworks_mcp_probe_escape.ldr"}))
+	_check("...and the session may save over what it saved", again.begins_with("Written"))
+	var theirs: String = ModelStore.SAVE_DIR + "brickworks-mcp-probe-person.ldr"
+	var file := FileAccess.open(theirs, FileAccess.WRITE)
+	file.store_string("0 the person's own\n")
+	file.close()
+	var over: String = _text_of(await _ask("save_model",
+		{"name": "brickworks-mcp-probe-person"}))
+	_check("...but never over a model the person saved",
+		over.contains("already a model") and FileAccess.get_file_as_string(theirs)
+			== "0 the person's own\n")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(landed))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(theirs))
 
 
 ## The next [param count] HTTP answers from a client, read by their

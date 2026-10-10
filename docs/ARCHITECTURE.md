@@ -287,7 +287,10 @@ Two details that are not arbitrary:
 
 The socket adds two tools the loop has no use for: `clear_model`, because
 a design run clears the board itself and a session has no such moment, and
-`save_model`, because the person normally saves from the window.
+`save_model`, because the person normally saves from the window. It takes
+a name and writes with the app's own models, never over the person's. The
+port refuses any request a web page makes (it carries an Origin) or that
+reaches it under another host name.
 
 ## 8. Still open
 

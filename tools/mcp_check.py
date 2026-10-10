@@ -17,6 +17,7 @@ server with no tools and no error to explain it.
 from __future__ import annotations
 
 import json
+import re
 import os
 import signal
 import socket
@@ -197,11 +198,13 @@ def drive(relay: Relay) -> None:
             check("  a picture carries data and mimeType",
                   bool(block.get("data")) and bool(block.get("mimeType")))
 
-    kept = ROOT / "models" / ".mcp_check.ldr"
+    # By name, into the app's own models: the answer says where that is.
     saved = relay.call("tools/call", {
-        "name": "save_model", "arguments": {"path": str(kept)}})
-    check("...and the model can be saved from outside",
-          "Written to" in text_of(saved.get("result", {})))
+        "name": "save_model", "arguments": {"name": "mcp-check-%d.ldr" % os.getpid()}})
+    said = text_of(saved.get("result", {}))
+    check("...and the model can be saved from outside", "Written to" in said)
+    where = re.search(r"\(([^()]*\.ldr)\)", said)
+    kept = Path(where.group(1)) if where else ROOT / "nowhere.ldr"
     # Read back, because "Written to" is the app's word for it and the
     # file is the thing that matters.
     lines = kept.read_text().splitlines() if kept.exists() else []

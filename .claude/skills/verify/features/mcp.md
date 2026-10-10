@@ -102,6 +102,17 @@ Both are in `tools/check.sh`.
 
 ## Gotchas
 
+- **The port is for programs on this machine, not web pages.** It answered
+  every origin (`Access-Control-Allow-Origin: *`), so any page open while the
+  app listened could clear the baseplate or save over any file. A request with
+  an `Origin` header (every request a page makes) or a `Host` that is not
+  127.0.0.1, localhost or [::1] (DNS rebinding) gets a 403 and runs nothing;
+  Claude Code, curl and Python send neither. `save_model` takes a file name, not
+  a path, and writes it with the app's own models (`ModelStore.SAVE_DIR`, where
+  Open lists them), never over one the session did not write itself: a design
+  run had left `orthanc.ldr` in the directory the app was started from.
+  `mcp_probe` sends a page's request and a rebound one (the baseplate keeps its
+  bricks), a path that climbs to /tmp, and a save over the person's model.
 - **Content-Length counts bytes.** The socket read the body in characters, so
   one accented letter left it a byte short for ever: the app never saw the call,
   and the session waited out the ten-minute tool timeout. Orthanc run 10 lost both

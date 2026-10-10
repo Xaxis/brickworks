@@ -247,6 +247,10 @@ static func _find_bytes(haystack: PackedByteArray, needle: String) -> int:
 
 func _serve_http(client: Client, head: String, body: String) -> void:
 	var first: String = head.split("\n")[0].strip_edges()
+	if _from_a_web_page(head):
+		_http(client, 403, JSON.stringify({"error": "This port is for programs "
+			+ "on this computer, such as Claude Code. Web pages may not use it."}))
+		return
 	if first.begins_with("OPTIONS"):
 		_http(client, 204, "")
 		return
@@ -270,6 +274,30 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 	if client.gone:
 		return
 	_http(client, 200, JSON.stringify(answer))
+
+
+## Whether a request came from a web page rather than a program here.
+##
+## The port answered every origin, so any page open in a browser while the
+## app listened could drive it — clear the baseplate, or save over a file
+## anywhere it liked. A browser puts an Origin on every request a page
+## makes and Claude Code, curl and Python put none, so an Origin is the
+## page. And a Host that is not this machine is a name pointed at it
+## (DNS rebinding), which is a page too.
+static func _from_a_web_page(head: String) -> bool:
+	for line: String in head.split("\n"):
+		var at: String = line.strip_edges().to_lower()
+		if at.begins_with("origin:"):
+			return true
+		if at.begins_with("host:"):
+			var host: String = at.substr(5).strip_edges()
+			if host.begins_with("["):
+				host = host.substr(0, host.find("]") + 1)
+			elif host.contains(":"):
+				host = host.substr(0, host.find(":"))
+			if not host in ["127.0.0.1", "localhost", "[::1]"]:
+				return true
+	return false
 
 
 ## One JSON-RPC request answered, or null for a notification, which wants
@@ -336,13 +364,11 @@ static func _result(sent_id: Variant, result: Dictionary) -> Dictionary:
 
 func _http(client: Client, code: int, body: String) -> void:
 	var reason: String = {200: "OK", 202: "Accepted", 204: "No Content",
-		400: "Bad Request"}.get(code, "OK")
+		400: "Bad Request", 403: "Forbidden"}.get(code, "OK")
 	var bytes: PackedByteArray = body.to_utf8_buffer()
 	var head: String = ("HTTP/1.1 %d %s\r\n" % [code, reason]
 		+ "Content-Type: application/json\r\n"
 		+ "Content-Length: %d\r\n" % bytes.size()
-		+ "Access-Control-Allow-Origin: *\r\n"
-		+ "Access-Control-Allow-Headers: *\r\n"
 		+ "Connection: keep-alive\r\n\r\n")
 	if not client.gone:
 		client.peer.put_data(head.to_utf8_buffer())
@@ -483,15 +509,16 @@ func _own_tools() -> Array:
 		{
 			"name": "save_model",
 			"description": ("Write what is on the baseplate to an LDraw "
-				+ ".ldr file, which this app and other LDraw tools can "
-				+ "both open."),
+				+ ".ldr file in this app's models, where its Open finds it "
+				+ "and other LDraw tools can read it. A name, not a path; "
+				+ "it will not write over a model the person saved."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
-					"path": {"type": "string", "description":
-						"where to write it, ending .ldr"},
+					"name": {"type": "string", "description":
+						"the file's name, such as orthanc.ldr"},
 				},
-				"required": ["path"],
+				"required": ["name"],
 				"additionalProperties": false,
 			},
 		},
@@ -513,6 +540,28 @@ func tool_names() -> PackedStringArray:
 	return names
 
 
+## What this session saved, so it may save again over its own and never
+## over the person's.
+var _saved_here: Dictionary = {}
+
+
+## A file name for a model out of whatever was asked for: the last part of
+## a path, in characters a file system takes, ending .ldr. Empty if there
+## is nothing usable left.
+static func _model_file(asked: String) -> String:
+	var name: String = asked.strip_edges().replace("\\", "/").get_file()
+	var kept: String = ""
+	for character: String in name:
+		kept += character if (character.is_valid_identifier() or character in "0123456789 -_." \
+			or character.unicode_at(0) > 127) else "-"
+	kept = kept.strip_edges().lstrip(".")
+	if kept.to_lower().ends_with(".ldr"):
+		kept = kept.substr(0, kept.length() - 4)
+	if kept.is_empty():
+		return ""
+	return kept + ".ldr"
+
+
 func _own_tools_have(tool: String) -> bool:
 	return tool in ["clear_model", "save_model", "review_model"]
 
@@ -527,12 +576,23 @@ func _run_own(tool: String, input: Dictionary) -> String:
 			app.clear_model()
 			return "The baseplate is bare."
 		"save_model":
-			var path: String = str(input.get("path", ""))
-			if path.is_empty():
-				return "No path given."
+			# A name in the app's own models, never a path. It wrote
+			# wherever it was told: a design run put orthanc.ldr in the
+			# directory the app was started from, and anything able to
+			# reach the port could have written over any file at all.
+			var file: String = _model_file(str(input.get("name",
+				input.get("path", ""))))
+			if file.is_empty():
+				return "Give the model a file name, such as orthanc.ldr."
+			var path: String = ModelStore.SAVE_DIR + file
+			if FileAccess.file_exists(path) and not _saved_here.has(path):
+				return ("There is already a model called %s, which this "
+					+ "session did not write. Choose another name.") % file
 			if not app.save_model(path):
-				return "Could not write %s." % path
-			return "Written to %s." % path
+				return "Could not write %s." % file
+			_saved_here[path] = true
+			return "Written to %s, with the app's models (%s)." % [file,
+				ProjectSettings.globalize_path(path)]
 	return "No tool called %s." % tool
 
 
