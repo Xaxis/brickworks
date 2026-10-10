@@ -80,6 +80,14 @@ const text = (found.result?.content || []).map((c) => c.text || "").join(" ");
 check(text.includes("3001") && !found.result?.isError, `a tool call runs in the tab: ${text.slice(0, 50)}`);
 const scaled = await claude("tools/call", { name: "plan_scale", arguments: { subject: "a lighthouse", longest_metres: 30 } });
 check(((scaled.result?.content || [])[0]?.text || "").includes("studs"), "a second call, the scale, is answered too");
+// The style norms have to have reached the web build: they are packed by
+// tools/web_pack.py, and without them the check says nothing about how
+// squarely a design is built. A plain wall is as square as anything is.
+const wall = await claude("tools/call", { name: "check_design", arguments: { bricks: [],
+  patterns: [{ pattern: "fill", shape: "rectangle", at: { x: 0, y: 0, z: 0 }, across: 20, deep: 12,
+    wall: 1, layers: 6, rise: 3, color: 71 }] } });
+const wallText = (wall.result?.content || []).map((c) => c.text || "").join(" ");
+check(wallText.includes("more squarely than real"), "a square wall is told how real sets are built");
 await page.waitForTimeout(2000);
 await page.screenshot({ path: `${out}/2_after_calls.png` });
 
