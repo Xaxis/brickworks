@@ -150,8 +150,8 @@ fixing what it got wrong.
   and dressed in the face's frame (`_lay_row`). Run 8 used `prism` (31% angled)
   and could not finish its faces: `restyle_model` skips sections and two-wide
   bricks. `open` leaves that many faces out, centred on the one turned half
-  way round (looking -z), so the inside shows as a real set's tower does; the
-  guidance and `CRITIQUE` ask for rooms inside, because nine Orthancs were
+  way round (looking -z), so the inside shows as a real set's tower does, and
+  `add_rooms` furnishes it (rooms inside, below); asked for because nine Orthancs were
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
@@ -185,6 +185,38 @@ fixing what it got wrong.
   from the whole core to get past them. `patterns_probe`: a wall of 1x1s where a
   studs_out face's 18 tiles go is buildable built before or after it, and says
   so; with give-way off it is 18 overlaps.
+- `rooms inside`: `add_rooms` (`src/ai/rooms.gd`, run through `edit_model` by
+  `Assistant._rooms`), a tool and not a pattern because it works on what stands:
+  the variety advice that names it arrives after the build, when a design is
+  told never to submit again, and the two calls made on what stands
+  (`restyle_model`, `add_minifig`) are the two the runs took up. Given `where`
+  (the building's box) or `prism` (the prism's own at, sides, radius) and
+  `floors` bottom up (a kind each: `Rooms.KINDS`, words mapped by `kind_of`, so
+  "Saruman's chamber" is a study), it reads the inside off the live lattice —
+  inside the prism's inner faces, or walled on two opposite sides in the box —
+  stacks floors 26 plates apart (fitted to the shell) unless `y` is said, and
+  lays each as two layers: 2/1-wide plates along z, each strip one plate, and
+  over them a layer along x — tiles (boards, flags or a checker, by kind) where
+  it is walked on, plates where something stands, joints a stud off the
+  strips', a 1 x 2 stitched across any joint left untied — held up on two or
+  three columns in the corners of the room below (never on its furniture).
+  Furniture stands on top, only where plates are. `stair: true` is a straight
+  flight of 2 x 2 bricks where it fits, else a ladder (4175 every six plates) up
+  a 1 x 2 pillar. Each room gets its kind's furniture, signature first: the
+  worked examples (`Techniques`) and a few of castle parts (`Rooms.FURNITURE`),
+  turned as transforms to stand back to a wall and face in, coloured by a seed
+  in colours the parts were made in. Every part is tried against the live
+  lattice and what it has laid, so the shell is never touched; the whole is
+  checked before the edit, and anything floating would be taken out (the probe
+  holds every room to none). Found by twelve Orthancs that were solid shells,
+  46 shapes and 6 colours against a set's 109 and 23. `rooms_probe`: every
+  piece holds every way round and every tone is a colour it was made in; an
+  octagonal prism open at the back takes a dungeon, a forge with a ladder up, a
+  library and a study, passes the check as laid, shell untouched, 5 to 56
+  shapes and 2 to 23 colours; two libraries in a box differ; every other kind
+  gets its signature piece. With a window it leaves `shots/rooms/` (tower from
+  the back, each floor). `Assistant._ensure_parts` loads a part from disk before
+  fetching it: on the desktop it fetched over HTTP, failed, and waited 20 s.
 - `people in it`: `add_minifig` stands a figure made of real parts on whatever is
   under its feet; declared and passed through here, made in
   `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
@@ -358,6 +390,8 @@ godot --headless --path . --script src/dev/brain_probe.gd       # the request ca
 godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets in
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out
+godot --headless --path . --script src/dev/rooms_probe.gd       # floors and furnished rooms in what stands
+xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd  # ...and pictures: shots/rooms/
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts

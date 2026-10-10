@@ -308,6 +308,7 @@ colours at the median):
 | 10 | open prisms, rooms inside; both calls named | 2,838 | 0% | 0% | 80% | 57% | 34 | 6 |
 | 11 | run 10 again, the MCP port fixed | 4,437 | **16%** | 9% | 62% | 56% | 35 | 5 |
 | 12 | minifigures, 59 worked examples, dressing gives way, true lighting | 4,167 | **18%** | 0.3% | **38%** | 42% | **46** | 6 |
+| 13 | `add_rooms`, named in the recipes and the variety advice | 3,120 | 1.1% | **13%** | 61% | 36% | **80** | **22** |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -393,6 +394,35 @@ bars — is refused by the checker as two parts in one place, so no honest angle
 example passes. That checker work (turntables and bars in
 `tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
 angled example can. Not yet measured on an Orthanc run.
+
+Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
+bare open backs though the guidance asked for rooms in words, and variety
+(shapes, colours) moved least of all. `add_rooms` lays a floor at each
+storey of a building that stands and furnishes each room by its kind —
+library, study, bedchamber, hall, throne room, forge, armoury, dungeon,
+kitchen, lookout, palantír room — from the worked examples, against the
+walls and facing in, with a stair or a ladder where asked. An edit of what
+stands, like the finishing pass and the figures (the two calls runs took up
+unprompted), named in the recipes and in the variety advice. On an
+octagonal prism open at the back, a dungeon, a forge, a library and a study
+take the model from 5 shapes and 2 colours to 56 and 23. On run 12's own
+shaft it finds the inside and furnishes four floors, and says none of it
+shows: that shaft was closed all round.
+
+Run 13 used it unprompted, three times: straight after standing an
+open-backed prism ("Now the floors inside, from the cellars up to the
+summit"), again after widening the shaft, and once more to put back a study
+floor the first version had dropped (fixed: floors hold as laid). Then it
+peopled the rooms — Gríma in the study, an orc smith in the forge, a
+skeleton in the dungeon — eight storeys from a dungeon to the palantír's
+carpet under the horns. **Shapes 80 and colours 22, both records: colours
+at the fantasy median (23) for the first time, from six.** Angled 13% from
+the prism. What fell is the finish: the faces were prism sections, which the
+finishing pass cannot reach ("restyle only touched 5 bricks"), and the
+prism was laid without its own masonry and sideways, so sideways 1% and
+plain 61%; it ran out of its 90 minutes placing figures. Next on the same
+rule: the prism's masonry and sideways in its recipe by default, or the
+finishing pass reaching into sections.
 
 ## Long term: custom elements
 
