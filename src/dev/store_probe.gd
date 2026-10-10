@@ -154,6 +154,19 @@ func _initialize() -> void:
 	print("grouped: %s; booklet parts %s then %s" % [str(by_group),
 		steps[0].section, steps[-1].section])
 
+	# A download is named after the model, and a design names the model:
+	# a title climbing out of the folder must land inside it.
+	var folder: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	if folder.is_empty():
+		folder = OS.get_user_data_dir()
+	var inside: String = folder.path_join("brickworks_store_probe_escape.txt")
+	var outside: String = folder.path_join("../../brickworks_store_probe_escape.txt").simplify_path()
+	Download.give("x", "../../brickworks_store_probe_escape.txt")
+	_expect(FileAccess.file_exists(inside) and not FileAccess.file_exists(outside),
+		"a download named to climb out of the folder lands in it")
+	DirAccess.remove_absolute(inside)
+	DirAccess.remove_absolute(outside)
+
 	if _failures == 0:
 		print("round trip is lossless")
 	else:

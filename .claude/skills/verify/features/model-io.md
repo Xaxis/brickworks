@@ -18,7 +18,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   in with every brick in its group. The booklet builds by those groups and names
   them. `store_probe` asserts the round trip and the named parts.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
-  is also the shortest round-trip proof there is.
+  is also the shortest round-trip proof there is. Export, the booklet and the
+  parts list are written to Downloads under the model's name, which a design
+  sets, so only the name's last part is used (`Download.give`, `ModelBar`): a
+  title with "../" in it wrote outside the folder. `store_probe` names a download
+  to climb out and checks it lands inside.
 
 ## How to reach it
 

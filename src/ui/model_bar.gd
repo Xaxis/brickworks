@@ -265,7 +265,10 @@ func _on_export() -> void:
 		store.export_to(file_name, model_name())
 		_say("downloaded %s" % file_name)
 		return
-	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(file_name)
+	# Only the name's last part: a model's title is named by whoever
+	# designed it, and "../" in one would put the file somewhere else.
+	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(
+		file_name.replace("\\", "/").get_file())
 	if store.export_to(path, model_name()):
 		_say("wrote %s" % path)
 
