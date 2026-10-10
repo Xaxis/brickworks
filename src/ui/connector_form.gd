@@ -21,6 +21,7 @@ var _turn_on: Button
 var _on_box: VBoxContainer
 var _address: LineEdit
 var _copied: Label
+var _copy: Button
 var _status: Label
 var _activity: VBoxContainer
 var _calls: int = 0
@@ -69,6 +70,7 @@ func setup(with: ClaudeConnector) -> void:
 		+ "tab while it is on — keep it to yourself. Turning it off ends it.")
 	row.add_child(_address)
 	var copy := Button.new()
+	_copy = copy
 	copy.text = "Copy"
 	copy.focus_mode = Control.FOCUS_NONE
 	copy.pressed.connect(func() -> void:
@@ -111,7 +113,8 @@ func is_on() -> bool:
 
 
 func controls_by_name() -> Dictionary:
-	return {"connect_claude": _turn_on, "connector_address": _address}
+	return {"connect_claude": _turn_on, "connector_address": _address,
+		"connector_copy": _copy}
 
 
 func _on_listening(on: bool, address: String) -> void:
