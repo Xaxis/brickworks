@@ -148,7 +148,10 @@ fixing what it got wrong.
   short and none could be masonry), and the outer row is stoned or turned out
   and dressed in the face's frame (`_lay_row`). Run 8 used `prism` (31% angled)
   and could not finish its faces: `restyle_model` skips sections and two-wide
-  bricks. Found by run 5, octagonal
+  bricks. `open` leaves that many faces out, centred on the one turned half
+  way round (looking -z), so the inside shows as a real set's tower does; the
+  guidance and `CRITIQUE` ask for rooms inside, because nine Orthancs were
+  solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through

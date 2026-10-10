@@ -276,6 +276,9 @@ func _holds_up() -> void:
 		["an octagonal shaft in worked stone, partly on its side", {"pattern": "prism",
 			"at": {"x": 10, "y": 0, "z": 10}, "sides": 8, "radius": 8, "courses": 10,
 			"color": 0, "mix_color": 72, "masonry": 0.3, "sideways": 0.25}],
+		["an octagonal tower open at the back", {"pattern": "prism",
+			"at": {"x": 10, "y": 0, "z": 10}, "sides": 8, "radius": 8, "courses": 6,
+			"color": 0, "open": 3}],
 		["a hexagonal tower one stud thick, in masonry", {"pattern": "prism",
 			"at": {"x": 10, "y": 0, "z": 10}, "sides": 6, "radius": 6, "courses": 8,
 			"thickness": 1, "color": 71, "masonry": 0.5}],
@@ -333,8 +336,10 @@ func _holds_up() -> void:
 				var section: Assistant.Section = model.section_for(placement)
 				if section != null:
 					turned[snappedf(section.degrees, 0.1)] = true
-			_check("...its %d faces each turned to their own angle, %d angles"
-				% [sides, turned.size()], turned.size() == sides)
+			var left: int = int((one[1] as Dictionary).get("open", 0))
+			_check("...its %d faces each turned to their own angle, %d angles%s"
+				% [sides - left, turned.size(), " (%d left open)" % left if left else ""],
+				turned.size() == sides - left)
 		if str((one[1] as Dictionary)["pattern"]) == "studs_out":
 			var sideways: int = 0
 			var face: String = str((one[1] as Dictionary)["facing"])

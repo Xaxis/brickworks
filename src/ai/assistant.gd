@@ -1150,6 +1150,9 @@ tile course where the wall meets the walkway, a window a third of the \
 way up, a band in a second colour, a bracket carrying a lamp. Measured \
 on a castle that stood up perfectly: 23 shapes against the 117 a real \
 set of its size has, and 208 of one corner brick against 81.
+  Inside. If it is a building, can you see in? Real sets are open at the \
+back with furnished rooms on floors; a closed shell is the one place a \
+model of this kind is plainer than every set of its kind.
   Craft. Is anything in it not studs-up, not square, not mirrored where \
 the subject is not? Is there one part used for what it looks like rather \
 than what it is for? Does the texture change where the material does, \
@@ -3877,10 +3880,20 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 			% Placement._num(radius) + "make the radius larger or the sides fewer")
 		return []
 	var sideways: float = clampf(float(pattern.get("sideways", 0.0)), 0.0, 0.5)
+	# Faces left out, centred on the back (the face looking -z, which is the
+	# one turned half way round), so the inside shows the way a real set's
+	# tower opens: rooms on floors, behind. Every Orthanc built here was a
+	# solid shell, and that is where a real set's variety is.
+	var open: int = clampi(int(pattern.get("open", 0)), 0, sides - 2)
+	var left_out: Dictionary = {}
+	for n: int in open:
+		left_out[posmod(sides / 2 - open / 2 + n, sides)] = true
 	var wide: Array = [[4, "3001"], [3, "3002"], [2, "3003"]]
 	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var made: Array = []
 	for face: int in sides:
+		if left_out.has(face):
+			continue
 		var name: String = "prism %d face %d" % [index, face]
 		model.sections[name] = Section.from_dict({"name": name, "x": cx, "y": y0,
 			"z": cz, "axis": "y", "degrees": 360.0 * face / sides})
@@ -7119,6 +7132,12 @@ stand a buttress out: the shadows are what the eye reads.
   A focal point. Somewhere the eye goes first — the top of a tower, a \
 gate, a figure on a balcony — gets the most interesting parts in the \
 model.
+  Inside. A building in a real set is open at the back, with floors and \
+rooms: a library, a stair, a throne, a forge, a figure at a table. That \
+is where most of a set's different pieces and colours are — furniture, \
+books, lamps, tools — and a solid shell has none of them. Leave the back \
+open (a prism takes "open"), lay floors, and furnish them \
+(show_technique: table, armchair, bed, lamp post, planter).
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -7599,6 +7618,8 @@ func _tools() -> Array:
 				"prism: studs from the middle to the outside of a face"},
 			"thickness": {"type": "integer", "description":
 				"prism: 2 (the default) closes the inside; 1 leaves slits at the corners"},
+			"open": {"type": "integer", "description":
+				"prism: faces left out at the back, so the rooms inside show"},
 			"facing": {"type": "string", "enum": ["+x", "-x", "+z", "-z"],
 				"description": "studs_out: which way the face looks"},
 			"face_color": {"type": "integer", "description":

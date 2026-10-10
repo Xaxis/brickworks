@@ -211,6 +211,10 @@
                 "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
+              "open": {
+                "description": "prism: faces left out at the back, so the rooms inside show",
+                "type": "integer"
+              },
               "pattern": {
                 "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
                 "enum": [
@@ -1061,6 +1065,10 @@
               },
               "mix_color": {
                 "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "type": "integer"
+              },
+              "open": {
+                "description": "prism: faces left out at the back, so the rooms inside show",
                 "type": "integer"
               },
               "pattern": {
