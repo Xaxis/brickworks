@@ -327,6 +327,27 @@
       "entry": "src/render/brick_world.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "element maker",
+      "entry": "src/parts/element_maker.gd",
+      "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
+      "area": "elements"
+    },
+    {
+      "kind": "lib",
+      "label": "build a part in the app",
+      "entry": "src/parts/part_forge.gd",
+      "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
+      "area": "elements"
+    },
+    {
+      "kind": "cli",
+      "label": "build custom parts",
+      "entry": "tools/build_custom.py",
+      "reach": "tools/build_custom.py PART.dat --out DIR   (needs numpy and scipy)",
+      "area": "elements"
     }
   ]
 }

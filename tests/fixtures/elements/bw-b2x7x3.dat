@@ -1,0 +1,45 @@
+0 Brick  2 x  7
+0 Name: bw-b2x7x3.dat
+0 Author: Brickworks element maker
+0 !LDRAW_ORG Unofficial_Part
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !CATEGORY Brick
+0 !KEYWORDS Brickworks, custom element
+
+0 // Made by Brickworks: family=brick across=7 deep=2 plates=3 studs=yes
+
+0 // Studs
+1 16 -60 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -60 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -40 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -40 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -20 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -20 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 0 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 0 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 20 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 20 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 40 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 40 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 60 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 60 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+0 // Shell
+1 16 0 24 0 70 0 0 0 -24 0 0 0 20 box5.dat
+4 16 70 24 20 66 24 16 -66 24 16 -70 24 20
+4 16 -70 24 20 -66 24 16 -66 24 -16 -70 24 -20
+4 16 -70 24 -20 -66 24 -16 66 24 -16 70 24 -20
+4 16 70 24 -20 66 24 -16 66 24 16 70 24 20
+0 // Cavity
+0 BFC INVERTNEXT
+1 16 0 24 0 66 0 0 0 -20 0 0 0 16 box5.dat
+0 // Underside
+1 16 -50 4 0 1 0 0 0 -5 0 0 0 1 stud4.dat
+1 16 -30 4 0 1 0 0 0 -5 0 0 0 1 stud4.dat
+1 16 -10 4 0 1 0 0 0 -5 0 0 0 1 stud4.dat
+1 16 10 4 0 1 0 0 0 -5 0 0 0 1 stud4.dat
+1 16 30 4 0 1 0 0 0 -5 0 0 0 1 stud4.dat
+1 16 50 4 0 1 0 0 0 -5 0 0 0 1 stud4.dat
+0

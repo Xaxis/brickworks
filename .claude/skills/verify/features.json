@@ -40,6 +40,14 @@
       "tests": []
     },
     {
+      "id": "cli:build custom parts",
+      "kind": "cli",
+      "entry": "tools/build_custom.py",
+      "reach": "tools/build_custom.py PART.dat --out DIR   (needs numpy and scipy)",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "cli:build the meshes",
       "kind": "cli",
       "entry": "tools/build_meshes.py",
@@ -61,7 +69,9 @@
       "entry": "tools/brick.py",
       "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
       "area": "mcp",
-      "tests": []
+      "tests": [
+        "tests/test_elements.py"
+      ]
     },
     {
       "id": "cli:drive the app over mcp",
@@ -160,6 +170,14 @@
       "tests": []
     },
     {
+      "id": "lib:build a part in the app",
+      "kind": "lib",
+      "entry": "src/parts/part_forge.gd",
+      "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "lib:command socket",
       "kind": "lib",
       "entry": "src/net/command_socket.gd",
@@ -173,6 +191,14 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:element maker",
+      "kind": "lib",
+      "entry": "src/parts/element_maker.gd",
+      "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
+      "area": "elements",
       "tests": []
     },
     {

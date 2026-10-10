@@ -22,6 +22,15 @@ All part geometry derives from the LDraw Parts Library.
   > LDraw.org.
 
 - Source: https://library.ldraw.org/
+- Nine of the library's primitives are copied unchanged into
+  `assets/ldraw/` and ship in every build — `stud`, `stud3`, `stud4`,
+  `box4`, `box5`, `4-4cyli`, `4-4disc`, `4-4edge` and `4-4ring3`, authored by
+  James Jessiman (each file names him), CC BY 4.0 — because the element
+  maker (`src/parts/element_maker.gd`) draws every part it makes from them
+  and the app has to build those parts where the library is not to hand.
+  A part the maker writes is an unofficial part, not a library one: its
+  header names the maker as its author, and LDraw's own `u` and `t`
+  numbers are assigned by the Parts Library admin, so it uses none.
 
 ## LDraw Official Model Repository
 
