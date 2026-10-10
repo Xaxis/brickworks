@@ -60,6 +60,12 @@ var _how_hard: OptionButton
 ## overwritten by whatever happens next.
 var _bill: String = ""
 
+## The finished model's build steps, or its parts list, asked for from
+## the card that says it is done — the two things a set is besides the
+## model, one button away at the moment someone has one.
+signal steps_wanted
+signal parts_list_wanted
+
 ## A design is about to start from nothing, rather than revise one.
 ## Emitted before the assistant is asked, so whatever owns the baseplate
 ## can make room first.
@@ -116,9 +122,9 @@ func _build() -> void:
 	header.add_child(title)
 
 	var clear := Button.new()
-	clear.text = "New"
-	clear.tooltip_text = "Start a fresh conversation"
-	clear.add_theme_font_size_override("font_size", 11)
+	clear.text = "New chat"
+	clear.tooltip_text = "Start a fresh conversation. The model stays."
+	clear.add_theme_font_size_override("font_size", 12)
 	clear.pressed.connect(_on_clear)
 	header.add_child(clear)
 
@@ -138,8 +144,8 @@ func _build() -> void:
 	_show_suggestions()
 
 	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 11)
-	_status.modulate = Color(1, 1, 1, 0.62)
+	_status.add_theme_font_size_override("font_size", 12)
+	_status.modulate = Color(1, 1, 1, 0.72)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 
@@ -167,8 +173,8 @@ func _build() -> void:
 	_reference.text = "Add a picture of it"
 	_reference.flat = true
 	_reference.focus_mode = Control.FOCUS_NONE
-	_reference.add_theme_font_size_override("font_size", 11)
-	_reference.modulate = Color(1, 1, 1, 0.6)
+	_reference.add_theme_font_size_override("font_size", 12)
+	_reference.modulate = Color(1, 1, 1, 0.7)
 	_reference.tooltip_text = ("A photo or drawing of the thing you want "
 		+ "built. Its proportions get measured off this rather than "
 		+ "remembered.")
@@ -187,8 +193,8 @@ func _build() -> void:
 	_composer.add_child(_footer)
 
 	_meter = Label.new()
-	_meter.add_theme_font_size_override("font_size", 10)
-	_meter.modulate = Color(1, 1, 1, 0.5)
+	_meter.add_theme_font_size_override("font_size", 11)
+	_meter.modulate = Color(1, 1, 1, 0.6)
 	_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_footer.add_child(_meter)
 
@@ -246,7 +252,7 @@ func _build_settings() -> void:
 	_composer.add_child(_settings)
 
 	_which = OptionButton.new()
-	_which.add_theme_font_size_override("font_size", 11)
+	_which.add_theme_font_size_override("font_size", 12)
 	_which.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_which.tooltip_text = "Which Claude designs for you"
 	for choice: Brain.Choice in Brain.all():
@@ -259,7 +265,7 @@ func _build_settings() -> void:
 	_settings.add_child(_which)
 
 	_how_hard = OptionButton.new()
-	_how_hard.add_theme_font_size_override("font_size", 11)
+	_how_hard.add_theme_font_size_override("font_size", 12)
 	_how_hard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_how_hard.tooltip_text = ("How long it thinks before answering. "
 		+ "More is better and slower and dearer.")
@@ -513,8 +519,8 @@ func _show_suggestions() -> void:
 
 	var hint := Label.new()
 	hint.text = "Try one of these, or write your own:"
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.modulate = Color(1, 1, 1, 0.55)
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.modulate = Color(1, 1, 1, 0.65)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_suggestions.add_child(hint)
 
@@ -655,8 +661,8 @@ func _add(text: String, role: int) -> void:
 			panel.add_child(label)
 			_log.add_child(panel)
 		_Role.NOTE:
-			label.add_theme_font_size_override("font_size", 11)
-			label.modulate = Color(1, 1, 1, 0.5)
+			label.add_theme_font_size_override("font_size", 12)
+			label.modulate = Color(1, 1, 1, 0.6)
 			_log.add_child(label)
 		_:
 			label.add_theme_font_size_override("font_size", 13)
@@ -759,7 +765,7 @@ func _open_run(fresh: bool) -> void:
 	_run_hint = Label.new()
 	_run_hint.text = _expect()
 	_run_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_run_hint.add_theme_font_size_override("font_size", 11)
+	_run_hint.add_theme_font_size_override("font_size", 12)
 	_run_hint.modulate = Color(1, 1, 1, 0.6)
 	column.add_child(_run_hint)
 
@@ -794,7 +800,7 @@ func _expect() -> String:
 
 
 ## The run is over: say how it ended and how long it took.
-func _close_run(how: String, summary: String) -> void:
+func _close_run(how: String, summary: String, built: bool = false) -> void:
 	if _run == null or not is_instance_valid(_run):
 		_run = null
 		return
@@ -804,7 +810,47 @@ func _close_run(how: String, summary: String) -> void:
 		_run_now.text = summary
 	_run_stop.visible = false
 	_run_hint.visible = false
+	if built:
+		# What can be done with it now, said where the eye already is.
+		var next := Label.new()
+		next.text = "Ask for a change below, or carry on building it by hand."
+		next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		next.add_theme_font_size_override("font_size", 12)
+		next.modulate = Color(1, 1, 1, 0.75)
+		_run_stop.get_parent().add_child(next)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		for pair: Array in [["Build steps", steps_wanted],
+				["Parts list", parts_list_wanted]]:
+			var button := Button.new()
+			button.text = pair[0]
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			button.focus_mode = Control.FOCUS_NONE
+			var wanted: Signal = pair[1]
+			button.pressed.connect(func() -> void: wanted.emit())
+			row.add_child(button)
+		_run_stop.get_parent().add_child(row)
 	_run = null
+
+
+## The controls a person uses to design, by name, for whatever drives the
+## app from outside to find them as a person would: by where they are.
+func controls_by_name() -> Dictionary:
+	var named: Dictionary = {"brief": _input, "build": _send,
+		"change_key": _out}
+	if _key_form != null:
+		named.merge(_key_form.controls_by_name())
+	if _run != null and is_instance_valid(_run):
+		named["stop"] = _run_stop
+	return named
+
+
+## Whether a closed card's Stop button is still showing. For the probe.
+func _run_stop_was(card: PanelContainer) -> bool:
+	for button: Button in card.find_children("*", "Button", true, false):
+		if button.text == "Stop" and button.visible:
+			return true
+	return false
 
 
 func _elapsed() -> String:
@@ -823,7 +869,7 @@ func _on_finished(ok: bool, summary: String) -> void:
 	if summary == "cancelled":
 		_close_run("Stopped", "Stopped. What was there before is back.")
 	else:
-		_close_run("Done" if ok else "Did not finish", _sentence(summary))
+		_close_run("Done" if ok else "Did not finish", _sentence(summary), ok)
 	# A refused key will be refused again. Forget it and ask for another,
 	# rather than leave it in place to fail the next brief the same way.
 	if not ok and summary.begins_with(Assistant.KEY_REFUSED) \

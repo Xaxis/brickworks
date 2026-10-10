@@ -99,8 +99,17 @@ func _run() -> void:
 	await process_frame
 	_check(title.text == "Done" and panel._run == null,
 		"the card says it is done: %s" % title.text)
-	_check(not card.get_child(0).get_child(card.get_child(0).get_child_count() - 1).visible,
+	_check(not panel._run_stop_was(card),
 		"...and the stop button goes")
+	# And what can be done with it now, one press away.
+	var asked_for: Array = []
+	panel.steps_wanted.connect(func() -> void: asked_for.append("steps"))
+	panel.parts_list_wanted.connect(func() -> void: asked_for.append("parts"))
+	for button: Button in card.find_children("*", "Button", true, false):
+		if button.visible and button.text in ["Build steps", "Parts list"]:
+			button.pressed.emit()
+	_check(asked_for == ["steps", "parts"],
+		"it offers the build steps and the parts list: %s" % str(asked_for))
 
 	print("\na change to it is not a new design")
 	asked.clear()
@@ -135,6 +144,30 @@ func _run() -> void:
 	# a mistyped key read "invalid x-api-key" and nothing else.
 	_check(Assistant._what_went_wrong(401).begins_with(Assistant.KEY_REFUSED),
 		"a refused key is said plainly, so the panel can ask for another")
+
+	print("\nthe key form")
+	# Only the paths that write nothing: remembering a key, or keeping it
+	# for this visit, would touch whatever key this machine has stored.
+	_check(OwnKey.problem_with("sk-ant-oat01-" + "x".repeat(60)).contains(
+			"subscription"),
+		"a subscription's sign-in token is refused, and says why")
+	_check(OwnKey.problem_with("not a key").contains("starts with"),
+		"something that is not a key is refused before anything is asked")
+	var form := KeyForm.new()
+	get_root().add_child(form)
+	form.setup()
+	form.check_key = func(_key: String, done: Callable) -> void:
+		done.call(401)
+	var got: Array = []
+	form.accepted.connect(func() -> void: got.append(true))
+	form._field.text = "sk-ant-api03-" + "y".repeat(60)
+	form._keep()
+	await process_frame
+	_check(got.is_empty() and form._note.visible
+			and form._note.text.begins_with("Anthropic refused that key"),
+		"a key Anthropic refuses is not taken, and the form says so")
+	_check(form._field.text.length() > 0,
+		"...and stays in the box to be corrected")
 
 	print("")
 	if _failures == 0:

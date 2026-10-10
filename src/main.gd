@@ -35,6 +35,8 @@ var _chat: ChatPanel
 var _sample_untouched: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
+## When the controls were last told to the page. See [method _tell_page].
+var _told_page_at: int = 0
 var _account: Account
 var _steps: StepsBar
 var _inventory: InventoryPanel
@@ -96,6 +98,36 @@ func _match_screen_density() -> void:
 	# Capped: a 4x display would otherwise leave room for almost nothing,
 	# and past about two the gain in legibility is small.
 	get_window().content_scale_factor = clampf(ratio, 1.0, 2.0)
+
+
+## Where the assistant's controls are on screen, put where the page can
+## read it: window.brickworksControls, centres in CSS pixels, visible ones
+## only. Web builds only, twice a second.
+##
+## tools/web/assistant_flow.mjs drives the panel as a person does, by
+## clicking, and clicked at fixed positions — until a longer paragraph in
+## the key form moved the field down seventeen pixels, the click landed on
+## the text, and the key was typed into the app as keyboard shortcuts.
+## A person finds the field by looking; this is how the test looks.
+func _tell_page() -> void:
+	if not OS.has_feature("web") or _chat == null:
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _told_page_at < 500:
+		return
+	_told_page_at = now
+	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
+	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
+	var to_window: Transform2D = get_viewport().get_final_transform()
+	var where: Dictionary = {}
+	var named: Dictionary = _chat.controls_by_name()
+	for name: String in named:
+		var control: Control = named[name]
+		if control == null or not control.is_visible_in_tree():
+			continue
+		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
+		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
+	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
 
 
 func _enable_antialiasing() -> void:
@@ -780,6 +812,8 @@ func _build_ui() -> void:
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
 	_chat.watch(_account)
+	_chat.steps_wanted.connect(_toggle_steps)
+	_chat.parts_list_wanted.connect(_toggle_parts)
 	_chat.designing.connect(func(_brief: String) -> void:
 		if not _sample_untouched:
 			return
@@ -1697,6 +1731,7 @@ func _process(_delta: float) -> void:
 		_finish_box(Input.is_key_pressed(KEY_SHIFT))
 	if _store != null:
 		_store.tick()
+	_tell_page()
 	if _counts == null:
 		return
 	# Frame time belongs beside the counts: the whole point of batching is

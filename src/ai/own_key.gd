@@ -28,8 +28,24 @@ const WHERE := "user://anthropic.key"
 const PREFIX := "sk-ant-"
 
 
-## The key on this device, or empty.
+## A key kept for this visit only, never written anywhere. Chosen by
+## unticking "Remember on this device": a key in the browser's storage
+## outlives the tab, and on a shared computer that is the wrong default to
+## force on anyone.
+static var _this_visit: String = ""
+
+## A Claude subscription's sign-in token, which is not an API key and must
+## never be used as one: Anthropic does not allow a product to route
+## requests through a plan's credentials. Someone who pastes one is told
+## how to use their plan the allowed way instead.
+const SUBSCRIPTION_PREFIX := "sk-ant-oat"
+
+
+## The key in use, or empty: this visit's if there is one, else the one
+## kept on this device.
 static func load_key() -> String:
+	if not _this_visit.is_empty():
+		return _this_visit
 	var file: FileAccess = FileAccess.open(WHERE, FileAccess.READ)
 	if file == null:
 		return ""
@@ -42,15 +58,37 @@ static func has_key() -> bool:
 	return not load_key().is_empty()
 
 
-## Keep it on this device. Returns something to show on failure.
-static func remember(key: String) -> String:
+## What is wrong with a key as typed, or empty when it looks like one.
+static func problem_with(key: String) -> String:
 	var tidy: String = key.strip_edges()
 	if tidy.is_empty():
 		return "Paste a key first."
+	if tidy.begins_with(SUBSCRIPTION_PREFIX):
+		return ("That is a Claude subscription's sign-in token, not an API "
+			+ "key, and Anthropic does not allow apps to use one. To design "
+			+ "on your plan, connect Claude to Brickworks instead.")
 	if not tidy.begins_with(PREFIX):
 		return "An Anthropic key starts with %s." % PREFIX
 	if tidy.length() < 40:
 		return "That looks too short to be a whole key."
+	return ""
+
+
+## Keep it, on this device or for this visit only. Returns something to
+## show on failure.
+static func remember(key: String, on_device: bool = true) -> String:
+	var problem: String = problem_with(key)
+	if not problem.is_empty():
+		return problem
+	var tidy: String = key.strip_edges()
+	if not on_device:
+		# Not written anywhere, and nothing older left behind to be used
+		# in its place on the next visit.
+		_this_visit = tidy
+		if FileAccess.file_exists(WHERE):
+			DirAccess.remove_absolute(WHERE)
+		return ""
+	_this_visit = ""
 
 	var file: FileAccess = FileAccess.open(WHERE, FileAccess.WRITE)
 	if file == null:
@@ -61,6 +99,7 @@ static func remember(key: String) -> String:
 
 
 static func forget() -> void:
+	_this_visit = ""
 	if not FileAccess.file_exists(WHERE):
 		return
 	# On the web this path lives in the browser's storage rather than on

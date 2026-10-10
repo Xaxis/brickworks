@@ -221,7 +221,7 @@ func _build_categories() -> void:
 		button.tooltip_text = category
 		button.toggle_mode = true
 		button.button_pressed = category == _category
-		button.add_theme_font_size_override("font_size", 10)
+		button.add_theme_font_size_override("font_size", 11)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
 
@@ -682,15 +682,17 @@ func _update_status() -> void:
 	elif _shown >= total:
 		_status.text = "%s part%s" % [_comma(total), "" if total == 1 else "s"]
 	else:
-		_status.text = "%s of %s — scroll for more" % [
+		_status.text = "Showing %s of %s — scroll for more" % [
 			_comma(_shown), _comma(total)]
 
 	# Where the rest went. Only on the default view, since that is the
 	# only place anything is held back.
 	if _set_aside > 0:
-		_status.text += "\n%s stickers and obsolete parts set aside — search finds them" % _comma(_set_aside)
-	_status.tooltip_text = ("%s parts can be placed in this build"
-		% _comma(_offerable))
+		_status.text += "\nStickers and retired parts are left out; search finds them."
+		_status.tooltip_text = "%s stickers and retired parts" % _comma(_set_aside)
+	if _set_aside == 0:
+		_status.tooltip_text = ("%s parts can be placed in this build"
+			% _comma(_offerable))
 
 
 func _make_cell(info: PartLibrary.PartInfo) -> Control:

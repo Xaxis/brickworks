@@ -1,7 +1,7 @@
 // Use the assistant the way a person does, in a real browser.
 //
 //   node tools/web/assistant_flow.mjs --url=https://brickworks.diy/app --out=shots/flow
-//   BW_KEY=sk-ant-… node tools/web/assistant_flow.mjs --url=… --out=… --key=- --seconds=90
+//   BW_KEY=sk-ant-… node tools/web/assistant_flow.mjs --url=… --out=… --key=- --seconds=900 --every=120
 //   BW_BYPASS=… node tools/web/assistant_flow.mjs --url=<a preview>/app --out=…
 //
 // Pastes a key, asks for "a small red house", and records every request to
@@ -17,8 +17,9 @@
 // still on the baseplate. Every check here had passed, because none of them
 // ever pressed Build.
 //
-// The panel is drawn inside the canvas, so it is driven by position, for a
-// 1280 x 860 window. A preview sits behind Vercel's login: BW_BYPASS goes in
+// The panel is drawn inside the canvas, so it is driven by position: the app
+// publishes where its controls are (window.brickworksControls) and this
+// clicks there. A preview sits behind Vercel's login: BW_BYPASS goes in
 // the first address only, which sets a cookie for that domain alone, so it is
 // never sent to Anthropic.
 import { launch } from "./browser.mjs";
@@ -55,21 +56,44 @@ await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 await page.waitForTimeout(Number(args.load || 90000));
 await page.screenshot({ path: `${out}/1_first_screen.png` });
 
-// The key form is the first thing under the panel's title.
-await page.mouse.click(1143, 264);
+// Where a control is, as the app tells the page (main._tell_page). Clicking
+// at fixed positions broke the first time a paragraph above the key field
+// grew, and the key went into the app as keyboard shortcuts.
+async function click(name) {
+  for (let tries = 0; tries < 40; tries++) {
+    const where = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
+    if (where) {
+      await page.mouse.click(where.x, where.y);
+      return;
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`the app never showed "${name}"`);
+}
+
+await click("key_field");
 await page.waitForTimeout(1500);
 await page.keyboard.type(key, { delay: 15 });
-await page.mouse.click(1143, 298);
+await click("use_key");
 await page.waitForTimeout(4000);
 await page.screenshot({ path: `${out}/2_key_taken.png` });
 
-// The brief box and Build it, at the foot of the panel.
-await page.mouse.click(1143, 725);
+await click("brief");
 await page.waitForTimeout(1500);
 await page.keyboard.type("a small red house", { delay: 30 });
 seen.push(`${at()} pressed Build it`);
-await page.mouse.click(1143, 793);
-await page.waitForTimeout(seconds * 1000);
+await click("build");
+// A picture every --every seconds, for watching a whole design run.
+const every = Number(args.every || 0);
+let waited = 0;
+let shot = 0;
+while (every > 0 && waited + every < seconds) {
+  await page.waitForTimeout(every * 1000);
+  waited += every;
+  shot += 1;
+  await page.screenshot({ path: `${out}/3_${String(shot).padStart(2, "0")}_at_${waited}s.png` });
+}
+await page.waitForTimeout((seconds - waited) * 1000);
 await page.screenshot({ path: `${out}/3_after_build.png` });
 await browser.close();
 

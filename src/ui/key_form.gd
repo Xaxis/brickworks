@@ -14,6 +14,11 @@ extends VBoxContainer
 var _field: LineEdit
 var _note: Label
 var _use: Button
+var _remember: CheckBox
+
+## Asks Anthropic whether a key works, then calls back with the HTTP code
+## (0 when nothing answered). Replaceable, so a probe can answer instead.
+var check_key: Callable = _ask_anthropic
 
 signal accepted()
 signal sign_in_wanted()
@@ -63,11 +68,31 @@ func setup() -> void:
 	_field.text_submitted.connect(func(_t: String) -> void: _keep())
 	add_child(_field)
 
+	_remember = CheckBox.new()
+	_remember.text = "Remember it on this device"
+	_remember.button_pressed = true
+	_remember.add_theme_font_size_override("font_size", 12)
+	_remember.tooltip_text = ("Untick to keep it for this visit only — "
+		+ "the right choice on a computer someone else uses.")
+	add_child(_remember)
+
 	_use = Button.new()
 	_use.text = "Use this key"
 	_use.custom_minimum_size = Vector2(0, 34)
 	_use.pressed.connect(_keep)
 	add_child(_use)
+
+	# The safest key to give any app, this one included: its own, in a
+	# workspace with a spend limit, set to expire. Anthropic's Console
+	# does all three; nobody does them unless told.
+	var safer := Label.new()
+	safer.text = ("Safest: make a key just for Brickworks, in a Console "
+		+ "workspace with a monthly spend limit, set to expire. Then the "
+		+ "most it can ever cost is the limit you chose.")
+	safer.add_theme_font_size_override("font_size", 12)
+	safer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	safer.modulate = Color(1, 1, 1, 0.75)
+	add_child(safer)
 
 	# The three facts, in the order people want them.
 	var terms := Label.new()
@@ -102,21 +127,71 @@ func setup() -> void:
 	add_child(instead)
 
 
+func controls_by_name() -> Dictionary:
+	return {"key_field": _field, "use_key": _use}
+
+
 func focus_field() -> void:
 	if _field != null:
 		_field.grab_focus()
 
 
 func _keep() -> void:
-	var problem: String = OwnKey.remember(_field.text)
+	var problem: String = OwnKey.problem_with(_field.text)
 	if not problem.is_empty():
-		_note.text = problem
-		_note.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
-		_note.visible = true
+		_say(problem, true)
 		_field.grab_focus()
 		return
-	# Cleared from the box as well as accepted: leaving a key sitting in
-	# a field is one screenshot away from being someone else's.
-	_field.text = ""
-	_note.visible = false
-	accepted.emit()
+	# Asked before it is kept. A key with a typo used to be accepted here
+	# and refused only when a design was sent, minutes and a brief later.
+	var key: String = _field.text.strip_edges()
+	_use.disabled = true
+	_use.text = "Checking it with Anthropic…"
+	check_key.call(key, func(code: int) -> void:
+		_use.disabled = false
+		_use.text = "Use this key"
+		if code == 401 or code == 403:
+			_say("Anthropic refused that key. Check it at "
+				+ "console.anthropic.com and paste it again.", true)
+			_field.grab_focus()
+			return
+		OwnKey.remember(key, _remember.button_pressed)
+		# Cleared from the box as well as accepted: leaving a key sitting
+		# in a field is one screenshot away from being someone else's.
+		_field.text = ""
+		if code == 200:
+			_note.visible = false
+		else:
+			# Kept anyway: nothing answered is not the same as no, and a
+			# key that is fine should not be refused for a dropped call.
+			_say("Could not reach Anthropic to check it; it will be tried "
+				+ "when you design.", false)
+		accepted.emit())
+
+
+func _say(text: String, wrong: bool) -> void:
+	_note.text = text
+	_note.add_theme_color_override("font_color",
+		Color(1.0, 0.55, 0.45) if wrong else Color(1, 1, 1, 0.75))
+	_note.visible = true
+
+
+## The models list costs nothing and needs only a working key, so it is
+## the question to ask. Straight to Anthropic, as every request with the
+## key is, and never anywhere else.
+func _ask_anthropic(key: String, done: Callable) -> void:
+	var http := HTTPRequest.new()
+	http.timeout = 15.0
+	add_child(http)
+	http.request_completed.connect(func(result: int, code: int,
+			_headers: PackedStringArray, _body: PackedByteArray) -> void:
+		http.queue_free()
+		done.call(code if result == HTTPRequest.RESULT_SUCCESS else 0))
+	var headers := PackedStringArray(["x-api-key: " + key,
+		"anthropic-version: 2023-06-01"])
+	if OS.has_feature("web"):
+		headers.append("anthropic-dangerous-direct-browser-access: true")
+	if http.request("https://api.anthropic.com/v1/models?limit=1",
+			headers) != OK:
+		http.queue_free()
+		done.call(0)
