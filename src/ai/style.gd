@@ -283,9 +283,11 @@ static func advice(found: Dictionary, group: String) -> String:
 				% [_share(found[key]), pair[1], _share(edges[1]), _share(edges[2])])
 	if said.is_empty():
 		return ""
-	return ("Built more squarely than real %s sets (%d measured, from LDraw's "
-		% [group.replace("_since_2010", " since 2010").replace("since_2010",
-			"sets since 2010").replace("_", " "), int(band.get("models", 0))]
+	var who: String = "real sets since 2010" if group == "since_2010" else (
+		"real %s sets%s" % [group.replace("_since_2010", ""),
+			" since 2010" if group.ends_with("_since_2010") else ""])
+	return ("Built more squarely than %s (%d measured, from LDraw's "
+		% [who, int(band.get("models", 0))]
 		+ "official models):\n  " + "\n  ".join(said) + "\nThis is how a "
 		+ "model that holds together comes to look like a pile of bricks. "
 		+ "The way out is technique, not more bricks: brackets and headlight "

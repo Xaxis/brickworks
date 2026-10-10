@@ -161,6 +161,10 @@
                 "description": "fill, rock: the colour (rock: 72 if not said)",
                 "type": "integer"
               },
+              "courses": {
+                "description": "studs_out: how many rows, each four plates tall",
+                "type": "number"
+              },
               "deep": {
                 "description": "fill, rock: studs in z",
                 "type": "number"
@@ -169,12 +173,30 @@
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
               },
+              "face_color": {
+                "description": "studs_out: the colour of what is laid on the side studs",
+                "type": "integer"
+              },
+              "facing": {
+                "description": "studs_out: which way the face looks",
+                "enum": [
+                  "+x",
+                  "-x",
+                  "+z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "height": {
                 "description": "rock: how tall, in plates",
                 "type": "number"
               },
               "layers": {
                 "description": "fill: how many of the footprint, stacked up",
+                "type": "number"
+              },
+              "length": {
+                "description": "studs_out: studs along the face",
                 "type": "number"
               },
               "masonry": {
@@ -190,12 +212,13 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you.",
                 "enum": [
                   "repeat",
                   "mirror",
                   "fill",
-                  "rock"
+                  "rock",
+                  "studs_out"
                 ],
                 "type": "string"
               },
@@ -926,6 +949,10 @@
                 "description": "fill, rock: the colour (rock: 72 if not said)",
                 "type": "integer"
               },
+              "courses": {
+                "description": "studs_out: how many rows, each four plates tall",
+                "type": "number"
+              },
               "deep": {
                 "description": "fill, rock: studs in z",
                 "type": "number"
@@ -934,12 +961,30 @@
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
               },
+              "face_color": {
+                "description": "studs_out: the colour of what is laid on the side studs",
+                "type": "integer"
+              },
+              "facing": {
+                "description": "studs_out: which way the face looks",
+                "enum": [
+                  "+x",
+                  "-x",
+                  "+z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "height": {
                 "description": "rock: how tall, in plates",
                 "type": "number"
               },
               "layers": {
                 "description": "fill: how many of the footprint, stacked up",
+                "type": "number"
+              },
+              "length": {
+                "description": "studs_out: studs along the face",
                 "type": "number"
               },
               "masonry": {
@@ -955,12 +1000,13 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you.",
                 "enum": [
                   "repeat",
                   "mirror",
                   "fill",
-                  "rock"
+                  "rock",
+                  "studs_out"
                 ],
                 "type": "string"
               },

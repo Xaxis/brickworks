@@ -121,6 +121,17 @@ fixing what it got wrong.
   `style_probe`: hand-made cases, the square Orthanc fixture
   (`src/dev/fixtures/orthanc_square.ldr`) told all three, the shipped castle
   not called over-symmetric (54% here, 55% in the tool).
+- `a face built sideways`: `Assistant._studs_out`, the `studs_out` pattern (in
+  the assistant, not `patterns.gd`, because it needs the parts' connectors).
+  Courses of 87087 turned so the side stud faces `facing` (the turn found from
+  the part's own connectors on a trial brick), tied by plates staggered across
+  the joints, and on every side stud a 3070b, 98138, 4073, 54200 or 3024 laid
+  on its side at the corner `_corner_on` gives — the same measurement
+  `attachment_points` makes. On -x/-z no cheese slope: thicker than a plate
+  hangs the other way there. Found by three Orthancs at 0% sideways against
+  fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
+  facing each way and checks it holds and has one sideways part per side stud;
+  a band measures 43% sideways in `tools/style.py`.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps

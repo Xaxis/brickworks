@@ -3663,9 +3663,22 @@ func _read_model(args: Dictionary) -> Model:
 	var patterns: Array = args.get("patterns", [])
 	if not patterns.is_empty():
 		var trouble: Array = []
-		for raw: Variant in Patterns.expand(patterns, written, trouble,
+		# A face of studs turned out needs the parts' own geometry to know
+		# where a side stud is, which only this side has.
+		var plain: Array = []
+		var sideways: Array = []
+		for raw: Variant in patterns:
+			if raw is Dictionary and str((raw as Dictionary).get("pattern",
+					"")).to_lower() == "studs_out":
+				sideways.append(raw)
+			else:
+				plain.append(raw)
+		for raw: Variant in Patterns.expand(plain, written, trouble,
 				library):
 			model.placements.append(Placement.from_dict(raw))
+		for raw: Variant in sideways:
+			for brick: Dictionary in _studs_out(raw, trouble):
+				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
 	else:
 		_pattern_trouble = []
@@ -3674,6 +3687,121 @@ func _read_model(args: Dictionary) -> Model:
 	_expand_repeats(model, args, _repeat_trouble)
 	model.assemblies = _read_assemblies(args)
 	return model
+
+
+## A face of studs turned outward, dressed with tiles, round tiles,
+## round plates and cheese slopes on their sides: the commonest way real
+## sets put something other than a stud on a wall, said in one object.
+##
+## Real fantasy sets build a median 19% of their parts on their side.
+## Every design built here built none, though the check said so: a part
+## on a sideways stud sits at one and three quarter plates up and a
+## fraction of a stud out, and nobody gets that right by reasoning. So
+## the arithmetic is done here, from the parts' own connectors — the same
+## measurement attachment_points makes — and never from a guess.
+##
+## Courses of 87087 (a 1x1 brick with a stud on one side), each tied to
+## the next by a course of plates staggered across the joints, every side
+## stud facing the way asked and carrying a 1x1 part laid on it.
+##
+##   {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0}, "length": 8,
+##    "courses": 4, "facing": "+z", "color": 0, "face_color": 72,
+##    "mix_color": 0}
+func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var x0: float = float(at.get("x", 0.0))
+	var y0: float = float(at.get("y", 0.0))
+	var z0: float = float(at.get("z", 0.0))
+	var length: int = int(round(float(pattern.get("length", 0))))
+	var courses: int = int(round(float(pattern.get("courses", 3))))
+	var facing: String = str(pattern.get("facing", "+z")).to_lower()
+	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
+	var face_colour: int = int(pattern.get("face_color",
+		pattern.get("face_colour", colour)))
+	var mix_colour: int = int(pattern.get("mix_color",
+		pattern.get("mix_colour", -1)))
+	if length < 1 or courses < 1 or length * courses > 1000:
+		trouble.append("studs_out wants length and courses of at least 1, "
+			+ "and not more than 1000 studs of face between them")
+		return []
+	if not facing in ["+x", "-x", "+z", "-z"]:
+		trouble.append("studs_out faces +x, -x, +z or -z")
+		return []
+	var brick: Lbm.PartMesh = library.mesh_for("87087")
+	if brick == null:
+		trouble.append("the 1x1 brick with a side stud has not arrived yet")
+		return []
+	var outward: Vector3 = FACES[facing]
+	# Which turn points the side stud the way asked, and which connector
+	# it is, measured on a trial brick.
+	var turn: int = -1
+	var side: Lbm.Connector = null
+	for rot: int in 4:
+		var trial := Placement.from_dict({"part": "87087", "color": colour,
+			"x": 0, "y": 0, "z": 0, "rot": rot})
+		var placed: Transform3D = _transform(trial, brick)
+		for connector: Lbm.Connector in brick.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			if (placed.basis * connector.axis).normalized().dot(outward) > 0.9:
+				turn = rot
+				side = connector
+		if turn >= 0:
+			break
+	if turn < 0:
+		trouble.append("could not find the side stud of 87087")
+		return []
+
+	var along_x: bool = facing in ["+z", "-z"]
+	var faces: Array = ["3070b", "98138", "4073", "54200", "3024"]
+	if facing in ["-x", "-z"]:
+		# Thicker than a plate hangs the other way on these sides.
+		faces = ["3070b", "98138", "4073", "3024"]
+	var made: Array = []
+	for course: int in courses:
+		var y: float = y0 + 4.0 * course
+		for n: int in length:
+			var x: float = x0 + (n if along_x else 0)
+			var z: float = z0 + (0 if along_x else n)
+			var one := {"part": "87087", "color": colour, "x": x, "y": y,
+				"z": z, "rot": turn}
+			made.append(one)
+			var placed: Transform3D = _transform(Placement.from_dict(one), brick)
+			var point: Vector3 = placed * side.position
+			var axis: Vector3 = (placed.basis * side.axis).normalized()
+			var corner: Vector3 = _corner_on(point, axis, facing)
+			var pick: float = Patterns._scatter(x, y, z, 23)
+			var part: String = faces[int(pick * faces.size()) % faces.size()]
+			var tone: int = face_colour
+			if mix_colour >= 0 and Patterns._scatter(x, y, z, 29) < 0.3:
+				tone = mix_colour
+			made.append({"part": part, "color": tone,
+				"x": snappedf(corner.x / STUD, 0.1),
+				"y": snappedf(corner.y / PLATE, 0.25),
+				"z": snappedf(corner.z / STUD, 0.1), "face": facing, "rot": 0})
+		# The course above is tied across the joints of this one.
+		var tie_y: float = y + 3.0
+		var start: int = 0 if course % 2 == 0 else 1
+		var plates: Array = [[4, "3710"], [3, "3623"], [2, "3023"], [1, "3024"]]
+		var n2: int = 0
+		if start == 1:
+			made.append(_tie(x0, tie_y, z0, 0, 1, "3024", colour, along_x))
+			n2 = 1
+		while n2 < length:
+			for pair: Array in plates:
+				if n2 + int(pair[0]) <= length:
+					made.append(_tie(x0, tie_y, z0, n2, int(pair[0]),
+						str(pair[1]), colour, along_x))
+					n2 += int(pair[0])
+					break
+	return made
+
+
+func _tie(x0: float, y: float, z0: float, from: int, _long: int,
+		part: String, colour: int, along_x: bool) -> Dictionary:
+	return {"part": part, "color": colour,
+		"x": x0 + (from if along_x else 0), "y": y,
+		"z": z0 + (0 if along_x else from), "rot": 0 if along_x else 1}
 
 
 ## The assemblies a design named, each a name and a box in studs and
@@ -6408,6 +6536,18 @@ alongside the bricks you write by hand:
            said). Several rocks with different seeds, overlapping, make \
            a base nobody would take for a pattern; then build on it.
 
+           A face built on its side is the other: \
+           {"pattern": "studs_out", "at": {...}, "length": 8, "courses": \
+           4, "facing": "+z", "color": 0, "face_color": 72}. Courses of \
+           1x1 bricks with a stud on one side, tied by plates, and on \
+           every side stud a tile, a round tile, a round plate or a \
+           cheese slope, so the face is texture rather than studs. Real \
+           fantasy sets build about a fifth of their parts on their side \
+           and every design here built none, because where a side stud \
+           sits is arithmetic nobody gets right by hand; this does it. \
+           Put it where a face should read as dressed stone, panelling or \
+           machinery, at the bottom of a wall course so it stands on it.
+
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
@@ -7085,7 +7225,7 @@ func _tools() -> Array:
 		"type": "object",
 		"properties": {
 			"pattern": {"type": "string",
-				"enum": ["repeat", "mirror", "fill", "rock"],
+				"enum": ["repeat", "mirror", "fill", "rock", "studs_out"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -7099,7 +7239,12 @@ func _tools() -> Array:
 					+ "one object — courses stepping in unevenly towards "
 					+ "a peak off the middle, faced with slopes, cheese "
 					+ "slopes, pebbles and bare ledges in two greys; a "
-					+ "different seed is a different rock."},
+					+ "different seed is a different rock. studs_out: a "
+					+ "face built sideways in one object — courses of 1x1 "
+					+ "bricks with a side stud, tied by plates, each stud "
+					+ "carrying a tile, round tile, round plate or cheese "
+					+ "slope laid on its side; the arithmetic of where a "
+					+ "side stud is, done for you."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -7119,6 +7264,14 @@ func _tools() -> Array:
 				"fill, rock: the colour (rock: 72 if not said)"},
 			"height": {"type": "number", "description":
 				"rock: how tall, in plates"},
+			"length": {"type": "number", "description":
+				"studs_out: studs along the face"},
+			"courses": {"type": "number", "description":
+				"studs_out: how many rows, each four plates tall"},
+			"facing": {"type": "string", "enum": ["+x", "-x", "+z", "-z"],
+				"description": "studs_out: which way the face looks"},
+			"face_color": {"type": "integer", "description":
+				"studs_out: the colour of what is laid on the side studs"},
 			"seed": {"type": "integer", "description":
 				"rock: which rock — each number leans and wanders its own way"},
 			"wall": {"type": "number", "description":

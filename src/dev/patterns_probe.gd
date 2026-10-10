@@ -273,6 +273,15 @@ func _holds_up() -> void:
 			"across": 24, "deep": 20, "height": 21, "seed": 7}],
 		["a boulder", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
 			"across": 5, "deep": 4, "height": 6, "seed": 3}],
+		["a face built sideways, looking +z", {"pattern": "studs_out",
+			"at": {"x": 0, "y": 0, "z": 0}, "length": 8, "courses": 4,
+			"facing": "+z", "color": 0, "face_color": 72, "mix_color": 71}],
+		["...looking -z", {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0},
+			"length": 6, "courses": 3, "facing": "-z", "color": 0}],
+		["...looking +x", {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0},
+			"length": 6, "courses": 3, "facing": "+x", "color": 0}],
+		["...looking -x", {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0},
+			"length": 6, "courses": 3, "facing": "-x", "color": 0}],
 	]:
 		var model: Assistant.Model = assistant._read_model(
 			{"patterns": [one[1]]})
@@ -282,6 +291,16 @@ func _holds_up() -> void:
 				% [one[0], model.placements.size()], true)
 		else:
 			_check("%s — %s" % [one[0], str(verdict["summary"])], false)
+		if str((one[1] as Dictionary)["pattern"]) == "studs_out":
+			var sideways: int = 0
+			var face: String = str((one[1] as Dictionary)["facing"])
+			for placement: Assistant.Placement in model.placements:
+				if placement.face == face:
+					sideways += 1
+			var studs: int = int((one[1] as Dictionary)["length"]) \
+				* int((one[1] as Dictionary)["courses"])
+			_check("...with a part on its side on every one of its %d side studs, %d"
+				% [studs, sideways], sideways == studs)
 
 
 func _made(patterns: Array, already: Array = []) -> Array:
