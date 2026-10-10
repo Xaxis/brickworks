@@ -17,6 +17,19 @@ Whether what you built is still there tomorrow, and still means the same thing.
   design wrote it ("north-east tower" in `north_east_tower.ldr`), and comes back
   in with every brick in its group. The booklet builds by those groups and names
   them. `store_probe` asserts the round trip and the named parts.
+- `a model's name, and a new one`: `ModelStore.title` is the model's name — set
+  by Save, read from an opened file's first line (a placeholder such as
+  "Working model" falls back to the file name, the autosave's to Untitled), and
+  written into the autosave, so the app reopens a saved model under its name.
+  It wrote "Working model", and the bar took no name from what it opened: the
+  owner reloaded a saved, named model and was shown Untitled. The name shows in
+  the browser tab and the window title (`Main._show_name`). New (Ctrl+N on the
+  desktop) begins an empty baseplate, Untitled, with a fresh chat; it asks first
+  when the model is not saved as it stands (`has_unsaved_work`: Untitled with
+  bricks, or bricks unlike the saved file's). There was no way to begin another
+  model. `project_probe` (headless; puts this machine's autosave back) and
+  `tools/web/project_flow.mjs` (types a name, saves, reloads, reads the tab,
+  presses New).
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is. Export, the booklet and the
   parts list are written to Downloads under the model's name, which a design

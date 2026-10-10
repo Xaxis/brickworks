@@ -122,6 +122,8 @@ func _tell_page() -> void:
 	var to_window: Transform2D = get_viewport().get_final_transform()
 	var where: Dictionary = {}
 	var named: Dictionary = _chat.controls_by_name()
+	if _bar != null:
+		named.merge(_bar.controls_by_name())
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -129,6 +131,17 @@ func _tell_page() -> void:
 		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+
+
+## The model's name where a window shows one: the browser tab, or the
+## title bar. "Untitled" on a model saved as something else was the
+## owner's complaint; the tab says the same name the bar does.
+func _show_name(name: String) -> void:
+	var text: String = "%s — Brickworks" % name
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("document.title = %s" % JSON.stringify(text), true)
+	else:
+		get_window().title = text
 
 
 func _enable_antialiasing() -> void:
@@ -674,6 +687,15 @@ func _build_ui() -> void:
 		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed())
+	_bar.model_named.connect(_show_name)
+	_bar.started_new.connect(func() -> void:
+		_sample_untouched = false
+		_assistant.forget_built()
+		if _chat != null:
+			_chat.new_chat()
+		_lay_baseplate()
+		_on_model_changed()
+		_camera.frame(_built_bounds()))
 	_bar.opened.connect(func(_bricks: int) -> void:
 		_sample_untouched = false
 		_assistant.forget_built()
@@ -2387,6 +2409,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_S:
 			if (key.ctrl_pressed or key.meta_pressed) and _bar:
 				_bar._on_save()
+		KEY_N:
+			# Not on the web, where Ctrl+N is the browser's new window and
+			# never reaches the page.
+			if (key.ctrl_pressed or key.meta_pressed) and _bar:
+				_bar.ask_for_new()
 		KEY_ESCAPE:
 			# Leaving playback first. Escape reads as "out of this mode",
 			# and quitting the app because someone wanted the whole model

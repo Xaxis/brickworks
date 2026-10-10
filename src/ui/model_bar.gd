@@ -15,6 +15,9 @@ var _name: LineEdit
 var _status: Label
 var _saves: PopupMenu
 var _confirm: ConfirmationDialog
+var _confirm_new: ConfirmationDialog
+var _new: Button
+var _save: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: PickModel
 
@@ -22,6 +25,10 @@ var _picker: PickModel
 const IMPORT := -2
 
 signal cleared()
+## A new model: an empty baseplate, no name and a fresh conversation.
+signal started_new()
+## The model is called something else now: opened, saved, begun or typed.
+signal model_named(name: String)
 ## Someone wants the parts list. The bar does not own the panel — it is
 ## an overlay across the whole window, not a strip along the top.
 signal parts_wanted()
@@ -64,12 +71,22 @@ func _build() -> void:
 	_name.text = "Untitled"
 	_name.custom_minimum_size = Vector2(190, 0)
 	_name.tooltip_text = "What this model is called"
+	# The store keeps the name, so the autosave keeps it too.
+	_name.text_changed.connect(func(text: String) -> void:
+		if store != null:
+			store.title = text.strip_edges() if not text.strip_edges().is_empty() \
+				else ModelStore.UNTITLED
+			store.touch()
+		model_named.emit(model_name()))
 	row.add_child(_name)
 
 	# In groups: the file, what to make of it, and help. Seven identical
 	# buttons in a row gave Clear the same weight as Save, one place
 	# along from Controls.
-	_button(row, "Save", _on_save, "Keep this model under its name")
+	# There was no way to begin another model: Clear empties the board and
+	# keeps the name, the conversation and the autosave of what was there.
+	_new = _button(row, "New", ask_for_new, "Start a new model on an empty baseplate (Ctrl+N)")
+	_save = _button(row, "Save", _on_save, "Keep this model under its name")
 	_button(row, "Open…", _on_open, "Reopen a saved model")
 	_button(row, "Export", _on_export,
 		"Write an LDraw file, which any brick tool reads — an .mpd of its assemblies when it has them")
@@ -103,6 +120,19 @@ func _build() -> void:
 	_confirm.ok_button_text = "Clear it"
 	_confirm.confirmed.connect(_on_clear)
 	add_child(_confirm)
+
+	_confirm_new = ConfirmationDialog.new()
+	_confirm_new.title = "Start a new model?"
+	_confirm_new.ok_button_text = "Start new without saving"
+	_confirm_new.confirmed.connect(_start_new)
+	_confirm_new.add_button("Save, then start new", true, "save")
+	_confirm_new.custom_action.connect(func(action: StringName) -> void:
+		if action == &"save":
+			_confirm_new.hide()
+			_on_save()
+			if not store.has_unsaved_work():
+				_start_new())
+	add_child(_confirm_new)
 
 	_saves = PopupMenu.new()
 	_saves.id_pressed.connect(_on_pick)
@@ -139,9 +169,17 @@ func _button(row: HBoxContainer, text: String, action: Callable,
 func bind(to: ModelStore) -> void:
 	store = to
 	store.saved.connect(func(name: String) -> void:
+		model_named.emit(name)
 		_say("saved “%s”" % name))
 	store.loaded.connect(func(name: String, bricks: int) -> void:
+		_name.text = name
+		model_named.emit(name)
 		_say("opened %s — %d bricks" % [name, bricks]))
+
+
+## The bar's own controls, for the page to find (Main._tell_page).
+func controls_by_name() -> Dictionary:
+	return {"model_name": _name, "new": _new, "save": _save}
 
 
 func model_name() -> String:
@@ -216,7 +254,6 @@ func _on_pick(id: int) -> void:
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
-	_name.text = entry.name
 	opened.emit(store.open(entry.path))
 
 
@@ -236,7 +273,6 @@ func _import() -> void:
 			if not str(result["error"]).is_empty():
 				_say(str(result["error"]))
 				return
-			_name.text = file_name.get_basename().capitalize()
 			opened.emit(int(result["placed"]))
 			var note: String = "opened %d parts" % int(result["placed"])
 			if int(result["missing"]) > 0:
@@ -271,6 +307,30 @@ func _on_export() -> void:
 		file_name.replace("\\", "/").get_file())
 	if store.export_to(path, model_name()):
 		_say("wrote %s" % path)
+
+
+## New, asking first only when there is something it would lose.
+func ask_for_new() -> void:
+	if store != null and store.has_unsaved_work():
+		_confirm_new.dialog_text = ("“%s” is not saved as it is now. "
+			% model_name() + "A new model replaces it on the baseplate.")
+		_confirm_new.popup_centered()
+		return
+	_start_new()
+
+
+func _start_new() -> void:
+	world.clear()
+	builder.lattice.clear()
+	builder.forget_history()
+	_name.text = ModelStore.UNTITLED
+	if store != null:
+		store.title = ModelStore.UNTITLED
+		# Nothing in it is missing, so the autosave may keep it.
+		store.adopt()
+	model_named.emit(ModelStore.UNTITLED)
+	started_new.emit()
+	_say("new model")
 
 
 func _ask_to_clear() -> void:
