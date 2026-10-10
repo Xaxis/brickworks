@@ -141,7 +141,8 @@ func _show_name(name: String) -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("document.title = %s" % JSON.stringify(text), true)
 	else:
-		get_window().title = text
+		# With the version, as the title said before it had a name to say.
+		get_window().title = "%s %s" % [text, BuildInfo.version()]
 
 
 func _enable_antialiasing() -> void:
