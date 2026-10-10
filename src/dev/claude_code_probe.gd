@@ -56,6 +56,28 @@ func _initialize() -> void:
 		print("  ok    claude is at %s" % where)
 
 	print("")
+	print("  and a session that has ended lets the app go")
+	# The reader thread spun at 100% once the session's process had
+	# exited — get_line() on a dead pipe comes back empty and never says
+	# end of file — and closing the app waited on it for ever. Two lines
+	# from a process that exits at once must arrive, and the reader stop.
+	var piped: Dictionary = OS.execute_with_pipe("sh", ["-c", "echo one; echo two"])
+	var session := ClaudeCode.new()
+	var reader := Thread.new()
+	reader.start(session._read.bind(piped["stdio"], int(piped["pid"])))
+	var until: int = Time.get_ticks_msec() + 5000
+	while reader.is_alive() and Time.get_ticks_msec() < until:
+		OS.delay_msec(50)
+	var ended: bool = not reader.is_alive()
+	_check("the reader stops once the process has gone, in %d ms"
+		% (5000 - maxi(until - Time.get_ticks_msec(), 0)), ended)
+	if ended:
+		reader.wait_to_finish()
+		_check("...having read what it said: %s" % str(session._lines),
+			session._lines.has("one") and session._lines.has("two"))
+	session.free()
+
+	print("")
 	if _failures == 0:
 		print("a design run can reach the bricks and nothing else")
 	else:

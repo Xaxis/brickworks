@@ -134,7 +134,7 @@ func design(brief: String, port: int, tools: PackedStringArray) -> void:
 	# there is, and the window has to keep drawing while a design that
 	# takes minutes is running.
 	_thread = Thread.new()
-	_thread.start(_read.bind(started["stdio"]))
+	_thread.start(_read.bind(started["stdio"], _pid))
 
 
 ## Stop the run, if one is going.
@@ -153,10 +153,21 @@ func _exit_tree() -> void:
 		_thread = null
 
 
-func _read(pipe: FileAccess) -> void:
+## Every line the session writes, until it has gone.
+##
+## Not until eof_reached(): a pipe whose writer has exited never says so.
+## get_line() comes back empty at once, every time, and this loop spun a
+## core at 100% from the end of every design until the app was closed —
+## which it then could not be, because closing waits for this thread.
+## Two command-line Orthanc runs held the box's GPU lease for an hour
+## that way, each long after it had written its model. So an empty line
+## from a process that is no longer running is the end.
+func _read(pipe: FileAccess, pid: int) -> void:
 	while pipe.is_open() and not pipe.eof_reached():
 		var line: String = pipe.get_line()
 		if line.is_empty():
+			if pid > 0 and not OS.is_process_running(pid):
+				break
 			continue
 		_lock.lock()
 		_lines.append(line)
