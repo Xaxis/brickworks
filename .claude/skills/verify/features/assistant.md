@@ -497,6 +497,26 @@ prints what it spent before its verdict; report it.
   what greebling is. `MOSTLY_BIG` is 0.60, in the gap. `tower.ldr` is the closest
   a person's model comes to either line — 44 per cent big, 59 per cent one colour
   — and stays silent on both.
+- **A colour no part can be is refused, not drawn magenta.** `_colour_trouble`
+  says why: a number LDraw does not have, or one of its internal codes — 16 and
+  24 are in the palette, because LDConfig declares them under "Internal Common
+  Material", so "is it in `library.colors`" is the wrong test; ask
+  `BrickColor.is_plastic()`. A submitted or added brick in one is a `no such
+  colour` fault with the commonest current colours as the advice; an edit that
+  recolours into one is "Not applied" whole. Only bricks the design places are
+  judged, not ones already standing. A brick that names no colour is 71, Light
+  Bluish Grey (`DEFAULT_COLOUR`); it was 7, which LEGO stopped using in 2007.
+  `availability_probe` asserts all four.
+- **The palette in the rules is the data's.** `_palette_lines()` lists the
+  current colours in 100+ sets, plain, see-through and metallic, commonest
+  first, with names — 62 of them, about 1,300 characters. The hand-kept list it
+  replaced had 37 and none LEGO added after it was typed. `vocab_probe` still
+  checks every number in that block is a real colour.
+- **`_never_made` is advice, and measured to stay one.** On the 276 real sets in
+  LDraw's model repository it fires on 1.3% of the lots it can judge, every one
+  false; see [parts](parts.md). A rubber or canvas colour is asked as its plain
+  colour (`PartLibrary.plain_code`), or every tyre drawn in Rubber Black was told
+  it was never made.
 - **Only the rules were cached, so every turn paid for the whole design again.**
   A castle run spent $9.67, and $8 was input sent fresh: 2.04M tokens against
   575k from the cache. The request now carries top-level `cache_control`,

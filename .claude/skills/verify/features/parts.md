@@ -19,6 +19,19 @@ geometry in front of them.
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /
   `never_made_in()`; surfaced on the search line and as `check_design` advice.
+- `what each colour is`: `assets/generated/colors.json`, written only by
+  `refresh_catalogue.write_colors` (`build_meshes.py` calls the same function).
+  Per colour: LDraw's code, name, values and finish; its LDConfig `group`
+  ("internal common material" is 16, 24 and sticker film — `BrickColor.is_plastic()`
+  says no); LEGO's `lego_ids` and `lego_name` from LDConfig's `// LEGOID`
+  comments (185 colours: 71 is LEGO's Medium Stone Grey); `plain_code` for a
+  rubber or canvas variant (Rubber Black is Black to Rebrickable and a shop); and,
+  for the 210 codes the colour join reaches, `rebrickable_id` (+
+  `rebrickable_also` where Rebrickable keeps two entries for one colour),
+  `rebrickable_name`, `years`, `sets`, `current` (in a set within two years of
+  the newest in the tables: 77 colours) and `matched_by`, the evidence.
+  **No BrickLink numbers**: none are on disk, and a guessed one orders the wrong
+  colour. `colour_matches()` is the join; see the gotcha below.
 - `how often a part is really used`: `rebrickable.usage()` counts the distinct
   catalogued sets each part appears in and writes `in_sets` onto every part that
   joins. `PartLibrary.staples(n)` gives the most used, `PartsBin._usage_score`
@@ -46,8 +59,10 @@ geometry in front of them.
 - `element numbers`: the LEGO element a part in a colour actually is —
   `3001` in red is `300121` — so a parts list is orderable rather than
   descriptive. `rebrickable.elements()` writes `assets/generated/elements.json`
-  (0.8 MB, 40,474 pairs over 5,298 parts); `PartLibrary.element_for()` loads it
-  lazily; `Inventory.Lot.element` carries it into the CSV and the booklet.
+  (0.9 MB, 41,376 pairs over 5,300 parts); `PartLibrary.element_for()` loads it
+  lazily; `Inventory.Lot.element` carries it into the CSV and the booklet. The
+  CSV also carries `lego_colour` (LEGO's name) and `rebrickable_colour`, last so
+  the first eight columns stay where they were.
 
 ## How to reach it
 
@@ -278,15 +293,38 @@ it is hands-only, so say so rather than claiming it.
   so the beam reported three holes and the middle one took no pin.
 
 - **Unknown is not "never made", and the whole feature turns on that.** The join
-  knows 6,419 of the 8,591 plain parts, and 846 of those have a *short* list
-  because sixty-nine Rebrickable colours have no LDraw counterpart (BrickLink's
-  "Dark Purple" is LEGO's "Medium Lilac"). `never_made_in()` therefore refuses to
+  knows 6,427 of the 8,591 plain parts, and 700 of those have a *short* list:
+  made in one of 61 Rebrickable colours LDraw has no counterpart for (HO,
+  vintage 1949, Clikits, Duplo-only, two-tone Bionicle masks), or known only from
+  element numbers with no set inventory behind it. `never_made_in()` refuses to
   answer for an empty list *or* a `colors_partial` one — read `colors` directly
-  only if you have handled both. Matching the leftover colours by swatch was
-  tried and measured: nearest-ΔE picks Dark Blue Violet for Dark Purple and
-  merges pearlescent "Pearl Sand Blue" into solid "Sand Blue" at ΔE 2.9, while
-  name-matched pairs are only 50% within ΔE 8.2. It does not work; do not retry
-  it without new data.
+  only if you have handled both.
+
+- **The colour join was the reason the checker was silent.** Matching by name
+  then exact RGB left Dark Purple unnamed — Rebrickable's 85, 17,000 parts — so
+  **49 of the 50 most used parts were short** and `_never_made` said nothing
+  about them. Rebrickable numbered its colours by LDraw's codes, and LDraw has
+  since *renamed* some (85 Dark_Purple is Medium_Lilac now: the id stands) and
+  *moved* others (Rebrickable's 41 "Trans-Light Blue" is LDraw 43: the name
+  wins). `colour_matches()` tells them apart by whether the name belongs to
+  another code today, adds LEGO's names from LDConfig (2026's "Blue Violet" is
+  LDraw 431, not 89; "Vibrant Yellow" is 368), narrows an RGB shared by several
+  codes by finish (Pearl Titanium is 316, not a paint), and assigns one code per
+  colour, two kinds of evidence beating one. Now 212 of 273 Rebrickable colours
+  join, **1 of the top 50 parts is short** (top 200: 6, was 141), and 41,376
+  element pairs survive (40,474). Checked against LDraw's model repository, 276
+  real sets drawn in LDraw codes: the join agrees with how they are coloured for
+  55 of the 56 colours they pair — the one is Flat Silver, which old models draw
+  as 179 and LDConfig now names 315.
+
+  **Measured on those real sets, `_never_made` fires on 1.3% of the lots it can
+  judge (606 of 46,881), against 4.0% before** — and every one is false, since a
+  real set has every part it is drawn in. What is left is mostly not colour: old
+  models' codes (179, 41, 83) and mould variants the part join cannot separate
+  (3665a). Still too often for a fault; it stays advice. Matching the leftover
+  colours by swatch was tried and measured earlier: nearest-ΔE picks Dark Blue
+  Violet for Dark Purple and merges "Pearl Sand Blue" into "Sand Blue". It does
+  not work; do not retry it without new data.
 
 - **A check against a colour the part was made in proves nothing.** The first
   version of this probe asserted `not 3001.never_made_in(484)` — but 3001 *was*

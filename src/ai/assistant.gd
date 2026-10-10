@@ -57,6 +57,12 @@ const PLATE := 8.0
 ## assistant are laid the same way.
 const FACES: Dictionary = BrickLattice.FACE_AXIS
 
+## The colour of a brick that names none: Light Bluish Grey, the grey
+## modern sets are built in, and what a fill already defaults to. It was
+## 7, Light Grey, which LEGO replaced in 2004 — the last set with it is
+## from 2007 — and which reads green beside anything current.
+const DEFAULT_COLOUR := 71
+
 var library: PartLibrary
 var world: BrickWorld
 var builder: Builder
@@ -266,7 +272,7 @@ class Placement extends RefCounted:
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
 		p.part = str(raw.get("part", ""))
-		p.color = int(raw.get("color", 7))
+		p.color = int(raw.get("color", DEFAULT_COLOUR))
 		p.x = float(raw.get("x", 0))
 		p.y = float(raw.get("y", 0))
 		p.z = float(raw.get("z", 0))
@@ -1935,6 +1941,10 @@ func _run_tool(block: Dictionary) -> Variant:
 		"edit_model":
 			var edited: Model = _edit(args)
 			_say_shorthand_trouble()
+			if not _bad_colours.is_empty():
+				progress.emit("tried a change in a colour that does not exist")
+				return ("Not applied — %s. " % "; ".join(_bad_colours)
+					+ _colour_advice())
 			if _touched == 0:
 				# Nothing changed, and saying "done" to that ends the
 				# run as a success with the model untouched.
@@ -2049,6 +2059,10 @@ func _model_from_world() -> Model:
 ## and found none of them used to come back as "Done", with nothing
 ## changed and the run ended as a success.
 var _unknown: PackedInt64Array = PackedInt64Array()
+## Recolours an edit asked for in a colour no part can be, said in
+## words. An edit with any is refused whole, the way a design with a
+## brick in one is: carried out, it painted bricks magenta.
+var _bad_colours: PackedStringArray = PackedStringArray()
 ## How many changes an edit actually made.
 var _touched: int = 0
 ## Which bricks the last edit added or moved, for the picture to pick
@@ -2078,9 +2092,17 @@ func _edit(args: Dictionary) -> Model:
 				kept.append(placement)
 		model.placements = kept
 
+	_bad_colours = PackedStringArray()
 	for raw: Variant in args.get("recolor", []):
 		var order: Dictionary = raw
-		var colour: int = int(order.get("color", 7))
+		if not order.has("color"):
+			_bad_colours.append("a recolor names no colour")
+			continue
+		var colour: int = int(order.get("color"))
+		var trouble: String = _colour_trouble(colour)
+		if not trouble.is_empty():
+			_bad_colours.append(trouble)
+			continue
 		for id_raw: Variant in order.get("bricks", []):
 			var placement: Placement = by_id.get(int(id_raw))
 			if placement == null:
@@ -3295,19 +3317,29 @@ const ENOUGH_COLOURS := 8
 
 ## Parts specified in a colour LEGO never moulded them in.
 ##
-## Advice, not a fault, and for a reason: the join behind this knows
-## 6,419 of the 8,591 plain parts in the library, and 846 of those have
-## a colour list that is short because sixty-nine Rebrickable colours
-## have no LDraw counterpart. PartInfo.never_made_in refuses to answer
-## for either case, so what is left is parts whose list is both present
-## and complete — but a design is still buildable in another colour, and
-## failing one over a data join would be the join overreaching.
+## Advice, not a fault, and measured to stay one. The join behind this
+## knows 6,427 of the 8,591 plain parts in the library, 700 of them with
+## a list known to be short, and PartInfo.never_made_in refuses to
+## answer for those. Until the colour join read LEGO's names and
+## Rebrickable's ids, 49 of the 50 most used parts were short and this
+## was silent for nearly every brick; now it is one. Asked of the 276
+## real sets in LDraw's model repository, which contain every part they
+## are drawn in, it fires on 1.3% of the part-and-colour lots it can
+## judge, against 4.0% before. What is left is mostly not colour at all
+## — old models drawing flat silver as 179 and trans light blue as 41,
+## and mould variants (3665a) the part join cannot tell apart — but a
+## real set told one lot in seventy-five does not exist is still too
+## often for a fault that fails a sound design.
+##
+## A rubber or canvas colour is asked as the colour it is: Rebrickable
+## files a black tyre under Black.
 func _never_made(model: Model) -> String:
 	## "part|colour" -> how many bricks say it.
 	var wrong: Dictionary = {}
 	for placement: Placement in model.placements:
 		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
-		if info == null or not info.never_made_in(placement.color):
+		if info == null \
+				or not info.never_made_in(library.plain_code(placement.color)):
 			continue
 		var key: String = "%s|%d" % [placement.part, placement.color]
 		wrong[key] = int(wrong.get(key, 0)) + 1
@@ -3338,6 +3370,92 @@ func _never_made(model: Model) -> String:
 func _colour_name(code: int) -> String:
 	var colour: PartLibrary.BrickColor = library.colors.get(code)
 	return colour.name if colour != null else "colour %d" % code
+
+
+## Why no part can be this colour, or "" when one can.
+func _colour_trouble(code: int) -> String:
+	if library == null or library.colors.is_empty():
+		return ""                   # no palette loaded, nothing to judge by
+	var colour: PartLibrary.BrickColor = library.colors.get(code)
+	if colour == null:
+		return "%d is not an LDraw colour" % code
+	if not colour.is_plastic():
+		return ("%d is %s, a code LDraw uses inside part files, not a "
+			% [code, colour.name] + "colour anything is moulded in")
+	return ""
+
+
+## What to reach for instead, out of the data: the commonest current
+## colours, so the answer to a wrong number is a right one.
+func _colour_advice() -> String:
+	var named: PackedStringArray = PackedStringArray()
+	for code: int in _current_colours(["solid"]).slice(0, 8):
+		named.append("%d %s" % [code, _colour_name(code)])
+	if named.is_empty():
+		return "Use a colour from the list in the rules."
+	return ("A colour is an LDraw number from the list in the rules — "
+		+ "%s, and the rest of it." % ", ".join(named))
+
+
+## Current colours, commonest first, in these finishes. Current means in
+## a set of the last couple of years by Rebrickable's inventories, and
+## the count of sets is what orders them. A colour in fewer than
+## COMMON_COLOUR sets is a handful of special parts and is left out, so
+## the list stays a palette rather than a catalogue.
+const COMMON_COLOUR := 100
+
+
+func _current_colours(finishes: Array) -> Array:
+	var found: Array = []
+	if library == null:
+		return found
+	for code: int in library.colors:
+		var colour: PartLibrary.BrickColor = library.colors[code]
+		if colour.current and colour.is_plastic() \
+				and colour.sets >= COMMON_COLOUR \
+				and finishes.has(colour.finish):
+			found.append(code)
+	found.sort_custom(func(a: int, b: int) -> bool:
+		var x: int = (library.colors[a] as PartLibrary.BrickColor).sets
+		var y: int = (library.colors[b] as PartLibrary.BrickColor).sets
+		return x > y if x != y else a < b)
+	return found
+
+
+## The palette the rules give, built from the data rather than written
+## out: a hand-kept list named 85 as "medium lilac" correctly and was
+## silent about every colour LEGO has added since it was typed.
+func _palette_lines() -> String:
+	var rows: Array = [
+		["plain", ["solid"]],
+		["see-through", ["transparent"]],
+		["metallic", ["pearlescent", "metal", "chrome"]],
+	]
+	var lines: PackedStringArray = PackedStringArray()
+	for row: Array in rows:
+		var named: PackedStringArray = PackedStringArray()
+		for code: int in _current_colours(row[1]):
+			named.append("%d %s" % [code, _colour_name(code)])
+		if not named.is_empty():
+			lines.append("  %-12s %s" % [row[0], ", ".join(named)])
+	if lines.is_empty():
+		# A build without the Rebrickable tables knows nothing current,
+		# and an empty list would read as "there are no colours".
+		return ("  71 Light Bluish Grey, 72 Dark Bluish Grey, 0 Black, "
+			+ "15 White, 19 Tan, 4 Red, 1 Blue, 14 Yellow, 47 Trans Clear")
+	return "\n".join(lines)
+
+
+## The last year either of the old greys was in a set, for the warning
+## about them. Read rather than written, like the palette.
+func _old_greys_until() -> String:
+	var until: int = 0
+	if library != null:
+		for code: int in [7, 8]:
+			var colour: PartLibrary.BrickColor = library.colors.get(code)
+			if colour != null:
+				until = maxi(until, colour.last_year)
+	return "the mid 2000s" if until == 0 else str(until)
 
 
 ## The colours to offer instead, preferring ones still in production.
@@ -3808,6 +3926,18 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
+		# A colour no part can be: a number LDraw does not have, or one
+		# of its internal codes — 16 means "the colour of whatever this
+		# is inside", which a brick on a baseplate is not. Drawn, either
+		# came out magenta and nothing said why. Only a brick this design
+		# places: one already standing came from somewhere else, and an
+		# edit's own recolours are checked where they are asked for.
+		# Not a reason to skip the brick's geometry, which is still sound.
+		if placement.id == 0:
+			var trouble: String = _colour_trouble(placement.color)
+			if not trouble.is_empty():
+				_note(issues, "no such colour", "brick %d (%s): %s"
+					% [index, placement.part, trouble])
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			# Two different failures wearing one message. A part that is
@@ -4108,6 +4238,10 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var square: String = _style(model)
 	if not square.is_empty():
 		advice.append(square)
+
+	# What to use instead of a colour that does not exist, said once.
+	if issues.has("no such colour"):
+		advice.append(_colour_advice())
 
 	# And whether anything is specified in a colour it was never made in.
 	var unmade: String = _never_made(model)
@@ -6121,26 +6255,18 @@ So a 2x4 brick at y=0 occupies plates 0,1,2. The next brick on top of it \
 goes at y=3. Two bricks side by side at y=0 go at x=0 and x=4.
 
 COLOUR
-A colour is an LDraw number. Do not recall one — these are the colours
-sets are actually made of, and a number not in this list is very likely
-either wrong or a shade that was discontinued before you were trained.
+A colour is an LDraw number. Do not recall one — these are the colours \
+in real sets of the last couple of years, commonest first, by the set \
+inventories. A number not in this list is very likely either wrong or a \
+shade that was discontinued, and one that is not a colour at all is \
+refused: 16 and 24 are codes inside LDraw's part files, not plastic.
 
-  greys and neutrals   71 light bluish grey   72 dark bluish grey
-                       0 black   15 white   19 tan   28 dark tan
-                       70 reddish brown   308 dark brown
-  strong              4 red   320 dark red   14 yellow   25 orange
-                       484 dark orange   2 green   288 dark green
-                       1 blue   272 dark blue   5 dark pink
-  lighter             191 bright light orange   226 bright light yellow
-                       212 bright light blue   322 medium azure
-                       321 dark azure   323 light aqua   27 lime
-                       326 yellowish green   379 sand blue
-                       378 sand green   85 medium lilac
-  see-through         47 clear   36 red   34 green   40 brown
+""" + _palette_lines() + """
 
-71 and 72 are the greys modern sets use. 7 and 8 are the greys sets
-used until 2004 and they read as slightly green beside anything else;
-do not reach for them because "grey" sounds like a low number.
+71 and 72 are the greys modern sets use. 7 and 8 are the greys sets \
+used until """ + _old_greys_until() + """ and they read as slightly green \
+beside anything else; do not reach for them because "grey" sounds like a \
+low number.
 
 Colour is not decoration, it is how a shape is read. A hull that is one
 colour throughout reads as a block whatever its silhouette; the same

@@ -10,7 +10,12 @@ The Python side: LDraw in, mesh cache and catalogue out.
   surface per colour role, voxelised onto the 2 LDU lattice, and written as `.lbm`
   with its connectors, boxes and sockets. ~27,000 files, ~45 minutes, 1.1 GB.
 - `refresh the catalogue`: `assets/generated/catalogue.json` (14 MB) — the index the
-  app searches, with each part's title, category and size.
+  app searches, with each part's title, category and size — and `colors.json`
+  (86 KB), through `write_colors`, the one writer of it: `build_meshes.py` calls
+  the same function, and the two copies there were before had drifted to the
+  point where neither filled the cross-references. It prints a `colour join:`
+  line (210 LDraw colours with a Rebrickable colour, 77 current, 185 with a LEGO
+  number). See [parts](parts.md) for what each colour carries.
 - `pack the web parts`: chooses which parts the WebAssembly build carries, smallest
   mesh first, with per-family caps so no family is absent entirely. Everything else
   is a fetch away at run time.
@@ -41,11 +46,11 @@ tools/export.sh linux                 # one of them
 ## Gotchas
 
 - **The Python tests silently skip the half that matters without numpy.** `python
-  -m pytest -q` reports "42 passed, 25 skipped" on a bare interpreter, and the
+  -m pytest -q` reports "45 passed, 25 skipped" on a bare interpreter, and the
   skipped ones are `test_collision_is_exact_on_the_lattice`,
   `test_lattice_divides_every_lego_dimension` and the rest of the occupancy
   cover — exactly what a change to `tools/ldraw/occupancy.py` needs. There is no
-  `pip` or `ensurepip` here, so use `uv venv` and run pytest from it: all 67
+  `pip` or `ensurepip` here, so use `uv venv` and run pytest from it: all 70
   pass. A green suite with 25 skips is not a green suite.
 
 - **A full mesh build is ~90 minutes and writes nothing until the end.** An
@@ -65,7 +70,7 @@ Static:
 ```sh
 pyright                                            # 0 errors, 3 warnings (numpy/scipy absent)
 python3 -m pytest tests/ -q                        # or:
-python3 tools/minitest.py tests/test_ldraw.py      # 42 passed, 25 skipped
+python3 tools/minitest.py tests/test_ldraw.py      # 45 passed, 25 skipped
 ```
 
 `tests/test_ldraw.py` is the real check on this area: it measures the shipped
@@ -103,7 +108,7 @@ numbers it prints come from the files that were just written.
 ## Gotchas
 
 - **numpy and scipy are not installed here.** `tools/build_meshes.py` cannot run,
-  and 25 of the 67 pipeline test cases skip. `apt install python3-numpy
+  and 25 of the 70 pipeline test cases skip. `apt install python3-numpy
   python3-scipy`.
 - **There is no pip and no ensurepip either**, so `tools/check.sh` falls back to
   `tools/minitest.py` for the test file. It implements `approx`, `fixture`,

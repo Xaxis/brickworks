@@ -9,11 +9,13 @@
 ##
 ## The join is 79% complete, which is the whole difficulty: two thirds
 ## of what it cannot answer is prints and stickers it is right to skip,
-## but 846 parts have a colour list that is short because sixty-nine
-## Rebrickable colours have no LDraw counterpart. So the thing this
-## probe cares about most is not coverage. It is that silence stays
-## silent — that "nobody knows" never comes out as "never made", in
-## either the search line or the checker.
+## and 700 parts have a colour list known to be short — made in one of
+## sixty-one Rebrickable colours LDraw has no counterpart for, or known
+## only from element numbers. So the thing this probe cares about most is
+## not coverage. It is that silence stays silent — that "nobody knows"
+## never comes out as "never made", in either the search line or the
+## checker — and, since the colour join was fixed, that the most used
+## parts are no longer all short, which had made the checker silent.
 extends SceneTree
 
 var _failures: int = 0
@@ -27,6 +29,7 @@ func _initialize() -> void:
 		return
 
 	_check_catalogue(library)
+	_check_the_join(library)
 	_check_silence(library)
 	_check_the_search_line(library)
 	await _check_the_checker(library)
@@ -99,8 +102,8 @@ func _check_silence(library: PartLibrary) -> void:
 	_ok(printed != null and not printed.never_made_in(2),
 		"...and so is never said to be unavailable in anything")
 
-	# 3001's list is short, because it was made in Dark Purple and
-	# nothing can name that colour in LDraw terms.
+	# 3001's list is short, because it was made in Glitter Milky White
+	# (a 1999-2005 colour) and nothing can name that colour in LDraw terms.
 	var brick: PartLibrary.PartInfo = library.parts.get("3001")
 	_ok(brick != null and brick.colors_partial, "3001's list is known to be short")
 	# Light Violet, which is nameable in LDraw terms and is genuinely
@@ -236,3 +239,127 @@ func _check_the_checker(library: PartLibrary) -> void:
 	quiet.placements.append(odd)
 	_ok(assistant._never_made(quiet).is_empty(),
 		"nor is one built from parts nobody has data for")
+
+	# A tyre drawn in Rubber Black. Rebrickable files it under Black, so
+	# asked as Rubber Black it is "never made" — every tyre in every real
+	# set drawn in LDraw was told so, 95 of them in the model repository.
+	var tyres := Assistant.Model.new()
+	var tyre := Assistant.Placement.new()
+	tyre.part = "3641"
+	tyre.color = 256
+	tyres.placements.append(tyre)
+	var known: PartLibrary.PartInfo = library.parts.get("3641")
+	_ok(known != null and known.colors.has(0) and not known.colors.has(256),
+		"3641, a tyre, is recorded in Black and never in Rubber Black")
+	_ok(assistant._never_made(tyres).is_empty(),
+		"...and drawn in Rubber Black it is not told it was never made")
+
+	_check_colours_refused(assistant)
+	await _check_a_recolour_refused(assistant, world, builder)
+
+
+## The join itself, read through what the app loads.
+func _check_the_join(library: PartLibrary) -> void:
+	print("\nwhich LDraw colour each Rebrickable colour is")
+	# Rebrickable's 85 "Dark Purple" is LDraw 85, renamed Medium Lilac
+	# since: the colour of 17,000 Rebrickable parts, which the join
+	# matched by name and so never found.
+	var brick: PartLibrary.PartInfo = library.parts.get("3001")
+	_ok(brick != null and brick.colors.has(85),
+		"3001 was made in 85, Medium Lilac (Rebrickable's Dark Purple)")
+	var lilac: PartLibrary.BrickColor = library.colors.get(85)
+	_ok(lilac != null and lilac.rebrickable_id == 85
+			and lilac.lego_name == "Medium Lilac" and lilac.current,
+		"85 carries Rebrickable 85, LEGO's name and that it is current")
+	# The new 2026 colour is LEGO's "Blue Violet", which is LDraw 431. It
+	# had been matched by name to LDraw 89, which is LEGO's Medium Royal
+	# Blue from 2004 and Rebrickable's 89 by its id.
+	var violet: PartLibrary.BrickColor = library.colors.get(431)
+	var royal: PartLibrary.BrickColor = library.colors.get(89)
+	_ok(violet != null and violet.rebrickable_id == 1147 and violet.current,
+		"431 is Rebrickable's 2026 Blue Violet, and current")
+	_ok(royal != null and royal.rebrickable_id == 89 and not royal.current,
+		"...and 89 is Rebrickable's Royal Blue, last in a set in %d"
+			% (0 if royal == null else royal.last_year))
+	var light_grey: PartLibrary.BrickColor = library.colors.get(7)
+	var modern: PartLibrary.BrickColor = library.colors.get(71)
+	_ok(light_grey != null and not light_grey.current
+			and modern != null and modern.current
+			and modern.lego_name == "Medium Stone Grey",
+		"7 is retired (last %d) and 71 current, LEGO's Medium Stone Grey"
+			% (0 if light_grey == null else light_grey.last_year))
+	var main: PartLibrary.BrickColor = library.colors.get(16)
+	_ok(main != null and not main.is_plastic()
+			and modern != null and modern.is_plastic(),
+		"16 is in the palette and is not a colour a part can be")
+
+	# What it was all for: 49 of the 50 most used parts had a short list,
+	# so never_made_in said nothing about any of them.
+	var short: int = 0
+	var staples: Array[PartLibrary.PartInfo] = library.staples(50)
+	for info: PartLibrary.PartInfo in staples:
+		if info.colors_partial:
+			short += 1
+	_ok(staples.size() == 50 and short <= 3,
+		"%d of the 50 most used parts have a short list (was 49)" % short)
+
+
+## A brick in a colour no part can be fails the check, and says why.
+func _check_colours_refused(assistant: Assistant) -> void:
+	for pair: Array in [[16, "a code LDraw uses inside part files"],
+			[9999, "not an LDraw colour"]]:
+		var odd := Assistant.Model.new()
+		odd.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": pair[0], "x": 0, "y": 0, "z": 0}))
+		var report: Dictionary = assistant._check(odd, true)
+		var said: String = str(report.get("feedback", ""))
+		_ok(not bool(report.get("ok", true)) and said.contains("no such colour")
+				and said.contains(str(pair[1])),
+			"a brick in %d is refused: %s" % [pair[0],
+				said.substr(said.find("no such colour"), 110).replace("\n", " ")])
+	_ok(str(assistant._check(_one_brick(71), true).get("summary", ""))
+			.contains("buildable"),
+		"...and the same brick in 71 is buildable")
+	# The colour of a brick that gives none.
+	_ok(Assistant.Placement.from_dict({"part": "3001"}).color == 71,
+		"a brick that names no colour is Light Bluish Grey, not retired 7")
+
+	# The palette the rules give is the data's: current colours only,
+	# with their names, and none of the ones sets stopped using.
+	var rules: String = assistant._system_prompt()
+	var block: String = rules.substr(rules.find("COLOUR"))
+	block = block.substr(0, block.find("AT AN ANGLE"))
+	print("     " + block.substr(block.find("  plain"), 150).replace("\n", " "))
+	_ok(block.contains("71 Light Bluish Grey") and block.contains("353 Coral")
+			and block.contains("315 Flat Silver"),
+		"the rules list current colours by name, Coral and Flat Silver too")
+	_ok(not block.contains("7 Light Grey") and not block.contains("8 Dark Grey"),
+		"...and not the greys LEGO retired")
+
+
+func _one_brick(code: int) -> Assistant.Model:
+	var model := Assistant.Model.new()
+	model.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": code, "x": 0, "y": 0, "z": 0}))
+	return model
+
+
+## An edit that asks to recolour into a colour that does not exist is
+## refused whole, rather than carried out in magenta.
+func _check_a_recolour_refused(assistant: Assistant, world: BrickWorld,
+		builder: Builder) -> void:
+	world.clear()
+	var mesh: Lbm.PartMesh = assistant.library.mesh_for("3001")
+	var spot: Assistant.Placement = Assistant.Placement.from_dict(
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0})
+	var where: Transform3D = assistant._transform(spot, mesh)
+	var made: int = world.add_brick("3001", 4, where)
+	builder.register(made, "3001", where)
+	var answer: Variant = await assistant.use_tool("edit_model",
+		{"recolor": [{"bricks": [made], "color": 24}]})
+	var said: String = str(answer) if answer is String else "a picture"
+	var brick: BrickWorld.Brick = world.get_brick(made)
+	_ok(said.begins_with("Not applied") and said.contains("24"),
+		"recolouring to 24 is refused: %s" % said.substr(0, 100))
+	_ok(brick != null and brick.color_code == 4,
+		"...and the brick is still red")

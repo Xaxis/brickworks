@@ -134,7 +134,15 @@ func element_for(part_id: String, code: int) -> String:
 					var pairs: Variant = (raw as Dictionary).get("pairs", {})
 					if typeof(pairs) == TYPE_DICTIONARY:
 						_elements = pairs
-	return str(_elements.get("%s/%d" % [part_id, code], ""))
+	return str(_elements.get("%s/%d" % [part_id, plain_code(code)], ""))
+
+
+## The colour a part in this code is filed under by LEGO and Rebrickable:
+## a rubber or canvas variant's ordinary colour, otherwise the code
+## itself. A tyre drawn in Rubber Black is a Black tyre to a shop.
+func plain_code(code: int) -> int:
+	var found: BrickColor = colors.get(code)
+	return found.plain_code if found != null else code
 
 
 ## What a part is, without its geometry.
@@ -185,12 +193,11 @@ class PartInfo extends RefCounted:
 	## The years this part first and last appeared in a catalogued set.
 	var first_year: int = 0
 	var last_year: int = 0
-	## True when `colors` is known to be short. Sixty-nine Rebrickable
-	## colours have no LDraw counterpart — BrickLink's "Dark Purple" is
-	## LEGO's "Medium Lilac", and matching them by swatch was measured and
-	## does not work — so a part made in one of them has a list that is
-	## right as far as it goes. Nothing may read a gap in a short list as
-	## proof the colour was never made.
+	## True when `colors` is known to be short: the part was made in a
+	## Rebrickable colour the join cannot name in LDraw terms (HO, vintage,
+	## Clikits and the like — sixty-one of them), or its list comes from
+	## element numbers alone with no set inventory behind it. Nothing may
+	## read a gap in a short list as proof the colour was never made.
 	var colors_partial: bool = false
 
 	## Whether anything is known about what this part was moulded in.
@@ -237,9 +244,37 @@ class BrickColor extends RefCounted:
 	var edge: Color
 	var alpha: int
 	var finish: String          ## solid / transparent / chrome / ...
+	## The LDConfig section it is declared in: "solid", "transparent",
+	## "rubber", "internal common material", ...
+	var group: String = ""
+	## LEGO's own name and numbers, from LDConfig: LDraw's Light Bluish
+	## Grey is LEGO's Medium Stone Grey, 194. Empty where LDConfig gives
+	## none.
+	var lego_name: String = ""
+	var lego_ids: PackedInt32Array = PackedInt32Array()
+	## Rebrickable's number for it, or -1 where the join reaches none.
+	var rebrickable_id: int = -1
+	## The years it was in catalogued sets, and in how many. Zero when
+	## nothing is known, which is never evidence it was not made.
+	var first_year: int = 0
+	var last_year: int = 0
+	var sets: int = 0
+	## In sets of the last couple of years, by Rebrickable's inventories.
+	var current: bool = false
+	## For a rubber or canvas colour, the ordinary colour it is — what a
+	## shop and Rebrickable file a black tyre under. Otherwise its own code.
+	var plain_code: int = 0
 
 	func is_transparent() -> bool:
 		return alpha < 255
+
+	## Whether a part can be this colour. 16 and 24 are LDraw's "inherit"
+	## codes, and the rest of LDConfig's internal section is sticker film
+	## and electrical contacts; "obsolete" is a code LDraw retired. They
+	## are in the palette because LDConfig declares them, and nothing
+	## should be built in them.
+	func is_plastic() -> bool:
+		return group != "internal common material" and group != "obsolete"
 
 
 ## Where a part's geometry is fetched from when this build does not
@@ -405,6 +440,19 @@ func _load_colors() -> void:
 		# Stored as 0-255 sRGB; the shader linearises, so keep it raw here.
 		color.rgb = Color(rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0, color.alpha / 255.0)
 		color.edge = Color(edge[0] / 255.0, edge[1] / 255.0, edge[2] / 255.0)
+		# A colors.json from before these fields existed reads as all
+		# plastic and nothing known, which is what it was.
+		color.group = str(entry.get("group", ""))
+		color.lego_name = str(entry.get("lego_name", ""))
+		for number: Variant in entry.get("lego_ids", []):
+			color.lego_ids.append(int(number))
+		color.rebrickable_id = int(entry.get("rebrickable_id", -1))
+		var years: Array = entry.get("years", [0, 0])
+		color.first_year = int(years[0])
+		color.last_year = int(years[1])
+		color.sets = int(entry.get("sets", 0))
+		color.current = bool(entry.get("current", false))
+		color.plain_code = int(entry.get("plain_code", color.code))
 		colors[color.code] = color
 
 

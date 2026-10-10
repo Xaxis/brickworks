@@ -50,6 +50,7 @@ from ldraw.connectivity import extract as extract_connections  # noqa: E402
 from ldraw.geometry import flatten  # noqa: E402
 from ldraw.library import Library  # noqa: E402
 from ldraw import occupancy as occ  # noqa: E402
+from refresh_catalogue import write_colors  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LDRAW = ROOT / "vendor" / "ldraw"
@@ -259,7 +260,7 @@ def main() -> int:
         "parts": catalogue,
     }
     (out / "catalogue.json").write_text(json.dumps(index, separators=(",", ":")))
-    _write_colors(out, palette)
+    print(write_colors(out, palette)[1])
 
     elapsed = time.time() - started
     print(f"\ndone in {elapsed:.0f}s")
@@ -274,28 +275,6 @@ def main() -> int:
     if len(failures) > 10:
         print(f"      ... and {len(failures) - 10:,} more")
     return 0
-
-
-def _write_colors(out: Path, palette: Palette) -> None:
-    colors = []
-    for color in palette:
-        entry = {
-            "code": color.code,
-            "name": color.name.replace("_", " "),
-            "rgb": list(color.value),
-            "edge": list(color.edge),
-            "alpha": color.alpha,
-            "luminance": color.luminance,
-            "finish": color.finish.value,
-        }
-        if color.material:
-            entry["material"] = {
-                "kind": color.material.kind.lower(),
-                "rgb": list(color.material.value),
-                "fraction": color.material.fraction,
-            }
-        colors.append(entry)
-    (out / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
 
 
 if __name__ == "__main__":

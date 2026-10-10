@@ -27,8 +27,8 @@ reading, by eye.
 |---|---|---|---|
 | the suite | `tools/check.sh` | the parse check, the Python pipeline, 36 headless probes, 6 windowed ones, and a session driving the app over MCP | passes, ~250s, with 25 occupancy tests skipped |
 | network suite | `tools/check.sh --network` | also fetching a part over the wire, and opening a model the way the browser does | passes, +~15s |
-| types | `pyright` | the Python pipeline and tools | passes, 3s, 4 warnings: pytest (twice), numpy and scipy imports |
-| pipeline only | `python3 -m pytest tests/ -q`, or `python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py` | the LDraw facts everything rests on: 8 mm stud pitch, 9.6 mm brick, −Y up; and the style measures on hand-made models | 86 passed, 25 skipped, 1.6s |
+| types | `pyright` | the Python pipeline and tools | passes, 3s, warnings only for pytest, numpy and scipy imports |
+| pipeline only | `python3 -m pytest tests/ -q`, or `python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py` | the LDraw facts everything rests on: 8 mm stud pitch, 9.6 mm brick, −Y up; the colour join; and the style measures on hand-made models | 89 passed, 25 skipped, 1.6s |
 | parses | `godot --headless --path . --quit` | every script and scene loads | passes, ~20s |
 
 `features.json` lists `python -m pytest -q` and `pyright` because those are what
@@ -36,7 +36,7 @@ static analysis can see. `tools/check.sh` is the real suite and runs both.
 
 Known, and not a regression:
 
-- **25 of the 111 pipeline tests skip** on a machine without numpy and scipy. They
+- **25 of the 114 pipeline tests skip** on a machine without numpy and scipy. They
   are the six that voxelise a part. `apt install python3-numpy python3-scipy`
   brings them back. The suite says so on the `ok pipeline` line.
 - **There is no pytest, pip or ensurepip on this machine** and `apt` wants a

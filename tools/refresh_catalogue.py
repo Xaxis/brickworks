@@ -53,26 +53,7 @@ def main() -> int:
         if entry != before:
             changed += 1
 
-    palette = Palette.from_file(LDRAW / "LDConfig.ldr")
-    colors = []
-    for color in palette:
-        item = {
-            "code": color.code,
-            "name": color.name.replace("_", " "),
-            "rgb": list(color.value),
-            "edge": list(color.edge),
-            "alpha": color.alpha,
-            "luminance": color.luminance,
-            "finish": color.finish.value,
-        }
-        if color.material:
-            item["material"] = {
-                "kind": color.material.kind.lower(),
-                "rgb": list(color.material.value),
-                "fraction": color.material.fraction,
-            }
-        colors.append(item)
-    (GENERATED / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
+    colors, joined = write_colors(GENERATED, Palette.from_file(LDRAW / "LDConfig.ldr"))
 
     made = _availability(document, colors)
     ordered = _elements(document, colors)
@@ -89,12 +70,50 @@ def main() -> int:
           f"{redirects:,} redirects marked")
     print(f"colours: {len(colors)} — " +
           ", ".join(f"{k} {v}" for k, v in buckets.most_common()))
+    print(joined)
     print(made)
     print(ordered)
     print(normal)
     print(used)
     print(builds)
     return 0
+
+
+def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:
+    """Write colors.json: the palette, and what Rebrickable knows of each.
+
+    The only writer of the file — tools/build_meshes.py calls this too —
+    because two copies of it had already drifted to the point where
+    neither filled the cross-references the palette had fields for.
+
+    Every colour carries LDraw's code, name, values and finish, its
+    LDConfig group, and LEGO's own numbers and name where LDConfig gives
+    them.  The ones the Rebrickable join reaches also carry
+    rebrickable_id and rebrickable_name, the years they were in sets,
+    how many sets, and whether they are current.  BrickLink's numbers
+    are not on disk anywhere, so there are none: a guessed one would
+    order the wrong colour.
+
+    Returns the entries and a line saying what the join reached.
+    """
+    colors = palette.entries()
+    said = "colour join: skipped"
+    try:
+        import rebrickable
+        facts = rebrickable.colour_facts(colors)
+    except (ImportError, FileNotFoundError) as missing:
+        facts = {}
+        said = f"colour join: skipped ({missing})"
+    for entry in colors:
+        entry.update(facts.get(entry["code"], {}))
+    if facts:
+        current = sum(1 for f in facts.values() if f.get("current"))
+        said = ("colour join: %d LDraw colours have a Rebrickable colour, "
+                "%d of them current, %d have a LEGO number"
+                % (len(facts), current,
+                   sum(1 for e in colors if e.get("lego_ids"))))
+    (out / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
+    return colors, said
 
 
 def _usage(document: dict) -> str:
