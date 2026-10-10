@@ -64,6 +64,15 @@ func _run() -> void:
 				_ask(key, font, "a key on %s" % which[1])
 			_ask(binding.verb, font, "a verb on %s" % which[1])
 
+	# And every string the interface code could put on screen, whether
+	# or not this run built it. The run card's ticks only exist while a
+	# design is running, so the walk above never saw them, and the first
+	# browser test of the card showed a box beside every finished step.
+	for path: String in _interface_scripts():
+		var source: String = FileAccess.get_file_as_string(path)
+		for found: RegExMatch in _literals().search_all(source):
+			_ask(found.get_string(1), font, "a string in %s" % path.get_file())
+
 	print("  looked at %d pieces of text" % _looked_at)
 	if _missing.is_empty():
 		print("")
@@ -78,6 +87,22 @@ func _run() -> void:
 	print("")
 	print("%d character(s) would draw as an empty box" % _missing.size())
 	quit(1)
+
+
+## The scripts that draw interface: the panels and the app around them.
+func _interface_scripts() -> PackedStringArray:
+	var paths := PackedStringArray(["res://src/main.gd"])
+	for file: String in DirAccess.get_files_at("res://src/ui"):
+		if file.ends_with(".gd"):
+			paths.append("res://src/ui/" + file)
+	return paths
+
+
+## A double-quoted string literal, without its quotes.
+func _literals() -> RegEx:
+	var pattern := RegEx.new()
+	pattern.compile("\"((?:[^\"\\\\\n]|\\\\.)*)\"")
+	return pattern
 
 
 func _walk(node: Node, font: Font, where: String) -> void:

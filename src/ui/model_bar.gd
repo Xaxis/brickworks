@@ -14,6 +14,7 @@ var builder: Builder
 var _name: LineEdit
 var _status: Label
 var _saves: PopupMenu
+var _confirm: ConfirmationDialog
 var _entries: Array[ModelStore.Entry] = []
 var _picker: PickModel
 
@@ -63,23 +64,41 @@ func _build() -> void:
 	_name.tooltip_text = "What this model is called"
 	row.add_child(_name)
 
+	# In groups: the file, what to make of it, and help. Seven identical
+	# buttons in a row gave Clear the same weight as Save, one place
+	# along from Controls.
 	_button(row, "Save", _on_save, "Keep this model under its name")
 	_button(row, "Open…", _on_open, "Reopen a saved model")
 	_button(row, "Export", _on_export,
 		"Write an LDraw file, which any brick tool reads — an .mpd of its assemblies when it has them")
-	_button(row, "Parts", func() -> void: parts_wanted.emit(),
+	row.add_child(VSeparator.new())
+	_button(row, "Parts list", func() -> void: parts_wanted.emit(),
 		"Every part this model needs, by colour and count")
 	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
 		"Turn a picture into a wall of plates")
-	_button(row, "Controls", func() -> void: controls_wanted.emit(),
+	row.add_child(VSeparator.new())
+	_button(row, "Help", func() -> void: controls_wanted.emit(),
 		"What every button and key does, and how to change two of them")
-	_button(row, "Clear", _on_clear, "Empty the baseplate")
 
 	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 11)
-	_status.modulate = Color(1, 1, 1, 0.55)
+	_status.add_theme_font_size_override("font_size", 12)
+	_status.modulate = Color(1, 1, 1, 0.65)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_status)
+
+	# At the far end, and asked about. It empties the baseplate and the
+	# undo history with it, and sat between Controls and the status line
+	# as one more grey button that did it without a word.
+	var clear: Button = _button(row, "Clear…", _ask_to_clear,
+		"Empty the baseplate. Asks first: it cannot be undone")
+	clear.modulate = Color(1.0, 0.75, 0.72)
+	_confirm = ConfirmationDialog.new()
+	_confirm.title = "Clear the baseplate?"
+	_confirm.dialog_text = ("Every brick on it goes, and it cannot be undone. "
+		+ "Save first if you might want it back.")
+	_confirm.ok_button_text = "Clear it"
+	_confirm.confirmed.connect(_on_clear)
+	add_child(_confirm)
 
 	_saves = PopupMenu.new()
 	_saves.id_pressed.connect(_on_pick)
@@ -87,7 +106,7 @@ func _build() -> void:
 
 
 func _button(row: HBoxContainer, text: String, action: Callable,
-		tip: String) -> void:
+		tip: String) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.tooltip_text = tip
@@ -107,9 +126,10 @@ func _button(row: HBoxContainer, text: String, action: Callable,
 	# Every other panel in the app already did this. This row was the
 	# one that did not.
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 12)
+	button.add_theme_font_size_override("font_size", 13)
 	button.pressed.connect(action)
 	row.add_child(button)
+	return button
 
 
 func bind(to: ModelStore) -> void:
@@ -244,6 +264,10 @@ func _on_export() -> void:
 	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(file_name)
 	if store.export_to(path, model_name()):
 		_say("wrote %s" % path)
+
+
+func _ask_to_clear() -> void:
+	_confirm.popup_centered()
 
 
 func _on_clear() -> void:

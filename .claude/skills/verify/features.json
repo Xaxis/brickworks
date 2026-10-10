@@ -339,7 +339,7 @@
       "id": "ui:controls panel and hint",
       "kind": "ui",
       "entry": "src/ui/controls_hint.gd",
-      "reach": "godot --path .  (press , or the Controls button)",
+      "reach": "godot --path .  (press , or the Help button)",
       "area": "view",
       "tests": []
     },
@@ -363,7 +363,7 @@
       "id": "ui:parts bin",
       "kind": "ui",
       "entry": "src/ui/parts_bin.gd",
-      "reach": "godot --path .  (P, or the Parts button)",
+      "reach": "godot --path .  (P, or the Parts list button)",
       "area": "parts",
       "tests": []
     },

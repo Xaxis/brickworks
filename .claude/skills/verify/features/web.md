@@ -22,6 +22,16 @@ accounts.
   under `/b/<sha>/`, points `/` at it and then proves it in a browser.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
+- `the assistant, as a person uses it`: `tools/web/assistant_flow.mjs` pastes a
+  key, asks for a small house and records every answer from Anthropic, with a
+  screenshot at each step. With its default fake key it is free and proves the
+  path: the key is taken, the request leaves the browser and reaches Anthropic,
+  and the refusal reads "Anthropic refused that key…" with the form back. With
+  `--key=-` (reads `BW_KEY`) it watches a real design start. The live site was
+  reported as "the assistant doesn't work at all"; it was answering — four 200s
+  in ninety seconds — while showing nothing, and no check had ever pressed
+  Build. On a preview set `BW_BYPASS`; it goes in the first address only, as a
+  cookie for that domain, never to Anthropic.
 
 ## How to reach it
 

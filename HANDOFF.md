@@ -26,46 +26,75 @@ ranked by evidence.
   pool). Above a load of about 12 the on-screen checks starve and report
   TIMED OUT, which proves nothing either way: rerun that one alone under
   `heavy` with `xvfb-run` (see `tools/check.sh` for the command).
-- Best design by the numbers: castle run 19, **1,329 parts, 113 shapes,
-  16 colours**, 37% its main colour — on the landing page, shipped as
-  `models/castle.ldr`. A real set that size has 180 shapes and 23 colours.
+- On the landing page and shipped as `models/castle.ldr`: castle run 24,
+  **2,438 parts, 121 shapes, 83 used once or twice, 13 colours**, 53% its
+  main colour, 15% big pieces — the first castle whose walls read as a
+  real set's (two greys, masonry bricks, bonded). A real set that size
+  has 262 shapes, so it is thin for its size; run 19 (1,329 parts, 113
+  shapes, 16 colours) is closer to its own size's norm.
 - Not exercised: the proxy's conversation caching for signed-in accounts
   (`api/claude.js`). Deployed; proving it needs an account.
+
+## What the owner found, 2026-10-09 evening
+
+"The AI assistant doesn't work at all, and the UI/UX is not well thought
+out." Reproduced in a real browser against the live site: the assistant
+**did** work — four answers from Anthropic in ninety seconds — and showed
+nothing for all ninety: one line of small grey text, the example car still
+on the baseplate, and a bad key reported as "invalid x-api-key". No check
+had ever pressed Build. Fixed and proven the same way
+(`tools/web/assistant_flow.mjs`): a run card with a clock, the current step,
+the steps done, what to expect (measured: a small house takes 11 minutes
+and $2.40 at high, 4 minutes and $0.72 at medium) and Stop; the example car
+cleared for a first design; errors in plain words with the key form back
+for a refused key; the key form explaining the assistant first; no renderer
+stats on the status line; a grouped toolbar with Clear asking first.
+**Before calling anything on the web done, run assistant_flow against it.**
 
 ## What the work found
 
 - **The levers that moved runs**, each measured: detailing per assembly;
   sending a pass back once when the assembly or the whole model is on
   the tail of real sets (thin shapes, few one-off pieces, one colour, big
-  pieces); telling passes the parts real sets of the kind use. The run
-  table and how each was found is in `docs/ROADMAP.md`.
+  pieces); telling passes the parts real sets of the kind use; and
+  **worked examples**, which move a design where a part list does not —
+  told the window frames by number for three runs a fire station used
+  none, shown one window it used twenty-four and went from a plateau of
+  62-70 shapes to 87 (run 23). The run table is in `docs/ROADMAP.md`.
 - **Pieces too big, and invisible in every picture.** A real set is 10%
-  pieces as big as a 2 x 4 brick at every size; every castle was 39-56%,
-  its walls in 2 x 10s, because `fill` laid the longest brick that fit.
-  `fill` now lays courses in short bricks on a running bond (run 21: 17%).
-  And the renderer drew no seam between two same-coloured bricks, so the
-  difference could not be seen: it draws them now, desktop and web.
+  pieces as big as a 2 x 4 brick; every castle was 39-56%. `fill` now lays
+  courses in short bricks on a running bond (run 21: 17%), can put a second
+  colour through them (`mix_color`, real castle walls 9-19%) and lay some
+  as masonry facing out (`masonry`). The renderer draws the seam between
+  bricks now, desktop and web, so all of that can be seen.
+- **Glass and doors sit in their frames** where real sets seat them
+  (`Assistant.NESTS`, measured over the model repository). Nothing can be
+  laid on a 60596 door frame yet: its notched top studs are not stud
+  primitives, so the parts pipeline keeps them as solid. The fix belongs
+  in `tools/ldraw/connectivity.py` and a sub-build.
+- **Real sets as a source.** LDraw's model repository serves one `.mpd`
+  per set. Its sub-model names rank what real sets repeat (roof, door,
+  seat, lamp, window, tree, furniture); nine of its sub-models are now
+  techniques, credited in `docs/ATTRIBUTION.md`. Of 162 small real
+  sub-models the checker now passes 110; the rest are its false positives
+  (`tools/omr.py harvest`, `src/dev/harvest_probe.gd`). Support is walked
+  out from the ground, so a part hung under an overhang holds.
+  `tools/layout.py` measures how a model stands against real ones.
 - **The 4 x 4 corner-round brick was recommended on a stale number.**
-  Every castle built ~200 of it for round towers; real castle sets since
-  2010 use at most eight. The prompt and technique now say round is a
-  choice.
-- **Real sets as geometry**: LDraw's model repository serves one `.mpd`
-  per set (the zip is gone). `tools/layout.py` measures how a model
-  stands; real castles' towers stand ~3x their walls, ours ~1.5x.
-- **The fire station has a plateau**: 62, 67 and 70 shapes over three
-  runs, whatever the passes. Asking for assemblies of about a hundred
-  parts (run 22) gave five passes instead of four and a richer first
-  structure, and the same end. Its windows read as blanks.
+  Every castle built ~200 of it; real castle sets since 2010 use at most
+  eight. The prompt now says round is a choice.
 
 ## What is next
 
-1. What a building's openings are: a window technique (frame, glass,
-   sill, lintel) and a door one, measured on the station brief.
-2. What a wall's short bricks are: masonry bricks and a second grey in
-   some of them, as real castles do — a `fill` option is the likely
-   shape, because a detail pass cannot re-lay a wall (`edit_model` takes
-   no patterns).
-3. Proportion: towers over walls, measured against more real castles.
+1. Read run 24 (the castle with everything): did the passes recolour its
+   walls, and does it use the window and the new techniques?
+2. The checker's false positives: clips on bars and hollow studs. The
+   parts pipeline records no bar connector at all; recognising bars and
+   hollow studs in `tools/ldraw/connectivity.py`, then a sub-build, lets
+   real sets' lanterns, flags and railings through.
+3. Roofs, from the 32 real roof sub-models that pass.
+4. The door frame's notched studs (see above).
+5. Proportion: towers over walls, against more real castles.
 
 ## Gotchas that will cost you hours
 
@@ -110,6 +139,7 @@ ranked by evidence.
 | Detailing per assembly | `Assistant._detail_next`, `src/dev/detail_probe.gd` |
 | Count a model against real sets | `tools/texture.py model.ldr --brief "..."` |
 | How a model stands, against real sets | `tools/layout.py model.ldr` |
+| Real sets as models: fetch, rank, harvest | `tools/omr.py`, then `src/dev/harvest_probe.gd` |
 | Real-set data, joined to LDraw | `tools/rebrickable.py` |
 | Catalogue build | `tools/refresh_catalogue.py` |
 | Drive a real design | `tools/design.py "a brief" --out m.ldr` |

@@ -47,6 +47,10 @@ var _key_form: KeyForm
 var _showing_sign_in: bool = false
 var _footer: HBoxContainer
 var _meter: Label
+## "Change key" when a key of one's own is all there is, "Sign out" when
+## there is an account. It was "Sign out" either way, which is not what
+## anyone looks for to replace a key.
+var _out: Button
 var _spinner_at: int = 0
 var _working: bool = false
 var _settings: HBoxContainer
@@ -55,6 +59,30 @@ var _how_hard: OptionButton
 ## What the last design cost, kept so it survives the status line being
 ## overwritten by whatever happens next.
 var _bill: String = ""
+
+## A design is about to start from nothing, rather than revise one.
+## Emitted before the assistant is asked, so whatever owns the baseplate
+## can make room first.
+signal designing(brief: String)
+
+## The card a running design is shown on, while it runs.
+##
+## A design takes minutes. Before this it showed one line of 11-point
+## grey text at the foot of the panel, each step replacing the last, and
+## nothing on the baseplate until the first brick was written — which on
+## Opus at high effort is a minute and a half of thinking and looking
+## things up. Watched in the browser, that is a page that has done
+## nothing, and it was reported as "the assistant doesn't work at all".
+var _run: PanelContainer = null
+var _run_title: Label
+var _run_clock: Label
+var _run_now: Label
+var _run_past: VBoxContainer
+var _run_stop: Button
+var _run_hint: Label
+var _run_started: int = 0
+## Steps kept on the card, oldest dropped first.
+const RUN_STEPS := 6
 
 
 func _ready() -> void:
@@ -165,11 +193,11 @@ func _build() -> void:
 	_footer.add_child(_meter)
 
 	var out := Button.new()
+	_out = out
 	out.text = "Sign out"
 	out.flat = true
-	out.add_theme_font_size_override("font_size", 10)
-	out.modulate = Color(1, 1, 1, 0.5)
-	out.text = "Sign out"
+	out.add_theme_font_size_override("font_size", 11)
+	out.modulate = Color(1, 1, 1, 0.7)
 	out.pressed.connect(func() -> void:
 		# A key of your own is the only thing to leave behind when there
 		# is no account; when there is both, the button means both.
@@ -432,6 +460,11 @@ func _on_account_changed() -> void:
 
 	_composer.visible = allowed
 	_key_form.visible = not allowed and not _showing_sign_in
+	# With nothing to show, the conversation took the panel's height and
+	# pushed the key form to its foot under an empty dark field. Folded
+	# away, the form is the first thing under the title.
+	_scroll.visible = allowed or (assistant != null
+		and assistant.has_conversation())
 	_gate.visible = not allowed and _showing_sign_in and account.available
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key and no account,
@@ -440,6 +473,10 @@ func _on_account_changed() -> void:
 	# "sign in", six lines above a form saying to paste a key.
 	_suggestions.visible = allowed and not assistant.has_conversation()
 
+	if _out != null:
+		_out.text = "Sign out" if account.signed_in() else "Change key"
+		_out.tooltip_text = ("Forget the key on this device and sign out"
+			if account.signed_in() else "Forget this key and paste another")
 	if allowed:
 		_send.disabled = _working
 		if own_key:
@@ -532,6 +569,11 @@ func _on_send() -> void:
 	_working = true
 	_send.disabled = true
 	_send.text = "Working…"
+	_status.text = ""
+	var fresh: bool = assistant == null or not assistant.has_conversation()
+	if fresh:
+		designing.emit(text)
+	_open_run(fresh)
 
 	if designing_locally():
 		design_locally.emit(text)
@@ -552,6 +594,7 @@ func _on_send() -> void:
 		_working = false
 		_send.disabled = false
 		_send.text = "Build it"
+		_close_run("Did not start", "")
 
 
 func _on_clear() -> void:
@@ -567,6 +610,7 @@ func _on_clear() -> void:
 		assistant.cancel()
 		assistant.forget_conversation()
 	_bill = ""
+	_run = null
 	for child: Node in _log.get_children():
 		if child != _suggestions:
 			child.queue_free()
@@ -618,8 +662,18 @@ func _add(text: String, role: int) -> void:
 			label.add_theme_font_size_override("font_size", 13)
 			_log.add_child(label)
 
+	# What the assistant says while it works goes above its card, so the
+	# card stays where the eye already is.
+	if _run != null and is_instance_valid(_run) and role != _Role.PERSON:
+		_log.move_child(_run, _log.get_child_count() - 1)
+
 	await get_tree().process_frame
 	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+
+
+## A line from the app rather than from either side of the conversation.
+func note(text: String) -> void:
+	_add(text, _Role.NOTE)
 
 
 func _on_said(text: String) -> void:
@@ -627,7 +681,135 @@ func _on_said(text: String) -> void:
 
 
 func _on_progress(note: String) -> void:
-	_status.text = note
+	if _run == null or not is_instance_valid(_run):
+		_status.text = note
+		return
+	# The step that was current becomes history, and the newest is the
+	# one written large.
+	var was: String = _run_now.text
+	if not was.is_empty() and was != _starting_line():
+		var line := Label.new()
+		line.text = "· " + was
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.add_theme_font_size_override("font_size", 12)
+		line.modulate = Color(1, 1, 1, 0.55)
+		_run_past.add_child(line)
+		while _run_past.get_child_count() > RUN_STEPS:
+			var oldest: Node = _run_past.get_child(0)
+			_run_past.remove_child(oldest)
+			oldest.queue_free()
+	_run_now.text = _sentence(note)
+
+
+## A progress note as it reads on the card: capitalised, no trailing dots.
+static func _sentence(note: String) -> String:
+	var text: String = note.strip_edges().rstrip(".…")
+	if text.is_empty():
+		return text
+	return text.substr(0, 1).to_upper() + text.substr(1)
+
+
+func _starting_line() -> String:
+	return "Reading the brief"
+
+
+## Put a card for this run at the foot of the conversation.
+func _open_run(fresh: bool) -> void:
+	_run = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.25, 0.45, 0.85, 0.12)
+	style.border_color = Color(0.4, 0.6, 1.0, 0.45)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	_run.add_theme_stylebox_override("panel", style)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	_run.add_child(column)
+
+	var top := HBoxContainer.new()
+	column.add_child(top)
+	_run_title = Label.new()
+	_run_title.text = "Designing" if fresh else "Changing it"
+	_run_title.add_theme_font_size_override("font_size", 14)
+	_run_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_run_title)
+	_run_clock = Label.new()
+	_run_clock.text = "0:00"
+	_run_clock.add_theme_font_size_override("font_size", 14)
+	_run_clock.modulate = Color(1, 1, 1, 0.7)
+	top.add_child(_run_clock)
+
+	_run_now = Label.new()
+	_run_now.text = _starting_line()
+	_run_now.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_run_now.add_theme_font_size_override("font_size", 13)
+	column.add_child(_run_now)
+
+	_run_past = VBoxContainer.new()
+	_run_past.add_theme_constant_override("separation", 2)
+	column.add_child(_run_past)
+
+	# What to expect, said once, because the honest answer to "is it
+	# doing anything" is that it takes a while.
+	_run_hint = Label.new()
+	_run_hint.text = _expect()
+	_run_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_run_hint.add_theme_font_size_override("font_size", 11)
+	_run_hint.modulate = Color(1, 1, 1, 0.6)
+	column.add_child(_run_hint)
+
+	_run_stop = Button.new()
+	_run_stop.text = "Stop"
+	_run_stop.tooltip_text = "Stop, and put back what was there before"
+	_run_stop.pressed.connect(func() -> void:
+		if assistant != null:
+			assistant.cancel())
+	column.add_child(_run_stop)
+
+	_log.add_child(_run)
+	_run_started = Time.get_ticks_msec()
+
+
+## How long a design takes at the chosen setting, said plainly.
+func _expect() -> String:
+	var effort: String = "high"
+	if _how_hard != null and _how_hard.visible and _how_hard.selected >= 0:
+		effort = _how_hard.get_item_text(_how_hard.selected).to_lower()
+	# Measured on Opus 5.5, "a small red house": high took 4 minutes to its
+	# first check and 11 to finish; medium 2 and 4. Castles at high, 30-46.
+	var span: String = ("At this setting a small house took about 4 minutes "
+		+ "to its first bricks and 11 to finish; a castle, 45")
+	if effort.begins_with("medium"):
+		span = ("At this setting a small house took about 2 minutes to its "
+			+ "first bricks and 4 to finish")
+	elif effort.begins_with("low"):
+		span = "This setting is the quickest, and the plainest"
+	return ("Nothing is built until it has planned the model. %s. You can "
+		% span + "keep building, or look around, while it works.")
+
+
+## The run is over: say how it ended and how long it took.
+func _close_run(how: String, summary: String) -> void:
+	if _run == null or not is_instance_valid(_run):
+		_run = null
+		return
+	_run_title.text = how
+	_run_clock.text = _elapsed()
+	if not summary.is_empty():
+		_run_now.text = summary
+	_run_stop.visible = false
+	_run_hint.visible = false
+	_run = null
+
+
+func _elapsed() -> String:
+	var seconds: int = (Time.get_ticks_msec() - _run_started) / 1000
+	return "%d:%02d" % [seconds / 60, seconds % 60]
 
 
 func _on_built(brick_count: int) -> void:
@@ -637,6 +819,20 @@ func _on_built(brick_count: int) -> void:
 
 func _on_finished(ok: bool, summary: String) -> void:
 	_working = false
+	var on_card: bool = _run != null and is_instance_valid(_run)
+	if summary == "cancelled":
+		_close_run("Stopped", "Stopped. What was there before is back.")
+	else:
+		_close_run("Done" if ok else "Did not finish", _sentence(summary))
+	# A refused key will be refused again. Forget it and ask for another,
+	# rather than leave it in place to fail the next brief the same way.
+	if not ok and summary.begins_with(Assistant.KEY_REFUSED) \
+			and OwnKey.has_key():
+		OwnKey.forget()
+		_on_account_changed()
+		_status.text = "Paste a working key to carry on."
+		_send.text = "Build it"
+		return
 	# Not unconditionally. The design that just ended may have been the
 	# last one this month, and re-enabling the button wipes the line
 	# that says so.
@@ -653,7 +849,10 @@ func _on_finished(ok: bool, summary: String) -> void:
 	if ok:
 		_status.text = line
 	else:
-		_add(summary, _Role.NOTE)
+		# On the card when there is one, in the size the rest of the run
+		# was told in; a line of its own only when there was no card.
+		if not on_card:
+			_add(summary, _Role.NOTE)
 		_status.text = line if line != summary else ""
 	# And if that was the last one, say so where the count was.
 	var why: String = _why_not()
@@ -665,6 +864,8 @@ func _on_finished(ok: bool, summary: String) -> void:
 func _process(_delta: float) -> void:
 	if not _working:
 		return
+	if _run != null and is_instance_valid(_run):
+		_run_clock.text = _elapsed()
 	# A design runs for minutes. Something has to move, or it reads as a
 	# hang; a dot cycle on the status line is enough and costs nothing.
 	var now: int = Time.get_ticks_msec()

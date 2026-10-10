@@ -52,7 +52,7 @@ geometry in front of them.
 ## How to reach it
 
 ```sh
-godot --path .     # press P, or the Parts button, then type
+godot --path .     # press P, or the Parts list button, then type
 ```
 
 The bucket behind `mesh fetch` is `PARTS_URL` in `.env`, also announced by

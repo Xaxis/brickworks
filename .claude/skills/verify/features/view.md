@@ -9,8 +9,14 @@ picture the assistant is shown.
 
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded.
+- `status line`: bricks, whether it stands and what it weighs. Batches,
+  triangles, the catalogue count and the frame rate come back with `--stats`;
+  they were the first line every visitor read.
+- `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
+  Mosaic), Help — and Clear at the far end, which asks first, because it takes
+  the undo history with it.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,` or the Controls button — and every key on it actually doing that.
+  `,` or the Help button — and every key on it actually doing that.
 - `renders for the critique`: the image handed to the assistant so it can see what
   it built, drawn by a SubViewport. Two opposite corners, so every side has been
   seen; a close look at one part of a model too big to judge whole; and, after an
@@ -117,7 +123,9 @@ take, which is what made a design run give up on looking at itself.
   that measured its own fast setting would pass however slow a picture really is.
   It asserts under two seconds with vsync on, which is the condition that broke a
   real design run.
-- **`glyph_probe` exists because a missing glyph is invisible.** A character the
+- **`glyph_probe` exists because a missing glyph is invisible.** It also reads
+  every string literal in `src/ui/*.gd` and `main.gd`, because text that only
+  appears at runtime (the run card's ticks) was never in the tree it walked. A character the
   font cannot draw shows as nothing at all, and nothing is what an empty label
   also looks like.
 - **Framing uses `_built_bounds()`**, not the world's bounds; the baseplate is

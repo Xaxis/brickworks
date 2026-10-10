@@ -28,6 +28,13 @@ var _store: ModelStore
 var _bar: ModelBar
 var _bin: PartsBin
 var _chat: ChatPanel
+## The baseplate holds the example car of a first visit and nothing has
+## been done to it. A design started then is built on a clear baseplate:
+## it used to be built into the car, so a first-time visitor asking for a
+## house got a house around a car they never asked for.
+var _sample_untouched: bool = false
+## Renderer numbers on the status line, for --stats only.
+var _stats_shown: bool = _has_argument("--stats")
 var _account: Account
 var _steps: StepsBar
 var _inventory: InventoryPanel
@@ -133,6 +140,7 @@ func _ready() -> void:
 		placed = _store.restore()
 		if placed == 0:
 			placed = _open(SAMPLE_MODEL)
+			_sample_untouched = placed > 0
 		if placed == 0:
 			placed = _build_demo()
 	_lay_baseplate()
@@ -625,10 +633,12 @@ func _build_ui() -> void:
 	# bricks of the new model — so clearing removes the first few bricks
 	# of whatever was just opened.
 	_bar.cleared.connect(func() -> void:
+		_sample_untouched = false
 		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed())
 	_bar.opened.connect(func(_bricks: int) -> void:
+		_sample_untouched = false
 		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed()
@@ -770,6 +780,16 @@ func _build_ui() -> void:
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
 	_chat.watch(_account)
+	_chat.designing.connect(func(_brief: String) -> void:
+		if not _sample_untouched:
+			return
+		_sample_untouched = false
+		clear_model()
+		_chat.note("Took the example car off the baseplate to make room."))
+	_builder.placed.connect(func(_id: int, _part: String) -> void:
+		_sample_untouched = false)
+	_builder.removed.connect(func(_id: int) -> void:
+		_sample_untouched = false)
 	# Designing on the person's own Claude subscription, when this
 	# machine has the Claude Code to do it with. The panel offers the
 	# choice only then.
@@ -1637,9 +1657,17 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 	# whatever replaced them. The bin says 28,319 and this said 29,479,
 	# and two numbers for the same thing on one screen is how the app
 	# looked like it was hiding parts.
-	_counts_base = "%s bricks · %d batches · %s triangles · %s parts" % [
-		_comma(brick_count), batch_count, _comma(triangle_count),
-		_comma(_placeable_parts())]
+	# What a person building wants to know is how many bricks and whether
+	# it stands. Batches, triangles, the catalogue and the frame rate are
+	# for whoever is working on the renderer, and were the first line
+	# every visitor read; they come back with --stats.
+	if _stats_shown:
+		_counts_base = "%s bricks · %d batches · %s triangles · %s parts" % [
+			_comma(brick_count), batch_count, _comma(triangle_count),
+			_comma(_placeable_parts())]
+	else:
+		_counts_base = "%s brick%s" % [_comma(brick_count),
+			"" if brick_count == 1 else "s"]
 	# Stability is cheap but not free, and a rebuild can fire several
 	# times while a model is being dropped in. Once a second is plenty
 	# for something a person reads.
@@ -1675,8 +1703,9 @@ func _process(_delta: float) -> void:
 	# that the counts can grow without it moving.
 	# The counts line is rebuilt from its parts rather than patched, so
 	# repeated frames cannot accrete suffixes.
-	var fps: float = Engine.get_frames_per_second()
-	var line: String = "%s · fps %.0f" % [_counts_base, fps]
+	var line: String = _counts_base
+	if _stats_shown:
+		line += " · fps %.0f" % Engine.get_frames_per_second()
 	if not _stability_text.is_empty():
 		line += " · " + _stability_text
 	_counts.text = line

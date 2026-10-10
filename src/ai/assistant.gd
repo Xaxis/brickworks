@@ -936,11 +936,19 @@ func _on_response(result: Array) -> void:
 			return
 
 	if code != 200 or typeof(parsed) != TYPE_DICTIONARY:
+		# Said plainly first. Anthropic's own words used to replace this
+		# whenever its reply carried them, so a mistyped key came back as
+		# "invalid x-api-key" in small grey type — accurate, and no use to
+		# anybody deciding what to do next. Its words are kept after ours
+		# where they say something ours do not.
 		var detail: String = _what_went_wrong(code)
 		if typeof(parsed) == TYPE_DICTIONARY and parsed.has("error"):
 			var err: Variant = parsed["error"]
-			detail = (str(err.get("message", err))
-				if typeof(err) == TYPE_DICTIONARY else str(err))
+			var theirs: String = (str(err.get("message", err))
+				if typeof(err) == TYPE_DICTIONARY else str(err)).strip_edges()
+			if not theirs.is_empty() and code not in [401, 403, 529] \
+					and code < 500:
+				detail += " Anthropic said: %s" % theirs
 		_stop(false, detail)
 		return
 
@@ -1831,14 +1839,19 @@ the first change — say in a line what you changed, and stop."""
 ## because that is the code an unsent request has. Which is to say: a
 ## flat network, a wrong key, a blocked request and a machine that is
 ## simply offline all read the same, and none of them read as anything.
+## How a refused key is reported, so the panel can tell it from the rest
+## and ask for another.
+const KEY_REFUSED := "Anthropic refused that key."
+
+
 static func _what_went_wrong(code: int) -> String:
 	match code:
 		0:
 			return ("Could not reach the assistant. Check the "
 				+ "connection and try again — nothing was spent.")
 		401, 403:
-			return ("That key was refused. Check it at "
-				+ "console.anthropic.com, or sign in instead.")
+			return (KEY_REFUSED + " Check it at console.anthropic.com "
+				+ "and paste it again.")
 		404:
 			return "The assistant is not reachable at that address."
 		413:
