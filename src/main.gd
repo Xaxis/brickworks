@@ -1491,7 +1491,12 @@ func _on_part_chosen(part_id: String) -> void:
 
 
 func _on_part_fetched(part_id: String) -> void:
-	_place_awaited(part_id)
+	# Not there yet is not the same as not there: a model opened on the
+	# web before its parts were fetched gets them as they come.
+	if _store.place_awaited(part_id) > 0:
+		_on_model_changed()
+		if _store.awaited.is_empty():
+			_bar.say("%d bricks" % _world.brick_count())
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)
@@ -1503,78 +1508,15 @@ func _on_color_chosen(color_code: int) -> void:
 
 
 ## Open an LDraw model and place every part of it. Returns how many landed.
+## Open a model through the store, the one way models open: stood on the
+## ground, and parts not yet fetched put down as they arrive (_on_part_fetched).
 func _open(path: String) -> int:
 	if not FileAccess.file_exists(path):
 		return 0
-	var model: LdrModel = LdrModel.load_file(path)
-	if model == null:
-		return 0
-	CustomParts.take_from(_library, model)
-
-	var placed: int = 0
-	var missing: Dictionary = {}
-	for item: Variant in model.flatten(_library.parts):
-		var placement: LdrModel.Placement = item
-		var brick_id: int = _world.add_brick(
-			placement.part_id, placement.color_code, placement.transform)
-		if brick_id != 0:
-			# Which assembly it is, from the sub-model it was read from:
-			# without this a castle opened here was built in tiles and
-			# its booklet said "part 3" where the file said "gatehouse".
-			_world.get_brick(brick_id).group = placement.group
-			_builder.register(brick_id, placement.part_id, placement.transform)
-			placed += 1
-			continue
-
-		# Not there *yet* is not the same as not there. The web build
-		# ships a few hundred parts and fetches the rest, so opening a
-		# model used to drop every part outside the pack and say so only
-		# in a warning nobody sees — you opened a lighthouse and got
-		# most of a lighthouse.
-		if _library.request_mesh(placement.part_id):
-			_awaited.append(placement)
-			missing[placement.part_id] = true
-		else:
-			_unavailable[placement.part_id] = true
-
-	if not _awaited.is_empty():
-		_bar.say("%d bricks — fetching %d more part(s)…" % [
-			placed, missing.size()])
-	if not _unavailable.is_empty():
-		push_warning("model %s: %d part(s) unavailable: %s" % [
-			path.get_file(), _unavailable.size(),
-			", ".join(PackedStringArray(_unavailable.keys()).slice(0, 8))])
+	var placed: int = _store.open(path)
+	if not _store.awaited.is_empty():
+		_bar.say("%d bricks — fetching %d more…" % [placed, _store.awaited.size()])
 	return placed
-
-
-## Placements waiting on geometry that is on its way, and parts that are
-## not coming at all.
-var _awaited: Array[LdrModel.Placement] = []
-var _unavailable: Dictionary = {}
-
-
-## Geometry arrived: put down anything that was waiting for it.
-func _place_awaited(part_id: String) -> void:
-	if _awaited.is_empty():
-		return
-	var still: Array[LdrModel.Placement] = []
-	var landed: int = 0
-	for placement: LdrModel.Placement in _awaited:
-		if placement.part_id != part_id:
-			still.append(placement)
-			continue
-		var brick_id: int = _world.add_brick(
-			placement.part_id, placement.color_code, placement.transform)
-		if brick_id != 0:
-			_world.get_brick(brick_id).group = placement.group
-			_builder.register(brick_id, placement.part_id, placement.transform)
-			landed += 1
-	_awaited = still
-	if landed == 0:
-		return
-	_on_model_changed()
-	if _awaited.is_empty():
-		_bar.say("%d bricks" % _world.brick_count())
 
 
 ## A fallback when no sample model is around: a wall that exercises the

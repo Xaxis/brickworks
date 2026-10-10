@@ -122,8 +122,11 @@ func _run() -> void:
 	# The way the owner met it: the sample car, as a first visit opens it,
 	# named, saved, written to the autosave and opened again. New then
 	# said it was not saved.
+	# Through the app's own open, as a first visit does: it was the one
+	# path that did not stand the car on the ground.
 	var sample: String = main.get("SAMPLE_MODEL")
-	store.open(sample)
+	world.clear()
+	main.call("_open", sample)
 	await process_frame
 	bar._name.text = NAME
 	bar._name.text_changed.emit(NAME)
@@ -147,6 +150,27 @@ func _run() -> void:
 			% [differ.size() / 2, now_lines.size(),
 				": " + differ[0] if not differ.is_empty() else ""],
 		not store.has_unsaved_work())
+
+	# Every model the app ships, opened the way a first visit opens one,
+	# stands on the ground: nothing below it, and nothing lifted clear of
+	# it. Measured by the cells the bricks occupy, as the lift used to be,
+	# so the catalogue-bounds lift that replaced it agrees with it.
+	for entry: ModelStore.Entry in store.list_examples():
+		var raw: LdrModel = LdrModel.load_file(entry.path)
+		var needed: Vector3 = store.lift_for(raw.flatten(main.get("_library").parts)) \
+			if raw != null else Vector3.ZERO
+		world.clear()
+		main.call("_open", entry.path)
+		await process_frame
+		var lowest: int = 0x7FFFFFFF
+		for brick: BrickWorld.Brick in world.bricks():
+			var mesh: Lbm.PartMesh = main.get("_library").mesh_for(brick.part_id)
+			if mesh != null:
+				for cell: Vector3i in builder._cells_for(mesh, brick.transform):
+					lowest = mini(lowest, cell.y)
+		_check("%s opens on the ground: lowest cell %d%s" % [entry.name, lowest,
+				", lifted %.0f LDU" % needed.y if needed.y > 0.0 else ""],
+			lowest >= 0 and (needed.y == 0.0 or lowest == 0))
 
 	# Leave the machine as it was.
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(kept_at))

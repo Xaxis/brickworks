@@ -56,8 +56,7 @@ func _run() -> void:
 	for entry: ModelStore.Entry in models:
 		world.clear()
 		builder.lattice.clear()
-		main.set("_awaited", [] as Array[LdrModel.Placement])
-		main.set("_unavailable", {})
+		main.get("_store").awaited.clear()
 
 		var want: int = int(expected[entry.name])
 		main._open(entry.path)

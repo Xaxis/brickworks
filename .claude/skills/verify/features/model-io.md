@@ -40,6 +40,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   builds the part first — see [elements](elements.md). `element_probe` saves
   three, reopens them into a fresh library, and has the Python reader check
   the file.
+- `one way to open a model`: the first visit's sample, `--model`, a restore,
+  the Open menu and an imported file all open through `ModelStore.open_text`.
+  A model below the ground comes up by `lift_for`, worked out before anything
+  is placed from the catalogue's bounds of every part, so it is the same lift
+  whatever geometry has arrived; parts not yet fetched wait in `store.awaited`
+  and are put down as they arrive (`place_awaited`, from `Main._on_part_fetched`),
+  never into a world cleared since. There were two ways: the app's own opened
+  the sample without lifting it, so on the web a first visit saved the car
+  buried to its axles, a reload lifted it a brick, and New said it had changed;
+  the store's lifted it and dropped parts still arriving. `project_probe` opens
+  every shipped model as a first visit does and checks its lowest occupied cell
+  is on the ground; `open_probe` (network) opens them all over the wire.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is. Export, the booklet and the
   parts list are written to Downloads under the model's name, which a design
