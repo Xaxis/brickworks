@@ -97,6 +97,15 @@ if echo "$parse" | grep -qE 'SCRIPT ERROR|Parse Error'; then
 fi
 echo "  ok    no script errors"
 
+echo "── the version ──"
+# One version, read from three places: VERSION, project.godot (which the
+# macOS and Windows packages take theirs from) and CHANGELOG.md. A release
+# with two of them disagreeing says one thing on the page and another in
+# the app.
+if ! python3 tools/release.py version; then
+  fail=1
+fi
+
 echo "── python ──"
 # A machine with no pytest still runs the file. Ubuntu 24.04 ships no pip
 # and no ensurepip, and apt wants a password, so "install pytest" is not
@@ -105,7 +114,7 @@ echo "── python ──"
 if python3 -c 'import pytest' 2>/dev/null; then
   suite=(python3 -m pytest tests/ -q)
 else
-  suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py)
+  suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py tests/test_release.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped

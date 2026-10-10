@@ -327,6 +327,55 @@
       "entry": "src/render/brick_world.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "say which build this is",
+      "entry": "src/main.gd",
+      "reach": "godot --headless --path . -- --about",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "build the desktop packages",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "smoke a package",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "publish a release",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py publish --draft, then tools/release.py publish",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "check a release on three systems",
+      "entry": ".github/workflows/release.yml",
+      "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "download page",
+      "entry": "web/download.html",
+      "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "download page check",
+      "entry": "tools/web/download_check.mjs",
+      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "area": "release"
     }
   ]
 }

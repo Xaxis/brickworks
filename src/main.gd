@@ -138,6 +138,18 @@ func _enable_antialiasing() -> void:
 
 
 func _ready() -> void:
+	# What this build is, said before the catalogue costs fifteen seconds:
+	# how a person reporting a bug, and the release smoke test, ask a
+	# downloaded build which one it is.
+	if _has_argument("--about"):
+		print(BuildInfo.describe())
+		# quit() ends the run after this frame, not now, and _process
+		# would steer a camera through a UI that was never built.
+		set_process(false)
+		get_tree().quit()
+		return
+	if not OS.has_feature("web"):
+		get_window().title = "Brickworks %s" % BuildInfo.version()
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -150,6 +162,9 @@ func _ready() -> void:
 	if not _library.load_catalogue():
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
+		# Nothing below was built, so there is nothing for _process to
+		# steer: it called into a playback bar that does not exist.
+		set_process(false)
 		return
 	_catalogue_ms = Time.get_ticks_msec() - started
 

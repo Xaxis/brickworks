@@ -1,0 +1,5 @@
+{
+ "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
+ "latest": null,
+ "releases": []
+}
