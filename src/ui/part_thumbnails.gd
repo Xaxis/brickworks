@@ -12,6 +12,14 @@
 ## The work is spread across frames deliberately. Rendering thirty parts
 ## in one frame drops it visibly; rendering two per frame fills a scrolled
 ## page in a quarter of a second and never stutters.
+##
+## What is drawn, and in what order, is what is in sight. A grid tells
+## [method watch] which of its [ThumbTile]s are on screen, nearest the eye
+## first, and those are drawn before anything else and handed their
+## pictures. The bin used to ask for every cell of a 120-cell page the
+## moment the page was made, in list order, so after a fast scroll the
+## screen being looked at waited behind every page scrolled past on the
+## way to it — and on the web each of those was a network fetch first.
 class_name PartThumbnails
 extends Node
 
@@ -24,6 +32,17 @@ const PER_FRAME := 1
 ## Beyond this many cached textures the least recently used are dropped.
 ## A page holds about 40; this is enough for a good deal of scrollback.
 const CACHE_LIMIT := 600
+## How long a part that could not be drawn is left alone before a tile
+## that comes into sight for it tries again. A fetch can fail for a
+## moment's reason, and "no preview" for the rest of the session over one
+## dropped connection would be wrong; trying on every scroll would be a
+## request a frame for a part that is simply not there.
+const RETRY_MSEC := 30000
+## The most jobs taken in one frame when none of them starts a draw. A
+## job whose geometry is not here yet only asks for it; taking those one
+## a frame meant a screen of unfetched parts on a browser drawing a frame
+## a second sent its last request forty seconds after its first.
+const ASKS_PER_FRAME := 32
 
 var library: PartLibrary
 
@@ -38,19 +57,24 @@ var _queue: Array[Dictionary] = []
 var _queued: Dictionary = {}       ## key -> true, so nothing queues twice
 ## Parts whose geometry is on its way. The colour is not kept: a part
 ## fetched for one swatch is wanted for whichever is selected when it
-## arrives, and re-queueing by part id covers both.
+## arrives, and the tiles in sight say which that is.
 var _awaiting: Dictionary = {}
+## Parts that could not be drawn -> when that was found, in msec.
+var _failed: Dictionary = {}
 ## True while a preview is waiting on a draw. The viewport, its camera
 ## and its one mesh holder are shared, so a second job started now would
 ## overwrite what the first is about to read.
 var _drawing: bool = false
-
-## Emitted when a preview someone asked for is ready.
-## A part's geometry landed; whoever asked for a preview should ask
-## again. Kept separate from [signal ready_for], which carries a texture.
-signal geometry_arrived(part_id: String)
-
-signal ready_for(part_id: String, color_code: int, texture: ImageTexture)
+## Who has tiles in sight, the one that last moved first: [owner's
+## instance id, Array[ThumbTile] in the order to draw them].
+var _watching: Array[Array] = []
+## Something has changed since the tiles in sight were last looked
+## through: a scroll, a picture, a part arriving or failing. Without it
+## an idle bin would walk its tiles every frame to find nothing to do.
+var _look: bool = false
+## Fetches have been asked for, or the tiles in sight have changed, since
+## the library's queue was last put in their order.
+var _reorder: bool = false
 
 
 func _ready() -> void:
@@ -59,6 +83,7 @@ func _ready() -> void:
 	# been one frame too early.
 	if library != null and not library.fetched.is_connected(_on_geometry_arrived):
 		library.fetched.connect(_on_geometry_arrived)
+		library.fetch_failed.connect(_on_fetch_failed)
 
 	_viewport = SubViewport.new()
 	_viewport.size = Vector2i(SIZE, SIZE)
@@ -127,7 +152,7 @@ func _print_holder(n: int) -> MeshInstance3D:
 
 
 func _process(_delta: float) -> void:
-	# One at a time, and only once the last one has finished.
+	# One draw at a time, and only once the last one has finished.
 	#
 	# _render is a coroutine: it sets the holder's mesh, the tint and
 	# the camera, then waits for a draw. Starting two of them meant both
@@ -135,22 +160,105 @@ func _process(_delta: float) -> void:
 	# so they read back the same image — the second job's — and the
 	# first cached it under its own key. Half the bin showed the wrong
 	# part, and which half changed with the scroll.
-	if _drawing or _queue.is_empty():
+	#
+	# A job that only asks for geometry starts no draw, so the next is
+	# taken in the same frame.
+	for _n: int in ASKS_PER_FRAME:
+		if _drawing:
+			break
+		var job: Dictionary = _next_job()
+		if job.is_empty():
+			break
+		_render(job)
+	if _reorder:
+		_reorder = false
+		_prefer_in_sight()
+
+
+## The tiles a view has in sight, in the order it wants them drawn.
+## Replaces whatever that view said before; an empty list says it has
+## nothing in sight, as a view that closes or folds away should.
+##
+## The view most recently moved comes first: it is the one being used.
+func watch(owner: Object, tiles: Array[ThumbTile]) -> void:
+	var id: int = owner.get_instance_id()
+	for n: int in _watching.size():
+		if int(_watching[n][0]) == id:
+			_watching.remove_at(n)
+			break
+	if not tiles.is_empty():
+		_watching.push_front([id, tiles])
+	_look = true
+	_reorder = true
+
+
+## The next preview to draw: the first tile in sight still waiting, then
+## anything asked for through [method request]. Tiles whose picture is
+## already to hand, or whose part cannot be drawn, are settled on the way.
+func _next_job() -> Dictionary:
+	if _look:
+		var now: int = Time.get_ticks_msec()
+		for entry: Array in _watching:
+			# Untyped until checked: a view that has just rebuilt its grid
+			# has not said so yet, and its old tiles are already freed.
+			for item: Variant in entry[1]:
+				if not is_instance_valid(item):
+					continue
+				var tile: ThumbTile = item
+				if tile.state != ThumbTile.State.LOADING:
+					continue
+				var key: String = tile.key()
+				if _cache.has(key):
+					_touch(key)
+					tile.show_picture(_cache[key])
+					continue
+				if _awaiting.has(tile.part_id):
+					continue
+				if _failed.has(tile.part_id):
+					if now - int(_failed[tile.part_id]) < RETRY_MSEC:
+						tile.show_failed()
+						continue
+					_failed.erase(tile.part_id)
+				return {"part": tile.part_id, "color": tile.color_code, "key": key,
+					"printed": tile.printed}
+		_look = false
+	while not _queue.is_empty():
+		var job: Dictionary = _queue.pop_front()
+		if not _cache.has(job["key"]):
+			return job
+		_queued.erase(job["key"])
+	return {}
+
+
+## The library fetches in the order it was asked, and it was asked in the
+## order tiles came into sight — so after a scroll, the parts for the
+## screen now showing would wait behind every part asked for on the way
+## there. Put the ones in sight first.
+func _prefer_in_sight() -> void:
+	if library == null or _awaiting.is_empty():
 		return
-	_render(_queue.pop_front())
+	var wanted := PackedStringArray()
+	for entry: Array in _watching:
+		for item: Variant in entry[1]:
+			if not is_instance_valid(item):
+				continue
+			var tile: ThumbTile = item
+			if tile.state == ThumbTile.State.LOADING and _awaiting.has(tile.part_id):
+				wanted.append(tile.part_id)
+	library.prefer(wanted)
 
 
 ## A preview for a part, if one is already cached.
 ##
-## Returns null and queues the work otherwise; listen for [signal
-## ready_for]. Callers want a texture *now* to fill a grid cell, and a
-## placeholder that fills in shortly is better than a stalled frame.
+## Returns null and queues the work otherwise, behind the tiles in
+## sight; ask again. For a picture wanted outside a grid. A grid's tiles
+## go through [method watch], which draws what is on screen first.
 ##
 ## [param printed] draws the part's print as well. The bin leaves it off
 ## (see _render); a minifigure's head is chosen by its face, and every
 ## printed head drawn without its print is the same yellow blank.
 func request(part_id: String, color_code: int, printed: bool = false) -> ImageTexture:
-	var key: String = "%s:%d%s" % [part_id, color_code, ":printed" if printed else ""]
+	var key: String = key_for(part_id, color_code, printed)
 	if _cache.has(key):
 		_touch(key)
 		return _cache[key]
@@ -161,14 +269,41 @@ func request(part_id: String, color_code: int, printed: bool = false) -> ImageTe
 	return null
 
 
+## A preview already drawn, or null. Asks for nothing: a tile made with
+## its picture to hand shows it at once, and one without waits to be in
+## sight.
+func peek(part_id: String, color_code: int, printed: bool = false) -> ImageTexture:
+	var key: String = key_for(part_id, color_code, printed)
+	if not _cache.has(key):
+		return null
+	_touch(key)
+	return _cache[key]
+
+
+static func key_for(part_id: String, color_code: int, printed: bool = false) -> String:
+	return "%s:%d%s" % [part_id, color_code, ":printed" if printed else ""]
+
+
 func _on_geometry_arrived(part_id: String) -> void:
 	if not _awaiting.has(part_id):
 		return
 	_awaiting.erase(part_id)
-	# Re-queued for whichever colour is wanted now rather than the one
-	# that was wanted when the fetch started, which may be several
+	# Drawn in whichever colour the tiles in sight want now rather than
+	# the one wanted when the fetch started, which may be several
 	# swatches ago.
-	geometry_arrived.emit(part_id)
+	_look = true
+
+
+func _on_fetch_failed(part_id: String, _why: String) -> void:
+	_fail(part_id)
+
+
+## No picture can be had for this part. The tiles waiting on it say so
+## the next time the tiles in sight are looked through.
+func _fail(part_id: String) -> void:
+	_awaiting.erase(part_id)
+	_failed[part_id] = Time.get_ticks_msec()
+	_look = true
 
 
 ## Drop anything not on screen. Called when a view closes.
@@ -180,11 +315,6 @@ func trim(keep: PackedStringArray) -> void:
 		if not wanted.has(key):
 			_cache.erase(key)
 			_order.erase(key)
-
-
-func clear_queue() -> void:
-	_queue.clear()
-	_queued.clear()
 
 
 func cached_count() -> int:
@@ -203,7 +333,7 @@ func _render(job: Dictionary) -> void:
 		return
 
 	var part: Lbm.PartMesh = library.mesh_for(job["part"])
-	if part == null or part.surfaces.is_empty():
+	if part == null:
 		# On the web most parts are a request away rather than absent, and
 		# giving up here left the bin showing a few hundred previews and
 		# twenty-eight thousand empty squares. Ask for the geometry and
@@ -211,6 +341,15 @@ func _render(job: Dictionary) -> void:
 		# air at once, so a scroll does not open a connection per cell.
 		if library.request_mesh(job["part"]):
 			_awaiting[job["part"]] = true
+			_reorder = true
+		else:
+			_fail(job["part"])
+		return
+	if part.surfaces.is_empty():
+		# Geometry that is here and has nothing in it. Asking for it again
+		# was answered at once from the cache with "fetched", before the
+		# part had been marked as waiting, so its cell waited for ever.
+		_fail(job["part"])
 		return
 
 	# Surface 0 is the recolourable one on almost every part, and a
@@ -262,7 +401,10 @@ func _render(job: Dictionary) -> void:
 		var oldest: String = _order.pop_front()
 		_cache.erase(oldest)
 
-	ready_for.emit(job["part"], job["color"], texture)
+	# Handed over by the next look through the tiles in sight, which is
+	# also where the next job is found: every tile waiting on this key,
+	# in every view, gets it.
+	_look = true
 
 
 ## Point the camera at the part from a three-quarter view, sized so the

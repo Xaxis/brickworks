@@ -675,6 +675,8 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 			waiting.append(part_id)
 		return true
 	if _fetching.size() >= MAX_IN_FLIGHT:
+		if urgent:
+			_urgent[part_id] = true
 		if _queued_fetches.has(part_id):
 			# Already waiting. Promote it rather than queue it twice.
 			if urgent:
@@ -725,7 +727,43 @@ func _next_fetch() -> void:
 	while not _queued_fetches.is_empty() and _fetching.size() < MAX_IN_FLIGHT:
 		var part_id: String = _queued_fetches[0]
 		_queued_fetches.remove_at(0)
+		_urgent.erase(part_id)
 		request_mesh(part_id)
+
+
+## Waiting parts somebody clicked, which nothing reordering the queue may
+## put behind anything else.
+var _urgent: Dictionary = {}
+
+
+## Fetch these next, in this order, ahead of everything else waiting
+## except a part somebody clicked.
+##
+## The parts bin's previews ask for geometry as their tiles come into
+## sight, and the queue is first come first served, so after a fast
+## scroll the screen being looked at waited behind every part asked for
+## on the way to it. Only reorders: what is left behind is still fetched,
+## after.
+func prefer(part_ids: PackedStringArray) -> void:
+	if _queued_fetches.size() < 2 or part_ids.is_empty():
+		return
+	var waiting: Dictionary = {}
+	for part_id: String in _queued_fetches:
+		waiting[part_id] = true
+	var placed: Dictionary = {}
+	var order := PackedStringArray()
+	for part_id: String in _queued_fetches:
+		if _urgent.has(part_id):
+			order.append(part_id)
+			placed[part_id] = true
+	for part_id: String in part_ids:
+		if waiting.has(part_id) and not placed.has(part_id):
+			order.append(part_id)
+			placed[part_id] = true
+	for part_id: String in _queued_fetches:
+		if not placed.has(part_id):
+			order.append(part_id)
+	_queued_fetches = order
 
 
 ## Send the requests that arrived before there was anywhere to send them.

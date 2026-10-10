@@ -14,6 +14,18 @@ geometry in front of them.
   current colour applied to the thumbnails. **Make a part…** in its header
   opens the element maker, and made parts lead the categories as Custom —
   see [elements](elements.md).
+- `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
+  a `ThumbTile`. Until its picture is drawn it is a placeholder the picture's
+  size with a band of light crossing it (`src/ui/shimmer.gdshader`, one shared
+  material driven by `TIME`: no script runs per waiting tile), the part number
+  under it; the picture fades in over it (0.2 s); a part that cannot be drawn
+  (no geometry, a failed fetch) shows a brick outline and "no preview", and is
+  tried again after 30 s if it comes back into sight. The bin tells
+  `PartThumbnails.watch` which tiles are in sight (`ThumbTile.Sight`: the rows on
+  screen, then a screenful below, then half above) and only those are drawn or
+  fetched, in that order; `PartLibrary.prefer` puts their fetches ahead of ones
+  scrolled past, behind only a part somebody clicked. `request()` still draws a
+  picture wanted outside a grid, after the tiles in sight.
 - `palette`: every colour can be chosen by hand, grouped by kind of plastic
   (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
   rubber, fabric), greys first and then round the colour wheel. What sets are
@@ -119,7 +131,50 @@ today's colours and not retired ones, every one of the 320 can be pressed and
 held, the eyedropper on a retired colour shows it chosen, and the held part's
 colours carry the dot. It leaves `shots/palette.png` — look at it.
 
+The previews are covered by `placeholder_probe` (windowed, in the suite, also
+the minifigure builder's grid and slots):
+
+```sh
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/placeholder_probe.gd
+```
+
+Proves it when it exits 0: a fresh grid starts all placeholders, every tile in
+sight becomes its picture with no cell changing size, a grid scrolled to row 40
+before anything is drawn draws the rows in sight before the screenful below and
+none of the 130-odd far below or scrolled past, two parts with no geometry end
+as "no preview", and once drawn no tile is processing or shimmering. It leaves
+`shots/placeholders/desktop_*.png` (loading, loaded, failed) — look at them.
+
+On the web, with the network slowed so the waiting shows (export with
+`PARTS_URL` set so every part is reachable; the flow starts
+`tools/web/serve.py --parts`, which answers `/api/account` as the deployment
+would and serves `/parts/*.lbm` late, and counts what it served):
+
+```sh
+PARTS_URL=http://127.0.0.1:8761/parts/ tools/export.sh web
+node tools/web/placeholder_flow.mjs --build=build/web --port=8761 \
+  --parts=assets/generated/parts --out=shots/placeholders
+```
+
+Throttling with Playwright's `page.route` instead saw none of the app's
+fetches: a run scrolled 4,680 parts deep and counted nothing.
+
+It scrolls the bin and the builder's heads and photographs each mid-load and
+after (`shots/placeholders/web_*.png`); it fails only on a script error or if
+nothing was fetched. Whether the waiting looks right is for a person to see.
+
 ## Gotchas
+
+- **A one-pixel line can vanish.** The app is drawn at 0.875 of its design
+  size in a 1400-wide window (and the browser's own scale on top), so a hard
+  1 px line can fall between two rows of pixels and cover neither: the "no
+  preview" brick lost its top edge that way. Draw thin strokes antialiased, or
+  as filled rects at least 1.5 wide.
+
+- **A grid rebuilt with the same number of cells is a different grid.** A new
+  colour rebuilds every cell in the same places; `ThumbTile.Sight` compares the
+  first and last cells by identity, or it would keep watching freed tiles and
+  the new ones would shimmer for ever.
 
 - **"Dim what the part was never made in" dims nothing on the parts people
   use.** All forty most used parts have a partial colour list (some of their

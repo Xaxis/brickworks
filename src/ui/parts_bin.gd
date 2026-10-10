@@ -13,7 +13,8 @@
 ##
 ## Previews that do not stall the frame. Rendered live by
 ## [PartThumbnails], a couple per frame, and only for the rows actually
-## on screen.
+## on screen; each cell is a [ThumbTile], which stands in for its picture
+## until it comes.
 ##
 ## Ordering that puts the likely part first. Someone searching "brick
 ## 2 x 4" wants 3001, not the four hundred printed variants of it.
@@ -101,7 +102,8 @@ var _make_button: Button
 var _results: Array[PartLibrary.PartInfo] = []
 var _shown: int = 0
 var _categories: Array[String] = []
-var _cells: Dictionary = {}            ## part id -> TextureRect
+var _cells: Dictionary = {}            ## part id -> ThumbTile
+var _sight: ThumbTile.Sight
 var _selected_part: String = ""
 var _selected_color: int = 4
 var _search_at: int = 0
@@ -182,6 +184,7 @@ func _build() -> void:
 	_grid.add_theme_constant_override("h_separation", 4)
 	_grid.add_theme_constant_override("v_separation", 4)
 	_scroll.add_child(_grid)
+	_sight = ThumbTile.Sight.new(_scroll, _grid)
 
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 11)
@@ -599,11 +602,14 @@ func _process(_delta: float) -> void:
 	# existing page no longer fills it.
 	if _shown < _results.size() and _scroll != null:
 		var bar: VScrollBar = _scroll.get_v_scroll_bar()
-		if bar.max_value <= 0.0:
-			return
-		var remaining: float = bar.max_value - bar.value - bar.page
-		if remaining < 260.0:
+		if bar.max_value > 0.0 and bar.max_value - bar.value - bar.page < 260.0:
 			_show_more()
+
+	# And say what is in sight, for the same reason: a scroll, a resize,
+	# a page added and the dock folding all change it, and only the last
+	# has a signal.
+	if thumbnails != null and _sight != null and _sight.changed():
+		thumbnails.watch(self, _sight.tiles())
 
 
 func _run_search(query: String) -> void:
@@ -956,12 +962,13 @@ static func _is_buried(category: String) -> bool:
 
 
 func _fill_grid() -> void:
+	# Out of the grid now, not at the end of the frame, or what is in
+	# sight is worked out over the old cells and the new ones together.
 	for child: Node in _grid.get_children():
+		_grid.remove_child(child)
 		child.queue_free()
 	_cells.clear()
 	_shown = 0
-	if thumbnails:
-		thumbnails.clear_queue()
 	_scroll.scroll_vertical = 0
 	_show_more()
 
@@ -1019,13 +1026,13 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	box.add_theme_constant_override("separation", 0)
 	button.add_child(box)
 
-	var image := TextureRect.new()
+	# Its size is the cell's, never the picture's, so nothing moves when
+	# the picture lands.
+	var image := ThumbTile.new(info.id, _selected_color)
 	image.custom_minimum_size = Vector2(0, 60)
-	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(image)
+	button.set_meta("tile", image)
 
 	var label := Label.new()
 	label.text = info.id
@@ -1037,9 +1044,9 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 
 	_cells[info.id] = image
 	if thumbnails:
-		var ready_now: ImageTexture = thumbnails.request(info.id, _selected_color)
+		var ready_now: ImageTexture = thumbnails.peek(info.id, _selected_color)
 		if ready_now:
-			image.texture = ready_now
+			image.show_picture(ready_now, false)
 	return button
 
 
@@ -1062,27 +1069,6 @@ func _on_part(part_id: String) -> void:
 		button.button_pressed = str(button.get_meta("part", "")) == part_id
 	_mark_swatches()
 	part_chosen.emit(part_id)
-
-
-## Called by the thumbnailer when a preview finishes.
-func on_thumbnail(part_id: String, color_code: int, texture: ImageTexture) -> void:
-	if color_code != _selected_color:
-		return
-	var cell: TextureRect = _cells.get(part_id)
-	if cell != null and is_instance_valid(cell):
-		cell.texture = texture
-
-
-## Geometry the web build had to fetch has landed. Ask again for the
-## preview that could not be drawn without it — but only if that part is
-## still on screen, so a scroll does not draw thumbnails for a page
-## nobody is looking at any more.
-func on_geometry_arrived(part_id: String) -> void:
-	var cell: TextureRect = _cells.get(part_id)
-	if cell == null or not is_instance_valid(cell) or cell.texture != null:
-		return
-	if thumbnails:
-		thumbnails.request(part_id, _selected_color)
 
 
 ## Follow a part and colour that were chosen somewhere else — the

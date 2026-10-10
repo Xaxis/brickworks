@@ -776,8 +776,6 @@ func _build_ui() -> void:
 
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
-	_thumbnails.ready_for.connect(_bin.on_thumbnail)
-	_thumbnails.geometry_arrived.connect(_bin.on_geometry_arrived)
 
 	_bin_dock = SideDock.new()
 	_bin_dock.setup(_bin, SideDock.Edge.LEFT, 336.0)
