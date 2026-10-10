@@ -341,7 +341,11 @@ design works is to be found out, not assumed, before this is planned.
 
 ## How progress is judged
 
-Rerun a brief and measure the model, never read the diff. `tools/design.py`
+Rerun a brief and measure the model, never read the diff.
+`tools/claude_run.sh NAME` builds the Orthanc brief (or `--brief`) with the
+Claude Code on this machine over MCP — the way the owner builds from
+claude.ai — off-screen on its own port, and prints `tools/style.py` against
+real fantasy sets (or `--against`). `tools/design.py`
 drives the real assistant and prints what it spent; `tools/texture.py`
 counts the saved `.ldr` against `catalogue.json`'s `set_norms` and the
 brief's kinds. A run's progress lines say what each assembly pass came

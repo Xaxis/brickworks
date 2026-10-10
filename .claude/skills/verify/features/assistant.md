@@ -11,6 +11,10 @@ fixing what it got wrong.
   catalogue, the rules, and tools to search, place, read back the world and look at
   a render; it places bricks, is told what collides, floats or will not survive
   being lifted, and revises. Sections let it carry a sub-assembly at an angle.
+- `design from a brief, on a Claude plan`: `tools/claude_run.sh NAME [--brief
+  "..."]` — the desktop app off-screen (Xvfb, on the GPU, a free port) running
+  `--ask-claude-code`, then `tools/style.py` on the model. A run in a visible
+  window was ended by a stray Escape, which quits the desktop app.
 - `design from a brief`: `tools/design.py "<sentence>"`, which shells out to
   `godot --path . -- --ask=... --out=...`. **This spends real money.** It renders
   in software unless given `--gpu`: this machine has one GPU lease, and a run
@@ -138,7 +142,13 @@ fixing what it got wrong.
   middle (`at`), its outer face at `radius`; faces as wide as lets the inside
   corners meet (`2 * (radius - thickness) * tan(pi / sides)`, floored), which
   leaves a groove up each outer corner — see-through at `thickness` 1, so 2 is
-  the default. `mix_color`, `masonry` as on `fill`. Found by run 5, octagonal
+  the default. `mix_color`, `masonry` and `sideways` as on `fill`: a two-thick
+  face alternates a course of two-wide bricks with two rows of one-wide ones
+  (bonded by their own count — counted by the course every outer row started
+  short and none could be masonry), and the outer row is stoned or turned out
+  and dressed in the face's frame (`_lay_row`). Run 8 used `prism` (31% angled)
+  and could not finish its faces: `restyle_model` skips sections and two-wide
+  bricks. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through

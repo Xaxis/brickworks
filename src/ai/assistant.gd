@@ -3876,8 +3876,9 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
 			% Placement._num(radius) + "make the radius larger or the sides fewer")
 		return []
-	var lengths: Array = [[4, "3001"], [3, "3002"], [2, "3003"]] if thick == 2 \
-		else [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
+	var sideways: float = clampf(float(pattern.get("sideways", 0.0)), 0.0, 0.5)
+	var wide: Array = [[4, "3001"], [3, "3002"], [2, "3003"]]
+	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var made: Array = []
 	for face: int in sides:
 		var name: String = "prism %d face %d" % [index, face]
@@ -3885,32 +3886,72 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 			"z": cz, "axis": "y", "degrees": 360.0 * face / sides})
 		var left: float = -width / 2.0
 		for course: int in courses:
-			var x: float = left
-			var end: float = left + width
-			# Bonded: every other course starts half a brick along.
-			var first: bool = true
-			while x < end - 0.01:
-				var room: int = int(round(end - x))
-				var chosen: Array = []
-				for pair: Array in lengths:
-					var long: int = int(pair[0])
-					if first and course % 2 == 1 and long == 4 and room > 2:
-						continue
-					if long <= room:
-						chosen = pair
-						break
-				first = false
-				if chosen.is_empty():
-					if thick == 2:
-						# A stud of width left on a two-deep face: a 1x2 across it.
-						made.append(_prism_brick(name, "3004", colour, x, 3.0 * course,
-							radius - thick, 1, mix_colour, mix, masonry))
-					x += 1.0
-					continue
-				made.append(_prism_brick(name, str(chosen[1]), colour, x, 3.0 * course,
-					radius - thick, 0, mix_colour, mix, masonry))
-				x += float(chosen[0])
+			var y: float = 3.0 * course
+			# Two thick: a course of two-wide bricks, then a course of two
+			# rows of one-wide ones, which the courses either side tie
+			# together. The outside row is where a face can be turned out
+			# and dressed or laid as masonry: the first prism, all two-wide
+			# bricks, was a face the finishing pass could not touch, and an
+			# Orthanc built with it came out 94% plain.
+			if thick == 2 and course % 2 == 0:
+				_lay_row(made, name, wide, left, width, y, radius - 2.0, course,
+					colour, mix_colour, mix, 0.0, 0.0)
+				continue
+			# The bond of the one-wide rows counts their own courses: on a
+			# two-thick face they are only ever the odd ones, and counted by
+			# the course every outside row started short — 1x3s and 1x1s
+			# only, so not one of them could be a masonry brick.
+			var bond: int = course / 2 if thick == 2 else course
+			_lay_row(made, name, narrow, left, width, y, radius - 1.0, bond,
+				colour, mix_colour, mix, masonry, sideways)
+			if thick == 2:
+				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
+					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
 	return made
+
+
+## One row of a prism's face, in its own frame: bonded by the course,
+## the outside row ([param masonry], [param sideways] above nought) turned
+## to stone or turned out and dressed, facing +z, which is out.
+func _lay_row(made: Array, section: String, lengths: Array, left: float,
+		width: int, y: float, z: float, course: int, colour: int,
+		mix_colour: int, mix: float, masonry: float, sideways: float) -> void:
+	var x: float = left
+	var end: float = left + width
+	var first: bool = true
+	while x < end - 0.01:
+		var room: int = int(round(end - x))
+		var chosen: Array = []
+		for pair: Array in lengths:
+			var long: int = int(pair[0])
+			# Every other course starts short, so its joints fall across
+			# the ones below.
+			if first and course % 2 == 1 and long == int(lengths[0][0]) and room > 2:
+				continue
+			if long <= room:
+				chosen = pair
+				break
+		first = false
+		if chosen.is_empty():
+			# A stud of width left on a two-wide course: a 1x2 across it.
+			made.append(_prism_brick(section, "3004", colour, x, y, z, 1,
+				mix_colour, mix, 0.0))
+			x += 1.0
+			continue
+		var long: int = int(chosen[0])
+		if sideways > 0.0 and Patterns._scatter(x, y, z + float(section.hash() % 97), 53) < sideways:
+			for step: int in long:
+				var one := {"part": "87087", "color": colour, "x": x + step, "y": y,
+					"z": z, "rot": 0, "section": section}
+				var dressing: Dictionary = _dress(one, "+z")
+				made.append(one)
+				if not dressing.is_empty():
+					dressing["section"] = section
+					made.append(dressing)
+		else:
+			made.append(_prism_brick(section, str(chosen[1]), colour, x, y, z, 0,
+				mix_colour, mix, masonry))
+		x += float(long)
 
 
 func _prism_brick(section: String, part: String, colour: int, x: float, y: float,
@@ -6819,7 +6860,10 @@ alongside the bricks you write by hand:
            the real-set share of parts at an angle and spent itself \
            doing it; this is that, in one line. Stack prisms of shrinking \
            radius for a taper, and put a floor of plates on a square \
-           core inside to build on.
+           core inside to build on. It takes masonry and sideways as a \
+           wall does — "masonry": 0.3, "sideways": 0.2 — for a face of \
+           worked stone with things on its side, which the finishing \
+           pass cannot reach once the faces are turned.
 
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
@@ -7587,7 +7631,7 @@ func _tools() -> Array:
 				"fill: the share in mix_color, up to 0.5; 0.15 if not "
 				+ "said."},
 			"sideways": {"type": "number", "description":
-				"fill: the share of its 1x2 bricks laid as two 1x1 bricks "
+				"fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks "
 				+ "with a stud on the side, turned out and dressed with a "
 				+ "tile, round tile, round plate or cheese slope on that "
 				+ "stud, 0 to 0.5. For a wall one stud thick: a face built "

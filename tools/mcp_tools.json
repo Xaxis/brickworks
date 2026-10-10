@@ -252,7 +252,7 @@
                 "type": "integer"
               },
               "sideways": {
-                "description": "fill: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
+                "description": "fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
               },
               "step": {
@@ -1104,7 +1104,7 @@
                 "type": "integer"
               },
               "sideways": {
-                "description": "fill: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
+                "description": "fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
               },
               "step": {

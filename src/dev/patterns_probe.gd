@@ -273,6 +273,9 @@ func _holds_up() -> void:
 			"mix_color": 72, "masonry": 0.4, "sideways": 0.3}],
 		["an octagonal shaft", {"pattern": "prism", "at": {"x": 10, "y": 0, "z": 10},
 			"sides": 8, "radius": 7, "courses": 10, "color": 0, "mix_color": 72}],
+		["an octagonal shaft in worked stone, partly on its side", {"pattern": "prism",
+			"at": {"x": 10, "y": 0, "z": 10}, "sides": 8, "radius": 8, "courses": 10,
+			"color": 0, "mix_color": 72, "masonry": 0.3, "sideways": 0.25}],
 		["a hexagonal tower one stud thick, in masonry", {"pattern": "prism",
 			"at": {"x": 10, "y": 0, "z": 10}, "sides": 6, "radius": 6, "courses": 8,
 			"thickness": 1, "color": 71, "masonry": 0.5}],
@@ -300,7 +303,20 @@ func _holds_up() -> void:
 				% [one[0], model.placements.size()], true)
 		else:
 			_check("%s — %s" % [one[0], str(verdict["summary"])], false)
-		if (one[1] as Dictionary).has("sideways"):
+		if (one[1] as Dictionary).has("sideways") and str((one[1] as Dictionary)["pattern"]) == "prism":
+			var turned_out: int = 0
+			var dressed: int = 0
+			var stone: int = 0
+			for placement: Assistant.Placement in model.placements:
+				if placement.part == "87087":
+					turned_out += 1
+				elif placement.face != "up":
+					dressed += 1
+				elif placement.part in ["98283", "15533"]:
+					stone += 1
+			_check("...with %d bricks turned out and %d dressed, and %d masonry"
+				% [turned_out, dressed, stone], turned_out > 10 and dressed == turned_out and stone > 5)
+		elif (one[1] as Dictionary).has("sideways"):
 			var turned: int = 0
 			var dressed: int = 0
 			for placement: Assistant.Placement in model.placements:
