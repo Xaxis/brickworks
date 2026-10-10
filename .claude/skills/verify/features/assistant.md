@@ -130,6 +130,16 @@ fixing what it got wrong.
   a median 10%, every castle built before this was 39-56%). The look's measured
   advice (`_variety`) names the same tail. `detail_probe` asserts all three
   messages and what counts as a big piece.
+- `reviewed from outside`: a session that is not this loop — Claude over the
+  connector, or on the MCP port — gets the same review as tools. A successful
+  `submit_design` answers with what the check measured against real sets and
+  the way on (`Assistant._built_from_outside`); `review_model` (a socket tool,
+  `CommandSocket._own_tools`) is the loop's whole look (`CRITIQUE` plus the
+  advice) with no assembly, and an assembly's close pass
+  (`_assembly_measured` plus `ASSEMBLY_CRITIQUE`) with one, each told what the
+  last one brought. Found on the first Orthanc from claude.ai, which was told
+  only "Built". An assembly's box is read from its own sides or a nested
+  `where`. `mcp_probe` asserts it on a 300-brick wall.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See

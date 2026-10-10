@@ -431,6 +431,27 @@ func _hand_back() -> void:
 func _own_tools() -> Array:
 	return [
 		{
+			"name": "review_model",
+			"description": ("Look a built model over the way Brickworks' own "
+				+ "designer does after a design stands: with no assembly, the "
+				+ "whole model measured against real LEGO sets of its size and "
+				+ "kind — shapes, colours, the one-off pieces, how coarse — and "
+				+ "what to check it for; with an assembly named in "
+				+ "submit_design, that one close up, measured, with the parts "
+				+ "real sets of the kind use that it has none of. Call it after "
+				+ "submit_design, then once per assembly, detailing each with "
+				+ "edit_model before the next."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"assembly": {"type": "string", "description":
+						"an assembly's name as given in submit_design; omit "
+						+ "for the whole model"},
+				},
+				"additionalProperties": false,
+			},
+		},
+		{
 			"name": "clear_model",
 			"description": ("Take everything off the baseplate and start "
 				+ "from bare ground. Do this before building something "
@@ -474,10 +495,12 @@ func tool_names() -> PackedStringArray:
 
 
 func _own_tools_have(tool: String) -> bool:
-	return tool in ["clear_model", "save_model"]
+	return tool in ["clear_model", "save_model", "review_model"]
 
 
 func _run_own(tool: String, input: Dictionary) -> String:
+	if tool == "review_model" and assistant != null:
+		return assistant.review(str(input.get("assembly", "")))
 	if app == null:
 		return "This app cannot do that from outside."
 	match tool:

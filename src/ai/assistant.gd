@@ -3548,11 +3548,18 @@ static func _read_assemblies(args: Dictionary) -> Array[Dictionary]:
 		var name: String = str(one.get("name", "")).strip_edges()
 		if name.is_empty():
 			continue
+		# The sides on the assembly itself, as the schema has them, or in
+		# a where= of their own, the way look_at_model and view_model take
+		# a box: easy to send by habit, and read as no box at all — the
+		# whole model — when it was ignored.
+		var given: Dictionary = one
+		if one.get("where") is Dictionary:
+			given = one["where"]
 		var where: Dictionary = {}
 		for side: String in ["x_from", "x_to", "y_from", "y_to",
 				"z_from", "z_to"]:
-			if one.has(side):
-				where[side] = float(one[side])
+			if given.has(side):
+				where[side] = float(given[side])
 		out.append({"name": name, "where": where})
 	return out
 
@@ -6739,8 +6746,108 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 			% report["feedback"]
 	await _ensure_parts(design)
 	_apply(design)
-	return "Built. %d bricks on the baseplate. %s" % [
-		design.placements.size(), report["summary"]]
+	if not _busy:
+		_outside_assemblies = design.assemblies.duplicate()
+		_outside_reviewing = {}
+		_detail_added = []
+		_brief = "%s. %s" % [design.name, design.description]
+	return _built_from_outside(design, report)
+
+
+## A design built from outside — Claude over the connector, or a session
+## on the MCP port — has no loop of this app's to look it over after it
+## stands. This app's own designer measures it against real sets, looks
+## at the whole, then details each assembly close up; told only "Built",
+## the session did none of that. The first tower of Orthanc to come in
+## from claude.ai was built that way: the check measured it and the
+## answer threw the measurements away. So the answer carries them, and
+## review_model is the rest of the loop, one call at a time.
+var _outside_assemblies: Array[Dictionary] = []
+## The assembly being reviewed, and the parts the model had before, so the
+## next review can say what this one brought.
+var _outside_reviewing: Dictionary = {}
+
+const FROM_OUTSIDE_NEXT := """A first design is never as detailed as a \
+set; this app's own designer always goes on from here, and so should you:
+  1. review_model with no assembly: the whole model measured against real \
+sets of its size and kind, with what to look for. view_model from two \
+corners to see it.
+  2. Then review_model for each assembly in turn{names}: close up, \
+measured, with the parts real sets of the kind use that it has none of. \
+Detail it with edit_model — a different piece where something changes — \
+before moving to the next. Never submit_design again for this: it \
+replaces the whole model."""
+
+
+func _built_from_outside(design: Model, report: Dictionary) -> String:
+	var said := PackedStringArray()
+	said.append("Built. %d bricks on the baseplate. %s" % [
+		design.placements.size(), report["summary"]])
+	var measured: Array = report.get("advice", [])
+	if not measured.is_empty():
+		said.append("What the check measured about it:\n"
+			+ "\n".join(PackedStringArray(measured)))
+	var names := PackedStringArray()
+	for one: Dictionary in design.assemblies:
+		names.append(str(one.get("name", "")))
+	said.append(FROM_OUTSIDE_NEXT.replace("{names}",
+		" (%s)" % ", ".join(names) if not names.is_empty() else ""))
+	return "\n\n".join(said)
+
+
+## The review this app's own designer gives a model, for a session doing
+## its own designing: the whole, or one named assembly close up.
+func review(assembly: String) -> String:
+	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
+	if everything.is_empty():
+		return "The baseplate is bare: there is nothing to review."
+	# What the last assembly reviewed brought, for the next one to know.
+	if not _outside_reviewing.is_empty():
+		var before: Dictionary = _outside_reviewing["parts"]
+		var added := PackedStringArray()
+		for part_id: String in _parts_in(everything):
+			if not before.has(part_id):
+				added.append(part_id)
+		_detail_added.append([_outside_reviewing["name"], added])
+		_outside_reviewing = {}
+	if assembly.strip_edges().is_empty():
+		var report: Dictionary = _check(_model_from_world())
+		var said := PackedStringArray()
+		said.append("The whole model: %s. %s." % [_texture(everything),
+			report["summary"]])
+		var measured: Array = report.get("advice", [])
+		if not measured.is_empty():
+			said.append("Measured against real sets:\n"
+				+ "\n".join(PackedStringArray(measured)))
+		said.append(CRITIQUE)
+		said.append(_assemblies_to_review())
+		return "\n\n".join(said)
+	var one: Dictionary = {}
+	for named: Dictionary in _outside_assemblies:
+		if str(named.get("name", "")).to_lower() == assembly.strip_edges().to_lower():
+			one = named
+	if one.is_empty():
+		return "No assembly called %s. %s" % [assembly, _assemblies_to_review()]
+	var name: String = str(one["name"])
+	var inside: Array[BrickWorld.Brick] = _bricks_inside(one.get("where", {}))
+	if inside.is_empty():
+		return "Nothing stands inside the box of the %s. %s" % [name,
+			_assemblies_to_review()]
+	_outside_reviewing = {"name": name, "parts": _parts_in(everything)}
+	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s. When it is done, review_model the next one." % [
+		_assembly_measured(name, inside, _bounds_of(inside)),
+		ASSEMBLY_CRITIQUE.replace("{name}", name),
+		JSON.stringify(one.get("where", {}))]
+
+
+func _assemblies_to_review() -> String:
+	if _outside_assemblies.is_empty():
+		return ("No assemblies were named when it was submitted; name them "
+			+ "in submit_design's assemblies to have each reviewed close up.")
+	var names := PackedStringArray()
+	for one: Dictionary in _outside_assemblies:
+		names.append(str(one.get("name", "")))
+	return "Its assemblies, to review one at a time: %s." % ", ".join(names)
 
 
 func _tools() -> Array:

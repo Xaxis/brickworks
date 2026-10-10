@@ -135,6 +135,44 @@ func _run() -> void:
 		% (_world.brick_count() - before),
 		_world.brick_count() - before == 3)
 
+	# Built from outside, a design has no loop to look it over, so the
+	# answer carries what the check measured and the way on: review_model,
+	# the whole and then each assembly close up. The first Orthanc from
+	# claude.ai was told only "Built".
+	# A wall of one brick in one grey, long enough for real sets of its
+	# size to say something about it.
+	var bricks: Array = []
+	for course: int in 10:
+		for n: int in 30:
+			bricks.append({"part": "3001", "color": 71,
+				"x": 4 * n + (2 if course % 2 else 0), "y": 3 * course, "z": 20, "rot": 0})
+	var towers: Dictionary = await _ask("submit_design", {
+		"name": "A long wall", "description": "a castle wall",
+		"bricks": bricks,
+		"assemblies": [
+			{"name": "west wall", "x_from": 0, "x_to": 60, "z_from": 20, "z_to": 22},
+			# Sent in a where= of its own, as look_at_model takes a box.
+			{"name": "east wall", "where": {"x_from": 61, "x_to": 130, "z_from": 20, "z_to": 22}},
+		],
+	})
+	var told: String = _text_of(towers)
+	_check("built from outside, it is told to review it, assembly by assembly",
+		told.begins_with("Built.") and told.contains("review_model")
+		and told.contains("west wall, east wall"))
+	_check("...with what the check measured against real sets",
+		told.contains("What the check measured") and told.contains("real set"))
+	var whole: String = _text_of(await _ask("review_model", {}))
+	_check("review_model looks the whole over: %d characters" % whole.length(),
+		whole.begins_with("The whole model:") and whole.contains("is this the thing")
+		and whole.contains("west wall"))
+	var close: String = _text_of(await _ask("review_model", {"assembly": "East Wall"}))
+	_check("...and one assembly close up, only its own bricks, measured, with what to do",
+		close.begins_with("The east wall: 1") and close.contains("A real set of")
+		and close.contains("edit_model") and not close.begins_with("The east wall: 300"))
+	var nothing: String = _text_of(await _ask("review_model", {"assembly": "moat"}))
+	_check("...and an assembly it never named is answered with the ones it did",
+		nothing.begins_with("No assembly called moat") and nothing.contains("east wall"))
+
 	# A design that cannot stand must come back as a refusal, not as a
 	# silent success — this is the whole reason the app holds the lattice.
 	var floating: Dictionary = await _ask("submit_design", {
