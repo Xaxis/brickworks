@@ -156,6 +156,7 @@ func _initialize() -> void:
 		% cone.size(), not cone.is_empty() and cone.size() < 200)
 
 	_a_wall_is_long_bricks()
+	_a_wall_has_texture()
 	_wedges_read_off_the_parts()
 	_wedges_go_in_symmetrically()
 	_holds_up()
@@ -235,6 +236,10 @@ func _holds_up() -> void:
 		["a wall two studs thick", {"pattern": "fill", "shape": "rectangle",
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 30, "deep": 18,
 			"wall": 2, "layers": 8, "rise": 3, "color": 71}],
+		["a weathered wall", {"pattern": "fill", "shape": "rectangle",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 40, "deep": 24,
+			"wall": 1, "layers": 12, "rise": 3, "color": 71,
+			"mix_color": 72, "masonry": 0.5}],
 	]:
 		var model: Assistant.Model = assistant._read_model(
 			{"patterns": [one[1]]})
@@ -380,6 +385,73 @@ func _a_wall_is_long_bricks() -> void:
 				stacked += 1
 	_check("bonded: %d of %d joints stand on a joint in the course below"
 		% [stacked, all_joints], all_joints > 0 and stacked * 20 < all_joints)
+
+
+## What a wall's short bricks are: a second grey through some of them,
+## and some laid as masonry with the stonework facing out.
+func _a_wall_has_texture() -> void:
+	print("")
+	print("  a weathered wall, said in the same one object")
+	var wall: Dictionary = {
+		"pattern": "fill", "shape": "rectangle",
+		"at": {"x": 0, "y": 0, "z": 0},
+		"across": 40, "deep": 24, "wall": 1, "layers": 12, "rise": 3,
+		"color": 71, "mix_color": 72, "masonry": 0.5,
+	}
+	var trouble: Array = []
+	var made: Array = Patterns.expand([wall], [], trouble, _library)
+	var again: Array = Patterns.expand([wall], [], [], _library)
+	var dark: int = 0
+	var stone: int = 0
+	var plain: int = 0
+	var facing_in: int = 0
+	for raw: Variant in made:
+		var one: Dictionary = raw
+		if int(one["color"]) == 72:
+			dark += 1
+		var part: String = str(one["part"])
+		if part == "3004" or part == "3010":
+			plain += 1
+		if part == "98283" or part == "15533":
+			stone += 1
+			# Out is away from the middle, at x 20 and z 12.
+			var rot: int = int(one.get("rot", 0))
+			var out: bool
+			if rot == 0:
+				out = float(one["z"]) >= 12.0
+			elif rot == 2:
+				out = float(one["z"]) < 12.0
+			elif rot == 1:
+				out = float(one["x"]) >= 20.0
+			else:
+				out = float(one["x"]) < 20.0
+			if not out:
+				facing_in += 1
+	_check("about a seventh of it in the second grey when no share is said, %d of %d"
+		% [dark, made.size()], trouble.is_empty()
+			and dark * 100 > made.size() * 9 and dark * 100 < made.size() * 22)
+	_check("about half the 1x2s and 1x4s laid as masonry, %d of %d"
+		% [stone, stone + plain], stone * 100 > (stone + plain) * 35
+			and stone * 100 < (stone + plain) * 65)
+	_check("...every one with its stonework facing out, %d facing in"
+		% facing_in, stone > 0 and facing_in == 0)
+	_check("and the same wall every time, which a check and a build need",
+		str(made) == str(again))
+	_check("a share over a half is held to a half",
+		_dark_share({"mix_color": 72, "mix": 0.9}) <= 0.55)
+
+
+func _dark_share(extra: Dictionary) -> float:
+	var wall: Dictionary = {"pattern": "fill", "shape": "rectangle",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 20, "deep": 12, "wall": 1,
+		"layers": 6, "rise": 3, "color": 71}
+	wall.merge(extra)
+	var made: Array = Patterns.expand([wall], [], [], _library)
+	var dark: int = 0
+	for raw: Variant in made:
+		if int((raw as Dictionary)["color"]) == 72:
+			dark += 1
+	return float(dark) / maxf(1.0, float(made.size()))
 
 
 func _cells_of(one: Dictionary) -> Array[Vector2i]:

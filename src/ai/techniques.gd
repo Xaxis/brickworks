@@ -182,6 +182,44 @@ static func all() -> Array:
 				{"part": "3024", "color": 71, "x": 1.5, "y": 2, "z": 1.5, "rot": 0},
 			],
 		},
+		{
+			"name": "window in a wall",
+			"when": "a building — a house, a shop, a station, a tower "
+				+ "with rooms in it",
+			"why": "A window is a frame set into the wall, not a gap in "
+				+ "it and not a brick of another colour: a fire station "
+				+ "built here had forty-two aeroplane windows in white "
+				+ "surrounds, and from a step back every one read as a "
+				+ "blank. Real buildings use frames — 60592 (1x2x2), "
+				+ "60593 (1x2x3), 60594 (1x4x3), and 60596 for a door "
+				+ "(1x4x6). 60592, 60594 and 60596 are each in a "
+				+ "quarter to a third of real house sets.\n"
+				+ "The frame stands on a course like any brick and is "
+				+ "three courses tall here; the courses either side are "
+				+ "laid short so the bond still runs past it, and the "
+				+ "course over it has to bridge it — a 1x4 arch is that "
+				+ "and a lintel at once. In a real set glass clips into "
+				+ "the frame (60602 for this one); the checker here "
+				+ "reads glass as an overlap, so leave it out.",
+			"bricks": [
+				{"part": "3010", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 4, "y": 0, "z": 0, "rot": 0},
+				{"part": "3622", "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "60593", "color": 15, "x": 3, "y": 3, "z": 0, "rot": 0},
+				{"part": "3622", "color": 4, "x": 5, "y": 3, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 0, "y": 6, "z": 0, "rot": 0},
+				{"part": "3005", "color": 4, "x": 2, "y": 6, "z": 0, "rot": 0},
+				{"part": "3005", "color": 4, "x": 5, "y": 6, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 6, "y": 6, "z": 0, "rot": 0},
+				{"part": "3622", "color": 4, "x": 0, "y": 9, "z": 0, "rot": 0},
+				{"part": "3622", "color": 4, "x": 5, "y": 9, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 0, "y": 12, "z": 0, "rot": 0},
+				{"part": "3659", "color": 15, "x": 2, "y": 12, "z": 0, "rot": 0},
+				{"part": "3004", "color": 4, "x": 6, "y": 12, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 0, "y": 15, "z": 0, "rot": 0},
+				{"part": "3010", "color": 4, "x": 4, "y": 15, "z": 0, "rot": 0},
+			],
+		},
 	]
 
 

@@ -165,9 +165,25 @@
                 "description": "fill: studs in z",
                 "type": "number"
               },
+              "edge_color": {
+                "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
+                "type": "integer"
+              },
               "layers": {
                 "description": "fill: how many of the footprint, stacked up",
                 "type": "number"
+              },
+              "masonry": {
+                "description": "fill: the share of its 1x2 and 1x4 bricks laid as masonry bricks (98283, 15533), stonework facing away from the middle, 0 to 1. For a wall one stud thick.",
+                "type": "number"
+              },
+              "mix": {
+                "description": "fill: the share in mix_color, up to 0.5; 0.15 if not said.",
+                "type": "number"
+              },
+              "mix_color": {
+                "description": "fill: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "type": "integer"
               },
               "pattern": {
                 "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",
@@ -281,7 +297,7 @@
     "name": "check_design"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates: staggered wall, half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, round tower, wide round tower, taper. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates: staggered wall, half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, round tower, wide round tower, taper, window in a wall. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -905,9 +921,25 @@
                 "description": "fill: studs in z",
                 "type": "number"
               },
+              "edge_color": {
+                "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
+                "type": "integer"
+              },
               "layers": {
                 "description": "fill: how many of the footprint, stacked up",
                 "type": "number"
+              },
+              "masonry": {
+                "description": "fill: the share of its 1x2 and 1x4 bricks laid as masonry bricks (98283, 15533), stonework facing away from the middle, 0 to 1. For a wall one stud thick.",
+                "type": "number"
+              },
+              "mix": {
+                "description": "fill: the share in mix_color, up to 0.5; 0.15 if not said.",
+                "type": "number"
+              },
+              "mix_color": {
+                "description": "fill: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "type": "integer"
               },
               "pattern": {
                 "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object.",

@@ -322,6 +322,20 @@ static func _fill(pattern: Dictionary, trouble: Array,
 	# design says otherwise — three for courses of bricks.
 	var rise: float = float(pattern.get("rise", 1.0))
 	var shrink: int = int(round(float(pattern.get("shrink", 0))))
+	# What the short bricks are, which is where a real wall's texture is.
+	#
+	# A second colour scattered through a share of them, and a share of
+	# the 1x2s and 1x4s laid as masonry bricks with the stonework facing
+	# out. A wall of one brick in one colour is one shape doing the work
+	# of twenty however well it is bonded: run 21's castle was 349 of
+	# one brick and 47% one grey, where a real set its size is 28% its
+	# main colour.
+	var mix_colour: int = int(pattern.get("mix_color",
+		pattern.get("mix_colour", -1)))
+	var mix: float = clampf(float(pattern.get("mix",
+		MIX if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
+	var middle := Vector2(low_x + across / 2.0, low_z + deep / 2.0)
 
 	if across < 1 or deep < 1 or across * deep > MOST:
 		trouble.append("fill wants across and deep, both at least 1 and "
@@ -412,6 +426,9 @@ static func _fill(pattern: Dictionary, trouble: Array,
 					below, laid, course))
 		made.append_array(_tile(here, at_y, colour, tiles, below, laid,
 			course))
+		if mix > 0.0 or masonry > 0.0:
+			_texture(made, from_here, colour, mix_colour, mix, masonry,
+				middle)
 		below = laid
 		if made.size() > MOST:
 			trouble.append("that fill would be %d bricks, which is a "
@@ -419,6 +436,58 @@ static func _fill(pattern: Dictionary, trouble: Array,
 				+ "shape. Fewer layers, or a bigger shrink")
 			return []
 	return made
+
+
+## How much of a fill a second colour takes when none is said: real
+## castle walls are 9-19% their second grey (Lion Knights' Castle 9%,
+## Castle in the Forest 14%, Löwenstein 19%).
+const MIX := 0.15
+
+## The masonry brick for each plain one: the same size, with stonework
+## moulded on one long face. That face is LDraw's -Z, which this app's
+## axes turn into +Z at rot 0, +X at 1, -Z at 2 and -X at 3.
+const MASONRY: Dictionary = {"3004": "98283", "3010": "15533"}
+
+
+## Give some of a layer's bricks a second colour, and lay some as
+## masonry facing away from the middle of the fill.
+##
+## Chosen by where they are rather than at random, so the same fill
+## always comes out the same — a pattern that changed between a check
+## and a submission would be checked as one model and built as another.
+## Only bricks in the fill's own colour: an outline in an edge colour is
+## a decision already made.
+static func _texture(made: Array, from: int, colour: int, mix_colour: int,
+		mix: float, masonry: float, middle: Vector2) -> void:
+	for n: int in range(from, made.size()):
+		var one: Dictionary = made[n]
+		if int(one["color"]) != colour:
+			continue
+		var x: float = float(one["x"])
+		var y: float = float(one["y"])
+		var z: float = float(one["z"])
+		if mix_colour >= 0 and _scatter(x, y, z, 1) < mix:
+			one["color"] = mix_colour
+		var stone: String = str(MASONRY.get(str(one["part"]), ""))
+		if stone.is_empty() or _scatter(x, y, z, 2) >= masonry:
+			continue
+		one["part"] = stone
+		# Along x or along z, from the turn it was laid at; then whichever
+		# way is out.
+		if int(one.get("rot", 0)) % 2 == 0:
+			one["rot"] = 0 if z + 0.5 >= middle.y else 2
+		else:
+			one["rot"] = 1 if x + 0.5 >= middle.x else 3
+
+
+## A number from 0 to 1 that depends only on where a brick is.
+static func _scatter(x: float, y: float, z: float, salt: int) -> float:
+	var h: int = int(round(x * 10.0)) * 73856093 \
+		^ int(round(y * 10.0)) * 19349663 \
+		^ int(round(z * 10.0)) * 83492791 ^ salt * 2654435761
+	h = (h ^ (h >> 13)) * 1274126177
+	h = h ^ (h >> 16)
+	return float(posmod(h, 10007)) / 10007.0
 
 
 ## Which studs a footprint covers.

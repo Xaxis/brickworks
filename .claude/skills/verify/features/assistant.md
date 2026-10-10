@@ -79,9 +79,14 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  Eight constructions with real part numbers and real coordinates — a staggered
+  Ten constructions with real part numbers and real coordinates — a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
-  a smooth top, a round tower, a taper. Being *told* to stagger a wall is not the
+  a smooth top, a round tower, a wide round tower, a taper, and a window in a
+  wall (a 60593 frame three courses tall, the bond laid short past it, a 1x4
+  arch over it). Glass (60602 in that frame) sits at the frame's own LDraw
+  origin — frame + (0.2, 1, 0.6) at rot 0 — and the checker calls it an
+  overlap, because the frame's collision boxes fill the groove; so the
+  technique leaves it out and says why. Being *told* to stagger a wall is not the
   same as knowing where the stud sits, and the arithmetic is the part that goes
   wrong.
 
@@ -264,7 +269,14 @@ what it spent before its verdict; report it.
   joints fall on a grid that moves half a brick each course, and the side that
   owns a ring's corner alternates). The same wall: **408 parts, 336 of them 1x4,
   and 0 of 376 joints over a joint in the course below**; it and a wall two
-  studs thick pass the checker. Its worked examples
+  studs thick pass the checker. `mix_color` (a share, `mix`, default 0.15 —
+  real castle walls are 9-19% their second grey) and `masonry` (a share of 1x2s
+  and 1x4s laid as 98283/15533) say what the short bricks are, chosen by
+  position so a check and a build agree; stonework faces away from the fill's
+  middle, which LDraw's -Z becoming the app's +Z at rot 0 decides, and a
+  render of a ring confirmed it on the outside faces. `edge_color` existed and
+  was never in the tool schema, so no design could know to use it; it is now.
+  Its worked examples
   listed a dome, a cone, a tower, a hull and a bowl and **no wall** — the shape
   it is best at. The table names a wall and a room now, and
   `patterns_probe._a_wall_is_long_bricks` pins the numbers so the prompt cannot

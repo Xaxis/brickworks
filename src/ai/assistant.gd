@@ -6134,6 +6134,7 @@ alongside the bricks you write by hand:
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
              a wall          rectangle, wall 1, layers 12, rise 3
+             a stone wall    the same, mix_color 72, masonry 0.5
              a room          rectangle, wall 1, layers 4, rise 3
 
            Say it that way. A dome written out by hand is three hundred \
@@ -6158,8 +6159,11 @@ alongside the bricks you write by hand:
            castle run that wrote its walls out by hand instead used two \
            hundred and twenty-three 1x2 bricks with every joint in a \
            column, which is a wall of separate towers. If a surface is \
-           a rectangle or a ring, fill it, and then make some of its \
-           short bricks something else.
+           a rectangle or a ring, fill it, and make some of its short \
+           bricks something else: mix_color puts a second colour \
+           through them and masonry lays some as stonework, in the same \
+           object. A real castle's walls are 9-19% their second grey; \
+           Lion Knights' Castle has 281 of the 1x2 masonry brick.
 
 A four thousand part model is not too large to build. It is too large to \
 dictate, which is a different problem, and this is the answer to it.
@@ -6716,6 +6720,21 @@ func _tools() -> Array:
 				+ "so the stack tapers as it rises. Must be even. 2 is "
 				+ "a dome, 4 a steep cone, 0 a straight-sided hull, and "
 				+ "-2 flares outward."},
+			"edge_color": {"type": "integer", "description":
+				"fill: a second colour for the outside stud of every "
+				+ "layer — hull plating, a trim, a kerb."},
+			"mix_color": {"type": "integer", "description":
+				"fill: a second colour through some of its bricks, "
+				+ "chosen by where they are, the same every time — a "
+				+ "weathered wall. Real castle walls are 9-19% their "
+				+ "second grey."},
+			"mix": {"type": "number", "description":
+				"fill: the share in mix_color, up to 0.5; 0.15 if not "
+				+ "said."},
+			"masonry": {"type": "number", "description":
+				"fill: the share of its 1x2 and 1x4 bricks laid as "
+				+ "masonry bricks (98283, 15533), stonework facing away "
+				+ "from the middle, 0 to 1. For a wall one stud thick."},
 			"bricks": {"type": "array", "items": brick, "description":
 				"repeat: what to repeat. mirror: what to reflect, if not "
 				+ "everything so far."},
