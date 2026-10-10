@@ -39,12 +39,14 @@ await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 await page.waitForTimeout(Number(args.load || 90000));
 
 async function click(name) {
-  for (let tries = 0; tries < 240; tries++) {  // two minutes: a loaded machine drew the panel late
+  for (let tries = 0; tries < 600; tries++) {  // five minutes: at a load of 46 the panel came up later than two
     const where = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
     if (where) return page.mouse.click(where.x, where.y);
     await page.waitForTimeout(500);
   }
-  throw new Error(`the app never showed "${name}"`);
+  // What the page was showing instead, for whoever reads the failure.
+  await page.screenshot({ path: `${out}/never_showed_${name}.png` }).catch(() => {});
+  throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
 }
 
 await click("connect_claude");
