@@ -42,10 +42,6 @@ func _run() -> void:
 	get_root().add_child(assistant)
 	await process_frame
 
-	# Pretend there is a key, so the body takes the direct-call shape —
-	# the one where this app, not the proxy, decides what to send.
-	assistant.direct_key = "sk-ant-probe"
-
 	var was: String = Brain.chosen()
 	var was_effort: String = Brain.effort()
 

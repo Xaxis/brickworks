@@ -9,8 +9,8 @@
 ## lost one revision short of done, because a socket closed.
 ##
 ## Pointed at a port nothing is listening on, so every attempt really
-## does fail. No key is set on this assistant, which matters — a key
-## would send the request to the real endpoint instead of this one.
+## does fail. The key is made up: nothing is sent without one, and this
+## one goes nowhere but that port.
 extends SceneTree
 
 var _failures: int = 0
@@ -44,12 +44,7 @@ func _run() -> void:
 	get_root().add_child(assistant)
 	await process_frame
 
-	if not assistant.key_in_use().is_empty():
-		print("  FAIL  this assistant has a key, so the request would "
-			+ "go to the real endpoint")
-		quit(1)
-		return
-
+	assistant.direct_key = "sk-ant-probe"
 	# Streaming on, because asking again is what happens when a stream
 	# fails — with it off the retry path is never reached at all.
 	assistant.stream_replies = true

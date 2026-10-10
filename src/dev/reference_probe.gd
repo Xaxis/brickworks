@@ -36,6 +36,9 @@ func _run() -> void:
 	# later and the conversation it built can still be read.
 	assistant.stream_replies = false
 	assistant.endpoint = "http://127.0.0.1:1/none"
+	# Made up. Nothing is sent without a key, and this one goes nowhere
+	# but that port.
+	assistant.direct_key = "sk-ant-probe"
 
 	var picture := Image.create(64, 48, false, Image.FORMAT_RGB8)
 	picture.fill(Color(0.2, 0.4, 0.9))

@@ -32,8 +32,6 @@ ranked by evidence.
   real set's (two greys, masonry bricks, bonded). A real set that size
   has 262 shapes, so it is thin for its size; run 19 (1,329 parts, 113
   shapes, 16 colours) is closer to its own size's norm.
-- Not exercised: the proxy's conversation caching for signed-in accounts
-  (`api/claude.js`). Deployed; proving it needs an account.
 
 ## What the owner found, 2026-10-09 evening
 
@@ -71,6 +69,11 @@ stats on the status line; a grouped toolbar with Clear asking first.
   by default until its owner has both. Brickworks' "My Claude" is a checkbox,
   off by default; turning it on by default needs the owner to accept the
   Commercial Terms and ask Anthropic. The connector does not have this question.
+- **Vercel's environment, after accounts went:** the relay reads
+  `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, so they stay. Nothing reads
+  `ANTHROPIC_API_KEY` any more; removing it from the project is yours to do
+  (`vercel env rm ANTHROPIC_API_KEY production`), and leaves no key of ours
+  anywhere a request can reach.
 
 ## What the work found
 

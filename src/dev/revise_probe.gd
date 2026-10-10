@@ -1,7 +1,6 @@
 ## Ask the assistant to add to a model it did not build.
 ##
-##   BRICKWORKS_API=http://localhost:8799 \
-##     godot --headless --path . --script src/dev/revise_probe.gd
+##   godot --headless --path . --script src/dev/revise_probe.gd
 ##
 ## This is the scenario look_at_model exists for. Someone builds
 ## something by hand and asks for an addition; the assistant has no
@@ -10,7 +9,7 @@
 ## first — and since submitting replaces what the assistant placed, a
 ## revision that ignored the existing model quietly discarded it.
 ##
-## Spends one design against a real account.
+## Spends one design on the key in the environment or in .env.
 extends SceneTree
 
 var _finished: bool = false
@@ -30,19 +29,11 @@ func _run() -> void:
 	for _n: int in 120:
 		await process_frame
 
-	var account: Account = main.get("_account")
 	var assistant: Assistant = main.get("_assistant")
 	var world: BrickWorld = main.get("_world")
 	var builder: Builder = main.get("_builder")
-	if not assistant.direct_key.is_empty():
-		print("FAIL a local key bypasses the gate — unset ANTHROPIC_API_KEY")
-		quit(1)
-		return
-
-	var problem: String = await SignInHelper.sign_in(account,
-		"revise+%d@brickworks.diy" % Time.get_unix_time_from_system(), main)
-	if not problem.is_empty():
-		print("FAIL sign up: %s" % problem)
+	if assistant.key_in_use().is_empty():
+		print("FAIL no key — set ANTHROPIC_API_KEY, or put it in .env")
 		quit(1)
 		return
 
@@ -98,7 +89,6 @@ func _run() -> void:
 	_say("something was added: %d bricks now, was %d"
 		% [world.brick_count(), mine.size()], world.brick_count() > mine.size())
 
-	await account.sign_out()
 	quit(0 if (_looked and _ok and survived == mine.size()) else 1)
 
 

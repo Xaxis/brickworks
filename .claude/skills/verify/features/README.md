@@ -24,11 +24,10 @@ mesh cache in `assets/generated/`, and a display for anything that draws. Add
 
 Never driven from here:
 
-- **Real email.** `POST /api/otp` with a valid address sends somebody a code
-  through Resend. Every recipe below uses an address that fails validation.
-- **The production account table.** `/api/admin` can change tiers. Read it (`GET`),
-  never `POST` it as part of a check.
-- **Money.** The assistant costs real tokens per run. The seven paid probes and
+- **The Supabase account tables.** Accounts were removed on 2026-10-09 and the
+  app no longer reads `profiles` or `assistant_usage`; the data is left as it is.
+  Nothing here reads or writes them.
+- **Money.** The assistant costs real tokens per run. The four paid probes and
   `tools/design.py` are the only things here that spend, and a report has to say
   when it did.
 

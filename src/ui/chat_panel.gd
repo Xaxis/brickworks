@@ -21,7 +21,6 @@ const SUGGESTIONS: Array[String] = [
 ]
 
 var assistant: Assistant
-var account: Account
 
 var _log: VBoxContainer
 var _scroll: ScrollContainer
@@ -42,14 +41,12 @@ var _send: Button
 var _status: Label
 var _suggestions: VBoxContainer
 var _composer: VBoxContainer
-var _gate: SignInForm
 var _key_form: KeyForm
-var _showing_sign_in: bool = false
 var _footer: HBoxContainer
-var _meter: Label
-## "Change key" when a key of one's own is all there is, "Sign out" when
-## there is an account. It was "Sign out" either way, which is not what
-## anyone looks for to replace a key.
+## Which key is in use, by its fingerprint, never the key itself.
+var _which_key: Label
+## "Change key". It once said "Sign out", which is not what anyone looks
+## for to replace a key.
 var _out: Button
 ## Design on a Claude plan instead of a key: see [ConnectorForm].
 var _connector_form: ConnectorForm
@@ -151,10 +148,9 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 
-	# The composer and the sign-in form occupy the same place and only one
-	# is ever shown. Keeping them as siblings rather than rebuilding the
-	# bottom of the panel means a half-typed prompt survives a session
-	# expiring mid-sentence.
+	# The composer and the key form occupy the same place and only one is
+	# ever shown. Siblings rather than a rebuilt bottom half, so a
+	# half-typed brief survives the key being changed.
 	_composer = VBoxContainer.new()
 	_composer.add_theme_constant_override("separation", 6)
 	root.add_child(_composer)
@@ -194,48 +190,31 @@ func _build() -> void:
 	_footer.add_theme_constant_override("separation", 8)
 	_composer.add_child(_footer)
 
-	_meter = Label.new()
-	_meter.add_theme_font_size_override("font_size", 11)
-	_meter.modulate = Color(1, 1, 1, 0.6)
-	_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_footer.add_child(_meter)
+	_which_key = Label.new()
+	_which_key.add_theme_font_size_override("font_size", 11)
+	_which_key.modulate = Color(1, 1, 1, 0.6)
+	_which_key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_footer.add_child(_which_key)
 
-	var out := Button.new()
-	_out = out
-	out.text = "Sign out"
-	out.flat = true
-	out.add_theme_font_size_override("font_size", 11)
-	out.modulate = Color(1, 1, 1, 0.7)
-	out.pressed.connect(func() -> void:
-		# A key of your own is the only thing to leave behind when there
-		# is no account; when there is both, the button means both.
+	_out = Button.new()
+	_out.text = "Change key"
+	_out.tooltip_text = "Forget this key and paste another"
+	_out.flat = true
+	_out.add_theme_font_size_override("font_size", 11)
+	_out.modulate = Color(1, 1, 1, 0.7)
+	_out.pressed.connect(func() -> void:
 		OwnKey.forget()
-		if account != null:
-			await account.sign_out()
-		_showing_sign_in = false
-		_on_account_changed())
-	_footer.add_child(out)
-
-	_gate = SignInForm.new()
-	root.add_child(_gate)
+		_show_for_key(OwnKey.has_key()))
+	_footer.add_child(_out)
 
 	_key_form = KeyForm.new()
 	_key_form.setup()
 	_key_form.accepted.connect(func() -> void:
-		_showing_sign_in = false
-		_on_account_changed()
+		_show_for_key(OwnKey.has_key())
 		_input.grab_focus())
-	_key_form.sign_in_wanted.connect(func() -> void:
-		# Only where there is something behind it. On a build with no
-		# accounts the link hid the key form and showed nothing in its
-		# place, with no way back short of restarting.
-		if account == null or not account.available:
-			_status.text = ("There are no accounts on this build. A key "
-				+ "of your own is the way in.")
-			return
-		_showing_sign_in = true
-		_on_account_changed())
 	root.add_child(_key_form)
+
+	_show_for_key(OwnKey.has_key())
 
 
 ## Which Claude, and how hard it thinks.
@@ -324,8 +303,8 @@ func _show_settings() -> void:
 		_how_hard.selected = maxi(Brain.EFFORTS.find(Brain.effort()), 0)
 
 
-## Designing on the person's own Claude subscription instead of on a key
-## or an account. Set by the app when this machine has Claude Code; the
+## Designing on the person's own Claude subscription instead of on a
+## key. Set by the app when this machine has Claude Code; the
 ## panel shows the choice only then, because offering something that is
 ## not installed is worse than not offering it.
 var claude_code_here: bool = false
@@ -367,28 +346,17 @@ func bind(to: Assistant) -> void:
 ## Why this cannot be sent, or empty when it can.
 ##
 ## One place, so the button, the Enter key and the opening suggestions
-## all get the same answer. They used to disagree: the button knew
-## about the monthly limit, Enter did not, and the suggestions were
-## live during the account probe — so clicking one before the probe
-## answered started a conversation that could not run and spent an
-## opener on it.
+## all get the same answer. They used to disagree, and a suggestion
+## clicked at the wrong moment started a conversation that could not
+## run and spent an opener on it.
 func _why_not() -> String:
-	# Nothing to pay for and nothing to sign into: the thinking is being
-	# done by the Claude the person already has, on their own machine.
+	# Nothing to pay for: the thinking is being done by the Claude the
+	# person already has, on their own machine.
 	if designing_locally():
 		return ""
 	if OwnKey.has_key():
 		return ""
-	if account == null:
-		return ""
-	if account.state == Account.State.UNKNOWN:
-		return "One moment — still checking your account."
-	if not account.signed_in():
-		return "Sign in, or paste a key of your own, to use the assistant."
-	if account.designs_left() <= 0:
-		return ("That is this month's designs used up. The builder and "
-			+ "the catalogue keep working.")
-	return ""
+	return "Paste a key of your own to use the assistant."
 
 
 ## What the design that just ran cost.
@@ -415,108 +383,39 @@ func _on_spent(model_id: String, tokens: Brain.Spend) -> void:
 	]
 
 
-## Hand the panel the account it should follow. Optional: a build with no
-## accounts behind it never calls this, and the panel then shows the
-## composer as it always did.
-func watch(with_account: Account) -> void:
-	account = with_account
-	_gate.setup(account)
-	_gate.done.connect(func() -> void: _input.grab_focus())
-	account.changed.connect(_on_account_changed)
-	_on_account_changed()
-
-
-func _on_account_changed() -> void:
-	if account == null:
-		return
-	if account.state == Account.State.UNKNOWN:
-		# Still asking. Nothing here is right yet, and announcing "not
-		# available" would be a verdict passed before the question was
-		# put — which it did, for the second or so the probe takes.
-		_composer.visible = false
-		_gate.visible = false
-		_key_form.visible = false
-		_status.text = ""
-		return
-
-	# Three ways to be allowed to design, and they are not equal. A key
-	# of the person's own is the ordinary one: it costs us nothing and
-	# needs no account. Our own key answers for one account. Everything
-	# else gets the field to paste a key into.
-	var own_key: bool = OwnKey.has_key()
-	var included: bool = account.signed_in() and account.assistant_included()
-	var allowed: bool = own_key or included
-
-	# Signing in worked, so stop asking for a code.
-	#
-	# An ordinary account does not include the assistant — there is no
-	# payment system yet, so everyone but the master account runs on a
-	# key of their own. That left "allowed" false after a perfectly
-	# successful sign-in, and the form stayed on screen asking for the
-	# same code it had just accepted. A success that looks exactly like
-	# a failure is worse than a failure: the second attempt is given
-	## the same code, which is by then expired, and now it really has
-	# failed.
-	if _showing_sign_in and account.signed_in():
-		_showing_sign_in = false
-
-	# And where there are no accounts at all, there is nothing behind
-	# that link. Offering it and then showing an empty panel with no way
-	# back is the worst of the three possible answers.
-	if not account.available:
-		_showing_sign_in = false
-
-	_composer.visible = allowed
-	_key_form.visible = not allowed and not _showing_sign_in
+## The composer when there is a key to design with, the key form when
+## there is not. There are no accounts, so a key of the person's own is
+## the only way in from here, and the form is shown straight away rather
+## than after anything is asked of a server.
+##
+## Told whether there is a key rather than asking, so a probe can see
+## both layouts without touching the key this machine holds.
+func _show_for_key(has_key: bool) -> void:
+	# On a desktop with Claude Code the brief box stays: "My Claude" sits
+	# in it, and is a way to design that needs no key.
+	_composer.visible = has_key or claude_code_here
+	_footer.visible = has_key
+	_key_form.visible = not has_key
 	# The other way in, offered beside the key, and kept on screen while it
 	# is on so the address and what Claude is doing stay in view.
 	if _connector_form != null:
-		_connector_form.visible = not allowed or _connector_form.is_on()
+		_connector_form.visible = not has_key or _connector_form.is_on()
 	# With nothing to show, the conversation took the panel's height and
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
-	_scroll.visible = allowed or (assistant != null
-		and assistant.has_conversation())
-	_gate.visible = not allowed and _showing_sign_in and account.available
+	var talking: bool = assistant != null and assistant.has_conversation()
+	_scroll.visible = has_key or claude_code_here or talking
 	# The openers only mean anything if pressing one would do something.
-	# They used to run a design for a visitor with no key and no account,
-	# which spent the panel's one explanation of what the assistant is
-	# for on a request that was never going to run — and answered with
-	# "sign in", six lines above a form saying to paste a key.
-	_suggestions.visible = allowed and not assistant.has_conversation()
-
-	if _out != null:
-		_out.text = "Sign out" if account.signed_in() else "Change key"
-		_out.tooltip_text = ("Forget the key on this device and sign out"
-			if account.signed_in() else "Forget this key and paste another")
-	if allowed:
-		_send.disabled = _working
-		if own_key:
-			# No count to show: Anthropic is billing them directly and
-			# we could not count it if we wanted to.
-			_meter.text = "your own key · %s" % OwnKey.fingerprint()
-			_status.text = ""
-		else:
-			var left: int = account.designs_left()
-			_meter.text = "%d of %d designs left this month" % [
-				left, account.budget]
-			if left == 0:
-				_status.text = ("That is this month's designs used up. "
-					+ "The builder and the catalogue keep working.")
-				_send.disabled = true
-		return
-
-	# Signed in, and still needing a key. Say so, or the form reads as
-	# the sign-in having done nothing.
-	if account.signed_in() and not included:
-		_status.text = ("Signed in as %s. The assistant runs on a key "
-			% account.email + "of your own for now — paste one below "
-			+ "and it works straight away.")
-		return
-	if not account.available and not _showing_sign_in:
-		_status.text = ""
-		return
+	# They used to run a design for a visitor with no key, which spent
+	# the panel's one explanation of what the assistant is for on a
+	# request that was never going to run.
+	_suggestions.visible = has_key and not talking
 	_status.text = ""
+	_send.disabled = _working or not (has_key or designing_locally())
+	if has_key:
+		# No count to show: Anthropic is billing them directly and we
+		# could not count it if we wanted to.
+		_which_key.text = "your own key · %s" % OwnKey.fingerprint()
 
 
 func _show_suggestions() -> void:
@@ -563,13 +462,8 @@ func _on_send() -> void:
 	var text: String = _input.text.strip_edges()
 	if text.is_empty():
 		return
-	# Asked here rather than trusted to the button.
-	#
-	# The monthly limit existed only as _send.disabled, which Enter in
-	# the brief box goes nowhere near and which _on_finished clears the
-	# moment a design ends. So the last allowed design re-enabled the
-	# button, and the next one went to the proxy to be refused — paying
-	# a round trip and a wait to be told what was already known.
+	# Asked here rather than trusted to the button, which Enter in the
+	# brief box goes nowhere near.
 	var why: String = _why_not()
 	if not why.is_empty():
 		_status.text = why
@@ -634,10 +528,7 @@ func _on_clear() -> void:
 	# Whether the openers belong on screen is the same question as
 	# whether the composer does, so it is asked in one place rather than
 	# set true here and decided there.
-	if account != null:
-		_on_account_changed()
-	else:
-		_suggestions.visible = true
+	_show_for_key(OwnKey.has_key())
 
 
 enum _Role { PERSON, ASSISTANT, NOTE }
@@ -848,8 +739,8 @@ func use_connector(connector: ClaudeConnector) -> void:
 	_key_form.get_parent().add_child(_connector_form)
 	_key_form.get_parent().move_child(_connector_form, _key_form.get_index() + 1)
 	connector.listening.connect(func(_on: bool, _address: String) -> void:
-		_on_account_changed())
-	_on_account_changed()
+		_show_for_key(OwnKey.has_key()))
+	_show_for_key(OwnKey.has_key())
 
 
 func controls_by_name() -> Dictionary:
@@ -894,13 +785,11 @@ func _on_finished(ok: bool, summary: String) -> void:
 	if not ok and summary.begins_with(Assistant.KEY_REFUSED) \
 			and OwnKey.has_key():
 		OwnKey.forget()
-		_on_account_changed()
+		_show_for_key(OwnKey.has_key())
 		_status.text = "Paste a working key to carry on."
 		_send.text = "Build it"
 		return
-	# Not unconditionally. The design that just ended may have been the
-	# last one this month, and re-enabling the button wipes the line
-	# that says so.
+	# Not unconditionally: the key may have been changed while it ran.
 	_send.disabled = not _why_not().is_empty()
 	_send.text = "Build it"
 	# The bill goes in either way. A design that failed after three
@@ -919,11 +808,6 @@ func _on_finished(ok: bool, summary: String) -> void:
 		if not on_card:
 			_add(summary, _Role.NOTE)
 		_status.text = line if line != summary else ""
-	# And if that was the last one, say so where the count was.
-	var why: String = _why_not()
-	if not why.is_empty():
-		_status.text = "%s\n%s" % [_status.text, why] \
-			if not _status.text.is_empty() else why
 
 
 func _process(_delta: float) -> void:
