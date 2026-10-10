@@ -31,17 +31,22 @@ fixing what it got wrong.
 - `errors in plain words`: `Assistant._what_went_wrong` leads, with Anthropic's
   own words after it only where they add something; they used to replace it, so
   a mistyped key read "invalid x-api-key". A refused key (`KEY_REFUSED`) is
-  forgotten and the key form comes back. The footer says "Change key" when a
-  key is all there is.
-- `the key form`: says what the assistant does and what a design costs before
-  asking for anything, at the top of the panel rather than under an empty one.
+  forgotten and the key form comes back. The footer says "Change key", which
+  forgets the key and shows the form.
+- `the key form`: with no key, the panel is this form straight away — there are
+  no accounts, so nothing is asked of a server first and nothing offers to sign
+  in (`ChatPanel._show_for_key`). It says what the assistant does and what a
+  design costs before asking for anything, at the top of the panel rather than
+  under an empty one.
   A pasted key is checked with Anthropic's free models call before it is kept
   (`KeyForm.check_key`, replaceable for the probe), so a typo is caught there and
   not after a brief. "Remember it on this device" can be unticked to keep it
   for this visit only (`OwnKey._this_visit`, never written). A subscription's
   `sk-ant-oat` token is refused with the reason. It recommends a key of its own
-  in a Console workspace with a spend limit and an expiry. `chat_probe` tests
-  only the refusals: remembering a key would touch the one this machine holds.
+  in a Console workspace with a spend limit and an expiry. `chat_probe` checks
+  both layouts and the refusals on a made-up key kept for the run only
+  (`OwnKey._this_visit`); remembering one would touch the key this machine
+  holds, and it presses Change key only where no key is stored.
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and
@@ -159,10 +164,12 @@ tools/design.py "a red sports car" --out models/car.ldr --effort max
 godot --headless --path . -- --ask="a small lighthouse" --out=/tmp/x.ldr --effort=low
 ```
 
-Effort is one of `low medium high xhigh max`. The app needs either the person's own
-key or a signed-in account; the CLI uses the key in the environment. **The user's
-key never reaches our server** — `/api/claude` is for accounts that pay in our
-tokens, and a bring-your-own-key client talks to Anthropic directly.
+Effort is one of `low medium high xhigh max`. The app needs the person's own key,
+pasted into the panel, or their own Claude plan — **My Claude** on the desktop, or
+a Claude session driving the app over MCP ([mcp](mcp.md)). The CLI uses the key in
+the environment or `.env`, and without one a run ends at once with
+`Assistant.NO_KEY`. There are no accounts, and **the user's key never reaches our
+server**: every request goes from the app straight to Anthropic.
 
 ## How to check it
 
@@ -194,23 +201,15 @@ Proves it when: each exits 0 with no `FAIL`. `rules` is the one that catches a
 message that reads as three problems when there is one, or advice counted as an
 error.
 
-Paid, and only when the thing they exercise has changed — each spends tokens.
-**Two of these need only a key; three need an account.** `sideways` and `bakeoff`
-read `Brain.api_key()` and run with a key in the environment or in `.env`.
-`assistant`, `revise` and `tier` test the account gate rather than the design
-loop: they want a signed-in account against a real `BRICKWORKS_API`, and the
-first two refuse to start when a direct key is set, because a key bypasses the
-gate they exist to check. On a machine with a key in `.env` the app always takes
-the direct path, so the account path is not exercised there at all.
+Paid, and only when the thing they exercise has changed — each spends tokens on
+the key in the environment or in `.env` (`Brain.api_key()`), and refuses to start
+without one.
 
 ```sh
-godot --headless --path . --script src/dev/assistant_probe.gd   # a real design, through the real gate
 godot --headless --path . --script src/dev/revise_probe.gd      # add to a model it did not build
 godot --path . --resolution 1200x800 --script src/dev/sideways_probe.gd  # build sideways when the job needs it
 godot --headless --path . --script src/dev/stream_probe.gd       # appears while it is being written
 godot --headless --path . --script src/dev/bakeoff_probe.gd      # do the settings change anything
-godot --headless --path . --script src/dev/tier_probe.gd         # who may use it, on whose money
-godot --headless --path . --script src/dev/account_probe.gd      # a whole sign-in, against a real server
 ```
 
 A real brief is the end-to-end proof: `tools/design.py "a small lighthouse"
@@ -426,8 +425,8 @@ what it spent before its verdict; report it.
   — and stays silent on both.
 - **Only the rules were cached, so every turn paid for the whole design again.**
   A castle run spent $9.67, and $8 was input sent fresh: 2.04M tokens against
-  575k from the cache. The request now carries top-level `cache_control` (and
-  the proxy adds it for accounts), which caches the conversation up to its last
+  575k from the cache. The request now carries top-level `cache_control`,
+  which caches the conversation up to its last
   block. That only pays if nothing before it changes, and `_forget_old_pictures`
   rewrote the previous turn's pictures every turn — it now waits until drafts
   pass `MOST_PICTURE_BYTES` and drops them in one sweep. On Opus 5.5 an edited

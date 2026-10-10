@@ -175,27 +175,6 @@
       "area": "web"
     },
     {
-      "kind": "api",
-      "label": "POST /api/claude",
-      "entry": "api/claude.js",
-      "reach": "POST https://brickworks.diy/api/claude (needs a signed-in account)",
-      "area": "web"
-    },
-    {
-      "kind": "api",
-      "label": "POST /api/otp",
-      "entry": "api/otp.js",
-      "reach": "POST https://brickworks.diy/api/otp",
-      "area": "web"
-    },
-    {
-      "kind": "api",
-      "label": "GET /api/admin",
-      "entry": "api/admin.js",
-      "reach": "GET https://brickworks.diy/api/admin (needs the admin token)",
-      "area": "web"
-    },
-    {
       "kind": "cli",
       "label": "web build and deploy",
       "entry": "tools/deploy.sh",

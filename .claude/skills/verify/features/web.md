@@ -1,23 +1,24 @@
 # Web
 
-The same app, in a browser, at brickworks.diy — plus the small server behind
-accounts.
+The same app, in a browser, at brickworks.diy — plus one small endpoint that
+tells it where the parts are. There are no accounts: the assistant runs on the
+person's own key, sent only to Anthropic, or on their own Claude plan with Claude
+as the client.
 
 <!-- covers: api:*, cli:web build and deploy, cli:browser check -->
 
 ## Sub-features
 
-- `GET /api/account`: one request that tells the client everything about accounts.
-  Without a token: where to sign in, whether this deployment has accounts at all,
-  and the parts bucket URL. With one: who you are, your tier, designs left.
-- `POST /api/claude`: the proxy for accounts that pay in our tokens. A
-  bring-your-own-key client never comes here — **the person's own key must never
-  reach the server.**
-- `POST /api/otp`: mints a one-time code with Supabase and delivers it through
-  Resend from our own sender. No passwords anywhere.
-- `GET /api/admin`: the account list and tier changes. Fails closed, and answers
-  404 rather than 403 to anyone signed in who is not the master, so the surface
-  does not announce itself.
+- `GET /api/account`: the only endpoint. Answers everybody the same:
+  `{enabled: false, assistant: "own_key", parts_url}`, where `parts_url` is the
+  project's `PARTS_URL` (null means beside the app). The client is
+  `src/net/deployment.gd`; `main.gd` hands the answer to
+  `PartLibrary.remote_parts`, and on the web part fetches wait for it. The name
+  is left from the accounts, removed 2026-10-09 with `/api/claude` (the proxy
+  that spent the project's key for one account), `/api/otp`, `/api/admin` and
+  `web/admin.html`; builds already out still ask here. The desktop asks
+  brickworks.diy, or `BRICKWORKS_API` when set. **The person's own key never
+  reaches the server** — there is nothing on it that could take one.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
   under `/b/<sha>/`, points `/` at it and then proves it in a browser.
 - `which build this is`: the deploy writes `version.json` (commit, UTC time)
@@ -54,27 +55,19 @@ python3 tools/web/serve.py build/web 8099    # locally, with the isolation heade
 
 Static: `pyright` covers `tools/web/serve.py`. Nothing static covers the endpoints.
 
-Runtime — every one of these is safe to run against production:
+Static: `node --check api/account.js`.
+
+Runtime — safe to run against production:
 
 ```sh
 curl -s https://brickworks.diy/api/account | python3 -m json.tool
-curl -s -o /dev/null -w '%{http_code}\n' https://brickworks.diy/api/admin
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brickworks.diy/api/claude \
-  -H 'content-type: application/json' -d '{}'
-curl -s -w '\n%{http_code}\n' -X POST https://brickworks.diy/api/otp \
-  -H 'content-type: application/json' -d '{"email":"not-an-email"}'
-curl -s -o /dev/null -w '%{http_code}\n' https://brickworks.diy/api/otp
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brickworks.diy/api/account
 ```
 
-Proves it when (measured 2026-10-02):
-
-| Request | Answer |
-|---|---|
-| `GET /api/account`, no token | `200`, JSON with `enabled: true`, a `url`, a publishable `key`, `parts_url`, `signed_in: false` |
-| `GET /api/admin`, no token | `401` `{"error":"sign in to use the design assistant"}` |
-| `POST /api/claude`, no token | `401` |
-| `POST /api/otp`, `{"email":"not-an-email"}` | `422` `{"error":"That is not an email address."}` |
-| `GET /api/otp` | `405` |
+Proves it when: the GET is `200` with `enabled: false`, `assistant: "own_key"`
+and a `parts_url` (the Supabase storage bucket), and the POST is `405`. Until a
+deploy carries this change, production still answers in the old shape, with
+`enabled: true` and a sign-in `url`; the `parts_url` in it is the same.
 
 And the deploy, which is the only proof that counts for the web build:
 
@@ -88,10 +81,6 @@ turn (right-drag), zoom (wheel), slide (shift-scroll), turn (middle-drag) — en
 `check ok: <url>`. The PNG shows the baseplate with the model on it, not the
 loading colour and not a blank canvas. Measured against production 2026-10-02.
 
-A signed-in path needs a real account: sign in through the app, or run
-`src/dev/account_probe.gd`, which walks a whole sign-in from the client's side
-against the real server. It sends a real email to `MASTER_EMAIL`.
-
 ## Gotchas
 
 - **A successful upload proves nothing.** The threaded build refuses to start
@@ -104,7 +93,6 @@ against the real server. It sends a real email to `MASTER_EMAIL`.
 - **4xx in the browser fails the deploy** and names the URL. It used to collect
   console errors and ignore them.
 - **The screenshot is not fatal.** A hung screenshot used to fail good builds.
-- **Never POST `/api/otp` with a valid address as a check.** It emails a person.
 - **Vercel seat-checks the commit author.** Any author other than
   `Xaxis <william.neeley@gmail.com>` fails the deploy silently —
   `readyStateReason: seat block`, no build log, nothing in CI.

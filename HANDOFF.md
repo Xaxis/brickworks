@@ -32,8 +32,6 @@ ranked by evidence.
   real set's (two greys, masonry bricks, bonded). A real set that size
   has 262 shapes, so it is thin for its size; run 19 (1,329 parts, 113
   shapes, 16 colours) is closer to its own size's norm.
-- Not exercised: the proxy's conversation caching for signed-in accounts
-  (`api/claude.js`). Deployed; proving it needs an account.
 
 ## What the owner found, 2026-10-09 evening
 

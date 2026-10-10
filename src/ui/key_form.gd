@@ -21,7 +21,6 @@ var _remember: CheckBox
 var check_key: Callable = _ask_anthropic
 
 signal accepted()
-signal sign_in_wanted()
 
 
 ## What a design costs and how long it takes at the default settings,
@@ -118,13 +117,6 @@ func setup() -> void:
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_note.visible = false
 	add_child(_note)
-
-	var instead := LinkButton.new()
-	instead.text = "Or sign in, if the assistant is included for your account"
-	instead.add_theme_font_size_override("font_size", 11)
-	instead.modulate = Color(1, 1, 1, 0.55)
-	instead.pressed.connect(func() -> void: sign_in_wanted.emit())
-	add_child(instead)
 
 
 func controls_by_name() -> Dictionary:

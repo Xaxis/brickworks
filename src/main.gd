@@ -37,7 +37,7 @@ var _sample_untouched: bool = false
 var _stats_shown: bool = _has_argument("--stats")
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
-var _account: Account
+var _deployment: Deployment
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
@@ -460,7 +460,7 @@ func _capture(path: String) -> void:
 	# instance transforms and the instance colours all insisted they were
 	# there. They were. The picture was old.
 	# Anything that has to come off the network before the picture is
-	# worth taking — whether this build has accounts, for one — needs
+	# worth taking — where the parts are served from, for one — needs
 	# longer than a dozen frames. --settle buys that time in frames
 	# rather than in a sleep, so the scene keeps drawing while it waits.
 	var settle: float = maxf(_argument("--settle").to_float(), 0.0)
@@ -593,26 +593,24 @@ func _build_ui() -> void:
 	_thumbnails.library = _library
 	add_child(_thumbnails)
 
-	# Accounts exist for one reason: the assistant spends money per
-	# request. Everything the builder does is already running by the time
-	# this finishes probing, and none of it waits on the answer.
-	_account = Account.new()
 	# The geometry this build did not ship may not live beside it, and
-	# only the deployment knows where it does. Whatever the probe says —
-	# including that it failed — something has to be set here, because
-	# requests that arrive before it answers are held until it does, and
-	# a deployment that serves its own parts would otherwise hold them
-	# for ever waiting on a URL that was never going to come.
-	_account.changed.connect(func() -> void:
-		if not _account.parts_url.is_empty():
+	# only the deployment knows where it does. Everything the builder
+	# does is already running by the time it answers, and none of it
+	# waits on the answer except a part this build does not carry:
+	# requests for those are held until it says, and a deployment that
+	# serves its own parts would otherwise hold them for ever waiting
+	# on a URL that was never going to come.
+	_deployment = Deployment.new()
+	_deployment.settled.connect(func() -> void:
+		if not _deployment.parts_url.is_empty():
 			# The real answer, which replaces anything guessed before
 			# it arrived. A probe that fails — offline for a moment at
 			# startup — used to pin the guess for the rest of the
 			# session, and the guess is this deployment, which carries
 			# only the parts it shipped with. Every other part then
 			# fetched a web page and was reported as broken geometry.
-			_library.remote_parts = _account.parts_url
-		elif _account.answered and _library.remote_parts.is_empty():
+			_library.remote_parts = _deployment.parts_url
+		elif _deployment.answered and _library.remote_parts.is_empty():
 			# Only once the deployment has actually said so.
 			#
 			# This fired whenever the probe finished, including when it
@@ -623,26 +621,19 @@ func _build_ui() -> void:
 			# filled up with parts that do exist, at an address that
 			# was never going to have them.
 			_library.remote_parts = Origin.here() + "/parts/")
-	add_child(_account)
+	add_child(_deployment)
 
 	_assistant = Assistant.new()
 	_assistant.library = _library
 	_assistant.world = _world
 	_assistant.builder = _builder
-	# On desktop there is no proxy in front of us, so talk to the model
-	# directly when a key is around — that is a developer running with
-	# their own key, and there is nobody to bill. Otherwise the desktop
-	# build talks to the same hosted function the web build does, which
-	# means the same sign-in and the same monthly budget.
-	# A key from the environment is a developer running with their own;
-	# a key the person pasted in is handled by the assistant itself. The
-	# proxy is still wired up either way, because it is what answers for
-	# the one account this deployment spends its own key on.
+	# Every request goes straight to Anthropic on a key of the person's
+	# own. One from the environment is a developer running with theirs;
+	# one pasted into the panel is handled by the assistant itself, and
+	# wins when there are both.
 	var key: String = "" if OS.has_feature("web") else _anthropic_key()
 	if not key.is_empty():
 		_assistant.direct_key = key
-	_assistant.endpoint = _account.api_base() + Assistant.DEFAULT_ENDPOINT
-	_assistant.account = _account
 	add_child(_assistant)
 
 	var column := VBoxContainer.new()
@@ -811,7 +802,6 @@ func _build_ui() -> void:
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
-	_chat.watch(_account)
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
 	_chat.designing.connect(func(_brief: String) -> void:

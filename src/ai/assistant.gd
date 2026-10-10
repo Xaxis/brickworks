@@ -13,7 +13,8 @@
 ## reimplement both, and the moment the two disagree the one the user
 ## sees is the wrong one.
 ##
-## The server holds the API key and nothing else. See api/claude.js.
+## Every request goes from this machine straight to Anthropic, on a key
+## of the person's own. There is no server of ours in the path.
 class_name Assistant
 extends Node
 
@@ -21,7 +22,8 @@ extends Node
 ## giving up on a design that may have been running for a long time.
 const TRIES_WHEN_DROPPED := 4
 
-const DEFAULT_ENDPOINT := "/api/claude"
+## Anthropic's Messages API, where every turn of a design goes.
+const MESSAGES_URL := "https://api.anthropic.com/v1/messages"
 ## What designs when nothing has been chosen. The choosing lives in
 ## [Brain], with the table of what each model will actually accept.
 const MODEL := Brain.DEFAULT_MODEL
@@ -58,18 +60,12 @@ const FACES: Dictionary = BrickLattice.FACE_AXIS
 var library: PartLibrary
 var world: BrickWorld
 var builder: Builder
-## The signed-in account, when there is one. The proxy will not answer
-## without it. Left null on a desktop build calling Anthropic directly
-## with its own key, where there is nobody to bill.
-var account: Account
-
-## Where the proxy lives. Relative on the web (same origin); on desktop
-## this needs a full URL, or a key in the environment for a direct call.
-var endpoint: String = DEFAULT_ENDPOINT
-## Set from the environment on a developer's machine, to talk to
-## Anthropic directly instead of via the proxy. A key the person pasted
-## into the app is not this — see [method key_in_use], which prefers
-## theirs.
+## Where requests go. Anthropic, always, except in a probe that points
+## it at a port nothing listens on to watch a connection drop.
+var endpoint: String = MESSAGES_URL
+## Set from the environment on a developer's machine. A key the person
+## pasted into the app is not this — see [method key_in_use], which
+## prefers theirs.
 var direct_key: String = ""
 
 ## Whether to read the answer as it is written. Off for anything running
@@ -82,7 +78,7 @@ var stream_replies: bool = true
 ##
 ## A key belonging to the person using the app wins over one from the
 ## environment: on a machine that has both, theirs is the one they
-## chose. Empty means the proxy, which answers for one account.
+## chose. Empty means there is no key, and nothing is sent.
 func key_in_use() -> String:
 	var theirs: String = OwnKey.load_key()
 	return theirs if not theirs.is_empty() else direct_key
@@ -196,11 +192,6 @@ var _sketching: bool = false
 ## the model that cancel() had just put back.
 var _streaming: Streamer
 var _pending: Model = null
-## Names the conversation for the proxy's monthly budget. One design is
-## a dozen round trips and sometimes forty, so the turns have to be
-## recognisable as belonging together — otherwise a single lighthouse
-## spends six of the month's sixty.
-var _design_id: String = ""
 
 ## Bricks that belong to the workspace rather than to any model — the
 ## baseplate. Set by whoever owns the scene; left empty, a snapshot
@@ -514,10 +505,6 @@ func _start(text: String) -> void:
 	_spent_on = Brain.chosen()
 	_pending = null
 	_before = _snapshot()
-	# A new one per instruction, including a revision: asking for a
-	# change starts a fresh round of turns and produces a new model, so
-	# it is a design in the sense anyone would count.
-	_design_id = _new_design_id()
 	# References first, in the same message as the brief.
 	#
 	# A named real subject was designed entirely from memory of it. The
@@ -571,16 +558,6 @@ func opening_for(text: String) -> Array:
 			+ "kind are actually built. It is measured over every "
 			+ "catalogued set, not advice.\n" + measured})
 	return opening
-
-
-## Unguessable, and in the alphabet the proxy accepts. Not a secret —
-## the account is what limits spending — just something two designs are
-## not going to share.
-static func _new_design_id() -> String:
-	var bytes := PackedByteArray()
-	for _n: int in 12:
-		bytes.append(randi() % 256)
-	return Marshalls.raw_to_base64(bytes).replace("+", "-").replace("/", "_").replace("=", "")
 
 
 ## Everything in the world that is not scenery, with who placed it.
@@ -658,31 +635,26 @@ func _send() -> void:
 		_stop(false, "gave up after %d turns" % _turn_cap)
 		return
 
-	var body: Dictionary = request_body()
-
-	var headers: PackedStringArray = ["content-type: application/json"]
-	var url: String = endpoint
 	var key: String = key_in_use()
-	if not key.is_empty():
-		url = "https://api.anthropic.com/v1/messages"
-		headers.append("x-api-key: " + key)
-		headers.append("anthropic-version: 2023-06-01")
-		if OS.has_feature("web"):
-			# Anthropic blocks browser calls unless asked not to, which
-			# is the right default: it exists to stop a key being put in
-			# a web page where every visitor can read it. Here the key
-			# belongs to the person at the keyboard and never leaves
-			# their machine except to Anthropic, which is the case the
-			# header is for.
-			headers.append("anthropic-dangerous-direct-browser-access: true")
-	elif account != null:
-		# Fetched rather than read, because a design can run for minutes
-		# and the token may be minutes from expiring when it starts.
-		var token: String = await account.access_token()
-		if token.is_empty():
-			_stop(false, "Sign in to use the assistant.")
-			return
-		headers.append("authorization: Bearer " + token)
+	if key.is_empty():
+		# A frame later, not now. This runs inside design(), and a
+		# finished emitted before design() returns reaches nobody who
+		# awaits it: --ask with no key sat waiting for ever.
+		await get_tree().process_frame
+		if _busy:
+			_stop(false, NO_KEY)
+		return
+	var body: Dictionary = request_body()
+	var url: String = endpoint
+	var headers: PackedStringArray = ["content-type: application/json",
+		"x-api-key: " + key, "anthropic-version: 2023-06-01"]
+	if OS.has_feature("web"):
+		# Anthropic blocks browser calls unless asked not to, which is
+		# the right default: it exists to stop a key being put in a web
+		# page where every visitor can read it. Here the key belongs to
+		# the person at the keyboard and never leaves their machine
+		# except to Anthropic, which is the case the header is for.
+		headers.append("anthropic-dangerous-direct-browser-access: true")
 
 	# Streamed, so the design appears as it is written rather than a
 	# minute later all at once. What comes back at the end is the same
@@ -804,13 +776,11 @@ func _sketch_one(placement: Placement,
 
 ## The request, built where it can be looked at.
 ##
-## The two routes do not take the same body and the difference is not
-## cosmetic. design_id names the conversation for our proxy's monthly
-## budget; it is not an Anthropic field, and sending it on the direct
-## call gets the whole request refused with "design_id: Extra inputs are
-## not permitted". That shipped, because every check went through the
-## proxy and nothing exercised the direct route until the examples
-## generator did and failed on all six.
+## Only fields Anthropic takes. Anything else gets the whole request
+## refused: a design_id meant for a proxy, since removed, came back as
+## "design_id: Extra inputs are not permitted" on every direct call, and
+## shipped, because nothing exercised the direct route until the
+## examples generator did and failed on all six.
 ##
 ## Separated from _send so a probe can inspect it without a network
 ## call, which is the only way this stays fixed.
@@ -870,12 +840,8 @@ func request_body() -> Dictionary:
 	# broken assistant.
 	if choice.effort and not Brain.effort().is_empty():
 		body["output_config"] = {"effort": Brain.effort()}
-	if not key_in_use().is_empty():
-		# The proxy asks for thinking itself; here we are the client.
-		if choice.adaptive:
-			body["thinking"] = {"type": "adaptive"}
-	elif account != null:
-		body["design_id"] = _design_id
+	if choice.adaptive:
+		body["thinking"] = {"type": "adaptive"}
 	return body
 
 
@@ -891,49 +857,12 @@ static var ANTHROPIC_FIELDS := PackedStringArray([
 ])
 
 
-## Keep the remaining-designs count honest from the headers the proxy
-## sends back, so the panel does not have to ask again after every build.
-func _note_usage(headers: Variant) -> void:
-	if account == null or typeof(headers) != TYPE_PACKED_STRING_ARRAY:
-		return
-	var used: int = -1
-	var budget: int = -1
-	for line: String in headers:
-		var lower: String = line.to_lower()
-		if lower.begins_with("x-designs-used:"):
-			used = int(line.split(":", true, 1)[1].strip_edges())
-		elif lower.begins_with("x-designs-budget:"):
-			budget = int(line.split(":", true, 1)[1].strip_edges())
-	if used >= 0:
-		account.note_usage(used, budget)
-
-
 func _on_response(result: Array) -> void:
 	if not _busy:
 		return
 	var code: int = result[1]
 	var payload: PackedByteArray = result[3]
 	var parsed: Variant = JSON.parse_string(payload.get_string_from_utf8())
-
-	_note_usage(result[2])
-
-	if code != 200 and typeof(parsed) == TYPE_DICTIONARY:
-		# Two refusals deserve their own words rather than the generic
-		# error line: both are ordinary states of a working account, and
-		# neither is something to retry.
-		if bool(parsed.get("signin_required", false)):
-			if account != null:
-				# The session is spent; make the panel offer the form
-				# again rather than leaving a composer that cannot send.
-				await account.boot()
-			_stop(false, str(parsed.get("error", "Sign in to use the assistant.")))
-			return
-		if bool(parsed.get("quota_exhausted", false)):
-			if account != null:
-				account.note_usage(
-					int(parsed.get("used", 0)), int(parsed.get("budget", 0)))
-			_stop(false, str(parsed.get("error", "No designs left this month.")))
-			return
 
 	if code != 200 or typeof(parsed) != TYPE_DICTIONARY:
 		# Said plainly first. Anthropic's own words used to replace this
@@ -1842,6 +1771,11 @@ the first change — say in a line what you changed, and stop."""
 ## How a refused key is reported, so the panel can tell it from the rest
 ## and ask for another.
 const KEY_REFUSED := "Anthropic refused that key."
+## How a run with no key at all ends. The panel never sends one, because
+## it shows the key form instead; this is for everything else that can
+## start a design, the command line among them.
+const NO_KEY := ("No Anthropic key. Paste one into the assistant panel, "
+	+ "or set ANTHROPIC_API_KEY.")
 
 
 static func _what_went_wrong(code: int) -> String:

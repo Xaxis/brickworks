@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAssembly), a Python LDraw pipeline, a Vercel-hosted web build with five API endpoints, and an AI design loop. Holds the feature map of where every scene, endpoint and command lives, how to launch and health-check a checkout, and a proven recipe for checking each feature. Use to prove a change in this repo works, to find where a feature lives, or to see what a change could break.
+description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAssembly), a Python LDraw pipeline, a Vercel-hosted web build with one API endpoint, and an AI design loop. Holds the feature map of where every scene, endpoint and command lives, how to launch and health-check a checkout, and a proven recipe for checking each feature. Use to prove a change in this repo works, to find where a feature lives, or to see what a change could break.
 ---
 
 # Verify Brickworks
@@ -43,9 +43,10 @@ Known, and not a regression:
   password, so `tools/check.sh` falls back to `tools/minitest.py`, which
   implements the four pytest features the suite uses and raises by name on
   anything else. If you add a test that needs `pytest.raises`, add it there too.
-- **8 probes never run in the suite.** Seven spend money or need an account
-  (`account assistant bakeoff revise sideways stream tier`); `gallery` renders
-  every shipped model for a person to look at and has no pass or fail.
+- **6 probes never run in the suite.** Four spend money (`bakeoff revise sideways
+  stream`); `gallery` renders every shipped model for a person to look at and has
+  no pass or fail; `harvest` needs a directory of real sets' sub-models from
+  `tools/omr.py harvest`.
 
 ## Launch
 

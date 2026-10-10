@@ -100,21 +100,24 @@ have to stay one.
   or Mecabricks, and what you made there opens here. A design in
   assemblies goes out as an `.mpd`, a sub-model per assembly.
 
-## Accounts
+## No accounts
 
-Building is free and needs no account: every part, search, save, load,
-stability, instructions, parts list and mosaic. The design assistant
-needs one, because it spends money per request and an endpoint holding
-an API key that anyone may call is a bill waiting to happen.
+Nothing here asks who you are. Building is free and needs nothing: every
+part, search, save, load, stability, instructions, parts list and
+mosaic, with your models kept on your own machine.
 
-That split is enforced by construction — nothing in `Builder`,
-`BrickWorld` or `PartsBin` imports `Account`. Sign-in is a one-time code
-sent to your email: no password to choose badly, reuse, forget or reset.
-The code is minted by Supabase and delivered from our own sender, and the
-session token is Supabase's throughout — verified at the edge by
-signature against the published key rather than by asking Supabase on
-every request. A design is charged per conversation rather than per round
-trip.
+The design assistant spends money on every request, and the money is
+yours, spent one of two ways. Paste an Anthropic API key into the
+panel: it goes from your machine straight to api.anthropic.com, never to
+us, and Anthropic bills you for what each design uses. Or design on the
+Claude plan you already have, with Claude as the client — the next two
+sections. Either way there is no key of ours behind an endpoint that
+anyone may call, so there is nothing to sign in to.
+
+There were accounts until 2026-10-09, so that one of them could design
+on the project's own key. What is left of the server is one read:
+`GET /api/account` tells the app where the part geometry its build did
+not ship is served from. The name is older than the answer.
 
 ## Or design on the Claude you already pay for
 

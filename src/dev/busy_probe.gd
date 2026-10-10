@@ -60,6 +60,9 @@ func _initialize() -> void:
 	# the console about a hostname that is not one.
 	assistant.stream_replies = false
 	assistant.endpoint = "http://127.0.0.1:1/none"
+	# Made up. Nothing is sent without a key, and this one goes nowhere
+	# but that port.
+	assistant.direct_key = "sk-ant-probe"
 	_check("a design is accepted once the loop is free",
 		assistant.design("a rocket"))
 

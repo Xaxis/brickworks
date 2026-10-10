@@ -13,8 +13,8 @@
 # whether a part is the size it claims. And a parse check, which catches
 # the class of mistake that makes every other check fail at once.
 #
-# Not run here: anything that spends money or needs an account. Those
-# are src/dev/{account,revise,assistant}_probe.gd, run by hand when the
+# Not run here: anything that spends money. Those are
+# src/dev/{revise,sideways,stream,bakeoff}_probe.gd, run by hand when the
 # thing they exercise has changed.
 set -uo pipefail
 # Guarded: a cd that fails leaves the script running against

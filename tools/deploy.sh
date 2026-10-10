@@ -69,14 +69,11 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # Every route gets its own copy of the shared modules — the ones named
 # with a leading underscore, which are imports rather than routes. A
 # function directory is its own bundle with nothing outside it on the
-# path, so a route importing ./_auth.js finds nothing unless the file is
-# sitting beside it.
+# path, so a route importing a shared ./_*.js finds nothing unless the
+# file is sitting beside it.
 #
-# They need ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY and
-# SUPABASE_SECRET_KEY set on the project. Missing the Anthropic key makes
-# the assistant answer 503 and say so; missing the Supabase ones makes it
-# refuse sign-in rather than fall open, which is the safer of the two
-# ways to be misconfigured while holding an API key.
+# There is one route now, /api/account, and it needs only PARTS_URL set on
+# the project. Without it the answer says the parts are beside the app.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)

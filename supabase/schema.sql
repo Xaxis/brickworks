@@ -1,3 +1,8 @@
+-- Accounts were removed on 2026-10-09, and the app no longer reads
+-- these tables. Nobody signs in: the assistant runs on each person's own
+-- Anthropic key, or on their own Claude plan with Claude as the client.
+-- The data is left as it is. What follows is the schema as it stood.
+--
 -- Brickworks accounts.
 --
 -- Two things live here and nothing else: who someone is, and how much of
