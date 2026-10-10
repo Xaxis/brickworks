@@ -69,12 +69,22 @@ picture the assistant is shown.
   Timeline or a design's Build steps. A slider over every brick, from an empty
   baseplate to the finished model: drag it, Start/End (Home/End), Back/Next a
   step (arrows), Play and Reverse (space plays), at 0.5x-4x, the whole build
-  taking 6-40 s at 1x. Two orders: Build order (`Instructions.plan`, the
-  booklet's, with its step captions) and As made (brick numbers, the order
-  bricks were placed — by hand, or the order Claude thought of them). Asked for
-  by the owner; it was a forward-only step player. `controls_probe` plays it
-  forward and back, pauses, jumps to both ends and checks As made is placement
-  order.
+  taking 6-40 s at 1x. Three orders: Build order (`Instructions.plan`, the
+  booklet's, with its step captions), As made (brick numbers, the order what
+  stands was placed — by hand, or the order Claude thought of it) and History
+  (every add and removal since the baseplate was last cleared, from
+  `BrickWorld.history`, which notes add/remove/move/paint/clear with a key of
+  generation and number because clear() reuses numbers). In History, bricks no
+  longer standing are drawn as ghosts (`BrickWorld.add_ghost`) and taken away
+  when the timeline closes or changes order. A ghost is drawn and is not in the
+  model: `bricks()`, `brick_count()`, `get_brick()` and the bounds leave it out,
+  so a save, the autosave or Claude over the connector never sees one. They were
+  plain bricks at first, and a save with History open wrote them into the file. Asked for by the owner ("how
+  about both"); it was a forward-only step player. `controls_probe` plays it
+  forward and back, pauses, jumps to both ends, checks As made is placement
+  order, and that History shows a removed brick before its removal, not after,
+  that a save made with History open writes the model as it stands, and that it
+  leaves nothing behind.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it. A model wider than 24 studs is built a
   region at a time (`Instructions.REGION`): one tile of its plan finished before

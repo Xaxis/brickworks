@@ -12,9 +12,14 @@
 ##   Build order   how you would put it together on a table — the order
 ##                 the printable booklet uses, bottom up, each brick on
 ##                 something already there (Instructions.plan)
-##   As made       the order the bricks were placed: by hand, the order
-##                 you placed them; by Claude, the order it thought of
-##                 them, base first and detail last
+##   As made       the order the bricks still standing were placed: by
+##                 hand, the order you placed them; by Claude, the order it
+##                 thought of them, base first and detail last
+##   History       every change since the baseplate was last cleared,
+##                 removals included: a design's first draft going up and
+##                 being replaced, a wall taken down and built again. What
+##                 is no longer there is put back for the timeline to show
+##                 (BrickWorld.history) and taken away again after
 ##
 ## Shown only while it is on, because it is a mode: while it is up the
 ## model on screen is not the whole model, and something has to say so
@@ -58,7 +63,16 @@ var _playing: int = 0
 ## Fractional bricks owed by the clock, so a slow speed still moves.
 var _owed: float = 0.0
 var _speed_at: int = 1
-var _as_made: bool = false
+## 0 the build order, 1 as made, 2 the history.
+var _mode: int = 0
+const MODES: Array[String] = ["Build order", "As made", "History"]
+## History: the changes, each [add or remove, key], or ["clear", ""].
+var _events: Array = []
+## History: which brick in the world shows a key — the brick itself while
+## it stands, or one put back for the timeline when it does not.
+var _drawn_as: Dictionary = {}
+var _ghosts: Array[int] = []
+var _ghost_set: Dictionary = {}
 
 ## Which bricks should be on screen. Empty means the whole model.
 signal reveal(brick_ids: Dictionary)
@@ -141,9 +155,10 @@ func _build() -> void:
 		_speed.text = _speed_name())
 	row.add_child(_speed)
 	_order_button = _button("Build order", "Build order: how you would put it "
-		+ "together. As made: the order it was placed in, by you or by Claude")
+		+ "together. As made: the order what stands was placed in. History: "
+		+ "every change, removals included — how it was really made")
 	_order_button.custom_minimum_size = Vector2(92, 0)
-	_order_button.pressed.connect(func() -> void: set_as_made(not _as_made))
+	_order_button.pressed.connect(func() -> void: set_mode((_mode + 1) % MODES.size()))
 	row.add_child(_order_button)
 
 	_pieces = Label.new()
@@ -197,12 +212,13 @@ func start(world: BrickWorld, library: PartLibrary,
 	_reorder()
 	# The first step, as the booklet opens: an empty baseplate is a page
 	# with nothing on it.
-	_show(_step_ends[0] if not _as_made and not _step_ends.is_empty() else 1)
+	_show(_step_ends[0] if _mode == 0 and not _step_ends.is_empty() else 1)
 	return true
 
 
 func stop() -> void:
 	_stop_play()
+	_forget_ghosts()
 	visible = false
 	# An empty set means "all of it" — leaving playback has to put the
 	# model back, or the bricks after the current step stay missing.
@@ -216,20 +232,35 @@ func is_playing_back() -> bool:
 
 ## Which order the timeline runs in: as made, or the build order.
 func set_as_made(yes: bool) -> void:
-	if yes == _as_made:
+	set_mode(1 if yes else 0)
+
+
+## 0 the build order, 1 as made, 2 the history.
+func set_mode(mode: int) -> void:
+	if mode == _mode:
 		return
-	_as_made = yes
-	_order_button.text = "As made" if yes else "Build order"
+	_mode = mode
+	_order_button.text = MODES[mode]
 	if visible:
-		var share: float = float(_shown) / maxf(_order.size(), 1.0)
+		_stop_play()
+		var share: float = float(_shown) / maxf(_length(), 1.0)
 		_reorder()
-		_show(int(round(share * _order.size())))
+		_show(int(round(share * _length())))
+
+
+## How many places there are along the timeline.
+func _length() -> int:
+	return _events.size() if _mode == 2 else _order.size()
 
 
 func _reorder() -> void:
 	_order.clear()
 	_step_ends.clear()
-	if _as_made:
+	_events.clear()
+	_forget_ghosts()
+	if _mode == 2:
+		_read_history()
+	elif _mode == 1:
 		# Brick numbers are handed out as bricks are placed, so in
 		# number order is in the order they were placed.
 		for step: Instructions.Step in _steps:
@@ -241,7 +272,59 @@ func _reorder() -> void:
 			for brick_id: int in step.brick_ids:
 				_order.append(brick_id)
 			_step_ends.append(_order.size())
-	_slider.max_value = _order.size()
+	_slider.max_value = _length()
+
+
+## The changes since the baseplate was last cleared, and a brick for every
+## one no longer standing, put back unseen for the timeline to show.
+func _read_history() -> void:
+	if _world == null:
+		return
+	var log: Array = _world.history
+	var from: int = 0
+	for n: int in log.size():
+		if str((log[n] as Dictionary).get("op", "")) == "clear":
+			from = n + 1
+	# The baseplate is the ground, not part of the story.
+	var ground_parts: Dictionary = {}
+	for brick_id: int in _scenery:
+		var one: BrickWorld.Brick = _world.get_brick(brick_id)
+		if one != null:
+			ground_parts[one.part_id] = true
+	var standing: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		standing[_world.key_of(brick.id)] = brick.id
+	var added: Dictionary = {}
+	for n: int in range(from, log.size()):
+		var event: Dictionary = log[n]
+		var op: String = str(event.get("op", ""))
+		if op == "add":
+			if ground_parts.has(str(event["part"])):
+				continue
+			added[event["key"]] = event
+			_events.append(["add", event["key"]])
+		elif op == "remove" and added.has(event.get("key", "")):
+			_events.append(["remove", event["key"]])
+	for key: Variant in added:
+		if standing.has(key):
+			_drawn_as[key] = standing[key]
+			continue
+		var event: Dictionary = added[key]
+		var ghost: int = _world.add_ghost(str(event["part"]), int(event["colour"]),
+			event["at"])
+		if ghost != 0:
+			_ghosts.append(ghost)
+			_ghost_set[ghost] = true
+			_drawn_as[key] = ghost
+
+
+## Take away the bricks put back for the history, and stop drawing them.
+func _forget_ghosts() -> void:
+	if _world != null:
+		_world.clear_ghosts()
+	_ghosts.clear()
+	_ghost_set.clear()
+	_drawn_as.clear()
 
 
 ## The next step's end in the build order; ten bricks on, as made.
@@ -262,7 +345,7 @@ func to_start() -> void:
 
 func to_end() -> void:
 	_stop_play()
-	_show(_order.size())
+	_show(_length())
 
 
 ## Play, or pause if already playing.
@@ -271,7 +354,7 @@ func toggle_play() -> void:
 
 
 func _next_stop(direction: int) -> int:
-	if _as_made or _step_ends.is_empty():
+	if _mode != 0 or _step_ends.is_empty():
 		return _shown + 10 * direction
 	if direction > 0:
 		for end: int in _step_ends:
@@ -292,10 +375,10 @@ func _toggle(direction: int) -> void:
 		return
 	# Played from where it would have nothing to do, it starts from the
 	# other end: forward from finished means from the start.
-	if direction > 0 and _shown >= _order.size():
+	if direction > 0 and _shown >= _length():
 		_show(0)
 	elif direction < 0 and _shown <= 0:
-		_show(_order.size())
+		_show(_length())
 	_playing = direction
 	_owed = 0.0
 	_play.text = "Pause" if direction > 0 else "Play"
@@ -320,8 +403,8 @@ func _speed_name() -> String:
 
 ## Bricks a second at this speed.
 func rate() -> float:
-	var seconds: float = clampf(_order.size() * PER_BRICK, SHORTEST, LONGEST)
-	return _order.size() / seconds * SPEEDS[_speed_at]
+	var seconds: float = clampf(_length() * PER_BRICK, SHORTEST, LONGEST)
+	return _length() / seconds * SPEEDS[_speed_at]
 
 
 func _process(delta: float) -> void:
@@ -333,8 +416,8 @@ func _process(delta: float) -> void:
 		return
 	_owed -= whole
 	var to: int = _shown + whole * _playing
-	if to >= _order.size() or to <= 0:
-		_show(clampi(to, 0, _order.size()))
+	if to >= _length() or to <= 0:
+		_show(clampi(to, 0, _length()))
 		_stop_play()
 		return
 	_show(to)
@@ -345,6 +428,9 @@ func shown() -> int:
 
 
 func _show(count: int) -> void:
+	if _mode == 2:
+		_show_history(count)
+		return
 	if _order.is_empty():
 		return
 	_shown = clampi(count, 0, _order.size())
@@ -358,10 +444,10 @@ func _show(count: int) -> void:
 		showing[_order[n]] = true
 
 	var of: String = "%d of %d bricks" % [_shown, _order.size()]
-	if _as_made or _step_ends.is_empty():
+	if _mode == 1 or _step_ends.is_empty():
 		_caption.text = of
-		_pieces.text = "As made: the order the bricks were placed in" \
-			if _as_made else ""
+		_pieces.text = "As made: the order the bricks standing were placed in" \
+			if _mode == 1 else ""
 	else:
 		var step: int = 0
 		while step < _step_ends.size() - 1 and _step_ends[step] < _shown:
@@ -376,5 +462,33 @@ func _show(count: int) -> void:
 				# Worth saying. The alternative is a step that looks wrong
 				# to anyone following it with real bricks in their hands.
 				_pieces.text += "  (hold this one in place)"
+	_pieces.tooltip_text = _pieces.text
+	reveal.emit(showing)
+
+
+## The history up to the [param count]th change: what was standing then,
+## including what has since been taken away.
+func _show_history(count: int) -> void:
+	if _events.is_empty():
+		return
+	_shown = clampi(count, 0, _events.size())
+	_slider.set_value_no_signal(_shown)
+	var alive: Dictionary = {}
+	for n: int in _shown:
+		var event: Array = _events[n]
+		if event[0] == "add":
+			alive[event[1]] = true
+		else:
+			alive.erase(event[1])
+	var showing: Dictionary = _scenery.duplicate()
+	var gone: int = 0
+	for key: Variant in alive:
+		if _drawn_as.has(key):
+			showing[_drawn_as[key]] = true
+			if _ghost_set.has(int(_drawn_as[key])):
+				gone += 1
+	_caption.text = "Change %d of %d · %d standing" % [_shown, _events.size(), alive.size()]
+	_pieces.text = ("History: every change, removals included" + (
+		" — %d of these were taken out later" % gone if gone > 0 else ""))
 	_pieces.tooltip_text = _pieces.text
 	reveal.emit(showing)

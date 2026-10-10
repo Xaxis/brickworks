@@ -134,8 +134,64 @@ func _material(material_class: int, two_sided: bool) -> ShaderMaterial:
 	return material
 
 
+## Every change to what is in the world, in order: the design history the
+## timeline replays, "edits and removals included" — the owner asked for
+## the build order and the order it was really made, both. Each event is
+## {op: add|remove|move|paint|clear, key, ...}; a key is the brick's number
+## and the generation it was placed in, because clear() starts the numbers
+## again and the history must not mistake a new brick for an old one.
+var history: Array = []
+var _generation: int = 0
+## Enough for a long session's designs; past it the oldest go.
+const HISTORY_MOST := 60000
+## Bricks that are drawn and are not in the model: the timeline's history
+## putting back what was taken out. Left out of bricks(), brick_count(),
+## get_brick() and the bounds, so nothing that reads the model — a save,
+## the autosave, the assistant over the connector, a pick — can take one
+## for a brick. They were plain bricks at first, and a save made while the
+## history was open would have written every one of them into the file.
+var _ghosts: Dictionary = {}  ## int id -> true
+
+
+func _note(event: Dictionary) -> void:
+	if event.has("id"):
+		event["key"] = key_of(int(event["id"]))
+	history.append(event)
+	if history.size() > HISTORY_MOST:
+		history = history.slice(history.size() - HISTORY_MOST * 9 / 10)
+
+
+## A brick's number as the history names it: with its generation.
+func key_of(brick_id: int) -> String:
+	return "%d:%d" % [_generation, brick_id]
+
+
 ## Place a brick. Returns its id, or 0 if the part has no geometry.
 func add_brick(part_id: String, color_code: int, at: Transform3D) -> int:
+	var brick_id: int = _place(part_id, color_code, at)
+	if brick_id != 0:
+		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
+			"colour": color_code, "at": at})
+	return brick_id
+
+
+## Draw a brick that is not in the model, and is not a change to it: see
+## _ghosts. Returns its id, or 0 if the part has no geometry.
+func add_ghost(part_id: String, color_code: int, at: Transform3D) -> int:
+	var brick_id: int = _place(part_id, color_code, at)
+	if brick_id != 0:
+		_ghosts[brick_id] = true
+	return brick_id
+
+
+## Stop drawing every ghost.
+func clear_ghosts() -> void:
+	for brick_id: int in _ghosts:
+		_unplace(brick_id)
+	_ghosts.clear()
+
+
+func _place(part_id: String, color_code: int, at: Transform3D) -> int:
 	if library == null:
 		push_error("brick world: no part library set")
 		return 0
@@ -173,8 +229,14 @@ func add_brick(part_id: String, color_code: int, at: Transform3D) -> int:
 
 
 func remove_brick(brick_id: int) -> bool:
-	if not _bricks.has(brick_id):
+	if not _bricks.has(brick_id) or _ghosts.has(brick_id):
 		return false
+	_unplace(brick_id)
+	_note({"op": "remove", "id": brick_id})
+	return true
+
+
+func _unplace(brick_id: int) -> void:
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -185,16 +247,16 @@ func remove_brick(brick_id: int) -> bool:
 		_mark_dirty(key)
 	_brick_batches.erase(brick_id)
 	_bricks.erase(brick_id)
-	return true
 
 
 func move_brick(brick_id: int, to: Transform3D) -> bool:
-	var brick: Brick = _bricks.get(brick_id)
+	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
 	brick.transform = to
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		_mark_dirty(key)
+	_note({"op": "move", "id": brick_id, "at": to})
 	return true
 
 
@@ -211,7 +273,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 ## replaced it occupied nothing, so parts would pass straight through a
 ## recoloured brick and undo had nothing to put back.
 func recolor_brick(brick_id: int, color_code: int) -> bool:
-	var brick: Brick = _bricks.get(brick_id)
+	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
 
@@ -243,6 +305,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 		_mark_dirty(key)
 	_brick_batches[brick_id] = keys
 	_flush()
+	_note({"op": "paint", "id": brick_id, "colour": color_code})
 	return true
 
 
@@ -254,7 +317,10 @@ func clear() -> void:
 	_bricks.clear()
 	_brick_batches.clear()
 	_dirty.clear()
+	_ghosts.clear()
 	_next_id = 1
+	_note({"op": "clear"})
+	_generation += 1
 
 
 ## Show only these bricks, hiding the rest. An empty set shows all of
@@ -276,15 +342,23 @@ func show_only(visible_ids: Dictionary) -> void:
 
 
 func brick_count() -> int:
-	return _bricks.size()
+	return _bricks.size() - _ghosts.size()
 
 
 func get_brick(brick_id: int) -> Brick:
+	if _ghosts.has(brick_id):
+		return null
 	return _bricks.get(brick_id)
 
 
 func bricks() -> Array:
-	return _bricks.values()
+	if _ghosts.is_empty():
+		return _bricks.values()
+	var standing: Array = []
+	for brick_id: int in _bricks:
+		if not _ghosts.has(brick_id):
+			standing.append(_bricks[brick_id])
+	return standing
 
 
 ## The bounding box of everything placed, in LDU.
@@ -292,6 +366,8 @@ func model_bounds() -> AABB:
 	var result := AABB()
 	var first: bool = true
 	for brick_id: int in _bricks:
+		if _ghosts.has(brick_id):
+			continue
 		var brick: Brick = _bricks[brick_id]
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
@@ -384,7 +460,7 @@ func _flush() -> void:
 		if batch.multimesh.instance_count > 0:
 			live += 1
 			triangles += _triangles_of(batch.multimesh.mesh) * batch.multimesh.instance_count
-	rebuilt.emit(_bricks.size(), live, triangles)
+	rebuilt.emit(brick_count(), live, triangles)
 
 
 func _rebuild(batch: Batch, key: String) -> void:
@@ -464,7 +540,7 @@ func _triangles_of(mesh: Mesh) -> int:
 ## them, because the world does not own that.
 func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 	var turns: int = posmod(quarter_turns, 4)
-	if turns == 0 or _bricks.is_empty():
+	if turns == 0 or brick_count() == 0:
 		return []
 
 	# Turn about the centre of the footprint, snapped to the stud grid so
@@ -491,7 +567,7 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 
 	var moved: Array = []
 	for brick_id: int in _bricks.keys():
-		if keep.has(brick_id):
+		if keep.has(brick_id) or _ghosts.has(brick_id):
 			continue
 		var brick: Brick = _bricks[brick_id]
 		var offset: Vector3 = brick.transform.origin - pivot

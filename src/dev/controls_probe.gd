@@ -288,6 +288,48 @@ func _run() -> void:
 		steps._order.size() > 0 and steps._order == steps._order.duplicate().map(
 			func(n: int) -> int: return n) and _is_sorted(steps._order))
 	steps.set_as_made(false)
+
+	# The history: a brick taken out is still in it, shown until the
+	# moment it went, and nothing of it is left behind afterwards.
+	steps.stop()
+	var scenery: Dictionary = _main.get("_store").scenery
+	var victim: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			victim = brick.id
+	var standing: int = world.brick_count()
+	world.remove_brick(victim)
+	steps.start(world, _main.get("_library"), scenery)
+	steps.set_mode(2)
+	var ghosts: int = steps._ghosts.size()
+	_assert("the history puts back what was taken out, %d brick(s)" % ghosts, ghosts >= 1)
+	steps.to_end()
+	await process_frame
+	_assert("...and at its end it is the model as it stands, %d drawn" % _drawn(world),
+		_drawn(world) == standing - 1)
+	var before_removal: int = steps._events.size() - 1
+	steps._show(before_removal)
+	await process_frame
+	_assert("...a change before, the brick taken out is there again, %d drawn" % _drawn(world),
+		_drawn(world) == standing)
+	# Drawn, and still not in the model: a save made now must be the
+	# model as it stands, not as the history is showing it.
+	_assert("...while the model is still %d bricks, the ghost not among them"
+		% world.brick_count(), world.brick_count() == standing - 1)
+	var store: ModelStore = _main.get("_store")
+	var during: String = "user://controls_probe_during.ldr"
+	var after: String = "user://controls_probe_after.ldr"
+	store.export_to(during)
+	steps.stop()
+	await process_frame
+	store.export_to(after)
+	_assert("...and a save made with the history open writes no ghost, %d = %d bricks"
+		% [_bricks_in(during), _bricks_in(after)],
+		_bricks_in(during) == _bricks_in(after) and _bricks_in(after) > 0)
+	_assert("leaving the timeline takes the put-back bricks away, %d -> %d"
+		% [standing - 1 + ghosts, world.brick_count()], world.brick_count() == standing - 1)
+	steps.start(world, _main.get("_library"), scenery)
+	steps.set_mode(0)
 	_press(KEY_ESCAPE)
 	await process_frame
 	_assert("escape leaves the steps rather than quitting",
@@ -321,10 +363,20 @@ func _is_sorted(values: Array) -> bool:
 	return true
 
 
+## Bricks on screen, the timeline's ghosts included: those are drawn and
+## are not in the model, so world.bricks() leaves them out.
 func _drawn(world: BrickWorld) -> int:
 	var n: int = 0
-	for brick: BrickWorld.Brick in world.bricks():
+	for brick: BrickWorld.Brick in world._bricks.values():
 		if not brick.hidden:
+			n += 1
+	return n
+
+
+func _bricks_in(path: String) -> int:
+	var n: int = 0
+	for line: String in FileAccess.get_file_as_string(path).split("\n"):
+		if line.begins_with("1 "):
 			n += 1
 	return n
 
