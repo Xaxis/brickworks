@@ -94,7 +94,11 @@ as the client.
   cookie for that domain, never to Anthropic. It clicks controls by name: the
   web build publishes their centres as `window.brickworksControls`
   (`main._tell_page`), after a fixed-position click landed on a paragraph and
-  typed the key into the app as shortcuts.
+  typed the key into the app as shortcuts. It also says where the model's own
+  part of the window is ("view") and the parts list ("parts list"): at a device
+  ratio of two the panels take far more of the page, and the cursor check's
+  "middle of the model" was the parts bin there. `window.brickworksCursor` is
+  the pointer's state (`Cursors.show_state`), for `tools/web/cursor_check.mjs`.
 
 ## How to reach it
 

@@ -175,6 +175,12 @@ func shown() -> String:
 	return _shown
 
 
+## Whether this is the drag sheet, which covers the window during a drag
+## and so is under the pointer without being anything the pointer is over.
+func is_shield(control: Control) -> bool:
+	return control == _shield
+
+
 ## Whether the drag sheet is up.
 func shielding() -> bool:
 	return _shield.mouse_filter != Control.MOUSE_FILTER_IGNORE

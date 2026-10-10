@@ -8,7 +8,19 @@ picture the assistant is shown.
 ## Sub-features
 
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded.
+  is what everything frames against, baseplate excluded. Nothing that begins
+  over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
+  or a right or middle press over any panel, dialog, popup or the toolbar is
+  dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:
+  the control Godot found under the pointer, or `_over_panel_at`). Godot passes
+  a scroll through any control that does not use it (a list at its end, a dialog
+  with nothing to scroll) and never stops a gesture, so the owner's "scrolling
+  within a modal ... continues to move the model" was every panel, not one.
+  `cursor_probe` scrolls every way over the bin (scrolling, at its top, at its
+  end), the colours, the assistant, the toolbar, an open menu, the controls
+  panel, the minifigure builder, Make a part, the mosaic, the parts list and the
+  timeline and checks the camera did not move; the browser check does the same
+  over the bin, the assistant and the controls panel by the view's pixels.
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
   and Down; `Main._zoom_key`) zoom a wheel notch a tap; arrows turn the view
   and shift-arrows slide it, unless a selection (nudged) or the booklet (stepped)

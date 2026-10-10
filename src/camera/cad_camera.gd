@@ -101,6 +101,12 @@ var _grab_depth: float = 0.0
 ## which is where this camera always turned.
 var pick: Callable = Callable()
 
+## Ask whether a point on the screen is over the interface rather than
+## the model. Set by whoever owns the scene; it takes a screen position
+## and returns a bool. Nothing that begins there is the camera's: see
+## [method _begins_over_interface].
+var over_interface: Callable = Callable()
+
 ## What turning is going around, and whether there is one. Apart from
 ## the focus: see [method _pivot_on].
 var _pivot: Vector3 = Vector3.ZERO
@@ -325,6 +331,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_slide_by(drag.relative * 0.5)
 		return
 
+	if _begins_over_interface(event):
+		return
+
 	# A trackpad, which is what most people are on.
 	#
 	# macOS sends two-finger scrolling as a pan gesture and pinching as
@@ -422,6 +431,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		match _doing:
 			Doing.ORBIT: _turn_by(motion.relative, 0.01)
 			Doing.SLIDE: _slide_by(motion.relative)
+
+
+## Whether this event would start something over the interface: a
+## wheel notch, a swipe, a pinch, or the right or middle button going
+## down. Releases and movement are not asked about, so a drag begun over
+## the model still ends wherever it is let go.
+##
+## Asked for by the owner: "when i'm scrolling within a modal or control
+## panel ... it continues to move and effect the model in the main window
+## behind it". Godot hands a wheel event on through any control that does
+## not use it — a list already at its end, a dialog with nothing to scroll
+## (mouse_force_pass_scroll_events is on by default) — and a swipe or a
+## pinch is not stopped by a control at all. The side panels pass every
+## event on by design, so a right drag begun in the parts bin turned the
+## model too. Every one of those arrived here as if over the model.
+func _begins_over_interface(event: InputEvent) -> bool:
+	if not over_interface.is_valid():
+		return false
+	var at: Vector2
+	if event is InputEventGesture:
+		at = (event as InputEventGesture).position
+	elif event is InputEventMouseButton:
+		var button: InputEventMouseButton = event
+		if not button.pressed or button.button_index == MOUSE_BUTTON_LEFT:
+			return false
+		at = button.position
+	else:
+		return false
+	return bool(over_interface.call(at))
 
 
 ## Look at this point, from where you already are.

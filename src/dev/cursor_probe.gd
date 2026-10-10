@@ -114,6 +114,9 @@ func _run() -> void:
 	print("  over the panels")
 	await _over_the_panels()
 	print("")
+	print("  the wheel over the interface")
+	await _wheel_over_the_interface()
+	print("")
 	print("  the way back")
 	await _the_way_back()
 	print("")
@@ -384,6 +387,196 @@ func _over_the_panels() -> void:
 			DisplayServer.CURSOR_ARROW)
 	await _move_to(_middle)
 	await _expect("back over the model", "place")
+
+
+## A wheel, a swipe or a pinch over any panel or dialog belongs to it.
+##
+## Asked for by the owner: "when i'm scrolling within a modal or control
+## panel ... it continues to move and effect the model in the main window
+## behind it". Godot passes a scroll on through a control that does not
+## use it, so the cases that matter are the ones where nothing scrolls: a
+## list already at its end, a dialog with nothing to scroll. Each is
+## checked by the camera not having moved at all — distance, angles and
+## where it looks — and the wheel over the model is checked to still zoom,
+## or a camera that ignored every wheel would pass.
+func _wheel_over_the_interface() -> void:
+	await _settle()
+	var bin: PartsBin = _main.get("_bin")
+	var list: ScrollContainer = bin.get("_scroll")
+	# A list that can still scroll: it scrolls, and the model stays put.
+	list.scroll_vertical = 0
+	await _frames(2)
+	var on_list: Vector2 = _centre(list)
+	await _move_to(on_list)
+	var before: Array = _camera_now()
+	await _notch(MOUSE_BUTTON_WHEEL_DOWN, on_list)
+	_check("the parts list scrolls under the wheel, to %d" % list.scroll_vertical,
+		list.scroll_vertical > 0)
+	_check("...and the model stays where it was", _camera_now() == before)
+	# The same list at the top, scrolled further up: nothing in the list
+	# moves, which is when Godot lets the wheel through.
+	list.scroll_vertical = 0
+	await _frames(2)
+	await _unmoved_by_scrolling("the parts list already at its top", on_list)
+	list.scroll_vertical = int(list.get_v_scroll_bar().max_value)
+	await _frames(2)
+	await _unmoved_by_scrolling("the parts list already at its end", on_list)
+	list.scroll_vertical = 0
+	var colours: ScrollContainer = bin.get("_palette_scroll")
+	await _unmoved_by_scrolling("the colours", _centre(colours))
+	await _unmoved_by_scrolling("the assistant panel", _centre(_main.get("_chat")))
+	await _unmoved_by_scrolling("the toolbar", _centre(_main.get("_bar")))
+
+	# A popup: the model chooser in the assistant panel.
+	var which: OptionButton = null
+	for option: OptionButton in _all(_main.get("_chat"), "OptionButton"):
+		if option.is_visible_in_tree():
+			which = option
+			break
+	if which != null:
+		which.show_popup()
+		await _frames(3)
+		var popup: PopupMenu = which.get_popup()
+		var on_popup: Vector2 = Vector2(popup.position) + Vector2(popup.size) * 0.5
+		await _unmoved_by_scrolling("a menu that is open", on_popup)
+		popup.hide()
+		await _frames(2)
+	else:
+		_check("there is a menu in the assistant panel to open", false)
+
+	# The dialogs, each open over the model.
+	var controls: ControlsDialog = _main.get("_controls")
+	controls.open()
+	await _frames(3)
+	await _unmoved_by_scrolling("the controls panel", _centre(controls))
+	controls.visible = false
+	var figures: Control = _main.get("_figures")
+	if figures != null:
+		_main._open_figures()
+		await _frames(6)
+		await _unmoved_by_scrolling("the minifigure builder", _centre(figures))
+		figures.call("close")
+		await _frames(2)
+	var elements: Control = _main.get("_elements")
+	if elements != null:
+		elements.call("open", _builder.held_part)
+		await _frames(6)
+		await _unmoved_by_scrolling("Make a part", _centre(elements))
+		elements.visible = false
+		await _frames(2)
+	var mosaic: MosaicDialog = _main.get("_mosaic")
+	var picture := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	picture.fill(Color(0.8, 0.2, 0.2))
+	mosaic.show_for(picture)
+	await _frames(4)
+	await _unmoved_by_scrolling("the mosaic dialog", _centre(mosaic))
+	mosaic.visible = false
+	var inventory: InventoryPanel = _main.get("_inventory")
+	_main._toggle_parts()
+	await _frames(6)
+	await _unmoved_by_scrolling("the parts list (inventory)", _middle)
+	inventory.hide_list()
+	var steps: StepsBar = _main.get("_steps")
+	_main._toggle_steps()
+	await _frames(6)
+	await _unmoved_by_scrolling("the timeline bar", _centre(steps))
+	steps.stop()
+	await _frames(4)
+
+	# The checks above can fail. Each was also run with the camera not
+	# asking, and some of these panels then let the wheel through to the
+	# model — which is the owner's report, reproduced. Not every one does
+	# (a list that scrolls takes the wheel itself), so this asks only that
+	# the fault was there to be caught somewhere.
+	_check("without the question the wheel reached the model over: %s"
+		% ", ".join(_leaked), not _leaked.is_empty())
+
+	# And the model itself still answers to all of it.
+	await _settle()
+	await _move_to(_middle)
+	var far: float = _camera._target_distance
+	await _notch(MOUSE_BUTTON_WHEEL_UP, _middle)
+	_check("the wheel over the model still zooms, %.0f -> %.0f"
+		% [far, _camera._target_distance], _camera._target_distance < far)
+	var yaw: float = _camera._target_yaw
+	_swipe(_middle)
+	await _frames(3)
+	_check("...and a swipe over it still turns it",
+		not is_equal_approx(_camera._target_yaw, yaw))
+	await _settle()
+
+
+## Panels the wheel got through to the model when the camera was not
+## asking. See [method _wheel_over_the_interface].
+var _leaked: PackedStringArray = []
+
+
+## Every way of scrolling, over one point, and the camera exactly where it
+## was afterwards. Also the two buttons that start a drag of the view.
+##
+## Then the same again with the camera not asking whether the point is
+## over the interface, to see whether this panel would have let it
+## through: a check over a panel that never leaked proves nothing.
+func _unmoved_by_scrolling(what: String, at: Vector2) -> void:
+	await _move_to(at)
+	var before: Array = _camera_now()
+	await _scroll_every_way(at)
+	var wheel_moved: bool = _camera_now() != before
+	# A drag of the view begun here is the panel's too.
+	_press(MOUSE_BUTTON_MIDDLE, at, true)
+	await _frames(2)
+	await _move_to(at + Vector2(30.0, 12.0), MOUSE_BUTTON_MASK_MIDDLE)
+	_press(MOUSE_BUTTON_MIDDLE, at + Vector2(30.0, 12.0), false)
+	await _frames(3)
+	_check("over %s, the wheel, a swipe and a pinch leave the model alone%s"
+		% [what, "" if not wheel_moved else ": it moved"], not wheel_moved)
+	_check("...and so does a middle drag begun there", _camera_now() == before)
+	var asking: Callable = _camera.over_interface
+	_camera.over_interface = Callable()
+	var bare: Array = _camera_now()
+	await _scroll_every_way(at)
+	if _camera_now() != bare:
+		_leaked.append(what)
+	_camera.over_interface = asking
+
+
+## Up twice and down three times, so a list at either end is scrolled
+## past it; sideways; shift and the wheel; a swipe; a pinch.
+func _scroll_every_way(at: Vector2) -> void:
+	await _notch(MOUSE_BUTTON_WHEEL_UP, at)
+	await _notch(MOUSE_BUTTON_WHEEL_UP, at)
+	await _notch(MOUSE_BUTTON_WHEEL_DOWN, at)
+	await _notch(MOUSE_BUTTON_WHEEL_DOWN, at)
+	await _notch(MOUSE_BUTTON_WHEEL_DOWN, at)
+	await _notch(MOUSE_BUTTON_WHEEL_LEFT, at)
+	await _key_down(KEY_SHIFT, true)
+	await _notch(MOUSE_BUTTON_WHEEL_UP, at, true)
+	await _key_down(KEY_SHIFT, false)
+	_swipe(at)
+	var pinch := InputEventMagnifyGesture.new()
+	pinch.position = _as_event(at)
+	pinch.factor = 1.3
+	Input.parse_input_event(pinch)
+	await _frames(3)
+
+
+## The camera's targets: where it is going, which is what an input moves.
+func _camera_now() -> Array:
+	return [_camera._target_distance, _camera._target_yaw,
+		_camera._target_pitch, _camera._target_focus]
+
+
+func _notch(which: int, at: Vector2, shift: bool = false) -> void:
+	_press(which, at, true, shift)
+	_press(which, at, false, shift)
+	await _frames(2)
+
+
+func _swipe(at: Vector2) -> void:
+	var swipe := InputEventPanGesture.new()
+	swipe.position = _as_event(at)
+	swipe.delta = Vector2(3.0, 1.0)
+	Input.parse_input_event(swipe)
 
 
 func _the_way_back() -> void:

@@ -137,6 +137,12 @@ func _tell_page() -> void:
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
+	# And the model's own part of the window, the column the box select
+	# is laid over (the box itself is hidden until one is drawn): a
+	# browser test aiming at the model found a panel there at a device
+	# ratio of two, where the panels take more of the page.
+	if _marquee != null:
+		named["view"] = _marquee.get_parent()
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -1113,6 +1119,9 @@ func _build_ui() -> void:
 	_cursors = Cursors.new()
 	add_child(_cursors)
 	_cursors.looked_again.connect(_hover_again)
+	# A wheel, a swipe or a button over a panel is the panel's. See
+	# CadCamera._begins_over_interface.
+	_camera.over_interface = _over_interface
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
@@ -2313,6 +2322,21 @@ func _finish_box(add: bool) -> void:
 	_marquee.finish()
 	_bar.say("took %d" % took if took > 0
 		else "nothing in there — right-drag turns the view")
+
+
+## Whether a point is over the interface, by the interface's own
+## reckoning as well as by the list below.
+##
+## The control under the pointer is what the window itself found there:
+## every panel, dialog, popup and button, including the ones added after
+## the list was written. The list stays for the overlays that claim the
+## whole window while they are up. The drag sheet (Cursors) is under the
+## pointer during every drag and is not a panel.
+func _over_interface(point: Vector2) -> bool:
+	var over: Control = get_viewport().gui_get_hovered_control()
+	if over != null and (_cursors == null or not _cursors.is_shield(over)):
+		return true
+	return _over_panel_at(point)
 
 
 func _over_panel_at(point: Vector2) -> bool:
