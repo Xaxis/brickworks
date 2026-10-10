@@ -106,6 +106,11 @@ ESSENTIAL: tuple[str, ...] = (
     "3811",    # Baseplate 32 x 32
     "3857",    # Baseplate 16 x 16
     "3001", "3003", "3004", "3005", "3020", "3024", "3068b", "3070b",
+    # The figure the minifigure builder opens with, so its first picture
+    # is a figure and not a list of parts on their way: torso, arms,
+    # hand, smiling head, hair, hips, legs, and the short legs.
+    "973", "3818", "3819", "3820", "3626c", "3626cp01", "3901", "3815b",
+    "3816c", "3817c", "41879a",
 )
 
 # Patterns that are never worth the bytes on the web: printed variants,

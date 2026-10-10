@@ -127,7 +127,7 @@ func _build() -> void:
 	clear.text = "New chat"
 	clear.tooltip_text = "Start a fresh conversation. The model stays."
 	clear.add_theme_font_size_override("font_size", 12)
-	clear.pressed.connect(_on_clear)
+	clear.pressed.connect(new_chat)
 	header.add_child(clear)
 
 	_scroll = ScrollContainer.new()
@@ -515,7 +515,7 @@ func _on_send() -> void:
 		_close_run("Did not start", "")
 
 
-func _on_clear() -> void:
+func new_chat() -> void:
 	# Ends the conversation, not the model. This used to call
 	# clear_built(), so a button labelled "New" with the tooltip "Start
 	# a fresh conversation" silently deleted every brick the assistant

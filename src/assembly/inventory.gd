@@ -46,6 +46,8 @@ class Lot extends RefCounted:
 	## check uses. Derived rather than looked up, and it runs a little
 	## light on longer parts — see Stability.grams.
 	var each_grams: float = 0.0
+	## Made in the element maker: not a part anyone can order.
+	var custom: bool = false
 
 	func total_grams() -> float:
 		return each_grams * count
@@ -80,6 +82,12 @@ static func of(world: BrickWorld, library: PartLibrary,
 			lot = Lot.new()
 			lot.part_id = brick.part_id
 			lot.name = _tidy(info.name if info != null else brick.part_id)
+			# A made part has no element number and no shop to buy it from:
+			# the list says so rather than leaving it to look like one LEGO
+			# makes.
+			if info != null and info.custom:
+				lot.name += " (custom element)"
+				lot.custom = true
 			lot.color_code = brick.color_code
 			lot.color_name = color.name if color != null else "colour %d" % brick.color_code
 			if color != null:

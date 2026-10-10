@@ -1,0 +1,111 @@
+# Prove a desktop release on the systems it is for.
+#
+# The packages are built by tools/release.py on a machine that has the part
+# library: a gigabyte of geometry that is not in git and takes ninety minutes
+# to rebuild, so building here would cost more than it proves. What only a
+# runner can prove is that each package starts on its own system: Linux here
+# is the same as the machine that built it, but a Mac and Windows are not.
+#
+# So this downloads what was uploaded to a GitHub release and runs each
+# package the way a person would, unpacked into a clean home:
+# tools/release.py smoke asks it which build it is, opens the example model
+# and writes it back, and has a session place bricks in it over MCP.
+#
+# Run it on the draft, before publishing (docs/RELEASING.md):
+#   gh workflow run release.yml -f tag=v0.1.0
+# It also runs by itself when a release is published.
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The release to check, e.g. v0.1.0. A draft works."
+        required: true
+
+concurrency:
+  group: release-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+# Write, though nothing here writes: GitHub lists a draft release only to a
+# token that could push, and checking the draft is the point.
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  smoke:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Linux tar.xz", os: ubuntu-24.04, pattern: "*-linux-x86_64.tar.xz" }
+          - { name: "Linux AppImage", os: ubuntu-24.04, pattern: "*-linux-x86_64.AppImage" }
+          - { name: "macOS, Apple silicon", os: macos-15, pattern: "*-macos-universal.zip" }
+          - { name: "macOS, Intel", os: macos-15-intel, pattern: "*-macos-universal.zip" }
+          - { name: "Windows", os: windows-2022, pattern: "*-windows-x86_64.zip" }
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      GH_TOKEN: ${{ github.token }}
+      # Windows pipes Python's output as cp1252 otherwise, and the tool's
+      # headings are not in it.
+      PYTHONUTF8: "1"
+    steps:
+      # The checkout's tools, not the tag's: a draft's tag does not exist yet.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: An AppImage mounts itself with FUSE
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fuse3 squashfs-tools
+
+      - name: Download the package
+        run: |
+          version="${TAG#v}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          mkdir -p "dist/$version"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "dist/$version" \
+            --pattern "${{ matrix.pattern }}" --pattern SHA256SUMS
+          ls -l "dist/$version"
+
+      - name: It is what was built
+        run: python tools/release.py inspect "dist/$VERSION"
+
+      - name: It starts, loads the library, opens a model and takes bricks
+        run: |
+          package=$(ls dist/"$VERSION"/Brickworks-* | head -1)
+          python tools/release.py smoke "$package" --expect="$VERSION"
+
+      - name: macOS accepts its signature
+        if: runner.os == 'macOS'
+        run: |
+          ditto -x -k dist/"$VERSION"/*-macos-universal.zip "$RUNNER_TEMP/mac"
+          app=$(ls -d "$RUNNER_TEMP"/mac/*/Brickworks.app)
+          codesign --verify --deep --strict --verbose=2 "$app"
+          lipo -archs "$app/Contents/MacOS/Brickworks"
+          # Informational: an ad-hoc signature is rejected here by design,
+          # and that is the Open Anyway the download page describes.
+          spctl --assess --type execute --verbose=4 "$app" || true
+
+      - name: What Windows makes of its signature
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Expand-Archive -Path (Get-ChildItem "dist/$env:VERSION/*-windows-x86_64.zip") -DestinationPath "$env:RUNNER_TEMP/win"
+          Get-ChildItem "$env:RUNNER_TEMP/win" -Recurse -Filter *.exe | ForEach-Object {
+            $s = Get-AuthenticodeSignature $_.FullName
+            "{0}: {1}" -f $_.Name, $s.Status
+          }

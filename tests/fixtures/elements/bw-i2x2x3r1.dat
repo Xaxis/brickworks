@@ -1,0 +1,53 @@
+0 Slope Brick 45  2 x  2 Inverted
+0 Name: bw-i2x2x3r1.dat
+0 Author: Brickworks element maker
+0 !LDRAW_ORG Unofficial_Part
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !CATEGORY Slope
+0 !KEYWORDS Brickworks, custom element
+
+0 // Made by Brickworks: family=inverted across=2 deep=2 plates=3 run=1 studs=yes
+
+0 // Studs
+1 16 -10 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 -10 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 10 1 0 0 0 1 0 0 0 1 stud.dat
+0 // Top, lip, face and back
+4 16 20 0 20 -20 0 20 -20 0 -20 20 0 -20
+4 16 20 0 -20 -20 0 -20 -20 4 -20 20 4 -20
+4 16 20 4 -20 -20 4 -20 -20 24 0 20 24 0
+4 16 20 0 20 20 24 20 -20 24 20 -20 0 20
+4 16 20 0 20 20 0 0 20 24 0 20 24 20
+4 16 20 0 0 20 0 -20 20 4 -20 20 24 0
+4 16 -20 24 20 -20 24 0 -20 0 0 -20 0 20
+4 16 -20 24 0 -20 4 -20 -20 0 -20 -20 0 0
+2 24 20 0 20 -20 0 20
+2 24 -20 0 20 -20 0 -20
+2 24 -20 0 -20 20 0 -20
+2 24 20 0 -20 20 0 20
+2 24 20 4 -20 -20 4 -20
+2 24 20 24 0 -20 24 0
+2 24 20 24 20 -20 24 20
+2 24 20 0 20 20 24 20
+2 24 20 0 -20 20 4 -20
+2 24 20 4 -20 20 24 0
+2 24 20 24 0 20 24 20
+2 24 -20 0 20 -20 24 20
+2 24 -20 0 -20 -20 4 -20
+2 24 -20 4 -20 -20 24 0
+2 24 -20 24 0 -20 24 20
+0 // Cavity under the flat rows
+4 16 20 24 20 16 24 16 -16 24 16 -20 24 20
+4 16 -20 24 20 -16 24 16 -16 24 4 -20 24 0
+4 16 -20 24 0 -16 24 4 16 24 4 20 24 0
+4 16 20 24 0 16 24 4 16 24 16 20 24 20
+0 // Cavity
+0 BFC INVERTNEXT
+1 16 0 24 10 16 0 0 0 -20 0 0 0 6 box5.dat
+0 // Underside
+1 16 0 4 10 1 0 0 0 -5 0 0 0 1 stud3.dat
+0

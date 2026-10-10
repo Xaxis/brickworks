@@ -97,6 +97,15 @@ if echo "$parse" | grep -qE 'SCRIPT ERROR|Parse Error'; then
 fi
 echo "  ok    no script errors"
 
+echo "── the version ──"
+# One version, read from three places: VERSION, project.godot (which the
+# macOS and Windows packages take theirs from) and CHANGELOG.md. A release
+# with two of them disagreeing says one thing on the page and another in
+# the app.
+if ! python3 tools/release.py version; then
+  fail=1
+fi
+
 echo "── python ──"
 # A machine with no pytest still runs the file. Ubuntu 24.04 ships no pip
 # and no ensurepip, and apt wants a password, so "install pytest" is not
@@ -105,7 +114,8 @@ echo "── python ──"
 if python3 -c 'import pytest' 2>/dev/null; then
   suite=(python3 -m pytest tests/ -q)
 else
-  suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py)
+  suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
+    tests/test_release.py tests/test_minifig.py tests/test_elements.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -126,7 +136,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns style turned detail chat; do
+for name in element_files element dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns style turned detail chat project minifig; do
   probe "$name"
 done
 
@@ -137,10 +147,10 @@ echo "── on screen ──"
 
 # A window even when nobody is logged in.
 #
-# These eight need a rendering device. The desktop session is the obvious
+# These need a rendering device. The desktop session is the obvious
 # one and it is not always there: a run from a detached shell, or after
 # the screen locks, or on a machine nobody is sitting at, finds no
-# display and eight checks fail for a reason that has nothing to do with
+# display and every one of them fails for a reason that has nothing to do with
 # the code — "X11 Display is not available", which reads like a broken
 # probe. Xvfb gives them one, and the pictures come out the same: a
 # frame costs 124 ms there against 989 ms on the compositor, so it is
@@ -171,6 +181,10 @@ run "true colour" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/true_colour_probe.gd
 run "finishes" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/finish_probe.gd
+# And whether a glossy face catching the light keeps its colour: the
+# eleventh Orthanc's dark grey rock was drawn ringed in white.
+run "highlights" "${screen[@]}" godot --path . --resolution 1200x800 \
+  --script src/dev/highlight_probe.gd
 # Same reason, and one more: the picture the assistant is shown only
 # exists where there is something to draw with, so a headless suite
 # would never once exercise the path the app actually takes.
@@ -189,6 +203,17 @@ run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
 # binding to test.
 run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/feel_probe.gd
+# The minifigure builder, used by clicking: slots, parts, colours, a
+# name, Place in model, a click on a stud. Its live figure and its
+# thumbnails are drawn, so it needs a window; it leaves pictures of the
+# builder and of a row of figures in shots/minifig_*.png.
+run "minifig builder" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/minifig_ui_probe.gd
+# The element maker pressed from the parts bin, its preview drawn, and
+# made parts beside the library's: shots/element_dialog.png and
+# shots/element_beside.png are worth a look.
+run "make a part" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/element_shot_probe.gd
 # And whether the pointer says what the mouse will do. The shape is read
 # back from the display server, and a headless one has no cursor at all:
 # it answers "arrow" whatever was asked for, so this passes nothing there.

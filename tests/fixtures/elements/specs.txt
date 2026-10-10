@@ -1,0 +1,29 @@
+# One element per line, in the words its header carries. The file each
+# makes is tests/fixtures/elements/<id>.dat, written by
+#   godot --headless --path . --script src/dev/element_files_probe.gd -- --write
+# and checked against what the maker makes now by the same probe without
+# --write. tests/test_elements.py measures them; tools/build_custom.py
+# builds them through the mesh pipeline into pipeline.json.
+#
+# The three asked for by name:
+family=brick across=7 deep=2 plates=3 studs=yes
+family=brick across=5 deep=1 plates=1 studs=yes
+family=slope across=3 deep=3 plates=2 run=2 studs=yes
+# Standard sizes, which tests/test_elements.py holds against the real part:
+family=brick across=4 deep=2 plates=3 studs=yes
+family=brick across=1 deep=1 plates=3 studs=yes
+family=brick across=2 deep=1 plates=1 studs=yes
+family=brick across=2 deep=2 plates=1 studs=no
+family=slope across=2 deep=2 plates=3 run=1 studs=yes
+family=slope across=2 deep=3 plates=3 run=2 studs=yes
+family=slope across=1 deep=2 plates=9 run=1 studs=yes
+family=inverted across=2 deep=2 plates=3 run=1 studs=yes
+family=round diameter=2 plates=3 studs=yes
+# And sizes nothing in the library has:
+family=brick across=3 deep=1 plates=5 studs=yes
+family=brick across=6 deep=3 plates=1 studs=no
+family=slope across=4 deep=2 plates=6 run=1 studs=yes
+family=inverted across=3 deep=3 plates=4 run=2 studs=yes
+family=round diameter=4 plates=1 studs=yes
+family=round diameter=1 plates=1 studs=no
+family=round diameter=3 plates=6 studs=yes

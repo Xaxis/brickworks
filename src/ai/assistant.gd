@@ -1282,8 +1282,18 @@ func _keep_the_failure(report: Dictionary) -> void:
 func _tag_assemblies() -> void:
 	if _declared.size() < 2 or world == null:
 		return
+	# A figure is its own sub-model wherever it stands; renamed after the
+	# tower it is in, it would be three arms and a hat in "tower".
+	var members: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not brick.group.is_empty():
+			if not members.has(brick.group):
+				members[brick.group] = []
+			(members[brick.group] as Array).append(brick)
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
+			continue
+		if members.has(brick.group) and Minifig.is_figure(members[brick.group]):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
@@ -1963,6 +1973,18 @@ func _run_tool(block: Dictionary) -> Variant:
 			if said is Array:
 				return [{"type": "text", "text": change["summary"]}] + (said as Array)
 			return "%s\n%s" % [change["summary"], str(said)]
+		"add_minifig":
+			# The figure is made and stood up in src/minifig/figure_tool.gd.
+			# Its parts are this design's, so a new submission replaces
+			# them along with everything else it built.
+			progress.emit("standing %s in the model" % str(args.get("name", "a figure")))
+			var stood: Dictionary = await FigureTool.add(args, library, world, builder)
+			_placed_ids.append_array(stood["ids"])
+			if not bool(stood["ok"]) or not ModelShot.possible():
+				return str(stood["text"])
+			return await _with_a_look(str(stood["text"]), "Is it where it "
+				+ "should be, the right size for the place, facing the right way?",
+				"corner", (stood["box"] as AABB).grow(60.0))
 		"edit_model":
 			var edited: Model = _edit(args)
 			_say_shorthand_trouble()
@@ -3265,14 +3287,20 @@ func _style(model: Model) -> String:
 ## stands up and it is the right size; it is the wrong texture, and
 ## nothing said so.
 func _variety(model: Model) -> String:
-	var parts: int = model.placements.size()
+	# Without its figures, as real sets are counted: their inventories
+	# keep a figure's body in the figure's own (Minifig.is_body_part), so
+	# a castle with a dozen guards must not read as richer for them.
+	var building: Array = model.placements.filter(
+		func(placement: Placement) -> bool:
+			return not Minifig.is_body_part(library.parts.get(placement.part)))
+	var parts: int = building.size()
 	var normal: Dictionary = library.normal_for(parts)
 	if normal.is_empty():
 		return ""
 	var lots: Dictionary = {}
 	var shapes: Dictionary = {}
 	var of_one: Dictionary = {}
-	for placement: Placement in model.placements:
+	for placement: Placement in building:
 		lots["%s/%d" % [placement.part, placement.color]] = true
 		shapes[placement.part] = true
 		of_one[placement.part] = int(of_one.get(placement.part, 0)) + 1
@@ -3310,7 +3338,7 @@ func _variety(model: Model) -> String:
 			% [most, commonest, want_most, high_most]
 			+ "is as many as all but one set in twenty uses")
 	var ids := PackedStringArray()
-	for placement: Placement in model.placements:
+	for placement: Placement in building:
 		ids.append(placement.part)
 	var coarse: Array = _coarse(ids)
 	var big_high: int = int(normal.get("big_high", 0))
@@ -3547,7 +3575,7 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 	# app and are known good.
 	var holder: PartLibrary.PartInfo = library.parts.get(below.part)
 	if holder != null and holder.stud_count == 0 \
-			and SMOOTH_ON_TOP.has(holder.category):
+			and SMOOTH_ON_TOP.has(holder.family_category()):
 		_note(loose, "Resting on a smooth face, held by nothing:",
 			"  brick %d (%s at %s) stands on brick %d (%s), which has no "
 			% [index, placement.part, placement.where(), under, below.part]
@@ -7218,7 +7246,8 @@ face, and that is where most of a wall's detail comes from \
 (show_technique "face turned sideways").
   Not everything is square. A wall that bends, a roof pitched where no \
 slope is, a rock face, a horn, a buttress leaning in: hinges, clips on \
-bars, and sections turned to the angle the thing really has.
+bars, and sections turned to the angle the thing really has \
+(show_technique "rock outcrop" for a rock face).
   Symmetry is a choice, not a default. A vehicle or a formal front is \
 mirrored; rock, ruins, trees, a tower grown out of a crag, a wall that \
 has been fought over are not, and built mirrored they look \
@@ -7235,10 +7264,11 @@ than a hundred plain bricks.
 metal, studs left showing for rough ground, masonry bricks and grilles \
 for worked stone, two or three close colours — black, dark bluish grey, \
 dark grey — mixed for weathering. One grey over everything reads as \
-plastic.
+plastic (show_technique "rough stone wall", "weathered stone wall").
   Depth makes the detail. A face on one plane is flat, however much is on \
 it. Set windows in, let a cornice oversail, recess a doorway a plate, \
-stand a buttress out: the shadows are what the eye reads.
+stand a buttress out: the shadows are what the eye reads \
+(show_technique "oversail on inverted slopes", "corbelled wall walk").
   A focal point. Somewhere the eye goes first — the top of a tower, a \
 gate, a figure on a balcony — gets the most interesting parts in the \
 model.
@@ -7247,7 +7277,8 @@ rooms: a library, a stair, a throne, a forge, a figure at a table. That \
 is where most of a set's different pieces and colours are — furniture, \
 books, lamps, tools — and a solid shell has none of them. Leave the back \
 open (a prism takes "open"), lay floors, and furnish them \
-(show_technique: table, armchair, bed, lamp post, planter).
+(show_technique: bookcase, fireplace, anvil, four-poster bed, wall \
+lantern, and the rest of furniture and interiors).
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -7291,11 +7322,11 @@ func guidance() -> String:
 ## everything it builds then has.
 func _show_technique(wanted: String) -> String:
 	if wanted.strip_edges().is_empty():
-		return ("Name one of: %s." % ", ".join(Techniques.names()))
+		return ("Name one of these, by what it is for — %s." % Techniques.listing())
 	var technique: Dictionary = Techniques.named(wanted)
 	if technique.is_empty():
-		return ("No technique called \"%s\". There is: %s."
-			% [wanted, ", ".join(Techniques.names())])
+		return ("No technique called \"%s\". There is, by what it is for — %s."
+			% [wanted, Techniques.listing()])
 
 	var rows := PackedStringArray()
 	for raw: Variant in technique["bricks"]:
@@ -7886,8 +7917,9 @@ func _tools() -> Array:
 		{
 			"name": "show_technique",
 			"description": ("How a construction is actually made, in "
-				+ "part numbers and coordinates: %s. "
-				% ", ".join(Techniques.names())
+				+ "part numbers and coordinates, most of them as LEGO "
+				+ "built them in real sets. By what they are for — %s. "
+				% Techniques.listing()
 				+ "Ask before building one of these for the first time "
 				+ "— a bracket's sideways stud is not at a whole number "
 				+ "of plates, and the arithmetic is the part that goes "
@@ -8233,4 +8265,4 @@ func _tools() -> Array:
 				"additionalProperties": false,
 			},
 		},
-	]
+	] + [FigureTool.schema()]

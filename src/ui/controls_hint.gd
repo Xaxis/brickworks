@@ -192,6 +192,7 @@ static func for_keyboard() -> Array[Binding]:
 	])
 	var rest: Array[Binding] = [
 		Binding.new(["P"], "parts"),
+		Binding.new(["M"], "minifigure"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new([","], "this list"),
@@ -200,6 +201,8 @@ static func for_keyboard() -> Array[Binding]:
 	# The page is closed by its tab, so a browser is not told about a
 	# key that does nothing there.
 	if not OS.has_feature("web"):
+		# Ctrl+N is the browser's new window, and never reaches the page.
+		rest.append(Binding.new(["%s-N" % _hold()], "new model"))
 		rest.append(Binding.new(["%s-Q" % _hold()], "quit"))
 	_section(everything, "Panels", rest)
 	return everything

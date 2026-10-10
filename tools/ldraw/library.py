@@ -27,6 +27,7 @@ the same part file yields several levels of detail.
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -111,13 +112,22 @@ class Library:
     each time turns a two-minute build into an hour-long one.
     """
 
-    def __init__(self, root: str | os.PathLike[str]) -> None:
+    def __init__(
+        self,
+        root: str | os.PathLike[str],
+        *,
+        extra: Sequence[str | os.PathLike[str]] | None = None,
+    ) -> None:
+        """``extra`` names directories of parts that are not in the
+        library — a made element's own folder — searched before it, as
+        the convention says the referencing file's own directory is."""
         self.root = Path(root)
         if not (self.root / "parts").is_dir():
             raise FileNotFoundError(
                 f"{self.root} does not look like an LDraw library "
                 "(no parts/ directory)"
             )
+        self.extra = [Path(d) for d in (extra or [])]
         self._index: dict[str, Path] = {}
         self._cache: dict[str, LDrawFile | None] = {}
         self._build_index()
@@ -132,6 +142,7 @@ class Library:
         search-order precedence is preserved.
         """
         search_roots: list[tuple[str, Path]] = [
+            *(("", directory) for directory in self.extra),
             ("", self.root / "parts"),
             ("s/", self.root / "parts" / "s"),
             ("", self.root / "p"),

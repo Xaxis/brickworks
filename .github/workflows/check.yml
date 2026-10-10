@@ -33,6 +33,8 @@ jobs:
           pip install pytest pytest-asyncio numpy scipy
       - name: The offline pipeline
         run: python -m pytest tests/ -q
+      - name: One version, in VERSION, project.godot and CHANGELOG.md
+        run: python tools/release.py version
 
   gdscript:
     runs-on: ubuntu-latest

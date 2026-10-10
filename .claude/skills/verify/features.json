@@ -40,11 +40,35 @@
       "tests": []
     },
     {
+      "id": "cli:build custom parts",
+      "kind": "cli",
+      "entry": "tools/build_custom.py",
+      "reach": "tools/build_custom.py PART.dat --out DIR   (needs numpy and scipy)",
+      "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "cli:build the desktop packages",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:build the meshes",
       "kind": "cli",
       "entry": "tools/build_meshes.py",
       "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:check a release on three systems",
+      "kind": "cli",
+      "entry": ".github/workflows/release.yml",
+      "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "area": "release",
       "tests": []
     },
     {
@@ -56,12 +80,22 @@
       "tests": []
     },
     {
+      "id": "cli:download page check",
+      "kind": "cli",
+      "entry": "tools/web/download_check.mjs",
+      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:drive the app from a shell",
       "kind": "cli",
       "entry": "tools/brick.py",
       "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
       "area": "mcp",
-      "tests": []
+      "tests": [
+        "tests/test_elements.py"
+      ]
     },
     {
       "id": "cli:drive the app over mcp",
@@ -120,6 +154,24 @@
       "tests": []
     },
     {
+      "id": "cli:measure minifig offsets",
+      "kind": "cli",
+      "entry": "tools/minifig.py",
+      "reach": "tools/minifig.py measure   (and grips, data)",
+      "area": "minifig",
+      "tests": [
+        "tests/test_minifig.py"
+      ]
+    },
+    {
+      "id": "cli:minifig browser flow",
+      "kind": "cli",
+      "entry": "tools/web/minifig_flow.mjs",
+      "reach": "node tools/web/minifig_flow.mjs --url=https://brickworks.diy/app --out=shots/minifig_web",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
@@ -128,11 +180,35 @@
       "tests": []
     },
     {
+      "id": "cli:publish a release",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py publish --draft, then tools/release.py publish",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:refresh the catalogue",
       "kind": "cli",
       "entry": "tools/refresh_catalogue.py",
       "reach": "tools/refresh_catalogue.py",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:say which build this is",
+      "kind": "cli",
+      "entry": "src/main.gd",
+      "reach": "godot --headless --path . -- --about",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:smoke a package",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
+      "area": "release",
       "tests": []
     },
     {
@@ -152,11 +228,27 @@
       "tests": []
     },
     {
+      "id": "lib:add a minifig",
+      "kind": "lib",
+      "entry": "src/minifig/figure_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/minifig_probe.gd   (its design assistant section)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "lib:angled sections",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:build a part in the app",
+      "kind": "lib",
+      "entry": "src/parts/part_forge.gd",
+      "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
+      "area": "elements",
       "tests": []
     },
     {
@@ -173,6 +265,14 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:element maker",
+      "kind": "lib",
+      "entry": "src/parts/element_maker.gd",
+      "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
+      "area": "elements",
       "tests": []
     },
     {
@@ -200,12 +300,30 @@
       "tests": []
     },
     {
+      "id": "lib:made parts in the library and in files",
+      "kind": "lib",
+      "entry": "src/parts/custom_parts.gd",
+      "reach": "godot --headless --path . --script src/dev/element_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "lib:mesh fetch",
       "kind": "lib",
       "entry": "src/parts/part_library.gd",
       "reach": "godot --headless --path . --script src/dev/fetch_probe.gd",
       "area": "parts",
       "tests": []
+    },
+    {
+      "id": "lib:minifig assembly",
+      "kind": "lib",
+      "entry": "src/minifig/minifig.gd",
+      "reach": "godot --headless --path . --script src/dev/minifig_probe.gd",
+      "area": "minifig",
+      "tests": [
+        "tests/test_minifig.py"
+      ]
     },
     {
       "id": "lib:model and effort settings",
@@ -349,6 +467,30 @@
       "entry": "src/ai/claude_code.gd",
       "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "ui:download page",
+      "kind": "ui",
+      "entry": "web/download.html",
+      "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "ui:make a part",
+      "kind": "ui",
+      "entry": "src/ui/element_dialog.gd",
+      "reach": "godot --path .  (Parts bin, Make a part\u2026)  /  godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "ui:minifig builder",
+      "kind": "ui",
+      "entry": "src/ui/minifig_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   (by hand: M, or the Minifig button)",
+      "area": "minifig",
       "tests": []
     },
     {

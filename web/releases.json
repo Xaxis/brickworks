@@ -1,0 +1,64 @@
+{
+ "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
+ "latest": "0.1.0",
+ "releases": [
+  {
+   "version": "0.1.0",
+   "tag": "v0.1.0",
+   "date": "2026-10-10",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.1.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.1.0/CHANGELOG.md",
+   "summary": "The first desktop release: Brickworks for Linux, macOS and Windows, with all 28,319 parts on disk, so building, saving and the instructions need no network at all. Designing with Claude still does, on your own API key or Claude plan. The macOS and Windows builds are not yet signed by Apple or Microsoft, so each asks once before it first opens, and the steps for that are beside each download.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.1.0-linux-x86_64.AppImage",
+     "size": 383326712,
+     "sha256": "a8e59ad342c9b5aab5d193b7e1a4e33f36247beb9b43b1461c583ac90f4cae93",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.1.0/Brickworks-0.1.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.1.0-linux-x86_64.tar.xz",
+     "size": 255266280,
+     "sha256": "483f24ac4b7825077f7ea779f3a0720460a78b21ae7c9b5598be68e9b2991aa0",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz",
+     "unpacked": 1120002372,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.1.0-macos-universal.zip",
+     "size": 542823156,
+     "sha256": "c50e84ddd32334b7dc1016737d8d022dee2ecd2c3830b04c611dc6d69c80bba9",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.1.0/Brickworks-0.1.0-macos-universal.zip",
+     "unpacked": 1216799174,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.1.0-windows-x86_64.zip",
+     "size": 521111490,
+     "sha256": "f937d4211e160b98f45f3b7224eb1c862a29408d084eee92534fcbd9e64680fa",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.1.0/Brickworks-0.1.0-windows-x86_64.zip",
+     "unpacked": 1155687417,
+     "signed": false
+    }
+   ]
+  }
+ ]
+}

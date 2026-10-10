@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<!--
+  The desktop downloads, at /download.html.
+
+  What is on offer comes from /releases.json, which tools/release.py
+  publish writes from the files GitHub actually holds, so the version,
+  size, date and SHA-256 shown are those of the file the button fetches.
+  download.js reads it; this page has no inline script, because the
+  site's content security policy allows none that it has not hashed.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Download Brickworks for Linux, macOS and Windows</title>
+<meta name="description" content="Brickworks for the desktop: every part on disk, so it builds with no network at all. Linux, macOS and Windows, free, with checksums for every file.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="theme-color" content="#11151b">
+<meta property="og:title" content="Download Brickworks">
+<meta property="og:description" content="Brickworks for Linux, macOS and Windows, with every part on disk.">
+<meta property="og:url" content="https://brickworks.diy/download.html">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<style>
+:root {
+	--bg: #0e1013;
+	--bg-soft: #14171c;
+	--panel: #181c22;
+	--line: rgba(255, 255, 255, 0.09);
+	--ink: #eef0f4;
+	--ink-soft: rgba(238, 240, 244, 0.68);
+	--ink-faint: rgba(238, 240, 244, 0.42);
+	--red: #d0332f;
+	--green: #2f8f4e;
+	--accent: #f2cd37;
+	--radius: 12px;
+	--page: 1080px;
+}
+@media (prefers-color-scheme: light) {
+	:root {
+		--bg: #f4f5f7;
+		--bg-soft: #ffffff;
+		--panel: #ffffff;
+		--line: rgba(15, 20, 28, 0.1);
+		--ink: #12161c;
+		--ink-soft: rgba(18, 22, 28, 0.7);
+		--ink-faint: rgba(18, 22, 28, 0.48);
+		--accent: #b8860b;
+	}
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font: 400 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
+[hidden] { display: none !important; }
+
+header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	backdrop-filter: blur(12px);
+	background: color-mix(in srgb, var(--bg) 86%, transparent);
+	border-bottom: 1px solid var(--line);
+}
+.bar { display: flex; align-items: center; gap: 14px; padding: 12px 0; }
+.mark {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	font-weight: 640;
+	letter-spacing: -0.02em;
+	font-size: 17px;
+	text-decoration: none;
+}
+/* A 2x4 in CSS, studs and all: the same mark as the landing page. */
+.chip {
+	position: relative;
+	width: 30px;
+	height: 15px;
+	border-radius: 3px;
+	background: var(--red);
+	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	flex: none;
+}
+.chip::before {
+	content: "";
+	position: absolute;
+	inset: -3px 2px auto 2px;
+	height: 4px;
+	background-image: radial-gradient(circle at 3.25px 100%, var(--red) 0 3px, transparent 3.1px);
+	background-size: 6.5px 100%;
+	filter: brightness(1.12);
+}
+.bar nav { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.bar nav a {
+	text-decoration: none;
+	color: var(--ink-soft);
+	font-size: 14px;
+	padding: 7px 10px;
+	border-radius: 8px;
+}
+.bar nav a:hover { color: var(--ink); background: var(--panel); }
+@media (max-width: 720px) { .bar nav a:not(.cta) { display: none; } }
+
+.cta {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	text-decoration: none;
+	font-weight: 600;
+	padding: 10px 18px;
+	border-radius: 10px;
+	background: var(--accent);
+	color: #17130a;
+	border: 1px solid transparent;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 15px;
+}
+.cta:hover { filter: brightness(1.08); }
+.cta.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.cta.ghost:hover { background: var(--panel); filter: none; }
+.cta.big { padding: 14px 24px; font-size: 17px; border-radius: 12px; }
+
+.hero { padding: 64px 0 30px; text-align: center; }
+h1 {
+	margin: 0 0 12px;
+	font-size: clamp(32px, 6vw, 54px);
+	line-height: 1.05;
+	letter-spacing: -0.035em;
+	font-weight: 680;
+	text-wrap: balance;
+}
+.lede {
+	margin: 0 auto 26px;
+	max-width: 58ch;
+	font-size: clamp(16px, 2.3vw, 18.5px);
+	color: var(--ink-soft);
+	text-wrap: balance;
+}
+.offer { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.meta { font-size: 14px; color: var(--ink-soft); }
+.meta b { color: var(--ink); font-weight: 600; }
+.also { font-size: 14px; color: var(--ink-faint); }
+.also a { color: var(--ink-soft); }
+.notice {
+	margin: 18px auto 0;
+	max-width: 62ch;
+	padding: 12px 16px;
+	border-radius: 10px;
+	border: 1px solid var(--line);
+	background: var(--panel);
+	font-size: 14.5px;
+	color: var(--ink-soft);
+}
+
+section { padding: 34px 0; }
+h2 { margin: 0 0 8px; font-size: clamp(22px, 3.4vw, 28px); letter-spacing: -0.024em; font-weight: 640; }
+h3 { margin: 22px 0 6px; font-size: 16px; font-weight: 620; }
+.sub { margin: 0 0 20px; color: var(--ink-soft); max-width: 66ch; }
+
+.tabs {
+	display: flex;
+	gap: 6px;
+	padding: 4px;
+	border: 1px solid var(--line);
+	border-radius: 11px;
+	background: var(--bg-soft);
+	width: fit-content;
+	max-width: 100%;
+	margin-bottom: 16px;
+}
+.tabs button {
+	font: inherit;
+	font-size: 14.5px;
+	font-weight: 560;
+	color: var(--ink-soft);
+	background: transparent;
+	border: 0;
+	padding: 7px 16px;
+	border-radius: 8px;
+	cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+.tabs .yours { font-size: 11.5px; color: var(--ink-faint); margin-left: 6px; font-weight: 500; }
+
+.panel {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 22px;
+}
+.files { display: grid; gap: 12px; }
+.file {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 14px 16px;
+	background: var(--bg-soft);
+	display: grid;
+	gap: 8px;
+}
+.file .top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; }
+.file .name { font-weight: 600; overflow-wrap: anywhere; }
+.file .what { font-size: 13.5px; color: var(--ink-soft); }
+.sum { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.sum code {
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+	padding: 6px 8px;
+	border-radius: 7px;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	overflow-wrap: anywhere;
+	color: var(--ink-soft);
+}
+.sum button {
+	font: inherit;
+	font-size: 12.5px;
+	color: var(--ink);
+	background: transparent;
+	border: 1px solid var(--line);
+	border-radius: 7px;
+	padding: 5px 10px;
+	cursor: pointer;
+	flex: none;
+}
+.cols { display: grid; gap: 4px 22px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.panel ul, .panel ol { margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: 14.5px; }
+.panel li { margin: 3px 0; }
+.panel p { margin: 6px 0; color: var(--ink-soft); font-size: 14.5px; }
+.panel b { color: var(--ink); font-weight: 600; }
+code.cmd {
+	display: block;
+	margin: 6px 0;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--bg-soft);
+	border: 1px solid var(--line);
+	font-size: 12.5px;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+.warn { border-left: 3px solid var(--accent); padding-left: 12px; }
+
+footer {
+	border-top: 1px solid var(--line);
+	padding: 30px 0 46px;
+	color: var(--ink-faint);
+	font-size: 13px;
+	line-height: 1.75;
+	margin-top: 30px;
+}
+footer a { color: var(--ink-soft); }
+footer p { margin: 0 0 8px; max-width: 76ch; }
+</style>
+</head>
+<body>
+
+<header>
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip"></span>Brickworks</a>
+		<nav>
+			<a href="/">Home</a>
+			<a href="https://github.com/Xaxis/brickworks/releases">All releases</a>
+			<a href="https://github.com/Xaxis/brickworks">Source</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+	</div>
+</header>
+
+<main>
+	<div class="wrap hero">
+		<h1>Brickworks for your desktop</h1>
+		<p class="lede">
+			The same builder as the web app, with all 28,319 parts on disk, so
+			building, saving and the instructions work with no network at all.
+			Free, for Linux, macOS and Windows.
+		</p>
+
+		<div class="offer" id="offer" hidden>
+			<a class="cta big" id="offer-button" href="#all">Download</a>
+			<div class="meta" id="offer-meta"></div>
+			<div class="also" id="offer-also"></div>
+		</div>
+		<p class="notice" id="offer-none" hidden>
+			Brickworks for the desktop runs on Linux, macOS and Windows. On
+			this device, <a href="/app">the web app</a> is the way in; every
+			download is below for a computer.
+		</p>
+		<p class="notice" id="none-yet" hidden>
+			The first desktop release is on its way. Until it is out,
+			Brickworks runs in your browser: <a href="/app">open the app</a>.
+		</p>
+		<p class="notice" id="broken" hidden>
+			The list of downloads did not load. Every release is also on
+			<a href="https://github.com/Xaxis/brickworks/releases/latest">GitHub</a>.
+		</p>
+		<noscript>
+			<p class="notice">
+				This page picks the right download with a little JavaScript.
+				Without it, every release and its checksums are on
+				<a href="https://github.com/Xaxis/brickworks/releases/latest">GitHub</a>.
+			</p>
+		</noscript>
+	</div>
+
+	<section id="all" class="wrap" hidden>
+		<h2>Every download</h2>
+		<p class="sub" id="release-line"></p>
+
+		<div class="tabs" role="tablist" aria-label="Operating system">
+			<button role="tab" id="tab-linux" aria-controls="panel-linux" data-os="linux">Linux</button>
+			<button role="tab" id="tab-macos" aria-controls="panel-macos" data-os="macos">macOS</button>
+			<button role="tab" id="tab-windows" aria-controls="panel-windows" data-os="windows">Windows</button>
+		</div>
+
+		<div class="panel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" data-panel="linux" hidden>
+			<div class="files" data-files="linux"></div>
+			<div class="cols">
+				<div>
+					<h3>Starting it</h3>
+					<p>The <b>AppImage</b> is one file that runs as it is:</p>
+					<code class="cmd" data-cmd="linux-appimage">chmod +x Brickworks-*.AppImage &amp;&amp; ./Brickworks-*.AppImage</code>
+					<p>Or allow it to run as a program in your file manager's
+					Properties, then double-click it. AppImages mount
+					themselves with FUSE; a system without it can add
+					<code>--appimage-extract-and-run</code>, or use the
+					<b>.tar.xz</b>:</p>
+					<code class="cmd" data-cmd="linux-tar">tar -xf Brickworks-*.tar.xz &amp;&amp; ./Brickworks-*/brickworks.x86_64</code>
+				</div>
+				<div>
+					<h3>What it needs</h3>
+					<ul>
+						<li>64-bit x86 Linux<span data-need="glibc"></span></li>
+						<li>A graphics driver with Vulkan; OpenGL 3.3 works where there is none</li>
+						<li data-need="disk-linux"></li>
+					</ul>
+					<h3>Checking the download</h3>
+					<code class="cmd" data-cmd="linux-sum">sha256sum Brickworks-*.AppImage</code>
+					<p>The answer should be the SHA-256 shown above.</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="panel" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos" data-panel="macos" hidden>
+			<div class="files" data-files="macos"></div>
+			<div class="cols">
+				<div>
+					<h3>Starting it</h3>
+					<p>Open the zip, then move <b>Brickworks.app</b> into Applications.
+					One app runs on both Apple silicon and Intel Macs.</p>
+					<div class="warn" data-unsigned="macos" hidden>
+						<p><b>The first launch asks first.</b> This build is not yet
+						notarised by Apple, so macOS will not open it on a
+						double-click the first time:</p>
+						<ol>
+							<li>Open Brickworks. macOS says it cannot check it for
+							malicious software: choose <b>Done</b>.</li>
+							<li>Open <b>System Settings</b>, then <b>Privacy &amp;
+							Security</b>, scroll to Security and choose <b>Open
+							Anyway</b> beside Brickworks.</li>
+							<li>Choose <b>Open</b>. From then on it opens like any other app.</li>
+						</ol>
+						<p>If macOS says the app <b>is damaged</b>, that is the
+						download's quarantine flag on an app Apple has not
+						notarised, not damage. Check the SHA-256 first, then in
+						Terminal:</p>
+						<code class="cmd">xattr -dr com.apple.quarantine /Applications/Brickworks.app</code>
+					</div>
+				</div>
+				<div>
+					<h3>What it needs</h3>
+					<ul>
+						<li data-need="macos"></li>
+						<li data-need="disk-macos"></li>
+					</ul>
+					<h3>Checking the download</h3>
+					<code class="cmd" data-cmd="macos-sum">shasum -a 256 ~/Downloads/Brickworks-*.zip</code>
+					<p>The answer should be the SHA-256 shown above.</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="panel" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows" data-panel="windows" hidden>
+			<div class="files" data-files="windows"></div>
+			<div class="cols">
+				<div>
+					<h3>Starting it</h3>
+					<p>Right-click the zip and choose <b>Extract All</b>, then run
+					<b>Brickworks.exe</b> from the folder. It has to be extracted
+					first: the part library, <b>Brickworks.pck</b>, sits beside
+					the program and is not found from inside the zip.</p>
+					<div class="warn" data-unsigned="windows" hidden>
+						<p><b>The first launch asks first.</b> This build is not yet
+						signed, so Windows may say <b>"Windows protected your
+						PC"</b>. Check the SHA-256, then choose <b>More info</b> and
+						<b>Run anyway</b>. Windows remembers after the first time.</p>
+					</div>
+				</div>
+				<div>
+					<h3>What it needs</h3>
+					<ul>
+						<li>64-bit Windows 10 or 11</li>
+						<li>A graphics driver with Vulkan or Direct3D 12; OpenGL 3.3 works where there is neither</li>
+						<li data-need="disk-windows"></li>
+					</ul>
+					<h3>Checking the download</h3>
+					<p>In PowerShell:</p>
+					<code class="cmd" data-cmd="windows-sum">Get-FileHash .\Downloads\Brickworks-*.zip -Algorithm SHA256</code>
+					<p>The answer should be the SHA-256 shown above.</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section id="notes" class="wrap" hidden>
+		<h2 id="notes-title">What is in it</h2>
+		<p class="sub" id="notes-summary"></p>
+		<p class="also"><a id="notes-link" href="https://github.com/Xaxis/brickworks/blob/main/CHANGELOG.md">The full changelog</a>
+			· <a id="release-link" href="https://github.com/Xaxis/brickworks/releases">This release on GitHub</a>
+			· <a href="https://github.com/Xaxis/brickworks/releases">Every release</a></p>
+	</section>
+</main>
+
+<footer>
+	<div class="wrap">
+		<p>
+			Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+			community, licensed
+			<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+			LDraw™ is a trademark owned and licensed by the Estate of James
+			Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+			Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+		</p>
+		<p>
+			LEGO® is a trademark of the LEGO Group of companies which does not
+			sponsor, authorize or endorse this site.
+		</p>
+		<p>
+			<a href="/">Brickworks</a> · <a href="/app">Open the app</a>
+			· <a href="https://github.com/Xaxis/brickworks">Source on GitHub</a>
+		</p>
+	</div>
+</footer>
+
+<script src="/download.js" defer></script>
+</body>
+</html>

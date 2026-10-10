@@ -56,7 +56,7 @@ environment = SubResource("Env")
 transform = Transform3D(0.77, -0.42, 0.48, 0, 0.75, 0.66, -0.64, -0.51, 0.58, 0, 600, 0)
 light_energy = 0.9
 light_angular_distance = 0.6
-light_specular = 1.0
+light_specular = 0.25
 shadow_enabled = true
 shadow_bias = 0.015
 shadow_normal_bias = 1.0
@@ -79,7 +79,7 @@ shadow_enabled = false
 transform = Transform3D(0.64, 0.42, -0.64, 0, 0.84, 0.55, 0.77, -0.35, 0.53, 0, 200, 0)
 light_energy = 0.3
 light_color = Color(1, 0.96, 0.9, 1)
-light_specular = 1.5
+light_specular = 0.3
 shadow_enabled = false
 
 [node name="CadCamera" type="Camera3D" parent="."]

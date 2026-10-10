@@ -31,7 +31,12 @@ picture the assistant is shown.
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,` or the Help button — and every key on it actually doing that. One table,
+  `,` or the Help button — and every key on it actually doing that. Its last
+  line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
+  released 2026-10-10 (3f2a9c1)" in a release, ", development build" from
+  source, and on the web the version before the deploy's commit and time. The
+  desktop window title carries the version too. `--about` prints the same line
+  ([release](release.md)). One table,
   `ControlsHint.for_keyboard()`, in sections (Building, Selecting, The view, The
   timeline, Panels), holds every control the handlers answer to, redo, Ctrl-A,
   Delete, Escape, the numbered views, shift-middle-drag, shift-scroll and the
@@ -99,6 +104,23 @@ picture the assistant is shown.
   under Compatibility, which lights in sRGB space. The parts-bin previews keep
   their brighter light: a preview is judged by whether its average reads as the
   colour, and at true exposure a lit blue averaged nearer black.
+  Highlights: the sun's specular is 0.25 and the rim's 0.3 (were 1.0 and 1.5),
+  `ModelShot`'s key 0.25, and opaque plastic's `base_roughness` 0.28 (was 0.22;
+  transparent keeps about 0.09). A flat glossy face at the mirror angle to one
+  small light reflects it from every point, so the whole face went white: the
+  eleventh Orthanc's dark bluish grey rock was drawn ringed in white bands, and
+  there is no white in it (11.6% of the rock lighter than light bluish grey,
+  now 3.7%). A larger sun (`light_angular_distance`) spreads the flash over
+  more of the face, not less. Specular alone is a knife edge against
+  `finish_probe`, which needs plastic to glint so rubber can be without one: at
+  0.15 trans rubber stopped differing, at 0.25 slopes went pale; the roughness
+  is what lets both hold. On the web (Compatibility) the energy is cut to
+  calibrate the diffuse and the glint went with it, so specular has its own
+  factor there (`BrickWorld.light_specular`, x2): the web never went pale, and
+  without it trans rubber stopped differing from trans plastic. `highlight_probe` turns 48 dark bluish grey slopes of
+  three kinds 16 ways, looks from eight directions at two heights and from each
+  of the assistant's views, ignores edge pixels (half background), and fails
+  past 2% of the model lighter than L 0.80 (the old lights: 8.1%).
 - `studs written on the render`: `src/ai/shot_ruler.gd`. Two ticked, numbered
   lines along the model's near corner, drawn by projecting world positions through
   the same camera that took the picture. A render says what was built and not
@@ -164,6 +186,7 @@ godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corn
 godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking a colour recolours something
 godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd # every finish drawn as itself
 godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd # black is black, greys are grey
+godot --path . --resolution 1200x800 --script src/dev/highlight_probe.gd   # a glossy slope does not go white
 # the same three on Forward+ and the GPU (the plain godot is Compatibility, in software):
 ~/.claude/claude-core/bin/gpu godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd
 ```

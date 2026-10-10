@@ -119,6 +119,16 @@ stats on the status line; a grouped toolbar with Clear asking first.
   Every castle built ~200 of it; real castle sets since 2010 use at most
   eight. The prompt now says round is a choice.
 
+## Desktop releases
+
+Linux, macOS and Windows builds are cut on a cadence, put on GitHub Releases
+and offered at brickworks.diy/download.html. `docs/RELEASING.md` is the
+whole cycle: when to cut one, the seven commands, what done looks like, and
+what the owner has to provide before macOS and Windows stop asking on first
+launch (an Apple Developer ID with an App Store Connect key; a Windows
+code-signing service). `VERSION` is the version; `tools/release.py version`
+says whether everything agrees with it.
+
 ## What is next
 
 1. **Orthanc, the owner's yardstick** (`docs/ROADMAP.md`, "Beyond variety:
@@ -128,16 +138,25 @@ stats on the status line; a grouped toolbar with Clear asking first.
    get it from interiors, details and figures: rooms inside as one call shaped
    like the work, and minifigures once the builder lands. A master-level
    Orthanc goes on the homepage (task #29).
-2. **Agents in worktrees, to merge as they report:** the minifigure builder,
-   the custom element designer, the real-set techniques harvest, and desktop
-   releases (macOS and Linux first, then Windows, downloads on the site; the
-   owner must supply an Apple Developer ID and a Windows signing certificate
-   for signed builds).
-3. **The landing page** for what shipped since: the timeline (build order,
-   as made, history), keyboard controls, true colour and finishes.
-4. The checker's false positives: clips on bars and hollow studs (the parts
-   pipeline records no bar connector), then roofs from the 32 real roof
-   sub-models that pass.
+2. **Desktop 0.1.0 is out** (2026-10-10): checked by the release workflow on
+   Linux, macOS (Apple silicon and Intel) and Windows, then published from that
+   draft; brickworks.diy/download.html offers it. Next release by the cadence in
+   `docs/RELEASING.md`.
+3. **Merged 2026-10-10:** the minifigure builder (`src/minifig/`, M or the
+   Minifig button; `add_minifig` for the assistant), the custom element maker
+   (Make a part… in the bin; `src/parts/element_maker.gd`, `part_forge.gd`),
+   59 real-set worked examples (`show_technique`), desktop releases
+   (`tools/release.py`, `docs/RELEASING.md`, `web/download.html`), a model's
+   name kept across a restart plus New, and the lighting fix (no white
+   slopes). Still out: control icons and context cursors (an agent's
+   worktree). Desktop signing waits on the owner: an Apple Developer ID and a
+   Windows code-signing certificate (`docs/RELEASING.md`).
+4. **The checker refuses real techniques:** of 880 real sub-models, 247 are
+   refused for overlaps that are real LEGO (bars through holes, clips on
+   bars, hinges, panes in frames `Assistant.NESTS` lacks, the 2x2 turntable).
+   The turntable is how real sets turn a wall, so no angled worked example
+   can pass until it is understood.
+5. Roofs, from the 32 real roof sub-models that pass.
 
 ## Gotchas that will cost you hours
 
@@ -154,6 +173,14 @@ stats on the status line; a grouped toolbar with Clear asking first.
   on SwiftShader (`tools/web/browser.mjs`).
 - **No display.** `tools/check.sh` and `tools/design.py` give themselves
   Xvfb. Anything new that drives the app needs the same, or it hangs.
+- **Probes write this machine's real desktop user data.** Every probe that
+  opens `src/main.tscn` keeps the autosave (`~/.local/share/godot/app_userdata/
+  Brickworks/autosave.ldr`), and so do agents' suites in their worktrees: the
+  desktop app here reopens whatever the last probe left. `project_probe` puts
+  it back; most do not. The owner works in the browser, whose storage is apart.
+- **On the web a save is durable only once IndexedDB has it.** The engine
+  syncs `user://` behind its own back; at a load of eighty that took 44 s, and
+  a reload before then reopens the older autosave.
 - **Never kill by `ps | grep`.** `tools/running.py <pattern>` finds a run
   and `--stop` ends it. Stopping `design.py` can orphan its Godot child;
   check with `ps` for your own `--out` path afterwards. Do not touch
@@ -187,6 +214,8 @@ stats on the status line; a grouped toolbar with Clear asking first.
 | Catalogue build | `tools/refresh_catalogue.py` |
 | Drive a real design | `tools/design.py "a brief" --out m.ldr` |
 | Deploy | `tools/deploy.sh --prod` |
+| Desktop releases: version, build, smoke, publish | `tools/release.py`, the cycle in `docs/RELEASING.md` |
+| The download page | `web/download.html`, fed by `web/releases.json` |
 
 ## Cleanup state
 

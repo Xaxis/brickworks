@@ -62,12 +62,21 @@ class Approx:
         return max(self.abs, self.rel * math.fabs(self.expected))
 
     def __eq__(self, other: object) -> bool:
+        # A sequence compares element by element, as pytest's does: the
+        # element tests compare a point to a point.
+        if isinstance(self.expected, (tuple, list)):
+            if not isinstance(other, (tuple, list)) or len(other) != len(self.expected):
+                return False
+            return all(Approx(e, self.rel, self.abs) == o
+                       for e, o in zip(self.expected, other))
         try:
             return math.fabs(float(other) - self.expected) <= self.tolerance()  # type: ignore[arg-type]
         except (TypeError, ValueError):
             return NotImplemented
 
     def __repr__(self) -> str:
+        if isinstance(self.expected, (tuple, list)):
+            return "approx(%r)" % (self.expected,)
         return "%r +- %.3g" % (self.expected, self.tolerance())
 
 

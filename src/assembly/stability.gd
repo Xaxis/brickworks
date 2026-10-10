@@ -183,7 +183,7 @@ func check(world: BrickWorld) -> Report:
 		var brick: BrickWorld.Brick = item
 		var own: float = mass.get(brick.id, 0.0)
 		var carried: float = own + float(received.get(brick.id, 0.0))
-		var centre: Vector3 = brick.transform.origin * own
+		var centre: Vector3 = _middle(brick) * own
 		if load_centre.has(brick.id):
 			centre += load_centre[brick.id]
 
@@ -309,7 +309,7 @@ func _check_levels(
 				continue
 			var w: float = mass.get(brick.id, 0.0)
 			grams += w
-			centre += brick.transform.origin * w
+			centre += _middle(brick) * w
 		if grams <= 0.0:
 			continue
 		centre /= grams
@@ -416,6 +416,20 @@ static func grams(info: PartLibrary.PartInfo) -> float:
 	# plastic: a 6 LDU radius standing 4 LDU proud.
 	material += info.stud_count * PI * 36.0 * 4.0
 	return (material / CUBIC_LDU_PER_CM3) * DENSITY_G_PER_CM3
+
+
+## Where a part's mass is: the middle of its shape.
+##
+## Not its origin, which LDraw puts on top of the body — the face a stud
+## stands on. Weighed at their origins a stack's centre came out half a
+## part too high, which on a tall narrow thing is the difference between
+## standing and top-heavy: a minifigure on its two studs, every part of
+## it hung from the top, read as about to tip.
+func _middle(brick: BrickWorld.Brick) -> Vector3:
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id) if library != null else null
+	if part == null:
+		return brick.transform.origin
+	return brick.transform * part.bounds.get_center()
 
 
 ## The cells a brick occupies, as boxes — the lattice's own answer where

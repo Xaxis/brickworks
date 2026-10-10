@@ -111,6 +111,20 @@ static func light_energy(forward_plus: float, casts_shadows: bool = false) -> fl
 	return forward_plus * (0.11 if casts_shadows else 0.6)
 
 
+## A light's specular, set for Forward+, for whichever renderer is
+## drawing. The energy above is cut to calibrate the diffuse, and the
+## glint goes with it: at the specular that keeps a dark slope from going
+## white under Forward+, transparent plastic on the web lost the glint
+## that tells it from transparent rubber. Measured with
+## src/dev/finish_probe.gd and src/dev/highlight_probe.gd on both: at
+## one times, trans rubber stopped differing; at four, slopes went pale
+## here too; at two, both hold.
+static func light_specular(forward_plus: float) -> float:
+	if _linearise_colors():
+		return forward_plus
+	return forward_plus * 2.0
+
+
 ## Materials are shared, not per batch: four of them cover everything, and
 ## sharing them lets Godot group the draws.
 func _material(material_class: int, two_sided: bool) -> ShaderMaterial:
@@ -573,10 +587,17 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		var offset: Vector3 = brick.transform.origin - pivot
 		var at := Transform3D(
 			turn * brick.transform.basis, pivot + turn * offset)
-		# Land exactly on the lattice: an accumulated quarter turn drifts
-		# by a fraction of a cell otherwise, and after four of them a
-		# model no longer meets the grid it was built on.
-		at.origin = BrickLattice.to_ldu(BrickLattice.to_cell(at.origin))
+		# Exact already: the turn is whole numbers and the pivot is on a
+		# stud, so a part on the lattice lands on the lattice. Only the
+		# float dust is taken off, to the 1/10000 LDU a file keeps.
+		#
+		# This used to floor every origin onto a cell, which is the
+		# basis bug of the paragraph above over again for positions: a
+		# part that was never on the 2 LDU lattice was moved onto it. A
+		# minifigure is nine such parts — an arm 15.552 out from its
+		# torso — and one press of Q moved its arms up to 2 LDU off its
+		# shoulders and its hands out of its arms.
+		at.origin = at.origin.snapped(Vector3.ONE * 0.0001)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
 		brick.transform = at

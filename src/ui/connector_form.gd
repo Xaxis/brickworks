@@ -324,6 +324,7 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 		"save_model": return "Saved the model"
 		"show_technique": return "Looked up how to do %s" % about
 		"attachment_points": return "Worked out where a part attaches"
+		"add_minifig": return "Stood %s in the model" % (about if not about.is_empty() else "a figure")
 	return tool.replace("_", " ").capitalize()
 
 

@@ -22,10 +22,14 @@ The Python side: LDraw in, mesh cache and catalogue out.
 - `upload parts to storage`: puts the rest in the Supabase bucket under
   content-hash names, cached for a year, so a name's bytes can never change.
 
-- `export for linux` / `windows` / `macos`: the downloadable builds.
+- `export for linux` / `windows` / `macos`: the raw exports.
   `tools/export.sh desktop` makes all three. Each carries the whole part
   library — a 70-104 MB binary beside a 995 MB `.pck` — so the app works with
-  no network at all, which the web build cannot.
+  no network at all, which the web build cannot. What people download is made
+  by `tools/release.py build` instead ([release](release.md)): from the
+  commit, with only the meshes the catalogue names, packaged and read back.
+  The macOS app from `tools/export.sh mac` carries Godot's own signature,
+  which is malformed (release.md, Gotchas); give a Mac the release build.
 
 ## How to reach it
 

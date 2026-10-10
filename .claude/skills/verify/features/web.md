@@ -76,6 +76,12 @@ as the client.
   last been deployed. Desktop builds say "Development build".
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
+- The desktop downloads page (`web/download.html`, `download.js`,
+  `releases.json`) ships with every deploy like the rest of `web/`; what it
+  does and how it is checked is in [release](release.md). The landing page
+  links to it from the nav and the footer. The deploy does not check it yet:
+  after a release, run `node tools/web/download_check.mjs
+  --url=https://brickworks.diy/download.html`.
 - `the assistant, as a person uses it`: `tools/web/assistant_flow.mjs` pastes a
   key, asks for a small house and records every answer from Anthropic, with a
   screenshot at each step. With its default fake key it is free and proves the

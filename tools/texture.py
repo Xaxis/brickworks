@@ -55,6 +55,19 @@ def read_ldr(path: Path) -> list[tuple[str, int]]:
     return parts
 
 
+def without_figures(parts: list[tuple[str, int]], by_id: dict) -> list[tuple[str, int]]:
+    """The parts a set's own inventory would count: not a minifigure's body
+    or what it wears.  Rebrickable keeps those in each figure's inventory
+    (12,423 heads there against 2,851 in sets'), and the norms are taken
+    from sets', so a castle with a dozen guards is not richer for them.
+    What a figure holds is a set part and stays.  Minifig.is_body_part in
+    the app is the same rule."""
+    def body(part: str) -> bool:
+        category = by_id.get(part, {}).get("category", "")
+        return category.startswith("Minifig") and category != "Minifig Accessory"
+    return [(p, c) for p, c in parts if not body(p)]
+
+
 def kinds_for(brief: str, kinds: dict, most: int = 3) -> list[str]:
     """The kinds a brief names, the way PartLibrary.kinds_for reads it."""
     found: list[tuple[int, str]] = []
@@ -86,6 +99,13 @@ def main() -> int:
     catalogue = json.loads(CATALOGUE.read_text())
     known = {entry["id"] for entry in catalogue["parts"]}
     unknown = sorted({p for p, _ in parts if p not in known})
+    by_id = {entry["id"]: entry for entry in catalogue["parts"]}
+    figures = len(parts)
+    parts = without_figures(parts, by_id)
+    figures -= len(parts)
+    if not parts:
+        print(f"{args.model}: nothing in it but minifigures", file=sys.stderr)
+        return 1
 
     count = Counter(p for p, _ in parts)
     commonest, most = count.most_common(1)[0]
@@ -95,7 +115,6 @@ def main() -> int:
     top_two = round(100 * sum(by_colour[:2]) / len(parts))
     colours = {c for _, c in parts}
     lots = set(parts)
-    by_id = {entry["id"]: entry for entry in catalogue["parts"]}
     sizes = [piece_size(by_id[p]) for p, _ in parts if p in by_id]
     sizes = [size for size in sizes if size is not None]
     big = round(100 * sum(1 for size in sizes if size >= BIG_PIECE)
@@ -105,6 +124,9 @@ def main() -> int:
           f"{accents} shapes used once or twice, {main}% its main colour "
           f"({top_two}% in two), {big}% of its pieces as big as a 2x4 "
           f"brick")
+    if figures:
+        print(f"  and {figures} parts of minifigures, not counted: a set's "
+              f"inventory keeps its figures apart")
     if unknown:
         print(f"  {len(unknown)} shapes are not in the catalogue, so nothing "
               f"below knows them: {', '.join(unknown[:8])}")

@@ -76,6 +76,19 @@ func _run() -> void:
 		if str(technique.get("why", "")).length() < 40:
 			_fail("%s does not say why it works" % name)
 			continue
+		# Found by what it is for, or it is one more name in a list of
+		# sixty that a design looking for a roof has to read through.
+		if not Techniques.GROUPS.has(str(technique.get("group", ""))):
+			_fail("%s is in no group show_technique lists" % name)
+			continue
+		# A real set's construction says whose it is: the repository's
+		# licence asks for the modeller's name, and the set is the
+		# evidence that LEGO builds it this way.
+		var why: String = str(technique["why"])
+		if why.contains("model repository") and not (why.contains("model by ")
+				and why.contains("CC BY") and why.contains("As LEGO built it in ")):
+			_fail("%s is from a real set and does not credit it" % name)
+			continue
 		print("  ok    %-22s %d parts, %s" % [name,
 			model.placements.size(), verdict["summary"]])
 
@@ -89,6 +102,37 @@ func _run() -> void:
 		not Techniques.named("diagonal").is_empty())
 	_check("a name nobody has finds nothing",
 		Techniques.named("hyperdrive").is_empty())
+	# Whole words, not letters: "street lamp" has "tree" in it.
+	_check("a name inside the question, as words: \"street lamp\" is not the tree",
+		str(Techniques.named("street lamp").get("name", "")) != "tree")
+	# Read back name by name, not searched for: "bed" is inside
+	# "four-poster bed", so a substring test passes with it missing.
+	var listed := PackedStringArray()
+	for group: String in Techniques.listing().split("; "):
+		listed.append_array(group.get_slice(": ", 1).split(", "))
+	var unlisted := PackedStringArray()
+	var seen: Dictionary = {}
+	for name: String in Techniques.names():
+		if not listed.has(name):
+			unlisted.append(name)
+		seen[name] = int(seen.get(name, 0)) + 1
+	_check("every one is in the grouped list show_technique offers%s"
+		% ("" if unlisted.is_empty() else ": not " + ", ".join(unlisted)),
+		unlisted.is_empty())
+	_check("and no two share a name", seen.size() == Techniques.names().size())
+	# What a design actually reads: the tool's answer when it names
+	# nothing, and the tool's own description.
+	var offered: String = assistant._show_technique("")
+	_check("asked for nothing, show_technique answers by group",
+		offered.contains("walls and stone: ") and offered.contains("plants: "))
+	var described: String = ""
+	for tool: Variant in assistant._tools():
+		if str((tool as Dictionary).get("name", "")) == "show_technique":
+			described = str((tool as Dictionary)["description"])
+	_check("...and its description lists them by group too",
+		described.contains("furniture and interiors: ") and described.contains("bookcase"))
+	_check("asked for one, it gets the parts: \"a castle bookcase\"",
+		assistant._show_technique("a castle bookcase").contains("87087"))
 	# The prompt's fill table used to send a round tower to an ellipse,
 	# which is where the 354 1x1 bricks came from. Both halves asserted:
 	# the technique exists under a findable name, and the table no longer

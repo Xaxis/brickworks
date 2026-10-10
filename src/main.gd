@@ -42,7 +42,10 @@ var _deployment: Deployment
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
+## The element maker: a part that is not in the library, made.
+var _elements: ElementDialog
 var _controls: ControlsDialog
+var _figures: MinifigDialog
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -127,6 +130,13 @@ func _tell_page() -> void:
 	var to_window: Transform2D = get_viewport().get_final_transform()
 	var where: Dictionary = {}
 	var named: Dictionary = _chat.controls_by_name()
+	if _bar != null:
+		named.merge(_bar.controls_by_name())
+	if _figures != null and _figures.visible:
+		named.merge(_figures.controls_by_name())
+	if _elements != null:
+		named.merge(_bin.controls_by_name())
+		named.merge(_elements.controls_by_name())
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -134,6 +144,39 @@ func _tell_page() -> void:
 		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	if not _page_title.is_empty():
+		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
+			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
+	# And how many parts are standing, so a browser check can tell that a
+	# click put something down rather than guess it from the pixels.
+	if _world != null:
+		JavaScriptBridge.eval("window.brickworksBricks = %d" % _world.brick_count(), true)
+	# And what a test cannot see in the canvas: how many bricks there are,
+	# what is in hand, which parts were made here.
+	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
+		"bricks": _world.brick_count() - _store.scenery.size(),
+		"held": _builder.held_part,
+		"custom": _library.custom.keys(),
+	}), true)
+
+
+## The model's name where a window shows one: the browser tab, or the
+## title bar. "Untitled" on a model saved as something else was the
+## owner's complaint; the tab says the same name the bar does.
+var _page_title: String = ""
+
+
+func _show_name(name: String) -> void:
+	var text: String = "%s — Brickworks" % name
+	if OS.has_feature("web"):
+		# Kept and put back by _tell_page as well: the engine titles the
+		# page itself as it starts, after the model it restored had been
+		# named, and the tab said "Brickworks" over a model called Flow Tower.
+		_page_title = text
+		JavaScriptBridge.eval("document.title = %s" % JSON.stringify(text), true)
+	else:
+		# With the version, as the title said before it had a name to say.
+		get_window().title = "%s %s" % [text, BuildInfo.version()]
 
 
 func _enable_antialiasing() -> void:
@@ -143,6 +186,18 @@ func _enable_antialiasing() -> void:
 
 
 func _ready() -> void:
+	# What this build is, said before the catalogue costs fifteen seconds:
+	# how a person reporting a bug, and the release smoke test, ask a
+	# downloaded build which one it is.
+	if _has_argument("--about"):
+		print(BuildInfo.describe())
+		# quit() ends the run after this frame, not now, and _process
+		# would steer a camera through a UI that was never built.
+		set_process(false)
+		get_tree().quit()
+		return
+	if not OS.has_feature("web"):
+		get_window().title = "Brickworks %s" % BuildInfo.version()
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -155,8 +210,14 @@ func _ready() -> void:
 	if not _library.load_catalogue():
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
+		# Nothing below was built, so there is nothing for _process to
+		# steer: it called into a playback bar that does not exist.
+		set_process(false)
 		return
 	_catalogue_ms = Time.get_ticks_msec() - started
+	# Parts made here before, built again from their LDraw files, so they
+	# are in the bin and so a model that uses them reopens.
+	CustomParts.load_all(_library)
 
 	_world.library = _library
 	_world.rebuilt.connect(_on_rebuilt)
@@ -490,6 +551,7 @@ func _light_for_this_renderer() -> void:
 		var light: DirectionalLight3D = get_node(light_name)
 		light.light_energy = BrickWorld.light_energy(light.light_energy,
 			light.shadow_enabled)
+		light.light_specular = BrickWorld.light_specular(light.light_specular)
 	var environment: Environment = ($WorldEnvironment as WorldEnvironment).environment
 	environment.ambient_light_energy = BrickWorld.light_energy(
 		environment.ambient_light_energy)
@@ -679,6 +741,15 @@ func _build_ui() -> void:
 		_assistant.forget_built()
 		_lay_baseplate()
 		_on_model_changed())
+	_bar.model_named.connect(_show_name)
+	_bar.started_new.connect(func() -> void:
+		_sample_untouched = false
+		_assistant.forget_built()
+		if _chat != null:
+			_chat.new_chat()
+		_lay_baseplate()
+		_on_model_changed()
+		_camera.frame(_built_bounds()))
 	_bar.opened.connect(func(_bricks: int) -> void:
 		_sample_untouched = false
 		_assistant.forget_built()
@@ -875,9 +946,21 @@ func _build_ui() -> void:
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
 		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
-		_inset(_mosaic, 380.0, 460.0))
+		_inset(_mosaic, 380.0, 460.0)
+		_inset(_figures, 1040.0, 660.0)
+		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 	_bar.timeline_wanted.connect(_toggle_steps)
+
+	# Over the model rather than beside it, like the parts list: making
+	# a figure wants the room, and is done before going back to build.
+	_figures = MinifigDialog.new()
+	_figures.library = _library
+	_figures.thumbnails = _thumbnails
+	$HUD.add_child(_figures)
+	_inset(_figures, 1040.0, 660.0)
+	_bar.minifig_wanted.connect(_open_figures)
+	_figures.place_wanted.connect(_hold_figure)
 
 	_controls = ControlsDialog.new()
 	$HUD.add_child(_controls)
@@ -920,6 +1003,22 @@ func _build_ui() -> void:
 		_mosaic_source = image
 		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
+
+	_elements = ElementDialog.new()
+	_elements.library = _library
+	$HUD.add_child(_elements)
+	_inset(_elements, 440.0, 760.0)
+	_bin.make_wanted.connect(func() -> void:
+		_elements.color_code = _builder.held_color
+		_elements.open(_builder.held_part))
+	_elements.made.connect(func(part_id: String) -> void:
+		_bin.populate()
+		_bin.show_category("Custom")
+		_bin.show_held(part_id, _builder.held_color)
+		_on_part_chosen(part_id)
+		var info: PartLibrary.PartInfo = _library.parts.get(part_id)
+		_bar.say("made %s — it is in the parts bin under Custom" % (
+			Inventory._tidy(info.name) if info != null else part_id)))
 
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its
@@ -1367,7 +1466,26 @@ func _on_model_edited() -> void:
 		_store.touch()
 
 
+func _open_figures() -> void:
+	_builder.hide_preview()
+	_figures.open()
+
+
+## Hold a figure from the builder the way a part is held: the next click
+## on a stud stands it there.
+func _hold_figure(figure: Minifig) -> void:
+	_builder.hold_figure(figure.assemble(_library), figure.name)
+	var fetching: int = 0
+	for part_id: String in figure.part_ids():
+		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):
+			fetching += 1
+	_bar.say("placing %s — point at a stud, R to turn, click to stand it there, Esc to stop%s"
+		% [figure.name, " (fetching %d parts…)" % fetching if fetching > 0 else ""])
+	_refresh_preview()
+
+
 func _on_part_chosen(part_id: String) -> void:
+	_builder.drop_figure()
 	_builder.held_part = part_id
 	# On the web most parts are a request away rather than resident. Ask
 	# for it as soon as it is picked, so it is usually there by the time
@@ -1401,6 +1519,7 @@ func _open(path: String) -> int:
 	var model: LdrModel = LdrModel.load_file(path)
 	if model == null:
 		return 0
+	CustomParts.take_from(_library, model)
 
 	var placed: int = 0
 	var missing: Dictionary = {}
@@ -2207,6 +2326,10 @@ func _over_panel_at(point: Vector2) -> bool:
 		return true
 	if _mosaic != null and _mosaic.visible:
 		return true
+	if _figures != null and _figures.visible:
+		return true
+	if _elements != null and _elements.visible:
+		return true
 	return false
 
 
@@ -2358,6 +2481,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_steps()
 		KEY_P:
 			_toggle_parts()
+		KEY_M:
+			_open_figures()
 		KEY_C:
 			# Paint the selection if there is one, or what is under the
 			# cursor if there is not.
@@ -2450,6 +2575,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_S:
 			if (key.ctrl_pressed or key.meta_pressed) and _bar:
 				_bar._on_save()
+		KEY_N:
+			# Not on the web, where Ctrl+N is the browser's new window and
+			# never reaches the page.
+			if (key.ctrl_pressed or key.meta_pressed) and _bar:
+				_bar.ask_for_new()
 		KEY_ESCAPE:
 			# Leaving playback first. Escape reads as "out of this mode",
 			# and quitting the app because someone wanted the whole model
@@ -2483,6 +2613,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				return
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
+				return
+			if _figures != null and _figures.visible:
+				_figures.close()
+				return
+			if _builder.is_holding_figure():
+				_builder.drop_figure()
+				_bar.say("")
+				_refresh_preview()
+				return
+			if _elements != null and _elements.visible:
+				_elements.visible = false
 				return
 			if not _builder.selection.is_empty():
 				_builder.clear_selection()
