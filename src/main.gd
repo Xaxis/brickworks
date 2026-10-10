@@ -657,6 +657,11 @@ func _build_ui() -> void:
 	# it builds in front of them.
 	_store.keeps = not _given_any(["--ask", "--ask-claude-code", "--bench",
 		"--shot", "--booklet", "--autobuild", "--showcase", "--out"])
+	# Nor a probe: every one that opened the app wrote this machine's own
+	# autosave, so the desktop app reopened whatever the last test left.
+	# A probe about the autosave turns it on for itself.
+	if OS.get_cmdline_args().has("--script"):
+		_store.keeps = false
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder

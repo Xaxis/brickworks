@@ -173,11 +173,12 @@ says whether everything agrees with it.
   on SwiftShader (`tools/web/browser.mjs`).
 - **No display.** `tools/check.sh` and `tools/design.py` give themselves
   Xvfb. Anything new that drives the app needs the same, or it hangs.
-- **Probes write this machine's real desktop user data.** Every probe that
-  opens `src/main.tscn` keeps the autosave (`~/.local/share/godot/app_userdata/
-  Brickworks/autosave.ldr`), and so do agents' suites in their worktrees: the
-  desktop app here reopens whatever the last probe left. `project_probe` puts
-  it back; most do not. The owner works in the browser, whose storage is apart.
+- **Probes share this machine's real desktop user data** (`~/.local/share/
+  godot/app_userdata/Brickworks/`). A run with `--script` no longer keeps the
+  autosave (it did, and the desktop app reopened whatever the last probe
+  left); a probe about the autosave turns `store.keeps` on and puts the file
+  back, as `project_probe` does. Saved models and connector files there are
+  still shared. The owner works in the browser, whose storage is apart.
 - **On the web a save is durable only once IndexedDB has it.** The engine
   syncs `user://` behind its own back; at a load of eighty that took 44 s, and
   a reload before then reopens the older autosave.
