@@ -77,6 +77,13 @@ var _pending: bool = false
 signal saved(name: String)
 signal loaded(name: String, bricks: int)
 
+const UNTITLED := "Untitled"
+## What the model on the baseplate is called: the name it was saved under,
+## or the title inside the file it came from. The autosave carries it.
+## It wrote "Working model" instead, so the app reopened a model the owner
+## had saved and named, and called it Untitled.
+var title: String = UNTITLED
+
 
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
@@ -113,7 +120,7 @@ func tick() -> void:
 	# in flight.
 	if not whole:
 		return
-	_write(AUTOSAVE, "Working model")
+	_write(AUTOSAVE, title)
 
 
 ## Restore the working model from the last session, if there is one.
@@ -128,9 +135,35 @@ func save_as(name: String) -> bool:
 	if clean.is_empty():
 		return false
 	if _write(SAVE_DIR + clean + ".ldr", name, true):
+		title = name
+		# Saved by them is theirs, whatever it opened short of.
+		whole = true
 		saved.emit(name)
 		return true
 	return false
+
+
+## Whether starting a new model would lose anything: bricks that are not
+## in a saved model under this name, exactly as they stand.
+func has_unsaved_work() -> bool:
+	var now: PackedStringArray = _brick_lines(to_text(UNTITLED))
+	if now.is_empty():
+		return false
+	if title == UNTITLED:
+		return true
+	var kept: String = SAVE_DIR + _safe_name(title) + ".ldr"
+	if not FileAccess.file_exists(kept):
+		return true
+	return _brick_lines(FileAccess.get_file_as_string(kept)) != now
+
+
+static func _brick_lines(text: String) -> PackedStringArray:
+	var lines := PackedStringArray()
+	for line: String in text.split("\n"):
+		if line.begins_with("1 "):
+			lines.append(line.strip_edges())
+	lines.sort()
+	return lines
 
 
 func list_saved() -> Array[Entry]:
@@ -196,6 +229,19 @@ func open(path: String) -> int:
 		return 0
 	var result: Dictionary = open_text(text, path.get_file())
 	return int(result["placed"])
+
+
+## What a file calls its model: its first line, as LDraw has it, unless
+## that is a placeholder, and then its file name. The autosave written
+## before it kept the name said "Working model", which is no name.
+static func _title_of(model: LdrModel, file_name: String) -> String:
+	var said: String = model.main.title if model.main != null else ""
+	if not said.is_empty() and not said in ["Working model", "Model", "model"]:
+		return said
+	var stem: String = file_name.get_basename()
+	if stem.is_empty() or stem == AUTOSAVE.get_file().get_basename():
+		return UNTITLED
+	return stem.capitalize()
 
 
 ## Open a model from text rather than from a path.
@@ -268,7 +314,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		library.request_mesh(part_id, true)
 
 	whole = missing.is_empty() and waiting.is_empty()
-	loaded.emit(name, placed)
+	title = _title_of(model, name)
+	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "error": ""}
 
