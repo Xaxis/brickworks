@@ -86,6 +86,9 @@ var _run_past: VBoxContainer
 var _run_stop: Button
 var _run_hint: Label
 var _run_started: int = 0
+## How many past steps a card keeps. The app's own design shows the last
+## few; Claude's every one, since the card is the only record of what it did.
+var _run_keep: int = RUN_STEPS
 ## Steps kept on the card, oldest dropped first.
 const RUN_STEPS := 6
 
@@ -404,7 +407,9 @@ func _show_for_key(has_key: bool) -> void:
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
 	var talking: bool = assistant != null and assistant.has_conversation()
-	_scroll.visible = has_key or claude_code_here or talking
+	var connected: bool = _connector_form != null and _connector_form.is_on()
+	_scroll.visible = has_key or claude_code_here or talking or connected \
+		or _claude_card()
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key, which spent
 	# the panel's one explanation of what the assistant is for on a
@@ -597,7 +602,7 @@ func _on_progress(note: String) -> void:
 		line.add_theme_font_size_override("font_size", 12)
 		line.modulate = Color(1, 1, 1, 0.55)
 		_run_past.add_child(line)
-		while _run_past.get_child_count() > RUN_STEPS:
+		while _run_past.get_child_count() > _run_keep:
 			var oldest: Node = _run_past.get_child(0)
 			_run_past.remove_child(oldest)
 			oldest.queue_free()
@@ -616,8 +621,10 @@ func _starting_line() -> String:
 	return "Reading the brief"
 
 
-## Put a card for this run at the foot of the conversation.
-func _open_run(fresh: bool) -> void:
+## Put a card for this run at the foot of the conversation. Stop cancels
+## the app's own design unless something else is given to do.
+func _open_run(fresh: bool, stop: Callable = Callable()) -> void:
+	_run_keep = RUN_STEPS
 	_run = PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.25, 0.45, 0.85, 0.12)
@@ -670,7 +677,9 @@ func _open_run(fresh: bool) -> void:
 	_run_stop.text = "Stop"
 	_run_stop.tooltip_text = "Stop, and put back what was there before"
 	_run_stop.pressed.connect(func() -> void:
-		if assistant != null:
+		if stop.is_valid():
+			stop.call()
+		elif assistant != null:
 			assistant.cancel())
 	column.add_child(_run_stop)
 
@@ -697,7 +706,8 @@ func _expect() -> String:
 
 
 ## The run is over: say how it ended and how long it took.
-func _close_run(how: String, summary: String, built: bool = false) -> void:
+func _close_run(how: String, summary: String, built: bool = false,
+		then: String = "Ask for a change below, or carry on building it by hand.") -> void:
 	if _run == null or not is_instance_valid(_run):
 		_run = null
 		return
@@ -710,7 +720,7 @@ func _close_run(how: String, summary: String, built: bool = false) -> void:
 	if built:
 		# What can be done with it now, said where the eye already is.
 		var next := Label.new()
-		next.text = "Ask for a change below, or carry on building it by hand."
+		next.text = then
 		next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		next.add_theme_font_size_override("font_size", 12)
 		next.modulate = Color(1, 1, 1, 0.75)
@@ -738,9 +748,95 @@ func use_connector(connector: ClaudeConnector) -> void:
 	_connector_form.setup(connector)
 	_key_form.get_parent().add_child(_connector_form)
 	_key_form.get_parent().move_child(_connector_form, _key_form.get_index() + 1)
-	connector.listening.connect(func(_on: bool, _address: String) -> void:
+	connector.listening.connect(func(on: bool, _address: String) -> void:
+		if not on and _claude_card():
+			_close_claude("Connector off", "Switched off. Claude cannot reach "
+				+ "this tab until it is switched on again.")
 		_show_for_key(OwnKey.has_key()))
+	connector.called.connect(_on_claude_called)
+	connector.answered.connect(_on_claude_answered)
+	_connector = connector
 	_show_for_key(OwnKey.has_key())
+
+
+## Claude on the person's plan, building through the connector: its calls
+## on a card like the app's own designs get, every step kept with what came
+## of it, so the panel says what Claude is doing and scrolls back through
+## all it did. Before, the only sign was a count in small type under the
+## connector, and nothing on the panel moved when Claude connected.
+var _connector: ClaudeConnector = null
+var _claude_on: bool = false
+var _claude_busy: bool = false
+var _claude_built: bool = false
+var _claude_last: int = 0
+## How long Claude can be quiet before its card says it is done. It thinks
+## between calls, sometimes for a minute; a probe shortens this.
+var claude_quiet_ms: int = 90000
+
+
+func _claude_card() -> bool:
+	return _claude_on and _run != null and is_instance_valid(_run)
+
+
+func _on_claude_called(tool: String, arguments: Dictionary) -> void:
+	if tool.is_empty():
+		return
+	_claude_last = Time.get_ticks_msec()
+	var step: String = ConnectorForm.said(tool, arguments)
+	# The app's own design has the card; say it alongside instead.
+	if _working:
+		note("Claude: " + step)
+		return
+	if not _claude_card():
+		_claude_on = true
+		_claude_built = false
+		_open_run(true, func() -> void:
+			if _connector != null:
+				_connector.stop())
+		_run_keep = 500
+		_run_title.text = "Claude is building"
+		_run_now.text = ""
+		_run_hint.text = ("Claude, on your plan, is calling Brickworks from "
+			+ "your chat. Each step shows here and the model appears on the "
+			+ "baseplate. Keep this tab in view while it works.")
+		_run_stop.text = "Switch the connector off"
+		_run_stop.tooltip_text = ("Claude's next call is refused. What it "
+			+ "has built stays.")
+		_show_for_key(OwnKey.has_key())
+	_claude_busy = true
+	_on_progress(step)
+	_follow_the_card()
+
+
+func _on_claude_answered(tool: String, ok: bool, text: String) -> void:
+	if tool.is_empty() or not _claude_card():
+		return
+	_claude_busy = false
+	_claude_last = Time.get_ticks_msec()
+	if ok and tool in ["submit_design", "edit_model"]:
+		_claude_built = true
+	# What came of it, in its first line: a part number, a scale, a count
+	# of bricks placed, or why it was refused.
+	var first: String = text.strip_edges().split("\n")[0].strip_edges()
+	if first.length() > 150:
+		first = first.substr(0, 147) + "..."
+	if not first.is_empty():
+		_run_now.text = "%s — %s%s" % [_run_now.text, "" if ok else "refused: ", first]
+	_follow_the_card()
+
+
+func _close_claude(how: String, summary: String) -> void:
+	var built: bool = _claude_built
+	_claude_on = false
+	_claude_busy = false
+	_close_run(how, summary, built,
+		"Ask Claude for a change in your chat, or carry on building it by hand.")
+
+
+## Keep the newest step in view as the card grows.
+func _follow_the_card() -> void:
+	await get_tree().process_frame
+	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
 
 
 func controls_by_name() -> Dictionary:
@@ -811,6 +907,14 @@ func _on_finished(ok: bool, summary: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	if _claude_card():
+		_run_clock.text = _elapsed()
+		# Quiet for long enough, with nothing in hand: Claude has finished,
+		# or stopped to talk to the person.
+		if not _claude_busy and Time.get_ticks_msec() - _claude_last > claude_quiet_ms:
+			_close_claude("Done" if _claude_built else "Claude stopped",
+				"Claude has stopped calling for now." if _claude_built
+				else "Claude has stopped calling. Ask it to build in your chat.")
 	if not _working:
 		return
 	if _run != null and is_instance_valid(_run):

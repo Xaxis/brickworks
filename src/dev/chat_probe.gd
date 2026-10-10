@@ -227,32 +227,94 @@ func _run() -> void:
 		"...and stays in the box to be corrected")
 
 	print("\nyour Claude plan, through a connector")
-	# Pointed at a port nothing listens on: this checks the form, not the
-	# relay (connector_probe does that), and the suite stays off the network.
+	# A file of its own, so the address this machine keeps is never read or
+	# changed. Pointed at a port nothing listens on: this checks the panel,
+	# not the relay (connector_probe does that), and stays off the network.
+	ClaudeConnector.where = "user://probe_claude_connector.json"
+	if FileAccess.file_exists(ClaudeConnector.where):
+		DirAccess.remove_absolute(ClaudeConnector.where)
+	var answering := CommandSocket.new()
+	answering.assistant = assistant
+	get_root().add_child(answering)
 	var connector := ClaudeConnector.new()
 	get_root().add_child(connector)
 	connector.base_url = "http://127.0.0.1:9"
+	connector.rpc = answering
 	var offer := ConnectorForm.new()
 	get_root().add_child(offer)
 	offer.setup(connector)
-	offer._turn_on.pressed.emit()
-	await process_frame
+	_check(not offer._turn_on.button_pressed and offer._intro.visible
+			and not offer._on_box.visible,
+		"it starts off, saying what it is for")
+	offer._turn_on.button_pressed = true
 	_check(offer._address.text.begins_with("http://127.0.0.1:9/api/mcp?t=")
 			and offer._address.text.length() > 60,
-		"Connect Claude shows this tab's private address")
-	_check(offer._status.text == "Waiting for Claude…" and not offer._turn_on.visible,
-		"...and says it is waiting for Claude")
+		"switching it on shows this tab's private address")
+	_check(offer._status.text.begins_with("On. Waiting for Claude")
+			and offer._on_box.visible and offer._in_view.visible,
+		"...says it is waiting for Claude, with the steps, and to keep the tab in view")
 	var first: String = offer._address.text
-	offer._on_box.find_children("*", "Button", true, false).filter(
-		func(b: Button) -> bool: return b.text.begins_with("Turn off"))[0].pressed.emit()
+	offer._turn_on.button_pressed = false
 	await process_frame
-	_check(offer._address.text.is_empty() and offer._turn_on.visible
-			and connector.address().is_empty(),
-		"turning it off forgets the address")
-	offer._turn_on.pressed.emit()
+	_check(offer._address.text == first and offer._status.text.begins_with("Off"),
+		"switching it off keeps the address, and says Claude cannot reach the tab")
+	var next_visit := ClaudeConnector.new()
+	get_root().add_child(next_visit)
+	_check(next_visit.address().get_slice("?t=", 1) == first.get_slice("?t=", 1),
+		"the next visit has the same address, so the connector added to Claude still works")
+	next_visit.queue_free()
+	offer._new_address.pressed.emit()
+	offer._turn_on.button_pressed = true
+	_check(not offer._address.text.is_empty() and offer._address.text != first,
+		"Make a new address forgets the old one; the next is new")
+
+	print("\nClaude connects, and builds")
+	panel.use_connector(connector)
+	panel._show_for_key(false)
+	_check(panel._connector_form.visible and panel._scroll.visible,
+		"with no key and the connector on, the panel has room for Claude's work")
+	connector._used = true
+	connector.called.emit("", {})
+	_check(offer._status.text.begins_with("Connected — Claude reached this tab")
+			and not offer._on_box.visible and offer._steps_toggle.visible,
+		"Claude reaching the tab says Connected, and folds the steps away: %s"
+			% offer._status.text)
+	connector.called.emit("search_parts", {"query": "brick 2 x 4"})
+	_check(panel._claude_card() and panel._run_title.text == "Claude is building"
+			and panel._run_now.text.contains("brick 2 x 4"),
+		"Claude's first call opens a card in the conversation: %s" % panel._run_now.text)
+	connector.answered.emit("search_parts", true, "3001: Brick 2 x 4, covers 4x2 studs")
+	_check(panel._run_now.text.contains("3001"),
+		"...and the step says what came of it: %s" % panel._run_now.text)
+	for n: int in 8:
+		connector.called.emit("check_design", {"bricks": [1, 2, 3]})
+		connector.answered.emit("check_design", n != 3, "fine" if n != 3 else "brick 2 floats")
+	connector.called.emit("submit_design", {"name": "a red house", "bricks": [1, 2]})
+	connector.answered.emit("submit_design", true, "Placed 2 bricks.")
+	_check(panel._run_past.get_child_count() >= 9,
+		"every step is kept, to scroll back through: %d" % panel._run_past.get_child_count())
+	var refused: bool = false
+	for line: Node in panel._run_past.get_children():
+		refused = refused or (line as Label).text.contains("refused: brick 2 floats")
+	_check(refused, "...a refused call says so, and why")
+	panel.claude_quiet_ms = 0
 	await process_frame
-	_check(offer._address.text != first, "...and the next one is new")
-	connector.stop()
+	await process_frame
+	_check(not panel._claude_card() and panel._run_title.text == "Done",
+		"when Claude goes quiet the card says Done")
+	var offered := PackedStringArray()
+	for button: Button in panel._log.find_children("*", "Button", true, false):
+		if button.visible:
+			offered.append(button.text)
+	_check("Build steps" in offered and "Parts list" in offered,
+		"...and offers the build steps and parts list: %s" % ", ".join(offered))
+	panel.claude_quiet_ms = 90000
+	connector.called.emit("view_model", {"from": "front"})
+	offer._turn_on.button_pressed = false
+	_check(not panel._claude_card() and panel._run_title.text == "Connector off",
+		"switching it off mid-build says so on the card")
+	connector.forget()
+	ClaudeConnector.where = "user://claude_connector.json"
 
 	OwnKey._this_visit = kept
 	print("")

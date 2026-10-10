@@ -54,12 +54,19 @@ fixing what it got wrong.
   holds, and it presses Change key only where no key is stored. Where Claude
   Code is installed the composer stays without a key, because "My Claude" sits
   in it: `chat_probe` builds that panel too and checks Build waits for the tick.
-- `design on your Claude plan`: `ConnectorForm` in the panel turns on a
-  `ClaudeConnector` for this tab and shows the address to add to Claude, the
-  steps for claude.ai, the Claude app and Claude Code, and what Claude is doing
-  as it calls the tools. The brief is typed in Claude, not here. Turning it off
-  forgets the address. `chat_probe` covers the form (pointed at a closed port);
-  `connector_probe` the protocol through the relay (see `web.md`).
+- `design on your Claude plan`: `ConnectorForm` in the panel, under "Or with
+  your Claude plan", is a switch for a `ClaudeConnector` on this tab. Off, it
+  says what it is for; on, it shows a coloured state line — waiting (amber),
+  connected with the time Claude reached it (green), building with a count and
+  a clock, trouble (red), or taken over by another tab — and the address and
+  steps until Claude has used the address once, then folds them away. It says
+  to keep the tab in view. The address is kept on this device and the switch
+  comes back on by itself; "Make a new address" forgets it. Claude's calls go
+  into the conversation as a run card ("Claude is building"), every step kept
+  with what came of it ("— refused: …" when a tool said no), and the card says
+  Done with Build steps and Parts list once Claude has been quiet 90 s, or
+  "Connector off" if it is switched off. `chat_probe` covers all of it on a
+  closed port and its own file; `connector_probe` the protocol (see `web.md`).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and

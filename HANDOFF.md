@@ -58,6 +58,12 @@ stats on the status line; a grouped toolbar with Clear asking first.
   or a key and never calls a model. That is ordinary use of Anthropic's apps,
   and needs no approval. Relay: `api/mcp.js` + `supabase/relay.sql`; tab side
   `src/net/claude_connector.gd`, `src/ui/connector_form.gd`.
+  First real use from claude.ai (2026-10-10) found the tab answers nothing
+  while it is out of view — a browser pauses it, and the person is in
+  claude.ai. The relay now answers the handshake and tool list itself, the
+  page reports going out of view, Claude is told to ask for the tab rather
+  than told it is closed, and a dropped call is handed out again. The address
+  is kept on the device, so it is added to Claude once.
 - **Your own API key**, checked when pasted, kept in the browser or for the
   visit only, sent only to Anthropic, behind a content security policy.
 - **Owner's decision, still open:** the desktop's in-app "My Claude" starts the

@@ -25,6 +25,8 @@ create table if not exists public.relay (
 );
 create index if not exists relay_waiting on public.relay (channel, id)
   where taken_at is null;
+create index if not exists relay_unanswered on public.relay (channel, id)
+  where answered_at is null;
 
 -- When each tab last asked for work, so Claude is told at once that the
 -- tab is closed rather than waiting out a timeout.
@@ -33,12 +35,36 @@ create table if not exists public.relay_tabs (
   seen_at timestamptz not null default now()
 );
 
+-- 2026-10-10, after the first real use from claude.ai. Claude's call was
+-- taken by a tab the person had switched away from; a browser stops
+-- drawing a tab it is not showing, the engine runs on drawing, so the call
+-- waited, timed out in the tab and was lost, and the panel never moved.
+--
+--   hello     the tab's own answers to initialize and tools/list, sent when
+--             it switches on, so Claude can add and list the connector
+--             while the tab is asleep or shut — only a tool call needs it
+--   instance  which page load is listening: the latest one to switch on;
+--             any older one is told it has been replaced
+--   visible   what the page last said about being on screen, so Claude can
+--             be told to ask for the tab to be brought into view
+--   open      false once the page has gone; the row is kept for its hello
+alter table public.relay_tabs add column if not exists hello    jsonb;
+alter table public.relay_tabs add column if not exists instance text;
+alter table public.relay_tabs add column if not exists visible  boolean not null default true;
+alter table public.relay_tabs add column if not exists open     boolean not null default true;
+
 alter table public.relay      enable row level security;
 alter table public.relay_tabs enable row level security;
 revoke all on public.relay, public.relay_tabs from anon, authenticated;
 
--- Hand the oldest waiting request on a channel to the tab, once. Skip
--- locked, so two polls from one tab (a reload mid-wait) cannot both take it.
+-- Hand the oldest waiting request on a channel to the tab. Skip locked, so
+-- two polls cannot both take it at once.
+--
+-- Also one taken more than two seconds ago and still not answered. A tab
+-- works through one request at a time and asks for the next only when it
+-- has answered, so a tab asking again with one outstanding has dropped it
+-- — it was asleep in the background when it arrived — and is given it
+-- again rather than leaving Claude waiting on an answer nobody will send.
 create or replace function public.relay_take(p_channel text)
 returns table (id bigint, request jsonb)
 language sql
@@ -48,7 +74,8 @@ as $$
    where r.id = (
      select w.id from public.relay w
       where w.channel = p_channel
-        and w.taken_at is null
+        and w.answered_at is null
+        and (w.taken_at is null or w.taken_at < now() - interval '2 seconds')
         and w.created_at > now() - interval '3 minutes'
       order by w.id
       for update skip locked
@@ -61,7 +88,9 @@ returns void
 language sql
 as $$
   delete from public.relay      where created_at < now() - interval '10 minutes';
-  delete from public.relay_tabs where seen_at    < now() - interval '1 day';
+  -- Kept a month, for its hello: a connector added once lists its tools
+  -- on any later visit, and a call tells the person to open the tab.
+  delete from public.relay_tabs where seen_at    < now() - interval '30 days';
 $$;
 
 revoke all on function public.relay_take(text), public.relay_sweep()

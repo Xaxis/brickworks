@@ -436,10 +436,10 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 				<h3><span class="dot" style="background:var(--blue)"></span>Your Claude plan</h3>
 				<div class="for">Claude Pro or Max · no key, nothing to install</div>
 				<ol class="steps">
-					<li>In the app, press <b>Connect Claude</b> and copy the private address it gives this tab.</li>
+					<li>In the app, switch on <b>Or with your Claude plan</b> and copy the private address it shows. It stays the same, so you add it once.</li>
 					<li>Add it to Claude as a custom connector: on claude.ai or in the Claude app under <b>Settings → Connectors</b>, or in Claude Code:
 						<code class="cmd">claude mcp add --transport http brickworks "&lt;the address&gt;"</code></li>
-					<li>Ask Claude to “build a small red house in Brickworks”. It builds in your tab while you watch.</li>
+					<li>Ask Claude to “build a small red house in Brickworks”, with the Brickworks tab in view beside it — a browser pauses a tab it isn’t showing. Every step shows in the app as it builds.</li>
 				</ol>
 				<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
 			</div>
@@ -578,9 +578,9 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 				<h3>Your Claude login</h3>
 				<p>
 					Never asked for. With a connector, Claude is the one calling,
-					signed in its own way. The address is random, made in your
-					tab, and only works while that tab is open and connected;
-					turning it off forgets it.
+					signed in its own way. The address is random, made and kept
+					in your browser, and reaches Brickworks only while a tab has
+					the connector switched on. “Make a new address” retires it.
 				</p>
 			</div>
 			<div class="card">

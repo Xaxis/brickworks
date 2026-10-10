@@ -6,9 +6,9 @@
 //
 // Pastes a key, asks for "a small red house", and records every request to
 // Anthropic and a screenshot at each step. With the default fake key it costs
-// nothing and proves the whole path a person takes: the key is accepted, the
-// request leaves the browser and reaches Anthropic, and the refusal comes back
-// as words someone can act on. With a real key (--key=- reads BW_KEY, so the
+// nothing and proves the path a person takes with a mistyped key: it leaves
+// the browser, reaches Anthropic, and the refusal comes back at the form, in
+// words someone can act on, before any brief is asked for. With a real key (--key=- reads BW_KEY, so the
 // key is never on a command line) it watches the design start, for --seconds.
 //
 // Why it exists: the live site was reported as "the assistant doesn't work at
@@ -84,8 +84,26 @@ await click("key_field");
 await page.waitForTimeout(1500);
 await page.keyboard.type(key, { delay: 15 });
 await click("use_key");
-await page.waitForTimeout(4000);
+// The key is checked with Anthropic before it is kept. Taken, the brief box
+// appears; refused, the form stays with the reason under the button — which
+// is the right answer for the made-up key, and the end of the road for it.
+const showing = (n) => page.evaluate((n) => Boolean((window.brickworksControls || {})[n]), n);
+let taken = false;
+for (let tries = 0; tries < 90 && !taken; tries++) {
+  await page.waitForTimeout(500);
+  taken = await showing("brief");
+}
 await page.screenshot({ path: `${out}/2_key_taken.png` });
+if (!taken) {
+  await browser.close();
+  console.log(seen.join("\n"));
+  const checked = seen.some((line) => / anthropic 40[13]/.test(line));
+  const fake = args.key !== "-";
+  console.log(checked && fake
+    ? `the made-up key was checked with Anthropic and refused at the form; see ${out}/2_key_taken.png`
+    : `the key was not taken; see ${out}/2_key_taken.png`);
+  process.exit(checked && fake && !refused.length ? 0 : 1);
+}
 
 await click("brief");
 await page.waitForTimeout(1500);

@@ -3,10 +3,14 @@
 //   node tools/web/connector_flow.mjs --url=https://brickworks.diy/app --out=shots/connector
 //   BW_BYPASS=… node tools/web/connector_flow.mjs --url=<a preview>/app --out=…
 //
-// In a real browser: turn on Connect Claude, press Copy, and read the
+// In a real browser: switch the connector on, press Copy, and read the
 // address off the clipboard — the way a person gets it. Then, from here, ask
-// that address what Claude asks (initialize, tools/list, a real tool call)
-// through the deployed relay, and check the tab answered and says so.
+// that address what Claude asks (initialize, tools/list, real tool calls)
+// through the deployed relay, and check the tab answered and shows it. Then
+// the page goes out of view, as it does while the person is in claude.ai:
+// the page itself must tell the relay, and Claude must be asked to bring it
+// back rather than left waiting or told it is closed. Last, a reload: the
+// same address, on again by itself.
 //
 // Costs nothing: no model is called; this plays Claude's part itself. A
 // preview's relay sits behind Vercel's login, so with BW_BYPASS the bypass
@@ -74,8 +78,41 @@ check(names.includes("submit_design") && names.includes("search_parts"), `the ta
 const found = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 2 x 4" } });
 const text = (found.result?.content || []).map((c) => c.text || "").join(" ");
 check(text.includes("3001") && !found.result?.isError, `a tool call runs in the tab: ${text.slice(0, 50)}`);
+const scaled = await claude("tools/call", { name: "plan_scale", arguments: { subject: "a lighthouse", longest_metres: 30 } });
+check(((scaled.result?.content || [])[0]?.text || "").includes("studs"), "a second call, the scale, is answered too");
 await page.waitForTimeout(2000);
 await page.screenshot({ path: `${out}/2_after_calls.png` });
+
+// Out of view. The browser here keeps drawing a page in the background,
+// so it is told the page is hidden the way a real one would be.
+const seeing = (hidden) => page.evaluate((hidden) => {
+  Object.defineProperty(document, "hidden", { value: hidden, configurable: true });
+  Object.defineProperty(document, "visibilityState", { value: hidden ? "hidden" : "visible", configurable: true });
+  document.dispatchEvent(new Event("visibilitychange"));
+}, hidden);
+await seeing(true);
+await page.waitForTimeout(1500);
+const listedAsleep = await claude("tools/list", {});
+check((listedAsleep.result?.tools || []).length === names.length, "out of view, Claude can still list the tools");
+const t0 = Date.now();
+const asleep = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 1 x 2" } });
+const asleepText = (asleep.result?.content || []).map((c) => c.text || "").join(" ");
+check(asleep.result?.isError && asleepText.includes("out of view") && !asleepText.includes("not open"),
+  `out of view, a call is told to bring the tab back, after ${Math.round((Date.now() - t0) / 1000)}s`);
+await seeing(false);
+await page.waitForTimeout(1500);
+const back = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 1 x 2" } });
+check(((back.result?.content || [])[0]?.text || "").includes("3004"), "back in view, the same call is answered");
+
+// A reload is a new visit: the address must not change, and the
+// connector must come back on by itself.
+await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
+await page.waitForTimeout(Number(args.load || 90000));
+const afterReload = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 2 x 2" } });
+check(((afterReload.result?.content || [])[0]?.text || "").includes("3003"),
+  "after a reload the same address works, with nothing pressed");
+await page.waitForTimeout(2000);
+await page.screenshot({ path: `${out}/3_after_reload.png` });
 await browser.close();
 console.log(failures ? `${failures} failure(s)` : "the connector works on this deployment");
 process.exit(failures ? 1 : 0);

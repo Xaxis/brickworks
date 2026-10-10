@@ -815,6 +815,9 @@ func _build_ui() -> void:
 	_connector.rpc = answering
 	add_child(_connector)
 	_chat.use_connector(_connector)
+	# On again with the same address if it was on last time, so the
+	# connector added to Claude keeps working from one visit to the next.
+	_connector.resume()
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
 	_chat.designing.connect(func(_brief: String) -> void:
