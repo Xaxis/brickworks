@@ -398,7 +398,15 @@ func _show_for_key(has_key: bool) -> void:
 	# in it, and is a way to design that needs no key.
 	_composer.visible = has_key or claude_code_here
 	_footer.visible = has_key
-	_key_form.visible = not has_key
+	# While Claude is connected on the person's plan, the key's form is a
+	# way they are not using; it folds to one line rather than sitting
+	# under Claude's card for the whole build.
+	var plan_on: bool = _connector_form != null and _connector_form.is_on()
+	_key_form.visible = not has_key and (not plan_on or _key_wanted)
+	if _key_instead != null:
+		_key_instead.visible = not has_key and plan_on and not _key_wanted
+	if _connector_form != null:
+		_connector_form.alone(not _key_form.visible)
 	# The other way in, offered beside the key, and kept on screen while it
 	# is on so the address and what Claude is doing stay in view.
 	if _connector_form != null:
@@ -407,8 +415,7 @@ func _show_for_key(has_key: bool) -> void:
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
 	var talking: bool = assistant != null and assistant.has_conversation()
-	var connected: bool = _connector_form != null and _connector_form.is_on()
-	_scroll.visible = has_key or claude_code_here or talking or connected \
+	_scroll.visible = has_key or claude_code_here or talking or plan_on \
 		or _claude_card()
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key, which spent
@@ -589,6 +596,14 @@ func _on_said(text: String) -> void:
 
 
 func _on_progress(note: String) -> void:
+	# A call from Claude runs through the same tools, which say what they
+	# are doing; its card already has that step, said once.
+	if _claude_busy and _claude_card():
+		return
+	_step(note)
+
+
+func _step(note: String) -> void:
 	if _run == null or not is_instance_valid(_run):
 		_status.text = note
 		return
@@ -748,6 +763,17 @@ func use_connector(connector: ClaudeConnector) -> void:
 	_connector_form.setup(connector)
 	_key_form.get_parent().add_child(_connector_form)
 	_key_form.get_parent().move_child(_connector_form, _key_form.get_index() + 1)
+	_key_instead = Button.new()
+	_key_instead.text = "Use your own API key instead"
+	_key_instead.flat = true
+	_key_instead.focus_mode = Control.FOCUS_NONE
+	_key_instead.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_key_instead.add_theme_font_size_override("font_size", 11)
+	_key_instead.pressed.connect(func() -> void:
+		_key_wanted = true
+		_show_for_key(OwnKey.has_key()))
+	_key_form.get_parent().add_child(_key_instead)
+	_key_form.get_parent().move_child(_key_instead, _connector_form.get_index() + 1)
 	connector.listening.connect(func(on: bool, _address: String) -> void:
 		if not on and _claude_card():
 			_close_claude("Connector off", "Switched off. Claude cannot reach "
@@ -765,6 +791,8 @@ func use_connector(connector: ClaudeConnector) -> void:
 ## all it did. Before, the only sign was a count in small type under the
 ## connector, and nothing on the panel moved when Claude connected.
 var _connector: ClaudeConnector = null
+var _key_instead: Button = null
+var _key_wanted: bool = false
 var _claude_on: bool = false
 var _claude_busy: bool = false
 var _claude_built: bool = false
@@ -804,7 +832,7 @@ func _on_claude_called(tool: String, arguments: Dictionary) -> void:
 			+ "has built stays.")
 		_show_for_key(OwnKey.has_key())
 	_claude_busy = true
-	_on_progress(step)
+	_step(step)
 	_follow_the_card()
 
 

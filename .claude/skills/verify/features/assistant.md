@@ -65,7 +65,11 @@ fixing what it got wrong.
   into the conversation as a run card ("Claude is building"), every step kept
   with what came of it ("— refused: …" when a tool said no), and the card says
   Done with Build steps and Parts list once Claude has been quiet 90 s, or
-  "Connector off" if it is switched off. `chat_probe` covers all of it on a
+  "Connector off" if it is switched off. One step per call: the tools' own
+  progress notes are dropped while Claude's call runs, or each call showed
+  twice. While the connector is on and there is no key, the key's form folds
+  to "Use your own API key instead" and the section is titled "Designing with
+  your Claude plan". `chat_probe` covers all of it on a
   closed port and its own file; `connector_probe` the protocol (see `web.md`).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).

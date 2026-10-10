@@ -273,6 +273,14 @@ func _run() -> void:
 	panel._show_for_key(false)
 	_check(panel._connector_form.visible and panel._scroll.visible,
 		"with no key and the connector on, the panel has room for Claude's work")
+	_check(not panel._key_form.visible and panel._key_instead.visible
+			and panel._connector_form._title.text.begins_with("Designing with your Claude plan"),
+		"...and the key's form folds to one line while the plan is in use")
+	panel._key_instead.pressed.emit()
+	panel._show_for_key(false)
+	_check(panel._key_form.visible and not panel._key_instead.visible,
+		"...which opens it again")
+	panel._key_wanted = false
 	connector._used = true
 	connector.called.emit("", {})
 	_check(offer._status.text.begins_with("Connected — Claude reached this tab")
@@ -283,6 +291,11 @@ func _run() -> void:
 	_check(panel._claude_card() and panel._run_title.text == "Claude is building"
 			and panel._run_now.text.contains("brick 2 x 4"),
 		"Claude's first call opens a card in the conversation: %s" % panel._run_now.text)
+	var steps_before: int = panel._run_past.get_child_count()
+	panel._on_progress("Looking up “brick 2 x 4”")
+	_check(panel._run_past.get_child_count() == steps_before
+			and panel._run_now.text.begins_with("Looked up parts"),
+		"the tool's own progress note does not repeat the step")
 	connector.answered.emit("search_parts", true, "3001: Brick 2 x 4, covers 4x2 studs")
 	_check(panel._run_now.text.contains("3001"),
 		"...and the step says what came of it: %s" % panel._run_now.text)
@@ -297,6 +310,9 @@ func _run() -> void:
 	for line: Node in panel._run_past.get_children():
 		refused = refused or (line as Label).text.contains("refused: brick 2 floats")
 	_check(refused, "...a refused call says so, and why")
+	connector.called.emit("plan_scale", {"subject": "a lighthouse", "longest_metres": 30.0})
+	_check(panel._run_now.text.contains("30 m"), "numbers read as numbers: %s" % panel._run_now.text)
+	connector.answered.emit("plan_scale", true, "90 studs")
 	panel.claude_quiet_ms = 0
 	await process_frame
 	await process_frame

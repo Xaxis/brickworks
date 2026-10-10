@@ -16,6 +16,7 @@ extends VBoxContainer
 
 var connector: ClaudeConnector
 
+var _title: Label
 var _intro: Label
 var _turn_on: CheckButton
 var _state_row: HBoxContainer
@@ -49,11 +50,11 @@ func setup(with: ClaudeConnector) -> void:
 	# and nothing on the panel changed when Claude actually connected.
 	var head := HBoxContainer.new()
 	add_child(head)
-	var title := Label.new()
-	title.text = "Or with your Claude plan"
-	title.add_theme_font_size_override("font_size", 14)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
+	_title = Label.new()
+	_title.text = "Or with your Claude plan"
+	_title.add_theme_font_size_override("font_size", 14)
+	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_title)
 	_turn_on = CheckButton.new()
 	_turn_on.focus_mode = Control.FOCUS_NONE
 	_turn_on.tooltip_text = "Let Claude build in this tab, or stop it"
@@ -161,6 +162,12 @@ func is_on() -> bool:
 	return connector != null and connector.is_on()
 
 
+## Titled as the only way on screen, or as the second of two.
+func alone(only: bool) -> void:
+	if _title != null:
+		_title.text = "Designing with your Claude plan" if only else "Or with your Claude plan"
+
+
 func controls_by_name() -> Dictionary:
 	return {"connect_claude": _turn_on, "connector_address": _address,
 		"connector_copy": _copy}
@@ -260,7 +267,7 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 		"plan_scale":
 			return "Worked out the scale for %s, %s m long" % [
 				about if not about.is_empty() else "it",
-				str(arguments.get("longest_metres", "?"))]
+				_number(arguments.get("longest_metres", "?"))]
 		"find_reference": return "Looked for a picture of %s" % about
 		"how_real_sets_build_this": return "Asked how real sets build %s" % about
 		"check_design": return "Checked a design of %d bricks" % bricks
@@ -275,6 +282,13 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 		"show_technique": return "Looked up how to do %s" % about
 		"attachment_points": return "Worked out where a part attaches"
 	return tool.replace("_", " ").capitalize()
+
+
+## 30, not 30.0: JSON has one kind of number and Godot reads it as a float.
+static func _number(value: Variant) -> String:
+	if value is float and is_equal_approx(value, roundf(value)):
+		return str(int(value))
+	return str(value)
 
 
 func _line(text: String, size: int, alpha: float) -> Label:
