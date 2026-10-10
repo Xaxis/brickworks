@@ -209,6 +209,13 @@ run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
 # builder and of a row of figures in shots/minifig_*.png.
 run "minifig builder" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/minifig_ui_probe.gd
+# A picture still coming looks like it is coming: the bin's and the
+# builder's tiles wait as placeholders, become their pictures without
+# moving, are drawn in sight first, and say "no preview" for a part with
+# no geometry. Drawn by a SubViewport, so a window. Pictures of each state
+# in shots/placeholders/.
+run "placeholders" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/placeholder_probe.gd
 # The element maker pressed from the parts bin, its preview drawn, and
 # made parts beside the library's: shots/element_dialog.png and
 # shots/element_beside.png are worth a look.

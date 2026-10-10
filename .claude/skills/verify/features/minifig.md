@@ -46,7 +46,11 @@ the model, and the design assistant doing the same with `add_minifig`.
   place); `data` writes `minifig_data.gd` (about a minute).
 - `minifig builder` (`src/ui/minifig_dialog.gd`): M or the Minifig button.
   Slots down the left with what is in each; the chosen slot's parts in the middle,
-  searchable, drawn with their print (`PartThumbnails.request(..., printed)`),
+  searchable, drawn with their print (`ThumbTile` with `printed`, the rows in
+  sight told to `PartThumbnails.watch` as the parts bin does — see
+  [parts](parts.md) `previews`; a waiting cell is a placeholder with the part
+  number under it, and the slots' pictures are tiles beside their words, so the
+  words do not move when a picture lands),
   and the colours with a dot on the ones the part is made in; the figure turning
   on the right (its own `SubViewport` and `BrickWorld`; drag to turn), a name,
   Surprise me, Keep, Place in model, and the kept figures. Escape closes it.

@@ -230,9 +230,8 @@ func _frames(count: int) -> void:
 func _wait_for_pictures() -> void:
 	for _n: int in 900:
 		var waiting: int = 0
-		for cell: Node in _figures._grid.get_children():
-			if cell is Button and (cell as Button).icon == null \
-					and not str(cell.get_meta("part")).is_empty():
+		for tile: ThumbTile in _figures._sight.tiles():
+			if tile.state == ThumbTile.State.LOADING:
 				waiting += 1
 		if waiting == 0 or (_n > 300 and waiting < 4):
 			return
