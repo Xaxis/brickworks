@@ -51,6 +51,27 @@ for a refused key; the key form explaining the assistant first; no renderer
 stats on the status line; a grouped toolbar with Clear asking first.
 **Before calling anything on the web done, run assistant_flow against it.**
 
+## Designing with Claude: the two ways, and one decision that is yours
+
+- **Your Claude plan, through a connector** (built 2026-10-09). The tab gets a
+  private address; the person adds it to Claude (claude.ai or the Claude app as
+  a custom connector, or `claude mcp add --transport http`) and asks Claude to
+  build. Claude is the client on their own plan; Brickworks never sees a login
+  or a key and never calls a model. That is ordinary use of Anthropic's apps,
+  and needs no approval. Relay: `api/mcp.js` + `supabase/relay.sql`; tab side
+  `src/net/claude_connector.gd`, `src/ui/connector_form.gd`.
+- **Your own API key**, checked when pasted, kept in the browser or for the
+  visit only, sent only to Anthropic, behind a content security policy.
+- **Owner's decision, still open:** the desktop's in-app "My Claude" starts the
+  person's Claude Code headless from inside Brickworks. Anthropic's Claude Code
+  legal page says running Claude Code in a product requires accepting the
+  Commercial Terms, and the Agent SDK page asks for approval before a product
+  offers claude.ai login or rate limits (quotes in Reelwright's
+  `docs/design/claude-plan.md`). Reelwright keeps its equivalent opt-in and off
+  by default until its owner has both. Brickworks' "My Claude" is a checkbox,
+  off by default; turning it on by default needs the owner to accept the
+  Commercial Terms and ask Anthropic. The connector does not have this question.
+
 ## What the work found
 
 - **The levers that moved runs**, each measured: detailing per assembly;
