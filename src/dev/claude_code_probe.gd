@@ -30,6 +30,9 @@ func _initialize() -> void:
 	print("  what the session is allowed")
 	# Only the app's own MCP server, so no Gmail, no Drive, no Notion.
 	_check("only the MCP server we name", args.has("--strict-mcp-config"))
+	var server: Dictionary = (ClaudeCode.config_for(8787)["mcpServers"] as Dictionary).values()[0]
+	_check("a big submit has time to be checked and built: %d ms per call"
+		% int(server.get("timeout", 0)), int(server.get("timeout", 0)) >= 300000)
 	# No shell, no file writer, no web fetch.
 	_check("no built-in tools at all",
 		args.has("--tools") and args[args.find("--tools") + 1].is_empty())

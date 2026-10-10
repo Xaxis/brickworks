@@ -269,15 +269,30 @@ func _ended() -> void:
 			% [_turns, "" if _turns == 1 else "s"])
 
 
-## The file that tells Claude Code where the app is listening.
+## How long one tool call may take, in milliseconds. Claude Code gives
+## up on a call well before a large submit_design has been checked and
+## built on a busy machine: three Orthanc runs had submits of 2,700-2,900
+## parts time out, and one answered by building its piers in 2 x 4s
+## instead of the hollow courses it had designed — trading the model
+## away to beat a clock. Ten minutes, which nothing here should need.
+const TOOL_TIMEOUT_MS := 600000
+
+
+## The file that tells Claude Code where the app is listening. One per
+## port, so two runs side by side cannot rewrite each other's.
 func _write_config(port: int) -> String:
-	var path: String = "user://claude-code-mcp.json"
+	var path: String = "user://claude-code-mcp-%d.json" % port
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return ""
-	file.store_string(JSON.stringify({"mcpServers": {SERVER: {
-		"type": "http",
-		"url": "http://127.0.0.1:%d/mcp" % port,
-	}}}))
+	file.store_string(JSON.stringify(config_for(port)))
 	file.close()
 	return ProjectSettings.globalize_path(path)
+
+
+static func config_for(port: int) -> Dictionary:
+	return {"mcpServers": {SERVER: {
+		"type": "http",
+		"url": "http://127.0.0.1:%d/mcp" % port,
+		"timeout": TOOL_TIMEOUT_MS,
+	}}}

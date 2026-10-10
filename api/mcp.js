@@ -43,7 +43,10 @@ const TOKEN = /^[A-Za-z0-9_-]{40,96}$/;
 const INSTANCE = /^[A-Za-z0-9_-]{8,40}$/;
 // How long Claude's request waits for the tab, and how long the tab's ask
 // for work waits for Claude. Both well inside the function's 300 s.
-const ANSWER_WAIT_MS = 110_000;
+// Long, because a large submit_design is checked and built in the tab: three
+// Orthanc runs of 2,700-2,900 parts timed out at a shorter limit, and a
+// design that times out gets rebuilt coarser to beat the clock.
+const ANSWER_WAIT_MS = 240_000;
 const WORK_WAIT_MS = 25_000;
 const POLL_MS = 350;
 // A tab that has not asked for work in this long is taken to be closed.
