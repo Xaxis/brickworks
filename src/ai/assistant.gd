@@ -7425,10 +7425,17 @@ func _show_technique(wanted: String) -> String:
 			brick.get("rot", 0),
 			"" if face == "up" else " face=" + face,
 			"" if inside.is_empty() else " section=" + inside])
+	# A section's bricks are in its own coordinates and go where it goes.
+	# Told only to add to x, y and z, a design would move them twice and
+	# take a turntable's top off its base.
+	var move: String = "Move it where you need it by adding to x, y and z"
+	if not (technique.get("sections", []) as Array).is_empty():
+		move += (" of the section and of the bricks outside it; the bricks "
+			+ "in the section are in its own coordinates and move with it")
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
 		% [str(technique["name"]).capitalize(), technique["when"],
 			technique["why"], "\n".join(rows)]
-		+ "Move it where you need it by adding to x, y and z. Every one "
+		+ move + ". Every one "
 		+ "of these is checked against the same lattice your design is, "
 		+ "so it holds together as it stands.")
 
