@@ -404,7 +404,7 @@ walls and facing in, with a stair or a ladder where asked. An edit of what
 stands, like the finishing pass and the figures (the two calls runs took up
 unprompted), named in the recipes and in the variety advice. On an
 octagonal prism open at the back, a dungeon, a forge, a library and a study
-take the model from 5 shapes and 2 colours to 55 and 23. On run 12's own
+take the model from 5 shapes and 2 colours to 56 and 23. On run 12's own
 shaft it finds the inside and furnishes four floors, and says none of it
 shows: that shaft was closed all round. Not yet measured on an Orthanc run.
 

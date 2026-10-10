@@ -34,8 +34,8 @@ extends RefCounted
 const ACROSS := 10
 const UP := 4
 ## A storey when none is said: the bookcase LEGO built for 10270 is 23
-## plates tall, and the floor it stands on two more.
-const STOREY := 24
+## plates tall, the floor it stands on two more, and a plate to spare.
+const STOREY := 26
 ## The lowest a storey may be and still be a room: a minifigure is 12
 ## plates with a hat.
 const LOWEST := 15
@@ -122,21 +122,21 @@ const SAID: Array = [
 ## twice.
 const FURNITURE: Dictionary = {
 	"bookcase": {"technique": "bookcase", "front": "+z", "wall": true,
-		"tones": {378: [378, 288, 320, 1, 28], 84: [84, 25, 19, 15],
-			1: [1, 272, 4, 2], 4: [4, 320, 14, 1], 272: [272, 1, 28, 288],
+		"tones": {378: [378, 320, 1, 72], 84: [84, 25, 19, 15],
+			1: [1, 272, 4, 2], 4: [4, 320, 14, 1], 272: [272, 1, 288, 320],
 			25: [25, 191, 14, 4], 3: [3, 2, 378, 1]}},
 	"fireplace": {"technique": "fireplace", "front": "+z", "wall": true,
 		"tones": {71: [71, 72], 2: [72, 0, 28]}},
 	"hearth": {"technique": "hearth", "front": "+z", "wall": true},
 	"anvil": {"technique": "anvil", "front": "+x", "wall": false},
 	"chest": {"technique": "chest", "front": "+z", "wall": true,
-		"tones": {30: [70, 308, 320, 288], 27: [297, 0, 71]}},
+		"tones": {30: [70, 320, 288], 27: [0, 71, 308]}},
 	"potion shelf": {"technique": "potion shelf", "front": "+z", "wall": true,
-		"tones": {33: [33, 36, 46], 34: [34, 42, 52], 47: [47, 33, 34]}},
+		"tones": {33: [33, 36, 46], 34: [34, 42, 36], 47: [47, 33, 34]}},
 	"dresser": {"technique": "dresser", "front": "+x", "wall": true,
-		"tones": {70: [70, 308]}},
+		"tones": {70: [70, 28, 19]}},
 	"sofa": {"technique": "sofa", "front": "+z", "wall": true,
-		"tones": {320: [320, 272, 288, 378]}},
+		"tones": {320: [320, 378, 19, 72]}},
 	"four-poster bed": {"technique": "four-poster bed", "front": "+x",
 		"wall": true, "tones": {191: [191, 320, 272, 378, 1]}},
 	"bed": {"technique": "bed", "front": "+z", "wall": true,
@@ -155,9 +155,9 @@ const FURNITURE: Dictionary = {
 		{"part": "2489", "color": 70, "x": 2, "y": 0, "z": 0, "rot": 0},
 		{"part": "2489", "color": 308, "x": 0, "y": 0, "z": 2, "rot": 0},
 	]},
-	"crates": {"wall": true, "tones": {70: [70, 19, 308]}, "bricks": [
+	"crates": {"wall": true, "tones": {70: [70, 72, 0], 84: [84, 71]}, "bricks": [
 		{"part": "61780", "color": 70, "x": 0, "y": 0, "z": 0, "rot": 0},
-		{"part": "35700", "color": 19, "x": 2, "y": 0, "z": 0, "rot": 0},
+		{"part": "35700", "color": 84, "x": 2, "y": 0, "z": 0, "rot": 0},
 	]},
 	"candles": {"wall": true, "tones": {15: [15, 19]}, "bricks": [
 		{"part": "4032a", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
@@ -167,14 +167,14 @@ const FURNITURE: Dictionary = {
 		{"part": "6141", "color": 46, "x": 0, "y": 4, "z": 0, "rot": 0},
 		{"part": "6141", "color": 46, "x": 1, "y": 7, "z": 1, "rot": 0},
 	]},
-	"globe": {"wall": true, "tones": {33: [33, 47, 40]}, "bricks": [
+	"globe": {"wall": true, "tones": {41: [41, 43, 47]}, "bricks": [
 		{"part": "3941", "color": 70, "x": 0, "y": 0, "z": 0, "rot": 0},
-		{"part": "30106", "color": 33, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "30106", "color": 41, "x": 0, "y": 3, "z": 0, "rot": 0},
 	]},
 	"palantir": {"wall": false, "tones": {72: [72, 0]}, "bricks": [
 		{"part": "3941", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
 		{"part": "3941", "color": 0, "x": 0, "y": 3, "z": 0, "rot": 0},
-		{"part": "30106", "color": 40, "x": 0, "y": 6, "z": 0, "rot": 0},
+		{"part": "20953", "color": 0, "x": 0, "y": 6, "z": 0, "rot": 0},
 	]},
 	"telescope": {"wall": true, "bricks": [
 		{"part": "3062b", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
@@ -211,10 +211,7 @@ const COLUMNS: Dictionary = {
 ## Plates for the layer that holds a floor, two studs wide and laid along
 ## z: [studs long, part, quarter turns]. Then one stud wide, for an edge.
 ## As long as they come, so a strip across a room is one plate and has no
-## joint for the floor to part along.
-## Then across, for the last stud or two of a strip.
-const PLATES_FOUR: Array = [[12, "3029", 1], [10, "3030", 1], [8, "3035", 1],
-	[6, "3032", 1], [4, "3031", 0], [2, "3020", 0], [1, "3710", 0]]
+## joint for the floor to part along; a 1 x 2 across for a last stud.
 const PLATES_TWO: Array = [[16, "4282", 1], [14, "91988", 1], [12, "2445", 1],
 	[10, "3832", 1], [8, "3034", 1], [6, "3795", 1], [4, "3020", 1],
 	[3, "3021", 1], [2, "3022", 0], [1, "3023", 0]]
@@ -223,6 +220,9 @@ const PLATES_ONE: Array = [[8, "3460", 1], [6, "3666", 1], [4, "3710", 1],
 ## Tiles for the floor itself, laid along x: boards one stud wide, flags two.
 const BOARDS: Array = [[6, "6636", 0], [4, "2431", 0], [3, "63864", 0],
 	[2, "3069b", 0], [1, "3070b", 0]]
+## The same as plates, for the studs something stands on.
+const BOARD_PLATES: Array = [[6, "3666", 0], [4, "3710", 0], [3, "3623", 0],
+	[2, "3023", 0], [1, "3024", 0]]
 const FLAG := "3068b"
 
 var _assistant: Assistant
@@ -261,7 +261,7 @@ static func parts_wanted() -> PackedStringArray:
 	for name: String in FURNITURE:
 		for brick: Dictionary in _bricks_of(name):
 			wanted[str(brick["part"])] = true
-	for list: Array in [PLATES_FOUR, PLATES_TWO, PLATES_ONE, BOARDS]:
+	for list: Array in [PLATES_TWO, PLATES_ONE, BOARDS, BOARD_PLATES]:
 		for one: Array in list:
 			wanted[str(one[1])] = true
 	for style: Dictionary in COLUMNS.values():
@@ -483,12 +483,16 @@ func _measure_floor(k: int) -> void:
 	y = level["y"]
 	level["cells"] = cells if cells.size() >= SMALLEST else {}
 	level["ground"] = y <= 0
-	# What things stand at, and the top of the floor.
+	# What things stand at, and the top of the floor. A laid floor is plates
+	# along z and a layer along x over them, tiles where it is walked on and
+	# plates where something stands, and things stand on top of it. They
+	# stood on the plates first, in holes in the tiles, and a bookcase on the
+	# whole of an edge strip left that strip tied to nothing.
 	if level["existing"] or level["ground"]:
 		level["base"] = y
 		level["surface"] = y if level["existing"] else y + 1
 	else:
-		level["base"] = y + 1
+		level["base"] = y + 2
 		level["surface"] = y + 2
 	level["open"] = _open_side(cells, int(level["base"]))
 
@@ -985,8 +989,14 @@ func _column(k: int, at: Vector2i) -> bool:
 	var top: int = level["y"]
 	var from: int = -1
 	for y: int in range(top - 1, -1, -1):
-		if not _clear(at, y, y + 1) or not _mine.blockers_boxes(
-				_stud_box(at, y, y + 1)).is_empty():
+		var ours: PackedInt64Array = _mine.blockers_boxes(_stud_box(at, y, y + 1))
+		if not _clear(at, y, y + 1) or not ours.is_empty():
+			# On a floor or the shell, never on furniture: a column stood on
+			# the round top of a barrel in the room below touched nothing it
+			# could rest on, and floated.
+			for id: int in ours:
+				if _items[int(_laid[id - 1]["item"])]["role"] in ["furniture", "stair"]:
+					return false
 			from = y + 1
 			break
 	if from < 0:
@@ -1036,21 +1046,16 @@ func _lay_plates(k: int) -> void:
 		return
 	# Where the strips start, for the tiles to lay their joints between.
 	level["strip_x"] = int(xs[0])
-	# Four wide where the floor is, so a bookcase two deep against a wall
-	# does not cover the whole of a strip and leave it tied to nothing; then
-	# two wide, then one, at the edges.
-	for x: int in range(int(xs[0]), int(xs[xs.size() - 1]) + 1, 4):
+	# Two wide, each strip one plate as long as it runs, then one wide at
+	# the edges. Four wide was tried, and its ends came out as plates across
+	# a single row that nothing over them tied to the row before.
+	for x: int in range(int(xs[0]), int(xs[xs.size() - 1]) + 1, 2):
 		for z: int in range(_z0, _z1):
 			var at := Vector2i(x, z)
-			if [0, 1, 2, 3].all(func(dx: int) -> bool: return left.has(at + Vector2i(dx, 0))):
-				_strip(left, at, 4, y, colour, PLATES_FOUR, k)
-		for half: int in [0, 2]:
-			for z: int in range(_z0, _z1):
-				var at := Vector2i(x + half, z)
-				if left.has(at) and left.has(at + Vector2i(1, 0)):
-					_strip(left, at, 2, y, colour, PLATES_TWO, k)
+			if left.has(at) and left.has(at + Vector2i(1, 0)):
+				_strip(left, at, 2, y, colour, PLATES_TWO, k)
 		for z: int in range(_z0, _z1):
-			for dx: int in 4:
+			for dx: int in 2:
 				var at := Vector2i(x + dx, z)
 				if left.has(at):
 					_strip(left, at, 1, y, colour, PLATES_ONE, k)
@@ -1090,11 +1095,13 @@ func _strip(left: Dictionary, at: Vector2i, wide: int, y: int, colour: int,
 			return
 
 
-## The floor itself, around whatever stands on it: boards of 1 x 6 down to
-## 1 x 1 tiles along x, every row starting at a different place; flags of
-## 2 x 2 tiles a row of two at a time, staggered, in mixed tones; or a
-## checker of 2 x 2s in two. A carpet runs from the room's signature piece
-## to the open side, where the kind has one.
+## The floor itself: boards of 1 x 6 down to 1 x 1 tiles along x, every row
+## starting at a different place; flags of 2 x 2 tiles a row of two at a
+## time, staggered, in mixed tones; or a checker of 2 x 2s in two. A carpet
+## runs from the room's signature piece to the open side, where the kind has
+## one. On a laid floor, the studs something stands on — furniture, a stair,
+## a column for the floor above — take plates of the same size instead, so
+## it clutches them; on the ground, they are left out round it.
 func _lay_tiles(k: int) -> void:
 	var level: Dictionary = _floors[k]
 	if bool(level["existing"]):
@@ -1109,12 +1116,22 @@ func _lay_tiles(k: int) -> void:
 	for at: Variant in _standing(k):
 		if not (level["hole"] as Dictionary).has(at):
 			left[at] = true
+	var under: Dictionary = {}
+	if not bool(level["ground"]):
+		for item: Dictionary in _items:
+			if int(item["floor"]) == k and not item.has("gone") \
+					and item["role"] in ["furniture", "stair"]:
+				for at: Vector2i in item["cells"]:
+					under[at] = true
+		if k + 1 < _floors.size():
+			for at: Vector2i in _floors[k + 1]["columns"]:
+				under[at] = true
 	var carpet: Dictionary = _carpet(k)
 	var style: String = kind["floor"]
-	# The plates under a floor are strips two studs wide from strip_x, and
-	# a tile is all that ties one strip to the next: a joint of the tiles
-	# over a joint of the plates ties nothing. So flags and checks start a
-	# stud off the strips, and a board ends a stud off them where it can.
+	# The plates under a floor are strips from strip_x, and this layer is
+	# all that ties one strip to the next: a joint here over a joint there
+	# ties nothing. So flags and checks start a stud off the strips, and a
+	# board ends a stud off them where it can.
 	var strips: int = int(level.get("strip_x", _x0))
 	var from_x: int = strips + 1 - 2 * ((strips + 1 - _x0 + 1) / 2)
 	if style == "flags" or style == "checker":
@@ -1124,7 +1141,8 @@ func _lay_tiles(k: int) -> void:
 				var at := Vector2i(x, z)
 				var four: Array = [at, at + Vector2i(1, 0), at + Vector2i(0, 1),
 					at + Vector2i(1, 1)]
-				if not four.all(func(one: Vector2i) -> bool: return left.has(one)):
+				if not four.all(func(one: Vector2i) -> bool:
+						return left.has(one) and not under.has(one)):
 					continue
 				var tone: int
 				if carpet.has(at) and carpet.has(at + Vector2i(1, 1)):
@@ -1139,7 +1157,8 @@ func _lay_tiles(k: int) -> void:
 						"rot": 0}, k, "tile", four):
 					for one: Vector2i in four:
 						left.erase(one)
-	# Boards, and whatever the flags left: rows along x.
+	# Boards, and whatever the flags left: rows along x, a run of tiles or a
+	# run of plates at a time.
 	for z: int in range(_z0, _z1):
 		var x: int = _x0
 		var first: bool = true
@@ -1149,8 +1168,10 @@ func _lay_tiles(k: int) -> void:
 				x += 1
 				first = true
 				continue
+			var plates: bool = under.has(at)
 			var room: int = 0
-			while left.has(at + Vector2i(room, 0)) and room < 6:
+			while room < 6 and left.has(at + Vector2i(room, 0)) \
+					and under.has(at + Vector2i(room, 0)) == plates:
 				room += 1
 			var tone: int = tones[0]
 			if carpet.has(at):
@@ -1161,34 +1182,40 @@ func _lay_tiles(k: int) -> void:
 			# Each row starts its boards at a different place, so the joints
 			# do not line up across the floor.
 			var want: int = room
-			if first and style == "boards":
+			if first and style == "boards" and not plates:
 				want = mini(room, [2, 4, 1, 3, 6, 3][posmod(z + k, 6)])
 			first = false
-			var laid: bool = false
-			for tidy: bool in [true, false]:
-				for one: Array in BOARDS:
-					var long: int = one[0]
-					if long > want:
-						continue
-					# Ending on a joint of the plates, short of the row's end,
-					# ties nothing across it: tried last.
-					if tidy and long < room and posmod(x + long - strips, 2) == 0:
-						continue
-					var cells: Array = []
-					for dx: int in long:
-						cells.append(at + Vector2i(dx, 0))
-					if _lay_one({"part": one[1], "color": tone, "x": x, "y": y, "z": z,
-							"rot": one[2]}, k, "tile", cells):
-						for cell: Vector2i in cells:
-							left.erase(cell)
-						x += long
-						laid = true
-						break
-				if laid:
-					break
-			if not laid:
+			var laid: int = _board(k, at, room, want, strips, y, tone,
+				BOARD_PLATES if plates else BOARDS)
+			if laid == 0:
 				left.erase(at)
 				x += 1
+				continue
+			for dx: int in laid:
+				left.erase(at + Vector2i(dx, 0))
+			x += laid
+
+
+## One board along x from [param at], at most [param want] long out of a
+## run of [param room], from [param sizes]: ending a stud off the plates'
+## joints if one will, since a board ending on one ties nothing across it.
+## Returns how long it was, or 0.
+func _board(k: int, at: Vector2i, room: int, want: int, strips: int, y: int,
+		tone: int, sizes: Array) -> int:
+	for tidy: bool in [true, false]:
+		for one: Array in sizes:
+			var long: int = one[0]
+			if long > want:
+				continue
+			if tidy and long < room and posmod(at.x + long - strips, 2) == 0:
+				continue
+			var cells: Array = []
+			for dx: int in long:
+				cells.append(at + Vector2i(dx, 0))
+			if _lay_one({"part": one[1], "color": tone, "x": at.x, "y": y,
+					"z": at.y, "rot": one[2]}, k, "tile", cells):
+				return long
+	return 0
 
 
 ## The studs a carpet covers: two wide, from the room's signature piece to
@@ -1279,6 +1306,8 @@ func _hold(k: int) -> void:
 			for at: Vector2i in item["cells"]:
 				if gone.has(at):
 					_take_out(n)
+					if item["role"] == "furniture":
+						level["missed"].append(item["name"])
 					break
 
 
@@ -1369,12 +1398,18 @@ func _stitch(k: int, pieces: Dictionary, root: int) -> bool:
 					colours[cell] = tone
 				for cell: Vector2i in _items[two]["cells"]:
 					colours[cell] = int(_laid[(_items[two]["bricks"] as Array)[0]]["color"])
+				# Plates where something stands on either, as the floor has
+				# there; tiles where nothing does.
+				var studded: bool = [one, two].any(func(n2: int) -> bool:
+					return BOARD_PLATES.any(func(size: Array) -> bool:
+						return str(size[1]) == str(_laid[(_items[n2]["bricks"] as Array)[0]]["part"])))
 				_take_out(one)
 				_take_out(two)
 				var low := Vector2i(mini(at.x, next.x), mini(at.y, next.y))
 				var across: bool = DIRS[way].x != 0
-				if not _lay_one({"part": "3069b", "color": tone, "x": low.x, "y": y,
-						"z": low.y, "rot": 0 if across else 1}, k, "tile", [at, next]):
+				if not _lay_one({"part": "3023" if studded else "3069b", "color": tone,
+						"x": low.x, "y": y, "z": low.y, "rot": 0 if across else 1},
+						k, "tile", [at, next]):
 					left.append(at)
 					left.append(next)
 				# What else the two tiles covered, again, in runs along x as
@@ -1389,32 +1424,16 @@ func _stitch(k: int, pieces: Dictionary, root: int) -> bool:
 					while run + long < left.size() and long < 6 \
 							and left[run + long] == from + Vector2i(long, 0):
 						long += 1
-					_boards(k, from, long, y, colours[from])
+					var x: int = from.x
+					while x < from.x + long:
+						var room: int = from.x + long - x
+						x += maxi(1, _board(k, Vector2i(x, from.y), room, room,
+							int(_floors[k].get("strip_x", _x0)), y, colours[from],
+							BOARD_PLATES if studded else BOARDS))
 					run += long
 				if not left.has(at):
 					return true
 	return false
-
-
-## Tiles along x from [param from], [param long] studs, longest first.
-func _boards(k: int, from: Vector2i, long: int, y: int, tone: int) -> void:
-	var x: int = from.x
-	while x < from.x + long:
-		var laid: bool = false
-		for one: Array in BOARDS:
-			var size: int = one[0]
-			if x + size > from.x + long:
-				continue
-			var cells: Array = []
-			for dx: int in size:
-				cells.append(Vector2i(x + dx, from.y))
-			if _lay_one({"part": one[1], "color": tone, "x": x, "y": y, "z": from.y,
-					"rot": one[2]}, k, "tile", cells):
-				x += size
-				laid = true
-				break
-		if not laid:
-			x += 1
 
 
 ## Whether a plate of floor k is held from below: by a column or a ladder's

@@ -59,7 +59,7 @@ func _run() -> void:
 	print("")
 	print("  an octagonal tower open at the back, four rooms")
 	var prism := {"pattern": "prism", "at": {"x": 16, "y": 0, "z": 16}, "sides": 8,
-		"radius": 9, "courses": 32, "color": 0, "mix_color": 72, "open": 3}
+		"radius": 9, "courses": 35, "color": 0, "mix_color": 72, "open": 3}
 	var tower: Assistant.Model = _assistant._read_model({"name": "Tower",
 		"patterns": [prism]})
 	var built: Dictionary = _assistant._check(tower)
@@ -116,7 +116,7 @@ func _run() -> void:
 		for one: Dictionary in _last_floors():
 			var y: float = float(one["y"])
 			await _pictures("tower_%s" % str(one["room"]).replace(" ", "_"),
-				AABB(Vector3(7, y, 7) * Vector3(20, 8, 20), Vector3(18, 24, 18) * Vector3(20, 8, 20)),
+				AABB(Vector3(7, y, 7) * Vector3(20, 8, 20), Vector3(18, 26, 18) * Vector3(20, 8, 20)),
 				["back"])
 	_write_ldr("%s/tower.ldr" % OUT)
 
@@ -148,7 +148,7 @@ func _run() -> void:
 	print("  every other kind of room, one above another")
 	var kinds: Array = ["throne room", "kitchen", "bedchamber", "hall", "armoury",
 		"lookout", "palantir room", "stair"]
-	var tall: Dictionary = _house(kinds.size() * 8)
+	var tall: Dictionary = _house(kinds.size() * 9)
 	var all: String = _text_of(await _assistant.use_tool("add_rooms", {
 		"where": {"x_from": 40, "x_to": 56, "z_from": 0, "z_to": 14},
 		"floors": kinds, "seed": 5}))
@@ -231,6 +231,25 @@ func _each_piece() -> void:
 				bad.append("turned %d: %s" % [turns, verdict["summary"]])
 		_check("a ladder %d plates up holds, every way round%s" % [tall,
 			"" if bad.is_empty() else " — " + "; ".join(bad)], bad.is_empty())
+	# Every colour a seed can choose is one the part was made in: the first
+	# Orthanc to use add_rooms spent its review recolouring pieces the check
+	# said LEGO never made.
+	var unmade := PackedStringArray()
+	for name: String in Rooms.FURNITURE:
+		var tones: Dictionary = Rooms.FURNITURE[name].get("tones", {})
+		for brick: Dictionary in Rooms._bricks_of(name):
+			for colour: Variant in tones.get(int(brick.get("color", 71)), [brick.get("color", 71)]):
+				var info: PartLibrary.PartInfo = _library.parts.get(str(brick["part"]))
+				if info != null and info.never_made_in(_library.plain_code(int(colour))):
+					unmade.append("%s %s in %d" % [name, brick["part"], int(colour)])
+	for kind: String in Rooms.KINDS:
+		var floor: Dictionary = Rooms.KINDS[kind]
+		for colour: Variant in floor["tones"] + ([floor["carpet"]] if floor.has("carpet") else []):
+			for part: String in [Rooms.FLAG, "6636", "2431", "63864", "3069b", "3070b"]:
+				if _library.parts[part].never_made_in(_library.plain_code(int(colour))):
+					unmade.append("the %s's floor, %s in %d" % [kind, part, int(colour)])
+	_check("every colour a room can be is one its parts were made in%s"
+		% ("" if unmade.is_empty() else ": not " + ", ".join(unmade)), unmade.is_empty())
 	for kind: String in Rooms.KINDS:
 		for name: String in Rooms.KINDS[kind]["items"]:
 			if not Rooms.FURNITURE.has(name):

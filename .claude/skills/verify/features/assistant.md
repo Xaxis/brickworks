@@ -194,23 +194,29 @@ fixing what it got wrong.
   `floors` bottom up (a kind each: `Rooms.KINDS`, words mapped by `kind_of`, so
   "Saruman's chamber" is a study), it reads the inside off the live lattice —
   inside the prism's inner faces, or walled on two opposite sides in the box —
-  stacks floors 24 plates apart (fitted to the shell) unless `y` is said, and
-  lays each as 4/2/1-wide plates along z with tiles over them (boards, flags or
-  a checker, by kind; joints a stud off the plates', and a 1 x 2 stitched across
-  any joint left untied) held up on two or three columns in the corners of the
-  room below. `stair: true` is a straight flight of 2 x 2 bricks where it fits,
-  else a ladder (4175 every six plates) up a 1 x 2 pillar. Each room gets its
-  kind's furniture, signature first: the worked examples (`Techniques`) and a
-  few of castle parts (`Rooms.FURNITURE`), turned as transforms to stand back
-  to a wall and face in, coloured by a seed. Every part is tried against the
-  live lattice and what it has laid, so the shell is never touched; the whole is
-  checked before the edit and floating items taken out. Found by twelve
-  Orthancs that were solid shells, 46 shapes and 6 colours against a set's 109
-  and 23. `rooms_probe`: every piece holds every way round; an octagonal prism
-  open at the back takes a dungeon, a forge with a ladder up, a library and a
-  study, passes the check, shell untouched, 5 to 55 shapes and 2 to 23 colours;
-  two libraries in a box differ; every other kind gets its signature piece.
-  With a window it leaves `shots/rooms/` (tower from the back, each floor).
+  stacks floors 26 plates apart (fitted to the shell) unless `y` is said, and
+  lays each as two layers: 2/1-wide plates along z, each strip one plate, and
+  over them a layer along x — tiles (boards, flags or a checker, by kind) where
+  it is walked on, plates where something stands, joints a stud off the
+  strips', a 1 x 2 stitched across any joint left untied — held up on two or
+  three columns in the corners of the room below (never on its furniture).
+  Furniture stands on top, only where plates are. `stair: true` is a straight
+  flight of 2 x 2 bricks where it fits, else a ladder (4175 every six plates) up
+  a 1 x 2 pillar. Each room gets its kind's furniture, signature first: the
+  worked examples (`Techniques`) and a few of castle parts (`Rooms.FURNITURE`),
+  turned as transforms to stand back to a wall and face in, coloured by a seed
+  in colours the parts were made in. Every part is tried against the live
+  lattice and what it has laid, so the shell is never touched; the whole is
+  checked before the edit, and anything floating would be taken out (the probe
+  holds every room to none). Found by twelve Orthancs that were solid shells,
+  46 shapes and 6 colours against a set's 109 and 23. `rooms_probe`: every
+  piece holds every way round and every tone is a colour it was made in; an
+  octagonal prism open at the back takes a dungeon, a forge with a ladder up, a
+  library and a study, passes the check as laid, shell untouched, 5 to 56
+  shapes and 2 to 23 colours; two libraries in a box differ; every other kind
+  gets its signature piece. With a window it leaves `shots/rooms/` (tower from
+  the back, each floor). `Assistant._ensure_parts` loads a part from disk before
+  fetching it: on the desktop it fetched over HTTP, failed, and waited 20 s.
 - `people in it`: `add_minifig` stands a figure made of real parts on whatever is
   under its feet; declared and passed through here, made in
   `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
