@@ -251,21 +251,43 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  Twenty constructions with real part numbers and real coordinates — a staggered
+  59 constructions with real part numbers and real coordinates, each in a group
+  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, roofs and
+  spires, windows and doors, rock and ground, plants, furniture and interiors,
+  lights), and the tool's description and its answer to an empty or unknown name
+  list them by group (`Techniques.listing()`). Eleven are hand-made (a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
-  a smooth top, a round tower, a wide round tower, a taper, a window in a wall
-  (a 60593 frame three courses tall with its 60602 glass, the bond laid short
-  past it, a 1x4 arch over it) and a door in a wall (60596 and a 60623 door);
-  and nine taken from real sets' own sub-models in LDraw's model repository —
-  lamp post, tree, bed, bench, armchair, table, planter, chimney, fence — each
-  naming its set and modeller (CC BY 2.0; `docs/ATTRIBUTION.md`). They were
-  chosen by what real sets' sub-models are named most (roof, door, seat, lamp,
-  window, tree, then furniture), read into this app's numbers by opening each
-  in the app and reading it back, and kept only where the checker passes them.
-  The ones it refuses are real constructions, so a test corpus for its false
-  positives: `tools/omr.py harvest ... --out DIR` then `harvest_probe.gd -- DIR`
-  (110 of 162 pass, 2026-10-09; the overlaps are clips on bars and hollow
-  studs, for which the parts pipeline records no connector).
+  a smooth top, a round tower, a wide round tower, a taper, a window and a door
+  in a wall); 48 are real sets as LEGO built them, from LDraw's model repository,
+  each naming its set and modeller (CC BY 2.0 or 4.0; `docs/ATTRIBUTION.md`):
+  named sub-models (`tools/omr.py harvest WORD... --most 40`; a set number as
+  the word takes every small sub-model of that set) and, since 2026-10-10, the
+  craft nobody split out (`tools/omr.py clusters [--seeds REGEX]`: the parts
+  round each bracket, inverted slope, cone, plant or textured part, inside a box
+  a few studs about it and holding it, scored by `tools/style.py`'s kinds) —
+  rough and weathered stone from 21325 and 9471, corbels and oversails from
+  6080, 10176 and 7327, a turret spire from 75969, rock from 9476 and 6066, a
+  bookcase, a fireplace, an anvil, a potion shelf, lanterns. Read into this
+  app's numbers by opening each in the app and reading it back
+  (`harvest_probe.gd -- DIR`), looked at on a contact sheet
+  (`technique_sheet_probe.gd`, windowed, `-- --verdicts=DIR --into=DIR` for
+  candidates), and kept only where the checker passes them. `techniques_probe`
+  asserts each builds, says when and why, is in a group, credits its set and
+  modeller if it is from one, that names are unique and found as words
+  ("street lamp" is not the tree), and that the tool lists them by group.
+  Measured as a library with `tools/style.py shots/techniques/library.ldr`:
+  156 parts, 48 shapes, sideways 3.9%, plain 46% with the twenty; 658 parts,
+  129 shapes, 34 colours, sideways 18%, plain 31%, organic 2% with 59. Angled
+  is still 0%: the ones the checker refuses are real constructions, so a corpus
+  for its false positives. Of 880 distinct real sub-models (2026-10-10) 583
+  pass, 247 are refused for overlaps and 50 for floating; the overlaps are
+  bars and axles through holes, clips on bars (flags, lances,
+  lanterns), panes in frames `NESTS` does not list (3854 in 6556, 60607 and
+  86210 in 60594, 38320 in 60592, 57895 in 57894), hinge bricks 3830/3831,
+  hinge plates, parts in hollow studs, and the 2x2 turntable, whose top 3679
+  sits over its base 3680 at one origin — how 10182 Cafe Corner stands its
+  corner entrance, corner windows and tower at 45 degrees (13 turned
+  assemblies in six sets), and why there is no angled example yet.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a
@@ -334,6 +356,7 @@ godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said r
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
+godot --path . --resolution 1400x900 --script src/dev/technique_sheet_probe.gd  # and each looks like its name: shots/techniques/
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```
 

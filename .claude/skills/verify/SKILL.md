@@ -43,10 +43,11 @@ Known, and not a regression:
   password, so `tools/check.sh` falls back to `tools/minitest.py`, which
   implements the four pytest features the suite uses and raises by name on
   anything else. If you add a test that needs `pytest.raises`, add it there too.
-- **6 probes never run in the suite.** Four spend money (`bakeoff revise sideways
+- **7 probes never run in the suite.** Four spend money (`bakeoff revise sideways
   stream`); `gallery` renders every shipped model for a person to look at and has
-  no pass or fail; `harvest` needs a directory of real sets' sub-models from
-  `tools/omr.py harvest`.
+  no pass or fail, and so does `technique_sheet`, a contact sheet of the worked
+  constructions; `harvest` needs a directory of real sets' sub-models from
+  `tools/omr.py harvest` or `clusters`.
 
 ## Launch
 
