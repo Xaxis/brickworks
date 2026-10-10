@@ -1282,17 +1282,17 @@
     "name": "clear_model"
   },
   {
-    "description": "Write what is on the baseplate to an LDraw .ldr file, which this app and other LDraw tools can both open.",
+    "description": "Write what is on the baseplate to an LDraw .ldr file in this app's models, where its Open finds it and other LDraw tools can read it. A name, not a path; it will not write over a model the person saved.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
-        "path": {
-          "description": "where to write it, ending .ldr",
+        "name": {
+          "description": "the file's name, such as orthanc.ldr",
           "type": "string"
         }
       },
       "required": [
-        "path"
+        "name"
       ],
       "type": "object"
     },
