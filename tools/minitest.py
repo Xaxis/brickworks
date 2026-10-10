@@ -182,7 +182,7 @@ def _why_it_failed(error: BaseException) -> list[str]:
     return said
 
 
-def run(path: Path) -> int:
+def run(path: Path) -> tuple[int, int, int]:
     started = time.time()
     module = _load(path)
     fixtures = {
@@ -254,12 +254,26 @@ def run(path: Path) -> int:
     if failures:
         verdict += ", %d FAILED" % len(failures)
     print("%s in %.1fs  (tools/minitest.py, not pytest)" % (verdict, time.time() - started))
-    return 1 if failures else 0
+    return passed, len(skipped), len(failures)
 
 
 def main(argv: list[str]) -> int:
+    started = time.time()
     files = [Path(a) for a in argv[1:]] or [ROOT / "tests" / "test_ldraw.py"]
-    return max(run(f if f.is_absolute() else ROOT / f) for f in files)
+    counts = [run(f if f.is_absolute() else ROOT / f) for f in files]
+    passed, skipped, failed = (sum(c[k] for c in counts) for k in range(3))
+    if len(files) > 1:
+        # One verdict for the lot, last, because tools/check.sh reads the
+        # last one: read alone, the last file's would hide the others'
+        # skips and failures.
+        verdict = "%d passed" % passed
+        if skipped:
+            verdict += ", %d skipped" % skipped
+        if failed:
+            verdict += ", %d FAILED" % failed
+        print("%s in %.1fs over %d files  (tools/minitest.py, not pytest)"
+              % (verdict, time.time() - started, len(files)))
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

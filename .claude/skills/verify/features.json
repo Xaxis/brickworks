@@ -112,6 +112,14 @@
       "tests": []
     },
     {
+      "id": "cli:measure how a model is built",
+      "kind": "cli",
+      "entry": "tools/style.py",
+      "reach": "tools/style.py models/castle.ldr --against castle   (norms: tools/style.py norms)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",

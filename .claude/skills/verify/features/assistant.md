@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, cli:design from a brief, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
+<!-- covers: lib:design loop, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
 
 ## Sub-features
 
@@ -17,6 +17,10 @@ fixing what it got wrong.
   holding it for twenty minutes while it waits on the API queued every other
   project behind it. A software picture measured 2.6 s against the 20 s cap; a
   run that misses it logs "no picture in time".
+- `measure how a model is built`: `tools/style.py <model> --against <group>`,
+  how a model is built against real sets: orientation (SNOT, angled), kinds of
+  part, shaping spread and mirror symmetry. Run it after a design ends, beside
+  `tools/texture.py`; the recipe is under How to check it.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
@@ -255,8 +259,17 @@ run has *ended* — parts, shapes, colours, lots, the commonest piece, one-off
 shapes, main colour and the share of big pieces against a real set of its size,
 and how many of the brief's kind parts it uses. `tools/layout.py <the .ldr>` says
 how it stands: footprint, height, towers over walls, against real sets measured
-from LDraw's model repository (numbers in its docstring). A driven run prints
-what it spent before its verdict; report it.
+from LDraw's model repository (numbers in its docstring). `tools/style.py <the
+.ldr> --against castle` says how it is built: the share of parts not studs-up
+(SNOT) or off the 90-degree grid, the share of each kind of part (curves, slopes,
+SNOT and angle parts, texture, tiles, plain bricks), how much of the model sits
+beside a shaped part, and how much of it a mirror plane matches, each against the
+10th/median/90th of real sets of the group (`castle`, `fantasy`, `buildings`,
+`vehicles`, `space`, `architecture`, `since_2010`). The norms are
+`assets/generated/style_norms.json`, gitignored: `tools/style.py norms` makes them
+from `vendor/omr/files` in about a minute; without them it prints the measures
+alone. `tests/test_style.py` pins each measure on hand-made models. A driven run
+prints what it spent before its verdict; report it.
 
 ## Gotchas
 
