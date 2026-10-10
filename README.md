@@ -29,8 +29,9 @@ specific reason when something will not hold. Once the model holds, it
 goes back over each part of it on its own — the gatehouse, each tower,
 each run of wall — close up, measured against what real sets of that
 size and kind are made of. "A medieval castle with a gatehouse, four
-corner towers and a long curtain wall between them" came back as 1,329
-parts that stand up, in ten named assemblies (`models/castle.ldr`).
+corner towers and a long curtain wall between them" came back as 2,438
+parts that stand up, in ten named assemblies, its walls laid in two greys
+of masonry brick (`models/castle.ldr`).
 
 ## Where the numbers land
 
