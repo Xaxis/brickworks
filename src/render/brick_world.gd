@@ -4,7 +4,8 @@
 ## transform. Drawing them one node each would put tens of thousands of
 ## [MeshInstance3D]s in the tree and spend the whole frame on culling and
 ## draw calls, so bricks are grouped instead: one [MultiMesh] per distinct
-## (surface geometry, material class), with the colour carried per instance.
+## (surface geometry, material class), with the colour carried per instance
+## and so is the finish — chrome, glitter, rubber — in its custom data.
 ##
 ## The grouping key is the mesh hash rather than the part id, so the hundred
 ## part numbers that share one shape share one batch too.
@@ -78,10 +79,36 @@ signal rebuilt(brick_count: int, batch_count: int, triangle_count: int)
 ## Forward+ renders in linear space and converts on output, so an sRGB
 ## palette value has to be linearised going in. The Compatibility
 ## renderer — which is what the web build gets, since Forward+ needs
-## WebGPU — already accounts for it, and linearising a second time
-## renders every part as a darker, duller version of itself.
+## WebGPU — lights in sRGB space and writes the result out as it is:
+## measured, a shader that writes linear 0.214 shows as #363636 there
+## and as #7F7F7F under Forward+. Linearising for it would render every
+## part as a darker, duller version of itself.
 static func _linearise_colors() -> bool:
 	return RenderingServer.get_current_rendering_method() != "gl_compatibility"
+
+
+## How strong a light should be under this renderer, given its strength
+## under Forward+.
+##
+## Compatibility lights in sRGB space, so the same energy reads much
+## brighter there: light multiplies the sRGB value itself rather than the
+## linear one, and twice the light is twice the value where under
+## Forward+ it is a fifth of the way to white. With the same lights as
+## Forward+, dark bluish grey came out as light bluish grey and light
+## bluish grey as white, which is how every grey looked on the web.
+##
+## And a light that casts shadows is drawn there as a pass of its own,
+## which comes out several times stronger again: with the sun's shadow
+## off, the lit greys dropped from L 0.74 to 0.57 at the same energy, and
+## a sun at a ninth of its energy added what the whole of it adds under
+## Forward+. Both factors were measured with src/dev/true_colour_probe.gd
+## against what Forward+ draws: dark and light bluish grey's lit tops at
+## L 0.59 and 0.78 here against 0.61 and 0.80 there, red #D32A31 against
+## #DA242C, blue #3873BE against #3C78C3.
+static func light_energy(forward_plus: float, casts_shadows: bool = false) -> float:
+	if _linearise_colors():
+		return forward_plus
+	return forward_plus * (0.11 if casts_shadows else 0.6)
 
 
 ## Materials are shared, not per batch: four of them cover everything, and
@@ -306,6 +333,14 @@ func _create_batch(
 	# Per-instance colour is the whole point: one copy of the geometry
 	# serves every colour the part was ever moulded in.
 	batch.multimesh.use_colors = true
+	# And per-instance finish beside it, so chrome, glitter and rubber
+	# share the batch and the draw call of the plain plastic: a material
+	# per finish would multiply the batches by the finishes in use.
+	# Always on, rather than only for batches that hold a finish: the
+	# format is fixed before the batch has any bricks, and a batch that
+	# carried none would have the shader read whatever the renderer
+	# supplies for missing custom data as a finish.
+	batch.multimesh.use_custom_data = true
 	batch.multimesh.mesh = part.surfaces[surface_index]
 
 	batch.instance = MultiMeshInstance3D.new()
@@ -375,7 +410,9 @@ func _rebuild(batch: Batch, key: String) -> void:
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		var surface_color: int = part.surface_colors[surface_index]
 		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
-		batch.multimesh.set_instance_color(slot, library.color(code).rgb)
+		var color: PartLibrary.BrickColor = library.color(code)
+		batch.multimesh.set_instance_color(slot, color.shown)
+		batch.multimesh.set_instance_custom_data(slot, color.instance_custom)
 		slot += 1
 
 	# Kept in step with instance_count explicitly: raising one does not

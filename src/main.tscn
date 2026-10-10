@@ -5,24 +5,33 @@
 [ext_resource type="Script" path="res://src/render/brick_world.gd" id="3"]
 [ext_resource type="Script" path="res://src/assembly/builder.gd" id="4"]
 
+; Grey, not blue-grey. The sky is what every glossy face reflects and
+; half of the ambient light, and a blue one put blue into everything dark:
+; a black tower read as navy. Measured with src/dev/true_colour_probe.gd.
 [sub_resource type="ProceduralSkyMaterial" id="Sky"]
-sky_top_color = Color(0.45, 0.52, 0.62, 1)
-sky_horizon_color = Color(0.72, 0.74, 0.78, 1)
-ground_bottom_color = Color(0.46, 0.47, 0.5, 1)
-ground_horizon_color = Color(0.66, 0.67, 0.7, 1)
+sky_top_color = Color(0.53, 0.545, 0.565, 1)
+sky_horizon_color = Color(0.735, 0.74, 0.75, 1)
+ground_bottom_color = Color(0.47, 0.47, 0.48, 1)
+ground_horizon_color = Color(0.67, 0.67, 0.68, 1)
 sun_angle_max = 12.0
 sun_curve = 0.18
 
 [sub_resource type="Sky" id="SkyRes"]
 sky_material = SubResource("Sky")
 
+; The light is set so the face a brick turns to it shows about its own
+; colour. It was three times that: every grey came out a step lighter than
+; itself (dark bluish grey as light bluish grey, light bluish grey as
+; white), and on the web, which lights in sRGB, all of them as white.
+; Sun, fill, rim and ambient all came down by the same factor, so the
+; modelling is what it was.
 [sub_resource type="Environment" id="Env"]
 background_mode = 2
 sky = SubResource("SkyRes")
 ambient_light_source = 3
-ambient_light_color = Color(0.82, 0.85, 0.9, 1)
+ambient_light_color = Color(0.86, 0.86, 0.87, 1)
 ambient_light_sky_contribution = 0.85
-ambient_light_energy = 1.15
+ambient_light_energy = 0.4
 tonemap_mode = 3
 tonemap_white = 6.0
 tonemap_exposure = 1.05
@@ -36,9 +45,6 @@ ssil_enabled = false
 glow_enabled = true
 glow_intensity = 0.25
 glow_bloom = 0.05
-adjustment_enabled = true
-adjustment_contrast = 1.04
-adjustment_saturation = 1.06
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -48,7 +54,7 @@ environment = SubResource("Env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.77, -0.42, 0.48, 0, 0.75, 0.66, -0.64, -0.51, 0.58, 0, 600, 0)
-light_energy = 2.6
+light_energy = 0.9
 light_angular_distance = 0.6
 light_specular = 1.0
 shadow_enabled = true
@@ -62,8 +68,8 @@ directional_shadow_split_3 = 0.45
 
 [node name="Fill" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.7, 0.3, -0.65, 0, 0.91, 0.42, 0.71, 0.29, -0.64, 0, 400, 0)
-light_energy = 0.6
-light_color = Color(0.82, 0.88, 1, 1)
+light_energy = 0.2
+light_color = Color(0.95, 0.96, 1, 1)
 light_specular = 0.3
 shadow_enabled = false
 
@@ -71,7 +77,7 @@ shadow_enabled = false
 ; behind it. Studs in particular need an edge to read as cylinders.
 [node name="Rim" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.64, 0.42, -0.64, 0, 0.84, 0.55, 0.77, -0.35, 0.53, 0, 200, 0)
-light_energy = 0.9
+light_energy = 0.3
 light_color = Color(1, 0.96, 0.9, 1)
 light_specular = 1.5
 shadow_enabled = false

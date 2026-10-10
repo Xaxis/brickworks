@@ -20,7 +20,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 
-	var palette := PackedInt32Array(PartsBin.SWATCHES)
+	var palette := PackedInt32Array(Mosaic.PALETTE)
 	print("  palette: %d colours" % palette.size())
 
 	# Oklab both ways. The dither subtracts a matched colour from the

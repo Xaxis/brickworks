@@ -88,7 +88,7 @@ func _run() -> void:
 		await process_frame
 		var material: ShaderMaterial = builder.get("_ghost_material")
 		var tint: Color = material.get_shader_parameter("tint")
-		var wanted: Color = library.color(code).rgb
+		var wanted: Color = library.color(code).shown
 		_say("the ghost is tinted %s  (rgb %.2f %.2f %.2f)" % [
 				library.color(code).name, tint.r, tint.g, tint.b],
 			tint.is_equal_approx(wanted))
@@ -146,6 +146,9 @@ func _run() -> void:
 
 	print("")
 	await _each_its_own(bin)
+
+	print("")
+	await _every_colour_can_be_chosen(bin, builder, library)
 
 	print("")
 	print("%d failed" % _failures if _failures
@@ -212,6 +215,94 @@ func _each_its_own(bin: PartsBin) -> void:
 	if seen.size() >= 3:
 		_say("%d parts, %d different pictures" % [want.size(), seen.size()],
 			seen.size() == want.size())
+
+
+## Can every colour be had by hand?
+##
+## The palette was a fixed row of 44: five of them retired, and Medium
+## Azure, Dark Orange, Coral and the rest of what sets use today
+## missing, so 278 colours could only be had from a model that already
+## used them. Asked of the palette the person sees, by pressing it.
+func _every_colour_can_be_chosen(bin: PartsBin, builder: Builder,
+		library: PartLibrary) -> void:
+	var toggle: Button = bin.get("_all_colours")
+	if toggle.button_pressed:
+		toggle.button_pressed = false
+	await process_frame
+	var short: Dictionary = bin.get("_swatches")
+	var wanted: Array[int] = [322, 484, 78, 29, 321, 57, 31, 330, 353, 315]
+	var missing := PackedInt32Array()
+	for code: int in wanted:
+		if not short.has(code):
+			missing.append(code)
+	_say("the short palette has %d colours, among them Medium Azure, Dark Orange, Coral%s"
+			% [short.size(), "" if missing.is_empty() else " — missing %s" % str(missing)],
+		missing.is_empty())
+	_say("...and not Light Grey, which LEGO stopped making in 2004",
+		not short.has(7) or not library.is_current(7))
+
+	toggle.button_pressed = true
+	await process_frame
+	var everything: Dictionary = bin.get("_swatches")
+	var unreachable := PackedInt32Array()
+	for code: int in library.colors:
+		if not everything.has(code) and not code in PartsBin.NOT_A_COLOUR:
+			unreachable.append(code)
+	_say("all of them: %d of %d colours can be pressed, %d cannot" % [
+			everything.size(), library.colors.size(), unreachable.size()],
+		unreachable.is_empty())
+
+	# Pressing one is choosing it, chrome as much as plain plastic.
+	for code: int in [484, 383, 117, 20004]:
+		var swatch: Button = (bin.get("_swatches") as Dictionary).get(code)
+		if swatch == null:
+			_say("no swatch for %d" % code, false)
+			continue
+		swatch.emit_signal("pressed")
+		await process_frame
+		_say("pressing %s holds it, held %d" % [library.color(code).name, builder.held_color],
+			builder.held_color == code)
+
+	# The eyedropper on a colour the short palette hides opens the long
+	# one with it lit, or the palette would show nothing chosen.
+	toggle.button_pressed = false
+	await process_frame
+	bin.show_held("3001", 7)
+	await process_frame
+	var lit: Button = (bin.get("_swatches") as Dictionary).get(7)
+	_say("picking up a Light Grey brick shows Light Grey chosen",
+		lit != null and lit.button_pressed and toggle.button_pressed)
+
+	# Which colours the held part comes in, marked.
+	bin.show_held("3001", 4)
+	await process_frame
+	var shown: Dictionary = bin.get("_swatches")
+	var marked: int = 0
+	var expected: int = 0
+	for code: int in shown:
+		if int(shown[code].get("made_in")) > 0:
+			marked += 1
+	var info: PartLibrary.PartInfo = library.parts["3001"]
+	for code: int in info.colors:
+		if shown.has(code):
+			expected += 1
+	_say("3001's colours are marked on the palette: %d of the %d shown" % [
+			marked, expected],
+		expected > 0 and marked == expected)
+
+	# A picture of the panel, to look at: the palette is the point.
+	for _n: int in 10:
+		await RenderingServer.frame_post_draw
+	var shot: Image = root.get_texture().get_image()
+	var area: Rect2 = (bin as Control).get_global_rect()
+	var scale: Vector2 = Vector2(shot.get_size()) / root.get_visible_rect().size
+	var crop := Rect2i(Vector2i(area.position * scale), Vector2i(area.size * scale))
+	crop = crop.intersection(Rect2i(Vector2i.ZERO, shot.get_size()))
+	if crop.has_area():
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
+		shot.get_region(crop).save_png(ProjectSettings.globalize_path("res://shots/palette.png"))
+		print("  wrote shots/palette.png")
+	toggle.button_pressed = false
 
 
 func _preview_colour(bin: PartsBin, part_id: String, code: int) -> Color:

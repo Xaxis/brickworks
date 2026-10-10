@@ -137,10 +137,10 @@ echo "── on screen ──"
 
 # A window even when nobody is logged in.
 #
-# These five need a rendering device. The desktop session is the obvious
+# These seven need a rendering device. The desktop session is the obvious
 # one and it is not always there: a run from a detached shell, or after
 # the screen locks, or on a machine nobody is sitting at, finds no
-# display and five checks fail for a reason that has nothing to do with
+# display and seven checks fail for a reason that has nothing to do with
 # the code — "X11 Display is not available", which reads like a broken
 # probe. Xvfb gives them one, and the pictures come out the same: a
 # frame costs 124 ms there against 989 ms on the compositor, so it is
@@ -162,6 +162,15 @@ fi
 
 run "colour" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/colour_probe.gd
+# Whether a colour on screen is the colour it is (black was navy, and on
+# the web every grey was white), and whether chrome, glitter, rubber and
+# the other finishes are each drawn as themselves. Both ask the pixels;
+# both leave pictures in shots/ worth a look. The plain `godot` here is
+# the Compatibility renderer, which is the web build's.
+run "true colour" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/true_colour_probe.gd
+run "finishes" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/finish_probe.gd
 # Same reason, and one more: the picture the assistant is shown only
 # exists where there is something to draw with, so a headless suite
 # would never once exercise the path the app actually takes.

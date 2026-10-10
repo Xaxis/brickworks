@@ -528,7 +528,7 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_ghost.mesh = part.surfaces[0]
 	_ghost.transform = _ghost_transform
 	_ghost.visible = true
-	var tint: Color = library.color(held_color).rgb
+	var tint: Color = library.color(held_color).shown
 	_ghost_material.set_shader_parameter("tint", tint)
 	_ghost_material.set_shader_parameter("valid", _ghost_valid)
 	preview_changed.emit(held_part, _ghost_valid)

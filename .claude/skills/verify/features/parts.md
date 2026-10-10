@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, lib:mesh fetch -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch -->
 
 ## Sub-features
 
@@ -12,6 +12,18 @@ geometry in front of them.
   whether the *first* few answers are usable rather than on recall.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails.
+- `palette`: every colour can be chosen by hand, grouped by kind of plastic
+  (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
+  rubber, fabric), greys first and then round the colour wheel. What sets are
+  built in now leads (`PartLibrary.is_current`: the colour's own `years` if the
+  colour data carries them, otherwise any part in a set in it since
+  `recent_since` — 84 colours); "All 320" adds the rest after a rule. Each
+  swatch is drawn as its finish; its name, finish and status are on hover, and
+  the colour in hand is named under the palette. A dot marks the colours the
+  part in hand was really made in; a colour it was never made in is dimmed, but
+  only where its list is complete. The bracket keys and the eyedropper go
+  through `_on_colour`, which opens the long palette for a colour the short one
+  does not show. The mosaic keeps its own 44 (`Mosaic.PALETTE`).
 - `mesh fetch`: a part whose mesh is not in the shipped pack is fetched from the
   storage bucket at run time. Several callers can ask for the same part at once,
   and every one of them has to hear that it arrived.
@@ -98,10 +110,20 @@ handful of queries — read them, they are the point. `vocab` is the one that fa
 when the index stops answering a plain English word.
 
 For the bin, launch the app, press `P`, type "wedge": the results are parts whose
-titles contain it, drawn in the current colour. **No probe covers the panel** —
-it is hands-only, so say so rather than claiming it.
+titles contain it, drawn in the current colour. **No probe covers the search
+panel** — it is hands-only, so say so rather than claiming it. The palette below
+it is covered by `colour_probe` (windowed, in the suite): the short palette has
+today's colours and not retired ones, every one of the 320 can be pressed and
+held, the eyedropper on a retired colour shows it chosen, and the held part's
+colours carry the dot. It leaves `shots/palette.png` — look at it.
 
 ## Gotchas
+
+- **"Dim what the part was never made in" dims nothing on the parts people
+  use.** All forty most used parts have a partial colour list (some of their
+  colours have no LDraw counterpart), and a partial list can never say
+  "never". So the palette marks positively — a dot on each colour the part is
+  known in — and dims only where the list is complete.
 
 - **"Another way" was the whole question.** A search result said a part had
   "N studs on top and M facing another way", which is true of a bracket, a
