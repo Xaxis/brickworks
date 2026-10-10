@@ -267,6 +267,10 @@ func _holds_up() -> void:
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 40, "deep": 24,
 			"wall": 1, "layers": 12, "rise": 3, "color": 71,
 			"mix_color": 72, "masonry": 0.5}],
+		["a stone wall, partly on its side", {"pattern": "fill", "shape": "rectangle",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 24, "deep": 16,
+			"wall": 1, "layers": 8, "rise": 3, "color": 71,
+			"mix_color": 72, "masonry": 0.4, "sideways": 0.3}],
 		["a crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
 			"across": 16, "deep": 12, "height": 15, "seed": 1}],
 		["another crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
@@ -291,6 +295,16 @@ func _holds_up() -> void:
 				% [one[0], model.placements.size()], true)
 		else:
 			_check("%s — %s" % [one[0], str(verdict["summary"])], false)
+		if (one[1] as Dictionary).has("sideways"):
+			var turned: int = 0
+			var dressed: int = 0
+			for placement: Assistant.Placement in model.placements:
+				if placement.part == "87087":
+					turned += 1
+				elif placement.face != "up":
+					dressed += 1
+			_check("...with %d bricks turned out and %d parts dressed on their sides"
+				% [turned, dressed], turned > 10 and dressed == turned)
 		if str((one[1] as Dictionary)["pattern"]) == "studs_out":
 			var sideways: int = 0
 			var face: String = str((one[1] as Dictionary)["facing"])

@@ -132,6 +132,14 @@ fixing what it got wrong.
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
   a band measures 43% sideways in `tools/style.py`.
+- `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
+  before the masonry, which would otherwise take every 1x2): one-wide bricks of
+  a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,
+  turned and dressed by `Assistant._dress` in `_read_model` with the same side
+  stud measurement as `studs_out` (`_side_stud`, cached per facing). In the
+  guidance's stone-wall recipe at 0.15, because designs copy the recipes: the
+  fourth Orthanc had `studs_out` and used none of it. `patterns_probe`: a stone
+  wall with `sideways` 0.3 holds and every turned brick is dressed.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps

@@ -3680,7 +3680,15 @@ func _read_model(args: Dictionary) -> Model:
 				plain.append(raw)
 		for raw: Variant in Patterns.expand(plain, written, trouble,
 				library):
-			model.placements.append(Placement.from_dict(raw))
+			var one: Dictionary = raw
+			if one.has("dress"):
+				# A fill's 1x1 with a side stud, marked with the way out:
+				# turned so the stud faces it, and dressed.
+				var dressing: Dictionary = _dress(one, str(one["dress"]))
+				one.erase("dress")
+				if not dressing.is_empty():
+					model.placements.append(Placement.from_dict(dressing))
+			model.placements.append(Placement.from_dict(one))
 		for raw: Variant in sideways:
 			for brick: Dictionary in _studs_out(raw, trouble):
 				model.placements.append(Placement.from_dict(brick))
@@ -3732,36 +3740,10 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 	if not facing in ["+x", "-x", "+z", "-z"]:
 		trouble.append("studs_out faces +x, -x, +z or -z")
 		return []
-	var brick: Lbm.PartMesh = library.mesh_for("87087")
-	if brick == null:
+	if _side_stud(facing).is_empty():
 		trouble.append("the 1x1 brick with a side stud has not arrived yet")
 		return []
-	var outward: Vector3 = FACES[facing]
-	# Which turn points the side stud the way asked, and which connector
-	# it is, measured on a trial brick.
-	var turn: int = -1
-	var side: Lbm.Connector = null
-	for rot: int in 4:
-		var trial := Placement.from_dict({"part": "87087", "color": colour,
-			"x": 0, "y": 0, "z": 0, "rot": rot})
-		var placed: Transform3D = _transform(trial, brick)
-		for connector: Lbm.Connector in brick.connectors:
-			if connector.kind != "stud" or connector.gender != "male":
-				continue
-			if (placed.basis * connector.axis).normalized().dot(outward) > 0.9:
-				turn = rot
-				side = connector
-		if turn >= 0:
-			break
-	if turn < 0:
-		trouble.append("could not find the side stud of 87087")
-		return []
-
 	var along_x: bool = facing in ["+z", "-z"]
-	var faces: Array = ["3070b", "98138", "4073", "54200", "3024"]
-	if facing in ["-x", "-z"]:
-		# Thicker than a plate hangs the other way on these sides.
-		faces = ["3070b", "98138", "4073", "3024"]
 	var made: Array = []
 	for course: int in courses:
 		var y: float = y0 + 4.0 * course
@@ -3769,21 +3751,14 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 			var x: float = x0 + (n if along_x else 0)
 			var z: float = z0 + (0 if along_x else n)
 			var one := {"part": "87087", "color": colour, "x": x, "y": y,
-				"z": z, "rot": turn}
-			made.append(one)
-			var placed: Transform3D = _transform(Placement.from_dict(one), brick)
-			var point: Vector3 = placed * side.position
-			var axis: Vector3 = (placed.basis * side.axis).normalized()
-			var corner: Vector3 = _corner_on(point, axis, facing)
-			var pick: float = Patterns._scatter(x, y, z, 23)
-			var part: String = faces[int(pick * faces.size()) % faces.size()]
+				"z": z, "rot": 0}
 			var tone: int = face_colour
 			if mix_colour >= 0 and Patterns._scatter(x, y, z, 29) < 0.3:
 				tone = mix_colour
-			made.append({"part": part, "color": tone,
-				"x": snappedf(corner.x / STUD, 0.1),
-				"y": snappedf(corner.y / PLATE, 0.25),
-				"z": snappedf(corner.z / STUD, 0.1), "face": facing, "rot": 0})
+			var dressing: Dictionary = _dress(one, facing, tone)
+			made.append(one)
+			if not dressing.is_empty():
+				made.append(dressing)
 		# The course above is tied across the joints of this one.
 		var tie_y: float = y + 3.0
 		var start: int = 0 if course % 2 == 0 else 1
@@ -3807,6 +3782,61 @@ func _tie(x0: float, y: float, z0: float, from: int, _long: int,
 	return {"part": part, "color": colour,
 		"x": x0 + (from if along_x else 0), "y": y,
 		"z": z0 + (0 if along_x else from), "rot": 0 if along_x else 1}
+
+
+## Which turn of 87087 points its side stud the way asked, and that
+## stud, measured on a trial brick once per way: [turn, connector], or
+## [] when the part has not arrived.
+var _side_studs: Dictionary = {}
+
+
+func _side_stud(facing: String) -> Array:
+	if _side_studs.has(facing):
+		return _side_studs[facing]
+	var brick: Lbm.PartMesh = library.mesh_for("87087")
+	if brick == null:
+		return []
+	var outward: Vector3 = FACES[facing]
+	for rot: int in 4:
+		var trial := Placement.from_dict({"part": "87087", "color": 0,
+			"x": 0, "y": 0, "z": 0, "rot": rot})
+		var placed: Transform3D = _transform(trial, brick)
+		for connector: Lbm.Connector in brick.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			if (placed.basis * connector.axis).normalized().dot(outward) > 0.9:
+				_side_studs[facing] = [rot, connector]
+				return _side_studs[facing]
+	return []
+
+
+## Turn a 1x1 brick with a side stud (87087) to face the way asked, and
+## return the part laid on its stud: a tile, round tile, round plate or
+## cheese slope, chosen by where it is. {} when it cannot be worked out.
+func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
+	if not facing in ["+x", "-x", "+z", "-z"]:
+		return {}
+	var side: Array = _side_stud(facing)
+	var mesh: Lbm.PartMesh = library.mesh_for("87087")
+	if side.is_empty() or mesh == null:
+		return {}
+	brick["rot"] = int(side[0])
+	var connector: Lbm.Connector = side[1]
+	var placed: Transform3D = _transform(Placement.from_dict(brick), mesh)
+	var point: Vector3 = placed * connector.position
+	var axis: Vector3 = (placed.basis * connector.axis).normalized()
+	var corner: Vector3 = _corner_on(point, axis, facing)
+	var faces: Array = ["3070b", "98138", "4073", "54200", "3024"]
+	if facing in ["-x", "-z"]:
+		# Thicker than a plate hangs the other way on these sides.
+		faces = ["3070b", "98138", "4073", "3024"]
+	var x: float = float(brick["x"])
+	var y: float = float(brick["y"])
+	var z: float = float(brick["z"])
+	var part: String = faces[int(Patterns._scatter(x, y, z, 23) * faces.size()) % faces.size()]
+	return {"part": part, "color": tone if tone >= 0 else int(brick.get("color", DEFAULT_COLOUR)),
+		"x": snappedf(corner.x / STUD, 0.1), "y": snappedf(corner.y / PLATE, 0.25),
+		"z": snappedf(corner.z / STUD, 0.1), "face": facing, "rot": 0}
 
 
 ## The assemblies a design named, each a name and a box in studs and
@@ -6529,7 +6559,8 @@ alongside the bricks you write by hand:
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
              a wall          rectangle, wall 1, layers 12, rise 3
-             a stone wall    the same, mix_color 72, masonry 0.5
+             a stone wall    the same, mix_color 72, masonry 0.5,
+                             sideways 0.15
              a room          rectangle, wall 1, layers 4, rise 3
 
            Rock is its own pattern, because stepped plates centred on \
@@ -7308,6 +7339,12 @@ func _tools() -> Array:
 			"mix": {"type": "number", "description":
 				"fill: the share in mix_color, up to 0.5; 0.15 if not "
 				+ "said."},
+			"sideways": {"type": "number", "description":
+				"fill: the share of its 1x2 bricks laid as two 1x1 bricks "
+				+ "with a stud on the side, turned out and dressed with a "
+				+ "tile, round tile, round plate or cheese slope on that "
+				+ "stud, 0 to 0.5. For a wall one stud thick: a face built "
+				+ "partly on its side, as real sets build them."},
 			"masonry": {"type": "number", "description":
 				"fill: the share of its 1x2 and 1x4 bricks laid as "
 				+ "masonry bricks (98283, 15533), stonework facing away "

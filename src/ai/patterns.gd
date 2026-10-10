@@ -339,6 +339,11 @@ static func _fill(pattern: Dictionary, trouble: Array,
 	var mix: float = clampf(float(pattern.get("mix",
 		MIX if mix_colour >= 0 else 0.0)), 0.0, 0.5)
 	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
+	# A share of the 1x2s laid as two 1x1 bricks with a stud on the side
+	# instead, facing out, for the assistant to dress with a tile or a
+	# round plate on its side (Assistant._dress). Real fantasy sets build
+	# a fifth of their parts on their side; walls built here, none.
+	var sideways: float = clampf(float(pattern.get("sideways", 0.0)), 0.0, 0.5)
 	var middle := Vector2(low_x + across / 2.0, low_z + deep / 2.0)
 
 	if across < 1 or deep < 1 or across * deep > MOST:
@@ -430,6 +435,9 @@ static func _fill(pattern: Dictionary, trouble: Array,
 					below, laid, course))
 		made.append_array(_tile(here, at_y, colour, tiles, below, laid,
 			course))
+		# Before the masonry, which would otherwise have every 1x2 first.
+		if sideways > 0.0:
+			_sideways(made, from_here, sideways, middle)
 		if mix > 0.0 or masonry > 0.0:
 			_texture(made, from_here, colour, mix_colour, mix, masonry,
 				middle)
@@ -639,6 +647,44 @@ static func _texture(made: Array, from: int, colour: int, mix_colour: int,
 			one["rot"] = 0 if z + 0.5 >= middle.y else 2
 		else:
 			one["rot"] = 1 if x + 0.5 >= middle.x else 3
+
+
+## How long each one-stud-wide brick of a course is.
+const ONE_WIDE: Dictionary = {"3005": 1, "3004": 2, "3622": 3, "3010": 4}
+
+
+## Lay some of a layer's one-stud-wide bricks as a row of 1x1 bricks with
+## a stud on the side, marked with the way out so the assistant can turn
+## them and hang something on each stud. Chosen by where they are, like
+## the mix. A 1x4 is most of a bonded wall, so it has to be one of them:
+## offered only the 1x2s, a wall came out with four.
+static func _sideways(made: Array, from: int, share: float,
+		middle: Vector2) -> void:
+	var extra: Array = []
+	for n: int in range(from, made.size()):
+		var one: Dictionary = made[n]
+		var long: int = int(ONE_WIDE.get(str(one["part"]), 0))
+		if long == 0:
+			continue
+		var x: float = float(one["x"])
+		var y: float = float(one["y"])
+		var z: float = float(one["z"])
+		if _scatter(x, y, z, 31) >= share:
+			continue
+		var along_x: bool = int(one.get("rot", 0)) % 2 == 0
+		var facing: String
+		if along_x:
+			facing = "+z" if z + 0.5 >= middle.y else "-z"
+		else:
+			facing = "+x" if x + 0.5 >= middle.x else "-x"
+		one["part"] = "87087"
+		one["dress"] = facing
+		for step: int in range(1, long):
+			var next: Dictionary = one.duplicate()
+			next["x"] = x + (float(step) if along_x else 0.0)
+			next["z"] = z + (0.0 if along_x else float(step))
+			extra.append(next)
+	made.append_array(extra)
 
 
 ## A number from 0 to 1 that depends only on where a brick is.

@@ -242,6 +242,10 @@
                 "description": "fill: studs off each layer, taken half from each side, so the stack tapers as it rises. Must be even. 2 is a dome, 4 a steep cone, 0 a straight-sided hull, and -2 flares outward.",
                 "type": "number"
               },
+              "sideways": {
+                "description": "fill: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
+                "type": "number"
+              },
               "step": {
                 "additionalProperties": false,
                 "description": "repeat: how far each copy moves, in studs and plates",
@@ -1028,6 +1032,10 @@
               },
               "shrink": {
                 "description": "fill: studs off each layer, taken half from each side, so the stack tapers as it rises. Must be even. 2 is a dome, 4 a steep cone, 0 a straight-sided hull, and -2 flares outward.",
+                "type": "number"
+              },
+              "sideways": {
+                "description": "fill: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
               },
               "step": {
