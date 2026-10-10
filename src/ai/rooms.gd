@@ -212,11 +212,12 @@ const COLUMNS: Dictionary = {
 ## z: [studs long, part, quarter turns]. Then one stud wide, for an edge.
 ## As long as they come, so a strip across a room is one plate and has no
 ## joint for the floor to part along.
+## Then across, for the last stud or two of a strip.
 const PLATES_FOUR: Array = [[12, "3029", 1], [10, "3030", 1], [8, "3035", 1],
-	[6, "3032", 1], [4, "3031", 0]]
+	[6, "3032", 1], [4, "3031", 0], [2, "3020", 0], [1, "3710", 0]]
 const PLATES_TWO: Array = [[16, "4282", 1], [14, "91988", 1], [12, "2445", 1],
 	[10, "3832", 1], [8, "3034", 1], [6, "3795", 1], [4, "3020", 1],
-	[3, "3021", 1], [2, "3022", 0]]
+	[3, "3021", 1], [2, "3022", 0], [1, "3023", 0]]
 const PLATES_ONE: Array = [[8, "3460", 1], [6, "3666", 1], [4, "3710", 1],
 	[3, "3623", 1], [2, "3023", 1], [1, "3024", 0]]
 ## Tiles for the floor itself, laid along x: boards one stud wide, flags two.
@@ -428,7 +429,7 @@ func _read(args: Dictionary) -> String:
 		_floors.append({"said": said, "room": kind if not kind.is_empty() else "hall",
 			"guessed": kind.is_empty(), "y": int(round(floor_y)),
 			"stair": bool(one.get("stair", false)), "cells": {},
-			"hole": {}, "reserved": {}, "columns": [], "props": [],
+			"hole": {}, "reserved": {}, "plated": {}, "columns": [], "props": [],
 			"missed": []})
 		y = floor_y + float(one.get("height", storey))
 	_floors.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -673,6 +674,28 @@ func _take_out(item: int) -> void:
 			_laid[index] = {}
 	one["bricks"] = [] as Array[int]
 	one["gone"] = true
+	if one["role"] == "plate":
+		for at: Vector2i in one["cells"]:
+			(_floors[int(one["floor"])]["plated"] as Dictionary).erase(at)
+
+
+## The studs of floor k a thing can stand on: all of the ground, a laid
+## floor where its plates are, a floor already there where something is
+## under it.
+func _standing(k: int) -> Dictionary:
+	var level: Dictionary = _floors[k]
+	if bool(level["ground"]):
+		return level["cells"]
+	if not bool(level["existing"]):
+		return level["plated"]
+	var out: Dictionary = {}
+	var base: int = level["base"]
+	for at: Vector2i in level["cells"]:
+		var under := PackedInt32Array([at.x * ACROSS, base * UP - 1, at.y * ACROSS,
+			at.x * ACROSS + ACROSS, base * UP, at.y * ACROSS + ACROSS])
+		if not _world.blockers_boxes(under).is_empty():
+			out[at] = true
+	return out
 
 
 ## One part, if it fits: for floors and tiles, laid stud by stud.
@@ -1035,6 +1058,10 @@ func _lay_plates(k: int) -> void:
 
 ## Lay the longest part of [param lengths] that fits along +z from [param
 ## at], [param wide] studs across, and take its studs out of [param left].
+## Where none fits the studs are left for a narrower pass: this used to
+## give them up, and a 4-wide strip two studs long gave up a room's worth
+## of floor that the 2-wide pass would have laid — so the tiles and a
+## candlestick stood there on nothing.
 func _strip(left: Dictionary, at: Vector2i, wide: int, y: int, colour: int,
 		lengths: Array, k: int) -> void:
 	var room: int = 0
@@ -1059,10 +1086,8 @@ func _strip(left: Dictionary, at: Vector2i, wide: int, y: int, colour: int,
 		if _lay_one(brick, k, "plate", cells):
 			for cell: Vector2i in cells:
 				left.erase(cell)
+				_floors[k]["plated"][cell] = true
 			return
-	# Nothing fits, so this stud goes without.
-	for dx: int in wide:
-		left.erase(at + Vector2i(dx, 0))
 
 
 ## The floor itself, around whatever stands on it: boards of 1 x 6 down to
@@ -1081,7 +1106,7 @@ func _lay_tiles(k: int) -> void:
 	if rng.randf() < 0.5 and tones.size() > 1:
 		tones.reverse()
 	var left: Dictionary = {}
-	for at: Variant in level["cells"]:
+	for at: Variant in _standing(k):
 		if not (level["hole"] as Dictionary).has(at):
 			left[at] = true
 	var carpet: Dictionary = _carpet(k)
@@ -1287,11 +1312,12 @@ func _pieces(k: int) -> Dictionary:
 		while parent[at] != at:
 			at = parent[at]
 		return at
-	# A tile ties every plate it lies on; so does furniture standing across
-	# two of them.
+	# A tile ties every plate it lies on. Furniture standing across two does
+	# not, though it looks as if it should: a chest half a stud off the grid
+	# rests on its plates without one tube on one stud, and a plate under it
+	# that was counted as tied by it floated in the check.
 	for item: Dictionary in _items:
-		if int(item["floor"]) != k or item.has("gone") \
-				or not item["role"] in ["tile", "furniture"]:
+		if int(item["floor"]) != k or item.has("gone") or item["role"] != "tile":
 			continue
 		var first: int = -1
 		for at: Vector2i in item["cells"]:
@@ -1391,13 +1417,21 @@ func _boards(k: int, from: Vector2i, long: int, y: int, tone: int) -> void:
 			x += 1
 
 
+## Whether a plate of floor k is held from below: by a column or a ladder's
+## pillar, or by something in the one layer of cells under it, which is
+## what the check asks; a whole plate's depth below was asked first, and a
+## diagonal wall's corner a cell lower held a plate the check called
+## floating.
 func _plate_held(n: int, k: int) -> bool:
 	var level: Dictionary = _floors[k]
 	var y: int = level["y"]
 	for at: Vector2i in _items[n]["cells"]:
 		if (level["columns"] as Array).has(at) or (level["props"] as Array).has(at):
 			return true
-		if not _clear(at, y - 1, y):
+		var under := PackedInt32Array([at.x * ACROSS, y * UP - 1, at.y * ACROSS,
+			at.x * ACROSS + ACROSS, y * UP, at.y * ACROSS + ACROSS])
+		if not _world.blockers_boxes(under).is_empty() \
+				or not _mine.blockers_boxes(under).is_empty():
 			return true
 	return false
 
@@ -1431,6 +1465,10 @@ func _place(k: int, name: String) -> bool:
 	var front: int = DIR_NAMES.find(str(def.get("front", "")))
 	var wall: bool = bool(def.get("wall", true))
 	var free: Dictionary = _free_cells(k)
+	var standing: Dictionary = _standing(k)
+	for at: Variant in free.keys():
+		if not standing.has(at):
+			free.erase(at)
 	var cells: Dictionary = level["cells"]
 	var base: int = level["base"]
 	var middle := Vector2.ZERO

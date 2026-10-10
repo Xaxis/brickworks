@@ -3864,9 +3864,9 @@ func _restyle(args: Dictionary) -> Dictionary:
 ## design's own bricks: {"from", "only", "ask"}, or {} for the usual corner
 ## with what changed in magenta. Set by add_rooms around its edit.
 var _look_after_edit: Dictionary = {}
-## What the last add_rooms laid, floor by floor (Rooms.answer's "floors"),
-## for rooms_probe to hold it to.
-var _last_rooms: Array = []
+## What the last add_rooms came to (Rooms.answer, and "dropped": how many
+## items the check took back out), for rooms_probe to hold it to.
+var _last_rooms: Dictionary = {}
 
 
 ## Floors and furnished rooms in what stands (see [Rooms]), checked the way
@@ -3885,6 +3885,7 @@ func _rooms(args: Dictionary) -> Dictionary:
 	var plan: Dictionary = rooms.plan(args)
 	if plan.has("trouble"):
 		return plan
+	var dropped: int = 0
 	for _try: int in 3:
 		var trial: Model = _model_from_world()
 		var standing: int = trial.placements.size()
@@ -3899,10 +3900,13 @@ func _rooms(args: Dictionary) -> Dictionary:
 		for index: Variant in report.get("floating", []):
 			if int(index) >= standing:
 				ours.append(int(index) - standing)
-		if ours.is_empty() or rooms.drop(ours) == 0:
+		var gone: int = rooms.drop(ours) if not ours.is_empty() else 0
+		if gone == 0:
 			break
+		dropped += gone
 		plan = rooms.answer()
-	_last_rooms = plan["floors"]
+	_last_rooms = plan.duplicate()
+	_last_rooms["dropped"] = dropped
 	if (plan["bricks"] as Array).is_empty():
 		return {"trouble": "Nothing would fit: %s" % str(plan["summary"])}
 	return plan
@@ -6409,6 +6413,14 @@ func _square_transform(placement: Placement,
 func _ensure_parts(model: Model) -> void:
 	var wanted: Dictionary = {}
 	for placement: Placement in model.placements:
+		# From disk first, where the build has it: only what is not there is
+		# fetched. Not resident meant fetched over HTTP even on the desktop,
+		# whose every part is on disk; the request failed, and the wait for it
+		# was the twenty seconds below. add_rooms, which asks for seventy
+		# parts at once, spent most of its time here, and the first Orthanc
+		# run to use it logged a column of "could not fetch".
+		if not library.is_resident(placement.part):
+			library.mesh_for(placement.part)
 		if not library.is_resident(placement.part):
 			wanted[placement.part] = true
 	if wanted.is_empty():

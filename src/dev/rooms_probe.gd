@@ -95,6 +95,11 @@ func _run() -> void:
 	_check("...nothing floating and nothing overlapping",
 		not (verdict.get("kinds", []) as Array).has("floating")
 			and not (verdict.get("kinds", []) as Array).has("overlap"))
+	# As laid, and not because the check took out what floated: the check
+	# is the net under add_rooms, and a net in use is a fault in the floor.
+	_check("...as laid, with nothing the check had to take out (%d)"
+		% int(_assistant._last_rooms.get("dropped", -1)),
+		int(_assistant._last_rooms.get("dropped", -1)) == 0)
 	_check("the shell is exactly as it was: %s" % _shell_changes(shell),
 		_shell_changes(shell) == "untouched")
 	_check_rooms(text)
@@ -133,7 +138,9 @@ func _run() -> void:
 	_check("two libraries, two different rooms: %s" % " / ".join(PackedStringArray(libraries)),
 		libraries.size() == 2 and libraries[0] != libraries[1])
 	var ok: Dictionary = _assistant._check(_assistant._model_from_world(), true)
-	_check("...and it passes the check: %s" % ok["summary"], bool(ok["ok"]))
+	_check("...and it passes the check: %s, as laid (%d taken out)" % [ok["summary"],
+		int(_assistant._last_rooms.get("dropped", -1))],
+		bool(ok["ok"]) and int(_assistant._last_rooms.get("dropped", -1)) == 0)
 	if ModelShot.possible():
 		await _pictures("house")
 
@@ -157,7 +164,9 @@ func _run() -> void:
 			(one["furniture"] as Array).size()],
 			(one["furniture"] as Array).has(signature))
 	var whole: Dictionary = _assistant._check(_assistant._model_from_world(), true)
-	_check("...it passes the check: %s" % whole["summary"], bool(whole["ok"]))
+	_check("...it passes the check: %s, as laid (%d taken out)" % [whole["summary"],
+		int(_assistant._last_rooms.get("dropped", -1))],
+		bool(whole["ok"]) and int(_assistant._last_rooms.get("dropped", -1)) == 0)
 	_check("...and the house is as it was: %s" % _shell_changes(tall),
 		_shell_changes(tall) == "untouched")
 	if ModelShot.possible():
@@ -259,7 +268,7 @@ func _check_rooms(text: String) -> void:
 
 ## The report of the last add_rooms, floor by floor.
 func _last_floors() -> Array:
-	return _assistant._last_rooms
+	return _assistant._last_rooms.get("floors", [])
 
 
 ## What each furnished floor of the last call was made of, to compare.
