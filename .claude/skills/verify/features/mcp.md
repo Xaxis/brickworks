@@ -91,7 +91,9 @@ And `mcp_probe` ends on "a session outside the app can use the app's own
 tools" — a client connects over real TCP, gets 9 tools all carrying schemas,
 searches the real catalogue, submits a design that puts 3 bricks in the world, and
 has a floating brick refused, and three clients asking at once each get their
-own answer while the app does them one at a time. `mcp_check.py` ends on "a session can drive
+own answer while the app does them one at a time. Over HTTP, a body with an
+accent in it is answered, and so is a second request sent in the same write.
+`mcp_check.py` ends on "a session can drive
 Brickworks over MCP" — initialize, ping, `tools/list` with MCP's `inputSchema`
 spelling, a search, a cleared baseplate, a design that lands, a save read back off
 disk, and the no-app case answering "not running" with the command to start it.
@@ -99,6 +101,12 @@ disk, and the no-app case answering "not running" with the command to start it.
 Both are in `tools/check.sh`.
 
 ## Gotchas
+
+- **Content-Length counts bytes.** The socket read the body in characters, so
+  one accented letter left it a byte short for ever: the app never saw the call,
+  and the session waited out the ten-minute tool timeout. Orthanc run 10 lost both
+  its submits to "the palantír" in a note. A call that "times out" while the app
+  stays responsive to every other tool is this kind of bug, not a slow check.
 
 - **The two halves fail differently.** The socket can be perfect while the relay
   answers `tools/list` with an empty array, and a session then sees a server with

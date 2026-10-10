@@ -201,29 +201,48 @@ func _pump(client: Client) -> bool:
 
 
 ## A whole request, or nothing yet. Returns false when the client has gone.
+##
+## Counted in bytes, because Content-Length is. Counted in characters, a
+## body with one accented letter in it is one short for ever: the app
+## waits for a byte that never comes, and the session that sent it waits
+## ten minutes to be told it timed out. That was a tower of Orthanc whose
+## notes put "the palantír" on the summit: every call without an accent
+## worked, and both submits with one never arrived.
 func _pump_http(client: Client) -> bool:
-	var text: String = client.buffer.get_string_from_utf8()
-	var blank: int = text.find("\r\n\r\n")
+	var blank: int = _find_bytes(client.buffer, "\r\n\r\n")
 	var gap: int = 4
 	if blank < 0:
-		blank = text.find("\n\n")
+		blank = _find_bytes(client.buffer, "\n\n")
 		gap = 2
 	if blank < 0:
 		return true
-	var head: String = text.substr(0, blank)
+	var head: String = client.buffer.slice(0, blank).get_string_from_utf8()
 	var wanted: int = 0
 	for line: String in head.split("\n"):
 		var at: String = line.strip_edges().to_lower()
 		if at.begins_with("content-length:"):
 			wanted = at.split(":")[1].strip_edges().to_int()
 	var body_from: int = blank + gap
-	var body: String = text.substr(body_from)
-	if body.length() < wanted:
+	if client.buffer.size() - body_from < wanted:
 		return true
-	client.buffer = PackedByteArray()
+	var body: String = client.buffer.slice(body_from,
+		body_from + wanted).get_string_from_utf8()
+	# Whatever came after this request is the start of the next one.
+	client.buffer = client.buffer.slice(body_from + wanted)
 	client.busy = true
-	_serve_http(client, head, body.substr(0, wanted))
+	_serve_http(client, head, body)
 	return true
+
+
+static func _find_bytes(haystack: PackedByteArray, needle: String) -> int:
+	var wanted: PackedByteArray = needle.to_ascii_buffer()
+	var first: int = wanted[0]
+	var at: int = haystack.find(first)
+	while at >= 0 and at + wanted.size() <= haystack.size():
+		if haystack.slice(at, at + wanted.size()) == wanted:
+			return at
+		at = haystack.find(first, at + 1)
+	return -1
 
 
 func _serve_http(client: Client, head: String, body: String) -> void:

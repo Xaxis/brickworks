@@ -282,6 +282,7 @@ func _run() -> void:
 	waiting.disconnect_from_host()
 
 	await _one_at_a_time(port)
+	await _over_http(port)
 
 	# An unknown tool is an answer, not a dropped connection.
 	var nonsense: Dictionary = await _ask("no_such_tool", {})
@@ -398,6 +399,77 @@ func _ask(tool: String, input: Dictionary) -> Dictionary:
 		{"id": _next_id, "tool": tool, "input": input}) + "\n"
 	_client.put_data(line.to_utf8_buffer())
 	return await _read()
+
+
+## Is a request over HTTP read by its length in bytes?
+##
+## Content-Length counts bytes, and the socket counted characters: a
+## body with one accented letter was one short for ever, and the session
+## that sent it waited ten minutes to hear it had timed out. Run 10 of
+## the tower of Orthanc lost both its submits that way, to "the
+## palantír". Two requests in one write, too, because whatever follows a
+## body is the next request and used to be thrown away.
+func _over_http(port: int) -> void:
+	print("")
+	var peer: StreamPeerTCP = await _another(port)
+	var sent := PackedByteArray()
+	var first: String = JSON.stringify({"jsonrpc": "2.0", "id": 71,
+		"method": "tools/call", "params": {"name": "search_parts",
+			"arguments": {"query": "palantír"}}})
+	var second: String = JSON.stringify({"jsonrpc": "2.0", "id": 72,
+		"method": "tools/list", "params": {}})
+	for body: String in [first, second]:
+		var bytes: PackedByteArray = body.to_utf8_buffer()
+		sent.append_array(("POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+			+ "Content-Type: application/json\r\n"
+			+ "Content-Length: %d\r\n\r\n" % bytes.size()).to_utf8_buffer())
+		sent.append_array(bytes)
+	_check("...a body with an accent is longer in bytes than in letters",
+		first.to_utf8_buffer().size() > first.length())
+	peer.put_data(sent)
+	var answers: Array = await _read_http(peer, 2)
+	var ids: Array = []
+	for answer: Dictionary in answers:
+		var id: Variant = answer.get("id")
+		ids.append(int(id) if id is float or id is int else -1)
+	_check("a request over HTTP with an accent in it is answered, ids %s"
+		% str(ids), ids.size() >= 1 and ids[0] == 71)
+	_check("...and the request sent straight after it is answered too",
+		ids.size() == 2 and ids[1] == 72)
+	peer.disconnect_from_host()
+
+
+## The next [param count] HTTP answers from a client, read by their
+## Content-Length in bytes.
+func _read_http(peer: StreamPeerTCP, count: int) -> Array:
+	var buffer := PackedByteArray()
+	var answers: Array = []
+	for _n: int in 1200:
+		peer.poll()
+		var ready: int = peer.get_available_bytes()
+		if ready > 0:
+			var got: Array = peer.get_data(ready)
+			if got[0] == OK:
+				buffer.append_array(got[1])
+		while true:
+			var blank: int = CommandSocket._find_bytes(buffer, "\r\n\r\n")
+			if blank < 0:
+				break
+			var head: String = buffer.slice(0, blank).get_string_from_utf8()
+			var length: int = 0
+			for line: String in head.split("\n"):
+				if line.to_lower().begins_with("content-length:"):
+					length = line.split(":")[1].strip_edges().to_int()
+			if buffer.size() < blank + 4 + length:
+				break
+			var answer: Variant = JSON.parse_string(buffer.slice(blank + 4,
+				blank + 4 + length).get_string_from_utf8())
+			answers.append(answer if answer is Dictionary else {})
+			buffer = buffer.slice(blank + 4 + length)
+		if answers.size() >= count:
+			return answers
+		await process_frame
+	return answers
 
 
 ## One more client, connected.
