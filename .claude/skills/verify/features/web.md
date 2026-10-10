@@ -38,7 +38,13 @@ accounts.
   src/dev/connector_probe.gd -- 8790` — initialize with the app's guidance, 13
   tools, a real call, then the tab off. claude.ai's help centre says custom
   connectors accept authless servers (support.claude.com/en/articles/11503834);
-  OAuth can follow if that changes.
+  OAuth can follow if that changes. Real Claude Code has been through it: `claude
+  -p` with `--mcp-config` naming the address (type http), `--strict-mcp-config`
+  and `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,
+  called `search_parts` in the tab and answered 3001. On a deployment,
+  `tools/web/connector_flow.mjs` does it as a person and as Claude: Connect
+  Claude and Copy in a real browser, the address off the clipboard, then
+  initialize, tools/list and a real call through the deployed relay.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia and the parts store's origin (from `PARTS_URL`); the page's one
   inline script is allowed by a hash computed at deploy; `unsafe-eval` stays
