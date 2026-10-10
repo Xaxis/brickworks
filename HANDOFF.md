@@ -121,15 +121,23 @@ stats on the status line; a grouped toolbar with Clear asking first.
 
 ## What is next
 
-1. Read run 24 (the castle with everything): did the passes recolour its
-   walls, and does it use the window and the new techniques?
-2. The checker's false positives: clips on bars and hollow studs. The
-   parts pipeline records no bar connector at all; recognising bars and
-   hollow studs in `tools/ldraw/connectivity.py`, then a sub-build, lets
-   real sets' lanterns, flags and railings through.
-3. Roofs, from the 32 real roof sub-models that pass.
-4. The door frame's notched studs (see above).
-5. Proportion: towers over walls, against more real castles.
+1. **Orthanc, the owner's yardstick** (`docs/ROADMAP.md`, "Beyond variety:
+   beauty", runs 1-11). Run 11 is the first with sideways and angles in one
+   model (16%, 9%) and detailed itself from the review; variety (35 shapes
+   against 109, 5 colours against 23) has not moved in eleven runs. Real sets
+   get it from interiors, details and figures: rooms inside as one call shaped
+   like the work, and minifigures once the builder lands. A master-level
+   Orthanc goes on the homepage (task #29).
+2. **Agents in worktrees, to merge as they report:** the minifigure builder,
+   the custom element designer, the real-set techniques harvest, and desktop
+   releases (macOS and Linux first, then Windows, downloads on the site; the
+   owner must supply an Apple Developer ID and a Windows signing certificate
+   for signed builds).
+3. **The landing page** for what shipped since: the timeline (build order,
+   as made, history), keyboard controls, true colour and finishes.
+4. The checker's false positives: clips on bars and hollow studs (the parts
+   pipeline records no bar connector), then roofs from the 32 real roof
+   sub-models that pass.
 
 ## Gotchas that will cost you hours
 
