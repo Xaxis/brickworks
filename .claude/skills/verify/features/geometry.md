@@ -20,7 +20,13 @@ can occupy the same millimetre.
   `sections: [{name,x,y,z,axis,degrees}]` plus a `section` field on a brick.
   Collision inside a section is checked in the section's own square frame;
   everything else is checked against the turned cells with a 15-axis separating
-  axis test.
+  axis test. `cells_for_turned` works out the axes once per box and, since the
+  touching cells along any line are one run, finds each row's ends from the
+  slabs and settles them with the exact test — every cell of the bounding box
+  used to be tested, with the axes rebuilt each time, and an Orthanc of a
+  thousand angled bricks took 185 s to place on the app's only thread (its
+  looks timed out); 9.5 s now. `turned_probe` checks the cells are identical to
+  the old way's over 300 random turned boxes, and quicker (14.3 s to 0.84 s).
 - `stability`: whether what was built would survive being picked up — what rests
   on what, what is floating, and what is attached by one stud at the end of a
   cantilever.

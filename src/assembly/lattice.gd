@@ -408,22 +408,107 @@ static func cells_for_turned(
 			low = low.min(corner)
 			high = high.max(corner)
 
-		# The turned box, as a centre, three axes and three half-widths.
+		# The turned box, as a centre, three axes and three half-widths,
+		# and the fifteen separating axes with how far apart along each a
+		# cell and the box can be and still touch — worked out once per
+		# box. They were worked out again for every cell, which on a turned
+		# 2 x 4 is twenty thousand times: an Orthanc of a thousand angled
+		# bricks took three minutes to place, on the one thread the app
+		# answers on, so every look the design asked for timed out.
 		var half: Vector3 = (hi - lo) * 0.5
 		var middle: Vector3 = basis * ((lo + hi) * 0.5)
+		var test: Array = _separating(basis, half)
+		var axes: Array[Vector3] = test[0]
+		var reaches: PackedFloat64Array = test[1]
+
+		var z_from: int = floori(low.z)
+		var z_to: int = ceili(high.z) - 1
 		for x: int in range(floori(low.x), ceili(high.x)):
 			for y: int in range(floori(low.y), ceili(high.y)):
-				for z: int in range(floori(low.z), ceili(high.z)):
-					if not _touches(middle, basis, half, Vector3(
-							float(x) + 0.5, float(y) + 0.5,
-							float(z) + 0.5)):
+				# Along a line of cells the ones that touch are one run:
+				# the box grown by a cell is convex. So the run's ends,
+				# from the same fifteen slabs, and the cells between.
+				var px: float = float(x) + 0.5
+				var py: float = float(y) + 0.5
+				var t0: float = -INF
+				var t1: float = INF
+				var empty: bool = false
+				for n: int in axes.size():
+					var axis: Vector3 = axes[n]
+					var k: float = middle.dot(axis) - px * axis.x - py * axis.y
+					var r: float = reaches[n]
+					if absf(axis.z) < 0.000001:
+						if absf(k) > r:
+							empty = true
+							break
 						continue
+					var a: float = (k - r) / axis.z
+					var b: float = (k + r) / axis.z
+					t0 = maxf(t0, minf(a, b))
+					t1 = minf(t1, maxf(a, b))
+					if t0 > t1 + 1.0:
+						empty = true
+						break
+				if empty:
+					continue
+				# The ends settled by the exact test, so a cell that only
+				# just touches is decided the way it always was.
+				var first: int = clampi(ceili(t0 - 0.5), z_from, z_to + 1)
+				var last: int = clampi(floori(t1 - 0.5), z_from - 1, z_to)
+				while first - 1 >= z_from and _touches_with(middle, axes,
+						reaches, Vector3(px, py, float(first - 1) + 0.5)):
+					first -= 1
+				while first <= z_to and not _touches_with(middle, axes,
+						reaches, Vector3(px, py, float(first) + 0.5)):
+					first += 1
+				while last + 1 <= z_to and _touches_with(middle, axes,
+						reaches, Vector3(px, py, float(last + 1) + 0.5)):
+					last += 1
+				while last >= first and not _touches_with(middle, axes,
+						reaches, Vector3(px, py, float(last) + 0.5)):
+					last -= 1
+				for z: int in range(first, last + 1):
 					var cell: Vector3i = origin_cell + Vector3i(x, y, z)
 					if taken.has(cell):
 						continue
 					taken[cell] = true
 					out.append(cell)
 	return out
+
+
+## The fifteen separating axes for a turned box and a unit cell, and for
+## each the farthest apart along it they can be and still touch: the
+## same axes and reaches [method _touches] works out, once.
+static func _separating(basis: Basis, half: Vector3) -> Array:
+	var axes: Array[Vector3] = [
+		Vector3.RIGHT, Vector3.UP, Vector3.BACK,
+		basis[0].normalized(), basis[1].normalized(),
+		basis[2].normalized()]
+	for n: int in 3:
+		for m: int in 3:
+			var cross: Vector3 = axes[n].cross(axes[3 + m])
+			if cross.length_squared() > 0.000001:
+				axes.append(cross.normalized())
+	var widths := PackedFloat32Array([half.x, half.y, half.z])
+	var reaches := PackedFloat64Array()
+	for axis: Vector3 in axes:
+		var cell_reach: float = 0.5 * (absf(axis.x) + absf(axis.y)
+			+ absf(axis.z))
+		var box_reach: float = 0.0
+		for n: int in 3:
+			box_reach += widths[n] * absf(axis.dot(basis[n].normalized()))
+		reaches.append(cell_reach + box_reach)
+	return [axes, reaches]
+
+
+## [method _touches], with its axes and reaches worked out already.
+static func _touches_with(middle: Vector3, axes: Array[Vector3],
+		reaches: PackedFloat64Array, at: Vector3) -> bool:
+	var apart: Vector3 = middle - at
+	for n: int in axes.size():
+		if absf(apart.dot(axes[n])) > reaches[n]:
+			return false
+	return true
 
 
 ## Whether a unit cell centred at [param at] is touched by the turned
