@@ -138,16 +138,21 @@ says whether everything agrees with it.
    get it from interiors, details and figures: rooms inside as one call shaped
    like the work, and minifigures once the builder lands. A master-level
    Orthanc goes on the homepage (task #29).
-2. **Agents in worktrees, to merge as they report:** the minifigure builder,
-   the custom element designer, the real-set techniques harvest, and desktop
-   releases (macOS and Linux first, then Windows, downloads on the site; the
-   owner must supply an Apple Developer ID and a Windows signing certificate
-   for signed builds).
-3. **The landing page** for what shipped since: the timeline (build order,
-   as made, history), keyboard controls, true colour and finishes.
-4. The checker's false positives: clips on bars and hollow studs (the parts
-   pipeline records no bar connector), then roofs from the 32 real roof
-   sub-models that pass.
+2. **Merged 2026-10-10:** the minifigure builder (`src/minifig/`, M or the
+   Minifig button; `add_minifig` for the assistant), the custom element maker
+   (Make a part… in the bin; `src/parts/element_maker.gd`, `part_forge.gd`),
+   59 real-set worked examples (`show_technique`), desktop releases
+   (`tools/release.py`, `docs/RELEASING.md`, `web/download.html`), a model's
+   name kept across a restart plus New, and the lighting fix (no white
+   slopes). Still out: control icons and context cursors (an agent's
+   worktree). Desktop signing waits on the owner: an Apple Developer ID and a
+   Windows code-signing certificate (`docs/RELEASING.md`).
+3. **The checker refuses real techniques:** of 880 real sub-models, 247 are
+   refused for overlaps that are real LEGO (bars through holes, clips on
+   bars, hinges, panes in frames `Assistant.NESTS` lacks, the 2x2 turntable).
+   The turntable is how real sets turn a wall, so no angled worked example
+   can pass until it is understood.
+4. Roofs, from the 32 real roof sub-models that pass.
 
 ## Gotchas that will cost you hours
 
