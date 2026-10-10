@@ -288,6 +288,31 @@ learns the techniques with worked examples from real sets (`show_technique`,
 `tools/omr.py harvest`). Judged by building Orthanc again against 10237;
 the first one that is master level replaces the castle on the landing page.
 
+The same brief each time, built by Claude Code (Opus 5.5) on the owner's
+plan over MCP (`--ask-claude-code`), so the way the owner builds from
+claude.ai; measured by `tools/style.py --against fantasy` (16 real fantasy
+sets: sideways 19%, angled 27%, plain 28%, mirrored 31%, 109 shapes, 23
+colours at the median):
+
+| run | what was new | parts | sideways | angled | plain | mirrored | shapes | colours |
+|---|---|---|---|---|---|---|---|---|
+| 1 | review_model; old guidance | 1,648 | 0% | 0% | 57% | 88% | 34 | 8 |
+| 2 | the guidance teaches craft, in words | 1,674 | 0% | 0% | 77% | 71% | 40 | 10 |
+| 3 | style measured in every check; `rock` | 2,769 | 0% | 0% | 51% | 70% | 36 | 4 |
+| 4 | `studs_out` offered | 2,909 | 0% | 0% | 76% | 65% | 34 | 7 |
+
+**Words moved nothing; measurement moved symmetry and plainness a little;
+a technique offered as its own pattern went unused.** What designs take up
+is what is already in their habits — run 3 used `rock` because the base
+was the thing it was building, and every run builds walls with `fill` by
+the guidance's recipes. So the next lever puts the technique inside the
+recipe: `fill`'s `sideways` share, in the stone-wall recipe. Run 4 is the
+first whose silhouette reads as Orthanc (four piers with clefts, horns
+flaring at the top, boulders and a moat); none is close to 10237 in craft.
+Also found by these runs: a check from outside replaced the standing
+model, a finished session spun a core and held the GPU lease for an hour,
+and the renderer draws black as navy and dark grey as near white.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
