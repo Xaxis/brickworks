@@ -19,8 +19,8 @@ The first desktop release: Brickworks for Linux, macOS and Windows, with
 all 28,319 parts on disk, so building, saving and the instructions need
 no network at all. Designing with Claude still does, on your own API key
 or Claude plan. The macOS and Windows builds are not yet signed by Apple
-or Microsoft, so each asks once before it first opens; the download page
-says how.
+or Microsoft, so each asks once before it first opens, and the steps for
+that are beside each download.
 
 ### Added
 

@@ -119,6 +119,16 @@ stats on the status line; a grouped toolbar with Clear asking first.
   Every castle built ~200 of it; real castle sets since 2010 use at most
   eight. The prompt now says round is a choice.
 
+## Desktop releases
+
+Linux, macOS and Windows builds are cut on a cadence, put on GitHub Releases
+and offered at brickworks.diy/download.html. `docs/RELEASING.md` is the
+whole cycle: when to cut one, the seven commands, what done looks like, and
+what the owner has to provide before macOS and Windows stop asking on first
+launch (an Apple Developer ID with an App Store Connect key; a Windows
+code-signing service). `VERSION` is the version; `tools/release.py version`
+says whether everything agrees with it.
+
 ## What is next
 
 1. Read run 24 (the castle with everything): did the passes recolour its
@@ -179,6 +189,8 @@ stats on the status line; a grouped toolbar with Clear asking first.
 | Catalogue build | `tools/refresh_catalogue.py` |
 | Drive a real design | `tools/design.py "a brief" --out m.ldr` |
 | Deploy | `tools/deploy.sh --prod` |
+| Desktop releases: version, build, smoke, publish | `tools/release.py`, the cycle in `docs/RELEASING.md` |
+| The download page | `web/download.html`, fed by `web/releases.json` |
 
 ## Cleanup state
 

@@ -40,6 +40,14 @@
       "tests": []
     },
     {
+      "id": "cli:build the desktop packages",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:build the meshes",
       "kind": "cli",
       "entry": "tools/build_meshes.py",
@@ -48,11 +56,27 @@
       "tests": []
     },
     {
+      "id": "cli:check a release on three systems",
+      "kind": "cli",
+      "entry": ".github/workflows/release.yml",
+      "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:design from a brief",
       "kind": "cli",
       "entry": "tools/design.py",
       "reach": "tools/design.py \"a small lighthouse\" --effort low --out /tmp/x.ldr   (COSTS MONEY)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:download page check",
+      "kind": "cli",
+      "entry": "tools/web/download_check.mjs",
+      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "area": "release",
       "tests": []
     },
     {
@@ -128,6 +152,14 @@
       "tests": []
     },
     {
+      "id": "cli:publish a release",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py publish --draft, then tools/release.py publish",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:refresh the catalogue",
       "kind": "cli",
       "entry": "tools/refresh_catalogue.py",
@@ -140,6 +172,14 @@
       "kind": "cli",
       "entry": "src/main.gd",
       "reach": "godot --headless --path . -- --about",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:smoke a package",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
       "tests": []
     },
@@ -357,6 +397,14 @@
       "entry": "src/ai/claude_code.gd",
       "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "ui:download page",
+      "kind": "ui",
+      "entry": "web/download.html",
+      "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
+      "area": "release",
       "tests": []
     },
     {
