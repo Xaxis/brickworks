@@ -140,6 +140,26 @@ if [ -f web/index.html ]; then
   echo "deploy: landing page and $count file(s) at /"
 fi
 
+# What the pages may load and, above all, where they may send anything.
+#
+# The app holds a person's Anthropic key in the browser. The best defence
+# for that is a short list of places the page can talk to at all: itself,
+# Anthropic, Wikimedia (reference pictures) and the parts store — so even
+# a script that should never have run has nowhere to send a key. The
+# page's one inline script is allowed by its hash, not by allowing inline
+# scripts; 'unsafe-eval' stays because Godot's JavaScript bridge evaluates
+# what the app asks of the browser (its size, its address, the clipboard).
+inline_hashes="$(python3 - "$dir/index.html" <<'PY'
+import base64, hashlib, re, sys
+page = open(sys.argv[1], encoding="utf-8").read()
+for body in re.findall(r"<script>(.*?)</script>", page, re.S):
+    print("'sha256-%s'" % base64.b64encode(hashlib.sha256(body.encode()).digest()).decode(), end=" ")
+PY
+)"
+parts_origin=""
+[ -n "${PARTS_URL:-}" ] && parts_origin="$(python3 -c 'import sys, urllib.parse as u; p = u.urlparse(sys.argv[1]); print(f"{p.scheme}://{p.netloc}")' "$PARTS_URL")"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org ${parts_origin}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -154,7 +174,8 @@ cat > .vercel/output/config.json <<EOF
         "Cross-Origin-Embedder-Policy": "require-corp",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Content-Type-Options": "nosniff",
-        "Referrer-Policy": "no-referrer"
+        "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "$csp"
       },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",

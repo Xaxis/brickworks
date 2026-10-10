@@ -48,6 +48,15 @@ page.on("requestfailed", (r) => {
   if (/anthropic/.test(r.url())) seen.push(`${at()} anthropic FAILED ${r.failure()?.errorText}`);
 });
 page.on("pageerror", (e) => seen.push(`${at()} page error: ${String(e).slice(0, 200)}`));
+// The content security policy refusing something the app needed shows
+// only here, in the console; a page that half works is the symptom.
+const refused = [];
+page.on("console", (m) => {
+  const text = m.text();
+  if (/Content Security Policy|Refused to (connect|load|execute|create)/i.test(text)) {
+    refused.push(text.slice(0, 220));
+  }
+});
 
 const first = process.env.BW_BYPASS
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${process.env.BW_BYPASS}&x-vercel-set-bypass-cookie=true`
@@ -99,7 +108,11 @@ await browser.close();
 
 const answers = seen.filter((line) => / anthropic \d+/.test(line));
 console.log(seen.join("\n"));
+if (refused.length) {
+  console.log(`content security policy refused ${refused.length} thing(s):`);
+  for (const line of refused.slice(0, 8)) console.log(`  ${line}`);
+}
 console.log(answers.length
   ? `reached Anthropic ${answers.length} time(s); screenshots in ${out}`
   : `never reached Anthropic — see ${out}/3_after_build.png`);
-process.exit(answers.length ? 0 : 1);
+process.exit(answers.length && !refused.length ? 0 : 1);
