@@ -271,6 +271,11 @@ func _holds_up() -> void:
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 24, "deep": 16,
 			"wall": 1, "layers": 8, "rise": 3, "color": 71,
 			"mix_color": 72, "masonry": 0.4, "sideways": 0.3}],
+		["an octagonal shaft", {"pattern": "prism", "at": {"x": 10, "y": 0, "z": 10},
+			"sides": 8, "radius": 7, "courses": 10, "color": 0, "mix_color": 72}],
+		["a hexagonal tower one stud thick, in masonry", {"pattern": "prism",
+			"at": {"x": 10, "y": 0, "z": 10}, "sides": 6, "radius": 6, "courses": 8,
+			"thickness": 1, "color": 71, "masonry": 0.5}],
 		["a crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
 			"across": 16, "deep": 12, "height": 15, "seed": 1}],
 		["another crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
@@ -305,6 +310,15 @@ func _holds_up() -> void:
 					dressed += 1
 			_check("...with %d bricks turned out and %d parts dressed on their sides"
 				% [turned, dressed], turned > 10 and dressed == turned)
+		if str((one[1] as Dictionary)["pattern"]) == "prism":
+			var sides: int = int((one[1] as Dictionary)["sides"])
+			var turned: Dictionary = {}
+			for placement: Assistant.Placement in model.placements:
+				var section: Assistant.Section = model.section_for(placement)
+				if section != null:
+					turned[snappedf(section.degrees, 0.1)] = true
+			_check("...its %d faces each turned to their own angle, %d angles"
+				% [sides, turned.size()], turned.size() == sides)
 		if str((one[1] as Dictionary)["pattern"]) == "studs_out":
 			var sideways: int = 0
 			var face: String = str((one[1] as Dictionary)["facing"])

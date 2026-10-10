@@ -132,6 +132,15 @@ fixing what it got wrong.
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
   a band measures 43% sideways in `tools/style.py`.
+- `a many-sided shaft`: the `prism` pattern (`Assistant._prism`, in the
+  assistant because it adds sections). `sides` 5-16 faces, each a bonded wall in
+  a section of its own (`prism N face K`) turned `360 * K / sides` about the
+  middle (`at`), its outer face at `radius`; faces as wide as lets the inside
+  corners meet (`2 * (radius - thickness) * tan(pi / sides)`, floored), which
+  leaves a groove up each outer corner — see-through at `thickness` 1, so 2 is
+  the default. `mix_color`, `masonry` as on `fill`. Found by run 5, octagonal
+  piers by hand from ~150 sections (26% angled) at the cost of the rest of the
+  run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty

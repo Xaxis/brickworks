@@ -3683,10 +3683,14 @@ func _read_model(args: Dictionary) -> Model:
 		# where a side stud is, which only this side has.
 		var plain: Array = []
 		var sideways: Array = []
+		var prisms: Array = []
 		for raw: Variant in patterns:
-			if raw is Dictionary and str((raw as Dictionary).get("pattern",
-					"")).to_lower() == "studs_out":
+			var kind: String = str((raw as Dictionary).get("pattern", "")).to_lower() \
+				if raw is Dictionary else ""
+			if kind == "studs_out":
 				sideways.append(raw)
+			elif kind == "prism":
+				prisms.append(raw)
 			else:
 				plain.append(raw)
 		for raw: Variant in Patterns.expand(plain, written, trouble,
@@ -3702,6 +3706,9 @@ func _read_model(args: Dictionary) -> Model:
 			model.placements.append(Placement.from_dict(one))
 		for raw: Variant in sideways:
 			for brick: Dictionary in _studs_out(raw, trouble):
+				model.placements.append(Placement.from_dict(brick))
+		for n: int in prisms.size():
+			for brick: Dictionary in _prism(prisms[n], model, n, trouble):
 				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
 	else:
@@ -3831,6 +3838,93 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 			return "+z" if away.z >= 0.0 else "-z"
 		return "+x" if away.x >= 0.0 else "-x"
 	return ""
+
+
+## A many-sided shaft in one object: each face a bonded wall in a section
+## of its own, turned to the face's angle about the middle.
+##
+## The fifth Orthanc built its piers octagonal from 560 bricks in ~150
+## sections it worked out by hand — the first run at the real-set norm for
+## parts at an angle, 26% — and it cost the run everything else: it never
+## saw its finished model. The seventh took the finishing pass because it
+## was one call. So is this.
+##
+## Faces are as wide as lets their inside corners just meet, which leaves
+## a narrow groove up each outside corner: the faceted edge a polygonal
+## tower has.
+##
+##   {"pattern": "prism", "at": {"x": 16, "y": 0, "z": 16}, "sides": 8,
+##    "radius": 7, "courses": 10, "thickness": 2, "color": 0}
+func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Array:
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var cx: float = float(at.get("x", 0.0))
+	var y0: float = float(at.get("y", 0.0))
+	var cz: float = float(at.get("z", 0.0))
+	var sides: int = int(pattern.get("sides", 8))
+	var radius: float = float(pattern.get("radius", 6))
+	var courses: int = int(round(float(pattern.get("courses", 8))))
+	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
+	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
+	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
+	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
+	if sides < 5 or sides > 16 or courses < 1 or courses > 200:
+		trouble.append("prism wants 5 to 16 sides and 1 to 200 courses")
+		return []
+	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
+	if width < 2:
+		trouble.append("a prism of radius %s has faces narrower than two studs; "
+			% Placement._num(radius) + "make the radius larger or the sides fewer")
+		return []
+	var lengths: Array = [[4, "3001"], [3, "3002"], [2, "3003"]] if thick == 2 \
+		else [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
+	var made: Array = []
+	for face: int in sides:
+		var name: String = "prism %d face %d" % [index, face]
+		model.sections[name] = Section.from_dict({"name": name, "x": cx, "y": y0,
+			"z": cz, "axis": "y", "degrees": 360.0 * face / sides})
+		var left: float = -width / 2.0
+		for course: int in courses:
+			var x: float = left
+			var end: float = left + width
+			# Bonded: every other course starts half a brick along.
+			var first: bool = true
+			while x < end - 0.01:
+				var room: int = int(round(end - x))
+				var chosen: Array = []
+				for pair: Array in lengths:
+					var long: int = int(pair[0])
+					if first and course % 2 == 1 and long == 4 and room > 2:
+						continue
+					if long <= room:
+						chosen = pair
+						break
+				first = false
+				if chosen.is_empty():
+					if thick == 2:
+						# A stud of width left on a two-deep face: a 1x2 across it.
+						made.append(_prism_brick(name, "3004", colour, x, 3.0 * course,
+							radius - thick, 1, mix_colour, mix, masonry))
+					x += 1.0
+					continue
+				made.append(_prism_brick(name, str(chosen[1]), colour, x, 3.0 * course,
+					radius - thick, 0, mix_colour, mix, masonry))
+				x += float(chosen[0])
+	return made
+
+
+func _prism_brick(section: String, part: String, colour: int, x: float, y: float,
+		z: float, rot: int, mix_colour: int, mix: float, masonry: float) -> Dictionary:
+	var tone: int = colour
+	if mix_colour >= 0 and Patterns._scatter(x, y, z + float(section.hash() % 97), 43) < mix:
+		tone = mix_colour
+	var one := {"part": part, "color": tone, "x": x, "y": y, "z": z, "rot": rot,
+		"section": section}
+	# Stonework on the outside, which in a face's own frame is +z.
+	if Patterns.MASONRY.has(part) and rot == 0 \
+			and Patterns._scatter(x, y, z + float(section.hash() % 97), 47) < masonry:
+		one["part"] = Patterns.MASONRY[part]
+	return one
 
 
 ## A face of studs turned outward, dressed with tiles, round tiles,
@@ -6715,6 +6809,18 @@ alongside the bricks you write by hand:
            Put it where a face should read as dressed stone, panelling or \
            machinery, at the bottom of a wall course so it stands on it.
 
+           And a tower that is not square is one object too: \
+           {"pattern": "prism", "at": {"x": 16, "y": 0, "z": 16}, \
+           "sides": 8, "radius": 7, "courses": 10, "color": 0, \
+           "mix_color": 72}. Each face is a bonded wall in a section of \
+           its own, turned to its angle about the middle, so the shaft \
+           is many-sided with a groove up each corner. A run that built \
+           an octagonal Orthanc by hand from 150 turned sections reached \
+           the real-set share of parts at an angle and spent itself \
+           doing it; this is that, in one line. Stack prisms of shrinking \
+           radius for a taper, and put a floor of plates on a square \
+           core inside to build on.
+
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
@@ -7396,7 +7502,7 @@ func _tools() -> Array:
 		"type": "object",
 		"properties": {
 			"pattern": {"type": "string",
-				"enum": ["repeat", "mirror", "fill", "rock", "studs_out"],
+				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -7415,7 +7521,11 @@ func _tools() -> Array:
 					+ "bricks with a side stud, tied by plates, each stud "
 					+ "carrying a tile, round tile, round plate or cheese "
 					+ "slope laid on its side; the arithmetic of where a "
-					+ "side stud is, done for you."},
+					+ "side stud is, done for you. prism: a many-sided "
+					+ "shaft in one object — a tower, a pier, a turret of 5 "
+					+ "to 16 sides, each face a bonded wall turned to its "
+					+ "angle about the middle (at is the middle), grooved "
+					+ "where the faces meet."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -7438,7 +7548,13 @@ func _tools() -> Array:
 			"length": {"type": "number", "description":
 				"studs_out: studs along the face"},
 			"courses": {"type": "number", "description":
-				"studs_out: how many rows, each four plates tall"},
+				"studs_out: how many rows, each four plates tall; prism: "
+				+ "how many courses of bricks, three plates each"},
+			"sides": {"type": "integer", "description": "prism: how many faces, 5-16"},
+			"radius": {"type": "number", "description":
+				"prism: studs from the middle to the outside of a face"},
+			"thickness": {"type": "integer", "description":
+				"prism: 2 (the default) closes the inside; 1 leaves slits at the corners"},
 			"facing": {"type": "string", "enum": ["+x", "-x", "+z", "-z"],
 				"description": "studs_out: which way the face looks"},
 			"face_color": {"type": "integer", "description":

@@ -162,7 +162,7 @@
                 "type": "integer"
               },
               "courses": {
-                "description": "studs_out: how many rows, each four plates tall",
+                "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each",
                 "type": "number"
               },
               "deep": {
@@ -212,15 +212,20 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
                 "enum": [
                   "repeat",
                   "mirror",
                   "fill",
                   "rock",
-                  "studs_out"
+                  "studs_out",
+                  "prism"
                 ],
                 "type": "string"
+              },
+              "radius": {
+                "description": "prism: studs from the middle to the outside of a face",
+                "type": "number"
               },
               "rise": {
                 "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
@@ -242,6 +247,10 @@
                 "description": "fill: studs off each layer, taken half from each side, so the stack tapers as it rises. Must be even. 2 is a dome, 4 a steep cone, 0 a straight-sided hull, and -2 flares outward.",
                 "type": "number"
               },
+              "sides": {
+                "description": "prism: how many faces, 5-16",
+                "type": "integer"
+              },
               "sideways": {
                 "description": "fill: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
@@ -261,6 +270,10 @@
                   }
                 },
                 "type": "object"
+              },
+              "thickness": {
+                "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
+                "type": "integer"
               },
               "times": {
                 "description": "repeat: how many",
@@ -1001,7 +1014,7 @@
                 "type": "integer"
               },
               "courses": {
-                "description": "studs_out: how many rows, each four plates tall",
+                "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each",
                 "type": "number"
               },
               "deep": {
@@ -1051,15 +1064,20 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
                 "enum": [
                   "repeat",
                   "mirror",
                   "fill",
                   "rock",
-                  "studs_out"
+                  "studs_out",
+                  "prism"
                 ],
                 "type": "string"
+              },
+              "radius": {
+                "description": "prism: studs from the middle to the outside of a face",
+                "type": "number"
               },
               "rise": {
                 "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
@@ -1081,6 +1099,10 @@
                 "description": "fill: studs off each layer, taken half from each side, so the stack tapers as it rises. Must be even. 2 is a dome, 4 a steep cone, 0 a straight-sided hull, and -2 flares outward.",
                 "type": "number"
               },
+              "sides": {
+                "description": "prism: how many faces, 5-16",
+                "type": "integer"
+              },
               "sideways": {
                 "description": "fill: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
@@ -1100,6 +1122,10 @@
                   }
                 },
                 "type": "object"
+              },
+              "thickness": {
+                "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
+                "type": "integer"
               },
               "times": {
                 "description": "repeat: how many",
