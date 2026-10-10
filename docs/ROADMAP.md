@@ -389,8 +389,18 @@ A LEGO designer can ask for a new element, or a change to one. Brickworks
 should let its designer do the same: a part editor that makes real LDraw
 geometry, keeps to the system's dimensions and moulding rules (1.6 mm walls,
 4.8 mm studs, the clutch), gives the part its connection points, and puts it
-in the catalogue, the checks and the design loop. How LEGO's own element
-design works is to be found out, not assumed, before this is planned.
+in the catalogue, the checks and the design loop.
+
+**First version, 2026-10-10** (`docs/custom-elements.md` has what is known
+of LEGO's own process, with sources). Make a part… in the parts bin makes
+bricks, plates, tiles, slopes, inverted slopes and round parts of any size,
+or resizes a plain library part, as unofficial LDraw parts drawn from the
+library's primitives. The app builds them with a port of the mesh build
+that matches it byte for byte, so they clutch, collide and check like any
+part, and a saved model carries them inside it. Next: the design loop asking
+for a part it lacks (a tool that makes one), families with clips, bars and
+Technic holes (the hole merge is the one piece of the pipeline not yet
+ported), and draft and wall checks for a part a mould designer could take.
 
 ## How progress is judged
 

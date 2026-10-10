@@ -3575,7 +3575,7 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 	# app and are known good.
 	var holder: PartLibrary.PartInfo = library.parts.get(below.part)
 	if holder != null and holder.stud_count == 0 \
-			and SMOOTH_ON_TOP.has(holder.category):
+			and SMOOTH_ON_TOP.has(holder.family_category()):
 		_note(loose, "Resting on a smooth face, held by nothing:",
 			"  brick %d (%s at %s) stands on brick %d (%s), which has no "
 			% [index, placement.part, placement.where(), under, below.part]

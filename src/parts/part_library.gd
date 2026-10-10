@@ -224,6 +224,19 @@ class PartInfo extends RefCounted:
 	## the catalogue past 25 MB, to answer questions about parts nobody
 	## had placed.
 	var connector_counts: Dictionary = {}
+	## True for a part made in the element maker rather than moulded by
+	## LEGO. Its category is "Custom", so the bin shows them together;
+	## [member ldraw_category] is what its own header says it is.
+	var custom: bool = false
+	var ldraw_category: String = ""
+	## Where a custom part shipped in the catalogue keeps its LDraw source,
+	## under the asset root (tools/build_custom.py --into).
+	var source_path: String = ""
+
+	## What kind of part this is to the LDraw world: a custom tile is a
+	## Tile, whatever the bin files it under.
+	func family_category() -> String:
+		return ldraw_category if custom and not ldraw_category.is_empty() else category
 
 	func has_connector(kind: String) -> bool:
 		return int(connector_counts.get(kind, 0)) > 0
@@ -499,6 +512,9 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	info.reachable = bool(entry.get("reachable", true))
 	info.moved_to = entry.get("moved_to", "")
 	info.unofficial = bool(entry.get("unofficial", false))
+	info.custom = bool(entry.get("custom", false))
+	info.ldraw_category = str(entry.get("ldraw_category", ""))
+	info.source_path = str(entry.get("source", ""))
 	for code: Variant in entry.get("colors", []):
 		info.colors.append(int(code))
 	for code: Variant in entry.get("colors_recent", []):
@@ -588,6 +604,8 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		return null
 	if _mesh_cache.has(info.mesh_hash):
 		return _mesh_cache[info.mesh_hash]
+	if _custom_meshes.has(info.mesh_hash):
+		return _custom_meshes[info.mesh_hash]
 
 	var path: String = _resolve_root() + "parts/" + info.mesh_hash + ".lbm"
 	if not FileAccess.file_exists(path):
@@ -616,7 +634,8 @@ func set_fetch_host(host: Node) -> void:
 ## True when this build has the part's geometry to hand.
 func is_resident(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
-	return info != null and _mesh_cache.has(info.mesh_hash)
+	return info != null and (_mesh_cache.has(info.mesh_hash)
+		or _custom_meshes.has(info.mesh_hash))
 
 
 ## Ask for a part this build did not ship.
@@ -638,7 +657,7 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 	var info: PartInfo = parts.get(part_id)
 	if info == null:
 		return false
-	if _mesh_cache.has(info.mesh_hash):
+	if _mesh_cache.has(info.mesh_hash) or _custom_meshes.has(info.mesh_hash):
 		fetched.emit(part_id)
 		return true
 	if _fetching.has(info.mesh_hash):
@@ -756,9 +775,43 @@ func _on_fetched(
 		fetched.emit(asked)
 
 
-## Drop cached geometry. The catalogue stays; only vertices go.
+## Drop cached geometry. The catalogue stays; only vertices go. A made
+## part's stay too: there is nowhere to fetch one back from.
 func release_geometry() -> void:
 	_mesh_cache.clear()
+
+
+## Parts made in the element maker, or carried into a model file from
+## someone else's: id -> the LDraw source, which goes out with any model
+## that uses the part. Their geometry is kept apart from the cache.
+var custom: Dictionary = {}
+var _custom_meshes: Dictionary = {}
+
+## Emitted when a made part joins the library, or is replaced.
+signal custom_added(part_id: String)
+
+
+## Put a made part beside the catalogue's, or replace one made before.
+func add_custom(info: PartInfo, mesh: Lbm.PartMesh, source: String) -> void:
+	if not parts.has(info.id):
+		_ordered_ids.append(info.id)
+	parts[info.id] = info
+	custom[info.id] = source
+	_mesh_cache.erase(info.mesh_hash)
+	_custom_meshes[info.mesh_hash] = mesh
+	custom_added.emit(info.id)
+
+
+## The LDraw source of a custom part, from this session's or the
+## catalogue's, or "" for a part LEGO made.
+func custom_source(part_id: String) -> String:
+	if custom.has(part_id):
+		return custom[part_id]
+	var info: PartInfo = parts.get(part_id)
+	if info == null or not info.custom or info.source_path.is_empty():
+		return ""
+	var path: String = _resolve_root() + info.source_path
+	return FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
 
 
 func cached_mesh_count() -> int:

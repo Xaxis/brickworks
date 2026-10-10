@@ -60,6 +60,12 @@ var name: String = ""
 var author: String = ""
 var submodels: Dictionary = {}      ## String name -> SubModel
 var main: SubModel = null
+## Parts the file carries inside it, as LDraw's multi-part document spec
+## allows: lowercase file name ("bw-b2x7x3.dat") -> the part's own text.
+## A section is a part, not a sub-model, when its name ends in .dat or its
+## header says it is one. Kept out of [member submodels], so a part is
+## placed as a part and never inlined as though it were an assembly.
+var embedded_parts: Dictionary = {}
 
 
 static func load_file(path: String) -> LdrModel:
@@ -87,9 +93,17 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 
 	var step: int = 0
 	var first_file: bool = true
+	## The FILE section being read, and its lines as written.
+	var section: String = ""
+	var sections: Dictionary = {}
 
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
+		if not section.is_empty() and not _is_file_line(line):
+			# An Array, not a PackedStringArray: a packed array is a value,
+			# and appending to one read out of a Dictionary appends to a
+			# copy. Every carried part came back empty that way.
+			(sections[section] as Array).append(raw.rstrip("\r"))
 		if line.is_empty():
 			continue
 
@@ -104,8 +118,12 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			if tokens.size() < 2:
 				continue
 			var keyword: String = tokens[1].to_upper()
+			if keyword == "NOFILE":
+				section = ""
 			if keyword == "FILE":
 				var sub_name: String = " ".join(tokens.slice(2)).strip_edges()
+				section = sub_name.to_lower()
+				sections[section] = []
 				current = SubModel.new()
 				current.name = sub_name
 				# Keyed the way a reference to it will be looked up.
@@ -159,7 +177,39 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		current.placements.append(
 			Placement.new(part_id, color, to_transform(numbers), step))
 
+	for file_name: String in sections:
+		var lines := PackedStringArray(sections[file_name])
+		# The first section is the model itself, whatever it is called.
+		if file_name == model.main.name.to_lower() or not _is_part(file_name, lines):
+			continue
+		var key: String = file_name if file_name.ends_with(".dat") else file_name + ".dat"
+		model.embedded_parts[key.get_file()] = "\n".join(lines).strip_edges() + "\n"
+		model.submodels.erase(_key(file_name))
 	return model
+
+
+static func _is_file_line(line: String) -> bool:
+	var tokens: PackedStringArray = line.split(" ", false)
+	return tokens.size() >= 2 and tokens[0] == "0" \
+		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE")
+
+
+## Whether a FILE section is a part rather than a sub-model: its header
+## says so, as every part's does ("0 !LDRAW_ORG Unofficial_Part").
+##
+## Not by its name. Older model files often call their sub-models
+## "door.dat", and taking every .dat for a part dropped those assemblies
+## out of the model.
+static func _is_part(_file_name: String, lines: PackedStringArray) -> bool:
+	return declares_part(lines)
+
+
+static func declares_part(lines: PackedStringArray) -> bool:
+	for raw: String in lines.slice(0, 16):
+		var line: String = raw.strip_edges()
+		if line.begins_with("0 !LDRAW_ORG") and line.to_lower().contains("part"):
+			return true
+	return false
 
 
 ## Turn the twelve numbers of a type-1 line into a placement transform.
@@ -345,16 +395,20 @@ func _inline(
 ## a real set's file keeps a minifigure — standing at the origin of
 ## "Saruman.ldr", and that file put where he stands. Any other group is
 ## written where its bricks are and placed where it already is.
+## [param embedded] carries parts the file has to bring with it — a made
+## element, which no other tool has — as file name -> LDraw text. They go
+## at the end as sections of their own, which makes even a model with no
+## groups a multi-part document.
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = "",
-	frames: Dictionary = {}
+	frames: Dictionary = {}, embedded: Dictionary = {}
 ) -> String:
 	var groups: Array[String] = []
 	for item: Variant in placements:
 		var group: String = (item as Placement).group
 		if not group.is_empty() and not groups.has(group):
 			groups.append(group)
-	if groups.is_empty():
+	if groups.is_empty() and embedded.is_empty():
 		return _write_one(placements, title, author_name, [])
 
 	var main_file: String = title.to_snake_case() + ".ldr"
@@ -385,6 +439,11 @@ static func write_ldr(
 		text += "0 FILE " + str(file_of[group]) + "\n" \
 			+ _write_one(own, group, author_name, [],
 				str(file_of[group])) + "0 NOFILE\n"
+	var names: Array = embedded.keys()
+	names.sort()
+	for part_name: Variant in names:
+		text += "0 FILE " + str(part_name) + "\n" \
+			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
 	return text
 
 

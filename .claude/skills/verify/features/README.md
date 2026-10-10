@@ -62,6 +62,9 @@ Never driven from here:
 - [web](web.md): the five API endpoints, the Vercel deploy, and the browser proof.
 - [pipeline](pipeline.md): the Python tools that turn LDraw into the mesh cache,
   the catalogue, the web pack and the storage bucket.
+- [elements](elements.md): making a part LEGO has not made — the element
+  maker, its dialog, the in-app build of a part, and made parts carried in
+  model files.
 - [mcp](mcp.md): the local port, the MCP server, and designing on the person's own
   Claude subscription instead of the app asking for an API key.
 - [release](release.md): the version, the desktop packages and their smoke test,
