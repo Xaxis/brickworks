@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic, lib:finishes, lib:true colour -->
+<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:build animation, ui:mosaic, lib:finishes, lib:true colour -->
 
 ## Sub-features
 
@@ -45,6 +45,23 @@ picture the assistant is shown.
   filled every letter in. Batches, triangles, the catalogue count and the
   frame rate come back with `--stats` (and count everything); they were the
   first line every visitor read.
+- `build animation`: what the assistant just put down goes up on the baseplate
+  in build order instead of appearing at once (`BuildPlayback`, played from
+  `Main`'s `built` handler; never in a run driven from the command line). Only
+  what is new: `Assistant.fresh_ids` is what the last build or edit put down or
+  moved, and everything else stays on show (`Main._already_standing`), so a
+  recolour plays nothing and `add_rooms` plays the rooms. Up to
+  `PLANNED_UP_TO` (300) new bricks the order is the booklet's
+  (`Instructions.plan`); past it, course by course, one sort of packed keys. A
+  step costs a count per batch: `BrickWorld.begin_reveal` writes each batch
+  once with its bricks in build order, so the ones on show are always the first
+  so many, and `reveal_through` raises `visible_instance_count`. Any change to
+  the model ends a reveal with everything shown (`reveal_ended`). The whole
+  assembly takes at most `LONGEST_MS` (8 s), several steps to a frame on a big
+  model. `playback_probe` checks the order and the prefix on a small model, that
+  only new bricks are hidden, and on the owner's Falcon Heavy
+  (`src/dev/fixtures/falcon_heavy.json`, 4,242 parts) that starting takes
+  milliseconds and no frame of it more than 30.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit
@@ -202,6 +219,7 @@ godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd  # the poi
 godot --headless --path . --script src/dev/glyph_probe.gd         # the font can draw every character shown
 godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet could be followed
 #   covers the Technic ordering case via models/kart.ldr
+godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
@@ -229,6 +247,19 @@ picture: under two seconds with vsync on, against the six seconds it used to
 take, which is what made a design run give up on looking at itself.
 
 ## Gotchas
+
+- **The build animation froze the page on a big model.** The owner asked the web
+  app for a Falcon Heavy (4,242 parts) and it "damn near froze my computer".
+  Measured on that model on the desktop GPU: every submit and every edit replayed
+  the whole model; planning the booklet's order took 15.5 s in one frame; each
+  step called `show_only`, which walked every brick and flushed at once, and
+  every flush emitted `rebuilt`, where `Main` asked whether the model stands —
+  4.4 s a time, about once a step. 848 steps of that is most of an hour, and in
+  a browser the tab stopped answering the connector ("The Brickworks tab did not
+  answer in time"). Now only new bricks play, a step is a count, the stability
+  line is worked out only when `BrickWorld.revision` moved, and
+  `Stability._check_levels` is one pass up and one down (3.3 s to 0.1 s on that
+  model). `tools/web/freeze_check.mjs` times the same design in a browser.
 
 - **The two renderers do not light in the same colour space.** Forward+ lights
   linear values and converts on output; Compatibility (the web build's) lights

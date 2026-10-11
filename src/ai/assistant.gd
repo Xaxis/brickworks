@@ -8025,6 +8025,7 @@ func _apply_edit(model: Model) -> void:
 		_placed_ids.append(brick_id)
 	# Whatever was a sketch is now built.
 	_sketched_ids = PackedInt64Array()
+	fresh_ids = _changed_ids.duplicate()
 	built.emit(_placed_ids.size())
 
 
@@ -8079,6 +8080,7 @@ func _apply(model: Model, finished: bool = true) -> void:
 			world.remove_brick(brick_id)
 	_sketched_ids = PackedInt64Array()
 	_placed_ids = PackedInt64Array()
+	fresh_ids = PackedInt64Array()
 
 	for index: int in at_of:
 		var placement: Placement = model.placements[index]
@@ -8089,6 +8091,7 @@ func _apply(model: Model, finished: bool = true) -> void:
 			if brick_id == 0:
 				continue
 			builder.register(brick_id, placement.part, at_of[index])
+			fresh_ids.append(brick_id)
 		_remember_section(brick_id, placement, model)
 		if placement.mine:
 			_placed_ids.append(brick_id)
@@ -8114,6 +8117,12 @@ static func _same_key(part_id: String, colour: int, at: Transform3D) -> String:
 	return "%s|%d|%.2f %.2f %.2f|%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" % [
 		part_id, colour, at.origin.x, at.origin.y, at.origin.z,
 		b.x.x, b.x.y, b.x.z, b.y.x, b.y.y, b.y.z, b.z.x, b.z.y, b.z.z]
+
+
+## The bricks the last build or edit put down or moved, which were not
+## standing as they are before it. What the build animation shows going up:
+## the rest was already there.
+var fresh_ids := PackedInt64Array()
 
 
 ## How many bricks in the world the assistant considers its own.

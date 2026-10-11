@@ -35,6 +35,7 @@ func _initialize() -> void:
 
 	await _contacts_are_what_the_lattice_says(library)
 	await _checking_costs_about_what_building_costs(library)
+	await _a_tall_model_costs_no_more(library)
 
 	if _failures > 0:
 		print("\n%d case(s) wrong" % _failures)
@@ -163,6 +164,62 @@ func _checking_costs_about_what_building_costs(library: PartLibrary) -> void:
 			% times + "(%d ms against %d) — it was 84 times when the "
 				% [checked / 1000, built / 1000]
 			+ "check asked the lattice about every cell of every brick")
+	world.queue_free()
+	builder.queue_free()
+	await process_frame
+
+
+## And a tall one. The 800 bricks above are forty courses; the owner's Falcon
+## Heavy (src/dev/fixtures/falcon_heavy.json) is 4,242 parts and 332 plates,
+## about seven hundred cuts, and asking at every cut about every brick made
+## the check 3.5 s — twelve times building the model — where the wall above
+## never showed it. The app asks after every change, and while the build
+## animation played it asked about once a frame.
+func _a_tall_model_costs_no_more(library: PartLibrary) -> void:
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var fixture: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
+		"res://src/dev/fixtures/falcon_heavy.json"))
+	var bricks: Array = []
+	for row: Array in fixture["bricks"]:
+		bricks.append({"part": row[0], "color": row[1], "x": row[2], "y": row[3],
+			"z": row[4], "face": row[5], "rot": row[6]})
+	var model: Assistant.Model = assistant._read_model({"bricks": bricks})
+	for placement: Assistant.Placement in model.placements:
+		library.mesh_for(placement.part)
+	var began: int = Time.get_ticks_usec()
+	assistant._apply(model)
+	var built: int = maxi(1, Time.get_ticks_usec() - began)
+	began = Time.get_ticks_usec()
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = builder.lattice
+	var report: Stability.Report = judge.check(world)
+	var checked: int = Time.get_ticks_usec() - began
+	var times: float = float(checked) / float(built)
+	if times < 3.0 and world.brick_count() == 4242:
+		print("  ok    the Falcon, %d bricks and 332 plates tall: built in %d ms, "
+			% [world.brick_count(), built / 1000]
+			+ "checked in %d — %.2f times (%s)" % [checked / 1000, times,
+				report.summary()])
+	else:
+		_failures += 1
+		print("  FAIL  checking the %d-brick Falcon costs %.1f times building it "
+			% [world.brick_count(), times] + "(%d ms against %d) — it was 12 "
+				% [checked / 1000, built / 1000]
+			+ "times when every cut summed every brick")
+	assistant.queue_free()
 	world.queue_free()
 	builder.queue_free()
 	await process_frame

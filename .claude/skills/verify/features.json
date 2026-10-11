@@ -510,6 +510,14 @@
       "tests": []
     },
     {
+      "id": "ui:build animation",
+      "kind": "ui",
+      "entry": "src/render/build_playback.gd",
+      "reach": "godot --headless --path . --script src/dev/playback_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:build steps",
       "kind": "ui",
       "entry": "src/ui/steps_bar.gd",

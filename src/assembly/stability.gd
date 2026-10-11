@@ -295,45 +295,76 @@ func _check_levels(
 	if heights.size() < 2:
 		return
 
-	for n: int in range(1, heights.size()):
+	# Everything above each cut, summed once from the top down, rather than
+	# summed again over the whole model at every cut; and the footprint
+	# below each cut grown from the bottom up the same way. Asked of every
+	# brick at every course, this was 3.3 s of the 3.5 s the check took on
+	# the Falcon Heavy's 4,242 parts — 332 plates tall, so about seven
+	# hundred cuts — and the app asks it after every change.
+	var count: int = heights.size()
+	var level_of: Dictionary = {}      ## cell y -> its index in heights
+	for n: int in count:
+		level_of[heights[n]] = n
+	var above_grams := PackedFloat64Array()
+	above_grams.resize(count + 1)
+	var above_x := above_grams.duplicate()
+	var above_y := above_grams.duplicate()
+	var above_z := above_grams.duplicate()
+	for id: int in stands_at:
+		var n: int = level_of[stands_at[id]]
+		var w: float = mass.get(id, 0.0)
+		var middle: Vector3 = _middle(world.get_brick(id))
+		above_grams[n] += w
+		above_x[n] += middle.x * w
+		above_y[n] += middle.y * w
+		above_z[n] += middle.z * w
+	for n: int in range(count - 1, -1, -1):
+		above_grams[n] += above_grams[n + 1]
+		above_x[n] += above_x[n + 1]
+		above_y[n] += above_y[n + 1]
+		above_z[n] += above_z[n + 1]
+
+	# Every box, lowest first, to be taken into the footprint as the cut
+	# passes its bottom.
+	var flat := PackedInt32Array()
+	var order := PackedInt64Array()
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		var boxes: PackedInt32Array = boxes_of.get(brick.id, PackedInt32Array())
+		var at: int = 0
+		while at < boxes.size():
+			order.append((int(boxes[at + 1]) + (1 << 30)) * (1 << 31) + flat.size() / 6)
+			flat.append_array(boxes.slice(at, at + 6))
+			at += 6
+	order.sort()
+	var taken: int = 0
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+
+	for n: int in range(1, count):
 		var cut: int = heights[n]
 
+		# The footprint it all stands on: everything below the cut. A box's
+		# plan extent does not depend on how much of it is below the cut,
+		# only on whether any of it is — so the box itself answers what
+		# every one of its cells used to.
+		while taken < order.size():
+			var at: int = (order[taken] % (1 << 31)) * 6
+			if flat[at + 1] >= cut:
+				break
+			var x_from: float = flat[at] * BrickLattice.CELL
+			var z_from: float = flat[at + 2] * BrickLattice.CELL
+			var x_to: float = (flat[at + 3] - 1) * BrickLattice.CELL
+			var z_to: float = (flat[at + 5] - 1) * BrickLattice.CELL
+			lo = Vector2(minf(lo.x, x_from), minf(lo.y, z_from))
+			hi = Vector2(maxf(hi.x, x_to), maxf(hi.y, z_to))
+			taken += 1
+
 		# Everything above the cut, and where its mass sits.
-		var grams: float = 0.0
-		var centre := Vector3.ZERO
-		for item: Variant in bricks:
-			var brick: BrickWorld.Brick = item
-			if not stands_at.has(brick.id):
-				continue
-			if int(stands_at[brick.id]) < cut:
-				continue
-			var w: float = mass.get(brick.id, 0.0)
-			grams += w
-			centre += _middle(brick) * w
+		var grams: float = above_grams[n]
 		if grams <= 0.0:
 			continue
-		centre /= grams
-
-		# The footprint it all stands on: everything below the cut.
-		var lo := Vector2(INF, INF)
-		var hi := Vector2(-INF, -INF)
-		for item: Variant in bricks:
-			var brick: BrickWorld.Brick = item
-			var boxes: PackedInt32Array = boxes_of.get(
-				brick.id, PackedInt32Array())
-			var at: int = 0
-			# A box's plan extent does not depend on how much of it is
-			# below the cut, only on whether any of it is — so the box
-			# itself answers what every one of its cells used to.
-			while at < boxes.size():
-				if boxes[at + 1] < cut:
-					var x_from: float = boxes[at] * BrickLattice.CELL
-					var z_from: float = boxes[at + 2] * BrickLattice.CELL
-					var x_to: float = (boxes[at + 3] - 1) * BrickLattice.CELL
-					var z_to: float = (boxes[at + 5] - 1) * BrickLattice.CELL
-					lo = Vector2(minf(lo.x, x_from), minf(lo.y, z_from))
-					hi = Vector2(maxf(hi.x, x_to), maxf(hi.y, z_to))
-				at += 6
+		var centre := Vector3(above_x[n], above_y[n], above_z[n]) / grams
 		if lo.x == INF:
 			continue
 

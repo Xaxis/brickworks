@@ -58,6 +58,14 @@ class Batch extends RefCounted:
 	var multimesh: MultiMesh
 	var brick_ids: PackedInt64Array = PackedInt64Array()
 	var dirty: bool = false
+	## Triangles in one instance, read once when the batch is made.
+	var triangles: int = 0
+	## While the build animation plays (see [method begin_reveal]): how
+	## many of [member brick_ids] were shown from the start, and the
+	## places in the build order of the rest, which follow them in order.
+	var shown: int = 0
+	var ranks: PackedInt64Array = PackedInt64Array()
+	var revealed: int = 0
 
 
 var library: PartLibrary
@@ -72,6 +80,23 @@ var _materials: Dictionary = {}      ## int MaterialClass -> ShaderMaterial
 
 ## Emitted after a deferred rebuild settles, with the current totals.
 signal rebuilt(brick_count: int, batch_count: int, triangle_count: int)
+## Emitted when the build animation's reveal ends for any reason: played
+## out, stopped, or overtaken by a change to the model.
+signal reveal_ended
+
+## Goes up by one with every change to what the model is: a brick added,
+## removed, moved or recoloured, or the world cleared. Not with what is
+## drawn — the build animation and the steps bar hide and show bricks
+## without changing the model. Whatever is worked out from the model and
+## not from the picture (whether it stands, a copy to photograph) is
+## worked out again only when this has moved.
+var revision: int = 0
+
+## Whether to keep [member history]. A world that is a copy made to be
+## photographed (ModelShot's) has no history worth keeping: it was cleared
+## and filled again for every picture, 4,000 events a time on a set-sized
+## model, kept to the cap.
+var keeps_history: bool = true
 
 
 ## Whether the shader should linearise the instance colour itself.
@@ -168,6 +193,9 @@ var _ghosts: Dictionary = {}  ## int id -> true
 
 
 func _note(event: Dictionary) -> void:
+	revision += 1
+	if not keeps_history:
+		return
 	if event.has("id"):
 		event["key"] = key_of(int(event["id"]))
 	history.append(event)
@@ -212,6 +240,7 @@ func clear_ghosts() -> void:
 
 
 func _place(part_id: String, color_code: int, at: Transform3D) -> int:
+	_stop_reveal()
 	if library == null:
 		push_error("brick world: no part library set")
 		return 0
@@ -257,6 +286,7 @@ func remove_brick(brick_id: int) -> bool:
 
 
 func _unplace(brick_id: int) -> void:
+	_stop_reveal()
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -273,6 +303,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
+	_stop_reveal()
 	brick.transform = to
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		_mark_dirty(key)
@@ -296,6 +327,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
+	_stop_reveal()
 
 	# Out of its old batches, into the ones for the new colour, under the
 	# same id throughout.
@@ -324,12 +356,15 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 		keys.append(key)
 		_mark_dirty(key)
 	_brick_batches[brick_id] = keys
-	_flush()
+	# Drawn with everything else at the end of the frame. It was drawn here
+	# and then, so a restyle recolouring four hundred bricks rebuilt the
+	# same few batches four hundred times over.
 	_note({"op": "paint", "id": brick_id, "colour": color_code})
 	return true
 
 
 func clear() -> void:
+	_stop_reveal()
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
 		batch.instance.queue_free()
@@ -346,6 +381,7 @@ func clear() -> void:
 ## Show only these bricks, hiding the rest. An empty set shows all of
 ## them again, which is what ends playback.
 func show_only(visible_ids: Dictionary) -> void:
+	_stop_reveal()
 	var everything: bool = visible_ids.is_empty()
 	var changed: bool = false
 	for brick_id: int in _bricks:
@@ -453,6 +489,7 @@ func _create_batch(
 	material.set_shader_parameter("part_box_max", part.bounds.end)
 	batch.instance.material_override = material
 	add_child(batch.instance)
+	batch.triangles = _triangles_of(batch.multimesh.mesh)
 	return batch
 
 
@@ -479,7 +516,7 @@ func _flush() -> void:
 		var batch: Batch = _batches[key]
 		if batch.multimesh.instance_count > 0:
 			live += 1
-			triangles += _triangles_of(batch.multimesh.mesh) * batch.multimesh.instance_count
+			triangles += batch.triangles * batch.multimesh.instance_count
 	rebuilt.emit(brick_count(), live, triangles)
 
 
@@ -491,6 +528,9 @@ func _rebuild(batch: Batch, key: String) -> void:
 		return
 
 	var surface_index: int = key.split(":")[1].to_int()
+	# One mesh per batch — the key is the mesh's hash — so one answer to
+	# whether this surface follows the brick's colour or keeps its own.
+	var surface_color: int = _surface_colour(batch, surface_index)
 	# Hidden bricks are packed off the end rather than left as gaps: a
 	# MultiMesh draws its first visible_instance_count slots, so the ones
 	# to draw have to be the ones at the front.
@@ -499,16 +539,7 @@ func _rebuild(batch: Batch, key: String) -> void:
 		var brick: Brick = _bricks[brick_id]
 		if brick.hidden:
 			continue
-		batch.multimesh.set_instance_transform(slot, brick.transform)
-
-		# A surface moulded in a fixed colour ignores the brick's colour;
-		# that is what keeps a printed face black on a yellow head.
-		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		var surface_color: int = part.surface_colors[surface_index]
-		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
-		var color: PartLibrary.BrickColor = library.color(code)
-		batch.multimesh.set_instance_color(slot, color.shown)
-		batch.multimesh.set_instance_custom_data(slot, color.instance_custom)
+		_write_instance(batch, slot, brick, surface_color)
 		slot += 1
 
 	# Kept in step with instance_count explicitly: raising one does not
@@ -540,12 +571,166 @@ func _rebuild(batch: Batch, key: String) -> void:
 	batch.instance.custom_aabb = bounds
 
 
-func _triangles_of(mesh: Mesh) -> int:
+## One brick into one slot of a batch.
+func _write_instance(batch: Batch, slot: int, brick: Brick,
+		surface_color: int) -> void:
+	batch.multimesh.set_instance_transform(slot, brick.transform)
+	# A surface moulded in a fixed colour ignores the brick's colour;
+	# that is what keeps a printed face black on a yellow head.
+	var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
+	var color: PartLibrary.BrickColor = library.color(code)
+	batch.multimesh.set_instance_color(slot, color.shown)
+	batch.multimesh.set_instance_custom_data(slot, color.instance_custom)
+
+
+func _surface_colour(batch: Batch, surface_index: int) -> int:
+	if batch.brick_ids.is_empty():
+		return Lbm.COLOR_INHERIT
+	var part: Lbm.PartMesh = library.mesh_for(_bricks[batch.brick_ids[0]].part_id)
+	return part.surface_colors[surface_index] if part != null else Lbm.COLOR_INHERIT
+
+
+## Triangles in a mesh, by its instance, worked out once.
+##
+## Asking the mesh reads its arrays back off the graphics card: on the web
+## that is a synchronous getBufferSubData, which waits for the GPU to finish
+## everything queued. It was asked of every batch on every rebuild, and a
+## rebuild comes once a frame while a model is changing.
+static var _triangles_by_mesh: Dictionary = {}
+
+
+static func _triangles_of(mesh: Mesh) -> int:
 	if mesh == null or mesh.get_surface_count() == 0:
 		return 0
+	var known: Variant = _triangles_by_mesh.get(mesh.get_instance_id())
+	if known != null:
+		return int(known)
 	var arrays: Array = mesh.surface_get_arrays(0)
 	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	_triangles_by_mesh[mesh.get_instance_id()] = indices.size() / 3
 	return indices.size() / 3
+
+
+# -- the build animation ---------------------------------------------------
+#
+# Watching a model go up is the bricks to come hidden, then shown a few at a
+# time. Done with show_only, every step walked every brick in the model and
+# rebuilt every batch it touched — on the 4,242-part Falcon Heavy that froze
+# the page (src/render/build_playback.gd has the numbers). Instead each batch
+# is written once with its bricks in the order they are built, so the ones on
+# show are always the first so many, and a step is only a count raised.
+
+
+## The bricks of [member _reveal_order] that are still to come, by id ->
+## their place in it.
+var _reveal_rank: Dictionary = {}
+var _reveal_order: PackedInt64Array = PackedInt64Array()
+## The batches holding bricks still to come.
+var _revealing: Array[Batch] = []
+
+
+func is_revealing() -> bool:
+	return not _reveal_order.is_empty()
+
+
+## Hide [param order]'s bricks, to be shown in that order by
+## [method reveal_through]. Every other brick stays on show.
+func begin_reveal(order: PackedInt64Array) -> void:
+	# From a world with everything on show and nothing waiting to be drawn,
+	# so the order written below is the whole truth about each batch.
+	show_only({})
+	if not _dirty.is_empty():
+		_flush()
+	_reveal_order = PackedInt64Array()
+	for brick_id: int in order:
+		var brick: Brick = get_brick(brick_id)
+		if brick == null or _reveal_rank.has(brick_id):
+			continue
+		_reveal_rank[brick_id] = _reveal_order.size()
+		_reveal_order.append(brick_id)
+		brick.hidden = true
+	if _reveal_order.is_empty():
+		return
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		var shown := PackedInt64Array()
+		var ranks := PackedInt64Array()
+		for brick_id: int in batch.brick_ids:
+			var rank: Variant = _reveal_rank.get(brick_id)
+			if rank == null:
+				shown.append(brick_id)
+			else:
+				ranks.append(int(rank))
+		if ranks.is_empty():
+			continue
+		ranks.sort()
+		var ordered := shown.duplicate()
+		for rank: int in ranks:
+			ordered.append(_reveal_order[rank])
+		batch.brick_ids = ordered
+		batch.shown = shown.size()
+		batch.ranks = ranks
+		batch.revealed = 0
+		_write_in_order(batch, key)
+		_revealing.append(batch)
+
+
+## Show every brick up to [param rank] in the order begun with: a count
+## raised per batch, nothing rewritten.
+func reveal_through(rank: int) -> void:
+	for batch: Batch in _revealing:
+		var upto: int = batch.ranks.bsearch(rank + 1)
+		if upto == batch.revealed:
+			continue
+		for n: int in range(batch.revealed, upto):
+			var brick: Brick = _bricks.get(_reveal_order[batch.ranks[n]])
+			if brick != null:
+				brick.hidden = false
+		batch.revealed = upto
+		batch.multimesh.visible_instance_count = batch.shown + upto
+	if rank >= _reveal_order.size() - 1:
+		_stop_reveal()
+
+
+## Everything on show again, however far the reveal had got.
+func end_reveal() -> void:
+	_stop_reveal()
+
+
+func _stop_reveal() -> void:
+	if _reveal_order.is_empty():
+		return
+	for batch: Batch in _revealing:
+		batch.multimesh.visible_instance_count = batch.brick_ids.size()
+		batch.ranks = PackedInt64Array()
+		batch.shown = 0
+		batch.revealed = 0
+	for brick_id: int in _reveal_rank:
+		var brick: Brick = _bricks.get(brick_id)
+		if brick != null:
+			brick.hidden = false
+	_revealing.clear()
+	_reveal_rank.clear()
+	_reveal_order = PackedInt64Array()
+	reveal_ended.emit()
+
+
+## A batch written whole, in the order of its brick_ids, hidden bricks and
+## all, with only those on show drawn.
+func _write_in_order(batch: Batch, key: String) -> void:
+	var count: int = batch.brick_ids.size()
+	batch.multimesh.instance_count = count
+	var surface_color: int = _surface_colour(batch, key.split(":")[1].to_int())
+	var bounds := AABB()
+	for slot: int in count:
+		var brick: Brick = _bricks[batch.brick_ids[slot]]
+		_write_instance(batch, slot, brick, surface_color)
+		var box: AABB = brick.transform * batch.multimesh.mesh.get_aabb()
+		bounds = box if slot == 0 else bounds.merge(box)
+	batch.multimesh.visible_instance_count = batch.shown
+	# Bounds for all of them, shown or to come, so the batch is not culled
+	# as it grows.
+	batch.instance.custom_aabb = bounds
 
 
 ## Turn the whole model a quarter turn about its own centre.
@@ -562,6 +747,8 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 	var turns: int = posmod(quarter_turns, 4)
 	if turns == 0 or brick_count() == 0:
 		return []
+	_stop_reveal()
+	revision += 1
 
 	# Turn about the centre of the footprint, snapped to the stud grid so
 	# a model on the lattice stays on it.

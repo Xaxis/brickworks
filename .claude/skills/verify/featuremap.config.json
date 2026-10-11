@@ -190,6 +190,13 @@
     },
     {
       "kind": "ui",
+      "label": "build animation",
+      "entry": "src/render/build_playback.gd",
+      "reach": "godot --headless --path . --script src/dev/playback_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "mosaic",
       "entry": "src/ui/mosaic_dialog.gd",
       "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
