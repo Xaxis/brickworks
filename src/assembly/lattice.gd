@@ -348,6 +348,16 @@ static func corners_in(packed: PackedInt32Array) -> Array:
 	return [lo, hi]
 
 
+## How many cells boxes cover, counted as [method cells_in] would count
+## them, a box at a time and overlaps twice.
+static func volume_of(packed: PackedInt32Array) -> int:
+	var total: int = 0
+	for n: int in range(0, packed.size(), 6):
+		total += (packed[n + 3] - packed[n]) * (packed[n + 4] - packed[n + 1]) \
+			* (packed[n + 5] - packed[n + 2])
+	return total
+
+
 static func cells_in(packed: PackedInt32Array) -> Array[Vector3i]:
 	var out: Array[Vector3i] = []
 	var n: int = 0
@@ -814,6 +824,20 @@ func clear() -> void:
 	_column_bucket.clear()
 	_bounds.clear()
 	unseen.clear()
+
+
+## A copy to be read on another thread while this one goes on changing.
+## Shallow, and still a copy: every value is a packed array, and a packed
+## array is copied the moment either side writes to it, so nothing the
+## live lattice does afterwards reaches this one. Without the columns,
+## which only placing a brick by hand asks about.
+func copy_for_reading() -> BrickLattice:
+	var copy := BrickLattice.new()
+	copy.keeps_columns = false
+	copy._boxes = _boxes.duplicate()
+	copy._bucket = _bucket.duplicate()
+	copy._bounds = _bounds.duplicate()
+	return copy
 
 
 ## The height a part would rest at in this column: one cell above the

@@ -137,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print; do
   probe "$name"
 done
 
@@ -196,6 +196,11 @@ run "model shot" "${screen[@]}" godot --path . --resolution 1200x800 \
 # timeline's numbers. Leaves shots/booklet/*.html to open and look at.
 run "booklet" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/booklet_probe.gd
+# The design that froze the owner's computer: their 4,242-part Falcon Heavy,
+# made through the connector's own answer_rpc in the real scene, every frame
+# timed, then twice over and turned round.
+run "a big design" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/freeze_probe.gd
 run "axis gizmo" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/gizmo_probe.gd
 # Also a window: what a dragged box catches depends on where each brick

@@ -186,6 +186,14 @@
       "tests": []
     },
     {
+      "id": "cli:freeze check",
+      "kind": "cli",
+      "entry": "tools/web/freeze_check.mjs",
+      "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -289,6 +297,14 @@
       "entry": "tools/deploy.sh",
       "reach": "tools/deploy.sh --prod",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:a big check on a worker",
+      "kind": "lib",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -555,6 +571,14 @@
       "entry": "src/ui/marquee.gd",
       "reach": "godot --path .  (drag on the baseplate)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:build animation",
+      "kind": "ui",
+      "entry": "src/render/build_playback.gd",
+      "reach": "godot --headless --path . --script src/dev/playback_probe.gd",
+      "area": "view",
       "tests": []
     },
     {

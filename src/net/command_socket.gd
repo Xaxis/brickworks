@@ -341,7 +341,7 @@ func answer_rpc(request: Dictionary) -> Variant:
 		asked.emit(name)
 		var answer: Variant
 		if _own_tools_have(name):
-			answer = _run_own(name, input)
+			answer = await _run_own(name, input)
 		else:
 			if not await _take_a_turn():
 				return _result(sent_id, {"isError": true, "content": [
@@ -422,7 +422,7 @@ func _answer(client: Client, line: String) -> void:
 	asked.emit(tool)
 	if _own_tools_have(tool):
 		_send(client, {"id": id, "ok": true,
-			"content": _as_content(_run_own(tool, input))})
+			"content": _as_content(await _run_own(tool, input))})
 		return
 	if not await _take_a_turn():
 		_reply(client, id, false, "another call is still running — the "
@@ -566,9 +566,11 @@ func _own_tools_have(tool: String) -> bool:
 	return tool in ["clear_model", "save_model", "review_model"]
 
 
+## A coroutine: reviewing the whole model checks it, which a big model does
+## on a worker thread (Assistant._checked) while the app goes on drawing.
 func _run_own(tool: String, input: Dictionary) -> String:
 	if tool == "review_model" and assistant != null:
-		return assistant.review(str(input.get("assembly", "")))
+		return await assistant.review(str(input.get("assembly", "")))
 	if app == null:
 		return "This app cannot do that from outside."
 	match tool:
@@ -595,7 +597,9 @@ func _run_own(tool: String, input: Dictionary) -> String:
 				ProjectSettings.globalize_path(path)]
 			# A run's last act is to save: so saving hands back the next
 			# assembly it has not looked at closely, if there is one.
-			var more: String = assistant.next_review() if assistant != null else ""
+			var more: String = ""
+			if assistant != null:
+				more = await assistant.next_review()
 			return written if more.is_empty() else "%s\n\n%s" % [written, more]
 	return "No tool called %s." % tool
 

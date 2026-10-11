@@ -1025,14 +1025,18 @@ func _on_response(result: Array) -> void:
 		return
 
 	# A design arrived. Check it against the real lattice.
-	var report: Dictionary = _check(_pending)
+	progress.emit("checking %d bricks" % _pending.placements.size())
+	var report: Dictionary = await _checked(_pending)
+	# Stopped while it was being checked: nothing more to do with it.
+	if not _busy:
+		return
 	progress.emit(report["summary"])
 	if not report["ok"] and _repairs >= MAX_REPAIRS and not _looked_back:
 		report = _salvage(report)
 
 	if report["ok"]:
 		await _ensure_parts(_pending)
-		_apply(_pending)
+		await _apply(_pending, true, true)
 		if not _busy:
 			return
 		# One deliberate look before it is finished.
@@ -1689,7 +1693,9 @@ func _bricks_inside(where: Dictionary) -> Array[BrickWorld.Brick]:
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		if _inside(_to_studs(brick, info), where):
+		# Everything is inside no box at all: working out where each brick
+		# is first was most of what reviewing a whole model cost.
+		if where.is_empty() or _inside(_to_studs(brick, info), where):
 			out.append(brick)
 	return out
 
@@ -1935,7 +1941,11 @@ func _run_tool(block: Dictionary) -> Variant:
 			# exist — they are simply not loaded yet — and it goes off
 			# and picks something else.
 			await _ensure_parts(trial)
-			var report: Dictionary = _check(trial)
+			var running: bool = _busy
+			var report: Dictionary = await _checked(trial)
+			# This app's own run, stopped while it was checked.
+			if running and not _busy:
+				return ""
 			# On screen, not just counted. A design runs for minutes and
 			# checks its work two or three times along the way; those
 			# are the only glimpses of the shape there are before the
@@ -1950,7 +1960,7 @@ func _run_tool(block: Dictionary) -> Variant:
 			var standing: bool = _outside_standing and not _busy \
 				and world != null and world.brick_count() > scenery.size()
 			if not trial.placements.is_empty() and not _edited and not standing:
-				_apply(trial, false)
+				await _apply(trial, false, true)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
 				report["summary"]])
@@ -2067,7 +2077,10 @@ func _run_tool(block: Dictionary) -> Variant:
 				return ("That would leave the baseplate empty. "
 					+ "If clearing it is what you meant, say so instead.")
 			await _ensure_parts(edited)
-			var verdict: Dictionary = _check(edited, true)
+			var running: bool = _busy
+			var verdict: Dictionary = await _checked(edited, true)
+			if running and not _busy:
+				return ""
 			if not bool(verdict["ok"]):
 				progress.emit("tried a change: %s" % verdict["summary"])
 				return ("Not applied — the model would not hold together.\n"
@@ -3236,7 +3249,12 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	# time the model is described. On a two thousand brick model that
 	# was nine seconds to answer "what is on the baseplate", which is
 	# the question a design asks most.
-	var packed: PackedInt32Array = builder.boxes_for(part, brick.transform)
+	# The lattice's own record where it has one: the same boxes, worked out
+	# when the brick was registered, and this is asked for every brick each
+	# time a model is read back.
+	var packed: PackedInt32Array = builder.lattice.boxes_of(brick.id)
+	if packed.is_empty():
+		packed = builder.boxes_for(part, brick.transform)
 	if packed.is_empty():
 		return []
 	var lo := Vector3i(packed[0], packed[1], packed[2])
@@ -4056,7 +4074,7 @@ func _rooms(args: Dictionary) -> Dictionary:
 		_pattern_trouble = []
 		_pattern_advice = []
 		_repeat_trouble = []
-		var report: Dictionary = _check(trial, true)
+		var report: Dictionary = await _checked(trial, true)
 		if bool(report["ok"]):
 			break
 		var ours: Array = []
@@ -5852,6 +5870,86 @@ func _rehinge(model: Model, section: Section, was: Section) -> void:
 # -- validation ----------------------------------------------------------
 
 
+## The check, off the main thread once a design is big enough to be felt.
+##
+## On the web the page has one thread, and the check held it: on the
+## owner's 4,242-part Falcon Heavy a check_design was one 31 s task in a
+## browser, and a submit, an edit and a review each another — no frame, no
+## click, no answer to Claude until it was done. On the desktop it was
+## 3.4 s of a frozen window. So a big check runs on a worker and this waits
+## for it a frame at a time, the page drawing and answering meanwhile.
+##
+## What the worker reads is made still first. Every part it needs is loaded
+## here, because a worker never loads one (PartLibrary.mesh_for); the
+## library holds new arrivals aside until it is done, and a part made
+## meanwhile waits for it; the bricks already
+## standing are listed here rather than read from a world that a person may
+## be adding to; and the tables filled on first use — the style norms, the
+## minifigure name patterns — are filled here. The probes call [method
+## _check] itself, on their own thread, as before.
+func _checked(model: Model, alone: bool = false) -> Dictionary:
+	# One worker at a time: a second check while one is out (the design
+	# loop and a connector both checking) is done here, as before.
+	if model.placements.size() < CHECK_OFF_THREAD_FROM or _standing_held \
+			or OS.has_feature("nothreads") or library == null:
+		return _check(model, alone)
+	_standing_held = true
+	await _ensure_parts(model)
+	Style.norms()
+	var named: Dictionary = {}
+	for placement: Placement in model.placements:
+		named[placement.part] = true
+	for part_id: String in named:
+		Minifig.slot_for(library.parts.get(part_id))
+	_standing_now = _others_standing(alone)
+	library.begin_reading()
+	var report: Dictionary = {}
+	var task: int = WorkerThreadPool.add_task(func() -> void:
+		report.merge(_check(model, alone)), false, "check a design")
+	library.reading_in(task)
+	while not WorkerThreadPool.is_task_completed(task):
+		await Engine.get_main_loop().process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+	library.end_reading(task)
+	_standing_held = false
+	_standing_now = []
+	if report.is_empty():
+		# A worker that failed leaves nothing. Checked here instead: slow,
+		# but an answer.
+		return _check(model, alone)
+	return report
+
+
+## Placements from which a check goes to a worker. Below it a check is a
+## few tens of milliseconds and a worker would only add a frame.
+const CHECK_OFF_THREAD_FROM := 300
+
+## The bricks a check has to fit around, as [method _others_standing] found
+## them before the worker began.
+var _standing_now: Array = []
+var _standing_held: bool = false
+
+
+## What will still be standing afterwards and is not this design's: none
+## of the bricks it placed, nor the baseplate. Copies, so a worker reading
+## them shares nothing with the world.
+func _others_standing(alone: bool) -> Array:
+	if _standing_held and OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return _standing_now
+	var standing: Array = []
+	if alone or world == null:
+		return standing
+	var mine: Dictionary = {}
+	for brick_id: int in _placed_ids + _sketched_ids:
+		mine[brick_id] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		if mine.has(brick.id) or scenery.has(brick.id):
+			continue
+		standing.append(BrickWorld.Brick.new(brick.id, brick.part_id,
+			brick.color_code, brick.transform))
+	return standing
+
+
 ## Check a proposed design against the real lattice.
 ##
 ## Runs on a scratch lattice rather than the live one, so a failing
@@ -5888,7 +5986,13 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## as any.
 	var advice: Array = []
 	var issues: Dictionary = {}     ## kind -> Array[String]
-	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
+	## index -> its cover, as boxes. Every cell it was, once: 2,000 cells a
+	## brick on the owner's 4,242-part Falcon Heavy, 8.5 million Vector3i
+	## made and kept for a check — a third of a gigabyte of the browser's
+	## heap, and most of the time the loop below took. Everything that read
+	## them wanted a lowest cell, a highest or a count, and boxes answer
+	## each in six numbers.
+	var cells_of: Dictionary = {}
 	var boxes_of: Dictionary = {}   ## index -> its boxes, six ints each
 	var box_of: Dictionary = {}     ## index -> [low cell, high cell]
 
@@ -5939,13 +6043,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# What will still be there afterwards, standing in the way.
 	var theirs: Dictionary = {}     ## lattice key -> part id
 	if not alone and world != null:
-		var mine: Dictionary = {}
-		for brick_id: int in _placed_ids + _sketched_ids:
-			mine[brick_id] = true
 		var key: int = -1
-		for brick: BrickWorld.Brick in world.bricks():
-			if mine.has(brick.id) or scenery.has(brick.id):
-				continue
+		for brick: BrickWorld.Brick in _others_standing(alone):
 			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			if part == null:
 				continue
@@ -6038,13 +6137,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			continue
 
 		placed_at[index] = at
+		# Boxes, worked out once. For a turned part the cover costs a
+		# separating-axis test on every candidate cell, and asking for it
+		# twice — once as boxes, once as cells — is what made a model with
+		# four sections take thirty-five seconds to check against six and
+		# a half.
 		var packed: PackedInt32Array = builder.boxes_for(part, at)
-		# Cells out of the boxes, not worked out a second time. For a
-		# turned part the cover costs a separating-axis test on every
-		# candidate cell, and asking for it twice — once as boxes, once
-		# as cells — is what made a model with four sections take
-		# thirty-five seconds to check against six and a half.
-		var cells: Array[Vector3i] = BrickLattice.cells_in(packed)
 
 		# Inside a section, check the bricks against each other in the
 		# section's own square frame.
@@ -6203,7 +6301,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			continue
 
 		lattice.occupy_boxes(index + 1, packed)
-		cells_of[index] = cells
+		cells_of[index] = packed
 		boxes_of[index] = packed
 		# The corners, read off the boxes. Three checks below want them,
 		# and finding them by walking every cell is nine thousand six
@@ -6587,7 +6685,7 @@ func _courses(cells_of: Dictionary, box_of: Dictionary) -> Dictionary:
 			* (high.z - low.z + 1)
 		var filled: int = 0
 		if cells_of.has(index):
-			filled = (cells_of[index] as Array).size()
+			filled = BrickLattice.volume_of(cells_of[index])
 		if filled != volume:
 			continue
 		# Whole plates only, so that the stud on a part's top does not
@@ -7146,14 +7244,15 @@ func _mating_entries(model: Model) -> Array:
 ## Returns a clause to hang off an overlap message, or nothing at all
 ## when the brick that was hit is one already on the baseplate rather
 ## than one of these placements.
-static func _ends_at(cells: Variant) -> String:
-	if typeof(cells) != TYPE_ARRAY or (cells as Array).is_empty():
+static func _ends_at(cover: Variant) -> String:
+	if typeof(cover) != TYPE_PACKED_INT32_ARRAY or (cover as PackedInt32Array).is_empty():
 		return ""
-	var low: int = (cells[0] as Vector3i).y
-	var high: int = low
-	for cell: Vector3i in cells:
-		low = mini(low, cell.y)
-		high = maxi(high, cell.y)
+	var boxes: PackedInt32Array = cover
+	var low: int = boxes[1]
+	var high: int = boxes[4] - 1
+	for at: int in range(0, boxes.size(), 6):
+		low = mini(low, boxes[at + 1])
+		high = maxi(high, boxes[at + 4] - 1)
 	var from_y: float = float(low) / BrickLattice.CELLS_PER_PLATE
 	var to_y: float = float(high + 1) / BrickLattice.CELLS_PER_PLATE
 	return ", which fills y=%s up to y=%s — so the course above it starts at y=%s" % [
@@ -7610,10 +7709,10 @@ func _check_support(
 		# the fault that matters.
 		if crowded.has(placement.section):
 			continue
-		var cells: Array[Vector3i] = cells_of[index]
+		var cover: PackedInt32Array = cells_of[index]
 		var floor_y: int = 0x7FFFFFFF
-		for cell: Vector3i in cells:
-			floor_y = mini(floor_y, cell.y)
+		for at: int in range(1, cover.size(), 6):
+			floor_y = mini(floor_y, cover[at])
 		# Standing on the ground, read off where the brick actually
 		# ended up rather than off the number that was written.
 		#
@@ -7996,12 +8095,43 @@ static func _cover_studs(part: Lbm.PartMesh, info: PartLibrary.PartInfo) -> Vect
 ## off the studs it stood on, and the owner saw it: the wing tips of a
 ## tower of Orthanc not sitting on their studs, 24 of them in one model.
 ## The patterns that lay wings meant the footprint all along.
-var _corner_cache: Dictionary = {}
+##
+## Kept by part and then by the basis itself. The key was the two written
+## out as one string, and writing a Basis out is nine numbers formatted:
+## most of the 142 ms that placing the owner's 4,242-part Falcon Heavy
+## spent working out where its parts go, and asked again by every check,
+## every look and every reading of the model. A check on a worker
+## (_checked) keeps its own, behind a lock, so neither thread writes a
+## Dictionary the other is reading.
+var _corner_cache: Dictionary = {}     ## part id -> {Basis: Vector3i}
+var _corner_off_main: Dictionary = {}
+var _corner_lock := Mutex.new()
+
 
 func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
-	var key: String = "%s|%s" % [part_id, basis]
-	if _corner_cache.has(key):
-		return _corner_cache[key]
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		_corner_lock.lock()
+		var known: Variant = (_corner_off_main.get(part_id, {}) as Dictionary).get(basis)
+		if known == null:
+			known = _work_out_corner(part, part_id, basis)
+			if not _corner_off_main.has(part_id):
+				_corner_off_main[part_id] = {}
+			(_corner_off_main[part_id] as Dictionary)[basis] = known
+		_corner_lock.unlock()
+		return known
+	var by_basis: Variant = _corner_cache.get(part_id)
+	if by_basis == null:
+		by_basis = {}
+		_corner_cache[part_id] = by_basis
+	var found: Variant = (by_basis as Dictionary).get(basis)
+	if found != null:
+		return found
+	var lo: Vector3i = _work_out_corner(part, part_id, basis)
+	(by_basis as Dictionary)[basis] = lo
+	return lo
+
+
+func _work_out_corner(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
 	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
 	var hi := -lo
 	for cell: Vector3i in builder._cells_for(part, Transform3D(basis, Vector3.ZERO)):
@@ -8016,7 +8146,6 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 	elif absf((basis * Vector3.UP).y) > 0.99 and not _figure_part(part_id):
 		lo.x = _footprint_start(part, basis, 0, lo.x, hi.x + 1)
 		lo.z = _footprint_start(part, basis, 2, lo.z, hi.z + 1)
-	_corner_cache[key] = lo
 	return lo
 
 
@@ -8254,12 +8383,28 @@ func _apply_edit(model: Model) -> void:
 		_placed_ids.append(brick_id)
 	# Whatever was a sketch is now built.
 	_sketched_ids = PackedInt64Array()
+	fresh_ids = _changed_ids.duplicate()
 	built.emit(_placed_ids.size())
 
 
 ## Put a model on the baseplate, replacing whatever the assistant built
 ## last time and leaving anything the person placed by hand alone.
-func _apply(model: Model, finished: bool = true) -> void:
+##
+## [param gradually] spreads it over frames, a slice at a time (FramePace),
+## for the tools: putting down the owner's 4,242-part Falcon Heavy was 0.4 s
+## in one frame on the desktop and more in a browser. What is drawn stays as it
+## was until the whole design is down (BrickWorld.hold_drawing), so the
+## build animation that follows is the first anyone sees of it. Without it,
+## as the probes call it, all at once and never waiting.
+##
+## A design of this app's own loop can be stopped while it is going down:
+## Stop puts the model back as it was (_restore) from what has been placed
+## so far, and the rest is then not placed.
+func _apply(model: Model, finished: bool = true, gradually: bool = false) -> void:
+	if gradually:
+		world.hold_drawing()
+	var running: bool = _busy
+	var pace := FramePace.new()
 	# What stands already and is the same as before stays, under its
 	# number; only what changed comes down or goes up.
 	#
@@ -8281,6 +8426,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 		if not standing.has(key):
 			standing[key] = []
 		standing[key].append(brick_id)
+		if gradually and pace.due():
+			await pace.next()
+			if running and not _busy:
+				world.release_drawing()
+				return
 
 	# A part whose geometry never arrived used to be skipped here in
 	# silence, and what the person got was the design minus its wheels
@@ -8301,6 +8451,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 			library.resolve(placement.part), placement.color, at), [])
 		if not same.is_empty():
 			kept[index] = same.pop_back()
+		if gradually and pace.due():
+			await pace.next()
+			if running and not _busy:
+				world.release_drawing()
+				return
 	# Down first, so nothing new is registered inside what is leaving.
 	for key: String in standing:
 		for brick_id: int in standing[key]:
@@ -8308,8 +8463,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 			world.remove_brick(brick_id)
 	_sketched_ids = PackedInt64Array()
 	_placed_ids = PackedInt64Array()
+	fresh_ids = PackedInt64Array()
 
-	for index: int in at_of:
+	var order: Array = at_of.keys()
+	for step: int in order.size():
+		var index: int = order[step]
 		var placement: Placement = model.placements[index]
 		var brick_id: int = kept.get(index, 0)
 		if brick_id == 0:
@@ -8318,9 +8476,24 @@ func _apply(model: Model, finished: bool = true) -> void:
 			if brick_id == 0:
 				continue
 			builder.register(brick_id, placement.part, at_of[index])
+			fresh_ids.append(brick_id)
 		_remember_section(brick_id, placement, model)
 		if placement.mine:
 			_placed_ids.append(brick_id)
+		if gradually and pace.due():
+			await pace.next()
+			if running and not _busy:
+				# Stop put back the model from what had been placed; what
+				# was standing and not reached yet is part of neither.
+				for later: int in order.slice(step + 1):
+					var standing_id: int = kept.get(later, 0)
+					if standing_id != 0:
+						builder.lattice.release(standing_id)
+						world.remove_brick(standing_id)
+				world.release_drawing()
+				return
+	if gradually:
+		world.release_drawing()
 
 	if not missing.is_empty():
 		var names: Array = missing.keys()
@@ -8343,6 +8516,12 @@ static func _same_key(part_id: String, colour: int, at: Transform3D) -> String:
 	return "%s|%d|%.2f %.2f %.2f|%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" % [
 		part_id, colour, at.origin.x, at.origin.y, at.origin.z,
 		b.x.x, b.x.y, b.x.z, b.y.x, b.y.y, b.y.z, b.z.x, b.z.y, b.z.z]
+
+
+## The bricks the last build or edit put down or moved, which were not
+## standing as they are before it. What the build animation shows going up:
+## the rest was already there.
+var fresh_ids := PackedInt64Array()
 
 
 ## How many bricks in the world the assistant considers its own.
@@ -9432,12 +9611,12 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		return answer
 	var design: Model = _pending
 	_pending = null
-	var report: Dictionary = _check(design)
+	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
 		return "Not applied — it does not hold together yet.\n%s" \
 			% report["feedback"]
 	await _ensure_parts(design)
-	_apply(design)
+	await _apply(design, true, true)
 	if not _busy:
 		_outside_standing = true
 		_outside_assemblies = design.assemblies.duplicate()
@@ -9497,6 +9676,7 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
 func review(assembly: String) -> String:
+	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
 		return "The baseplate is bare: there is nothing to review."
@@ -9510,7 +9690,7 @@ func review(assembly: String) -> String:
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
-		var report: Dictionary = _check(_model_from_world())
+		var report: Dictionary = await _checked(_model_from_world())
 		var said := PackedStringArray()
 		said.append("The whole model: %s. %s." % [_texture(everything),
 			report["summary"]])
@@ -9556,6 +9736,7 @@ func review(assembly: String) -> String:
 ## reviewed: so saving hands it the next, as this app's own loop hands each
 ## assembly back in turn.
 func next_review() -> String:
+	# A coroutine because review is: callers await it.
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
 		return ""
@@ -9563,7 +9744,7 @@ func next_review() -> String:
 	return ("Before it is finished: %d of its %d assemblies %s not had a close "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
 		+ "look (%s). This app's own designer details each in turn; the next " % ", ".join(left)
-		+ "is the %s.\n\n%s" % [name, review(name)])
+		+ "is the %s.\n\n%s" % [name, await review(name)])
 
 
 ## The assemblies a session named that have had no close review yet, in

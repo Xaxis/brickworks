@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
 
 ## Sub-features
 
@@ -124,6 +124,30 @@ fixing what it got wrong.
   and brings a photograph of the subject into the conversation, credited. The loop
   calls it first, before any brick: a design asked for a lighthouse and working
   from memory gets the proportions wrong in a way no later critique recovers.
+- `a big check on a worker`: `Assistant._checked`, which every tool path
+  (check_design, submit_design, edit_model, add_rooms, review_model, and the
+  app's own loop) waits on a frame at a time. From `CHECK_OFF_THREAD_FROM`
+  (300) placements the check runs on a `WorkerThreadPool` task while the app
+  goes on drawing and answering; below it, in place. On the web the page has
+  one thread, and the owner's 4,242-part Falcon Heavy was a 31 s task per
+  check in a browser (3.4 s on the desktop). What the worker reads is made
+  still first: every part is loaded (`_ensure_parts`; a worker never loads,
+  `PartLibrary.mesh_for`), the library holds parts that arrive meanwhile aside, and a part made meanwhile waits for the worker
+  (`begin_reading`, `end_reading`), the bricks already standing are copies
+  (`_others_standing`), turned covers have their own locked cache
+  (`Builder._turned_off_main`), and the tables filled on first use — the style
+  norms, the minifigure name patterns — are filled before it starts. One
+  worker at a time; a second check meanwhile runs in place. The probes call
+  `_check` itself, as before. `responsive_probe` holds the same answer either
+  way, frames throughout, and a brick placed and a part loaded during it.
+  And a design is put down a slice a frame (`_apply(model, finished, true)`;
+  `FramePace`: 12 ms a slice at sixty frames a second, up to half a frame
+  where frames are slow — in software a browser frame is over a second, and
+  12 ms slices made putting the Falcon down take a minute, past the relay's
+  four) with `BrickWorld.hold_drawing` until it is whole, so the
+  build animation is the first anyone sees of it; Stop in the middle puts the
+  model back and places no more. The probes call `_apply` as before, all at
+  once.
 - `measured, not just photographed`: every look — `check_design`, `view_model`,
   `edit_model` and the critique — carries the model's size in studs, its massing
   banded by height, and each named section measured as it is carried. "Is this the
@@ -603,6 +627,16 @@ the environment or `.env`, and without one a run ends at once with
 server**: every request goes from the app straight to Anthropic.
 
 ## How to check it
+
+The big design that froze the web app, made and timed (see web.md for the
+same in a browser):
+
+```sh
+godot --headless --path . --script src/dev/responsive_probe.gd   # a big check on a worker, frames throughout
+~/.claude/claude-core/bin/gpu godot --path . --resolution 1400x900 --script src/dev/freeze_probe.gd
+#   the Falcon made through the connector's answer_rpc, every frame timed, then
+#   8,484 parts turned round; add -- calls.json to replay a run's own calls
+```
 
 Static: nothing static covers the loop. `pyright` covers `tools/design.py`.
 

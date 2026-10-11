@@ -19,10 +19,19 @@
 //
 // No client address is passed on, so api/otp.js's per-address limit has
 // nothing to count here; its per-email limit, the one a probe checks, does.
+//
+// With --static=DIR it also serves a web export from DIR, with the two
+// headers the threaded build needs, so a local build talks to these same
+// functions as it would on Vercel: tools/web/freeze_check.mjs drives one
+// over the connector this way.
+//
+//   node tools/web/relay_server.mjs 8790 --static=build/web
 import http from "node:http";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, normalize } from "node:path";
 
 const port = Number(process.argv[2] || 8790);
+const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
 const routes = new Map();
 const web = new URL("../../web/", import.meta.url);
 
@@ -37,6 +46,27 @@ const MAPPED = [
 const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"]];
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", svg: "image/svg+xml",
   png: "image/png", json: "application/json", css: "text/css" };
+
+const FILE_TYPES = {
+  ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm",
+  ".pck": "application/octet-stream", ".png": "image/png", ".json": "application/json",
+  ".svg": "image/svg+xml", ".ico": "image/x-icon", ".css": "text/css",
+};
+
+// A file of the export, or false when there is none by that name.
+function serveFile(pathname, outgoing) {
+  if (!site) return false;
+  const file = normalize(join(site, decodeURIComponent(pathname === "/" ? "/index.html" : pathname)));
+  if (!file.startsWith(normalize(site)) || !existsSync(file) || !statSync(file).isFile()) return false;
+  outgoing.writeHead(200, {
+    "content-type": FILE_TYPES[extname(file)] || "application/octet-stream",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-embedder-policy": "require-corp",
+    "cache-control": "no-store",
+  });
+  outgoing.end(readFileSync(file));
+  return true;
+}
 
 async function route(name) {
   if (!/^[a-z]+$/.test(name)) return null;
@@ -68,6 +98,7 @@ http.createServer(async (incoming, outgoing) => {
     handler = await route(mapped[1]);
     query.op = mapped[2];
   }
+  if (!handler && !found && !mapped && serveFile(url.pathname, outgoing)) return;
   if (!handler) {
     const file = incoming.method === "GET" ? page(url.pathname) : null;
     if (!file) {

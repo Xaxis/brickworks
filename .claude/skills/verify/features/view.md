@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour -->
+<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
 
 ## Sub-features
 
@@ -45,6 +45,30 @@ picture the assistant is shown.
   filled every letter in. Batches, triangles, the catalogue count and the
   frame rate come back with `--stats` (and count everything); they were the
   first line every visitor read.
+- `build animation`: what the assistant just put down goes up on the baseplate
+  in build order instead of appearing at once (`BuildPlayback`, played from
+  `Main`'s `built` handler; never in a run driven from the command line). Only
+  what is new: `Assistant.fresh_ids` is what the last build or edit put down or
+  moved, and everything else stays on show (`BuildPlayback.play_new`), so a
+  recolour plays nothing and `add_rooms` plays the rooms; a design shown by
+  `check_design` (or drawn as it streamed in) and then submitted unchanged is
+  already standing and plays nothing either. Up to
+  `PLANNED_UP_TO` (200) new bricks the order is the booklet's
+  (`Instructions.plan`); past it, course by course, one sort of packed keys. A
+  step costs a count per batch: `BrickWorld.begin_reveal` writes each batch
+  once with its bricks in build order, so the ones on show are always the first
+  so many, and `reveal_through` raises `visible_instance_count`. Any change to
+  the bricks being revealed ends it with everything shown (`reveal_ended`);
+  a change elsewhere — the ground laid wider under a design that outgrew it,
+  the moment it is built — leaves it playing. A batch written in order is not
+  also rebuilt first. Outside a reveal the world on screen rebuilds a big
+  change a slice a frame (`BrickWorld.rebuilds_in_slices`, set by `Main`;
+  ModelShot's copy rebuilds whole, because its picture must be). The whole
+  assembly takes at most `LONGEST_MS` (8 s), several steps to a frame on a big
+  model. `playback_probe` checks the order and the prefix on a small model, that
+  only new bricks are hidden, and on the owner's Falcon Heavy
+  (`src/dev/fixtures/falcon_heavy.json`, 4,242 parts) that starting takes
+  milliseconds and no frame of it more than 30.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit
@@ -97,7 +121,15 @@ picture the assistant is shown.
   seen; a close look at one part of a model too big to judge whole; and, after an
   edit, the bricks that edit added or moved restaged in magenta, so the design can
   find its own change by looking rather than by re-reading coordinates. The stage
-  is a copy of the world — the model keeps the colours it was given.
+  is a copy of the world — the model keeps the colours it was given. It is
+  staged again only when the world's `revision`, what is left out or what is
+  picked out changed (`ModelShot._restage`, a slice a frame by `FramePace`
+  and drawn when whole), keeps no history, and is drawn
+  once a try (`UPDATE_ONCE`), not every frame of six: reading a picture back
+  waits for everything queued to be drawn, and on the owner's 4,242-part Falcon
+  Heavy in a browser drawing in software that read was 45 s. The PNG and its
+  base64 are made on a worker. `ModelShot.gpu_wait_us` sums the read-back wait,
+  which `Main._watch_own_frames` reports apart from the app's own work.
 - `seams between bricks`: `src/render/plastic_body.gdshaderinc`. A real brick
   is 0.2 mm short of its pitch, so two that meet show a seam; the meshes carry no
   edge lines, and without one a wall of forty bricks and a wall of four drew as
@@ -288,6 +320,7 @@ godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet co
 #   covers the Technic ordering case via models/kart.ldr, a shed whose two
 #   windows are one sub-model placed twice (a "2x" callout) and a figure, and
 #   31009 Skaters House from vendor/omr when it is there
+godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
@@ -346,6 +379,18 @@ take, which is what made a design run give up on looking at itself.
 - **Reading a picture's pixels in GDScript is the slow part.** A walk over
   every pixel of a page-sized code image was 1.5 s a step and most of the
   castle's ten minutes; it is read at a sixth of its size now.
+- **The build animation froze the page on a big model.** The owner asked the web
+  app for a Falcon Heavy (4,242 parts) and it "damn near froze my computer".
+  Measured on that model on the desktop GPU: every submit and every edit replayed
+  the whole model; planning the booklet's order took 15.5 s in one frame; each
+  step called `show_only`, which walked every brick and flushed at once, and
+  every flush emitted `rebuilt`, where `Main` asked whether the model stands —
+  4.4 s a time, about once a step. 848 steps of that is most of an hour, and in
+  a browser the tab stopped answering the connector ("The Brickworks tab did not
+  answer in time"). Now only new bricks play, a step is a count, the stability
+  line is worked out only when `BrickWorld.revision` moved, and
+  `Stability._check_levels` is one pass up and one down (3.3 s to 0.1 s on that
+  model). `tools/web/freeze_check.mjs` times the same design in a browser.
 
 - **The two renderers do not light in the same colour space.** Forward+ lights
   linear values and converts on output; Compatibility (the web build's) lights

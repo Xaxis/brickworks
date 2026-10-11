@@ -705,6 +705,27 @@
       "entry": "src/render/booklet_maker.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "a big check on a worker",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "build animation",
+      "entry": "src/render/build_playback.gd",
+      "reach": "godot --headless --path . --script src/dev/playback_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "freeze check",
+      "entry": "tools/web/freeze_check.mjs",
+      "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
     }
   ]
 }

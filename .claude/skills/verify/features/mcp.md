@@ -175,7 +175,10 @@ Both are in `tools/check.sh`.
   see. An app driven from the command line (`main._driven`, the same flags that
   turn vsync off) skips it: the same calls took 3.6 s, 11.6 s and 11.8 s, and a
   look 0.3 s. Time a driven session's calls with `tools/brick.py` before
-  blaming the model's size.
+  blaming the model's size. Since 2026-10-11 the animation is cheap in a window
+  too (only what is new, a step a count per batch; see view.md's build
+  animation), so this is now about not drawing for nobody rather than about
+  surviving it.
 - **`check_design` puts the trial on the baseplate**, and the baseplate is saved
   and restored on the next start. A design checked at the origin overlaps that
   saved model next time, which reads as a broken checker and is not. Call
