@@ -1256,7 +1256,7 @@ func _export_booklet(to: String = "") -> String:
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
 		note = Download.give(html, file_name, "text/html")
-		if note.begins_with("wrote ") and not OS.has_feature("web"):
+		if note.begins_with("wrote ") and BookletMaker.open_when_written:
 			OS.shell_open("file://" + note.trim_prefix("wrote "))
 	_bar.say(note)
 	return note

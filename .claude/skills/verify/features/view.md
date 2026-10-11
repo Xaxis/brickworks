@@ -282,7 +282,9 @@ godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the rend
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
-#   figure, the turn sign behind a wall, the timeline's numbers = the booklet's;
+#   figure, the turn sign behind a wall, the timeline's numbers = the booklet's,
+#   and the app's own toolbar: Instructions after Timeline, pressed, writes
+#   the booklet to Downloads (BookletMaker.open_when_written off, no browser);
 #   leaves shots/booklet/{shed,house,turned}.html — print and look at them
 # In a browser, on a local web export (tools/export.sh web, then
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows

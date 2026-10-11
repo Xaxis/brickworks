@@ -51,6 +51,7 @@ func _run() -> void:
 	await _shed()
 	await _house()
 	await _turned()
+	await _the_button()
 
 	print("")
 	print("%d failed" % _failures if _failures else "the booklet reads like a booklet")
@@ -187,6 +188,56 @@ func _turned() -> void:
 	var note: Dictionary = _note_for(maker, "step %d" % behind.number)
 	_assert("...where its plates are in sight (%s)" % str(note.get("new", Rect2())),
 		(note.get("new", Rect2()) as Rect2).size.x > 10.0)
+
+
+## The app's own toolbar: Instructions sits after Timeline, and pressing
+## it writes the booklet of what is on the baseplate to Downloads, where
+## the desktop opens it (not here: open_when_written is off).
+func _the_button() -> void:
+	print("\n  the app's Instructions button")
+	BookletMaker.open_when_written = false
+	var main: Node = load("res://src/main.tscn").instantiate()
+	root.add_child(main)
+	var bar: Node = null
+	for _n: int in 400:
+		await process_frame
+		bar = main.get("_bar")
+		if bar != null and is_instance_valid(BookletMaker.shown_button) \
+				and (main.get("_world") as BrickWorld).brick_count() > 1:
+			break
+	var button: Button = BookletMaker.shown_button
+	_assert("the toolbar has it", is_instance_valid(button) and button.is_visible_in_tree())
+	if not is_instance_valid(button):
+		main.queue_free()
+		return
+	var row: Node = button.get_parent()
+	var before: Node = row.get_child(button.get_index() - 1)
+	_assert("...after Timeline (%s)" % (before as Button).text if before is Button else "?",
+		before is Button and (before as Button).text == "Timeline")
+	# The example car, or whatever a first run puts on the baseplate.
+	var title: String = (bar as ModelBar).model_name()
+	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(
+		title.to_snake_case() + "_instructions.html")
+	if path.is_empty() or path.begins_with("/_"):
+		path = OS.get_user_data_dir().path_join(title.to_snake_case() + "_instructions.html")
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+	button.pressed.emit()
+	var said: String = ""
+	for _n: int in 3000:
+		await process_frame
+		said = bar.get("_status").text
+		if said.begins_with("wrote ") or said.begins_with("could not") \
+				or said.begins_with("nothing"):
+			break
+	var written: bool = FileAccess.file_exists(path)
+	var html: String = FileAccess.get_file_as_string(path) if written else ""
+	_assert("pressing it writes the booklet (%s)" % said,
+		written and html.contains("section class=\"page steps\""))
+	if written:
+		DirAccess.remove_absolute(path)
+	main.queue_free()
+	await process_frame
 
 
 func _make(world: BrickWorld, name: String) -> Array:

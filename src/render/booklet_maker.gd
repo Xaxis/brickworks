@@ -46,6 +46,9 @@ var _main: BookletStudio.Stage
 static var busy: bool = false
 ## The toolbar's Instructions button, for the page to find (main._tell_page).
 static var shown_button: Button = null
+## Open the file in the browser once it is written, on the desktop. A probe
+## that presses the button turns this off rather than opening a browser.
+static var open_when_written: bool = not OS.has_feature("web")
 
 
 func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
