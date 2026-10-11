@@ -27,6 +27,16 @@ that fits a hand), so `grips` finds that bar in each accessory and
 accessory a real figure holds. A neck accessory lifts the head by the
 thickness of its collar, which `data` measures from the geometry and
 `measure` checks against the heads real sets lift.
+
+`data` also writes what the standard joints cannot say about the parts
+that are not the classic figure's. Where the library's own assemblies
+put each odd part (30375cs0.dat's battle droid, 84638.dat's hook,
+84637b.dat's wooden leg) and what an odd body comes with; where each
+head's neck socket opens (a goblin's head is drawn from its neck up, a
+classic head from its top); where each visor turns and each helmet takes
+it, off their pins and dimples; and which neck parts real figures wear
+turned round (the quiver). Which parts those are is decided by the same
+slot rule the app offers parts by (Minifig.slot_for).
 """
 
 from __future__ import annotations

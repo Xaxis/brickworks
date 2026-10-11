@@ -195,10 +195,14 @@ Proves it when:
   `godot` draws them with the Compatibility renderer, the web build's; under
   `gpu env GODOT_GPU=1 ...` with Forward+.
 - `minifig_flow.mjs` ends `minifig flow: made, placed and photographed`, with the
-  part count up by the figure's parts. A local export works: `tools/export.sh
-  web`, then serve `build/web` with `tools/web/serve.py` beside a `parts`
-  directory (`assets/web/remote`) and an `api/account` file saying
-  `{"parts_url": "http://127.0.0.1:PORT/parts/"}`.
+  part count up by the figure's parts, then the Cape slot found, its first part
+  chosen and a caped figure placed too (up by 8 or more; `4_cape.png` shows the
+  grid of capes and the figure wearing one, `5_caped.png` it standing). A local
+  export works as the hosted one does with
+  `PARTS_URL=http://127.0.0.1:PORT/parts/ tools/export.sh web`, then
+  `python3 tools/web/serve.py build/web PORT --parts assets/generated/parts
+  --delay 300`, which answers `/api/account` with its own `/parts/`; the flow's
+  `--url` is `http://127.0.0.1:PORT/index.html`.
 
 ## Gotchas
 
@@ -232,6 +236,11 @@ Proves it when:
   classic figure — as it would in the hand. Mixing families (a droid's legs on a
   plain torso) is allowed: legs drawn from their feet up hang from the hips'
   top. Look at a family with the contact sheets the probe's numbers stand for.
+- **A web export without `PARTS_URL` offers about half the figure parts.** The
+  self-contained pack publishes only 120 MB of on-demand geometry and marks the
+  rest of the catalogue unreachable, which the builder (rightly) does not offer:
+  2271 of the 4263 figure parts. The hosted build serves every part from object
+  storage and offers all of them; a local check should export the same way.
 - **LDraw draws cloth flat**, as it is sold (50231, 14295); its "(Formed)"
   versions are the shapes it is worn in. Both are offered; the flat one hangs
   down the back, wider than the figure, and swings back clear of the floor.

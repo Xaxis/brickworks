@@ -118,18 +118,25 @@ await page.waitForTimeout(Number(args.draw || 60000));
 await page.screenshot({ path: `${out}/4_cape.png`, timeout: 120000 });
 const placeCaped = await where("minifig_place");
 if (placeCaped) await page.mouse.click(placeCaped.x, placeCaped.y);
-const caped = { x: spot.x + 120, y: spot.y };
+// Somewhere clear of the first figure, whose arms and cape-less shoulders
+// fill a stud either side of it at this zoom: a figure is refused where it
+// would stand in something, so try a few clear stretches of baseplate.
 const beforeCape = await count();
-await page.mouse.move(caped.x - 20, caped.y - 20);
-await page.waitForTimeout(1500);
-await page.mouse.move(caped.x, caped.y);
+let afterCape = beforeCape;
 // The cape comes over the wire: the ghost stays red until it has.
 await page.waitForTimeout(20000);
-await page.mouse.click(caped.x, caped.y);
-let afterCape = beforeCape;
-for (let n = 0; n < 240 && afterCape === beforeCape; n++) {
-  await page.waitForTimeout(500);
-  afterCape = await count();
+for (const [dx, dy] of [[320, 20], [440, 30], [-220, 40], [560, 10]]) {
+  const caped = { x: spot.x + dx, y: spot.y + dy };
+  await page.mouse.move(caped.x - 20, caped.y - 20);
+  await page.waitForTimeout(1500);
+  await page.mouse.move(caped.x, caped.y);
+  await page.waitForTimeout(6000);
+  await page.mouse.click(caped.x, caped.y);
+  for (let n = 0; n < 40 && afterCape === beforeCape; n++) {
+    await page.waitForTimeout(500);
+    afterCape = await count();
+  }
+  if (afterCape !== beforeCape) break;
 }
 await page.keyboard.press("Escape");
 await page.mouse.move(700, 12);
