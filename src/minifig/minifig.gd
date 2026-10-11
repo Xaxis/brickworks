@@ -158,7 +158,7 @@ func part(slot: String) -> String:
 ## Given the library, a figure holding something long — a spear, a
 ## staff, a lance — holds it the way real figures do rather than through
 ## the floor (see [method _held]), stands on whatever its legs end in,
-## and a cape long enough to reach the ground flies out behind it.
+## and a cape long enough to reach the ground is worn higher.
 ## Without one (part_ids) the places are the standard joints'.
 func assemble(library: PartLibrary = null) -> Array[Dictionary]:
 	if library != null:
@@ -180,7 +180,7 @@ func assemble(library: PartLibrary = null) -> Array[Dictionary]:
 	# The head, on whatever is round the neck.
 	var lift: float = 0.0
 	for slot: String in ["neck", "back", "cape"]:
-		lift = maxf(lift, float(MinifigData.NECK_LIFT.get(part(slot), 0)))
+		lift = maxf(lift, float(MinifigData.NECK_LIFT.get(worn_as(library, part(slot)), 0)))
 	var head_at: Variant = _place(torso_id, part("head"), "c")
 	var head: Transform3D = (head_at if head_at != null else _seated(library, part("head"))) \
 		.translated(Vector3(0, -lift, 0))
@@ -197,7 +197,8 @@ func assemble(library: PartLibrary = null) -> Array[Dictionary]:
 		put.call("back", part("back"),
 			_clear_of_ground(library, part("back"), _worn(part("back")), stance))
 	if not part("cape").is_empty():
-		put.call("cape", part("cape"), _cape(library, part("cape"), stance))
+		var cape: String = worn_as(library, part("cape"))
+		put.call("cape", cape, _cape(library, cape, stance))
 
 	# The arms, the hands on them, and what each hand holds.
 	var arms: Dictionary = _arm_parts(library)
@@ -261,9 +262,14 @@ func _lower(library: PartLibrary) -> Dictionary:
 			placed_legs.append({"slot": "legs", "part": legs, "at": at})
 		else:
 			var pair: Dictionary = _leg_parts(library)
+			# Legs joined in one moulding with no hips of their own (43220,
+			# which springs go into) are one part, not one each side.
+			var joined: bool = pair["r"] == pair["l"] and _side(library, legs) == "c" \
+				and library != null and not _narrow(library, legs) \
+				and _place(torso_id, legs, "r") == null
 			for side: String in ["r", "l"]:
 				var leg: String = pair[side]
-				if leg.is_empty():
+				if leg.is_empty() or joined and side == "l":
 					continue
 				var at: Variant = _place_on(torso_id, leg, side)
 				if at == null:
@@ -274,10 +280,20 @@ func _lower(library: PartLibrary) -> Dictionary:
 						standard.origin.x = -FOOT_APART if side == "r" else FOOT_APART
 					at = standard
 				placed_legs.append({"slot": "legs", "part": leg, "at": at})
+			# Legs in pieces: springs with the legs they go into, and those
+			# legs with their springs, where 43743-f1 puts them.
+			for other: Array in MinifigData.LEGS_WITH.get(legs, []):
+				placed_legs.append({"slot": "legs", "part": str(other[0]),
+					"at": _ldraw(other[1])})
 	found.append_array(placed_legs)
-	if not part("hipwear").is_empty():
-		found.append({"slot": "hipwear", "part": part("hipwear"),
-			"at": _hipwear_at(library, part("hipwear"))})
+	# A skirt, a tail or a belt at the hips' joint, LDraw's convention for
+	# hipwear, a cloth one as it is worn (worn_as). Cloth with no worn
+	# drawing hangs down the back from the waist once it is known where
+	# the ground is, below: nobody stands on it.
+	var hipwear: String = worn_as(library, part("hipwear"))
+	var hung_hipwear: bool = _is_flat(_info(library, hipwear))
+	if not hipwear.is_empty() and not hung_hipwear:
+		found.append({"slot": "hipwear", "part": hipwear, "at": _ldraw(HIPS)})
 
 	# Where the figure ends: its legs' lowest point (or its hips', if they
 	# reach lower, as they do over a pair of springs), the torso's when
@@ -297,16 +313,22 @@ func _lower(library: PartLibrary) -> Dictionary:
 				return item["slot"] == "hips"))
 			if not hips.is_empty():
 				ground = maxf(ground, float(hips[0]))
+			# Legs bent at an angle (43220 with the bent springs) stand a
+			# cell up: a turned part's cover is rounded out to whole cells,
+			# as a held spear's is.
+			if standing_on.any(func(item: Dictionary) -> bool:
+					return not BrickLattice.is_square_to_grid((item["at"] as Transform3D).basis)):
+				ground += BrickLattice.CELL
 	var footwear: String = part("footwear")
 	if not footwear.is_empty():
 		var info: PartLibrary.PartInfo = _info(library, footwear)
-		# Its stud, 4 LDU tall on top of it, into the foot's hole; under
-		# the sole whatever is below that.
-		var top: float = 0.0
+		# Every footwear part in the library is drawn with the stud a foot
+		# goes on at its origin, the top it stands on at y 0 (a ski's
+		# binding and a snowshoe's rim reach higher, round the foot): the
+		# foot's sole on it, and under it whatever is under the origin.
 		var under: float = 0.0
 		var wide: bool = false
 		if info != null:
-			top = -(info.bounds.position.y + info.bounds.size.y) + 4.0
 			under = -info.bounds.position.y
 			wide = info.bounds.size.x >= 30.0
 		var feet: Array[float] = [-FOOT_APART, FOOT_APART]
@@ -314,18 +336,18 @@ func _lower(library: PartLibrary) -> Dictionary:
 			feet = [0.0]
 		for x: float in feet:
 			found.append({"slot": "footwear", "part": footwear,
-				"at": Transform3D(Basis.IDENTITY, Vector3(x, ground - top, foot_z))})
-		# Standing on what is under the sole, its origin a whole number of
-		# the lattice's 2 LDU cells over the ground: a part's cover is
-		# reckoned from its origin's cell, and a flipper 3 LDU thick with
-		# its origin 3 LDU up would read as standing in the plate under it.
-		ground = ground - top + ceilf(under / BrickLattice.CELL - 0.001) * BrickLattice.CELL
-	else:
-		# The same for the body itself, as the standard figure's 72 is: one
-		# ending 3 LDU under its origin (a bundled baby) would put every
-		# part half a cell off.
-		ground = ceilf(ground / BrickLattice.CELL - 0.001) * BrickLattice.CELL
+				"at": Transform3D(Basis.IDENTITY, Vector3(x, ground, foot_z))})
+		# Standing on what is under the sole, right on the ground: the
+		# lattice keeps a cover off its cells inside the part
+		# (BrickLattice.within), so a flipper 3 LDU thick no longer reads
+		# as a cell into the plate it stands on.
+		ground += under
 	var stance := Transform3D(Basis.IDENTITY, Vector3(0, -ground, -foot_z))
+	if not hipwear.is_empty() and hung_hipwear:
+		# From the waist, at the back of the hips: tuxedo tails.
+		found.append({"slot": "hipwear", "part": hipwear, "at": _hung_clear(library, hipwear,
+			_hung_flat(_info(library, hipwear),
+				_ldraw(HIPS).origin + Vector3(0, -11.0, SHOULDERS.z)), stance)})
 	return {"parts": found, "stance": stance}
 
 
@@ -437,25 +459,91 @@ static func _worn(part_id: String) -> Transform3D:
 
 ## A cape, from the shoulders. One moulded or formed to hang sits at the
 ## torso's origin, as real figures wear 4524 and 99464c01; a cloth one
-## that LDraw draws flat, as it is sold, hangs straight down the back
-## from the top of the torso (_hung_flat). Either, if it would reach the
-## ground, is swung back about the shoulders until it clears it — a cape
-## flying out behind a running figure — rather than standing in the
-## floor.
+## LDraw draws flat and has no worn drawing of (worn_as) hangs straight
+## down against the back from the top of the torso (_hung_flat). Either,
+## if it is longer than the figure is tall — a full cape on a child — is
+## raised until it clears the ground, not swung out behind: a cape held
+## out at an angle reads as something broken, not as cloth.
 func _cape(library: PartLibrary, part_id: String, stance: Transform3D) -> Transform3D:
 	var info: PartLibrary.PartInfo = _info(library, part_id)
 	if info == null:
 		return Transform3D.IDENTITY
+	if _is_flat(info):
+		return _hung_clear(library, part_id, _hung_flat(info, SHOULDERS), stance)
 	# Sitting on the shoulders by its own collar, as the head sits on it:
 	# 4524 two LDU up in all nine real figures wearing it, as 50231c02 is
 	# in 9471's Eomer.
 	var collar: float = float(MinifigData.NECK_LIFT.get(part_id, 0))
-	var at: Transform3D = _hung_flat(info, SHOULDERS) if info.bounds.size.y < 2.0 \
-		else Transform3D(Basis.IDENTITY, Vector3(0.0, -collar, 0.0))
-	return _clear_of_ground(library, part_id, at, stance)
+	return _hung_clear(library, part_id,
+		Transform3D(Basis.IDENTITY, Vector3(0.0, -collar, 0.0)), stance)
 
 
-## Something hanging from the shoulders — a cape, a backpack hanging
+## LDraw draws cloth twice: flat, as it is sold (50231 "Cape Cloth"), and
+## as it is worn (50231c01 "Cape Cloth (Formed)"). Real sets' files dress
+## their figures in the worn drawing — every cloth cape on a figure in the
+## 105 sets of vendor/omr is one (522, 50231c02, 99464c01), and none is
+## flat. So a flat cloth on a figure is drawn as the library's first worn
+## drawing of it, where it has one and it is to hand; the part chosen
+## otherwise. The parts list counts it as the element it is
+## (PartLibrary.element_for).
+static func worn_as(library: PartLibrary, part_id: String) -> String:
+	var info: PartLibrary.PartInfo = _info(library, part_id)
+	if info == null or not _is_flat(info):
+		return part_id
+	var formed: PartLibrary.PartInfo = library.parts.get(part_id + "c01")
+	if formed != null and formed.name.contains("(Formed") and _real(formed) \
+			and _worn_by_a_figure(formed):
+		return formed.id
+	return part_id
+
+
+## Cloth as LDraw draws it to be sold: a sheet less than a cell thick.
+static func _is_flat(info: PartLibrary.PartInfo) -> bool:
+	return info != null and info.bounds.size.y < 2.0
+
+
+## Whether a worn drawing of cloth is one a figure wears: hanging down
+## no lower than a classic figure's feet (70 LDU under the shoulders, a
+## cell clear) and no further out in front than behind. Not every one
+## is: 50231c03 is the cape hung as a curtain, 106700c01 a robe 13 studs
+## long, and u9661c01 is drawn folded the way the flat sheet lies, out
+## in front of whoever wore it.
+static func _worn_by_a_figure(info: PartLibrary.PartInfo) -> bool:
+	# The catalogue's box is in the app's axes: -y is down, +z in front.
+	return -info.bounds.position.y <= 70.0 \
+		and info.bounds.end.z <= -info.bounds.position.z + 2.0
+
+
+## The flat drawing a worn one is of, 50231c01 -> 50231, by LDraw's
+## numbering of them; "" for a part that is not a worn drawing of cloth.
+static func flat_of(info: PartLibrary.PartInfo) -> String:
+	if info == null or not info.name.contains("(Formed"):
+		return ""
+	if not _patterns.has("formed"):
+		var expression := RegEx.new()
+		expression.compile("^(.+)c\\d\\d$")
+		_patterns["formed"] = expression
+	var found: RegExMatch = (_patterns["formed"] as RegEx).search(info.id)
+	return found.get_string(1) if found != null else ""
+
+
+## A sheet hung down the back, raised until its hem is a cell of the
+## lattice above the ground — the lattice's whole cells, so its origin
+## stays on them. Hung square to the grid, its cover is its own box.
+static func _hung_clear(library: PartLibrary, part_id: String, at: Transform3D,
+		stance: Transform3D) -> Transform3D:
+	if library == null:
+		return at
+	var reach: Array = _reach(library, [{"part": part_id, "at": at}])
+	if reach.is_empty():
+		return at
+	var over: float = float(reach[0]) - (-stance.origin.y - BrickLattice.CELL)
+	if over > 0.0:
+		at.origin.y -= ceilf(over / BrickLattice.CELL - 0.001) * BrickLattice.CELL
+	return at
+
+
+## Something hanging from the shoulders on the back — a backpack hanging
 ## open — swung back about them, 5 degrees at a time, until it ends a
 ## cell of the lattice above the ground the figure stands on.
 static func _clear_of_ground(library: PartLibrary, part_id: String, at: Transform3D,
@@ -475,16 +563,6 @@ static func _clear_of_ground(library: PartLibrary, part_id: String, at: Transfor
 		if reach.is_empty() or float(reach[0]) <= ground:
 			return tried
 	return at
-
-
-## Where a skirt, a tail or a belt goes: at the hips' joint, LDraw's
-## convention for hipwear; a flat cloth one (tuxedo tails) hanging down
-## the back from the waist.
-static func _hipwear_at(library: PartLibrary, part_id: String) -> Transform3D:
-	var info: PartLibrary.PartInfo = _info(library, part_id)
-	if info != null and info.bounds.size.y < 2.0:
-		return _hung_flat(info, _ldraw(HIPS).origin + Vector3(0, -11.0, SHOULDERS.z))
-	return _ldraw(HIPS)
 
 
 ## A sheet of cloth LDraw draws flat, as it is sold — in X-Z, with the
@@ -538,6 +616,11 @@ func _hand_parts(library: PartLibrary) -> Dictionary:
 	var side: String = _side(library, chosen)
 	if side != "c":
 		return _pair(library, chosen, HAND, HAND)
+	# On the side of the arm it goes on, where it goes on one.
+	var needs: Array = MinifigData.ON_ARMS.get(_family(chosen), [])
+	if not needs.is_empty():
+		return {"r": chosen, "l": HAND} if _side(library, str(needs[0])) == "r" \
+			else {"r": HAND, "l": chosen}
 	var on_right: bool = _place("", chosen, "r") != null
 	var on_left: bool = _place("", chosen, "l") != null
 	if on_right and on_left:
@@ -564,6 +647,10 @@ static func _standard_hand_in_arm(side: String) -> Transform3D:
 ## for an arm with no hand to take (a wing, a clip, a hand moulded on).
 static func _hand_at(torso_id: String, arm: String, arm_at: Transform3D, hand: String,
 		side: String) -> Variant:
+	# A hand that goes on an arm of its own, on it where the arm says.
+	var needs: Array = MinifigData.ON_ARMS.get(_family(hand), [])
+	if needs.size() == 13 and _family(arm) == _family(str(needs[0])):
+		return arm_at * _ldraw(needs.slice(1))
 	var on_arm: Variant = MinifigData.HANDS.get(_family(arm))
 	if on_arm is Dictionary and (on_arm as Dictionary).is_empty():
 		return null
@@ -1149,10 +1236,16 @@ static func choices(library: PartLibrary, slot: String) -> Array[PartLibrary.Par
 		return _choices[slot]
 	var wanted: String = "accessory" if slot == "accessory_left" else slot
 	var out: Array[PartLibrary.PartInfo] = []
+	# How many sets each is in: a worn drawing of cloth is in as many as
+	# the cloth, which the inventories know only by its flat number.
+	var sets: Dictionary = {}
 	for id: String in _slot_of:
 		if _slot_of[id] == wanted and not _paired.has(id):
-			out.append(library.parts[id])
-	out.sort_custom(_better)
+			var info: PartLibrary.PartInfo = library.parts[id]
+			out.append(info)
+			var flat: PartLibrary.PartInfo = library.parts.get(flat_of(info))
+			sets[id] = flat.in_sets if info.in_sets == 0 and flat != null else info.in_sets
+	out.sort_custom(_better.bind(slot, sets))
 	_choices[slot] = out
 	return out
 
@@ -1237,11 +1330,21 @@ static func _matches(id: String, pattern: String) -> bool:
 	return (_patterns[pattern] as RegEx).search(id) != null
 
 
-## Plain mouldings first, then the mould real figures use most, then
-## what is known to be in sets, official before unofficial, then by
-## name. So a slot of nine hundred torsos opens on the plain one, and a
-## slot of heads on the classic heads before the Muppets.
-static func _better(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
+## What is worn as LDraw draws it before cloth drawn flat, as it is
+## sold, and in the Cape slot the worn drawings of cloth capes first of
+## all — the cape on a figure in a real set's file. Then plain mouldings,
+## then the mould real figures use most, then what is known to be in
+## sets (`sets`, by id), official before unofficial, then by name, the
+## worn drawings of one cloth in LDraw's order (50231c01 before its
+## floating c02). So a slot of nine hundred torsos opens on the plain
+## one, a slot of heads on the classic heads before the Muppets, and the
+## Cape slot on the cloth cape of 258 sets as figures wear it.
+static func _better(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo, slot: String = "",
+		sets: Dictionary = {}) -> bool:
+	var worn_a: int = _worn_rank(a, slot)
+	var worn_b: int = _worn_rank(b, slot)
+	if worn_a != worn_b:
+		return worn_a < worn_b
 	var plain_a: bool = _family(a.id) == a.id
 	var plain_b: bool = _family(b.id) == b.id
 	if plain_a != plain_b:
@@ -1250,13 +1353,31 @@ static func _better(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
 	var classic_b: bool = CLASSIC.has(_family(b.id))
 	if classic_a != classic_b:
 		return classic_a
-	if (a.in_sets > 0) != (b.in_sets > 0):
-		return a.in_sets > b.in_sets
-	if a.in_sets != b.in_sets and plain_a:
-		return a.in_sets > b.in_sets
+	var in_a: int = int(sets.get(a.id, a.in_sets))
+	var in_b: int = int(sets.get(b.id, b.in_sets))
+	if (in_a > 0) != (in_b > 0):
+		return in_a > in_b
+	if in_a != in_b and plain_a:
+		return in_a > in_b
 	if a.unofficial != b.unofficial:
 		return not a.unofficial
+	var cloth_a: String = flat_of(a)
+	if not cloth_a.is_empty() and cloth_a == flat_of(b):
+		return a.id.naturalnocasecmp_to(b.id) < 0
 	return a.name.naturalnocasecmp_to(b.name) < 0
+
+
+## 0 for a worn drawing of a cape a figure wears (_worn_by_a_figure), 2
+## for cloth drawn flat, 1 for the rest; all one in the slots that are
+## not cloth.
+static func _worn_rank(info: PartLibrary.PartInfo, slot: String) -> int:
+	if not (slot in ["cape", "hipwear"]):
+		return 1
+	if _is_flat(info):
+		return 2
+	if slot == "cape" and not flat_of(info).is_empty() and _worn_by_a_figure(info):
+		return 0
+	return 1
 
 
 ## The moulds of the figure every figure starts as, which open their
@@ -1272,6 +1393,11 @@ static func colours_of(library: PartLibrary, part_id: String) -> PartLibrary.Par
 	var info: PartLibrary.PartInfo = library.parts.get(part_id)
 	if info != null and info.availability_known():
 		return info
+	# A worn drawing of cloth comes in the colours the cloth does: 50231c01
+	# in 50231's.
+	var cloth: PartLibrary.PartInfo = library.parts.get(flat_of(info))
+	if cloth != null and cloth.availability_known():
+		return cloth
 	var plain: String = _family(part_id)
 	# A bare torso is only ever sold with its arms on: 973c00, which is
 	# LDraw's 76382.
@@ -1329,17 +1455,38 @@ func dress_torso(torso: String) -> void:
 ## figure has with it — a battle droid torso its droid head, arms and
 ## legs, and no hips or hands — where the figure has the plain ones; a
 ## body moulded down to the ground no legs. Choosing the plain torso
-## again gives the plain parts back.
+## again gives the plain parts back. The other way round too, where the
+## library only ever attaches a part to another: a battle droid's head
+## brings its body, printed legs their printed hips, springs the legs and
+## hips they go into, a prosthetic hand the arm it goes on.
 func choose(library: PartLibrary, slot: String, part_id: String) -> void:
 	var was_colour: int = int(colours.get(slot, 16))
 	if library != null and not part_id.is_empty():
 		colours[slot] = fitting_colour(library, part_id, was_colour)
+	var was: String = part(slot)
 	if slot == "torso":
-		var was: String = part("torso")
 		dress_torso(part_id)
 		_fit_body(library, was, part_id)
 	else:
 		parts[slot] = part_id
+	match slot:
+		"head":
+			# A head with no socket for the neck post, which the library
+			# only puts on its own body — a battle droid's clips onto its
+			# torso's bar, and a plain torso has none — brings that body,
+			# as the body brings it.
+			var body: String = str(MinifigData.HEADS_ON.get(_family(part_id), ""))
+			if not body.is_empty() and _family(part("torso")) == "973":
+				choose(library, "torso", body)
+		"legs":
+			_fit_hips(library, was, part_id)
+		"hands":
+			_fit_arm(was, part_id)
+		"arms":
+			# An arm the hand cannot go on: the plain hand back.
+			var needs: Array = MinifigData.ON_ARMS.get(_family(part("hands")), [])
+			if not needs.is_empty() and _family(part_id) != _family(str(needs[0])):
+				parts["hands"] = HAND
 	if PAIRED.has(slot) and library != null:
 		if _has_plain_partner(library, slot):
 			if not colours.has(slot + OTHER):
@@ -1367,6 +1514,47 @@ func _has_plain_partner(library: PartLibrary, slot: String) -> bool:
 		_: sides = _leg_parts(library)
 	return (sides["r"] != chosen or sides["l"] != chosen) \
 		and partner(library, chosen).is_empty()
+
+
+## Legs with the hips the library's own assemblies put them with
+## (MinifigData.LEG_HIPS): a printed pair the hips printed to match
+## (3816cpx0 with 3815bpx0, as 73200bpx0 has them), in the colour the
+## assembly gives them (3816cp30's are reddish brown); springs the hips
+## they go into (43221, as 43743-f1). Only over plain hips or the ones
+## the legs before brought: hips somebody chose stay.
+func _fit_hips(library: PartLibrary, was: String, legs: String) -> void:
+	var before: Array = MinifigData.LEG_HIPS.get(was, [])
+	var after: Array = MinifigData.LEG_HIPS.get(legs, [])
+	var now: String = part("hips")
+	var by_legs: bool = not before.is_empty() and str(before[0]) == now
+	if not (by_legs or now == PLAIN_HIPS):
+		return
+	if after.is_empty():
+		parts["hips"] = PLAIN_HIPS
+		return
+	parts["hips"] = str(after[0])
+	var colour: int = int(after[1])
+	colours["hips"] = int(colours["legs"]) if colour < 0 else colour
+	if library != null:
+		colours["hips"] = fitting_colour(library, part("hips"), int(colours["hips"]))
+
+
+## A hand the library puts on an arm of its own brings that arm
+## (MinifigData.ON_ARMS): the prosthetic hand 5059 goes on the stump
+## 6828, where 6828.dat's HELP line says, and on no other — on a plain
+## arm it pointed back up it. Over a plain arm or one the hand before
+## brought; the plain arm back when the hand goes.
+func _fit_arm(was: String, hand: String) -> void:
+	var before: Array = MinifigData.ON_ARMS.get(_family(was), [])
+	var after: Array = MinifigData.ON_ARMS.get(_family(hand), [])
+	var now: String = part("arms")
+	var by_hand: bool = not before.is_empty() and str(before[0]) == now
+	if not (by_hand or now == ARM_RIGHT):
+		return
+	if not after.is_empty():
+		parts["arms"] = str(after[0])
+	elif by_hand:
+		parts["arms"] = ARM_RIGHT
 
 
 func _fit_body(library: PartLibrary, was: String, torso: String) -> void:

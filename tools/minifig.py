@@ -35,8 +35,11 @@ put each odd part (30375cs0.dat's battle droid, 84638.dat's hook,
 head's neck socket opens (a goblin's head is drawn from its neck up, a
 classic head from its top); where each visor turns and each helmet takes
 it, off their pins and dimples; and which neck parts real figures wear
-turned round (the quiver). Which parts those are is decided by the same
-slot rule the app offers parts by (Minifig.slot_for).
+turned round (the quiver). And what only ever attaches to something
+else: the hips printed legs come with (73200bpXX), the hips and legs
+springs go into (43743-f1), the arm a prosthetic hand goes on (6828.dat's
+HELP line), the body a droid's head clips onto. Which parts those are is
+decided by the same slot rule the app offers parts by (Minifig.slot_for).
 """
 
 from __future__ import annotations
@@ -874,7 +877,115 @@ def placements(library: Library, catalogue: list[dict]) -> dict:
     for part, counts in extras.items():
         (hat, key), _n = counts.most_common(1)[0]
         on_hats[part] = [hat, *_numbers(key)]
-    return {"places": places, "hands": hand_places, "bodies": bodies, "extras": on_hats}
+    hips, companions = _legs_and_hips(minifig, side_of)
+    return {"places": places, "hands": hand_places, "bodies": bodies, "extras": on_hats,
+            "leg_hips": hips, "legs_with": companions,
+            "on_arms": _hands_on_arms(minifig, side_of)}
+
+
+TYPE1_COLOUR = re.compile(r"^1\s+(\S+)\s+((?:\S+\s+){12})(.+?)\s*$")
+
+
+def _own_lines(path: Path, help_lines: bool = False) -> list[tuple[str, str, Mat]]:
+    """A library file's own type-1 lines, unopened: [(part, colour, at)].
+    With help_lines, the ones its HELP lines write out instead — how the
+    library says a part goes on another it does not include."""
+    out = []
+    for line in path.read_text(encoding="latin-1").splitlines():
+        line = line.strip()
+        if help_lines:
+            found = re.match(r"^0\s+!HELP\s+(1\s.*)$", line)
+            if not found:
+                continue
+            line = found.group(1)
+        found = TYPE1_COLOUR.match(line)
+        if not found:
+            continue
+        try:
+            numbers = [float(v) for v in found.group(2).split()]
+        except ValueError:
+            continue
+        ref = found.group(3).lower().replace("\\", "/").removesuffix(".dat")
+        out.append((ref, found.group(1), mat(numbers)))
+    return out
+
+
+def _library_files() -> list[Path]:
+    out: list[Path] = []
+    for root in (LDRAW / "parts", LDRAW / "unofficial" / "parts"):
+        if root.is_dir():
+            out += sorted(root.glob("*.dat"))
+    return out
+
+
+def _legs_and_hips(minifig: dict[str, str], side_of: dict[str, str]) -> tuple[dict, dict]:
+    """What the library's hips-and-legs assemblies (73200bpXX, 43743-f1)
+    put together, read off their own lines:
+
+    leg_hips: legs (a right leg, or legs of a piece) -> [hips, colour or
+        -1 for the legs' own], where they are not the plain hips in the
+        legs' colour: 3816cpx0's printed belt is 3815bpx0, 3816cp30's
+        hips are reddish brown, springs 43741-f1 go into 43221;
+    legs_with: legs -> [[part, twelve numbers relative to the torso]],
+        the other legs parts a set of springs is put together with —
+        43741-f1's 43220 under them, 43220's springs in it — where the
+        assembly's legs are all of a piece rather than a right and a
+        left."""
+    hips_at = joint("hips")
+    hips_of: dict[str, Counter] = defaultdict(Counter)
+    with_of: dict[str, Counter] = defaultdict(Counter)
+    for path in _library_files():
+        lines = _own_lines(path)
+        hips = [(p, c, m) for p, c, m in lines if minifig.get(p) == "hips"]
+        legs = [(p, c, m) for p, c, m in lines if minifig.get(p) == "legs"]
+        # Hips and legs alone, not a whole figure: the SMART Play torso's
+        # figure has hips of its own with the medium legs.
+        if len(hips) != 1 or not legs or any(minifig.get(p) == "torso" for p, _c, _m in lines):
+            continue
+        hip, hip_colour, hip_at = hips[0]
+        for pid, colour, _m in legs:
+            if side_of.get(pid) == "l":
+                continue
+            own = -1 if hip_colour in ("16", colour) else int(hip_colour)
+            print_match = family(hip) != hip and hip[len(family(hip)):] == pid[len(family(pid)):]
+            hips_of[pid][(hip, own, print_match)] += 1
+        families = {family(p) for p, _c, _m in legs}
+        if len(families) < 2 or any(side_of.get(p) != "c" for p, _c, _m in legs):
+            continue
+        back = inv(mul(hip_at, inv(hips_at)))
+        for mine in families:
+            others = tuple((p, tuple(_numbers(_key(mul(back, m)))))
+                           for p, _c, m in legs if family(p) != mine)
+            for pid, _c, _m in legs:
+                if family(pid) == mine:
+                    with_of[pid][others] += 1
+    leg_hips: dict[str, list] = {}
+    for pid, counts in hips_of.items():
+        # The most usual, and of two as usual the one printed to match.
+        (hip, own, _match), _n = max(counts.items(), key=lambda kv: (kv[1], kv[0][2]))
+        if hip == "3815b" and own == -1:
+            continue
+        leg_hips[pid] = [hip, own]
+    legs_with = {pid: [[p, list(n)] for p, n in counts.most_common(1)[0][0]]
+                 for pid, counts in with_of.items()}
+    return leg_hips, legs_with
+
+
+def _hands_on_arms(minifig: dict[str, str], side_of: dict[str, str]) -> dict:
+    """hand family -> [arm, twelve numbers relative to the arm]: a hand
+    the library puts only on an arm of its own, by that arm's HELP line —
+    6828.dat, the arm with a stump, says where the prosthetic hand 5059
+    goes on it, which no assembly has, since it is optional."""
+    out: dict[str, list] = {}
+    for path in _library_files():
+        arm = path.stem.lower()
+        if minifig.get(arm) != "arms":
+            continue
+        for pid, _c, m in _own_lines(path, help_lines=True):
+            # Not the plain hand, which goes on every arm.
+            if minifig.get(pid) == "hands" and not STANDARD_FAMILIES.match(family(pid)):
+                out.setdefault(family(pid), [arm, *_numbers(_key(m))])
+    return out
 
 
 # -- where a visor turns --------------------------------------------------------
@@ -930,19 +1041,29 @@ def _pins(library: Library, name: str, at: Mat, out: list, depth: int) -> None:
 
 
 def neck_seat(library: Library, pid: str) -> float | None:
-    """How far below a head's origin its neck socket opens: where the
-    torso's neck post (973.dat, a cylinder 6 LDU across from y -12 to 0)
-    goes in, so where the head sits on the shoulders. 24 for the classic
-    heads, whose origin is their top; 0 for most of the moulded ones
-    (Yoda, the Muppets, the Simpsons), drawn from the neck up. The
-    lowest opening of a cylinder on the head's axis 3.5 to 6.5 LDU
-    across (a baby's neck is 4), or None if it has none."""
+    """How far below a head's origin it sits on the shoulders: where its
+    neck socket opens to take the torso's neck post (973.dat, a cylinder
+    of radius 6 from y -12 to 0). 24 for the classic heads, whose origin
+    is their top; 0 for most of the moulded ones (Yoda, the Muppets, the
+    Simpsons), drawn from the neck up. The lowest opening of a cylinder
+    on the head's axis of radius 3.5 to 6.5 (a baby's neck is 4), or
+    None if it has none.
+
+    A head drawn as a brick is — a Minion, a pencil top — is hollow
+    underneath, its socket a tube up inside it, and its rim reaches below
+    the socket's opening, past the post: it rests on the shoulders by
+    that rim, the lowest edge of a cylinder on its axis wider than the
+    post. Seated by its socket, a Minion sank 20 LDU over the torso."""
     found: list[float] = []
-    _sockets(library, pid + ".dat", IDENTITY, found, 0)
-    return max(found) + 0.0 if found else None
+    rims: list[float] = []
+    _sockets(library, pid + ".dat", IDENTITY, found, 0, rims)
+    if not found:
+        return None
+    return max([max(found), *rims]) + 0.0
 
 
-def _sockets(library: Library, name: str, at: Mat, out: list, depth: int) -> None:
+def _sockets(library: Library, name: str, at: Mat, out: list, depth: int,
+             rims: list) -> None:
     found = library.get(name)
     if found is None or depth > 8:
         return
@@ -960,10 +1081,14 @@ def _sockets(library: Library, name: str, at: Mat, out: list, depth: int) -> Non
             size = math.sqrt(sum(v * v for v in axis)) or 1.0
             radius = math.sqrt(here[0][0] ** 2 + here[1][0] ** 2 + here[2][0] ** 2)
             if abs(axis[1]) / size > 0.95 and abs(here[0][3]) < 0.6 \
-                    and abs(here[2][3]) < 0.6 and 3.5 <= radius <= 6.5:
-                out.append(round(max(here[1][3], here[1][3] + axis[1]), 2))
+                    and abs(here[2][3]) < 0.6:
+                lowest = round(max(here[1][3], here[1][3] + axis[1]), 2)
+                if 3.5 <= radius <= 6.5:
+                    out.append(lowest)
+                elif radius > 6.5:
+                    rims.append(lowest)
             continue
-        _sockets(library, command.filename, here, out, depth + 1)
+        _sockets(library, command.filename, here, out, depth + 1, rims)
 
 
 _REAL: dict[str, bool] = {}
@@ -1076,6 +1201,18 @@ def data() -> int:
     lines += ["}", ""]
 
     found = placements(library, catalogue)
+    # A head with no socket for the neck post, which the library's
+    # figures only ever put on a body of their own: a battle droid's head
+    # clips onto its torso's bar, and a plain torso has none.
+    heads_on: dict[str, str] = {}
+    bodies_of: dict[str, set] = defaultdict(set)
+    for body, slots in found["bodies"].items():
+        if slots.get("head"):
+            bodies_of[family(slots["head"])].add(body)
+    for head, bodies in sorted(bodies_of.items()):
+        if len(bodies) == 1 and not STANDARD_FAMILIES.match(head) \
+                and neck_seat(library, head) is None:
+            heads_on[head] = next(iter(bodies))
     # Where each head's neck socket opens, where it is not where the
     # classic head's is.
     seats: dict[str, float] = {}
@@ -1123,6 +1260,20 @@ def data() -> int:
         ("TURNED", turned,
          ["Neck, back or cape part -> degrees about Y that real figures wear it",
           "turned by, where most of them do."]),
+        ("LEG_HIPS", found["leg_hips"],
+         ["Legs -> [the hips the library's assemblies put them with, their",
+          "colour or -1 for the legs' own], where not the plain hips in the",
+          "legs' colour: a printed belt, springs' hips."]),
+        ("LEGS_WITH", found["legs_with"],
+         ["Legs -> [[part, twelve numbers relative to the torso]]: the other",
+          "legs parts an assembly of legs in pieces puts with them (springs",
+          "and the legs they go into)."]),
+        ("ON_ARMS", found["on_arms"],
+         ["Hand family -> [the arm the library puts it on, then twelve numbers:",
+          "where it sits relative to that arm], from the arm's HELP lines."]),
+        ("HEADS_ON", heads_on,
+         ["Head family -> the torso family it clips onto: a head with no",
+          "socket for a neck post, which the library only puts on its own body."]),
     ]
     for name, value, about in table:
         lines += ["## " + line for line in about]
@@ -1135,7 +1286,9 @@ def data() -> int:
           f"{len(hands)} torso hand colours, {sum(len(v) for v in found['places'].values())} "
           f"placements, {len(found['hands'])} arms' hands, {len(found['bodies'])} bodies, "
           f"{len(found['extras'])} headgear extras, {len(seats)} head seats, {len(pivots)} pivots, "
-          f"{len(turned)} turned")
+          f"{len(turned)} turned, {len(found['leg_hips'])} legs' hips, "
+          f"{len(found['legs_with'])} legs in pieces, {len(found['on_arms'])} hands on arms, "
+          f"{len(heads_on)} heads on bodies")
     return 0
 
 

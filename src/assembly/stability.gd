@@ -468,5 +468,10 @@ func _derive_boxes(brick: BrickWorld.Brick) -> PackedInt32Array:
 		return PackedInt32Array()
 	var at: Vector3i = BrickLattice.to_cell(brick.transform.origin)
 	if BrickLattice.is_square_to_grid(brick.transform.basis):
-		return BrickLattice.boxes_for(boxes, at, brick.transform.basis)
+		var square: PackedInt32Array = BrickLattice.boxes_for(boxes, at, brick.transform.basis)
+		# As the builder reckons it: square and off the lattice, kept
+		# inside the part.
+		if BrickLattice.is_off_lattice(brick.transform.origin):
+			return BrickLattice.within(square, part.bounds, brick.transform)
+		return square
 	return BrickLattice.boxes_for_turned(boxes, at, brick.transform.basis)
