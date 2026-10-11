@@ -207,6 +207,12 @@ h1 {
 	box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.7);
 }
 .shot img { display: block; width: 100%; height: auto; }
+/* Two pictures of one model side by side, one under the other on a phone. */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 42px; }
+.pair .shot { margin: 0; }
+.pair figcaption { padding: 10px 14px; font-size: 13.5px; color: var(--ink-soft); }
+@media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+.pair + .stats { margin-top: 16px; }
 
 /* -- numbers -------------------------------------------------------- */
 
@@ -472,8 +478,44 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		</p>
 	</section>
 
+	<section id="orthanc" class="wrap">
+		<h2>The Tower of Orthanc, designed by Claude</h2>
+		<p class="sub">
+			“The Tower of Orthanc, Saruman’s fortress at Isengard, as a LEGO
+			display model: the tall many-sided tower of black stone rising to
+			four sharp horns around a high platform, standing on a rocky base.
+			Make it as detailed and creative as a set LEGO would release.”
+			Claude built it here, on a Claude plan, checking every brick
+			against the real lattice: a faceted core clustered with four
+			piers, lit windows, a great door up its steps, horns that rise in
+			rings to spikes — and behind an open back, furnished floors from
+			the dungeon to the palantír room, with Saruman at the top.
+		</p>
+		<div class="pair">
+			<figure class="shot">
+				<img src="orthanc-corner.webp" width="1024" height="1024" loading="lazy"
+					alt="The Tower of Orthanc in black LEGO bricks: a tall faceted tower of four clustered piers with narrow lit yellow windows, rising to four horned spires around a platform, on a stepped black plinth ringed by grey crags, with braziers and figures at its door.">
+				<figcaption>From the front corner: the piers, the windows and the horns.</figcaption>
+			</figure>
+			<figure class="shot">
+				<img src="orthanc-back.webp" width="1024" height="1024" loading="lazy"
+					alt="The back of the same tower, open from top to bottom: six furnished floors one above another, from barrels and a dungeon at the foot to a red-carpeted room near the top where Saruman stands in white.">
+				<figcaption>From the back: the floors inside, each furnished as its room.</figcaption>
+			</figure>
+		</div>
+		<div class="stats">
+			<div class="stat"><b>8,790</b><span>parts, and every one holds</span></div>
+			<div class="stat"><b>18 min</b><span>from the paragraph to the model</span></div>
+			<div class="stat"><b>6</b><span>furnished floors behind the open back</span></div>
+			<div class="stat"><b>0</b><span>bricks placed by hand</span></div>
+		</div>
+		<div class="actions">
+			<a class="cta ghost" href="/app?model=res://models/orthanc.ldr">Open it in the builder</a>
+		</div>
+	</section>
+
 	<section id="designed" class="wrap">
-		<h2>Designed from one sentence</h2>
+		<h2>And a castle, from one sentence</h2>
 		<p class="sub">
 			“A medieval castle with a gatehouse, four corner towers and a
 			long curtain wall between them.” The assistant laid it out,
