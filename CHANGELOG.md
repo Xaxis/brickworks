@@ -13,6 +13,25 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- Building instructions laid out as a LEGO booklet, from the toolbar's
+  new Instructions button (and the timeline's): landscape pages that
+  print on A4 or Letter, a big number and a parts box with a picture of
+  every part per step, several small steps to a page, every part outlined
+  in ink, the model turned round with a sign when a step's parts are
+  behind it, red arrows onto small parts, sub-assemblies and minifigures
+  built in callouts ("2x") with an arrow to where they go, a cover, the
+  finished model front and back, and the parts list by colour with
+  element numbers. On the web it opens in a new tab, ready to print.
+
+### Changed
+
+- The build order no longer puts anything in the air before the model
+  reaches it (Orthanc: 193 parts to 6), puts wheels on last, and builds
+  sub-models a file places as callouts. The timeline numbers its steps
+  as the booklet does, and an 8,600-part model's order takes 5 s, not 87.
+
 ## [0.2.0] - 2026-10-11
 
 A release about doing it right. Parts that are drawn inside their

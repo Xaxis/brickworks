@@ -111,8 +111,23 @@ func _initialize() -> void:
 		str(found.get("3024/0", "")) == "302426")
 	_check("a colour with no element number stays blank, not zero",
 		str(found.get("3001/9", "x")) == "")
-	_check("and the booklet draws the column",
-		Booklet.html("t", [], ordered).contains("<th>Element</th>"))
+	# And the booklet's parts list at the end prints it under each part,
+	# as a set's does.
+	var document := Booklet.Document.new()
+	document.title = "t"
+	for lot: Inventory.Lot in ordered.lots:
+		var listed := Booklet.Lot.new()
+		listed.key = "%s:%d" % [lot.part_id, lot.color_code]
+		listed.part_id = lot.part_id
+		listed.element = lot.element
+		listed.colour = lot.color_name
+		listed.count = lot.count
+		document.lots.append(listed)
+		document.parts[listed.key] = "data:,"
+	document.pages.append_array(Booklet.parts_pages(document.lots, 2))
+	var printed: String = Booklet.html(document)
+	_check("and the booklet's parts list prints the element numbers",
+		printed.contains(">300121<") and printed.contains(">302426<"))
 
 	# LEGO's name for a colour, which is not LDraw's: the grey modern sets
 	# are built in is Light Bluish Grey to LDraw and BrickLink and Medium

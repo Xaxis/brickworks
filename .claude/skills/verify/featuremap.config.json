@@ -698,6 +698,13 @@
       "entry": "src/minifig/print_editor.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd   (by hand: M, a Head, Torso, Hips or Legs slot, Draw a print…)",
       "area": "minifig"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
+      "area": "view"
     }
   ]
 }
