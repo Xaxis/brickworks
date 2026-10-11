@@ -97,8 +97,13 @@ have to stay one.
   rather than the order things were placed: every brick rests on
   something already there, and a step stays in one part of the model.
   A big model is built a part at a time, as a set is — the gatehouse,
-  then a tower — with each part pictured on its own. Out as a single
-  printable page with a picture per step.
+  then a tower. A minifigure, or a window the file builds once and places
+  four times, is built on the side in a callout, "4x", and put on with an
+  arrow. The **Instructions** button lays it out as a set's booklet: a
+  cover, steps with a big number and a box of the parts each adds, every
+  part outlined in ink, the model turned round when the work is behind it,
+  and every part by colour with its element number at the end. One file
+  that prints on A4 or Letter; on the web it opens in a new tab.
 - **A mosaic** — a photograph matched to the forty-four colours a
   1×1 plate is really moulded in, perceptually rather than
   arithmetically, and dithered because against a palette that small flat
