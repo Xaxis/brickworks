@@ -17,6 +17,8 @@ var _saves: PopupMenu
 var _confirm: ConfirmationDialog
 var _confirm_new: ConfirmationDialog
 var _new: Button
+## The last thing on the bar, so a check can tell the bar fits the page.
+var _clear: Button
 var _save: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: PickModel
@@ -114,9 +116,9 @@ func _build() -> void:
 	# At the far end, and asked about. It empties the baseplate and the
 	# undo history with it, and sat between Controls and the status line
 	# as one more grey button that did it without a word.
-	var clear: Button = _button(row, "Clear…", _ask_to_clear,
+	_clear = _button(row, "Clear…", _ask_to_clear,
 		"Empty the baseplate. Asks first: it cannot be undone")
-	clear.modulate = Color(1.0, 0.75, 0.72)
+	_clear.modulate = Color(1.0, 0.75, 0.72)
 	_confirm = ConfirmationDialog.new()
 	_confirm.title = "Clear the baseplate?"
 	_confirm.dialog_text = ("Every brick on it goes, and it cannot be undone. "
@@ -183,7 +185,7 @@ func bind(to: ModelStore) -> void:
 
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
-	return {"model_name": _name, "new": _new, "save": _save}
+	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear}
 
 
 func model_name() -> String:

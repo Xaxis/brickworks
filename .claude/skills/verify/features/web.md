@@ -74,6 +74,14 @@ as the client.
   beside the build and the Help panel shows "This build: <commit>, updated
   <local time>". The owner, looking at the live site, could not tell when it had
   last been deployed. Desktop builds say "Development build".
+- `fits the page at every density`: the layout stretches to the canvas
+  (`canvas_items`, expand), device pixels and all, so `Main._match_screen_density`
+  adds nothing on a wide window; below `ROOMY` it sizes the interface from the
+  window in points (about 720 x 480 units). It multiplied by the device ratio
+  too, and at 2x the toolbar ran off at "He…" with the assistant off the page.
+  `tools/web/fit_check.mjs` opens 1x, 2x and 3x desktops, a small laptop window
+  and a phone both ways and requires every published control (the toolbar's
+  Clear included) on the page; the deploy runs its `--quick` pair.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
 - The desktop downloads page (`web/download.html`, `download.js`,

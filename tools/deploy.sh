@@ -242,6 +242,12 @@ if [ "$do_check" = 1 ]; then
   node tools/web/check.mjs --url="$url/app" --out=shots/deploy.png \
       ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"} || {
     echo "deploy FAILED: the build does not run at $url/app"; exit 1; }
+  # And that it fits the page. At two device pixels to the point the
+  # toolbar ran off at "He…" and the assistant was off the page, on every
+  # Retina screen, while every check here passed at one.
+  node tools/web/fit_check.mjs --url="$url/app" --quick --out=shots/fit \
+      ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"} || {
+    echo "deploy FAILED: the app does not fit the page at $url/app"; exit 1; }
 
   # The landing page is what most people meet first, so a deploy that
   # serves the app but not the page is still a broken deploy.

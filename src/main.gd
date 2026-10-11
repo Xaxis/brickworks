@@ -88,25 +88,36 @@ var _library: PartLibrary
 ## cannot change.
 ## Make a pixel of interface the size a person expects.
 ##
-## A phone reports a 390 point wide screen and draws it with three
-## device pixels to the point. Godot is handed the device pixels, so
-## without this the interface is laid out as if on a 1170 pixel display
-## and then shown at a third of the size: legible on a desktop monitor,
-## about two millimetres tall in the hand.
+## The project stretches its 1600 x 900 layout to the canvas
+## (canvas_items, expand), device pixels and all, so a high-density
+## screen is already accounted for: a 1400 point window shows 1600 units
+## of interface at any ratio. This multiplied that by the device ratio as
+## well, so at two to one the same window had 800 units for a toolbar and
+## two panels that need about 1270, and the toolbar ran off at "He…"
+## with the assistant off the page — on every Retina screen.
 ##
-## Scaling by the ratio the browser reports puts it back. The 3D is
-## unaffected — it still renders at full device resolution, which is
-## what makes it look sharp.
+## A narrow screen is the case that wants more: there the panels are
+## drawers (ROOMY), and a phone given the full 1600 units shows them a
+## few millimetres tall. So below that width the factor is worked out
+## from the window's size in points, giving about 720 units across and
+## 480 down, whatever the ratio. The 3D is unaffected either way; it
+## renders at full device resolution.
 func _match_screen_density() -> void:
 	if not OS.has_feature("web"):
 		return
-	var reported: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
-	var ratio: float = float(reported) if reported != null else 1.0
-	if ratio <= 0.0:
+	var across: float = Room.across()
+	var down: float = Room.down()
+	if across <= 0.0 or down <= 0.0:
 		return
-	# Capped: a 4x display would otherwise leave room for almost nothing,
-	# and past about two the gain in legibility is small.
-	get_window().content_scale_factor = clampf(ratio, 1.0, 2.0)
+	var factor: float = 1.0
+	if across < ROOMY:
+		var stretched: float = minf(across / 1600.0, down / 900.0)
+		var wanted: float = minf(across / 720.0, down / 480.0)
+		factor = clampf(wanted / stretched, 1.0, 3.0)
+	# Only when it changes: setting it resizes the visible rect, which
+	# is what calls this again.
+	if absf(get_window().content_scale_factor - factor) > 0.01:
+		get_window().content_scale_factor = factor
 
 
 ## Where the assistant's controls are on screen, put where the page can
@@ -1039,6 +1050,7 @@ func _build_ui() -> void:
 	# design width would leave about fifty pixels of viewport, so it
 	# becomes a drawer: most of the screen while you are using it, gone
 	# the moment you are not.
+	get_tree().root.size_changed.connect(_match_screen_density)
 	get_tree().root.size_changed.connect(_fit_panels)
 	_fit_panels()
 
