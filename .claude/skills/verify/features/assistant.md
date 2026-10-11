@@ -252,6 +252,13 @@ fixing what it got wrong.
   every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
   to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
   and checks bricks are turned, dressed and stoned, and the edit applied.
+  The dressing is the wall brick's own colour; a `face_color` goes through a
+  fifth of it as an accent (`FACE_ACCENT`). Run 16 asked dark grey on its black
+  faces, copying the guidance's studs_out example (which no longer gives one),
+  and all 149 round tiles came out grey: polka dots, where 10237 dresses black
+  in black. `patterns_probe`: asked grey on the guidance's black cluster, its
+  dressing is mostly black (374 to 204, the grey including the wall's own grey
+  bricks; 0 to 578 before).
   It reaches bricks in sections turned about y, in the section's own
   coordinates (`_open_side`/`_each_stud_held` take the section's frame; only
   a side within 60 degrees of straight out from the section's origin counts,

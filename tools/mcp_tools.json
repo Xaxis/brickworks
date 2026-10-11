@@ -505,7 +505,7 @@
       "additionalProperties": false,
       "properties": {
         "face_color": {
-          "description": "colour of what is laid on the side studs; the brick's own if not said",
+          "description": "an accent through a fifth of what is laid on the side studs; the rest is the brick's own colour, as a set dresses a black wall in black",
           "type": "integer"
         },
         "masonry": {

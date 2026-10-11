@@ -3891,6 +3891,12 @@ func _read_model(args: Dictionary) -> Model:
 ## gives a plain wall, worked out from what is actually open to the air.
 ## Returns {} when nothing qualifies, or {"edit": edit_model's input,
 ## "summary": what it will do}.
+##
+## Dressed in the wall's own colour, as a set dresses a black tower in black:
+## a [code]face_color[/code] goes through [constant FACE_ACCENT] of the
+## dressing as an accent. The sixteenth Orthanc asked for dark grey on its
+## black faces — the guidance's own studs_out example said so — and all 149
+## round tiles came out grey, which read as polka dots.
 func _restyle(args: Dictionary) -> Dictionary:
 	if world == null or builder == null or builder.lattice == null:
 		return {}
@@ -3968,7 +3974,13 @@ func _restyle(args: Dictionary) -> Dictionary:
 				var one := {"part": "87087", "color": placement.color,
 					"x": outer.x + (step if along_x else 0), "y": outer.y,
 					"z": outer.z + (0 if along_x else step), "rot": 0}
-				var dressing: Dictionary = _dress(one, facing, face_colour)
+				# The wall's own colour, and the colour asked for only as an
+				# accent through a share of it.
+				var tone: int = -1
+				if face_colour >= 0 and Patterns._scatter(seen.x / STUD + step,
+						seen.y / PLATE, seen.z / STUD, 31) < FACE_ACCENT:
+					tone = face_colour
+				var dressing: Dictionary = _dress(one, facing, tone)
 				if not placement.section.is_empty():
 					one["section"] = placement.section
 					if not dressing.is_empty():
@@ -3994,6 +4006,11 @@ func _restyle(args: Dictionary) -> Dictionary:
 	return {"edit": {"remove": removed, "add": added},
 		"summary": "Restyled %d brick%s: %d turned out and dressed on their side, %d laid as masonry."
 			% [turned + stoned, "" if turned + stoned == 1 else "s", turned, stoned]}
+
+
+## The share of a finishing pass's dressing in the colour asked for; the
+## rest is the wall's own.
+const FACE_ACCENT := 0.2
 
 
 ## How the picture after an edit is taken when the edit was not the
@@ -5206,8 +5223,7 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 ## stud facing the way asked and carrying a 1x1 part laid on it.
 ##
 ##   {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0}, "length": 8,
-##    "courses": 4, "facing": "+z", "color": 0, "face_color": 72,
-##    "mix_color": 0}
+##    "courses": 4, "facing": "+z", "color": 0}
 func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
 	var x0: float = float(at.get("x", 0.0))
@@ -8520,7 +8536,7 @@ alongside the bricks you write by hand:
 
            A face built on its side is the other: \
            {"pattern": "studs_out", "at": {...}, "length": 8, "courses": \
-           4, "facing": "+z", "color": 0, "face_color": 72}. Courses of \
+           4, "facing": "+z", "color": 0}. Courses of \
            1x1 bricks with a stud on one side, tied by plates, and on \
            every side stud a tile, a round tile, a round plate or a \
            cheese slope, so the face is texture rather than studs. Real \
@@ -9675,7 +9691,9 @@ func _tools() -> Array:
 					"masonry": {"type": "number", "description":
 						"share laid as masonry, 0 to 1; 0.25 if not said"},
 					"face_color": {"type": "integer", "description":
-						"colour of what is laid on the side studs; the brick's own if not said"},
+						"an accent through a fifth of what is laid on the side studs; "
+						+ "the rest is the brick's own colour, as a set dresses a "
+						+ "black wall in black"},
 				},
 				"additionalProperties": false,
 			},

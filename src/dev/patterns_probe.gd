@@ -532,10 +532,12 @@ func _clustered() -> void:
 	# and all. The fifteenth Orthanc called it over its shaft and was told
 	# "Restyled 4 bricks": every face was in a section.
 	var counts := func() -> Dictionary:
-		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0}
+		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0, "grey": 0, "black": 0}
 		for placement: Assistant.Placement in assistant._model_from_world().placements:
 			if placement.section.is_empty():
 				continue
+			if placement.face != "up" and placement.part != "87087":
+				found["grey" if placement.color == 72 else "black"] += 1
 			if placement.part == "87087":
 				found["turned"] += 1
 			elif placement.part in ["98283", "15533"]:
@@ -546,9 +548,18 @@ func _clustered() -> void:
 				found["inward"] += 1
 		return found
 	var before: Dictionary = counts.call()
+	# Asked for grey, as the sixteenth Orthanc asked: its 149 round tiles all
+	# came out grey on black and read as polka dots. The wall's own colour,
+	# with the grey an accent.
 	var restyled: String = _text(await assistant.use_tool("restyle_model",
-		{"sideways": 0.25, "masonry": 0.3}))
+		{"sideways": 0.25, "masonry": 0.3, "face_color": 72}))
 	var after: Dictionary = counts.call()
+	var grey: int = int(after["grey"]) - int(before["grey"])
+	var black: int = int(after["black"]) - int(before["black"])
+	# A seventh of the walls are grey bricks (mix_color 72), dressed in their own
+	# grey; the rest take grey only as an accent, a fifth.
+	_check("dressing asked in grey on a black tower is mostly black: %d black, %d grey"
+		% [black, grey], black > grey and grey > 0)
 	_check("restyle_model reaches the faces in their sections: %s" % restyled.get_slice("\n", 0),
 		restyled.begins_with("Restyled") and int(after["turned"]) > int(before["turned"]) + 100
 			and int(after["stone"]) > int(before["stone"]) + 50)
