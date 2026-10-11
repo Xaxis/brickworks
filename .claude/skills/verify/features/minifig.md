@@ -58,8 +58,10 @@ the model, and the design assistant doing the same with `add_minifig`.
     back gear reaching the floor swings back about the shoulders;
   - hipwear at the hips' joint; legs paired by name or print (3816cp30 with
     3817cp30, 20461bp00 with 20460bp00), one-piece legs (a mermaid's tail, a
-    skirt moulded on) at the hips; feet one each side on the foot's hole, the
-    figure raised by what is under the sole, rounded to whole lattice cells;
+    skirt moulded on) at the hips; feet one each side, the foot on the stud
+    every footwear part has at its origin (a ski's binding and a snowshoe's
+    rim reach higher, round the foot), the figure raised by what is under the
+    sole, which stands on the plate;
   - a one-sided part (a hook, a robot arm, a wooden leg) keeps the plain part
     opposite in the colour it had (`colours["<slot>_other"]`).
   Every part in the catalogue's `Minifig*` categories or named `Minifig ...` is
@@ -193,8 +195,12 @@ Proves it when:
   nothing in the floor; 176 families of legs, feet, bodies, skirts, capes and
   back gear stood on a 6 x 6 plate with none refused by the lattice; a frogman
   with a visor, airtanks, a cape, a skirt, flippers, a spear and a shield
-  stood on a plate on his flippers, lifted with X and put back, saved and
-  reopened as one figure.
+  stood on a plate on his flippers, their undersides on its top, lifted with
+  X and put back, saved and reopened as one figure. On footwear: on each of 12
+  kinds the feet are on its top and its sole on the plate (the snowshoes had
+  the feet 2 LDU up, the hinged ski 9; flippers and skis stood 1 LDU above the
+  plate), and the lattice takes a flipper on a plate, its origin 3 LDU up,
+  but not 1 LDU into it.
 - `minifig_ui_probe` ends `a figure was made by clicking, named, placed on a stud
   and photographed`, and leaves `shots/minifig_builder.png`,
   `minifig_builder_surprise.png`, `minifig_figures_front.png`,
@@ -264,10 +270,13 @@ Proves it when:
   hangs flat behind, as wide as LDraw draws it (26701 is 120 LDU across).
   106700, a robe 13 studs long, is taller than any figure: raised clear of the
   ground it stands far above the head.
-- **Everything a figure stands on is on the lattice's 2 LDU cells**: a part's
-  cover is reckoned from its origin's cell, so a figure whose feet end 3 LDU
-  under the torso, or a flipper 3 LDU thick, would read as standing in the
-  plate. The ground and the footwear's lift are rounded up to whole cells.
+- **A part's cover is reckoned from its origin's cell**, which off the lattice
+  moves it up to a cell lower than the part: a flipper 3 LDU thick on a plate,
+  its origin 3 LDU up, read as standing a cell into it, so figures used to
+  stand up to 2 LDU above the plate. `Builder.boxes_for` (and `Stability`'s
+  own) now keep a square part's cover off the lattice inside its own box
+  (`BrickLattice.within`), which only takes away cells the part is not in;
+  a figure stands on the plate.
 - **Godot reports a missing meta key as an error even with a null default**, so
   `ThumbTile.Sight` asks `has_meta` first: the builder's "none" and "+160" cells
   have no tile, and asked for one every frame they flooded the log.

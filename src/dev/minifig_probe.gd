@@ -64,6 +64,9 @@ func _initialize() -> void:
 	print("  cloth as figures wear it")
 	_cloth()
 	print("")
+	print("  on footwear")
+	_footwear()
+	print("")
 	print("  what each slot can be")
 	_choices()
 	print("")
@@ -462,6 +465,53 @@ func _cloth() -> void:
 	var made_in: PartLibrary.PartInfo = Minifig.colours_of(library, "50231c01")
 	_check("and comes in the cloth's colours (%d)" % (made_in.colors.size() if made_in != null else 0),
 		made_in != null and made_in.colors.size() >= 10)
+
+
+## Every footwear part in the library has the stud a foot goes on at its
+## origin, the top it stands on at y 0: the feet on that, its sole on the
+## plate under it, and the lattice taking it there.
+func _footwear() -> void:
+	var off: Array[String] = []
+	var tried: int = 0
+	for info: PartLibrary.PartInfo in Minifig.choices(library, "footwear"):
+		var figure := Minifig.new()
+		figure.choose(library, "footwear", info.id)
+		tried += 1
+		var feet: float = INF
+		var sole: float = INF
+		var top: float = INF
+		for item: Dictionary in figure.assemble(library):
+			var part: PartLibrary.PartInfo = library.parts[str(item["part"])]
+			var box: AABB = (item["at"] as Transform3D) * part.bounds
+			if item["slot"] == "legs":
+				feet = minf(feet, box.position.y)
+			elif item["slot"] == "footwear":
+				sole = minf(sole, box.position.y)
+				top = minf(top, (item["at"] as Transform3D).origin.y)
+		if absf(sole) > 0.01 or absf(feet - top) > 0.01:
+			off.append("%s: its sole %.2f over the plate, the feet %.2f over its top"
+				% [info.id, sole, feet - top])
+	for line: String in off.slice(0, 8):
+		print("    %s" % line)
+	_check("on each of %d kinds of footwear the feet are on its top and its sole on the plate%s"
+		% [tried, "" if off.is_empty() else ": %d not" % off.size()],
+		off.is_empty() and tried >= 10)
+	# What lets it: a part off the lattice is reckoned as where it is, not
+	# a cell lower. A flipper 3 LDU thick on a plate, its origin 3 LDU up:
+	# clear of the plate; 1 LDU lower, into it.
+	world.clear()
+	builder.lattice.clear()
+	var plate := Transform3D(Basis.IDENTITY, Vector3(10, 8, 10))
+	builder.register(world.add_brick("3958", 7, plate), "3958", plate)
+	var flipper: Lbm.PartMesh = library.mesh_for("10190")
+	var on_it: bool = flipper != null and not builder.lattice.collides_boxes(builder.boxes_for(
+		flipper, Transform3D(Basis.IDENTITY, Vector3(10, 8 + 3, 10))))
+	var into_it: bool = flipper != null and builder.lattice.collides_boxes(builder.boxes_for(
+		flipper, Transform3D(Basis.IDENTITY, Vector3(10, 8 + 2, 10))))
+	_check("the lattice takes a flipper standing on a plate, origin 3 LDU up (%s), and not 1 LDU into it (%s)"
+		% [on_it, into_it], on_it and into_it)
+	world.clear()
+	builder.lattice.clear()
 
 
 ## Cloth as LDraw draws it to be sold: a sheet less than a cell thick.
@@ -1079,10 +1129,9 @@ func _new_slots_stand() -> void:
 		low = minf(low, box.position.y)
 		if brick.part_id == "10190":
 			flipper_low = minf(flipper_low, box.position.y)
-	# Raised by the flippers' 3 LDU, rounded up to the lattice's 2 LDU
-	# cells: on the plate, a cell or less above its top.
+	# Raised by the flippers' 3 LDU, and no more: on the plate's top.
 	_check("on its flippers, on the plate's top (y 8): the flippers' undersides at %.2f, nothing lower (%.2f)"
-		% [flipper_low, low], flipper_low >= 8.0 - 0.01 and flipper_low <= 8.0 + BrickLattice.CELL
+		% [flipper_low, low], absf(flipper_low - 8.0) <= 0.01
 		and is_equal_approx(low, flipper_low))
 	var placed: Dictionary = _relative(ids)
 	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)

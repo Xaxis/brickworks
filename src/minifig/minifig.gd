@@ -306,13 +306,13 @@ func _lower(library: PartLibrary) -> Dictionary:
 	var footwear: String = part("footwear")
 	if not footwear.is_empty():
 		var info: PartLibrary.PartInfo = _info(library, footwear)
-		# Its stud, 4 LDU tall on top of it, into the foot's hole; under
-		# the sole whatever is below that.
-		var top: float = 0.0
+		# Every footwear part in the library is drawn with the stud a foot
+		# goes on at its origin, the top it stands on at y 0 (a ski's
+		# binding and a snowshoe's rim reach higher, round the foot): the
+		# foot's sole on it, and under it whatever is under the origin.
 		var under: float = 0.0
 		var wide: bool = false
 		if info != null:
-			top = -(info.bounds.position.y + info.bounds.size.y) + 4.0
 			under = -info.bounds.position.y
 			wide = info.bounds.size.x >= 30.0
 		var feet: Array[float] = [-FOOT_APART, FOOT_APART]
@@ -320,17 +320,12 @@ func _lower(library: PartLibrary) -> Dictionary:
 			feet = [0.0]
 		for x: float in feet:
 			found.append({"slot": "footwear", "part": footwear,
-				"at": Transform3D(Basis.IDENTITY, Vector3(x, ground - top, foot_z))})
-		# Standing on what is under the sole, its origin a whole number of
-		# the lattice's 2 LDU cells over the ground: a part's cover is
-		# reckoned from its origin's cell, and a flipper 3 LDU thick with
-		# its origin 3 LDU up would read as standing in the plate under it.
-		ground = ground - top + ceilf(under / BrickLattice.CELL - 0.001) * BrickLattice.CELL
-	else:
-		# The same for the body itself, as the standard figure's 72 is: one
-		# ending 3 LDU under its origin (a bundled baby) would put every
-		# part half a cell off.
-		ground = ceilf(ground / BrickLattice.CELL - 0.001) * BrickLattice.CELL
+				"at": Transform3D(Basis.IDENTITY, Vector3(x, ground, foot_z))})
+		# Standing on what is under the sole, right on the ground: the
+		# lattice keeps a cover off its cells inside the part
+		# (BrickLattice.within), so a flipper 3 LDU thick no longer reads
+		# as a cell into the plate it stands on.
+		ground += under
 	var stance := Transform3D(Basis.IDENTITY, Vector3(0, -ground, -foot_z))
 	if not hipwear.is_empty() and hung_hipwear:
 		# From the waist, at the back of the hips: tuxedo tails.
