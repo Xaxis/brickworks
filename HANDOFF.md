@@ -132,12 +132,12 @@ says whether everything agrees with it.
 ## What is next
 
 1. **Orthanc, the owner's yardstick** (`docs/ROADMAP.md`, "Beyond variety:
-   beauty", runs 1-11). Run 11 is the first with sideways and angles in one
-   model (16%, 9%) and detailed itself from the review; variety (35 shapes
-   against 109, 5 colours against 23) has not moved in eleven runs. Real sets
-   get it from interiors, details and figures: rooms inside as one call shaped
-   like the work, and minifigures once the builder lands. A master-level
-   Orthanc goes on the homepage (task #29).
+   beauty"). Run 13 used `add_rooms` unprompted: eight furnished storeys,
+   figures in the rooms, 80 shapes and 22 colours (the fantasy median is 23),
+   but its faces were plain prism sections. Since then the prism dresses its
+   faces by default and the checker accepts real joints (clips, hinges,
+   hollow studs, turntables), so angled techniques can pass. Run 14 is the
+   first with all of it. A master-level Orthanc goes on the homepage (task #29).
 2. **Desktop 0.1.0 is out** (2026-10-10): checked by the release workflow on
    Linux, macOS (Apple silicon and Intel) and Windows, then published from that
    draft; brickworks.diy/download.html offers it. Next release by the cadence in
@@ -177,6 +177,12 @@ says whether everything agrees with it.
   on SwiftShader (`tools/web/browser.mjs`).
 - **No display.** `tools/check.sh` and `tools/design.py` give themselves
   Xvfb. Anything new that drives the app needs the same, or it hangs.
+- **The parts catalogue was rebuilt on 2026-10-10** with shafts and bores for
+  the checker's round joints; the one before is at `assets/generated.prev`
+  until it is clearly not needed. A rebuild is `tools/build_meshes.py --out
+  <new dir>` in a uv venv with numpy and scipy (well over an hour), then
+  `tools/refresh_catalogue.py` with that dir in place, the suite against it,
+  a rename into place, and `tools/storage_parts.py` for the web.
 - **Probes share this machine's real desktop user data** (`~/.local/share/
   godot/app_userdata/Brickworks/`). A run with `--script` no longer keeps the
   autosave (it did, and the desktop app reopened whatever the last probe
