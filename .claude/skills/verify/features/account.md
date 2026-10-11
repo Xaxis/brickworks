@@ -164,5 +164,6 @@ signed out and say so.
   write reaches the browser's storage only seconds later (see
   `ModelStore.stored`), and a reload in between lost the sign-in.
 - **A preview's `check.mjs` sends the bypass as a header on every request**,
-  which goes to Supabase too. If renewing ever fails only on previews, look
-  there first.
+  Supabase's included. Measured 2026-10-11: renewal still works under it
+  (`signed_in`, not `offline`, no failed requests). If renewing ever fails
+  only on previews, look there first.

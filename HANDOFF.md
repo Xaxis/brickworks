@@ -76,15 +76,81 @@ stats on the status line; a grouped toolbar with Clear asking first.
   off by default; turning it on by default needs the owner to accept the
   Commercial Terms and ask Anthropic. The connector does not have this question.
 - **The site says so** (2026-10-09): brickworks.diy leads with the two ways as
-  numbered steps, then the castle, what the app does, and "What Brickworks never
-  sees" (key, login, relay, models — each claim traceable to the code). Its
+  numbered steps, then the castle, what the app does, and "What Brickworks
+  keeps, and what it never sees" (since 2026-10-11 the email address first,
+  then key, login, relay, models — each claim traceable to the code). Its
   pictures are made, not taken by hand: `tools/web/app_shot.mjs` for the app,
   `tools/web/make_share.mjs` for the link card.
-- **Vercel's environment, after accounts went:** the relay reads
-  `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, so they stay. Nothing reads
-  `ANTHROPIC_API_KEY` any more; removing it from the project is yours to do
-  (`vercel env rm ANTHROPIC_API_KEY production`), and leaves no key of ours
-  anywhere a request can reach.
+- **Vercel's environment:** accounts and the relay read `SUPABASE_URL`,
+  `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `RESEND_API_KEY`,
+  `EMAIL_FROM`, `EMAIL_FROM_FALLBACK` and `MASTER_EMAIL`, all set for
+  production and preview. Nothing reads `ANTHROPIC_API_KEY` any more;
+  removing it from the project is yours to do (`vercel env rm
+  ANTHROPIC_API_KEY production`), and leaves no key of ours anywhere a
+  request can reach.
+
+## Accounts: everyone signs in (2026-10-11)
+
+The owner asked for "the comprehensive account system requiring users to
+create/login to an account just using our OTP signin system", correlated
+with the MCP, and that nobody use the platform without one. Built on the
+email-code sign-in removed on 2026-10-09 (its tables never left Supabase).
+The recipe and every check are in `.claude/skills/verify/features/account.md`.
+
+- **What a person sees.** The app, web or desktop, opens on a sign-in
+  screen over the dimmed builder (`src/ui/sign_in_gate.gd`): an address,
+  "Email me a code", the code, signed in. No password and no separate
+  sign-up. A reload or restart renews the kept session; the desktop stays
+  signed in offline. Account on the toolbar (`src/ui/account_panel.gd`)
+  says who, and signs out. Nothing in the builder takes a click or a key
+  while the screen is up.
+- **The MCP correlation.** A Claude connector belongs to the account that
+  switched it on: the tab's hello to `api/mcp.js` carries the session,
+  verified against Supabase's keys, and `relay_tabs.owner` records it. An
+  address another account owns is refused (403); a tab with no owner gets
+  no work and counts as closed. The admin page lists connectors per
+  account. This is the base for connectors that follow a person rather
+  than a browser (one address per account, usable from any signed-in tab)
+  or OAuth on the connector itself, neither built yet.
+- **Decisions you may want to change.** (1) The gate is a client gate;
+  the server enforces accounts where it serves something (the relay).
+  `/api/account`'s `parts_url` stays open because builds already out ask it
+  and the parts bucket is public. (2) Probes, headless runs and command
+  lines that render, export or design and quit are never asked to sign in
+  (`Main._gate_wanted`); a window opened with `--mcp` is. A checkout signs
+  a machine in with `src/dev/sign_in.gd` (needs `.env`). (3) Sessions last
+  until signed out; Sign out ends only this device's session. (4) A
+  deployment answering `enabled: false` (no Supabase configured) asks
+  nobody to sign in; one that cannot be reached at all shows "Cannot reach
+  Brickworks" with Try again, unless a session was kept. (5) The admin page
+  (`/admin.html`, MASTER_EMAIL only, read-only) uses the app's session in
+  that browser rather than a sign-in of its own. (6) Sign-in codes are rate
+  limited per address and per network address, kept a day.
+- **Proven 2026-10-11, not yet in production.** `account_probe` (26
+  checks) and `connector_probe` against the real functions
+  (`tools/web/relay_server.mjs`) and database; `gate_probe` in a window,
+  offline in the suite and live through the real form; the full suite on
+  the branch merged with main; and on preview `2f3391d` in a real browser:
+  `account_flow.mjs` (first visit gated, a code really emailed, a wrong code
+  refused, signed in, still signed in after a reload, admin page refused,
+  Account and Sign out; with `--master`, the owner's admin page listing the
+  accounts), plus `connector_flow`, `assistant_flow`, `check.mjs` and the
+  full `fit_check`, all signed in through `tools/web/browser.mjs`. Pictures:
+  `shots/account/`, `shots/signin/` (gitignored). After the production
+  deploy, run `account_flow.mjs` against brickworks.diy.
+- **Database, applied to the live project 2026-10-11, additive only:**
+  `alter table public.relay_tabs add column if not exists owner uuid
+  references auth.users (id) on delete cascade` and the index
+  `relay_tabs_owner` (`supabase/relay.sql`). Nothing else changed; the
+  account tables and `may_ask_for_code` were already there.
+- **Yours to do: the sender.** Codes go out, but from
+  `EMAIL_FROM_FALLBACK` (another product's verified domain), because
+  brickworks.diy is not verified at Resend and the key here is send-only.
+  To fix it: a Resend API key with domain access, add brickworks.diy in
+  Resend, put the DNS records it gives you at Namecheap, wait for
+  "verified", then set the new key as `RESEND_API_KEY` on the Vercel
+  project and remove `EMAIL_FROM_FALLBACK`. The admin page shows a warning
+  while codes go out under the borrowed sender.
 
 ## What the work found
 
@@ -225,6 +291,10 @@ says whether everything agrees with it.
 | Catalogue build | `tools/refresh_catalogue.py` |
 | Drive a real design | `tools/design.py "a brief" --out m.ldr` |
 | Deploy | `tools/deploy.sh --prod` |
+| Accounts: sign-in screen, session, panel | `src/ui/sign_in_gate.gd`, `src/account/account.gd`, `src/ui/account_panel.gd` |
+| Accounts: the server | `api/otp.js`, `api/account.js`, `api/admin.js`, `api/_auth.js`, `supabase/schema.sql` |
+| Sign a checkout's machine in | `godot --headless --path . --script src/dev/sign_in.gd -- you@example.com` |
+| Signing in, proven in a browser | `tools/web/account_flow.mjs` (and every flow starts signed in: `tools/web/browser.mjs`) |
 | Desktop releases: version, build, smoke, publish | `tools/release.py`, the cycle in `docs/RELEASING.md` |
 | The download page | `web/download.html`, fed by `web/releases.json` |
 
