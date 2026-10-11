@@ -21,6 +21,10 @@ var _library: PartLibrary
 
 
 func _initialize() -> void:
+	_run()
+
+
+func _run() -> void:
 	_library = PartLibrary.new()
 	if not _library.load_catalogue():
 		print("no catalogue")
@@ -207,6 +211,8 @@ func _initialize() -> void:
 	_check("a mirror with no line",
 		_trouble([{"pattern": "mirror", "about": "x"}]).contains("at"))
 
+	await _clustered()
+
 	print("")
 	if _failures == 0:
 		print("a shape can be said instead of counted out")
@@ -389,6 +395,119 @@ func _holds_up() -> void:
 			bool(verdict["ok"]) and tiles > 0 and left < tiles)
 		_check("...and it says what was left out",
 			str(verdict["feedback"]).contains("left out"))
+
+
+## Four faceted piers clustered round an eight-sided core, in one call: the
+## guidance's own line for a tower like Orthanc.
+##
+## The fourteenth Orthanc built its piers square by hand, and nothing in it
+## was at an angle (0%, against a real-set median of 27%); the fifth built
+## them octagonal from 150 sections it worked out itself and spent the run on
+## it. What a design needs to trust the one call with is what is checked
+## here: it passes the check as laid — nothing given way, nothing floating —
+## stands as one piece, turns its faces to more angles than a square has, is
+## open at the back onto the inside, and add_rooms finds that inside and
+## furnishes it, every floor shown from behind.
+func _clustered() -> void:
+	print("")
+	print("  four piers clustered round an eight-sided core")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var tower := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 9, "courses": 30, "color": 0, "mix_color": 72, "open": 3,
+		"piers": {"count": 4, "courses": 38}}
+	var model: Assistant.Model = assistant._read_model({"name": "Orthanc",
+		"patterns": [tower]})
+	_check("it is laid without trouble: %s" % str(assistant._pattern_trouble),
+		assistant._pattern_trouble.is_empty() and model.placements.size() > 1000)
+	var verdict: Dictionary = assistant._check(model)
+	_check("it passes the check, %s" % verdict["summary"], bool(verdict["ok"]))
+	_check("...as laid: no dressing had to give way",
+		not str(verdict["feedback"]).contains("left out"))
+	_check("...and it stands in one piece, %d" % int(verdict["pieces"]),
+		int(verdict["pieces"]) == 1)
+	var headings: Dictionary = {}
+	var turned: Dictionary = {}
+	var piers: Dictionary = {}
+	var looking_back: int = 0
+	for placement: Assistant.Placement in model.placements:
+		var section: Assistant.Section = model.section_for(placement)
+		if section == null:
+			continue
+		var heading: float = snappedf(fposmod(section.degrees, 360.0), 0.1)
+		headings[heading] = true
+		if not is_zero_approx(fposmod(heading, 90.0)):
+			turned[heading] = true
+		if section.name.contains(" pier "):
+			piers[section.name.get_slice(" face ", 0)] = true
+		elif is_equal_approx(heading, 180.0):
+			looking_back += 1
+	_check("its faces look %d ways, %d of them at an angle to the grid"
+		% [headings.size(), turned.size()], turned.size() >= 4)
+	_check("...in the core and %d piers" % piers.size(), piers.size() == 4)
+	_check("open at the back: no face of the core looks -z (%d bricks do)"
+		% looking_back, looking_back == 0)
+	var parts: Array = []
+	for placement: Assistant.Placement in model.placements:
+		var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+		if mesh != null:
+			parts.append([placement.part, placement.color, assistant._transform(
+				placement, mesh, model.section_for(placement)), mesh.bounds])
+	var style: Dictionary = Style.measure(parts)
+	_check("%d%% of it at an angle (real fantasy sets: 27%%), %d%% on its side"
+		% [int(round(float(style["angled"]) * 100)), int(round(float(style["snot"]) * 100))],
+		float(style["angled"]) >= 0.27)
+
+	assistant._brief = "The Tower of Orthanc"
+	assistant._apply(model)
+	await process_frame
+	var said: Variant = await assistant.use_tool("add_rooms", {
+		"prism": {"at": tower["at"], "sides": 8, "radius": 9},
+		"floors": [{"room": "dungeon"}, {"room": "forge", "stair": true},
+			{"room": "library"}, {"room": "study"}, {"room": "palantir room"}],
+		"seed": 3})
+	var text: String = ""
+	if said is String:
+		text = said
+	else:
+		for block: Variant in said:
+			if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
+				text += str(block["text"])
+	_check("add_rooms finds the inside and furnishes it: %s" % text.get_slice("\n", 0),
+		text.begins_with("Laid 5 floors") and text.contains("open to the back"))
+	var highest: int = -1
+	for one: Variant in assistant._last_rooms.get("floors", []):
+		highest = maxi(highest, int((one as Dictionary)["y"]))
+	_check("...every floor under the summit at 90, none on it: the top at %d" % highest,
+		highest >= 0 and highest + Rooms.LOWEST <= 90)
+	_check("...with nothing the check had to take out (%d)"
+		% int(assistant._last_rooms.get("dropped", -1)),
+		int(assistant._last_rooms.get("dropped", -1)) == 0)
+	var whole: Dictionary = assistant._check(assistant._model_from_world(), true)
+	_check("and the whole of it passes the check: %s" % whole["summary"],
+		bool(whole["ok"]))
+
+	# What does not make a cluster is said, not built.
+	var apart: Dictionary = tower.duplicate(true)
+	apart["piers"] = {"count": 4, "out": 20}
+	assistant._read_model({"patterns": [apart]})
+	var trouble: Array = assistant._pattern_trouble
+	_check("piers set clear of the core are refused: %s" % str(trouble),
+		str(trouble).contains("would not meet"))
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
 
 
 func _made(patterns: Array, already: Array = []) -> Array:

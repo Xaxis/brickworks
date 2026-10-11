@@ -437,13 +437,43 @@ func _read(args: Dictionary) -> String:
 	return ""
 
 
-## The highest plate anything stands at inside the box.
+## The highest plate anything stands at inside the box — or, inside a prism
+## with a roof across it as high as its walls, the roof. A prism with piers is
+## capped with a summit and its horns rise past it at the corners of the box,
+## and a first cluster had its fifth room laid on the summit, in the open,
+## between the horns. A floor a design laid itself lower down is not a roof.
 func _top_of_shell() -> float:
 	var top: int = 0
+	var inside: Array[int] = []
+	var walls: Array[int] = []
 	for x: int in range(_x0, _x1):
 		for z: int in range(_z0, _z1):
-			top = maxi(top, _world.surface_height(x * ACROSS + 5, z * ACROSS + 5, 0))
+			var here: int = _world.surface_height(x * ACROSS + 5, z * ACROSS + 5, 0)
+			top = maxi(top, here)
+			if _prism.is_empty():
+				continue
+			if _in_prism(Vector2i(x, z)):
+				inside.append(here)
+			elif _in_prism(Vector2i(x, z), float(_prism["radius"])):
+				walls.append(here)
+	if inside.size() >= SMALLEST and not walls.is_empty():
+		inside.sort()
+		walls.sort()
+		var roof: int = inside[inside.size() / 2]
+		if roof >= LOWEST * UP and roof >= walls[walls.size() / 2] - 2 * UP:
+			return float(_roof_under(roof)) / UP
 	return float(top) / UP
+
+
+## The underside of a roof whose top is at [param top] cells, over the middle
+## of the inside: where the floors stop.
+func _roof_under(top: int) -> int:
+	var x: int = int(round(float(_prism["x"]) - 0.5))
+	var z: int = int(round(float(_prism["z"]) - 0.5))
+	var y: int = top
+	while y > 0 and _world.brick_at(Vector3i(x * ACROSS + 5, y - 2, z * ACROSS + 5)) != 0:
+		y -= UP
+	return y
 
 
 ## Where the lowest room can go: the first plate up from the ground at which
@@ -516,9 +546,9 @@ func _inside(y: int) -> Dictionary:
 	return _largest(cells)
 
 
-func _in_prism(at: Vector2i) -> bool:
+func _in_prism(at: Vector2i, reach: float = -1.0) -> bool:
 	var sides: int = _prism["sides"]
-	var apothem: float = _prism["apothem"]
+	var apothem: float = _prism["apothem"] if reach < 0.0 else reach
 	var middle := Vector2(_prism["x"], _prism["z"])
 	for face: int in sides:
 		var angle: float = TAU * face / sides

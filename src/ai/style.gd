@@ -250,8 +250,9 @@ static func _cell(point: Vector3) -> Vector3i:
 
 
 ## What to tell a design, or "": the measures on the tails of real sets
-## of its kind, each with the median and the edge it is past.
-static func advice(found: Dictionary, group: String) -> String:
+## of its kind, each with the median and the edge it is past. [param about]
+## is what it is of, so a tower is told of the call shaped like a tower.
+static func advice(found: Dictionary, group: String, about: String = "") -> String:
 	if int(found.get("parts", 0)) < LEAST or group.is_empty():
 		return ""
 	var band: Dictionary = (norms().get("groups", {}) as Dictionary).get(group, {})
@@ -291,7 +292,17 @@ static func advice(found: Dictionary, group: String) -> String:
 			or found.has("plain") and band.has("plain") and float(found["plain"]) > float((band["plain"] as Array)[2]):
 		calls.append("restyle_model, for the plain faces already built")
 	if found.has("angled") and band.has("angled") and float(found["angled"]) < float((band["angled"] as Array)[0]):
-		calls.append("a prism pattern, for a tower, a pier or a turret that should have more than four sides")
+		# A tower is told of the clustered form by name. Run 14 had four piers
+		# round a core rising into horns and built them square, by hand, with
+		# the prism named here for a pier: nothing at an angle.
+		if is_tower(about):
+			calls.append("a prism with piers, for a tower like this one — {\"pattern\": "
+				+ "\"prism\", ..., \"sides\": 8, \"open\": 3, \"piers\": {\"count\": 4, "
+				+ "\"courses\": a fifth more than the core's}}: faceted piers clustered "
+				+ "round a many-sided core, deep clefts between them, rising past its "
+				+ "summit into horns")
+		else:
+			calls.append("a prism pattern, for a tower, a pier or a turret that should have more than four sides")
 	var who: String = "real sets since 2010" if group == "since_2010" else (
 		"real %s sets%s" % [group.replace("_since_2010", ""),
 			" since 2010" if group.ends_with("_since_2010") else ""])
@@ -305,6 +316,16 @@ static func advice(found: Dictionary, group: String) -> String:
 		+ "pattern where the ground is irregular — and symmetry only where the "
 		+ "subject has it."
 		+ ("\nOne call each: " + "; ".join(calls) + "." if not calls.is_empty() else ""))
+
+
+## Whether a brief is of a tower: what a clustered prism is for.
+static func is_tower(about: String) -> bool:
+	var said: String = about.to_lower()
+	for word: String in ["tower", "orthanc", "keep", "spire", "turret", "minaret",
+			"lighthouse", "citadel", "barad", "pinnacle"]:
+		if said.contains(word):
+			return true
+	return false
 
 
 static func _share(value: Variant) -> String:

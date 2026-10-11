@@ -310,6 +310,7 @@ colours at the median):
 | 12 | minifigures, 59 worked examples, dressing gives way, true lighting | 4,167 | **18%** | 0.3% | **38%** | 42% | **46** | 6 |
 | 13 | `add_rooms`, named in the recipes and the variety advice | 3,120 | 1.1% | **13%** | 61% | 36% | **80** | **22** |
 | 14 | prism dressed by default, round joints, rebuilt catalogue | 4,748 | 13% | 0% | 54% | **28%** | 70 | 16 |
+| 15 | clustered piers on `prism`, in the recipe and the advice | 3,281 | 2.5% | **30%** | 69% | **27%** | 56 | 14 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -453,6 +454,47 @@ finishing pass cannot reach ("restyle only touched 5 bricks"), and the
 prism was laid without its own masonry and sideways, so sideways 1% and
 plain 61%; it ran out of its 90 minutes placing figures. Since: the prism dresses its faces by default (masonry 0.25, sideways
 0.15), and the catalogue is rebuilt with the rounds.
+
+Clustered piers, as one call, 2026-10-10. Run 14 had the form and built it
+square by hand; run 5 built its piers octagonal by hand and spent the run on
+it. A prism now takes `"piers"`: `{"count": 4, "courses": 38}` on an
+eight-sided core stands four eight-sided piers round it, each a prism of its
+own built against the core, with deep clefts between them, caps the core with
+a summit two plates thick — what ties walls at different angles into one
+piece, since they only rest on one another — and carries the piers past it as
+horns. With `open`, the piers at the back drop every face that looks back or
+across the opening, so the rooms show across the core's whole width. The
+guidance's prism line is that call, and the style advice names it for a tower
+with nothing at an angle. As laid it passes the check with nothing given way,
+in one piece, 42% at an angle, and add_rooms lays and furnishes five floors
+under its summit, open to the back (`patterns_probe`). The pictures caught
+two things the check did not: six-sided piers on an octagon meet it corner
+first, and the core's faces had to stop short, leaving slits down every cleft
+that the rooms showed through (the piers now take the core's sides and are
+built against it whole); and a two-thick face of a small pier has a groove at
+each corner nearly as wide as itself, so the first piers read as bundles of
+sticks (a face's outer row now runs on into its corner groove). Still open: a
+prism face's inner corner stops short of its neighbour's, so a thin channel
+up one corner of each face is see-through straight on, on a plain prism too.
+
+Run 15 called the cluster in its first build — an eight-sided core of radius
+7, open 2, and four six-sided piers of radius 4.5 set 7 out, 48 courses to
+the core's 40 — and add_rooms straight after it, six storeys from a dungeon
+to the palantír room. **30% at an angle, past the fantasy median, the first
+time in a model that also has its form** (run 5's 26% finished blind), and
+symmetry 27%, the most natural yet. By eye the shaft is Orthanc's: four
+faceted piers, deep clefts, lit windows, a door and stair on a stepped plinth
+among rock outcrops, Gandalf on the summit. Then it took the horns down:
+"Pier tops are built at 45°, so grid parts can't clip on. I'm rebuilding the
+four horns myself on the flat summit instead" — square spires of slopes with
+bars for points. It chose its own numbers rather than the recipe's, and
+"open": 2 on an octagon opens one back face and one back pier, so the rooms
+are behind a slot again. The finish fell: sideways 2.5% and plain 69%,
+because what it built square round the cluster is plain and the finishing
+pass cannot reach a section; shapes 56 and colours 14 are below runs 13 and
+14. The levers left: horns that end in something a square part sits on, an
+opening that stays wide whatever "open" says when there are piers, and the
+dressing on what a design builds square around a cluster.
 
 On their studs, 2026-10-10. The owner saw the spires and points of a tower
 of Orthanc not sitting on their studs, on a model built over MCP. Two causes,

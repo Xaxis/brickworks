@@ -212,7 +212,7 @@
                 "type": "integer"
               },
               "open": {
-                "description": "prism: faces left out at the back, so the rooms inside show",
+                "description": "prism: faces left out at the back, so the rooms inside show (and with piers, the backs of the piers there)",
                 "type": "integer"
               },
               "pattern": {
@@ -226,6 +226,37 @@
                   "prism"
                 ],
                 "type": "string"
+              },
+              "piers": {
+                "additionalProperties": false,
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns.",
+                "properties": {
+                  "count": {
+                    "description": "how many, 2-8 (4)",
+                    "type": "integer"
+                  },
+                  "courses": {
+                    "description": "how tall, in courses of three plates; more than the core's for horns (a fifth more)",
+                    "type": "number"
+                  },
+                  "out": {
+                    "description": "studs from the core's middle to each pier's (set into the core by its wall's thickness)",
+                    "type": "number"
+                  },
+                  "radius": {
+                    "description": "studs from a pier's middle to the outside of its faces (two thirds of the core's)",
+                    "type": "number"
+                  },
+                  "sides": {
+                    "description": "each pier's faces, 5-16 (the core's)",
+                    "type": "integer"
+                  },
+                  "turn": {
+                    "description": "degrees round from +z to the first pier (between two faces, so there is a cleft front and back)",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
               },
               "radius": {
                 "description": "prism: studs from the middle to the outside of a face",
@@ -1170,7 +1201,7 @@
                 "type": "integer"
               },
               "open": {
-                "description": "prism: faces left out at the back, so the rooms inside show",
+                "description": "prism: faces left out at the back, so the rooms inside show (and with piers, the backs of the piers there)",
                 "type": "integer"
               },
               "pattern": {
@@ -1184,6 +1215,37 @@
                   "prism"
                 ],
                 "type": "string"
+              },
+              "piers": {
+                "additionalProperties": false,
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns.",
+                "properties": {
+                  "count": {
+                    "description": "how many, 2-8 (4)",
+                    "type": "integer"
+                  },
+                  "courses": {
+                    "description": "how tall, in courses of three plates; more than the core's for horns (a fifth more)",
+                    "type": "number"
+                  },
+                  "out": {
+                    "description": "studs from the core's middle to each pier's (set into the core by its wall's thickness)",
+                    "type": "number"
+                  },
+                  "radius": {
+                    "description": "studs from a pier's middle to the outside of its faces (two thirds of the core's)",
+                    "type": "number"
+                  },
+                  "sides": {
+                    "description": "each pier's faces, 5-16 (the core's)",
+                    "type": "integer"
+                  },
+                  "turn": {
+                    "description": "degrees round from +z to the first pier (between two faces, so there is a cleft front and back)",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
               },
               "radius": {
                 "description": "prism: studs from the middle to the outside of a face",

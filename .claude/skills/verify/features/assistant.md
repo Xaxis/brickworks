@@ -157,6 +157,36 @@ fixing what it got wrong.
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
+- `faceted piers clustered round a core`: `"piers"` on `prism`
+  (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
+  `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
+  Each pier is a prism of its own (`prism N pier K face J`), `sides` the core's,
+  `radius` two thirds of it, centred `out` (radius + pier radius - thickness)
+  along `turn` + 360k/count (180/count, so a cleft is front and back). The core
+  is whole; each pier is built against it, its faces stopping `CLUSTER_CLEAR`
+  (0.15 stud, 3 LDU: more than a 2 LDU cell's diagonal, which is all a turned
+  part's cover reaches) short of the core's outside and of the next pier round
+  (`_runs`/`_free` clip each face's wall by outlines in plan; a run ending at
+  something is laid flush to it on the 0.1-stud grid). The core is capped at
+  `y + 3 x courses` with a two-plate summit over the whole outline
+  (`_summit`: strips along z, strips along x across them, only the largest
+  connected piece), which is what makes it one piece — walls at different
+  angles only rest on one another — and piers taller than the core rise from
+  it as whole prisms (horns). A cluster face's outer row runs on past its
+  right-hand corner into the groove (`_cluster_face`, as far as the outline's
+  corner): without it a two-thick pier face three studs wide had a groove
+  nearly as wide at each corner and the piers read as bundles of sticks.
+  With `open`, the piers at the back drop every face looking back or across
+  the opening. Sideways dressing is laid only where it is clear of the other
+  shafts and the faces beside it (`_dressing_clear`), so nothing gives way in
+  the check. Found by run 14: four piers round a core rising into horns, built
+  square by hand, 0% at an angle. `patterns_probe`: the guidance's cluster
+  passes the check as laid, in one piece, faces at 4 angles off the grid, 42%
+  angled (fantasy median 27%), open at the back, and add_rooms lays and
+  furnishes five floors under the summit, open to -z, nothing taken out;
+  piers set clear of the core are refused. Still: a prism face's inner corner
+  stops short of its neighbour's (floored widths), so a thin channel at each
+  face's left-hand corner is see-through straight on — on a plain prism too.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty
@@ -196,7 +226,9 @@ fixing what it got wrong.
   `floors` bottom up (a kind each: `Rooms.KINDS`, words mapped by `kind_of`, so
   "Saruman's chamber" is a study), it reads the inside off the live lattice —
   inside the prism's inner faces, or walled on two opposite sides in the box —
-  stacks floors 26 plates apart (fitted to the shell) unless `y` is said, and
+  stacks floors 26 plates apart (fitted to the shell: to a prism's roof where
+  most of its inside is covered, so a cluster's floors stop under its summit
+  rather than the fifth landing on it between the horns) unless `y` is said, and
   lays each as two layers: 2/1-wide plates along z, each strip one plate, and
   over them a layer along x — tiles (boards, flags or a checker, by kind) where
   it is walked on, plates where something stands, joints a stud off the
@@ -412,7 +444,7 @@ godot --headless --path . --script src/dev/restore_probe.gd     # a failed desig
 godot --headless --path . --script src/dev/brain_probe.gd       # the request carries only what the model accepts
 godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets in
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
-godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out
+godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out; a clustered tower stands and takes rooms
 godot --headless --path . --script src/dev/rooms_probe.gd       # floors and furnished rooms in what stands
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd  # ...and pictures: shots/rooms/
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
