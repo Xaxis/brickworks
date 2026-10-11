@@ -156,7 +156,9 @@ picture the assistant is shown.
   booklet's, numbered as the booklet numbers them — `Step.caption()`, "Step 12
   of 40 · Window (2x), 1 of 3": a callout's steps go up where the assembly
   will stand and carry the number of the step it goes on in; `booklet_probe`
-  checks the timeline and the pages print the same numbers), As made (brick numbers, the order what
+  checks the timeline and the pages print the same numbers; what the step
+  adds is a line of its own under the slider, and the buttons have faces),
+  As made (brick numbers, the order what
   stands was placed — by hand, or the order Claude thought of it) and History
   (every add and removal since the baseplate was last cleared, from
   `BrickWorld.history`, which notes add/remove/move/paint/clear with a key of

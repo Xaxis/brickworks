@@ -127,6 +127,18 @@ func _build() -> void:
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	line.add_child(_caption)
 
+	# What the step adds, on a line of its own the width of the bar. It
+	# sat between the buttons, where at 1600 wide it was cut off after
+	# three parts ("1 × Plate 6 x 6, 1 × Brick 1 x 3, 1").
+	_pieces = Label.new()
+	_pieces.add_theme_font_size_override("font_size", 12)
+	_pieces.modulate = Color(1, 1, 1, 0.72)
+	_pieces.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pieces.clip_text = true
+	_pieces.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_pieces.mouse_filter = Control.MOUSE_FILTER_PASS
+	column.add_child(_pieces)
+
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	column.add_child(row)
@@ -161,18 +173,12 @@ func _build() -> void:
 	_order_button.pressed.connect(func() -> void: set_mode((_mode + 1) % MODES.size()))
 	row.add_child(_order_button)
 
-	_pieces = Label.new()
-	_pieces.add_theme_font_size_override("font_size", 12)
-	_pieces.modulate = Color(1, 1, 1, 0.66)
-	_pieces.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_pieces.clip_text = true
-	row.add_child(_pieces)
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(gap)
 
-	var save := Button.new()
-	save.text = "Instructions"
-	save.tooltip_text = "These steps as a printable booklet, pictures and parts included"
-	save.focus_mode = Control.FOCUS_NONE
-	save.add_theme_font_size_override("font_size", 11)
+	var save := _button("Instructions",
+		"These steps as a printable booklet, pictures and parts included")
 	save.pressed.connect(func() -> void: export_wanted.emit())
 	row.add_child(save)
 
@@ -195,6 +201,19 @@ func _button(label: String, tip: String) -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 11)
 	button.custom_minimum_size = Vector2(52, 0)
+	# A face of their own: drawn flat, the row read as a line of words,
+	# and nothing said which of them could be pressed.
+	for state: String in ["normal", "hover", "pressed"]:
+		var face := StyleBoxFlat.new()
+		face.bg_color = Color(1, 1, 1, {"normal": 0.08, "hover": 0.16, "pressed": 0.24}[state])
+		face.border_color = Color(1, 1, 1, 0.14)
+		face.set_border_width_all(1)
+		face.set_corner_radius_all(4)
+		face.content_margin_left = 9
+		face.content_margin_right = 9
+		face.content_margin_top = 3
+		face.content_margin_bottom = 3
+		button.add_theme_stylebox_override(state, face)
 	return button
 
 
