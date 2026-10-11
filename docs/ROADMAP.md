@@ -314,6 +314,7 @@ colours at the median):
 | 13 | `add_rooms`, named in the recipes and the variety advice | 3,120 | 1.1% | **13%** | 61% | 36% | **80** | **22** |
 | 14 | prism dressed by default, round joints, rebuilt catalogue | 4,748 | 13% | 0% | 54% | **28%** | 70 | 16 |
 | 15 | clustered piers on `prism`, in the recipe and the advice | 3,281 | 2.5% | **30%** | 69% | **27%** | 56 | 14 |
+| 16 | horns capped square, any opening the whole back, the finish reaches a cluster, no animation off-screen | 3,539 | **14%** | **50%** | 58% | 31% | 53 | 17 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -525,6 +526,64 @@ half a stud off on a plain plate, with no jumper under it, is passed. A check
 by sockets found it, and also 72 plain parts in 65 real sets that do grip — a
 1 x 2 crossing a jumper's one stud among them — so it needs a socket model
 that tells a 1 x N's post from a 2 x N's tube before it can refuse anything.
+
+Run 15's three levers, 2026-10-11. **Horns that end square**: each horn of a
+cluster is capped two plates thick over its own outline at y + 3 x the piers'
+courses + 2, square to the grid, and carries a point on the cap — a 4 x 4
+course where there is room, stepped in by four corner slopes, two 2 x 2
+bricks, a 2 x 2 pyramid (3688), a cone and a black bar — with the cap's ledge
+sloped up to it as the rock faces its ledges. The point's first course is two
+2 x 4 bricks on the cap's studs and the whole passes the check, so a square
+part sits on every horn; a design that wants its own takes the point off and
+builds on the cap. What 10237 builds its horns from was not found: the reviews
+praise the four spires and name no parts. **An opening that stays wide**: with
+piers, any `open` opens the core's whole back (three faces of an octagon); on
+run 15's own cluster with `"open": 2`, every column across the core's inside
+is now open from behind to its middle, where 7 of 10 were. **The finish on a
+cluster**: `restyle_model` works on bricks in sections turned about y, in the
+section's own coordinates and only on a face's outside, and lays an open
+two-wide brick as two rows with the outer one finished. Run 15's own calls,
+replayed in order: its restyle went from 4 bricks to 172, and the model from
+2.5% to 9.1% sideways and 69% to 60% plain.
+
+Replaying them found where run 15's hour went. Every submit and every edit
+starts the window's assembly animation, which plans build steps for the whole
+model and shows it a step at a time, each step walking every brick; off-screen
+and nobody watching, on that 3,000-part tower, a frame took 13 s while it
+played. A look took 130-220 s, `add_rooms` 159 s, a restyle 249 s. An app
+driven from the command line skips it now: 0.3 s, 12 s and 12 s, and seven
+of run 15's calls replayed went from 19 minutes to 31 seconds on the same busy
+machine.
+
+Run 16, on everything above: the cluster in its first build (an octagonal core
+of radius 7 and 36 courses, four six-sided piers of radius 5 set 8 out, 43
+courses, `"open": 3`, `"sideways": 0.2`), `add_rooms` straight after (a
+dungeon, a forge, a library, Saruman's chamber and the palantír room), seven
+figures, a front portal with braziers and an Uruk-hai at it, and the
+finishing pass over the whole tower (208 bricks: 149 turned out, 59 stone,
+dressed in grey). It never touched the horns, and it finished in **585 s
+against run 15's 3,798**. **Sideways 14% and angled 50% in one model**: both
+in the real range at once for the first time in sixteen runs (run 14 had the
+one, 15 the other), angled the most yet, texture 15%, plain 58% (13: 61%, 14:
+54%, 15: 69%), symmetry 31% at the fantasy median. By eye it is Orthanc's
+shape with four capped black spires, its back open across the core onto five
+furnished floors with figures in them. It is not yet the homepage: shapes 53
+and colours 17 are below runs 13-15's 80, 70 and 56 shapes, because it
+reviewed one of its three assemblies and stopped at ten minutes; the grey
+dressing on black faces reads as polka dots where 10237 is black on black; the
+ground is a flat grey plate with four small crags where run 15 had a ring of
+outcrops; there are no windows; and daylight shows through the tower. That
+last one is measured: on the guidance's own cluster, closed, no horizontal
+sightline at mid height passes through; open at the back, 7 pass straight from
+the front through the thin channel at each prism face's inner corner (still
+open since "Clustered piers"), which used to lead into a dark inside. Run 16's
+six-sided piers add their own: 7 sightlines each side from the front corners
+even with the back closed, 0 with eight-sided piers (the default both runs
+overrode). Pictures: `shots/runs/orthanc_16_*.png` in its worktree. The levers
+left, by what they cost the picture: inner corners of a prism face that meet
+(or a post behind each), so an open tower is not see-through; the detail
+passes a run skips now that each call takes seconds; dressing in the face's
+own colour on a dark tower; and the ground.
 
 ## Long term: custom elements
 
