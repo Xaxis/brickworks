@@ -190,6 +190,11 @@ run "highlights" "${screen[@]}" godot --path . --resolution 1200x800 \
 # would never once exercise the path the app actually takes.
 run "model shot" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/shot_probe.gd
+# The booklet: every picture drawn, framed on the model, a parts box with
+# a picture of each part, callouts with arrows, the turn sign, the
+# timeline's numbers. Leaves shots/booklet/*.html to open and look at.
+run "booklet" "${screen[@]}" godot --path . --resolution 1200x800 \
+  --script src/dev/booklet_probe.gd
 run "axis gizmo" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/gizmo_probe.gd
 # Also a window: what a dragged box catches depends on where each brick

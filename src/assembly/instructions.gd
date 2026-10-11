@@ -123,7 +123,8 @@ class Step extends RefCounted:
 			pieces.append("%d × %s" % [int(parts[part_id]), name])
 		return ", ".join(pieces)
 
-	## What the timeline says this step is, numbered as the booklet is.
+	## What the timeline says this step is, numbered as the booklet is:
+	## "Step 12 of 40 · Window (2x), 1 of 3".
 	func caption(main_steps: int) -> String:
 		var said: String = "Step %d of %d" % [number, main_steps]
 		if not assembly.is_empty():
@@ -132,8 +133,6 @@ class Step extends RefCounted:
 				said += " · %s, %d of %d" % [what, callout_step, callout_steps]
 			else:
 				said += " · %s, put on" % what
-		if not section.is_empty():
-			said += " · %s" % section
 		return said
 
 
@@ -565,11 +564,21 @@ static func _is_figure(members: Array, world: BrickWorld,
 	return Minifig.is_figure(bricks, library)
 
 
-## Small enough to be built on the side, and one piece when it is.
+## Small enough to be built on the side, one piece when it is, and put
+## on something when it is done. Two plates lying on the table are not a
+## sub-assembly, they are the start of the model: a callout is for
+## something built away from the model and then attached to it.
 static func _holds_together(members: Array, total: int) -> bool:
 	if members.size() < 2 or members.size() > ASSEMBLY_MOST:
 		return false
 	if members.size() * 10 > total * 3:
+		return false
+	var own: Dictionary = {}
+	for node: Node2 in members:
+		own[node.id] = true
+	var attached: bool = members.any(func(node: Node2) -> bool:
+		return Array(node.needs).any(func(need: int) -> bool: return not own.has(need)))
+	if not attached:
 		return false
 	# One piece: every part touches another, by their boxes grown by a
 	# hair. Supports alone would split a window from the glass clipped

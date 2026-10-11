@@ -190,6 +190,13 @@
     },
     {
       "kind": "ui",
+      "label": "the booklet",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "mosaic",
       "entry": "src/ui/mosaic_dialog.gd",
       "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",

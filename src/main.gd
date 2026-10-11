@@ -872,7 +872,7 @@ func _build_ui() -> void:
 	# than jumping down the screen when playback starts.
 	_steps = StepsBar.new()
 	_steps.reveal.connect(func(ids: Dictionary) -> void: _world.show_only(ids))
-	_steps.export_wanted.connect(_export_booklet)
+	_steps.export_wanted.connect(_booklet_wanted)
 	middle.add_child(_steps)
 
 	# Room for two lines. The strip wraps rather than truncating when the
@@ -996,6 +996,7 @@ func _build_ui() -> void:
 		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 	_bar.timeline_wanted.connect(_toggle_steps)
+	BookletMaker.add_button(_bar, "Timeline", _booklet_wanted)
 
 	# Over the model rather than beside it, like the parts list: making
 	# a figure wants the room, and is done before going back to build.
@@ -1215,123 +1216,58 @@ func _turn_model(quarter_turns: int) -> void:
 	_on_model_changed()
 
 
-## Write the booklet out as one printable file.
+## The booklet: drawn off screen by BookletMaker, then handed over.
 ##
-## Every step is photographed from the same place. A booklet whose camera
-## moves between steps is unreadable — the whole way you see what a step
-## added is that everything else stayed where it was — so the framing is
-## taken once, from the finished model, and held.
+## [param to] writes it to a file and says so, which is how the command
+## line and the checks ask for one. Otherwise it goes where people are: on
+## the web into the tab [method _booklet_wanted] opened as the button was
+## pressed (a browser only lets a page open a tab in answer to a click,
+## and the pictures take longer than that), and on the desktop into the
+## Downloads folder and open in the browser, ready to print.
 func _export_booklet(to: String = "") -> String:
-	var steps: Array[Instructions.Step] = Instructions.plan(
-		_world, _library, _store.scenery)
-	if steps.is_empty():
+	_bar.say("planning the booklet…")
+	var maker := BookletMaker.new()
+	maker.library = _library
+	add_child(maker)
+	maker.progress.connect(func(said: String) -> void: _bar.say(said))
+	var title: String = _bar.model_name()
+	var html: String = await maker.make(_world, _store.scenery, title)
+	var steps: int = maker.document.steps if maker.document != null else 0
+	if not to.is_empty():
+		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:
+			return "%s %.1f s" % [lap[0], float(lap[1]) / 1000.0])))
+	maker.queue_free()
+	if html.is_empty():
 		_bar.say("nothing to write instructions for")
 		return "nothing to write instructions for"
-
-	var stock: Inventory = Inventory.of(_world, _library, _store.scenery)
-	var title: String = _bar.model_name()
-	_bar.say("drawing %d steps…" % steps.size())
-	await get_tree().process_frame
-
-	# The UI is not part of the picture, and the camera has to come back
-	# to where the person left it.
-	var was_playing: bool = _steps.is_playing_back()
-	if was_playing:
-		_steps.stop()
-	var had_hud: bool = $HUD.visible
-	var camera_was: Transform3D = _camera.global_transform
-	$HUD.visible = false
-	# Framed on the model, not on what it is standing on. A 32 x 32
-	# baseplate is four times the width of most things built on it, so
-	# framing the lot leaves the subject a thumbnail in the middle of a
-	# green field.
-	# A margin above 1 leaves air around the subject; below 1 crops into
-	# it. 0.78 cropped, so the finished model ran off the bottom of the
-	# last few pictures — the steps where it is tallest and matters most.
-	_camera.frame(_built_bounds(), 1.12)
-	for _n: int in 8:
-		await get_tree().process_frame
-		RenderingServer.force_draw(false)
-
-	# A model built a part at a time is photographed a part at a time:
-	# framed on the part being built, and framed the same way every time
-	# the build comes back to it. Eight new bricks in a picture of a
-	# 1,895-part castle are a few pixels; the camera holding still is
-	# still what shows what a step added, so it holds within a part.
-	var section_bounds: Dictionary = {}
-	for step: Instructions.Step in steps:
-		if step.section.is_empty():
-			continue
-		for brick_id: int in step.brick_ids:
-			var box: AABB = _box_of(brick_id)
-			section_bounds[step.section] = (box
-				if not section_bounds.has(step.section)
-				else (section_bounds[step.section] as AABB).merge(box))
-	var framed: String = ""
-
-	var pages: Array[Booklet.Page] = []
-	var showing: Dictionary = _store.scenery.duplicate()
-	for step: Instructions.Step in steps:
-		for brick_id: int in step.brick_ids:
-			showing[brick_id] = true
-		_world.show_only(showing)
-		if not step.section.is_empty() and step.section != framed:
-			framed = step.section
-			_camera.frame(section_bounds[step.section], 1.12)
-			for _n: int in 8:
-				await get_tree().process_frame
-				RenderingServer.force_draw(false)
-
-		# Forced, not awaited. A process frame is not a drawn frame, and
-		# an unattended window stops being asked to redraw — which is how
-		# every picture ends up being of the step before.
-		for _n: int in 4:
-			await get_tree().process_frame
-			RenderingServer.force_draw(false)
-
-		var page := Booklet.Page.new()
-		page.index = step.index
-		page.awkward = step.unsupported
-		page.section = step.section
-		page.image = _snapshot()
-		page.adds = _step_parts(step)
-		pages.append(page)
-
-	_world.show_only({})
-	$HUD.visible = had_hud
-	_camera.global_transform = camera_was
-	# Back where you were. Saving the instructions from inside the
-	# booklet stopped the playback to take its pictures and then never
-	# started it again, so asking for a copy of what you were reading
-	# closed what you were reading. The flag was recorded and never
-	# looked at.
-	if was_playing:
-		_steps.start(_world, _library, _store.scenery)
-
 	var file_name: String = title.to_snake_case() + "_instructions.html"
-	var html: String = Booklet.html(title, pages, stock)
 	var note: String
-	if to.is_empty():
-		note = Download.give(html, file_name, "text/html")
-	else:
+	if not to.is_empty():
 		var file: FileAccess = FileAccess.open(to, FileAccess.WRITE)
 		if file == null:
 			note = "could not write %s" % to
 		else:
 			file.store_string(html)
 			file.close()
-			note = "wrote %s, %d steps" % [to, pages.size()]
+			note = "wrote %s, %d steps" % [to, steps]
+	elif OS.has_feature("web") and BookletMaker.fill_tab(html):
+		note = "the booklet is open in a new tab, %d steps" % steps
+	else:
+		note = Download.give(html, file_name, "text/html")
+		if note.begins_with("wrote ") and not OS.has_feature("web"):
+			OS.shell_open("file://" + note.trim_prefix("wrote "))
 	_bar.say(note)
 	return note
 
 
-## Where one brick is, as a box in the world.
-func _box_of(brick_id: int) -> AABB:
-	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-	if part == null:
-		return AABB(brick.transform.origin, Vector3.ZERO)
-	return brick.transform * part.bounds
+## The Instructions button, on the toolbar and on the timeline.
+func _booklet_wanted() -> void:
+	if BookletMaker.busy:
+		_bar.say("already drawing the booklet…")
+		return
+	if OS.has_feature("web"):
+		BookletMaker.open_tab()
+	await _export_booklet()
 
 
 ## What was built, without the baseplate it was built on. Falls back to
@@ -1353,56 +1289,6 @@ func _built_bounds() -> AABB:
 	# a box round nothing frames nothing, and the baseplate is at least
 	# somewhere to stand. Not _built_bounds(), which is this function.
 	return _world.model_bounds() if first else bounds
-
-
-## The viewport as a data: URI.
-##
-## JPEG, not PNG. Thirty steps of a lossless 1600-wide render comes to
-## tens of megabytes inside a single file, and the subject is smooth
-## plastic against a flat background — the one thing JPEG does well.
-func _snapshot() -> String:
-	var image: Image = get_viewport().get_texture().get_image()
-	# Halved first: the page is 860 wide and a 1600-wide picture in it is
-	# three times the bytes for no more detail on paper.
-	var wide: int = 900
-	if image.get_width() > wide:
-		var tall: int = int(round(float(image.get_height())
-			* float(wide) / float(image.get_width())))
-		image.resize(wide, tall, Image.INTERPOLATE_LANCZOS)
-	var bytes: PackedByteArray = image.save_jpg_to_buffer(0.84)
-	return "data:image/jpeg;base64," + Marshalls.raw_to_base64(bytes)
-
-
-## What a step adds, with the colours it adds them in.
-func _step_parts(step: Instructions.Step) -> Array:
-	var tally: Dictionary = {}
-	for brick_id: int in step.brick_ids:
-		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-		if brick == null:
-			continue
-		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
-		if tally.has(key):
-			tally[key]["count"] = int(tally[key]["count"]) + 1
-			continue
-		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
-		var color: PartLibrary.BrickColor = _library.color(brick.color_code)
-		var name: String = info.name.strip_edges() if info != null else brick.part_id
-		while name.contains("  "):
-			name = name.replace("  ", " ")
-		tally[key] = {
-			"count": 1,
-			"part": brick.part_id,
-			"name": name,
-			"colour": color.name if color != null else "",
-			"rgb": "#%02x%02x%02x" % [
-				int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
-				int(color.rgb.b * 255.0)] if color != null else "#888888",
-		}
-
-	var adds: Array = tally.values()
-	adds.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a["count"]) > int(b["count"]))
-	return adds
 
 
 ## Lay the chosen picture out in plates.

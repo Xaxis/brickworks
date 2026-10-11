@@ -364,6 +364,40 @@ func show_only(visible_ids: Dictionary) -> void:
 		_flush()
 
 
+## Draw only the bricks numbered below [param upto], which, in a world
+## filled in one go with nothing hidden or removed, are the first ones
+## added. The booklet's stage is filled in the order the booklet builds,
+## so a step's picture is a prefix: each batch draws the front of its
+## list, and the cost of a picture does not grow with the model. Undone
+## by the next change to the world.
+func show_first(upto: int) -> void:
+	if _rebuild_queued:
+		_flush()
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		# Numbers are handed out in order and appended in order, so each
+		# batch's list is sorted, and its slots are in the same order.
+		batch.multimesh.visible_instance_count = batch.brick_ids.bsearch(upto)
+
+
+## Draw every brick with [param material] and in the colour
+## [param colour_of] gives its number: a picture of which brick is which,
+## for the booklet to draw its outlines from. Nothing about the model
+## changes, and the next change to the world draws it as it was.
+func draw_as(material: ShaderMaterial, colour_of: Callable) -> void:
+	if _rebuild_queued:
+		_flush()
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		batch.instance.material_override = material
+		var slot: int = 0
+		for brick_id: int in batch.brick_ids:
+			if _bricks[brick_id].hidden:
+				continue
+			batch.multimesh.set_instance_color(slot, colour_of.call(brick_id))
+			slot += 1
+
+
 func brick_count() -> int:
 	return _bricks.size() - _ghosts.size()
 

@@ -169,8 +169,8 @@ func _build() -> void:
 	row.add_child(_pieces)
 
 	var save := Button.new()
-	save.text = "Save instructions"
-	save.tooltip_text = "One printable page, pictures and parts included"
+	save.text = "Instructions"
+	save.tooltip_text = "These steps as a printable booklet, pictures and parts included"
 	save.focus_mode = Control.FOCUS_NONE
 	save.add_theme_font_size_override("font_size", 11)
 	save.pressed.connect(func() -> void: export_wanted.emit())
@@ -452,12 +452,19 @@ func _show(count: int) -> void:
 		var step: int = 0
 		while step < _step_ends.size() - 1 and _step_ends[step] < _shown:
 			step += 1
-		_caption.text = "Step %d of %d · %s" % [step + 1, _steps.size(), of]
+		# Numbered as the booklet numbers them, so "step 12" here is step
+		# 12 on the page: a callout's steps carry the number of the step
+		# its assembly goes on in, and are counted inside it.
+		var at: Instructions.Step = _steps[step]
+		_caption.text = "%s · %s" % [at.caption(_steps[-1].number), of]
 		if _shown == 0:
 			_pieces.text = "An empty baseplate"
 		else:
-			var at: Instructions.Step = _steps[step]
 			_pieces.text = at.summary(_library)
+			# A callout is built on the side in the booklet; here it goes
+			# up where it will stand, the only place the world can show it.
+			if at.in_callout() and at.callout_step == at.callout_steps:
+				_pieces.text += " — then put %s on" % ("them" if at.times > 1 else "it")
 			if at.unsupported:
 				# Worth saying. The alternative is a step that looks wrong
 				# to anyone following it with real bricks in their hands.

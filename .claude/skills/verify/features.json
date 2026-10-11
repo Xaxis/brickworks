@@ -550,6 +550,14 @@
       "tests": []
     },
     {
+      "id": "ui:the booklet",
+      "kind": "ui",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:undo and redo",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
