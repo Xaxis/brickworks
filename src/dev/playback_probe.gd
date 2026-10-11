@@ -84,12 +84,24 @@ func _reveal_in_order(world: BrickWorld) -> void:
 		not world.is_revealing() and ended[0] == 1 and _hidden(world).is_empty()
 		and _drawn(world) == 12)
 
-	# A change to the model in the middle puts everything back first.
+	# A change somewhere else leaves it playing: the ground laid wider under
+	# a design that outgrew it, the moment it was built.
 	world.begin_reveal(order)
 	world.reveal_through(1)
+	var ground: int = world.add_brick("3811", 2,
+		Transform3D(Basis.IDENTITY, Vector3(0, -8, 800)))
+	world._flush()
+	_check("a brick of another part added mid-reveal leaves it playing",
+		world.is_revealing() and ended[0] == 1
+		and _hidden(world) == _as_set(order.slice(2)))
+	world.remove_brick(ground)
+	world._flush()
+	_check("...and so does taking it away", world.is_revealing())
+
+	# A change to what is being revealed puts everything back first.
 	world.add_brick("3001", 14, Transform3D(Basis.IDENTITY, Vector3(0, 0, 400)))
 	world._flush()
-	_check("a brick added mid-reveal ends it, everything shown and drawn",
+	_check("a brick added to the bricks being revealed ends it, everything shown and drawn",
 		not world.is_revealing() and ended[0] == 2 and _hidden(world).is_empty()
 		and _drawn(world) == 13)
 	world.reveal_ended.disconnect(on_end)
