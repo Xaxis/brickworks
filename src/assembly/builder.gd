@@ -718,6 +718,23 @@ func hovered_brick() -> int:
 	return _hovered
 
 
+## Whether the ghost is showing, which is whether the pointer is aimed at
+## somewhere a part could go. A figure being held is shown by a ghost per
+## part instead of the one ghost, which is hidden the whole time.
+func has_preview() -> bool:
+	if not held_figure.is_empty():
+		for ghost: MeshInstance3D in _figure_ghosts:
+			if ghost.visible:
+				return true
+		return false
+	return _ghost != null and _ghost.visible
+
+
+## Whether a click would put the held part down where the ghost is.
+func can_place() -> bool:
+	return has_preview() and _ghost_valid
+
+
 func hide_preview() -> void:
 	_ghost.visible = false
 	_ghost_valid = false

@@ -534,6 +534,14 @@
       "tests": []
     },
     {
+      "id": "ui:pointer cursors",
+      "kind": "ui",
+      "entry": "src/ui/cursors.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:selection edits",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",

@@ -569,7 +569,10 @@ class Swatch extends Button:
 
 ## Where a browser test finds the bin's own button.
 func controls_by_name() -> Dictionary:
-	return {"make part": _make_button} if _make_button != null else {}
+	var named: Dictionary = {"parts list": _scroll}
+	if _make_button != null:
+		named["make part"] = _make_button
+	return named
 
 
 ## Show one category's parts, as its button would.

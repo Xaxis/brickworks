@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 14 20">
+  <!-- The right button: right-click. -->
+  <path d="M7 1.25 V7.75 H12.5 V6.75 A5.5 5.5 0 0 0 7 1.25 Z" fill="#5b9dff"/>
+  <rect x="1.5" y="1.25" width="11" height="17.5" rx="5.5" fill="none" stroke="#e2e5ec" stroke-width="1.4"/>
+  <path d="M7 1.25 V7.75 M1.5 7.75 H12.5" stroke="#e2e5ec" stroke-width="1.2"/>
+</svg>

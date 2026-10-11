@@ -101,6 +101,12 @@ var _grab_depth: float = 0.0
 ## which is where this camera always turned.
 var pick: Callable = Callable()
 
+## Ask whether a point on the screen is over the interface rather than
+## the model. Set by whoever owns the scene; it takes a screen position
+## and returns a bool. Nothing that begins there is the camera's: see
+## [method _begins_over_interface].
+var over_interface: Callable = Callable()
+
 ## What turning is going around, and whether there is one. Apart from
 ## the focus: see [method _pivot_on].
 var _pivot: Vector3 = Vector3.ZERO
@@ -113,6 +119,48 @@ var pivot_shown: bool = false
 ## Where the mark goes.
 func pivot() -> Vector3:
 	return _pivot if _has_pivot else focus
+
+
+## A drag is turning the view.
+func is_turning() -> bool:
+	return _doing == Doing.ORBIT
+
+
+## A drag is sliding it.
+func is_sliding() -> bool:
+	return _doing == Doing.SLIDE
+
+
+## The right button is down and has not moved far enough to be a turn,
+## so letting go now is a click and takes a brick off.
+func right_pending() -> bool:
+	return _dragging_right and _doing == Doing.NOTHING
+
+
+## How long the pointer goes on saying what a wheel notch, a swipe or a
+## key did, in milliseconds. Each of those is over in an instant, and a
+## cursor that changed for one frame would be a flicker rather than an
+## answer; this is long enough to read and short enough that it is gone
+## by the time the hand moves on.
+const MOMENT_MS := 350
+
+var _moment: String = ""
+var _moment_until: int = 0
+
+
+## What the view did a moment ago without a button held — "orbit",
+## "slide", "zoom_in", "zoom_out" — or "" once that has passed. Drags
+## are not in it: they are [method is_turning] and [method is_sliding]
+## for exactly as long as they last, and a turn that went on claiming
+## the pointer after its button came up would be a stale cursor.
+func moment() -> String:
+	return _moment if Time.get_ticks_msec() < _moment_until else ""
+
+
+func _note(kind: String) -> void:
+	_moment = kind
+	_moment_until = Time.get_ticks_msec() + MOMENT_MS
+
 
 ## Fingers currently down, by the index the system gives each one.
 ##
@@ -283,6 +331,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_slide_by(drag.relative * 0.5)
 		return
 
+	if _begins_over_interface(event):
+		return
+
 	# A trackpad, which is what most people are on.
 	#
 	# macOS sends two-finger scrolling as a pan gesture and pinching as
@@ -296,8 +347,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		# takes shift, which is where every tool that has both puts it.
 		if swipe.shift_pressed:
 			_slide_by(swipe.delta * TRACKPAD_PAN)
+			_note("slide")
 		else:
 			_turn_by(swipe.delta * TRACKPAD_PAN, 0.004)
+			_note("orbit")
 		return
 
 	if event is InputEventMagnifyGesture:
@@ -322,6 +375,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_slide_by(Vector2(WHEEL_PAN * (
 						-1.0 if button.button_index == MOUSE_BUTTON_WHEEL_LEFT
 						else 1.0), 0.0))
+					_note("slide")
 			MOUSE_BUTTON_MIDDLE:
 				# The CAD convention: middle turns it, shift-middle
 				# slides it — or the other way round, for the people who
@@ -379,6 +433,35 @@ func _unhandled_input(event: InputEvent) -> void:
 			Doing.SLIDE: _slide_by(motion.relative)
 
 
+## Whether this event would start something over the interface: a
+## wheel notch, a swipe, a pinch, or the right or middle button going
+## down. Releases and movement are not asked about, so a drag begun over
+## the model still ends wherever it is let go.
+##
+## Asked for by the owner: "when i'm scrolling within a modal or control
+## panel ... it continues to move and effect the model in the main window
+## behind it". Godot hands a wheel event on through any control that does
+## not use it — a list already at its end, a dialog with nothing to scroll
+## (mouse_force_pass_scroll_events is on by default) — and a swipe or a
+## pinch is not stopped by a control at all. The side panels pass every
+## event on by design, so a right drag begun in the parts bin turned the
+## model too. Every one of those arrived here as if over the model.
+func _begins_over_interface(event: InputEvent) -> bool:
+	if not over_interface.is_valid():
+		return false
+	var at: Vector2
+	if event is InputEventGesture:
+		at = (event as InputEventGesture).position
+	elif event is InputEventMouseButton:
+		var button: InputEventMouseButton = event
+		if not button.pressed or button.button_index == MOUSE_BUTTON_LEFT:
+			return false
+		at = button.position
+	else:
+		return false
+	return bool(over_interface.call(at))
+
+
 ## Look at this point, from where you already are.
 ##
 ## The focus moves and the distance does not, so the model swings to the
@@ -411,11 +494,14 @@ func _wheel(button: InputEventMouseButton) -> void:
 		var by := Vector2(0.0, -WHEEL_PAN if up else WHEEL_PAN)
 		if button.shift_pressed:
 			_slide_by(-by)
+			_note("slide")
 		else:
 			_turn_by(by, 0.004)
+			_note("orbit")
 		return
 	if button.shift_pressed:
 		_slide_by(Vector2(0.0, WHEEL_PAN if up else -WHEEL_PAN))
+		_note("slide")
 		return
 	_zoom_by(1.0 / zoom_step if up else zoom_step, button.position)
 
@@ -549,6 +635,10 @@ func _ldu_per_pixel(at_depth: float = -1.0) -> float:
 ## does, and for an orbit camera it is one line: the focus moves towards
 ## that point by the same proportion the distance shrinks.
 func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
+	# Every caller is a wheel, a pinch or a key, none of them a drag, so
+	# this is the one place to say so.
+	if not is_equal_approx(factor, 1.0):
+		_note("zoom_in" if factor < 1.0 else "zoom_out")
 	var was: float = _target_distance
 	_target_distance = clampf(was * factor, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
@@ -628,6 +718,7 @@ func key_hold(delta: float, zoom: int, turn: Vector2, slide: Vector2) -> void:
 ## way a drag the same way would: right turns as dragging right does, up
 ## as dragging up.
 func _turn_degrees(by: Vector2) -> void:
+	_note("orbit")
 	_target_yaw -= deg_to_rad(by.x)
 	_target_pitch = clampf(_target_pitch + deg_to_rad(by.y), -_PITCH_LIMIT,
 		_PITCH_LIMIT)
@@ -636,6 +727,7 @@ func _turn_degrees(by: Vector2) -> void:
 ## Slide by a share of what the view shows, so a step is the same on
 ## screen at any zoom.
 func _slide_share(by: Vector2) -> void:
+	_note("slide")
 	var across: float = _ldu_per_pixel() * (get_viewport().get_visible_rect().size.y
 		if is_inside_tree() else 900.0)
 	_target_focus += global_transform.basis.x * by.x * across

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="26" height="18" viewBox="0 0 26 18">
+  <!-- The four arrow keys, laid out the way they are on a keyboard. -->
+  <g fill="#ffffff" fill-opacity="0.07" stroke="#e2e5ec" stroke-opacity="0.55" stroke-width="1">
+    <rect x="9.2" y="0.8" width="7.6" height="7.4" rx="1.6"/>
+    <rect x="0.6" y="9.6" width="7.6" height="7.4" rx="1.6"/>
+    <rect x="9.2" y="9.6" width="7.6" height="7.4" rx="1.6"/>
+    <rect x="17.8" y="9.6" width="7.6" height="7.4" rx="1.6"/>
+  </g>
+  <path d="M13 2.9 L11.2 5.7 H14.8 Z M13 14.9 L11.2 12.1 H14.8 Z M2.7 13.3 L5.5 11.5 V15.1 Z M23.3 13.3 L20.5 11.5 V15.1 Z" fill="#e2e5ec"/>
+</svg>
