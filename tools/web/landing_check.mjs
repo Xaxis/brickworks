@@ -19,7 +19,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const target = args.url || ("file://" + resolve(args.file || "web/index.html"));
 const bypass = process.env.VERCEL_BYPASS;
 
-const browser = await launch();
+const browser = await launch({ signedOut: true });  // a page of the site, not the app
 const problems = [];
 
 // A phone first, because that is where it was broken, then a laptop.

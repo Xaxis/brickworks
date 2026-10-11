@@ -32,6 +32,38 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/admin",
+      "kind": "api",
+      "entry": "api/admin.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/mcp",
+      "kind": "api",
+      "entry": "api/mcp.js",
+      "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/otp",
+      "kind": "api",
+      "entry": "api/otp.js",
+      "reach": "curl -s -X POST https://brickworks.diy/api/otp -H 'content-type: application/json' -d '{\"email\":\"not-an-email\"}'",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:account browser flow",
+      "kind": "cli",
+      "entry": "tools/web/account_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",
@@ -204,6 +236,14 @@
       "tests": []
     },
     {
+      "id": "cli:sign a machine in",
+      "kind": "cli",
+      "entry": "src/dev/sign_in.gd",
+      "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:smoke a package",
       "kind": "cli",
       "entry": "tools/release.py",
@@ -225,6 +265,14 @@
       "entry": "tools/deploy.sh",
       "reach": "tools/deploy.sh --prod",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:account session",
+      "kind": "lib",
+      "entry": "src/account/account.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
+      "area": "account",
       "tests": []
     },
     {
@@ -438,6 +486,22 @@
       "tests": []
     },
     {
+      "id": "ui:account panel",
+      "kind": "ui",
+      "entry": "src/ui/account_panel.gd",
+      "reach": "godot --path .  (Account, on the toolbar)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:admin page",
+      "kind": "ui",
+      "entry": "web/admin.html",
+      "reach": "https://brickworks.diy/admin.html   (signed in to the app as MASTER_EMAIL)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:box select",
       "kind": "ui",
       "entry": "src/ui/marquee.gd",
@@ -547,6 +611,14 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (shift-click, then C paint / arrows nudge / Delete)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:sign-in screen",
+      "kind": "ui",
+      "entry": "src/ui/sign_in_gate.gd",
+      "reach": "godot --path .  (first open, signed out)  /  godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd",
+      "area": "account",
       "tests": []
     },
     {

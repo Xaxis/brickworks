@@ -460,6 +460,69 @@
       "entry": "src/parts/custom_parts.gd",
       "reach": "godot --headless --path . --script src/dev/element_probe.gd",
       "area": "elements"
+    },
+    {
+      "kind": "ui",
+      "label": "sign-in screen",
+      "entry": "src/ui/sign_in_gate.gd",
+      "reach": "godot --path .  (first open, signed out)  /  godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "account session",
+      "entry": "src/account/account.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "account panel",
+      "entry": "src/ui/account_panel.gd",
+      "reach": "godot --path .  (Account, on the toolbar)",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "POST /api/otp",
+      "entry": "api/otp.js",
+      "reach": "curl -s -X POST https://brickworks.diy/api/otp -H 'content-type: application/json' -d '{\"email\":\"not-an-email\"}'",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/admin",
+      "entry": "api/admin.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "admin page",
+      "entry": "web/admin.html",
+      "reach": "https://brickworks.diy/admin.html   (signed in to the app as MASTER_EMAIL)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "sign a machine in",
+      "entry": "src/dev/sign_in.gd",
+      "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "account browser flow",
+      "entry": "tools/web/account_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "POST /api/mcp",
+      "entry": "api/mcp.js",
+      "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
+      "area": "web"
     }
   ]
 }

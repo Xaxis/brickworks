@@ -83,7 +83,7 @@ if (!target) {
   manifest = await response.json();
 }
 
-const browser = await launch();
+const browser = await launch({ signedOut: true });  // a page of the site, not the app
 const problems = [];
 if (args.shots) await mkdir(args.shots, { recursive: true });
 

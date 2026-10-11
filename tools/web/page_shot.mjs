@@ -10,7 +10,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 
-const browser = await launch();
+const browser = await launch({ signedOut: true });  // a page of the site, not the app
 const page = await browser.newPage({
   viewport: { width: Number(args.width || 1280), height: Number(args.height || 900) },
 });

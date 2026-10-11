@@ -20,6 +20,7 @@ var _new: Button
 ## The last thing on the bar, so a check can tell the bar fits the page.
 var _clear: Button
 var _save: Button
+var _account: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: PickModel
 
@@ -41,6 +42,8 @@ signal timeline_wanted()
 ## Someone wants to make a minifigure.
 signal minifig_wanted()
 signal controls_wanted()
+## Someone wants to see who is signed in, or sign out.
+signal account_wanted()
 signal opened(bricks: int)
 
 
@@ -112,6 +115,9 @@ func _build() -> void:
 	row.add_child(VSeparator.new())
 	_button(row, "Help", func() -> void: controls_wanted.emit(),
 		"What every button and key does, and how to change two of them")
+	# Who is signed in, and the way out. Everyone using Brickworks is.
+	_account = _button(row, "Account", func() -> void: account_wanted.emit(),
+		"Who is signed in, and Sign out")
 
 	# Cut short with an ellipsis rather than as wide as what it says: a
 	# long "opened …" pushed Clear off the end of the bar.
@@ -197,7 +203,17 @@ func bind(to: ModelStore) -> void:
 
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
-	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear}
+	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear,
+		"account": _account}
+
+
+## Who the Account button says is signed in, in its tooltip: the bar has
+## no room for an address, and a button the width of one pushed Clear off
+## a phone.
+func show_account(email: String) -> void:
+	if _account != null:
+		_account.tooltip_text = ("Signed in as %s. Sign out from here." % email
+			if not email.is_empty() else "Who is signed in, and Sign out")
 
 
 func model_name() -> String:

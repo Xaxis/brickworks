@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAssembly), a Python LDraw pipeline, a Vercel-hosted web build with one API endpoint, and an AI design loop. Holds the feature map of where every scene, endpoint and command lives, how to launch and health-check a checkout, and a proven recipe for checking each feature. Use to prove a change in this repo works, to find where a feature lives, or to see what a change could break.
+description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAssembly), a Python LDraw pipeline, a Vercel-hosted web build with a small API (accounts, sign-in by emailed code, the Claude connector relay), and an AI design loop. Holds the feature map of where every scene, endpoint and command lives, how to launch and health-check a checkout, and a proven recipe for checking each feature. Use to prove a change in this repo works, to find where a feature lives, or to see what a change could break.
 ---
 
 # Verify Brickworks
@@ -25,7 +25,7 @@ reading, by eye.
 
 | Check | Command | Proves | Baseline |
 |---|---|---|---|
-| the suite | `tools/check.sh` | the parse check, the Python pipeline, 54 headless probes, 10 windowed ones, and a session driving the app over MCP | passes, ~250s, with 25 occupancy tests skipped |
+| the suite | `tools/check.sh` | the parse check, the Python pipeline, 56 headless probes, 13 windowed ones (the sign-in screen among them), and a session driving the app over MCP | passes, ~250s, with 25 occupancy tests skipped |
 | network suite | `tools/check.sh --network` | also fetching a part over the wire, and opening a model the way the browser does | passes, +~15s |
 | types | `pyright` | the Python pipeline and tools | passes, 3s, warnings only for pytest, numpy and scipy imports |
 | pipeline only | `python3 -m pytest tests/ -q`, or `python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py tests/test_release.py tests/test_minifig.py tests/test_elements.py` | the LDraw facts everything rests on: 8 mm stud pitch, 9.6 mm brick, −Y up; the colour join; the style measures on hand-made models; and where a minifigure's parts go | 102 passed, 25 skipped, 2.7s |
@@ -69,6 +69,12 @@ dimension check fails for the wrong reason.
 
 Start-up reads a 14 MB catalogue, so **every** run costs ~15–20s before it does
 anything. That is not a hang.
+
+A window opened by hand (`godot --path .`, with or without `--mcp`) starts on the
+**sign-in screen**, as it does for everyone: sign this machine in once with
+`godot --headless --path . --script src/dev/sign_in.gd -- you@example.com`
+(needs `.env`; see [account](features/account.md)). Probes, headless runs and
+command lines that render, export or design and quit are never asked.
 
 ## Doctor
 

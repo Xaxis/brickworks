@@ -72,10 +72,13 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # path, so a route importing a shared ./_*.js finds nothing unless the
 # file is sitting beside it.
 #
-# Two routes. /api/account needs only PARTS_URL on the project; without it
-# the answer says the parts are beside the app. /api/mcp, the Claude
-# connector's relay, needs SUPABASE_URL and SUPABASE_SECRET_KEY for its
-# queue; without them it says the connector is not configured.
+# Four routes. /api/account says where the parts are (PARTS_URL) and
+# where to sign in (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); without those
+# the app asks nobody to sign in. /api/otp emails a sign-in code
+# (SUPABASE_SECRET_KEY, RESEND_API_KEY, EMAIL_FROM, EMAIL_FROM_FALLBACK).
+# /api/admin is the owner's account list (MASTER_EMAIL). /api/mcp, the
+# Claude connector's relay, needs SUPABASE_URL and SUPABASE_SECRET_KEY for
+# its queue; without them it says the connector is not configured.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)
@@ -143,11 +146,17 @@ fi
 #
 # The app holds a person's Anthropic key in the browser. The best defence
 # for that is a short list of places the page can talk to at all: itself,
-# Anthropic, Wikimedia (reference pictures) and the parts store — so even
-# a script that should never have run has nowhere to send a key. The
-# page's one inline script is allowed by its hash, not by allowing inline
-# scripts; 'unsafe-eval' stays because Godot's JavaScript bridge evaluates
-# what the app asks of the browser (its size, its address, the clipboard).
+# Anthropic, Wikimedia (reference pictures), the parts store and the
+# sign-in service — so even a script that should never have run has
+# nowhere to send a key. The page's one inline script is allowed by its
+# hash, not by allowing inline scripts; 'unsafe-eval' stays because
+# Godot's JavaScript bridge evaluates what the app asks of the browser
+# (its size, its address, the clipboard).
+#
+# The sign-in service is Supabase (SUPABASE_URL), where a code is
+# redeemed and a session renewed. Named on its own: it was reachable only
+# because the parts store happens to be in the same project, and moving
+# the parts would have broken every sign-in without a word.
 inline_hashes="$(python3 - "$dir/index.html" <<'PY'
 import base64, hashlib, re, sys
 page = open(sys.argv[1], encoding="utf-8").read()
@@ -155,9 +164,16 @@ for body in re.findall(r"<script>(.*?)</script>", page, re.S):
     print("'sha256-%s'" % base64.b64encode(hashlib.sha256(body.encode()).digest()).decode(), end=" ")
 PY
 )"
+origin_of() {
+  python3 -c 'import sys, urllib.parse as u; p = u.urlparse(sys.argv[1]); print(f"{p.scheme}://{p.netloc}")' "$1"
+}
 parts_origin=""
-[ -n "${PARTS_URL:-}" ] && parts_origin="$(python3 -c 'import sys, urllib.parse as u; p = u.urlparse(sys.argv[1]); print(f"{p.scheme}://{p.netloc}")' "$PARTS_URL")"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org ${parts_origin}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+[ -n "${PARTS_URL:-}" ] && parts_origin="$(origin_of "$PARTS_URL")"
+signin_origin=""
+[ -n "${SUPABASE_URL:-}" ] && signin_origin="$(origin_of "$SUPABASE_URL")"
+# Once each, even when they are the same place, as they are today.
+connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 cat > .vercel/output/config.json <<EOF
 {

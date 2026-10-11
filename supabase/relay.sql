@@ -53,6 +53,16 @@ alter table public.relay_tabs add column if not exists instance text;
 alter table public.relay_tabs add column if not exists visible  boolean not null default true;
 alter table public.relay_tabs add column if not exists open     boolean not null default true;
 
+-- 2026-10-11: everyone who uses Brickworks signs in, and a connector
+-- belongs to the account that switched it on. api/mcp.js verifies the
+-- session that comes with op=hello and writes its account here; an address
+-- another account owns is refused, and a tab with no owner is handed no
+-- work. Rows from before have none, and count as switched off until a
+-- signed-in page says hello again. Gone with the account.
+alter table public.relay_tabs add column if not exists owner uuid
+  references auth.users (id) on delete cascade;
+create index if not exists relay_tabs_owner on public.relay_tabs (owner);
+
 alter table public.relay      enable row level security;
 alter table public.relay_tabs enable row level security;
 revoke all on public.relay, public.relay_tabs from anon, authenticated;

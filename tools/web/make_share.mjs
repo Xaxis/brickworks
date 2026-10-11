@@ -55,7 +55,7 @@ const page_html = `<!doctype html>
 </div>
 <div class="shot"><img src="castle.png"><div class="fade"></div></div>`;
 
-const browser = await launch();
+const browser = await launch({ signedOut: true });  // a page of the site, not the app
 const page = await browser.newPage({
   viewport: { width: 1200, height: 630 },
   deviceScaleFactor: 1,

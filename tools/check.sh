@@ -221,6 +221,13 @@ run "placeholders" "${screen[@]}" godot --path . --resolution 1400x900 \
 # shots/element_beside.png are worth a look.
 run "make a part" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/element_shot_probe.gd
+# Nothing in the builder can be used until someone is signed in: with
+# nowhere to sign in (the deployment pointed at a dead port, so offline and
+# free) the sign-in screen is up, a click places nothing and a key changes
+# nothing; let in, the same click and key work. The real form against the
+# real functions is the same probe with `-- live` (see account.md).
+run "sign-in screen" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/gate_probe.gd
 # And whether the pointer says what the mouse will do. The shape is read
 # back from the display server, and a headless one has no cursor at all:
 # it answers "arrow" whatever was asked for, so this passes nothing there.

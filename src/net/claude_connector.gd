@@ -32,6 +32,12 @@
 ## on, so Claude can add and list the connector before any of that; and a
 ## call taken just as a tab went to sleep is handed out again when it wakes
 ## (supabase/relay.sql).
+##
+## A connector belongs to an account (2026-10-11). Switching on sends the
+## person's session with the hello, the relay records whose connector it
+## is, and it refuses a tab that is not signed in, or an address another
+## account switched on. So this switches on only while [member account] is
+## signed in, and goes off — saying why — when the relay refuses it.
 class_name ClaudeConnector
 extends Node
 
@@ -44,6 +50,9 @@ static var where: String = "user://claude_connector.json"
 var base_url: String = "https://brickworks.diy"
 ## Answers the requests. Needs its assistant and app set.
 var rpc: CommandSocket
+## Who is switching it on: the relay will not let a tab that is not signed
+## in switch a connector on.
+var account: Account
 
 ## Listening for Claude, or not; and the address to give it while it is.
 signal listening(on: bool, address: String)
@@ -134,6 +143,10 @@ func resume() -> void:
 ## Start listening, on the address this device keeps, or a new one.
 func start() -> void:
 	if _on:
+		return
+	if account == null or not account.signed_in():
+		listening.emit(false, address())
+		trouble.emit("Sign in to Brickworks to connect Claude.")
 		return
 	if _token.is_empty():
 		_token = _new_token()
@@ -344,10 +357,16 @@ const CONNECTED_NOTE := ("These tools build in Brickworks, open in a tab of "
 
 
 ## What this tab would answer to the handshake and the tool list, for the
-## relay to answer with while the tab cannot.
-func _hello() -> bool:
+## relay to answer with while the tab cannot; sent with the person's
+## session, which makes the connector theirs. The relay's status: 204 when
+## it took it, 401 when it would not take this tab as signed in, 403 when
+## another account owns the address, 0 when nothing answered.
+func _hello() -> int:
 	if rpc == null:
-		return false
+		return 0
+	var session: String = await account.access_token() if account != null else ""
+	if session.is_empty():
+		return 401
 	var greeted: Variant = await rpc.answer_rpc({"jsonrpc": "2.0", "id": 1,
 		"method": "initialize", "params": {}})
 	var listed: Variant = await rpc.answer_rpc({"jsonrpc": "2.0", "id": 2,
@@ -358,8 +377,9 @@ func _hello() -> bool:
 		"tools": ((listed as Dictionary).get("result", {}) as Dictionary).get("tools", []),
 	}
 	var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&op=hello" % [
-		base_url, _token, _instance], JSON.stringify(body))
-	return got[0] == HTTPRequest.RESULT_SUCCESS and int(got[1]) == 204
+		base_url, _token, _instance], JSON.stringify(body),
+		PackedStringArray(["authorization: Bearer " + session]))
+	return int(got[1]) if got[0] == HTTPRequest.RESULT_SUCCESS else 0
 
 
 ## 32 random bytes, URL-safe. Crypto rather than randi(): this is a
@@ -375,12 +395,24 @@ func _listen() -> void:
 	var token: String = _token
 	var mine: int = _generation
 	while true:
-		var greeted: bool = await _hello()
+		var greeted: int = await _hello()
 		if mine != _generation:
 			return
-		if greeted:
+		if greeted == 204:
 			relay_ok.emit()
 			break
+		if greeted == 401 or greeted == 403:
+			# Not something trying again fixes: off, and why.
+			_on = false
+			_generation += 1
+			_save()
+			_watch_the_page()
+			listening.emit(false, address())
+			trouble.emit("Sign in to Brickworks again to connect Claude."
+				if greeted == 401 else
+				"This address was switched on by another Brickworks account. "
+				+ "Make a new address to connect Claude with yours.")
+			return
 		trouble.emit("Could not reach Brickworks' relay; trying again.")
 		await get_tree().create_timer(3.0).timeout
 	while mine == _generation:
@@ -410,6 +442,16 @@ func _listen() -> void:
 			relay_ok.emit()
 		if code == 204:
 			continue
+		if code == 401:
+			# The relay has no signed-in hello for this address any more
+			# (the account went, or the row was swept): say it again,
+			# which signs it in or switches it off saying why.
+			await get_tree().create_timer(2.0).timeout
+			if mine != _generation:
+				return
+			_generation += 1
+			_listen()
+			return
 		if code != 200:
 			trouble.emit("The relay refused this tab (%d)." % code)
 			await get_tree().create_timer(5.0).timeout
@@ -456,9 +498,11 @@ func _answer(token: String, work: Dictionary) -> void:
 
 
 ## A POST, awaited: [result, code, body].
-func _ask(http: HTTPRequest, url: String, body: String) -> Array:
-	if http.request(url, PackedStringArray(["content-type: application/json"]),
-			HTTPClient.METHOD_POST, body) != OK:
+func _ask(http: HTTPRequest, url: String, body: String,
+		more: PackedStringArray = PackedStringArray()) -> Array:
+	var headers := PackedStringArray(["content-type: application/json"])
+	headers.append_array(more)
+	if http.request(url, headers, HTTPClient.METHOD_POST, body) != OK:
 		return [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedByteArray()]
 	var done: Array = await http.request_completed
 	return [done[0], done[1], done[3]]

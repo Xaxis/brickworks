@@ -1,18 +1,29 @@
--- Accounts were removed on 2026-10-09, and the app no longer reads
--- these tables. Nobody signs in: the assistant runs on each person's own
--- Anthropic key, or on their own Claude plan with Claude as the client.
--- The data is left as it is. What follows is the schema as it stood.
---
 -- Brickworks accounts.
 --
--- Two things live here and nothing else: who someone is, and how much of
--- the design assistant they have used this month.
+-- Everyone who uses Brickworks signs in, with an email address and a
+-- code sent to it (api/otp.js), since 2026-10-11. Supabase Auth holds the
+-- accounts (auth.users); what is here is what Brickworks keeps beside
+-- them.
 --
--- There is deliberately no table of models. Saving a build is a free-tier
--- feature and free tier has no account, so builds are files on the
--- player's own disk (desktop) or in their browser (web). Putting them in
--- a server database would mean the thing everybody can do depends on the
--- thing only some people have, which is backwards.
+-- In use:
+--   profiles          one row per account, made by a trigger: the address
+--                     and when it joined. The admin page lists them.
+--   otp_requests and  the rate limit on asking for a code, so the sign-in
+--   may_ask_for_code  form cannot be used to bury an inbox on our bill.
+--   relay_tabs.owner  (supabase/relay.sql) which account a Claude
+--                     connector belongs to.
+--
+-- Dormant: assistant_usage, assistant_designs and claim_design counted
+-- designs run on the project's own Anthropic key through a proxy, which
+-- went on 2026-10-09 and has not come back — the assistant runs on each
+-- person's own key, or on their own Claude plan. Nothing reads them; the
+-- data is left as it is. So is profiles.tier, which meant a budget there.
+-- Accounts were removed on 2026-10-09 along with that proxy and restored
+-- on 2026-10-11 as the way into the app; the tables stayed throughout.
+--
+-- There is deliberately no table of models. A person's builds are files
+-- on their own disk (desktop) or in their browser (web), and an account
+-- does not change that.
 
 -- Who. One row per account, created by a trigger so it cannot drift out
 -- of step with auth.users.

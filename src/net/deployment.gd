@@ -1,15 +1,14 @@
 ## What the deployment says about itself, asked once at start-up.
 ##
-## One thing, now: where the part geometry this build did not ship is
-## served from. The library is larger than a deployment can hold as
-## files, so most of it lives somewhere else, and only the deployment
-## knows where.
+## Two things: where the part geometry this build did not ship is served
+## from — the library is larger than a deployment can hold as files, so
+## most of it lives somewhere else, and only the deployment knows where —
+## and whether it has accounts, with where to sign in if it does. Since
+## 2026-10-11 everyone who uses Brickworks signs in; [Account] reads that
+## half of the answer.
 ##
-## This was the account probe until 2026-10-09, when accounts were
-## removed. Nobody signs in: the assistant runs on a key of the person's
-## own, sent only to Anthropic, or on their own Claude plan. The question
-## still goes to /api/account, because that is where builds already out
-## ask it.
+## The question goes to /api/account, which is where builds already out
+## ask it, accounts or not.
 class_name Deployment
 extends Node
 
@@ -24,6 +23,18 @@ var parts_url: String = ""
 ## still out and false if it failed, which are not the same thing as a
 ## reply that named nothing.
 var answered: bool = false
+## True once the question is over, answered or not. [signal settled] is
+## emitted once; anyone arriving later reads this instead of waiting.
+var finished: bool = false
+## Whether this deployment has accounts, so everyone signs in. A
+## deployment without them (a local server, somebody's own copy) has
+## nothing to sign in to.
+var accounts: bool = false
+## Where sign-in is: the Supabase project and its publishable key, which
+## is meant to be in a client. Served rather than compiled in, so a
+## rotated key reaches a desktop build without anyone reinstalling.
+var accounts_url: String = ""
+var accounts_key: String = ""
 
 ## Emitted once, when the question is over, whether or not anything
 ## answered. Anyone waiting on it needs to hear that it failed, too.
@@ -46,13 +57,19 @@ static func api_base() -> String:
 	return override.rstrip("/") if not override.is_empty() else HOSTED
 
 
+## Wait for the answer if it is still out; at once if it is in.
+func wait() -> void:
+	if not finished:
+		await settled
+
+
 func _ask() -> void:
 	var http := HTTPRequest.new()
 	http.timeout = 20.0
 	add_child(http)
 	if http.request(api_base() + "/api/account") != OK:
 		http.queue_free()
-		settled.emit()
+		_finish()
 		return
 	var result: Array = await http.request_completed
 	http.queue_free()
@@ -60,13 +77,24 @@ func _ask() -> void:
 	# Parsed through an instance rather than JSON.parse_string, which
 	# pushes an engine error when the body is not JSON. It often is not:
 	# a deployment with no functions behind it answers every path with
-	# the page. Offline is not worth a red line either — everything but
-	# the parts this build did not ship still works.
+	# the page. Offline is not worth a red line either.
 	var json := JSON.new()
 	var text: String = (result[3] as PackedByteArray).get_string_from_utf8()
 	if int(result[1]) == 200 and json.parse(text) == OK \
 			and typeof(json.data) == TYPE_DICTIONARY:
+		var body: Dictionary = json.data
 		answered = true
-		var named: Variant = (json.data as Dictionary).get("parts_url")
+		var named: Variant = body.get("parts_url")
 		parts_url = str(named) if named != null else ""
+		accounts = bool(body.get("enabled", false))
+		if accounts:
+			accounts_url = str(body.get("url", "")).rstrip("/")
+			accounts_key = str(body.get("key", ""))
+			# Enabled with nowhere to sign in is no accounts at all.
+			accounts = not accounts_url.is_empty() and not accounts_key.is_empty()
+	_finish()
+
+
+func _finish() -> void:
+	finished = true
 	settled.emit()

@@ -10,7 +10,7 @@ files here hold the recipes. Each declares the ids it covers in a
 `<!-- covers: -->` line, and `featuremap check` fails when an id has no recipe or
 a recipe covers an id that no longer exists.
 
-Fifty-two features in ten areas. The analyser sees Python, the API routes and
+Seventy-five features in fourteen areas. The analyser sees Python, the API routes and
 the main scene; **everything inside the Godot app is declared by hand** in
 `../featuremap.config.json`, because `featuremap` has no GDScript or `.tscn`
 reader. If you add a scene, a panel or a probe-worth-of-behaviour, add it there —
@@ -24,9 +24,13 @@ mesh cache in `assets/generated/`, and a display for anything that draws. Add
 
 Never driven from here:
 
-- **The Supabase account tables.** Accounts were removed on 2026-10-09 and the
-  app no longer reads `profiles` or `assistant_usage`; the data is left as it is.
-  Nothing here reads or writes them.
+- **Real people's accounts.** The account recipes ([account](account.md)) make
+  throwaway accounts at Resend's test addresses (`delivered+bw…@resend.dev`)
+  and delete them, and the browser flows sign in as one test account. Never ask
+  for a code for a real address as a check: it emails them. `account_flow.mjs
+  --master` signs the owner's account in (no email is sent) and is opt-in for
+  that reason. The dormant tables (`assistant_usage`, `assistant_designs`) are
+  read by nothing.
 - **Money.** The assistant costs real tokens per run. The four paid probes and
   `tools/design.py` are the only things here that spend, and a report has to say
   when it did.
@@ -59,7 +63,12 @@ Never driven from here:
   reference pictures.
 - [view](view.md): the camera, the controls hint, build steps, mosaics, and the
   renders the assistant is shown.
-- [web](web.md): the five API endpoints, the Vercel deploy, and the browser proof.
+- [web](web.md): where the parts are, the Claude connector's relay, the Vercel
+  deploy, and the browser proof.
+- [account](account.md): signing in with an emailed code, the sign-in screen
+  over the whole app, staying signed in (offline too, on the desktop), the
+  account panel and Sign out, the owner's admin page, and how a test signs in
+  without an inbox.
 - [pipeline](pipeline.md): the Python tools that turn LDraw into the mesh cache,
   the catalogue, the web pack and the storage bucket.
 - [elements](elements.md): making a part LEGO has not made — the element

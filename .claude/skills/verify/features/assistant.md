@@ -42,9 +42,10 @@ fixing what it got wrong.
   a mistyped key read "invalid x-api-key". A refused key (`KEY_REFUSED`) is
   forgotten and the key form comes back. The footer says "Change key", which
   forgets the key and shows the form.
-- `the key form`: with no key, the panel is this form straight away — there are
-  no accounts, so nothing is asked of a server first and nothing offers to sign
-  in (`ChatPanel._show_for_key`). It says what the assistant does and what a
+- `the key form`: with no key, the panel is this form straight away — the
+  person's Brickworks account (they are signed in to reach the panel at all,
+  see [account](account.md)) pays for nothing, so nothing is asked of a server
+  first (`ChatPanel._show_for_key`). It says what the assistant does and what a
   design costs before asking for anything, at the top of the panel rather than
   under an empty one. Then the two ways in, each under its own heading — "With
   your Anthropic API key", and below a rule "Or with your Claude plan" — kept
@@ -429,7 +430,7 @@ Effort is one of `low medium high xhigh max`. The app needs the person's own key
 pasted into the panel, or their own Claude plan — **My Claude** on the desktop, or
 a Claude session driving the app over MCP ([mcp](mcp.md)). The CLI uses the key in
 the environment or `.env`, and without one a run ends at once with
-`Assistant.NO_KEY`. There are no accounts, and **the user's key never reaches our
+`Assistant.NO_KEY`. A Brickworks account pays for nothing, and **the user's key never reaches our
 server**: every request goes from the app straight to Anthropic.
 
 ## How to check it

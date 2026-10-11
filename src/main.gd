@@ -39,6 +39,17 @@ var _connector: ClaudeConnector
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
 var _deployment: Deployment
+## Who is signed in. Everyone using Brickworks is (src/account/account.gd).
+var _account: Account
+## Over everything until someone is signed in, when a person is in front
+## of the window to sign in (see [method _gate_wanted]).
+var _gate: SignInGate
+var _account_panel: AccountPanel
+## Whether the connector has been put back as it was for this sign-in.
+var _connector_resumed: bool = false
+## A probe about the sign-in screen puts it up for itself (set before the
+## scene enters the tree). The session it signs in with is never kept.
+var gate_for_probe: bool = false
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
@@ -148,6 +159,8 @@ func _tell_page() -> void:
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
+	if _account_panel != null:
+		named.merge(_account_panel.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -160,6 +173,10 @@ func _tell_page() -> void:
 	if _bin_dock != null:
 		named["parts_rail"] = _bin_dock.rail()
 		named["assistant_rail"] = _chat_dock.rail()
+	# The way in. While the sign-in screen is up nothing else can be
+	# pressed, so nothing else is said to be there.
+	if _gated():
+		named = _gate.controls_by_name()
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -181,6 +198,16 @@ func _tell_page() -> void:
 		"held": _builder.held_part,
 		"custom": _library.custom.keys(),
 	}), true)
+	# And who is signed in, and whether the sign-in screen is up, so a
+	# browser test can wait for the way in rather than guess it.
+	if _account != null:
+		JavaScriptBridge.eval("window.brickworksAccount = %s" % JSON.stringify({
+			"state": ["checking", "signed_out", "signed_in", "unreachable",
+				"not_needed"][_account.state],
+			"email": _account.email,
+			"offline": _account.offline,
+			"gated": _gated(),
+		}), true)
 
 
 ## The model's name where a window shows one: the browser tab, or the
@@ -301,8 +328,8 @@ func _ready() -> void:
 	_keep_as_it_builds(_argument("--out"))
 
 	# The same brief, designed by the Claude Code on this machine rather
-	# than by the loop inside the app. No API key and no account: it is
-	# the person's own subscription doing the thinking.
+	# than by the loop inside the app. No API key: it is the person's own
+	# subscription doing the thinking.
 	var local: String = _argument("--ask-claude-code")
 	if not local.is_empty():
 		await _ask_claude_code(local)
@@ -667,6 +694,43 @@ func _open_commands(port: int) -> void:
 		print("command socket: %d session(s) attached" % how_many))
 
 
+## Whether a person is in front of this window to sign in, so the sign-in
+## screen goes over it. Not in a probe, a headless run, or a command line
+## that renders, exports or designs and then quits: those are tools and
+## tests driving a checkout, and nobody could answer the screen. Everyone
+## who opens the app to use it is asked.
+func _gate_wanted() -> bool:
+	if gate_for_probe:
+		return true
+	if DisplayServer.get_name() == "headless":
+		return false
+	if OS.get_cmdline_args().has("--script"):
+		return false
+	return not _given_any(["--ask", "--ask-claude-code", "--bench", "--shot",
+		"--booklet", "--autobuild", "--showcase", "--out", "--stress", "--about"])
+
+
+## Whether the sign-in screen is up, so nothing behind it moves.
+func _gated() -> bool:
+	return _gate != null and _gate.visible
+
+
+## Somebody signed in, or out. The connector belongs to an account: put
+## back as it was once somebody is in, and off when they leave.
+func _on_account_changed() -> void:
+	if _bar != null:
+		_bar.show_account(_account.email if _account.signed_in() else "")
+	if _connector == null:
+		return
+	if _account.signed_in() and not _connector_resumed:
+		_connector_resumed = true
+		_connector.resume()
+	elif not _account.signed_in() and _account.state != Account.State.CHECKING:
+		_connector_resumed = false
+		if _connector.is_on():
+			_connector.stop()
+
+
 ## The panels either side of the viewport: the parts bin on the left, the
 ## design assistant on the right. Both are built in code rather than in
 ## the scene because they are data-driven — 24,731 parts and 322 colours
@@ -736,6 +800,15 @@ func _build_ui() -> void:
 			# was never going to have them.
 			_library.remote_parts = Origin.here() + "/parts/")
 	add_child(_deployment)
+
+	# Who is here. It waits on the deployment to learn where to sign in,
+	# then renews any session this device kept.
+	_account = Account.new()
+	_account.deployment = _deployment
+	# A probe or a command-line run starts signed out and leaves the
+	# person's kept session alone.
+	_account.keeps = _gate_wanted() and not gate_for_probe
+	add_child(_account)
 
 	_assistant = Assistant.new()
 	_assistant.library = _library
@@ -943,11 +1016,15 @@ func _build_ui() -> void:
 	add_child(answering)
 	_connector = ClaudeConnector.new()
 	_connector.rpc = answering
+	_connector.account = _account
 	add_child(_connector)
 	_chat.use_connector(_connector)
 	# On again with the same address if it was on last time, so the
-	# connector added to Claude keeps working from one visit to the next.
-	_connector.resume()
+	# connector added to Claude keeps working from one visit to the next —
+	# once somebody is signed in, because a connector belongs to an
+	# account. Signing out switches it off.
+	_account.changed.connect(_on_account_changed)
+	_on_account_changed()
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
 	_chat.designing.connect(func(_brief: String) -> void:
@@ -1149,6 +1226,25 @@ func _build_ui() -> void:
 			_playback.stop()
 		_on_model_changed()
 		_bar.say("working — %d bricks so far" % count))
+
+	# Who is signed in, and the way out: from Account on the bar.
+	_account_panel = AccountPanel.new()
+	_account_panel.setup(_account)
+	$HUD.add_child(_account_panel)
+	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
+	get_viewport().size_changed.connect(func() -> void:
+		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
+	_bar.account_wanted.connect(_account_panel.open)
+	_account_panel.sign_out_wanted.connect(func() -> void:
+		_connector.stop()
+		_account.sign_out())
+
+	# Over everything else, so it is added last: nothing in the builder can
+	# be used until someone is signed in.
+	if _gate_wanted():
+		_gate = SignInGate.new()
+		_gate.setup(_account)
+		$HUD.add_child(_gate)
 
 	# Last, so the buttons above are all there for it to give a
 	# pointing hand to; any made later are caught as they arrive.
@@ -1907,7 +2003,7 @@ const HOLD_AFTER := 0.22
 ## and the arrows only when a selection or the booklet is not using them.
 func _steer_from_keys(delta: float) -> void:
 	var focused: Control = get_viewport().gui_get_focus_owner()
-	if focused is LineEdit or focused is TextEdit or _camera == null:
+	if focused is LineEdit or focused is TextEdit or _camera == null or _gated():
 		_held_for = 0.0
 		return
 	var zoom: int = 0

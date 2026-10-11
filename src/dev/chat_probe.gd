@@ -13,9 +13,9 @@
 ## here through the real panel and the real loop, with the request taken
 ## out.
 ##
-## And before any of that, the panel itself. There are no accounts, so
-## with no key it is the key form, straight away, and nothing offers to
-## sign in; with one it is the composer, with Change key at its foot.
+## And before any of that, the panel itself. The assistant runs on the
+## person's own key, so with no key it is the key form, straight away;
+## with one it is the composer, with Change key at its foot.
 ## The key is made up and kept for this run only, so the one this
 ## machine may hold is never read, sent or forgotten.
 extends SceneTree
@@ -240,6 +240,17 @@ func _run() -> void:
 	get_root().add_child(connector)
 	connector.base_url = "http://127.0.0.1:9"
 	connector.rpc = answering
+	# Signed in, as everyone who reaches this panel is (a connector belongs
+	# to an account), with a session that needs no renewing, so nothing
+	# leaves this machine. Signing in itself is account_probe's.
+	var account := Account.new()
+	account.keeps = false
+	get_root().add_child(account)
+	account.state = Account.State.SIGNED_IN
+	account.email = "probe@example.com"
+	account._access = "probe.signed.in"
+	account._expires_at = Time.get_unix_time_from_system() + 3600.0
+	connector.account = account
 	var offer := ConnectorForm.new()
 	get_root().add_child(offer)
 	offer.setup(connector)

@@ -378,9 +378,9 @@ func _on_spent(model_id: String, tokens: Brain.Spend) -> void:
 
 
 ## The composer when there is a key to design with, the key form when
-## there is not. There are no accounts, so a key of the person's own is
-## the only way in from here, and the form is shown straight away rather
-## than after anything is asked of a server.
+## there is not. The assistant runs on a key of the person's own (their
+## Brickworks account pays for nothing), so the form is shown straight
+## away rather than after anything is asked of a server.
 ##
 ## Told whether there is a key rather than asking, so a probe can see
 ## both layouts without touching the key this machine holds.

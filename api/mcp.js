@@ -15,7 +15,10 @@
 //   /api/mcp?t=T              an MCP request from Claude (Streamable HTTP,
 //                             JSON responses, stateless)
 //   /api/mcp?t=T&op=hello     the tab switches on: its answers to initialize
-//                             and tools/list, and which page load it is (?i=)
+//                             and tools/list, and which page load it is (?i=).
+//                             Signed in: it carries the person's session
+//                             ("Authorization: Bearer …"), and the account
+//                             it names becomes the connector's owner
 //   /api/mcp?t=T&op=next      the tab asks for work; waits up to ~25 s
 //   /api/mcp?t=T&op=answer    the tab answers request ?id=
 //   /api/mcp?t=T&op=state     the page is alive, and in or out of view
@@ -36,14 +39,26 @@
 // adds a connector and lists its tools from claude.ai's settings, so
 // those are answered here, from what the tab sent when it switched on.
 //
-// The token is the whole credential, so it is long, random, made in the
-// tab, and never stored: the queue (supabase/relay.sql) is keyed by its
+// The token is the credential Claude holds, so it is long, random, made in
+// the tab, and never stored: the queue (supabase/relay.sql) is keyed by its
 // SHA-256. Anyone holding the address can build in that tab, which is what
 // the address is for, and no more.
 //
-// Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project.
+// And a connector belongs to an account (2026-10-11). Everyone who uses
+// Brickworks signs in, and only a signed-in tab can switch a connector on:
+// op=hello carries the session's access token, verified here as
+// api/_auth.js verifies every token, and relay_tabs records whose
+// connector it is (owner). An address one account switched on cannot be
+// switched on by another, and a tab that never said hello while signed in
+// is handed no work. This is the foundation for connectors that follow a
+// person rather than a browser; for now the owner is recorded, checked on
+// switching on, and shown on the owner's admin page.
+//
+// Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project, and
+// SUPABASE_PUBLISHABLE_KEY for accounts.
 
 import { createHash } from "node:crypto";
+import { AuthError, bearer, verify } from "./_auth.js";
 
 const TOKEN = /^[A-Za-z0-9_-]{40,96}$/;
 const INSTANCE = /^[A-Za-z0-9_-]{8,40}$/;
@@ -106,9 +121,9 @@ function toolTrouble(id, text) {
 const NOT_OPEN =
   "The Brickworks tab this connector belongs to is not open, or its " +
   "Claude connector is switched off. Ask the person to open " +
-  "https://brickworks.diy/app and switch on the connector under \"Or with " +
-  "your Claude plan\" — on the same browser they set it up in, so the " +
-  "address is the one this connector uses — then try again.";
+  "https://brickworks.diy/app, sign in, and switch on the connector under " +
+  "\"Or with your Claude plan\" — on the same browser they set it up in, " +
+  "so the address is the one this connector uses — then try again.";
 
 const HIDDEN =
   "The Brickworks tab is open, but this browser has paused it out of view, " +
@@ -118,15 +133,17 @@ const HIDDEN =
 
 async function tabOf(channel) {
   const rows = await db(
-    `relay_tabs?channel=eq.${channel}&select=seen_at,hello,instance,visible,open`);
+    `relay_tabs?channel=eq.${channel}&select=seen_at,hello,instance,visible,open,owner`);
   return rows && rows.length ? rows[0] : null;
 }
 
 // "closed", "hidden" or "ready". Alive is ready, in view or not; a page
 // that has stopped is "hidden" when it was last out of view, which is a
-// browser that paused it, and "closed" when it was in view.
+// browser that paused it, and "closed" when it was in view. A tab no
+// signed-in page has switched on is closed whatever it says: it is handed
+// no work, so a call waiting for it would wait four minutes for nothing.
 function stateOf(tab) {
-  if (!tab || !tab.open) return "closed";
+  if (!tab || !tab.open || !tab.owner) return "closed";
   if (Date.now() - Date.parse(tab.seen_at) <= TAB_GONE_MS) return "ready";
   return tab.visible ? "closed" : "hidden";
 }
@@ -252,14 +269,36 @@ async function fromClaude(channel, message, response) {
 // The tab switching on: what it would answer to initialize and tools/list,
 // and which page load it is. The latest page load to switch on is the one
 // that listens; an older one asking for work is told it has been replaced.
-async function helloFromTab(channel, instance, body, response) {
+//
+// Only while signed in. The session's access token comes with it and is
+// verified before anything is written; the account it names becomes the
+// connector's owner, and an address another account owns is refused.
+async function helloFromTab(channel, instance, request, response) {
+  let claims;
+  try {
+    claims = await verify(bearer(request));
+  } catch (trouble) {
+    const status = trouble instanceof AuthError ? trouble.status : 401;
+    return response.status(status).json({
+      error: "sign in to Brickworks to connect Claude",
+      reason: trouble.message,
+    });
+  }
+  const body = request.body;
   if (!body || typeof body !== "object" || !Array.isArray(body.tools)) {
     return response.status(400).json({ error: "hello needs tools" });
+  }
+  const tab = await tabOf(channel);
+  if (tab && tab.owner && tab.owner !== claims.sub) {
+    return response.status(403).json({
+      error: "this connector address belongs to another Brickworks account",
+    });
   }
   await db("relay_tabs", {
     method: "POST",
     body: {
       channel, seen_at: new Date().toISOString(), instance, visible: true, open: true,
+      owner: claims.sub,
       hello: { instructions: String(body.instructions || ""), tools: body.tools },
     },
     prefer: "resolution=merge-duplicates",
@@ -272,6 +311,14 @@ async function nextForTab(channel, instance, response) {
   const tab = await tabOf(channel);
   if (instance && tab && tab.instance && tab.instance !== instance) {
     return response.status(409).json({ error: "another page took over this connector" });
+  }
+  // Work goes only to a connector a signed-in page switched on. Without
+  // this, the check on hello would be one a page could step round by
+  // never saying hello.
+  if (!tab || !tab.owner) {
+    return response.status(401).json({
+      error: "switch the connector on while signed in to Brickworks",
+    });
   }
   await db("relay_tabs", {
     method: "POST",
@@ -322,7 +369,7 @@ export default async function handler(request, response) {
     if (op === "") return await fromClaude(channel, request.body, response);
     if (op === "hello") {
       if (!instance) return response.status(400).json({ error: "hello needs ?i=" });
-      return await helloFromTab(channel, instance, request.body, response);
+      return await helloFromTab(channel, instance, request, response);
     }
     if (op === "next") return await nextForTab(channel, instance, response);
     if (op === "state") {

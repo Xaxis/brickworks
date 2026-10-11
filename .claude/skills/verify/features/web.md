@@ -1,24 +1,27 @@
 # Web
 
-The same app, in a browser, at brickworks.diy — plus one small endpoint that
-tells it where the parts are. There are no accounts: the assistant runs on the
-person's own key, sent only to Anthropic, or on their own Claude plan with Claude
-as the client.
+The same app, in a browser, at brickworks.diy — plus the small server behind
+it: where the parts are, signing in, the owner's account list, and the Claude
+connector's relay. Everyone signs in (see [account](account.md)); the assistant
+runs on the person's own key, sent only to Anthropic, or on their own Claude
+plan with Claude as the client.
 
-<!-- covers: api:*, cli:web build and deploy, cli:browser check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check -->
 
 ## Sub-features
 
-- `GET /api/account`: the only endpoint. Answers everybody the same:
-  `{enabled: false, assistant: "own_key", parts_url}`, where `parts_url` is the
-  project's `PARTS_URL` (null means beside the app). The client is
-  `src/net/deployment.gd`; `main.gd` hands the answer to
-  `PartLibrary.remote_parts`, and on the web part fetches wait for it. The name
-  is left from the accounts, removed 2026-10-09 with `/api/claude` (the proxy
-  that spent the project's key for one account), `/api/otp`, `/api/admin` and
-  `web/admin.html`; builds already out still ask here. The desktop asks
-  brickworks.diy, or `BRICKWORKS_API` when set. **The person's own key never
-  reaches the server** — there is nothing on it that could take one.
+- `GET /api/account`: what the app asks first. Without a token, the same for
+  everybody and cacheable: `{enabled, url, key, assistant: "own_key",
+  parts_url, signed_in: false}` — `enabled` (accounts configured, so everyone
+  signs in), `url` and `key` (the Supabase project and its publishable key,
+  where codes are redeemed), and `parts_url`, the project's `PARTS_URL` (null
+  means beside the app). With `Authorization: Bearer`, also `signed_in`,
+  `email` and `master`, never cached. The client is `src/net/deployment.gd`;
+  `main.gd` hands `parts_url` to `PartLibrary.remote_parts`, and on the web
+  part fetches wait for it; `Account` reads the rest. The desktop asks
+  brickworks.diy, or `BRICKWORKS_API` when set. `/api/otp` and `/api/admin`
+  are in [account](account.md). **The person's own key never reaches the
+  server** — there is nothing on it that could take one.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
   under `/b/<sha>/`, points `/` at it and then proves it in a browser. With
   `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
@@ -60,13 +63,29 @@ as the client.
   `sendBeacon`; a call taken and not answered is handed out again on the next
   ask; the newest page load to switch on (`&i=`) takes over and an older one
   gets 409. The address is kept on the device (`ClaudeConnector.where`) and the
-  connector resumes on load, so it is added to Claude once. Prove it: `node
-  tools/web/relay_server.mjs 8790` (real handler, real queue, needs `.env`) and
-  `godot --headless --path . --script src/dev/connector_probe.gd -- 8790`:
-  handshake, takeover, out of view and alive (answers), busy past the relay's
-  patience with its page alive (not called closed — the owner's bug), a page
-  frozen out of view (told paused, in under a minute), dropped and re-taken,
-  closed. claude.ai's help centre says custom connectors accept authless
+  connector resumes on load, so it is added to Claude once.
+  **A connector belongs to an account** (2026-10-11): `op=hello` carries the
+  session's access token (`ClaudeConnector._hello`, from `Account.access_token`)
+  and is verified with `api/_auth.js` (Supabase's ES256 JWKS); without it, 401,
+  and the tab switches off saying to sign in. The account becomes
+  `relay_tabs.owner` (a column, `supabase/relay.sql`, applied to the live
+  project 2026-10-11); an address another account owns gets 403, and the tab
+  says to make a new address. `op=next` hands no work to a channel with no
+  owner (401, and the tab says hello again), and a tab with no owner counts as
+  closed to Claude, so rows from before the change read as switched off until
+  a signed-in page switches them on. The tab resumes the connector only once
+  somebody is signed in, and Sign out switches it off. That is the foundation
+  for connectors that follow a person rather than a browser; the admin page
+  already lists connectors per account. Prove it: `node
+  tools/web/relay_server.mjs 8790` (the real handlers, real queue, needs
+  `.env`; it serves every route in `api/`) and `godot --headless --path .
+  --script src/dev/connector_probe.gd -- 8790`: refused signed out (by the app
+  and by the relay: hello without a token or with a made-up one 401, next for
+  a tab that never said hello 401), signed in and switched on with the owner
+  recorded, handshake, takeover, another account's hello 403, out of view and
+  alive (answers), busy past the relay's patience with its page alive (not
+  called closed — the owner's bug), a page frozen out of view (told paused, in
+  under a minute), dropped and re-taken, closed, and off after Sign out. claude.ai's help centre says custom connectors accept authless
   servers (support.claude.com/en/articles/11503834); OAuth can follow if that
   changes. Real Claude Code has been through it: `claude -p` with
   `--mcp-config` naming the address (type http), `--strict-mcp-config` and
@@ -84,11 +103,20 @@ as the client.
   answers with nothing pressed. Against the build before the fix it fails all
   four out-of-view checks.
 - `content security policy`: every page may connect only to itself, Anthropic,
-  Wikimedia and the parts store's origin (from `PARTS_URL`); the page's one
-  inline script is allowed by a hash computed at deploy; `unsafe-eval` stays
-  for Godot's JavaScript bridge. The defence for a key held in a browser is
-  that it has nowhere else to go. `assistant_flow.mjs` fails on any refusal in
-  the console.
+  Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
+  service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
+  reachable only because the parts store is in the same project); the page's
+  one inline script is allowed by a hash computed at deploy, which is why
+  `web/admin.html` loads `admin.js` rather than carrying a script; `unsafe-eval`
+  stays for Godot's JavaScript bridge. The defence for a key held in a browser
+  is that it has nowhere else to go. `assistant_flow.mjs` and
+  `account_flow.mjs` fail on any refusal in the console.
+- `signed in, in every browser flow`: `tools/web/browser.mjs` gives each
+  context a session of the test account, minted on the test side
+  (`tools/web/session.mjs`, needs `.env` sourced), so `check.mjs`, `fit_check`,
+  `assistant_flow`, `connector_flow` and the rest drive the builder rather than
+  the sign-in screen. `deploy.sh` sources `.env`, so its checks are signed in.
+  Pages of the site that are not the app launch with `{ signedOut: true }`.
 - `which build this is`: the deploy writes `version.json` (commit, UTC time)
   beside the build and the Help panel shows "This build: <commit>, updated
   <local time>". The owner, looking at the live site, could not tell when it had
@@ -150,19 +178,22 @@ python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay
 
 Static: `pyright` covers `tools/web/serve.py`. Nothing static covers the endpoints.
 
-Static: `node --check api/account.js`.
+Static: `for f in api/*.js; do node --check $f; done`.
 
 Runtime — safe to run against production:
 
 ```sh
 curl -s https://brickworks.diy/api/account | python3 -m json.tool
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://brickworks.diy/api/account
+curl -s -w ' %{http_code}\n' -X POST 'https://brickworks.diy/api/mcp?t=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&i=checking1&op=hello' \
+  -H 'content-type: application/json' -d '{"tools":[]}'
 ```
 
-Proves it when: the GET is `200` with `enabled: false`, `assistant: "own_key"`
-and a `parts_url` (the Supabase storage bucket), and the POST is `405`. Until a
-deploy carries this change, production still answers in the old shape, with
-`enabled: true` and a sign-in `url`; the `parts_url` in it is the same.
+Proves it when: the GET is `200` with `enabled: true`, a `url` and publishable
+`key`, `assistant: "own_key"` and a `parts_url` (the Supabase storage bucket);
+the POST is `405`; and a hello with no sign-in is `401`. The deployment before
+2026-10-11's accounts answered `enabled: false` with no `url`, and took any
+hello.
 
 And the deploy, which is the only proof that counts for the web build:
 
@@ -214,10 +245,11 @@ loading colour and not a blank canvas. Measured against production 2026-10-02.
 
   What the page says, in order: the two ways to design with Claude (`#how`:
   the plan through Connect Claude, or an API key, each as numbered steps with
-  what it costs), the castle, what the app does, what Brickworks never sees
-  (`#private`: key, login, the relay, models — each claim is in `api/mcp.js`,
-  `own_key.gd` and the CSP in `deploy.sh`; change one, change the page), and the
-  dimensions. The picture at the top is retaken from a deployment with
+  what it costs, after signing in), the castle, what the app does, what
+  Brickworks keeps and never sees (`#private`: the email address and what an
+  account holds, key, login, the relay, models — each claim is in
+  `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `own_key.gd` and the
+  CSP in `deploy.sh`; change one, change the page), and the dimensions. The picture at the top is retaken from a deployment with
   `tools/web/app_shot.mjs --url=<build>/app --out=web/shot-app.png` (the castle,
   a clean browser, 1600x900), not by hand.
 

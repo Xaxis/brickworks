@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<!--
+  The owner's view of who has an account and whose Claude connectors
+  there are.
+
+  A page rather than a panel in the app, because it is a table and a
+  browser is better at tables than a game engine is — and because
+  nothing here belongs in a build that everybody downloads.
+
+  The page is public; what it can show is not. Every figure comes from
+  /api/admin, which verifies the token and checks the address against
+  MASTER_EMAIL before it reads a single row. Anyone else gets a 404 —
+  the same answer as a route that does not exist.
+
+  It signs in with the app's own session in this browser (sign in at
+  /app first): there is one sign-in, in the app, and this page renews
+  that session and puts the renewed one back where the app keeps it.
+  The script is admin.js, not inline: the site's security policy allows
+  no inline script it does not know the hash of.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Brickworks — accounts</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<style>
+  :root {
+    --ink: #eef1f5; --soft: #a9b2bf; --faint: #6f7987;
+    --line: #262d38; --bg: #11151b; --panel: #171c24;
+    --yellow: #f2cd37; --green: #57c97e; --red: #e06a62; --blue: #8fbcff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 38px 22px 80px; }
+  h1 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .sub { color: var(--soft); margin: 0 0 26px; font-size: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 10px; padding: 20px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 7px;
+    border: 1px solid var(--line); background: #222a34; color: var(--ink);
+    padding: 9px 15px;
+  }
+  .row { display: flex; gap: 9px; align-items: center; margin-top: 16px; }
+  .note { font-size: 13px; color: var(--soft); }
+  .note.bad { color: var(--red); }
+  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+           margin: 22px 0; }
+  .stat { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 10px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 25px; letter-spacing: -0.02em; }
+  .stat span { font-size: 12.5px; color: var(--faint); }
+  .scroller { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--soft); font-weight: 600; font-size: 12.5px;
+       text-transform: uppercase; letter-spacing: .05em;
+       padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .faint { color: var(--faint); }
+  .hide { display: none; }
+  .warn { border-color: #5a4a1e; background: #241f10; margin-bottom: 14px; }
+  .warn b { color: var(--yellow); }
+  .foot { margin-top: 30px; color: var(--faint); font-size: 12.5px; }
+  a { color: var(--blue); }
+</style>
+
+<div class="wrap">
+  <h1>Accounts</h1>
+  <p class="sub">Everyone who uses Brickworks signs in with their email
+     address. This is who has, and whose Claude connectors there are.</p>
+
+  <div id="gate" class="card">
+    <p id="gate-note" class="note">Checking your sign-in…</p>
+    <p class="note">This page uses your sign-in to the app in this browser.
+       <a href="/app">Open Brickworks</a> and sign in there, then come
+       back.</p>
+  </div>
+
+  <div id="view" class="hide">
+    <div class="stats">
+      <div class="stat"><b id="n-accounts">—</b><span>accounts</span></div>
+      <div class="stat"><b id="n-week">—</b><span>signed in this week</span></div>
+      <div class="stat"><b id="n-connectors">—</b><span>Claude connectors</span></div>
+    </div>
+    <div id="email-warning" class="card warn hide">
+      <b>Sign-in codes are going out under a borrowed sender.</b>
+      <div id="email-detail" class="note" style="margin-top:6px"></div>
+    </div>
+    <div class="card scroller" style="padding:4px 4px 0">
+      <table>
+        <thead><tr>
+          <th>Email</th><th>Joined</th><th>Last signed in</th>
+          <th class="n">Connectors</th><th>Connector last heard</th>
+        </tr></thead>
+        <tbody id="people"></tbody>
+      </table>
+    </div>
+    <div class="row">
+      <button id="again">Refresh</button>
+      <span class="note" id="note"></span>
+    </div>
+  </div>
+
+  <p class="foot">
+    <a href="/">Brickworks</a> · this page is not indexed and shows nothing
+    to anyone but the owner's account.
+  </p>
+</div>
+
+<script type="module" src="/admin.js"></script>
+</html>

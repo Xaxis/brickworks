@@ -26,7 +26,7 @@ const WANTED = [
   ["assets/icon.png", 128],
 ];
 
-const browser = await launch();
+const browser = await launch({ signedOut: true });  // a page of the site, not the app
 for (const [where, size] of WANTED) {
   const page = await browser.newPage({
     viewport: { width: size, height: size },

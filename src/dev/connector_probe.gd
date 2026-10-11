@@ -10,7 +10,15 @@
 ## background, as it is while the person is in claude.ai; a call dropped by
 ## a sleeping tab and handed out again; and the page gone.
 ##
-## Not in the suite: it needs the relay running and the queue's key.
+## And that only a signed-in tab can switch a connector on (2026-10-11):
+## refused signed out, by the app and by the relay; on, once signed in,
+## with the account recorded as the connector's owner; no work for a tab
+## that never said hello signed in; and an address one account owns
+## refused to another. The accounts are throwaway ones at Resend's test
+## addresses, signed in with codes minted on this side (SignInHelper), and
+## deleted at the end.
+##
+## Not in the suite: it needs the relay running and the project's keys.
 extends SceneTree
 
 var _failures: int = 0
@@ -57,12 +65,40 @@ func _run() -> void:
 	var calls: Array = []
 	connector.called.connect(func(tool: String, _args: Dictionary) -> void:
 		calls.append(tool))
+
+	print("\nsigned out")
+	# Where to sign in comes from the same functions, as on the web.
+	OS.set_environment("BRICKWORKS_API", _base)
+	var account: Account = await _account()
+	connector.account = account
+	var said: Array = []
+	connector.trouble.connect(func(why: String) -> void: said.append(why))
+	connector.start()
+	_check(not connector.is_on() and said.has("Sign in to Brickworks to connect Claude."),
+		"a tab nobody is signed in to will not switch on, and says why")
+	var stray: String = "%s/api/mcp?t=%s&i=%s" % [_base, ClaudeConnector._new_token(),
+		"probe0000"]
+	_check(await _status(stray + "&op=hello", _hello_body(), "") == 401,
+		"the relay refuses a hello with no sign-in: 401")
+	_check(await _status(stray + "&op=hello", _hello_body(), "not.a.token") == 401,
+		"...and one with a made-up sign-in: 401")
+	_check(await _status(stray + "&op=next", "", "") == 401,
+		"...and hands no work to a tab that never said hello signed in: 401")
+
+	print("\nsigned in")
+	var email: String = SignInHelper.throwaway("conn")
+	var signed: String = await SignInHelper.sign_in(account, email, get_root())
+	_check(signed.is_empty() and account.signed_in(), "signed in as %s %s" % [email, signed])
 	connector.start()
 	var address: String = connector.address()
 	_check(address.begins_with(_base + "/api/mcp?t=") and address.length() > 70,
 		"the tab has a private address: %s…" % address.substr(0, 50))
 	# Long enough for its hello and its first ask for work to reach the relay.
 	await create_timer(3.0).timeout
+	_check(connector.is_on(), "signed in, it switches on")
+	var owner: String = await _owner_of(address.get_slice("?t=", 1))
+	_check(owner == account.user_id and not owner.is_empty(),
+		"the relay records the account as the connector's owner")
 
 	print("\nClaude, through the relay")
 	var hello: Dictionary = await _claude(address, "initialize",
@@ -96,6 +132,7 @@ func _run() -> void:
 	get_root().add_child(other)
 	other.base_url = _base
 	other.rpc = socket
+	other.account = account
 	_check(other.address() == address, "a second page load finds the same address")
 	other.start()
 	await create_timer(30.0).timeout
@@ -104,6 +141,17 @@ func _run() -> void:
 	var again: Dictionary = await _claude(address, "tools/call",
 		{"name": "search_parts", "arguments": {"query": "brick 1 x 2"}})
 	_check(_text_of(again).contains("3004"), "...and the newer one answers")
+
+	print("\nsomebody else's account, with the same address")
+	var stranger: Account = await _account()
+	var their_email: String = SignInHelper.throwaway("conn")
+	await SignInHelper.sign_in(stranger, their_email, get_root())
+	var theirs: String = await stranger.access_token()
+	var theirs_hello: String = "%s&i=%s&op=hello" % [address, "probe1111"]
+	_check(not theirs.is_empty() and await _status(theirs_hello, _hello_body(), theirs) == 403,
+		"an address one account switched on is refused to another: 403")
+	_check(await _owner_of(address.get_slice("?t=", 1)) == account.user_id,
+		"...and stays its owner's")
 
 	print("\nout of view, with its page alive")
 	# The page keeps the app running out of view now, and says it is alive,
@@ -125,8 +173,7 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	var token: String = address.get_slice("?t=", 1)
 	var tab_url: String = "%s/api/mcp?t=%s&i=%s" % [_base, token, instance]
-	await _post(tab_url + "&op=hello", JSON.stringify({"instructions": "x".repeat(1200),
-		"tools": [{"name": "search_parts", "description": "", "inputSchema": {}}]}))
+	await _post(tab_url + "&op=hello", _hello_body(), await account.access_token())
 	for beat: int in 6:
 		await _post(tab_url + "&op=state&visible=1", "")
 		await create_timer(10.0).timeout
@@ -190,6 +237,21 @@ func _run() -> void:
 	_check(other.address().is_empty(), "Make a new address forgets the old one")
 	ClaudeConnector.where = "user://claude_connector.json"
 
+	print("\nsigning out")
+	other.start()
+	await create_timer(3.0).timeout
+	# As the app does on Sign out (Main): the connector off, then the account.
+	other.stop()
+	await account.sign_out()
+	_check(not other.is_on() and not account.signed_in(), "signed out, it is off")
+	var after_out: Array = []
+	other.trouble.connect(func(why: String) -> void: after_out.append(why))
+	other.start()
+	_check(not other.is_on() and after_out.has("Sign in to Brickworks to connect Claude."),
+		"...and will not switch on again until somebody signs in")
+	var gone: int = await SignInHelper.delete_accounts("delivered+bwconn", get_root())
+	print("  (removed %d throwaway account(s))" % gone)
+
 	print("")
 	if _failures == 0:
 		print("Claude can build in a tab through the connector")
@@ -199,19 +261,66 @@ func _run() -> void:
 
 
 ## A POST as a tab would send it, awaited: the parsed body, or {}.
-func _post(url: String, body: String) -> Dictionary:
-	var http := HTTPRequest.new()
-	http.timeout = 60.0
-	get_root().add_child(http)
-	http.request(url, PackedStringArray(["content-type: application/json"]),
-		HTTPClient.METHOD_POST, body)
-	var done: Array = await http.request_completed
-	http.queue_free()
+func _post(url: String, body: String, token: String = "") -> Dictionary:
+	var done: Array = await _send(url, body, token)
 	var text: String = (done[3] as PackedByteArray).get_string_from_utf8()
 	if text.is_empty():
 		return {}
-	var parsed: Variant = JSON.parse_string(text)
-	return parsed if parsed is Dictionary else {}
+	var json := JSON.new()
+	return json.data if json.parse(text) == OK and json.data is Dictionary else {}
+
+
+## The same, for its status alone.
+func _status(url: String, body: String, token: String) -> int:
+	return int((await _send(url, body, token))[1])
+
+
+func _send(url: String, body: String, token: String) -> Array:
+	var http := HTTPRequest.new()
+	http.timeout = 60.0
+	get_root().add_child(http)
+	var headers := PackedStringArray(["content-type: application/json"])
+	if not token.is_empty():
+		headers.append("authorization: Bearer " + token)
+	http.request(url, headers, HTTPClient.METHOD_POST, body)
+	var done: Array = await http.request_completed
+	http.queue_free()
+	return done
+
+
+## What a tab says when it switches on.
+func _hello_body() -> String:
+	return JSON.stringify({"instructions": "x".repeat(1200),
+		"tools": [{"name": "search_parts", "description": "", "inputSchema": {}}]})
+
+
+## An account that keeps nothing on this machine, asked of the functions
+## under test, once it has worked out who is here (nobody, at first).
+func _account() -> Account:
+	var deployment := Deployment.new()
+	get_root().add_child(deployment)
+	var account := Account.new()
+	account.deployment = deployment
+	account.keeps = false
+	get_root().add_child(account)
+	while account.state == Account.State.CHECKING:
+		await account.changed
+	return account
+
+
+## Whose connector the relay says this token's is, read as the server.
+func _owner_of(token: String) -> String:
+	var hashing := HashingContext.new()
+	hashing.start(HashingContext.HASH_SHA256)
+	hashing.update(token.to_utf8_buffer())
+	var channel: String = hashing.finish().hex_encode()
+	var got: Dictionary = await SignInHelper.admin(get_root(), HTTPClient.METHOD_GET,
+		"/rest/v1/relay_tabs?channel=eq.%s&select=owner" % channel, "")
+	var rows: Variant = got.get("body")
+	if rows is Array and not (rows as Array).is_empty():
+		var owner: Variant = ((rows as Array)[0] as Dictionary).get("owner")
+		return str(owner) if owner != null else ""
+	return ""
 
 
 ## Asks for work as a tab does until it is handed a tool call, passing
