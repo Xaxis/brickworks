@@ -369,7 +369,7 @@ async function viewPrint(x, y, w, h) {
   }, { x, y, w, h });
 }
 const differ = (a, b) => a.reduce((t, v, i) => t + Math.abs(v - b[i]), 0) / a.length;
-async function scrolled(what, point, regions, shouldMove) {
+async function scrolled(what, point, regions, shouldMove, around = null) {
   await page.mouse.move(point.x, point.y);
   // As long before as after: the ghost brick goes when the pointer leaves
   // the model (Cursors._process), and at a device ratio of two in software
@@ -378,11 +378,13 @@ async function scrolled(what, point, regions, shouldMove) {
   await page.waitForTimeout(8000 * slow);
   const before = [];
   for (const r of regions) before.push(await viewPrint(...r));
+  if (around) await around.open();
   for (let n = 0; n < 4; n += 1) { await page.mouse.wheel(0, 240); await page.waitForTimeout(400); }
   for (let n = 0; n < 8; n += 1) { await page.mouse.wheel(0, -240); await page.waitForTimeout(400); }
   await page.keyboard.down("Shift");
   for (let n = 0; n < 3; n += 1) { await page.mouse.wheel(0, 240); await page.waitForTimeout(400); }
   await page.keyboard.up("Shift");
+  if (around) await around.close();
   // Long enough for the slowest frame to have drawn what the last notch did.
   await page.waitForTimeout(8000 * slow);
   let moved = 0;
@@ -405,16 +407,13 @@ async function scrolled(what, point, regions, shouldMove) {
 await page.keyboard.press("Digit0");
 await page.keyboard.press("KeyF");
 await settle();
-// The model's part of the window, and two strips of it either side of a
-// dialog in its middle, from where the app says the view is.
+// The model's part of the window, from where the app says the view is.
 const page_size = await page.evaluate(() => {
   const c = document.getElementById("canvas");
   return { w: c.clientWidth, h: c.clientHeight };
 });
 const half = { w: Math.min(at.x - 20, page_size.w - at.x - 20, 360), h: Math.min(at.y - 60, 300) };
 const wholeView = [[at.x - half.w, at.y - half.h, half.w * 2, half.h * 2]];
-const besideDialog = [[at.x - half.w, at.y - half.h, 40, half.h * 2],
-  [at.x + half.w - 40, at.y - half.h, 40, half.h * 2]];
 // The assistant shows the brief once there is a key, and the key form
 // before; whichever is up.
 for (const [what, keys] of [["over the parts bin", ["parts list"]],
@@ -427,11 +426,16 @@ for (const [what, keys] of [["over the parts bin", ["parts list"]],
   if (point) await scrolled(what, point, wholeView, false);
   else console.log(`        (no ${keys.join(" or ")} on screen at ${scale}x, so not checked there)`);
 }
+// A dialog over the model is measured by the model before it opened and
+// after it closed, with the pointer in the same place. It was measured in
+// strips beside the dialog, and at a device ratio of two the dialog is
+// wider than the view: the strips were inside it, and saw its own list
+// scroll under the wheel.
 await settle();
-await page.keyboard.press("Comma");
-await page.waitForTimeout(1500);
-await scrolled("over the controls panel", at, besideDialog, false);
-await page.keyboard.press("Escape");
+await scrolled("over the controls panel", at, wholeView, false, {
+  open: async () => { await page.keyboard.press("Comma"); await page.waitForTimeout(3000 * slow); },
+  close: async () => { await page.keyboard.press("Escape"); },
+});
 await settle();
 await scrolled("over the model, which it should move", at, wholeView, true);
 
