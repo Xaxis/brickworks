@@ -183,7 +183,11 @@ fixing what it got wrong.
   hangs the other way there. Found by three Orthancs at 0% sideways against
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
-  a band measures 43% sideways in `tools/style.py`.
+  a band measures 43% sideways in `tools/style.py`. `dress` makes it a band of
+  one kind of detail (`Assistant.DRESSES`: tiles, rivets, round, lights; a mix
+  by default) — rivets down a hull plate, portholes, a row of lights in a
+  transparent `face_color`; `patterns_probe` checks each band's every stud
+  carries its kind and holds.
 - `a many-sided shaft`: dressed by default (masonry 0.25, sideways 0.15; 0 for a
   plain face): the thirteenth Orthanc stood a prism of plain faces, 61% plain,
   that the finishing pass cannot reach. The `prism` pattern (`Assistant._prism`, in the

@@ -360,6 +360,23 @@ func _holds_up() -> void:
 			_check("...with a part on its side on every one of its %d side studs, %d"
 				% [studs, sideways], sideways == studs)
 
+	# A band of one kind of detail: rivets down a hull plate, portholes,
+	# lights, a smooth panel. Each stud carries the kind asked, and it holds.
+	for dress: Array in [["rivets", "4073"], ["lights", "98138"], ["tiles", "3070b"]]:
+		var band: Assistant.Model = assistant._read_model({"patterns": [
+			{"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0}, "length": 6,
+				"courses": 2, "facing": "+z", "color": 0, "dress": dress[0],
+				"face_color": 46 if dress[0] == "lights" else 0}]})
+		var carried: Dictionary = {}
+		for placement: Assistant.Placement in band.placements:
+			if placement.face == "+z":
+				carried[placement.part] = int(carried.get(placement.part, 0)) + 1
+		var held: Dictionary = assistant._check(band)
+		_check("a band of %s: every side stud carries %s, %s"
+			% [dress[0], dress[1], str(carried)],
+			carried.keys() == [dress[1]] and int(carried[dress[1]]) == 12
+				and bool(held["ok"]))
+
 	# Dressing gives way: a face of tiles on side studs, and a wall of
 	# 1 x 1s standing where the tiles go — the prism core against its
 	# piers that a run stripped of all its dressing to get past. Both

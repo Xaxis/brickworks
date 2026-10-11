@@ -5315,6 +5315,15 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 	if _side_stud(facing).is_empty():
 		trouble.append("the 1x1 brick with a side stud has not arrived yet")
 		return []
+	# What each stud carries: a mix by default, or one kind for a band of
+	# detail — rivets down a hull plate, round tiles for portholes or lights
+	# (in a transparent face_color), flat tiles for a smooth panel.
+	var dress: String = str(pattern.get("dress", "mixed")).to_lower()
+	var only: Array = DRESSES.get(dress, [])
+	if dress != "mixed" and not DRESSES.has(dress):
+		trouble.append("studs_out dresses its studs mixed, tiles, rivets, round "
+			+ "or lights")
+		return []
 	var along_x: bool = facing in ["+z", "-z"]
 	var made: Array = []
 	for course: int in courses:
@@ -5327,7 +5336,7 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 			var tone: int = face_colour
 			if mix_colour >= 0 and Patterns._scatter(x, y, z, 29) < 0.3:
 				tone = mix_colour
-			var dressing: Dictionary = _dress(one, facing, tone)
+			var dressing: Dictionary = _dress(one, facing, tone, only)
 			made.append(one)
 			if not dressing.is_empty():
 				made.append(dressing)
@@ -5347,6 +5356,11 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 					n2 += int(pair[0])
 					break
 	return made
+
+
+## The parts a studs_out band's studs carry, by the kind of band asked.
+const DRESSES: Dictionary = {"tiles": ["3070b"], "rivets": ["4073"],
+	"round": ["98138"], "lights": ["98138"]}
 
 
 func _tie(x0: float, y: float, z0: float, from: int, _long: int,
@@ -5385,7 +5399,8 @@ func _side_stud(facing: String) -> Array:
 ## Turn a 1x1 brick with a side stud (87087) to face the way asked, and
 ## return the part laid on its stud: a tile, round tile, round plate or
 ## cheese slope, chosen by where it is. {} when it cannot be worked out.
-func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
+func _dress(brick: Dictionary, facing: String, tone: int = -1,
+		only: Array = []) -> Dictionary:
 	if not facing in ["+x", "-x", "+z", "-z"]:
 		return {}
 	var side: Array = _side_stud(facing)
@@ -5402,6 +5417,8 @@ func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
 	if facing in ["-x", "-z"]:
 		# Thicker than a plate hangs the other way on these sides.
 		faces = ["3070b", "98138", "4073", "3024"]
+	if not only.is_empty():
+		faces = only
 	var x: float = float(brick["x"])
 	var y: float = float(brick["y"])
 	var z: float = float(brick["z"])
@@ -9037,6 +9054,12 @@ one line); grille tiles, round plates, levers and pipes for machinery.
 and wedges for a body; hinged sections for wings and limbs.
   Rough or worn — stone, a hull's planking, weathering: two or three \
 close colours mixed (mix_color), masonry, texture parts.
+  A band of detail — rivets down a hull plate, a row of portholes or \
+lights, a smooth panel, vents: studs_out with "dress": "rivets", \
+"round", "lights" (in a transparent face_color) or "tiles"; grille \
+tiles in a row (show_technique "grille band"). Stripes and colour \
+blocks are a band of another colour in the round pattern, an \
+edge_color or mix_color on a fill, or a course in a second colour.
   Several of anything — boosters on a core, funnels, columns, wheels: \
 one built well and the pattern saying the rest (beside, repeat, \
 mirror, repeat_section).
@@ -9697,6 +9720,12 @@ func _tools() -> Array:
 				"description": "studs_out: which way the face looks"},
 			"face_color": {"type": "integer", "description":
 				"studs_out: the colour of what is laid on the side studs"},
+			"dress": {"type": "string", "enum": ["mixed", "tiles", "rivets", "round",
+				"lights"], "description":
+				"studs_out: what every side stud carries — a mix (the default), "
+				+ "flat tiles for a smooth panel, round plates as rivets, round "
+				+ "tiles as portholes, or lights (round tiles in a transparent "
+				+ "face_color): a band of detail along a hull, a boiler, a wall"},
 			"seed": {"type": "integer", "description":
 				"rock: which rock — each number leans and wanders its own way"},
 			"wall": {"type": "number", "description":
