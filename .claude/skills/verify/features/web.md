@@ -72,7 +72,11 @@ plan with Claude as the client.
   `sendBeacon`; a call taken and not answered is handed out again on the next
   ask; the newest page load to switch on (`&i=`) takes over and an older one
   gets 409. The address is kept on the device (`ClaudeConnector.where`) and the
-  connector resumes on load, so it is added to Claude once.
+  connector resumes on load, so it is added to Claude once. The relay is the
+  page's own site on the web, and on the desktop `Deployment.api_base()` — the
+  live site or `BRICKWORKS_API`, the deployment the account signs in to (it was
+  always the live site, so a desktop signed in to another deployment said
+  hello to the live one with a session it could not know).
   **A connector belongs to an account** (2026-10-11): `op=hello` carries the
   session's access token (`ClaudeConnector._hello`, from `Account.access_token`)
   and is verified with `api/_auth.js` (Supabase's ES256 JWKS); without it, 401,

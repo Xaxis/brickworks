@@ -59,8 +59,9 @@ const NAME := "Brickworks"
 ## elsewhere so it never touches the one this machine uses.
 static var where: String = "user://claude_connector.json"
 
-## Where the relay is. The site the page came from on the web; the live
-## site from the desktop.
+## Where the relay is. The site the page came from on the web; on the
+## desktop the deployment the account signs in to — the live site, or
+## BRICKWORKS_API — so the session said with a hello is one it knows.
 var base_url: String = "https://brickworks.diy"
 ## Answers the requests. Needs its assistant and app set.
 var rpc: CommandSocket
@@ -132,6 +133,8 @@ func _ready() -> void:
 		var here: Variant = JavaScriptBridge.eval("location.origin", true)
 		if typeof(here) == TYPE_STRING and str(here).begins_with("http"):
 			base_url = str(here)
+	else:
+		base_url = Deployment.api_base()
 	_http = HTTPRequest.new()
 	# The relay holds a request for work for 25 s; wait a little longer.
 	_http.timeout = 40.0
