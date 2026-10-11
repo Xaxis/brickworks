@@ -4507,7 +4507,7 @@ const OPEN_REACH := 67.5
 ## both as it can.
 func _corner_posts(made: Array, model: Model, name_of: Callable, origin: Vector2,
 		sides: int, radius: float, spec: Dictionary, laid: Dictionary, against: Array,
-		courses: int, turn: float = 0.0) -> Array:
+		courses: int, turn: float = 0.0, between_first: bool = false) -> Array:
 	var posts: Array = []
 	var step: float = 360.0 / sides
 	for face: int in sides:
@@ -4529,7 +4529,12 @@ func _corner_posts(made: Array, model: Model, name_of: Callable, origin: Vector2
 		var at: Array = []
 		var host: int = -1
 		var frame: float = NAN
-		for size: int in [1, 2]:
+		# A pier's face is narrow, so a post square to it stands right behind
+		# its inside row, and a turned part's cover reaches a cell past its
+		# box: the check read such a post as resting on that row, off its
+		# studs. Turned half way between, in a section of its own, it is
+		# judged on nobody's grid.
+		for size: int in ([] if between_first else [1, 2]):
 			for pair: Array in hosts:
 				var mine: float = turn + step * int(pair[0])
 				var theirs: float = turn + step * int(pair[1])
@@ -4911,14 +4916,25 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		for other: int in count:
 			if other != k:
 				dressed.append(grown[other])
+		var pier_laid: Dictionary = {}
 		for face: int in p_sides:
 			var degrees: float = angles[k] + 360.0 * face / p_sides
 			if behind[k] and (_towards(degrees).dot(back) > 0.05
 					or _towards(degrees).dot(inward[k]) > 0.5):
 				continue
-			_cluster_face(made, model, name_of.call(k, face), centre, degrees,
-				p_radius, p_sides, spec, against, dressed, 0.0, courses,
+			var runs: Array = _cluster_face(made, model, name_of.call(k, face), centre,
+				degrees, p_radius, p_sides, spec, against, dressed, 0.0, courses,
 				_towards(degrees).dot(_towards(angles[k])) > 0.3)
+			if not runs.is_empty():
+				pier_laid[face] = runs
+		# A pier at the back is a frame of its outward faces, open behind, so
+		# a groove between two of them looks straight through it: the
+		# guidance's own open cluster showed the sky up its right cleft from
+		# the front-right corner, the view a picture of it is taken from.
+		if behind[k]:
+			var pier: int = k
+			_corner_posts(made, model, func(face: int) -> String: return name_of.call(pier, face),
+				centre, p_sides, p_radius, spec, pier_laid, dressed, courses, angles[k], true)
 
 	# The summit, across everything that stands inside the outline.
 	var top: float = 3.0 * courses

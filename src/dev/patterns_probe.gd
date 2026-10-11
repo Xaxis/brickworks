@@ -515,7 +515,7 @@ func _clustered() -> void:
 		headings[heading] = true
 		if not is_zero_approx(fposmod(heading, 90.0)):
 			turned[heading] = true
-		if section.name.contains(" pier "):
+		if section.name.contains(" pier ") and section.name.contains(" face "):
 			piers[section.name.get_slice(" face ", 0)] = true
 		elif is_equal_approx(heading, 180.0):
 			looking_back += 1
@@ -803,10 +803,14 @@ func _no_daylight() -> void:
 		["...and one of radius 9, as the rooms probe's", {"pattern": "prism", "color": 0,
 			"at": {"x": 20, "y": 0, "z": 20}, "sides": 8, "radius": 9, "courses": 12,
 			"mix_color": 72, "open": 3}, 36.0, everywhere],
-		["the guidance's cluster open at the back, from the front and behind",
+		# And from its front-right and back-left corners, the view a picture of
+		# it is taken from: a groove between two outward faces of a pier at
+		# the back looked into that open frame and out behind it, 9 sightlines
+		# of 12 LDU up the right cleft, until those piers' corners were posted.
+		["the guidance's cluster open at the back, from the front, the sides, behind and the 45 and 225 corners",
 			{"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
 			"radius": 9, "courses": 14, "color": 0, "open": 3,
-			"piers": {"count": 4, "courses": 17}}, 42.0, [0.0, 180.0]],
+			"piers": {"count": 4, "courses": 17}}, 42.0, [0.0, 45.0, 90.0, 180.0, 225.0, 270.0]],
 		["the guidance's cluster, closed", {"pattern": "prism",
 			"at": {"x": 24, "y": 0, "z": 24}, "sides": 8, "radius": 9, "courses": 14,
 			"color": 0, "piers": {"count": 4, "courses": 17}}, 42.0, everywhere],

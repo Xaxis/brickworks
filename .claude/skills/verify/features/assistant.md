@@ -193,7 +193,13 @@ fixing what it got wrong.
   fitted any of its corners). On an open or odd-sided prism, on a cluster's
   core, and on any corner whose outside row cannot run on into its groove — a
   decagon's or a twelve-sided prism's, which were open straight through along
-  their corners even closed (54 and 172 sightlines). Found by run 16: a
+  their corners even closed (54 and 172 sightlines). And on the corners of a
+  pier at the back of an open cluster, which is a frame of its outward faces
+  open behind, so a groove between two of them looked straight through it:
+  the guidance's own cluster showed the sky up its right cleft from the
+  front-right corner. Those go half way between first (`between_first`): a
+  pier's face is narrow, a post square to it stood right behind its inside
+  row, and the check read it as resting on that row, off its studs. Found by run 16: a
   face's floored width leaves its inner corner 2.4 LDU short of its neighbour's,
   narrower than a lattice cell so the check never saw it, and the open back put
   the sky behind it — a white slit up the core's front, seen through at six
@@ -201,8 +207,10 @@ fixing what it got wrong.
   horizontal sightlines at nine heights from eight headings; also runs on a
   saved model). `patterns_probe` ("an open tower is not see-through"): octagons
   of radius 7 and 9 open at the back, no sightline from anywhere (18 and 9 per
-  heading without posts); the guidance's open cluster, none from front or back
-  (9 each without), its core three faces open; closed, none; ten- and
+  heading without posts); the guidance's open cluster, none from the front,
+  back, sides or the 45 and 225 corners (9 each from front and back without
+  the core's posts, 9 of 12 LDU from each corner without the back piers'), its
+  core three faces open; closed, none; ten- and
   twelve-sided prisms of radius 9, closed and open, none (54, 172 and 176
   before); run 17's own cluster (a ten-sided core, eight-sided piers turned 45),
   none from the front, back, sides or the 45/225 diagonals, three of its ten
@@ -211,10 +219,11 @@ fixing what it got wrong.
   than judged: a cluster has a corridor a clearance wide along the core's
   outside under each pier (a pier's faces keep `CLUSTER_CLEAR` from the core),
   seen through only straight along that core face — 9-18 sightlines from the
-  diagonals, open or closed; a pier's corners are not posted, and two of its
-  grooves can line up (run 17's cluster: a 5.4 and a 1.4 LDU slit from 135 and
-  315); an open hexagon's channel is wider than a post can cover, and so is
-  any one stud thick.
+  diagonals, open or closed (on the guidance's open cluster, a 12.5 LDU slit
+  from 135 and 315 between a back pier and the core's open edge); a front
+  pier's corners are not posted, and two of its grooves can line up (run 17's
+  cluster: a 1.4 LDU slit from 135 and 315); an open hexagon's channel is wider
+  than a post can cover, and so is any one stud thick.
 - `faceted piers clustered round a core`: `"piers"` on `prism`
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
   `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
