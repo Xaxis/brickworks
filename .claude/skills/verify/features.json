@@ -614,6 +614,14 @@
       "tests": []
     },
     {
+      "id": "ui:open a studio model",
+      "kind": "ui",
+      "entry": "src/parts/studio_io.gd",
+      "reach": "godot --path .  (Open, then From a file on this computer, and choose an .io)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:palette",
       "kind": "ui",
       "entry": "src/ui/parts_bin.gd",

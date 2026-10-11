@@ -22,7 +22,7 @@ var _clear: Button
 var _save: Button
 var _account: Button
 var _entries: Array[ModelStore.Entry] = []
-var _picker: PickModel
+var _picker: ModelFilePicker
 
 ## An id no index can be, for the menu row that is not a saved model.
 const IMPORT := -2
@@ -317,7 +317,7 @@ func _on_open() -> void:
 	# Exporting an .ldr and then having nowhere to put it back was the
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
-	_saves.add_item("From a file on this computer…", IMPORT)
+	_saves.add_item("From a file on this computer (LDraw, or Studio .io)…", IMPORT)
 	_saves.add_separator()
 	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
@@ -356,7 +356,7 @@ func _on_pick(id: int) -> void:
 ## after a confirmation.
 func _import() -> void:
 	if _picker == null:
-		_picker = PickModel.new()
+		_picker = ModelFilePicker.new()
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
 			var result: Dictionary = store.open_text(

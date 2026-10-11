@@ -84,6 +84,7 @@ func _run() -> void:
 	await _under_a_part()
 	await _onto_side_studs()
 	await _mirrored()
+	await _studio_file()
 	await _a_small_laptop()
 
 	print("")
@@ -655,6 +656,31 @@ func _mirrored() -> void:
 	await _key(KEY_Z, true)
 	_check("one undo brings back the original", _snapshot() == before)
 	_camera.set_view("default")
+
+
+func _studio_file() -> void:
+	print("  opening a BrickLink Studio .io file")
+	var bar: ModelBar = _main.get("_bar")
+	# A zip with Studio's password around an LDraw model, made by the
+	# system's own zip (tests/fixtures/studio_bay.io), not by this app.
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes("res://tests/fixtures/studio_bay.io")
+	_check("the Studio file is there to open (%d bytes)" % bytes.size(), bytes.size() > 100)
+	var read: Dictionary = StudioIo.read(bytes)
+	_check("its password-protected zip opens to LDraw (%s)" % str(read["error"]),
+		str(read["error"]).is_empty() and str(read["text"]).contains("3001.dat"))
+	bar._import()
+	await _frames(3)
+	var picker: ModelFilePicker = bar._picker
+	if picker._dialog != null:
+		picker._dialog.hide()
+	picker.take(bytes, "studio_bay.io")
+	await _frames(10)
+	var parts: Array = _model().map(func(b: BrickWorld.Brick) -> String: return b.part_id)
+	parts.sort()
+	_check("Open → From a file takes a Studio .io and opens its model (%s)" % str(parts),
+		parts == ["3001", "3004", "3022"])
+	_check("...in its colours", _colours() == {4: 1, 1: 1, 14: 1})
+	_check("...under its own name (%s)" % bar.model_name(), bar.model_name() == "Bay from Studio")
 
 
 func _exports() -> void:

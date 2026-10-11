@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model -->
 
 ## Sub-features
 
@@ -71,6 +71,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   their studs*, which moves each as one undoable step, or *Leave them*. A part
   is moved only where undoing exactly the old corner's error puts its studs on
   stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
+- `open a studio model` (`src/parts/studio_io.gd`, `src/ui/model_file_picker.gd`):
+  Open → From a file reads LDraw or BrickLink Studio's `.io` — a zip with
+  Studio's published password around `model2.ldr` (or `model.ldr`), opened by
+  hand (PKWARE decryption, then the raw deflate wrapped as gzip, which Godot
+  inflates). The file is read as bytes, in a browser too. LDD's `.lxf` is
+  refused with a sentence saying Studio opens it and saves an `.io`.
+  `tests/fixtures/studio_bay.io` was made by the system's `zip -P`, not by
+  this app.
 - `picture of the model` (`src/ui/picture.gd`, Export → Picture): the model
   alone — no baseplate, ghost or outline — from the view's direction, framed to
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at

@@ -614,6 +614,13 @@
       "entry": "src/assembly/shop_lists.gd",
       "reach": "godot --path .  (Export, then BrickLink wanted list or Rebrickable parts list)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "open a studio model",
+      "entry": "src/parts/studio_io.gd",
+      "reach": "godot --path .  (Open, then From a file on this computer, and choose an .io)",
+      "area": "model-io"
     }
   ]
 }
