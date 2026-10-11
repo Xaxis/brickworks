@@ -212,6 +212,7 @@ func _run() -> void:
 		_trouble([{"pattern": "mirror", "about": "x"}]).contains("at"))
 
 	await _clustered()
+	await _cluster_opened()
 
 	print("")
 	if _failures == 0:
@@ -469,6 +470,34 @@ func _clustered() -> void:
 		% [int(round(float(style["angled"]) * 100)), int(round(float(style["snot"]) * 100))],
 		float(style["angled"]) >= 0.27)
 
+	# The horns end square: a cap of plates on the grid over each, and a point
+	# standing on the cap's studs. The fifteenth Orthanc took its horns down
+	# because their tops were turned to 45 degrees and nothing square sat on
+	# them. The point's first course is two 2 x 4 bricks on a cap, and the
+	# whole passed the check above, so a square part sits on every horn.
+	var crown: float = 3.0 * 38 + Assistant.SUMMIT
+	var capping: int = 0
+	var on_caps: int = 0
+	var bars: int = 0
+	var turned_caps: int = 0
+	for placement: Assistant.Placement in model.placements:
+		var at_cap: bool = is_equal_approx(placement.y, crown) \
+			or is_equal_approx(placement.y, crown + 1.0)
+		if at_cap and not placement.section.is_empty():
+			turned_caps += 1
+		if not placement.section.is_empty():
+			continue
+		if at_cap:
+			capping += 1
+		if is_equal_approx(placement.y, crown + Assistant.SUMMIT) and placement.part == "3001":
+			on_caps += 1
+		if placement.part == "30374":
+			bars += 1
+	_check("each horn is capped square at y %s: %d plates, none turned (%d are)"
+		% [crown, capping, turned_caps], capping >= 4 * 8 and turned_caps == 0)
+	_check("...and on each cap's studs a point: %d 2 x 4 bricks on the caps, %d bars at the tips"
+		% [on_caps, bars], on_caps == 8 and bars == 4)
+
 	assistant._brief = "The Tower of Orthanc"
 	assistant._apply(model)
 	await process_frame
@@ -498,6 +527,37 @@ func _clustered() -> void:
 	_check("and the whole of it passes the check: %s" % whole["summary"],
 		bool(whole["ok"]))
 
+	# The finishing pass reaches the faces in their sections, two-wide bricks
+	# and all. The fifteenth Orthanc called it over its shaft and was told
+	# "Restyled 4 bricks": every face was in a section.
+	var counts := func() -> Dictionary:
+		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0}
+		for placement: Assistant.Placement in assistant._model_from_world().placements:
+			if placement.section.is_empty():
+				continue
+			if placement.part == "87087":
+				found["turned"] += 1
+			elif placement.part in ["98283", "15533"]:
+				found["stone"] += 1
+			elif Assistant.TWO_WIDE.has(placement.part):
+				found["two"] += 1
+			elif placement.face != "up" and placement.face != "+z":
+				found["inward"] += 1
+		return found
+	var before: Dictionary = counts.call()
+	var restyled: String = _text(await assistant.use_tool("restyle_model",
+		{"sideways": 0.25, "masonry": 0.3}))
+	var after: Dictionary = counts.call()
+	_check("restyle_model reaches the faces in their sections: %s" % restyled.get_slice("\n", 0),
+		restyled.begins_with("Restyled") and int(after["turned"]) > int(before["turned"]) + 100
+			and int(after["stone"]) > int(before["stone"]) + 50)
+	_check("...two-wide bricks too, as two rows: %d in the faces, %d before"
+		% [after["two"], before["two"]], int(after["two"]) < int(before["two"]) - 50)
+	_check("...dressing only the faces' outsides, none looking into a shaft or a groove (%d do)"
+		% int(after["inward"]), int(after["inward"]) == 0)
+	whole = assistant._check(assistant._model_from_world(), true)
+	_check("...and it still passes the check: %s" % whole["summary"], bool(whole["ok"]))
+
 	# What does not make a cluster is said, not built.
 	var apart: Dictionary = tower.duplicate(true)
 	apart["piers"] = {"count": 4, "out": 20}
@@ -508,6 +568,83 @@ func _clustered() -> void:
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
+
+
+## The fifteenth Orthanc's own cluster, "open": 2: an octagonal core of
+## radius 7, four six-sided piers turned 45 degrees. It opened one back face
+## and one pier, and its rooms were behind a slot between two piers. With
+## piers, an opening is the core's whole back, so looking in from behind at
+## the middle of the shaft sees through to the middle across the core's
+## inside, wall to wall.
+func _cluster_opened() -> void:
+	print("")
+	print("  a cluster opened two faces is open across the core")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var tower := {"pattern": "prism", "color": 0, "at": {"x": 20, "y": 0, "z": 20},
+		"sides": 8, "radius": 7, "courses": 12, "open": 2, "piers": {"count": 4,
+			"courses": 15, "radius": 4.5, "sides": 6, "out": 7, "turn": 45}}
+	var model: Assistant.Model = assistant._read_model({"name": "Orthanc",
+		"patterns": [tower]})
+	var verdict: Dictionary = assistant._check(model)
+	_check("it passes the check, %s" % verdict["summary"], bool(verdict["ok"]))
+	var back_faces: Dictionary = {}
+	for placement: Assistant.Placement in model.placements:
+		var section: Assistant.Section = model.section_for(placement)
+		if section != null and not section.name.contains(" pier "):
+			var heading: float = fposmod(section.degrees, 360.0)
+			if heading > 90.5 and heading < 269.5:
+				back_faces[snappedf(heading, 0.1)] = true
+	_check("no face of the core looks backwards (%s do)" % str(back_faces.keys()),
+		back_faces.is_empty())
+	assistant._apply(model)
+	await process_frame
+	# Across the core's inside, a column a stud apart, at mid height: from
+	# well behind the tower to its middle, through nothing.
+	var y: float = 3.0 * 12 / 2.0 + 0.5
+	var inside: float = 7.0 - 2.0
+	var clear: int = 0
+	var columns: int = 0
+	var x: float = 20.0 - inside + 0.5
+	while x < 20.0 + inside:
+		columns += 1
+		var through: bool = true
+		var z: float = 20.0 - 20.0
+		while z <= 20.0 and through:
+			var cell: Vector3i = BrickLattice.to_cell(Vector3(x * Assistant.STUD,
+				y * Assistant.PLATE, z * Assistant.STUD))
+			through = builder.lattice.brick_at(cell) == 0
+			z += 0.25
+		if through:
+			clear += 1
+		x += 1.0
+	_check("seen from behind, %d of the %d columns across the core's inside are open to its middle"
+		% [clear, columns], clear == columns)
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+## What a tool said, as text.
+static func _text(said: Variant) -> String:
+	if said is String:
+		return said
+	var text: String = ""
+	for block: Variant in said:
+		if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
+			text += str(block["text"])
+	return text
 
 
 func _made(patterns: Array, already: Array = []) -> Array:

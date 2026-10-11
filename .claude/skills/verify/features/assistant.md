@@ -151,8 +151,8 @@ fixing what it got wrong.
   short and none could be masonry), and the outer row is stoned or turned out
   and dressed in the face's frame (`_lay_row`). Run 8 used `prism` (31% angled)
   and could not finish its faces: `restyle_model` skips sections and two-wide
-  bricks. `open` leaves that many faces out, centred on the one turned half
-  way round (looking -z), so the inside shows as a real set's tower does, and
+  bricks. `open` leaves that many faces out, the ones nearest looking -z
+  (the lower number of two as near), so the inside shows as a real set's tower does, and
   `add_rooms` furnishes it (rooms inside, below); asked for because nine Orthancs were
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
@@ -177,14 +177,30 @@ fixing what it got wrong.
   corner): without it a two-thick pier face three studs wide had a groove
   nearly as wide at each corner and the piers read as bundles of sticks.
   With `open`, the piers at the back drop every face looking back or across
-  the opening. Sideways dressing is laid only where it is clear of the other
+  the opening, and any `open` at all opens the core's whole back, every face
+  that looks backwards (3 of an octagon), one more where the count would sit
+  off centre: run 15 asked for 2 and got one face and one pier, the rooms
+  behind a slot between two piers. Each horn ends square: a cap two plates
+  thick over its outline at `y + 3 x piers' courses + 2` (`_studs_within`,
+  `_summit`, never a stud claimed by two caps), and on it a point
+  (`_horn_point`): a 4 x 4 course where the cap has room, stepped in by four
+  3045 corner slopes, two 2 x 2 bricks, a 3688 pyramid, a 59900 cone on its
+  stud and a 30374 bar, the cap's ledge round it sloped up to it with 3045,
+  3040b and 54200 as the rock faces its ledges (`_horn_ledge`); the corner
+  slopes' turn is read off 3045's own stud (`_corner_slope_turn`). Run 15
+  took its generated horns down because their tops were turned 45 degrees
+  and nothing square sat on them. Sideways dressing is laid only where it is clear of the other
   shafts and the faces beside it (`_dressing_clear`), so nothing gives way in
   the check. Found by run 14: four piers round a core rising into horns, built
   square by hand, 0% at an angle. `patterns_probe`: the guidance's cluster
-  passes the check as laid, in one piece, faces at 4 angles off the grid, 42%
-  angled (fantasy median 27%), open at the back, and add_rooms lays and
+  passes the check as laid, in one piece, faces at 4 angles off the grid, 40%
+  angled (fantasy median 27%), open at the back, each horn capped square (no
+  cap plate turned) with a 2 x 4 course and a bar on it, and add_rooms lays and
   furnishes five floors under the summit, open to -z, nothing taken out;
-  piers set clear of the core are refused. Still: a prism face's inner corner
+  restyle_model then reaches the faces (below); piers set clear of the core
+  are refused; and run 15's own cluster with `"open": 2` has no core face
+  looking back and every column across the core's inside is open from behind
+  to its middle (7 of 10 before). Still: a prism face's inner corner
   stops short of its neighbour's (floored widths), so a thin channel at each
   face's left-hand corner is see-through straight on — on a plain prism too.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
@@ -199,6 +215,18 @@ fixing what it got wrong.
   every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
   to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
   and checks bricks are turned, dressed and stoned, and the edit applied.
+  It reaches bricks in sections turned about y, in the section's own
+  coordinates (`_open_side`/`_each_stud_held` take the section's frame; only
+  a side within 60 degrees of straight out from the section's origin counts,
+  so a face's inner row, open onto the hollow shaft, and a course's end, open
+  onto the corner groove, are left), and lays a two-wide brick (2x2-2x4,
+  `TWO_WIDE`) with an open long face again as two rows, the inner plain and
+  the outer finished. Run 15 called it over its cluster's shaft and was told
+  "Restyled 4 bricks"; its own calls replayed now give 172, and the whole
+  model 2.5% to 9.1% sideways and 69% to 60% plain. `patterns_probe`: on the
+  guidance's cluster it turns out 100+ and stones 50+ in sections, splits
+  50+ two-wide bricks, dresses nothing facing anywhere but out, and the whole
+  still passes.
 - `a resubmit keeps its numbers`: `_apply` matches each placement to a brick
   already standing from the last submit or sketch by part, colour and transform
   (`_same_key`, to a hundredth of an LDU) and keeps it under its number; only
