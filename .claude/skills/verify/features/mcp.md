@@ -110,7 +110,11 @@ Both are in `tools/check.sh`.
   Claude Code, curl and Python send neither. `save_model` takes a file name, not
   a path, and writes it with the app's own models (`ModelStore.SAVE_DIR`, where
   Open lists them), never over one the session did not write itself: a design
-  run had left `orthanc.ldr` in the directory the app was started from.
+  run had left `orthanc.ldr` in the directory the app was started from. While
+  the design has assemblies without a close review, the answer carries the
+  next one's (`Assistant.next_review`; see assistant.md, "reviewed from
+  outside"). `mcp_probe` listens on the first free port from 8791, since
+  another session's relay can hold it.
   `mcp_probe` sends a page's request and a rebound one (the baseplate keeps its
   bricks), a path that climbs to /tmp, and a save over the person's model.
 - **Content-Length counts bytes.** The socket read the body in characters, so
@@ -154,6 +158,16 @@ Both are in `tools/check.sh`.
   that checks the clock is never reached, and the hang is back one layer down.
   `queued_for` is a variable rather than a constant so the probe can shorten it;
   nobody runs a check that waits a hundred seconds.
+- **No assembly animation when nobody is watching.** Every submit and every edit
+  emits `built`, and the window then plans build steps for the whole model and
+  shows it assembling a step at a time, each step walking every brick
+  (`BuildPlayback`). On run 15's 3,000-part Orthanc driven off-screen a frame
+  took 13 s while it played, so a look took 130-220 s, `add_rooms` 159 s and a
+  restyle 249 s; the session waited on an animation in a window nobody could
+  see. An app driven from the command line (`main._driven`, the same flags that
+  turn vsync off) skips it: the same calls took 3.6 s, 11.6 s and 11.8 s, and a
+  look 0.3 s. Time a driven session's calls with `tools/brick.py` before
+  blaming the model's size.
 - **`check_design` puts the trial on the baseplate**, and the baseplate is saved
   and restored on the next start. A design checked at the origin overlaps that
   saved model next time, which reads as a broken checker and is not. Call

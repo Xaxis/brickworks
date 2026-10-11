@@ -846,7 +846,7 @@ func figure_of(brick_id: int) -> PackedInt64Array:
 	for other: BrickWorld.Brick in world.bricks():
 		if other.group == brick.group:
 			members.append(other)
-	if not Minifig.is_figure(members):
+	if not Minifig.is_figure(members, library):
 		return PackedInt64Array()
 	var ids := PackedInt64Array()
 	for other: BrickWorld.Brick in members:
@@ -876,7 +876,7 @@ func _lift_figure(brick_id: int) -> bool:
 	var bricks: Array = []
 	for member: int in members:
 		bricks.append(world.get_brick(member))
-	var frame: Variant = Minifig.frame_of(bricks)
+	var frame: Variant = Minifig.frame_of(bricks, library)
 	if frame == null:
 		return false
 	var home: Transform3D = frame

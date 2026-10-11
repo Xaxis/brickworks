@@ -49,16 +49,25 @@ static func schema() -> Dictionary:
 				"facing": {"type": "string", "enum": ["+z", "-z", "+x", "-x"],
 					"description": "which way its face looks: +z, the default, is towards the front view"},
 				"headwear": slot.call("hair, hat or helmet, or \"none\""),
+				"hat_extra": slot.call("a visor, plume or feathers fixed onto the headgear"),
 				"head": slot.call("a face: \"beard\", \"smile\", \"angry\""),
-				"neck": slot.call("cape, armour, backpack, or left out"),
-				"torso": slot.call("what is printed on the chest"),
+				"neck": slot.call("armour, a scarf, a beard, a life jacket, or left out"),
+				"back": slot.call("airtanks, a backpack, a quiver, wings, or left out"),
+				"cape": slot.call("a cape, or left out"),
+				"torso": slot.call("what is printed on the chest; an odd body (a battle droid, a skeleton) brings its own head, arms and legs"),
+				"arms": slot.call("plain, printed sleeves, or another arm (\"skeleton\", \"wing\")"),
+				"hands": slot.call("plain, or a hook, boxing gloves, a prosthetic"),
 				"hips": slot.call("a printed belt or sash, or left out"),
-				"legs": slot.call("plain, printed, or \"short\" for a child"),
+				"hipwear": slot.call("a skirt, a tail or a belt over the hips"),
+				"legs": slot.call("plain, printed, \"short\" for a child, a wooden leg, a mermaid tail"),
+				"footwear": slot.call("flippers, skis, skates, or left out"),
 				"accessory": slot.call("what it holds in its right hand"),
+				"accessory_left": slot.call("what it holds in its left hand"),
 				"colors": {"type": "object", "description": (
-					"LDraw colour codes by slot: headwear, head, neck, "
-					+ "torso, arms, hands, hips, legs, accessory. A printed "
-					+ "torso brings arm and hand colours of its own."),
+					"LDraw colour codes by slot: headwear, hat_extra, head, neck, "
+					+ "back, cape, torso, arms, hands, hips, hipwear, legs, "
+					+ "footwear, accessory, accessory_left. A printed torso "
+					+ "brings arm and hand colours of its own."),
 					"additionalProperties": {"type": "integer"}},
 			},
 			"required": ["name", "x", "z"],
@@ -76,18 +85,21 @@ static func figure_for(args: Dictionary, library: PartLibrary) -> Array:
 	var colours: Dictionary = args.get("colors", {}) if args.get("colors") is Dictionary else {}
 	if colours.has("torso"):
 		figure.colours["torso"] = int(colours["torso"])
+	# The torso first: an odd body brings parts of its own, which what
+	# else was asked for then replaces.
+	var order: Array[String] = ["torso"]
 	for slot: String in Minifig.SLOTS:
-		if Minifig.COLOUR_ONLY.has(slot) or not args.has(slot):
+		if slot != "torso":
+			order.append(slot)
+	for slot: String in order:
+		if not args.has(slot):
 			continue
 		var wanted: String = str(args[slot]).strip_edges()
 		var found: String = choose(library, slot, wanted)
 		if found == "?":
 			unmatched.append("%s \"%s\"" % [slot, wanted])
 			continue
-		if slot == "torso":
-			figure.dress_torso(found)
-		else:
-			figure.parts[slot] = found
+		figure.choose(library, slot, found)
 	for slot: Variant in colours:
 		if Minifig.SLOTS.has(str(slot)):
 			figure.colours[str(slot)] = int(colours[slot])
@@ -108,6 +120,7 @@ static func choose(library: PartLibrary, slot: String, wanted: String) -> String
 		return "41879a"
 	if asked == "plain":
 		var plain: Dictionary = {"head": "3626cp01", "torso": "973",
+			"arms": Minifig.ARM_RIGHT, "hands": Minifig.HAND,
 			"hips": Minifig.PLAIN_HIPS, "legs": Minifig.PLAIN_LEGS}
 		if plain.has(slot):
 			return plain[slot]
@@ -145,8 +158,8 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	var unmatched: PackedStringArray = made[1]
 	if figure.name.is_empty():
 		figure.name = "Minifig"
-	await _fetch(library, figure.part_ids())
-	for part_id: String in figure.part_ids():
+	await _fetch(library, figure.part_ids(library))
+	for part_id: String in figure.part_ids(library):
 		if library.mesh_for(part_id) == null:
 			return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 				"text": "Not placed: %s could not be loaded." % part_id}

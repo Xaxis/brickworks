@@ -13,12 +13,58 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
+A release about doing it right. Parts that are drawn inside their
+footprint — wing plates, turntable tops, flags, plant leaves — now sit
+squarely on their studs, and a model that puts anything a fraction of a
+stud off is told so. Clips on bars, hinges and turntables are understood
+as the joints they are, and a section that leans has to lean on one. The
+minifigure builder offers every minifigure part there is. Claude, on your
+plan, keeps building while you are in the chat. Models saved by 0.1.0
+open in 0.2.0; parts of them drawn inside their footprint may have been
+saved a tenth of a stud off their studs, and `src/dev/reseat.gd` moves
+them back.
+
 ### Added
 
 - The design assistant can give a building that stands floors and
   furnished rooms in one call (`add_rooms`): a library, a forge, a dungeon,
   a bedchamber and more, furnished from real sets' furniture, with stairs
   or ladders between them.
+- Round joints: a clip on a bar, a bar in a hollow stud, a hinge's pin in
+  its eye and a turntable's top on its base are joints, at any angle about
+  their shared axis, and only there.
+- `hinge: true` on a section: the assistant leans an assembly on a hinge
+  brick in one line, the pin found for it.
+- The minifigure builder offers all 4,263 minifigure parts: capes, visors
+  and plumes, back gear, skirts and tails, footwear, a second hand, and
+  every head, torso, hip and leg mould, each where real sets put it.
+- Towers in one call: a prism with faceted piers clustered round its core,
+  horns that end in square caps, lit windows up its faces, open at the back
+  onto furnished floors.
+- Worked examples of what real sets build: leaning on a hinge (6085's
+  gatehouse flag), a corner on a turntable (10182 Cafe Corner), and more.
+
+### Changed
+
+- A placement's x and z are the corner of the whole studs a part stands
+  on, so whole numbers seat every part on its studs.
+- A part a fraction of a stud off the studs below it is a fault, with the
+  place it would grip; a section that leans on nothing is refused.
+- The pointer shows what a click will do, the controls are listed with
+  their icons, and scrolling over a panel or dialog no longer moves the
+  model behind it.
+- Thumbnails show a placeholder until their picture arrives.
+- The palette, links, tick boxes and the count over the model read more
+  clearly.
+
+### Fixed
+
+- Wing plates, turntable tops, flags, antennas and plant leaves placed at
+  whole studs stood a tenth of a stud off the studs below them.
+- Every model opens standing on the ground.
+- A reopened model keeps its saved name instead of "Untitled".
 
 ## [0.1.0] - 2026-10-10
 

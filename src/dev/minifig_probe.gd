@@ -12,6 +12,13 @@
 ## sub-model of its own and reopened the same, counted in the parts list
 ## part by part, and kept out of the measures real sets are counted
 ## without. And the design assistant's add_minifig.
+##
+## And every minifigure part the catalogue has: each offered in some
+## slot, each family of each slot put together without anything
+## standing in the floor, and the parts the standard joints do not fit —
+## a cape, a visor, a shield in the left hand, a battle droid, a hook, a
+## wooden leg — where real sets and the library's own assemblies put
+## them.
 extends SceneTree
 
 const OMR := "res://vendor/omr/files/"
@@ -51,8 +58,17 @@ func _initialize() -> void:
 	print("  against real figures")
 	_against_real_figures()
 	print("")
+	print("  against the library's own assemblies")
+	_against_the_library()
+	print("")
 	print("  what each slot can be")
 	_choices()
+	print("")
+	print("  every minifigure part")
+	_every_part()
+	print("")
+	print("  every family put together")
+	_every_family()
 	print("")
 	print("  on a stud")
 	await _on_a_stud()
@@ -65,6 +81,9 @@ func _initialize() -> void:
 	print("")
 	print("  the measures real sets are counted by")
 	_measures()
+	print("")
+	print("  a figure of the new slots, stood up, lifted and saved")
+	await _new_slots_stand()
 	print("")
 	print("  the design assistant")
 	await _the_assistant_adds_one()
@@ -171,6 +190,172 @@ func _compare(label: String, ours: Minifig, real: Array, joints: Dictionary) -> 
 			", %s" % limits[1] if by_turn else ""], ok)
 
 
+## Something a real figure holds in its left hand, against ours holding
+## it in the left hand: where it sits in the hand, and which way.
+func _held_left(label: String, set_file: String, model: String, part: String) -> void:
+	var real: Array = _real(set_file, model)
+	var held: Variant = null
+	var hands: Array = []
+	var torso := Transform3D.IDENTITY
+	for item: Dictionary in real:
+		if item["part"] == part:
+			held = item["at"]
+		elif item["part"] == Minifig.HAND:
+			hands.append(item["at"])
+		elif Minifig.role_of(item["part"]) == "torso":
+			torso = item["at"]
+	if held == null or hands.is_empty():
+		_check("%s is in the real figure" % label, false)
+		return
+	var holder: Transform3D = hands[0]
+	for hand: Transform3D in hands:
+		if hand.origin.distance_to((held as Transform3D).origin) \
+				< holder.origin.distance_to((held as Transform3D).origin):
+			holder = hand
+	var left: bool = (torso.affine_inverse() * holder).origin.x > 0
+	var theirs: Transform3D = holder.affine_inverse() * (held as Transform3D)
+	var figure := Minifig.new()
+	figure.parts["accessory_left"] = part
+	var hand_at := Transform3D.IDENTITY
+	var held_at := Transform3D.IDENTITY
+	for item: Dictionary in figure.assemble(library):
+		if item["slot"] == "accessory_left":
+			held_at = item["at"]
+		elif item["slot"] == "hands" and (item["at"] as Transform3D).origin.x > 0:
+			hand_at = item["at"]
+	var mine: Transform3D = hand_at.affine_inverse() * held_at
+	# Where the hand closes on it, in its own frame, ours and the real
+	# figure's: on the same bar (off its line by less than 1 LDU) and
+	# along it within 3, which is how well the grip rule does for the
+	# right hand too (tools/minifig.py grips).
+	var grip: Vector3 = Minifig.FLIP * Minifig.GRIP
+	var ours_on_it: Vector3 = mine.affine_inverse() * grip
+	var real_on_it: Vector3 = theirs.affine_inverse() * grip
+	var axis: Vector3 = (theirs.affine_inverse().basis * (Minifig.FLIP.basis * Minifig.GRIP_AXIS)).normalized()
+	var along: float = (ours_on_it - real_on_it).dot(axis)
+	var off: float = ((ours_on_it - real_on_it) - axis * along).length()
+	var angle: float = rad_to_deg(mine.basis.y.angle_to(theirs.basis.y))
+	_check("%s in the left hand: held on the real one's bar (%.2f LDU off it), %.2f along it, %.1f degrees off (within 1, 3 and 5)"
+		% [label, off, absf(along), angle], left and off <= 1.0 and absf(along) <= 3.0
+		and angle <= 5.0)
+
+
+## A file of the LDraw library itself, read the way the app reads any
+## model, its parts in the app's axes.
+func _library_file(name: String) -> Array:
+	var path: String = "res://vendor/ldraw/parts/%s.dat" % name
+	if not FileAccess.file_exists(path):
+		path = "res://vendor/ldraw/unofficial/parts/%s.dat" % name
+	if not FileAccess.file_exists(path):
+		return []
+	var model: LdrModel = LdrModel.parse(FileAccess.get_file_as_string(path), name)
+	var out: Array = []
+	for placement: LdrModel.Placement in model.flatten(library.parts):
+		out.append({"part": placement.part_id, "at": placement.transform})
+	return out
+
+
+## Each part of ours against the same part in a library file, relative to
+## a part both have: [worst distance, worst rotation entry, missing].
+func _against_file(ours: Array[Dictionary], theirs: Array, anchor: String) -> Array:
+	var mine_anchor: Variant = null
+	var their_anchor: Variant = null
+	for item: Dictionary in ours:
+		if item["part"] == anchor:
+			mine_anchor = item["at"]
+	for item: Dictionary in theirs:
+		if item["part"] == anchor:
+			their_anchor = item["at"]
+	if mine_anchor == null or their_anchor == null:
+		return [INF, INF, ["%s itself" % anchor]]
+	var worst: float = 0.0
+	var spun: float = 0.0
+	var missing: Array = []
+	for item: Dictionary in theirs:
+		var rel: Transform3D = (their_anchor as Transform3D).affine_inverse() * (item["at"] as Transform3D)
+		var best: float = INF
+		var best_spin: float = INF
+		for mine: Dictionary in ours:
+			if mine["part"] != item["part"]:
+				continue
+			var here: Transform3D = (mine_anchor as Transform3D).affine_inverse() * (mine["at"] as Transform3D)
+			var d: float = here.origin.distance_to(rel.origin)
+			if d < best:
+				best = d
+				best_spin = 0.0
+				for n: int in 3:
+					var diff: Vector3 = (here.basis[n] - rel.basis[n]).abs()
+					best_spin = maxf(best_spin, maxf(diff.x, maxf(diff.y, diff.z)))
+		if best == INF:
+			missing.append(item["part"])
+			continue
+		worst = maxf(worst, best)
+		spun = maxf(spun, best_spin)
+	return [worst, spun, missing]
+
+
+func _against_the_library() -> void:
+	# The battle droid: choosing its torso brings its head, arms and legs,
+	# and no hips or hands, all where 30375cs0.dat puts them.
+	var droid := Minifig.new()
+	droid.choose(library, "torso", "30375")
+	_check("choosing a battle droid's torso brings its own parts: head %s, arms %s, legs %s, hips %s, hands %s"
+		% [droid.part("head"), droid.part("arms"), droid.part("legs"),
+			"none" if droid.part("hips").is_empty() else droid.part("hips"),
+			"none" if droid.part("hands").is_empty() else droid.part("hands")],
+		droid.part("head") == "30378" and droid.part("arms") == "30377"
+		and droid.part("legs") == "30376" and droid.part("hips").is_empty()
+		and droid.part("hands").is_empty())
+	var against: Array = _against_file(droid.assemble(library), _library_file("30375cs0"),
+		"30375")
+	_check("and stands as 30375cs0.dat does: every part within %.3f LDU, turned %.3f, none missing %s"
+		% [against[0], against[1], against[2]], float(against[0]) <= 0.01
+		and float(against[1]) <= 0.01 and (against[2] as Array).is_empty())
+	droid.choose(library, "torso", "973")
+	_check("and the plain torso again gives the plain parts back",
+		droid.part("head") == "3626cp01" and droid.part("legs") == Minifig.PLAIN_LEGS
+		and droid.part("hips") == Minifig.PLAIN_HIPS and droid.part("hands") == Minifig.HAND)
+
+	# A hook for the left hand, where 84638.dat (the torso with arms, a
+	# right hand and a left hook) puts it; the right hand stays a hand.
+	var pirate := Minifig.new()
+	pirate.choose(library, "hands", "2531")
+	against = _against_file(pirate.assemble(library), _library_file("84638"), "973")
+	_check("a hook goes on the left as 84638.dat has it: within %.3f LDU, turned %.3f, none missing %s"
+		% [against[0], against[1], against[2]], float(against[0]) <= 0.01
+		and float(against[1]) <= 0.01 and (against[2] as Array).is_empty())
+	var right_hand: int = 0
+	for item: Dictionary in pirate.assemble(library):
+		if item["part"] == Minifig.HAND and (item["at"] as Transform3D).origin.x < 0 \
+				and int(item["color"]) == 14:
+			right_hand += 1
+	_check("and the right is still a yellow hand to hold things with", right_hand == 1)
+
+	# A wooden leg for the right, the plain left leg with it: 84637b.dat.
+	var peg := Minifig.new()
+	peg.choose(library, "legs", "2532")
+	against = _against_file(peg.assemble(library), _library_file("84637b"), "3815b")
+	_check("a wooden leg goes on the right with the plain left leg, as 84637b.dat: within %.3f LDU, none missing %s"
+		% [against[0], against[2]], float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+
+	# A baby's arms, which hang closer in than a grown figure's: 15998.dat.
+	var baby := Minifig.new()
+	baby.choose(library, "torso", "15526")
+	against = _against_file(baby.assemble(library), _library_file("15998"), "15526")
+	_check("a baby's body takes its arms and hands where 15998.dat does: within %.3f LDU, turned %.3f, none missing %s"
+		% [against[0], against[1], against[2]], float(against[0]) <= 0.01
+		and float(against[1]) <= 0.01 and (against[2] as Array).is_empty())
+	_check("and stands on its own feet, no hips or legs under it",
+		baby.part("hips").is_empty() and baby.part("legs").is_empty())
+
+	# Medium legs with their hips: 37364.dat is the library's.
+	var medium := Minifig.new()
+	medium.choose(library, "legs", "37365")
+	against = _against_file(medium.assemble(library), _library_file("37364"), "3815b")
+	_check("medium legs pair and hang from the hips as 37364.dat: within %.3f LDU, none missing %s"
+		% [against[0], against[2]], float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+
+
 func _against_real_figures() -> void:
 	# 10218 Pet Shop: a figure modelled with the library's own torso
 	# assembly numbers. Its head is turned and its left hand posed, so
@@ -201,11 +386,11 @@ func _against_real_figures() -> void:
 	# 6973 Deep Freeze Defender: airtanks at the neck lift the head by
 	# their collar, which real sets do by 3 LDU for this part.
 	var diver := Minifig.new()
-	diver.parts["neck"] = "3838"
+	diver.parts["back"] = "3838"
 	diver.parts["headwear"] = ""
 	_compare("6973 Deep Freeze Defender, minifig 1", diver,
 		_real("6973-1", "6973 - minifig 1.ldr"), {
-			"neck": [0.01, 0.01], "head": [0.01, -1]})
+			"back": [0.01, 0.01], "head": [0.01, -1]})
 	_check("airtanks lift the head 3 LDU, as 29 of the 38 real figures wearing them do",
 		int(MinifigData.NECK_LIFT.get("3838", 0)) == 3)
 
@@ -274,6 +459,66 @@ func _against_real_figures() -> void:
 	_check("and the hand closes on its shaft, %.2f LDU from the shaft's line"
 		% Vector2(on_bar.x, on_bar.z).length(), Vector2(on_bar.x, on_bar.z).length() < 1.0)
 
+	# 6067 King's Mountain Fortress: a cape (4524), worn on the shoulders
+	# 2 LDU up, as all nine real figures wearing it have it, with the head
+	# up on it. And 6061's archer's quiver, which every real figure wears
+	# turned to its back.
+	var caped := Minifig.new()
+	caped.parts["cape"] = "4524"
+	caped.parts["headwear"] = "4503"
+	_compare("6067 King's Mountain Fortress, minifig 3, in a cape", caped,
+		_real("6067-1", "6067 - minifig3.ldr"), {"cape": [0.01, 0.01],
+			"arm right": [0.01, 0.01], "hips": [0.01, 0.01]})
+	var archer := Minifig.new()
+	archer.parts["back"] = "4498"
+	_compare("6061 Siege Tower, minifig 3, with a quiver on its back", archer,
+		_real("6061-1", "6061 - minifig3.ldr"), {"back": [0.01, 0.01]})
+
+	# 10176 King's Castle: a soldier with a shield in his left hand, the
+	# hand where the standard joints put it. Compared in the hand that
+	# holds it, as the cutlass is.
+	_held_left("10176 King's Castle, soldier 1: the shield", "10176-1",
+		"10176 - soldier 1.ldr", "3846")
+	_held_left("10176 King's Castle, soldier 2: the shield", "10176-1",
+		"10176 - soldier 2.ldr", "3846")
+
+	# A visor turns on its helmet: 2447b's pins at its origin, on 3842b's
+	# dimples (5 LDU under the head's origin, measured off both parts).
+	# 6208's B-wing pilot wears the old drawing of the same visor (2447)
+	# on the old drawing of the helmet (2446), both turning 6.5 under the
+	# head's origin: the two drawings of the helmet differ by 1.5 LDU,
+	# and so do the visors.
+	var pilot := Minifig.new()
+	pilot.parts["headwear"] = "3842b"
+	pilot.parts["hat_extra"] = "2447b"
+	var visor_at := Transform3D.IDENTITY
+	var head_at := Transform3D.IDENTITY
+	for item: Dictionary in pilot.assemble(library):
+		if item["slot"] == "hat_extra":
+			visor_at = item["at"]
+		elif item["slot"] == "head":
+			head_at = item["at"]
+	var pins: Vector3 = (Minifig.FLIP * head_at.affine_inverse() * visor_at * Minifig.FLIP).origin
+	var dimples: Array = MinifigData.PIVOTS.get("3842b", [])
+	_check("the classic visor 2447b turns on the classic helmet's dimples: its pins %s, the dimples at y %s"
+		% [pins, dimples], dimples.size() == 2 and pins.distance_to(
+			Vector3(0, float(dimples[0]), float(dimples[1]))) < 0.01)
+	var b_wing: Array = _real("6208-1", "6208 - rebel pilot b-wing.ldr")
+	var old_visor := Transform3D.IDENTITY
+	var old_head := Transform3D.IDENTITY
+	for item: Dictionary in b_wing:
+		if item["part"] == "2447":
+			old_visor = item["at"]
+		elif str(item["part"]).begins_with("3626"):
+			old_head = item["at"]
+	# 2447.dat turns at y 6.5 of its own frame; where that is on the
+	# real figure, against where ours turns.
+	var real_pins: Vector3 = (Minifig.FLIP * old_head.affine_inverse() * old_visor
+		* Minifig.FLIP) * Vector3(0, 6.5, 0)
+	_check("and 6208's B-wing pilot turns the old drawing of it %.2f LDU from there (the helmets' drawings differ by 1.5)"
+		% real_pins.distance_to(pins), not b_wing.is_empty()
+		and real_pins.distance_to(pins) <= 1.51)
+
 	# The legs stand where the library says on the stud grid: 3816c.dat
 	# "1 16 0 0 1.25 ... 3816c.dat" over "1 16 0 28 0 ... stug-1x2.dat".
 	var help: String = FileAccess.get_file_as_string("res://vendor/ldraw/parts/3816c.dat")
@@ -308,8 +553,10 @@ func _against_real_figures() -> void:
 
 
 func _choices() -> void:
-	var least: Dictionary = {"headwear": 300, "head": 300, "neck": 50, "torso": 500,
-		"hips": 50, "legs": 60, "accessory": 300}
+	var least: Dictionary = {"headwear": 700, "hat_extra": 30, "head": 700, "neck": 50,
+		"back": 30, "cape": 40, "torso": 900, "arms": 50, "hands": 5, "hips": 100,
+		"hipwear": 40, "legs": 250, "footwear": 10, "accessory": 800,
+		"accessory_left": 800}
 	for slot: String in least:
 		var found: Array[PartLibrary.PartInfo] = Minifig.choices(library, slot)
 		var real: bool = found.all(func(info: PartLibrary.PartInfo) -> bool:
@@ -331,8 +578,43 @@ func _choices() -> void:
 				return true
 			var figure := Minifig.new()
 			figure.parts["legs"] = info.id
-			return library.parts.has(figure.left_leg()))
-	_check("every printed right leg has its left one", lefts)
+			var left: String = figure.left_leg(library)
+			return library.parts.has(left) and left.begins_with("3817"))
+	_check("every printed right leg has a left one", lefts)
+	# The two halves of a print LDraw names differently pair by the print
+	# they share: 3816cp30 "Rags" and 3817cp30 "Rags and Patch".
+	var rags := Minifig.new()
+	rags.parts["legs"] = "3816cp30"
+	_check("and the halves of a print pair by its number: 3816cp30 with %s"
+		% rags.left_leg(library), rags.left_leg(library) == "3817cp30")
+	var dual := Minifig.new()
+	dual.parts["legs"] = "20461bp00"
+	_check("the dual-moulded legs pair by name: 20461bp00 with %s" % dual.left_leg(library),
+		dual.left_leg(library) == "20460bp00")
+	# Each slot opens on the classic figure's mould, then the others.
+	var first: Dictionary = {"torso": "973", "head": "3626c", "legs": Minifig.PLAIN_LEGS,
+		"hips": Minifig.PLAIN_HIPS, "arms": Minifig.ARM_RIGHT, "hands": Minifig.HAND}
+	var opens: PackedStringArray = PackedStringArray()
+	for slot: String in first:
+		opens.append("%s %s" % [slot, Minifig.choices(library, slot)[0].id])
+	_check("each slot opens on the classic mould: %s" % ", ".join(opens),
+		first.keys().all(func(slot: String) -> bool:
+			return Minifig.choices(library, slot)[0].id == first[slot]))
+	var printed_first: int = Minifig.choices(library, "torso").find(
+		library.parts["973p01"]) if library.parts.has("973p01") else -1
+	var plain_moulds: int = Minifig.choices(library, "torso").filter(
+		func(info: PartLibrary.PartInfo) -> bool:
+			return Minifig._family(info.id) == info.id).size()
+	_check("then the other plain moulds (%d) before the first print (at %d)"
+		% [plain_moulds, printed_first], printed_first >= plain_moulds)
+	# Large slots browse by mould or by kind.
+	var head_moulds: Array[Dictionary] = Minifig.groups(library, "head")
+	var held_kinds: Array[Dictionary] = Minifig.groups(library, "accessory")
+	_check("heads come in %d moulds, the biggest %s (%d); things to hold in %d kinds, the biggest %s (%d)"
+		% [head_moulds.size(), head_moulds[0]["label"], int(head_moulds[0]["count"]),
+			held_kinds.size(), held_kinds[0]["label"], int(held_kinds[0]["count"])],
+		head_moulds.size() >= 100 and held_kinds.size() >= 20
+		and str(head_moulds[0]["key"]) in ["3626c", "3626b", "28621"])
 	var colours: PartLibrary.PartInfo = Minifig.colours_of(library, "3626cp01")
 	_check("a printed head's colours are its moulding's (%s, %d known)"
 		% [colours.id if colours != null else "none",
@@ -358,6 +640,124 @@ func _choices() -> void:
 			whole += 1
 	_check("%d of %d surprise figures are real parts in real colours" % [whole, made],
 		whole == made)
+
+
+## Every minifigure part the catalogue has — every real part in a
+## "Minifig" category or named "Minifig ..." — is offered in some slot,
+## or comes with one that is (a left leg with its right).
+func _every_part() -> void:
+	var universe: Array[PartLibrary.PartInfo] = []
+	for id: String in library.parts:
+		var info: PartLibrary.PartInfo = library.parts[id]
+		var title: String = info.name.strip_edges()
+		if (info.category.begins_with("Minifig") or title.begins_with("Minifig")) \
+				and Minifig._real(info):
+			universe.append(info)
+	var offered: Dictionary = {}
+	for slot: String in Minifig.SLOTS:
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			offered[info.id] = slot
+	var paired: Dictionary = {}
+	for slot: String in ["arms", "legs", "hands"]:
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			var other: String = Minifig.partner(library, info.id)
+			if not other.is_empty() and not offered.has(other):
+				paired[other] = slot
+	var missing: Array[String] = []
+	for info: PartLibrary.PartInfo in universe:
+		if not offered.has(info.id) and not paired.has(info.id):
+			missing.append("%s %s (%s)" % [info.id, info.name.strip_edges(), info.category])
+	for line: String in missing.slice(0, 8):
+		print("    not offered: %s" % line)
+	_check("all %d minifigure parts in the catalogue are available: %d offered in a slot, %d as the pair of one, %d not"
+		% [universe.size(), universe.size() - paired.size() - missing.size(), paired.size(),
+			missing.size()], missing.is_empty() and universe.size() >= 4000)
+	# The ones the builder had no slot for.
+	var wanted: Dictionary = {"28621": "head", "65753": "hipwear", "36036": "legs",
+		"2532": "legs", "4524": "cape", "50231c01": "cape", "2447b": "hat_extra",
+		"87693": "hat_extra", "3838": "back", "4498": "back", "10190": "footwear",
+		"30375": "torso", "16000p00": "arms", "2531": "hands", "43370": "torso"}
+	var wrong: Array[String] = []
+	for id: String in wanted:
+		if str(offered.get(id, "")) != str(wanted[id]):
+			wrong.append("%s in %s" % [id, offered.get(id, "nothing")])
+	_check("new moulds and new slots each where they belong%s"
+		% ("" if wrong.is_empty() else ": " + ", ".join(wrong)), wrong.is_empty())
+	_check("the left hand is offered what the right is (%d)"
+		% Minifig.choices(library, "accessory_left").size(),
+		Minifig.choices(library, "accessory_left").size()
+		== Minifig.choices(library, "accessory").size())
+
+
+## Each family of each slot — every mould, every kind — put on the plain
+## figure: real parts in real places, and nothing in the floor it
+## stands on. A cape long enough to reach it flies out behind; a skirt,
+## a tail, a long robe, a droid's legs all end above it.
+func _every_family() -> void:
+	var tried: int = 0
+	var below: Array[String] = []
+	var broken: Array[String] = []
+	for slot: String in Minifig.SLOTS:
+		var seen: Dictionary = {}
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			var family: String = Minifig._family(info.id)
+			if seen.has(family):
+				continue
+			seen[family] = true
+			var figure := Minifig.new()
+			figure.choose(library, slot, info.id)
+			tried += 1
+			var low: float = INF
+			for item: Dictionary in figure.assemble(library):
+				var part: PartLibrary.PartInfo = library.parts.get(str(item["part"]))
+				if part == null or part.is_redirect():
+					broken.append("%s %s: %s" % [slot, info.id, item["part"]])
+					continue
+				low = minf(low, Minifig._lowest(Minifig.FLIP * (item["at"] as Transform3D)
+					* Minifig.FLIP, part.bounds))
+			if low < -0.6:
+				below.append("%s %s (%.1f)" % [slot, info.id, low])
+	for line: String in below.slice(0, 10):
+		print("    in the floor: %s" % line)
+	for line: String in broken.slice(0, 10):
+		print("    not a part: %s" % line)
+	_check("%d families put together, every part a real one%s"
+		% [tried, "" if broken.is_empty() else ": %d not" % broken.size()],
+		broken.is_empty() and tried >= 500)
+	_check("and none of them reaches into what it stands on%s"
+		% ("" if below.is_empty() else ": %d do" % below.size()), below.is_empty())
+
+	# And the same with the lattice, which is what refuses a figure that
+	# would stand in something: every family of what decides where a
+	# figure ends — legs, feet, a body, a skirt, a cape, back gear — stood
+	# on a 6 x 6 plate, its every part to hand.
+	world.clear()
+	builder.lattice.clear()
+	var floor_at := Transform3D(Basis.IDENTITY, Vector3(10, 8, 10))
+	var floor_id: int = world.add_brick("3958", 7, floor_at)
+	builder.register(floor_id, "3958", floor_at)
+	var stood: int = 0
+	var refused: Array[String] = []
+	for slot: String in ["legs", "footwear", "torso", "hipwear", "cape", "back"]:
+		var families: Dictionary = {}
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			if families.has(Minifig._family(info.id)):
+				continue
+			families[Minifig._family(info.id)] = true
+			var figure := Minifig.new()
+			figure.choose(library, slot, info.id)
+			var parts: Array[Dictionary] = figure.assemble(library)
+			var at: Transform3D = builder.settle_figure(Vector3(10, 400, 10), 0)
+			stood += 1
+			if not builder.figure_fits(parts, at):
+				refused.append("%s %s" % [slot, info.id])
+	for line: String in refused.slice(0, 10):
+		print("    refused on the plate: %s" % line)
+	_check("%d families of legs, feet, bodies, skirts, capes and back gear stood on a plate, none refused%s"
+		% [stood, "" if refused.is_empty() else ": %d were" % refused.size()],
+		refused.is_empty() and stood >= 150)
+	world.clear()
+	builder.lattice.clear()
 
 
 # -- standing in a model ------------------------------------------------------
@@ -511,6 +911,72 @@ func _on_a_stud() -> void:
 	_check("a second figure with the same name is kept apart, as %s"
 		% (world.get_brick(second).group if second != 0 else "nothing"),
 		second != 0 and world.get_brick(second).group == "Saruman 2")
+	await process_frame
+
+
+## A figure wearing something in every new slot: a visor on its helmet,
+## airtanks, a cape, a skirt, flippers, a spear and a shield. Stood on a
+## plate, it stands on its flippers on the plate; lifted with X and put
+## down again it is the same figure; saved and reopened it is one figure
+## in a sub-model of its own, the same parts in the same places.
+func _new_slots_stand() -> void:
+	world.clear()
+	builder.lattice.clear()
+	builder.forget_history()
+	var plate := Transform3D(Basis.IDENTITY, Vector3(40, 8, 10))
+	var plate_id: int = world.add_brick("3023", 15, plate)
+	builder.register(plate_id, "3023", plate)
+	var diver := Minifig.new()
+	diver.name = "Frogman"
+	for pair: Array in [["headwear", "3842b"], ["hat_extra", "2447b"], ["back", "3838"],
+			["cape", "50231c01"], ["hipwear", "65753"], ["footwear", "10190"],
+			["accessory", "4497"], ["accessory_left", "3846"]]:
+		diver.choose(library, pair[0], pair[1])
+	var parts: Array[Dictionary] = diver.assemble(library)
+	for item: Dictionary in parts:
+		library.request_mesh(str(item["part"]))
+	builder.hold_figure(parts, diver.name)
+	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)
+	var first: int = builder.place()
+	builder.drop_figure()
+	var ids: PackedInt64Array = builder.figure_of(first)
+	_check("a frogman with a visor, airtanks, a cape, a skirt, flippers, a spear and a shield stands on a plate: %d parts as one figure"
+		% ids.size(), first != 0 and ids.size() == parts.size())
+	var low: float = INF
+	var flipper_low: float = INF
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var box: AABB = brick.transform * library.parts[brick.part_id].bounds
+		low = minf(low, box.position.y)
+		if brick.part_id == "10190":
+			flipper_low = minf(flipper_low, box.position.y)
+	# Raised by the flippers' 3 LDU, rounded up to the lattice's 2 LDU
+	# cells: on the plate, a cell or less above its top.
+	_check("on its flippers, on the plate's top (y 8): the flippers' undersides at %.2f, nothing lower (%.2f)"
+		% [flipper_low, low], flipper_low >= 8.0 - 0.01 and flipper_low <= 8.0 + BrickLattice.CELL
+		and is_equal_approx(low, flipper_low))
+	var placed: Dictionary = _relative(ids)
+	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)
+	var lifted: bool = builder.lift_hovered()
+	_check("X lifts it whole, its frame found from its torso and flippers",
+		lifted and builder.is_holding_figure() and world.brick_count() == 1)
+	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)
+	var again: int = builder.place()
+	builder.drop_figure()
+	_check("and puts it back the same figure in the same place",
+		again != 0 and _same_shape(_relative(builder.figure_of(again)), placed))
+	var text: String = store.to_text("Reef")
+	var opened: Dictionary = store.open_text(text, "reef.ldr")
+	var back_ids: PackedInt64Array = PackedInt64Array()
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.group == "Frogman":
+			back_ids.append(brick.id)
+	_check("saved as a sub-model and reopened: %d parts, one figure, the same shape"
+		% int(opened["placed"]), text.contains("0 FILE frogman.ldr")
+		and back_ids.size() == parts.size()
+		and Minifig.is_figure(world.bricks().filter(func(b: BrickWorld.Brick) -> bool:
+			return b.group == "Frogman"), library)
+		and _same_shape(_relative(back_ids), placed))
 	await process_frame
 
 
@@ -707,6 +1173,27 @@ func _the_assistant_adds_one() -> void:
 	_check("given a floor's height, he stands on it under the roof, feet at %.1f: %s"
 		% [radagast_feet, str(inside).substr(0, 60)],
 		radagast.size() >= 10 and is_equal_approx(radagast_feet, 24.0))
+
+	# The new slots by words: a knight with a visor, a cape, a shield in
+	# his left hand and a spear in his right, on a floor of his own.
+	var yard := Transform3D(Basis.IDENTITY, Vector3(200, 24, 40))
+	var yard_id: int = world.add_brick("3001", 2, yard)
+	builder.register(yard_id, "3001", yard)
+	var knight: Variant = await assistant.use_tool("add_minifig", {
+		"name": "Galahad", "x": 9, "z": 1, "headwear": "castle helmet chin guard",
+		"hat_extra": "visor pointed", "cape": "cape", "accessory": "spear",
+		"accessory_left": "shield triangular"})
+	var galahad: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.group == "Galahad":
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+			galahad[Minifig.role_of(brick.part_id, info)] = brick.part_id
+	print("    %s" % str(knight).substr(0, 300))
+	_check("add_minifig dresses a knight in the new slots: visor %s, cape %s, shield %s"
+		% [galahad.get("hat_extra", "none"), galahad.get("cape", "none"),
+			"" if not str(knight).contains("accessory_left") else "in the left hand"],
+		str(knight).begins_with("Placed Galahad") and galahad.has("hat_extra")
+		and galahad.has("cape") and str(knight).contains("accessory_left 3846"))
 
 	var floating: Variant = await assistant.use_tool("add_minifig", {
 		"name": "Gandalf", "x": 10, "z": 10, "y": 30})

@@ -1333,7 +1333,7 @@ func _tag_assemblies() -> void:
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
-		if members.has(brick.group) and Minifig.is_figure(members[brick.group]):
+		if members.has(brick.group) and Minifig.is_figure(members[brick.group], library):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
@@ -2006,8 +2006,8 @@ func _run_tool(block: Dictionary) -> Variant:
 			progress.emit("dressing the plain faces")
 			var change: Dictionary = _restyle(args)
 			if change.is_empty():
-				return ("Nothing to restyle: no plain one-stud-wide brick "
-					+ "with an open face in that box.")
+				return ("Nothing to restyle: no plain brick one or two studs "
+					+ "wide with an open face in that box.")
 			var said: Variant = await _run_tool({"name": "edit_model",
 				"input": change["edit"]})
 			if said is Array:
@@ -2272,6 +2272,7 @@ func _edit(args: Dictionary) -> Model:
 	var before: int = model.placements.size()
 	_repeat_trouble = []
 	_pattern_trouble = []
+	_pattern_advice = []
 	_expand_repeats(model, args, _repeat_trouble)
 	_touched += model.placements.size() - before
 	_touched += gone.size()
@@ -3835,6 +3836,7 @@ func _read_model(args: Dictionary) -> Model:
 	# And the shapes it described rather than counted out. Patterns are
 	# expanded after the bricks because mirror reflects what is there.
 	var patterns: Array = args.get("patterns", [])
+	_pattern_advice = []
 	if not patterns.is_empty():
 		var trouble: Array = []
 		# A face of studs turned out needs the parts' own geometry to know
@@ -3889,6 +3891,12 @@ func _read_model(args: Dictionary) -> Model:
 ## gives a plain wall, worked out from what is actually open to the air.
 ## Returns {} when nothing qualifies, or {"edit": edit_model's input,
 ## "summary": what it will do}.
+##
+## Dressed in the wall's own colour, as a set dresses a black tower in black:
+## a [code]face_color[/code] goes through [constant FACE_ACCENT] of the
+## dressing as an accent. The sixteenth Orthanc asked for dark grey on its
+## black faces — the guidance's own studs_out example said so — and all 149
+## round tiles came out grey, which read as polka dots.
 func _restyle(args: Dictionary) -> Dictionary:
 	if world == null or builder == null or builder.lattice == null:
 		return {}
@@ -3907,40 +3915,106 @@ func _restyle(args: Dictionary) -> Dictionary:
 		middle += brick.transform.origin
 	if not standing.is_empty():
 		middle /= float(standing.size())
-	for placement: Placement in _model_from_world().placements:
-		var long: int = int(long_of.get(placement.part, 0))
-		if long == 0 or placement.face != "up" or not placement.section.is_empty():
+	var model: Model = _model_from_world()
+	for placement: Placement in model.placements:
+		var long: int = int(long_of.get(placement.part, TWO_WIDE.get(placement.part, 0)))
+		if long == 0 or placement.face != "up":
 			continue
-		if not _inside(Vector3(placement.x, placement.y, placement.z), where):
+		# A window is not a wall to finish.
+		var tint: PartLibrary.BrickColor = library.color(placement.color)
+		if tint != null and tint.is_transparent():
+			continue
+		# A brick in a section is in the section's own square coordinates,
+		# so it is restyled in them and carried with it: the faces of a prism
+		# or a cluster, which are most of a tower built with one. The
+		# fifteenth Orthanc asked for this pass over its shaft and was told
+		# "Restyled 4 bricks"; every face of it was in a section. Only
+		# sections turned about y, whose up is still up.
+		var frame := Transform3D.IDENTITY
+		if not placement.section.is_empty():
+			var section: Section = model.section_for(placement)
+			if section == null or section.axis != "y":
+				continue
+			frame = section.placed()
+		var seen: Vector3 = frame * Vector3(placement.x * STUD, placement.y * PLATE,
+			placement.z * STUD)
+		if not _inside(Vector3(seen.x / STUD, seen.y / PLATE, seen.z / STUD), where):
 			continue
 		var along_x: bool = placement.rot % 2 == 0
-		var facing: String = _open_side(placement, long, along_x, middle)
+		# A two-wide brick with a long face open is laid again as two rows:
+		# the inner one plain, the outer one finished as a one-wide brick
+		# would be. A two-thick prism face is a course of them every other
+		# course, and a solid fill's rim is nothing else; restyling one-wide
+		# bricks only, the fifteenth Orthanc's shaft and plinth stayed 64%
+		# plain with the pass reaching every section.
+		var outer: Placement = placement
+		var inner: Dictionary = {}
+		if TWO_WIDE.has(placement.part):
+			outer = null
+			for half: int in 2:
+				var row := Placement.from_dict({"part": ONE_WIDE_OF[long],
+					"color": placement.color, "x": placement.x + (0 if along_x else half),
+					"y": placement.y, "z": placement.z + (half if along_x else 0),
+					"rot": placement.rot, "section": placement.section})
+				if not _open_side(row, long, along_x, middle, frame).is_empty():
+					outer = row
+					inner = {"part": ONE_WIDE_OF[long], "color": placement.color,
+						"x": placement.x + (0 if along_x else 1 - half), "y": placement.y,
+						"z": placement.z + (1 - half if along_x else 0), "rot": placement.rot}
+					if not placement.section.is_empty():
+						inner["section"] = placement.section
+					break
+			if outer == null:
+				continue
+		var facing: String = _open_side(outer, long, along_x, middle, frame)
 		if facing.is_empty():
 			continue
-		var pick: float = Patterns._scatter(placement.x, placement.y, placement.z, 41)
-		if pick < sideways and _each_stud_held(placement, long, along_x):
+		var pick: float = Patterns._scatter(seen.x / STUD, seen.y / PLATE, seen.z / STUD, 41)
+		if pick < sideways and _each_stud_held(outer, long, along_x, frame):
 			removed.append(placement.id)
+			if not inner.is_empty():
+				added.append(inner)
 			for step: int in long:
 				var one := {"part": "87087", "color": placement.color,
-					"x": placement.x + (step if along_x else 0), "y": placement.y,
-					"z": placement.z + (0 if along_x else step), "rot": 0}
-				var dressing: Dictionary = _dress(one, facing, face_colour)
+					"x": outer.x + (step if along_x else 0), "y": outer.y,
+					"z": outer.z + (0 if along_x else step), "rot": 0}
+				# The wall's own colour, and the colour asked for only as an
+				# accent through a share of it.
+				var tone: int = -1
+				if face_colour >= 0 and Patterns._scatter(seen.x / STUD + step,
+						seen.y / PLATE, seen.z / STUD, 31) < FACE_ACCENT:
+					tone = face_colour
+				var dressing: Dictionary = _dress(one, facing, tone)
+				if not placement.section.is_empty():
+					one["section"] = placement.section
+					if not dressing.is_empty():
+						dressing["section"] = placement.section
 				added.append(one)
 				if not dressing.is_empty():
 					added.append(dressing)
 			turned += 1
-		elif pick < sideways + masonry and Patterns.MASONRY.has(placement.part):
+		elif pick < sideways + masonry and Patterns.MASONRY.has(outer.part):
 			removed.append(placement.id)
-			added.append({"part": Patterns.MASONRY[placement.part],
-				"color": placement.color, "x": placement.x, "y": placement.y,
-				"z": placement.z,
-				"rot": ["+z", "+x", "-z", "-x"].find(facing)})
+			if not inner.is_empty():
+				added.append(inner)
+			var stone := {"part": Patterns.MASONRY[outer.part],
+				"color": placement.color, "x": outer.x, "y": outer.y,
+				"z": outer.z,
+				"rot": ["+z", "+x", "-z", "-x"].find(facing)}
+			if not placement.section.is_empty():
+				stone["section"] = placement.section
+			added.append(stone)
 			stoned += 1
 	if removed.is_empty():
 		return {}
 	return {"edit": {"remove": removed, "add": added},
 		"summary": "Restyled %d brick%s: %d turned out and dressed on their side, %d laid as masonry."
 			% [turned + stoned, "" if turned + stoned == 1 else "s", turned, stoned]}
+
+
+## The share of a finishing pass's dressing in the colour asked for; the
+## rest is the wall's own.
+const FACE_ACCENT := 0.2
 
 
 ## How the picture after an edit is taken when the edit was not the
@@ -3975,6 +4049,7 @@ func _rooms(args: Dictionary) -> Dictionary:
 		for brick: Dictionary in rooms.bricks():
 			trial.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = []
+		_pattern_advice = []
 		_repeat_trouble = []
 		var report: Dictionary = _check(trial, true)
 		if bool(report["ok"]):
@@ -4000,12 +4075,13 @@ func _rooms(args: Dictionary) -> Dictionary:
 ## held. A course's end brick in a bonded wall overhangs the course below
 ## and is held only through its own length: split, its end floated, and
 ## the first restyle of a wall was refused for it.
-func _each_stud_held(placement: Placement, long: int, along_x: bool) -> bool:
+func _each_stud_held(placement: Placement, long: int, along_x: bool,
+		frame: Transform3D = Transform3D.IDENTITY) -> bool:
 	for step: int in long:
 		var x: float = placement.x + (step + 0.5 if along_x else 0.5)
 		var z: float = placement.z + (0.5 if along_x else step + 0.5)
-		var under := Vector3(x * STUD, (placement.y - 0.5) * PLATE, z * STUD)
-		var over := Vector3(x * STUD, (placement.y + 3.5) * PLATE, z * STUD)
+		var under: Vector3 = frame * Vector3(x * STUD, (placement.y - 0.5) * PLATE, z * STUD)
+		var over: Vector3 = frame * Vector3(x * STUD, (placement.y + 3.5) * PLATE, z * STUD)
 		var held: bool = placement.y <= 0.01 \
 			or builder.lattice.brick_at(BrickLattice.to_cell(under)) != 0 \
 			or builder.lattice.brick_at(BrickLattice.to_cell(over)) != 0
@@ -4014,16 +4090,34 @@ func _each_stud_held(placement: Placement, long: int, along_x: bool) -> bool:
 	return true
 
 
+## The plain two-wide bricks the finishing pass lays again as two rows, by
+## how long they are, and the one-wide brick of each length a row is.
+const TWO_WIDE: Dictionary = {"3003": 2, "3002": 3, "3001": 4}
+const ONE_WIDE_OF: Dictionary = {1: "3005", 2: "3004", 3: "3622", 4: "3010"}
+
+
 ## Which way a one-wide brick's long face is open to the air, with room
 ## in front of it for a part laid on its side: "+z", "-z", "+x", "-x" or
 ## "" when neither is. When both are — a wall one stud thick standing on
 ## its own — the side away from the middle of the model.
+##
+## A brick in a section is given the section's [param frame], and says the
+## side in the section's own coordinates. There only a side looking away
+## from the section's origin counts: a prism face's inner row is open onto
+## the hollow inside its shaft, and dressing laid there is never seen.
 func _open_side(placement: Placement, long: int, along_x: bool,
-		middle: Vector3) -> String:
+		middle: Vector3, frame: Transform3D = Transform3D.IDENTITY) -> String:
 	var sides: Array = ["+z", "-z"] if along_x else ["+x", "-x"]
+	var in_section: bool = frame != Transform3D.IDENTITY
+	var centre := Vector3((placement.x + 0.5) * STUD, 0, (placement.z + 0.5) * STUD)
 	var open: Array = []
 	for side: String in sides:
 		var out: Vector3 = FACES[side]
+		# Within sixty degrees of straight out from the origin: the end of a
+		# face's course is open sideways onto the groove at its corner, and a
+		# tile laid there looks into the groove, not out of the tower.
+		if in_section and out.dot(Vector3(centre.x, 0.0, centre.z).normalized()) < 0.5:
+			continue
 		var clear: bool = true
 		for step: int in long:
 			for up: float in [0.75, 2.25]:
@@ -4034,7 +4128,7 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 				var at := Vector3(x * STUD, (placement.y + up) * PLATE, z * STUD)
 				at += out * (STUD * 0.5)
 				for reach: float in [2.0, 7.0]:
-					var cell: Vector3i = BrickLattice.to_cell(at + out * reach)
+					var cell: Vector3i = BrickLattice.to_cell(frame * (at + out * reach))
 					if builder.lattice.brick_at(cell) != 0:
 						clear = false
 		if clear:
@@ -4042,7 +4136,6 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 	if open.size() == 1:
 		return str(open[0])
 	if open.size() == 2:
-		var centre := Vector3((placement.x + 0.5) * STUD, 0, (placement.z + 0.5) * STUD)
 		var away: Vector3 = centre - middle
 		if along_x:
 			return "+z" if away.z >= 0.0 else "-z"
@@ -4089,7 +4182,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
 	if width < 2:
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
-			% Placement._num(radius) + "make the radius larger or the sides fewer")
+			% Placement._num(radius) + "%d sides want a radius of %s or more"
+			% [sides, Placement._num(_least_radius(sides, thick))])
 		return []
 	var sideways: float = clampf(float(pattern.get("sideways", 0.15)), 0.0, 0.5)
 	# Faces left out, centred on the back (the face looking -z, which is the
@@ -4097,23 +4191,49 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	# tower opens: rooms on floors, behind. Every Orthanc built here was a
 	# solid shell, and that is where a real set's variety is.
 	var open: int = clampi(int(pattern.get("open", 0)), 0, sides - 2)
+	# With piers, an opening is the core's whole back, every face that looks
+	# backwards, whatever number was asked: the fifteenth Orthanc asked for
+	# two faces of an octagon and got one face and one pier opened, the
+	# rooms behind a slot between two piers again. One more where the
+	# count would leave it off centre.
+	if pattern.has("piers") and open > 0:
+		var back: int = 0
+		for face: int in sides:
+			if cos(TAU * face / sides) < -0.01:
+				back += 1
+		open = maxi(open, back)
+		if (open - back) % 2 != 0:
+			open += 1
+		open = mini(open, sides - 2)
+	# The faces nearest the back first, the lower number of two as near.
+	var order: Array = range(sides)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		var from_a: float = absf(angle_difference(TAU * a / sides, PI))
+		var from_b: float = absf(angle_difference(TAU * b / sides, PI))
+		return from_a < from_b - 0.0001 or absf(from_a - from_b) <= 0.0001 and a < b)
 	var left_out: Dictionary = {}
 	for n: int in open:
-		left_out[posmod(sides / 2 - open / 2 + n, sides)] = true
+		left_out[order[n]] = true
 	var spec := {"x": cx, "y": y0, "z": cz, "sides": sides, "radius": radius,
 		"courses": courses, "thick": thick, "colour": colour,
 		"mix_colour": mix_colour, "mix": mix, "masonry": masonry,
-		"sideways": sideways, "open": open, "left_out": left_out}
+		"sideways": sideways, "open": open, "left_out": left_out,
+		"windows": bool(pattern.get("windows", true))}
 	if pattern.has("piers"):
 		return _cluster(pattern, spec, model, index, trouble)
+	# Each face as a cluster's core lays one, its outside row run on into the
+	# groove at its corner where there is room: a plain prism of radius 9
+	# had a channel at each corner too wide for the post behind it to cover.
 	var made: Array = []
+	var laid: Dictionary = {}
 	for face: int in sides:
 		if left_out.has(face):
 			continue
-		var name: String = "prism %d face %d" % [index, face]
-		model.sections[name] = Section.from_dict({"name": name, "x": cx, "y": y0,
-			"z": cz, "axis": "y", "degrees": 360.0 * face / sides})
-		_lay_face(made, name, spec, [[-width / 2.0, width]], radius, 0.0, courses)
+		laid[face] = _cluster_face(made, model, "prism %d face %d" % [index, face],
+			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0,
+			courses, true)
+	_corner_posts(made, func(face: int) -> String: return "prism %d face %d" % [index, face],
+		Vector2(cx, cz), sides, radius, spec, laid, [], courses)
 	return made
 
 
@@ -4124,19 +4244,30 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 ## stands beside the face, for a face that meets another shaft.
 func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 		radius: float, base: float, courses: int,
-		clear: Callable = Callable()) -> void:
+		clear: Callable = Callable(), windows: Dictionary = {}) -> void:
 	var wide: Array = [[4, "3001"], [3, "3002"], [2, "3003"]]
 	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var thick: int = spec["thick"]
 	var colour: int = spec["colour"]
 	var mix_colour: int = spec["mix_colour"]
 	var mix: float = spec["mix"]
+	# A window is in the face's widest run, at its middle stud.
+	var widest: int = 0
+	for n: int in runs.size():
+		if int(runs[n][1]) > int(runs[widest][1]):
+			widest = n
 	for course: int in courses:
 		var y: float = base + 3.0 * course
-		for run: Array in runs:
+		for n: int in runs.size():
+			var run: Array = runs[n]
 			var left: float = run[0]
 			var width: int = run[1]
 			var extra: int = int(run[2]) if run.size() > 2 else 0
+			var gap: float = NAN
+			if windows.has(course) and n == widest and width >= 2:
+				gap = left + floor(width / 2.0)
+				made.append(_prism_brick(name, "3005", WINDOW_COLOUR, gap, y,
+					radius - 1.0, 0, -1, 0.0, 0.0))
 			# Two thick: a course of two-wide bricks, then a course of two
 			# rows of one-wide ones, which the courses either side tie
 			# together. The outside row is where a face can be turned out
@@ -4144,8 +4275,11 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# bricks, was a face the finishing pass could not touch, and an
 			# Orthanc built with it came out 94% plain.
 			if thick == 2 and course % 2 == 0:
-				_lay_row(made, name, wide, left, width, y, radius - 2.0, course,
-					colour, mix_colour, mix, 0.0, 0.0)
+				_lay_row_around(made, name, wide, left, width, gap, y, radius - 2.0,
+					course, colour, mix_colour, mix, 0.0, 0.0)
+				if not is_nan(gap):
+					made.append(_prism_brick(name, "3005", colour, gap, y,
+						radius - 2.0, 0, mix_colour, mix, 0.0))
 				if extra > 0:
 					_lay_row(made, name, narrow, left + width, extra, y, radius - 1.0,
 						course, colour, mix_colour, mix, 0.0, 0.0)
@@ -4155,11 +4289,32 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# the course every outside row started short — 1x3s and 1x1s
 			# only, so not one of them could be a masonry brick.
 			var bond: int = course / 2 if thick == 2 else course
-			_lay_row(made, name, narrow, left, width + extra, y, radius - 1.0, bond,
-				colour, mix_colour, mix, spec["masonry"], spec["sideways"], clear)
+			_lay_row_around(made, name, narrow, left, width + extra, gap, y,
+				radius - 1.0, bond, colour, mix_colour, mix, spec["masonry"],
+				spec["sideways"], clear)
 			if thick == 2:
 				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
 					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
+
+
+## A row as [method _lay_row] lays it, but for the stud at [param gap] (a
+## window, laid by the caller), or whole where [param gap] is NAN.
+func _lay_row_around(made: Array, section: String, lengths: Array, left: float,
+		width: int, gap: float, y: float, z: float, course: int, colour: int,
+		mix_colour: int, mix: float, masonry: float, sideways: float,
+		clear: Callable = Callable()) -> void:
+	if is_nan(gap) or gap < left or gap >= left + width:
+		_lay_row(made, section, lengths, left, width, y, z, course, colour,
+			mix_colour, mix, masonry, sideways, clear)
+		return
+	var before: int = int(round(gap - left))
+	var after: int = width - before - 1
+	if before > 0:
+		_lay_row(made, section, lengths, left, before, y, z, course, colour,
+			mix_colour, mix, masonry, sideways, clear)
+	if after > 0:
+		_lay_row(made, section, lengths, gap + 1.0, after, y, z, course, colour,
+			mix_colour, mix, masonry, sideways, clear)
 
 
 ## One row of a prism's face, in its own frame: bonded by the course,
@@ -4222,6 +4377,226 @@ func _prism_brick(section: String, part: String, colour: int, x: float, y: float
 	return one
 
 
+## A prism's windows: Trans-Yellow, one stud wide and two courses tall, in
+## the outside row, every so many courses (the inside row stays whole, so a
+## window is lit and never seen through).
+const WINDOW_COLOUR := 46
+const WINDOW_EVERY := 8
+
+
+## A post up the inside of each corner where two laid faces of a shaft meet:
+## a column of round bricks in one of the two faces' sections, from its foot
+## to its top course. A face is as wide as whole studs allow, so its inner
+## corner stops short of its neighbour's and a channel 2.4 LDU wide runs up
+## beside it — narrower than a lattice cell, so nothing in the check sees it,
+## and in a tower open at the back the sky shows through: a white slit up the
+## front of the sixteenth Orthanc's core, seen from the front at six heights
+## in nine. Faces cannot be brought closer (two walls at angles nearer than a
+## cell collide), so the channel is closed from behind, as a builder puts a
+## column in the corner of a polygonal tower. Only where it could be seen
+## through: a tower open at the back, or with an odd number of sides, whose
+## corners face each other across it. [param laid] is each laid face's runs,
+## by number, the first looking [param turn] degrees round; [param against]
+## outlines a post must keep clear of.
+func _corner_posts(made: Array, name_of: Callable, origin: Vector2, sides: int,
+		radius: float, spec: Dictionary, laid: Dictionary, against: Array,
+		courses: int, turn: float = 0.0) -> Array:
+	var posts: Array = []
+	if int(spec["open"]) == 0 and sides % 2 == 0:
+		return posts
+	var step: float = 360.0 / sides
+	for face: int in sides:
+		var next: int = (face + 1) % sides
+		if not laid.has(face) or not laid.has(next):
+			continue
+		# In whichever face is turned off the grid first: a face square to it
+		# is judged on its studs, and the half-stud grid seldom has a place
+		# that covers the channel. Every corner of a prism has one.
+		var hosts: Array = [[face, next], [next, face]]
+		if _square_to_grid(turn + step * face):
+			hosts.reverse()
+		var at: Array = []
+		var host: int = -1
+		for size: int in [1, 2]:
+			for pair: Array in hosts:
+				var mine: float = turn + step * int(pair[0])
+				var theirs: float = turn + step * int(pair[1])
+				at = _corner_post([origin, mine, laid[pair[0]], radius],
+					angle_difference(deg_to_rad(mine), deg_to_rad(theirs)) > 0.0,
+					[origin, theirs, laid[pair[1]], radius], int(spec["thick"]),
+					against + posts, size)
+				if not at.is_empty():
+					host = int(pair[0])
+					break
+			if not at.is_empty():
+				break
+		if at.is_empty():
+			continue
+		var size: float = 1.0 if at[2] == "3062b" else 2.0
+		posts.append(_face_slab(origin, turn + step * host, float(at[0]) - CLUSTER_CLEAR,
+			float(at[0]) + size + CLUSTER_CLEAR, float(at[1]) - CLUSTER_CLEAR,
+			float(at[1]) + size + CLUSTER_CLEAR))
+		for course: int in courses:
+			made.append({"part": at[2], "color": spec["colour"], "x": at[0],
+				"y": 3.0 * course, "z": at[1], "rot": 0, "section": name_of.call(host)})
+	return posts
+
+
+## The least radius, in half studs, at which a prism of [param sides] faces
+## [param thick] studs thick has faces two studs wide.
+static func _least_radius(sides: int, thick: int) -> float:
+	var radius: float = ceil((thick + 1.0 / tan(PI / sides)) * 2.0) / 2.0
+	while int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001)) < 2:
+		radius += 0.5
+	return radius
+
+
+## Whether a section turned [param degrees] about y is square to the grid.
+static func _square_to_grid(degrees: float) -> bool:
+	return absf(angle_difference(deg_to_rad(degrees),
+		roundf(degrees / 90.0) * PI / 2.0)) < 0.001
+
+
+## Where the post behind one end of a face of a shaft stands, in the face's
+## own frame: [x, z, part], the corner of the studs a round brick
+## [param size] studs across stands on (3062b, or 3941 where the gap is wider
+## than one can cover: a face of a prism of radius 9 loses most of a stud to
+## whole studs), or [] where none fits that covers it. [param host] is the
+## face, [origin, degrees, runs, radius] — a run is [left, studs, how far its
+## outside row runs on past its right-hand end] — and [param right] which of
+## its ends; [param beside] the face round the corner from that end, the
+## same way. As near the channel's mouth as it is clear of both faces by
+## [constant CLUSTER_CLEAR] — nearer its own, the clutch check reads it as
+## standing across that face's studs — and kept only if it meets every
+## sightline that passes between them there, from either face's look and
+## fifteen degrees past it: those are found by looking across the corner
+## every five degrees and keeping the gaps between the faces' bricks at its
+## mouth.
+static func _corner_post(host: Array, right: bool, beside: Array, thick: int,
+		against: Array, size: int = 1) -> Array:
+	var origin: Vector2 = host[0]
+	var degrees: float = host[1]
+	var mine: Array = host[2]
+	var radius: float = host[3]
+	var inner: float = radius - thick
+	var start := func(runs: Array) -> float:
+		return float(runs[0][0])
+	# One thick, the face is its outside row, run on into the groove.
+	var finish := func(runs: Array) -> float:
+		var last: Array = runs[runs.size() - 1]
+		return float(last[0]) + int(last[1]) \
+			+ (int(last[2]) if thick == 1 and last.size() > 2 else 0)
+	var to_plan := func(face: Array, at: Vector2) -> Vector2:
+		var turned: float = deg_to_rad(float(face[1]))
+		return (face[0] as Vector2) + Vector2(cos(turned), -sin(turned)) * at.x \
+			+ _towards(float(face[1])) * at.y
+	var mine_end: float = finish.call(mine) if right else start.call(mine)
+	var corner: Vector2 = to_plan.call(host, Vector2(mine_end, inner))
+	# The faces' bricks in plan, as laid and grown by the clearance.
+	var walls: Array = []
+	var kept_off: Array = []
+	var theirs: Array = []
+	var c: float = CLUSTER_CLEAR
+	for face: Array in [host, beside]:
+		var inside: float = float(face[3]) - thick
+		for run: Array in face[2]:
+			var a: float = float(run[0])
+			var b: float = a + int(run[1])
+			var slabs: Array = [_face_slab(face[0], face[1], a, b, inside, face[3])]
+			kept_off.append(_face_slab(face[0], face[1], a - c, b + c, inside - c,
+				float(face[3]) + c))
+			if run.size() > 2 and int(run[2]) > 0:
+				var e: float = b + int(run[2])
+				slabs.append(_face_slab(face[0], face[1], b, e, float(face[3]) - 1.0, face[3]))
+				kept_off.append(_face_slab(face[0], face[1], b - c, e + c,
+					float(face[3]) - 1.0 - c, float(face[3]) + c))
+			walls.append_array(slabs)
+			if face == beside:
+				theirs.append_array(slabs)
+	# The mouth: midway from this face's inner corner to the nearest point of
+	# the face beside it.
+	var meets: Vector2 = corner
+	var closest: float = INF
+	for slab: PackedVector2Array in theirs:
+		for k: int in slab.size():
+			var point: Vector2 = Geometry2D.get_closest_point_to_segment(corner, slab[k],
+				slab[(k + 1) % slab.size()])
+			if point.distance_to(corner) < closest:
+				closest = point.distance_to(corner)
+				meets = point
+	var at_mouth: Vector2 = (corner + meets) / 2.0
+	var other: float = float(beside[1])
+	var inward: Vector2 = (origin - at_mouth).normalized()
+	# What passes between the two faces, every five degrees from one face's
+	# look to the other's and fifteen past each: [the way across, the gaps at
+	# the mouth across it, the way along].
+	var sightlines: Array = []
+	var apart: float = rad_to_deg(absf(angle_difference(deg_to_rad(degrees), deg_to_rad(other))))
+	var fan: int = int(ceil((apart / 2.0 + 15.0) / 5.0))
+	for n: int in range(-fan, fan + 1):
+		var way: Vector2 = inward.rotated(deg_to_rad(5.0 * n))
+		var across := Vector2(way.y, -way.x)
+		var spans: Array = []
+		for wall: PackedVector2Array in walls:
+			var lo: float = INF
+			var hi: float = -INF
+			for point: Vector2 in wall:
+				lo = minf(lo, point.dot(across))
+				hi = maxf(hi, point.dot(across))
+			spans.append([lo, hi])
+		spans.sort_custom(func(p: Array, q: Array) -> bool: return p[0] < q[0])
+		var here: float = at_mouth.dot(across)
+		var gaps: Array = []
+		var reach: float = spans[0][1]
+		for span: Array in spans:
+			if float(span[0]) > reach + 0.01 and reach < here + 1.5 and float(span[0]) > here - 1.5:
+				gaps.append([reach, float(span[0])])
+			reach = maxf(reach, float(span[1]))
+		if not gaps.is_empty():
+			sightlines.append([across, gaps, way])
+	var half: float = size / 2.0
+	var on_grid: bool = _square_to_grid(degrees)
+	var best: Array = []
+	var nearest: float = INF
+	var z_top: float = floor((inner - CLUSTER_CLEAR - size) * 10.0 + 0.001) / 10.0
+	var x_mid: float = floor((mine_end - (size if right else 0.0)) * 10.0) / 10.0
+	for dz: int in 16:
+		var z: float = snappedf(z_top - 0.1 * dz, 0.1)
+		for dx: int in 41:
+			var x: float = snappedf(x_mid + 0.1 * (dx - 20), 0.1)
+			var middle: Vector2 = to_plan.call(host, Vector2(x + half, z + half))
+			var off: float = middle.distance_to(at_mouth)
+			if off >= nearest:
+				continue
+			var square: PackedVector2Array = _face_slab(origin, degrees, x, x + size, z, z + size)
+			var clear: bool = true
+			for shape: PackedVector2Array in kept_off + against:
+				clear = clear and not _convex_meet(square, shape)
+			if not clear:
+				continue
+			# A face square to the grid is judged on its studs like any square
+			# part: its post on whole or half studs, as the face's bricks are.
+			if on_grid:
+				var low := Vector2(INF, INF)
+				for point: Vector2 in square:
+					low = Vector2(minf(low.x, point.x), minf(low.y, point.y))
+				if absf(low.x * 2.0 - roundf(low.x * 2.0)) > 0.01 \
+						or absf(low.y * 2.0 - roundf(low.y * 2.0)) > 0.01:
+					continue
+			# Its round body across every gap.
+			var covers: bool = true
+			for seen: Array in sightlines:
+				var centre: float = middle.dot(seen[0])
+				covers = covers and (middle - at_mouth).dot(seen[2]) > 0.0
+				for gap: Array in seen[1]:
+					covers = covers and centre - half <= float(gap[0]) \
+						and centre + half >= float(gap[1])
+			if covers:
+				best = [x, z, "3062b" if size == 1 else "3941"]
+				nearest = off
+	return best
+
+
 ## How far the shafts of a cluster keep apart, in studs. A part turned to an
 ## angle claims every lattice cell it touches, and a cell is 2 LDU, so two
 ## walls at different angles nearer than a cell's diagonal (2.8 LDU) share
@@ -4274,7 +4649,18 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	# parallel to the core's and meet it flat. Six-sided piers on an octagon
 	# meet it corner first, with a wedge of groove beside every cleft.
 	var p_sides: int = int(piers.get("sides", sides))
-	var p_radius: float = float(piers.get("radius", maxf(3.0, round(radius * 2.0 / 3.0))))
+	# Two thirds of the core's, and never less than keeps two-stud faces at
+	# its sides. Asked smaller, the piers are laid at that and the check
+	# says so: refused, the fifteenth and sixteenth Orthancs both asked for
+	# piers of radius 4 at eight sides, were told "make their radius larger
+	# or their sides fewer", and took six sides, which meet an octagon
+	# corner first and leave the sky showing beside every cleft.
+	var least: float = _least_radius(p_sides, thick)
+	var p_radius: float = maxf(least, float(piers.get("radius", round(radius * 2.0 / 3.0))))
+	if p_radius > float(piers.get("radius", p_radius)):
+		_pattern_advice.append("Piers of radius %s would have faces narrower than two "
+			% Placement._num(float(piers["radius"])) + "studs at %d sides, so they are " % p_sides
+			+ "laid at radius %s, the least that keeps %d sides." % [Placement._num(least), p_sides])
 	# Past the core's summit into horns unless said: Orthanc's four rise above
 	# its top, and so do a castle's corner turrets.
 	var p_courses: int = int(round(float(piers.get("courses",
@@ -4287,10 +4673,6 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		return []
 	if p_courses > 200:
 		trouble.append("piers wants 200 courses at most")
-		return []
-	if int(floor(2.0 * (p_radius - thick) * tan(PI / p_sides) + 0.001)) < 2:
-		trouble.append("piers of radius %s have faces narrower than two studs; "
-			% Placement._num(p_radius) + "make their radius larger or their sides fewer")
 		return []
 	var middle := Vector2(spec["x"], spec["z"])
 	var clear: float = CLUSTER_CLEAR
@@ -4348,11 +4730,16 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	for k: int in count:
 		grown.append(_outline(middle + _towards(angles[k]) * out, p_sides,
 			p_radius + clear, angles[k]))
+	var laid: Dictionary = {}
 	for face: int in sides:
 		if left_out.has(face):
 			continue
-		_cluster_face(made, model, name_of.call(-1, face), middle,
-			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses)
+		var runs: Array = _cluster_face(made, model, name_of.call(-1, face), middle,
+			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses, true)
+		if not runs.is_empty():
+			laid[face] = runs
+	_corner_posts(made, func(face: int) -> String: return name_of.call(-1, face),
+		middle, sides, radius, spec, laid, [], courses)
 	# The piers, short of the core's outside.
 	var whole: PackedVector2Array = _outline(middle, sides, radius + clear, 0.0)
 	for k: int in count:
@@ -4371,7 +4758,8 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 					or _towards(degrees).dot(inward[k]) > 0.5):
 				continue
 			_cluster_face(made, model, name_of.call(k, face), centre, degrees,
-				p_radius, p_sides, spec, against, dressed, 0.0, courses)
+				p_radius, p_sides, spec, against, dressed, 0.0, courses,
+				_towards(degrees).dot(_towards(angles[k])) > 0.3)
 
 	# The summit, across everything that stands inside the outline.
 	var top: float = 3.0 * courses
@@ -4379,18 +4767,60 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	for k: int in count:
 		outline.append(_outline(middle + _towards(angles[k]) * out, p_sides,
 			p_radius, angles[k]))
+	var span: float = radius + out + p_radius * 2.0
+	var low := Vector2i(int(floor(middle.x - span)), int(floor(middle.y - span)))
+	var high := Vector2i(int(ceil(middle.x + span)), int(ceil(middle.y + span)))
+	for plate: Dictionary in _summit(_studs_within(outline, low, high),
+			float(spec["y"]) + top, spec["colour"]):
+		made.append(plate)
+
+	# The horns: each pier again, whole, standing on the summit, capped
+	# square at its top and carrying a point. Without the cap a horn ends in
+	# faces turned to its angles, which nothing square can sit on: the
+	# fifteenth Orthanc took its four generated horns down to build square
+	# ones by hand ("Pier tops are built at 45°, so grid parts can't clip
+	# on"), eight minutes of a run spent on what the call should have made.
+	if p_courses > courses:
+		var crown: float = float(spec["y"]) + 3.0 * p_courses + SUMMIT
+		var capped: Dictionary = {}
+		for k: int in count:
+			var centre: Vector2 = middle + _towards(angles[k]) * out
+			var others: Array = []
+			for other: int in count:
+				if other != k:
+					others.append(grown[other])
+			for face: int in p_sides:
+				_cluster_face(made, model, name_of.call(k, face), centre,
+					angles[k] + 360.0 * face / p_sides, p_radius, p_sides, spec,
+					[grown[(k + 1) % count]], others, top + SUMMIT, p_courses - courses)
+			var cells: Dictionary = _studs_within(
+				[_outline(centre, p_sides, p_radius, angles[k])], low, high)
+			for cell: Variant in capped:
+				cells.erase(cell)
+			var cap: Array = _summit(cells, crown, spec["colour"])
+			var on_top: Dictionary = {}
+			for plate: Dictionary in cap:
+				for cell: Vector2i in _plate_studs(plate):
+					capped[cell] = true
+					if is_equal_approx(float(plate["y"]), crown + 1.0):
+						on_top[cell] = true
+			made.append_array(cap)
+			made.append_array(_horn_point(on_top, centre, crown + SUMMIT, spec["colour"]))
+	return made
+
+
+## The whole studs inside [param outlines] (in plan, in studs), between
+## [param low] and [param high]: each a Vector2i -> true, where its corners
+## and its middle are each inside one of them.
+static func _studs_within(outlines: Array, low: Vector2i, high: Vector2i) -> Dictionary:
 	var cells: Dictionary = {}
-	var low: Vector2i = Vector2i(int(floor(middle.x - radius - out - p_radius * 2.0)),
-		int(floor(middle.y - radius - out - p_radius * 2.0)))
-	var high: Vector2i = Vector2i(int(ceil(middle.x + radius + out + p_radius * 2.0)),
-		int(ceil(middle.y + radius + out + p_radius * 2.0)))
 	for x: int in range(low.x, high.x):
 		for z: int in range(low.y, high.y):
 			var all_in: bool = true
 			for corner: Vector2 in [Vector2(x, z), Vector2(x + 1, z),
 					Vector2(x, z + 1), Vector2(x + 1, z + 1), Vector2(x + 0.5, z + 0.5)]:
 				var any: bool = false
-				for shape: PackedVector2Array in outline:
+				for shape: PackedVector2Array in outlines:
 					if Geometry2D.is_point_in_polygon(corner, shape):
 						any = true
 						break
@@ -4399,22 +4829,135 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 					break
 			if all_in:
 				cells[Vector2i(x, z)] = true
-	for plate: Dictionary in _summit(cells, float(spec["y"]) + top, spec["colour"]):
-		made.append(plate)
+	return cells
 
-	# The horns: each pier again, whole, standing on the summit.
-	if p_courses > courses:
-		for k: int in count:
-			var others: Array = []
-			for other: int in count:
-				if other != k:
-					others.append(grown[other])
-			for face: int in p_sides:
-				_cluster_face(made, model, name_of.call(k, face),
-					middle + _towards(angles[k]) * out,
-					angles[k] + 360.0 * face / p_sides, p_radius, p_sides, spec,
-					[grown[(k + 1) % count]], others, top + SUMMIT, p_courses - courses)
+
+## A horn's point, on the cap [param cells] (the studs on top of it), over
+## [param centre]: Orthanc's horns are tall, sharp and black. Where the cap
+## has room, a 4 x 4 course stepped in to 2 x 2 by four corner slopes; then
+## two 2 x 2 bricks, a 2 x 2 pyramid, a cone on its stud and a bar in the
+## cone. Square parts on square studs, so a design can take it off and
+## build its own on the cap.
+func _horn_point(cells: Dictionary, centre: Vector2, y: float, colour: int) -> Array:
+	var c := Vector2i(roundi(centre.x), roundi(centre.y))
+	var fits := func(half: int) -> bool:
+		for x: int in range(c.x - half, c.x + half):
+			for z: int in range(c.y - half, c.y + half):
+				if not cells.has(Vector2i(x, z)):
+					return false
+		return true
+	if not fits.call(1):
+		return []
+	var made: Array = []
+	var at: float = y
+	var half: int = 2 if fits.call(2) else 1
+	made.append_array(_horn_ledge(cells, c, half, y, colour))
+	if half == 2:
+		for dz: int in [-2, 0]:
+			made.append({"part": "3001", "color": colour, "x": c.x - 2, "y": at,
+				"z": c.y + dz, "rot": 0})
+		at += 3.0
+		for quarter: Vector2i in [Vector2i(-2, -2), Vector2i(0, -2),
+				Vector2i(-2, 0), Vector2i(0, 0)]:
+			var rot: int = _corner_slope_turn(Vector2i(-quarter.x / 2, -quarter.y / 2))
+			if rot < 0:
+				return []
+			made.append({"part": "3045", "color": colour, "x": c.x + quarter.x,
+				"y": at, "z": c.y + quarter.y, "rot": rot})
+		at += 3.0
+	for _n: int in 2:
+		made.append({"part": "3003", "color": colour, "x": c.x - 1, "y": at,
+			"z": c.y - 1, "rot": 0})
+		at += 3.0
+	made.append({"part": "3688", "color": colour, "x": c.x - 1, "y": at,
+		"z": c.y - 1, "rot": 0})
+	at += 6.0
+	# The pyramid's one stud is at its middle, half a stud off the grid.
+	made.append({"part": "59900", "color": colour, "x": c.x - 0.5, "y": at,
+		"z": c.y - 0.5, "rot": 0})
+	at += 3.0
+	# A bar has no studs, so it is placed by its cover: 8 LDU across.
+	made.append({"part": "30374", "color": colour, "x": c.x - 0.2, "y": at,
+		"z": c.y - 0.2, "rot": 0})
 	return made
+
+
+## The ledge of a horn's cap round its point's first course (studs
+## [param c] - [param half] to [param c] + [param half] each way), sloped up
+## to it: a corner slope at each corner where the cap has two studs by two
+## there, a 45 degree slope two studs deep along each side where it has
+## them, a cheese slope where it has one, and the bare stud beyond. As the
+## rock pattern faces its ledges; without it the point stood on a flat
+## shelf of studs, a spire on a roof rather than the end of a horn.
+func _horn_ledge(cells: Dictionary, c: Vector2i, half: int, y: float,
+		colour: int) -> Array:
+	var made: Array = []
+	var used: Dictionary = {}
+	for x: int in range(c.x - half, c.x + half):
+		for z: int in range(c.y - half, c.y + half):
+			used[Vector2i(x, z)] = true
+	for corner: Vector2i in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1),
+			Vector2i(1, 1)]:
+		var low := Vector2i(c.x - half - 2 if corner.x < 0 else c.x + half,
+			c.y - half - 2 if corner.y < 0 else c.y + half)
+		var block: Array[Vector2i] = []
+		for dx: int in 2:
+			for dz: int in 2:
+				block.append(low + Vector2i(dx, dz))
+		if block.any(func(cell: Vector2i) -> bool:
+				return not cells.has(cell) or used.has(cell)):
+			continue
+		var rot: int = _corner_slope_turn(Vector2i(1 if corner.x < 0 else 0,
+			1 if corner.y < 0 else 0))
+		if rot < 0:
+			continue
+		made.append({"part": "3045", "color": colour, "x": low.x, "y": y,
+			"z": low.y, "rot": rot})
+		for cell: Vector2i in block:
+			used[cell] = true
+	var outward: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0),
+		Vector2i(0, -1), Vector2i(-1, 0)]
+	for facing: Vector2i in outward:
+		var rot: int = outward.find(facing)
+		for along: int in range(-half, half):
+			# The stud against the point's first course on this side.
+			var out: int = half if facing.x + facing.y > 0 else -half - 1
+			var cell := Vector2i(c.x + out, c.y + along) if facing.x != 0 \
+				else Vector2i(c.x + along, c.y + out)
+			if not cells.has(cell) or used.has(cell):
+				continue
+			var beyond: Vector2i = cell + facing
+			if cells.has(beyond) and not used.has(beyond):
+				made.append({"part": "3040b", "color": colour,
+					"x": mini(cell.x, beyond.x), "y": y, "z": mini(cell.y, beyond.y),
+					"rot": rot})
+				used[beyond] = true
+			else:
+				made.append({"part": "54200", "color": colour, "x": cell.x, "y": y,
+					"z": cell.y, "rot": rot})
+			used[cell] = true
+	return made
+
+
+## Which turn of a 2 x 2 corner slope (3045) puts its one stud on the stud
+## [param inner] of its footprint (each 0 or 1 across and deep), read off
+## the part's own studs on a trial brick; -1 when it has not arrived.
+func _corner_slope_turn(inner: Vector2i) -> int:
+	var mesh: Lbm.PartMesh = library.mesh_for("3045")
+	if mesh == null:
+		return -1
+	for rot: int in 4:
+		var placed: Transform3D = _transform(Placement.from_dict({"part": "3045",
+			"x": 0, "y": 0, "z": 0, "rot": rot}), mesh)
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != "stud" or connector.gender != "male":
+				continue
+			if (placed.basis * connector.axis).normalized().dot(Vector3.UP) < 0.9:
+				continue
+			var at: Vector3 = placed * connector.position
+			if Vector2i(int(floor(at.x / STUD)), int(floor(at.z / STUD))) == inner:
+				return rot
+	return -1
 
 
 ## One face of a shaft of a cluster, in a section of its own: laid where it
@@ -4423,15 +4966,16 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 ## past its right-hand end into the groove at the corner. Without that a
 ## two-thick face of a pier five studs out is three studs wide with a groove
 ## nearly as wide at each corner, and the first cluster built read as a
-## bundle of separate sticks rather than four faceted piers. Returns whether
-## anything of it was laid.
+## bundle of separate sticks rather than four faceted piers. Returns the runs
+## it laid, each [left, studs, how far the outside row ran on], or [].
 func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 		degrees: float, radius: float, sides: int, spec: Dictionary,
-		against: Array, dressed: Array, base: float, courses: int) -> bool:
+		against: Array, dressed: Array, base: float, courses: int,
+		windowed: bool = false) -> Array:
 	var thick: int = spec["thick"]
 	var runs: Array = _runs(origin, degrees, radius, thick, sides, against)
 	if runs.is_empty():
-		return false
+		return []
 	var half: float = floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001) / 2.0
 	var step: float = 360.0 / sides
 	var beside: Array = [
@@ -4460,9 +5004,18 @@ func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 	if not model.sections.has(name):
 		model.sections[name] = Section.from_dict({"name": name, "x": origin.x,
 			"y": spec["y"], "z": origin.y, "axis": "y", "degrees": degrees})
+	# Narrow lit windows, two courses tall, every WINDOW_EVERY courses up the
+	# face, alternate faces half a storey apart: Orthanc's faces have them,
+	# and the sixteenth, whose dressing is now black on black, had none.
+	var windows: Dictionary = {}
+	if windowed and bool(spec.get("windows", true)):
+		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash()) % 2 == 1 else 0)
+		for course: int in range(first, courses - 2, WINDOW_EVERY):
+			windows[course] = true
+			windows[course + 1] = true
 	_lay_face(made, name, spec, runs, radius, base, courses,
-		_dressing_clear.bind(origin, degrees, radius, dressed + beside))
-	return true
+		_dressing_clear.bind(origin, degrees, radius, dressed + beside), windows)
+	return runs
 
 
 ## A rectangle in a face's own frame, x0..x1 along it and z0..z1 out from
@@ -4626,16 +5179,36 @@ static func _dressing_clear(x: float, long: int, origin: Vector2,
 	return true
 
 
+## The plates a summit is laid in, each [across, deep, part, turn]: strips
+## along z for its first layer, along x for its second.
+const SUMMIT_ALONG_Z: Array = [[2, 6, "3795", 1], [2, 4, "3020", 1], [2, 3, "3021", 1],
+	[2, 2, "3022", 0], [1, 4, "3710", 1], [1, 3, "3623", 1], [1, 2, "3023", 1],
+	[1, 1, "3024", 0]]
+const SUMMIT_ALONG_X: Array = [[6, 2, "3795", 0], [4, 2, "3020", 0], [3, 2, "3021", 0],
+	[2, 2, "3022", 0], [4, 1, "3710", 0], [3, 1, "3623", 0], [2, 1, "3023", 0],
+	[1, 1, "3024", 0]]
+
+
+## The studs a summit's plate covers, from its part, turn and corner.
+static func _plate_studs(plate: Dictionary) -> Array[Vector2i]:
+	var size := Vector2i.ZERO
+	for one: Array in SUMMIT_ALONG_Z + SUMMIT_ALONG_X:
+		if str(one[2]) == str(plate["part"]) and int(one[3]) == int(plate["rot"]):
+			size = Vector2i(one[0], one[1])
+			break
+	var studs: Array[Vector2i] = []
+	for dx: int in size.x:
+		for dz: int in size.y:
+			studs.append(Vector2i(int(plate["x"]) + dx, int(plate["z"]) + dz))
+	return studs
+
+
 ## Two layers of plates over [param cells]: strips along z, then strips
 ## along x across them, so each plate crosses several of the other layer
 ## and the whole floor holds wherever its edge rests.
 static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
-	var along_z: Array = [[2, 6, "3795", 1], [2, 4, "3020", 1], [2, 3, "3021", 1],
-		[2, 2, "3022", 0], [1, 4, "3710", 1], [1, 3, "3623", 1], [1, 2, "3023", 1],
-		[1, 1, "3024", 0]]
-	var along_x: Array = [[6, 2, "3795", 0], [4, 2, "3020", 0], [3, 2, "3021", 0],
-		[2, 2, "3022", 0], [4, 1, "3710", 0], [3, 1, "3623", 0], [2, 1, "3023", 0],
-		[1, 1, "3024", 0]]
+	var along_z: Array = SUMMIT_ALONG_Z
+	var along_x: Array = SUMMIT_ALONG_X
 	var ordered: Array = cells.keys()
 	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return a.x < b.x or a.x == b.x and a.y < b.y)
@@ -4654,21 +5227,15 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 	# outline a stud across is a 1x1 plate on a 1x1 plate, held by nothing,
 	# and the first open cluster had one hanging over its open back. The
 	# largest piece is the summit; anything apart from it is left off.
-	var size_of: Dictionary = {}
-	for one: Array in along_z + along_x:
-		size_of["%s %d" % [one[2], one[3]]] = Vector2i(one[0], one[1])
 	var under: Dictionary = {}
 	var over: Dictionary = {}
 	for n: int in made.size():
 		var plate: Dictionary = made[n]
-		var size: Vector2i = size_of["%s %d" % [plate["part"], plate["rot"]]]
-		for dx: int in size.x:
-			for dz: int in size.y:
-				var cell := Vector2i(int(plate["x"]) + dx, int(plate["z"]) + dz)
-				if is_equal_approx(float(plate["y"]), y):
-					under[cell] = n
-				else:
-					over[cell] = n
+		for cell: Vector2i in _plate_studs(plate):
+			if is_equal_approx(float(plate["y"]), y):
+				under[cell] = n
+			else:
+				over[cell] = n
 	var links: Dictionary = {}
 	for cell: Vector2i in over:
 		if under.has(cell):
@@ -4715,8 +5282,7 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 ## stud facing the way asked and carrying a 1x1 part laid on it.
 ##
 ##   {"pattern": "studs_out", "at": {"x": 0, "y": 0, "z": 0}, "length": 8,
-##    "courses": 4, "facing": "+z", "color": 0, "face_color": 72,
-##    "mix_color": 0}
+##    "courses": 4, "facing": "+z", "color": 0}
 func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
 	var x0: float = float(at.get("x", 0.0))
@@ -4874,6 +5440,8 @@ static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
 
 ## What was wrong with the last set of patterns, said by the check.
 var _pattern_trouble: Array = []
+## And what the patterns did that was not asked, said as advice.
+var _pattern_advice: Array = []
 
 ## And with the last set of repeats. Kept apart from the patterns so the
 ## summary can name which of the two went wrong: a model told only that
@@ -5099,6 +5667,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		_note(issues, "pattern", str(said))
 	for said: Variant in _repeat_trouble:
 		_note(issues, "repeat", str(said))
+	advice.append_array(_pattern_advice)
 
 	if model.placements.is_empty():
 		# Which of the two this is matters enormously.
@@ -8026,7 +8595,7 @@ alongside the bricks you write by hand:
 
            A face built on its side is the other: \
            {"pattern": "studs_out", "at": {...}, "length": 8, "courses": \
-           4, "facing": "+z", "color": 0, "face_color": 72}. Courses of \
+           4, "facing": "+z", "color": 0}. Courses of \
            1x1 bricks with a stud on one side, tied by plates, and on \
            every side stud a tile, a round tile, a round plate or a \
            cheese slope, so the face is texture rather than studs. Real \
@@ -8051,13 +8620,18 @@ alongside the bricks you write by hand:
            is that, in one line. "piers" also takes sides, radius and out \
            (how far from the middle each stands). The core is capped with \
            a summit two plates thick at y + 3 x courses, which ties it \
-           all together: build on it at y + 3 x courses + 2. Without \
+           all together: build on it at y + 3 x courses + 2. Each horn \
+           is capped square the same way, two plates at y + 3 x the \
+           piers' courses + 2, with a black point standing on the cap. \
+           With piers, any "open" opens the core's whole back. Without \
            "piers" a prism is one shaft with a groove up each corner; \
            stack them, shrinking, for a taper. Its faces come dressed as a \
            finished wall's are — a quarter worked stone, some bricks \
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
-           "sideways" set how much, 0 for a plain face. Once it stands, \
+           "sideways" set how much, 0 for a plain face; and narrow lit \
+           windows go up them every eight courses ("windows": false for \
+           none). Once it stands, \
            add_rooms with "prism": the same at, sides and radius, and \
            "floors": [{"room": "dungeon"}, {"room": "forge", "stair": \
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
@@ -8634,6 +9208,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	if not _busy:
 		_outside_standing = true
 		_outside_assemblies = design.assemblies.duplicate()
+		_outside_reviewed = {}
 		_outside_reviewing = {}
 		_detail_added = []
 		_brief = "%s. %s" % [design.name, design.description]
@@ -8655,6 +9230,8 @@ var _outside_standing: bool = false
 ## The assembly being reviewed, and the parts the model had before, so the
 ## next review can say what this one brought.
 var _outside_reviewing: Dictionary = {}
+## The assemblies a session has had a close review of, by name in lower case.
+var _outside_reviewed: Dictionary = {}
 
 const FROM_OUTSIDE_NEXT := """A first design is never as detailed as a \
 set; this app's own designer always goes on from here, and so should you:
@@ -8723,10 +9300,48 @@ func review(assembly: String) -> String:
 		return "Nothing stands inside the box of the %s. %s" % [name,
 			_assemblies_to_review()]
 	_outside_reviewing = {"name": name, "parts": _parts_in(everything)}
-	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s. When it is done, review_model the next one." % [
+	_outside_reviewed[name.to_lower()] = true
+	# Not "and stop": said to a session with nothing to hand it the next
+	# assembly, that ended the run. The sixteenth Orthanc made one edit to
+	# the first of its three assemblies, then saved and finished; no run
+	# from outside had reviewed more than two.
+	var left: Array[String] = _not_yet_reviewed()
+	var ending: String = ("say in a line what you changed, then review_model "
+		+ "{\"assembly\": \"%s\"}%s." % [left[0], " — %d more after it" % (left.size() - 1)
+			if left.size() > 1 else ""]) if not left.is_empty() \
+		else "say in a line what you changed: it is the last of its assemblies."
+	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s." % [
 		_assembly_measured(name, inside, _bounds_of(inside)),
-		ASSEMBLY_CRITIQUE.replace("{name}", name),
+		ASSEMBLY_CRITIQUE.replace("{name}", name).replace(
+			"say in a line what you changed, and stop.", ending),
 		JSON.stringify(one.get("where", {}))]
+
+
+## The next assembly's close review, for a session that is saving with some
+## not yet looked at closely; "" when every one has been. The sixteenth
+## Orthanc's last act was to save, with two of its three assemblies never
+## reviewed: so saving hands it the next, as this app's own loop hands each
+## assembly back in turn.
+func next_review() -> String:
+	var left: Array[String] = _not_yet_reviewed()
+	if left.is_empty():
+		return ""
+	var name: String = left[0]
+	return ("Before it is finished: %d of its %d assemblies %s not had a close "
+		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
+		+ "look (%s). This app's own designer details each in turn; the next " % ", ".join(left)
+		+ "is the %s.\n\n%s" % [name, review(name)])
+
+
+## The assemblies a session named that have had no close review yet, in
+## the order it named them.
+func _not_yet_reviewed() -> Array[String]:
+	var left: Array[String] = []
+	for one: Dictionary in _outside_assemblies:
+		var name: String = str(one.get("name", ""))
+		if not _outside_reviewed.has(name.to_lower()):
+			left.append(name)
+	return left
 
 
 func _assemblies_to_review() -> String:
@@ -8826,21 +9441,28 @@ func _tools() -> Array:
 			"thickness": {"type": "integer", "description":
 				"prism: 2 (the default) closes the inside; 1 leaves slits at the corners"},
 			"open": {"type": "integer", "description":
-				"prism: faces left out at the back, so the rooms inside show "
-				+ "(and with piers, the backs of the piers there)"},
+				"prism: faces left out at the back, so the rooms inside show; "
+				+ "with piers, any number opens the core's whole back and the "
+				+ "backs of the piers there"},
+			"windows": {"type": "boolean", "description":
+				"prism: narrow lit windows up its faces, every eight courses; "
+				+ "true unless said"},
 			"piers": {"type": "object", "description":
 				"prism: faceted piers clustered round it, each a prism of its "
 				+ "own built against the core, with a cleft between each two "
 				+ "— a tower like Orthanc in one object. The core is capped "
 				+ "with a summit two plates thick at y + 3 x courses, and "
-				+ "piers taller than the core rise past it as horns.",
+				+ "piers taller than the core rise past it as horns, each "
+				+ "capped square, two plates at y + 3 x their courses + 2, with "
+				+ "a black point on the cap.",
 				"properties": {
 					"count": {"type": "integer", "description": "how many, 2-8 (4)"},
 					"sides": {"type": "integer", "description":
 						"each pier's faces, 5-16 (the core's)"},
 					"radius": {"type": "number", "description":
 						"studs from a pier's middle to the outside of its faces "
-						+ "(two thirds of the core's)"},
+						+ "(two thirds of the core's; smaller than keeps faces two "
+						+ "studs wide at its sides, it is laid at that and said)"},
 					"out": {"type": "number", "description":
 						"studs from the core's middle to each pier's (set into "
 						+ "the core by its wall's thickness)"},
@@ -9147,11 +9769,13 @@ func _tools() -> Array:
 		{
 			"name": "restyle_model",
 			"description": ("A finishing pass over what is already built: "
-				+ "plain one-stud-wide bricks (1x1 to 1x4) whose long face "
+				+ "plain bricks one stud wide (1x1 to 1x4) whose long face "
 				+ "is open to the air are laid again, in place, as bricks "
 				+ "with a stud on the side carrying a tile, round tile, round "
 				+ "plate or cheese slope facing out (sideways), or as masonry "
-				+ "bricks with their stonework out (masonry). What a builder "
+				+ "bricks with their stonework out (masonry); one two studs wide "
+				+ "(2x2 to 2x4) as two rows, the outer one finished so; the "
+				+ "faces of a prism or a cluster too, in their own sections. What a builder "
 				+ "does to a plain wall, and how real sets come to have a "
 				+ "fifth of their parts on their side — done for you, in one "
 				+ "call, checked like any edit."),
@@ -9172,7 +9796,9 @@ func _tools() -> Array:
 					"masonry": {"type": "number", "description":
 						"share laid as masonry, 0 to 1; 0.25 if not said"},
 					"face_color": {"type": "integer", "description":
-						"colour of what is laid on the side studs; the brick's own if not said"},
+						"an accent through a fifth of what is laid on the side studs; "
+						+ "the rest is the brick's own colour, as a set dresses a "
+						+ "black wall in black"},
 				},
 				"additionalProperties": false,
 			},

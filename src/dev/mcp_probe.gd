@@ -50,7 +50,14 @@ func _run() -> void:
 	_socket.assistant = assistant
 	_socket.app = main
 	main.add_child(_socket)
+	# The first free from 8791: another session's relay or app may hold it.
 	var port: int = 8791
+	for candidate: int in range(8791, 8811):
+		var trial := TCPServer.new()
+		if trial.listen(candidate, "127.0.0.1") == OK:
+			trial.stop()
+			port = candidate
+			break
 	if not _socket.listen(port):
 		_check("the socket listens on %d" % port, false)
 		_done()
@@ -195,6 +202,21 @@ func _run() -> void:
 	_check("...and one assembly close up, only its own bricks, measured, with what to do",
 		close.begins_with("The east wall: 1") and close.contains("A real set of")
 		and close.contains("edit_model") and not close.begins_with("The east wall: 300"))
+	# It ends on the next assembly, not on stopping: told "and stop", the
+	# sixteenth Orthanc made one edit to the first of its three and finished.
+	_check("...ending on the next one to review, not on stopping",
+		close.contains("review_model {\"assembly\": \"west wall\"}")
+		and not close.contains("and stop"))
+	# And saving, a run's last act, hands back the one not yet looked at.
+	var saved: String = _text_of(await _ask("save_model", {"name": "brickworks-mcp-probe-next"}))
+	_check("saving with an assembly not reviewed hands back its review, the last",
+		saved.begins_with("Written") and saved.contains("The west wall: ")
+		and saved.contains("last of its assemblies"))
+	var resaved: String = _text_of(await _ask("save_model", {"name": "brickworks-mcp-probe-next"}))
+	_check("...and once each has had its turn, saving only saves",
+		resaved.begins_with("Written") and not resaved.contains("close look"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(
+		ModelStore.SAVE_DIR + "brickworks-mcp-probe-next.ldr"))
 	var nothing: String = _text_of(await _ask("review_model", {"assembly": "moat"}))
 	_check("...and an assembly it never named is answered with the ones it did",
 		nothing.begins_with("No assembly called moat") and nothing.contains("east wall"))
