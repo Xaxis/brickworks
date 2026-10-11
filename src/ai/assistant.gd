@@ -6078,8 +6078,15 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not stepped.is_empty():
 		advice.append(stepped)
 
-	# And whether there is a line it would come apart along.
-	var seam: String = _unbonded_seam(box_of)
+	# And whether there is a line it would come apart along. Not between
+	# round parts: two cylinder halves back to back, four corner rounds of a
+	# ring and a booster beside its core are how a set builds a round, each
+	# column tied by a round plate, and a rocket was told to stagger them.
+	var walls: Dictionary = {}
+	for index: int in box_of:
+		if not Style.kinds_of(model.placements[index].part).contains("c"):
+			walls[index] = box_of[index]
+	var seam: String = _unbonded_seam(walls)
 	if not seam.is_empty():
 		advice.append(seam)
 
@@ -6537,7 +6544,10 @@ func _mostly_big_plates(model: Model) -> String:
 		counted += 1
 		var footprint: Vector2i = info.footprint_studs()
 		var studs: float = float(footprint.x) * float(footprint.y)
-		if studs >= BIG_PART_STUDS:
+		# A round brick or a cylinder half is the skin of a rocket, not a
+		# plate under it: a body laid in them read as "structure, not yet
+		# finished" at every size.
+		if studs >= BIG_PART_STUDS and not Style.kinds_of(placement.part).contains("c"):
 			big += 1
 		elif studs <= 2.0:
 			small += 1
@@ -8573,7 +8583,7 @@ alongside the bricks you write by hand:
 
              a dome          ellipse, layers 8, shrink 2
              a cone          ellipse, layers 10, shrink 4
-             a round tube    ellipse, wall 1, layers 12, rise 3
+             a round tube    the round pattern (below), not a fill
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
              a wall          rectangle, wall 1, layers 12, rise 3
@@ -8637,18 +8647,38 @@ alongside the bricks you write by hand:
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
            each storey and furnishes each room, in one call.
 
+           Anything round in section is one object too, upright or \
+           lying down: {"pattern": "round", "at": {"x": 10, "y": 0, \
+           "z": 10}, "diameter": 4, "color": 15, "stack": [{"cones": 9, \
+           "color": 0}, {"technic": true, "struts": 2, "color": 0}, \
+           {"plates": 60}, {"plates": 9, "color": 0, "spokes": 4}, \
+           {"diameter": 6, "plates": 18}, {"nose": "ogive"}]}. It lays \
+           the round parts real sets lay at each diameter — 1 and 2 \
+           studs round bricks; 4, a round brick or two cylinder halves \
+           back to back; 6 and 8, four corner rounds tied by a round \
+           plate — so the surface is a true circle, not a staircase of \
+           bricks. Up the stack go bands of colour, a wider or narrower \
+           length, cones under a round plate, a Technic course with \
+           beams pinned on, a plate whose spokes carry tiles out past \
+           the round, and a nose (cone, ogive, dome, point, flat). \
+           "axis": "x" lays the same stack along x; "beside" stands two \
+           or four more round it, pinned to it. A rocket stage and its \
+           boosters, a lighthouse with its gallery, a silo, a column, a \
+           chimney, a locomotive's boiler, a fuselage, a submarine, a \
+           tree trunk: every one of these built square here read as a \
+           pile of bricks, and real sets never build round square.
+
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
-           A round *tower* is the exception, and it used to say tower \
-           here. An ellipse with a wall has no room for a long brick in \
-           any run once it curves, so a small one comes out as a \
-           staircase of 1x1 bricks: measured on a castle, 354 of them, \
-           four towers' worth. Anything round and more than a couple of \
-           studs across wants show_technique("wide round tower") — four \
-           4x4 corner-round bricks a course. But round is a choice: 15 \
-           of 54 castle sets since 2010 use that brick at all, none \
-           more than eight, and every castle built here had two hundred.
+           A round *tower* in a fill is the trap: an ellipse with a wall \
+           has no room for a long brick in any run once it curves, so a \
+           small one comes out as a staircase of 1x1 bricks — measured \
+           on a castle, 354 of them, four towers' worth. A round tower \
+           is the round pattern, diameter 8 or less; wider than that, \
+           a prism of many sides. But round is a choice: 15 of 54 castle \
+           sets since 2010 use the 4x4 corner round at all, none more \
+           than eight, and every castle built here had two hundred.
            Walls especially. Measured: a curtain wall 40 by 24 studs and \
            twelve courses high is 408 parts out of fill — 1x4 bricks \
            in a running bond, 1x3, 1x2 and 1x1 at the ends, and not one \
@@ -9387,7 +9417,8 @@ func _tools() -> Array:
 		"type": "object",
 		"properties": {
 			"pattern": {"type": "string",
-				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism"],
+				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
+					"round"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -9410,7 +9441,14 @@ func _tools() -> Array:
 					+ "shaft in one object — a tower, a pier, a turret of 5 "
 					+ "to 16 sides, each face a bonded wall turned to its "
 					+ "angle about the middle (at is the middle), grooved "
-					+ "where the faces meet."},
+					+ "where the faces meet. round: anything round in "
+					+ "section, in one object — a column, a rocket stage, a "
+					+ "lighthouse, a silo, a boiler, a fuselage, a tree "
+					+ "trunk — of the round parts sets use at each diameter "
+					+ "(round bricks, cylinder halves, corner rounds tied by "
+					+ "round plates), colour bands, cones, Technic struts "
+					+ "and spokes up its stack, ending in a nose; upright "
+					+ "or lying along x or z."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -9420,8 +9458,9 @@ func _tools() -> Array:
 			"about": {"type": "string", "enum": ["x", "z"],
 				"description": "mirror: which way the line runs"},
 			"at": {"description":
-				"mirror: the line to reflect about, in studs. fill: where "
-				+ "the footprint's low corner sits, as {x, y, z}."},
+				"mirror: the line to reflect about, in studs. fill, round: "
+				+ "where the footprint's low corner sits, as {x, y, z} (a "
+				+ "round lying along x or z: the low end of it, on the ground)."},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
 				"description": "fill: which footprint"},
 			"across": {"type": "number", "description": "fill, rock: studs in x"},
@@ -9518,6 +9557,32 @@ func _tools() -> Array:
 			"bricks": {"type": "array", "items": brick, "description":
 				"repeat: what to repeat. mirror: what to reflect, if not "
 				+ "everything so far."},
+			"diameter": {"type": "integer", "enum": [1, 2, 4, 6, 8],
+				"description": "round: studs across — the sizes round parts "
+					+ "come in (at is the low corner of its square)"},
+			"axis": {"type": "string", "enum": ["y", "x", "z"], "description":
+				"round: y stands it up (the default); x or z lays it along "
+				+ "that axis on the ground — a boiler, a fuselage, a hull, a log"},
+			"stack": {"type": "array", "description":
+				"round: what goes up the axis, bottom first, each square on "
+				+ "the last. {\"plates\": N} a length of body (\"color\" a "
+				+ "band of another colour, \"diameter\" wider or narrower, "
+				+ "\"spokes\": 4 or 2 its top plate reaching a stud out with a "
+				+ "\"tile\" on each reach — grid fins, gallery brackets, yard "
+				+ "stubs); {\"cones\": 9 or 1} cones under a round plate "
+				+ "(\"cone_color\") — nozzles, engine bells, lamps; "
+				+ "{\"technic\": true, \"struts\": 0-4} a course with a pin "
+				+ "hole out of each side and a Technic beam pinned on that "
+				+ "many sides (\"strut_color\", \"strut_length\" in holes) — "
+				+ "legs, stays; {\"nose\": cone, ogive, dome, point or flat} "
+				+ "its top, and the end of the stack.",
+				"items": {"type": "object"}},
+			"beside": {"type": "object", "description":
+				"round: more rounds standing round this one, touching it, "
+				+ "pinned where their Technic courses meet (start both stacks "
+				+ "the same, each with a technic course at one height): "
+				+ "{\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. "
+				+ "Boosters on a core, twin funnels, a cluster of silos."},
 		},
 		"required": ["pattern"],
 		"additionalProperties": false,

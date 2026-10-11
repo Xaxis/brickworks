@@ -214,6 +214,7 @@ func _run() -> void:
 	await _clustered()
 	await _cluster_opened()
 	await _no_daylight()
+	_round_bodies()
 
 	print("")
 	if _failures == 0:
@@ -782,6 +783,216 @@ func _no_daylight() -> void:
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
+
+
+## A body of revolution in one call: a rocket, a booster, a silo.
+##
+## The owner's Falcon Heavy was square columns of bricks, 67% plain and
+## 9% curved, and real rockets are round parts on one axis. What a design
+## needs to trust the call with is checked here: every diameter round
+## parts come in stands as one piece; a ring of four corner rounds is a
+## ring (the turn of each was the thing the old worked example got wrong,
+## and built a bow tie); a Falcon Heavy in one call holds, its boosters
+## held on by the pins across their skirts and by nothing else; and the
+## advice does not call a round body a wall to be staggered or a slab.
+func _round_bodies() -> void:
+	print("")
+	print("  a body of revolution, in one call")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+
+	for d: int in [1, 2, 4, 6, 8]:
+		var model: Assistant.Model = assistant._read_model({"patterns": [
+			{"pattern": "round", "at": {"x": 0, "y": 0, "z": 0}, "diameter": d,
+				"color": 15, "stack": [{"plates": 20}, {"plates": 4, "color": 0},
+					{"nose": "cone"}]}]})
+		var verdict: Dictionary = assistant._check(model)
+		var square: int = 0
+		for placement: Assistant.Placement in model.placements:
+			if Style.kinds_of(placement.part).contains("p"):
+				square += 1
+		_check("a round %d studs across stands, in one piece, of round parts only: %s, %d pieces, %d square"
+			% [d, verdict["summary"], int(verdict["pieces"]), square],
+			bool(verdict["ok"]) and int(verdict["pieces"]) == 1 and square == 0)
+
+	# A ring is a ring: at mid-course, the middle and the corners of its
+	# square are empty and the four points on its rim are full.
+	for one: Array in [[8, "48092"], [6, "5152"]]:
+		var d: int = one[0]
+		var model: Assistant.Model = assistant._read_model({"patterns": [
+			{"pattern": "round", "at": {"x": 0, "y": 0, "z": 0}, "diameter": d,
+				"color": 71, "stack": [{"plates": 8}]}]})
+		var plan: Dictionary = _plan_at(assistant, model, 2.5)
+		var r: float = d * 10.0
+		var rim: int = 0
+		# Four on the axes and four on the diagonals, nine tenths of the way
+		# out: a quarter turned the wrong way has its curve round the
+		# ring's outer corner, and is empty there.
+		var slant: float = r * 0.9 / sqrt(2.0)
+		for at: Vector2 in [Vector2(r, 3.0), Vector2(r, 2.0 * r - 3.0), Vector2(3.0, r),
+				Vector2(2.0 * r - 3.0, r), Vector2(r - slant, r - slant),
+				Vector2(r + slant, r - slant), Vector2(r + slant, r + slant),
+				Vector2(r - slant, r + slant)]:
+			if plan.has(Vector2i(int(at.x / 2.0), int(at.y / 2.0))):
+				rim += 1
+		var empty: int = 0
+		for at: Vector2 in [Vector2(r, r), Vector2(3.0, 3.0), Vector2(2.0 * r - 3.0, 3.0),
+				Vector2(3.0, 2.0 * r - 3.0), Vector2(2.0 * r - 3.0, 2.0 * r - 3.0)]:
+			if not plan.has(Vector2i(int(at.x / 2.0), int(at.y / 2.0))):
+				empty += 1
+		_check("four %s round a ring are a ring: %d of 8 rim points full, %d of 5 middle and corners empty"
+			% [one[1], rim, empty], rim == 8 and empty == 5)
+
+	# The turns the pattern lays corner rounds and cylinder halves at are
+	# written down, for a browser that has not fetched the parts; read
+	# them off the parts again.
+	for part: String in ["48092", "5152", "30562"]:
+		var mesh: Lbm.PartMesh = _library.mesh_for(part)
+		var outward: bool = mesh != null
+		var want: Array[Vector2] = [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1),
+			Vector2(-1, 1)]
+		for n: int in 4:
+			if mesh != null and Rounds.lean(mesh, Rounds.QUARTER_TURNS[n]) != want[n]:
+				outward = false
+		_check("%s at the turns written down leans out of every quarter of a ring" % part,
+			outward)
+	for part: String in ["85941", "24593"]:
+		var mesh: Lbm.PartMesh = _library.mesh_for(part)
+		_check("%s's halves at the turns written down curve to -z and +z" % part,
+			mesh != null and Rounds.lean(mesh, Rounds.HALF_TURNS[0]).y < 0.0
+				and Rounds.lean(mesh, Rounds.HALF_TURNS[1]).y > 0.0)
+
+	# A Falcon Heavy, said in the general words: cones under a plate, a
+	# Technic course with struts pinned on, spokes, and two more stacks
+	# beside it, pinned where their Technic courses meet.
+	var heavy := {"pattern": "round", "at": {"x": 10, "y": 0, "z": 6}, "diameter": 4,
+		"color": 15, "stack": [
+			{"cones": 9, "color": 0}, {"technic": true, "struts": 2, "color": 0},
+			{"plates": 60}, {"plates": 13, "color": 0, "spokes": 4}, {"plates": 20},
+			{"diameter": 6, "plates": 14}, {"nose": "ogive"}],
+		"beside": {"count": 2, "stack": [
+			{"cones": 9, "color": 0}, {"technic": true, "struts": 3, "color": 0},
+			{"plates": 60}, {"plates": 9, "color": 0, "spokes": 4}, {"nose": "cone"}]}}
+	# And in a rocket's words, which are the same calls.
+	var said := {"pattern": "round", "at": {"x": 10, "y": 0, "z": 6}, "diameter": 4,
+		"color": 15, "stack": [
+			{"engines": 9, "color": 0, "legs": 2}, {"plates": 60},
+			{"plates": 13, "color": 0, "grid_fins": 4}, {"plates": 20},
+			{"diameter": 6, "plates": 14}, {"nose": "ogive"}],
+		"boosters": {"count": 2, "stack": [
+			{"engines": 9, "color": 0, "legs": 3}, {"plates": 60},
+			{"plates": 9, "color": 0, "grid_fins": 4}, {"nose": "cone"}]}}
+	_check("a rocket's words (engines, legs, grid fins, boosters) lay the same parts",
+		JSON.stringify(_made([said])) == JSON.stringify(_made([heavy])))
+	var rocket: Assistant.Model = assistant._read_model({"patterns": [heavy]})
+	var held: Dictionary = assistant._check(rocket)
+	var counted: Dictionary = {}
+	for placement: Assistant.Placement in rocket.placements:
+		counted[placement.part] = int(counted.get(placement.part, 0)) + 1
+	_check("a Falcon Heavy in one call holds, in one piece: %s, %d pieces, %d parts"
+		% [held["summary"], int(held["pieces"]), rocket.placements.size()],
+		bool(held["ok"]) and int(held["pieces"]) == 1)
+	_check("...27 cones under three round plates, %d" % (int(counted.get("59900", 0))
+		+ int(counted.get("98100", 0))),
+		int(counted.get("59900", 0)) == 24 and int(counted.get("98100", 0)) == 3)
+	_check("...eight struts, each a Technic beam on a pin: %d beams, %d pins"
+		% [int(counted.get("32524", 0)), int(counted.get("2780", 0))],
+		int(counted.get("32524", 0)) == 8 and int(counted.get("2780", 0)) == 10)
+	_check("...spokes on all three, none into a body beside: %d grille tiles"
+		% int(counted.get("2412b", 0)), int(counted.get("2412b", 0)) == 8)
+	var advice: String = str(held.get("feedback", ""))
+	_check("...and no advice to stagger a round's seams or to detail its \"slabs\"",
+		not advice.contains("Nothing bridges") and not advice.contains("is structure"))
+	# The boosters are held by the two pins across the skirts, and by
+	# nothing else: take those two out and it is three rockets.
+	var unpinned: Assistant.Model = assistant._read_model({"patterns": [heavy]})
+	var kept: Array[Assistant.Placement] = []
+	var dropped: int = 0
+	for placement: Assistant.Placement in unpinned.placements:
+		# A joint's pin runs along x across the core's side, x 10 or 14,
+		# so its low corner is a stud short of it.
+		if placement.part == "2780" and placement.rot == 0 \
+				and (is_equal_approx(placement.x, 9.0) or is_equal_approx(placement.x, 13.0)):
+			dropped += 1
+			continue
+		kept.append(placement)
+	unpinned.placements = kept
+	var apart: Dictionary = assistant._check(unpinned)
+	_check("...held on by its two joint pins: without them, %d pieces" % int(apart["pieces"]),
+		dropped == 2 and int(apart["pieces"]) == 3)
+
+	# The same calls lying down: a boiler, a fuselage, a log.
+	for axis: String in ["x", "z"]:
+		var lying: Assistant.Model = assistant._read_model({"patterns": [
+			{"pattern": "round", "at": {"x": 2, "y": 0, "z": 2}, "diameter": 4,
+				"axis": axis, "color": 0, "stack": [{"cones": 1, "color": 72},
+					{"plates": 30}, {"plates": 2, "color": 70}, {"plates": 10},
+					{"nose": "dome"}]}]})
+		var verdict: Dictionary = assistant._check(lying)
+		var sideways: int = 0
+		var low := Vector3(INF, INF, INF)
+		var high := -low
+		for placement: Assistant.Placement in lying.placements:
+			if placement.face == "+" + axis:
+				sideways += 1
+			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+			var box: AABB = assistant._transform(placement, mesh) * AABB(
+				mesh.boxes[0].position * mesh.cell_ldu, mesh.boxes[0].size * mesh.cell_ldu)
+			for one: AABB in mesh.boxes:
+				box = box.merge(assistant._transform(placement, mesh) * AABB(
+					one.position * mesh.cell_ldu, one.size * mesh.cell_ldu))
+			low = low.min(box.position)
+			high = high.max(box.end)
+		var along: float = (high - low)[0 if axis == "x" else 2] / 20.0
+		var across: float = (high - low)[2 if axis == "x" else 0] / 20.0
+		_check("lying along %s it holds, in one piece, every part on its side: %s, %d pieces, %d of %d +%s"
+			% [axis, verdict["summary"], int(verdict["pieces"]), sideways,
+				lying.placements.size(), axis],
+			bool(verdict["ok"]) and int(verdict["pieces"]) == 1
+				and sideways == lying.placements.size())
+		_check("...on the ground, %.1f studs long and %.1f across, from y=%.1f"
+			% [along, across, low.y / 8.0],
+			is_equal_approx(low.y, 0.0) and along > 18.0 and across <= 4.01)
+
+	_check("a diameter round parts do not come in is refused, and says the sizes",
+		_trouble([{"pattern": "round", "diameter": 5, "stack": [{"plates": 6}]}])
+			.contains("1, 2, 4, 6 and 8"))
+	_check("nothing goes on a nose in the same stack",
+		_trouble([{"pattern": "round", "diameter": 4, "stack": [{"nose": "cone"},
+			{"plates": 6}]}]).contains("nose is the top"))
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+## Which 2-LDU cells of the plan a model's parts cover at a height in
+## plates, by the app's own transform of each part's cover.
+func _plan_at(assistant: Assistant, model: Assistant.Model, plates: float) -> Dictionary:
+	var at_y: float = plates * 8.0
+	var cells: Dictionary = {}
+	for placement: Assistant.Placement in model.placements:
+		var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var where: Transform3D = assistant._transform(placement, mesh)
+		for box: AABB in mesh.boxes:
+			var real: AABB = where * AABB(box.position * mesh.cell_ldu, box.size * mesh.cell_ldu)
+			if at_y < real.position.y or at_y > real.end.y:
+				continue
+			for x: int in range(int(floor(real.position.x / 2.0)), int(ceil(real.end.x / 2.0))):
+				for z: int in range(int(floor(real.position.z / 2.0)), int(ceil(real.end.z / 2.0))):
+					cells[Vector2i(x, z)] = true
+	return cells
 
 
 ## What a tool said, as text.

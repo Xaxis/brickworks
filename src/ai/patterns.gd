@@ -145,9 +145,11 @@ static func expand(raw_patterns: Array, already: Array,
 				made.append_array(_fill(pattern, trouble, library))
 			"rock":
 				made.append_array(_rock(pattern, trouble))
+			"round":
+				made.append_array(Rounds.lay(pattern, trouble, library))
 			_:
 				trouble.append("no pattern called \"%s\" — there is "
-					% kind + "repeat, mirror, fill and rock")
+					% kind + "repeat, mirror, fill, rock and round")
 		if made.size() > MOST:
 			trouble.append("that would be %d bricks or more, which is a "
 				% made.size() + "mistake in the numbers rather than a model")

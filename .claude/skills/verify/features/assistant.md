@@ -347,6 +347,36 @@ fixing what it got wrong.
   guidance's stone-wall recipe at 0.15, because designs copy the recipes: the
   fourth Orthanc had `studs_out` and used none of it. `patterns_probe`: a stone
   wall with `sideways` 0.3 holds and every turned brick is dressed.
+- `a body of revolution`: the `round` pattern (`src/ai/rounds.gd`, class
+  `Rounds`, dispatched from `Patterns.expand`). Anything round in section —
+  a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree
+  trunk — said as a diameter (1, 2, 4, 6, 8: the sizes round parts come in)
+  and a `stack` up its axis: `{"plates": N}` lengths of body (a `color` band,
+  a new `diameter`, `"spokes"` reaching a stud out with a `tile` on each),
+  `{"cones": 9|1}` cones under a round plate, `{"technic": true, "struts": n}`
+  a course with a 3700 pin hole out of each side and a Technic beam pinned on,
+  and a `nose` (cone, ogive, dome, point, flat). Laid in the round parts real
+  sets use at each diameter: 3062b, 3941; 87081 or 85941/24593 cylinder halves
+  back to back; four 5152 or 48092 (30562 panels) corner rounds tied by a round
+  plate every `TIE_EVERY` courses. `axis` x or z lays the same stack on its
+  side (each part's transform turned about the axis's foot and named again,
+  `_on_its_side`); `beside` stands 2 or 4 more round it, touching, a 2780
+  across each joint where the Technic courses meet. A rocket's words
+  (engines, legs, grid_fins, boosters) are taken as the general ones
+  (`Rounds.SAID`). The corner-round and half turns are constants
+  (`QUARTER_TURNS`, `HALF_TURNS`) because a browser lays a pattern before it
+  fetches the parts; covers fall back to catalogue bounds for the same reason.
+  Found by the owner's Falcon Heavy (4,252 parts of square columns, 67% plain,
+  9% curved). `patterns_probe` ("a body of revolution"): every diameter holds
+  in one piece of round parts only; four 48092 or 5152 round a ring are a
+  ring at eight rim points (the old `wide round tower` example's turns built a
+  bow tie, and fail this); the written turns match the parts; a Falcon Heavy
+  in one call holds in one piece with 27 cones, 8 struts, 10 pins, spokes
+  none into a body beside, no seam or slab advice, and is three pieces
+  without its two joint pins; lying along x and z it holds, every part on its
+  side, on the ground. The seam advice (`_unbonded_seam`) and the
+  structure-not-detail advice (`_mostly_big_plates`) leave round parts
+  (style kind `c`) out: a rocket was told to stagger its cylinder halves.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
