@@ -109,6 +109,15 @@ header {
 	border-radius: 8px;
 }
 .bar nav a:hover { color: var(--ink); background: var(--panel); }
+/* The way in keeps its own colours. ".bar nav a" outranks ".cta", so in
+   the bar it was the nav's pale text on yellow — barely readable — and on
+   hover it lost the yellow altogether. */
+.bar nav a.cta, .bar nav a.cta:hover {
+	color: #17130a;
+	background: var(--accent);
+	font-weight: 600;
+}
+.bar nav a.cta:hover { filter: brightness(1.08); }
 @media (max-width: 720px) { .bar nav a:not(.cta) { display: none; } }
 
 .cta {

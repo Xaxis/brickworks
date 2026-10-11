@@ -134,6 +134,15 @@ header {
 	border-radius: 8px;
 }
 .bar nav a:hover { color: var(--ink); background: var(--panel); }
+/* The way in keeps its own colours. ".bar nav a" outranks ".cta", so in
+   the bar it was the nav's pale text on yellow — barely readable — and on
+   hover it lost the yellow altogether. */
+.bar nav a.cta, .bar nav a.cta:hover {
+	color: #17130a;
+	background: var(--accent);
+	font-weight: 600;
+}
+.bar nav a.cta:hover { filter: brightness(1.08); }
 /* On a phone the five links are 405px in a 358px bar, and the nav does
    not wrap: the document ends up 566px wide and the whole page scrolls
    sideways. Measured at 390px, and it predates this layout. What a
