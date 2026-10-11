@@ -74,8 +74,11 @@ if (!target) {
   target = `http://127.0.0.1:${server.address().port}/download.html`;
   manifest = JSON.parse(await readFile(replacement || join(root, "releases.json"), "utf8"));
 } else {
-  // The manifest the live page reads, so its offers are checked against it.
-  const response = await fetch(new URL("releases.json", target), { cache: "no-store" });
+  // The manifest the live page reads, so its offers are checked against it —
+  // asked past the CDN's cache. Read seconds after a release's deploy, the
+  // cache still handed this check 0.1.0 while the page had 0.2.0, and every
+  // offer failed for being right.
+  const response = await fetch(new URL(`releases.json?fresh=${Date.now()}`, target), { cache: "no-store" });
   if (!response.ok) {
     console.log(`  FAIL  releases.json beside the page answered ${response.status}`);
     process.exit(1);
