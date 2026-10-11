@@ -635,6 +635,13 @@
       "entry": "src/ui/edit_verbs.gd",
       "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "measure",
+      "entry": "src/ui/measure.gd",
+      "reach": "godot --path .  (U, then click two points)",
+      "area": "building"
     }
   ]
 }

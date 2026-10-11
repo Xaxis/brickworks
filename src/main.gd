@@ -91,6 +91,8 @@ var _edit_bar: EditBar
 var _seat_offer: SeatOffer
 ## A picture of the model, and its parts list for a shop.
 var _exports: Exports
+## The ruler: src/ui/measure.gd.
+var _measure: Measure
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
@@ -1251,6 +1253,19 @@ func _build_ui() -> void:
 		_edit_bar.grow_vertical = Control.GROW_DIRECTION_BOTH
 		spacer.add_child(_edit_bar)
 
+	# The ruler, and what it says, under the counts.
+	_measure = Measure.new()
+	_measure.lattice = _builder.lattice
+	_measure.camera = _camera
+	_measure.label = _viewport_label(13)
+	_measure.label.visible = false
+	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_measure.label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_measure.label.offset_top = 10.0
+	spacer.add_child(_measure.label)
+	add_child(_measure)
+	_verbs.measure = _measure
+
 	# Over the top of the model, when a model opened with parts a fraction
 	# of a stud off their studs: src/ui/seat_offer.gd.
 	_seat_offer = SeatOffer.new()
@@ -2200,6 +2215,10 @@ var _touch_index: int = -1
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The ruler, while it is out, has the left button and the pointer.
+	if _measure != null and _measure.takes(event):
+		_builder.hide_preview()
+		return
 	# Touch handles only what a mouse has no gesture for: holding a
 	# finger down to take a brick off, which is what a second button
 	# would have been. Placing is left to the click that emulation
@@ -2593,6 +2612,10 @@ func _over_panel_at(point: Vector2) -> bool:
 ## Callers with no event — after an undo, after a key — pass nothing
 ## and get the live pointer, which for them is right.
 func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
+	# No part to place while the ruler is out.
+	if _measure != null and _measure.active:
+		_builder.hide_preview()
+		return
 	var mouse: Vector2 = at
 	if not (mouse.x < INF):
 		mouse = get_viewport().get_mouse_position()

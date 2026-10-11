@@ -822,6 +822,56 @@ Found on the way, and fixed or owed below:
 - A model whose parts sit a fraction of a stud off their studs opens as it
   is (task 55); `src/dev/reseat.gd` can seat it.
 
+**Built, 2026-10-11** (each a key and a button, each in
+`src/dev/handbuild_probe.gd`, which drives them with keys and clicks):
+
+- 1, 2: `Ctrl-C`, `Ctrl-V`, `Ctrl-D`, `Ctrl-X`; `X` picks a selection up to
+  move it, `Esc` puts it back; `R` turns what is held, or the selection where
+  it stands. A held group's frame is a stud centre or corner at its bottom, so
+  it stays on the studs however it is moved or turned. Copy also puts LDraw on
+  the system clipboard, and LDraw from another program pastes in.
+- 3: the ghost is the part in its own colour, shaded; refused, red and
+  striped.
+- 4, 5: Select by colour, part, both, connected (by studs, not by touching),
+  the opposite; `H` hides, `Shift-H` shows only the selection, `Alt-H` shows
+  all. Hidden parts are not hit by the pointer but still take up room.
+- 6: the edit bar, twenty tools down the left of the model, each with what
+  it does and its key, faint when it needs a selection; two columns on a short
+  window.
+- 7, 8: Replace swaps the selection for the part in hand; History lists every
+  step in words and goes back to before any of them. Undo now follows a part
+  through a removal and back (it comes back under a new number, and a paint
+  before it was being lost).
+- 9: Recent and Favourites in the parts bin (right-click keeps a part); a
+  number finds its own family first; light parts' thumbnails have faces.
+- 10: aimed at an underside, a part hangs under it; a part tipped onto its
+  side goes onto side studs.
+- 11: `Shift-M` mirrors a selection left to right as seen, swapping handed
+  parts by name.
+- 12: `J` swings a selection 15° about the hinge, clip or turntable it hangs
+  from, found by `Joints` as the assistant finds them.
+- 17: `U` takes out a ruler: two clicks give the distance in millimetres and
+  in studs and plates along each axis.
+- 19: `Ctrl-G` names a selection as a sub-model, which saves as one in the
+  `.mpd` and which the booklet builds on its own; Select → Same sub-model.
+- 14, 15: Export offers a 2400 x 1600 picture of the model alone on a clear
+  background, a BrickLink wanted list (55 colours, sourced) and a Rebrickable
+  list.
+- 16, half of it: Open reads BrickLink Studio's `.io` (a zip with Studio's
+  published password around an LDraw file), in a browser too. LDD's `.lxf`
+  needs LDD's part and colour numbers mapped and is refused with a sentence
+  saying Studio converts it.
+- Task 55: a model with parts off their studs offers, once, to seat them.
+- Task 51: no window that keeps its panels is drawn below 0.92 (1280 x 720
+  was 0.8); the smallest text is eleven units; the top bar's buttons have
+  faces; the key strip sits on dark pills; a phone held upright frames the
+  model across it. The Timeline's caption and buttons are the booklet's work.
+
+Left, in order: Technic pins and axles and clips on bars placed by connection
+(13); LDD's .lxf (16); cut-away beyond hiding (18); locking (20). And: Escape does not close the Controls sheet on the web
+(it does on the desktop and in every probe), and a part's tooltip still counts
+side studs into its footprint.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

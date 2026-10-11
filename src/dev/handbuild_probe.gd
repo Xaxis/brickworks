@@ -87,6 +87,7 @@ func _run() -> void:
 	await _studio_file()
 	await _swing_on_a_hinge()
 	await _a_submodel()
+	await _the_ruler()
 	await _a_small_laptop()
 
 	print("")
@@ -746,6 +747,30 @@ func _a_submodel() -> void:
 	await _key(KEY_Z, true)
 	groups = _model().map(func(b: BrickWorld.Brick) -> String: return b.group)
 	_check("one undo takes it back out", groups.all(func(g: String) -> bool: return g.is_empty()))
+
+
+func _the_ruler() -> void:
+	print("  measuring")
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(0, 24, 20))
+	_camera.set_view("top")
+	_camera.frame(AABB(Vector3(-120, 0, -60), Vector3(240, 30, 140)))
+	for _n: int in 40:
+		await process_frame
+	var measure: Measure = _main.get("_measure")
+	await _key(KEY_U)
+	_check("U takes the ruler out", measure.active and measure.label.visible)
+	var before: int = _count()
+	await _click(_screen(Vector3(-60, 0, -40)))
+	await _click(_screen(Vector3(60, 0, -40)))
+	var said: String = measure.words()
+	_check("two clicks on the baseplate six studs apart say so (%s)" % said,
+		said.contains("6 studs across") and said.begins_with("48 mm"))
+	_check("...and put nothing down (%d parts)" % _count(), _count() == before)
+	await _shot("ruler")
+	await _key(KEY_ESCAPE)
+	_check("Esc puts the ruler away", not measure.active and not measure.label.visible)
+	_camera.set_view("default")
 
 
 func _studio_file() -> void:

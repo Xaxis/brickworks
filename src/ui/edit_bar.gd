@@ -69,6 +69,8 @@ static func tools() -> Array:
 			"Swap the selection for the part you hold, each in its own colour, where it stands"],
 		["delete", "Remove", "Delete", true, "Take the selection off the model"],
 		[],
+		["measure", "Measure", "U", false,
+			"A ruler: click two points for the distance in studs, plates and millimetres (U or Esc puts it away)"],
 		["select", "Select", "", false,
 			"Select by colour, by part, everything connected, or the opposite"],
 		["hide", "Hide", "H", true, "Hide the selection, to reach what is behind it"],

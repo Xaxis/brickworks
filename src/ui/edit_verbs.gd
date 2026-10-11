@@ -55,8 +55,17 @@ func handle_key(key: InputEventKey) -> bool:
 				turn(-1 if key.shift_pressed else 1)
 				return true
 		KEY_ESCAPE:
+			if measure != null and measure.active:
+				measure.leave()
+				aim_again.call()
+				say.call("")
+				return true
 			if builder.is_carrying():
 				put_away()
+				return true
+		KEY_U:
+			if not held:
+				ruler()
 				return true
 		KEY_G:
 			# G alone picks a colour off the model.
@@ -137,6 +146,8 @@ func press(name: String) -> void:
 			replace()
 		"mirror":
 			mirror()
+		"measure":
+			ruler()
 		"submodel":
 			make_submodel()
 		"swing":
@@ -187,6 +198,22 @@ func mirror() -> int:
 	aim_again.call()
 	say.call("mirrored %s" % _parts(count))
 	return count
+
+
+## The ruler (Measure), when the app has one.
+var measure: Measure
+
+
+## Take the ruler out, or put it away.
+func ruler() -> void:
+	if measure == null:
+		return
+	if measure.toggle():
+		builder.hide_preview()
+		say.call("measuring — click two points; U or Esc puts the ruler away")
+	else:
+		aim_again.call()
+		say.call("")
 
 
 ## How far one press of J swings a selection about its joint, in degrees.

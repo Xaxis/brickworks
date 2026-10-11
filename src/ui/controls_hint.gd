@@ -189,6 +189,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["shift-arrows"], "slide the view", "slide"),
 		Binding.new(["Q", "E"], "turn model"),
 		Binding.new(["F"], "frame"),
+		Binding.new(["U"], "measure between two points"),
 		Binding.new(["O"], "square on"),
 		Binding.new(["1", "2", "3", "4", "5", "6", "7"],
 			"front, back, left, right, top, bottom, three-quarter"),

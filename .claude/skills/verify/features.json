@@ -582,6 +582,14 @@
       "tests": []
     },
     {
+      "id": "ui:measure",
+      "kind": "ui",
+      "entry": "src/ui/measure.gd",
+      "reach": "godot --path .  (U, then click two points)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:minifig builder",
       "kind": "ui",
       "entry": "src/ui/minifig_dialog.gd",

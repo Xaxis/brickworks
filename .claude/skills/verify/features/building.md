@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:edit bar, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-models by hand -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:edit bar, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-models by hand, ui:measure -->
 
 ## Sub-features
 
@@ -62,6 +62,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   step. A reflection is not something plastic can do, so each part goes where
   its reflection would and is turned to look reflected; a handed part (a
   "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand.
+- `measure`: `U` (or Measure on the edit bar) takes out a ruler (`src/ui/measure.gd`):
+  click a point, then another, and the label under the counts says the
+  distance in millimetres and across each axis in studs and plates; points
+  snap to half a stud across and a cell up. While it is out a click places
+  nothing; the right and middle buttons still turn the view; `U` or `Esc` puts
+  it away.
 - `sub-models by hand`: `Ctrl-G` (or Make a sub-model) asks for a name and makes
   the selection a sub-model of its own — the group an `.mpd` is written by and
   the booklet builds one at a time; `Ctrl-Shift-G` takes it out; Select → Same
