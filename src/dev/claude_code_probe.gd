@@ -81,6 +81,34 @@ func _initialize() -> void:
 	session.free()
 
 	print("")
+	print("  and it bills the subscription, not an API key")
+	# A session started from an app that has a key in its environment saw
+	# the key and billed it. The child must not see one; the app must
+	# still have it afterwards, for designing on a key.
+	var before: Dictionary = {}
+	for name: String in ClaudeCode.BILLING:
+		before[name] = OS.get_environment(name) if OS.has_environment(name) else null
+		OS.set_environment(name, "sk-ant-probe-not-a-key")
+	var child: Dictionary = ClaudeCode.start_on_subscription("sh", ["-c",
+		"echo key=${ANTHROPIC_API_KEY:-none} token=${ANTHROPIC_AUTH_TOKEN:-none}"])
+	var said: String = ""
+	var pipe: FileAccess = child.get("stdio")
+	var wait_until: int = Time.get_ticks_msec() + 5000
+	while said.is_empty() and Time.get_ticks_msec() < wait_until:
+		said = pipe.get_line().strip_edges()
+		if said.is_empty():
+			OS.delay_msec(20)
+	_check("the session sees no key and no token: %s" % said,
+		said == "key=none token=none")
+	_check("...and the app keeps its own for designing on a key",
+		OS.get_environment("ANTHROPIC_API_KEY") == "sk-ant-probe-not-a-key")
+	for name: String in before:
+		if before[name] == null:
+			OS.unset_environment(name)
+		else:
+			OS.set_environment(name, before[name])
+
+	print("")
 	if _failures == 0:
 		print("a design run can reach the bricks and nothing else")
 	else:

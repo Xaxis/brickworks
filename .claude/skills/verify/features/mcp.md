@@ -86,7 +86,12 @@ Proves it when: it ends on "a design run can reach the bricks and nothing else" 
 the command carries `--strict-mcp-config`, `--tools ""` and `--restricted`, and
 never anything with "dangerously" or "bypass" in it. That is what makes the
 feature safe, and it is not the allowlist: `--allowedTools` only grants
-permission, it never takes any away. A real run spends somebody's subscription and
+permission, it never takes any away. And "the session sees no key and no token:
+key=none token=none" — a real child started the way a design starts, with
+`ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` set in the app, must not see
+either, or Claude Code bills the key instead of the subscription (it did, from
+any shell that had sourced `.env`); the app keeps both afterwards. A plain
+`OS.execute_with_pipe` fails it. A real run spends somebody's subscription and
 is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
 tools, all of them this app's" when it connects.
 
