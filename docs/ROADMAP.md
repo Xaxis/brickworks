@@ -20,7 +20,7 @@ judged on its own:
 | **its parts** | named sub-assemblies, bag by bag | assemblies named by the design, kept as `.mpd` sub-models |
 | **the booklet** | built a sub-assembly at a time, pictured close | built and framed by those assemblies; `--booklet` writes one |
 | **the parts list** | element numbers you can order | CSV with element numbers; the `.mpd` imports into Rebrickable to buy |
-| **any subject** | castles, cities, ships, vehicles | castle, fire station and space cruiser all hold; angled structure is the weak joint |
+| **any subject** | castles, cities, ships, vehicles | castle, fire station and space cruiser all hold; round things are round since 2026-10-11 (a Falcon Heavy reads as one); a car's body is still stacked square |
 
 The model is the weakest link by a distance, which is why the levers
 below are all about it. When it is within reach of a real set, the next
@@ -655,6 +655,134 @@ levers left, by what they cost the picture: the corners of a ten-sided core (a
 post that fits, or the corner closed another way) and what counts as the back
 on one; the corridor under each pier; a detail pass that happens without being
 asked; a portal the stair leads to; and the ground's own craft.
+
+## Any subject: round, mechanical, on show (2026-10-11)
+
+The owner asked for a Falcon Heavy and got, in their words, "the ugliest most
+retarded version... no advanced lego pieces, cant make perfectly smooth curves,
+cant use techniqs, picks completely wrong colors". Read from their tab: 4,252
+parts in square columns of plain bricks (720 of 87087 dressed with round tiles),
+29 shapes and 5 colours — three greys and white, where the rocket is white with
+black interstages — 67% plain, 9% curved, 0% at an angle, no fairing, no
+octaweb, no Technic, a slab for a launch tower. Its review told it "a prism with
+piers, for a tower like this one" (its description named the launch tower).
+Every lever above was built for towers and castles; nothing could say round.
+
+**What real rocket sets are made of.** 21309 Saturn V (1,969 parts by inventory,
+1,831 in LDraw's model): white 37%, light grey 15%, black 12%. 196 of the 3 x 2
+curved brick (24309) and 92 of the 2 x 2 (15068), hung as panels on a core of
+brackets and jumper plates turned out on four sides, with corner fillers at 45
+degrees on clips — 74% of the model sideways, 39% at an angle, 37% curved by
+`tools/style.py`, 138 shapes, 14 colours; 112 grille tiles for the corrugations,
+20 quarter-cylinder panels for the third stage, F-1 engines as 3 x 3 cones under
+round plates, fins on Technic pins. 10341 Artemis SLS (3,601): 154 curved 2 x 2
+in dark orange for the core stage, 287 grille bricks, and 114 friction pins and
+108 pin connectors holding the boosters on. City rockets (60228, 60351): white
+cylinder halves 2 x 4 x 5 and 2 x 4 x 2 back to back, 4 x 4 round plates, cones,
+1 x 1 cones for engines, Technic pins, girders for the tower.
+`how_real_sets_build_this` for "rocket" (38 sets) leads with the 2 x 2 cone
+(x108), girders, the 4 x 4 cone and the cylinder half.
+
+**What changed**, each general and named for the technique, not the subject:
+
+- The `round` pattern: anything round in section, diameter 1, 2, 4, 6 or 8 (the
+  sizes round parts come in), as a stack up one axis of the parts real sets use
+  at that size — round bricks, cylinder halves, corner rounds tied by round
+  plates — with colour bands, cones under a round plate, a Technic course with
+  beams pinned on, spokes carrying tiles, and a nose; upright or lying along x or
+  z; `beside` stands two or four more round it, pinned at every Technic course
+  they share. A rocket's words (engines, legs, grid fins, boosters) are read as
+  the general ones.
+- Reference pictures' colours arrive as LEGO colour numbers: Commons' Falcon
+  Heavy pictures read White 76%, the greys of its shading, Black 7%.
+- Advice that knows the subject (round, vehicle, living thing, machine): a rocket
+  by its tower is told of the round pattern, never piers or restyle_model; a
+  model shaped by its curves is not told it is square; the seam and slab advice
+  leave round parts out.
+- The guidance maps shapes to techniques and asks for an expert's touches (a
+  figure, a printed tile, a story detail, something that opens, a stand with a
+  nameplate); a check says so when a model of 300 parts has no printed part or
+  nothing that moves — 95% and 94% of the 2,517 real sets that size since 2015
+  have them.
+- `studs_out` bands of one kind of detail (rivets, portholes, lights, tiles).
+- 16 worked examples: round bodies, pinned joints, a display stand, six from the
+  Saturn V. The `wide round tower` example had two of its four corner rounds the
+  wrong way round — a bow tie that stacked and checked — since it was written.
+
+Every run is the brief "A ___ as a detailed LEGO display model" on the owner's
+plan over MCP (Opus 5.5), the "before" on main as it was (4199409), the "after"
+on these changes; measured by `tools/style.py` against real space sets for the
+rocket and vehicle sets for the rest. Pictures: `shots/runs/{falcon_owner,
+falcon_1,falcon_2,loco_*,pirate_*,car_*}_*.png` in this worktree.
+
+| run | parts | shapes | colours | sideways | angled | curved | plain | mirrored | min |
+|---|---|---|---|---|---|---|---|---|---|
+| Falcon Heavy, the owner's | 4,252 | 29 | 5 | 18% | 0% | 9% | 67% | — | — |
+| Falcon Heavy, before (`falcon_1`) | 3,319 | 23 | 4 | 22% | 0% | 11% | 56% | 34% | 8 |
+| **Falcon Heavy, after (`falcon_2`)** | **311** | 31 | 6 | 2.7% | 0% | **54%** | **26%** | 88% | 4 |
+| *21309 Saturn V* | *1,831* | *138* | *14* | *74%* | *39%* | *37%* | *20%* | *74%* | |
+| steam locomotive, before | 932 | 42 | 9 | 21% | 0% | 17% | 52% | 54% | 19 |
+| steam locomotive, after | 825 | 59 | 9 | 22% | 0% | 19% | 51% | 64% | 21 |
+| pirate ship, before | 1,087 | 45 | 14 | 16% | 0.9% | 17% | 54% | 60% | 17 |
+| pirate ship, after | 1,695 | 55 | 6 | 20% | 2.4% | 16% | 56% | 43% | 20 |
+| sports car, before | 194 | 41 | 10 | 5.3% | 0% | 6.7% | 50% | 99% | 10 |
+| sports car, after | 240 | 45 | 8 | 7.2% | 0% | 10% | 40% | 80% | 16 |
+| *real space sets, median* | | *138* | *12* | *44%* | *25%* | *17%* | *27%* | *82%* | |
+| *real vehicle sets, median* | | *119* | *15* | *23%* | *16%* | *14%* | *33%* | *87%* | |
+
+**The Falcon Heavy reads as a Falcon Heavy.** Its first call was the round
+pattern with `beside`: three white cores of cylinder halves, nine cones under a
+black round plate each, a black interstage with grid fins, the second stage, a
+6-wide fairing; the boosters pinned on at the foot and the top of the first stage
+(it asked for both, which found a bug: only the upper course was pinned; fixed).
+Then twelve folded landing legs as Technic beams pinned to the skirts, from the
+worked example; a black stand with a 6 x 8 plaque, a printed flag tile and two
+lightning masts. Curved 54% and plain 26% against the owner's 9% and 67%; 311
+parts against 4,252, so nothing for a computer to choke on. What it is not yet:
+a set. It stopped after one assembly's review at 311 parts where the Saturn V
+has 1,831; 31 shapes against 138; the round body is smooth but plain — no panel
+lines, no grille bands, no Saturn V-style curved skin; the upper booster attach
+point is a white square Technic course in a round body; and the 6-wide fairing,
+four corner rounds tied by round plates every two courses, shows the plates'
+notches as rows of slots. Sideways 2.7% is low against the space median, by
+design: round bricks are curved, not turned.
+
+**The held-out subjects** (not looked at while building any of this):
+
+- *Steam locomotive.* It looked up "round body lying down" and laid the boiler
+  as a round along x in crimson with gold bands, a round chimney and dome, a
+  black smokebox with a round door, a display track on a base with a plaque, and
+  a crew. The boiler is now a true cylinder where the before's was a box with a
+  curved top; 59 shapes against 42. Plain is unchanged (51%): the tender, cab and
+  frames are still brick walls.
+- *Pirate ship.* Twenty-four round calls: masts with conical tops, black cannons
+  lying along the deck. The hull narrows to a bow and has a waterline, a stern
+  castle with railings, figures, a flag and a small stand with a map-tile
+  nameplate, where the before's hull was a rectangular box. But its sails are
+  stacks of white bricks where the before used sail parts, it fell to 6 colours,
+  and the hull is still stepped, not smooth.
+- *Sports car.* No better by eye. Its advice named wedge plates, curved slopes
+  and a hinged section every time and it used none of them (0% at an angle); the
+  body is plates stacked square. What it did take up was the touches: a stand
+  with a plaque, a driver on a podium with a trophy, quad exhausts, a licence
+  plate. The roadmap's rule holds a sixth time: words move nothing, one call
+  shaped like the work does. A rocket has that call now; a car does not.
+
+**What is left, by what it would move:**
+
+1. **A shaped body for vehicles, in one call** — the car's and the hull's
+   equivalent of `round`: a plan outline and a side profile laid as plates, wedge
+   plates where the plan slants, curved slopes where the profile rounds, and
+   sections for a windscreen. The car ignored every word of the same advice.
+2. **Detail passes on a model this compact.** The Falcon Heavy stopped at 311
+   parts; 31 shapes against a set's 138 is the variety gap, and the curved skin
+   panel, grille band and studs-out core examples are there to be used.
+3. **The Saturn V's skin as one call**: curved-brick panels on a studs-out core,
+   for rounds wider than 8 studs and for a surface with panel lines.
+4. **Sails, canopies and other non-brick parts** — the pirate ship gave up sail
+   parts for bricks.
+5. A round's Technic course in the body's own round section, not a square one;
+   and a 6-wide round tied without rows of notches.
 
 ## Long term: custom elements
 
