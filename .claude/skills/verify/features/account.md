@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe -->
 
 ## Sub-features
 
@@ -64,6 +64,43 @@ they have. A Claude connector belongs to the account that switched it on.
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
   (403), and work goes only to a tab with an owner.
+- `Claude's sign-in (OAuth)` (`api/oauth.js`, `api/_oauth.js`,
+  `supabase/oauth.sql`; written up with sources in `docs/CONNECTING.md`):
+  one connector address for everybody, `https://brickworks.diy/api/mcp`, that
+  Claude signs in to as MCP's authorization spec says. Asked with no token the
+  relay answers 401 with `WWW-Authenticate: Bearer resource_metadata=…,
+  scope="build"`; `/.well-known/oauth-protected-resource[/api/mcp]` names the
+  site as the authorization server; `/.well-known/oauth-authorization-server[/…]`
+  (issuer = the request's own origin, so a preview is its own issuer) offers
+  S256 PKCE only, public clients, Client ID Metadata Documents
+  (`client_id_metadata_document_supported`, which is what makes claude.ai use
+  `https://claude.ai/oauth/mcp-oauth-client-metadata` and Claude Code
+  `…/claude-code-client-metadata` instead of registering) and RFC 7591
+  registration at `/oauth/register`. A document client is fetched (https,
+  public host, 5 s, 10 KB, no redirects) and kept an hour. Return addresses
+  match exactly, except a loopback one may name any port (RFC 8252; Claude Code
+  picks one per session). `/oauth/token`: a code (two minutes, once — spent by
+  a failed attempt too) with its verifier for a Bearer token (an hour) and a
+  refresh token (rotated on use; the old one is answered again within 30 s, a
+  retry, and after that ends the whole connection). Tokens and codes are kept
+  as SHA-256 only. `/oauth/revoke` (RFC 7009): a refresh token ends its
+  connection, an access token itself. The account's own:
+  `GET /api/oauth?op=connections` (Bearer session: id, client — "Claude",
+  "Claude Code" or what it registered as — since, last used) and
+  `POST /api/oauth?op=disconnect[&id=]`. A connection is deleted with its
+  account. Issuing tokens tells the account's open tabs
+  (`brickworks/connected` on the relay), so the panel says so at once.
+- `connect Claude sign-in page` (`web/authorize.html`, `web/authorize.js`,
+  served at `/oauth/authorize` with its own security policy and no
+  cross-origin isolation headers): checks the request first
+  (`/api/oauth?op=check` — an unknown client or an undeclared return address
+  is refused on the page, other faults go back to the client as OAuth errors);
+  uses the app's kept session in that browser if there is one (renewed and put
+  back, like the admin page), else the email code (`/api/otp`, redeemed with
+  Supabase) and keeps the new session where the app looks, unless the app here
+  is signed in as someone else; then one question, naming who asks and the host
+  the answer goes back to (with a warning for a loopback program); Allow posts
+  `op=approve` with the session and follows the answer back to Claude.
 - `sign a machine in` (`src/dev/sign_in.gd`): for a windowed app driven from a
   checkout (`--mcp` and `tools/brick.py`, a look by hand), which opens on the
   sign-in screen like anyone's. Mints the code with the admin API (needs
@@ -119,6 +156,33 @@ forgotten, the sixth code in a row refused). `gate_probe -- live` types the
 address, presses Email me a code, types a wrong code then the minted one, signs
 in, opens Account and signs out, with pictures `shots/signin/1_form.png` to
 `6_signed_out.png`. `connector_probe` covers the relay's half.
+
+Claude's sign-in, every endpoint as claude.ai and Claude Code use it, and every
+refusal (same server; a throwaway account, deleted at the end; about 90 s, 31 of
+them waiting out the refresh grace):
+
+```sh
+node tools/web/oauth_probe.mjs --url=http://127.0.0.1:8790
+BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_probe.mjs --url=<deployment>
+```
+
+Proves it when it ends "Claude can sign in to Brickworks, and nothing else can"
+(60 checks, 62 on a deployment): the 401 and its pointer, both metadata documents and their path
+variants, `/oauth/authorize` serving the page (on a deployment: no COOP, not
+frameable); Claude by its published document — told "Claude, claude.ai", no code
+without a session, a code with state and `iss`, a wrong verifier refused and the
+code spent by it, another `redirect_uri` refused, tokens form-encoded, a code
+twice refused; the token at the MCP address (initialize, the app's tool list
+with no tab, a call told no tab is open, a made-up token 401 `invalid_token`); a
+call routed to this account's tab and not another account's; refresh rotation,
+a retry inside the grace, another client's refresh refused; Claude Code on a
+random loopback port, an undeclared path refused; registration and what it
+refuses (`javascript:`, plain http elsewhere, a fragment, none), no PKCE and
+`plain` sent back `invalid_request`, another resource `invalid_target`, an
+unknown client refused, a secret client refused without its secret and served
+with it; Cancel `access_denied`; the connections listed for the account only;
+revocation ending a connection; Disconnect ending the rest at once; a refresh
+token replayed after the grace ending its connection.
 
 On a deployment, in a real browser (needs `.env` sourced; `BW_BYPASS` for a
 preview):
