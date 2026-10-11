@@ -61,6 +61,9 @@ func _initialize() -> void:
 	print("  against the library's own assemblies")
 	_against_the_library()
 	print("")
+	print("  cloth as figures wear it")
+	_cloth()
+	print("")
 	print("  what each slot can be")
 	_choices()
 	print("")
@@ -354,6 +357,132 @@ func _against_the_library() -> void:
 	against = _against_file(medium.assemble(library), _library_file("37364"), "3815b")
 	_check("medium legs pair and hang from the hips as 37364.dat: within %.3f LDU, none missing %s"
 		% [against[0], against[2]], float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+
+
+## LDraw draws cloth flat, as it is sold, and again "(Formed)", as it is
+## worn; every cloth cape on a figure in vendor/omr is a worn drawing
+## (522 in 7150, 9469 and 10212; 50231c02 in 9471; 99464c01 in 9470).
+## The Cape slot opens on one; a flat cloth on a figure is worn as its
+## worn drawing; one with none hangs straight down against the back,
+## never held out at an angle; and the worn drawing is the element its
+## cloth is on the parts list.
+func _cloth() -> void:
+	var capes: Array[PartLibrary.PartInfo] = Minifig.choices(library, "cape")
+	var last_worn: int = -1
+	var first_flat: int = capes.size()
+	var worn_drawings: int = 0
+	for n: int in capes.size():
+		if not _formed_of(capes[n]).is_empty() \
+				and _fits_a_figure(capes[n]):
+			last_worn = n
+			worn_drawings += 1
+		if _flat(capes[n]):
+			first_flat = mini(first_flat, n)
+	_check("the Cape slot opens on the cloth cape as figures wear it: %s %s, its %d worn drawings first (to %d) and cloth drawn flat last (from %d)"
+		% [capes[0].id, capes[0].name, worn_drawings, last_worn, first_flat],
+		capes[0].id == "50231c01" and last_worn + 1 == worn_drawings
+		and worn_drawings > 10 and first_flat > last_worn
+		and capes.slice(first_flat).all(func(info: PartLibrary.PartInfo) -> bool:
+			return _flat(info)))
+	# Every flat cloth in the slots that take cloth, on a plain figure.
+	var worn: int = 0
+	var hung: int = 0
+	var wrong: Array[String] = []
+	for slot: String in ["cape", "hipwear"]:
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			if not _flat(info):
+				continue
+			var figure := Minifig.new()
+			figure.choose(library, slot, info.id)
+			var placed: Dictionary = {}
+			for item: Dictionary in figure.assemble(library):
+				if item["slot"] == slot:
+					placed = item
+			var twin: String = info.id + "c01"
+			if library.parts.has(twin) and library.parts[twin].name.contains("(Formed") \
+					and _fits_a_figure(library.parts[twin]):
+				worn += 1
+				# As real figures wear it: the worn drawing, square on the
+				# figure.
+				if placed.get("part") != twin \
+						or not (placed["at"] as Transform3D).basis.is_equal_approx(Basis.IDENTITY):
+					wrong.append("%s wears %s" % [info.id, placed.get("part")])
+				continue
+			hung += 1
+			# Straight down: a quarter turn about X and nothing else, so the
+			# sheet stands upright behind the figure; its hem above the ground.
+			var at: Transform3D = placed["at"]
+			var upright: bool = absf((at.basis * Vector3.UP).y) < 0.01 \
+				and at.basis.x.is_equal_approx(Vector3.RIGHT)
+			var low: float = Minifig._lowest(Minifig.FLIP * at * Minifig.FLIP, info.bounds)
+			var behind: float = INF
+			for n: int in 8:
+				var corner: Vector3 = info.bounds.position + info.bounds.size * Vector3(
+					n & 1, (n >> 1) & 1, (n >> 2) & 1)
+				behind = minf(behind, -(at * corner).z)
+			if not upright or low < BrickLattice.CELL - 0.01 or behind < 10.0:
+				wrong.append("%s hangs %s, its hem %.1f up, %.1f behind" % [info.id,
+					"upright" if upright else "at an angle", low, behind])
+	for line: String in wrong.slice(0, 8):
+		print("    %s" % line)
+	_check("%d flat cloths are worn as their worn drawings, and %d with none (tuxedo tails, a short skirt) hang straight down against the back, clear of the ground%s"
+		% [worn, hung, "" if wrong.is_empty() else ": %d not" % wrong.size()],
+		wrong.is_empty() and worn >= 20 and hung >= 2)
+	# And no cape is held out at an angle, on a grown figure or on a child
+	# it is too long for: one that would reach the ground is worn higher.
+	var tilted: Array[String] = []
+	var tried: int = 0
+	for legs: String in [Minifig.PLAIN_LEGS, "41879a"]:
+		for info: PartLibrary.PartInfo in capes:
+			var figure := Minifig.new()
+			figure.choose(library, "legs", legs)
+			figure.choose(library, "cape", info.id)
+			tried += 1
+			for item: Dictionary in figure.assemble(library):
+				if item["slot"] != "cape":
+					continue
+				var at: Transform3D = item["at"]
+				var part: PartLibrary.PartInfo = library.parts[str(item["part"])]
+				var square: bool = at.basis.is_equal_approx(Basis.IDENTITY) \
+					or at.basis.x.is_equal_approx(Vector3.RIGHT) \
+					and absf((at.basis * Vector3.UP).y) < 0.01
+				var low: float = Minifig._lowest(Minifig.FLIP * at * Minifig.FLIP, part.bounds)
+				if not square or low < BrickLattice.CELL - 0.01:
+					tilted.append("%s on %s%s, %.1f up" % [item["part"], legs,
+						"" if square else " at an angle", low])
+	for line: String in tilted.slice(0, 8):
+		print("    %s" % line)
+	_check("none of %d capes, on a grown figure and on a child, is held out at an angle or reaches the ground%s"
+		% [tried, "" if tilted.is_empty() else ": %d are" % tilted.size()], tilted.is_empty())
+	# What the parts list makes of it: the cloth's own element.
+	var as_sold: String = library.element_for("50231", 0)
+	var as_worn: String = library.element_for("50231c01", 0)
+	_check("the worn drawing is the cloth's element on the parts list: 50231c01 in black %s, 50231 %s"
+		% [as_worn, as_sold], not as_sold.is_empty() and as_worn == as_sold)
+	var made_in: PartLibrary.PartInfo = Minifig.colours_of(library, "50231c01")
+	_check("and comes in the cloth's colours (%d)" % (made_in.colors.size() if made_in != null else 0),
+		made_in != null and made_in.colors.size() >= 10)
+
+
+## Cloth as LDraw draws it to be sold: a sheet less than a cell thick.
+static func _flat(info: PartLibrary.PartInfo) -> bool:
+	return info.bounds.size.y < 2.0
+
+
+## The flat cloth a "(Formed)" drawing is of, 50231c01 -> 50231, or "".
+static func _formed_of(info: PartLibrary.PartInfo) -> String:
+	if not info.name.contains("(Formed"):
+		return ""
+	var found: RegExMatch = RegEx.create_from_string("^(.+)c\\d\\d$").search(info.id)
+	return found.get_string(1) if found != null else ""
+
+
+## A worn drawing a figure can wear: hanging no lower than a classic
+## figure's feet, a cell clear, and not out in front of it (u9661c01 is
+## drawn folded the way the flat sheet lies; 50231c03 is a curtain).
+static func _fits_a_figure(info: PartLibrary.PartInfo) -> bool:
+	return -info.bounds.position.y <= 70.0 \
+		and info.bounds.end.z <= -info.bounds.position.z + 2.0
 
 
 func _against_real_figures() -> void:
@@ -691,7 +820,7 @@ func _every_part() -> void:
 
 ## Each family of each slot — every mould, every kind — put on the plain
 ## figure: real parts in real places, and nothing in the floor it
-## stands on. A cape long enough to reach it flies out behind; a skirt,
+## stands on. A cape long enough to reach it is worn higher; a skirt,
 ## a tail, a long robe, a droid's legs all end above it.
 func _every_family() -> void:
 	var tried: int = 0

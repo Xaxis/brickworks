@@ -47,8 +47,15 @@ the model, and the design assistant doing the same with `add_minifig`.
   - neck, back and cape items at the torso's origin, a cape up its own collar
     (4524 at y -2, as nine real figures wear it), the quiver turned to the back
     (`TURNED`, as 19 real figures wear it); the head up by the highest collar;
-    cloth LDraw draws flat (50231, 14295) hangs down the back (`_hung_flat`), and
-    anything reaching the floor swings back about the shoulders until it clears;
+    cloth LDraw draws flat, as it is sold (50231, 14295), is worn as its
+    "(Formed)" drawing (`worn_as`: 50231 -> 50231c01), as every cloth cape on a
+    figure in vendor/omr is (522, 50231c02, 99464c01) — one a figure can wear,
+    no lower than its feet and not out in front (not 50231c03, a curtain, or
+    u9661c01, drawn folded flat); cloth with none (tuxedo tails 26697, the
+    short skirt 26701, u9661) hangs straight down against the back
+    (`_hung_flat`); a cape longer than the figure is tall (a full one on a
+    child) is raised until it clears the ground, never swung out at an angle;
+    back gear reaching the floor swings back about the shoulders;
   - hipwear at the hips' joint; legs paired by name or print (3816cp30 with
     3817cp30, 20461bp00 with 20460bp00), one-piece legs (a mermaid's tail, a
     skirt moulded on) at the hips; feet one each side on the foot's hole, the
@@ -61,7 +68,11 @@ the model, and the design assistant doing the same with `add_minifig`.
   one: 4263 parts, 4038 offered, 225 as pairs. Choices per slot (`Minifig.choices`)
   are real parts only — no redirect, alias, sticker or shortcut, so every part is
   an element on the parts list — plain moulds first, the classic figure's mould
-  first of all (973, 3626c, 3816c). `groups` sorts a slot by mould (body) or kind
+  first of all (973, 3626c, 3816c); the Cape slot opens on the worn drawings of
+  cloth capes, 50231c01 first (its cloth is in 258 sets), and in the cloth
+  slots cloth drawn flat comes last. A worn drawing is its cloth's element on
+  the parts list (`PartLibrary.element_for`: 50231c01 in black is 4124171, as
+  50231 is) and comes in its cloth's colours (`colours_of`). `groups` sorts a slot by mould (body) or kind
   (worn or held) for browsing. A printed part's colours are its moulding's
   (`colours_of`: 3626cp01 -> 3626c, 973 -> 76382); a part chosen for a slot not
   made in its colour comes in its most-made one (`fitting_colour`). `surprise()`
@@ -164,6 +175,11 @@ Proves it when:
   second of the same name, save -> reopen -> save byte-identical, the parts list,
   `_variety` unchanged by a dozen figures, and `add_minifig` (placed, on top of a
   brick, in the colour asked, refused in the air and where somebody stands).
+  Cloth: the Cape slot opens on 50231c01 with its 20 worn drawings first and
+  flat cloth last; 23 flat cloths worn as their worn drawings and 7 with none
+  hanging straight down against the back, clear of the ground; none of 94
+  capes held out at an angle on a grown figure or a child; 50231c01 is
+  50231's element in its colours.
   The new slots against real figures: 6067's cape at y -2 (0.01), 6061's quiver
   turned to the back (0.01), 10176's soldiers' shields in the left hand (on the
   real hand's bar, within 3 LDU along it, as the right hand's grip rule is), the
@@ -196,7 +212,7 @@ Proves it when:
   `gpu env GODOT_GPU=1 ...` with Forward+.
 - `minifig_flow.mjs` ends `minifig flow: made, placed and photographed`, with the
   part count up by the figure's parts, then the Cape slot found, its first part
-  chosen and a caped figure placed too (up by 8 or more; `4_cape.png` shows the
+  (50231c01, the cloth cape as it is worn) chosen and a caped figure placed too (up by 8 or more; `4_cape.png` shows the
   grid of capes and the figure wearing one, `5_caped.png` it standing). A local
   export works as the hosted one does with
   `PARTS_URL=http://127.0.0.1:PORT/parts/ tools/export.sh web`, then
@@ -242,8 +258,12 @@ Proves it when:
   2271 of the 4263 figure parts. The hosted build serves every part from object
   storage and offers all of them; a local check should export the same way.
 - **LDraw draws cloth flat**, as it is sold (50231, 14295); its "(Formed)"
-  versions are the shapes it is worn in. Both are offered; the flat one hangs
-  down the back, wider than the figure, and swings back clear of the floor.
+  versions are the shapes it is worn in, and the only ones real sets' files put
+  on a figure. Both are offered and a figure wears the formed one either way;
+  the slot's picture is the flat one, as sold. Flat cloth with no worn drawing
+  hangs flat behind, as wide as LDraw draws it (26701 is 120 LDU across).
+  106700, a robe 13 studs long, is taller than any figure: raised clear of the
+  ground it stands far above the head.
 - **Everything a figure stands on is on the lattice's 2 LDU cells**: a part's
   cover is reckoned from its origin's cell, so a figure whose feet end 3 LDU
   under the torso, or a flipper 3 LDU thick, would read as standing in the
