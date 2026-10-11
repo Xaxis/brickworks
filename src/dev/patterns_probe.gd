@@ -503,6 +503,25 @@ func _clustered() -> void:
 		% its_check["summary"], (its_door[0] as Array).size() == 1
 			and is_equal_approx((its_door[0][0] as Assistant.Placement).x, -2.0)
 			and bool(its_check["ok"]))
+	# The summit is whole where a figure stands. Only its largest piece is
+	# kept, and the eighteenth Orthanc's ten-sided cluster lost a 6 x 6 block
+	# from its middle: six-long strips both ways over a block six by six, tied
+	# to nothing round it. Its run found "nothing to stand on" for Gandalf and
+	# laid a plate over the hole by hand. 468 of 544 studs before.
+	var middle := Vector2(24, 24)
+	var outline: Array = [Assistant._outline(middle, 10, 9.0, 0.0)]
+	for k: int in 4:
+		var angle: float = 45.0 + 90.0 * k
+		outline.append(Assistant._outline(middle + Assistant._towards(angle) * 11.0, 10, 6.0, angle))
+	var studs: Dictionary = Assistant._studs_within(outline, Vector2i(0, 0), Vector2i(48, 48))
+	var on_top: Dictionary = {}
+	for plate: Dictionary in Assistant._summit(studs, 171.0, 0):
+		if not is_equal_approx(float(plate["y"]), 171.0):
+			for cell: Vector2i in Assistant._plate_studs(plate):
+				on_top[cell] = true
+	_check("the eighteenth Orthanc's summit is whole: %d of its %d studs, the middle %s"
+		% [on_top.size(), studs.size(), "covered" if on_top.has(Vector2i(23, 23)) else "open"],
+		on_top.has(Vector2i(23, 23)) and on_top.size() >= studs.size() * 0.97)
 	var headings: Dictionary = {}
 	var turned: Dictionary = {}
 	var piers: Dictionary = {}

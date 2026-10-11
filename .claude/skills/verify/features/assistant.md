@@ -241,8 +241,13 @@ fixing what it got wrong.
   (`_runs`/`_free` clip each face's wall by outlines in plan; a run ending at
   something is laid flush to it on the 0.1-stud grid). The core is capped at
   `y + 3 x courses` with a two-plate summit over the whole outline
-  (`_summit`: strips along z, strips along x across them, only the largest
-  connected piece), which is what makes it one piece — walls at different
+  (`_summit`: strips along z, strips along x across them laid from the left in
+  the longest plate whose end is not over a joint of the first layer
+  (`_summit_across`), only the largest connected piece kept: with both layers
+  breaking round the same 6 x 6 block, run 18's summit lost its middle, where
+  its figures were to stand, and the run laid a plate over the hole by hand;
+  `patterns_probe`: 532 of that summit's 544 studs, the middle covered, 468
+  before), which is what makes it one piece — walls at different
   angles only rest on one another — and piers taller than the core rise from
   it as whole prisms (horns). A cluster face's outer row runs on past its
   right-hand corner into the groove (`_cluster_face`, as far as the outline's

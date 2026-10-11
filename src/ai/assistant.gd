@@ -5350,9 +5350,15 @@ static func _plate_studs(plate: Dictionary) -> Array[Vector2i]:
 ## Two layers of plates over [param cells]: strips along z, then strips
 ## along x across them, so each plate crosses several of the other layer
 ## and the whole floor holds wherever its edge rests.
+##
+## The second layer's joints are kept off the first's wherever a strip's
+## length allows (`_summit_across`). Without that both layers could break
+## round the same block, tying it to nothing, and only the largest piece is
+## kept: the eighteenth Orthanc's summit lost a 6 x 6 block from its middle,
+## six-long strips both ways over a block six by six, where its figures were to
+## stand ("nothing to stand on"), and the run laid a plate over the hole by
+## hand.
 static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
-	var along_z: Array = SUMMIT_ALONG_Z
-	var along_x: Array = SUMMIT_ALONG_X
 	var ordered: Array = cells.keys()
 	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return a.x < b.x or a.x == b.x and a.y < b.y)
@@ -5360,13 +5366,12 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 	for cell: Vector2i in ordered:
 		first[cell] = true
 	var laid: Dictionary = {}
-	var made: Array = Patterns._tile(first, y, colour, along_z, {}, laid)
-	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.y < b.y or a.y == b.y and a.x < b.x)
-	var second: Dictionary = {}
-	for cell: Vector2i in ordered:
-		second[cell] = true
-	made.append_array(Patterns._tile(second, y + 1.0, colour, along_x, laid, {}))
+	var made: Array = Patterns._tile(first, y, colour, SUMMIT_ALONG_Z, {}, laid)
+	var below: Dictionary = {}
+	for n: int in made.size():
+		for cell: Vector2i in _plate_studs(made[n]):
+			below[cell] = n
+	made.append_array(_summit_across(cells, below, y + 1.0, colour))
 	# The two layers are one floor only where they cross. A corner of the
 	# outline a stud across is a 1x1 plate on a 1x1 plate, held by nothing,
 	# and the first open cluster had one hanging over its open back. The
@@ -5408,6 +5413,74 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 		if largest.has(n):
 			kept.append(made[n])
 	return kept
+
+
+## A summit's second layer over [param cells] at [param y]: strips along x,
+## two studs deep where both rows have studs and one where only one does,
+## each laid from its left end in plates of six, four, three, two or one, the
+## longest whose right end is not over a joint of the first layer
+## ([param below]: stud -> the first layer's plate) unless the strip ends
+## there. Every block the first layer bounds is then crossed by a plate of the
+## second.
+const SUMMIT_ACROSS := {2: {6: ["3795", 0], 4: ["3020", 0], 3: ["3021", 0],
+	2: ["3022", 0], 1: ["3023", 1]}, 1: {4: ["3710", 0], 3: ["3623", 0],
+	2: ["3023", 0], 1: ["3024", 0]}}
+
+
+static func _summit_across(cells: Dictionary, below: Dictionary, y: float,
+		colour: int) -> Array:
+	var made: Array = []
+	var left: Dictionary = cells.duplicate()
+	var low := Vector2i(1 << 30, 1 << 30)
+	var high := Vector2i(-(1 << 30), -(1 << 30))
+	for key: Variant in cells:
+		var cell: Vector2i = key
+		low = Vector2i(mini(low.x, cell.x), mini(low.y, cell.y))
+		high = Vector2i(maxi(high.x, cell.x), maxi(high.y, cell.y))
+	for z: int in range(low.y, high.y + 1, 2):
+		for deep: int in [2, 1]:
+			for row: int in ([z] if deep == 2 else [z, z + 1]):
+				var free := func(at: int) -> bool:
+					for dz: int in deep:
+						if not left.has(Vector2i(at, row + dz)):
+							return false
+					return true
+				var x: int = low.x
+				while x <= high.x:
+					if not free.call(x):
+						x += 1
+						continue
+					var end: int = x
+					while end <= high.x and free.call(end):
+						end += 1
+					var at: int = x
+					while at < end:
+						var chosen: int = 0
+						for long: int in (SUMMIT_ACROSS[deep] as Dictionary).keys():
+							var stop: int = at + long
+							if stop > end:
+								continue
+							var joint: bool = false
+							for dz: int in deep:
+								joint = joint or below.get(Vector2i(stop - 1, row + dz), -1) \
+									!= below.get(Vector2i(stop, row + dz), -2)
+							if stop == end or not joint:
+								chosen = long
+								break
+						if chosen == 0:
+							for long: int in (SUMMIT_ACROSS[deep] as Dictionary).keys():
+								if at + long <= end:
+									chosen = long
+									break
+						var part: Array = SUMMIT_ACROSS[deep][chosen]
+						made.append({"part": part[0], "color": colour, "x": at, "y": y,
+							"z": row, "rot": part[1]})
+						for dx: int in chosen:
+							for dz: int in deep:
+								left.erase(Vector2i(at + dx, row + dz))
+						at += chosen
+					x = end
+	return made
 
 
 ## A face of studs turned outward, dressed with tiles, round tiles,
