@@ -72,7 +72,14 @@ can occupy the same millimetre.
   shared cell at either part's surface (`Joints.overlap_within` with `own`,
   `Assistant._turns_against`): 3938 tipped ten degrees shared 99 cells with
   3937 outside the pin, all grazing. Deeper is still a collision — the top
-  swung on round into its own base is refused.
+  swung on round into its own base is refused. `hinge: true` on a section
+  is the one-line way (`Section.hinge`, `Assistant._fit_hinge`): the app puts a
+  3937 where the section's x, y, z say and a 3938 in it, the section's own
+  0,0,0 is the top's studs, and it turns about the pin read off 3937's flat
+  bore — 1.75 plates up and half a stud in, the studs 1.25 above it. A repeat
+  gives each copy its own base; an edit moving the section moves its base
+  (`_rehinge`). `section_probe` ("a section on a hinge"): leans of -20 to 25
+  degrees about x and z hold, closed it stacks exactly where a brick would.
 
 ## How to reach it
 

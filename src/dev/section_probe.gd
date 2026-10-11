@@ -505,6 +505,8 @@ func _run() -> void:
 	_check("...and nothing in it reads as a rule about resting",
 		not told.contains("rest"))
 
+	_hinged()
+
 	print("")
 	if _failures == 0:
 		print("a section can be built square and carried at an angle")
@@ -562,3 +564,81 @@ func _check(what: String, ok: bool) -> void:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
+
+
+## A section on a hinge, in one line.
+##
+## A lean has to turn on a joint since the spires of a tower of Orthanc
+## sat at a slant on studs they gripped none of, and a hinge's pin is the
+## arithmetic a design gets wrong: 1.75 plates up and half a stud in from
+## the base's corner, with the top's studs 1.25 above it. hinge: true puts
+## the two halves in and turns the section about the real pin, and the
+## design writes the spire as if it stood square on a 1 x 2 plate.
+func _hinged() -> void:
+	print("")
+	print("  a section on a hinge, in one line")
+	var spire := {"bricks": [
+		{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0},
+		{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0, "section": "spire"},
+		{"part": "3062b", "color": 0, "x": 0, "y": 3, "z": 0, "section": "spire"},
+		{"part": "4589", "color": 0, "x": 0, "y": 6, "z": 0, "section": "spire"}]}
+	for case: Array in [["x", 15.0], ["x", -20.0], ["z", 25.0], ["z", -10.0]]:
+		var args: Dictionary = spire.duplicate(true)
+		args["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0,
+			"axis": case[0], "degrees": case[1], "hinge": true}]
+		var model: Assistant.Model = _assistant._read_model(args)
+		var verdict: Dictionary = _assistant._check(model, true)
+		_check("a spire leaning %d degrees about %s on hinge: true holds: %s"
+			% [int(case[1]), case[0], verdict["summary"]], bool(verdict["ok"]))
+	# The halves are put in: the base standing where the section says, the
+	# top in the section.
+	var one: Dictionary = spire.duplicate(true)
+	one["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0, "axis": "x",
+		"degrees": 0, "hinge": true}]
+	var closed: Assistant.Model = _assistant._read_model(one)
+	var base := false
+	var top := false
+	for put: Assistant.Placement in closed.placements:
+		base = base or (put.part == "3937" and put.section.is_empty()
+			and is_equal_approx(put.y, 3.0))
+		top = top or (put.part == "3938" and put.section == "spire")
+	_check("...the hinge's base is put where the section stands, its top in it",
+		base and top)
+	# And closed, the section's own 0,0,0 is the hinge top's studs: a brick
+	# there stands a brick above the base, exactly where it would stack.
+	var first: Assistant.Placement = null
+	for put: Assistant.Placement in closed.placements:
+		if put.section == "spire" and put.part == "3004":
+			first = put
+	var mesh: Lbm.PartMesh = _assistant.library.mesh_for("3004")
+	var at: Transform3D = _assistant._transform(first, mesh, closed.sections["spire"])
+	var square: Transform3D = _assistant._transform(Assistant.Placement.from_dict(
+		{"part": "3004", "x": 0, "y": 6, "z": 0}), mesh)
+	_check("...and closed, its first brick stands on the hinge top's studs: %s against %s"
+		% [at.origin, square.origin], at.origin.is_equal_approx(square.origin))
+	# Repeated, each copy has a hinge of its own.
+	var four: Dictionary = spire.duplicate(true)
+	four["sections"] = [{"name": "spire", "x": 0, "y": 3, "z": 0, "axis": "x",
+		"degrees": 15, "hinge": true}]
+	four["bricks"].append({"part": "3004", "color": 0, "x": 4, "y": 0, "z": 0})
+	four["bricks"].append({"part": "3004", "color": 0, "x": 8, "y": 0, "z": 0})
+	four["repeat_section"] = [{"from": "spire", "times": 2, "dx": 4}]
+	var row: Assistant.Model = _assistant._read_model(four)
+	var bases: int = row.placements.filter(func(p: Assistant.Placement) -> bool:
+		return p.part == "3937").size()
+	var held: Dictionary = _assistant._check(row, true)
+	_check("...repeated twice it has three hinges, and holds: %d, %s"
+		% [bases, held["summary"]], bases == 3 and bool(held["ok"]))
+	# Moved by an edit, the base goes with it.
+	var moved: Assistant.Model = _assistant._read_model(one)
+	var was: Assistant.Section = moved.sections["spire"]
+	var now := Assistant.Section.from_dict({"name": "spire", "x": 4, "y": 3,
+		"z": 0, "axis": "x", "degrees": 10, "hinge": true})
+	moved.sections["spire"] = now
+	_assistant._fit_hinge(now)
+	_assistant._rehinge(moved, now, was)
+	var followed: bool = moved.placements.any(func(p: Assistant.Placement) -> bool:
+		return p.part == "3937" and is_equal_approx(p.x, 4.0))
+	var still: int = moved.placements.filter(func(p: Assistant.Placement) -> bool:
+		return p.part == "3937").size()
+	_check("...and moved by an edit, its one base goes with it", followed and still == 1)

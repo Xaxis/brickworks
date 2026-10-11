@@ -57,8 +57,14 @@ func _build() -> void:
 	backing.content_margin_bottom = 6
 	add_theme_stylebox_override("panel", backing)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	# Wraps onto a second line rather than running off the side. As one
+	# row it needs about a thousand units and a phone has about 720, and
+	# the bar set the width of everything under it: on a phone Clear, the
+	# assistant's rail and the end of the key strip were off the page,
+	# so the assistant could not be opened at all.
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 4)
 	add_child(row)
 
 	var mark := Label.new()
@@ -107,10 +113,16 @@ func _build() -> void:
 	_button(row, "Help", func() -> void: controls_wanted.emit(),
 		"What every button and key does, and how to change two of them")
 
+	# Cut short with an ellipsis rather than as wide as what it says: a
+	# long "opened …" pushed Clear off the end of the bar.
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 12)
 	_status.modulate = Color(1, 1, 1, 0.65)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.clip_text = true
+	_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_status.custom_minimum_size = Vector2(120, 0)
+	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(_status)
 
 	# At the far end, and asked about. It empties the baseplate and the
@@ -145,7 +157,7 @@ func _build() -> void:
 	add_child(_saves)
 
 
-func _button(row: HBoxContainer, text: String, action: Callable,
+func _button(row: Container, text: String, action: Callable,
 		tip: String) -> Button:
 	var button := Button.new()
 	button.text = text

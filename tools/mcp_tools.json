@@ -343,6 +343,14 @@
                 "description": "how far it is turned about that pin. Any angle.",
                 "type": "number"
               },
+              "hinge": {
+                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
+                "type": "boolean"
+              },
+              "hinge_color": {
+                "description": "the hinge's colour, if not 72",
+                "type": "integer"
+              },
               "name": {
                 "description": "what to call it, e.g. port nacelle",
                 "type": "string"
@@ -829,6 +837,14 @@
               "degrees": {
                 "description": "how far it is turned about that pin. Any angle.",
                 "type": "number"
+              },
+              "hinge": {
+                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
+                "type": "boolean"
+              },
+              "hinge_color": {
+                "description": "the hinge's colour, if not 72",
+                "type": "integer"
               },
               "name": {
                 "description": "what to call it, e.g. port nacelle",
@@ -1381,6 +1397,14 @@
               "degrees": {
                 "description": "how far it is turned about that pin. Any angle.",
                 "type": "number"
+              },
+              "hinge": {
+                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
+                "type": "boolean"
+              },
+              "hinge_color": {
+                "description": "the hinge's colour, if not 72",
+                "type": "integer"
               },
               "name": {
                 "description": "what to call it, e.g. port nacelle",

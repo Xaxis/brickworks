@@ -96,6 +96,7 @@ var _all_colours: Button
 var _colour_note: Label
 var _swatches: Dictionary = {}         ## int code -> Swatch
 var _category_row: FlowContainer
+var _category_scroll: ScrollContainer
 
 var _category: String = "All"
 var _make_button: Button
@@ -166,6 +167,7 @@ func _build() -> void:
 	category_scroll.custom_minimum_size = Vector2(0, 58)
 	category_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(category_scroll)
+	_category_scroll = category_scroll
 
 	_category_row = FlowContainer.new()
 	_category_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -211,15 +213,18 @@ func _build() -> void:
 	colour_head.add_child(_all_colours)
 
 	# Scrolls rather than grows: three hundred colours shown at once would
-	# push the parts grid off the bottom of the panel.
+	# push the parts grid off the bottom of the panel. Sized to what it
+	# holds where there is room (_fit_palette).
 	_palette_scroll = ScrollContainer.new()
 	_palette_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_palette_scroll.custom_minimum_size = Vector2(0, 168)
+	_palette_scroll.custom_minimum_size = Vector2(0, PALETTE_FLOOR)
 	root.add_child(_palette_scroll)
 	_palette = VBoxContainer.new()
 	_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_palette.add_theme_constant_override("separation", 2)
 	_palette_scroll.add_child(_palette)
+	_palette.minimum_size_changed.connect(_fit_palette)
+	resized.connect(_fit_palette)
 
 	_colour_note = Label.new()
 	_colour_note.add_theme_font_size_override("font_size", 11)
@@ -289,6 +294,12 @@ func _build_categories() -> void:
 		button.add_theme_font_size_override("font_size", 11)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
+	# Whole rows and the scroll bar to say there are more (_fit_palette).
+	# A fixed 58 showed the top few units of a third row's buttons.
+	if _category_row.get_child_count() > 0:
+		var last: Control = _category_row.get_child(_category_row.get_child_count() - 1)
+		_chip_tall = last.get_combined_minimum_size().y
+	_fit_palette()
 
 
 func _build_swatches() -> void:
@@ -341,6 +352,47 @@ func _build_swatches() -> void:
 			"Also the %d colours not in a set since %d, or in no set inventory"
 				% [total - current, library.recent_since])
 	_mark_swatches()
+
+
+## The palette's window: the whole of it when that fits in PALETTE_SHARE
+## of the panel, and otherwise a scrolling window onto it, which gives
+## way to the parts above it on a short panel.
+##
+## It was a fixed 168, and the colours a set is built in today run to
+## about 195: the last group's title sat cut in half under the colour's
+## name at the foot of the panel, on the first screen anyone sees. And on
+## a phone held sideways that 168 and the rest of the panel took all of
+## its height: the parts list was a sliver with no part in it.
+func _fit_palette() -> void:
+	if _palette == null or _palette_scroll == null:
+		return
+	# Two rows of categories, or one on a panel too short to spare them.
+	if _chip_tall > 0.0:
+		var rows: int = 2 if size.y >= SHORT else 1
+		_category_scroll.custom_minimum_size.y = _chip_tall * rows \
+			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
+	var wants: float = _palette.get_combined_minimum_size().y
+	var room: float = maxf(PALETTE_LEAST, size.y * PALETTE_SHARE)
+	# What the rest of the panel needs, leaving the parts list its rows.
+	var root: Control = _palette_scroll.get_parent()
+	var others: float = root.get_combined_minimum_size().y \
+		- _palette_scroll.get_combined_minimum_size().y
+	var inner: float = size.y - get_theme_stylebox("panel").get_minimum_size().y
+	var spare: float = inner - others - PARTS_LEAST
+	var tall: float = maxf(minf(minf(wants, room), spare), PALETTE_FLOOR)
+	if absf(_palette_scroll.custom_minimum_size.y - tall) > 0.5:
+		_palette_scroll.custom_minimum_size.y = tall
+
+
+const PALETTE_LEAST := 168.0
+const PALETTE_SHARE := 0.3
+## A row and a half of colours and the title over them.
+const PALETTE_FLOOR := 48.0
+## Height the parts list keeps before the palette takes any: two rows.
+const PARTS_LEAST := 172.0
+## A panel shorter than this shows one row of categories, not two.
+const SHORT := 600.0
+var _chip_tall: float = 0.0
 
 
 func _flow_of(colors: Array[PartLibrary.BrickColor]) -> FlowContainer:

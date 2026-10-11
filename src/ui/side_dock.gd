@@ -114,6 +114,12 @@ func is_open() -> bool:
 	return _open
 
 
+## The strip that opens and folds the panel, for the page to find
+## (Main._tell_page): on a phone it is the only way to the panel.
+func rail() -> Control:
+	return _rail
+
+
 func toggle() -> void:
 	set_open(not _open)
 
