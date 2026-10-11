@@ -44,6 +44,8 @@ var _main: BookletStudio.Stage
 
 ## True while a booklet is being made, so a second press waits for it.
 static var busy: bool = false
+## The toolbar's Instructions button, for the page to find (main._tell_page).
+static var shown_button: Button = null
 
 
 func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
@@ -433,6 +435,7 @@ func _draw(entry: Booklet.Entry) -> void:
 	_studio.fade = 0.0
 	entry.image = _data_uri(shot.image, PAGE_COLOUR)
 	_note("step %d" % entry.number, size, shot, entry.free, entry.rect)
+	_point_at_small(entry, shot)
 	if entry.callout == null:
 		return
 	var callout: Booklet.Callout = entry.callout
@@ -458,6 +461,24 @@ func _draw(entry: Booklet.Entry) -> void:
 		_note("step %d, %s box %d" % [entry.number, callout.name, index + 1],
 			cell_size, cell_shot, Rect2(), callout.cells[index])
 	_arrows(entry, view, size)
+
+
+## A red arrow down onto what the step adds, when that is small enough to
+## miss: a flag and a round plate on top of a tower are a few millimetres
+## of the page, and a real booklet points at them. Only when what is new
+## is in one place — an arrow between two parts points at neither.
+func _point_at_small(entry: Booklet.Entry, shot: BookletStudio.Shot) -> void:
+	if entry.callout != null or shot.new_rect.size.x <= 0.0:
+		return
+	var fresh := Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
+		shot.new_rect.size / px_per_mm)
+	if fresh.size.x > 14.0 or fresh.size.y > 14.0:
+		return
+	var tip := Vector2(fresh.get_center().x, fresh.position.y - 1.0)
+	var tail: Vector2 = tip - Vector2(0.0, 11.0)
+	if tail.y < entry.rect.position.y:
+		return
+	entry.pointers.append([tail, tip])
 
 
 ## An arrow from the callout box to each copy of the assembly, at the
@@ -620,6 +641,7 @@ static func fill_tab(html: String) -> bool:
 static func add_button(bar: Node, after: String, action: Callable) -> Button:
 	var anchor: Button = _find_button(bar, after)
 	var button := Button.new()
+	shown_button = button
 	button.text = "Instructions"
 	button.tooltip_text = ("A printable booklet of how to build this, step by step, "
 		+ "the way a set's booklet is laid out")

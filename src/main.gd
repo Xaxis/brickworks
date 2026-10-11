@@ -157,6 +157,8 @@ func _tell_page() -> void:
 	# ratio of two, where the panels take more of the page.
 	if _marquee != null:
 		named["view"] = _marquee.get_parent()
+	if is_instance_valid(BookletMaker.shown_button):
+		named["instructions"] = BookletMaker.shown_button
 	# And the two rails, which on a phone are the only way to either panel:
 	# the toolbar once ran wider than a phone and took the assistant's off
 	# the page.

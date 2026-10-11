@@ -110,9 +110,11 @@ class Entry extends RefCounted:
 	var number_at: Vector2 = Vector2()
 	var number_size: float = NUMBER
 
-	## Drawn: the picture (a data URI) and the arrows, in page mm.
+	## Drawn: the picture (a data URI) and the arrows, in page mm: from a
+	## callout to where it goes, and red ones onto small new parts.
 	var image: String = ""
 	var arrows: Array = []
+	var pointers: Array = []
 	var note: String = ""
 
 	## The view the picture is drawn from: centre of the picture on the
@@ -710,6 +712,8 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		var at := Vector2(entry.number_at.x + entry.number_size * 0.62 * str(entry.number).length() + 3.0,
 			entry.number_at.y + entry.number_size * 0.5 - size * 0.5)
 		svg.append(_turn_sign(Rect2(at, Vector2(size, size))))
+	for pointer: Array in entry.pointers:
+		svg.append(_arrow(pointer[0], pointer[1], "#d01012", 0.9, 2.6))
 	if not entry.note.is_empty():
 		var note := Rect2(Vector2(entry.rect.position.x, entry.rect.end.y - 9.0),
 			Vector2(minf(78.0, entry.rect.size.x), 8.0))
@@ -737,8 +741,12 @@ static func _cover(page: Page, document: Document, out: PackedStringArray) -> vo
 	out.append(_div(Rect2(Vector2(MARGIN, 7.0), Vector2(44.0, 16.0)), "",
 		"background:#d0312d;border-radius:calc(2 * var(--mm))"))
 	out.append(_text(Vector2(MARGIN + 3.6, 12.4), 5.0, "BRICKWORKS", "n", "color:#fff"))
-	out.append(_text(Vector2(MARGIN + 52.0, 10.0), 10.0, _escape(document.title), "n",
-		"color:#fff"))
+	# As big as fits on one line: the example car is "Example Car for
+	# Demonstration of LDRAW Library", which at 10 mm ran off the page.
+	var room: float = PAGE.x - MARGIN * 2.0 - 52.0
+	var size: float = clampf(room / (0.58 * maxf(1.0, float(document.title.length()))), 4.0, 10.0)
+	out.append(_text(Vector2(MARGIN + 52.0, 15.0 - size * 0.5), size, _escape(document.title),
+		"n", "color:#fff"))
 	for picture: Array in page.pictures:
 		_image(out, picture[0], picture[1], "The finished model")
 	out.append(_text(Vector2(MARGIN, PAGE.y - 15.0), 4.0, "%d pieces · %d steps" % [document.pieces, document.steps], "q"))
@@ -787,18 +795,22 @@ static func _text(at: Vector2, size: float, text: String, kind: String,
 		kind, _n(at.x), _n(at.y), _n(size), style, text]
 
 
-## A line from the callout box to where the assembly goes, with a head.
-static func _arrow(from: Vector2, to: Vector2) -> String:
+## A line with a head: from the callout box to where the assembly goes,
+## or a red one onto a small new part.
+static func _arrow(from: Vector2, to: Vector2, colour: String = "#15191e",
+		width: float = 0.45, head: float = 1.4) -> String:
 	var way: Vector2 = (to - from).normalized()
 	if way == Vector2.ZERO:
 		return ""
 	var side := Vector2(-way.y, way.x)
-	var base: Vector2 = to - way * 3.2
-	return ("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"#15191e\" stroke-width=\".45\"/>"
-		% [_n(from.x), _n(from.y), _n(base.x), _n(base.y)]
-		+ "<path d=\"M%s %s L%s %s L%s %s Z\" fill=\"#15191e\"/>" % [
-			_n(to.x), _n(to.y), _n(base.x + side.x * 1.4), _n(base.y + side.y * 1.4),
-			_n(base.x - side.x * 1.4), _n(base.y - side.y * 1.4)])
+	var base: Vector2 = to - way * head * 2.3
+	var outline: String = (" stroke=\"#fff\" stroke-width=\".35\" paint-order=\"stroke\""
+		if colour != "#15191e" else "")
+	return ("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"%s\" stroke-width=\"%s\"/>"
+		% [_n(from.x), _n(from.y), _n(base.x), _n(base.y), colour, _n(width)]
+		+ "<path d=\"M%s %s L%s %s L%s %s Z\" fill=\"%s\"%s/>" % [
+			_n(to.x), _n(to.y), _n(base.x + side.x * head), _n(base.y + side.y * head),
+			_n(base.x - side.x * head), _n(base.y - side.y * head), colour, outline])
 
 
 ## Turn the model round: a rounded square with a half-circle arrow.

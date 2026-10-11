@@ -44,6 +44,8 @@ var mark_new: bool = false
 ## Fade the picture to the page over this many of its own pixels at the
 ## edges, for a picture whose model runs off them; 0 for none.
 var fade: float = 0.0
+## How strongly to draw the creases inside a part: see booklet_ink.
+var crease: float = 1.0
 
 var _colour: SubViewport
 var _codes: SubViewport
@@ -295,6 +297,7 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	_ink_material.set_shader_parameter("ink", maxf(2.0, 1.5 * supersample))
 	_ink_material.set_shader_parameter("mark_new", mark_new and new_from <= upto)
 	_ink_material.set_shader_parameter("fade", fade * supersample)
+	_ink_material.set_shader_parameter("crease", crease)
 
 	_colour.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_codes.render_target_update_mode = SubViewport.UPDATE_ALWAYS

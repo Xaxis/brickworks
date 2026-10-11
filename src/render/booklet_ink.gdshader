@@ -27,6 +27,10 @@ uniform vec3 ink_on_dark = vec3(0.46, 0.47, 0.50);
 // and the rest of the model runs off the picture's edge; cut there, mid
 // page, it read as the model sliced through.
 uniform float fade = 0.0;
+// Inside a part, a fainter line where its shading turns a corner — the
+// rim of a stud, the edge of a brick's top — found from how sharply the
+// lightness changes. 0 for none.
+uniform float crease = 0.0;
 // A line of its own colour round what this step adds, or nothing.
 uniform bool mark_new = false;
 uniform vec3 new_colour = vec3(1.0, 0.78, 0.0);
@@ -88,6 +92,23 @@ void fragment() {
 			}
 		}
 		vec3 line = (dark && dark_other && !met_page) ? ink_on_dark : ink_colour;
+		if (edge < 0.5 && crease > 0.0 && is_brick(mine)) {
+			// Sobel on lightness, one pixel out, within this brick only.
+			float l[9];
+			int k = 0;
+			for (int y = -1; y <= 1; y++) {
+				for (int x = -1; x <= 1; x++) {
+					vec2 o = vec2(float(x), float(y)) * pixel * max(1.0, ink * 0.4);
+					l[k] = lightness(texture(colour_tex, UV + o).rgb);
+					k++;
+				}
+			}
+			float gx = (l[2] + 2.0 * l[5] + l[8]) - (l[0] + 2.0 * l[3] + l[6]);
+			float gy = (l[6] + 2.0 * l[7] + l[8]) - (l[0] + 2.0 * l[1] + l[2]);
+			float g = sqrt(gx * gx + gy * gy);
+			float faint = smoothstep(0.22, 0.45, g) * crease;
+			colour.rgb = mix(colour.rgb, dark ? ink_on_dark : colour.rgb * 0.35, faint);
+		}
 		if (mark_new && fresh) {
 			line = new_colour;
 		}
