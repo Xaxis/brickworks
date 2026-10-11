@@ -451,6 +451,9 @@ func _create_batch(
 	var material: ShaderMaterial = _material(material_class, two_sided).duplicate()
 	material.set_shader_parameter("part_box_min", part.bounds.position)
 	material.set_shader_parameter("part_box_max", part.bounds.end)
+	# A print drawn in the app is a picture on its surface (PartPrints).
+	if part.prints.has(surface_index) and material_class == MaterialClass.OPAQUE:
+		material = PartPrints.material_for(material, part.prints[surface_index], two_sided)
 	batch.instance.material_override = material
 	add_child(batch.instance)
 	return batch

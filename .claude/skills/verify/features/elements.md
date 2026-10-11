@@ -126,7 +126,11 @@ connectors and collision the library's own parts have.
   file opens on a machine that never made the part. A file cannot redefine a
   LEGO part: an embedded `3001.dat` is ignored. The same shape under another
   name is another part (`bw-b2x7x3-2`). The parts list says "(custom
-  element)" and gives no element number.
+  element)" and gives no element number. A print drawn in the figure builder
+  (minifig.md, `custom prints`) is a made part with pictures: they are kept
+  beside its `.dat` (`<id>-<area>.png`), built with it by `PartPrints.build`,
+  and written into a model as MPD `0 !DATA` sections after the FILE sections,
+  which `LdrModel` reads into `embedded_data` and `take_from` hands back.
 - `build custom parts` (`tools/build_custom.py`): the Python pipeline for just
   the given parts — `.dat` files, or the parts embedded in an `.mpd` — in
   seconds rather than the full build's ninety minutes. `--out DIR` writes

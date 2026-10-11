@@ -380,6 +380,13 @@ func _render(job: Dictionary) -> void:
 			var own: int = part.surface_colors[n]
 			var ink: PartLibrary.BrickColor = library.color(
 				int(job["color"]) if own == Lbm.COLOR_INHERIT else own)
+			# A print drawn in the app is a picture on the surface.
+			if not holder.has_meta("plain"):
+				holder.set_meta("plain", holder.material_override)
+			holder.material_override = holder.get_meta("plain")
+			if part.prints.has(n):
+				holder.material_override = PartPrints.material_for(
+					holder.material_override, part.prints[n], false)
 			var material: ShaderMaterial = holder.material_override
 			material.set_shader_parameter("tint_override", ink.shown)
 			material.set_shader_parameter("finish_override", ink.instance_custom)

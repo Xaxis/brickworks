@@ -83,6 +83,15 @@ uniform float seam_pixels : hint_range(0.0, 3.0) = 1.0;
 uniform float seam_depth : hint_range(0.0, 1.0) = 0.45;
 varying vec3 local_position;
 
+#ifdef PLASTIC_PRINT
+// A print drawn here (PartPrints): its picture, laid on by the mesh's own
+// texture coordinates. Clear pixels, and anywhere off the picture, show the
+// plastic, as LDView draws a TEXMAP with a clear border. The picture is
+// sampled as it is stored, sRGB, and turned linear here exactly as the
+// plastic's own colour is, so the two match on both renderers.
+uniform sampler2D print_texture : filter_linear_mipmap, repeat_disable;
+#endif
+
 // FINISHES. Numbered as PartLibrary.BrickColor.Finish numbers them.
 const int FINISH_PLASTIC = 0;
 const int FINISH_CHROME = 1;
@@ -231,6 +240,12 @@ void fragment() {
 	vec3 seam_color = luminance_in < 0.025 ? instance_color + vec3(0.03)
 		: instance_color * (1.0 - seam_depth);
 	vec3 body = mix(instance_color, seam_color, seam);
+#ifdef PLASTIC_PRINT
+	vec4 ink = texture(print_texture, UV);
+	float on_picture = step(0.0, UV.x) * step(UV.x, 1.0) * step(0.0, UV.y) * step(UV.y, 1.0);
+	vec3 ink_color = linearise ? srgb_to_linear(ink.rgb) : ink.rgb;
+	body = mix(body, ink_color, ink.a * on_picture);
+#endif
 	// The finishes' own light — the studio a mirror reflects, a glow, a
 	// glint — is worked out in linear light on both renderers and handed
 	// over in whichever space this renderer writes. Compatibility writes

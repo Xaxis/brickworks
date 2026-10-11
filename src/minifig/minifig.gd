@@ -161,6 +161,12 @@ func part(slot: String) -> String:
 ## and a cape long enough to reach the ground is worn higher.
 ## Without one (part_ids) the places are the standard joints'.
 func assemble(library: PartLibrary = null) -> Array[Dictionary]:
+	# A print or a mould made in the app goes where the part it was made
+	# from goes: the figure is put together from those, and they are
+	# swapped back in at the end.
+	var made: Dictionary = _made_here()
+	if not made.is_empty():
+		return _swapped_back(_stand_in(made).assemble(library), made, library)
 	if library != null:
 		_index(library)
 	var local: Array[Dictionary] = []
@@ -788,7 +794,75 @@ static func in_hand(part_id: String) -> Transform3D:
 ## The torso's placement in the figure's frame, in the app's axes: what
 ## a figure's frame is found from once it is in a model.
 func torso_local(library: PartLibrary = null) -> Transform3D:
+	var made: Dictionary = _made_here()
+	if not made.is_empty():
+		return _stand_in(made).torso_local(library)
 	return FLIP * (_lower(library)["stance"] as Transform3D) * FLIP
+
+
+# -- parts made in the app ------------------------------------------------------
+#
+# A print drawn in the print designer is the plain part with a picture on
+# it, and a mould is a part sculpted from another with its connections
+# where they were: each stands, joins and is held exactly as the part it
+# was made from. PartPrints.bases says which that is.
+
+
+## The slots holding a part made here: slot -> its id.
+func _made_here() -> Dictionary:
+	var out: Dictionary = {}
+	for slot: String in parts:
+		var id: String = str(parts[slot])
+		if PartPrints.bases.has(id):
+			out[slot] = id
+	return out
+
+
+## This figure with the parts they were made from in place of the parts
+## made here.
+func _stand_in(made: Dictionary) -> Minifig:
+	var other: Minifig = copy()
+	for slot: String in made:
+		other.parts[slot] = PartPrints.base_of(made[slot])
+	return other
+
+
+## A figure put together from the parts made here's originals, with the
+## parts made here put back: each where its original is, and the other
+## side of a pair made together (a printed pair of legs) where its plain
+## other side is.
+func _swapped_back(placed: Array[Dictionary], made: Dictionary,
+		library: PartLibrary) -> Array[Dictionary]:
+	for item: Dictionary in placed:
+		var slot: String = item["slot"]
+		if not made.has(slot):
+			continue
+		var id: String = made[slot]
+		if str(item["part"]) == PartPrints.base_of(id):
+			item["part"] = id
+			continue
+		var other: String = made_with(library, id, str(item["part"]))
+		if not other.is_empty():
+			item["part"] = other
+	return placed
+
+
+## The tag that tells one print or mould from another: the end of its id.
+static func _tag(id: String) -> String:
+	return id.get_slice("-", id.get_slice_count("-") - 1)
+
+
+## The part made together with [param id] from [param original]: the left
+## leg of a printed pair whose right leg is [param id], its hips. "" when
+## none was.
+static func made_with(library: PartLibrary, id: String, original: String) -> String:
+	var tag: String = id.get_slice("-", id.get_slice_count("-") - 1)
+	for other: String in PartPrints.bases:
+		if other != id and str(PartPrints.bases[other]) == original \
+				and other.ends_with("-" + tag) \
+				and (library == null or library.parts.has(other)):
+			return other
+	return ""
 
 
 ## Whether the legs are hips and legs in a single moulding (and so the
@@ -1125,12 +1199,17 @@ static var _choices: Dictionary = {}       ## slot -> Array[PartInfo]
 static var _partners: Dictionary = {}      ## part id -> the other side's part id
 static var _family_pairs: Dictionary = {}  ## right family -> left family and back
 static var _paired: Dictionary = {}        ## part id -> true, offered as another's pair
+static var _index_made: int = -1           ## how many made parts the library had
 
 
 ## Sort every real minifigure part of a library into its slot, once.
 static func _index(library: PartLibrary) -> void:
-	if library == null or _index_of == library.get_instance_id():
+	# Again when parts have been made since: a print drawn a moment ago is
+	# offered in its slot.
+	if library == null or (_index_of == library.get_instance_id()
+			and _index_made == library.custom.size()):
 		return
+	_index_made = library.custom.size()
 	_slot_of.clear()
 	_by_name.clear()
 	_names.clear()
@@ -1281,14 +1360,22 @@ const BY_MOULD: Array[String] = ["head", "torso", "arms", "hands", "hips", "legs
 
 
 static func group_of(info: PartLibrary.PartInfo, slot: String) -> String:
+	if info.custom:
+		return MADE_HERE
 	if BY_MOULD.has(slot):
 		return _family(info.id)
 	var words: PackedStringArray = _short_name(info.name).split(" ", false)
 	return words[0] if not words.is_empty() else ""
 
 
+## The group the prints and moulds made here are in, whatever the slot.
+const MADE_HERE := "made here"
+
+
 static func _group_label(library: PartLibrary, info: PartLibrary.PartInfo, key: String,
 		slot: String) -> String:
+	if key == MADE_HERE:
+		return "My prints and moulds"
 	if not BY_MOULD.has(slot):
 		return key
 	var plain: PartLibrary.PartInfo = library.parts.get(key)
@@ -1341,6 +1428,10 @@ static func _matches(id: String, pattern: String) -> bool:
 ## Cape slot on the cloth cape of 258 sets as figures wear it.
 static func _better(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo, slot: String = "",
 		sets: Dictionary = {}) -> bool:
+	# What was made here first: a print drawn for this figure is the one
+	# being looked for.
+	if a.custom != b.custom:
+		return a.custom
 	var worn_a: int = _worn_rank(a, slot)
 	var worn_b: int = _worn_rank(b, slot)
 	if worn_a != worn_b:
@@ -1390,6 +1481,9 @@ const CLASSIC: Array[String] = ["3626c", "973", ARM_RIGHT, HAND, PLAIN_HIPS, PLA
 ## join to LDraw's print numbers, so its plain moulding stands in: the
 ## colours 3626c was made in are the colours there are heads in.
 static func colours_of(library: PartLibrary, part_id: String) -> PartLibrary.PartInfo:
+	# A print or mould made here comes in what its original comes in.
+	if PartPrints.bases.has(part_id):
+		return colours_of(library, PartPrints.base_of(part_id))
 	var info: PartLibrary.PartInfo = library.parts.get(part_id)
 	if info != null and info.availability_known():
 		return info
@@ -1523,6 +1617,16 @@ func _has_plain_partner(library: PartLibrary, slot: String) -> bool:
 ## they go into (43221, as 43743-f1). Only over plain hips or the ones
 ## the legs before brought: hips somebody chose stay.
 func _fit_hips(library: PartLibrary, was: String, legs: String) -> void:
+	# Hips printed with the legs, one print over both (PartPrints), come
+	# and go with them.
+	if PartPrints.bases.has(part("hips")) and PartPrints.bases.has(was) \
+			and _tag(part("hips")) == _tag(was):
+		parts["hips"] = PartPrints.base_of(part("hips"))
+	if PartPrints.bases.has(legs):
+		var printed: String = made_with(library, legs, part("hips"))
+		if not printed.is_empty():
+			parts["hips"] = printed
+			return
 	var before: Array = MinifigData.LEG_HIPS.get(was, [])
 	var after: Array = MinifigData.LEG_HIPS.get(legs, [])
 	var now: String = part("hips")

@@ -169,7 +169,57 @@ where LEGO moulds about 1.7–1.8. An inverted slope's wedge is drawn solid
 where a mould would core it, and so is a Technic brick round its holes (the
 library's are hollow there); side studs are solid studs on the face where
 the library's are hollow and let into it; a curved slope's face is eight
-straight strips round its curve. There are no clips, bars, hinges, axle
-holes or prints, and a library part can be resized from its family only if
-its name says it is one ("Brick 2 x 4", "Technic Brick 1 x 4 with Holes",
-not "Brick 2 x 4 with Holes").
+straight strips round its curve. There are no clips, bars, hinges or axle
+holes, and a library part can be resized from its family only if its name
+says it is one ("Brick 2 x 4", "Technic Brick 1 x 4 with Holes", not
+"Brick 2 x 4 with Holes"). Prints are drawn in the figure builder (below).
+
+## Prints of one's own
+
+Researched 2026-10-11, as above: each claim names its source.
+
+**What LDraw has.** The !TEXMAP extension (ldraw.org, revised 2020-08-01)
+projects a PNG onto the faces between `0 !TEXMAP START <method> <points>
+<png>` and `0 !TEXMAP END`; programs that do not read it draw the plain
+faces. PLANAR takes three corners of the picture; the spec does not say
+which is which, and the MPD spec's own example, LeoCAD's documentation and
+LDCad's author agree the first is the top left, the second the top right
+and the third the bottom left. CYLINDRICAL takes a bottom centre, a top
+centre, a point where the picture's middle touches, and an angle; its V
+direction is self-contradictory in the spec (ldraw.org forum thread 13633),
+and LDView and LDCad both run it down from the top. Off the picture the
+spec is silent: LDView clamps to a clear border. A model file carries the
+picture as `0 !DATA <name>.png` with base64 in `0 !:` lines of at most 80
+characters (MPD spec rev. 2). Primary for the syntax; the conventions are
+LDView's source (TREModel.cpp), read here.
+
+**What BrickLink Studio does.** PartDesigner, a separate application, makes
+decorated figure parts from imported PNGs ("Add images (.png file type
+only)", reference sizes 416 x 320 for a head, 608 x 512 for a torso), for 28
+parts, and a decal tool applies an image to a part's surface; no drawing in
+the app or layers are documented, and its curved-surface projection is
+reported to miss faces. It exports custom parts in its own format
+(`0 PE_TEX_INFO <base64>` and UVs appended to each triangle), which other
+LDraw programs do not read. Primary (studiohelp.bricklink.com) and forum.
+
+**What Mecabricks does.** Decorations are uploaded as PNGs painted in
+another program on a UV layout Mecabricks provides, for parts it has
+layouts for (heads, torsos, legs, arms; not hair or hats); there is no
+in-app drawing, and new moulds are made by its staff. Secondary (its
+author's forum posts).
+
+**What Brickworks does.** The print is drawn in the app, on a canvas that
+is the part's printable area exactly — a head's face unrolled from its
+cylinder, a torso's trapezoid, the hips and both legs side by side, a
+tile's top or a slope's face, found from the part's own geometry, so any
+part can be printed — with a brush, lines, boxes, ovals, a fill, words, an
+eraser, a picked colour, LEGO's colours, layers, a mirror for symmetric
+faces and undo, while the part turns beside it wearing the print. It can
+start from a clean sheet, from any of LEGO's prints of the same mould read
+off the library's own geometry (3626cp01's grin onto 3626c's face), from a
+print made before, or from a picture of one's own. It is saved as a real
+LDraw part with standard TEXMAP and the picture in the model file as !DATA:
+LDView, a program that has never seen Brickworks, draws the face, the badge
+and the lettering where the app does (`shots/print_ldview_front.png`,
+`_back.png`). See `.claude/skills/verify/features/minifig.md`, `custom
+prints` and `print designer`.
