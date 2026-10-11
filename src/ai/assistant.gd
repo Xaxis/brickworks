@@ -4931,10 +4931,17 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		# a groove between two of them looks straight through it: the
 		# guidance's own open cluster showed the sky up its right cleft from
 		# the front-right corner, the view a picture of it is taken from.
-		if behind[k]:
-			var pier: int = k
-			_corner_posts(made, model, func(face: int) -> String: return name_of.call(pier, face),
-				centre, p_sides, p_radius, spec, pier_laid, dressed, courses, angles[k], true)
+		# Any other pier is closed behind by the core, but where its outside
+		# rows cannot run on into its corner grooves, two of them line up:
+		# the eighteenth Orthanc's ten-sided piers of radius 6, faces two
+		# studs wide, showed the sky up both front clefts from the corner.
+		# Posted as a closed prism is.
+		var pier: int = k
+		var as_closed: Dictionary = spec.duplicate()
+		if not behind[k]:
+			as_closed["open"] = 0
+		_corner_posts(made, model, func(face: int) -> String: return name_of.call(pier, face),
+			centre, p_sides, p_radius, as_closed, pier_laid, dressed, courses, angles[k], true)
 
 	# The summit, across everything that stands inside the outline.
 	var top: float = 3.0 * courses

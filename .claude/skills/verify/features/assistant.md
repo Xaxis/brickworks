@@ -197,7 +197,11 @@ fixing what it got wrong.
   pier at the back of an open cluster, which is a frame of its outward faces
   open behind, so a groove between two of them looked straight through it:
   the guidance's own cluster showed the sky up its right cleft from the
-  front-right corner. Those go half way between first (`between_first`): a
+  front-right corner. And on any other pier's corners by the closed prism's
+  rule (where its outside row cannot run on, or it has an odd number of
+  sides): run 18's ten-sided piers of radius 6, faces two studs wide, had two
+  grooves of each front pier in line, the sky up both front clefts from the
+  corner. Pier posts go half way between first (`between_first`): a
   pier's face is narrow, a post square to it stood right behind its inside
   row, and the check read it as resting on that row, off its studs. Found by run 16: a
   face's floored width leaves its inner corner 2.4 LDU short of its neighbour's,
@@ -215,14 +219,17 @@ fixing what it got wrong.
   before); run 17's own cluster (a ten-sided core, eight-sided piers turned 45),
   none from the front, back, sides or the 45/225 diagonals, three of its ten
   faces open (five before, and 9 sightlines each from 45, 90, 225 and 270, the
-  2.5-stud gap from its front-right corner). Still open, and printed rather
+  2.5-stud gap from its front-right corner); run 18's (ten-sided core and
+  piers), none from the front, back, sides or 45/225 (9 each from 45 and 225
+  before its front piers were posted). Still open, and printed rather
   than judged: a cluster has a corridor a clearance wide along the core's
   outside under each pier (a pier's faces keep `CLUSTER_CLEAR` from the core),
   seen through only straight along that core face — 9-18 sightlines from the
   diagonals, open or closed (on the guidance's open cluster, a 12.5 LDU slit
-  from 135 and 315 between a back pier and the core's open edge); a front
-  pier's corners are not posted, and two of its grooves can line up (run 17's
-  cluster: a 1.4 LDU slit from 135 and 315); an open hexagon's channel is wider
+  from 135 and 315 between a back pier and the core's open edge, 15 LDU on run
+  18's); a front pier whose outside rows do run on is not posted, and two of
+  its grooves can still line up (run 17's eight-sided piers: a 1.4 LDU slit
+  from 135 and 315); an open hexagon's channel is wider
   than a post can cover, and so is any one stud thick.
 - `faceted piers clustered round a core`: `"piers"` on `prism`
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —

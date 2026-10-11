@@ -687,7 +687,7 @@ func _clustered() -> void:
 	var kept: Assistant.Model = assistant._read_model({"patterns": [small]})
 	var most: int = -1
 	for name: Variant in kept.sections:
-		if str(name).contains(" pier "):
+		if str(name).contains(" pier ") and str(name).contains(" face "):
 			most = maxi(most, int(str(name).get_slice(" face ", 1)))
 	var laid_small: Dictionary = assistant._check(kept)
 	_check("piers of radius 4 at eight sides are laid, not refused: %s, %s"
@@ -851,6 +851,15 @@ func _no_daylight() -> void:
 		# the core's inside, and 2 to 2.5 studs of sky showed from its front
 		# right corner at every height (90 sightlines). Its piers' own corner
 		# grooves still pass a slit seen from the diagonals 135 and 315 degrees.
+		# The eighteenth's: ten-sided piers of radius 6 on a ten-sided core, their
+		# faces two studs wide and their outside rows unable to run on, so two
+		# grooves of a front pier lined up and the sky showed up both front
+		# clefts from the corner (9 sightlines from 45 and from 225).
+		["the eighteenth Orthanc's cluster, its piers ten-sided, from all but 135 and 315",
+			{"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 10, "radius": 9,
+			"courses": 14, "color": 0, "open": 1, "door": true, "piers": {"count": 4,
+				"out": 11, "radius": 6, "courses": 17}}, 42.0,
+			[0.0, 45.0, 90.0, 180.0, 225.0, 270.0]],
 		["the seventeenth Orthanc's ten-sided cluster, open at the back, but from the diagonals",
 			{"pattern": "prism", "at": {"x": 28, "y": 0, "z": 28}, "sides": 10, "radius": 9,
 			"courses": 14, "color": 0, "mix_color": 72, "mix": 0.12, "open": 3,
