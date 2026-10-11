@@ -215,10 +215,6 @@
                 "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back and the backs of the piers there",
                 "type": "integer"
               },
-              "windows": {
-                "description": "prism: narrow lit windows up its faces, every eight courses; true unless said",
-                "type": "boolean"
-              },
               "pattern": {
                 "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
                 "enum": [
@@ -321,6 +317,10 @@
               "wall": {
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
+              },
+              "windows": {
+                "description": "prism: narrow lit windows up its faces, every eight courses; true unless said",
+                "type": "boolean"
               }
             },
             "required": [
@@ -1224,10 +1224,6 @@
                 "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back and the backs of the piers there",
                 "type": "integer"
               },
-              "windows": {
-                "description": "prism: narrow lit windows up its faces, every eight courses; true unless said",
-                "type": "boolean"
-              },
               "pattern": {
                 "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
                 "enum": [
@@ -1330,6 +1326,10 @@
               "wall": {
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
+              },
+              "windows": {
+                "description": "prism: narrow lit windows up its faces, every eight courses; true unless said",
+                "type": "boolean"
               }
             },
             "required": [
