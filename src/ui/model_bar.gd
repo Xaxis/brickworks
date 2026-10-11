@@ -22,7 +22,7 @@ var _clear: Button
 var _save: Button
 var _account: Button
 var _entries: Array[ModelStore.Entry] = []
-var _picker: PickModel
+var _picker: ModelFilePicker
 
 ## An id no index can be, for the menu row that is not a saved model.
 const IMPORT := -2
@@ -45,6 +45,18 @@ signal controls_wanted()
 ## Someone wants to see who is signed in, or sign out.
 signal account_wanted()
 signal opened(bricks: int)
+## Export's picture of the model, and its parts list for a shop
+## ("bricklink" or "rebrickable").
+signal picture_wanted()
+signal shop_list_wanted(shop: String)
+
+
+var _export: Button
+var _exports: PopupMenu
+
+## A button's face in each state, faint until pointed at.
+const BUTTON_FACES := {"normal": Color(1, 1, 1, 0.06), "hover": Color(1, 1, 1, 0.14),
+	"pressed": Color(0.36, 0.6, 1.0, 0.32)}
 
 
 func _ready() -> void:
@@ -101,8 +113,8 @@ func _build() -> void:
 	_new = _button(row, "New", ask_for_new, "Start a new model on an empty baseplate (Ctrl+N)")
 	_save = _button(row, "Save", _on_save, "Keep this model under its name")
 	_button(row, "Open…", _on_open, "Reopen a saved model")
-	_button(row, "Export", _on_export,
-		"Write an LDraw file, which any brick tool reads — an .mpd of its assemblies when it has them")
+	_export = _button(row, "Export…", _offer_exports,
+		"An LDraw file any brick tool reads, a picture of the model, or its parts list for BrickLink or Rebrickable")
 	row.add_child(VSeparator.new())
 	_button(row, "Parts list", func() -> void: parts_wanted.emit(),
 		"Every part this model needs, by colour and count")
@@ -162,6 +174,18 @@ func _build() -> void:
 	_saves.id_pressed.connect(_on_pick)
 	add_child(_saves)
 
+	# What Export can write. One button had written an LDraw file and
+	# nothing else; a picture and a shop's list are what a person who
+	# built something by hand wants next.
+	_exports = PopupMenu.new()
+	_exports.add_item("LDraw model (.ldr, or .mpd with its assemblies)", 0)
+	_exports.add_item("Picture of the model (.png)", 1)
+	_exports.add_separator("Parts list for a shop")
+	_exports.add_item("BrickLink wanted list (.xml)", 2)
+	_exports.add_item("Rebrickable parts list (.csv)", 3)
+	_exports.id_pressed.connect(_on_export_chosen)
+	add_child(_exports)
+
 
 func _button(row: Container, text: String, action: Callable,
 		tip: String) -> Button:
@@ -185,6 +209,22 @@ func _button(row: Container, text: String, action: Callable,
 	# one that did not.
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 13)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# A face of its own, faint until pointed at. They were words on the
+	# bar with nothing round them, and read as a heading rather than as
+	# twelve things to press.
+	for state: String in ["normal", "hover", "pressed"]:
+		var face := StyleBoxFlat.new()
+		face.bg_color = BUTTON_FACES[state]
+		face.border_color = Color(1, 1, 1, 0.1 if state == "normal" else 0.22)
+		face.set_border_width_all(1)
+		face.set_corner_radius_all(5)
+		face.content_margin_left = 9
+		face.content_margin_right = 9
+		face.content_margin_top = 3
+		face.content_margin_bottom = 3
+		button.add_theme_stylebox_override(state, face)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.pressed.connect(action)
 	row.add_child(button)
 	return button
@@ -204,7 +244,7 @@ func bind(to: ModelStore) -> void:
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
 	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear,
-		"account": _account}
+		"account": _account, "export": _export}
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has
@@ -277,7 +317,7 @@ func _on_open() -> void:
 	# Exporting an .ldr and then having nowhere to put it back was the
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
-	_saves.add_item("From a file on this computer…", IMPORT)
+	_saves.add_item("From a file on this computer (LDraw, or Studio .io)…", IMPORT)
 	_saves.add_separator()
 	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
@@ -316,7 +356,7 @@ func _on_pick(id: int) -> void:
 ## after a confirmation.
 func _import() -> void:
 	if _picker == null:
-		_picker = PickModel.new()
+		_picker = ModelFilePicker.new()
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
 			var result: Dictionary = store.open_text(
@@ -334,6 +374,24 @@ func _import() -> void:
 			_say(note))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()
+
+
+func _on_export_chosen(id: int) -> void:
+	match id:
+		0:
+			_on_export()
+		1:
+			picture_wanted.emit()
+		2:
+			shop_list_wanted.emit("bricklink")
+		3:
+			shop_list_wanted.emit("rebrickable")
+
+
+func _offer_exports() -> void:
+	_exports.reset_size()
+	_exports.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
+	_exports.popup()
 
 
 func _on_export() -> void:

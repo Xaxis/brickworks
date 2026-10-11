@@ -582,6 +582,14 @@
       "tests": []
     },
     {
+      "id": "ui:copy paste and duplicate",
+      "kind": "ui",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (select, Ctrl-C then Ctrl-V, or Ctrl-D; click to put down, R turns, Esc puts away)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:design on your own subscription",
       "kind": "ui",
       "entry": "src/ai/claude_code.gd",
@@ -598,11 +606,35 @@
       "tests": []
     },
     {
+      "id": "ui:edit bar",
+      "kind": "ui",
+      "entry": "src/ui/edit_bar.gd",
+      "reach": "godot --path .  (the column of tools down the left of the model)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:hide and show only",
+      "kind": "ui",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, H hides, Shift-H shows only it, Alt-H or H with nothing selected shows all)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:make a part",
       "kind": "ui",
       "entry": "src/ui/element_dialog.gd",
       "reach": "godot --path .  (Parts bin, Make a part\u2026)  /  godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "ui:measure",
+      "kind": "ui",
+      "entry": "src/ui/measure.gd",
+      "reach": "godot --path .  (U, then click two points)",
+      "area": "building",
       "tests": []
     },
     {
@@ -614,11 +646,35 @@
       "tests": []
     },
     {
+      "id": "ui:mirror a selection",
+      "kind": "ui",
+      "entry": "src/assembly/mirror.gd",
+      "reach": "godot --path .  (select, Shift-M or Mirror on the edit bar)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",
       "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:move and turn a selection",
+      "kind": "ui",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, X picks it up, click puts it down, Esc puts it back; R turns it where it stands)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:open a studio model",
+      "kind": "ui",
+      "entry": "src/parts/studio_io.gd",
+      "reach": "godot --path .  (Open, then From a file on this computer, and choose an .io)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -638,10 +694,34 @@
       "tests": []
     },
     {
+      "id": "ui:parts lists for shops",
+      "kind": "ui",
+      "entry": "src/assembly/shop_lists.gd",
+      "reach": "godot --path .  (Export, then BrickLink wanted list or Rebrickable parts list)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:picture of the model",
+      "kind": "ui",
+      "entry": "src/ui/picture.gd",
+      "reach": "godot --path .  (Export, then Picture of the model)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:place and remove",
       "kind": "ui",
       "entry": "src/main.gd",
       "reach": "godot --path .  (click to place, right-click to remove)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:place under a part and on side studs",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
       "area": "building",
       "tests": []
     },
@@ -651,6 +731,38 @@
       "entry": "src/ui/cursors.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:recent and favourite parts",
+      "kind": "ui",
+      "entry": "src/ui/part_shelf.gd",
+      "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
+      "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:replace part",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select, hold another part, Replace on the edit bar)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:seat an old model",
+      "kind": "ui",
+      "entry": "src/ui/seat_offer.gd",
+      "reach": "godot --path .  (open a model saved before 2026-10-10 with parts off their studs)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:select by colour part or connection",
+      "kind": "ui",
+      "entry": "src/assembly/select_by.gd",
+      "reach": "godot --path .  (select a brick, then the Select button on the edit bar)",
+      "area": "building",
       "tests": []
     },
     {
@@ -670,10 +782,34 @@
       "tests": []
     },
     {
+      "id": "ui:sub-models by hand",
+      "kind": "ui",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:swing on a hinge",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:undo and redo",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (Cmd-Z, Cmd-Shift-Z)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:undo history",
+      "kind": "ui",
+      "entry": "src/ui/edit_bar.gd",
+      "reach": "godot --path .  (History on the edit bar)",
       "area": "building",
       "tests": []
     }

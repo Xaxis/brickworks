@@ -137,12 +137,18 @@ static func for_keyboard() -> Array[Binding]:
 	_section(everything, "Building", [
 		Binding.new(["click"], "place", "place"),
 		Binding.new(["right-click"], "remove", "remove"),
-		Binding.new(["R"], "rotate"),
+		Binding.new(["R"], "rotate, or turn the selection"),
 		Binding.new(["T"], "tip on side"),
 		Binding.new(["[", "]"], "colour"),
 		Binding.new(["C"], "paint", "paint"),
 		Binding.new(["G"], "pick"),
-		Binding.new(["X"], "lift"),
+		Binding.new(["X"], "lift, or move the selection"),
+		Binding.new(["%s-C" % _hold(), "%s-V" % _hold()], "copy, paste"),
+		Binding.new(["%s-D" % _hold()], "duplicate"),
+		Binding.new(["%s-X" % _hold()], "cut"),
+		Binding.new(["shift-M"], "mirror the selection"),
+		Binding.new(["J", "shift-J"], "swing the selection on its hinge"),
+		Binding.new(["%s-G" % _hold(), "%s-shift-G" % _hold()], "make a sub-model, or leave one"),
 		# The command symbol, U+2318, is not in the font this ships, so
 		# it drew as an empty box followed by a Z — which has been on
 		# screen since the strip was written. Words render everywhere.
@@ -160,6 +166,9 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["%s-A" % _hold()], "select all"),
 		Binding.new(["arrows"], "turn the view, or move a selection"),
 		Binding.new(["Delete"], "remove the selection"),
+		Binding.new(["H"], "hide the selection; with none, show all"),
+		Binding.new(["shift-H"], "show only the selection"),
+		Binding.new(["alt-H"], "show everything"),
 		Binding.new(["Esc"], "out of whatever is open"),
 	])
 	_section(everything, "The view", [
@@ -180,6 +189,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["shift-arrows"], "slide the view", "slide"),
 		Binding.new(["Q", "E"], "turn model"),
 		Binding.new(["F"], "frame"),
+		Binding.new(["U"], "measure between two points"),
 		Binding.new(["O"], "square on"),
 		Binding.new(["1", "2", "3", "4", "5", "6", "7"],
 			"front, back, left, right, top, bottom, three-quarter"),
@@ -243,7 +253,7 @@ const PICTURED_BY_TOUCH := {
 }
 
 ## What a key is called on its cap, where the list's own word is not it.
-const CAPS := {"space": "Space", "shift": "Shift"}
+const CAPS := {"space": "Space", "shift": "Shift", "alt": "Alt"}
 
 
 ## The pieces one key of a binding is drawn with, in order: a cap for
@@ -256,7 +266,7 @@ const CAPS := {"space": "Space", "shift": "Shift"}
 static func pieces(key: String, by_touch: bool = false) -> Array:
 	var out: Array = []
 	var rest: String = key
-	var holding: Array[String] = ["shift", _hold()]
+	var holding: Array[String] = ["shift", "alt", _hold()]
 	var found: bool = true
 	while found:
 		found = false
@@ -356,7 +366,11 @@ func _ready() -> void:
 	add_theme_constant_override("v_separation", 4)
 	alignment = FlowContainer.ALIGNMENT_CENTER
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	modulate = Color(1, 1, 1, 0.72)
+	# Quieter than the model, but read over any of it: each control sits
+	# on a dark pill of its own (see _make), so this need not fade the
+	# words into the sky behind them, which it did at 0.72 — grey on the
+	# pale grey of the view, well under the contrast text needs.
+	modulate = Color(1, 1, 1, 0.92)
 
 	# The pictures are drawn at the density of the screen, and that
 	# changes with the window: the canvas is stretched to fit it.
@@ -388,8 +402,20 @@ func _make(binding: Binding, density: float, by_touch: bool) -> Control:
 
 	var verb := Label.new()
 	verb.text = binding.verb
-	verb.add_theme_font_size_override("font_size", 11)
-	verb.add_theme_color_override("font_color", Color(0.88, 0.9, 0.94, 0.85))
+	verb.add_theme_font_size_override("font_size", 12)
+	verb.add_theme_color_override("font_color", Color(0.9, 0.92, 0.95))
 	verb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	group.add_child(verb)
-	return group
+
+	var pill := PanelContainer.new()
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.08, 0.09, 0.11, 0.62)
+	backing.set_corner_radius_all(10)
+	backing.content_margin_left = 6
+	backing.content_margin_right = 8
+	backing.content_margin_top = 2
+	backing.content_margin_bottom = 2
+	pill.add_theme_stylebox_override("panel", backing)
+	pill.add_child(group)
+	return pill

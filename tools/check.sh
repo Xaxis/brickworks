@@ -204,6 +204,13 @@ run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
 # binding to test.
 run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/feel_probe.gd
+# Building by hand as a person does with Studio or Mecabricks: copy,
+# paste, duplicate, move and turn a selection, select by colour or
+# connection, hide, the edit bar, replace, mirror, the undo history, under
+# a part and on side studs — every step a key or a click. Pictures in
+# shots/handbuild/.
+run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/handbuild_probe.gd
 # The minifigure builder, used by clicking: slots, parts, colours, a
 # name, Place in model, a click on a stud. Its live figure and its
 # thumbnails are drawn, so it needs a window; it leaves pictures of the

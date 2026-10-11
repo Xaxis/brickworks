@@ -1,13 +1,18 @@
 // The part about to be placed, before it is placed.
 //
-// A ghost has one job: say where the brick will land and whether it can.
-// So it is translucent enough to see what is underneath, tinted with the
-// colour it will actually be, and it reads green or red at a glance
-// without depending on the tint — someone placing a red brick still needs
-// to be able to tell a refusal from the plastic.
+// A ghost has two jobs: show the part as it will be, and say whether it
+// can go there. It used to do the second at the cost of the first: every
+// ghost was 55% green, so the colour you were about to place was not the
+// colour you saw, and a green brick's ghost and any other looked alike.
+// Studio and Mecabricks both show the part in its own colour.
 //
-// It draws without depth testing against the model so it is never buried
-// inside the brick it is resting on, and never writes depth itself.
+// So a ghost that fits is the part itself — its own colour, shaded so a
+// white brick still has a top and sides — made translucent and edged in
+// light. One that does not fit is unmistakable whatever its colour: red,
+// and striped across the screen, which no plastic is.
+//
+// It draws without writing depth so it is never buried inside the brick
+// it is resting on.
 
 shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_back, unshaded;
@@ -15,19 +20,23 @@ render_mode blend_mix, depth_draw_never, cull_back, unshaded;
 uniform vec3 tint : source_color = vec3(0.7, 0.1, 0.1);
 uniform bool valid = true;
 
-// How far the verdict pulls the colour away from the part's own. Enough
-// to be unmistakable, not so much that the part's colour is lost.
-uniform float verdict_mix : hint_range(0.0, 1.0) = 0.55;
-
 void fragment() {
-	vec3 verdict = valid ? vec3(0.25, 1.0, 0.45) : vec3(1.0, 0.25, 0.25);
-	vec3 base = mix(tint, verdict, verdict_mix);
-
-	// Brighter towards the silhouette, so the shape reads as a solid
-	// object rather than a flat wash.
-	float facing = abs(dot(normalize(NORMAL), vec3(0.0, 0.0, 1.0)));
+	vec3 normal = normalize(NORMAL);
+	// A light from above and to the left of the viewer, in view space,
+	// and a floor of ambient so no face goes black.
+	float lit = clamp(dot(normal, normalize(vec3(-0.35, 0.8, 0.5))), 0.0, 1.0);
+	float shade = 0.62 + 0.38 * lit;
+	float facing = abs(dot(normal, vec3(0.0, 0.0, 1.0)));
 	float rim = pow(1.0 - facing, 2.0);
 
-	ALBEDO = base + rim * 0.5;
-	ALPHA = (valid ? 0.42 : 0.55) + rim * 0.3;
+	if (valid) {
+		ALBEDO = tint * shade + rim * 0.35;
+		ALPHA = 0.62 + rim * 0.3;
+	} else {
+		// Stripes in screen space, so they read the same at any distance.
+		float band = step(0.5, fract((FRAGCOORD.x + FRAGCOORD.y) / 14.0));
+		vec3 refused = mix(vec3(0.95, 0.16, 0.14), vec3(0.55, 0.05, 0.05), band);
+		ALBEDO = mix(tint * shade, refused, 0.72) + rim * 0.25;
+		ALPHA = 0.72 + rim * 0.2;
+	}
 }

@@ -83,6 +83,16 @@ var _turning: PivotMark
 var _tools: TouchTools
 var _marquee: Marquee
 var _thumbnails: PartThumbnails
+## Copy, paste, duplicate, moving and turning a selection: src/ui/edit_verbs.gd.
+var _verbs: EditVerbs
+## Those verbs as buttons down the left of the model.
+var _edit_bar: EditBar
+## The offer to seat an old model's parts on their studs.
+var _seat_offer: SeatOffer
+## A picture of the model, and its parts list for a shop.
+var _exports: Exports
+## The ruler: src/ui/measure.gd.
+var _measure: Measure
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
@@ -116,18 +126,34 @@ var _library: PartLibrary
 ## from the window's size in points, giving about 720 units across and
 ## 480 down, whatever the ratio. The 3D is unaffected either way; it
 ## renders at full device resolution.
+##
+## And a laptop's window is the case between: wide enough for both panels,
+## narrower than the layout. At 1280 x 720 the stretch alone drew all of it
+## at 0.8, so text set at eleven units was under nine pixels — part
+## numbers, notes, the key strip — on exactly the screens most people
+## have. So no window that keeps its panels is drawn below MOST_SHRUNK,
+## on the desktop as in a browser; the model's column gives up the room.
+const MOST_SHRUNK := 0.92
+
+
+## The content scale for a window this many points across and down: a
+## pure function of the window, so a check can ask it about any size.
+static func screen_factor(across: float, down: float, web: bool) -> float:
+	var stretched: float = minf(across / 1600.0, down / 900.0)
+	if across < ROOMY and web:
+		var wanted: float = minf(across / 720.0, down / 480.0)
+		return clampf(wanted / stretched, 1.0, 3.0)
+	if stretched < MOST_SHRUNK:
+		return MOST_SHRUNK / stretched
+	return 1.0
+
+
 func _match_screen_density() -> void:
-	if not OS.has_feature("web"):
-		return
 	var across: float = Room.across()
 	var down: float = Room.down()
 	if across <= 0.0 or down <= 0.0:
 		return
-	var factor: float = 1.0
-	if across < ROOMY:
-		var stretched: float = minf(across / 1600.0, down / 900.0)
-		var wanted: float = minf(across / 720.0, down / 480.0)
-		factor = clampf(wanted / stretched, 1.0, 3.0)
+	var factor: float = screen_factor(across, down, OS.has_feature("web"))
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:
@@ -164,6 +190,10 @@ func _tell_page() -> void:
 		named.merge(_elements.controls_by_name())
 	if _account_panel != null:
 		named.merge(_account_panel.controls_by_name())
+	if _edit_bar != null:
+		named.merge(_edit_bar.controls_by_name())
+	if _seat_offer != null:
+		named.merge(_seat_offer.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -320,6 +350,10 @@ func _ready() -> void:
 	# real before framing them.
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
+	# The model that came back may be one saved before parts were seated
+	# by their footprint.
+	if _seat_offer != null:
+		_seat_offer.check()
 
 	_unthrottle_if_nobody_is_watching()
 
@@ -958,7 +992,13 @@ func _build_ui() -> void:
 	# Above the key strip, so the strip stays where it always is rather
 	# than jumping down the screen when playback starts.
 	_steps = StepsBar.new()
-	_steps.reveal.connect(func(ids: Dictionary) -> void: _world.show_only(ids))
+	# The end of the timeline shows the model again as it was, which is
+	# with whatever was hidden by hand still hidden.
+	_steps.reveal.connect(func(ids: Dictionary) -> void:
+		if ids.is_empty() and _verbs != null:
+			_verbs.apply_hidden()
+		else:
+			_world.show_only(ids))
 	_steps.export_wanted.connect(_export_booklet)
 	middle.add_child(_steps)
 
@@ -1201,13 +1241,84 @@ func _build_ui() -> void:
 	_outline.world = _world
 	_outline.library = _library
 	add_child(_outline)
+
+	_verbs = EditVerbs.new()
+	_verbs.builder = _builder
+	_verbs.world = _world
+	_verbs.library = _library
+	_verbs.say = _bar.say
+	_verbs.edited = _on_model_edited
+	_verbs.aim_again = _hover_again
+	_verbs.scenery = _store.scenery
+	_verbs.camera = _camera
+	add_child(_verbs)
+	# Not where a finger is the pointer: TouchTools is there, at a size a
+	# finger can hit.
+	if not TouchTools.wanted():
+		_edit_bar = EditBar.new()
+		_edit_bar.verbs = _verbs
+		_edit_bar.builder = _builder
+		_edit_bar.anchor_left = 0.0
+		_edit_bar.anchor_right = 0.0
+		_edit_bar.anchor_top = 0.5
+		_edit_bar.anchor_bottom = 0.5
+		_edit_bar.offset_left = 10.0
+		_edit_bar.offset_right = 10.0
+		_edit_bar.grow_vertical = Control.GROW_DIRECTION_BOTH
+		spacer.add_child(_edit_bar)
+
+	# The ruler, and what it says, under the counts.
+	_measure = Measure.new()
+	_measure.lattice = _builder.lattice
+	_measure.camera = _camera
+	_measure.label = _viewport_label(13)
+	_measure.label.visible = false
+	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_measure.label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_measure.label.offset_top = 10.0
+	spacer.add_child(_measure.label)
+	add_child(_measure)
+	_verbs.measure = _measure
+
+	# Over the top of the model, when a model opened with parts a fraction
+	# of a stud off their studs: src/ui/seat_offer.gd.
+	_seat_offer = SeatOffer.new()
+	_seat_offer.builder = _builder
+	_seat_offer.world = _world
+	_seat_offer.assistant = _assistant
+	_seat_offer.scenery = _store.scenery
+	_seat_offer.say = _bar.say
+	_seat_offer.edited = _on_model_edited
+	_seat_offer.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_seat_offer.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_seat_offer.offset_top = 10.0
+	spacer.add_child(_seat_offer)
+	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
+	_bar.started_new.connect(_seat_offer.dismiss)
+	_bar.cleared.connect(_seat_offer.dismiss)
+
+	# Export's picture and shop lists: src/ui/exports.gd.
+	_exports = Exports.new()
+	_exports.world = _world
+	_exports.library = _library
+	_exports.scenery = _store.scenery
+	_exports.say = _bar.say
+	_exports.named = _bar.model_name
+	add_child(_exports)
+	_exports.picture.world = _world
+	_exports.picture.camera = _camera
+	_exports.picture.scenery = _store.scenery
+	_exports.picture.aside = [_builder, _outline, _turning]
+	_exports.picture.shown_again = _verbs.apply_hidden
+	_bar.picture_wanted.connect(_exports.take_picture)
+	_bar.shop_list_wanted.connect(_exports.shop_list)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		if count == 0:
 			_bar.say("")
 		else:
-			_bar.say("%d selected — Delete, C to paint, arrows to move"
-				% count))
+			_bar.say("%d selected — %s-C copies, X moves, R turns, C paints, Delete removes"
+				% [count, ControlsHint._hold()]))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -2120,6 +2231,10 @@ var _touch_index: int = -1
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The ruler, while it is out, has the left button and the pointer.
+	if _measure != null and _measure.takes(event):
+		_builder.hide_preview()
+		return
 	# Touch handles only what a mouse has no gesture for: holding a
 	# finger down to take a brick off, which is what a second button
 	# would have been. Placing is left to the click that emulation
@@ -2310,6 +2425,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 	if _store != null and _store.scenery.has(brick.id):
 		return null
+	# Nor what is hidden: a box drawn over a hidden roof takes what is
+	# under it.
+	if brick.hidden:
+		return null
 	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
 	if part == null:
 		return null
@@ -2479,7 +2598,7 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _edit_bar, _seat_offer]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -2509,6 +2628,10 @@ func _over_panel_at(point: Vector2) -> bool:
 ## Callers with no event — after an undo, after a key — pass nothing
 ## and get the live pointer, which for them is right.
 func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
+	# No part to place while the ruler is out.
+	if _measure != null and _measure.active:
+		_builder.hide_preview()
+		return
 	var mouse: Vector2 = at
 	if not (mouse.x < INF):
 		mouse = get_viewport().get_mouse_position()
@@ -2582,6 +2705,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if zoom != 0:
 		if not key.echo and not key.ctrl_pressed and not key.meta_pressed:
 			_camera.key_zoom(zoom)
+		return
+	if _verbs != null and _verbs.handle_key(key):
 		return
 	match key.keycode:
 		KEY_F:
@@ -2665,11 +2790,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Everything the assistant built, in one go, so that
 			# "start again from mine" is one key rather than a hunt.
 			if key.meta_pressed or key.ctrl_pressed:
-				_builder.clear_selection()
-				for brick: BrickWorld.Brick in _world.bricks():
-					if not _store.scenery.has(brick.id):
-						_builder.selection[brick.id] = true
-				_builder.selection_changed.emit(_builder.selection.size())
+				# What can be seen: a hidden roof is not in "everything".
+				_verbs.select_by("all")
 		KEY_G:
 			# And take a colour and part back off the model.
 			_builder.pick_hovered()

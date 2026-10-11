@@ -52,6 +52,10 @@ var _column_bucket: Dictionary = {}
 ## brick id -> one box around all of its boxes, tested first so two
 ## bricks that are merely in the same bucket cost six comparisons.
 var _bounds: Dictionary = {}
+## Bricks the pointer passes through: hidden ones, so the inside of a
+## model can be reached with its roof hidden. They still take up their
+## room — nothing can be put down inside a hidden brick.
+var unseen: Dictionary = {}
 
 
 static func _bound_of(packed: PackedInt32Array) -> PackedInt32Array:
@@ -809,6 +813,7 @@ func clear() -> void:
 	_bucket.clear()
 	_column_bucket.clear()
 	_bounds.clear()
+	unseen.clear()
 
 
 ## The height a part would rest at in this column: one cell above the
@@ -832,6 +837,34 @@ func surface_height(cell_x: int, cell_z: int, floor_cell: int = 0) -> int:
 					and packed[n + 4] > top:
 				top = packed[n + 4]
 			n += 6
+	return top
+
+
+## The highest surface under a rectangle of columns, high corner
+## exclusive: [method surface_height] for a whole box at once. What
+## several parts held together drop onto, asked once per box rather than
+## once per column — a 2 x 4 brick is eight hundred columns.
+func surface_under(lo_x: int, lo_z: int, hi_x: int, hi_z: int,
+		floor_cell: int = 0) -> int:
+	var top: int = floor_cell
+	var seen: Dictionary = {}
+	for bx: int in range(_floor_div(lo_x, BUCKET), _floor_div(hi_x - 1, BUCKET) + 1):
+		for bz: int in range(_floor_div(lo_z, BUCKET), _floor_div(hi_z - 1, BUCKET) + 1):
+			var here: Variant = _column_bucket.get(Vector2i(bx, bz))
+			if here == null:
+				continue
+			for brick_id: int in here:
+				if seen.has(brick_id):
+					continue
+				seen[brick_id] = true
+				var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
+				var n: int = 0
+				while n < packed.size():
+					if packed[n] < hi_x and lo_x < packed[n + 3] \
+							and packed[n + 2] < hi_z and lo_z < packed[n + 5] \
+							and packed[n + 4] > top:
+						top = packed[n + 4]
+					n += 6
 	return top
 
 
@@ -1029,7 +1062,7 @@ func raycast(origin: Vector3, direction: Vector3, max_distance: float = 20000.0)
 	# anything would hang the frame.
 	for _n: int in 20000:
 		var owner: int = brick_at(cell)
-		if owner != 0:
+		if owner != 0 and not unseen.has(owner):
 			hit.brick_id = owner
 			hit.cell = cell
 			hit.normal = entered

@@ -565,6 +565,125 @@
       "entry": "tools/web/oauth_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
       "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "copy paste and duplicate",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (select, Ctrl-C then Ctrl-V, or Ctrl-D; click to put down, R turns, Esc puts away)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "move and turn a selection",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, X picks it up, click puts it down, Esc puts it back; R turns it where it stands)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "select by colour part or connection",
+      "entry": "src/assembly/select_by.gd",
+      "reach": "godot --path .  (select a brick, then the Select button on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "hide and show only",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, H hides, Shift-H shows only it, Alt-H or H with nothing selected shows all)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "edit bar",
+      "entry": "src/ui/edit_bar.gd",
+      "reach": "godot --path .  (the column of tools down the left of the model)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "replace part",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select, hold another part, Replace on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "undo history",
+      "entry": "src/ui/edit_bar.gd",
+      "reach": "godot --path .  (History on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "seat an old model",
+      "entry": "src/ui/seat_offer.gd",
+      "reach": "godot --path .  (open a model saved before 2026-10-10 with parts off their studs)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "recent and favourite parts",
+      "entry": "src/ui/part_shelf.gd",
+      "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "mirror a selection",
+      "entry": "src/assembly/mirror.gd",
+      "reach": "godot --path .  (select, Shift-M or Mirror on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "place under a part and on side studs",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "picture of the model",
+      "entry": "src/ui/picture.gd",
+      "reach": "godot --path .  (Export, then Picture of the model)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "parts lists for shops",
+      "entry": "src/assembly/shop_lists.gd",
+      "reach": "godot --path .  (Export, then BrickLink wanted list or Rebrickable parts list)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "open a studio model",
+      "entry": "src/parts/studio_io.gd",
+      "reach": "godot --path .  (Open, then From a file on this computer, and choose an .io)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "swing on a hinge",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "sub-models by hand",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "measure",
+      "entry": "src/ui/measure.gd",
+      "reach": "godot --path .  (U, then click two points)",
+      "area": "building"
     }
   ]
 }
