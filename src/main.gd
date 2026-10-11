@@ -33,6 +33,9 @@ var _chat: ChatPanel
 ## it used to be built into the car, so a first-time visitor asking for a
 ## house got a house around a car they never asked for.
 var _sample_untouched: bool = false
+## Driven from the command line, off-screen: nobody is watching the window.
+## Set by [method _unthrottle_if_nobody_is_watching].
+var _driven: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
 var _connector: ClaudeConnector
@@ -495,6 +498,7 @@ func _unthrottle_if_nobody_is_watching() -> void:
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	_driven = true
 	print("driven from the command line, so vsync is off for this run")
 
 
@@ -1140,7 +1144,14 @@ func _build_ui() -> void:
 		# then simply stops, with no error and nothing written.
 		_ground_for_the_model.call_deferred()
 		_on_model_changed()
-		if _playback.play(_store.scenery):
+		# Not when nobody is watching. Every edit emits this, and the
+		# assembly plans build steps for the whole model and then shows it
+		# a step at a time, each step walking every brick: on a 3,000-part
+		# Orthanc driven over MCP a frame took 13 s while it played, so a
+		# look took two to three minutes, add_rooms nearly three and a
+		# restyle four, waiting on an animation in a window nobody could
+		# see. Without it a look is 0.3 s and each of those 12 s.
+		if not _driven and _playback.play(_store.scenery):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
 	# it would be an assembly that never finishes.
