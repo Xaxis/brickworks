@@ -89,6 +89,8 @@ var _verbs: EditVerbs
 var _edit_bar: EditBar
 ## The offer to seat an old model's parts on their studs.
 var _seat_offer: SeatOffer
+## A picture of the model, and its parts list for a shop.
+var _exports: Exports
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
@@ -1249,6 +1251,22 @@ func _build_ui() -> void:
 	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
 	_bar.started_new.connect(_seat_offer.dismiss)
 	_bar.cleared.connect(_seat_offer.dismiss)
+
+	# Export's picture and shop lists: src/ui/exports.gd.
+	_exports = Exports.new()
+	_exports.world = _world
+	_exports.library = _library
+	_exports.scenery = _store.scenery
+	_exports.say = _bar.say
+	_exports.named = _bar.model_name
+	add_child(_exports)
+	_exports.picture.world = _world
+	_exports.picture.camera = _camera
+	_exports.picture.scenery = _store.scenery
+	_exports.picture.aside = [_builder, _outline, _turning]
+	_exports.picture.shown_again = _verbs.apply_hidden
+	_bar.picture_wanted.connect(_exports.take_picture)
+	_bar.shop_list_wanted.connect(_exports.shop_list)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		if count == 0:

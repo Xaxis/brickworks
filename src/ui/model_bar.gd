@@ -45,6 +45,14 @@ signal controls_wanted()
 ## Someone wants to see who is signed in, or sign out.
 signal account_wanted()
 signal opened(bricks: int)
+## Export's picture of the model, and its parts list for a shop
+## ("bricklink" or "rebrickable").
+signal picture_wanted()
+signal shop_list_wanted(shop: String)
+
+
+var _export: Button
+var _exports: PopupMenu
 
 
 func _ready() -> void:
@@ -101,8 +109,8 @@ func _build() -> void:
 	_new = _button(row, "New", ask_for_new, "Start a new model on an empty baseplate (Ctrl+N)")
 	_save = _button(row, "Save", _on_save, "Keep this model under its name")
 	_button(row, "Open…", _on_open, "Reopen a saved model")
-	_button(row, "Export", _on_export,
-		"Write an LDraw file, which any brick tool reads — an .mpd of its assemblies when it has them")
+	_export = _button(row, "Export…", _offer_exports,
+		"An LDraw file any brick tool reads, a picture of the model, or its parts list for BrickLink or Rebrickable")
 	row.add_child(VSeparator.new())
 	_button(row, "Parts list", func() -> void: parts_wanted.emit(),
 		"Every part this model needs, by colour and count")
@@ -162,6 +170,18 @@ func _build() -> void:
 	_saves.id_pressed.connect(_on_pick)
 	add_child(_saves)
 
+	# What Export can write. One button had written an LDraw file and
+	# nothing else; a picture and a shop's list are what a person who
+	# built something by hand wants next.
+	_exports = PopupMenu.new()
+	_exports.add_item("LDraw model (.ldr, or .mpd with its assemblies)", 0)
+	_exports.add_item("Picture of the model (.png)", 1)
+	_exports.add_separator("Parts list for a shop")
+	_exports.add_item("BrickLink wanted list (.xml)", 2)
+	_exports.add_item("Rebrickable parts list (.csv)", 3)
+	_exports.id_pressed.connect(_on_export_chosen)
+	add_child(_exports)
+
 
 func _button(row: Container, text: String, action: Callable,
 		tip: String) -> Button:
@@ -204,7 +224,7 @@ func bind(to: ModelStore) -> void:
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
 	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear,
-		"account": _account}
+		"account": _account, "export": _export}
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has
@@ -334,6 +354,24 @@ func _import() -> void:
 			_say(note))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()
+
+
+func _on_export_chosen(id: int) -> void:
+	match id:
+		0:
+			_on_export()
+		1:
+			picture_wanted.emit()
+		2:
+			shop_list_wanted.emit("bricklink")
+		3:
+			shop_list_wanted.emit("rebrickable")
+
+
+func _offer_exports() -> void:
+	_exports.reset_size()
+	_exports.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
+	_exports.popup()
 
 
 func _on_export() -> void:

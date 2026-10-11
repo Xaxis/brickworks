@@ -630,6 +630,22 @@
       "tests": []
     },
     {
+      "id": "ui:parts lists for shops",
+      "kind": "ui",
+      "entry": "src/assembly/shop_lists.gd",
+      "reach": "godot --path .  (Export, then BrickLink wanted list or Rebrickable parts list)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:picture of the model",
+      "kind": "ui",
+      "entry": "src/ui/picture.gd",
+      "reach": "godot --path .  (Export, then Picture of the model)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:place and remove",
       "kind": "ui",
       "entry": "src/main.gd",

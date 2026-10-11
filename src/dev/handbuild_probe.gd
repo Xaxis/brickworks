@@ -80,6 +80,7 @@ func _run() -> void:
 	await _seat_an_old_model()
 	await _replace_and_history()
 	await _the_parts_shelf()
+	await _exports()
 	await _under_a_part()
 	await _onto_side_studs()
 	await _mirrored()
@@ -653,6 +654,57 @@ func _mirrored() -> void:
 	await _key(KEY_Z, true)
 	_check("one undo brings back the original", _snapshot() == before)
 	_camera.set_view("default")
+
+
+func _exports() -> void:
+	print("  Export: a picture, and parts lists for BrickLink and Rebrickable")
+	var exports: Exports = _main.get("_exports")
+	var into: String = ProjectSettings.globalize_path("res://shots/handbuild/exports")
+	DirAccess.make_dir_recursive_absolute(into)
+	exports.folder = into
+	var bar: ModelBar = _main.get("_bar")
+	bar._name.text = "Probe Bay"
+	await _click((bar._export as Button).get_global_rect().get_center())
+	var menu: PopupMenu = bar._exports
+	_check("Export opens a menu of what it can write (%d)" % menu.item_count,
+		menu.visible and menu.item_count >= 5)
+	await _shot("export_menu")
+	menu.hide()
+	for name: String in ["probe_bay.png", "probe_bay_bricklink.xml", "probe_bay_rebrickable.csv"]:
+		DirAccess.remove_absolute(into.path_join(name))
+	menu.id_pressed.emit(1)
+	var png: String = into.path_join("probe_bay.png")
+	for _n: int in 300:
+		if FileAccess.file_exists(png):
+			break
+		await process_frame
+	var picture: Image = Image.load_from_file(png) if FileAccess.file_exists(png) else null
+	_check("Picture writes a %s png" % (str(picture.get_size()) if picture != null else "missing"),
+		picture != null and picture.get_size() == Picture.SIZE)
+	if picture != null:
+		var corner: Color = picture.get_pixel(2, 2)
+		var opaque: int = 0
+		for x: int in range(0, picture.get_width(), 40):
+			for y: int in range(0, picture.get_height(), 40):
+				if picture.get_pixel(x, y).a > 0.9:
+					opaque += 1
+		_check("...on a clear background, the model filling it (corner alpha %.2f, %d of %d samples solid)"
+			% [corner.a, opaque, (picture.get_width() / 40) * (picture.get_height() / 40)],
+			corner.a < 0.05 and opaque > 40)
+	_check("...and the baseplate is back after it", _store.scenery.keys().all(
+		func(b: int) -> bool: return _world.get_brick(b) != null and not _world.get_brick(b).hidden))
+	menu.id_pressed.emit(2)
+	await _frames(3)
+	var xml: String = FileAccess.get_file_as_string(into.path_join("probe_bay_bricklink.xml"))
+	_check("the BrickLink wanted list names 3002 in BrickLink's blue, 2 of them",
+		xml.contains("<ITEMID>3002</ITEMID>") and xml.contains("<COLOR>7</COLOR>")
+		and xml.contains("<MINQTY>2</MINQTY>") and xml.begins_with("<INVENTORY>"))
+	menu.id_pressed.emit(3)
+	await _frames(3)
+	var csv: String = FileAccess.get_file_as_string(into.path_join("probe_bay_rebrickable.csv"))
+	_check("the Rebrickable list is Part,Color,Quantity (%s)" % csv.strip_edges().replace("\n", " / "),
+		csv.begins_with("Part,Color,Quantity\n3002,1,2"))
+	exports.folder = ""
 
 
 ## The old corner's error for a part standing upright: its cover's corner

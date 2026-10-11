@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops -->
 
 ## Sub-features
 
@@ -71,6 +71,17 @@ Whether what you built is still there tomorrow, and still means the same thing.
   their studs*, which moves each as one undoable step, or *Leave them*. A part
   is moved only where undoing exactly the old corner's error puts its studs on
   stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
+- `picture of the model` (`src/ui/picture.gd`, Export → Picture): the model
+  alone — no baseplate, ghost or outline — from the view's direction, framed to
+  fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
+  the same world with a copy of the scene's environment that clears instead of
+  drawing the sky. Downloaded in a browser, written to Downloads on the desktop.
+- `parts lists for shops` (`src/assembly/shop_lists.gd`, Export → BrickLink
+  wanted list / Rebrickable parts list): BrickLink's wanted-list XML (item, its
+  colour number, quantity) and Rebrickable's `Part,Color,Quantity` CSV. The
+  BrickLink colour numbers are a sourced table of 55 colours
+  (`ShopLists.BRICKLINK_COLOUR`, from the SetDB colour guide); a lot in any other
+  colour, or a made part, is left off and the status line says how many.
 
 ## How to reach it
 

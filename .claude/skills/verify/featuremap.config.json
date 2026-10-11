@@ -600,6 +600,20 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "picture of the model",
+      "entry": "src/ui/picture.gd",
+      "reach": "godot --path .  (Export, then Picture of the model)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "parts lists for shops",
+      "entry": "src/assembly/shop_lists.gd",
+      "reach": "godot --path .  (Export, then BrickLink wanted list or Rebrickable parts list)",
+      "area": "model-io"
     }
   ]
 }
