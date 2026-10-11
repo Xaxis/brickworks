@@ -1211,6 +1211,15 @@ not as a detail. Look at whether the odd one is doing something — a \
 light, a marking, a stripe that carries across — and if it is not, \
 make it match. A single contrasting piece that is clearly deliberate \
 is fine; it is the structural part in the wrong colour that is not.
+  The wrong technique for the shape. Something round built of square \
+bricks, a slanted edge stepped, a hull or a body boxy where it curves, \
+a hinge or a leg built rigid. WHAT THE SUBJECT NEEDS names the call for \
+each; replace the shape with it.
+  Touches. Is there anything a person would find and smile at — a \
+figure or a small scene, a printed tile, a nod to the subject's story, \
+something that opens or turns, a stand with a nameplate for a display \
+model? An expert adds them unasked; a model with none is finished only \
+as a shape.
 
 Use view_model with where= to look closely at whatever you are \
 judging. A whole model in one frame makes every assembly on it a few \
@@ -6100,6 +6109,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not coarse.is_empty():
 		advice.append(coarse)
 
+	# And whether it has a touch nobody asked for.
+	var touches: String = _touches(model)
+	if not touches.is_empty():
+		advice.append(touches)
+
 	# And whether a nearly-symmetric model has a brick on one side only.
 	var lopsided: String = _lopsided(model, box_of, lattice)
 	if not lopsided.is_empty():
@@ -6567,6 +6581,64 @@ func _mostly_big_plates(model: Model) -> String:
 		+ "second colour where a panel line would run. The eight models "
 		+ "this app ships are 9 to 44 per cent big parts. If this is "
 		+ "meant to be a blocked-out shape, nothing needs doing.")
+
+
+## Whether a model has the touches nearly every real set has and nobody
+## asks for: a printed or stickered part, and something that moves.
+##
+## Measured over Rebrickable's inventories of the 2,517 sets of 300 parts
+## or more since 2015: 95% carry a printed or stickered part and 94% a
+## hinge, a turntable, a Technic pin or a ball joint, so each one missing
+## is a tail of one set in twenty, the rule every advice here keeps. Every
+## design the owner judged had neither: a Falcon Heavy of 4,252 parts with
+## one printed minifigure head in it, an Orthanc with figures but nothing
+## that opened. Said with the other touches an expert adds, because the
+## advice is where a design that thinks it is finished still listens.
+func _touches(model: Model) -> String:
+	if model.placements.size() < TOUCHES_FROM or library == null:
+		return ""
+	var printed: bool = false
+	var moving: bool = false
+	for placement: Placement in model.placements:
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		if info == null:
+			continue
+		if _decorated(info):
+			printed = true
+		if Style.kinds_of(placement.part).contains("a") or info.has_connector("pin") \
+				or info.has_connector("ball"):
+			moving = true
+	for section: Section in model.sections.values():
+		if section.hinge:
+			moving = true
+	if printed and moving:
+		return ""
+	var missing := PackedStringArray()
+	if not printed:
+		missing.append("no printed or stickered part, where 95% of real sets of 300 "
+			+ "parts or more have one — a gauge, a screen, a map, a logo, a nameplate: "
+			+ "search_parts with \"print\" or \"sticker\" and the subject's own word")
+	if not moving:
+		missing.append("nothing that moves, where 94% have a hinge, a turntable, a "
+			+ "Technic pin or a ball joint — a hatch, a door, a ramp, a turret: a "
+			+ "section with hinge: true")
+	return ("The touches an expert adds unasked: this has " + "; and ".join(missing)
+		+ ". While you are there: a figure who belongs to it or a small scene "
+		+ "hidden in it (add_minifig), a nod to the subject's story, and for a "
+		+ "display model a stand with a nameplate.")
+
+
+## A part with a print or a sticker on it: LDraw files them as their
+## plain part's number with a pattern after it (3069bp01, 4515d03).
+func _decorated(info: PartLibrary.PartInfo) -> bool:
+	return info.name.contains("Sticker") or info.name.contains("Pattern") \
+		or _decorated_id.search(info.id) != null
+
+
+static var _decorated_id := RegEx.create_from_string("[0-9][a-z]?(p[0-9a-z]{2,}|d[0-9a-z]{2,}|pr[0-9]+)$")
+## Below this many parts a model is a vignette, and the touches are a
+## matter of taste.
+const TOUCHES_FROM := 300
 
 
 ## Whether the whole design sits in a single course.
@@ -8553,7 +8625,13 @@ Four things before the first brick, in this order:
   2. find_reference, for anything that exists. A lighthouse you recall \
      is a tapering tower with a light on top, which is every lighthouse \
      and no lighthouse. A picture gives you this one.
-  3. Decide the main masses and their sizes in studs, off that picture.
+  3. Decide the main masses and their sizes in studs, off that picture, \
+     and what each is: round in section, tapered, at a slant, smooth, \
+     moving, mechanical, organic. WHAT THE SUBJECT NEEDS, below, says \
+     which call builds each; how_real_sets_build_this, asked with the \
+     plainest word for the kind (a rocket: space; a locomotive: train; \
+     a galleon: pirate; an owl: animal), says what real sets of it are \
+     made of and in. The picture's colours come with it as numbers.
   4. show_technique for any construction you have not built before. \
      Being told to stagger a wall or turn a face sideways is not the \
      same as knowing where the stud sits, and the arithmetic is the \
@@ -8932,6 +9010,56 @@ add_rooms lays the floors and furnishes every room, one call for the lot, \
 from the furniture real sets built (show_technique: bookcase, fireplace, \
 anvil, four-poster bed, wall lantern, and the rest of furniture and \
 interiors).
+
+WHAT THE SUBJECT NEEDS
+An expert reads a subject as shapes, and each shape has its technique. \
+Reach for these by yourself; nobody will ask for them by name:
+  Round in section — a rocket stage, a lighthouse, a silo, a boiler, a \
+fuselage, a funnel, a tree trunk, a column: the round pattern, upright \
+or lying along x or z. Never square bricks stacked into a round: that \
+is the one way a real set never builds it.
+  Tapered or domed — a nose, a spire, a dome, a cone: the round \
+pattern's nose; a fill with layers and a shrink; cones and dishes.
+  Edges at a slant — a swept wing, a car's shoulder, a bow: wedge \
+plates (show_technique "smooth diagonal"). A curved surface — a \
+bonnet, a hull's bilge, a cab roof: curved slopes, studs-up or on \
+their side on brackets.
+  Smooth — a car's flank, a hull's side, a sign: studs_out, tiles \
+over every stud that shows.
+  At an angle, or moving — a raked mast, a windscreen, a wing, a door, \
+a hatch, a ramp, a jaw, a leg: a section, on a hinge (hinge: true) \
+when it leans. A part that opens or turns is also a play feature, and \
+real sets have them.
+  Mechanical — legs, arms, a crane jib, a frame, struts: Technic beams \
+pinned to Technic bricks (a round's "technic" course pins beams on in \
+one line); grille tiles, round plates, levers and pipes for machinery.
+  Organic — rock, a creature, a tree: the rock pattern; curved slopes \
+and wedges for a body; hinged sections for wings and limbs.
+  Rough or worn — stone, a hull's planking, weathering: two or three \
+close colours mixed (mix_color), masonry, texture parts.
+  Several of anything — boosters on a core, funnels, columns, wheels: \
+one built well and the pattern saying the rest (beside, repeat, \
+mirror, repeat_section).
+
+FINISHING TOUCHES
+A designer adds things nobody asked for, and they are what a person \
+finds and smiles at. Of 2,517 real sets of 300 parts or more since \
+2015, 95% carry a printed or stickered part and 94% a hinge, a \
+turntable, a Technic pin or a ball joint; 1.6% have none of these. \
+Before you call a model finished, give it the expert's touches:
+  A figure, or a small scene: who flies it, keeps it, works it — or one \
+hidden somewhere a person will find it (add_minifig).
+  A printed tile: a gauge, a screen, a map, a logo, a nameplate. \
+search_parts with "print" or "sticker" and the subject's own word — \
+there are printed parts for a great many real things.
+  A nod to the subject's story: a detail only someone who knows it \
+would catch — a mission patch, a launch date, a famous passenger, the \
+ship's cat.
+  A display stand with a nameplate, for a display model: a black base, \
+a plaque on it (a tile or a slope, printed if one fits), the model held \
+up the way it is shown.
+  Something that moves: a hatch that opens, a ramp, a turret that \
+turns, a door — a section on a hinge or a turntable.
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -9320,7 +9448,11 @@ corners to see it.
 measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
-replaces the whole model."""
+replaces the whole model.
+  3. The touches nobody asks for and every expert adds, with edit_model \
+and add_minifig: a figure or a small scene, a printed tile, a nod to the \
+subject's story, something that opens or turns, and for a display model \
+a stand with a nameplate."""
 
 
 func _built_from_outside(design: Model, report: Dictionary) -> String:

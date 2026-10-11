@@ -147,6 +147,32 @@ fixing what it got wrong.
   `style_probe`: hand-made cases, the square Orthanc fixture
   (`src/dev/fixtures/orthanc_square.ldr`) told all three, the shipped castle
   not called over-symmetric (54% here, 55% in the tool).
+  The calls it names follow what the subject is (`Style.traits_of`: round,
+  vehicle, living, machine, by whole words in the brief and the model's name;
+  `Style.calls_for`): a rocket is told of the round pattern, a car of wedge
+  plates and a hinged section, an owl of curves and hinged wings, a machine of
+  pinned Technic; restyle_model and the prism only where the subject is a
+  building, a tower or unknown. A model whose curve share is past the 90th
+  percentile is not told it is square for having nothing on its side. Found
+  by the owner's Falcon Heavy, whose description named its launch tower: it
+  was told "a prism with piers, for a tower like this one" and restyle_model,
+  which put polka dots on a rocket. `style_probe` ("the advice knows what the
+  subject is"): the square fixture said to be a rocket by its tower, a car and
+  an owl; a steam locomotive is round and a vehicle; no car in "carriage".
+- `the touches nobody asks for`: `Assistant._touches`, in every check's advice
+  from 300 parts: a model with no printed or stickered part (`_decorated`:
+  "Sticker", "Pattern" or an LDraw pattern suffix on the number) or nothing
+  that moves (a style `a` part, a pin or ball connector, a hinged section) is
+  told so, with a figure, a story detail and a display stand with a
+  nameplate. Measured over Rebrickable's inventories of the 2,517 sets of 300
+  parts or more since 2015: 95% carry a printed or stickered part, 94% a
+  hinge, turntable, Technic pin or ball joint, 1.6% none of these — each
+  missing is a one-in-twenty tail, as every advice here keeps. The guidance
+  says them under FINISHING TOUCHES and maps shapes to calls under WHAT THE
+  SUBJECT NEEDS; the critique names both, and `FROM_OUTSIDE_NEXT` ends on the
+  touches. `style_probe` ("the touches nobody asks for"): a plain 320-part
+  model is told of both and of a figure; with a printed tile, only of what
+  moves; with a hinge too, of nothing.
 - `a face built sideways`: `Assistant._studs_out`, the `studs_out` pattern (in
   the assistant, not `patterns.gd`, because it needs the parts' connectors).
   Courses of 87087 turned so the side stud faces `facing` (the turn found from

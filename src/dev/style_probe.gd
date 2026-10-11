@@ -89,6 +89,64 @@ func _run() -> void:
 	print("  (the shipped castle: %s)" % ("nothing to say" if real.is_empty()
 		else real.get_slice("\n", 1).strip_edges()))
 
+	print("\nthe advice knows what the subject is")
+	# The owner's Falcon Heavy was told "a prism with piers, for a tower like
+	# this one" (its description named the launch tower) and restyle_model,
+	# which dresses a plain wall in round tiles: polka dots on a rocket. The
+	# same square model, said to be a rocket by its launch tower:
+	var rocket: String = await _advice_for(library,
+		"res://src/dev/fixtures/orthanc_square.ldr",
+		"A Falcon Heavy rocket from SpaceX as a detailed LEGO display model, beside its launch tower")
+	_check(not rocket.contains("\"piers\"") and not rocket.contains("restyle_model")
+			and rocket.contains("round pattern"),
+		"a rocket by its tower is told of the round pattern, not of piers or restyle_model")
+	var car: String = await _advice_for(library,
+		"res://src/dev/fixtures/orthanc_square.ldr", "a red sports car")
+	_check(car.contains("wedge plates") and car.contains("hinge")
+			and not car.contains("restyle_model"),
+		"a car is told of wedge plates and a hinged section")
+	var owl: String = await _advice_for(library,
+		"res://src/dev/fixtures/orthanc_square.ldr", "a barn owl on a branch")
+	_check(owl.contains("living thing") and not owl.contains("restyle_model"),
+		"an owl is told of curves and hinged wings")
+	var traits: Dictionary = Style.traits_of("A steam locomotive and its tender")
+	_check(traits.has("round") and traits.has("vehicle"),
+		"a steam locomotive is a vehicle and round (its boiler): %s" % str(traits.keys()))
+	_check(not Style.traits_of("a carriage in scarlet").has("vehicle"),
+		"...and a word inside a word is not one: no car in a scarlet carriage")
+	# A body of round bricks is shaped by its curves; a rocket of them was
+	# told it was a pile of bricks for having nothing on its side.
+	var round: String = Style.advice({"parts": 400, "snot": 0.02, "angled": 0.0,
+		"curve": 0.7, "shaped": 0.75, "plain": 0.05, "symmetry": 0.8}, "space",
+		"a rocket")
+	_check(not round.contains("sideways") and not round.contains("turned to an angle"),
+		"a model shaped by its curves is not told it is square: %s"
+			% ("nothing said" if round.is_empty() else round.get_slice("\n", 1)))
+
+	print("\nthe touches nobody asks for")
+	# 95% of real sets of 300 parts or more carry a printed or stickered
+	# part, 94% something that moves; every design the owner judged had
+	# neither. A plain model is told; one with a printed tile and a hinge is
+	# not.
+	var assistant := Assistant.new()
+	assistant.library = library
+	get_root().add_child(assistant)
+	var bare := Assistant.Model.new()
+	for n: int in 320:
+		bare.placements.append(Assistant.Placement.from_dict({"part": "3001",
+			"color": 15, "x": (n % 16) * 4, "y": (n / 16) * 3, "z": 0, "rot": 0}))
+	var told: String = assistant._touches(bare)
+	_check(told.contains("printed") and told.contains("moves") and told.contains("add_minifig"),
+		"a 320-part model with neither is told of both, and of a figure")
+	bare.placements.append(Assistant.Placement.from_dict({"part": "3069bp01",
+		"color": 15, "x": 0, "y": 60, "z": 0, "rot": 0}))
+	_check(assistant._touches(bare).contains("moves") and not assistant._touches(bare).contains("printed"),
+		"...with a printed tile, only of what moves")
+	bare.placements.append(Assistant.Placement.from_dict({"part": "3937",
+		"color": 0, "x": 4, "y": 60, "z": 0, "rot": 0}))
+	_check(assistant._touches(bare).is_empty(), "...and with a hinge too, of nothing")
+	assistant.queue_free()
+
 	print("")
 	if _failures == 0:
 		print("a model is measured for how it is built")
