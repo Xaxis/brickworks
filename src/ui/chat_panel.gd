@@ -405,8 +405,12 @@ func _show_for_key(has_key: bool) -> void:
 	# With nothing to show, the conversation took the panel's height and
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
+	# The same with the connector on: it kept the empty field open for
+	# Claude's card, and the steps to connect sat at the panel's foot under
+	# a blank space two-thirds of its height. The card opens it when Claude
+	# first calls (_on_claude_called).
 	var talking: bool = assistant != null and assistant.has_conversation()
-	_scroll.visible = has_key or claude_code_here or talking or plan_on \
+	_scroll.visible = has_key or claude_code_here or talking or _logged() \
 		or _claude_card()
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key, which spent
@@ -419,6 +423,14 @@ func _show_for_key(has_key: bool) -> void:
 		# No count to show: Anthropic is billing them directly and we
 		# could not count it if we wanted to.
 		_which_key.text = "your own key · %s" % OwnKey.fingerprint()
+
+
+## Whether the conversation holds anything yet: a card, a note, a line.
+func _logged() -> bool:
+	for child: Node in _log.get_children():
+		if child != _suggestions and not child.is_queued_for_deletion():
+			return true
+	return false
 
 
 func _show_suggestions() -> void:
