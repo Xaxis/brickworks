@@ -169,6 +169,10 @@
                 "description": "fill, rock: studs in z",
                 "type": "number"
               },
+              "door": {
+                "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
+                "type": "boolean"
+              },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
@@ -229,7 +233,7 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, with a black point on the cap.",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, and rising from the cap in steps to a point at its outer edge.",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
@@ -1178,6 +1182,10 @@
                 "description": "fill, rock: studs in z",
                 "type": "number"
               },
+              "door": {
+                "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
+                "type": "boolean"
+              },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
@@ -1238,7 +1246,7 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, with a black point on the cap.",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, and rising from the cap in steps to a point at its outer edge.",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
