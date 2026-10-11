@@ -81,7 +81,13 @@ as the client.
   too, and at 2x the toolbar ran off at "He…" with the assistant off the page.
   `tools/web/fit_check.mjs` opens 1x, 2x and 3x desktops, a small laptop window
   and a phone both ways and requires every published control (the toolbar's
-  Clear included) on the page; the deploy runs its `--quick` pair.
+  Clear included) on the page; the deploy runs its `--quick` pair. On the
+  phones it asks for Clear and both panels' rails (`parts_rail`,
+  `assistant_rail`, published from 2026-10-11): it asked only for New and
+  Save while the one-row toolbar pushed Clear and the assistant's rail off
+  every phone. A drawer is sized in the interface's units, not points: in
+  points a phone is 390 across where it shows about 720 units, and both
+  drawers were cut off down their right edge.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
 - The desktop downloads page (`web/download.html`, `download.js`,

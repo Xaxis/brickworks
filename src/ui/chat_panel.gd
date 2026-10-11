@@ -25,7 +25,7 @@ var assistant: Assistant
 var _log: VBoxContainer
 var _scroll: ScrollContainer
 var _input: TextEdit
-var _reference: Button
+var _reference: LinkButton
 
 ## Somebody wants to hand in a picture of what they are asking for.
 signal reference_wanted
@@ -36,7 +36,6 @@ func references_are(count: int) -> void:
 		return
 	_reference.text = ("Add a picture of it" if count == 0
 		else "%d picture%s of it" % [count, "" if count == 1 else "s"])
-	_reference.modulate = Color(1, 1, 1, 0.6 if count == 0 else 0.95)
 var _send: Button
 var _status: Label
 var _suggestions: VBoxContainer
@@ -47,7 +46,7 @@ var _footer: HBoxContainer
 var _which_key: Label
 ## "Change key". It once said "Sign out", which is not what anyone looks
 ## for to replace a key.
-var _out: Button
+var _out: LinkButton
 ## Design on a Claude plan instead of a key: see [ConnectorForm].
 var _connector_form: ConnectorForm
 var _spinner_at: int = 0
@@ -170,12 +169,7 @@ func _build() -> void:
 	# Asked for a named real thing, the assistant works from its own
 	# memory of what that thing looks like and nothing in the loop can
 	# disagree. A photograph is the one input that can.
-	_reference = Button.new()
-	_reference.text = "Add a picture of it"
-	_reference.flat = true
-	_reference.focus_mode = Control.FOCUS_NONE
-	_reference.add_theme_font_size_override("font_size", 12)
-	_reference.modulate = Color(1, 1, 1, 0.7)
+	_reference = Look.link("Add a picture of it", 12)
 	_reference.tooltip_text = ("A photo or drawing of the thing you want "
 		+ "built. Its proportions get measured off this rather than "
 		+ "remembered.")
@@ -199,12 +193,9 @@ func _build() -> void:
 	_which_key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_footer.add_child(_which_key)
 
-	_out = Button.new()
-	_out.text = "Change key"
+	_out = Look.link("Change key", 11)
+	_out.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_out.tooltip_text = "Forget this key and paste another"
-	_out.flat = true
-	_out.add_theme_font_size_override("font_size", 11)
-	_out.modulate = Color(1, 1, 1, 0.7)
 	_out.pressed.connect(func() -> void:
 		OwnKey.forget()
 		_show_for_key(OwnKey.has_key()))
@@ -414,8 +405,12 @@ func _show_for_key(has_key: bool) -> void:
 	# With nothing to show, the conversation took the panel's height and
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
+	# The same with the connector on: it kept the empty field open for
+	# Claude's card, and the steps to connect sat at the panel's foot under
+	# a blank space two-thirds of its height. The card opens it when Claude
+	# first calls (_on_claude_called).
 	var talking: bool = assistant != null and assistant.has_conversation()
-	_scroll.visible = has_key or claude_code_here or talking or plan_on \
+	_scroll.visible = has_key or claude_code_here or talking or _logged() \
 		or _claude_card()
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key, which spent
@@ -428,6 +423,14 @@ func _show_for_key(has_key: bool) -> void:
 		# No count to show: Anthropic is billing them directly and we
 		# could not count it if we wanted to.
 		_which_key.text = "your own key · %s" % OwnKey.fingerprint()
+
+
+## Whether the conversation holds anything yet: a card, a note, a line.
+func _logged() -> bool:
+	for child: Node in _log.get_children():
+		if child != _suggestions and not child.is_queued_for_deletion():
+			return true
+	return false
 
 
 func _show_suggestions() -> void:
@@ -763,12 +766,7 @@ func use_connector(connector: ClaudeConnector) -> void:
 	_connector_form.setup(connector)
 	_key_form.get_parent().add_child(_connector_form)
 	_key_form.get_parent().move_child(_connector_form, _key_form.get_index() + 1)
-	_key_instead = Button.new()
-	_key_instead.text = "Use your own API key instead"
-	_key_instead.flat = true
-	_key_instead.focus_mode = Control.FOCUS_NONE
-	_key_instead.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_key_instead.add_theme_font_size_override("font_size", 11)
+	_key_instead = Look.link("Use your own API key instead", 11)
 	_key_instead.pressed.connect(func() -> void:
 		_key_wanted = true
 		_show_for_key(OwnKey.has_key()))
@@ -791,7 +789,7 @@ func use_connector(connector: ClaudeConnector) -> void:
 ## all it did. Before, the only sign was a count in small type under the
 ## connector, and nothing on the panel moved when Claude connected.
 var _connector: ClaudeConnector = null
-var _key_instead: Button = null
+var _key_instead: LinkButton = null
 var _key_wanted: bool = false
 var _claude_on: bool = false
 var _claude_busy: bool = false

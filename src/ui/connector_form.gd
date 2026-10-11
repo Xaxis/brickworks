@@ -22,14 +22,14 @@ var _turn_on: CheckButton
 var _state_row: HBoxContainer
 var _dot: ColorRect
 var _status: Label
-var _steps_toggle: Button
+var _steps_toggle: LinkButton
 var _on_box: VBoxContainer
 var _address: LineEdit
 var _copied: Label
 var _copy: Button
 var _in_view: Label
-var _new_address: Button
-var _reuse: Button
+var _new_address: LinkButton
+var _reuse: LinkButton
 var _reuse_box: HBoxContainer
 var _reuse_field: LineEdit
 var _calls: int = 0
@@ -75,12 +75,9 @@ func setup(with: ClaudeConnector) -> void:
 
 	# Added to Claude already, from another browser or before this one's
 	# storage was cleared: paste that address rather than add a new one.
-	_reuse = Button.new()
-	_reuse.text = "Added Brickworks to Claude before? Use that address"
-	_reuse.flat = true
-	_reuse.focus_mode = Control.FOCUS_NONE
-	_reuse.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_reuse.add_theme_font_size_override("font_size", 11)
+	# A link, not a flat button: as a flat button in body text the owner
+	# could not tell it was something to press.
+	_reuse = Look.link("Added Brickworks to Claude before? Use that address", 11)
 	_reuse.pressed.connect(func() -> void:
 		_reuse_box.visible = not _reuse_box.visible
 		if _reuse_box.visible:
@@ -111,11 +108,7 @@ func setup(with: ClaudeConnector) -> void:
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_state_row.add_child(_status)
 
-	_steps_toggle = Button.new()
-	_steps_toggle.flat = true
-	_steps_toggle.focus_mode = Control.FOCUS_NONE
-	_steps_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_steps_toggle.add_theme_font_size_override("font_size", 11)
+	_steps_toggle = Look.link("", 11)
 	_steps_toggle.pressed.connect(func() -> void:
 		_on_box.visible = not _on_box.visible
 		_show())
@@ -161,12 +154,7 @@ func setup(with: ClaudeConnector) -> void:
 		+ "best, and you can watch it build.", 11, 0.7)
 	add_child(_in_view)
 
-	_new_address = Button.new()
-	_new_address.text = "Make a new address"
-	_new_address.flat = true
-	_new_address.focus_mode = Control.FOCUS_NONE
-	_new_address.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_new_address.add_theme_font_size_override("font_size", 11)
+	_new_address = Look.link("Make a new address", 11)
 	_new_address.tooltip_text = ("If the address got out. The old one stops "
 		+ "working, and you will need to add the new one to Claude instead.")
 	_new_address.pressed.connect(func() -> void: connector.forget())

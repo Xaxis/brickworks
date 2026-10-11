@@ -290,9 +290,12 @@ func _run() -> void:
 
 	print("\nClaude connects, and builds")
 	panel.use_connector(connector)
+	panel.new_chat()
 	panel._show_for_key(false)
-	_check(panel._connector_form.visible and panel._scroll.visible,
-		"with no key and the connector on, the panel has room for Claude's work")
+	# It kept an empty conversation open for Claude's card, and the steps
+	# to connect sat at the panel's foot under a blank two-thirds of it.
+	_check(panel._connector_form.visible and not panel._scroll.visible,
+		"with no key, the connector on and nothing yet, its steps are under the title, not under an empty field")
 	_check(not panel._key_form.visible and panel._key_instead.visible
 			and panel._connector_form._title.text.begins_with("Designing with your Claude plan"),
 		"...and the key's form folds to one line while the plan is in use")
@@ -308,7 +311,8 @@ func _run() -> void:
 		"Claude reaching the tab says Connected, and folds the steps away: %s"
 			% offer._status.text)
 	connector.called.emit("search_parts", {"query": "brick 2 x 4"})
-	_check(panel._claude_card() and panel._run_title.text == "Claude is building"
+	_check(panel._claude_card() and panel._scroll.visible
+			and panel._run_title.text == "Claude is building"
 			and panel._run_now.text.contains("brick 2 x 4"),
 		"Claude's first call opens a card in the conversation: %s" % panel._run_now.text)
 	var steps_before: int = panel._run_past.get_child_count()

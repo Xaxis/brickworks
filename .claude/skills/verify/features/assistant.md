@@ -81,7 +81,14 @@ fixing what it got wrong.
   progress notes are dropped while Claude's call runs, or each call showed
   twice. While the connector is on and there is no key, the key's form folds
   to "Use your own API key instead" and the section is titled "Designing with
-  your Claude plan". `chat_probe` covers all of it on a
+  your Claude plan"; until Claude's first call there is no empty conversation
+  above it, so the steps sit under the title (they were at the panel's foot
+  under a blank two-thirds of it). The panel's secondary actions — that one,
+  "Use that address", "Make a new address", "Change key", "Add a picture of
+  it" — are links (`Look.link`: blue, underlined, as wide as their words), not
+  flat buttons in body text, which the owner could not tell were pressable.
+  The switch and every tick box are drawn by `Look.apply`, outlined so an
+  unticked one shows on a dark panel. `chat_probe` covers all of it on a
   closed port and its own file; `connector_probe` the protocol (see `web.md`).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
