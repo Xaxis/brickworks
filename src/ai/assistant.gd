@@ -1693,7 +1693,9 @@ func _bricks_inside(where: Dictionary) -> Array[BrickWorld.Brick]:
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		if _inside(_to_studs(brick, info), where):
+		# Everything is inside no box at all: working out where each brick
+		# is first was most of what reviewing a whole model cost.
+		if where.is_empty() or _inside(_to_studs(brick, info), where):
 			out.append(brick)
 	return out
 

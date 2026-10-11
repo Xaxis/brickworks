@@ -49,7 +49,7 @@ picture the assistant is shown.
   in build order instead of appearing at once (`BuildPlayback`, played from
   `Main`'s `built` handler; never in a run driven from the command line). Only
   what is new: `Assistant.fresh_ids` is what the last build or edit put down or
-  moved, and everything else stays on show (`Main._already_standing`), so a
+  moved, and everything else stays on show (`BuildPlayback.play_new`), so a
   recolour plays nothing and `add_rooms` plays the rooms; a design shown by
   `check_design` (or drawn as it streamed in) and then submitted unchanged is
   already standing and plays nothing either. Up to

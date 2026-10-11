@@ -131,6 +131,12 @@ func _only_what_is_new(world: BrickWorld, playback: BuildPlayback) -> void:
 	playback.stop()
 	_check("stopping shows everything", _hidden(world).is_empty()
 		and _drawn(world) == 30 and not playback.is_playing())
+	_check("the same twenty, named rather than everything else, play the same",
+		playback.play_new(fresh) and _hidden(world).size() > 0
+		and _as_set(fresh).has_all(_hidden(world).keys()))
+	playback.stop()
+	_check("one brick named plays nothing",
+		not playback.play_new(fresh.slice(0, 1)) and _hidden(world).is_empty())
 
 
 ## The owner's Falcon Heavy, put down whole, then animated.

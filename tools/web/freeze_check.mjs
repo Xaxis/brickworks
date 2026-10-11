@@ -26,7 +26,11 @@
 // pulled from a Claude Code session log).
 //
 // Passes when no frame of the app's own work is over --budget ms (default
-// 200) and every call is answered. A build from before the app timed its
+// 500) and every call is answered. 500 because the browser here is niced,
+// shares 24 cores with several projects and draws in software, and runs
+// the same scripts four to eight times slower than the desktop app, whose
+// own probe (src/dev/freeze_probe.gd) holds 200 ms on a GPU and measures
+// 130 at most. Tighten it with --budget on a quiet machine. A build from before the app timed its
 // own frames is judged by its longest task instead (--task-budget, 10 s). The app's own work is timed by the app,
 // from a frame's start to its drawing (Main._watch_own_frames), because a
 // browser here draws in software, on SwiftShader: an idle page's every frame
@@ -44,7 +48,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const out = args.out || "shots/freeze";
 mkdirSync(out, { recursive: true });
-const budget = Number(args.budget || 200);
+const budget = Number(args.budget || 500);
 // For a build from before the app timed its own frames, which has nothing
 // else to be judged by: the longest task, drawing and all.
 const taskBudget = Number(args["task-budget"] || 10000);

@@ -49,8 +49,9 @@ const MOST_FRAMES := 90
 ## A variable so a probe can set it to nothing and watch the fallback.
 var give_up_after: float = 20.0
 
-## Time spent waiting for the graphics card to hand a picture back, summed
-## until whoever times frames takes it (Main._watch_own_frames). Reading a
+## Time spent waiting for the graphics card — setting up the picture's
+## render target, and handing a picture back — summed until whoever times
+## frames takes it (Main._watch_own_frames). Reading a
 ## picture waits for everything queued to be drawn: a few milliseconds on a
 ## graphics card, and in a browser drawing in software, tens of seconds. A
 ## frame that waited on drawing has not been doing this app's work.
@@ -316,7 +317,13 @@ func _take(world: BrickWorld, from: String,
 	if _viewport == null:
 		if library == null:
 			library = world.library
+		# Counted with the read-back: making the render target asks the
+		# graphics card whether it is complete, and in a browser that waits
+		# for everything queued (8 ms in software GL on the desktop, a second
+		# in a browser drawing in software).
+		var setting_up: int = Time.get_ticks_usec()
 		_build()
+		gpu_wait_us += Time.get_ticks_usec() - setting_up
 		# The viewport, its lights and its batches all want a frame to
 		# exist in before anything asks them to draw. Without this the
 		# first picture of a session is reliably of nothing.

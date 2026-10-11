@@ -1247,7 +1247,7 @@ func _build_ui() -> void:
 		# nobody could see. Without it a look is 0.3 s and each of those
 		# 12 s. And only what the change put down: what was standing
 		# already does not vanish to be built again.
-		if not _driven and _playback.play(_already_standing()):
+		if not _driven and _playback.play_new(_assistant.fresh_ids):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
 	# it would be an assembly that never finishes.
@@ -2059,19 +2059,6 @@ func _weigh() -> void:
 		if info != null:
 			report.total_grams -= Stability.grams(info)
 	_stability_text = report.summary()
-
-
-## Everything on the baseplate but what the assistant has just put down,
-## which is what the build animation shows going up.
-func _already_standing() -> Dictionary:
-	var fresh: Dictionary = {}
-	for brick_id: int in _assistant.fresh_ids:
-		fresh[brick_id] = true
-	var standing: Dictionary = {}
-	for brick: BrickWorld.Brick in _world.bricks():
-		if not fresh.has(brick.id):
-			standing[brick.id] = true
-	return standing
 
 
 ## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.

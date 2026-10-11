@@ -92,6 +92,11 @@ func play(keep: Dictionary) -> bool:
 	if not world.reveal_ended.is_connected(_on_reveal_ended):
 		world.reveal_ended.connect(_on_reveal_ended)
 	_lay_out(keep)
+	return _begin()
+
+
+## Start what [member _order] and [member _step_ends] lay out.
+func _begin() -> bool:
 	if _step_ends.size() < 2:
 		# One step is not an assembly, it is the model. Playing it would
 		# be a flicker and then the same picture.
@@ -110,6 +115,40 @@ func play(keep: Dictionary) -> bool:
 	# for a beat before anything happens.
 	_advance_to(1)
 	return true
+
+
+## Assemble [param fresh], the bricks a change has just put down, leaving
+## everything else on screen. The same as [method play] with everything else
+## kept, without first listing everything else: an edit that recoloured one
+## brick of the 4,242-part Falcon walked the whole model twice to find there
+## was nothing to play.
+func play_new(fresh: PackedInt64Array) -> bool:
+	if fresh.size() < 2:
+		stop()
+		return false
+	if fresh.size() <= PLANNED_UP_TO:
+		var coming: Dictionary = {}
+		for brick_id: int in fresh:
+			coming[brick_id] = true
+		var keep: Dictionary = {}
+		for brick: BrickWorld.Brick in world.bricks():
+			if not coming.has(brick.id):
+				keep[brick.id] = true
+		return play(keep)
+	stop()
+	if not world.reveal_ended.is_connected(_on_reveal_ended):
+		world.reveal_ended.connect(_on_reveal_ended)
+	var bricks: Array = []
+	for brick_id: int in fresh:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			bricks.append(brick)
+	_order = PackedInt64Array()
+	_step_ends = PackedInt64Array()
+	if bricks.size() < 2:
+		return false
+	_courses(bricks)
+	return _begin()
 
 
 ## Put the whole model back at once. Called when somebody starts doing

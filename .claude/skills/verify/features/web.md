@@ -151,7 +151,9 @@ plan with Claude as the client.
   export itself through `tools/web/relay_server.mjs --static`, the deployment's
   real functions; with `--url=` it drives a preview (`BW_BYPASS`). `--calls=`
   replays a run's own calls. Fails when a frame of the app's own work is over
-  `--budget` (200 ms) or a call goes unanswered; a build from before the app
+  `--budget` (500 ms: the browser here is niced on a shared box and runs the
+  scripts four to eight times slower than the desktop app, whose freeze_probe
+  holds 200 ms on a GPU) or a call goes unanswered; a build from before the app
   timed its own frames is judged by its longest task (`--task-budget`, 10 s).
   Long tasks are otherwise printed beside the idle page's and not judged:
   drawn in software (SwiftShader), an idle page's every frame is a task of a
@@ -240,7 +242,7 @@ node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze
 ```
 
 Proves it when: it exits 0 and ends `the page stayed alive: the app's longest
-frame was N ms (budget 200)`, every call answered. Against the build before
+frame was N ms (budget 500)`, every call answered. Against the build before
 2026-10-11 it fails: a check_design was one 31 s task, a submit 43 s, and the
 look that followed came back "The Brickworks tab did not answer in time" while
 the build animation weighed the model once a step.
