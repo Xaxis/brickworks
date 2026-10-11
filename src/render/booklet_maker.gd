@@ -577,11 +577,12 @@ func _whole(from: Vector3, area: Rect2, fill: float) -> String:
 		and area.size.x > 100.0 else Color.WHITE)
 
 
-## A picture as a data URI, in WebP: a quarter of a PNG's size and
-## sharper than a JPEG at the same size round an ink line. A step's
-## picture is laid on the page's own colour first and kept without
-## alpha, which WebP stores losslessly and which made a castle's booklet
-## 96 MB; a part's picture keeps its alpha, because it sits on a box.
+## A picture as a data URI. A step's picture is laid on the colour it
+## sits on and kept as a JPEG: a browser printing to PDF passes a JPEG
+## through as it is and re-encodes anything else without loss, and the
+## castle's booklet saved as a PDF was 360 MB of WebP turned into Flate.
+## (Kept with alpha, WebP had made the page itself 96 MB.) A part's
+## picture keeps its alpha, in WebP, because it sits on a box.
 static func _data_uri(image: Image, on: Color = Color(0, 0, 0, 0)) -> String:
 	if image == null:
 		return ""
@@ -591,6 +592,9 @@ static func _data_uri(image: Image, on: Color = Color(0, 0, 0, 0)) -> String:
 		page.fill(on)
 		page.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i.ZERO)
 		page.convert(Image.FORMAT_RGB8)
+		var jpeg: PackedByteArray = page.save_jpg_to_buffer(0.86)
+		if not jpeg.is_empty():
+			return "data:image/jpeg;base64," + Marshalls.raw_to_base64(jpeg)
 		image = page
 	var bytes: PackedByteArray = image.save_webp_to_buffer(true, 0.82)
 	if not bytes.is_empty():

@@ -60,6 +60,10 @@ void fragment() {
 		COLOR = vec4(texture(code_tex, UV).rgb, 1.0);
 	} else if (at.y < 3.0 && at.x < 6.0) {
 		COLOR = vec4(texture(colour_tex, UV - vec2(3.0 * pixel.x, 0.0)).rgb, 1.0);
+	} else if (at.y < 12.0 && at.x < 12.0) {
+		// Round the tokens, where the line would ring them as if they were
+		// a brick: a dot at the corner of every part in every parts box.
+		COLOR = vec4(0.0);
 	} else {
 		vec4 colour = texture(colour_tex, UV);
 		if (colour.a > 0.0 && colour.a < 1.0) {

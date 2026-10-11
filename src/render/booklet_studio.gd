@@ -315,11 +315,9 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 		return shot
 	_read_rects(codes, shot, 1.0 / float(supersample))
 	# The tokens out of the corner, then down to the size asked for.
-	for x: int in 6:
-		for y: int in 3:
-			drawn.set_pixel(x, y, Color(0, 0, 0, 0))
 	if drawn.get_format() != Image.FORMAT_RGBA8:
 		drawn.convert(Image.FORMAT_RGBA8)
+	drawn.fill_rect(Rect2i(0, 0, 12, 12), Color(0, 0, 0, 0))
 	if supersample > 1:
 		drawn.resize(size.x, size.y, Image.INTERPOLATE_CUBIC)
 	shot.image = drawn

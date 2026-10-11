@@ -326,9 +326,15 @@ take, which is what made a design run give up on looking at itself.
   (`booklet_codes.gdshader`), and the tokens that prove a picture is fresh are
   light colours. The same pass under Forward+ is converted on the way out, so
   the shader writes the linear value there.
-- **A booklet's pictures are flattened onto the page colour.** WebP keeps
-  alpha losslessly, and the castle's booklet was 96 MB with it and 60 MB
-  without. Parts keep their alpha: they sit on the parts box.
+- **A booklet's pictures are JPEGs on the page colour.** WebP keeps alpha
+  losslessly, and the castle's booklet was 96 MB with it; flattened, WebP
+  made it 60 MB, but Chromium printing to PDF re-encodes anything but a JPEG
+  without loss, and that PDF was 360 MB. As JPEGs the PDF is about the size
+  of the page. Parts keep their alpha, in WebP: they sit on the parts box.
+- **The corner of every picture carries the tokens** that prove it was drawn
+  for the state asked for (`BookletStudio._drawn`). The ink shader once ringed
+  them as if they were a brick, a dot at the corner of every part in every
+  parts box; the corner is blanked now.
 - **Reading a picture's pixels in GDScript is the slow part.** A walk over
   every pixel of a page-sized code image was 1.5 s a step and most of the
   castle's ten minutes; it is read at a sixth of its size now.
