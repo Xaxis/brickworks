@@ -20,6 +20,13 @@
 ## And the studs: 3062b with its hollow stud taken off has a closed top; a
 ## 2 x 2 tile with studs put on has four, on the grid; 3001 with its studs
 ## off has none and its top where it was.
+##
+## And cut-outs: 3003, the 2 x 2 brick, with one stud's corner cut out from
+## top to bottom has the studs of 2357, the corner brick LEGO made, and its
+## bounds, the cut walled; 3001 with a notch a plate high cut through under
+## its middle keeps its eight studs, has nothing in the notch and plastic
+## right over it; and 3001 with the top two plates cut off its right half,
+## studs put on, is a step with four studs on each level.
 extends SceneTree
 
 var _failures: int = 0
@@ -88,6 +95,9 @@ func _initialize() -> void:
 		places.sort()
 		_ok(places == PackedStringArray(["(-10, -10)", "(-10, 10)", "(10, -10)", "(10, 10)"]),
 			"3068b with studs put on: four, on the grid: %s" % ", ".join(places))
+
+	print("\npieces cut out")
+	_cuts()
 
 	print("")
 	if _failures == 0:
@@ -214,6 +224,77 @@ static func _cells(boxes: Array) -> Dictionary:
 				for z: int in range(int(b[2]), int(b[2]) + int(b[5])):
 					out[Vector3i(x, y, z)] = true
 	return out
+
+
+func _cuts() -> void:
+	# The corner 2357 has no stud on: high x, and the back, which is the
+	# app's low z.
+	var corner: PartForge.Result = _built("3003",
+		{"cut": PackedInt32Array([1, 0, 2, 1, 0, 3])})
+	var real: Lbm.PartMesh = _library.mesh_for("2357")
+	if corner != null and real != null:
+		var ours := PackedStringArray()
+		for c: Array in corner.connectors:
+			if c[0] == "stud":
+				ours.append("(%.1f, %.1f, %.1f)" % [float(c[2]), float(c[3]), float(c[4])])
+		ours.sort()
+		# 2357's origin is on a stud; put its middle where ours is.
+		var shift: Vector3 = real.bounds.get_center() - Vector3(
+			(corner.bounds_min[0] + corner.bounds_max[0]) * 0.5,
+			real.bounds.get_center().y, (corner.bounds_min[2] + corner.bounds_max[2]) * 0.5)
+		var theirs := PackedStringArray()
+		for c: Lbm.Connector in real.connectors:
+			if c.kind == "stud":
+				var at: Vector3 = c.position - shift
+				theirs.append("(%.1f, %.1f, %.1f)" % [at.x, at.y, at.z])
+		theirs.sort()
+		_ok(ours == theirs, "3003 with a corner cut out has 2357's studs: %s%s" % [
+			", ".join(ours), "" if ours == theirs else " — 2357's: " + ", ".join(theirs)])
+		var size_ours := Vector3(corner.bounds_max[0] - corner.bounds_min[0],
+			corner.bounds_max[1] - corner.bounds_min[1], corner.bounds_max[2] - corner.bounds_min[2])
+		_ok(size_ours.distance_to(real.bounds.size) < 0.05,
+			"...and its size, %s" % size_ours)
+		# Nothing where the corner was, and the cover round it closed.
+		var cells: Dictionary = _cells(corner.boxes)
+		var in_corner: int = 0
+		for cell: Vector3i in cells:
+			var x: float = (cell.x + 0.5) * 2.0
+			var z: float = (cell.z + 0.5) * 2.0
+			if x > 0.0 and z < 0.0:
+				in_corner += 1
+		_ok(in_corner == 0 and cells.size() > 0,
+			"...nothing in the corner it lost, %d cells of cover elsewhere" % cells.size())
+	var notch: PartForge.Result = _built("3001", {"cut": PackedInt32Array([1, 0, 3, 2, 0, 1])})
+	if notch != null:
+		var cells: Dictionary = _cells(notch.boxes)
+		var in_notch: int = 0
+		var over: int = 0
+		for cell: Vector3i in cells:
+			var x: float = (cell.x + 0.5) * 2.0
+			var y: float = (cell.y + 0.5) * 2.0
+			if absf(x) < 20.0 and y < -16.0:
+				in_notch += 1
+			if absf(x) < 20.0 and y > -16.0 and y < -12.0:
+				over += 1
+		_ok(_count(notch, "stud", true) == 8 and in_notch == 0 and over == 20 * 2 * 20,
+			"3001 notched a plate high under its middle: 8 studs, nothing in the notch, "
+			+ "4 LDU of plastic over all of it (%d, %d, %d cells)" % [_count(notch, "stud", true),
+				in_notch, over])
+	var step: PartForge.Result = _built("3001",
+		{"cut": PackedInt32Array([2, 0, 4, 2, 1, 3]), "studs": "fill"})
+	if step != null:
+		var high: int = 0
+		var low: int = 0
+		for c: Array in step.connectors:
+			if c[0] != "stud" or float(c[6]) < 0.99:
+				continue
+			if is_equal_approx(float(c[3]), 0.0) and float(c[2]) < 0.0:
+				high += 1
+			elif is_equal_approx(float(c[3]), -16.0) and float(c[2]) > 0.0:
+				low += 1
+		_ok(high == 4 and low == 4,
+			"3001 with the top two plates cut off its right half and studs put on: a step, "
+			+ "%d studs on the top, %d on the step" % [high, low])
 
 
 func _refused(from: String, fields: Dictionary) -> void:

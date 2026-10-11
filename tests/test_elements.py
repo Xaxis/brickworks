@@ -852,6 +852,53 @@ def test_a_stud_taken_off_leaves_the_top_closed(library: Library) -> None:
     assert lo.y == pytest.approx(0.0, abs=0.01)
 
 
+def _changed_named(start: str) -> str:
+    """The changed fixture made from a part with a cut-out, by its name's
+    start: its id ends in a tag of the box, which is not worth spelling."""
+    found = [n for n in CHANGED if n.startswith(start)]
+    assert len(found) == 1, (start, CHANGED)
+    return found[0]
+
+
+def test_a_corner_cut_out_of_a_2x2_brick_is_the_corner_brick(library: Library) -> None:
+    """3003 with the stud square at high x, low z (the back, in the app)
+    cut out top to bottom: 2357's three studs where 2357 has them (its
+    origin is on a stud, ours on the middle), its size, nothing where the
+    corner was, and the cut closed — a line down the new wall, 2 LDU in
+    from the cut, is plastic from top to bottom."""
+    name = _changed_named("bw-3003-c")
+    studs = sorted((c.position.x, c.position.z) for c in extract(library, name)
+                   if c.kind.value == "stud")
+    real = sorted((c.position.x - 10.0, c.position.z - 10.0) for c in extract(library, "2357.dat")
+                  if c.kind.value == "stud")
+    assert studs == pytest.approx(real)
+    mesh = flatten(library, name)
+    lo, hi = mesh.bounds()
+    rlo, rhi = flatten(library, "2357.dat").bounds()
+    assert (hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) == pytest.approx(
+        (rhi.x - rlo.x, rhi.y - rlo.y, rhi.z - rlo.z), abs=0.01)
+    # The corner it lost is LDraw's high x and high z.
+    assert stab(mesh, 10.3, 10.7) == []
+    assert stab(mesh, -2.07, 10.7) == [(0.0, 24.0)]
+    assert stab(mesh, 10.7, -2.07) == [(0.0, 24.0)]
+    # Away from the cut, the hollow is as it was: only the top.
+    assert stab(mesh, -10.3, 10.7)[0] == (0.0, 4.0)
+
+
+def test_a_notch_under_a_brick_is_open_and_roofed(library: Library) -> None:
+    """3001 with a notch two studs wide and a plate high cut through under
+    its middle: still 8 studs; nothing in the notch; over it, the top, the
+    hollow, and a 4 LDU ceiling put back over the notch; beside it, a wall
+    the notch's height."""
+    name = _changed_named("bw-3001-c")
+    assert len([c for c in extract(library, name) if c.kind.value == "stud"]) == 8
+    mesh = flatten(library, name)
+    assert sorted(stab(mesh, 10.3, 10.7)) == [(0.0, 4.0), (12.0, 16.0)]
+    # Beside the notch, 2 LDU out from it: a wall as tall as the notch,
+    # the hollow over it as it was.
+    assert sorted(stab(mesh, 22.07, 10.7)) == [(0.0, 4.0), (16.0, 24.0)]
+
+
 def test_studs_put_on_a_tile_are_on_the_grid(library: Library) -> None:
     """3068b with studs put on: four, on the 2 x 2 grid, on its top."""
     studs = [c for c in _plan(library, "bw-3068b-sa.dat") if c[0] == "stud"]

@@ -33,7 +33,9 @@
 ## has 15533's studs and tubes — the 1 x 4 LEGO made — is stacked and
 ## checked as the others are, and travels in the saved file with the
 ## connectors it states for itself. 3062b made three long is refused, and
-## the dialog says why.
+## the dialog says why. And 3003, a plain 2 x 2 brick, changed as itself
+## with "Change it" and a corner cut out of it: three studs, a corner brick,
+## stacked and carried like the rest.
 ##
 ## Made parts go to user://custom_parts_probe/, never the person's own.
 extends SceneTree
@@ -111,6 +113,11 @@ func _initialize() -> void:
 		_finish()
 		return
 	later.append(changed)
+	var corner: String = await _cut_corner(dialog)
+	if corner.is_empty():
+		_finish()
+		return
+	later.append(corner)
 
 	print("\nin the library and the parts bin")
 	_in_the_bin([brick, plate, slope] + later)
@@ -132,6 +139,8 @@ func _initialize() -> void:
 	_stack(technic, Vector3(0, 0, 160))
 	print("\n98283 made four long")
 	_stack(changed, Vector3(0, 0, -160))
+	print("\n3003 with a corner cut out")
+	_stack(corner, Vector3(200, 0, -160))
 
 	print("\nwhat the assistant's checker makes of all of it")
 	_checker()
@@ -140,10 +149,10 @@ func _initialize() -> void:
 	_used(sided, bracket, technic)
 
 	print("\nin the parts list")
-	_parts_list([brick, plate, slope, sided, curved, technic, changed])
+	_parts_list([brick, plate, slope, sided, curved, technic, changed, corner])
 
 	print("\nsaved, and opened where the parts were never made")
-	await _round_trip([brick, plate, slope, sided, curved, technic, changed])
+	await _round_trip([brick, plate, slope, sided, curved, technic, changed, corner])
 	_finish()
 
 
@@ -421,11 +430,11 @@ func _checker() -> void:
 	for complaint: String in ["floating", "nothing holding", "overlap", "no stud anywhere",
 			"no stud can reach", "collide"]:
 		_ok(not said.to_lower().contains(complaint), "it says nothing about \"%s\"" % complaint)
-	# Seven stacks on the baseplate, and the checker finds seven pieces:
+	# Eight stacks on the baseplate, and the checker finds eight pieces:
 	# each made part is joined to the 2 x 4 under it and the one over it,
 	# or a stack would come apart into more.
-	_ok(said.contains("in 7 pieces"),
-		"it finds seven pieces, one per stack: each made part joins both its 2 x 4s")
+	_ok(said.contains("in 8 pieces"),
+		"it finds eight pieces, one per stack: each made part joins both its 2 x 4s")
 	if not said.is_empty():
 		print("        (it said: %s)" % said.left(400).replace("\n", " / "))
 
@@ -470,6 +479,34 @@ func _change(dialog: ElementDialog) -> String:
 		"3062b made three long is refused, and says why: %s" % refusal)
 	dialog.set_field("family", "brick")
 	return id
+
+
+## 3003 changed as itself and a corner cut out of it, through the dialog.
+func _cut_corner(dialog: ElementDialog) -> String:
+	dialog.open()
+	_ok(dialog.change_part("3003") and dialog.edit() != null,
+		"3003, a plain brick, is changed as itself with Change it, not redrawn")
+	# The corner on the right at the back: across 1 to 2, deep 0 to 1, all
+	# three plates — where LEGO's corner brick, 2357, has no stud.
+	dialog.set_field("cut", [1, 0, 2, 1, 0, 3])
+	var built: PartForge.Result = dialog.built()
+	var studs: int = 0
+	if built != null:
+		for c: Array in built.connectors:
+			if c[0] == "stud":
+				studs += 1
+	_ok(built != null and built.problem.is_empty() and studs == 3,
+		"a corner cut out of it, the preview has 3 studs: %s" % dialog.get("_about").text)
+	var made: Array = []
+	dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
+	dialog.press_add()
+	await process_frame
+	var id: String = made[0] if not made.is_empty() else ""
+	var info: PartLibrary.PartInfo = _library.parts.get(id)
+	_ok(info != null and info.name == "Brick  2 x  2 (with Cut-Out)",
+		"Add made %s, \"%s\"" % [id, info.name if info != null else "nothing"])
+	dialog.set_field("family", "brick")
+	return id if info != null else ""
 
 
 ## A part's studs and tubes as words: kind and where, to a tenth.

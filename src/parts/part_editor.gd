@@ -31,6 +31,15 @@
 ## and the plate's worth of wall and tube it holds. A part with no such slice
 ## — a 1 x 1, a round brick — is not stretched: that is said, not faked.
 ##
+## A cut-out is a box, in studs and plates, taken out of the part: its
+## triangles cut exactly at the box's faces, and the plastic the box cut
+## through closed again — a cap on each cut face where there was plastic, and
+## a 4 LDU wall wherever the cut opened into the part's hollow underside, so
+## the part is a part a mould could make and not a broken shell. Which cells
+## are plastic and which hollow is read off the part's own triangles, two LDU
+## at a time, as the collision cover is: square cuts through square walls
+## are exact, and a cut through a round tube is closed in steps of 2 LDU.
+##
 ## Everything is in LDraw's axes: X right, Y down, the top of the part at
 ## Y = 0 for most parts.
 class_name PartEditor
@@ -66,6 +75,10 @@ class Edit extends RefCounted:
 	## every flat stud square of its top that has none).
 	var studs: String = "keep"
 	var title: String = ""
+	## A box to cut out, or empty: [x0, z0, x1, z1, p0, p1], studs from the
+	## part's low corner in the app's x and z (z is towards the front, as in
+	## a design's placements) and plates up from its bottom.
+	var cut := PackedInt32Array()
 
 	func duplicate() -> Edit:
 		var copy := Edit.new()
@@ -75,11 +88,15 @@ class Edit extends RefCounted:
 		copy.plates = plates
 		copy.studs = studs
 		copy.title = title
+		copy.cut = cut.duplicate()
 		return copy
 
 	func to_words() -> String:
-		return "from=%s length=%d width=%d plates=%d studs=%s" % [from, length, width,
-			plates, studs]
+		var words: String = "from=%s length=%d width=%d plates=%d studs=%s" % [from, length,
+			width, plates, studs]
+		if cut.size() == 6:
+			words += " cut=%d,%d,%d,%d,%d,%d" % [cut[0], cut[1], cut[2], cut[3], cut[4], cut[5]]
+		return words
 
 
 ## A part's geometry as the edit works on it: triangles (9 floats each) with
@@ -195,6 +212,21 @@ static func _creases(shape: Shape, normals: Array[Vector3]) -> PackedFloat64Arra
 static func _weld(values: PackedFloat64Array, corner: int) -> Vector3i:
 	return Vector3i(roundi(values[corner * 3] * 1000.0), roundi(values[corner * 3 + 1] * 1000.0),
 		roundi(values[corner * 3 + 2] * 1000.0))
+
+
+## Where a part's plastic is, from its collision cover, in LDraw's axes:
+## [x low, x high, y top, y bottom, z low, z high]. The cover leaves studs
+## out, on the top and the sides, as a cut-out's measure has to.
+static func extent_of(mesh: Lbm.PartMesh) -> PackedFloat64Array:
+	var box := AABB()
+	for cells: AABB in mesh.boxes:
+		var ldu := AABB(cells.position * mesh.cell_ldu, cells.size * mesh.cell_ldu)
+		box = ldu if box.size == Vector3.ZERO else box.merge(ldu)
+	if box.size == Vector3.ZERO:
+		box = mesh.bounds
+	# The app's y and z are LDraw's turned over.
+	return PackedFloat64Array([box.position.x, box.end.x, -box.end.y, -box.position.y,
+		-box.end.z, -box.position.z])
 
 
 ## A part's size in studs along X and Z and in plates, from its collision
@@ -850,6 +882,12 @@ static func problem(edit: Edit, mesh: Lbm.PartMesh) -> String:
 		return "a part is 1 to %d plates tall" % MOST_PLATES
 	if not ["keep", "none", "fill"].has(edit.studs):
 		return "studs are kept, taken off (none) or put on (fill)"
+	if not edit.cut.is_empty():
+		var c: PackedInt32Array = edit.cut
+		if c.size() != 6 or c[0] < 0 or c[1] < 0 or c[4] < 0 or c[0] >= c[2] or c[1] >= c[3] \
+				or c[4] >= c[5]:
+			return ("a cut-out is from and to in studs across, studs deep and plates up, "
+				+ "each to more than its from")
 	return ""
 
 
@@ -861,6 +899,9 @@ static func apply(edit: Edit, mesh: Lbm.PartMesh) -> Dictionary:
 		return {"shape": null, "problem": said}
 	var size: Vector3i = size_of(mesh)
 	var shape: Shape = shape_of(mesh)
+	# Where the plastic is, studs left out: the cover's extent, carried
+	# through the changes in size below, for a cut-out to be measured from.
+	var extent: PackedFloat64Array = extent_of(mesh)
 	for step: Array in [[0, edit.length, size.x, STUD, "long"],
 			[2, edit.width, size.z, STUD, "wide"], [1, edit.plates, size.y, PLATE, "tall"]]:
 		var axis: int = step[0]
@@ -874,9 +915,20 @@ static func apply(edit: Edit, mesh: Lbm.PartMesh) -> Dictionary:
 				wanted, "plates" if axis == 1 else ("stud" if wanted == 1 else "studs"),
 				step[4], done["problem"]]}
 		shape = done["shape"]
+		var grown: float = float(step[3]) * (wanted - has)
 		if axis != 1:
 			# Back on its middle: half of what was added, the other way.
-			shape = shifted(shape, axis, -float(step[3]) * (wanted - has) * 0.5)
+			shape = shifted(shape, axis, -grown * 0.5)
+			extent[axis * 2] -= grown * 0.5
+			extent[axis * 2 + 1] += grown * 0.5
+		else:
+			extent[3] += grown
+	if edit.cut.size() == 6:
+		var cut: Dictionary = cut_out(shape, edit.cut, extent)
+		if cut["shape"] == null:
+			return {"shape": null, "problem": "%s cannot have that cut out: %s" % [edit.from,
+				cut["problem"]]}
+		shape = cut["shape"]
 	match edit.studs:
 		"none":
 			shape = remove_top_studs(shape)
@@ -905,6 +957,9 @@ static func id_for(edit: Edit) -> String:
 		tail += "s0"
 	elif edit.studs == "fill":
 		tail += "sa"
+	if edit.cut.size() == 6:
+		# The box as a short tag: its six numbers would not fit the name.
+		tail += "c%03x" % (hash(Array(edit.cut)) & 0xfff)
 	if tail.is_empty():
 		tail = "copy"
 	return ("bw-%s-%s" % [source.left(10), tail]).left(21)
@@ -925,6 +980,8 @@ static func title_for(edit: Edit, name: String, size: Vector3i) -> String:
 		changes.append("without Top Studs")
 	elif edit.studs == "fill":
 		changes.append("with Studs Added")
+	if edit.cut.size() == 6:
+		changes.append("with Cut-Out")
 	var base: String = name.strip_edges().trim_prefix("~").trim_prefix("=")
 	if changes.is_empty():
 		return base + " (Copy)"
@@ -1039,12 +1096,344 @@ static func parse_edit(text: String) -> Edit:
 				"width": edit.width = pair[1].to_int()
 				"plates": edit.plates = pair[1].to_int()
 				"studs": edit.studs = pair[1]
+				"cut":
+					edit.cut = PackedInt32Array()
+					for number: String in pair[1].split(","):
+						edit.cut.append(number.to_int())
 		return edit
 	return null
 
 
 ## How deep a plug closing a stud's hole goes: a top's 4 LDU.
 const PLUG := 4.0
+
+
+# -- a cut-out ---------------------------------------------------------------------
+
+## The cells plastic is read in, LDU on a side, as the collision cover's.
+const CELL := 2.0
+## How thick the wall put back round a cut through the hollow is, in cells.
+const LINING := 2
+
+
+## Take a box out of the part: [param cut] as [member Edit.cut], measured
+## from [param extent] ([method extent_of]). Returns {"shape", "problem"}.
+static func cut_out(shape: Shape, cut: PackedInt32Array,
+		extent: PackedFloat64Array) -> Dictionary:
+	var plastic: Dictionary = _plastic(shape)
+	if plastic.is_empty():
+		return {"shape": null, "problem": "it has no inside to read"}
+	var lo := Vector3i(1 << 30, 1 << 30, 1 << 30)
+	var hi := -lo
+	for cell: Vector3i in plastic:
+		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+		hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
+	# The part's extent in LDU, LDraw's axes: the app's z is LDraw's -z, so
+	# studs counted from the app's low z run from LDraw's high z. Not the
+	# cells' extent: a stud's inside reads as plastic, and a cut "to the top"
+	# measured from the tops of the studs stopped short of the body's top.
+	var x0: float = extent[0]
+	var x1: float = extent[1]
+	var y_top: float = extent[2]
+	var y_bottom: float = extent[3]
+	var z0: float = extent[4]
+	var z1: float = extent[5]
+	var box_lo := PackedFloat64Array([x0 + cut[0] * STUD, y_bottom - cut[5] * PLATE,
+		z1 - cut[3] * STUD])
+	var box_hi := PackedFloat64Array([x0 + cut[2] * STUD, y_bottom - cut[4] * PLATE,
+		z1 - cut[1] * STUD])
+	# Where the box reaches an edge of the part it goes on past it, so studs
+	# standing off that face go with what they stood on.
+	if cut[0] == 0:
+		box_lo[0] = -INF
+	if box_hi[0] >= x1 - 0.5:
+		box_hi[0] = INF
+	if box_lo[1] <= y_top + 0.5:
+		box_lo[1] = -INF
+	if cut[4] == 0:
+		box_hi[1] = INF
+	if box_lo[2] <= z0 + 0.5:
+		box_lo[2] = -INF
+	if cut[1] == 0:
+		box_hi[2] = INF
+	var inside: Callable = func(cell: Vector3i) -> bool:
+		for n: int in 3:
+			var middle: float = (cell[n] + 0.5) * CELL
+			if middle <= box_lo[n] or middle >= box_hi[n]:
+				return false
+		return true
+	var took: int = 0
+	for cell: Vector3i in plastic:
+		if inside.call(cell):
+			took += 1
+	if took == 0:
+		return {"shape": null, "problem": "the cut-out misses it"}
+	if took == plastic.size():
+		return {"shape": null, "problem": "the cut-out takes all of it"}
+	var filled: Dictionary = _filled(plastic, lo, hi)
+	# The hollow the cut opens: the wall put back round it, LINING cells
+	# thick, straight out from the box's faces.
+	var lining: Dictionary = {}
+	for cell: Vector3i in filled:
+		if plastic.has(cell) or inside.call(cell):
+			continue
+		var near: bool = false
+		for step: Vector3i in [Vector3i.RIGHT, Vector3i.LEFT, Vector3i.UP, Vector3i.DOWN,
+				Vector3i.BACK, Vector3i.FORWARD]:
+			for k: int in range(1, LINING + 1):
+				if inside.call(cell + step * k):
+					near = true
+		if near:
+			lining[cell] = true
+
+	var out := Shape.new()
+	for t: int in shape.count():
+		for piece: PackedFloat64Array in _outside_box(shape.tris.slice(t * 9, t * 9 + 9),
+				box_lo, box_hi):
+			out.tris.append_array(piece)
+			out.colors.append(shape.colors[t])
+			out.two_sided.append(shape.two_sided[t])
+	for n: int in shape.lines.size() / 6:
+		var segment: PackedFloat64Array = shape.lines.slice(n * 6, n * 6 + 6)
+		var middle := PackedFloat64Array([(segment[0] + segment[3]) * 0.5,
+			(segment[1] + segment[4]) * 0.5, (segment[2] + segment[5]) * 0.5])
+		if not _point_in_box(middle, box_lo, box_hi):
+			out.lines.append_array(segment)
+	for c: Array in shape.connectors:
+		var at := PackedFloat64Array([float(c[2]), float(c[3]), float(c[4])])
+		if _point_in_box(at, box_lo, box_hi):
+			continue
+		if float(c[8]) > 0.0:
+			var end := PackedFloat64Array([at[0] + float(c[5]) * float(c[8]),
+				at[1] + float(c[6]) * float(c[8]), at[2] + float(c[7]) * float(c[8])])
+			var mid := PackedFloat64Array([(at[0] + end[0]) * 0.5, (at[1] + end[1]) * 0.5,
+				(at[2] + end[2]) * 0.5])
+			if _point_in_box(end, box_lo, box_hi) or _point_in_box(mid, box_lo, box_hi):
+				continue
+		out.connectors.append(c)
+	for stud: Array in shape.studs_added:
+		if not _point_in_box(PackedFloat64Array([stud[0], stud[1], stud[2]]), box_lo, box_hi):
+			out.studs_added.append(stud)
+	for cap: Array in shape.caps:
+		if not _point_in_box(PackedFloat64Array([cap[0], cap[1], cap[2]]), box_lo, box_hi):
+			out.caps.append(cap)
+
+	# The faces that close it: where kept plastic met plastic the box took,
+	# and all round the wall put back, which also cancels the hollow's own
+	# face it now covers.
+	var faces: Dictionary = {}     ## [axis, sign, plane] -> {Vector2i: true}
+	for cell: Vector3i in plastic:
+		if inside.call(cell):
+			continue
+		for step: Vector3i in _STEPS:
+			var next: Vector3i = cell + step
+			if inside.call(next) and plastic.has(next):
+				_note_face(faces, cell, step)
+	for cell: Vector3i in lining:
+		for step: Vector3i in _STEPS:
+			if not lining.has(cell + step):
+				_note_face(faces, cell, step)
+	_emit_faces(out, faces)
+	return {"shape": out, "problem": ""}
+
+
+const _STEPS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+	Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+
+
+static func _point_in_box(p: PackedFloat64Array, lo: PackedFloat64Array,
+		hi: PackedFloat64Array) -> bool:
+	for n: int in 3:
+		if p[n] <= lo[n] + 0.01 or p[n] >= hi[n] - 0.01:
+			return false
+	return true
+
+
+## The pieces of a triangle outside a box: cut at each of the box's faces
+## in turn, keeping what is beyond it and carrying on with the rest; what is
+## left at the end is inside, and goes. A piece lying in a face's plane is
+## outside.
+static func _outside_box(tri: PackedFloat64Array, lo: PackedFloat64Array,
+		hi: PackedFloat64Array) -> Array:
+	var kept: Array = []
+	var rest: Array = [tri]
+	for n: int in 3:
+		for side: int in 2:
+			var at: float = lo[n] if side == 0 else hi[n]
+			if is_inf(at):
+				continue
+			var next: Array = []
+			for piece: PackedFloat64Array in rest:
+				var flat: bool = true
+				for v: int in piece.size() / 3:
+					if absf(piece[v * 3 + n] - at) > 1e-6:
+						flat = false
+				if flat:
+					kept.append(piece)
+					continue
+				var halves: Array = _split_polygon(piece, n, at)
+				# Below the low face, or above the high one, is outside.
+				var beyond: PackedFloat64Array = halves[0] if side == 0 else halves[1]
+				var within: PackedFloat64Array = halves[1] if side == 0 else halves[0]
+				if beyond.size() >= 9:
+					kept.append(beyond)
+				if within.size() >= 9:
+					next.append(within)
+			rest = next
+	var out: Array = []
+	for piece: PackedFloat64Array in kept:
+		out.append_array(_triangulate(piece))
+	return out
+
+
+## The part's plastic, cell by cell in LDraw's axes: a cell is plastic when
+## the faces a vertical line through its middle crosses from above, counted
+## in (a face looking up) and out, have it inside — the voxeliser's rule.
+static func _plastic(shape: Shape) -> Dictionary:
+	var columns: Dictionary = {}       ## Vector2i -> [[y, +1 or -1], ...]
+	for t: int in shape.count():
+		var o: int = t * 9
+		var ax: float = shape.tris[o]
+		var az: float = shape.tris[o + 2]
+		var bx: float = shape.tris[o + 3]
+		var bz: float = shape.tris[o + 5]
+		var cx: float = shape.tris[o + 6]
+		var cz: float = shape.tris[o + 8]
+		var d: float = (bx - ax) * (cz - az) - (bz - az) * (cx - ax)
+		if absf(d) < 1e-9:
+			continue
+		# The normal's y is -d: a face looking up (LDraw's -y) has d > 0.
+		var way: int = 1 if d > 0.0 else -1
+		var i0: int = floori(minf(ax, minf(bx, cx)) / CELL)
+		var i1: int = floori(maxf(ax, maxf(bx, cx)) / CELL)
+		var k0: int = floori(minf(az, minf(bz, cz)) / CELL)
+		var k1: int = floori(maxf(az, maxf(bz, cz)) / CELL)
+		for i: int in range(i0, i1 + 1):
+			var x: float = (i + 0.5) * CELL
+			for k: int in range(k0, k1 + 1):
+				var z: float = (k + 0.5) * CELL
+				var w0: float = ((bx - x) * (cz - z) - (bz - z) * (cx - x)) / d
+				var w1: float = ((cx - x) * (az - z) - (cz - z) * (ax - x)) / d
+				var w2: float = 1.0 - w0 - w1
+				if w0 < 0.0 or w1 < 0.0 or w2 < 0.0:
+					continue
+				var y: float = w0 * shape.tris[o + 1] + w1 * shape.tris[o + 4] \
+					+ w2 * shape.tris[o + 7]
+				var key := Vector2i(i, k)
+				if not columns.has(key):
+					columns[key] = []
+				(columns[key] as Array).append([y, way])
+	var cells: Dictionary = {}
+	for key: Vector2i in columns:
+		var hits: Array = columns[key]
+		hits.sort_custom(func(p: Array, q: Array) -> bool: return float(p[0]) < float(q[0]))
+		var count: int = 0
+		for n: int in hits.size():
+			count += int(hits[n][1])
+			if count > 0 and n + 1 < hits.size():
+				var top: float = hits[n][0]
+				var bottom: float = hits[n + 1][0]
+				for j: int in range(ceili(top / CELL - 0.5), ceili(bottom / CELL - 0.5)):
+					cells[Vector3i(key.x, j, key.y)] = true
+	return cells
+
+
+## The plastic with each layer's enclosed hollows filled, as the collision
+## cover fills them: the hollow under a brick is hollow; the space a cut
+## opens into it is what needs a wall.
+static func _filled(plastic: Dictionary, lo: Vector3i, hi: Vector3i) -> Dictionary:
+	var out: Dictionary = {}
+	var sx: int = hi.x - lo.x + 3
+	var sz: int = hi.z - lo.z + 3
+	for j: int in range(lo.y, hi.y + 1):
+		var mask := PackedByteArray()
+		mask.resize(sx * sz)
+		for i: int in range(lo.x, hi.x + 1):
+			for k: int in range(lo.z, hi.z + 1):
+				if plastic.has(Vector3i(i, j, k)):
+					mask[(i - lo.x + 1) * sz + (k - lo.z + 1)] = 1
+		var full: PackedByteArray = PartForge._fill_holes(mask, sx, sz)
+		for a: int in sx:
+			for b: int in sz:
+				if full[a * sz + b] == 1:
+					out[Vector3i(a + lo.x - 1, j, b + lo.z - 1)] = true
+	return out
+
+
+static func _note_face(faces: Dictionary, cell: Vector3i, step: Vector3i) -> void:
+	var axis: int = 0 if step.x != 0 else (1 if step.y != 0 else 2)
+	var sign: int = step[axis]
+	var plane: int = cell[axis] + (1 if sign > 0 else 0)
+	var u: int = (axis + 1) % 3
+	var w: int = (axis + 2) % 3
+	var key := Vector3i(axis, sign, plane)
+	if not faces.has(key):
+		faces[key] = {}
+	(faces[key] as Dictionary)[Vector2i(cell[u], cell[w])] = true
+
+
+## The faces as rectangles, merged where they meet in a plane, and drawn as
+## two triangles each, looking the way they were noted.
+static func _emit_faces(out: Shape, faces: Dictionary) -> void:
+	for key: Vector3i in faces:
+		var axis: int = key.x
+		var normal := PackedFloat64Array([0.0, 0.0, 0.0])
+		normal[axis] = float(key.y)
+		var at: float = key.z * CELL
+		var u: int = (axis + 1) % 3
+		var w: int = (axis + 2) % 3
+		var left: Dictionary = (faces[key] as Dictionary).duplicate()
+		var order: Array = left.keys()
+		order.sort()
+		for start: Vector2i in order:
+			if not left.has(start):
+				continue
+			var width: int = 1
+			while left.has(start + Vector2i(width, 0)):
+				width += 1
+			var height: int = 1
+			var grows: bool = true
+			while grows:
+				for d: int in width:
+					if not left.has(start + Vector2i(d, height)):
+						grows = false
+						break
+				if grows:
+					height += 1
+			for a: int in width:
+				for b: int in height:
+					left.erase(start + Vector2i(a, b))
+			var corners: Array = []
+			for corner: Vector2i in [Vector2i(0, 0), Vector2i(width, 0), Vector2i(width, height),
+					Vector2i(0, height)]:
+				var p := PackedFloat64Array([0.0, 0.0, 0.0])
+				p[axis] = at
+				p[u] = (start.x + corner.x) * CELL
+				p[w] = (start.y + corner.y) * CELL
+				corners.append(p)
+			_quad(out, corners, normal)
+
+
+static func _quad(out: Shape, corners: Array, normal: PackedFloat64Array) -> void:
+	var a: PackedFloat64Array = corners[0]
+	var b: PackedFloat64Array = corners[1]
+	var c: PackedFloat64Array = corners[2]
+	var ux: float = b[0] - a[0]
+	var uy: float = b[1] - a[1]
+	var uz: float = b[2] - a[2]
+	var vx: float = c[0] - a[0]
+	var vy: float = c[1] - a[1]
+	var vz: float = c[2] - a[2]
+	var facing: float = (uy * vz - uz * vy) * normal[0] + (uz * vx - ux * vz) * normal[1] \
+		+ (ux * vy - uy * vx) * normal[2]
+	var ring: Array = corners.duplicate()
+	if facing < 0.0:
+		ring.reverse()
+	for tri: Array in [[ring[0], ring[1], ring[2]], [ring[0], ring[2], ring[3]]]:
+		for p: PackedFloat64Array in tri:
+			out.tris.append_array(p)
+		out.colors.append(16)
+		out.two_sided.append(0)
 
 
 ## A number as the part file writes it: exact for the mesh's 64ths of an

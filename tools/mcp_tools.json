@@ -1563,7 +1563,7 @@
     "name": "add_minifig"
   },
   {
-    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size \u2014 a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides \u2014 or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
+    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size \u2014 a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides \u2014 or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1580,6 +1580,39 @@
             75
           ],
           "type": "integer"
+        },
+        "cut": {
+          "additionalProperties": false,
+          "description": "with from: a box to cut out of the part \u2014 a corner, a notch, a step \u2014 in studs from its low x and low z (its left and back) and plates up from its bottom; the cut faces are closed and a wall put back where it opens the part's hollow underside.",
+          "properties": {
+            "plates_from": {
+              "type": "integer"
+            },
+            "plates_to": {
+              "type": "integer"
+            },
+            "x_from": {
+              "type": "integer"
+            },
+            "x_to": {
+              "type": "integer"
+            },
+            "z_from": {
+              "type": "integer"
+            },
+            "z_to": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "x_from",
+            "x_to",
+            "z_from",
+            "z_to",
+            "plates_from",
+            "plates_to"
+          ],
+          "type": "object"
         },
         "deep": {
           "description": "studs along Z: a brick's width; a slope's depth from back to foot; a bracket's plate depth. With from: the new width.",

@@ -31,7 +31,7 @@ static func schema() -> Dictionary:
 			+ "part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 "
 			+ "upright, a Technic brick 1 x 9, a brick with studs on two sides — or "
 			+ "a real part changed: from=\"3700\" with across 6, from=\"3062b\" "
-			+ "without its studs. It is checked as a person's part is (sizes the "
+			+ "without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the "
 			+ "system has, walls 1.6 mm, studs on the grid) and refused with the "
 			+ "reason if it cannot be made. Made, it is a part like any other: put "
 			+ "its number in check_design, edit_model or submit_design, and a saved "
@@ -79,6 +79,18 @@ static func schema() -> Dictionary:
 					+ "flat.")},
 				"name": {"type": "string", "description":
 					"what to call it; left out, it is named as LDraw names its parts"},
+				"cut": {"type": "object", "description": ("with from: a box to cut out "
+					+ "of the part — a corner, a notch, a step — in studs from its low x "
+					+ "and low z (its left and back) and plates up from its bottom; the "
+					+ "cut faces are closed and a wall put back where it opens the part's "
+					+ "hollow underside."),
+					"properties": {
+						"x_from": {"type": "integer"}, "x_to": {"type": "integer"},
+						"z_from": {"type": "integer"}, "z_to": {"type": "integer"},
+						"plates_from": {"type": "integer"}, "plates_to": {"type": "integer"},
+					},
+					"required": ["x_from", "x_to", "z_from", "z_to", "plates_from", "plates_to"],
+					"additionalProperties": false},
 			},
 			"additionalProperties": false,
 		},
@@ -165,6 +177,11 @@ static func _change(args: Dictionary, library: PartLibrary, from: String) -> Str
 		edit.studs = str(studs) if typeof(studs) == TYPE_STRING else ("keep" if bool(studs)
 			else "none")
 	edit.title = str(args.get("name", "")).strip_edges()
+	if args.has("cut") and args["cut"] is Dictionary:
+		var cut: Dictionary = args["cut"]
+		edit.cut = PackedInt32Array([int(cut.get("x_from", 0)), int(cut.get("z_from", 0)),
+			int(cut.get("x_to", 0)), int(cut.get("z_to", 0)), int(cut.get("plates_from", 0)),
+			int(cut.get("plates_to", 0))])
 	var result: Dictionary = CustomParts.make_modified(library, edit)
 	if not str(result["problem"]).is_empty():
 		return ("Not made: %s. %s is %d x %d studs and %d plates; a part changes only "

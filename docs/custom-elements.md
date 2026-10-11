@@ -131,10 +131,14 @@ parts** puts it in the bin under Custom.
   assistant's checker counts both as holding.
 - **A part that exists can be changed** — what a LEGO designer is asked
   for far more often than a new element. Any part, typed into "Start from a
-  part": a part of the families is resized as its family; any other is
-  changed from its own geometry (`src/parts/part_editor.gd`) — made longer,
-  wider or taller, its studs taken off or put on — so whatever the change
-  does not touch stays as LEGO made it, print included. Longer repeats a
+  part": a part of the families is resized as its family; any other — or
+  any part at all, with "Change it" — is changed from its own geometry
+  (`src/parts/part_editor.gd`): made longer, wider or taller, its studs taken
+  off or put on, a piece cut out, so whatever the change does not touch stays
+  as LEGO made it, print included. A cut-out is closed as a mould would make
+  it: a cap where plastic was cut, a 4 LDU wall where the cut opened into the
+  hollow underside; a corner cut out of 3003 has the studs and size of 2357,
+  LEGO's corner brick. Longer repeats a
   stud's slice of the part where its cut faces match: 3700 made six long has
   3894's studs, holes, pins and collision exactly, 3001 made eight long is
   3007, 98283 made four long has 15533's studs and tubes. A part with no

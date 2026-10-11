@@ -17,3 +17,7 @@ from=3941 length=0 width=0 plates=6 studs=keep
 # Studs taken off a hollow stud, which leaves a hole to close, and put on a tile:
 from=3062b length=0 width=0 plates=0 studs=none
 from=3068b length=0 width=0 plates=0 studs=fill
+# Pieces cut out: a corner from 3003, leaving the studs LEGO's corner brick
+# (2357) has, and a notch a plate high under 3001's middle, its hollow walled:
+from=3003 length=0 width=0 plates=0 studs=keep cut=1,0,2,1,0,3
+from=3001 length=0 width=0 plates=0 studs=keep cut=1,0,3,2,0,1

@@ -16,12 +16,13 @@
 ## each in use — round plates on the side studs, a tile on each upright, a
 ## pin through a hole — in white: shots/element_families.png.
 ##
-## Then parts that exist, changed from their own geometry through "Start
-## from a part": 98283 made four long beside 98283 and 15533 (the 1 x 4
-## LEGO made), 32000 made four long beside 32000, 2877 made four long
-## beside 2877, 3062b with its stud taken off and 3068bp04, a printed tile,
-## with studs put on round its print, each beside the part it came from:
-## shots/element_changed.png.
+## Then parts that exist, changed from their own geometry with "Change it":
+## 98283 made four long beside 98283 and 15533 (the 1 x 4 LEGO made), 32000
+## made four long beside 32000, 2877 made four long beside 2877, 3062b with
+## its stud taken off and 3068bp04, a printed tile, with studs put on round
+## its print, 3003 with a corner cut out beside 3003 and 2357 (LEGO's corner
+## brick), and 3001 with a notch cut under its middle beside 3001, each
+## beside the part it came from: shots/element_changed.png.
 ##
 ## A window is needed because the preview and the thumbnails are drawn by
 ## SubViewports. Run it on Xvfb, never on somebody's screen (tools/check.sh
@@ -198,11 +199,13 @@ func _changed(button: Button, dialog: ElementDialog, library: PartLibrary,
 		["2877", {"across": 4}, ["2877"]],
 		["3062b", {"studs_top": "none"}, ["3062b"]],
 		["3068bp04", {"studs_top": "fill"}, ["3068bp04"]],
+		["3003", {"cut": [1, 0, 2, 1, 0, 3]}, ["3003", "2357"]],
+		["3001", {"cut": [1, 0, 3, 2, 0, 1]}, ["3001"]],
 	]
 	var rows: Array = []
 	for change: Array in changes:
 		button.pressed.emit()
-		var started: bool = dialog.start_from(str(change[0]))
+		var started: bool = dialog.change_part(str(change[0]))
 		# Changed as itself, not redrawn as one of the families.
 		var as_itself: bool = dialog.edit() != null
 		for key: String in change[1]:
@@ -225,7 +228,7 @@ func _changed(button: Button, dialog: ElementDialog, library: PartLibrary,
 			var part_id: String = row[n]
 			var wide: float = library.mesh_for(part_id).bounds.size.x
 			placed.append(_put(world, builder, library, part_id, MADE if n == 0 else LIBRARY,
-				Vector3(cursor + wide * 0.5, 0.0, -index * 50.0)))
+				Vector3(cursor + wide * 0.5, 0.0, -index * 52.0)))
 			cursor += wide + 16.0
 	_main.call("_lay_baseplate")
 	builder.held_part = ""

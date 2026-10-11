@@ -680,16 +680,17 @@ bounds, studs, holes and tubes (87087, 30414, 99781, 99780, 44728, 3700,
 the pipeline byte for byte. A part that exists can be changed rather than
 redrawn: any part, from its own built mesh (so in a browser too), made
 longer, wider or taller by repeating a slice of it where its cut faces
-match, its studs taken off or put on; 3700 made six long is 3894 to the
-connector and the collision cell, and a part with no such slice is refused
-in words. And the design loop makes the parts it lacks: `make_part`, in the
+match, its studs taken off or put on, a piece cut out with its cut faces
+capped and its hollow walled; 3700 made six long is 3894 to the connector
+and the collision cell, a corner cut out of 3003 has 2357's studs, and a
+part with no slice to repeat is refused in words. And the design loop makes the parts it lacks: `make_part`, in the
 assistant's tools and every MCP session's, makes a family part or changes a
 real one through the same rules a person's part goes through, and the
 design builds with it. Next: families with clips and bars (the checker's
-round joints need the catalogue's rounds), wedge plates and corner shapes, a
-cut-out in a part that exists (a boolean with the walls put back), axle
-holes in the app's build, and draft and wall checks for a part a mould
-designer could take.
+round joints need the catalogue's rounds), wedge plates, cut-outs that are
+not boxes (a cut through a round part is closed in 2 LDU steps), axle holes
+in the app's build, and draft and wall checks for a part a mould designer
+could take.
 
 ## How progress is judged
 

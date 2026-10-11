@@ -35,7 +35,13 @@ var _edit: PartEditor.Edit = null
 var _source_size := Vector3i.ONE
 var _modify_note: Label
 var _studs_top: Dictionary = {}        ## "keep", "none", "fill" -> its Button
+## A cut-out's from and to: across, deep (studs from the part's left and
+## back) and up (plates from its bottom), six SpinBoxes in that order.
+var _cut: Array[SpinBox] = []
 var _start: Button
+var _change_it: Button
+## The controls' scrolling area: what is outside it cannot be pressed.
+var _scroll: ScrollContainer
 ## The part whose geometry is on its way, to change once it is here.
 var _waiting_for: String = ""
 var _from: LineEdit
@@ -171,7 +177,10 @@ func _build() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Tabbing to a box below the fold brings it into view.
+	scroll.follow_focus = true
 	outer.add_child(scroll)
+	_scroll = scroll
 	var controls := VBoxContainer.new()
 	controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	controls.add_theme_constant_override("separation", 8)
@@ -188,8 +197,18 @@ func _build() -> void:
 	from_row.add_child(_from)
 	_start = Button.new()
 	_start.text = "Start from it"
+	_start.tooltip_text = ("One of the families is resized as its family; any other part "
+		+ "is changed as itself")
 	_start.pressed.connect(func() -> void: _start_from(_from.text))
 	from_row.add_child(_start)
+	# Even a plain brick changed as itself: the only way to cut a piece out
+	# of 3001, which "Start from it" redraws as a brick.
+	_change_it = Button.new()
+	_change_it.text = "Change it"
+	_change_it.tooltip_text = ("Change the part itself, from its own geometry: longer, "
+		+ "wider, taller, studs off or on, a piece cut out")
+	_change_it.pressed.connect(func() -> void: _change_part(_from.text))
+	from_row.add_child(_change_it)
 	_modify_note = Label.new()
 	_modify_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_modify_note.add_theme_font_size_override("font_size", 11)
@@ -290,6 +309,46 @@ func _build() -> void:
 				_changed())
 		studs_row.add_child(choice)
 		_studs_top[way] = choice
+
+	# A cut-out: a box taken out, in studs from the left and the back and
+	# plates from the bottom. "to" at 0 is none.
+	var cut_holder := VBoxContainer.new()
+	cut_holder.add_theme_constant_override("separation", 3)
+	column.add_child(cut_holder)
+	_rows["cut"] = cut_holder
+	var cut_words := Label.new()
+	cut_words.text = ("Cut out: studs from its left and back, plates from its bottom "
+		+ "(to 0 for none)")
+	cut_words.add_theme_font_size_override("font_size", 11)
+	cut_words.modulate = Color(1, 1, 1, 0.7)
+	cut_holder.add_child(cut_words)
+	var cut_grid := GridContainer.new()
+	cut_grid.columns = 5
+	cut_grid.add_theme_constant_override("h_separation", 6)
+	cut_holder.add_child(cut_grid)
+	for row: Array in [["Across", ElementMaker.MOST_STUDS], ["Deep", ElementMaker.MOST_STUDS],
+			["Up", ElementMaker.MOST_PLATES]]:
+		var name_label := Label.new()
+		name_label.text = row[0]
+		name_label.add_theme_font_size_override("font_size", 11)
+		cut_grid.add_child(name_label)
+		for end: String in ["from", "to"]:
+			var end_label := Label.new()
+			end_label.text = end
+			end_label.add_theme_font_size_override("font_size", 11)
+			end_label.modulate = Color(1, 1, 1, 0.6)
+			cut_grid.add_child(end_label)
+			var box := SpinBox.new()
+			box.min_value = 0
+			box.max_value = int(row[1])
+			box.step = 1
+			box.rounded = true
+			box.value_changed.connect(func(_v: float) -> void:
+				if not _filling and _edit != null:
+					_edit.cut = _cut_asked()
+					_changed())
+			cut_grid.add_child(box)
+			_cut.append(box)
 
 	# Studs-not-on-top: a brick with studs on its faces, for building a
 	# face sideways.
@@ -422,6 +481,16 @@ func _start_from(part_id: String, quietly: bool = false) -> bool:
 	return true
 
 
+## "Change it": the part as itself, whichever family it is or is not.
+func _change_part(part_id: String) -> bool:
+	var id: String = part_id.strip_edges().to_lower().trim_suffix(".dat")
+	if library == null or not library.parts.has(id):
+		_say("There is no part %s in the library." % id, true)
+		return false
+	_start_modify(id)
+	return true
+
+
 ## Change [param part_id] itself. Its geometry may have to be fetched first
 ## (a browser has only some parts' to hand); the controls wait for it.
 func _start_modify(part_id: String) -> void:
@@ -448,6 +517,17 @@ func _on_fetched(part_id: String) -> void:
 		_start_modify(part_id)
 
 
+## The cut-out the six boxes ask for, as [member PartEditor.Edit.cut]; none
+## while any "to" is not past its "from".
+func _cut_asked() -> PackedInt32Array:
+	var v: Array[int] = []
+	for box: SpinBox in _cut:
+		v.append(int(box.value))
+	if v[1] <= v[0] or v[3] <= v[2] or v[5] <= v[4]:
+		return PackedInt32Array()
+	return PackedInt32Array([v[0], v[2], v[1], v[3], v[4], v[5]])
+
+
 ## A size control changed while changing a part: the part's own size is
 ## no change at all.
 func _edit_size(field: String, value: int) -> void:
@@ -467,6 +547,7 @@ func _show_spec() -> void:
 		return
 	_modify_note.visible = false
 	_rows["studs_top"].visible = false
+	_rows["cut"].visible = false
 	_studs.visible = true
 	_rows["plates"].get_child(0).text = "Height, plates (3 = a brick)"
 	_filling = true
@@ -524,7 +605,13 @@ func _show_edit() -> void:
 	(_studs_top[_edit.studs] as Button).set_pressed_no_signal(true)
 	_name.text = _edit.title
 	for row: String in _rows:
-		_rows[row].visible = row in ["across", "deep", "plates", "studs_top"]
+		_rows[row].visible = row in ["across", "deep", "plates", "studs_top", "cut"]
+	var cut_values: PackedInt32Array = _edit.cut if _edit.cut.size() == 6 \
+		else PackedInt32Array([0, 0, 0, 0, 0, 0])
+	# The boxes are across from, to; deep from, to; up from, to.
+	for n: int in 6:
+		_cut[n].value = [cut_values[0], cut_values[2], cut_values[1], cut_values[3],
+			cut_values[4], cut_values[5]][n]
 	_studs.visible = false
 	(_rows["across"].get_child(0) as Label).text = "Length, studs"
 	(_rows["deep"].get_child(0) as Label).text = "Width, studs"
@@ -815,10 +902,24 @@ func controls_by_name() -> Dictionary:
 		named["element family " + family] = _family_buttons[family]
 	named["element from"] = _from
 	named["element start"] = _start
+	named["element change"] = _change_it
 	for way: String in _studs_top:
 		if _mode == "modify":
 			named["element studs " + way] = _studs_top[way]
-	return named
+	if _mode == "modify":
+		var names: Array[String] = ["across from", "across to", "deep from", "deep to",
+			"up from", "up to"]
+		for n: int in _cut.size():
+			named["element cut " + names[n]] = _cut[n].get_line_edit()
+	# Only what can be pressed: a box scrolled out of the dialog's view still
+	# has a place, and a click there lands on the model behind the dialog.
+	var shown: Dictionary = {}
+	for name: String in named:
+		var control: Control = named[name]
+		if control.is_visible_in_tree() and (not _scroll.is_ancestor_of(control)
+				or _scroll.get_global_rect().has_point(control.get_global_rect().get_center())):
+			shown[name] = control
+	return shown
 
 
 ## For a probe: the spec on screen and the part it built.
@@ -853,6 +954,16 @@ func set_field(field: String, value: Variant) -> void:
 		"way":
 			_way.select(0 if str(value) == "down" else 1)
 			_way.item_selected.emit(_way.selected)
+		"cut":
+			# [x0, z0, x1, z1, p0, p1], as PartEditor.Edit.cut.
+			var c: Array = value
+			_filling = true
+			for n: int in 6:
+				_cut[n].value = [c[0], c[2], c[1], c[3], c[4], c[5]][n]
+			_filling = false
+			if _edit != null:
+				_edit.cut = _cut_asked()
+				_changed()
 		"studs_top":
 			var choice: Button = _studs_top.get(str(value))
 			if choice != null:
@@ -886,6 +997,14 @@ func press_angle(angle: int) -> void:
 		if button.text == "%d°" % angle:
 			button.pressed.emit()
 	settle()
+
+
+## Press "Change it" with [param part_id] in the box, as a person would.
+func change_part(part_id: String) -> bool:
+	_from.text = part_id
+	var ok: bool = _change_part(part_id)
+	settle()
+	return ok
 
 
 func start_from(part_id: String) -> bool:

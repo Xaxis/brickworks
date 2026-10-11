@@ -86,6 +86,10 @@ func _initialize() -> void:
 	said = await _call({"from": "3700", "across": 6})
 	_ok(said.begins_with("Made part \"bw-3700-l6\"") and said.contains("5 Technic holes"),
 		"3700 changed to six long, its own holes repeated: %s" % said.left(140))
+	said = await _call({"from": "3003", "cut": {"x_from": 1, "x_to": 2, "z_from": 0, "z_to": 1,
+		"plates_from": 0, "plates_to": 3}})
+	_ok(said.begins_with("Made part \"bw-3003-c") and said.contains("3 studs on top"),
+		"3003 with a corner cut out, a corner brick: %s" % said.left(140))
 
 	print("\nit refuses what a person is refused, in the same words")
 	for refused: Array in [
