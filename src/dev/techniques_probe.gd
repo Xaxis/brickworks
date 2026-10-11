@@ -176,8 +176,25 @@ func _run() -> void:
 		not Techniques.named("wide round tower").is_empty())
 	_check("...and the fill table does not offer a tower instead",
 		not assistant.guidance().contains("a round tower   ellipse"))
-	_check("...and says what to call for instead",
-		assistant.guidance().contains("wide round tower"))
+	# Read with its line breaks' indents folded, as the model reads it.
+	var flat: String = " ".join(assistant.guidance().split(" ", false))
+	_check("...and says what to call for instead: the round pattern",
+		flat.contains("A round tower is the round pattern"))
+	# And the example is a ring: its four corner rounds were turned as a bow
+	# tie for a year, and it stacked and checked just the same.
+	var ring: Dictionary = Techniques.named("wide round tower")
+	var leans := PackedStringArray()
+	for raw: Variant in ring.get("bricks", []):
+		var brick: Dictionary = raw
+		if str(brick["part"]) != "48092" or float(brick["y"]) != 0.0:
+			continue
+		var mesh: Lbm.PartMesh = library.mesh_for("48092")
+		var lean: Vector2 = Rounds.lean(mesh, int(brick["rot"]))
+		# Out of the ring: away from its middle at (4, 4).
+		var out := Vector2(signf(float(brick["x"]) - 3.5), signf(float(brick["z"]) - 3.5))
+		leans.append("ok" if lean == out else "in")
+	_check("...and its four corner rounds each curve out of the ring: %s" % ", ".join(leans),
+		leans.size() == 4 and not leans.has("in"))
 
 	_check("there are enough of them to be worth having",
 		Techniques.names().size() >= 6)

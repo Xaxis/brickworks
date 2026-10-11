@@ -1215,6 +1215,31 @@ not as a detail. Look at whether the odd one is doing something — a \
 light, a marking, a stripe that carries across — and if it is not, \
 make it match. A single contrasting piece that is clearly deliberate \
 is fine; it is the structural part in the wrong colour that is not.
+  Windows as a grid. Rows of identical lit windows make any building an \
+office block. Few windows, each with a reason — arched, framed, varied, \
+gathered where something happens — their colour and light from the \
+subject: a dark fortress has dark slits, a lighthouse one lit lantern.
+  A dark face with nothing on it. A big face of plain bricks in black or \
+another dark colour reads as a hole in the picture. Texture in the same \
+colour (grille bricks, masonry, bricks with a handle, cheese slopes) for \
+most of it, a second tone in bands where the ledges are (sprinkled \
+through the bricks it is noise), and depth — an inset or outset course, \
+a pilaster, a rib — so light and shadow draw the form.
+  No silhouette. A tall thing the same width all the way up, with its top \
+stuck on. Its profile is the design: taper, flare at the foot, a waist, \
+facets catching light, a crown that grows out of the body.
+  The base as an afterthought. Rubble ringed round the foot. A composed \
+plinth — steps, a terrace, ground that rises to the door — leads the eye \
+up.
+  The wrong technique for the shape. Something round built of square \
+bricks, a slanted edge stepped, a hull or a body boxy where it curves, \
+a hinge or a leg built rigid. WHAT THE SUBJECT NEEDS names the call for \
+each; replace the shape with it.
+  Touches. Is there anything a person would find and smile at — a \
+figure or a small scene, a printed tile, a nod to the subject's story, \
+something that opens or turns, a stand with a nameplate for a display \
+model? An expert adds them unasked; a model with none is finished only \
+as a shape.
 
 Use view_model with where= to look closely at whatever you are \
 judging. A whole model in one frame makes every assembly on it a few \
@@ -1829,6 +1854,12 @@ its walkway, the sill and head of a window, the top of a tower, a \
 corner, a doorway, a base. Use the parts real sets of this kind reach \
 for, above, where the shape calls for them. A different piece is the \
 point; more of the same one is not.
+
+Four things to catch by name: windows as a repeating grid (few, each \
+with a reason, coloured by the subject); a face of one dark colour with \
+nothing on it (texture in that colour, a second tone in bands, depth); a shape \
+with no profile (taper, flare, a top that grows out of it); and a base \
+that is an afterthought (a composed plinth that leads the eye up).
 
 Keep to the {name}; every other assembly gets its own turn. look_at_model \
 with where= lists its bricks and their numbers, if you need to take any \
@@ -4193,6 +4224,13 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
 	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
 	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	# A black face gets its second tone unless told otherwise — in bands, a
+	# course of it every BAND_EVERY, where a real tower's string courses and
+	# setbacks are. The homepage's Orthanc was black on black and read as a
+	# void; the next, sprinkled with dark bluish grey bricks and dressing,
+	# read as noise. LEGO's 10237 is 13% dark bluish grey, on its ledges.
+	var band_colour: int = int(pattern.get("band_color", pattern.get("band_colour",
+		SECOND_TONE.get(colour, -1) if mix_colour < 0 else -1)))
 	# Dressed unless asked not to be. Both were zero unless given, the
 	# guidance said to give them, and no run did: the thirteenth Orthanc
 	# stood a prism of plain faces (61% plain, 1% on its side) which the
@@ -4244,8 +4282,15 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var spec := {"x": cx, "y": y0, "z": cz, "sides": sides, "radius": radius,
 		"courses": courses, "thick": thick, "colour": colour,
 		"mix_colour": mix_colour, "mix": mix, "masonry": masonry,
+		"band_colour": band_colour,
 		"sideways": sideways, "open": open, "left_out": left_out,
-		"windows": bool(pattern.get("windows", true))}
+		# Only when asked. They were on by default, Trans-Yellow every eight
+		# courses up every face, and the homepage's Orthanc read as an
+		# office block: 228 lit 1 x 1s in rows. "windows": true lays them
+		# narrow and few, in "window_color" (dark unless said).
+		"windows": bool(pattern.get("windows", false)),
+		"window_colour": int(pattern.get("window_color", pattern.get("window_colour",
+			WINDOW_COLOUR)))}
 	if pattern.has("piers"):
 		return _cluster(pattern, spec, model, index, trouble)
 	# Each face as a cluster's core lays one, its outside row run on into the
@@ -4294,8 +4339,13 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 	for n: int in runs.size():
 		if int(runs[n][1]) > int(runs[widest][1]):
 			widest = n
+	var band_colour: int = int(spec.get("band_colour", -1))
 	for course: int in courses:
 		var y: float = base + 3.0 * course
+		# A string course in the second tone, the whole way round.
+		var tone: int = colour
+		if band_colour >= 0 and course % BAND_EVERY == BAND_EVERY - 1 and course < courses - 1:
+			tone = band_colour
 		for n: int in runs.size():
 			var run: Array = runs[n]
 			var left: float = run[0]
@@ -4308,7 +4358,7 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			var gap: float = NAN
 			if windows.has(course) and n == widest and width >= 2:
 				gap = left + floor(width / 2.0)
-				made.append(_prism_brick(name, "3005", WINDOW_COLOUR, gap, y,
+				made.append(_prism_brick(name, "3005", int(spec.get("window_colour", WINDOW_COLOUR)), gap, y,
 					radius - 1.0, 0, -1, 0.0, 0.0))
 			# Two thick: a course of two-wide bricks, then a course of two
 			# rows of one-wide ones, which the courses either side tie
@@ -4318,13 +4368,13 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# Orthanc built with it came out 94% plain.
 			if thick == 2 and course % 2 == 0:
 				_lay_row_around(made, name, wide, left, width, gap, y, radius - 2.0,
-					course, colour, mix_colour, mix, 0.0, 0.0)
+					course, tone, mix_colour, mix, 0.0, 0.0)
 				if not is_nan(gap):
-					made.append(_prism_brick(name, "3005", colour, gap, y,
+					made.append(_prism_brick(name, "3005", tone, gap, y,
 						radius - 2.0, 0, mix_colour, mix, 0.0))
 				if extra > 0:
 					_lay_row(made, name, narrow, left + width, extra, y, radius - 1.0,
-						course, colour, mix_colour, mix, 0.0, 0.0)
+						course, tone, mix_colour, mix, 0.0, 0.0)
 				continue
 			# The bond of the one-wide rows counts their own courses: on a
 			# two-thick face they are only ever the odd ones, and counted by
@@ -4332,11 +4382,11 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# only, so not one of them could be a masonry brick.
 			var bond: int = course / 2 if thick == 2 else course
 			_lay_row_around(made, name, narrow, left, width + extra, gap, y,
-				radius - 1.0, bond, colour, mix_colour, mix, spec["masonry"],
+				radius - 1.0, bond, tone, mix_colour, mix, spec["masonry"],
 				spec["sideways"], clear)
 			if thick == 2:
 				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
-					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
+					bond + 1, tone, mix_colour, mix, 0.0, 0.0)
 
 
 ## A row as [method _lay_row] lays it, but for the [param across] studs from
@@ -4490,14 +4540,34 @@ func _prism_brick(section: String, part: String, colour: int, x: float, y: float
 	if Patterns.MASONRY.has(part) and rot == 0 \
 			and Patterns._scatter(x, y, z + float(section.hash() % 97), 47) < masonry:
 		one["part"] = Patterns.MASONRY[part]
+	# And on a dark wall, as many again as grille: 10237 breaks its black
+	# with 86 grille bricks, which catch light where masonry's shallow relief
+	# in black does not. Its grille faces out the way masonry's does.
+	elif part == "3004" and rot == 0 and _is_dark(colour) \
+			and Patterns._scatter(x, y, z + float(section.hash() % 97), 59) < masonry:
+		one["part"] = "2877"
 	return one
 
 
-## A prism's windows: Trans-Yellow, one stud wide and two courses tall, in
-## the outside row, every so many courses (the inside row stays whole, so a
-## window is lit and never seen through).
-const WINDOW_COLOUR := 46
-const WINDOW_EVERY := 8
+## Whether a colour is dark enough that a plain face of it reads as a hole.
+func _is_dark(code: int) -> bool:
+	var colour: PartLibrary.BrickColor = library.colors.get(code) if library != null else null
+	return colour != null and colour.rgb.get_luminance() <= DARK_LUMINANCE
+
+
+## A prism's windows, when asked: one stud wide and two courses tall, in the
+## outside row, every so many courses (the inside row stays whole, so a
+## window is never seen through). Trans-Brown by default, LEGO's smoked
+## glass: a dark slit. They were Trans-Yellow every eight courses on every
+## face, and lit an Orthanc up as an office block.
+const WINDOW_COLOUR := 40
+const WINDOW_EVERY := 16
+## Courses from one band of a black face's second tone to the next.
+const BAND_EVERY: int = Patterns.BAND_EVERY
+
+## The second tone a wall of a dark colour gets unless told: dark bluish
+## grey through black, as 10237 Tower of Orthanc has it (66% and 13%).
+const SECOND_TONE: Dictionary = Patterns.SECOND_TONE
 ## How far round from straight back a cluster's core is opened, in degrees:
 ## an octagon's three back faces, a decagon's three, a twelve-sided core's
 ## five.
@@ -5177,9 +5247,10 @@ func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 	# Narrow lit windows, two courses tall, every WINDOW_EVERY courses up the
 	# face, alternate faces half a storey apart: Orthanc's faces have them,
 	# and the sixteenth, whose dressing is now black on black, had none.
+	# Asked for, they are few: every other face, a storey apart.
 	var windows: Dictionary = {}
-	if windowed and bool(spec.get("windows", true)):
-		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash()) % 2 == 1 else 0)
+	if windowed and bool(spec.get("windows", false)) and absi(name.hash()) % 2 == 0:
+		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash() / 2) % 2 == 1 else 0)
 		# Over a door, the first a storey above its arch.
 		if not is_nan(door):
 			first = DOOR_BELOW + DOOR_ARCH_COURSES + WINDOW_EVERY / 2
@@ -5553,6 +5624,15 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 	if _side_stud(facing).is_empty():
 		trouble.append("the 1x1 brick with a side stud has not arrived yet")
 		return []
+	# What each stud carries: a mix by default, or one kind for a band of
+	# detail — rivets down a hull plate, round tiles for portholes or lights
+	# (in a transparent face_color), flat tiles for a smooth panel.
+	var dress: String = str(pattern.get("dress", "mixed")).to_lower()
+	var only: Array = DRESSES.get(dress, [])
+	if dress != "mixed" and not DRESSES.has(dress):
+		trouble.append("studs_out dresses its studs mixed, tiles, rivets, round "
+			+ "or lights")
+		return []
 	var along_x: bool = facing in ["+z", "-z"]
 	var made: Array = []
 	for course: int in courses:
@@ -5565,7 +5645,7 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 			var tone: int = face_colour
 			if mix_colour >= 0 and Patterns._scatter(x, y, z, 29) < 0.3:
 				tone = mix_colour
-			var dressing: Dictionary = _dress(one, facing, tone)
+			var dressing: Dictionary = _dress(one, facing, tone, only)
 			made.append(one)
 			if not dressing.is_empty():
 				made.append(dressing)
@@ -5585,6 +5665,11 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 					n2 += int(pair[0])
 					break
 	return made
+
+
+## The parts a studs_out band's studs carry, by the kind of band asked.
+const DRESSES: Dictionary = {"tiles": ["3070b"], "rivets": ["4073"],
+	"round": ["98138"], "lights": ["98138"]}
 
 
 func _tie(x0: float, y: float, z0: float, from: int, _long: int,
@@ -5623,7 +5708,8 @@ func _side_stud(facing: String) -> Array:
 ## Turn a 1x1 brick with a side stud (87087) to face the way asked, and
 ## return the part laid on its stud: a tile, round tile, round plate or
 ## cheese slope, chosen by where it is. {} when it cannot be worked out.
-func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
+func _dress(brick: Dictionary, facing: String, tone: int = -1,
+		only: Array = []) -> Dictionary:
 	if not facing in ["+x", "-x", "+z", "-z"]:
 		return {}
 	var side: Array = _side_stud(facing)
@@ -5640,6 +5726,8 @@ func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
 	if facing in ["-x", "-z"]:
 		# Thicker than a plate hangs the other way on these sides.
 		faces = ["3070b", "98138", "4073", "3024"]
+	if not only.is_empty():
+		faces = only
 	var x: float = float(brick["x"])
 	var y: float = float(brick["y"])
 	var z: float = float(brick["z"])
@@ -6405,8 +6493,15 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not stepped.is_empty():
 		advice.append(stepped)
 
-	# And whether there is a line it would come apart along.
-	var seam: String = _unbonded_seam(box_of)
+	# And whether there is a line it would come apart along. Not between
+	# round parts: two cylinder halves back to back, four corner rounds of a
+	# ring and a booster beside its core are how a set builds a round, each
+	# column tied by a round plate, and a rocket was told to stagger them.
+	var walls: Dictionary = {}
+	for index: int in box_of:
+		if not Style.kinds_of(model.placements[index].part).contains("c"):
+			walls[index] = box_of[index]
+	var seam: String = _unbonded_seam(walls)
 	if not seam.is_empty():
 		advice.append(seam)
 
@@ -6419,6 +6514,19 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var coarse: String = _mostly_big_plates(model)
 	if not coarse.is_empty():
 		advice.append(coarse)
+
+	# And whether it has a touch nobody asked for.
+	var touches: String = _touches(model)
+	if not touches.is_empty():
+		advice.append(touches)
+
+	# And the three things that made the homepage's Orthanc "the ugliest
+	# piece of shit I've ever seen", each a fault of any subject: windows
+	# in a grid, a dark face of plain bricks, a tall thing with no profile.
+	for said: String in [_window_grid(model), _dark_and_plain(model),
+			_straight_shaft(model, box_of)]:
+		if not said.is_empty():
+			advice.append(said)
 
 	# And whether a nearly-symmetric model has a brick on one side only.
 	var lopsided: String = _lopsided(model, box_of, lattice)
@@ -6864,7 +6972,10 @@ func _mostly_big_plates(model: Model) -> String:
 		counted += 1
 		var footprint: Vector2i = info.footprint_studs()
 		var studs: float = float(footprint.x) * float(footprint.y)
-		if studs >= BIG_PART_STUDS:
+		# A round brick or a cylinder half is the skin of a rocket, not a
+		# plate under it: a body laid in them read as "structure, not yet
+		# finished" at every size.
+		if studs >= BIG_PART_STUDS and not Style.kinds_of(placement.part).contains("c"):
 			big += 1
 		elif studs <= 2.0:
 			small += 1
@@ -6884,6 +6995,212 @@ func _mostly_big_plates(model: Model) -> String:
 		+ "second colour where a panel line would run. The eight models "
 		+ "this app ships are 9 to 44 per cent big parts. If this is "
 		+ "meant to be a blocked-out shape, nothing needs doing.")
+
+
+## Whether a model has the touches nearly every real set has and nobody
+## asks for: a printed or stickered part, and something that moves.
+##
+## Measured over Rebrickable's inventories of the 2,517 sets of 300 parts
+## or more since 2015: 95% carry a printed or stickered part and 94% a
+## hinge, a turntable, a Technic pin or a ball joint, so each one missing
+## is a tail of one set in twenty, the rule every advice here keeps. Every
+## design the owner judged had neither: a Falcon Heavy of 4,252 parts with
+## one printed minifigure head in it, an Orthanc with figures but nothing
+## that opened. Said with the other touches an expert adds, because the
+## advice is where a design that thinks it is finished still listens.
+func _touches(model: Model) -> String:
+	if model.placements.size() < TOUCHES_FROM or library == null:
+		return ""
+	var printed: bool = false
+	var moving: bool = false
+	for placement: Placement in model.placements:
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		if info == null:
+			continue
+		if _decorated(info):
+			printed = true
+		if Style.kinds_of(placement.part).contains("a") or info.has_connector("pin") \
+				or info.has_connector("ball"):
+			moving = true
+	for section: Section in model.sections.values():
+		if section.hinge:
+			moving = true
+	if printed and moving:
+		return ""
+	var missing := PackedStringArray()
+	if not printed:
+		missing.append("no printed or stickered part, where 95% of real sets of 300 "
+			+ "parts or more have one — a gauge, a screen, a map, a logo, a nameplate: "
+			+ "search_parts with \"print\" or \"sticker\" and the subject's own word")
+	if not moving:
+		missing.append("nothing that moves, where 94% have a hinge, a turntable, a "
+			+ "Technic pin or a ball joint — a hatch, a door, a ramp, a turret: a "
+			+ "section with hinge: true")
+	return ("The touches an expert adds unasked: this has " + "; and ".join(missing)
+		+ ". While you are there: a figure who belongs to it or a small scene "
+		+ "hidden in it (add_minifig), a nod to the subject's story, and for a "
+		+ "display model a stand with a nameplate.")
+
+
+## Windows laid as a grid: one transparent part in one colour, many of
+## them, most in rows. The homepage's Orthanc had 71 lit yellow 1 x 1s up
+## every face at the same heights and read as an office block; the
+## owner's verdict was the worst yet. A real set places few windows, each
+## with a reason, and takes their colour from the subject.
+func _window_grid(model: Model) -> String:
+	if library == null:
+		return ""
+	var groups: Dictionary = {}   ## "part colour" -> [y, ...]
+	for placement: Placement in model.placements:
+		var colour: PartLibrary.BrickColor = library.colors.get(placement.color)
+		# Lit: a warm transparent colour, yellow to red. Glass in rows is
+		# how real buildings are glazed — Big Ben's facade is 380 trans-brown
+		# 1 x 1s, Tower Bridge's 48 clear panes — and asked of eight real
+		# sets, counting every transparent colour fired on three of them.
+		if colour == null or colour.finish != "transparent" or colour.rgb.s < 0.4 \
+				or colour.rgb.v < 0.5 or (colour.rgb.h > 0.18 and colour.rgb.h < 0.95):
+			continue
+		var key: String = "%s %d" % [placement.part, placement.color]
+		if not groups.has(key):
+			groups[key] = []
+		(groups[key] as Array).append(snappedf(placement.y, 0.25))
+	# The biggest group first: that is the grid the eye sees.
+	var order: Array = groups.keys()
+	order.sort_custom(func(a: String, b: String) -> bool:
+		return (groups[a] as Array).size() > (groups[b] as Array).size())
+	for key: String in order:
+		var heights: Array = groups[key]
+		if heights.size() < WINDOW_GRID:
+			continue
+		var at: Dictionary = {}
+		for y: float in heights:
+			at[y] = int(at.get(y, 0)) + 1
+		var in_rows: int = 0
+		for y: float in heights:
+			if int(at[y]) >= 4:
+				in_rows += 1
+		if float(in_rows) < 0.7 * heights.size():
+			continue
+		var named: PackedStringArray = key.split(" ")
+		return ("%d of one lit window (%s in %s), most of them in rows at the same "
+			% [heights.size(), named[0], _colour_name(int(named[1]))]
+			+ "heights: a grid of windows reads as an office block, whatever the "
+			+ "building is. Few windows, each with a reason — arched, framed, "
+			+ "varied, gathered where something happens inside — and their colour "
+			+ "from the subject: a dark fortress has dark slits, a lighthouse one "
+			+ "lit lantern. Take most of these out and make the rest count.")
+	return ""
+
+
+## A model mostly plain bricks in one dark colour. In a picture a dark face
+## with nothing on it is a hole: the homepage's Orthanc was black on black
+## and read as a void. 10237, LEGO's own Orthanc, is 66% black and breaks
+## it with 86 grille bricks, 63 headlight bricks, 58 bricks with handles,
+## 47 cheese slopes, 36 curved 10 x 1 ribs and 13% dark bluish grey.
+func _dark_and_plain(model: Model) -> String:
+	if model.placements.size() < DARK_FROM or library == null:
+		return ""
+	var dark: Dictionary = {}
+	for placement: Placement in model.placements:
+		var colour: PartLibrary.BrickColor = library.colors.get(placement.color)
+		if colour == null or colour.rgb.get_luminance() > DARK_LUMINANCE \
+				or not Style.kinds_of(placement.part).contains("p"):
+			continue
+		dark[placement.color] = int(dark.get(placement.color, 0)) + 1
+	for code: int in dark:
+		var share: float = float(dark[code]) / model.placements.size()
+		if share < DARK_AND_PLAIN:
+			continue
+		return ("%d%% of the model is plain bricks and plates in %s. A big dark "
+			% [roundi(share * 100.0), _colour_name(code)]
+			+ "face with nothing on it reads as a hole in a picture. Break it up "
+			+ "the way 10237 Tower of Orthanc breaks up its black: texture in the "
+			+ "same colour (grille bricks 2877, masonry 98283, bricks with a "
+			+ "handle 2921, headlight bricks, cheese slopes, ingots) for most "
+			+ "of it; a second tone in bands, where the ledges and string "
+			+ "courses are (dark bluish grey on black: band_color), never "
+			+ "sprinkled through the bricks, which reads as noise; and depth — "
+			+ "an inset or outset course, a pilaster, a rib — so light and "
+			+ "shadow draw the form.")
+	return ""
+
+
+## A tall model the same width all the way up: no taper, no flare, no
+## crown growing out of it. The homepage's Orthanc was square shafts
+## glued together, the horns reading as spikes stuck on. Not said of a
+## subject that is a straight round (a rocket, a column): its straightness
+## is its shape.
+func _straight_shaft(model: Model, box_of: Dictionary) -> String:
+	if box_of.size() < DARK_FROM:
+		return ""
+	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	var traits: Dictionary = Style.traits_of(about)
+	if traits.has("round") or traits.has("vehicle"):
+		return ""
+	var low: Dictionary = {}    ## plate layer -> Vector2i low x, z in cells
+	var high: Dictionary = {}
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var lo: Vector3i = corners[0]
+		var hi: Vector3i = corners[1]
+		for layer: int in range(floori(float(lo.y) / BrickLattice.CELLS_PER_PLATE),
+				floori(float(hi.y) / BrickLattice.CELLS_PER_PLATE) + 1):
+			var was_lo: Vector2i = low.get(layer, Vector2i(lo.x, lo.z))
+			var was_hi: Vector2i = high.get(layer, Vector2i(hi.x, hi.z))
+			low[layer] = Vector2i(mini(was_lo.x, lo.x), mini(was_lo.y, lo.z))
+			high[layer] = Vector2i(maxi(was_hi.x, hi.x), maxi(was_hi.y, hi.z))
+	var layers: Array = low.keys()
+	if layers.size() < 30:
+		return ""
+	layers.sort()
+	var tall: float = layers.size() / 2.5            ## studs
+	var widths: Array = []
+	for n: int in range(layers.size() / 10, layers.size() * 9 / 10):
+		var span: Vector2i = (high[layers[n]] as Vector2i) - (low[layers[n]] as Vector2i)
+		widths.append(float(maxi(span.x, span.y)) / BrickLattice.CELLS_PER_STUD)
+	var widest: float = widths.max()
+	var narrowest: float = widths.min()
+	if tall < 2.0 * widest or widest - narrowest > STRAIGHT_WITHIN * widest:
+		return ""
+	return ("It rises %d studs as one straight shaft about %d across, the same "
+		% [roundi(tall), roundi(widest)]
+		+ "width from a tenth of its height to nine tenths. A tall subject's profile "
+		+ "is its design: let it taper, flare at the foot, gather at a waist, and "
+		+ "let its top grow out of the body — an oversail on inverted slopes, a "
+		+ "corbelled crown, a spire stepping in (show_technique \"oversail on "
+		+ "inverted slopes\", \"turret spire\") — rather than a cap with spikes "
+		+ "stuck on. A stack of prisms each a little smaller is a taper in plain "
+		+ "calls; the base should lead the eye up, a composed plinth and not rubble "
+		+ "ringed round its foot.")
+
+
+## Twelve of one window before a grid of them is a pattern and not a choice.
+const WINDOW_GRID := 12
+## From this many parts, a model has faces big enough to read as holes.
+const DARK_FROM := 200
+## Darker than this (CIELAB-ish luminance of the plastic's colour) is dark:
+## black, dark brown, dark blue, dark green — not dark bluish grey.
+const DARK_LUMINANCE := 0.2
+## And this share of the model plain in one dark colour is a void. The
+## shipped models and real sets are measured in patterns_probe/style_probe.
+const DARK_AND_PLAIN := 0.4
+## How much a shaft's width may vary, as a share of it, and still be
+## straight: run 18's Orthanc varied 2.5 studs in 28 with its dressing and
+## windows, a tapering tower a third or more.
+const STRAIGHT_WITHIN := 0.12
+
+
+## A part with a print or a sticker on it: LDraw files them as their
+## plain part's number with a pattern after it (3069bp01, 4515d03).
+func _decorated(info: PartLibrary.PartInfo) -> bool:
+	return info.name.contains("Sticker") or info.name.contains("Pattern") \
+		or _decorated_id.search(info.id) != null
+
+
+static var _decorated_id := RegEx.create_from_string("[0-9][a-z]?(p[0-9a-z]{2,}|d[0-9a-z]{2,}|pr[0-9]+)$")
+## Below this many parts a model is a vignette, and the touches are a
+## matter of taste.
+const TOUCHES_FROM := 300
 
 
 ## Whether the whole design sits in a single course.
@@ -8951,7 +9268,13 @@ Four things before the first brick, in this order:
   2. find_reference, for anything that exists. A lighthouse you recall \
      is a tapering tower with a light on top, which is every lighthouse \
      and no lighthouse. A picture gives you this one.
-  3. Decide the main masses and their sizes in studs, off that picture.
+  3. Decide the main masses and their sizes in studs, off that picture, \
+     and what each is: round in section, tapered, at a slant, smooth, \
+     moving, mechanical, organic. WHAT THE SUBJECT NEEDS, below, says \
+     which call builds each; how_real_sets_build_this, asked with the \
+     plainest word for the kind (a rocket: space; a locomotive: train; \
+     a galleon: pirate; an owl: animal), says what real sets of it are \
+     made of and in. The picture's colours come with it as numbers.
   4. show_technique for any construction you have not built before. \
      Being told to stagger a wall or turn a face sideways is not the \
      same as knowing where the stud sits, and the arithmetic is the \
@@ -8981,7 +9304,7 @@ alongside the bricks you write by hand:
 
              a dome          ellipse, layers 8, shrink 2
              a cone          ellipse, layers 10, shrink 4
-             a round tube    ellipse, wall 1, layers 12, rise 3
+             a round tube    the round pattern (below), not a fill
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
              a wall          rectangle, wall 1, layers 12, rise 3
@@ -9041,26 +9364,49 @@ alongside the bricks you write by hand:
            finished wall's are — a quarter worked stone, some bricks \
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
-           "sideways" set how much, 0 for a plain face; and narrow lit \
-           windows go up them every eight courses ("windows": false for \
-           none). Once it stands, \
+           "sideways" set how much, 0 for a plain face; a black face \
+           takes a course of dark bluish grey every eight, a string \
+           course ("band_color" for another), and grille bricks among \
+           its masonry. "windows": true puts a few narrow dark slits up \
+           every other face ("window_color" for another; lit yellow in \
+           rows makes any tower an office block). Once it stands, \
            add_rooms with "prism": the same at, sides and radius, and \
            "floors": [{"room": "dungeon"}, {"room": "forge", "stair": \
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
            each storey and furnishes each room, in one call.
 
+           Anything round in section is one object too, upright or \
+           lying down: {"pattern": "round", "at": {"x": 10, "y": 0, \
+           "z": 10}, "diameter": 4, "color": 15, "stack": [{"cones": 9, \
+           "color": 0}, {"technic": true, "struts": 2, "color": 0}, \
+           {"plates": 60}, {"plates": 9, "color": 0, "spokes": 4}, \
+           {"diameter": 6, "plates": 18}, {"nose": "ogive"}]}. It lays \
+           the round parts real sets lay at each diameter — 1 and 2 \
+           studs round bricks; 4, a round brick or two cylinder halves \
+           back to back; 6 and 8, four corner rounds tied by a round \
+           plate — so the surface is a true circle, not a staircase of \
+           bricks. Up the stack go bands of colour, a wider or narrower \
+           length, cones under a round plate, a Technic course with \
+           beams pinned on, a plate whose spokes carry tiles out past \
+           the round, and a nose (cone, ogive, dome, point, flat). \
+           "axis": "x" lays the same stack along x; "beside" stands two \
+           or four more round it, pinned to it. A rocket stage and its \
+           boosters, a lighthouse with its gallery, a silo, a column, a \
+           chimney, a locomotive's boiler, a fuselage, a submarine, a \
+           tree trunk: every one of these built square here read as a \
+           pile of bricks, and real sets never build round square.
+
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
-           A round *tower* is the exception, and it used to say tower \
-           here. An ellipse with a wall has no room for a long brick in \
-           any run once it curves, so a small one comes out as a \
-           staircase of 1x1 bricks: measured on a castle, 354 of them, \
-           four towers' worth. Anything round and more than a couple of \
-           studs across wants show_technique("wide round tower") — four \
-           4x4 corner-round bricks a course. But round is a choice: 15 \
-           of 54 castle sets since 2010 use that brick at all, none \
-           more than eight, and every castle built here had two hundred.
+           A round *tower* in a fill is the trap: an ellipse with a wall \
+           has no room for a long brick in any run once it curves, so a \
+           small one comes out as a staircase of 1x1 bricks — measured \
+           on a castle, 354 of them, four towers' worth. A round tower \
+           is the round pattern, diameter 8 or less; wider than that, \
+           a prism of many sides. But round is a choice: 15 of 54 castle \
+           sets since 2010 use the 4x4 corner round at all, none more \
+           than eight, and every castle built here had two hundred.
            Walls especially. Measured: a curtain wall 40 by 24 studs and \
            twelve courses high is 408 parts out of fill — 1x4 bricks \
            in a running bond, 1x3, 1x2 and 1x1 at the ends, and not one \
@@ -9302,6 +9648,23 @@ plastic (show_technique "rough stone wall", "weathered stone wall").
 it. Set windows in, let a cornice oversail, recess a doorway a plate, \
 stand a buttress out: the shadows are what the eye reads \
 (show_technique "oversail on inverted slopes", "corbelled wall walk").
+  The profile is the design. A tall subject the same width all the way \
+up is a shaft, whatever is on it: taper it, flare its foot, gather it at \
+a waist, facet its edges, and let its top grow out of the body rather \
+than sit on it with spikes stuck on. A stack of prisms or rounds, each a \
+little smaller, says a taper in plain calls.
+  Dark is not one colour. A big face of black or dark brown with nothing \
+on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
+black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
+bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
+bluish grey on its ledges: texture in the same colour, a second tone in \
+bands rather than sprinkled (scattered, it reads as noise), depth.
+  Windows have reasons. A few, varied, framed, where something happens \
+inside — never a grid of identical lit squares, which makes a fortress an \
+office block. Their colour comes from the subject: dark slits for a dark \
+tower, a lit lantern for a lighthouse.
+  The base leads the eye up: a plinth, steps, a terrace, ground that \
+rises to the door — composed, not rubble ringed round the foot.
   A focal point. Somewhere the eye goes first — the top of a tower, a \
 gate, a figure on a balcony — gets the most interesting parts in the \
 model.
@@ -9314,6 +9677,62 @@ add_rooms lays the floors and furnishes every room, one call for the lot, \
 from the furniture real sets built (show_technique: bookcase, fireplace, \
 anvil, four-poster bed, wall lantern, and the rest of furniture and \
 interiors).
+
+WHAT THE SUBJECT NEEDS
+An expert reads a subject as shapes, and each shape has its technique. \
+Reach for these by yourself; nobody will ask for them by name:
+  Round in section — a rocket stage, a lighthouse, a silo, a boiler, a \
+fuselage, a funnel, a tree trunk, a column: the round pattern, upright \
+or lying along x or z. Never square bricks stacked into a round: that \
+is the one way a real set never builds it.
+  Tapered or domed — a nose, a spire, a dome, a cone: the round \
+pattern's nose; a fill with layers and a shrink; cones and dishes.
+  Edges at a slant — a swept wing, a car's shoulder, a bow: wedge \
+plates (show_technique "smooth diagonal"). A curved surface — a \
+bonnet, a hull's bilge, a cab roof: curved slopes, studs-up or on \
+their side on brackets.
+  Smooth — a car's flank, a hull's side, a sign: studs_out, tiles \
+over every stud that shows.
+  At an angle, or moving — a raked mast, a windscreen, a wing, a door, \
+a hatch, a ramp, a jaw, a leg: a section, on a hinge (hinge: true) \
+when it leans. A part that opens or turns is also a play feature, and \
+real sets have them.
+  Mechanical — legs, arms, a crane jib, a frame, struts: Technic beams \
+pinned to Technic bricks (a round's "technic" course pins beams on in \
+one line); grille tiles, round plates, levers and pipes for machinery.
+  Organic — rock, a creature, a tree: the rock pattern; curved slopes \
+and wedges for a body; hinged sections for wings and limbs.
+  Rough or worn — stone, a hull's planking, weathering: two or three \
+close colours mixed (mix_color), masonry, texture parts.
+  A band of detail — rivets down a hull plate, a row of portholes or \
+lights, a smooth panel, vents: studs_out with "dress": "rivets", \
+"round", "lights" (in a transparent face_color) or "tiles"; grille \
+tiles in a row (show_technique "grille band"). Stripes and colour \
+blocks are a band of another colour in the round pattern, an \
+edge_color or mix_color on a fill, or a course in a second colour.
+  Several of anything — boosters on a core, funnels, columns, wheels: \
+one built well and the pattern saying the rest (beside, repeat, \
+mirror, repeat_section).
+
+FINISHING TOUCHES
+A designer adds things nobody asked for, and they are what a person \
+finds and smiles at. Of 2,517 real sets of 300 parts or more since \
+2015, 95% carry a printed or stickered part and 94% a hinge, a \
+turntable, a Technic pin or a ball joint; 1.6% have none of these. \
+Before you call a model finished, give it the expert's touches:
+  A figure, or a small scene: who flies it, keeps it, works it — or one \
+hidden somewhere a person will find it (add_minifig).
+  A printed tile: a gauge, a screen, a map, a logo, a nameplate. \
+search_parts with "print" or "sticker" and the subject's own word — \
+there are printed parts for a great many real things.
+  A nod to the subject's story: a detail only someone who knows it \
+would catch — a mission patch, a launch date, a famous passenger, the \
+ship's cat.
+  A display stand with a nameplate, for a display model: a black base, \
+a plaque on it (a tile or a slope, printed if one fits), the model held \
+up the way it is shown.
+  Something that moves: a hatch that opens, a ramp, a turret that \
+turns, a door — a section on a hinge or a turntable.
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -9513,6 +9932,9 @@ func _find_reference(subject: String) -> Variant:
 	if _finder == null:
 		_finder = ReferenceFinder.new()
 		add_child(_finder)
+	if _finder.swatches.is_empty() and library != null:
+		for code: int in _current_colours(["solid"]):
+			_finder.swatches.append([code, (library.colors[code] as PartLibrary.BrickColor).rgb])
 
 	# Fields, not locals captured by the lambdas below.
 	#
@@ -9558,7 +9980,7 @@ func _find_reference(subject: String) -> Variant:
 			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
 			+ "is the thing you were asked for before you build to it: "
 			+ "Commons carries what is free to use, so a name can bring "
-			+ "back something else that shares it.")}]
+			+ "back something else that shares it." + _colours_seen(pictures))}]
 	for one: Variant in pictures:
 		var picture: Dictionary = one
 		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
@@ -9577,6 +9999,51 @@ func _find_reference(subject: String) -> Variant:
 			},
 		})
 	return blocks
+
+
+## The pictures' colours as LEGO colours, said as numbers to build in.
+##
+## The owner's Falcon Heavy came out in three greys with the photographs
+## in front of the design: a white rocket with black interstages, built
+## from memory of "rocket grey". ReferenceFinder reads each picture into
+## the plastic colours sets are made in, backdrop left out; this says them
+## once, averaged over the pictures, commonest first.
+func _colours_seen(pictures: Array) -> String:
+	var summed: Dictionary = {}
+	var counted: int = 0
+	for one: Variant in pictures:
+		var shares: Dictionary = (one as Dictionary).get("colours", {}) as Dictionary
+		if shares.is_empty():
+			continue
+		counted += 1
+		for code: int in shares:
+			summed[code] = float(summed.get(code, 0.0)) + float(shares[code])
+	if counted == 0:
+		return ""
+	var codes: Array = summed.keys()
+	codes.sort_custom(func(a: int, b: int) -> bool:
+		return float(summed[a]) > float(summed[b]))
+	var said := PackedStringArray()
+	for code: int in codes:
+		var share: float = float(summed[code]) / counted
+		if share < SEEN_AT_LEAST or said.size() >= SEEN_MOST:
+			break
+		said.append("%s (%d) %d%%" % [_colour_name(code), code, roundi(share * 100.0)])
+	if said.is_empty():
+		return ""
+	return ("\n\nIts colours in these pictures, read as the plastic colours sets "
+		+ "are made in, the backdrop left out: " + ", ".join(said) + ". Build in "
+		+ "these numbers, not the colour you remember the thing being: the "
+		+ "commonest is its main colour, a dark one in a band is a stripe or a "
+		+ "section, and a grey just lighter or darker than the main colour is "
+		+ "often the main colour in shadow or in light. Look at the picture to "
+		+ "tell which.")
+
+
+## Colours under this share of the pictures' subject go unsaid, and no
+## more than this many are said.
+const SEEN_AT_LEAST := 0.04
+const SEEN_MOST := 6
 
 
 ## How long to wait for pictures. Four searches and three downloads over
@@ -9654,7 +10121,11 @@ corners to see it.
 measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
-replaces the whole model."""
+replaces the whole model.
+  3. The touches nobody asks for and every expert adds, with edit_model \
+and add_minifig: a figure or a small scene, a printed tile, a nod to the \
+subject's story, something that opens or turns, and for a display model \
+a stand with a nameplate."""
 
 
 func _built_from_outside(design: Model, report: Dictionary) -> String:
@@ -9801,7 +10272,8 @@ func _tools() -> Array:
 		"type": "object",
 		"properties": {
 			"pattern": {"type": "string",
-				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism"],
+				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
+					"round"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -9824,7 +10296,14 @@ func _tools() -> Array:
 					+ "shaft in one object — a tower, a pier, a turret of 5 "
 					+ "to 16 sides, each face a bonded wall turned to its "
 					+ "angle about the middle (at is the middle), grooved "
-					+ "where the faces meet."},
+					+ "where the faces meet. round: anything round in "
+					+ "section, in one object — a column, a rocket stage, a "
+					+ "lighthouse, a silo, a boiler, a fuselage, a tree "
+					+ "trunk — of the round parts sets use at each diameter "
+					+ "(round bricks, cylinder halves, corner rounds tied by "
+					+ "round plates), colour bands, cones, Technic struts "
+					+ "and spokes up its stack, ending in a nose; upright "
+					+ "or lying along x or z."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -9834,8 +10313,9 @@ func _tools() -> Array:
 			"about": {"type": "string", "enum": ["x", "z"],
 				"description": "mirror: which way the line runs"},
 			"at": {"description":
-				"mirror: the line to reflect about, in studs. fill: where "
-				+ "the footprint's low corner sits, as {x, y, z}."},
+				"mirror: the line to reflect about, in studs. fill, round: "
+				+ "where the footprint's low corner sits, as {x, y, z} (a "
+				+ "round lying along x or z: the low end of it, on the ground)."},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
 				"description": "fill: which footprint"},
 			"across": {"type": "number", "description": "fill, rock: studs in x"},
@@ -9859,8 +10339,11 @@ func _tools() -> Array:
 				+ "with piers, any number opens the core's whole back and the "
 				+ "backs of the piers there"},
 			"windows": {"type": "boolean", "description":
-				"prism: narrow lit windows up its faces, every eight courses; "
-				+ "true unless said"},
+				"prism: a few narrow windows up every other face, a storey "
+				+ "apart, dark slits unless window_color says; none unless said"},
+			"window_color": {"type": "integer", "description":
+				"prism: the windows' colour (40, Trans-Brown, a dark slit, "
+				+ "unless said)"},
 			"door": {"type": "boolean", "description":
 				"prism: an arched door at the foot of the face looking +z, two "
 				+ "studs wide and six courses tall, for a stair to lead up to; "
@@ -9896,6 +10379,12 @@ func _tools() -> Array:
 				"description": "studs_out: which way the face looks"},
 			"face_color": {"type": "integer", "description":
 				"studs_out: the colour of what is laid on the side studs"},
+			"dress": {"type": "string", "enum": ["mixed", "tiles", "rivets", "round",
+				"lights"], "description":
+				"studs_out: what every side stud carries — a mix (the default), "
+				+ "flat tiles for a smooth panel, round plates as rivets, round "
+				+ "tiles as portholes, or lights (round tiles in a transparent "
+				+ "face_color): a band of detail along a hull, a boiler, a wall"},
 			"seed": {"type": "integer", "description":
 				"rock: which rock — each number leans and wanders its own way"},
 			"wall": {"type": "number", "description":
@@ -9920,6 +10409,11 @@ func _tools() -> Array:
 				+ "chosen by where they are, the same every time — a "
 				+ "weathered wall. Real castle walls are 9-19% their "
 				+ "second grey."},
+			"band_color": {"type": "integer", "description":
+				"fill with rise 3, prism: a course in this colour every "
+				+ "eight, a string course where a storey's ledge is. A "
+				+ "black wall gets dark bluish grey bands unless "
+				+ "mix_color or this says otherwise."},
 			"mix": {"type": "number", "description":
 				"fill: the share in mix_color, up to 0.5; 0.15 if not "
 				+ "said."},
@@ -9936,6 +10430,32 @@ func _tools() -> Array:
 			"bricks": {"type": "array", "items": brick, "description":
 				"repeat: what to repeat. mirror: what to reflect, if not "
 				+ "everything so far."},
+			"diameter": {"type": "integer", "enum": [1, 2, 4, 6, 8],
+				"description": "round: studs across — the sizes round parts "
+					+ "come in (at is the low corner of its square)"},
+			"axis": {"type": "string", "enum": ["y", "x", "z"], "description":
+				"round: y stands it up (the default); x or z lays it along "
+				+ "that axis on the ground — a boiler, a fuselage, a hull, a log"},
+			"stack": {"type": "array", "description":
+				"round: what goes up the axis, bottom first, each square on "
+				+ "the last. {\"plates\": N} a length of body (\"color\" a "
+				+ "band of another colour, \"diameter\" wider or narrower, "
+				+ "\"spokes\": 4 or 2 its top plate reaching a stud out with a "
+				+ "\"tile\" on each reach — grid fins, gallery brackets, yard "
+				+ "stubs); {\"cones\": 9 or 1} cones under a round plate "
+				+ "(\"cone_color\") — nozzles, engine bells, lamps; "
+				+ "{\"technic\": true, \"struts\": 0-4} a course with a pin "
+				+ "hole out of each side and a Technic beam pinned on that "
+				+ "many sides (\"strut_color\", \"strut_length\" in holes) — "
+				+ "legs, stays; {\"nose\": cone, ogive, dome, point or flat} "
+				+ "its top, and the end of the stack.",
+				"items": {"type": "object"}},
+			"beside": {"type": "object", "description":
+				"round: more rounds standing round this one, touching it, "
+				+ "pinned where their Technic courses meet (start both stacks "
+				+ "the same, each with a technic course at one height): "
+				+ "{\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. "
+				+ "Boosters on a core, twin funnels, a cluster of silos."},
 		},
 		"required": ["pattern"],
 		"additionalProperties": false,

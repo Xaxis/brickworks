@@ -158,22 +158,25 @@ static func all() -> Array:
 				+ "made of twenty shapes where a real set of that size "
 				+ "has a hundred and seventy-three. Round out of square "
 				+ "bricks never reads as round.\n"
-				+ "The turn matters and cannot be guessed: stepping the "
-				+ "rotations the other way round the quadrants still "
-				+ "stacks, still checks as buildable, and fills the "
-				+ "middle instead of leaving a tower. Measured by "
-				+ "turning the finished ring a quarter about its own "
-				+ "centre — the right way maps onto itself, the wrong "
-				+ "way does not.",
+				+ "The turn matters and cannot be guessed. This example "
+				+ "had two of its four turned the wrong way — a bow tie, "
+				+ "which stacks and checks as buildable just the same — "
+				+ "and a ring's quarters are now read off the part itself "
+				+ "and tested at eight points round the rim. A round plate "
+				+ "over the courses ties the four columns into one. The "
+				+ "round pattern lays all of this, any height, in one "
+				+ "call: {\"pattern\": \"round\", \"diameter\": 8, "
+				+ "\"stack\": [{\"plates\": 18}]}.",
 			"bricks": [
-				{"part": "48092", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "48092", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 2},
 				{"part": "48092", "color": 71, "x": 4, "y": 0, "z": 0, "rot": 1},
-				{"part": "48092", "color": 71, "x": 4, "y": 0, "z": 4, "rot": 2},
+				{"part": "48092", "color": 71, "x": 4, "y": 0, "z": 4, "rot": 0},
 				{"part": "48092", "color": 71, "x": 0, "y": 0, "z": 4, "rot": 3},
-				{"part": "48092", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "48092", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 2},
 				{"part": "48092", "color": 71, "x": 4, "y": 3, "z": 0, "rot": 1},
-				{"part": "48092", "color": 71, "x": 4, "y": 3, "z": 4, "rot": 2},
+				{"part": "48092", "color": 71, "x": 4, "y": 3, "z": 4, "rot": 0},
 				{"part": "48092", "color": 71, "x": 0, "y": 3, "z": 4, "rot": 3},
+				{"part": "74611", "color": 71, "x": 0, "y": 6, "z": 0, "rot": 0},
 			],
 		},
 		{
@@ -1354,6 +1357,347 @@ static func all() -> Array:
 				{"part": "2335p41", "color": 1, "x": 0.7, "y": 8.75, "z": -0.2, "rot": 2, "section": "flag"},
 			],
 		},
+		{
+			"name": "round body",
+			"group": "round bodies",
+			"when": "anything round in section, four studs across — a rocket "
+				+ "stage, a booster, a lighthouse's tower, a column, a funnel",
+			"why": "Two cylinder halves back to back are a 4 x 4 round with "
+				+ "one seam down it, five bricks tall; a 4 x 4 round brick is "
+				+ "a band of another colour or the tie between two pairs of "
+				+ "halves; a 4 x 4 cone and a 2 x 2 cone narrow it to a point. "
+				+ "LEGO's City rockets are built this way (60228, 60351: "
+				+ "cylinder halves, round plates, cones). Never square bricks "
+				+ "stacked into a round. The round pattern lays it, any "
+				+ "length, diameter 1 to 8, in one call: {\"pattern\": "
+				+ "\"round\", \"diameter\": 4, \"stack\": [{\"plates\": 15}, "
+				+ "{\"plates\": 3, \"color\": 0}, {\"plates\": 6}, {\"nose\": "
+				+ "\"cone\"}]}.",
+			"bricks": [
+				{"part": "85941", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 2},
+				{"part": "85941", "color": 15, "x": 0, "y": 0, "z": 2, "rot": 0},
+				{"part": "87081", "color": 0, "x": 0, "y": 15, "z": 0, "rot": 0},
+				{"part": "24593", "color": 15, "x": 0, "y": 18, "z": 0, "rot": 2},
+				{"part": "24593", "color": 15, "x": 0, "y": 18, "z": 2, "rot": 0},
+				{"part": "3943b", "color": 15, "x": 0, "y": 24, "z": 0, "rot": 0},
+				{"part": "3942c", "color": 15, "x": 1, "y": 30, "z": 1, "rot": 0},
+			],
+		},
+		{
+			"name": "round body lying down",
+			"group": "round bodies",
+			"when": "a boiler, a fuselage, a submarine's hull, a tanker's "
+				+ "tank, a log — round, and lying along the ground",
+			"why": "The same round parts on their sides, studs pointing "
+				+ "along the body: each holds the next by its studs, and the "
+				+ "whole lies on its curve. Laid by hand that is a face and "
+				+ "a quarter turn per part and a height that is not a whole "
+				+ "plate; the round pattern says it with \"axis\": \"x\" (or "
+				+ "z), and every band, cone and nose goes along with it.",
+			"bricks": [
+				{"part": "85941", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 2, "face": "+x"},
+				{"part": "85941", "color": 0, "x": 0, "y": 0, "z": 2, "rot": 0, "face": "+x"},
+				{"part": "60474", "color": 70, "x": 6, "y": 0, "z": 0, "rot": 0, "face": "+x"},
+				{"part": "24593", "color": 0, "x": 6.4, "y": 0, "z": 0, "rot": 2, "face": "+x"},
+				{"part": "24593", "color": 0, "x": 6.4, "y": 0, "z": 2, "rot": 0, "face": "+x"},
+				{"part": "3960", "color": 0, "x": 8.8, "y": 0, "z": 0, "rot": 0, "face": "+x"},
+			],
+		},
+		{
+			"name": "dome and cone cap",
+			"group": "round bodies",
+			"when": "the top of anything round and wider than its stem — a "
+				+ "fairing, a lighthouse's lantern roof, a tank's end, a "
+				+ "mushroom",
+			"why": "A ring of four 3 x 3 corner rounds, each turned so its "
+				+ "curve faces out, tied above and below by 6 x 6 round "
+				+ "plates; a 6 x 6 dish over it as the shoulder, and a 2 x 2 "
+				+ "cone on the dish's middle studs. The round pattern's "
+				+ "\"nose\": \"ogive\".",
+			"bricks": [
+				{"part": "11213", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "5152", "color": 15, "x": 0, "y": 1, "z": 0, "rot": 2},
+				{"part": "5152", "color": 15, "x": 3, "y": 1, "z": 0, "rot": 1},
+				{"part": "5152", "color": 15, "x": 3, "y": 1, "z": 3, "rot": 0},
+				{"part": "5152", "color": 15, "x": 0, "y": 1, "z": 3, "rot": 3},
+				{"part": "11213", "color": 15, "x": 0, "y": 4, "z": 0, "rot": 0},
+				{"part": "44375b", "color": 15, "x": 0, "y": 5, "z": 0, "rot": 0},
+				{"part": "3942c", "color": 15, "x": 2, "y": 7, "z": 2, "rot": 0},
+			],
+		},
+		{
+			"name": "ring of cones under a round plate",
+			"group": "round bodies",
+			"when": "engine nozzles, the bells under a rocket, lamps under a "
+				+ "shade, a funnel's feet",
+			"why": "The edge of a 4 x 4 round plate with its corners off is an "
+				+ "octagon of eight studs: a 1 x 1 cone on each, hanging by "
+				+ "its stud, and a 2 x 2 truncated cone in the middle on the "
+				+ "plate's centre tube. Cones stand wide end down, the shape "
+				+ "of a bell. The round pattern's {\"cones\": 9}.",
+			"bricks": [
+				{"part": "59900", "color": 72, "x": 1, "y": 0, "z": 0, "rot": 0},
+				{"part": "59900", "color": 72, "x": 2, "y": 0, "z": 0, "rot": 0},
+				{"part": "59900", "color": 72, "x": 3, "y": 0, "z": 1, "rot": 0},
+				{"part": "59900", "color": 72, "x": 3, "y": 0, "z": 2, "rot": 0},
+				{"part": "59900", "color": 72, "x": 2, "y": 0, "z": 3, "rot": 0},
+				{"part": "59900", "color": 72, "x": 1, "y": 0, "z": 3, "rot": 0},
+				{"part": "59900", "color": 72, "x": 0, "y": 0, "z": 2, "rot": 0},
+				{"part": "59900", "color": 72, "x": 0, "y": 0, "z": 1, "rot": 0},
+				{"part": "98100", "color": 72, "x": 1, "y": 0, "z": 1, "rot": 0},
+				{"part": "60474", "color": 0, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "87081", "color": 15, "x": 0, "y": 4, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "spokes with tiles",
+			"group": "round bodies",
+			"when": "grid fins, a gallery's brackets, a ship's yard stubs, "
+				+ "rungs up a silo — something reaching a stud out of a round",
+			"why": "One plate of the body laid as a bar right across and an "
+				+ "arm each way, reaching a stud past the round on each side, "
+				+ "with a tile on each reach (a grille tile reads as a grid "
+				+ "fin). The round above stands on the plates as it would on "
+				+ "a round plate. The round pattern's \"spokes\": 4 (or 2), "
+				+ "with \"tile\" for another part.",
+			"bricks": [
+				{"part": "87081", "color": 0, "x": 1, "y": 0, "z": 1, "rot": 0},
+				{"part": "3795", "color": 0, "x": 0, "y": 3, "z": 2, "rot": 0},
+				{"part": "2412b", "color": 72, "x": 0, "y": 4, "z": 2, "rot": 1},
+				{"part": "2412b", "color": 72, "x": 5, "y": 4, "z": 2, "rot": 1},
+				{"part": "3022", "color": 0, "x": 2, "y": 3, "z": 0, "rot": 0},
+				{"part": "2412b", "color": 72, "x": 2, "y": 4, "z": 0, "rot": 0},
+				{"part": "3022", "color": 0, "x": 2, "y": 3, "z": 4, "rot": 0},
+				{"part": "2412b", "color": 72, "x": 2, "y": 4, "z": 5, "rot": 0},
+				{"part": "87081", "color": 0, "x": 1, "y": 4, "z": 1, "rot": 0},
+			],
+		},
+		{
+			"name": "curved skin panel",
+			"group": "round bodies",
+			"when": "the skin of a round body too wide for round bricks — a "
+				+ "Saturn V stage, a big fuselage, a tank — hung on studs "
+				+ "turned out",
+			"why": "Plates, and curved bricks in pairs back to back across "
+				+ "them, so the panel's face is an arch; built flat like this "
+				+ "and hung on a core with studs on its sides (\"studs-out "
+				+ "core\"), four of them make a round. As LEGO built it in "
+				+ "21309 NASA Apollo Saturn V, the second stage's skin: 16 "
+				+ "parts, from LDraw's model repository (model by Jaco van der "
+				+ "Molen, CC BY 2.0).",
+			"bricks": [
+				{"part": "3030", "color": 72, "x": 3, "y": 0, "z": 1, "rot": 0},
+				{"part": "3034", "color": 19, "x": 4, "y": 1, "z": 2, "rot": 0},
+				{"part": "3020", "color": 1, "x": 0, "y": 1, "z": 2, "rot": 0},
+				{"part": "3710", "color": 19, "x": 2, "y": 0, "z": 1, "rot": 3},
+				{"part": "50950", "color": 15, "x": 11, "y": 1, "z": 3, "rot": 0},
+				{"part": "50950", "color": 15, "x": 11, "y": 1, "z": 0, "rot": 2},
+				{"part": "24309", "color": 15, "x": 9, "y": 1, "z": 3, "rot": 0},
+				{"part": "24309", "color": 15, "x": 7, "y": 1, "z": 3, "rot": 0},
+				{"part": "24309", "color": 15, "x": 5, "y": 1, "z": 3, "rot": 0},
+				{"part": "24309", "color": 15, "x": 3, "y": 1, "z": 3, "rot": 0},
+				{"part": "24309", "color": 15, "x": 9, "y": 1, "z": 0, "rot": 2},
+				{"part": "24309", "color": 15, "x": 7, "y": 1, "z": 0, "rot": 2},
+				{"part": "24309", "color": 15, "x": 5, "y": 1, "z": 0, "rot": 2},
+				{"part": "24309", "color": 15, "x": 3, "y": 1, "z": 0, "rot": 2},
+				{"part": "24309", "color": 15, "x": 1, "y": 1, "z": 0, "rot": 2},
+				{"part": "24309", "color": 15, "x": 1, "y": 1, "z": 3, "rot": 0},
+			],
+		},
+		{
+			"name": "studs-out core",
+			"group": "round bodies",
+			"when": "the core a skin hangs on: a round body too wide for round "
+				+ "bricks, a column clad on four sides, a hull with smooth "
+				+ "flanks",
+			"why": "Brackets turned four ways round a 2 x 2 core, and on each "
+				+ "side jumper plates and clip plates, so every side offers "
+				+ "studs for a panel to hang on — the four faces of a round "
+				+ "built flat and carried. As LEGO built it in 21309 NASA "
+				+ "Apollo Saturn V: 26 parts, from LDraw's model repository "
+				+ "(model by Jaco van der Molen, CC BY 2.0).",
+			"bricks": [
+				{"part": "99207", "color": 4, "x": 2, "y": 0, "z": 3, "rot": 0},
+				{"part": "99207", "color": 4, "x": 2, "y": 0, "z": 2, "rot": 2},
+				{"part": "3003", "color": 19, "x": 2, "y": 1, "z": 2, "rot": 0},
+				{"part": "44728", "color": 72, "x": 3, "y": 0, "z": 2, "rot": 1},
+				{"part": "44728", "color": 72, "x": 2, "y": 0, "z": 2, "rot": 3},
+				{"part": "15573", "color": 71, "x": 4.2, "y": 0, "z": 2, "rot": 3, "face": "+x"},
+				{"part": "15573", "color": 71, "x": 4.2, "y": 2.5, "z": 2, "rot": 3, "face": "+x"},
+				{"part": "15573", "color": 71, "x": 2, "y": 2.5, "z": 1.4, "rot": 0, "face": "-z"},
+				{"part": "15573", "color": 71, "x": 2, "y": 0, "z": 1.4, "rot": 0, "face": "-z"},
+				{"part": "15573", "color": 71, "x": 1.4, "y": 2.5, "z": 2, "rot": 1, "face": "-x"},
+				{"part": "15573", "color": 71, "x": 1.4, "y": 0, "z": 2, "rot": 1, "face": "-x"},
+				{"part": "15573", "color": 71, "x": 2, "y": 2.5, "z": 4.2, "rot": 2, "face": "+z"},
+				{"part": "15573", "color": 71, "x": 2, "y": 0, "z": 4.2, "rot": 2, "face": "+z"},
+				{"part": "92280", "color": 14, "x": 1.5, "y": 0, "z": 4.6, "rot": 2, "face": "+z"},
+				{"part": "92280", "color": 14, "x": 2.5, "y": 2.5, "z": 4.6, "rot": 0, "face": "+z"},
+				{"part": "92280", "color": 14, "x": 4.6, "y": 2.5, "z": 1.5, "rot": 1, "face": "+x"},
+				{"part": "92280", "color": 14, "x": 4.6, "y": 0, "z": 2.5, "rot": 3, "face": "+x"},
+				{"part": "92280", "color": 14, "x": 1.5, "y": 2.5, "z": 0.5, "rot": 2, "face": "-z"},
+				{"part": "92280", "color": 14, "x": 2.5, "y": 0, "z": 0.5, "rot": 0, "face": "-z"},
+				{"part": "92280", "color": 14, "x": 0.5, "y": 2.5, "z": 2.5, "rot": 3, "face": "-x"},
+				{"part": "92280", "color": 14, "x": 0.5, "y": 0, "z": 1.5, "rot": 1, "face": "-x"},
+				{"part": "15573", "color": 71, "x": 2.5, "y": 0, "z": 0.6, "rot": 1, "face": "-z"},
+				{"part": "15573", "color": 71, "x": 2.5, "y": 0, "z": 5, "rot": 3, "face": "+z"},
+				{"part": "15573", "color": 71, "x": 0.6, "y": 0, "z": 2.5, "rot": 2, "face": "-x"},
+				{"part": "15573", "color": 71, "x": 5, "y": 0, "z": 2.5, "rot": 0, "face": "+x"},
+				{"part": "3003", "color": 19, "x": 2, "y": 5, "z": 2, "rot": 3},
+			],
+		},
+		{
+			"name": "grille band",
+			"group": "round bodies",
+			"when": "corrugation, vents, ribbing, a band of machinery round a "
+				+ "body or along a hull",
+			"why": "Grille tiles side by side on a plate read as ribbed metal, "
+				+ "a plain tile beside them as the smooth skin it breaks. As "
+				+ "LEGO built it in 21309 NASA Apollo Saturn V, the first "
+				+ "stage's corrugated band: 10 parts, from LDraw's model "
+				+ "repository (model by Jaco van der Molen, CC BY 2.0).",
+			"bricks": [
+				{"part": "3832", "color": 71, "x": 2, "y": 0, "z": 0, "rot": 0},
+				{"part": "2412b", "color": 15, "x": 4, "y": 1, "z": 0, "rot": 0},
+				{"part": "2412b", "color": 15, "x": 6, "y": 1, "z": 0, "rot": 0},
+				{"part": "2412b", "color": 15, "x": 8, "y": 1, "z": 0, "rot": 0},
+				{"part": "2412b", "color": 15, "x": 8, "y": 1, "z": 1, "rot": 0},
+				{"part": "2412b", "color": 15, "x": 6, "y": 1, "z": 1, "rot": 0},
+				{"part": "2412b", "color": 15, "x": 4, "y": 1, "z": 1, "rot": 0},
+				{"part": "2431", "color": 15, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "2431", "color": 0, "x": 0, "y": 1, "z": 1, "rot": 0},
+				{"part": "87079", "color": 15, "x": 10, "y": 1, "z": 0, "rot": 0},
+			],
+		},
+		{
+			"name": "cone bell on round plates",
+			"group": "round bodies",
+			"when": "a big engine bell, a nozzle, a horn of a gramophone, a "
+				+ "bell — a cone hung under round plates",
+			"why": "A 3 x 3 cone, wide end down, under two 2 x 2 round plates "
+				+ "that take it to the body above. As LEGO built it in 21309 "
+				+ "NASA Apollo Saturn V, an F-1 engine: 3 parts, from LDraw's "
+				+ "model repository (model by Jaco van der Molen, CC BY 2.0).",
+			"bricks": [
+				{"part": "6233", "color": 72, "x": 0.5, "y": 0, "z": 0.5, "rot": 0},
+				{"part": "4032b", "color": 71, "x": 1, "y": 6, "z": 1, "rot": 0},
+				{"part": "4032b", "color": 71, "x": 1, "y": 7, "z": 1, "rot": 0},
+			],
+		},
+		{
+			"name": "round tip",
+			"group": "round bodies",
+			"when": "the point of a nose, a mast top, an aerial's foot, a "
+				+ "finial",
+			"why": "A 1 x 1 round brick, a round plate and a cone: a tip that "
+				+ "narrows in three steps. As LEGO built it in 21309 NASA "
+				+ "Apollo Saturn V: 3 parts, from LDraw's model repository "
+				+ "(model by Jaco van der Molen, CC BY 2.0).",
+			"bricks": [
+				{"part": "3062b", "color": 15, "x": 0.5, "y": 0, "z": 0.5, "rot": 0},
+				{"part": "6141", "color": 15, "x": 0.5, "y": 3, "z": 0.5, "rot": 0},
+				{"part": "59900", "color": 15, "x": 0.5, "y": 4, "z": 0.5, "rot": 0},
+			],
+		},
+		{
+			"name": "struts pinned to a Technic course",
+			"group": "machines and joints",
+			"when": "legs folded against a body, stays, a frame's uprights, a "
+				+ "ladder's rails — beams that join with pins, not studs",
+			"why": "A course with a Technic brick at the middle of each side, "
+				+ "its hole running out through that side; a friction pin in "
+				+ "each hole, and a Technic beam on the pin's other half "
+				+ "standing up the body. The pin is the joint: a beam turned "
+				+ "on it in a section is a leg deployed. The round pattern's "
+				+ "{\"technic\": true, \"struts\": 4}.",
+			"bricks": [
+				{"part": "3700", "color": 0, "x": 4, "y": 0, "z": 2, "rot": 1},
+				{"part": "3700", "color": 0, "x": 1, "y": 0, "z": 2, "rot": 1},
+				{"part": "3700", "color": 0, "x": 2, "y": 0, "z": 4, "rot": 0},
+				{"part": "3700", "color": 0, "x": 2, "y": 0, "z": 1, "rot": 0},
+				{"part": "3003", "color": 0, "x": 2, "y": 0, "z": 2, "rot": 0},
+				{"part": "2780", "color": 0, "x": 2.6, "y": 0.75, "z": 4, "rot": 1},
+				{"part": "32524", "color": 0, "x": 2.5, "y": 0.75, "z": 5, "rot": 2, "face": "+z"},
+				{"part": "2780", "color": 0, "x": 2.6, "y": 0.75, "z": 0, "rot": 1},
+				{"part": "32524", "color": 0, "x": 2.5, "y": 0.75, "z": 0, "rot": 2, "face": "+z"},
+				{"part": "2780", "color": 0, "x": 4, "y": 0.75, "z": 2.6, "rot": 0},
+				{"part": "32524", "color": 0, "x": 5, "y": 0.75, "z": 2.5, "rot": 3, "face": "+x"},
+				{"part": "2780", "color": 0, "x": 0, "y": 0.75, "z": 2.6, "rot": 0},
+				{"part": "32524", "color": 0, "x": 0, "y": 0.75, "z": 2.5, "rot": 3, "face": "+x"},
+				{"part": "24593", "color": 15, "x": 1, "y": 3, "z": 1, "rot": 2},
+				{"part": "24593", "color": 15, "x": 1, "y": 3, "z": 3, "rot": 0},
+			],
+		},
+		{
+			"name": "two rounds pinned side by side",
+			"group": "machines and joints",
+			"when": "boosters on a core, twin funnels, a pair of tanks, silos "
+				+ "in a row — round things that stand together as one",
+			"why": "Each with a Technic course at the same height, touching; "
+				+ "one friction pin across the joint, half in each brick's "
+				+ "hole, holds them — how Artemis's boosters go on its core "
+				+ "(10341 carries 114 friction pins and 108 pin connectors). "
+				+ "The round pattern's \"beside\": {\"count\": 2}.",
+			"bricks": [
+				{"part": "3700", "color": 0, "x": 7, "y": 0, "z": 1, "rot": 1},
+				{"part": "3700", "color": 0, "x": 4, "y": 0, "z": 1, "rot": 1},
+				{"part": "3700", "color": 0, "x": 5, "y": 0, "z": 3, "rot": 0},
+				{"part": "3700", "color": 0, "x": 5, "y": 0, "z": 0, "rot": 0},
+				{"part": "3003", "color": 0, "x": 5, "y": 0, "z": 1, "rot": 0},
+				{"part": "87081", "color": 15, "x": 4, "y": 3, "z": 0, "rot": 0},
+				{"part": "3960", "color": 15, "x": 4, "y": 6, "z": 0, "rot": 0},
+				{"part": "3700", "color": 0, "x": 3, "y": 0, "z": 1, "rot": 1},
+				{"part": "3700", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 1},
+				{"part": "3700", "color": 0, "x": 1, "y": 0, "z": 3, "rot": 0},
+				{"part": "3700", "color": 0, "x": 1, "y": 0, "z": 0, "rot": 0},
+				{"part": "3003", "color": 0, "x": 1, "y": 0, "z": 1, "rot": 0},
+				{"part": "24593", "color": 15, "x": 0, "y": 3, "z": 0, "rot": 2},
+				{"part": "24593", "color": 15, "x": 0, "y": 3, "z": 2, "rot": 0},
+				{"part": "3943b", "color": 15, "x": 0, "y": 9, "z": 0, "rot": 0},
+				{"part": "3942c", "color": 15, "x": 1, "y": 15, "z": 1, "rot": 0},
+				{"part": "2780", "color": 0, "x": 3, "y": 0.75, "z": 1.6, "rot": 0},
+			],
+		},
+		{
+			"name": "fin root on a Technic pin",
+			"group": "machines and joints",
+			"when": "a fin, a winglet, a stabiliser, anything that sticks out "
+				+ "and has to stay put",
+			"why": "Two Technic bricks face to face with a friction pin "
+				+ "through both, so the root cannot slide off; a slope over "
+				+ "them shapes the fin's leading edge and palisade bricks "
+				+ "finish its ends. As LEGO built it in 21309 NASA Apollo "
+				+ "Saturn V, a first-stage fin's root: 6 parts, from LDraw's "
+				+ "model repository (model by Jaco van der Molen, CC BY 2.0).",
+			"bricks": [
+				{"part": "3700", "color": 71, "x": 1, "y": 0, "z": 0.5, "rot": 0},
+				{"part": "2780", "color": 0, "x": 1.6, "y": 0.75, "z": 0.5, "rot": 3},
+				{"part": "3700", "color": 71, "x": 1, "y": 0, "z": 1.5, "rot": 0},
+				{"part": "3037", "color": 71, "x": 0, "y": 3, "z": 0.5, "rot": 0},
+				{"part": "30136", "color": 71, "x": 3, "y": 0, "z": 0.5, "rot": 3},
+				{"part": "30136", "color": 71, "x": 0, "y": 0, "z": 0.5, "rot": 3},
+			],
+		},
+		{
+			"name": "display stand with a nameplate",
+			"group": "display and touches",
+			"when": "any display model — a rocket, a ship, a vehicle, a "
+				+ "figure — that should stand the way it is shown",
+			"why": "A black base, a column holding the model up, and a 6 x 8 "
+				+ "slope at ten degrees across the front as the plaque: the "
+				+ "part LEGO's own display sets carry their name on (4515p04 "
+				+ "is the U.S.S. Enterprise's nameplate, 4515d03 the Hubble's). "
+				+ "Search for a printed one with the subject's name; a plain "
+				+ "one with a printed 2 x 6 tile on a plate in front of it "
+				+ "reads the same.",
+			"bricks": [
+				{"part": "41539", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "4515", "color": 0, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "3941", "color": 0, "x": 3, "y": 1, "z": 6, "rot": 0},
+				{"part": "3941", "color": 0, "x": 3, "y": 4, "z": 6, "rot": 0},
+				{"part": "3941", "color": 0, "x": 3, "y": 7, "z": 6, "rot": 0},
+				{"part": "4032a", "color": 72, "x": 3, "y": 10, "z": 6, "rot": 0},
+			],
+		},
 	]
 
 
@@ -1415,8 +1759,9 @@ static func names() -> PackedStringArray:
 ## pipeline recorded shafts and bores (Joints.rounds). A worked example
 ## that only passed by being built wrong would have taught it wrong.
 const GROUPS: Array[String] = ["basics", "walls and stone",
-	"towers and columns", "angles", "roofs and spires", "windows and doors",
-	"rock and ground", "plants", "furniture and interiors", "lights"]
+	"towers and columns", "round bodies", "machines and joints", "angles",
+	"roofs and spires", "windows and doors", "rock and ground", "plants",
+	"furniture and interiors", "lights", "display and touches"]
 
 
 ## Every name, by group: "basics: a, b; walls and stone: c, d".

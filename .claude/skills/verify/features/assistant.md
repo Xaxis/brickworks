@@ -148,6 +148,19 @@ fixing what it got wrong.
   build animation is the first anyone sees of it; Stop in the middle puts the
   model back and places no more. The probes call `_apply` as before, all at
   once.
+  Each picture is also read into the plastic colours sets are made in
+  (`ReferenceFinder.colours_in`: CIELAB nearest of the current solid colours,
+  the frame's own colours taken as backdrop unless the picture is a cut-out on
+  a transparent ground, the middle weighted), and the answer says them once
+  as numbers to build in (`Assistant._colours_seen`): "White (15) 76%, Light
+  Bluish Grey (71) 10%, ..." for Commons' Falcon Heavy pictures. Found by the
+  owner's Falcon Heavy, built in three greys with a white rocket in the
+  pictures. `reference_probe` (offline): a white rocket with a black band on a
+  sky reads White with Black and no sky; a cut-out drawing running to its
+  frame reads White (it read Black before the cut-out rule); the answer names
+  both numbers. Photographs of launches, with towers, smoke and ground, read
+  muddier, and the answer tells the design to look at the picture to tell a
+  shade of the main colour from a colour of its own.
 - `measured, not just photographed`: every look — `check_design`, `view_model`,
   `edit_model` and the critique — carries the model's size in studs, its massing
   banded by height, and each named section measured as it is carried. "Is this the
@@ -176,6 +189,32 @@ fixing what it got wrong.
   `style_probe`: hand-made cases, the square Orthanc fixture
   (`src/dev/fixtures/orthanc_square.ldr`) told all three, the shipped castle
   not called over-symmetric (54% here, 55% in the tool).
+  The calls it names follow what the subject is (`Style.traits_of`: round,
+  vehicle, living, machine, by whole words in the brief and the model's name;
+  `Style.calls_for`): a rocket is told of the round pattern, a car of wedge
+  plates and a hinged section, an owl of curves and hinged wings, a machine of
+  pinned Technic; restyle_model and the prism only where the subject is a
+  building, a tower or unknown. A model whose curve share is past the 90th
+  percentile is not told it is square for having nothing on its side. Found
+  by the owner's Falcon Heavy, whose description named its launch tower: it
+  was told "a prism with piers, for a tower like this one" and restyle_model,
+  which put polka dots on a rocket. `style_probe` ("the advice knows what the
+  subject is"): the square fixture said to be a rocket by its tower, a car and
+  an owl; a steam locomotive is round and a vehicle; no car in "carriage".
+- `the touches nobody asks for`: `Assistant._touches`, in every check's advice
+  from 300 parts: a model with no printed or stickered part (`_decorated`:
+  "Sticker", "Pattern" or an LDraw pattern suffix on the number) or nothing
+  that moves (a style `a` part, a pin or ball connector, a hinged section) is
+  told so, with a figure, a story detail and a display stand with a
+  nameplate. Measured over Rebrickable's inventories of the 2,517 sets of 300
+  parts or more since 2015: 95% carry a printed or stickered part, 94% a
+  hinge, turntable, Technic pin or ball joint, 1.6% none of these — each
+  missing is a one-in-twenty tail, as every advice here keeps. The guidance
+  says them under FINISHING TOUCHES and maps shapes to calls under WHAT THE
+  SUBJECT NEEDS; the critique names both, and `FROM_OUTSIDE_NEXT` ends on the
+  touches. `style_probe` ("the touches nobody asks for"): a plain 320-part
+  model is told of both and of a figure; with a printed tile, only of what
+  moves; with a hinge too, of nothing.
 - `a face built sideways`: `Assistant._studs_out`, the `studs_out` pattern (in
   the assistant, not `patterns.gd`, because it needs the parts' connectors).
   Courses of 87087 turned so the side stud faces `facing` (the turn found from
@@ -186,7 +225,11 @@ fixing what it got wrong.
   hangs the other way there. Found by three Orthancs at 0% sideways against
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
-  a band measures 43% sideways in `tools/style.py`.
+  a band measures 43% sideways in `tools/style.py`. `dress` makes it a band of
+  one kind of detail (`Assistant.DRESSES`: tiles, rivets, round, lights; a mix
+  by default) — rivets down a hull plate, portholes, a row of lights in a
+  transparent `face_color`; `patterns_probe` checks each band's every stud
+  carries its kind and holds.
 - `a many-sided shaft`: dressed by default (masonry 0.25, sideways 0.15; 0 for a
   plain face): the thirteenth Orthanc stood a prism of plain faces, 61% plain,
   that the finishing pass cannot reach. The `prism` pattern (`Assistant._prism`, in the
@@ -207,18 +250,48 @@ fixing what it got wrong.
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. Each face is laid as a cluster's core face is (`_cluster_face`), its outer
-  row run on into the corner groove where there is room. Narrow lit windows go
-  up its faces by default (`"windows": false` for none): a Trans-Yellow 3005 in
-  the outside row at the widest run's middle stud, two courses tall, every
-  `WINDOW_EVERY` (8) courses from the fourth, alternate faces half a storey
-  apart (`_lay_face`, `_lay_row_around`); on a cluster, the core's faces and the
-  piers' faces that look away from the core, not the horns. The inside row stays
-  whole, so a window is lit and never seen through, and `restyle_model` leaves
-  transparent bricks alone. Run 16 had none, and with its dressing black on
-  black the tower would read as one black mass. `patterns_probe`: 78 window
-  studs on the guidance's cluster, every one paired two courses tall, none with
-  `"windows": false`, and the finishing pass leaves all 78. `patterns_probe`: an
-  octagon and a hexagon hold, each face its own angle.
+  row run on into the corner groove where there is room. Windows only when
+  asked (`"windows": true`): a 3005 in `window_color` (`WINDOW_COLOUR`, 40
+  Trans-Brown, a dark slit, unless said) in the outside row at the widest
+  run's middle stud, two courses tall, every `WINDOW_EVERY` (16) courses, on
+  every other face (`_lay_face`, `_lay_row_around`); on a cluster, the core's
+  faces and the piers' faces that look away from the core, not the horns. The
+  inside row stays whole, so a window is never seen through, and
+  `restyle_model` leaves transparent bricks alone. They were lit yellow every
+  eight courses up every face by default, and the homepage's Orthanc (run 18)
+  read as an office block, 228 lit 1 x 1s in rows — the owner's worst verdict
+  yet. A black face takes dark bluish grey unless told (`SECOND_TONE`, as
+  10237's 66% black and 13% grey) as a band: one course of it every
+  `BAND_EVERY` (8), a string course where 10237 has its ledges, never
+  sprinkled — scattered through the bricks (Orthanc rk1) it read as noise.
+  `band_color` sets another; a `mix_color` said means a scatter instead. A
+  black `fill` wall with `rise` 3 does the same (`Patterns.BAND_EVERY`). As
+  many 1 x 2s again as its masonry are laid as grille bricks (2877, faced
+  out), which catch light where masonry in black does not. `patterns_probe`:
+  asked for, 16 window studs on the guidance's cluster, each paired two
+  courses tall, Trans-Brown, no office block said; none unless asked; a black
+  cluster with no mix_color has hundreds of grey, every one in a band course,
+  and some grille; a black wall's grey is one course at y 21 with no black in
+  it; the finishing pass leaves the windows.
+  `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
+- `the faults of a picture`: three checks in every check's advice, each a
+  fault the homepage's Orthanc had and any subject can: `_window_grid` (12 or
+  more of one lit window — a warm transparent colour — 70% of them in rows:
+  "reads as an office block"; glass is not counted, because Big Ben's facade
+  is 380 trans-brown 1 x 1s in rows), `_dark_and_plain` (40% of a model of 200
+  parts plain bricks and plates in one dark colour: "reads as a hole", with
+  10237's texture parts named) and `_straight_shaft` (taller than twice its
+  width and the same width within 12% from a tenth of its height to nine
+  tenths, said with taper, flare and a crown; not of a round or a vehicle).
+  All three fire on run 18 and on none of the eleven shipped models, the runs
+  of 2026-10-11, or eight real sets from LDraw's repository (Big Ben, Tower
+  Bridge, Hogwarts Astronomy Tower and Great Hall, two castles, the Bookshop,
+  Minecraft's Mountain Cave); the critique, the assembly critique and the
+  guidance name them with the fourth, a base that is an afterthought.
+  `style_probe` ("the faults of the homepage's Orthanc"): a black 4 x 4 shaft is
+  told hole and no profile, light grey not a hole, a rocket not a shaft, a
+  stepped tower has a profile, lit windows in rows are an office block and the
+  same in dark glass are not, and none is said of any shipped model.
 - `an open tower is not see-through`: a post up the inside of each corner where
   two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of
   3062b — or 3941 where the channel's mouth is wider than one covers (radius 9
@@ -455,6 +528,36 @@ fixing what it got wrong.
   guidance's stone-wall recipe at 0.15, because designs copy the recipes: the
   fourth Orthanc had `studs_out` and used none of it. `patterns_probe`: a stone
   wall with `sideways` 0.3 holds and every turned brick is dressed.
+- `a body of revolution`: the `round` pattern (`src/ai/rounds.gd`, class
+  `Rounds`, dispatched from `Patterns.expand`). Anything round in section —
+  a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree
+  trunk — said as a diameter (1, 2, 4, 6, 8: the sizes round parts come in)
+  and a `stack` up its axis: `{"plates": N}` lengths of body (a `color` band,
+  a new `diameter`, `"spokes"` reaching a stud out with a `tile` on each),
+  `{"cones": 9|1}` cones under a round plate, `{"technic": true, "struts": n}`
+  a course with a 3700 pin hole out of each side and a Technic beam pinned on,
+  and a `nose` (cone, ogive, dome, point, flat). Laid in the round parts real
+  sets use at each diameter: 3062b, 3941; 87081 or 85941/24593 cylinder halves
+  back to back; four 5152 or 48092 (30562 panels) corner rounds tied by a round
+  plate every `TIE_EVERY` courses. `axis` x or z lays the same stack on its
+  side (each part's transform turned about the axis's foot and named again,
+  `_on_its_side`); `beside` stands 2 or 4 more round it, touching, a 2780
+  across each joint where the Technic courses meet. A rocket's words
+  (engines, legs, grid_fins, boosters) are taken as the general ones
+  (`Rounds.SAID`). The corner-round and half turns are constants
+  (`QUARTER_TURNS`, `HALF_TURNS`) because a browser lays a pattern before it
+  fetches the parts; covers fall back to catalogue bounds for the same reason.
+  Found by the owner's Falcon Heavy (4,252 parts of square columns, 67% plain,
+  9% curved). `patterns_probe` ("a body of revolution"): every diameter holds
+  in one piece of round parts only; four 48092 or 5152 round a ring are a
+  ring at eight rim points (the old `wide round tower` example's turns built a
+  bow tie, and fail this); the written turns match the parts; a Falcon Heavy
+  in one call holds in one piece with 27 cones, 8 struts, 10 pins, spokes
+  none into a body beside, no seam or slab advice, and is three pieces
+  without its two joint pins; lying along x and z it holds, every part on its
+  side, on the ground. The seam advice (`_unbonded_seam`) and the
+  structure-not-detail advice (`_mostly_big_plates`) leave round parts
+  (style kind `c`) out: a rocket was told to stagger its cylinder halves.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
@@ -523,10 +626,20 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  61 constructions with real part numbers and real coordinates, each in a group
-  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, angles,
-  roofs and spires, windows and doors, rock and ground, plants, furniture and
-  interiors, lights). An entry may carry `sections` and its bricks a `section`,
+  77 constructions with real part numbers and real coordinates, each in a group
+  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round
+  bodies, machines and joints, angles, roofs and spires, windows and doors,
+  rock and ground, plants, furniture and interiors, lights, display and
+  touches). The round bodies, machines and display groups came with the round
+  pattern: what it lays, named for the technique and not the subject (a round
+  body, one lying down, a dome and cone cap, a ring of cones under a round
+  plate, spokes with tiles, struts pinned to a Technic course, two rounds
+  pinned side by side, a display stand with a nameplate), and six as LEGO
+  built them in 21309 Saturn V (a curved skin panel, a studs-out core, a grille
+  band, a cone bell on round plates, a round tip, a fin root on a Technic pin).
+  `wide round tower` had two of its four 48092 turned the wrong way — a bow
+  tie that stacked and checked — and is a ring now, tied by a 74611 round
+  plate; `techniques_probe` checks each quarter curves out of the ring. An entry may carry `sections` and its bricks a `section`,
   as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
   entrance steps, taken off their 2x2 turntable and put back on at the set's 45
   degrees by a section turned about the turntable's middle, and `leaning on a
