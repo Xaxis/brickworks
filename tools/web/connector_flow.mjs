@@ -31,6 +31,21 @@ const bypass = process.env.BW_BYPASS || "";
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
 await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(url).origin });
+// A browser stops giving a tab out of view its frames, and that is what
+// stopped the app. A browser driven from here never hides a page — it is
+// launched never to — so the page is given a gate on its frames, before
+// anything else runs, that the steps below close and open as a hidden tab's
+// browser would. Faked with document.hidden alone this passed while the
+// real thing failed, because the frames never stopped.
+await context.addInitScript(() => {
+  const real = window.requestAnimationFrame.bind(window);
+  const held = [];
+  window.brickworksTestFrames = { stopped: false, held };
+  window.requestAnimationFrame = (callback) => {
+    if (window.brickworksTestFrames.stopped) { held.push(callback); return 0; }
+    return real(callback);
+  };
+});
 const page = await context.newPage();
 const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
@@ -55,7 +70,7 @@ await click("connector_copy");
 await page.waitForTimeout(1500);
 const address = await page.evaluate(() => navigator.clipboard.readText());
 console.log(`address from the clipboard: ${address.slice(0, 60)}…`);
-await page.screenshot({ path: `${out}/1_connected.png` });
+await page.screenshot({ path: `${out}/1_connected.png`, timeout: 120000 }).catch(() => {});
 
 let sent = 0;
 async function claude(method, params) {
@@ -91,28 +106,46 @@ const wall = await claude("tools/call", { name: "check_design", arguments: { bri
 const wallText = (wall.result?.content || []).map((c) => c.text || "").join(" ");
 check(wallText.includes("more squarely than real"), "a square wall is told how real sets are built");
 await page.waitForTimeout(2000);
-await page.screenshot({ path: `${out}/2_after_calls.png` });
+await page.screenshot({ path: `${out}/2_after_calls.png`, timeout: 120000 }).catch(() => {});
 
-// Out of view. The browser here keeps drawing a page in the background,
-// so it is told the page is hidden the way a real one would be.
+// Out of view, as when the person is over in claude.ai: the page told it
+// is hidden, and its frames stopped.
 const seeing = (hidden) => page.evaluate((hidden) => {
   Object.defineProperty(document, "hidden", { value: hidden, configurable: true });
   Object.defineProperty(document, "visibilityState", { value: hidden ? "hidden" : "visible", configurable: true });
+  const frames = window.brickworksTestFrames;
+  frames.stopped = hidden;
   document.dispatchEvent(new Event("visibilitychange"));
+  if (!hidden) frames.held.splice(0).forEach((f) => window.requestAnimationFrame(f));
 }, hidden);
 await seeing(true);
-await page.waitForTimeout(1500);
+await page.waitForTimeout(3000);
 const listedAsleep = await claude("tools/list", {});
 check((listedAsleep.result?.tools || []).length === names.length, "out of view, Claude can still list the tools");
-const t0 = Date.now();
+let t0 = Date.now();
 const asleep = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 1 x 2" } });
 const asleepText = (asleep.result?.content || []).map((c) => c.text || "").join(" ");
-check(asleep.result?.isError && asleepText.includes("out of view") && !asleepText.includes("not open"),
-  `out of view, a call is told to bring the tab back, after ${Math.round((Date.now() - t0) / 1000)}s`);
+check(asleepText.includes("3004") && !asleep.result?.isError,
+  `out of view, a call is answered by the tab, in ${Math.round((Date.now() - t0) / 1000)}s: ${asleepText.slice(0, 60)}`);
+// And a real build out of view, not only a search: the app has to run
+// frames to place bricks.
+t0 = Date.now();
+const built = await claude("tools/call", { name: "submit_design", arguments: { name: "out of view",
+  bricks: [{ part: "3001", color: 4, x: 40, y: 0, z: 40 }, { part: "3001", color: 1, x: 40, y: 3, z: 40 }] } });
+const builtText = (built.result?.content || []).map((c) => c.text || "").join(" ");
+check(!built.result?.isError && !builtText.includes("out of view") && !builtText.includes("not open"),
+  `out of view, a design is built, in ${Math.round((Date.now() - t0) / 1000)}s: ${builtText.slice(0, 60)}`);
+// Out of view a minute and more, past the relay's patience for a silent
+// tab: the page's own word that it is alive keeps it connected.
+await page.waitForTimeout(70000);
+const later = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 2 x 2" } });
+check(((later.result?.content || [])[0]?.text || "").includes("3003"),
+  "out of view for over a minute, it is still connected and answers");
 await seeing(false);
 await page.waitForTimeout(1500);
 const back = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 1 x 2" } });
-check(((back.result?.content || [])[0]?.text || "").includes("3004"), "back in view, the same call is answered");
+check(((back.result?.content || [])[0]?.text || "").includes("3004"), "back in view, it answers at once");
+await page.screenshot({ path: `${out}/2b_back_in_view.png`, timeout: 120000 }).catch(() => {});
 
 // A reload is a new visit: the address must not change, and the
 // connector must come back on by itself.
@@ -122,7 +155,7 @@ const afterReload = await claude("tools/call", { name: "search_parts", arguments
 check(((afterReload.result?.content || [])[0]?.text || "").includes("3003"),
   "after a reload the same address works, with nothing pressed");
 await page.waitForTimeout(2000);
-await page.screenshot({ path: `${out}/3_after_reload.png` });
+await page.screenshot({ path: `${out}/3_after_reload.png`, timeout: 120000 }).catch(() => {});
 await browser.close();
 console.log(failures ? `${failures} failure(s)` : "the connector works on this deployment");
 process.exit(failures ? 1 : 0);

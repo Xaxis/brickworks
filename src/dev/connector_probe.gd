@@ -105,27 +105,57 @@ func _run() -> void:
 		{"name": "search_parts", "arguments": {"query": "brick 1 x 2"}})
 	_check(_text_of(again).contains("3004"), "...and the newer one answers")
 
-	print("\nthe tab asleep in the background")
-	# A browser pauses a tab it is not showing; the page says so with a
-	# beacon. Played here by sending what the page would.
+	print("\nout of view, with its page alive")
+	# The page keeps the app running out of view now, and says it is alive,
+	# so a tab out of view answers like any other. Played here by a tab that
+	# goes on asking for work while its page says it is out of view.
+	await _post("%s/api/mcp?t=%s&i=%s&op=state&visible=0" % [_base,
+		address.get_slice("?t=", 1), other._instance], "")
+	var out_of_view: Dictionary = await _claude(address, "tools/call",
+		{"name": "search_parts", "arguments": {"query": "brick 1 x 2"}})
+	_check(_text_of(out_of_view).contains("3004"),
+		"a tab out of view whose page is alive answers the call")
+
+	print("\nbusy longer than the relay waits for a request for work")
+	# The bug the owner hit: Claude told Brickworks was not connected while
+	# it plainly was. A tab building a large design asks for no work for
+	# minutes, and was judged by that alone. Its page says it is alive.
 	var instance: String = other._instance
 	other.stop()
 	await create_timer(1.0).timeout
 	var token: String = address.get_slice("?t=", 1)
 	var tab_url: String = "%s/api/mcp?t=%s&i=%s" % [_base, token, instance]
-	# Back on, as a page whose engine is paused: hello, then nothing.
 	await _post(tab_url + "&op=hello", JSON.stringify({"instructions": "x".repeat(1200),
 		"tools": [{"name": "search_parts", "description": "", "inputSchema": {}}]}))
+	for beat: int in 6:
+		await _post(tab_url + "&op=state&visible=1", "")
+		await create_timer(10.0).timeout
+	var busy: Dictionary = {}
+	_claude_into(address, "tools/call",
+		{"name": "search_parts", "arguments": {"query": "brick 1 x 2"}}, busy)
+	var taken: Dictionary = await _take_call(tab_url)
+	if not taken.is_empty():
+		await _post(tab_url + "&op=answer&id=%d" % int(taken.get("id", 0)),
+			JSON.stringify(await socket.answer_rpc(taken.get("request", {}) as Dictionary)))
+	while busy.is_empty():
+		await create_timer(0.3).timeout
+	_check(_text_of(busy).contains("3004") and not _text_of(busy).contains("not open"),
+		"after a minute with no request for work but its page alive, it is not called closed")
+
+	print("\na page the browser froze out of view")
+	# Some browsers may still freeze a page out of view: no word from it
+	# at all. Claude is told it is paused and to bring it back, not that
+	# it is closed, and not after four minutes of waiting.
 	await _post(tab_url + "&op=state&visible=0", "")
 	var while_asleep: Dictionary = await _claude(address, "tools/list", {})
 	_check(((while_asleep.get("result", {}) as Dictionary).get("tools", []) as Array).size() == 1,
-		"the tool list is answered while the tab sleeps, from what it sent")
+		"the tool list is answered while the page is frozen, from what it sent")
 	var t0: int = Time.get_ticks_msec()
 	var hidden: Dictionary = await _claude(address, "tools/call",
 		{"name": "search_parts", "arguments": {"query": "brick"}})
-	_check(_text_of(hidden).contains("out of view")
-			and Time.get_ticks_msec() - t0 > 15000,
-		"a call to a tab out of view waits a little, then asks for it to be brought back")
+	var waited: int = (Time.get_ticks_msec() - t0) / 1000
+	_check(_text_of(hidden).contains("paused it out of view") and waited < 90,
+		"a frozen page out of view is said to be paused, after %ds" % waited)
 
 	print("\na call taken just as the tab fell asleep")
 	await _post(tab_url + "&op=state&visible=1", "")

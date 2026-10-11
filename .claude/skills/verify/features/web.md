@@ -38,32 +38,51 @@ as the client.
   `CommandSocket.answer_rpc`, the code behind the desktop's MCP port, so tools
   added later reach Claude unchanged.
   **A browser pauses a tab it is not showing, and the person is in claude.ai
-  while Claude works** — found on the first real use (2026-10-10): Claude's
-  `plan_scale` was taken by a tab in the background, timed out there and was
-  lost, and the next call was told "not open" with the tab open. So: the tab
-  sends its initialize and tools/list answers when it switches on (`op=hello`)
-  and the relay answers those itself; the page — not the paused app — sends
-  `op=state&visible=0|1` and `op=close` by `sendBeacon`; a call to a tab out of
-  view waits 20 s for it, then tells Claude to ask for it to be brought into
-  view; a call taken and not answered is handed out again on the next ask; a
-  call Claude stopped waiting for is deleted; the newest page load to switch
-  on (`&i=`) takes over and an older one gets 409. The address is kept on the
-  device (`ClaudeConnector.where`) and the connector resumes on load, so it is
-  added to Claude once. Prove it: `node tools/web/relay_server.mjs 8790` (real
-  handler, real queue, needs `.env`) and `godot --headless --path . --script
-  src/dev/connector_probe.gd -- 8790` — 18 checks: handshake, takeover, asleep,
-  dropped and re-taken, closed. claude.ai's help centre says custom
-  connectors accept authless servers (support.claude.com/en/articles/11503834);
-  OAuth can follow if that changes. Real Claude Code has been through it: `claude
-  -p` with `--mcp-config` naming the address (type http), `--strict-mcp-config`
-  and `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,
+  while Claude works.** Found on the first real use (2026-10-10), and again by
+  the owner the same night: Claude said Brickworks was not connected while it
+  was, and a tab brought back into view did not resume. Three causes, all
+  fixed: the relay judged a tab open only by the app's own requests for work,
+  so a tab building a large design, or just woken, was "not open" after 45 s;
+  a tab out of view stopped the app, so every call failed; and a request for
+  work in flight as the page slept never completed, so the woken tab stayed
+  deaf. Now, while the connector is on, the page keeps the app running out of
+  view (`ClaudeConnector._watch_the_page`): the engine asks the page for each
+  frame, and out of view the page gives it one from a worker's clock — one at
+  a time, 33 ms after the last has run (a clock that ticked regardless ran
+  frames back to back and starved the replies carrying the answers). The same
+  worker sends `op=state` every ten seconds, which also counts as seen, so the
+  relay judges a tab by its page: alive is ready, in view or not; a page that
+  stopped altogether is "paused" if it was out of view and "not open" if not,
+  and a call nobody takes says so after 30 s instead of four minutes. A
+  request for work outstanding over 45 s is replaced (`STALLED_MS`). The tab
+  still sends its initialize and tools/list answers when it switches on
+  (`op=hello`) and the relay answers those itself; `op=close` goes by
+  `sendBeacon`; a call taken and not answered is handed out again on the next
+  ask; the newest page load to switch on (`&i=`) takes over and an older one
+  gets 409. The address is kept on the device (`ClaudeConnector.where`) and the
+  connector resumes on load, so it is added to Claude once. Prove it: `node
+  tools/web/relay_server.mjs 8790` (real handler, real queue, needs `.env`) and
+  `godot --headless --path . --script src/dev/connector_probe.gd -- 8790`:
+  handshake, takeover, out of view and alive (answers), busy past the relay's
+  patience with its page alive (not called closed — the owner's bug), a page
+  frozen out of view (told paused, in under a minute), dropped and re-taken,
+  closed. claude.ai's help centre says custom connectors accept authless
+  servers (support.claude.com/en/articles/11503834); OAuth can follow if that
+  changes. Real Claude Code has been through it: `claude -p` with
+  `--mcp-config` naming the address (type http), `--strict-mcp-config` and
+  `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,
   called `search_parts` in the tab and answered 3001. On a deployment,
   `tools/web/connector_flow.mjs` does it as a person and as Claude: the switch
   and Copy in a real browser, the address off the clipboard, then initialize,
-  tools/list and real calls through the deployed relay; the page told it is
-  hidden (Claude asked to bring it back, not told it is closed) and shown
-  again; then a reload, after which the same address answers with nothing
-  pressed.
+  tools/list and real calls through the deployed relay; then the page out of
+  view with its frames stopped (a browser driven from a test never hides a
+  page — Playwright launches Chromium never to — so an init script gates
+  requestAnimationFrame the way a hidden tab's browser does; faked with
+  document.hidden alone it passed while the real thing failed): a search and
+  a design answered out of view, still answering after more than a minute,
+  and at once back in view; then a reload, after which the same address
+  answers with nothing pressed. Against the build before the fix it fails all
+  four out-of-view checks.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia and the parts store's origin (from `PARTS_URL`); the page's one
   inline script is allowed by a hash computed at deploy; `unsafe-eval` stays

@@ -19,13 +19,19 @@
 ## what forgets it.
 ##
 ## A browser stops drawing a tab it is not showing, and the app runs on
-## drawing — so while the person is over in claude.ai this tab answers
-## nothing. Three things follow. The handshake and the tool list are sent
-## to the relay when it switches on, so Claude can add and list the
-## connector while the tab sleeps. The page itself, which keeps running,
-## tells the relay when it goes out of view, so Claude is told to ask for
-## it rather than left waiting. And a call taken just as the tab went to
-## sleep is handed out again when it wakes (supabase/relay.sql).
+## drawing — so while the person was over in claude.ai this tab answered
+## nothing, and Claude told them Brickworks was not connected while it
+## plainly was. Now, while the connector is on, the page keeps the app
+## running out of view: the engine asks the page for each frame, and a tab
+## out of view is given its frames by a worker's clock, which a browser
+## does not pause, instead of by the screen ([method _watch_the_page]). The
+## page also says it is alive every few seconds from that worker, so the
+## relay judges an open tab by the page and not by whether the app happens
+## to be asking for work — which it is not while it builds a large design.
+## The handshake and the tool list are sent to the relay when it switches
+## on, so Claude can add and list the connector before any of that; and a
+## call taken just as a tab went to sleep is handed out again when it wakes
+## (supabase/relay.sql).
 class_name ClaudeConnector
 extends Node
 
@@ -69,6 +75,12 @@ var _generation: int = 0
 var _troubled: bool = false
 var _http: HTTPRequest
 var _reply: HTTPRequest
+## When the request for work now waiting went out, in ticks, or 0. The
+## relay answers one within 25 s; one outstanding far longer died while the
+## page slept, and the loop waiting on it is replaced rather than left to
+## hang, which is how a tab brought back into view stayed deaf.
+var _asking_since: int = 0
+const STALLED_MS := 45_000
 
 
 func _ready() -> void:
@@ -85,6 +97,16 @@ func _ready() -> void:
 	add_child(_reply)
 	_instance = _new_token().substr(0, 16)
 	_load()
+
+
+func _process(_delta: float) -> void:
+	if not _on or _asking_since == 0:
+		return
+	if Time.get_ticks_msec() - _asking_since > STALLED_MS:
+		_asking_since = 0
+		_http.cancel_request()
+		_generation += 1
+		_listen()
 
 
 func is_on() -> bool:
@@ -185,9 +207,21 @@ func _tell(op: String) -> void:
 		PackedStringArray(), HTTPClient.METHOD_POST, "")
 
 
-## The page, not the app, says when it goes out of view or away: the app
-## is paused then and could not. sendBeacon is made for exactly this, and
-## is let through at the moment a page is being closed.
+## The page, not the app, says when it goes out of view or away, and that
+## it is still there; and while the connector is on it keeps the app
+## running out of view.
+##
+## The engine asks the page for every frame (requestAnimationFrame), and a
+## browser stops answering that for a tab it is not showing. So the page
+## answers it instead while the tab is out of view and the connector is
+## on: from a worker's clock, which a browser does not hold back the way it
+## holds back the page's own timers — one frame at a time, 33 ms after the
+## last has run, so the page keeps time for everything else it does. A
+## frame asked for just before the tab went out of view is handed on too,
+## once — the screen would otherwise sit on it until the tab came back.
+## The same worker tells the relay the page is alive every ten seconds.
+## sendBeacon carries out-of-view and closed, and is let through at the
+## moment a page is being closed.
 func _watch_the_page() -> void:
 	if not OS.has_feature("web"):
 		return
@@ -197,16 +231,80 @@ func _watch_the_page() -> void:
 		window.brickworksConnector = %s;
 		if (!window.brickworksConnectorWatched) {
 			window.brickworksConnectorWatched = true;
-			document.addEventListener("visibilitychange", function () {
+			var paint = window.requestAnimationFrame.bind(window);
+			var waiting = [];
+			var pending = null;
+			var clock = null;
+			var ticking = false;
+			function once(callback) {
+				var done = false;
+				return function (time) {
+					if (done) return;
+					done = true;
+					callback(time);
+				};
+			}
+			function frame() {
+				ticking = false;
+				var now = performance.now();
+				var run = waiting;
+				waiting = [];
+				for (var i = 0; i < run.length; i++) run[i](now);
+			}
+			// One frame asked for at a time, and only once the last has run.
+			// A clock that ticked regardless queued its ticks faster than a
+			// frame could be drawn, the frames ran back to back, and nothing
+			// else in the page got a turn — the replies carrying the app's
+			// answers among them, so a call was taken and never answered.
+			function tick() {
+				if (ticking || !waiting.length) return;
+				ticking = true;
+				clock.postMessage({frame: 33});
+			}
+			function tell(op) {
 				var url = window.brickworksConnector;
-				if (url) navigator.sendBeacon(url + "&op=state&visible="
-					+ (document.hidden ? "0" : "1"));
+				if (url) navigator.sendBeacon(url + op);
+			}
+			function steer() {
+				var away = document.hidden && !!window.brickworksConnector;
+				if (!clock) {
+					var code = "var b=null;onmessage=function(e){" +
+						"if(e.data.frame>0){setTimeout(function(){postMessage('frame')},e.data.frame);return}" +
+						"clearInterval(b);b=null;" +
+						"if(e.data.beat>0)b=setInterval(function(){postMessage('beat')},e.data.beat)};";
+					clock = new Worker(URL.createObjectURL(new Blob([code], {type: "text/javascript"})));
+					clock.onmessage = function (e) {
+						if (e.data === "frame") frame();
+						else tell("&op=state&visible=" + (document.hidden ? "0" : "1"));
+					};
+				}
+				clock.postMessage({beat: window.brickworksConnector ? 10000 : 0});
+				if (away && pending) {
+					waiting.push(pending);
+					tick();
+				}
+				if (!document.hidden) frame();
+			}
+			window.brickworksSteer = steer;
+			window.requestAnimationFrame = function (callback) {
+				var wrapped = once(callback);
+				if (document.hidden && window.brickworksConnector) {
+					waiting.push(wrapped);
+					tick();
+					return 0;
+				}
+				pending = wrapped;
+				return paint(wrapped);
+			};
+			document.addEventListener("visibilitychange", function () {
+				tell("&op=state&visible=" + (document.hidden ? "0" : "1"));
+				steer();
 			});
 			window.addEventListener("pagehide", function () {
-				var url = window.brickworksConnector;
-				if (url) navigator.sendBeacon(url + "&op=close");
+				tell("&op=close");
 			});
 		}
+		window.brickworksSteer();
 	""" % JSON.stringify(url), true)
 
 
@@ -240,10 +338,9 @@ func _save() -> void:
 ## from a failed call.
 const CONNECTED_NOTE := ("These tools build in Brickworks, open in a tab of "
 	+ "the person's browser; the model appears there as you work, and each "
-	+ "step shows in its panel. A browser pauses a tab it is not showing, so "
-	+ "before a long build tell them to keep the Brickworks tab in view, side "
-	+ "by side with this chat, and if a call says the tab is out of view, ask "
-	+ "them to bring it back and call again.\n\n")
+	+ "step shows in its panel. The tab keeps working while they are here in "
+	+ "this chat. Only if a call says the browser has paused it, ask them to "
+	+ "bring the Brickworks tab into view for a moment and call again.\n\n")
 
 
 ## What this tab would answer to the handshake and the tool list, for the
@@ -287,10 +384,12 @@ func _listen() -> void:
 		trouble.emit("Could not reach Brickworks' relay; trying again.")
 		await get_tree().create_timer(3.0).timeout
 	while mine == _generation:
+		_asking_since = Time.get_ticks_msec()
 		var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&op=next" % [
 			base_url, token, _instance], "")
 		if mine != _generation:
 			return
+		_asking_since = 0
 		var result: int = got[0]
 		var code: int = got[1]
 		if code == 409:

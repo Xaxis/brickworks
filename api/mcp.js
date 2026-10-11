@@ -18,17 +18,23 @@
 //                             and tools/list, and which page load it is (?i=)
 //   /api/mcp?t=T&op=next      the tab asks for work; waits up to ~25 s
 //   /api/mcp?t=T&op=answer    the tab answers request ?id=
-//   /api/mcp?t=T&op=state     the page went in or out of view (?visible=0|1),
-//                             sent by the browser itself, since a page out of
-//                             view is not running the app to say so
+//   /api/mcp?t=T&op=state     the page is alive, and in or out of view
+//                             (?visible=0|1): sent by the page itself every
+//                             ten seconds and whenever it goes in or out of
+//                             view, whatever the app is busy with
 //   /api/mcp?t=T&op=close     the tab stops listening, or the page has gone
 //
 // A browser stops drawing a tab it is not showing, and the app runs on
-// drawing, so a tab out of view answers nothing. Claude adds a connector
-// and lists its tools from claude.ai's settings — in another tab — so
-// those are answered here, from what the tab sent when it switched on;
-// only a tool call needs the tab, and if it is out of view Claude is told
-// to ask for it to be brought back, rather than left waiting.
+// drawing. While the connector is on the page now keeps the app running
+// out of view (src/net/claude_connector.gd), and says every ten seconds
+// that it is alive. So a tab is open while its page says so, in view or
+// not: judging it by the app's requests for work called a tab "not open"
+// while it built a large design, and while it woke from being out of
+// view, and Claude told the person Brickworks was not connected while it
+// plainly was. Only a page that has stopped altogether — closed, or a
+// browser that froze it anyway — is not; a call then says which. Claude
+// adds a connector and lists its tools from claude.ai's settings, so
+// those are answered here, from what the tab sent when it switched on.
 //
 // The token is the whole credential, so it is long, random, made in the
 // tab, and never stored: the queue (supabase/relay.sql) is keyed by its
@@ -49,11 +55,13 @@ const INSTANCE = /^[A-Za-z0-9_-]{8,40}$/;
 const ANSWER_WAIT_MS = 240_000;
 const WORK_WAIT_MS = 25_000;
 const POLL_MS = 350;
-// A tab that has not asked for work in this long is taken to be closed.
+// A page that has said nothing in this long — no request for work and no
+// word that it is alive, which it sends every ten seconds — has stopped.
 const TAB_GONE_MS = 45_000;
-// How long a tool call waits for a tab out of view to come back into it
-// before Claude is told to ask for it.
+// How long a call waits for a stopped tab out of view to come back, and
+// for any tab to take a call at all, before Claude is told why not.
 const HIDDEN_WAIT_MS = 20_000;
+const UNTAKEN_MS = 30_000;
 const PROTOCOL = "2025-06-18";
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -103,10 +111,10 @@ const NOT_OPEN =
   "address is the one this connector uses — then try again.";
 
 const HIDDEN =
-  "The Brickworks tab is open but out of view, and a browser pauses a page " +
-  "it is not showing, so it cannot build. Ask the person to bring the " +
-  "Brickworks tab into view — side by side with this chat works best, so " +
-  "they can watch it build — then call again.";
+  "The Brickworks tab is open, but this browser has paused it out of view, " +
+  "so it cannot build until it is shown again. Ask the person to bring the " +
+  "Brickworks tab into view for a moment — it carries on by itself — then " +
+  "call again.";
 
 async function tabOf(channel) {
   const rows = await db(
@@ -114,11 +122,13 @@ async function tabOf(channel) {
   return rows && rows.length ? rows[0] : null;
 }
 
-// "closed", "hidden" or "ready".
+// "closed", "hidden" or "ready". Alive is ready, in view or not; a page
+// that has stopped is "hidden" when it was last out of view, which is a
+// browser that paused it, and "closed" when it was in view.
 function stateOf(tab) {
   if (!tab || !tab.open) return "closed";
-  if (Date.now() - Date.parse(tab.seen_at) > TAB_GONE_MS && tab.visible) return "closed";
-  return tab.visible ? "ready" : "hidden";
+  if (Date.now() - Date.parse(tab.seen_at) <= TAB_GONE_MS) return "ready";
+  return tab.visible ? "closed" : "hidden";
 }
 
 // Lets the tab show that Claude has reached it, for the requests answered
@@ -206,13 +216,28 @@ async function fromClaude(channel, message, response) {
     body: { channel, request: message },
     prefer: "return=representation",
   });
-  const until = Date.now() + ANSWER_WAIT_MS;
+  const asked = Date.now();
+  const until = asked + ANSWER_WAIT_MS;
+  let checked = asked;
   while (Date.now() < until) {
     await sleep(POLL_MS);
-    const [done] = await db(`relay?id=eq.${row.id}&select=response`);
+    const [done] = await db(`relay?id=eq.${row.id}&select=response,taken_at`);
     if (done && done.response) {
       await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
       return response.status(200).json(done.response);
+    }
+    // Not taken at all, and the page has stopped since: say so now rather
+    // than at the end of four minutes.
+    if (done && !done.taken_at && Date.now() - asked > UNTAKEN_MS
+        && Date.now() - checked > 5_000) {
+      checked = Date.now();
+      const now = stateOf(await tabOf(channel));
+      if (now !== "ready") {
+        await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
+        const why = now === "hidden" ? HIDDEN : NOT_OPEN;
+        return response.status(200).json(message.method === "tools/call"
+          ? toolTrouble(id, why) : rpcError(id, -32000, why));
+      }
     }
   }
   // Gone, so that a tab waking later does not do what Claude has stopped
@@ -301,9 +326,10 @@ export default async function handler(request, response) {
     }
     if (op === "next") return await nextForTab(channel, instance, response);
     if (op === "state") {
+      // Also the page's word that it is alive, so it counts as seen.
       await db(`relay_tabs?channel=eq.${channel}${mine}`, {
         method: "PATCH",
-        body: { visible: String(request.query?.visible) !== "0" },
+        body: { visible: String(request.query?.visible) !== "0", seen_at: new Date().toISOString() },
       });
       return response.status(204).end();
     }
