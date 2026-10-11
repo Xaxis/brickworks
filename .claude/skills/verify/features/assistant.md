@@ -407,7 +407,8 @@ fixing what it got wrong.
   made one edit to the first of its three assemblies and saved; no run from
   outside had reviewed more than two. `mcp_probe`: the east wall's review
   names the west wall, saving hands back the west wall's, and once both have
-  had theirs saving only saves.
+  had theirs saving only saves. It did not move run 17: handed the first of
+  its five assemblies' reviews at its save, it finished anyway and said so.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
