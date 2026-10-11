@@ -154,6 +154,12 @@ func _tell_page() -> void:
 	# ratio of two, where the panels take more of the page.
 	if _marquee != null:
 		named["view"] = _marquee.get_parent()
+	# And the two rails, which on a phone are the only way to either panel:
+	# the toolbar once ran wider than a phone and took the assistant's off
+	# the page.
+	if _bin_dock != null:
+		named["parts_rail"] = _bin_dock.rail()
+		named["assistant_rail"] = _chat_dock.rail()
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -1433,8 +1439,12 @@ func _fit_panels() -> void:
 	var cramped: bool = across < ROOMY
 
 	# A drawer leaves the far rail showing, so the way out is visible
-	# from inside it.
-	var drawer: float = maxf(across - SideDock.RAIL_WIDTH * 2.0 - 16.0, 220.0)
+	# from inside it. Measured in the interface's own units, which a
+	# panel's width is: in points a phone is 390 across where it shows
+	# about 720 units, and the drawers came out 322 wide round panels
+	# that need 340, cut off down their right edge.
+	var units: float = get_viewport().get_visible_rect().size.x
+	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * 2.0 - 16.0, 220.0)
 	_bin_dock.set_open_width(minf(336.0, drawer) if cramped else 336.0)
 	_chat_dock.set_open_width(minf(340.0, drawer) if cramped else 340.0)
 

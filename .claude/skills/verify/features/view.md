@@ -41,7 +41,11 @@ picture the assistant is shown.
   they were the first line every visitor read.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
-  the undo history with it.
+  the undo history with it. It wraps onto a second line where it does not fit
+  (an `HFlowContainer`) and its status words end in "…" rather than widen it:
+  as one row it set the width of the whole window, and on a phone Clear and
+  the assistant's rail were off the page. `tools/web/fit_check.mjs` requires
+  both on both phones.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
   `,` or the Help button — and every key on it actually doing that. Its last
   line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,

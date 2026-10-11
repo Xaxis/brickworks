@@ -27,18 +27,23 @@ const first = args.bypass
 mkdirSync(out, { recursive: true });
 
 // width, height, ratio, and the controls that must be on the page there.
-// On a narrow screen the panels are drawers and start closed, so only the
-// toolbar is asked for.
+// On a narrow screen the panels are drawers and start closed, so the
+// toolbar is asked for, to its far end, and the rails that open them.
+// Phones were asked only for New and Save while the toolbar, a thousand
+// units in one row, pushed Clear and the assistant's rail off the side
+// of every phone: there the assistant could not be opened at all.
 const ALL = [
   [1400, 900, 1, ["model_name", "new", "save", "clear", "key_field", "use_key"]],
   [1400, 900, 2, ["model_name", "new", "save", "clear", "key_field", "use_key"]],
   [1280, 800, 2, ["model_name", "new", "save", "clear", "key_field", "use_key"]],
   [1920, 1080, 2, ["model_name", "new", "save", "clear", "key_field", "use_key"]],
   [1440, 900, 3, ["model_name", "new", "save", "clear", "key_field", "use_key"]],
-  [1100, 760, 2, ["model_name", "new", "save", "clear"]],
-  [390, 844, 3, ["new", "save"]],
-  [844, 390, 3, ["new", "save"]],
+  [1100, 760, 2, ["model_name", "new", "save", "clear", "assistant_rail"]],
+  [390, 844, 3, ["new", "save", "clear", "parts_rail", "assistant_rail"]],
+  [844, 390, 3, ["new", "save", "clear", "parts_rail", "assistant_rail"]],
 ];
+// Names a build from before they were published says nothing of.
+const RAILS = ["parts_rail", "assistant_rail"];
 // The deploy's: the density that broke, and a phone.
 const CASES = args.quick ? ALL.filter(([w, , r]) => (w === 1400 && r === 2) || w === 390) : ALL;
 
@@ -63,6 +68,8 @@ for (const [width, height, ratio, wanted] of CASES) {
     if (!at) {
       // Clear is published from 2026-10-10; a build before that says nothing of it.
       if (name === "clear" && !("clear" in where)) continue;
+      // The rails are published from 2026-10-11, both or neither.
+      if (RAILS.includes(name) && !RAILS.some((rail) => rail in where)) continue;
       outside.push(`${name} not shown`);
       continue;
     }
