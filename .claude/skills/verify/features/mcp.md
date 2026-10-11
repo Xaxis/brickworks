@@ -110,7 +110,11 @@ Both are in `tools/check.sh`.
   Claude Code, curl and Python send neither. `save_model` takes a file name, not
   a path, and writes it with the app's own models (`ModelStore.SAVE_DIR`, where
   Open lists them), never over one the session did not write itself: a design
-  run had left `orthanc.ldr` in the directory the app was started from.
+  run had left `orthanc.ldr` in the directory the app was started from. While
+  the design has assemblies without a close review, the answer carries the
+  next one's (`Assistant.next_review`; see assistant.md, "reviewed from
+  outside"). `mcp_probe` listens on the first free port from 8791, since
+  another session's relay can hold it.
   `mcp_probe` sends a page's request and a rebound one (the baseplate keeps its
   bricks), a path that climbs to /tmp, and a save over the person's model.
 - **Content-Length counts bytes.** The socket read the body in characters, so

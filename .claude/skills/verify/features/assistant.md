@@ -163,12 +163,53 @@ fixing what it got wrong.
   `add_rooms` furnishes it (rooms inside, below); asked for because nine Orthancs were
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
-  run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
+  run. Each face is laid as a cluster's core face is (`_cluster_face`), its outer
+  row run on into the corner groove where there is room. Narrow lit windows go
+  up its faces by default (`"windows": false` for none): a Trans-Yellow 3005 in
+  the outside row at the widest run's middle stud, two courses tall, every
+  `WINDOW_EVERY` (8) courses from the fourth, alternate faces half a storey
+  apart (`_lay_face`, `_lay_row_around`); on a cluster, the core's faces and the
+  piers' faces that look away from the core, not the horns. The inside row stays
+  whole, so a window is lit and never seen through, and `restyle_model` leaves
+  transparent bricks alone. Run 16 had none, and with its dressing black on
+  black the tower would read as one black mass. `patterns_probe`: 78 window
+  studs on the guidance's cluster, every one paired two courses tall, none with
+  `"windows": false`, and the finishing pass leaves all 78. `patterns_probe`: an
+  octagon and a hexagon hold, each face its own angle.
+- `an open tower is not see-through`: a post up the inside of each corner where
+  two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of
+  3062b — or 3941 where the channel's mouth is wider than one covers (radius 9
+  loses most of a stud to whole studs) — in whichever face of the corner is
+  turned off the grid (a square face's post would be judged on its studs), as
+  near the mouth as it is `CLUSTER_CLEAR` from both faces (nearer its own, the
+  clutch check read a 2 x 2 as standing across that face's studs), and only if it
+  meets every sightline through the channel from either face's look and 15
+  degrees past it, found by projecting both faces' bricks every 5 degrees. Only
+  on an open or odd-sided prism, and on a cluster's core. Found by run 16: a
+  face's floored width leaves its inner corner 2.4 LDU short of its neighbour's,
+  narrower than a lattice cell so the check never saw it, and the open back put
+  the sky behind it — a white slit up the core's front, seen through at six
+  heights of nine from the front. Measured with `src/dev/daylight_probe.gd` (each part's box in plan,
+  horizontal sightlines at nine heights from eight headings; also runs on a
+  saved model). `patterns_probe` ("an open tower is not see-through"): octagons
+  of radius 7 and 9 open at the back, no sightline from anywhere (18 and 9 per
+  heading without posts); the guidance's open cluster, none from front or back
+  (9 each without); closed, none. Still open, and printed rather than judged: a
+  cluster has a corridor a clearance wide along the core's outside under each
+  pier (a pier's faces keep `CLUSTER_CLEAR` from the core), seen through only
+  straight along that core face — 9-18 sightlines from the diagonals, open or
+  closed; and a hexagon's or decagon's channel is wider than a post can cover,
+  and so is any one stud thick.
 - `faceted piers clustered round a core`: `"piers"` on `prism`
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
   `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
   Each pier is a prism of its own (`prism N pier K face J`), `sides` the core's,
-  `radius` two thirds of it, centred `out` (radius + pier radius - thickness)
+  `radius` two thirds of it and never less than keeps two-stud faces at its
+  sides (`_least_radius`; asked smaller, it is laid at that and the check's
+  advice says so — refused, runs 15 and 16 both asked radius 4 at eight sides,
+  were told "or their sides fewer" and took six, which leave the sky beside
+  every cleft; a core too small is told the radius that would do), centred
+  `out` (radius + pier radius - thickness)
   along `turn` + 360k/count (180/count, so a cleft is front and back). The core
   is whole; each pier is built against it, its faces stopping `CLUSTER_CLEAR`
   (0.15 stud, 3 LDU: more than a 2 LDU cell's diagonal, which is all a turned
@@ -207,9 +248,8 @@ fixing what it got wrong.
   restyle_model then reaches the faces (below); piers set clear of the core
   are refused; and run 15's own cluster with `"open": 2` has no core face
   looking back and every column across the core's inside is open from behind
-  to its middle (7 of 10 before). Still: a prism face's inner corner
-  stops short of its neighbour's (floored widths), so a thin channel at each
-  face's left-hand corner is see-through straight on — on a plain prism too.
+  to its middle (7 of 10 before). Its core's corners are posted (`an open tower
+  is not see-through`, below the many-sided shaft).
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty
@@ -222,6 +262,13 @@ fixing what it got wrong.
   every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
   to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
   and checks bricks are turned, dressed and stoned, and the edit applied.
+  The dressing is the wall brick's own colour; a `face_color` goes through a
+  fifth of it as an accent (`FACE_ACCENT`). Run 16 asked dark grey on its black
+  faces, copying the guidance's studs_out example (which no longer gives one),
+  and all 149 round tiles came out grey: polka dots, where 10237 dresses black
+  in black. `patterns_probe`: asked grey on the guidance's black cluster, its
+  dressing is mostly black (374 to 204, the grey including the wall's own grey
+  bricks; 0 to 578 before).
   It reaches bricks in sections turned about y, in the section's own
   coordinates (`_open_side`/`_each_stud_held` take the section's frame; only
   a side within 60 degrees of straight out from the section's origin counts,
@@ -351,7 +398,17 @@ fixing what it got wrong.
   `where`. `mcp_probe` asserts it on a 300-brick wall. Once an outside design
   stands (`_outside_standing`), `check_design` no longer puts its trial on the
   baseplate — a session testing one part's seat wiped a 2,900-part Orthanc
-  that way; `mcp_probe` checks a later check leaves the model standing.
+  that way; `mcp_probe` checks a later check leaves the model standing. An
+  assembly's close review ends on the next one not yet reviewed
+  (`_not_yet_reviewed`), not "and stop", which the in-app loop's passes end on
+  because the loop hands the next itself; and `save_model`, a run's last act,
+  saves and hands back the next assembly's close review while any is left
+  (`next_review`, from `CommandSocket`). Found by run 16: told "and stop" it
+  made one edit to the first of its three assemblies and saved; no run from
+  outside had reviewed more than two. `mcp_probe`: the east wall's review
+  names the west wall, saving hands back the west wall's, and once both have
+  had theirs saving only saves. It did not move run 17: handed the first of
+  its five assemblies' reviews at its save, it finished anyway and said so.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
@@ -481,6 +538,7 @@ godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out; a clustered tower stands and takes rooms
 godot --headless --path . --script src/dev/rooms_probe.gd       # floors and furnished rooms in what stands
+godot --headless --path . --script src/dev/daylight_probe.gd -- MODEL.ldr X0 X1 Z0 Z1 Y0 Y1 [HEADING]  # sightlines through a saved model
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd  # ...and pictures: shots/rooms/
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop

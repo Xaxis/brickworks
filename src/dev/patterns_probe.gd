@@ -213,6 +213,7 @@ func _run() -> void:
 
 	await _clustered()
 	await _cluster_opened()
+	await _no_daylight()
 
 	print("")
 	if _failures == 0:
@@ -438,6 +439,30 @@ func _clustered() -> void:
 		not str(verdict["feedback"]).contains("left out"))
 	_check("...and it stands in one piece, %d" % int(verdict["pieces"]),
 		int(verdict["pieces"]) == 1)
+	# Narrow lit windows up the faces, two courses tall: the sixteenth
+	# Orthanc had none, and its faces dressed black on black would read as
+	# one black mass without them.
+	var lights := func(placements: Array) -> Dictionary:
+		var at: Dictionary = {}
+		for placement: Assistant.Placement in placements:
+			if placement.part == "3005" and placement.color == Assistant.WINDOW_COLOUR:
+				at["%s %s %s %s" % [placement.section, placement.x, placement.y,
+					placement.z]] = true
+		return at
+	var windows: Dictionary = lights.call(model.placements)
+	var paired: int = 0
+	for key: Variant in windows:
+		var bits: PackedStringArray = str(key).rsplit(" ", true, 3)
+		var above: String = "%s %s %s %s" % [bits[0], bits[1], float(bits[2]) + 3.0, bits[3]]
+		var below: String = "%s %s %s %s" % [bits[0], bits[1], float(bits[2]) - 3.0, bits[3]]
+		if windows.has(above) or windows.has(below):
+			paired += 1
+	_check("its faces have narrow lit windows, %d studs of them, each two courses tall (%d)"
+		% [windows.size(), paired], windows.size() >= 40 and paired == windows.size())
+	var dark: Dictionary = tower.duplicate(true)
+	dark["windows"] = false
+	_check("...and none with \"windows\": false",
+		lights.call(assistant._read_model({"patterns": [dark]}).placements).is_empty())
 	var headings: Dictionary = {}
 	var turned: Dictionary = {}
 	var piers: Dictionary = {}
@@ -531,10 +556,12 @@ func _clustered() -> void:
 	# and all. The fifteenth Orthanc called it over its shaft and was told
 	# "Restyled 4 bricks": every face was in a section.
 	var counts := func() -> Dictionary:
-		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0}
+		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0, "grey": 0, "black": 0}
 		for placement: Assistant.Placement in assistant._model_from_world().placements:
 			if placement.section.is_empty():
 				continue
+			if placement.face != "up" and placement.part != "87087":
+				found["grey" if placement.color == 72 else "black"] += 1
 			if placement.part == "87087":
 				found["turned"] += 1
 			elif placement.part in ["98283", "15533"]:
@@ -545,9 +572,18 @@ func _clustered() -> void:
 				found["inward"] += 1
 		return found
 	var before: Dictionary = counts.call()
+	# Asked for grey, as the sixteenth Orthanc asked: its 149 round tiles all
+	# came out grey on black and read as polka dots. The wall's own colour,
+	# with the grey an accent.
 	var restyled: String = _text(await assistant.use_tool("restyle_model",
-		{"sideways": 0.25, "masonry": 0.3}))
+		{"sideways": 0.25, "masonry": 0.3, "face_color": 72}))
 	var after: Dictionary = counts.call()
+	var grey: int = int(after["grey"]) - int(before["grey"])
+	var black: int = int(after["black"]) - int(before["black"])
+	# A seventh of the walls are grey bricks (mix_color 72), dressed in their own
+	# grey; the rest take grey only as an accent, a fifth.
+	_check("dressing asked in grey on a black tower is mostly black: %d black, %d grey"
+		% [black, grey], black > grey and grey > 0)
 	_check("restyle_model reaches the faces in their sections: %s" % restyled.get_slice("\n", 0),
 		restyled.begins_with("Restyled") and int(after["turned"]) > int(before["turned"]) + 100
 			and int(after["stone"]) > int(before["stone"]) + 50)
@@ -555,8 +591,39 @@ func _clustered() -> void:
 		% [after["two"], before["two"]], int(after["two"]) < int(before["two"]) - 50)
 	_check("...dressing only the faces' outsides, none looking into a shaft or a groove (%d do)"
 		% int(after["inward"]), int(after["inward"]) == 0)
+	_check("...and leaving the windows as they were, %d"
+		% lights.call(assistant._model_from_world().placements).size(),
+		lights.call(assistant._model_from_world().placements).size() == windows.size())
 	whole = assistant._check(assistant._model_from_world(), true)
 	_check("...and it still passes the check: %s" % whole["summary"], bool(whole["ok"]))
+
+	# Piers asked too small for their sides keep their sides. The fifteenth
+	# and sixteenth Orthancs both asked for piers of radius 4 at eight sides,
+	# were refused with "make their radius larger or their sides fewer", and
+	# took six, which meet an octagonal core corner first and leave the sky
+	# beside every cleft. The sixteenth's own first call:
+	var small := {"pattern": "prism", "at": {"x": 22, "y": 0, "z": 22}, "sides": 8,
+		"radius": 6, "courses": 12, "open": 2, "color": 0,
+		"piers": {"count": 4, "out": 7, "radius": 4, "sides": 8, "courses": 15}}
+	var kept: Assistant.Model = assistant._read_model({"patterns": [small]})
+	var most: int = -1
+	for name: Variant in kept.sections:
+		if str(name).contains(" pier "):
+			most = maxi(most, int(str(name).get_slice(" face ", 1)))
+	var laid_small: Dictionary = assistant._check(kept)
+	_check("piers of radius 4 at eight sides are laid, not refused: %s, %s"
+		% [str(assistant._pattern_trouble), laid_small["summary"]],
+		assistant._pattern_trouble.is_empty() and bool(laid_small["ok"]))
+	_check("...with eight sides each (faces numbered to %d)" % most, most == 7)
+	_check("...and the check says at what radius: %s" % str(laid_small.get("advice", [])).substr(0, 160),
+		str(laid_small.get("advice", [])).contains("laid at radius 4.5"))
+	# A core too small says the radius that would do, not fewer sides.
+	assistant._read_model({"patterns": [{"pattern": "prism", "sides": 8, "radius": 4,
+		"courses": 4}]})
+	_check("a core too small is told the radius that would do: %s"
+		% str(assistant._pattern_trouble),
+		str(assistant._pattern_trouble).contains("radius of 4.5")
+			and not str(assistant._pattern_trouble).contains("fewer"))
 
 	# What does not make a cluster is said, not built.
 	var apart: Dictionary = tower.duplicate(true)
@@ -631,6 +698,87 @@ func _cluster_opened() -> void:
 		x += 1.0
 	_check("seen from behind, %d of the %d columns across the core's inside are open to its middle"
 		% [clear, columns], clear == columns)
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+## An open tower is not see-through. A prism face's inner corner stops short
+## of its neighbour's (its width is floored to whole studs), and a channel
+## 2.4 LDU wide runs up beside it: narrower than a lattice cell, so the check
+## never saw it, and with the back open the sky showed through it — a white
+## slit up the front of the sixteenth Orthanc's core. A post up the inside of
+## each such corner closes it (Assistant._corner_posts). Measured off the
+## parts' own boxes (src/dev/daylight_probe.gd) at nine heights up the shaft.
+##
+## Still open, and printed rather than judged: on a cluster, a corridor a
+## clearance wide runs along the core's outside under each pier (a pier's
+## faces keep CLUSTER_CLEAR from the core), seen through only from straight
+## along that core face; and a hexagon's or decagon's corner is wider than a
+## post behind it can cover, so those keep their channel.
+func _no_daylight() -> void:
+	print("")
+	print("  an open tower is not see-through")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var daylight: GDScript = preload("res://src/dev/daylight_probe.gd")
+	var everywhere: Array[float] = daylight.HEADINGS
+	for case: Array in [
+		["an octagonal prism open at the back", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 8, "radius": 7, "courses": 12,
+			"open": 3}, 36.0, everywhere],
+		["...and one of radius 9, as the rooms probe's", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 8, "radius": 9, "courses": 12,
+			"mix_color": 72, "open": 3}, 36.0, everywhere],
+		["the guidance's cluster open at the back, from the front and behind",
+			{"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+			"radius": 9, "courses": 14, "color": 0, "open": 3,
+			"piers": {"count": 4, "courses": 17}}, 42.0, [0.0, 180.0]],
+		["the guidance's cluster, closed", {"pattern": "prism",
+			"at": {"x": 24, "y": 0, "z": 24}, "sides": 8, "radius": 9, "courses": 14,
+			"color": 0, "piers": {"count": 4, "courses": 17}}, 42.0, everywhere],
+	]:
+		var model: Assistant.Model = assistant._read_model({"patterns": [case[1]]})
+		var verdict: Dictionary = assistant._check(model)
+		var parts: Array = []
+		var posts: int = 0
+		for placement: Assistant.Placement in model.placements:
+			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+			if mesh != null:
+				parts.append([assistant._transform(placement, mesh,
+					model.section_for(placement)), mesh.bounds])
+			if placement.part in ["3062b", "3941"]:
+				posts += 1
+		var prints: Array = daylight.footprints(parts)
+		var through: Dictionary = {}
+		var top: float = case[2]
+		for heading: float in daylight.HEADINGS:
+			for n: int in daylight.LEVELS:
+				var found: Array = daylight.gaps(prints, top * (n + 1) / (daylight.LEVELS + 1), heading)
+				if not found.is_empty():
+					through[int(heading)] = int(through.get(int(heading), 0)) + found.size()
+		var judged: Dictionary = {}
+		for heading: float in case[3]:
+			if through.has(int(heading)):
+				judged[int(heading)] = through[int(heading)]
+		_check("%s, %s, %d post bricks: %s" % [case[0], verdict["summary"], posts,
+			"no sightline through it" if judged.is_empty()
+				else "seen through from %s degrees" % str(judged)],
+			bool(verdict["ok"]) and judged.is_empty())
+		if judged.size() < through.size():
+			print("  --    ...and still seen through from %s degrees (the corridor under each pier)"
+				% str(through))
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()

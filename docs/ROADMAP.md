@@ -315,6 +315,7 @@ colours at the median):
 | 14 | prism dressed by default, round joints, rebuilt catalogue | 4,748 | 13% | 0% | 54% | **28%** | 70 | 16 |
 | 15 | clustered piers on `prism`, in the recipe and the advice | 3,281 | 2.5% | **30%** | 69% | **27%** | 56 | 14 |
 | 16 | horns capped square, any opening the whole back, the finish reaches a cluster, no animation off-screen | 3,539 | **14%** | **50%** | 58% | 31% | 53 | 17 |
+| 17 | posts behind open corners, piers keep their sides, dressing in the wall's colour, each assembly handed back, lit windows | 8,547 | **16%** | **31%** | 58% | **23%** | 65 | 15 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -584,6 +585,76 @@ left, by what they cost the picture: inner corners of a prism face that meet
 (or a post behind each), so an open tower is not see-through; the detail
 passes a run skips now that each call takes seconds; dressing in the face's
 own colour on a dark tower; and the ground.
+
+Run 16's levers, 2026-10-11. **An open tower that is not see-through.**
+`src/dev/daylight_probe.gd` measures it: each part's box laid flat in plan,
+horizontal sightlines at nine heights from eight headings, on a pattern or a
+saved model. On run 16's model it finds the slit up the core's front at six
+heights of nine (2.4 LDU wide) and, from each 45-degree corner, two gaps at
+every height 15-37 LDU wide: the six-sided piers. A face is as wide as whole
+studs allow and two walls at angles nearer than a lattice cell collide, so the
+channel cannot be closed by bringing the faces together; it is closed from
+behind, with a post up the inside of each corner — a column of 1 x 1 round
+bricks, or 2 x 2 where the corner's mouth is wider (radius 9), in whichever face
+of the corner is turned off the grid, as near the mouth as clears both faces,
+and kept only if it meets every sightline through the channel. Open octagons of
+radius 7 and 9 are now clear from every heading, the guidance's open cluster
+from front and back. Still open, and measured: a corridor a clearance wide
+(`CLUSTER_CLEAR`, 3 LDU) along the core's outside under each pier, seen through
+only straight along that core face — 9 sightlines on each diagonal of the
+guidance's cluster, open or closed; closing it wants a pier's faces that meet
+the core built in that core face's own section, so they can meet it flush.
+Hexagons and decagons keep their channels, wider than a post can cover from
+behind. **Piers that keep their sides**: runs 15 and 16 both asked for piers of
+radius 4 at eight sides, were refused with "make their radius larger or their
+sides fewer", and took six; a pier radius too small for its sides is now laid
+at the least that keeps them (4.5 for eight) and the check says so.
+**Dressing in the wall's own colour**: run 16's 149 grey round tiles were asked
+for (`face_color` 72), copied from the guidance's studs_out example of grey on
+black; the finishing pass dresses in the wall brick's own colour now, a
+`face_color` going through a fifth of it as an accent. **Each assembly in
+turn**: run 16's close review of its first assembly ended "say in a line what
+you changed, and stop", and it did — one edit, then save. In sixteen runs'
+transcripts no outside run reviewed more than two assemblies. The close review
+now ends on the next one, and `save_model`, a run's last act, hands back the
+next assembly's review while any is left. **Windows**: a prism lays narrow lit
+windows two courses tall up its outward faces every eight courses unless told
+not to; with the dressing black on black, the tower would otherwise read as one
+black mass. **The ground** is unchanged: it is each run's own choice (run 15 a
+ring of outcrops, run 16 four crags at the corners), and no default was found
+that would not put rock round towers that should not stand on it.
+
+Run 17, on those: a ten-sided core of radius 9 and 48 courses with four
+eight-sided piers of radius 6 set 10 out (58 courses), `"open": 3`,
+`"windows": true`, `"sideways": 0.25`; `add_rooms` straight after (six floors,
+a dungeon to the palantír room); then it rebuilt the base unprompted as a black
+drum on a ring of eight crags with a stair up to the door, restyled the faces
+twice (asking `face_color` 72 again, which now went to a fifth of them), lit
+two braziers and stood five figures and a skeleton, Saruman in white in the
+top room. 8,603 parts in **864 s**. **Sideways 16% and angled 31% both in the
+real range, and symmetry 23%, the most natural of seventeen**; plain 58% and
+curve 10% still on the plain side, shapes 65 (16: 53) and colours 15 below the
+median. By eye, from the front it is the best yet: a faceted black shaft with
+71 narrow lit windows up every face, no slit up the core, four square-capped
+horns with spires, and furnished floors behind. It is not the homepage. **The
+detail passes were skipped again, knowingly**: it reviewed the whole once,
+never an assembly, and when its save handed back the first of five assemblies'
+close reviews it finished anyway — "I stopped before the close-up detailing
+pass on each section". Words in an answer, even at the moment of saving, did not
+move it; the next default has to be one that does the pass for it or that it
+cannot step round. **Daylight still shows from the corners**: on a ten-sided
+core no post fits (its corner channels are wider than one covers), "any open"
+opened five of its ten faces as "the back", and the eight-sided piers' wide
+corner grooves lead into hollows that open onto the core's inside — 2 to 2.5
+studs of sky at every height from the front-right corner, 90 sightlines in all
+by `daylight_probe` (run 16: 86, its front slit gone). The design chose ten
+sides itself; the guidance and every example say eight. Also: no door is
+visible at the top of its stair, and the faces still carry the design's own 12%
+of grey bricks. Pictures: `shots/runs/orthanc_17_*.png` in its worktree. The
+levers left, by what they cost the picture: the corners of a ten-sided core (a
+post that fits, or the corner closed another way) and what counts as the back
+on one; the corridor under each pier; a detail pass that happens without being
+asked; a portal the stair leads to; and the ground's own craft.
 
 ## Long term: custom elements
 
