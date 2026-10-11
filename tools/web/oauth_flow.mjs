@@ -339,7 +339,9 @@ try {
   check(Boolean(await where("account_disconnect_claude", 20)), "Account shows Claude connected, with Disconnect Claude");
   await shot("9_account_connected");
   await click("account_disconnect_claude");
-  const gone = await waitFor((s) => (s.connected || []).length === 0, 20000);
+  // A minute: at a load of thirty the disconnect, the renewal before it and
+  // the list after it took longer than twenty seconds between them.
+  const gone = await waitFor((s) => (s.connected || []).length === 0, 60000);
   check((gone.connected || []).length === 0, "Disconnect Claude: no connections left");
   const after = await waitFor((s) => !s.on && /^Disconnected/.test(s.status || ""), 20000);
   check(!after.on && /^Disconnected/.test(after.status || ""),
