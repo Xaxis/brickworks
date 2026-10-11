@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.1.0",
+ "latest": "0.2.0",
  "releases": [
+  {
+   "version": "0.2.0",
+   "tag": "v0.2.0",
+   "date": "2026-10-11",
+   "page": "https://github.com/Xaxis/brickworks/releases/tag/v0.2.0",
+   "notes": "https://github.com/Xaxis/brickworks/blob/v0.2.0/CHANGELOG.md",
+   "summary": "A release about doing it right. Parts that are drawn inside their footprint \u2014 wing plates, turntable tops, flags, plant leaves \u2014 now sit squarely on their studs, and a model that puts anything a fraction of a stud off is told so. Clips on bars, hinges and turntables are understood as the joints they are, and a section that leans has to lean on one. The minifigure builder offers every minifigure part there is. Claude, on your plan, keeps building while you are in the chat. Models saved by 0.1.0 open in 0.2.0; parts of them drawn inside their footprint may have been saved a tenth of a stud off their studs, and `src/dev/reseat.gd` moves them back.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.2.0-linux-x86_64.AppImage",
+     "size": 385702392,
+     "sha256": "b9d610abf856643c5f19e8553fe24015d2f2c2f0dd5b90d9f2669e5d0f0b9220",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.2.0-linux-x86_64.tar.xz",
+     "size": 257670912,
+     "sha256": "01571142f1831027c92b2617c495f7ceddf9daf5ce20756d54e68bcecb1f6e78",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz",
+     "unpacked": 1126663671,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.2.0-macos-universal.zip",
+     "size": 545523817,
+     "sha256": "56266df4b7dc7761390ecbbfe1bb2eccd2e7b0a1125119d407102f7be8695443",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.2.0/Brickworks-0.2.0-macos-universal.zip",
+     "unpacked": 1223460473,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.2.0-windows-x86_64.zip",
+     "size": 523812162,
+     "sha256": "7e6f41d6dba27e88f9b17c9b87757b2471a46446e0db6e3208791903f03db086",
+     "url": "https://github.com/Xaxis/brickworks/releases/download/v0.2.0/Brickworks-0.2.0-windows-x86_64.zip",
+     "unpacked": 1162348716,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.1.0",
    "tag": "v0.1.0",
