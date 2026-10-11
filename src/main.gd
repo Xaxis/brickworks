@@ -231,8 +231,13 @@ func _ready() -> void:
 			push_error("could not open %s" % wanted)
 	else:
 		# Whatever was on screen last time comes back first; the sample
-		# model is only for a first visit.
-		placed = _store.restore()
+		# model is only for a first visit. Not for a probe, which starts
+		# where a first visit does: it restored this machine's autosave,
+		# so a probe saw whatever the last test or agent had left — a
+		# minifigure once, and X lifted the whole figure where the probe
+		# meant to lift a brick.
+		if not OS.get_cmdline_args().has("--script"):
+			placed = _store.restore()
 		if placed == 0:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
