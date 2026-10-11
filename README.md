@@ -107,31 +107,43 @@ have to stay one.
   or Mecabricks, and what you made there opens here. A design in
   assemblies goes out as an `.mpd`, a sub-model per assembly.
 
-## No accounts
+## An account, and what it holds
 
-Nothing here asks who you are. Building is free and needs nothing: every
-part, search, save, load, stability, instructions, parts list and
-mosaic, with your models kept on your own machine.
+Everyone who uses Brickworks signs in, on the web and on the desktop.
+An account is your email address: you type it, Brickworks emails you a
+code, you type the code. There is no password and no separate sign-up —
+a code for a new address makes the account. You stay signed in on that
+browser or computer until you sign out (Account, on the toolbar), and
+the desktop app keeps working offline once you have signed in.
+
+What an account holds: the address, when you last signed in, and which
+Claude connector is yours. Your models are not in it — they are saved in
+your browser or on your computer, and leave as LDraw files. Asking for a
+code is rate limited per address and per network address (kept a day),
+so the form cannot be used to bury somebody's inbox.
 
 The design assistant spends money on every request, and the money is
 yours, spent one of two ways. Paste an Anthropic API key into the
 panel: it goes from your machine straight to api.anthropic.com, never to
 us, and Anthropic bills you for what each design uses. Or design on the
 Claude plan you already have, with Claude as the client — the next two
-sections. Either way there is no key of ours behind an endpoint that
-anyone may call, so there is nothing to sign in to.
+sections. Your Brickworks account pays for nothing and is billed nothing.
 
-There were accounts until 2026-10-09, so that one of them could design
-on the project's own key. What is left of the server is one read:
-`GET /api/account` tells the app where the part geometry its build did
-not ship is served from. The name is older than the answer.
+The server is small. `GET /api/account` tells the app where the part
+geometry its build did not ship is served from and where to sign in;
+`POST /api/otp` emails a code; `POST /api/mcp` is the connector relay,
+which only lets a signed-in tab switch a connector on and records whose
+it is; `GET /api/admin` is the owner's list of accounts. Accounts live
+in Supabase (`supabase/schema.sql`, `supabase/relay.sql`). There were
+accounts once before, until 2026-10-09, so that one of them could design
+on the project's own key; that proxy has not come back.
 
 ## Or design on the Claude you already pay for
 
 If you have Claude Code installed and signed in, tick **My Claude** in
 the design panel. Brickworks starts a session on this machine and points
 it back at itself, so the thinking is done on your own Claude
-subscription: no API key, no account here, nothing billed by us.
+subscription: no API key, and nothing billed by us.
 
 That session can reach this app's bricks and nothing else on your
 computer — no shell, no files, none of your other MCP servers. It is
@@ -159,9 +171,11 @@ app start one, is the same thing by hand. Your session gets the same nine
 tools the app's own assistant uses —
 search the catalogue, check a design against the lattice, look at what is
 built, submit it — and the bricks land in the window while you watch. No
-key is pasted into the app, no account is needed, and nothing is billed
-here, because the only thing spending tokens is the session you already
-had.
+key is pasted into the app and nothing is billed here, because the only
+thing spending tokens is the session you already had. (A window opened
+from a checkout asks you to sign in like any other; `godot --headless
+--path . --script src/dev/sign_in.gd -- you@example.com` signs a machine
+that has the project's `.env` in without an inbox.)
 
 The port is 127.0.0.1 only and closed unless `--mcp` asks for it.
 
