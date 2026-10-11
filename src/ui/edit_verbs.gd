@@ -58,6 +58,10 @@ func handle_key(key: InputEventKey) -> bool:
 			if builder.is_carrying():
 				put_away()
 				return true
+		KEY_J:
+			if not held:
+				swing(-SWING if key.shift_pressed else SWING)
+				return true
 		KEY_M:
 			# M alone is the minifigure builder.
 			if key.shift_pressed and not held:
@@ -125,6 +129,8 @@ func press(name: String) -> void:
 			replace()
 		"mirror":
 			mirror()
+		"swing":
+			swing(SWING)
 		"hide":
 			hide_selection()
 		"isolate":
@@ -170,6 +176,25 @@ func mirror() -> int:
 	edited.call()
 	aim_again.call()
 	say.call("mirrored %s" % _parts(count))
+	return count
+
+
+## How far one press of J swings a selection about its joint, in degrees.
+const SWING := 15.0
+
+
+## Swing the selection about the hinge, clip or turntable it hangs from.
+func swing(degrees: float) -> int:
+	if builder.selection.is_empty():
+		say.call("select what hangs from a hinge, clip or turntable first")
+		return 0
+	var count: int = builder.swing_selection(degrees)
+	if count == 0:
+		say.call("that is not on a hinge, clip or turntable, or it would hit something")
+		return 0
+	edited.call()
+	aim_again.call()
+	say.call("swung %s %+d° — J again, Shift-J back" % [_parts(count), int(degrees)])
 	return count
 
 

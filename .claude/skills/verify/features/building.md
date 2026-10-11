@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:edit bar, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:edit bar, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge -->
 
 ## Sub-features
 
@@ -62,6 +62,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   step. A reflection is not something plastic can do, so each part goes where
   its reflection would and is turned to look reflected; a handed part (a
   "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand.
+- `swing on a hinge`: `J` / `Shift-J` (or Swing on the edit bar) turns the
+  selection 15° about the joint it hangs from — a hinge's pin, a clip on a
+  bar, a turntable's disc: a shaft of a selected part in a bore of an
+  unselected one (`Joints.rounds`). It may press only on the part it is joined
+  to; anything else refuses it. The parts stand off the grid afterwards, held
+  as turned covers (`Builder.swing_selection`).
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it

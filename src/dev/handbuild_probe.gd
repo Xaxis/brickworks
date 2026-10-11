@@ -85,6 +85,7 @@ func _run() -> void:
 	await _onto_side_studs()
 	await _mirrored()
 	await _studio_file()
+	await _swing_on_a_hinge()
 	await _a_small_laptop()
 
 	print("")
@@ -656,6 +657,50 @@ func _mirrored() -> void:
 	await _key(KEY_Z, true)
 	_check("one undo brings back the original", _snapshot() == before)
 	_camera.set_view("default")
+
+
+func _swing_on_a_hinge() -> void:
+	print("  swinging a part on its hinge")
+	_main.call("clear_model")
+	# A hinge brick's base and its top, closed: in LDraw the top sits at
+	# the base's own place (10176's are, opened 57 degrees about the pin
+	# 10 LDU under the base's top). A 1 x 2 plate on the top, to swing too.
+	_put("3004", 4, Vector3(0, 24, 10))
+	_put("3937", 7, Vector3(0, 48, 10))
+	_put("3938", 7, Vector3(0, 48, 10))
+	await _frames(3)
+	var top: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "3938").map(func(b: BrickWorld.Brick) -> int: return b.id)
+	_select_only(top)
+	await _frames(2)
+	var before: Array = _snapshot()
+	var was: Transform3D = _world.get_brick(top[0]).transform
+	await _key(KEY_J)
+	var now: Transform3D = _world.get_brick(top[0]).transform
+	var angle: float = rad_to_deg(was.basis.get_rotation_quaternion().angle_to(
+		now.basis.get_rotation_quaternion()))
+	_check("J swings the hinge's top 15 degrees about its pin (%.1f)" % angle,
+		absf(angle - 15.0) < 0.5)
+	await _key(KEY_J)
+	await _key(KEY_J)
+	now = _world.get_brick(top[0]).transform
+	angle = rad_to_deg(was.basis.get_rotation_quaternion().angle_to(
+		now.basis.get_rotation_quaternion()))
+	_check("...and again, to 45 (%.1f)" % angle, absf(angle - 45.0) < 0.5)
+	_camera.frame(AABB(Vector3(-40, 0, -30), Vector3(80, 80, 80)))
+	await _frames(30)
+	await _shot("hinge_45")
+	await _key(KEY_Z, true)
+	await _key(KEY_Z, true)
+	await _key(KEY_Z, true)
+	_check("three undos close it again", _snapshot() == before)
+	# A plain brick on studs has no joint to swing on.
+	_select_only(_model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "3004").map(func(b: BrickWorld.Brick) -> int: return b.id))
+	await _frames(2)
+	var plain: Array = _snapshot()
+	await _key(KEY_J)
+	_check("a brick on studs alone does not swing", _snapshot() == plain)
 
 
 func _studio_file() -> void:

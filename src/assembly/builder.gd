@@ -783,6 +783,103 @@ func mirror_selection(axis: int) -> int:
 	return made.size()
 
 
+## Turn the selection about the joint it hangs from — a hinge's pin, a
+## clip on a bar, a turntable — by ``degrees``, as one step. The joint is
+## a shaft of one part in a bore of another (Joints.rounds) with the
+## selection on one side and the rest of the model on the other. Returns
+## how many turned: zero when there is no such joint, or when the turn
+## would run into anything but the part it is joined to.
+##
+## The parts it turns stand off the grid afterwards, which the lattice
+## holds as turned covers, as it holds an angled section a design builds.
+## Studio's hinge tool does this; here a hinged wing could only stand at
+## the angle it was put down at.
+func swing_selection(degrees: float) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or is_zero_approx(degrees):
+		return 0
+	var joint: Dictionary = _joint_of(alive)
+	if joint.is_empty():
+		return 0
+	var at_point: Vector3 = joint["point"]
+	var axis: Vector3 = (joint["axis"] as Vector3).normalized()
+	var around: Transform3D = Transform3D(Basis.IDENTITY, at_point) \
+		* Transform3D(Basis(axis, deg_to_rad(degrees)), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -at_point)
+	var partners: Dictionary = joint["partners"]
+	var was: Dictionary = {}
+	for brick_id: int in alive:
+		was[brick_id] = world.get_brick(brick_id).transform
+		lattice.release(brick_id)
+	var landing: Dictionary = {}
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var to: Transform3D = around * brick.transform
+		to = Transform3D(to.basis.orthonormalized(), to.origin)
+		var packed: PackedInt32Array = boxes_for(library.mesh_for(brick.part_id), to)
+		for other: int in lattice.blockers_boxes(packed):
+			if not partners.has(other):
+				for back: int in alive:
+					lattice.occupy_boxes(back, boxes_for(
+						library.mesh_for(world.get_brick(back).part_id), was[back]))
+				return 0
+		landing[brick_id] = {"at": to, "boxes": packed}
+	var steps: Array = []
+	for brick_id: int in alive:
+		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
+		world.move_brick(brick_id, landing[brick_id]["at"])
+		lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
+	_history.append({"undo": "group", "steps": steps,
+		"words": "swung %s on its joint" % _many(steps.size())})
+	_redo.clear()
+	return steps.size()
+
+
+## The round joint between the selection and the rest of the model: a
+## point on its axis, the axis, and every part on the far side of any such
+## joint (which the swing may press against). Empty when there is none.
+func _joint_of(ids: PackedInt64Array) -> Dictionary:
+	var picked: Dictionary = {}
+	var box := AABB()
+	var first: bool = true
+	var entries: Array = []
+	for brick_id: int in ids:
+		picked[brick_id] = true
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		entries.append([brick_id, brick.transform, part])
+		if part != null:
+			var here: AABB = (brick.transform * part.bounds).abs()
+			box = here if first else box.merge(here)
+			first = false
+	if first:
+		return {}
+	var reach: AABB = box.grow(BrickLattice.STUD * 2.0)
+	for brick: BrickWorld.Brick in world.bricks():
+		if picked.has(brick.id):
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part != null and (brick.transform * part.bounds).abs().intersects(reach):
+			entries.append([brick.id, brick.transform, part])
+	var held: Dictionary = Joints.rounds(entries)
+	var found: Dictionary = {}
+	var partners: Dictionary = {}
+	for mine: Variant in held:
+		if not picked.has(mine):
+			continue
+		for other: Variant in held[mine]:
+			if picked.has(other):
+				continue
+			partners[other] = true
+			var zones: Array = held[mine][other]
+			if found.is_empty() and not zones.is_empty():
+				found = {"point": zones[0][0], "axis": zones[0][1]}
+	if found.is_empty():
+		return {}
+	found["partners"] = partners
+	return found
+
+
 ## Where a part goes to take another's place: the same turn, its middle on
 ## the stud grid for its own footprint, its bottom where the other's was.
 func _in_place_of(at: Transform3D, was: Lbm.PartMesh, into: Lbm.PartMesh) -> Transform3D:

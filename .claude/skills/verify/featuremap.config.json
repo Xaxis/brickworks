@@ -621,6 +621,13 @@
       "entry": "src/parts/studio_io.gd",
       "reach": "godot --path .  (Open, then From a file on this computer, and choose an .io)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "swing on a hinge",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
+      "area": "building"
     }
   ]
 }

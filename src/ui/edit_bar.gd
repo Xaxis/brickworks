@@ -59,6 +59,8 @@ static func tools() -> Array:
 		["duplicate", "Duplicate", "%s-D" % hold, true,
 			"Hold a copy of the selection, to put down beside it"],
 		["paint", "Paint", "C", true, "Paint the selection the colour you hold"],
+		["swing", "Swing on its joint", "J", true,
+			"Turn the selection 15° about the hinge, clip or turntable it hangs from (Shift-J back)"],
 		["mirror", "Mirror", "Shift-M", true,
 			"Make the selection its mirror image, left to right as you see it; a left-hand part becomes a right-hand one"],
 		["replace", "Replace", "", true,
