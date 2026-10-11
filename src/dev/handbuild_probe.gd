@@ -76,7 +76,7 @@ func _run() -> void:
 	await _ghost_in_its_colour()
 	await _select_by()
 	await _hide_and_isolate()
-	await _the_edit_bar()
+	await _the_shell()
 	await _seat_an_old_model()
 	await _replace_and_history()
 	await _the_parts_shelf()
@@ -306,21 +306,20 @@ func _select_by() -> void:
 	_check("connected takes the brick on top and not the one beside it (%d)" % joined,
 		joined == 2 and blue_in)
 	_check("the opposite takes the other two", verbs.select_by("inverse") == 2)
-	# From the edit bar's menu, the way a person reaches it.
-	var bar: EditBar = _main.get("_edit_bar")
+	# From the toolbar's Select by menu, the way a person reaches it.
+	var shell: Shell = _main.get("_shell")
 	_select_only([first])
-	var menu_button: MenuButton = bar._select_menu
+	var menu_button: MenuButton = shell.toolbar._buttons["select"]
 	await _click(menu_button.get_global_rect().get_center())
-	_check("the Select button opens its menu", menu_button.get_popup().visible)
+	_check("the Select by button opens its menu", menu_button.get_popup().visible)
 	var popup: PopupMenu = menu_button.get_popup()
-	_check("...beside the bar, all of it inside the window (%d + %d of %d)" % [
-		popup.position.y, popup.size.y, DisplayServer.window_get_size().y],
-		popup.position.y + popup.size.y <= DisplayServer.window_get_size().y + 1
-		and popup.position.x >= int(menu_button.get_screen_position().x
-			+ menu_button.size.x * menu_button.get_global_transform_with_canvas().get_scale().x))
+	_check("...under the button, all of it inside the window (%d + %d of %d)" % [
+		popup.position.x, popup.size.x, DisplayServer.window_get_size().x],
+		popup.position.x + popup.size.x <= DisplayServer.window_get_size().x + 1
+		and popup.position.y >= int(menu_button.get_screen_position().y))
 	await _shot("select_menu")
-	menu_button.get_popup().id_pressed.emit(0)
-	menu_button.get_popup().hide()
+	popup.id_pressed.emit(shell.menu_id("select_colour"))
+	popup.hide()
 	await _frames(3)
 	_check("...whose Same colour takes the three reds", _builder.selection.size() == 3)
 
@@ -361,51 +360,299 @@ func _hide_and_isolate() -> void:
 		func(b: BrickWorld.Brick) -> bool: return not b.hidden))
 
 
-func _the_edit_bar() -> void:
-	print("  the edit bar")
-	var bar: EditBar = _main.get("_edit_bar")
-	_check("the edit bar is on screen", bar != null and bar.is_visible_in_tree())
-	if bar == null:
-		return
-	var buttons: Dictionary = bar._buttons
+func _the_shell() -> void:
+	print("  the menus, the toolbar and its tools, the properties, the status bar")
+	var shell: Shell = _main.get("_shell")
+	var bar: ModelBar = _main.get("_bar")
+	var verbs: EditVerbs = _main.get("_verbs")
+	var tools: Toolbar = shell.toolbar
+	var titles: Array = bar.menus.get_children().map(func(m: MenuButton) -> String: return m.text)
+	_check("the menus are along the top: %s" % ", ".join(titles),
+		titles == ["File", "Edit", "View", "Build", "Tools", "Help"])
+	_check("the toolbar is under them", tools.is_visible_in_tree()
+		and tools.get_global_rect().position.y >= bar.get_global_rect().end.y - 1.0)
+	_check("the status bar is along the foot of the window",
+		shell.status.get_global_rect().end.y >= root.get_visible_rect().size.y - 1.0)
+	var buttons: Dictionary = tools._buttons
 	var said: bool = true
 	for name: String in buttons:
-		said = said and not (buttons[name] as Button).tooltip_text.strip_edges().is_empty()
-	_check("every button says what it does (%d)" % buttons.size(), said and buttons.size() >= 14)
+		said = said and (buttons[name] as Control).tooltip_text.strip_edges().length() > 4
+	_check("every toolbar button says what it does (%d)" % buttons.size(),
+		said and buttons.size() >= 30)
+	_check("...and its key: %s" % (buttons["undo"] as Button).tooltip_text.get_slice("\n", 0),
+		(buttons["undo"] as Button).tooltip_text.begins_with("Undo   Ctrl+Z"))
+
+	# A fresh pair to work on: a red 2 x 4, and a blue one four studs away.
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	_put("3001", 1, Vector3(60, 24, 20))
+	await _frames(3)
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	var blue: int = _bricks_near(Vector3(60, 0, 20))[0]
+	var on_red: Vector2 = _screen(Vector3(-60, 24, 20))
+	var on_blue: Vector2 = _screen(Vector3(60, 24, 20))
+	var empty: Vector2 = _screen(Vector3(0, 0, -160))
+
+	# The Edit menu: opened by a click, every item with its key, greyed
+	# where it would do nothing.
+	_builder.clear_selection()
+	var edit: MenuButton = shell.menu("Edit")
+	await _click(edit.get_global_rect().get_center())
+	var popup: PopupMenu = edit.get_popup()
+	var copy_at: int = popup.get_item_index(shell.menu_id("copy"))
+	_check("Edit opens its menu", popup.visible)
+	_check("...with Copy and its key beside it (%s)" % OS.get_keycode_string(
+		popup.get_item_accelerator(copy_at)), popup.get_item_text(copy_at) == "Copy"
+		and popup.get_item_accelerator(copy_at) == (KEY_MASK_CMD_OR_CTRL | KEY_C))
+	_check("...greyed with nothing selected", popup.is_item_disabled(copy_at))
+	await _shot("edit_menu")
+	popup.hide()
+	await _frames(3)
+	_select_only([red])
+	await _click(edit.get_global_rect().get_center())
+	_check("...and not with something selected", not popup.is_item_disabled(copy_at))
+	Carry.clipboard = []
+	popup.id_pressed.emit(shell.menu_id("copy"))
+	popup.hide()
+	await _frames(3)
+	_check("choosing Copy copies it (%d)" % Carry.clipboard.size(), Carry.clipboard.size() == 1)
+
+	# The tools.
+	_builder.clear_selection()
+	await _click((buttons["mode_select"] as Button).get_global_rect().get_center())
+	_check("the Select tool lights and Build goes dark",
+		(buttons["mode_select"] as Button).button_pressed
+		and not (buttons["mode_build"] as Button).button_pressed and verbs.mode == "select")
+	await _move(on_red)
+	await _move(on_red + Vector2(1, 0))
+	_check("...and no part in hand follows the pointer", not _builder.has_preview())
+	await _click(on_red + Vector2(1, 0))
+	_check("a click picks the red one out (%s)" % str(_builder.selection.keys()),
+		_builder.selection.keys() == [red])
+	await _shift_click(on_blue)
+	_check("Shift-click adds the blue one", _builder.selection.size() == 2)
+	_check("...and nothing was put down (%d parts)" % _count(), _count() == 2)
+	await _click(empty)
+	_check("a click on nothing lets go of both", _builder.selection.is_empty())
+	await _frames(8)
+	_check("the status bar says what the tool does (%s)" % shell.status.fields()["hint"],
+		str(shell.status.fields()["hint"]).begins_with("Select:"))
+	await _shot("select_tool")
+
+	await _click((buttons["mode_rotate"] as Button).get_global_rect().get_center())
+	var facing: Basis = _world.get_brick(red).transform.basis
+	await _click(on_red)
+	var turned: Basis = _world.get_brick(red).transform.basis
+	_check("the Rotate tool turns a part a quarter where it stands",
+		turned.is_equal_approx(Basis(Vector3.UP, PI * 0.5) * facing)
+		or turned.is_equal_approx(Basis(Vector3.UP, -PI * 0.5) * facing))
+	tools._turn.select(1)
+	tools._turn.item_selected.emit(1)
+	_check("the turn step goes to 45° (%d)" % roundi(verbs.turn_step),
+		is_equal_approx(verbs.turn_step, 45.0))
+	await _click(on_red)
+	_check("...and the next click turns it 45°, off the grid",
+		not BrickLattice.is_square_to_grid(_world.get_brick(red).transform.basis))
+	await _key(KEY_Z, true)
+	await _key(KEY_Z, true)
+	_check("two undos put it back as it was",
+		_world.get_brick(red).transform.basis.is_equal_approx(facing))
+	tools._turn.select(0)
+	tools._turn.item_selected.emit(0)
+
+	await _click((buttons["mode_paint"] as Button).get_global_rect().get_center())
+	_builder.held_color = 2
+	await _click(on_blue)
+	_check("the Paint tool paints the part clicked (%d)" % _world.get_brick(blue).color_code,
+		_world.get_brick(blue).color_code == 2)
+
+	await _click((buttons["mode_clone"] as Button).get_global_rect().get_center())
+	await _click(on_blue)
+	_check("the Clone tool puts a copy of the part clicked in hand", _builder.is_carrying())
+	var spot: Vector2 = _screen(Vector3(-60, 0, -100))
+	await _move(spot)
+	await _click(spot + Vector2(1, 0))
+	_check("...and a click puts the copy down (%d parts)" % _count(), _count() == 3)
+
+	await _click((buttons["mode_move"] as Button).get_global_rect().get_center())
+	var was: Vector3 = _world.get_brick(blue).transform.origin
+	await _click(on_blue)
+	_check("the Move tool picks the part clicked up", _builder.is_carrying())
+	var there: Vector2 = _screen(Vector3(140, 0, -100))
+	await _move(there)
+	await _click(there + Vector2(1, 0))
+	var moved_to: int = _bricks_near(Vector3(140, 0, -100)).size()
+	_check("...and a click puts it down somewhere else (%s)" % str(was), moved_to == 1
+		and not _builder.is_carrying() and _count() == 3)
+	blue = _bricks_near(Vector3(140, 0, -100))[0]
+	on_blue = _screen(_world.get_brick(blue).transform.origin)
+
+	await _click((buttons["mode_hide"] as Button).get_global_rect().get_center())
+	await _click(on_red)
+	_check("the Hide tool hides the part clicked", _world.get_brick(red).hidden)
+	await _key_alt(KEY_H)
+	_check("...and Alt-H shows it again", not _world.get_brick(red).hidden)
+
+	_select_only([red])
+	await _key(KEY_L)
+	_check("L locks the selection", _builder.is_locked(red))
+	await _click((buttons["mode_delete"] as Button).get_global_rect().get_center())
+	await _click(on_red)
+	_check("the Delete tool leaves a locked part alone (%d parts)" % _count(), _count() == 3)
+	_check("...and says so (%s)" % shell.status.fields()["message"],
+		str(shell.status.fields()["message"]).contains("locked"))
+	await _key(KEY_L, false, true)
+	_check("Shift-L unlocks it", not _builder.is_locked(red))
+	await _click(on_red)
+	_check("then the Delete tool takes the part clicked off (%d parts)" % _count(), _count() == 2)
+	await _key(KEY_Z, true)
+	_check("...and undo puts it back (%d parts)" % _count(), _count() == 3)
+	red = _bricks_near(Vector3(-60, 0, 20))[0]
+
+	await _key(KEY_ESCAPE)
+	await _key(KEY_ESCAPE)
+	_check("Escape goes back to the Build tool, lit", verbs.mode == "build"
+		and (buttons["mode_build"] as Button).button_pressed)
+	await _key(KEY_V)
+	_check("V is the Select tool", verbs.mode == "select")
+	var tools_menu: MenuButton = shell.menu("Tools")
+	await _click(tools_menu.get_global_rect().get_center())
+	var listed: PopupMenu = tools_menu.get_popup()
+	_check("...ticked in the Tools menu too",
+		listed.is_item_checked(listed.get_item_index(shell.menu_id("mode_select")))
+		and not listed.is_item_checked(listed.get_item_index(shell.menu_id("mode_build"))))
+	await _shot("tools_menu")
+	listed.hide()
+	await _key(KEY_V)
+	_check("...and V again goes back to Build", verbs.mode == "build")
+
+	# What a part snaps to, and how far the arrows move it.
+	tools._snap.select(1)
+	tools._snap.item_selected.emit(1)
+	_check("½ stud on the snap chooser snaps to half a stud (%.0f LDU)" % _builder.snap_across,
+		is_equal_approx(_builder.snap_across, 10.0))
+	_select_only([red])
+	var before: Vector3 = _world.get_brick(red).transform.origin
+	await _key(KEY_RIGHT)
+	var step: Vector3 = _world.get_brick(red).transform.origin - before
+	_check("...and an arrow moves the selection half a stud (%s)" % str(step),
+		is_equal_approx(absf(step.x) + absf(step.z), 10.0))
+	await _key(KEY_Z, true)
+	tools._snap.select(0)
+	tools._snap.item_selected.emit(0)
+	_check("Stud snaps to whole studs again", is_equal_approx(_builder.snap_across, 20.0))
+
+	# The properties of what is selected.
+	var inspector: Inspector = shell.inspector
+	_select_only([red])
+	await _frames(20)
+	_check("the properties name the part (%s)" % inspector._title.text,
+		inspector._title.text == "Brick 2 x 4")
+	_check("...by LDraw's number and BrickLink's (%s)" % inspector._ids.text,
+		inspector._ids.text.contains("LDraw 3001") and inspector._ids.text.contains("BrickLink 3001"))
+	_check("...and its colour by every name it has (%s)" % inspector._colour.text.replace("\n", " / "),
+		inspector._colour.text.begins_with("Red (4)") and inspector._colour.text.contains("LEGO")
+		and inspector._colour.text.contains("BrickLink 5"))
+	_check("...where it stands (%d, %d, %d)" % [inspector._x.value, inspector._y.value,
+		inspector._z.value], is_equal_approx(inspector._x.value, -60.0)
+		and is_equal_approx(inspector._z.value, 20.0))
+	_check("...and what it is joined to (%s)" % inspector._facts.text.get_slice("\n", 0),
+		inspector._facts.text.begins_with("Joined to nothing"))
+	await _shot("properties")
+	var field: LineEdit = inspector._x.get_line_edit()
+	field.text = "-100"
+	field.text_submitted.emit("-100")
+	await _frames(5)
+	_check("typing -100 for X moves it two studs (%s)" % str(_world.get_brick(red).transform.origin),
+		is_equal_approx(_world.get_brick(red).transform.origin.x, -100.0))
+	_check("...and gives the keys back to the model",
+		root.gui_get_focus_owner() == null)
+	var turn_field: LineEdit = inspector._yaw.get_line_edit()
+	var yaw_was: float = inspector._yaw.value
+	turn_field.text = str(roundi(yaw_was + 90.0))
+	turn_field.text_submitted.emit(turn_field.text)
+	await _frames(5)
+	_check("typing a turn 90° on turns it a quarter (%.0f° to %.0f°)" % [yaw_was,
+		inspector._yaw.value], is_equal_approx(fposmod(inspector._yaw.value - yaw_was, 360.0), 90.0))
+	await _key(KEY_Z, true)
+	await _key(KEY_Z, true)
+	_select_only([red, blue])
+	await _frames(20)
+	_check("two selected: how many of what (%s)" % inspector._title.text.replace("\n", " / "),
+		inspector._title.text == "2 parts selected" and inspector._ids.text.begins_with("2 × Brick 2 x 4"))
+
+	# The status bar.
+	var fields: Dictionary = shell.status.fields()
+	_check("the status bar counts the parts (%s)" % fields["counts"],
+		str(fields["counts"]).begins_with("3 bricks"))
+	_check("...what is selected (%s)" % fields["selected"], fields["selected"] == "2 selected")
+	_check("...the snap and the turn step (%s)" % fields["settings"],
+		fields["settings"] == "snap stud · turn 90°")
+	_check("...and how big a stud is on screen (%s)" % fields["zoom"],
+		str(fields["zoom"]).begins_with("1 stud ≈ ") and not str(fields["zoom"]).ends_with(" 0 px"))
+
+	# The view and the panels, from the menus.
+	shell.run("grid")
+	await _frames(3)
+	_check("View, Stud grid lays lines over the baseplate", shell.grid.visible
+		and shell.grid.mesh != null and shell.grid.mesh.get_surface_count() == 1)
+	await _shot("grid")
+	shell.run("grid")
+	_check("...and takes them away", not shell.grid.visible)
+	shell.run("panel_properties")
+	_check("View, Properties folds the properties away", not inspector.is_open())
+	shell.run("panel_properties")
+	_check("...and opens them", inspector.is_open())
+	shell.run("panel_keys")
+	_check("View, Key strip hides the strip of keys", not shell.key_strip_shown())
+	shell.run("panel_keys")
+	_check("...and shows it", shell.key_strip_shown())
+	_check("a probe keeps no layout on this machine", not ShellPrefs.keeps())
+
+	# Help, Take the tour.
+	shell.run("tour")
+	await _frames(5)
+	_check("Help, Take the tour starts it", shell.tour.visible)
+	await _key(KEY_RIGHT)
+	await _key(KEY_RIGHT)
+	await _frames(5)
+	_check("...Next goes on, lighting the toolbar (%s)" % shell.tour._heading.text,
+		shell.tour._heading.text.begins_with("The toolbar")
+		and shell.tour._lit.encloses(tools.get_global_rect()))
+	await _shot("tour")
+	await _key(KEY_ESCAPE)
+	_check("...and Escape leaves it", not shell.tour.visible)
 	_builder.clear_selection()
 	await _frames(3)
-	_check("with nothing selected, Copy is faint and does nothing",
-		(buttons["copy"] as Button).disabled)
-	var pair: Array = _bricks_near(Vector3(-60, 0, 20))
-	_select_only(pair)
-	await _frames(3)
-	_check("with a selection it is not", not (buttons["copy"] as Button).disabled)
-	Carry.clipboard = []
-	await _click((buttons["copy"] as Button).get_global_rect().get_center())
-	_check("clicking Copy copies the selection (%d)" % Carry.clipboard.size(),
-		Carry.clipboard.size() == 2)
-	await _click((buttons["paste"] as Button).get_global_rect().get_center())
-	_check("clicking Paste puts a copy in hand", _builder.is_carrying())
-	await _key(KEY_ESCAPE)
-	_select_only(pair)
-	await _frames(3)
-	var before: Dictionary = _places(pair)
-	await _click((buttons["rotate"] as Button).get_global_rect().get_center())
-	var after: Dictionary = _places(pair)
-	_check("clicking Rotate turns the selection",
-		not (before[pair[0]] as Transform3D).basis.is_equal_approx(
-			(after[pair[0]] as Transform3D).basis))
-	_check("...and puts nothing on the model behind the button (%d)" % _count(),
-		_count() == 4)
-	await _click((buttons["hide"] as Button).get_global_rect().get_center())
-	_check("clicking Hide hides it", _world.get_brick(pair[0]).hidden)
-	await _frames(3)
-	await _click((buttons["show_all"] as Button).get_global_rect().get_center())
-	_check("clicking Show everything brings it back", not _world.get_brick(pair[0]).hidden)
-	_select_only(pair)
-	await _move((buttons["move"] as Button).get_global_rect().get_center())
-	await _frames(30)
-	await _shot("edit_bar")
+	await _shot("shell")
+
+
+## Choose a command from a menu on the bar, opening it with a click first
+## the way a person does.
+func _from_menu(title: String, command: String) -> void:
+	var shell: Shell = _main.get("_shell")
+	var menu: MenuButton = shell.menu(title)
+	await _click(menu.get_global_rect().get_center())
+	var popup: PopupMenu = menu.get_popup()
+	_check("%s opens, with %s in it" % [title, command],
+		popup.visible and popup.get_item_index(shell.menu_id(command)) >= 0)
+	popup.id_pressed.emit(shell.menu_id(command))
+	popup.hide()
+	await _frames(4)
+
+
+func _shift_click(at: Vector2) -> void:
+	await _move(at)
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = down
+		event.shift_pressed = true
+		event.position = _as_event(at)
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2)
+	await _frames(2)
 
 
 func _seat_an_old_model() -> void:
@@ -475,8 +722,8 @@ func _replace_and_history() -> void:
 	_builder.held_color = 1
 	await _key(KEY_C)
 	_builder.held_part = "3002"
-	var bar: EditBar = _main.get("_edit_bar")
-	await _click((bar._buttons["replace"] as Button).get_global_rect().get_center())
+	var shell: Shell = _main.get("_shell")
+	await _from_menu("Edit", "replace")
 	var parts: Array = _model().map(func(b: BrickWorld.Brick) -> String: return b.part_id)
 	_check("Replace swaps both 2 x 4s for the 2 x 3 in hand (%s)" % str(parts),
 		parts == ["3002", "3002"])
@@ -486,7 +733,7 @@ func _replace_and_history() -> void:
 	_check("the history says what was done, newest first (%s)" % str(words),
 		words.size() >= 2 and words[0].begins_with("swapped 2 parts for Brick 2 x 3")
 		and words[1] == "painted 2 parts")
-	var menu: MenuButton = bar._history_menu
+	var menu: MenuButton = shell.toolbar._buttons["history"]
 	await _click(menu.get_global_rect().get_center())
 	_check("the History button lists them (%d)" % menu.get_popup().item_count,
 		menu.get_popup().visible and menu.get_popup().item_count >= 2)
@@ -805,16 +1052,18 @@ func _exports() -> void:
 	DirAccess.make_dir_recursive_absolute(into)
 	exports.folder = into
 	var bar: ModelBar = _main.get("_bar")
+	var shell: Shell = _main.get("_shell")
 	bar._name.text = "Probe Bay"
-	await _click((bar._export as Button).get_global_rect().get_center())
-	var menu: PopupMenu = bar._exports
-	_check("Export opens a menu of what it can write (%d)" % menu.item_count,
-		menu.visible and menu.item_count >= 5)
+	var file_menu: MenuButton = shell.menu("File")
+	await _click(file_menu.get_global_rect().get_center())
+	var menu: PopupMenu = file_menu.get_popup().get_node("export")
+	_check("File, Export holds what it can write (%d)" % menu.item_count,
+		file_menu.get_popup().visible and menu.item_count >= 4)
 	await _shot("export_menu")
-	menu.hide()
+	file_menu.get_popup().hide()
 	for name: String in ["probe_bay.png", "probe_bay_bricklink.xml", "probe_bay_rebrickable.csv"]:
 		DirAccess.remove_absolute(into.path_join(name))
-	menu.id_pressed.emit(1)
+	menu.id_pressed.emit(shell.menu_id("export_picture"))
 	var png: String = into.path_join("probe_bay.png")
 	for _n: int in 300:
 		if FileAccess.file_exists(png):
@@ -835,13 +1084,13 @@ func _exports() -> void:
 			corner.a < 0.05 and opaque > 40)
 	_check("...and the baseplate is back after it", _store.scenery.keys().all(
 		func(b: int) -> bool: return _world.get_brick(b) != null and not _world.get_brick(b).hidden))
-	menu.id_pressed.emit(2)
+	menu.id_pressed.emit(shell.menu_id("export_bricklink"))
 	await _frames(3)
 	var xml: String = FileAccess.get_file_as_string(into.path_join("probe_bay_bricklink.xml"))
 	_check("the BrickLink wanted list names 3002 in BrickLink's blue, 2 of them",
 		xml.contains("<ITEMID>3002</ITEMID>") and xml.contains("<COLOR>7</COLOR>")
 		and xml.contains("<MINQTY>2</MINQTY>") and xml.begins_with("<INVENTORY>"))
-	menu.id_pressed.emit(3)
+	menu.id_pressed.emit(shell.menu_id("export_rebrickable"))
 	await _frames(3)
 	var csv: String = FileAccess.get_file_as_string(into.path_join("probe_bay_rebrickable.csv"))
 	_check("the Rebrickable list is Part,Color,Quantity (%s)" % csv.strip_edges().replace("\n", " / "),
@@ -868,10 +1117,7 @@ func _a_small_laptop() -> void:
 			% str(DisplayServer.window_get_size()))
 	var scale: float = root.get_final_transform().get_scale().y
 	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
-	var bar: EditBar = _main.get("_edit_bar")
-	var spacer: Control = bar.get_parent()
-	_check("the edit bar fits the room beside the model",
-		bar.get_global_rect().end.y <= spacer.get_global_rect().end.y + 1.0)
+	var shell: Shell = _main.get("_shell")
 	await _shot("laptop_1280x720")
 	await _key(KEY_COMMA)
 	var controls: ControlsDialog = _main.get("_controls")
@@ -881,6 +1127,47 @@ func _a_small_laptop() -> void:
 	_check("Escape closes it", not controls.visible)
 	DisplayServer.window_set_size(was)
 	await _frames(20)
+	# Opened with the pointer resting on a button, its tooltip up: the
+	# tooltip took the first Escape for itself on the web. (After the window
+	# is put back: a display that will not resize the window still reports
+	# the size asked for, and every click aimed by it lands short.)
+	await _move((shell.toolbar._buttons["undo"] as Control).get_global_rect().get_center())
+	await _key(KEY_F1)
+	for _n: int in 90:
+		await process_frame
+	_check("F1 opens the controls list", controls.visible)
+	await _key(KEY_ESCAPE)
+	_check("...and Escape closes it with a tooltip up", not controls.visible)
+	await _from_menu("Help", "keys")
+	_check("Help, Keys and controls opens it too", controls.visible)
+	await _key(KEY_ESCAPE)
+	# The toolbar in views of its own the width of a laptop at 1280 x 720
+	# (1391 units at 0.92) and of a phone (about 720): all of it on the
+	# laptop, and on the phone the groups the menus also hold fold away and
+	# the tools stay.
+	for wide: int in [1391, 720]:
+		var narrow := SubViewport.new()
+		narrow.size = Vector2i(wide, 120)
+		root.add_child(narrow)
+		var small := Toolbar.new()
+		small.shell = shell
+		small.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		narrow.add_child(small)
+		for _n: int in 10:
+			await process_frame
+		var shown: Array = small._buttons.keys().filter(func(n: String) -> bool:
+			return (small._buttons[n] as Control).visible)
+		var fits: bool = small._row.get_combined_minimum_size().x <= wide
+		var tools: bool = shown.has("mode_select") and shown.has("mode_delete") \
+			and shown.has("save")
+		if wide > 1000:
+			_check("at 1280 x 720 the whole toolbar is there (%d of %d buttons, %.0f of %d)" % [
+				shown.size(), small._buttons.size(), small._row.get_combined_minimum_size().x,
+				wide], fits and shown.size() == small._buttons.size())
+		else:
+			_check("on a phone the toolbar fits (%.0f of %d) with every tool on it (%d buttons)" % [
+				small._row.get_combined_minimum_size().x, wide, shown.size()], fits and tools)
+		narrow.queue_free()
 	# A view the shape of a phone held upright: the model framed to fit
 	# across it, not just up it. A viewport of its own, with a camera of
 	# the app's own kind, so the shape does not depend on the display.

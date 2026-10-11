@@ -169,7 +169,9 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["H"], "hide the selection; with none, show all"),
 		Binding.new(["shift-H"], "show only the selection"),
 		Binding.new(["alt-H"], "show everything"),
-		Binding.new(["Esc"], "out of whatever is open"),
+		Binding.new(["V"], "the Select tool; V again, back to Build"),
+		Binding.new(["L", "shift-L"], "lock the selection, unlock everything"),
+		Binding.new(["Esc"], "out of whatever is open, then back to Build"),
 	])
 	_section(everything, "The view", [
 		# Turn first among the view verbs, because it is the one people
@@ -205,7 +207,8 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["M"], "minifigure"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
-		Binding.new([","], "this list"),
+		Binding.new([",", "F1"], "this list"),
+		Binding.new(["F11"], "full screen"),
 		Binding.new(["%s-S" % _hold()], "save"),
 	]
 	# The page is closed by its tab, so a browser is not told about a

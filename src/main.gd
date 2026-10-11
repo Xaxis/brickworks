@@ -86,7 +86,7 @@ var _thumbnails: PartThumbnails
 ## Copy, paste, duplicate, moving and turning a selection: src/ui/edit_verbs.gd.
 var _verbs: EditVerbs
 ## Those verbs as buttons down the left of the model.
-var _edit_bar: EditBar
+var _shell: Shell
 ## The offer to seat an old model's parts on their studs.
 var _seat_offer: SeatOffer
 ## A picture of the model, and its parts list for a shop.
@@ -190,8 +190,8 @@ func _tell_page() -> void:
 		named.merge(_elements.controls_by_name())
 	if _account_panel != null:
 		named.merge(_account_panel.controls_by_name())
-	if _edit_bar != null:
-		named.merge(_edit_bar.controls_by_name())
+	if _shell != null:
+		named.merge(_shell.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
 	# And the model's own part of the window, the column the box select
@@ -940,14 +940,6 @@ func _build_ui() -> void:
 	middle.add_theme_constant_override("separation", 0)
 	layout.add_child(middle)
 
-	var above := Control.new()
-	above.custom_minimum_size = Vector2(0, 6)
-	above.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	middle.add_child(above)
-	_counts = _viewport_label(12)
-	_counts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	middle.add_child(_counts)
-
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1238,20 +1230,13 @@ func _build_ui() -> void:
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
 	add_child(_verbs)
-	# Not where a finger is the pointer: TouchTools is there, at a size a
-	# finger can hit.
-	if not TouchTools.wanted():
-		_edit_bar = EditBar.new()
-		_edit_bar.verbs = _verbs
-		_edit_bar.builder = _builder
-		_edit_bar.anchor_left = 0.0
-		_edit_bar.anchor_right = 0.0
-		_edit_bar.anchor_top = 0.5
-		_edit_bar.anchor_bottom = 0.5
-		_edit_bar.offset_left = 10.0
-		_edit_bar.offset_right = 10.0
-		_edit_bar.grow_vertical = Control.GROW_DIRECTION_BOTH
-		spacer.add_child(_edit_bar)
+	# The menus, the toolbar, the properties and the status bar:
+	# src/ui/shell.gd. The parts count is the status bar's.
+	_shell = Shell.new()
+	_shell.app = self
+	add_child(_shell)
+	_shell.build(column, spacer)
+	_counts = _shell.status.counts
 
 	# The ruler, and what it says, under the counts.
 	_measure = Measure.new()
@@ -1696,8 +1681,9 @@ func _fit_panels() -> void:
 		_chat_dock.set_open(false, false)
 	elif not cramped and _folded_for_room:
 		_folded_for_room = false
-		_bin_dock.set_open(true, false)
-		_chat_dock.set_open(true, false)
+		# As they were left, not simply open.
+		_bin_dock.set_open(bool(ShellPrefs.value("parts_open")), false)
+		_chat_dock.set_open(bool(ShellPrefs.value("assistant_open")), false)
 
 
 var _folded_for_room: bool = false
@@ -1765,6 +1751,9 @@ func _hold_figure(figure: Minifig) -> void:
 
 func _on_part_chosen(part_id: String) -> void:
 	_builder.drop_figure()
+	# A part picked is a part to put down: the Build tool.
+	if _verbs != null:
+		_verbs.set_mode("build")
 	_builder.held_part = part_id
 	# On the web most parts are a request away rather than resident. Ask
 	# for it as soon as it is picked, so it is usually there by the time
@@ -2323,6 +2312,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _camera.turned_rather_than_clicked():
 			return
+		# With a tool other than Build the right button only turns the
+		# view, but for Delete, whose right click is its left.
+		if _verbs != null and not _verbs.shows_ghost():
+			if _verbs.mode == "delete":
+				_verbs.click(button.position, false)
+			return
 		_aim_at(button.position)
 		_builder.remove_hovered()
 		_refresh_preview()
@@ -2340,6 +2335,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	# decided here. A drag draws a box; a click without one places, or
 	# picks a brick out when shift is held.
 	if button.pressed:
+		# A click on the model ends typing: a field that kept the keys
+		# left every shortcut dead until something else was clicked.
+		var typing: Control = get_viewport().gui_get_focus_owner()
+		if typing != null:
+			typing.release_focus()
 		_box_dropped = false
 		_marquee.begin(button.position)
 		_box_began = true
@@ -2363,6 +2363,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _box_dropped:
 		# The end of a box Escape already threw away, not a click.
 		_box_dropped = false
+		return
+
+	# A tool other than Build: the click is the tool's (EditVerbs.click).
+	if _verbs != null and not _verbs.shows_ghost():
+		if _playback != null and _playback.is_playing():
+			_playback.stop()
+			return
+		if not _camera.swallowing_click():
+			_verbs.click(button.position, button.shift_pressed)
 		return
 
 	if button.shift_pressed:
@@ -2523,7 +2532,7 @@ func _nudge(screen_way: Vector3) -> void:
 	var axis: Vector3 = (Vector3(signf(world_way.x), 0.0, 0.0)
 		if absf(world_way.x) >= absf(world_way.z)
 		else Vector3(0.0, 0.0, signf(world_way.z)))
-	_nudge_by(Vector3i(axis * BrickLattice.CELLS_PER_STUD))
+	_nudge_by(Vector3i(axis * _verbs.across_cells()))
 
 
 func _nudge_by(cells: Vector3i) -> void:
@@ -2582,10 +2591,12 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _edit_bar, _seat_offer]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _seat_offer]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
+	if _shell != null and _shell.covers(point):
+		return true
 	# These cover the model rather than sitting beside it, so anywhere
 	# is over them.
 	if _inventory != null and _inventory.is_showing():
@@ -2612,8 +2623,12 @@ func _over_panel_at(point: Vector2) -> bool:
 ## Callers with no event — after an undo, after a key — pass nothing
 ## and get the live pointer, which for them is right.
 func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
-	# No part to place while the ruler is out.
+	# No part to place while the ruler is out, or with a tool other than
+	# Build in hand.
 	if _measure != null and _measure.active:
+		_builder.hide_preview()
+		return
+	if _verbs != null and not _verbs.shows_ghost():
 		_builder.hide_preview()
 		return
 	var mouse: Vector2 = at
@@ -2666,7 +2681,53 @@ func _cursor_state() -> String:
 	now.playing = _playback != null and _playback.is_playing()
 	now.selecting = over_brick and Input.is_key_pressed(KEY_SHIFT)
 	now.loading = _library.is_on_its_way(_builder.held_part)
+	# A tool other than Build: what a click on the part under the pointer
+	# would do to it.
+	if _verbs != null and not _verbs.shows_ghost():
+		var under: int = _verbs.brick_at(get_viewport().get_mouse_position())
+		now.aimed = false
+		now.loading = false
+		now.selecting = under != 0 and not _verbs.mode in ["paint", "delete"]
+		now.painting = now.painting or (under != 0 and _verbs.mode == "paint")
+		now.removing = now.removing or (under != 0 and _verbs.mode == "delete")
 	return Cursors.choose(now)
+
+
+## Escape, before the interface sees it.
+##
+## On the web a tooltip on the screen took the first press for itself:
+## Help clicked, its tooltip up, and Escape did nothing to the Controls
+## sheet until the pointer had moved off the button. Every probe passed,
+## because no probe leaves a tooltip up. Taken here, ahead of the
+## interface; a menu or a dialog that is open still gets it first, being
+## a window of its own.
+func _input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
+		return
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit:
+		return
+	# Only for what the ladder below closes; anything else that answers
+	# Escape for itself (the account panel) still gets it.
+	if not _escape_closes_something():
+		return
+	_unhandled_key_input(event)
+	get_viewport().set_input_as_handled()
+
+
+func _escape_closes_something() -> bool:
+	return (_marquee != null and _marquee.is_drawing()) \
+		or (_controls != null and _controls.visible) \
+		or (_mosaic != null and _mosaic.visible) \
+		or (_figures != null and _figures.visible) \
+		or _builder.is_holding_figure() or _builder.is_carrying() \
+		or (_measure != null and _measure.active) \
+		or (_elements != null and _elements.visible) \
+		or not _builder.selection.is_empty() \
+		or (_inventory != null and _inventory.is_showing()) \
+		or (_steps != null and _steps.is_playing_back()) \
+		or (_verbs != null and _verbs.mode != "build")
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -2691,6 +2752,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_camera.key_zoom(zoom)
 		return
 	if _verbs != null and _verbs.handle_key(key):
+		return
+	if _shell != null and _shell.handle_key(key):
 		return
 	match key.keycode:
 		KEY_F:
@@ -2811,8 +2874,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				# shift, which is the axis you want far less often.
 				if key.shift_pressed:
 					_nudge_by(Vector3i(0,
-						BrickLattice.CELLS_PER_PLATE
-						* (1 if key.keycode == KEY_UP else -1), 0))
+						_verbs.up_cells() * (1 if key.keycode == KEY_UP else -1), 0))
 				else:
 					_nudge(Vector3.FORWARD if key.keycode == KEY_UP
 						else Vector3.BACK)
@@ -2902,6 +2964,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				return
 			if _steps.is_playing_back():
 				_steps.stop()
+				return
+			# And the outermost: back to Build from any other tool.
+			if _verbs != null:
+				_verbs.set_mode("build")
 
 
 static func _comma(value: int) -> String:

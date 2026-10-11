@@ -40,20 +40,22 @@ picture the assistant is shown.
   not the baseplate under it (`Main._on_rebuilt` takes `ModelStore.scenery` off
   the count and the weight): it said 62 bricks and 149 g over the 61-brick
   example car whose parts list says 48 g. An empty baseplate says "Nothing
-  built yet: pick a part, then click the baseplate". On a dark pill
-  (`_viewport_label`), not a thick outline, which at 1x over the pale sky
-  filled every letter in. Batches, triangles, the catalogue count and the
+  built yet: pick a part, then click the baseplate". It is the status bar's
+  (`src/ui/status_bar.gd`), along the foot of the window — see
+  [building](building.md). Batches, triangles, the catalogue count and the
   frame rate come back with `--stats` (and count everything); they were the
   first line every visitor read.
-- `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
-  Mosaic), Help — and Clear at the far end, which asks first, because it takes
-  the undo history with it. It wraps onto a second line where it does not fit
-  (an `HFlowContainer`) and its status words end in "…" rather than widen it:
-  as one row it set the width of the whole window, and on a phone Clear and
-  the assistant's rail were off the page. `tools/web/fit_check.mjs` requires
-  both on both phones.
+- `toolbar`: the bar across the top holds the menus (File, Edit, View, Build,
+  Tools, Help), the model's name and Account; the toolbar under it the file,
+  undo, the tools, the clipboard, snap and turn step and the view. Both are
+  [building](building.md)'s `menus and toolbar`. The bar wraps onto a second
+  line where it does not fit (an `HFlowContainer`) and the toolbar folds its
+  least-needed groups away (`Toolbar._fit`): as one row the old bar set the
+  width of the whole window, and on a phone the assistant's rail was off the
+  page. `tools/web/fit_check.mjs` asks for New, Save and both rails on both
+  phones.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,` or the Help button — and every key on it actually doing that. Its last
+  `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
   line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
   released 2026-10-10 (3f2a9c1)" in a release, ", development build" from
   source, and on the web the version before the deploy's commit and time. The

@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:edit bar, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-models by hand, ui:measure -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-models by hand, ui:measure -->
 
 ## Sub-features
 
@@ -38,7 +38,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
   same point each time, so four turns come back exactly.
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
-  Select button's menu takes the same colour, the same part, both, everything
+  toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
   across its stud axis), the opposite, all, none. The baseplate is never taken.
 - `hide and show only`: `H` hides the selection, `Shift-H` hides everything
@@ -46,34 +46,82 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   drawn, the pointer passes through them (`BrickLattice.unseen`) and boxes and
   `Ctrl-A` skip them, but they still take up their room. The timeline's end
   puts them back hidden.
-- `edit bar` (`src/ui/edit_bar.gd`): the verbs as buttons down the left of the
-  model, each calling what its key calls (`EditVerbs.press`), with a tooltip of
-  what it does and its key; the ones that need a selection are faint without
-  one. Two columns when the window is too short for one. Not on a touch screen,
-  where TouchTools is.
-- `replace part`: Replace swaps every selected part for the part in hand, each
+- `menus and toolbar` (`src/ui/shell.gd`, `src/ui/toolbar.gd`): the bar across
+  the top holds File, Edit, View, Build, Tools and Help, the model's name and
+  Account; every command is defined once in `Shell._define` with its words, its
+  key (shown beside it in the menu, never answered by the menu: the keys stay
+  the app's own) and whether it can be used now — greyed when not, ticked when
+  it is a setting that is on. File: New, Open, Open recent, Import (LDraw,
+  Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as, Export, Instructions,
+  Clear, Account, Quit. The toolbar under it: New/Open/Save, Undo/Redo/History,
+  the tools, Copy/Paste/Mirror/Select by/Show all, snap and turn step, grid,
+  orthographic, fit and three views, Measure, Properties, Timeline,
+  Instructions, Parts list — each tooltip its name, key and what it does.
+  Narrower than it needs, it folds its least-needed groups (all in the menus
+  too); on a phone the file, history and tools stay.
+- `tool modes` (`EditVerbs.mode`): Build (the default: a click puts the part in
+  hand down) and Select, Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a
+  click on a part does that tool's one thing to it, or to the whole selection
+  when the part is in it (`EditVerbs.click`). The tool in use is lit on the
+  toolbar and ticked in Tools. Only Build shows the ghost; a part carried by
+  Move or Clone shows its own. Right-click takes a part off only in Build and
+  Delete. `V` is Select (again, Build); `Esc`, after closing whatever is up,
+  goes back to Build; picking a part in the bin does too.
+- `properties panel` (`src/ui/inspector.gd`): over the model's top right, under
+  the axes. One part: its name, LDraw and BrickLink numbers, its colour by
+  LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
+  X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
+  it (refused and put back where there is no room); what it is joined to,
+  which way its studs face, its sub-model, its step in the instructions (models
+  of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
+  how many of what, the colours, the size in studs and bricks, the group's
+  corner to type over. Folds to its header; nothing selected is just the header.
+- `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
+  the tool's hint when nothing was; then the parts count and stability, how
+  many are selected, the snap and turn step, and how big a stud is on screen.
+- `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
+  where a part in hand or a carried group can land across the ground
+  (`Builder.snap_across`) and how far the arrows nudge a selection across and,
+  with Shift, up (20/8, 10/8, 10/4, 2/2 LDU). Turn (90°, 45°, 15°, 5°) is how far
+  `R` and the Rotate tool turn a selection (`Builder.turn_selection_by`; off a
+  right angle the parts stand off the grid as turned covers). The part in hand
+  always turns a quarter.
+- `lock parts`: `L` (Edit, Lock the selection) locks it: no click, box,
+  select-by, tool, paint or removal touches it until `Shift-L` unlocks
+  everything (`Builder.locked`). Not saved with the model; Open forgets it.
+- `stud grid` (`src/ui/stud_grid.gd`): View, Stud grid, or the grid button:
+  lines between the baseplate's studs, every fourth brighter.
+- `tour` (`src/ui/tour.gd`): Help, Take the tour: eight cards, each lighting a
+  part of the window (menus, toolbar, parts bin, the model, properties, status
+  bar, assistant) with the rest dimmed; Next/Back or the arrows, Esc leaves.
+- `remembered layout` (`src/ui/shell_prefs.gd`): the panels open or folded, the
+  properties, the key strip, the grid, the snap and the turn step are kept in
+  `user://shell.cfg` and come back next time; a narrow window still folds the
+  panels without forgetting how they were. Not read or written under
+  `--script`, so a probe neither sees nor changes anyone's layout.
+- `replace part`: Edit, Replace with the part in hand swaps every selected part for the part in hand, each
   in its own colour, centred on the stud grid for its own footprint and standing
   where the old one stood. One step; a part with no room is left.
-- `undo history`: History lists the steps in words, newest first ("swapped 2
+- `undo history`: History (on the toolbar, and Edit, History) lists the steps in words, newest first ("swapped 2
   parts for Brick 2 x 3", "painted 2 parts"); choosing one goes back to before
   it (`Builder.undo_steps`).
-- `mirror a selection` (`src/assembly/mirror.gd`): `Shift-M` or Mirror makes the
+- `mirror a selection` (`src/assembly/mirror.gd`): `Shift-M` or Edit, Mirror makes the
   selection its mirror image left to right as the view sees it, in place, one
   step. A reflection is not something plastic can do, so each part goes where
   its reflection would and is turned to look reflected; a handed part (a
   "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand.
-- `measure`: `U` (or Measure on the edit bar) takes out a ruler (`src/ui/measure.gd`):
-  click a point, then another, and the label under the counts says the
+- `measure`: `U` (or Measure on the toolbar) takes out a ruler (`src/ui/measure.gd`):
+  click a point, then another, and the label over the model says the
   distance in millimetres and across each axis in studs and plates; points
   snap to half a stud across and a cell up. While it is out a click places
   nothing; the right and middle buttons still turn the view; `U` or `Esc` puts
   it away.
-- `sub-models by hand`: `Ctrl-G` (or Make a sub-model) asks for a name and makes
+- `sub-models by hand`: `Ctrl-G` (or Build, Make a sub-model) asks for a name and makes
   the selection a sub-model of its own — the group an `.mpd` is written by and
   the booklet builds one at a time; `Ctrl-Shift-G` takes it out; Select → Same
   sub-model takes all of one from any brick of it. One step to undo
   (`Builder.name_group`, a `regroup` history step).
-- `swing on a hinge`: `J` / `Shift-J` (or Swing on the edit bar) turns the
+- `swing on a hinge`: `J` / `Shift-J` (or the Hinge tool) turns the
   selection 15° about the joint it hangs from — a hinge's pin, a clip on a
   bar, a turntable's disc: a shaft of a selected part in a bore of an
   unselected one (`Joints.rounds`). It may press only on the part it is joined
@@ -111,8 +159,9 @@ godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
 # building by hand as a person does: copy, paste, duplicate, cut, move, turn,
-# select by, hide, the edit bar, replace, history, the parts shelf, the seat
-# offer and a 1280 x 720 window — every step a key or a click, with pictures
+# select by, hide, the menus, the toolbar and its tools, the properties, the
+# status bar, the tour, replace, history, the parts shelf, the seat offer and
+# a 1280 x 720 window — every step a key or a click, with pictures
 # in shots/handbuild/
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 # undo belongs to the model it was recorded against
@@ -124,10 +173,13 @@ godot --headless --path . --script src/dev/snap_probe.gd
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `snap` says "hand placement lands where the assistant would put it",
 `handbuild` says "by hand: ... all work as a person uses them". Look at
-`shots/handbuild/*.png` too: the ghosts in their colours, the edit bar, the
-Select and History menus, the seat offer and the 1280 x 720 window.
+`shots/handbuild/*.png` too: the ghosts in their colours, `shell.png`,
+`edit_menu.png`, `tools_menu.png`, `select_tool.png`, `properties.png`,
+`grid.png`, `tour.png`, the Select by and History menus, the seat offer and
+the 1280 x 720 window. In a browser, the deploy's `fit_check.mjs` finds New
+and Save on the toolbar at every size.
 
-For the scene itself, launch it and read the brick count in the corner: with
+For the scene itself, launch it and read the brick count in the status bar: with
 `--model=models/car.ldr` it is 61 parts, which is what
 `godot --headless --path . -- --model=models/car.ldr --out=/tmp/car.ldr` writes.
 

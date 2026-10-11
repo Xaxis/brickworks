@@ -35,6 +35,10 @@ func handle_key(key: InputEventKey) -> bool:
 			if held and not key.shift_pressed:
 				paste()
 				return true
+			# V alone is the Select tool, and again goes back to Build.
+			if not held and not key.alt_pressed:
+				set_mode("build" if mode == "select" else "select")
+				return true
 		KEY_D:
 			if held and not key.shift_pressed:
 				duplicate_selection()
@@ -52,8 +56,16 @@ func handle_key(key: InputEventKey) -> bool:
 				aim_again.call()
 				return true
 			if not builder.selection.is_empty() and not held:
-				turn(-1 if key.shift_pressed else 1)
+				turn_by(-turn_step if key.shift_pressed else turn_step)
 				return true
+		KEY_L:
+			if held:
+				return false
+			if key.shift_pressed:
+				unlock_all()
+			else:
+				lock(true)
+			return true
 		KEY_ESCAPE:
 			if measure != null and measure.active:
 				measure.leave()
@@ -119,7 +131,7 @@ func press(name: String) -> void:
 				builder.rotate_held(1)
 				aim_again.call()
 			else:
-				turn(1)
+				turn_by(turn_step)
 		"tip":
 			builder.tip_held(1)
 			aim_again.call()
@@ -158,6 +170,10 @@ func press(name: String) -> void:
 			isolate()
 		"show_all":
 			show_all()
+		"lock":
+			lock(true)
+		"unlock":
+			unlock_all()
 
 
 ## Swap the selection for the part in hand.
@@ -344,7 +360,7 @@ func select_by(kind: String) -> int:
 			return 0
 	builder.selection.clear()
 	for brick_id: int in found:
-		if not builder.lattice.unseen.has(brick_id):
+		if not builder.lattice.unseen.has(brick_id) and not builder.is_locked(brick_id):
 			builder.selection[brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
 	return builder.selection.size()
@@ -416,8 +432,10 @@ func copy() -> int:
 		say.call("select something to copy first")
 		return 0
 	# And as LDraw on the system clipboard, which LDCad, LeoCAD and a
-	# text editor all paste.
-	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+	# text editor all paste. Not in a browser, which allows it only inside
+	# the page's own handling of a key or a click — and Godot answers both
+	# a frame later, so every copy there printed an error instead.
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) and not OS.has_feature("web"):
 		_put_on_clipboard = Carry.as_ldraw(Carry.clipboard)
 		DisplayServer.clipboard_set(_put_on_clipboard)
 	say.call("copied %s — %s-V to paste" % [_parts(count), _hold()])
@@ -493,14 +511,187 @@ func lift() -> int:
 
 ## Turn the selection where it stands.
 func turn(quarter_turns: int) -> int:
-	var count: int = builder.turn_selection(quarter_turns)
+	return turn_by(quarter_turns * 90.0)
+
+
+## Turn the selection where it stands by any angle: the turn step, from R
+## and the Rotate tool.
+func turn_by(degrees: float) -> int:
+	var count: int = builder.turn_selection_by(degrees)
 	if count == 0:
 		say.call("no room to turn it there")
 		return 0
 	edited.call()
 	aim_again.call()
-	say.call("turned %s a quarter" % _parts(count))
+	say.call("turned %s %+d°" % [_parts(count), roundi(degrees)])
 	return count
+
+
+# -- locking ------------------------------------------------------------------
+
+
+## Lock the selection, so nothing picks it out, moves, paints or removes it
+## until it is unlocked: a finished base kept safe while the building on it
+## is worked on. Or unlock it.
+func lock(yes: bool) -> int:
+	if builder.selection.is_empty():
+		say.call("select what to lock first")
+		return 0
+	var count: int = builder.lock_selection(yes)
+	say.call(("locked %s — Shift-L unlocks everything" if yes else "unlocked %s")
+		% _parts(count))
+	return count
+
+
+func unlock_all() -> int:
+	var count: int = builder.unlock_all()
+	say.call("unlocked %s" % _parts(count) if count > 0 else "nothing is locked")
+	return count
+
+
+# -- tools --------------------------------------------------------------------
+
+
+## What a left click on the model does. "build" puts the part in hand
+## down, as the app always has; each of the others is a tool on the
+## toolbar, and a click on a part does that tool's one thing to it — or to
+## the whole selection, when the part clicked is in it.
+##
+## Every verb was a key or a button that acted on a selection made first,
+## so turning one brick was three gestures: Shift-click it, press R, press
+## Escape. Studio and Mecabricks both have tools a click acts through.
+const MODES: Array[String] = ["build", "select", "move", "rotate", "hinge",
+	"clone", "paint", "hide", "delete"]
+var mode: String = "build"
+signal mode_changed(mode: String)
+
+## How far R and the Rotate tool turn a selection, in degrees. The part in
+## hand always turns a quarter: it is put down on the studs.
+var turn_step: float = 90.0
+
+## The grid a part is put down and nudged on: across, and up for Shift and
+## the arrows, in LDU. Named as the toolbar names them.
+const SNAPS: Dictionary = {
+	"stud": [20, 8], "half": [10, 8], "half_plate": [10, 4], "free": [2, 2]}
+var snap: String = "stud"
+
+
+func set_snap(to: String, aim: bool = true) -> void:
+	if not SNAPS.has(to):
+		return
+	snap = to
+	builder.snap_across = float(SNAPS[to][0])
+	# Not as the app starts: aiming then put a ghost under a pointer that
+	# had not moved, which nothing had ever done before.
+	if aim:
+		aim_again.call()
+
+
+## One nudge across, and one up, in lattice cells.
+func across_cells() -> int:
+	return roundi(float(SNAPS[snap][0]) / BrickLattice.CELL)
+
+
+func up_cells() -> int:
+	return roundi(float(SNAPS[snap][1]) / BrickLattice.CELL)
+
+
+func set_mode(to: String) -> void:
+	if not MODES.has(to) or to == mode:
+		return
+	mode = to
+	if measure != null and measure.active:
+		measure.leave()
+	if to != "build" and not builder.is_carrying():
+		builder.hide_preview()
+	mode_changed.emit(mode)
+	aim_again.call()
+
+
+## What the active tool does, for the status bar.
+func hint() -> String:
+	match mode:
+		"select":
+			return "Select: click a part, Shift-click to add or take one away, drag a box round several"
+		"move":
+			return "Move: click a part to pick it up (the whole selection, if it is in it), click again to put it down"
+		"rotate":
+			return "Rotate: click a part to turn it %d° (Shift-click turns it back)" % roundi(turn_step)
+		"hinge":
+			return "Hinge: click a part on a hinge, clip or turntable to swing it %d° (Shift-click swings it back)" % roundi(SWING)
+		"clone":
+			return "Clone: click a part to hold a copy of it, then click where the copy goes"
+		"paint":
+			return "Paint: click a part to paint it the colour in hand"
+		"hide":
+			return "Hide: click a part to hide it — Alt-H shows everything again"
+		"delete":
+			return "Delete: click a part to take it off"
+	return "Build: click to put the part down — right-click takes one off, Shift-click selects"
+
+
+## Whether the ghost of the part in hand belongs under the pointer: in
+## Build, and while anything is carried, whatever the tool.
+func shows_ghost() -> bool:
+	return mode == "build" or builder.is_carrying() or builder.is_holding_figure()
+
+
+## The part under a point on the screen, or 0 for none, the baseplate or a
+## hidden one.
+func brick_at(at: Vector2) -> int:
+	if camera == null:
+		return 0
+	var hit: BrickLattice.Hit = builder.lattice.raycast(
+		camera.project_ray_origin(at), camera.project_ray_normal(at))
+	if not hit.is_valid() or scenery.has(hit.brick_id):
+		return 0
+	return hit.brick_id
+
+
+## A left click on the model with a tool other than Build. True when it
+## did something.
+func click(at: Vector2, shift: bool) -> bool:
+	var brick_id: int = brick_at(at)
+	if mode == "select":
+		if brick_id == 0:
+			if not shift:
+				builder.clear_selection()
+			return false
+		if builder.is_locked(brick_id):
+			say.call("that part is locked — Shift-L unlocks everything")
+			return false
+		return builder.select_brick(brick_id, shift)
+	if brick_id == 0:
+		return false
+	if builder.is_locked(brick_id):
+		say.call("that part is locked — Shift-L unlocks everything")
+		return false
+	if not builder.selection.has(brick_id):
+		builder.select_brick(brick_id, false)
+	match mode:
+		"move":
+			return lift() > 0
+		"rotate":
+			return turn_by(-turn_step if shift else turn_step) > 0
+		"hinge":
+			return swing(-SWING if shift else SWING) > 0
+		"clone":
+			return duplicate_selection() > 0
+		"paint":
+			var painted: int = builder.paint_selection(builder.held_color)
+			if painted > 0:
+				edited.call()
+				say.call("painted %s" % _parts(painted))
+			return painted > 0
+		"hide":
+			return hide_selection() > 0
+		"delete":
+			var gone: int = builder.remove_selection()
+			if gone > 0:
+				edited.call()
+				say.call("removed %s" % _parts(gone))
+			return gone > 0
+	return false
 
 
 ## Put away what is held. A selection that was being moved goes back.
