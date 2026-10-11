@@ -137,7 +137,9 @@ fixing what it got wrong.
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
   a band measures 43% sideways in `tools/style.py`.
-- `a many-sided shaft`: the `prism` pattern (`Assistant._prism`, in the
+- `a many-sided shaft`: dressed by default (masonry 0.25, sideways 0.15; 0 for a
+  plain face): the thirteenth Orthanc stood a prism of plain faces, 61% plain,
+  that the finishing pass cannot reach. The `prism` pattern (`Assistant._prism`, in the
   assistant because it adds sections). `sides` 5-16 faces, each a bonded wall in
   a section of its own (`prism N face K`) turned `360 * K / sides` about the
   middle (`at`), its outer face at `radius`; faces as wide as lets the inside

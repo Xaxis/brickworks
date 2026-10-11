@@ -3994,7 +3994,12 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
 	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
 	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
-	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
+	# Dressed unless asked not to be. Both were zero unless given, the
+	# guidance said to give them, and no run did: the thirteenth Orthanc
+	# stood a prism of plain faces (61% plain, 1% on its side) which the
+	# finishing pass cannot reach once they are turned. "masonry": 0 and
+	# "sideways": 0 still give a plain face.
+	var masonry: float = clampf(float(pattern.get("masonry", 0.25)), 0.0, 1.0)
 	if sides < 5 or sides > 16 or courses < 1 or courses > 200:
 		trouble.append("prism wants 5 to 16 sides and 1 to 200 courses")
 		return []
@@ -4003,7 +4008,7 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
 			% Placement._num(radius) + "make the radius larger or the sides fewer")
 		return []
-	var sideways: float = clampf(float(pattern.get("sideways", 0.0)), 0.0, 0.5)
+	var sideways: float = clampf(float(pattern.get("sideways", 0.15)), 0.0, 0.5)
 	# Faces left out, centred on the back (the face looking -z, which is the
 	# one turned half way round), so the inside shows the way a real set's
 	# tower opens: rooms on floors, behind. Every Orthanc built here was a
@@ -7112,10 +7117,11 @@ alongside the bricks you write by hand:
            the real-set share of parts at an angle and spent itself \
            doing it; this is that, in one line. Stack prisms of shrinking \
            radius for a taper, and put a floor of plates on a square \
-           core inside to build on. It takes masonry and sideways as a \
-           wall does — "masonry": 0.3, "sideways": 0.2 — for a face of \
-           worked stone with things on its side, which the finishing \
-           pass cannot reach once the faces are turned. Leave its back \
+           core inside to build on. Its faces come dressed as a finished \
+           wall's are — a quarter worked stone, some bricks turned out \
+           with things on their side (the finishing pass cannot reach \
+           them once the faces are turned); "masonry" and "sideways" set \
+           how much, 0 for a plain face. Leave its back \
            open ("open": 3) and, once it stands, add_rooms with "prism": \
            the same at, sides and radius, and "floors": [{"room": \
            "dungeon"}, {"room": "forge", "stair": true}, {"room": \
