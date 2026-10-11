@@ -212,7 +212,7 @@
                 "type": "integer"
               },
               "open": {
-                "description": "prism: faces left out at the back, so the rooms inside show (and with piers, the backs of the piers there)",
+                "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back and the backs of the piers there",
                 "type": "integer"
               },
               "pattern": {
@@ -229,7 +229,7 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns.",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, with a black point on the cap.",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
@@ -500,7 +500,7 @@
     "name": "attachment_points"
   },
   {
-    "description": "A finishing pass over what is already built: plain one-stud-wide bricks (1x1 to 1x4) whose long face is open to the air are laid again, in place, as bricks with a stud on the side carrying a tile, round tile, round plate or cheese slope facing out (sideways), or as masonry bricks with their stonework out (masonry). What a builder does to a plain wall, and how real sets come to have a fifth of their parts on their side \u2014 done for you, in one call, checked like any edit.",
+    "description": "A finishing pass over what is already built: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air are laid again, in place, as bricks with a stud on the side carrying a tile, round tile, round plate or cheese slope facing out (sideways), or as masonry bricks with their stonework out (masonry); one two studs wide (2x2 to 2x4) as two rows, the outer one finished so; the faces of a prism or a cluster too, in their own sections. What a builder does to a plain wall, and how real sets come to have a fifth of their parts on their side \u2014 done for you, in one call, checked like any edit.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1217,7 +1217,7 @@
                 "type": "integer"
               },
               "open": {
-                "description": "prism: faces left out at the back, so the rooms inside show (and with piers, the backs of the piers there)",
+                "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back and the backs of the piers there",
                 "type": "integer"
               },
               "pattern": {
@@ -1234,7 +1234,7 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns.",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, with a black point on the cap.",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
