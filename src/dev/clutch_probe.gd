@@ -77,6 +77,7 @@ func _stack(assistant: Assistant, lower: String, upper: String,
 	var said: String = str(report.get("feedback", ""))
 	return {
 		"off_grid": said.contains("studs across and"),
+		"said": said,
 		"smooth": said.contains("no stud anywhere to grip"),
 		"ok": bool(report.get("ok", false)),
 	}
@@ -92,9 +93,16 @@ func _check_offsets(assistant: Assistant) -> void:
 		var verdict: Dictionary = _stack(assistant, "3001", "3001", across, 3.0)
 		_ok(verdict["off_grid"],
 			"%s studs across is named: no stud reaches a tube there" % across)
-		_ok(verdict["ok"],
-			"...and it is advice, so the design still passes")
+		# A fault, and with the place that grips. As advice it was passed
+		# over: two round plates on a tower of Orthanc stood a tenth of a
+		# stud off with the note beside them.
+		_ok(not verdict["ok"] and str(verdict["said"]).contains("at x=0, z=0 it sits on them"),
+			"...and it is refused, with where it would grip")
 		break   # the message is the same for all of them; one proves it
+	# A part with no stud or tube facing up or down has no grid to be off:
+	# the worked fireplace's horns (53451) sit in a brick's studs sideways.
+	var horn: Dictionary = _stack(assistant, "3001", "53451", 0.3, 3.0)
+	_ok(not horn["off_grid"], "a horn, with no stud grid of its own, is not judged by one")
 
 
 func _check_smooth(assistant: Assistant) -> void:

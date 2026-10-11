@@ -80,6 +80,29 @@ func _run() -> void:
 					+ "them, and needs tools/build_meshes.py run again")
 			continue
 
+		# And stood on a floor, as add_rooms stands it, it is on the floor's
+		# studs. Read off real sets, the potion shelf, the campfire and the
+		# rocky ground each came out a tenth or two of a stud off the grid
+		# as a whole, which on the baseplate nothing measures and on a
+		# room's floor is a part off its studs.
+		var floored := Assistant.Model.new()
+		floored.placements.append(Assistant.Placement.from_dict({"part": "91405",
+			"color": 72, "x": -6, "y": 0, "z": -6, "rot": 0}))
+		for raw: Variant in technique["bricks"]:
+			var lifted: Dictionary = (raw as Dictionary).duplicate()
+			lifted["y"] = float(lifted["y"]) + 1.0
+			floored.placements.append(Assistant.Placement.from_dict(lifted))
+		for raw: Variant in technique.get("sections", []):
+			var lifted: Dictionary = (raw as Dictionary).duplicate()
+			lifted["y"] = float(lifted["y"]) + 1.0
+			var section: Assistant.Section = Assistant.Section.from_dict(lifted)
+			floored.sections[section.name] = section
+		var on_floor: String = str(assistant._check(floored)["feedback"])
+		if on_floor.contains("off its studs"):
+			_fail("%s stood on a floor is off its studs: %s" % [name,
+				on_floor.substr(on_floor.find("off its studs"), 220).replace("\n", " ")])
+			continue
+
 		# And it says what it is for. A construction with no "when" is a
 		# puzzle rather than an answer.
 		if str(technique.get("when", "")).length() < 20:

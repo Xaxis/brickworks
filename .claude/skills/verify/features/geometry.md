@@ -34,8 +34,13 @@ can occupy the same millimetre.
 - `clutch`: whether two parts that touch could really hold each other. The
   lattice is 2 LDU and the connection system is 20, so a position can be legal
   on the grid and impossible in plastic — a brick three tenths of a stud across
-  from the one below, or standing on a tile. Advice, not faults
-  (`Assistant._note_loose`).
+  from the one below, or standing on a tile (`Assistant._note_loose`). Standing
+  on a tile is advice. A fraction of a stud off is a fault ("off its studs",
+  with the x and z that grip) between two parts that each have a stud or tube
+  facing up or down (`_has_a_grid`); a horn or a pane has no grid to be off.
+  Half a stud still passes: whether a jumper is under it is not checked (the
+  socket model would need posts told from tubes first — task notes, and
+  `docs/ROADMAP.md`).
 - `technic joints`: pins, axles and ball joints as real attachments, alongside
   studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
   pin is not a collision), and the two connectors have to be *matched*
@@ -202,13 +207,20 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   turntable's top is 36 across on a 2 x 2. Named by the cover's corner, every
   one placed at whole studs stood 2 LDU off the studs below — 24 wing tips on the
   owner's tower of Orthanc — while the wing patterns had meant the footprint all
-  along. `_footprint_start` moves the corner out to the part's own stud grid,
-  read off its upward studs (tubes where it has none), trying the half-shifted
-  grid too because a jumper's stud sits on a line. A part with neither, a pane
-  or a pin, keeps the cover's corner. Upright parts only. `world_view_probe`
-  checks it; switch the snapping off and it reports 78 placements off and the
-  ellipse's wings 2.0 LDU off. Changing it means rewriting every worked example
-  that names such a part so it stays put (20 did, most to cleaner numbers).
+  along. `_footprint_start` moves the corner to the *nearest* line of the
+  part's own stud grid (outward only on a tie — a seat's backrest overhangs 4
+  LDU, and snapped outward its corner was a stud off), read off its upward
+  studs (tubes where it has none). A stud is mid-square unless the cover lies
+  exactly on the half-shifted grid and not on the other, which is a jumper; a
+  looser test let a tap's spout win. A part with neither, a pane or a pin,
+  keeps the cover's corner, and so does a minifigure part (`_figure_part`): a
+  skeleton's neck stud sits on a line and figures are put together by
+  transforms. Upright parts only. `world_view_probe` checks it; switch the
+  snapping off and it reports 78 placements off and the ellipse's wings 2.0
+  LDU off. Changing it means rewriting every worked example that names such a
+  part so it stays put (15 did, most to cleaner numbers), and
+  `techniques_probe` now stands each on a floor, which found three read off
+  real sets a tenth or two off the grid as a whole.
 
 - **A vertical hole was being filled solid, which refused most of Technic.**
   `fill_cavities` closes voids layer by horizontal layer, which is right for a

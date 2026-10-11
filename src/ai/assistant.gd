@@ -3600,8 +3600,17 @@ const GRID_SLACK := 0.02
 ## a fraction of a stud, a stud is inside the brick's footprint without
 ## being inside a tube, which is a position that exists on the lattice
 ## and not in plastic.
+##
+## The first is advice: real sets do stand parts on tiles and trap them
+## between walls. The second is a fault, since 2026-10-10. As advice it
+## was read and passed over — two round plates on the owner's tower of
+## Orthanc stood a tenth of a stud off their studs with the note beside
+## them — and now that a placement is named by its footprint, an offset
+## between two parts that have studs is an offset between their studs.
+## Over the 61 worked examples, which are real sets' own, it fired only
+## on two horns, which have no stud facing up or down to be off by.
 func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
-		reached: bool) -> void:
+		reached: bool, issues: Dictionary = {}) -> void:
 	var placement: Placement = model.placements[index]
 	var below: Placement = model.placements[under]
 
@@ -3640,13 +3649,34 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 	var along: float = absf(placement.z - below.z)
 	if _on_the_grid(across) and _on_the_grid(along):
 		return
-	_note(loose, "Offsets no stud can reach:",
-		"  brick %d (%s at %s) sits %s studs across and %s along from "
+	# A horn on its side or a pane has no stud facing up or down, so no
+	# grid of its own to be off; its corner is its cover's.
+	if not _has_a_grid(placement) or not _has_a_grid(below):
+		return
+	var x: float = below.x + snappedf(placement.x - below.x, STUD_GRID)
+	var z: float = below.z + snappedf(placement.z - below.z, STUD_GRID)
+	_note(issues, "off its studs",
+		"brick %d (%s at %s) sits %s studs across and %s along from "
 		% [index, placement.part, placement.where(),
 			Placement._num(across), Placement._num(along)]
 		+ "brick %d, so its tubes land between that part's studs. Whole "
 		% under + "studs grip; so does a half, on a jumper. Nothing in "
-		+ "between does.")
+		+ "between does: at x=%s, z=%s it sits on them."
+		% [Placement._num(x), Placement._num(z)])
+
+
+## Whether a placement has a stud or a tube facing up or down, which is
+## what puts it on a stud grid of its own — and is not a minifigure's.
+func _has_a_grid(placement: Placement) -> bool:
+	var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+	if mesh == null or _figure_part(placement.part):
+		return false
+	var basis: Basis = BrickLattice.basis_for(placement.face, placement.rot)
+	for connector: Lbm.Connector in mesh.connectors:
+		if (connector.kind == "stud" or connector.kind == "tube") \
+				and absf((basis * connector.axis).normalized().y) > 0.99:
+			return true
+	return false
 
 
 static func _on_the_grid(offset: float) -> bool:
@@ -6266,7 +6296,7 @@ func _check_support(
 		# because the primitives do not say where every socket is.
 		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
 			_note_loose(loose, model, index, sitting_on - 1,
-				clutched.has(index))
+				clutched.has(index), issues)
 
 
 static func _gives(gives: Dictionary, holder: int, held: int) -> void:
@@ -6563,25 +6593,36 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 	if lo.x == 0x7FFFFFFF:
 		lo = Vector3i.ZERO
 	# Upright or upside down only. On its side a part's height runs across,
-	# and that is measured in plates, not studs.
-	elif absf((basis * Vector3.UP).y) > 0.99:
+	# and that is measured in plates, not studs. And not a minifigure's: a
+	# skeleton's neck stud sits on a line and its arms reach past its legs,
+	# and a figure is put together by its own transforms, not on studs.
+	elif absf((basis * Vector3.UP).y) > 0.99 and not _figure_part(part_id):
 		lo.x = _footprint_start(part, basis, 0, lo.x, hi.x + 1)
 		lo.z = _footprint_start(part, basis, 2, lo.z, hi.z + 1)
 	_corner_cache[key] = lo
 	return lo
 
 
+## A minifigure's part or accessory, which stands on no stud grid.
+func _figure_part(part_id: String) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	return info != null and info.family_category().begins_with("Minifig")
+
+
 ## The cell a part's footprint starts at along x (0) or z (2): its cover's
-## first cell [param lo], moved out to a line of the part's own stud grid.
+## first cell [param lo], moved to the nearest line of the part's own stud
+## grid.
 ##
 ## The grid is read off the studs facing up or down, or the tubes when it
 ## has no studs. A stud stands in the middle of a square of that grid, so
 ## its lines are half a stud either side — except on a jumper, whose one
-## stud sits on a line, so both are tried and the grid that fits the cover
-## more closely wins. Ties go to the stud's middle: a tap's spout reaches
-## half a stud past its stud, and both grids leave as much over. A part
-## with neither stands on no stud — a pane, a pin, a door — and keeps the
-## cover's corner.
+## stud sits on a line, so the other grid is tried too and taken when the
+## cover fits it exactly. A part with neither stands on no stud — a pane, a pin, a
+## door — and keeps the cover's corner.
+##
+## The nearest line, and outward only on a tie: a seat's backrest hangs 4
+## LDU behind its 2 x 2, and moved out to the next line its corner was a
+## whole stud from the studs it stands on.
 func _footprint_start(part: Lbm.PartMesh, basis: Basis, axis: int,
 		lo: int, hi: int) -> int:
 	var per: int = int(round(STUD / BrickLattice.CELL))
@@ -6600,15 +6641,28 @@ func _footprint_start(part: Lbm.PartMesh, basis: Basis, axis: int,
 			break
 	if phases.is_empty():
 		return lo
-	var best: int = lo
-	var least: int = 0x7FFFFFFF
+	# The stud's middle, unless the cover lies exactly on the other grid
+	# and not on this one, which is what a jumper's does. Weighed any more
+	# loosely the other grid won for a tap, whose spout leaves its cover
+	# fitting neither.
+	var fits: Array[int] = []
 	for phase: int in phases:
-		var start: int = lo - posmod(lo - phase, per)
-		var over: int = (lo - start) + posmod(phase - hi, per)
-		if over < least:
-			least = over
-			best = start
-	return best
+		fits.append(absi(lo - _nearest_line(lo, phase, per, -1))
+			+ absi(hi - _nearest_line(hi, phase, per, 1)))
+	var phase: int = phases[1] if fits[1] == 0 and fits[0] > 0 else phases[0]
+	return _nearest_line(lo, phase, per, -1)
+
+
+## The line of a grid [param per] cells apart, offset [param phase], that
+## is nearest [param at]; on a tie, the one on the [param out] side.
+static func _nearest_line(at: int, phase: int, per: int, out: int) -> int:
+	var below: int = at - posmod(at - phase, per)
+	if below == at:
+		return at
+	var above: int = below + per
+	if at - below < above - at or (at - below == above - at and out < 0):
+		return below
+	return above
 
 
 ## Where the part goes, given the corner it is meant to occupy.

@@ -462,17 +462,24 @@ top 36 across a 2 x 2, a flag's narrow clip, plant leaves — stood 2 to 4 LDU
 off the studs below at whole-stud coordinates: 24 wing tips on that tower,
 the castle's six flags, the house's four plants, while the wing patterns had
 meant the footprint all along. The corner is now the footprint's, read off
-the part's own studs (`Assistant._footprint_start`); 20 worked examples were
-rewritten to stay put, most to cleaner numbers (1.1 → 1, -0.9 → -1), and
+the part's own studs (`Assistant._footprint_start`); 15 worked examples were
+rewritten to stay put, most to cleaner numbers (1.1 → 1, -0.9 → -1), three
+more moved whole onto the grid, and
 `src/dev/reseat.gd` moves a part only where undoing exactly that error puts
 it on its studs. And a section leaning out was held by touching: run 12's horn
 tips sat at a slant on the studs below, gripping none. A section turned about
 x or z now has to turn on a joint along its axis or it is "leaning on
 nothing"; a hinge's halves, turned, graze by less than a cell and are
 forgiven that, and `leaning on a hinge` (6085's gatehouse flag on 3937/3938)
-is the worked answer with the pin already found. Still open: a plate set half
-a stud off on a plain plate, with no jumper under it, is passed — the half is
-legal only on a jumper, and the check does not look for one.
+is the worked answer with the pin already found. And a part a fraction of a
+stud off the studs below is a fault now, not advice: as advice it was passed
+over (two round plates on the owner's second tower stood a tenth off with the
+note beside them); over the 61 worked examples it fired only on two horns,
+which have no stud grid and are no longer judged by one. Still open: a plate
+half a stud off on a plain plate, with no jumper under it, is passed. A check
+by sockets found it, and also 72 plain parts in 65 real sets that do grip — a
+1 x 2 crossing a jumper's one stud among them — so it needs a socket model
+that tells a 1 x N's post from a 2 x N's tube before it can refuse anything.
 
 ## Long term: custom elements
 
