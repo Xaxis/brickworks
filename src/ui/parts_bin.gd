@@ -111,6 +111,8 @@ var _search_at: int = 0
 var _pending: bool = false
 
 signal part_chosen(part_id: String)
+## A part was kept in Favourites, or taken out.
+signal part_favourited(part_id: String, kept: bool)
 signal color_chosen(color_code: int)
 ## "Make a part" was pressed: the element maker, for a part that is not
 ## in the library yet.
@@ -274,7 +276,9 @@ func _build_categories() -> void:
 	rest.sort_custom(func(a: String, b: String) -> bool:
 		return int(counts[a]) > int(counts[b]))
 
-	_categories = ["All"]
+	# The parts reached for lately and the ones kept, beside All: the bin
+	# is searched once per part and then wanted again and again.
+	_categories = ["All", RECENT, FAVOURITES]
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -289,6 +293,13 @@ func _build_categories() -> void:
 		button.text = category if category == "All" else "%s %d" % [
 			category, total]
 		button.tooltip_text = category
+		button.set_meta("category", category)
+		if category == RECENT or category == FAVOURITES:
+			button.text = _shelf_label(category)
+			button.set_meta("shelf", category)
+			button.tooltip_text = ("The parts you chose lately, newest first"
+				if category == RECENT
+				else "The parts you keep: right-click any part to add it or take it out")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		button.add_theme_font_size_override("font_size", 11)
@@ -637,7 +648,7 @@ func _on_category(name: String) -> void:
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
-		button.button_pressed = button.tooltip_text == name
+		button.button_pressed = str(button.get_meta("category", "")) == name
 	_run_search(_search.text)
 
 
@@ -683,6 +694,8 @@ func _run_search(query: String) -> void:
 ## is what was meant.
 func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	var needles: PackedStringArray = query.to_lower().split(" ", false)
+	if category == RECENT or category == FAVOURITES:
+		return _from_shelf(category, needles)
 	var wanted_category: String = category.to_lower()
 	var found: Array[PartLibrary.PartInfo] = []
 	var set_aside: int = 0
@@ -726,6 +739,58 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 ## Sort results for a query: match quality first, then staple-ness.
 ## LDraw suffixes a printed part with p and a number: 3001p01.
 static var PRINTED: RegEx = RegEx.create_from_string("p[0-9]+[a-z]?$")
+## A query that is a part number, or the start of one: 3023, 3023b.
+static var NUMBER: RegEx = RegEx.create_from_string("^[0-9]+[a-z]*$")
+
+## The two shelves, shown as categories (see PartShelf).
+const RECENT := "Recent"
+const FAVOURITES := "Favourites"
+const STAR := "res://assets/ui/tools/star.svg"
+
+
+## Keep a part in Favourites, or take it out, and show it.
+func _toggle_favourite(part_id: String) -> void:
+	var kept: bool = PartShelf.toggle_favourite(part_id)
+	for child: Node in _grid.get_children():
+		if str(child.get_meta("part", "")) == part_id and child.has_meta("star"):
+			(child.get_meta("star") as Control).visible = kept
+	part_favourited.emit(part_id, kept)
+	_refresh_shelf()
+
+
+## The parts on a shelf, in its own order, that this build can place and
+## that match what is typed.
+func _from_shelf(shelf: String, needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
+	var ids: PackedStringArray = PartShelf.recent() if shelf == RECENT \
+		else PartShelf.favourites()
+	var found: Array[PartLibrary.PartInfo] = []
+	for id: String in ids:
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info == null or not info.reachable:
+			continue
+		var haystack: String = (info.id + " " + info.name).to_lower()
+		var matched: bool = true
+		for needle: String in needles:
+			matched = matched and haystack.contains(needle)
+		if matched:
+			found.append(info)
+	_set_aside = 0
+	return found
+
+
+func _shelf_label(shelf: String) -> String:
+	var count: int = (PartShelf.recent() if shelf == RECENT else PartShelf.favourites()).size()
+	return "%s %d" % [shelf, count]
+
+
+## The shelves' counts on their buttons, and the grid again if a shelf is
+## what is showing.
+func _refresh_shelf() -> void:
+	for child: Node in _category_row.get_children():
+		if child.has_meta("shelf"):
+			(child as Button).text = _shelf_label(str(child.get_meta("shelf")))
+	if _category == FAVOURITES:
+		_run_search(_search.text)
 
 
 static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void:
@@ -830,6 +895,16 @@ static func _match_score(info: PartLibrary.PartInfo, query: String) -> int:
 		score += 140                      # the words, in order, somewhere
 	if _squeeze(info.id) == wanted:
 		score += 500                      # asked for by number
+	elif NUMBER.search(wanted) != null and info.id.to_lower().begins_with(wanted) \
+			and not info.id.substr(wanted.length(), 1).is_valid_int():
+		# The same mould under another letter or print: 3023 asked for,
+		# 3023b and 3023bp00 meant. Searched as text, 3023 also begins
+		# 30236 and 30239, a spider, which led the prints for it.
+		score += 350
+	elif NUMBER.search(wanted) != null and info.id.to_lower().begins_with(wanted):
+		# Another number that merely starts the same: after the family,
+		# not among it.
+		score -= 300
 
 	# The size asked for, counted on its own.
 	#
@@ -1041,7 +1116,11 @@ func _show_more() -> void:
 
 func _update_status() -> void:
 	var total: int = _results.size()
-	if total == 0:
+	if total == 0 and _category == RECENT and _search.text.strip_edges().is_empty():
+		_status.text = "The parts you choose will be here, newest first."
+	elif total == 0 and _category == FAVOURITES and _search.text.strip_edges().is_empty():
+		_status.text = "Right-click any part to keep it here."
+	elif total == 0:
 		_status.text = "nothing matches"
 	elif _shown >= total:
 		_status.text = "%s part%s" % [_comma(total), "" if total == 1 else "s"]
@@ -1062,8 +1141,10 @@ func _update_status() -> void:
 func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(74, 84)
+	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
+	# a typo in a tooltip.
 	button.tooltip_text = "%s\n%s\n%d x %d studs, %s" % [
-		info.id, info.name.strip_edges(),
+		info.id, Inventory._tidy(info.name),
 		info.footprint_studs().x, info.footprint_studs().y,
 		_height_text(info)]
 	# The id, on the button, rather than read back out of the tooltip.
@@ -1074,6 +1155,12 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	button.toggle_mode = true
 	button.button_pressed = info.id == _selected_part
 	button.pressed.connect(_on_part.bind(info.id))
+	button.tooltip_text += "\nRight-click to keep it in Favourites"
+	button.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
+			_toggle_favourite(info.id)
+			button.accept_event())
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1097,6 +1184,17 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(label)
 
+	# A star in the corner for a part kept in Favourites.
+	var star: TextureRect = Icons.picture(STAR, 14.0, Icons.density(self))
+	star.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	star.offset_left = -18.0
+	star.offset_right = -4.0
+	star.offset_top = 4.0
+	star.offset_bottom = 18.0
+	star.visible = PartShelf.is_favourite(info.id)
+	button.add_child(star)
+	button.set_meta("star", star)
+
 	_cells[info.id] = image
 	if thumbnails:
 		var ready_now: ImageTexture = thumbnails.peek(info.id, _selected_color)
@@ -1116,6 +1214,8 @@ static func _height_text(info: PartLibrary.PartInfo) -> String:
 
 func _on_part(part_id: String) -> void:
 	_selected_part = part_id
+	PartShelf.used(part_id)
+	_refresh_shelf()
 	# The clicked one stays lit. This set every cell unpressed including
 	# the one just pressed, so choosing a part looked like choosing
 	# nothing — the only sign anything had happened was the ghost.
@@ -1135,6 +1235,8 @@ func _on_part(part_id: String) -> void:
 ## selected above a grid of the old one.
 func show_held(part_id: String, color_code: int) -> void:
 	_selected_part = part_id
+	PartShelf.used(part_id)
+	_refresh_shelf()
 	if color_code != _selected_color:
 		_on_colour(color_code)
 	for child: Node in _grid.get_children():

@@ -582,6 +582,13 @@
     },
     {
       "kind": "ui",
+      "label": "recent and favourite parts",
+      "entry": "src/ui/part_shelf.gd",
+      "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
       "label": "mirror a selection",
       "entry": "src/assembly/mirror.gd",
       "reach": "godot --path .  (select, Shift-M or Mirror on the edit bar)",

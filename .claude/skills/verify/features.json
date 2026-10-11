@@ -654,6 +654,14 @@
       "tests": []
     },
     {
+      "id": "ui:recent and favourite parts",
+      "kind": "ui",
+      "entry": "src/ui/part_shelf.gd",
+      "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:replace part",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",

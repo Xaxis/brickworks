@@ -79,6 +79,7 @@ func _run() -> void:
 	await _the_edit_bar()
 	await _seat_an_old_model()
 	await _replace_and_history()
+	await _the_parts_shelf()
 	await _under_a_part()
 	await _onto_side_studs()
 	await _mirrored()
@@ -493,6 +494,60 @@ func _replace_and_history() -> void:
 	await _key(KEY_Z, true, true)
 	await _key(KEY_Z, true, true)
 	_check("and redo comes forward through both", _colours() == {1: 2})
+
+
+func _the_parts_shelf() -> void:
+	print("  recent and favourite parts, and finding a part by number")
+	PartShelf.file = "user://handbuild_probe_shelf.cfg"
+	PartShelf.keeps = true
+	PartShelf.clear()
+	var bin: PartsBin = _main.get("_bin")
+	bin.show_category("All")
+	await _frames(4)
+	var cell: Button = bin._grid.get_child(2)
+	var chosen: String = str(cell.get_meta("part"))
+	await _click(cell.get_global_rect().get_center())
+	_check("choosing a part puts it in Recent (%s)" % str(PartShelf.recent()),
+		PartShelf.recent().size() >= 1 and PartShelf.recent()[0] == chosen)
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = _as_event(cell.get_global_rect().get_center())
+	right.global_position = right.position
+	Input.parse_input_event(right)
+	await _frames(2)
+	right = right.duplicate()
+	right.pressed = false
+	Input.parse_input_event(right)
+	await _frames(3)
+	_check("right-clicking it keeps it in Favourites", PartShelf.is_favourite(chosen))
+	_check("...and marks it with a star", (cell.get_meta("star") as Control).visible)
+	_check("...and puts nothing on the model behind the bin (%d)" % _count(), _count() == 2)
+	bin.show_category("Favourites")
+	await _frames(4)
+	_check("Favourites shows it", bin._grid.get_child_count() == 1
+		and str(bin._grid.get_child(0).get_meta("part")) == chosen)
+	await _shot("favourites")
+	bin.show_category("Recent")
+	await _frames(4)
+	_check("Recent shows it", bin._grid.get_child_count() >= 1
+		and str(bin._grid.get_child(0).get_meta("part")) == chosen)
+	bin.show_category("All")
+	bin._search.text = "3023"
+	bin._run_search("3023")
+	await _frames(4)
+	var first: Array = []
+	for n: int in mini(6, bin._results.size()):
+		first.append(bin._results[n].id)
+	var family: bool = first.all(func(id: String) -> bool:
+		return id.begins_with("3023") and not id.substr(4, 1).is_valid_int())
+	_check("searching 3023 lists the 3023 family first, not 30236 or the spider (%s)"
+		% str(first), first.size() >= 3 and first[0] == "3023b" and family)
+	bin._search.text = ""
+	bin._run_search("")
+	PartShelf.clear()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PartShelf.file))
+	PartShelf.keeps = false
 
 
 func _under_a_part() -> void:
