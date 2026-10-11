@@ -213,6 +213,7 @@ func _run() -> void:
 
 	await _clustered()
 	await _cluster_opened()
+	await _no_daylight()
 
 	print("")
 	if _failures == 0:
@@ -631,6 +632,87 @@ func _cluster_opened() -> void:
 		x += 1.0
 	_check("seen from behind, %d of the %d columns across the core's inside are open to its middle"
 		% [clear, columns], clear == columns)
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+## An open tower is not see-through. A prism face's inner corner stops short
+## of its neighbour's (its width is floored to whole studs), and a channel
+## 2.4 LDU wide runs up beside it: narrower than a lattice cell, so the check
+## never saw it, and with the back open the sky showed through it — a white
+## slit up the front of the sixteenth Orthanc's core. A post up the inside of
+## each such corner closes it (Assistant._corner_posts). Measured off the
+## parts' own boxes (src/dev/daylight_probe.gd) at nine heights up the shaft.
+##
+## Still open, and printed rather than judged: on a cluster, a corridor a
+## clearance wide runs along the core's outside under each pier (a pier's
+## faces keep CLUSTER_CLEAR from the core), seen through only from straight
+## along that core face; and a hexagon's or decagon's corner is wider than a
+## post behind it can cover, so those keep their channel.
+func _no_daylight() -> void:
+	print("")
+	print("  an open tower is not see-through")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var daylight: GDScript = preload("res://src/dev/daylight_probe.gd")
+	var everywhere: Array[float] = daylight.HEADINGS
+	for case: Array in [
+		["an octagonal prism open at the back", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 8, "radius": 7, "courses": 12,
+			"open": 3}, 36.0, everywhere],
+		["...and one of radius 9, as the rooms probe's", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 8, "radius": 9, "courses": 12,
+			"mix_color": 72, "open": 3}, 36.0, everywhere],
+		["the guidance's cluster open at the back, from the front and behind",
+			{"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+			"radius": 9, "courses": 14, "color": 0, "open": 3,
+			"piers": {"count": 4, "courses": 17}}, 42.0, [0.0, 180.0]],
+		["the guidance's cluster, closed", {"pattern": "prism",
+			"at": {"x": 24, "y": 0, "z": 24}, "sides": 8, "radius": 9, "courses": 14,
+			"color": 0, "piers": {"count": 4, "courses": 17}}, 42.0, everywhere],
+	]:
+		var model: Assistant.Model = assistant._read_model({"patterns": [case[1]]})
+		var verdict: Dictionary = assistant._check(model)
+		var parts: Array = []
+		var posts: int = 0
+		for placement: Assistant.Placement in model.placements:
+			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+			if mesh != null:
+				parts.append([assistant._transform(placement, mesh,
+					model.section_for(placement)), mesh.bounds])
+			if placement.part in ["3062b", "3941"]:
+				posts += 1
+		var prints: Array = daylight.footprints(parts)
+		var through: Dictionary = {}
+		var top: float = case[2]
+		for heading: float in daylight.HEADINGS:
+			for n: int in daylight.LEVELS:
+				var found: Array = daylight.gaps(prints, top * (n + 1) / (daylight.LEVELS + 1), heading)
+				if not found.is_empty():
+					through[int(heading)] = int(through.get(int(heading), 0)) + found.size()
+		var judged: Dictionary = {}
+		for heading: float in case[3]:
+			if through.has(int(heading)):
+				judged[int(heading)] = through[int(heading)]
+		_check("%s, %s, %d post bricks: %s" % [case[0], verdict["summary"], posts,
+			"no sightline through it" if judged.is_empty()
+				else "seen through from %s degrees" % str(judged)],
+			bool(verdict["ok"]) and judged.is_empty())
+		if judged.size() < through.size():
+			print("  --    ...and still seen through from %s degrees (the corridor under each pier)"
+				% str(through))
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()

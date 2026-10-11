@@ -163,7 +163,33 @@ fixing what it got wrong.
   `add_rooms` furnishes it (rooms inside, below); asked for because nine Orthancs were
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
-  run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
+  run. Each face is laid as a cluster's core face is (`_cluster_face`), its outer
+  row run on into the corner groove where there is room. `patterns_probe`: an
+  octagon and a hexagon hold, each face its own angle.
+- `an open tower is not see-through`: a post up the inside of each corner where
+  two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of
+  3062b — or 3941 where the channel's mouth is wider than one covers (radius 9
+  loses most of a stud to whole studs) — in whichever face of the corner is
+  turned off the grid (a square face's post would be judged on its studs), as
+  near the mouth as it is `CLUSTER_CLEAR` from both faces (nearer its own, the
+  clutch check read a 2 x 2 as standing across that face's studs), and only if it
+  meets every sightline through the channel from either face's look and 15
+  degrees past it, found by projecting both faces' bricks every 5 degrees. Only
+  on an open or odd-sided prism, and on a cluster's core. Found by run 16: a
+  face's floored width leaves its inner corner 2.4 LDU short of its neighbour's,
+  narrower than a lattice cell so the check never saw it, and the open back put
+  the sky behind it — a white slit up the core's front, seen through at six
+  heights of nine from the front. Measured with `src/dev/daylight_probe.gd` (each part's box in plan,
+  horizontal sightlines at nine heights from eight headings; also runs on a
+  saved model). `patterns_probe` ("an open tower is not see-through"): octagons
+  of radius 7 and 9 open at the back, no sightline from anywhere (18 and 9 per
+  heading without posts); the guidance's open cluster, none from front or back
+  (9 each without); closed, none. Still open, and printed rather than judged: a
+  cluster has a corridor a clearance wide along the core's outside under each
+  pier (a pier's faces keep `CLUSTER_CLEAR` from the core), seen through only
+  straight along that core face — 9-18 sightlines from the diagonals, open or
+  closed; and a hexagon's or decagon's channel is wider than a post can cover,
+  and so is any one stud thick.
 - `faceted piers clustered round a core`: `"piers"` on `prism`
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
   `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
@@ -207,9 +233,8 @@ fixing what it got wrong.
   restyle_model then reaches the faces (below); piers set clear of the core
   are refused; and run 15's own cluster with `"open": 2` has no core face
   looking back and every column across the core's inside is open from behind
-  to its middle (7 of 10 before). Still: a prism face's inner corner
-  stops short of its neighbour's (floored widths), so a thin channel at each
-  face's left-hand corner is see-through straight on — on a plain prism too.
+  to its middle (7 of 10 before). Its core's corners are posted (`an open tower
+  is not see-through`, below the many-sided shaft).
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty
@@ -481,6 +506,7 @@ godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out; a clustered tower stands and takes rooms
 godot --headless --path . --script src/dev/rooms_probe.gd       # floors and furnished rooms in what stands
+godot --headless --path . --script src/dev/daylight_probe.gd -- MODEL.ldr X0 X1 Z0 Z1 Y0 Y1 [HEADING]  # sightlines through a saved model
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd  # ...and pictures: shots/rooms/
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
