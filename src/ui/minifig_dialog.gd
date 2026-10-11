@@ -54,10 +54,11 @@ var _rng := RandomNumberGenerator.new()
 var _viewport: SubViewport
 var _camera: Camera3D
 var _stage: BrickWorld
-## "Draw a print…" where the slot takes one, and the editor it opens
-## (made the first time it is wanted).
+## "Draw a print…" or "Make a mould…", whichever the slot takes, and the
+## editors they open (made the first time they are wanted).
 var _make: Button
 var _print_editor: PrintEditor
+var _mould_editor: MouldEditor
 var _waiting: Dictionary = {}            ## part id -> true, geometry on its way
 var _turn: float = 0.45
 var _dragging: bool = false
@@ -277,7 +278,8 @@ func _build_picker() -> Control:
 	_found.add_theme_font_size_override("font_size", 11)
 	_found.modulate = Color(1, 1, 1, 0.6)
 	row.add_child(_found)
-	# A print of one's own for a head, a torso or a pair of legs.
+	# A print of one's own for a head, a torso or a pair of legs; a mould
+	# of one's own for what is worn on the head, round the neck or held.
 	_make = Button.new()
 	_make.focus_mode = Control.FOCUS_NONE
 	_make.add_theme_font_size_override("font_size", 12)
@@ -417,10 +419,11 @@ func _choose_slot(slot: String) -> void:
 	_search.placeholder_text = "Search %s…" % noun
 	_search.text = ""
 	_search.editable = true
-	_make.visible = PRINTED.has(slot)
-	_make.text = "Draw a print…"
+	_make.visible = PRINTED.has(slot) or MOULDED.has(slot)
+	_make.text = "Draw a print…" if PRINTED.has(slot) else "Make a mould…"
 	_make.tooltip_text = ("Draw your own print for this part: a face, a torso's front and "
-		+ "back, a pair of legs")
+		+ "back, a pair of legs") if PRINTED.has(slot) else ("Sculpt your own from this part, "
+		+ "a dome or a club: its connection to the figure stays exactly as it is")
 	_limit = MOST_SHOWN
 	_fill_groups()
 	_fill_grid()
@@ -647,7 +650,7 @@ func _choose_colour(code: int) -> void:
 	_restage()
 
 
-# -- prints of one's own ---------------------------------------------------------
+# -- prints and moulds of one's own ---------------------------------------------
 
 
 ## The slots a print is drawn for, and the part to draw on when the slot
@@ -655,10 +658,17 @@ func _choose_colour(code: int) -> void:
 const PRINTED: Dictionary = {"head": "3626c", "torso": "973", "legs": Minifig.PLAIN_LEGS,
 	"hips": Minifig.PLAIN_LEGS}
 
+## The slots a mould is made for, and the part it starts from when the
+## slot is empty.
+const MOULDED: Dictionary = {"headwear": "3901", "hat_extra": "3901", "neck": "",
+	"back": "", "accessory": "3847", "accessory_left": "3847"}
+
 
 func _make_own() -> void:
 	if PRINTED.has(_slot):
 		_open_print_editor()
+	elif MOULDED.has(_slot):
+		_open_mould_editor()
 
 
 func _overlay(editor: Control) -> void:
@@ -692,7 +702,25 @@ func _open_print_editor() -> void:
 	print_editor().open(part, slot, int(figure.colours[slot]), with)
 
 
-## A print made: on the figure, in the slot it was made for — a
+func mould_editor() -> MouldEditor:
+	if _mould_editor == null:
+		_mould_editor = MouldEditor.new()
+		_mould_editor.library = library
+		_overlay(_mould_editor)
+		_mould_editor.made.connect(_on_made)
+	return _mould_editor
+
+
+func _open_mould_editor() -> void:
+	var part: String = figure.part(_slot)
+	if part.is_empty():
+		part = str(MOULDED[_slot])
+	if part.is_empty():
+		part = "dome"
+	mould_editor().open(part, _slot, int(figure.colours[_slot]))
+
+
+## A print or mould made: on the figure, in the slot it was made for — a
 ## pair of legs by its right leg, which brings its hips.
 func _on_made(ids: Array, slot: String) -> void:
 	if ids.is_empty():
@@ -838,6 +866,8 @@ func controls_by_name() -> Dictionary:
 	# And the editor in front, while one is open.
 	if _print_editor != null and _print_editor.visible:
 		named.merge(_print_editor.controls_by_name())
+	if _mould_editor != null and _mould_editor.visible:
+		named.merge(_mould_editor.controls_by_name())
 	# The first part the grid offers, so a browser check can choose one.
 	for cell: Node in _grid.get_children():
 		var id: String = str(cell.get_meta("part", ""))

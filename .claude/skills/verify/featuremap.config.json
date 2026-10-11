@@ -428,6 +428,20 @@
     },
     {
       "kind": "lib",
+      "label": "custom moulds",
+      "entry": "src/minifig/mould.gd",
+      "reach": "godot --headless --path . --script src/dev/mould_probe.gd",
+      "area": "minifig"
+    },
+    {
+      "kind": "ui",
+      "label": "mould maker",
+      "entry": "src/minifig/mould_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd   (by hand: M, a Headgear or hand slot, Make a mould…)",
+      "area": "minifig"
+    },
+    {
+      "kind": "lib",
       "label": "custom prints",
       "entry": "src/prints/part_prints.gd",
       "reach": "godot --headless --path . --script src/dev/print_probe.gd",

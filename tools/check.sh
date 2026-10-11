@@ -136,7 +136,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print sticker; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print sticker mould; do
   probe "$name"
 done
 
@@ -231,6 +231,10 @@ run "draw a print" "${screen[@]}" godot --path . --resolution 1400x900 \
 # again. shots/studio_*.png are the proof.
 run "prints and stickers" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/studio_ui_probe.gd
+# A hairstyle and a club sculpted in the figure builder with the mouse,
+# worn, held and placed; shots/mould_*.png are the proof.
+run "make a mould" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/mould_ui_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

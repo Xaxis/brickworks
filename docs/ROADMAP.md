@@ -787,7 +787,11 @@ drawn; saved as a real LDraw part with !TEXMAP and its picture carried in
 the model as !DATA, which LDView draws as the app does. "Stickers…" lays a
 sticker of its own over the faces it is clicked on, across two parts if they
 lie in one plane, and prints the model's sticker sheet as a PDF whose cut
-lines measure to within 0.01 mm of the sticker. Next: families with clips and bars (the checker's
+lines measure to within 0.01 mm of the sticker. And moulds: "Make a mould…"
+sculpts a hair piece, a helmet or something to hold — push, pull, smooth,
+inflate, pinch, a lattice, symmetry — from the part or from a dome or a club,
+its socket and its grip bar locked to the float, nothing pushed into the
+head, its walls checked. Next: families with clips and bars (the checker's
 round joints need the catalogue's rounds), wedge plates, cut-outs that are
 not boxes (a cut through a round part is closed in 2 LDU steps), axle holes
 in the app's build, and draft and wall checks for a part a mould designer
