@@ -37,7 +37,13 @@ geometry in front of them.
   part in hand was really made in; a colour it was never made in is dimmed, but
   only where its list is complete. The bracket keys and the eyedropper go
   through `_on_colour`, which opens the long palette for a colour the short one
-  does not show. The mosaic keeps its own 44 (`Mosaic.PALETTE`).
+  does not show. The mosaic keeps its own 44 (`Mosaic.PALETTE`). The palette
+  is as tall as what it holds, up to 30% of the panel (`_fit_palette`): a
+  fixed 168 cut the last group's title in half at the foot of the first
+  screen. On a short panel it gives way first, to two rows of colours, and
+  the categories to one row: on a phone held sideways the parts list had
+  been a sliver with no part in it. Otherwise the category buttons show two
+  whole rows and a scroll bar, not the top of a third.
 - `mesh fetch`: a part whose mesh is not in the shipped pack is fetched from the
   storage bucket at run time. Several callers can ask for the same part at once,
   and every one of them has to hear that it arrived.
