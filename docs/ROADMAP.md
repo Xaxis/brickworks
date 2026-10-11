@@ -759,10 +759,27 @@ bricks, plates, tiles, slopes, inverted slopes and round parts of any size,
 or resizes a plain library part, as unofficial LDraw parts drawn from the
 library's primitives. The app builds them with a port of the mesh build
 that matches it byte for byte, so they clutch, collide and check like any
-part, and a saved model carries them inside it. Next: the design loop asking
-for a part it lacks (a tool that makes one), families with clips, bars and
-Technic holes (the hole merge is the one piece of the pipeline not yet
-ported), and draft and wall checks for a part a mould designer could take.
+part, and a saved model carries them inside it.
+
+**Second version, 2026-10-11.** The families a modern set is built from:
+bricks with studs on any side, brackets up and down, curved slopes, and
+Technic bricks with holes — each standard size with its library part's
+bounds, studs, holes and tubes (87087, 30414, 99781, 99780, 44728, 3700,
+3701), the hole merge and bore clearing now ported so 3700 and 3701 match
+the pipeline byte for byte. A part that exists can be changed rather than
+redrawn: any part, from its own built mesh (so in a browser too), made
+longer, wider or taller by repeating a slice of it where its cut faces
+match, its studs taken off or put on, a piece cut out with its cut faces
+capped and its hollow walled; 3700 made six long is 3894 to the connector
+and the collision cell, a corner cut out of 3003 has 2357's studs, and a
+part with no slice to repeat is refused in words. And the design loop makes the parts it lacks: `make_part`, in the
+assistant's tools and every MCP session's, makes a family part or changes a
+real one through the same rules a person's part goes through, and the
+design builds with it. Next: families with clips and bars (the checker's
+round joints need the catalogue's rounds), wedge plates, cut-outs that are
+not boxes (a cut through a round part is closed in 2 LDU steps), axle holes
+in the app's build, and draft and wall checks for a part a mould designer
+could take.
 
 ## How progress is judged
 

@@ -95,27 +95,60 @@ From ldraw.org, primary:
 ## What Brickworks does
 
 A designer opens **Make a part…** in the parts bin, picks a family —
-brick/plate/tile, slope, inverted slope, round — and its size in studs and
-plates, or types a part number such as 3001 and resizes it. A turning
-preview shows the part as it will be, with its size in millimetres, its
-studs, where studs go in underneath and, for a slope, the angle its face
-really makes. **Add to parts** puts it in the bin under Custom.
+brick/plate/tile (with studs on any of its sides), slope, curved slope,
+inverted slope, round, bracket, Technic brick — and its size in studs and
+plates, or types a part number such as 3001 or 30414 and resizes it. A
+turning preview shows the part as it will be, with its size in millimetres,
+its studs on top and on its sides, where studs go in underneath, its
+Technic holes and, for a slope, the angle its face really makes. **Add to
+parts** puts it in the bin under Custom.
 
 - **The file** (`src/parts/element_maker.gd`) is an unofficial LDraw part
   with the header above, drawn as the library draws its own: `stud.dat` per
   stud, `stud4.dat` tubes and `stud3.dat` pins underneath, `box5.dat` shell
   and cavity, 4 LDU (1.6 mm) walls and top. Its 2 x 4 brick is 3001 triangle
   for triangle. LEGO's named slope angles are the library's proportions: the
-  "33" is 20 down over 40 (26.6°), as 3298 is drawn. It is named `bw-` and
-  its shape (`bw-b2x7x3`), never a `u` number, and the header carries the
-  spec it was made from, so it can be read back and remade.
+  "33" is 20 down over 40 (26.6°), as 3298 is drawn. The later families take
+  their numbers off the library's parts the same way, and the tests hold each
+  standard size to its part: side studs 10 LDU under the top and every 20
+  down (87087, 22885), so a plate on them lines up with the brick's top; a
+  bracket's upright 4 LDU in front of its plate (99781, 99780, 44728); a
+  curved slope's face an eighth of a circle in the part's proportions, as
+  11477 draws it; a Technic hole 10 LDU under the top, a 12 LDU bore with a
+  16 LDU mouth two deep in each face (3700, 3701, 6541). It is named `bw-`
+  and its shape (`bw-b2x7x3`, `bw-b1x4x3-sf`, `bw-k1x2x1d`, `bw-c4x2x3r4`,
+  `bw-h1x4`), never a `u` number, and the header carries the spec it was
+  made from, so it can be read back and remade.
 - **The geometry** comes from that file, built in the app by a GDScript port
   of the mesh build (`src/parts/part_forge.gd`) — because neither an exported
   desktop build nor a browser has Python. The port produces the same `.lbm`
-  bytes as `tools/build_meshes.py` for every fixture and for 16 library parts,
-  checked on every run of the suite. So a made part has studs and anti-studs
-  found the same way as every other part's, the same collision cover, and
-  the same sockets.
+  bytes as `tools/build_meshes.py` for every fixture and for 28 library parts,
+  checked on every run of the suite — Technic bricks among them, since the
+  port merges a hole's two faces and clears its bore as the pipeline does.
+  So a made part has studs and anti-studs found the same way as every other
+  part's, the same collision cover, and the same sockets: a plate clutches a
+  made brick's side studs, a Technic pin goes through a made hole, and the
+  assistant's checker counts both as holding.
+- **A part that exists can be changed** — what a LEGO designer is asked
+  for far more often than a new element. Any part, typed into "Start from a
+  part": a part of the families is resized as its family; any other — or
+  any part at all, with "Change it" — is changed from its own geometry
+  (`src/parts/part_editor.gd`): made longer, wider or taller, its studs taken
+  off or put on, a piece cut out, so whatever the change does not touch stays
+  as LEGO made it, print included. A cut-out is closed as a mould would make
+  it: a cap where plastic was cut, a 4 LDU wall where the cut opened into the
+  hollow underside; a corner cut out of 3003 has the studs and size of 2357,
+  LEGO's corner brick. Longer repeats a
+  stud's slice of the part where its cut faces match: 3700 made six long has
+  3894's studs, holes, pins and collision exactly, 3001 made eight long is
+  3007, 98283 made four long has 15533's studs and tubes. A part with no
+  such slice (a 1 x 1, a round brick across, a one-wide slope) is refused,
+  and the dialog says so. It works from the part's built mesh, which every
+  build of the app has — a browser fetches it if it must — rather than its
+  LDraw source, which neither a browser nor an exported desktop has; so the
+  file it writes is the mesh's triangles and creases with each connector
+  stated in a `0 !BRICKWORKS CONNECTOR` meta line, which other LDraw programs
+  ignore and both the app and the mesh pipeline read.
 - **The file goes with the model.** Saving a model that uses one embeds the
   part as a `0 FILE bw-….dat` section; opening it anywhere — including a
   copy of the app that never made the part — rebuilds it from that section.
@@ -133,6 +166,10 @@ It does not design a mould. Draft angles, gates, ejector pins, cooling and
 the 0.1 mm a real brick is shy of its pitch are not in LDraw, and not here.
 Parts are drawn at LDraw's nominal size: exact pitch, and a 1.6 mm stud
 where LEGO moulds about 1.7–1.8. An inverted slope's wedge is drawn solid
-where a mould would core it. Families are the plain ones: no clips, bars,
-hinges, Technic holes or prints, and a library part can be resized only if
-its name says it is plain ("Brick 2 x 4", not "Brick 2 x 4 with Holes").
+where a mould would core it, and so is a Technic brick round its holes (the
+library's are hollow there); side studs are solid studs on the face where
+the library's are hollow and let into it; a curved slope's face is eight
+straight strips round its curve. There are no clips, bars, hinges, axle
+holes or prints, and a library part can be resized from its family only if
+its name says it is one ("Brick 2 x 4", "Technic Brick 1 x 4 with Holes",
+not "Brick 2 x 4 with Holes").

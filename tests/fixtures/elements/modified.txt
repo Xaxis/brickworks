@@ -1,0 +1,23 @@
+# Parts changed from a library part's own geometry (src/parts/part_editor.gd),
+# one change per line in the words its header carries. Each is made from the
+# catalogue's mesh of the part into modified/<id>.dat by
+#   godot --headless --path . --script src/dev/element_files_probe.gd -- --write
+# and checked against what the editor makes now by the same probe without
+# --write; tests/test_elements.py measures them, and tools/element_pipeline.sh
+# builds them through the mesh pipeline into pipeline.json. A rebuilt
+# catalogue can move a part's mesh by a 64th of an LDU and these with it:
+# write them again, and pipeline.json after.
+#
+# Made longer: the 1 x 6 Technic brick LEGO made (3894):
+from=3700 length=6 width=0 plates=0 studs=keep
+# More of what it had: studs on its side, and a round brick made taller,
+# its axle hole with it:
+from=30414 length=6 width=0 plates=0 studs=keep
+from=3941 length=0 width=0 plates=6 studs=keep
+# Studs taken off a hollow stud, which leaves a hole to close, and put on a tile:
+from=3062b length=0 width=0 plates=0 studs=none
+from=3068b length=0 width=0 plates=0 studs=fill
+# Pieces cut out: a corner from 3003, leaving the studs LEGO's corner brick
+# (2357) has, and a notch a plate high under 3001's middle, its hollow walled:
+from=3003 length=0 width=0 plates=0 studs=keep cut=1,0,2,1,0,3
+from=3001 length=0 width=0 plates=0 studs=keep cut=1,0,3,2,0,1

@@ -2030,6 +2030,11 @@ func _run_tool(block: Dictionary) -> Variant:
 			if laid is Array:
 				return [{"type": "text", "text": rooms["summary"]}] + (laid as Array)
 			return "%s\n%s" % [rooms["summary"], str(laid)]
+		"make_part":
+			# A part LEGO has not made, made as a person makes one: see
+			# src/parts/part_tool.gd.
+			progress.emit("making a part")
+			return await PartTool.run(args, library)
 		"add_minifig":
 			# The figure is made and stood up in src/minifig/figure_tool.gd.
 			# Its parts are this design's, so a new submission replaces
@@ -10292,4 +10297,4 @@ func _tools() -> Array:
 				"additionalProperties": false,
 			},
 		},
-	] + [FigureTool.schema()]
+	] + [FigureTool.schema(), PartTool.schema()]

@@ -300,6 +300,14 @@
       "tests": []
     },
     {
+      "id": "lib:change a part",
+      "kind": "lib",
+      "entry": "src/parts/part_editor.gd",
+      "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "lib:command socket",
       "kind": "lib",
       "entry": "src/net/command_socket.gd",
@@ -459,6 +467,14 @@
       "entry": "src/ai/shot_ruler.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:the assistant makes a part",
+      "kind": "lib",
+      "entry": "src/parts/part_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
+      "area": "elements",
       "tests": []
     },
     {

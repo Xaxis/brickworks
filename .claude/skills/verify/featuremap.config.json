@@ -523,6 +523,20 @@
       "entry": "api/mcp.js",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "change a part",
+      "entry": "src/parts/part_editor.gd",
+      "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
+      "area": "elements"
+    },
+    {
+      "kind": "lib",
+      "label": "the assistant makes a part",
+      "entry": "src/parts/part_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
+      "area": "elements"
     }
   ]
 }

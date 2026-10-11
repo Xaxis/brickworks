@@ -91,7 +91,7 @@ func _run() -> void:
 		names.size() >= 7)
 	for wanted: String in ["search_parts", "check_design", "look_at_model",
 			"view_model", "submit_design", "edit_model",
-			"attachment_points"]:
+			"attachment_points", "make_part"]:
 		_check("  %s is offered" % wanted, names.has(wanted))
 	# Every tool must carry a schema, or a client has nothing to call it
 	# with. A name alone reads as a working tool and fails on first use.

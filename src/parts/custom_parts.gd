@@ -43,6 +43,38 @@ static func make(library: PartLibrary, spec: ElementMaker.Spec,
 	return add(library, text, id, keep)
 
 
+## Make a part by changing one that exists (see [PartEditor]), add it to
+## the library and keep it. The part's geometry has to be to hand
+## ([method PartLibrary.mesh_for]); on the web that can mean fetching it
+## first. Returns {"id", "problem"}, as [method make] does.
+static func make_modified(library: PartLibrary, edit: PartEditor.Edit,
+		keep: bool = true) -> Dictionary:
+	var result: Dictionary = modified_text(library, edit)
+	if not str(result["problem"]).is_empty():
+		return {"id": "", "problem": result["problem"]}
+	return add(library, result["text"], result["id"], keep)
+
+
+## The part file an edit makes, under an id no other part has unless it is
+## this very part: {"text", "id", "problem"}.
+static func modified_text(library: PartLibrary, edit: PartEditor.Edit) -> Dictionary:
+	var info: PartLibrary.PartInfo = library.parts.get(edit.from)
+	if info == null:
+		return {"text": "", "id": "", "problem": "there is no part %s" % edit.from}
+	var mesh: Lbm.PartMesh = library.mesh_for(edit.from)
+	var category: String = info.ldraw_category if info.custom else info.category
+	var base: String = PartEditor.id_for(edit)
+	var id: String = base
+	var made: Dictionary = PartEditor.make_dat(edit, mesh, info.name, category, id)
+	var n: int = 1
+	while made["problem"] == "" and library.parts.has(id) \
+			and library.custom_source(id) != str(made["text"]):
+		n += 1
+		id = "%s-%d" % [base, n]
+		made = PartEditor.make_dat(edit, mesh, info.name, category, id)
+	return {"text": made["text"], "id": id, "problem": made["problem"]}
+
+
 ## Add a part from its LDraw text: built, registered and, with [param
 ## keep], written to [member dir]. [param others] are files it may draw on
 ## from the same model file.
