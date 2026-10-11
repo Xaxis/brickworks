@@ -535,16 +535,17 @@ func _clustered() -> void:
 		% [int(round(float(style["angled"]) * 100)), int(round(float(style["snot"]) * 100))],
 		float(style["angled"]) >= 0.27)
 
-	# The horns end square: a cap of plates on the grid over each, and a point
-	# standing on the cap's studs. The fifteenth Orthanc took its horns down
-	# because their tops were turned to 45 degrees and nothing square sat on
-	# them. The point's first course is two 2 x 4 bricks on a cap, and the
-	# whole passed the check above, so a square part sits on every horn.
+	# The horns end square: a cap of plates on the grid over each, and on the
+	# cap's studs a crown of square bricks. The fifteenth Orthanc took its
+	# horns down because their tops were turned to 45 degrees and nothing
+	# square sat on them; the whole passed the check above, so a square part
+	# sits on every horn.
 	var crown: float = 3.0 * 38 + Assistant.SUMMIT
 	var capping: int = 0
 	var on_caps: int = 0
-	var bars: int = 0
 	var turned_caps: int = 0
+	var tips: Array = []
+	var steep: int = 0
 	for placement: Assistant.Placement in model.placements:
 		var at_cap: bool = is_equal_approx(placement.y, crown) \
 			or is_equal_approx(placement.y, crown + 1.0)
@@ -554,14 +555,33 @@ func _clustered() -> void:
 			continue
 		if at_cap:
 			capping += 1
-		if is_equal_approx(placement.y, crown + Assistant.SUMMIT) and placement.part == "3001":
+		if is_equal_approx(placement.y, crown + Assistant.SUMMIT) and placement.part != "54200" \
+				and placement.part != Assistant.HORN_SLOPE:
 			on_caps += 1
 		if placement.part == "30374":
-			bars += 1
+			tips.append(placement)
+		if placement.part == Assistant.HORN_SLOPE:
+			steep += 1
 	_check("each horn is capped square at y %s: %d plates, none turned (%d are)"
 		% [crown, capping, turned_caps], capping >= 4 * 8 and turned_caps == 0)
-	_check("...and on each cap's studs a point: %d 2 x 4 bricks on the caps, %d bars at the tips"
-		% [on_caps, bars], on_caps == 8 and bars == 4)
+	# And rises from its cap to a point at its outer edge: the seventeenth
+	# Orthanc's horns were flat caps with a point stood in the middle, four
+	# turrets with roofs from the front. Each crown steps in two studs every
+	# two courses towards the cap's outermost 2 x 2, its ledges faced with 65
+	# degree slopes looking in, and the bar at its tip is further from the
+	# tower's middle than the horn's own middle is.
+	var out: float = 9.0 + 6.0 - 2.0
+	var outer: int = 0
+	var tallest: float = 0.0
+	for tip: Assistant.Placement in tips:
+		tallest = maxf(tallest, tip.y)
+		if Vector2(tip.x + 0.2 - 24.0, tip.z + 0.2 - 24.0).length() > out + 2.0:
+			outer += 1
+	_check("...and rises from its cap to a point at its outer edge: %d bricks on the caps, "
+		% on_caps + "%d 65 degree slopes looking in, %d of 4 tips out past the horn's middle, "
+		% [steep, outer] + "the highest %s plates over the cap" % (tallest - crown),
+		on_caps >= 4 * 6 and steep >= 4 * 8 and tips.size() == 4 and outer == 4
+			and tallest - crown >= 3.0 * Assistant.HORN_RING * 3)
 
 	assistant._brief = "The Tower of Orthanc"
 	assistant._apply(model)

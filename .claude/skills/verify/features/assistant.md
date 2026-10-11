@@ -248,20 +248,28 @@ fixing what it got wrong.
   all, run 17's ten-sided core opened five of ten, its sides with them, and its
   front piers' hollows opened onto the core's inside. Each horn ends square: a cap two plates
   thick over its outline at `y + 3 x piers' courses + 2` (`_studs_within`,
-  `_summit`, never a stud claimed by two caps), and on it a point
-  (`_horn_point`): a 4 x 4 course where the cap has room, stepped in by four
-  3045 corner slopes, two 2 x 2 bricks, a 3688 pyramid, a 59900 cone on its
-  stud and a 30374 bar, the cap's ledge round it sloped up to it with 3045,
-  3040b and 54200 as the rock faces its ledges (`_horn_ledge`); the corner
-  slopes' turn is read off 3045's own stud (`_corner_slope_turn`). Run 15
-  took its generated horns down because their tops were turned 45 degrees
-  and nothing square sat on them. Sideways dressing is laid only where it is clear of the other
+  `_summit`, never a stud claimed by two caps), and on it a crown
+  (`_horn_crown`): rings of bricks two courses tall (`HORN_RING`), each two
+  studs in from the last towards the cap's outermost 2 x 2 (along the horn's
+  way out rounded to an eighth of a turn, and across it where that is an
+  axis), tiled as the rock tiles its courses (`Patterns._tile`) and their
+  ledges faced inwards with 60481a 65-degree slopes, or a cheese slope where
+  a ledge is one stud (`Patterns._face_steps`, the rock's own facing pulled
+  out of `_rock` unchanged); on the tip a 3688 pyramid, a 59900 cone on its
+  stud and a 30374 bar. The four open outwards round the platform, "gaping
+  horns, their pinnacles sharp as the points of spears": run 17's horns were
+  flat caps with a point stood in the middle of each and read from the front
+  as turrets with roofs, and its close pass on "horns and summit" was never
+  made, so the pattern carries what that pass would have. One course a ring
+  was 31 degrees, a roof; two is 65. Run 15 took its generated horns down
+  because their tops were turned 45 degrees and nothing square sat on them. Sideways dressing is laid only where it is clear of the other
   shafts and the faces beside it (`_dressing_clear`), so nothing gives way in
   the check. Found by run 14: four piers round a core rising into horns, built
   square by hand, 0% at an angle. `patterns_probe`: the guidance's cluster
   passes the check as laid, in one piece, faces at 4 angles off the grid, 40%
   angled (fantasy median 27%), open at the back, each horn capped square (no
-  cap plate turned) with a 2 x 4 course and a bar on it, and add_rooms lays and
+  cap plate turned) with a crown on it, 129 65-degree slopes looking in and
+  each tip out past its horn's middle, 35 plates over the cap, and add_rooms lays and
   furnishes five floors under the summit, open to -z, nothing taken out;
   restyle_model then reaches the faces (below); piers set clear of the core
   are refused; and run 15's own cluster with `"open": 2` has no core face

@@ -4964,7 +4964,8 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 					if is_equal_approx(float(plate["y"]), crown + 1.0):
 						on_top[cell] = true
 			made.append_array(cap)
-			made.append_array(_horn_point(on_top, centre, crown + SUMMIT, spec["colour"]))
+			made.append_array(_horn_crown(on_top, centre, _towards(angles[k]),
+				crown + SUMMIT, spec["colour"]))
 	return made
 
 
@@ -4991,132 +4992,96 @@ static func _studs_within(outlines: Array, low: Vector2i, high: Vector2i) -> Dic
 	return cells
 
 
-## A horn's point, on the cap [param cells] (the studs on top of it), over
-## [param centre]: Orthanc's horns are tall, sharp and black. Where the cap
-## has room, a 4 x 4 course stepped in to 2 x 2 by four corner slopes; then
-## two 2 x 2 bricks, a 2 x 2 pyramid, a cone on its stud and a bar in the
-## cone. Square parts on square studs, so a design can take it off and
-## build its own on the cap.
-func _horn_point(cells: Dictionary, centre: Vector2, y: float, colour: int) -> Array:
-	var c := Vector2i(roundi(centre.x), roundi(centre.y))
-	var fits := func(half: int) -> bool:
-		for x: int in range(c.x - half, c.x + half):
-			for z: int in range(c.y - half, c.y + half):
-				if not cells.has(Vector2i(x, z)):
-					return false
-		return true
-	if not fits.call(1):
+## How many courses each ring of a horn's crown is, and the slope its ledges
+## are faced with: two studs in for two courses up, 65 degrees.
+const HORN_RING := 2
+const HORN_SLOPE := "60481a"
+
+
+## A horn's crown, on its cap [param cells] (the studs on top of it) at
+## [param y], over a horn whose middle is [param centre] and which looks
+## [param outward] from the tower's middle: rings of bricks stepping in two
+## studs at a time towards the cap's outermost 2 x 2, their ledges sloped
+## inwards as the rock pattern slopes its own, and on that 2 x 2 a pyramid, a
+## cone and a bar. "Gaping horns, their pinnacles sharp as the points of
+## spears": four claws opening outwards round the platform. The seventeenth
+## Orthanc's horns were flat caps with a point stood in the middle of each,
+## and from the front they read as four turrets with roofs; its close pass on
+## "horns and summit", the one that would have shaped them, was never made.
+## Square parts on square studs, so a design can take it off and build its
+## own on the cap.
+func _horn_crown(cells: Dictionary, centre: Vector2, outward: Vector2, y: float,
+		colour: int) -> Array:
+	# The way out, to the nearest eighth of a turn.
+	var d := Vector2i(int(signf(outward.x)) if absf(outward.x) > 0.4 else 0,
+		int(signf(outward.y)) if absf(outward.y) > 0.4 else 0)
+	if d == Vector2i.ZERO:
 		return []
+	# The 2 x 2 furthest out, nearest the horn's line where two tie.
+	var tip := Vector2i.ZERO
+	var best: float = -INF
+	for key: Variant in cells:
+		var corner: Vector2i = key
+		if not (cells.has(corner + Vector2i(1, 0)) and cells.has(corner + Vector2i(0, 1))
+				and cells.has(corner + Vector2i(1, 1))):
+			continue
+		var middle := Vector2(corner.x + 1.0, corner.y + 1.0)
+		var score: float = (middle - centre).dot(Vector2(d).normalized()) \
+			- 0.01 * absf((middle - centre).cross(Vector2(d).normalized()))
+		if score > best + 0.0001:
+			best = score
+			tip = corner
+	if best == -INF:
+		return []
+	# How many courses in from the tip each stud is: two studs a course, in
+	# from the tip along the way out and across it.
+	var tip_middle := Vector2(tip.x + 1.0, tip.y + 1.0)
+	var level := func(cell: Vector2i) -> int:
+		if cell.x >= tip.x and cell.x <= tip.x + 1 and cell.y >= tip.y and cell.y <= tip.y + 1:
+			return 0
+		var off: Vector2 = Vector2(cell.x + 0.5, cell.y + 0.5) - tip_middle
+		var inward: float = 0.0
+		if d.x != 0 and d.y != 0:
+			inward = maxf(-off.x * d.x, -off.y * d.y)
+		elif d.x != 0:
+			inward = maxf(-off.x * d.x, absf(off.y))
+		else:
+			inward = maxf(-off.y * d.y, absf(off.x))
+		return maxi(1, int(ceil((inward - 0.5) / 2.0 - 0.001)))
+	var deepest: int = 0
+	for key: Variant in cells:
+		deepest = maxi(deepest, level.call(key))
+	# The cap, then rings two courses tall, each two studs smaller, the last
+	# the tip's 2 x 2: two studs in for two courses up is the 65 degree slope
+	# a ledge is faced with. One course a ring was 31 degrees, a roof.
+	var steps: Array = [cells]
+	for k: int in range(deepest - 1, -1, -1):
+		var course: Dictionary = {}
+		for key: Variant in cells:
+			if level.call(key) <= k:
+				course[key] = true
+		for _twice: int in HORN_RING:
+			steps.append(course)
 	var made: Array = []
-	var at: float = y
-	var half: int = 2 if fits.call(2) else 1
-	made.append_array(_horn_ledge(cells, c, half, y, colour))
-	if half == 2:
-		for dz: int in [-2, 0]:
-			made.append({"part": "3001", "color": colour, "x": c.x - 2, "y": at,
-				"z": c.y + dz, "rot": 0})
-		at += 3.0
-		for quarter: Vector2i in [Vector2i(-2, -2), Vector2i(0, -2),
-				Vector2i(-2, 0), Vector2i(0, 0)]:
-			var rot: int = _corner_slope_turn(Vector2i(-quarter.x / 2, -quarter.y / 2))
-			if rot < 0:
-				return []
-			made.append({"part": "3045", "color": colour, "x": c.x + quarter.x,
-				"y": at, "z": c.y + quarter.y, "rot": rot})
-		at += 3.0
-	for _n: int in 2:
-		made.append({"part": "3003", "color": colour, "x": c.x - 1, "y": at,
-			"z": c.y - 1, "rot": 0})
-		at += 3.0
-	made.append({"part": "3688", "color": colour, "x": c.x - 1, "y": at,
-		"z": c.y - 1, "rot": 0})
+	var below: Dictionary = {}
+	for k: int in range(1, steps.size()):
+		var laid: Dictionary = {}
+		made.append_array(Patterns._tile((steps[k] as Dictionary).duplicate(),
+			y + 3.0 * (k - 1), colour, Patterns.COURSES, below, laid, k))
+		below = laid
+	made.append_array(Patterns._face_steps(steps, y - 3.0, colour, -1, 0.0, false,
+		HORN_SLOPE))
+	var at: float = y + 3.0 * (steps.size() - 1)
+	made.append({"part": "3688", "color": colour, "x": tip.x, "y": at, "z": tip.y, "rot": 0})
 	at += 6.0
 	# The pyramid's one stud is at its middle, half a stud off the grid.
-	made.append({"part": "59900", "color": colour, "x": c.x - 0.5, "y": at,
-		"z": c.y - 0.5, "rot": 0})
+	made.append({"part": "59900", "color": colour, "x": tip.x + 0.5, "y": at,
+		"z": tip.y + 0.5, "rot": 0})
 	at += 3.0
 	# A bar has no studs, so it is placed by its cover: 8 LDU across.
-	made.append({"part": "30374", "color": colour, "x": c.x - 0.2, "y": at,
-		"z": c.y - 0.2, "rot": 0})
+	made.append({"part": "30374", "color": colour, "x": tip.x + 0.8, "y": at,
+		"z": tip.y + 0.8, "rot": 0})
 	return made
-
-
-## The ledge of a horn's cap round its point's first course (studs
-## [param c] - [param half] to [param c] + [param half] each way), sloped up
-## to it: a corner slope at each corner where the cap has two studs by two
-## there, a 45 degree slope two studs deep along each side where it has
-## them, a cheese slope where it has one, and the bare stud beyond. As the
-## rock pattern faces its ledges; without it the point stood on a flat
-## shelf of studs, a spire on a roof rather than the end of a horn.
-func _horn_ledge(cells: Dictionary, c: Vector2i, half: int, y: float,
-		colour: int) -> Array:
-	var made: Array = []
-	var used: Dictionary = {}
-	for x: int in range(c.x - half, c.x + half):
-		for z: int in range(c.y - half, c.y + half):
-			used[Vector2i(x, z)] = true
-	for corner: Vector2i in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1),
-			Vector2i(1, 1)]:
-		var low := Vector2i(c.x - half - 2 if corner.x < 0 else c.x + half,
-			c.y - half - 2 if corner.y < 0 else c.y + half)
-		var block: Array[Vector2i] = []
-		for dx: int in 2:
-			for dz: int in 2:
-				block.append(low + Vector2i(dx, dz))
-		if block.any(func(cell: Vector2i) -> bool:
-				return not cells.has(cell) or used.has(cell)):
-			continue
-		var rot: int = _corner_slope_turn(Vector2i(1 if corner.x < 0 else 0,
-			1 if corner.y < 0 else 0))
-		if rot < 0:
-			continue
-		made.append({"part": "3045", "color": colour, "x": low.x, "y": y,
-			"z": low.y, "rot": rot})
-		for cell: Vector2i in block:
-			used[cell] = true
-	var outward: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0),
-		Vector2i(0, -1), Vector2i(-1, 0)]
-	for facing: Vector2i in outward:
-		var rot: int = outward.find(facing)
-		for along: int in range(-half, half):
-			# The stud against the point's first course on this side.
-			var out: int = half if facing.x + facing.y > 0 else -half - 1
-			var cell := Vector2i(c.x + out, c.y + along) if facing.x != 0 \
-				else Vector2i(c.x + along, c.y + out)
-			if not cells.has(cell) or used.has(cell):
-				continue
-			var beyond: Vector2i = cell + facing
-			if cells.has(beyond) and not used.has(beyond):
-				made.append({"part": "3040b", "color": colour,
-					"x": mini(cell.x, beyond.x), "y": y, "z": mini(cell.y, beyond.y),
-					"rot": rot})
-				used[beyond] = true
-			else:
-				made.append({"part": "54200", "color": colour, "x": cell.x, "y": y,
-					"z": cell.y, "rot": rot})
-			used[cell] = true
-	return made
-
-
-## Which turn of a 2 x 2 corner slope (3045) puts its one stud on the stud
-## [param inner] of its footprint (each 0 or 1 across and deep), read off
-## the part's own studs on a trial brick; -1 when it has not arrived.
-func _corner_slope_turn(inner: Vector2i) -> int:
-	var mesh: Lbm.PartMesh = library.mesh_for("3045")
-	if mesh == null:
-		return -1
-	for rot: int in 4:
-		var placed: Transform3D = _transform(Placement.from_dict({"part": "3045",
-			"x": 0, "y": 0, "z": 0, "rot": rot}), mesh)
-		for connector: Lbm.Connector in mesh.connectors:
-			if connector.kind != "stud" or connector.gender != "male":
-				continue
-			if (placed.basis * connector.axis).normalized().dot(Vector3.UP) < 0.9:
-				continue
-			var at: Vector3 = placed * connector.position
-			if Vector2i(int(floor(at.x / STUD)), int(floor(at.z / STUD))) == inner:
-				return rot
-	return -1
 
 
 ## One face of a shaft of a cluster, in a section of its own: laid where it
@@ -8785,7 +8750,9 @@ alongside the bricks you write by hand:
            a summit two plates thick at y + 3 x courses, which ties it \
            all together: build on it at y + 3 x courses + 2. Each horn \
            is capped square the same way, two plates at y + 3 x the \
-           piers' courses + 2, with a black point standing on the cap. \
+           piers' courses + 2, and rises from its cap in black bricks \
+           stepping in to a point at its outer edge, so the four open \
+           outwards round the platform like claws. \
            With piers, any "open" opens the core's whole back, and an \
            arched door stands at the foot of the core's front (+z), at y, \
            for a stair to lead up to ("door": false for none). Without \
@@ -9622,8 +9589,8 @@ func _tools() -> Array:
 				+ "— a tower like Orthanc in one object. The core is capped "
 				+ "with a summit two plates thick at y + 3 x courses, and "
 				+ "piers taller than the core rise past it as horns, each "
-				+ "capped square, two plates at y + 3 x their courses + 2, with "
-				+ "a black point on the cap.",
+				+ "capped square, two plates at y + 3 x their courses + 2, and "
+				+ "rising from the cap in steps to a point at its outer edge.",
 				"properties": {
 					"count": {"type": "integer", "description": "how many, 2-8 (4)"},
 					"sides": {"type": "integer", "description":
