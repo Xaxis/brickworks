@@ -591,8 +591,12 @@ func _run_own(tool: String, input: Dictionary) -> String:
 			if not app.save_model(path):
 				return "Could not write %s." % file
 			_saved_here[path] = true
-			return "Written to %s, with the app's models (%s)." % [file,
+			var written: String = "Written to %s, with the app's models (%s)." % [file,
 				ProjectSettings.globalize_path(path)]
+			# A run's last act is to save: so saving hands back the next
+			# assembly it has not looked at closely, if there is one.
+			var more: String = assistant.next_review() if assistant != null else ""
+			return written if more.is_empty() else "%s\n\n%s" % [written, more]
 	return "No tool called %s." % tool
 
 

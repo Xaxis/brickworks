@@ -9147,6 +9147,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	if not _busy:
 		_outside_standing = true
 		_outside_assemblies = design.assemblies.duplicate()
+		_outside_reviewed = {}
 		_outside_reviewing = {}
 		_detail_added = []
 		_brief = "%s. %s" % [design.name, design.description]
@@ -9168,6 +9169,8 @@ var _outside_standing: bool = false
 ## The assembly being reviewed, and the parts the model had before, so the
 ## next review can say what this one brought.
 var _outside_reviewing: Dictionary = {}
+## The assemblies a session has had a close review of, by name in lower case.
+var _outside_reviewed: Dictionary = {}
 
 const FROM_OUTSIDE_NEXT := """A first design is never as detailed as a \
 set; this app's own designer always goes on from here, and so should you:
@@ -9236,10 +9239,48 @@ func review(assembly: String) -> String:
 		return "Nothing stands inside the box of the %s. %s" % [name,
 			_assemblies_to_review()]
 	_outside_reviewing = {"name": name, "parts": _parts_in(everything)}
-	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s. When it is done, review_model the next one." % [
+	_outside_reviewed[name.to_lower()] = true
+	# Not "and stop": said to a session with nothing to hand it the next
+	# assembly, that ended the run. The sixteenth Orthanc made one edit to
+	# the first of its three assemblies, then saved and finished; no run
+	# from outside had reviewed more than two.
+	var left: Array[String] = _not_yet_reviewed()
+	var ending: String = ("say in a line what you changed, then review_model "
+		+ "{\"assembly\": \"%s\"}%s." % [left[0], " — %d more after it" % (left.size() - 1)
+			if left.size() > 1 else ""]) if not left.is_empty() \
+		else "say in a line what you changed: it is the last of its assemblies."
+	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s." % [
 		_assembly_measured(name, inside, _bounds_of(inside)),
-		ASSEMBLY_CRITIQUE.replace("{name}", name),
+		ASSEMBLY_CRITIQUE.replace("{name}", name).replace(
+			"say in a line what you changed, and stop.", ending),
 		JSON.stringify(one.get("where", {}))]
+
+
+## The next assembly's close review, for a session that is saving with some
+## not yet looked at closely; "" when every one has been. The sixteenth
+## Orthanc's last act was to save, with two of its three assemblies never
+## reviewed: so saving hands it the next, as this app's own loop hands each
+## assembly back in turn.
+func next_review() -> String:
+	var left: Array[String] = _not_yet_reviewed()
+	if left.is_empty():
+		return ""
+	var name: String = left[0]
+	return ("Before it is finished: %d of its %d assemblies %s not had a close "
+		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
+		+ "look (%s). This app's own designer details each in turn; the next " % ", ".join(left)
+		+ "is the %s.\n\n%s" % [name, review(name)])
+
+
+## The assemblies a session named that have had no close review yet, in
+## the order it named them.
+func _not_yet_reviewed() -> Array[String]:
+	var left: Array[String] = []
+	for one: Dictionary in _outside_assemblies:
+		var name: String = str(one.get("name", ""))
+		if not _outside_reviewed.has(name.to_lower()):
+			left.append(name)
+	return left
 
 
 func _assemblies_to_review() -> String:

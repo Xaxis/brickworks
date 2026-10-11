@@ -388,7 +388,16 @@ fixing what it got wrong.
   `where`. `mcp_probe` asserts it on a 300-brick wall. Once an outside design
   stands (`_outside_standing`), `check_design` no longer puts its trial on the
   baseplate — a session testing one part's seat wiped a 2,900-part Orthanc
-  that way; `mcp_probe` checks a later check leaves the model standing.
+  that way; `mcp_probe` checks a later check leaves the model standing. An
+  assembly's close review ends on the next one not yet reviewed
+  (`_not_yet_reviewed`), not "and stop", which the in-app loop's passes end on
+  because the loop hands the next itself; and `save_model`, a run's last act,
+  saves and hands back the next assembly's close review while any is left
+  (`next_review`, from `CommandSocket`). Found by run 16: told "and stop" it
+  made one edit to the first of its three assemblies and saved; no run from
+  outside had reviewed more than two. `mcp_probe`: the east wall's review
+  names the west wall, saving hands back the west wall's, and once both have
+  had theirs saving only saves.
 - `how real sets build this`: a tool, over `PartLibrary.kinds_for`. The only
   thing the assistant can ask that is neither geometry nor my taste — what real
   sets of a kind are built from, by lift over sets in general. See
