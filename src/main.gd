@@ -124,18 +124,34 @@ var _library: PartLibrary
 ## from the window's size in points, giving about 720 units across and
 ## 480 down, whatever the ratio. The 3D is unaffected either way; it
 ## renders at full device resolution.
+##
+## And a laptop's window is the case between: wide enough for both panels,
+## narrower than the layout. At 1280 x 720 the stretch alone drew all of it
+## at 0.8, so text set at eleven units was under nine pixels — part
+## numbers, notes, the key strip — on exactly the screens most people
+## have. So no window that keeps its panels is drawn below MOST_SHRUNK,
+## on the desktop as in a browser; the model's column gives up the room.
+const MOST_SHRUNK := 0.92
+
+
+## The content scale for a window this many points across and down: a
+## pure function of the window, so a check can ask it about any size.
+static func screen_factor(across: float, down: float, web: bool) -> float:
+	var stretched: float = minf(across / 1600.0, down / 900.0)
+	if across < ROOMY and web:
+		var wanted: float = minf(across / 720.0, down / 480.0)
+		return clampf(wanted / stretched, 1.0, 3.0)
+	if stretched < MOST_SHRUNK:
+		return MOST_SHRUNK / stretched
+	return 1.0
+
+
 func _match_screen_density() -> void:
-	if not OS.has_feature("web"):
-		return
 	var across: float = Room.across()
 	var down: float = Room.down()
 	if across <= 0.0 or down <= 0.0:
 		return
-	var factor: float = 1.0
-	if across < ROOMY:
-		var stretched: float = minf(across / 1600.0, down / 900.0)
-		var wanted: float = minf(across / 720.0, down / 480.0)
-		factor = clampf(wanted / stretched, 1.0, 3.0)
+	var factor: float = screen_factor(across, down, OS.has_feature("web"))
 	# Only when it changes: setting it resizes the visible rect, which
 	# is what calls this again.
 	if absf(get_window().content_scale_factor - factor) > 0.01:

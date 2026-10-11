@@ -363,7 +363,11 @@ func _ready() -> void:
 	add_theme_constant_override("v_separation", 4)
 	alignment = FlowContainer.ALIGNMENT_CENTER
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	modulate = Color(1, 1, 1, 0.72)
+	# Quieter than the model, but read over any of it: each control sits
+	# on a dark pill of its own (see _make), so this need not fade the
+	# words into the sky behind them, which it did at 0.72 — grey on the
+	# pale grey of the view, well under the contrast text needs.
+	modulate = Color(1, 1, 1, 0.92)
 
 	# The pictures are drawn at the density of the screen, and that
 	# changes with the window: the canvas is stretched to fit it.
@@ -395,8 +399,20 @@ func _make(binding: Binding, density: float, by_touch: bool) -> Control:
 
 	var verb := Label.new()
 	verb.text = binding.verb
-	verb.add_theme_font_size_override("font_size", 11)
-	verb.add_theme_color_override("font_color", Color(0.88, 0.9, 0.94, 0.85))
+	verb.add_theme_font_size_override("font_size", 12)
+	verb.add_theme_color_override("font_color", Color(0.9, 0.92, 0.95))
 	verb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	group.add_child(verb)
-	return group
+
+	var pill := PanelContainer.new()
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.08, 0.09, 0.11, 0.62)
+	backing.set_corner_radius_all(10)
+	backing.content_margin_left = 6
+	backing.content_margin_right = 8
+	backing.content_margin_top = 2
+	backing.content_margin_bottom = 2
+	pill.add_theme_stylebox_override("panel", backing)
+	pill.add_child(group)
+	return pill

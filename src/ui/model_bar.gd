@@ -54,6 +54,10 @@ signal shop_list_wanted(shop: String)
 var _export: Button
 var _exports: PopupMenu
 
+## A button's face in each state, faint until pointed at.
+const BUTTON_FACES := {"normal": Color(1, 1, 1, 0.06), "hover": Color(1, 1, 1, 0.14),
+	"pressed": Color(0.36, 0.6, 1.0, 0.32)}
+
 
 func _ready() -> void:
 	_build()
@@ -205,6 +209,22 @@ func _button(row: Container, text: String, action: Callable,
 	# one that did not.
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 13)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# A face of its own, faint until pointed at. They were words on the
+	# bar with nothing round them, and read as a heading rather than as
+	# twelve things to press.
+	for state: String in ["normal", "hover", "pressed"]:
+		var face := StyleBoxFlat.new()
+		face.bg_color = BUTTON_FACES[state]
+		face.border_color = Color(1, 1, 1, 0.1 if state == "normal" else 0.22)
+		face.set_border_width_all(1)
+		face.set_corner_radius_all(5)
+		face.content_margin_left = 9
+		face.content_margin_right = 9
+		face.content_margin_top = 3
+		face.content_margin_bottom = 3
+		button.add_theme_stylebox_override(state, face)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.pressed.connect(action)
 	row.add_child(button)
 	return button

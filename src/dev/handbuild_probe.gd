@@ -84,6 +84,7 @@ func _run() -> void:
 	await _under_a_part()
 	await _onto_side_studs()
 	await _mirrored()
+	await _a_small_laptop()
 
 	print("")
 	if _failures == 0:
@@ -705,6 +706,64 @@ func _exports() -> void:
 	_check("the Rebrickable list is Part,Color,Quantity (%s)" % csv.strip_edges().replace("\n", " / "),
 		csv.begins_with("Part,Color,Quantity\n3002,1,2"))
 	exports.folder = ""
+
+
+func _a_small_laptop() -> void:
+	print("  a small laptop's window, and a phone's")
+	var main_script: GDScript = _main.get_script()
+	# The scale the app chooses is a function of the window alone, so it is
+	# asked about the sizes that matter whatever window this probe has.
+	for size: Vector2 in [Vector2(1280, 720), Vector2(1366, 768), Vector2(1440, 900)]:
+		var stretched: float = minf(size.x / 1600.0, size.y / 900.0)
+		var drawn: float = stretched * main_script.screen_factor(size.x, size.y, false)
+		_check("at %d x %d the interface is drawn at %.2f, not %.2f" % [size.x, size.y,
+			drawn, stretched], drawn >= 0.9 - 0.001)
+		_check("...so a part's number is %.1f pixels high" % (drawn * 11.0), drawn * 11.0 >= 9.9)
+	var was: Vector2i = DisplayServer.window_get_size()
+	DisplayServer.window_set_size(Vector2i(1280, 720))
+	await _frames(30)
+	if DisplayServer.window_get_size() != Vector2i(1280, 720):
+		print("    (this display will not resize the window, so the rest is at %s)"
+			% str(DisplayServer.window_get_size()))
+	var scale: float = root.get_final_transform().get_scale().y
+	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
+	var bar: EditBar = _main.get("_edit_bar")
+	var spacer: Control = bar.get_parent()
+	_check("the edit bar fits the room beside the model",
+		bar.get_global_rect().end.y <= spacer.get_global_rect().end.y + 1.0)
+	await _shot("laptop_1280x720")
+	await _key(KEY_COMMA)
+	var controls: ControlsDialog = _main.get("_controls")
+	_check(", opens the controls list", controls.visible)
+	await _shot("controls_1280x720")
+	await _key(KEY_ESCAPE)
+	_check("Escape closes it", not controls.visible)
+	DisplayServer.window_set_size(was)
+	await _frames(20)
+	# A view the shape of a phone held upright: the model framed to fit
+	# across it, not just up it. A viewport of its own, with a camera of
+	# the app's own kind, so the shape does not depend on the display.
+	var bounds: AABB = AABB(Vector3(-80, 0, -40), Vector3(160, 48, 80))
+	var upright := SubViewport.new()
+	upright.size = Vector2i(400, 860)
+	upright.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	root.add_child(upright)
+	var lens := CadCamera.new()
+	upright.add_child(lens)
+	await _frames(3)
+	lens.frame(bounds)
+	for _n: int in 120:
+		await process_frame
+	var inside: bool = true
+	for n: int in 8:
+		var corner: Vector3 = bounds.position + Vector3(
+			bounds.size.x if n & 1 else 0.0, bounds.size.y if n & 2 else 0.0,
+			bounds.size.z if n & 4 else 0.0)
+		var at: Vector2 = lens.unproject_position(corner)
+		inside = inside and at.x >= 0.0 and at.x <= 400.0
+	_check("in a view the shape of a phone held upright, framing fits the model across it",
+		inside)
+	upright.queue_free()
 
 
 ## The old corner's error for a part standing upright: its cover's corner

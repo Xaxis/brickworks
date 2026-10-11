@@ -191,8 +191,8 @@ func _build() -> void:
 	_sight = ThumbTile.Sight.new(_scroll, _grid)
 
 	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 11)
-	_status.modulate = Color(1, 1, 1, 0.6)
+	_status.add_theme_font_size_override("font_size", 12)
+	_status.modulate = Color(1, 1, 1, 0.72)
 	# Two lines when it needs them. The line has to carry where the rest
 	# of the catalogue went, and truncating that leaves the bin looking
 	# short of parts with no explanation — the thing the line is for.
@@ -210,7 +210,7 @@ func _build() -> void:
 	_all_colours.toggle_mode = true
 	_all_colours.flat = true
 	_all_colours.focus_mode = Control.FOCUS_NONE
-	_all_colours.add_theme_font_size_override("font_size", 11)
+	_all_colours.add_theme_font_size_override("font_size", 12)
 	_all_colours.toggled.connect(func(_on: bool) -> void: _build_swatches())
 	colour_head.add_child(_all_colours)
 
@@ -229,8 +229,8 @@ func _build() -> void:
 	resized.connect(_fit_palette)
 
 	_colour_note = Label.new()
-	_colour_note.add_theme_font_size_override("font_size", 11)
-	_colour_note.modulate = Color(1, 1, 1, 0.7)
+	_colour_note.add_theme_font_size_override("font_size", 12)
+	_colour_note.modulate = Color(1, 1, 1, 0.78)
 	_colour_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_colour_note)
 
@@ -302,7 +302,7 @@ func _build_categories() -> void:
 				else "The parts you keep: right-click any part to add it or take it out")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
-		button.add_theme_font_size_override("font_size", 11)
+		button.add_theme_font_size_override("font_size", 12)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
 	# Whole rows and the scroll bar to say there are more (_fit_palette).
@@ -343,8 +343,8 @@ func _build_swatches() -> void:
 
 		var title := Label.new()
 		title.text = group[0]
-		title.add_theme_font_size_override("font_size", 10)
-		title.modulate = Color(1, 1, 1, 0.55)
+		title.add_theme_font_size_override("font_size", 11)
+		title.modulate = Color(1, 1, 1, 0.7)
 		_palette.add_child(title)
 		if not now.is_empty():
 			_palette.add_child(_flow_of(now))
@@ -1179,8 +1179,9 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	var label := Label.new()
 	label.text = info.id
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 9)
-	label.modulate = Color(1, 1, 1, 0.65)
+	# Eleven, not nine: at a laptop's 0.92 nine was eight pixels high.
+	label.add_theme_font_size_override("font_size", 11)
+	label.modulate = Color(1, 1, 1, 0.75)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(label)
 
