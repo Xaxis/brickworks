@@ -317,6 +317,14 @@ func _apply(step: Dictionary) -> Dictionary:
 			boxes_for(library.mesh_for(was.part_id), to))
 		return {"undo": "move", "brick": moving, "transform": previous}
 
+	if step.get("undo", "") == "regroup":
+		var named: BrickWorld.Brick = world.get_brick(_live(int(step["brick"])))
+		if named == null:
+			return step
+		var before: String = named.group
+		named.group = str(step["group"])
+		return {"undo": "regroup", "brick": named.id, "group": before}
+
 	if step.get("undo", "") == "recolor":
 		# Its own reverse: put the old colour back and remember the one
 		# that was there, so redo works without a second kind of entry.
@@ -781,6 +789,28 @@ func mirror_selection(axis: int) -> int:
 		selection[brick_id] = true
 	selection_changed.emit(selection.size())
 	return made.size()
+
+
+## Make the selection a sub-model of its own under ``name``, or take it out
+## of whatever sub-model it was in with "". One step to undo. A model's
+## sub-models are what its .mpd is written as and what the booklet builds
+## one at a time; until now only a design or an opened file could make one.
+func name_group(name: String) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	var steps: Array = []
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick.group == name:
+			continue
+		steps.append({"undo": "regroup", "brick": brick_id, "group": brick.group})
+		brick.group = name
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps,
+		"words": ("made %s the sub-model %s" % [_many(steps.size()), name]) if not name.is_empty()
+			else "took %s out of its sub-model" % _many(steps.size())})
+	_redo.clear()
+	return steps.size()
 
 
 ## Turn the selection about the joint it hangs from — a hinge's pin, a

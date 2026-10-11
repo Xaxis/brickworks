@@ -86,6 +86,7 @@ func _run() -> void:
 	await _mirrored()
 	await _studio_file()
 	await _swing_on_a_hinge()
+	await _a_submodel()
 	await _a_small_laptop()
 
 	print("")
@@ -701,6 +702,50 @@ func _swing_on_a_hinge() -> void:
 	var plain: Array = _snapshot()
 	await _key(KEY_J)
 	_check("a brick on studs alone does not swing", _snapshot() == plain)
+
+
+func _a_submodel() -> void:
+	print("  making a sub-model by hand")
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-40, 24, 20))
+	_put("3001", 4, Vector3(-40, 48, 20))
+	_put("3001", 1, Vector3(60, 24, 20))
+	await _frames(3)
+	var tower: Array = _bricks_near(Vector3(-40, 0, 20))
+	_select_only(tower)
+	await _frames(2)
+	await _key(KEY_G, true)
+	var verbs: EditVerbs = _main.get("_verbs")
+	var dialog: ConfirmationDialog = verbs._naming
+	_check("Ctrl-G asks what the sub-model is called (%s)" % (
+		verbs._name_field.text if dialog != null else "no dialog"),
+		dialog != null and dialog.visible and verbs._name_field.text == "Sub-model")
+	if dialog == null:
+		return
+	verbs._name_field.text = "Tower"
+	await _shot("submodel_name")
+	await _click(dialog.get_ok_button().get_global_rect().get_center()
+		+ Vector2(dialog.position))
+	if dialog.visible:
+		# Clicking a window's button through the embedded subwindow is
+		# what a person does; if the window would not take the click,
+		# say so and press it the way its keyboard does.
+		print("    (the dialog did not take the click; confirming it)")
+		dialog.get_ok_button().pressed.emit()
+	await _frames(3)
+	var groups: Array = _model().map(func(b: BrickWorld.Brick) -> String: return b.group)
+	groups.sort()
+	_check("the two become the sub-model Tower (%s)" % str(groups),
+		groups == ["", "Tower", "Tower"])
+	var text: String = _store.to_text("Probe")
+	_check("...which saves as a sub-model of its own", text.contains("0 FILE tower.ldr"))
+	_select_only([tower[0]])
+	verbs.select_by("submodel")
+	_check("Same sub-model takes the whole tower from one brick",
+		_builder.selection.size() == 2)
+	await _key(KEY_Z, true)
+	groups = _model().map(func(b: BrickWorld.Brick) -> String: return b.group)
+	_check("one undo takes it back out", groups.all(func(g: String) -> bool: return g.is_empty()))
 
 
 func _studio_file() -> void:

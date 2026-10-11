@@ -628,6 +628,13 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "sub-models by hand",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
+      "area": "building"
     }
   ]
 }

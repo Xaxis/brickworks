@@ -58,6 +58,14 @@ func handle_key(key: InputEventKey) -> bool:
 			if builder.is_carrying():
 				put_away()
 				return true
+		KEY_G:
+			# G alone picks a colour off the model.
+			if held and key.shift_pressed:
+				leave_submodel()
+				return true
+			if held:
+				make_submodel()
+				return true
 		KEY_J:
 			if not held:
 				swing(-SWING if key.shift_pressed else SWING)
@@ -129,6 +137,8 @@ func press(name: String) -> void:
 			replace()
 		"mirror":
 			mirror()
+		"submodel":
+			make_submodel()
 		"swing":
 			swing(SWING)
 		"hide":
@@ -198,6 +208,60 @@ func swing(degrees: float) -> int:
 	return count
 
 
+## Asking what a new sub-model is called.
+var _naming: ConfirmationDialog
+var _name_field: LineEdit
+
+
+## Make the selection a sub-model, asking for its name first.
+func make_submodel() -> void:
+	if builder.selection.is_empty():
+		say.call("select the parts that make up the sub-model first")
+		return
+	if _naming == null:
+		_naming = ConfirmationDialog.new()
+		_naming.title = "Make a sub-model"
+		_naming.ok_button_text = "Make it"
+		var column := VBoxContainer.new()
+		var words := Label.new()
+		words.text = "What is it called? It saves as a sub-model of its own,\n" \
+			+ "and the instructions build it on its own."
+		column.add_child(words)
+		_name_field = LineEdit.new()
+		_name_field.custom_minimum_size = Vector2(300, 0)
+		_name_field.text_submitted.connect(func(_text: String) -> void:
+			_naming.hide()
+			name_submodel(_name_field.text))
+		column.add_child(_name_field)
+		_naming.add_child(column)
+		_naming.confirmed.connect(func() -> void: name_submodel(_name_field.text))
+		add_child(_naming)
+	_name_field.text = builder.unused_group("Sub-model")
+	_naming.popup_centered()
+	_name_field.grab_focus()
+	_name_field.select_all()
+
+
+func name_submodel(name: String) -> int:
+	var called: String = name.strip_edges()
+	if called.is_empty():
+		called = builder.unused_group("Sub-model")
+	var count: int = builder.name_group(called)
+	if count > 0:
+		edited.call()
+		say.call("“%s” is a sub-model of %s — Same sub-model, under Select, takes it all" % [
+			called, _parts(count)])
+	return count
+
+
+func leave_submodel() -> int:
+	var count: int = builder.name_group("")
+	if count > 0:
+		edited.call()
+		say.call("took %s out of its sub-model" % _parts(count))
+	return count
+
+
 ## Back through the history to before the step ``count`` steps ago.
 func go_back(count: int) -> int:
 	var done: int = builder.undo_steps(count)
@@ -231,6 +295,14 @@ func select_by(kind: String) -> int:
 				for brick_id: int in SelectBy.matching(kind, world, seed_id, scenery):
 					wanted[brick_id] = true
 			found = wanted.keys()
+		"submodel":
+			if seeds.is_empty():
+				say.call("select a brick of the sub-model first")
+				return 0
+			found = SelectBy.submodel(world, seeds, scenery)
+			if found.is_empty():
+				say.call("that is not in a sub-model — %s-G makes one" % _hold())
+				return 0
 		"connected":
 			if seeds.is_empty():
 				say.call("select a brick first, then take everything joined to it")

@@ -52,6 +52,20 @@ static func alike(world: BrickWorld, seed_id: int, scenery: Dictionary) -> Array
 		return brick.part_id == seed.part_id and brick.color_code == seed.color_code)
 
 
+## Every brick in the same sub-model as any of these: the whole tower
+## from one of its bricks. Nothing for a brick in none.
+static func submodel(world: BrickWorld, seeds: Array, scenery: Dictionary) -> Array:
+	var groups: Dictionary = {}
+	for seed_id: int in seeds:
+		var seed: BrickWorld.Brick = world.get_brick(seed_id)
+		if seed != null and not seed.group.is_empty():
+			groups[seed.group] = true
+	if groups.is_empty():
+		return []
+	return _where(world, scenery, func(brick: BrickWorld.Brick) -> bool:
+		return groups.has(brick.group))
+
+
 ## Everything not in this selection.
 static func inverse(world: BrickWorld, selection: Dictionary,
 		scenery: Dictionary) -> Array:

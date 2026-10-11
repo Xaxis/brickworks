@@ -726,6 +726,14 @@
       "tests": []
     },
     {
+      "id": "ui:sub-models by hand",
+      "kind": "ui",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:swing on a hinge",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",

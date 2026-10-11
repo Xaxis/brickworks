@@ -148,6 +148,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["%s-X" % _hold()], "cut"),
 		Binding.new(["shift-M"], "mirror the selection"),
 		Binding.new(["J", "shift-J"], "swing the selection on its hinge"),
+		Binding.new(["%s-G" % _hold(), "%s-shift-G" % _hold()], "make a sub-model, or leave one"),
 		# The command symbol, U+2318, is not in the font this ships, so
 		# it drew as an empty box followed by a Z — which has been on
 		# screen since the strip was written. Words render everywhere.

@@ -61,6 +61,8 @@ static func tools() -> Array:
 		["paint", "Paint", "C", true, "Paint the selection the colour you hold"],
 		["swing", "Swing on its joint", "J", true,
 			"Turn the selection 15° about the hinge, clip or turntable it hangs from (Shift-J back)"],
+		["submodel", "Make a sub-model", "%s-G" % hold, true,
+			"Name the selection as a sub-model of its own: it saves as one and the instructions build it on its own (%s-Shift-G takes it out)" % hold],
 		["mirror", "Mirror", "Shift-M", true,
 			"Make the selection its mirror image, left to right as you see it; a left-hand part becomes a right-hand one"],
 		["replace", "Replace", "", true,
@@ -158,16 +160,17 @@ func _button(tool: Array) -> Control:
 		menu.add_item("Same part", 1)
 		menu.add_item("Same part and colour", 2)
 		menu.add_item("Everything connected", 3)
+		menu.add_item("Same sub-model", 7)
 		menu.add_separator()
 		menu.add_item("The opposite", 4)
 		menu.add_item("Everything   %s-A" % ControlsHint._hold(), 5)
 		menu.add_item("Nothing   Esc", 6)
 		menu.id_pressed.connect(func(id: int) -> void:
 			verbs.select_by(["colour", "part", "alike", "connected", "inverse",
-				"all", "none"][id]))
+				"all", "none", "submodel"][id]))
 		menu.about_to_popup.connect(func() -> void:
 			var some: bool = not builder.selection.is_empty()
-			for id: int in [0, 1, 2, 3]:
+			for id: int in [0, 1, 2, 3, 7]:
 				menu.set_item_disabled(menu.get_item_index(id), not some)
 			_open_beside(_select_menu, menu))
 	else:
