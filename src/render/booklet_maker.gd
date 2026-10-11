@@ -69,6 +69,14 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 			_attach_copies[index] = steps[index].copies
 	if OS.has_feature("web"):
 		px_per_mm = minf(px_per_mm, 4.0)
+	# Coarser as the booklet gets longer. At five a millimetre the castle
+	# was 104 MB and Orthanc, 1,405 steps, 256 MB: a file a browser takes
+	# a minute to open. 3.6 is still 90 dots an inch, and a page a quarter
+	# the size of a LEGO PDF's.
+	if steps.size() > 1000:
+		px_per_mm = minf(px_per_mm, 3.6)
+	elif steps.size() > 300:
+		px_per_mm = minf(px_per_mm, 4.2)
 	_studio = BookletStudio.new()
 	_studio.library = library
 	add_child(_studio)
@@ -503,11 +511,10 @@ func _arrows(entry: Booklet.Entry, view: BookletStudio.View, size: Vector2i) -> 
 			continue
 		var pixel: Vector2 = view.project(bounds.get_center(), Vector2(size))
 		var target: Vector2 = entry.rect.position + pixel / px_per_mm
-		var start := Vector2(clampf(target.x, box.position.x, box.end.x),
-			clampf(target.y, box.position.y, box.end.y))
-		if start.distance_to(target) < 4.0:
+		var path: Array = Booklet.elbow(box, target)
+		if path.is_empty():
 			continue
-		entry.arrows.append([start, target])
+		entry.arrows.append(path)
 
 
 ## The ranks on the main stage of copy [param copy]'s bricks.
@@ -592,7 +599,7 @@ static func _data_uri(image: Image, on: Color = Color(0, 0, 0, 0)) -> String:
 		page.fill(on)
 		page.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i.ZERO)
 		page.convert(Image.FORMAT_RGB8)
-		var jpeg: PackedByteArray = page.save_jpg_to_buffer(0.86)
+		var jpeg: PackedByteArray = page.save_jpg_to_buffer(0.82)
 		if not jpeg.is_empty():
 			return "data:image/jpeg;base64," + Marshalls.raw_to_base64(jpeg)
 		image = page

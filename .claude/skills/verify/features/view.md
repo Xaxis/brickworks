@@ -233,14 +233,18 @@ picture the assistant is shown.
   front (less than 40% of them in view, measured by drawing the codes again
   with only the new parts) drawn from the back with the turn sign, and turned
   back when the front shows 70%; a callout (cream box, sub-steps 1 2 3, "2x")
-  with an arrow to each copy, projected through the step's own camera, or, past
+  with an arrow to each copy, projected through the step's own camera and
+  drawn as print draws it, out of the box at a right angle and round one corner
+  (`Booklet.elbow`), with a white edge so it shows on a black model, or, past
   three steps, pages of its own in a frame; a figure looked at in the face
   (`Minifig.frame_of`); the finished model front and back; then the parts by
   colour with counts and element numbers. A model too big to read whole (not
   fitting a page at 4 mm a stud) is framed on the part being built, the rest
   fading out at the picture's edges (`BookletStudio.fade`). New parts are not
   highlighted: modern booklets keep colours true and rely on the parts box and
-  the ink line (the ink shader can ring them, `mark_new`, off); a step whose
+  the ink line (the ink shader can ring them, `mark_new`, off). Pictures are
+  5 px a millimetre, 4.2 past 300 steps and 3.6 past 1,000 (Orthanc's 1,405
+  steps were 256 MB at 5); a step whose
   new parts are small and in one place (under 14 mm) gets a red arrow down
   onto them, as a booklet points at a flag on a tower. Inside a part a fainter
   line marks where the shading turns a corner (`crease`: stud rims, a top's
@@ -248,8 +252,10 @@ picture the assistant is shown.
   greys are lifted towards charcoal, as print draws black so its faces can be
   told apart; coloured plastic is left alone (lifted too, a red's shaded side
   came out neon), and black stays well clear of dark bluish grey. Measured
-  2026-10-11 on the GPU: house 71 pieces, 14 pages, 7 s and 1 MB; castle 2,438
-  pieces, 364 pages, 3.5 min and 60 MB (a LEGO PDF is about 0.5 MB a page too).
+  2026-10-11 on the GPU: house 71 pieces, 14 pages, 7 s and 1.6 MB; castle
+  2,438 pieces, 364 pages, 2 min and 72 MB; Orthanc 8,603 pieces, 1,298 pages,
+  6 min, 137 MB and a 105 MB PDF (LEGO's own PDFs run about 0.5 MB a page). In
+  Chromium on SwiftShader the web build makes the example car's in 89 s.
 - `mosaic`: a picture turned into a plate of tiles that still looks like the
   picture.
 

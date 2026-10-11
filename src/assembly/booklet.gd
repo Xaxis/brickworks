@@ -348,7 +348,6 @@ static func _fit(entry: Entry, panel: Rect2) -> Array:
 static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	entry.rect = panel
 	entry.scale = scale
-	var header: Vector2 = _header(entry, panel)
 	entry.number_size = _number_size(entry, panel)
 	var parts: Vector2 = _parts_size(entry.lots, _parts_width(entry, panel))
 	entry.parts_rect = Rect2(panel.position, parts) if not entry.lots.is_empty() else Rect2()
@@ -363,8 +362,6 @@ static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	# what the model needs at the page's scale.
 	var need: Vector2 = entry.subject.size * scale / 0.94
 	var free: Rect2 = entry.free
-	if header.x > 0.0 and free.position.y > panel.position.y + 1.0:
-		pass
 	entry.free = Rect2(free.get_center() - need.min(free.size) * 0.5,
 		need.min(free.size))
 
@@ -565,11 +562,9 @@ static func html(document: Document) -> String:
 
 static func _head(document: Document) -> String:
 	var parts := PackedStringArray()
-	var index: int = 0
 	for key: String in document.parts:
 		parts.append(".%s{background-image:url(%s)}" % [_class_of(key, document),
 			document.parts[key]])
-		index += 1
 	return """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -733,7 +728,8 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 			out.append(_text(callout.box.end - Vector2(PAD + 7.0, PAD + QUANTITY + 0.6),
 				QUANTITY * 1.15, "%dx" % callout.times, "n"))
 		for arrow: Array in entry.arrows:
-			svg.append(_arrow(arrow[0], arrow[1]))
+			svg.append(_arrow(arrow[-2], arrow[-1], "#15191e", 0.45, 1.4,
+				arrow.slice(0, arrow.size() - 1)))
 
 
 static func _cover(page: Page, document: Document, out: PackedStringArray) -> void:
@@ -765,8 +761,6 @@ static func _parts_page(page: Page, document: Document, out: PackedStringArray) 
 		out.append(_text(Vector2(at.position.x, at.end.y + 0.8), 3.0, "%dx" % lot.count, "q"))
 		var label: String = lot.element if not lot.element.is_empty() else lot.part_id
 		out.append(_text(Vector2(at.position.x, at.end.y + 4.4), 2.5, _escape(label), "e"))
-	if page.number == 0:
-		pass
 	out.append(_text(Vector2(MARGIN, PAGE.y - 13.0), 2.3, document.credits, "e"))
 
 
@@ -795,22 +789,61 @@ static func _text(at: Vector2, size: float, text: String, kind: String,
 		kind, _n(at.x), _n(at.y), _n(size), style, text]
 
 
-## A line with a head: from the callout box to where the assembly goes,
-## or a red one onto a small new part.
+## The path of an arrow from a callout box to [param target], as a
+## booklet draws it: out of the box's nearest side at a right angle, and
+## round one corner to the target — down and across, or across and down
+## — rather than a diagonal across the picture. [start, corner, target],
+## or [start, target] when it is straight; empty when the target is in
+## the box or touching it.
+static func elbow(box: Rect2, target: Vector2) -> Array:
+	const INSET := 3.0
+	if box.grow(2.0).has_point(target):
+		return []
+	var inside := Vector2(
+		clampf(target.x, box.position.x + INSET, box.end.x - INSET),
+		clampf(target.y, box.position.y + INSET, box.end.y - INSET))
+	var start: Vector2
+	var corner: Vector2
+	if target.y > box.end.y and target.x >= box.position.x - 20.0:
+		start = Vector2(inside.x, box.end.y)
+		corner = Vector2(start.x, target.y)
+	elif target.x < box.position.x:
+		start = Vector2(box.position.x, inside.y)
+		corner = Vector2(target.x, start.y)
+	elif target.x > box.end.x:
+		start = Vector2(box.end.x, inside.y)
+		corner = Vector2(target.x, start.y)
+	else:
+		start = Vector2(inside.x, box.position.y)
+		corner = Vector2(start.x, target.y)
+	if corner.distance_to(target) < 2.0 or corner.distance_to(start) < 2.0:
+		return [start, target]
+	return [start, corner, target]
+
+
+## A line with a head: from the callout box to where the assembly goes
+## (through [param bends], when it turns a corner), or a red one onto a
+## small new part.
 static func _arrow(from: Vector2, to: Vector2, colour: String = "#15191e",
-		width: float = 0.45, head: float = 1.4) -> String:
+		width: float = 0.45, head: float = 1.4, bends: Array = []) -> String:
 	var way: Vector2 = (to - from).normalized()
 	if way == Vector2.ZERO:
 		return ""
 	var side := Vector2(-way.y, way.x)
 	var base: Vector2 = to - way * head * 2.3
 	var outline: String = " stroke=\"#fff\" stroke-width=\".35\" paint-order=\"stroke\""
+	var points := PackedStringArray()
+	for bend: Vector2 in bends.slice(0, bends.size() - 1) if bends.size() > 1 else []:
+		points.append("%s,%s" % [_n(bend.x), _n(bend.y)])
+	points.append("%s,%s" % [_n(from.x), _n(from.y)])
+	points.append("%s,%s" % [_n(base.x), _n(base.y)])
+	var line: String = " ".join(points)
 	# Under the line a white one a little wider: a black arrow across a
 	# black tower was no arrow at all.
-	return ("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"#fff\" stroke-width=\"%s\" stroke-linecap=\"round\"/>"
-		% [_n(from.x), _n(from.y), _n(base.x), _n(base.y), _n(width + 0.7)]
-		+ "<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"%s\" stroke-width=\"%s\"/>"
-		% [_n(from.x), _n(from.y), _n(base.x), _n(base.y), colour, _n(width)]
+	return ("<polyline points=\"%s\" fill=\"none\" stroke=\"#fff\" stroke-width=\"%s\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
+		% [line, _n(width + 0.7)]
+		+ "<polyline points=\"%s\" fill=\"none\" stroke=\"%s\" stroke-width=\"%s\" stroke-linejoin=\"round\"/>"
+		% [line, colour, _n(width)]
 		+ "<path d=\"M%s %s L%s %s L%s %s Z\" fill=\"%s\"%s/>" % [
 			_n(to.x), _n(to.y), _n(base.x + side.x * head), _n(base.y + side.y * head),
 			_n(base.x - side.x * head), _n(base.y - side.y * head), colour, outline])
