@@ -244,7 +244,7 @@
                     "type": "number"
                   },
                   "radius": {
-                    "description": "studs from a pier's middle to the outside of its faces (two thirds of the core's)",
+                    "description": "studs from a pier's middle to the outside of its faces (two thirds of the core's; smaller than keeps faces two studs wide at its sides, it is laid at that and said)",
                     "type": "number"
                   },
                   "sides": {
@@ -1249,7 +1249,7 @@
                     "type": "number"
                   },
                   "radius": {
-                    "description": "studs from a pier's middle to the outside of its faces (two thirds of the core's)",
+                    "description": "studs from a pier's middle to the outside of its faces (two thirds of the core's; smaller than keeps faces two studs wide at its sides, it is laid at that and said)",
                     "type": "number"
                   },
                   "sides": {

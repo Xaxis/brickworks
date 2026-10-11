@@ -559,6 +559,34 @@ func _clustered() -> void:
 	whole = assistant._check(assistant._model_from_world(), true)
 	_check("...and it still passes the check: %s" % whole["summary"], bool(whole["ok"]))
 
+	# Piers asked too small for their sides keep their sides. The fifteenth
+	# and sixteenth Orthancs both asked for piers of radius 4 at eight sides,
+	# were refused with "make their radius larger or their sides fewer", and
+	# took six, which meet an octagonal core corner first and leave the sky
+	# beside every cleft. The sixteenth's own first call:
+	var small := {"pattern": "prism", "at": {"x": 22, "y": 0, "z": 22}, "sides": 8,
+		"radius": 6, "courses": 12, "open": 2, "color": 0,
+		"piers": {"count": 4, "out": 7, "radius": 4, "sides": 8, "courses": 15}}
+	var kept: Assistant.Model = assistant._read_model({"patterns": [small]})
+	var most: int = -1
+	for name: Variant in kept.sections:
+		if str(name).contains(" pier "):
+			most = maxi(most, int(str(name).get_slice(" face ", 1)))
+	var laid_small: Dictionary = assistant._check(kept)
+	_check("piers of radius 4 at eight sides are laid, not refused: %s, %s"
+		% [str(assistant._pattern_trouble), laid_small["summary"]],
+		assistant._pattern_trouble.is_empty() and bool(laid_small["ok"]))
+	_check("...with eight sides each (faces numbered to %d)" % most, most == 7)
+	_check("...and the check says at what radius: %s" % str(laid_small.get("advice", [])).substr(0, 160),
+		str(laid_small.get("advice", [])).contains("laid at radius 4.5"))
+	# A core too small says the radius that would do, not fewer sides.
+	assistant._read_model({"patterns": [{"pattern": "prism", "sides": 8, "radius": 4,
+		"courses": 4}]})
+	_check("a core too small is told the radius that would do: %s"
+		% str(assistant._pattern_trouble),
+		str(assistant._pattern_trouble).contains("radius of 4.5")
+			and not str(assistant._pattern_trouble).contains("fewer"))
+
 	# What does not make a cluster is said, not built.
 	var apart: Dictionary = tower.duplicate(true)
 	apart["piers"] = {"count": 4, "out": 20}

@@ -2272,6 +2272,7 @@ func _edit(args: Dictionary) -> Model:
 	var before: int = model.placements.size()
 	_repeat_trouble = []
 	_pattern_trouble = []
+	_pattern_advice = []
 	_expand_repeats(model, args, _repeat_trouble)
 	_touched += model.placements.size() - before
 	_touched += gone.size()
@@ -3835,6 +3836,7 @@ func _read_model(args: Dictionary) -> Model:
 	# And the shapes it described rather than counted out. Patterns are
 	# expanded after the bricks because mirror reflects what is there.
 	var patterns: Array = args.get("patterns", [])
+	_pattern_advice = []
 	if not patterns.is_empty():
 		var trouble: Array = []
 		# A face of studs turned out needs the parts' own geometry to know
@@ -4026,6 +4028,7 @@ func _rooms(args: Dictionary) -> Dictionary:
 		for brick: Dictionary in rooms.bricks():
 			trial.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = []
+		_pattern_advice = []
 		_repeat_trouble = []
 		var report: Dictionary = _check(trial, true)
 		if bool(report["ok"]):
@@ -4158,7 +4161,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
 	if width < 2:
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
-			% Placement._num(radius) + "make the radius larger or the sides fewer")
+			% Placement._num(radius) + "%d sides want a radius of %s or more"
+			% [sides, Placement._num(_least_radius(sides, thick))])
 		return []
 	var sideways: float = clampf(float(pattern.get("sideways", 0.15)), 0.0, 0.5)
 	# Faces left out, centred on the back (the face looking -z, which is the
@@ -4373,6 +4377,15 @@ func _corner_posts(made: Array, name_of: Callable, origin: Vector2, sides: int,
 	return posts
 
 
+## The least radius, in half studs, at which a prism of [param sides] faces
+## [param thick] studs thick has faces two studs wide.
+static func _least_radius(sides: int, thick: int) -> float:
+	var radius: float = ceil((thick + 1.0 / tan(PI / sides)) * 2.0) / 2.0
+	while int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001)) < 2:
+		radius += 0.5
+	return radius
+
+
 ## Whether a section turned [param degrees] about y is square to the grid.
 static func _square_to_grid(degrees: float) -> bool:
 	return absf(angle_difference(deg_to_rad(degrees),
@@ -4571,7 +4584,18 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	# parallel to the core's and meet it flat. Six-sided piers on an octagon
 	# meet it corner first, with a wedge of groove beside every cleft.
 	var p_sides: int = int(piers.get("sides", sides))
-	var p_radius: float = float(piers.get("radius", maxf(3.0, round(radius * 2.0 / 3.0))))
+	# Two thirds of the core's, and never less than keeps two-stud faces at
+	# its sides. Asked smaller, the piers are laid at that and the check
+	# says so: refused, the fifteenth and sixteenth Orthancs both asked for
+	# piers of radius 4 at eight sides, were told "make their radius larger
+	# or their sides fewer", and took six sides, which meet an octagon
+	# corner first and leave the sky showing beside every cleft.
+	var least: float = _least_radius(p_sides, thick)
+	var p_radius: float = maxf(least, float(piers.get("radius", round(radius * 2.0 / 3.0))))
+	if p_radius > float(piers.get("radius", p_radius)):
+		_pattern_advice.append("Piers of radius %s would have faces narrower than two "
+			% Placement._num(float(piers["radius"])) + "studs at %d sides, so they are " % p_sides
+			+ "laid at radius %s, the least that keeps %d sides." % [Placement._num(least), p_sides])
 	# Past the core's summit into horns unless said: Orthanc's four rise above
 	# its top, and so do a castle's corner turrets.
 	var p_courses: int = int(round(float(piers.get("courses",
@@ -4584,10 +4608,6 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		return []
 	if p_courses > 200:
 		trouble.append("piers wants 200 courses at most")
-		return []
-	if int(floor(2.0 * (p_radius - thick) * tan(PI / p_sides) + 0.001)) < 2:
-		trouble.append("piers of radius %s have faces narrower than two studs; "
-			% Placement._num(p_radius) + "make their radius larger or their sides fewer")
 		return []
 	var middle := Vector2(spec["x"], spec["z"])
 	var clear: float = CLUSTER_CLEAR
@@ -5345,6 +5365,8 @@ static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
 
 ## What was wrong with the last set of patterns, said by the check.
 var _pattern_trouble: Array = []
+## And what the patterns did that was not asked, said as advice.
+var _pattern_advice: Array = []
 
 ## And with the last set of repeats. Kept apart from the patterns so the
 ## summary can name which of the two went wrong: a model told only that
@@ -5570,6 +5592,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		_note(issues, "pattern", str(said))
 	for said: Variant in _repeat_trouble:
 		_note(issues, "repeat", str(said))
+	advice.append_array(_pattern_advice)
 
 	if model.placements.is_empty():
 		# Which of the two this is matters enormously.
@@ -9317,7 +9340,8 @@ func _tools() -> Array:
 						"each pier's faces, 5-16 (the core's)"},
 					"radius": {"type": "number", "description":
 						"studs from a pier's middle to the outside of its faces "
-						+ "(two thirds of the core's)"},
+						+ "(two thirds of the core's; smaller than keeps faces two "
+						+ "studs wide at its sides, it is laid at that and said)"},
 					"out": {"type": "number", "description":
 						"studs from the core's middle to each pier's (set into "
 						+ "the core by its wall's thickness)"},

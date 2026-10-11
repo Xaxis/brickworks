@@ -194,7 +194,12 @@ fixing what it got wrong.
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
   `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
   Each pier is a prism of its own (`prism N pier K face J`), `sides` the core's,
-  `radius` two thirds of it, centred `out` (radius + pier radius - thickness)
+  `radius` two thirds of it and never less than keeps two-stud faces at its
+  sides (`_least_radius`; asked smaller, it is laid at that and the check's
+  advice says so — refused, runs 15 and 16 both asked radius 4 at eight sides,
+  were told "or their sides fewer" and took six, which leave the sky beside
+  every cleft; a core too small is told the radius that would do), centred
+  `out` (radius + pier radius - thickness)
   along `turn` + 360k/count (180/count, so a cleft is front and back). The core
   is whole; each pier is built against it, its faces stopping `CLUSTER_CLEAR`
   (0.15 stud, 3 LDU: more than a 2 LDU cell's diagonal, which is all a turned
