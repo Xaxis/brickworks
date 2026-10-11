@@ -104,7 +104,7 @@ plan with Claude as the client.
   `--mcp-config` naming the address (type http), `--strict-mcp-config` and
   `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,
   called `search_parts` in the tab and answered 3001. On a deployment,
-  `tools/web/connector_flow.mjs` does it as a person and as Claude: the switch
+  `tools/web/connector_flow.mjs` does it for the private address, as a person and as Claude: Private address, its switch
   and Copy in a real browser, the address off the clipboard, then initialize,
   tools/list and real calls through the deployed relay; then the page out of
   view with its frames stopped (a browser driven from a test never hides a

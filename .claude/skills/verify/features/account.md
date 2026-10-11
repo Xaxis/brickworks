@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow -->
 
 ## Sub-features
 
@@ -41,9 +41,14 @@ they have. A Claude connector belongs to the account that switched it on.
   (`accounts_url`, `accounts_key`, from `/api/account`).
 - `account panel` (`src/ui/account_panel.gd`): Account on the toolbar.
   "Signed in as …", whether it was confirmed or is the offline one, what the
-  account holds, Sign out (which switches the tab's connector off first), and
-  for the owner on the web a link to the admin page. Its tooltip on the bar
-  names the address.
+  account holds, Sign out (which switches the tab's connector off first;
+  Claude stays connected to the account), and for the owner on the web a link
+  to the admin page. Its tooltip on the bar names the address. A **Claude**
+  section (since 2026-10-11): which of Claude's apps are connected, since when
+  and last used (`AccountPanel.when`: "today at 14:05", "11 Oct"), with
+  **Disconnect Claude** (`account_disconnect_claude`), which ends every
+  connection at once; or "Not connected" and Connect Claude
+  (`account_connect_claude`). Asked again each time the panel opens.
 - `POST /api/otp` (`api/otp.js`): rate limited in Postgres
   (`may_ask_for_code`: 4 per address and 20 per network address in 15 minutes,
   failing closed — 503 if the limiter cannot be asked, 429 if refused). Mints
@@ -94,7 +99,10 @@ they have. A Claude connector belongs to the account that switched it on.
   served at `/oauth/authorize` with its own security policy and no
   cross-origin isolation headers): checks the request first
   (`/api/oauth?op=check` — an unknown client or an undeclared return address
-  is refused on the page, other faults go back to the client as OAuth errors);
+  is refused on the page; other faults are shown with a link back to the client
+  carrying the OAuth error — never forwarded by themselves, since anyone may
+  register a return address and an automatic forward would be an open
+  redirector);
   uses the app's kept session in that browser if there is one (renewed and put
   back, like the admin page), else the email code (`/api/otp`, redeemed with
   Supabase) and keeps the new session where the app looks, unless the app here
@@ -183,6 +191,28 @@ unknown client refused, a secret client refused without its secret and served
 with it; Cancel `access_denied`; the connections listed for the account only;
 revocation ending a connection; Disconnect ending the rest at once; a refresh
 token replayed after the grace ending its connection.
+
+The whole of it in a real browser, on a deployment (a throwaway account, deleted
+at the end; one email to a Resend test address; about four minutes):
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth
+```
+
+Proves it when it ends "connecting Claude works on this deployment": Connect
+Claude opens exactly claude.ai's install link with the deployment's address and
+puts the address on the clipboard, and the panel waits; then, as claude.ai: the
+401 and its metadata, Brickworks' page in the same browser already signed in
+(the app's session) asking once and naming claude.ai, Allow arriving at
+claude.ai's callback (stood in for; nothing reaches claude.ai) with code, state
+and `iss`, tokens; the panel saying "Connected to Claude" by itself and Connect
+giving way to Disconnect; initialize, the tool list and a search answered by the
+tab, and a design built with the tab's frames stopped (out of view); then a
+second browser not signed in — address, Email me a code (really sent), a wrong
+code refused, the minted code, the question, Allow, its session kept — whose
+token builds in the first browser's tab; Account listing the connection and
+Disconnect Claude refusing both tokens at once. Pictures `1_before_connect.png`
+to `10_disconnected.png`.
 
 On a deployment, in a real browser (needs `.env` sourced; `BW_BYPASS` for a
 preview):

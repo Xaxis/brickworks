@@ -133,7 +133,20 @@ async function start() {
     $("refused-why").textContent = checked.refuse;
     return show("refused");
   }
-  if (checked.back) return location.replace(checked.back);
+  if (checked.back) {
+    // A request Brickworks will not serve, from an app it can answer. Said
+    // here, with a way back, rather than sending the browser on by itself:
+    // anyone may register a return address, and a page that forwards
+    // automatically to it would be a redirector for any link.
+    const back = new URL(checked.back);
+    $("refused-why").textContent = `${back.searchParams.get("error_description") || "The request was not one "
+      + "Brickworks can answer"}.`;
+    const link = document.createElement("a");
+    link.href = checked.back;
+    link.textContent = `Back to ${back.host || "the app"}`;
+    $("refused-why").append(" ", link);
+    return show("refused");
+  }
 
   for (const name of document.querySelectorAll(".client")) name.textContent = checked.client;
   const back = $("back-to");

@@ -38,8 +38,22 @@
 ## is, and it refuses a tab that is not signed in, or an address another
 ## account switched on. So this switches on only while [member account] is
 ## signed in, and goes off — saying why — when the relay refuses it.
+##
+## And Claude connects to the account, not to this tab (2026-10-11). There
+## is one address for everybody, [method shared_address]; Claude signs in
+## to it with OAuth (api/oauth.js) and the relay sends its calls to
+## whichever of the account's tabs is listening. [method connect_claude] is
+## the one click: this tab starts listening, and claude.ai's "Add custom
+## connector" opens with Brickworks filled in. The account's connections
+## ([member connections]) are asked of the deployment; once there is one,
+## any tab the person signs in to listens by itself, unless they switched
+## Claude off in it. The private address above is still this tab's
+## channel, and still answers anyone who added it by hand.
 class_name ClaudeConnector
 extends Node
+
+## What Claude shows the connector as.
+const NAME := "Brickworks"
 
 ## Where the address and whether it was on are kept. A probe points this
 ## elsewhere so it never touches the one this machine uses.
@@ -53,6 +67,10 @@ var rpc: CommandSocket
 ## Who is switching it on: the relay will not let a tab that is not signed
 ## in switch a connector on.
 var account: Account
+## Whether [method connect_claude] opens claude.ai. A probe turns this off
+## and reads [member last_opened] instead of opening a browser.
+var open_links: bool = true
+var last_opened: String = ""
 
 ## Listening for Claude, or not; and the address to give it while it is.
 signal listening(on: bool, address: String)
@@ -67,9 +85,26 @@ signal trouble(why: String)
 signal replaced()
 ## The relay answered again after [signal trouble].
 signal relay_ok()
+## The account's Claude connections changed: each {id, client, since,
+## last_used}, newest first.
+signal connections_changed(connections: Array)
+
+## Claude (claude.ai, the Claude apps, Claude Code) signed in to this
+## account, as the deployment last said; empty until it has been asked.
+var connections: Array = []
+## Whether the connections have been asked for since the account changed.
+var connections_known: bool = false
 
 var _token: String = ""
 var _on: bool = false
+## Switched off in this tab by the person, so a connection to the account
+## does not switch it back on by itself.
+var _off_here: bool = false
+## Until when, in ticks, the connections are asked for again every few
+## seconds: after [method connect_claude], while the person is in claude.ai.
+var _waiting_until: int = 0
+var _next_ask: int = 0
+var _asking_connections: bool = false
 ## Whether Claude has ever reached this address, so the steps for adding
 ## it can be folded away once it has.
 var _used: bool = false
@@ -109,9 +144,13 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	var now: int = Time.get_ticks_msec()
+	if _waiting_until > now and now >= _next_ask and not _asking_connections:
+		_next_ask = now + 5000
+		refresh_connections()
 	if not _on or _asking_since == 0:
 		return
-	if Time.get_ticks_msec() - _asking_since > STALLED_MS:
+	if now - _asking_since > STALLED_MS:
 		_asking_since = 0
 		_http.cancel_request()
 		_generation += 1
@@ -132,12 +171,130 @@ func address() -> String:
 	return "" if _token.is_empty() else "%s/api/mcp?t=%s" % [base_url, _token]
 
 
+## The address everybody adds to Claude. Claude signs in to it, and its
+## calls come to whichever of the account's tabs is listening.
+func shared_address() -> String:
+	return base_url + "/api/mcp"
+
+
+## claude.ai's "Add custom connector", with the name and the address filled
+## in: claude.com/docs/connectors/building/directory-vs-custom.
+func claude_ai_link() -> String:
+	return ("https://claude.ai/customize/connectors?modal=add-custom-connector"
+		+ "&connectorName=%s&connectorUrl=%s") % [NAME.uri_encode(), shared_address().uri_encode()]
+
+
+## The same for Claude Code, which has no link: the command to paste.
+func claude_code_command() -> String:
+	return "claude mcp add --transport http brickworks " + shared_address()
+
+
+## True while Claude (any of its apps) is signed in to this account.
+func connected() -> bool:
+	return not connections.is_empty()
+
+
+## Whether the person switched Claude off in this tab.
+func off_here() -> bool:
+	return _off_here
+
+
 ## On again if it was on when the page was last open, with the same
-## address, so the connector added to Claude keeps working.
+## address, so the connector added to Claude keeps working; and on, too,
+## if Claude is connected to the account and the person has not switched it
+## off here. Run when somebody signs in.
 func resume() -> void:
 	var saved: Dictionary = _read()
 	if bool(saved.get("on", false)) and not _token.is_empty():
 		start()
+	# Which switches it on, if Claude is connected (_set_connections).
+	refresh_connections()
+
+
+## The one click: listen here, put the shared address on the clipboard
+## (for wherever the link cannot fill it in), and open claude.ai with
+## Brickworks filled in. Then ask every few seconds for ten minutes
+## whether Claude has connected; the relay also says so the moment it has.
+func connect_claude() -> void:
+	start()
+	DisplayServer.clipboard_set(shared_address())
+	last_opened = claude_ai_link()
+	if open_links:
+		OS.shell_open(last_opened)
+	_waiting_until = Time.get_ticks_msec() + 600_000
+	_next_ask = Time.get_ticks_msec() + 5000
+
+
+## Whether the person has been sent to connect Claude and it has not yet.
+func waiting_for_claude() -> bool:
+	return _waiting_until > Time.get_ticks_msec() and not connected()
+
+
+## Ask the deployment which Claude apps are signed in to this account.
+func refresh_connections() -> void:
+	if account == null or not account.signed_in():
+		_set_connections([])
+		return
+	_asking_connections = true
+	var session: String = await account.access_token()
+	if session.is_empty():
+		_asking_connections = false
+		return
+	var got: Array = await _fetch(HTTPClient.METHOD_GET, "/api/oauth?op=connections", session)
+	_asking_connections = false
+	if int(got[0]) == 200 and got[1] is Dictionary:
+		_set_connections(((got[1] as Dictionary).get("connections", []) as Array))
+
+
+## End Claude's connection to this account: one ([param id]) or all of
+## them. Claude's tokens stop working at once; to use it again, connect
+## again. Returns how many were ended, or -1 if the deployment could not
+## be asked.
+func disconnect_claude(id: String = "") -> int:
+	if account == null or not account.signed_in():
+		return -1
+	var session: String = await account.access_token()
+	var path: String = "/api/oauth?op=disconnect" + ("&id=" + id if not id.is_empty() else "")
+	var got: Array = await _fetch(HTTPClient.METHOD_POST, path, session)
+	await refresh_connections()
+	if int(got[0]) != 200 or not got[1] is Dictionary:
+		return -1
+	# Claude is not wanted here any more: this tab stops listening too, so
+	# nothing reaches it until the person connects again.
+	if not connected() and _on:
+		stop()
+	return int((got[1] as Dictionary).get("disconnected", 0))
+
+
+func _set_connections(now: Array) -> void:
+	var was: bool = connected()
+	connections = now
+	connections_known = true
+	if connected():
+		_waiting_until = 0
+	connections_changed.emit(connections)
+	# Connected while this tab was waiting for it: it is on already. On
+	# another tab, or a page opened afterwards: on now, unless switched off.
+	if connected() and not was and not _on and not _off_here \
+			and account != null and account.signed_in():
+		start()
+
+
+## One request to the deployment with the session: [status, parsed body].
+func _fetch(method: int, path: String, session: String) -> Array:
+	var http := HTTPRequest.new()
+	http.timeout = 20.0
+	add_child(http)
+	if http.request(base_url + path, PackedStringArray([
+			"authorization: Bearer " + session, "content-type: application/json"]),
+			method, "" if method == HTTPClient.METHOD_GET else "{}") != OK:
+		http.queue_free()
+		return [0, null]
+	var done: Array = await http.request_completed
+	http.queue_free()
+	var json := JSON.new()
+	var text: String = (done[3] as PackedByteArray).get_string_from_utf8()
+	return [int(done[1]), json.data if json.parse(text) == OK else null]
 
 
 ## Start listening, on the address this device keeps, or a new one.
@@ -152,6 +309,7 @@ func start() -> void:
 		_token = _new_token()
 		_used = false
 	_on = true
+	_off_here = false
 	_generation += 1
 	_save()
 	_watch_the_page()
@@ -161,8 +319,13 @@ func start() -> void:
 
 ## Stop listening. The address is kept, so switching on again needs no
 ## change in Claude; until then a call is told the tab is not listening.
-func stop() -> void:
+## [param by_hand]: the person switched it off here, so a connection to the
+## account does not switch it back on by itself.
+func stop(by_hand: bool = false) -> void:
+	if by_hand:
+		_off_here = true
 	if not _on:
+		_save()
 		return
 	_on = false
 	_generation += 1
@@ -333,17 +496,19 @@ func _load() -> void:
 	var token: String = str(saved.get("token", ""))
 	_token = token if token.length() >= 40 else ""
 	_used = bool(saved.get("used", false)) and not _token.is_empty()
+	_off_here = bool(saved.get("off_here", false))
 
 
 func _save() -> void:
-	if _token.is_empty():
+	if _token.is_empty() and not _off_here:
 		if FileAccess.file_exists(where):
 			DirAccess.remove_absolute(where)
 		return
 	var file: FileAccess = FileAccess.open(where, FileAccess.WRITE)
 	if file == null:
 		return
-	file.store_string(JSON.stringify({"token": _token, "on": _on, "used": _used}))
+	file.store_string(JSON.stringify({"token": _token, "on": _on, "used": _used,
+		"off_here": _off_here}))
 	file.close()
 
 
@@ -465,6 +630,14 @@ func _listen() -> void:
 
 func _answer(token: String, work: Dictionary) -> void:
 	var request: Dictionary = work.get("request", {}) as Dictionary
+	# Claude has just been signed in to the account (api/oauth.js tells the
+	# account's tabs): the panel says so now, before Claude has called.
+	if str(request.get("method", "")) == "brickworks/connected":
+		refresh_connections()
+		return
+	if str(request.get("method", "")) == "brickworks/claude_here" and not connected() \
+			and not _asking_connections:
+		refresh_connections()
 	var tool: String = ""
 	var arguments: Dictionary = {}
 	if str(request.get("method", "")) == "tools/call":

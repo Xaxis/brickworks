@@ -112,6 +112,14 @@
       "tests": []
     },
     {
+      "id": "cli:connect Claude browser flow",
+      "kind": "cli",
+      "entry": "tools/web/oauth_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:design from a brief",
       "kind": "cli",
       "entry": "tools/design.py",
