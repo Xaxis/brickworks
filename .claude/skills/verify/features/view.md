@@ -244,7 +244,10 @@ picture the assistant is shown.
   new parts are small and in one place (under 14 mm) gets a red arrow down
   onto them, as a booklet points at a flag on a tower. Inside a part a fainter
   line marks where the shading turns a corner (`crease`: stud rims, a top's
-  edge), found from the lightness, within one brick. Measured
+  edge), found from the lightness, within one brick. Black and the darkest
+  greys are lifted towards charcoal, as print draws black so its faces can be
+  told apart; coloured plastic is left alone (lifted too, a red's shaded side
+  came out neon), and black stays well clear of dark bluish grey. Measured
   2026-10-11 on the GPU: house 71 pieces, 14 pages, 7 s and 1 MB; castle 2,438
   pieces, 364 pages, 3.5 min and 60 MB (a LEGO PDF is about 0.5 MB a page too).
 - `mosaic`: a picture turned into a plate of tiles that still looks like the

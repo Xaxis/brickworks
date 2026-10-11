@@ -65,6 +65,16 @@ void fragment() {
 		if (colour.a > 0.0 && colour.a < 1.0) {
 			colour.rgb /= colour.a;
 		}
+		// Black plastic drawn as a booklet draws it: a dark grey whose
+		// faces can be told apart, not a silhouette. Lifted by how dark
+		// it is, so the lit top of a black brick stays lighter than its
+		// side; and only the greys — lifted the same way, a red's shaded
+		// side came out neon.
+		float chroma = max(colour.r, max(colour.g, colour.b))
+			- min(colour.r, min(colour.g, colour.b));
+		float dim = (1.0 - smoothstep(0.0, 0.24, lightness(colour.rgb)))
+			* (1.0 - smoothstep(0.03, 0.10, chroma));
+		colour.rgb = colour.rgb * (1.0 + 0.8 * dim) + vec3(0.045) * dim;
 		vec3 mine = texture(code_tex, UV).rgb;
 		float edge = 0.0;
 		bool fresh = is_brick(mine) && is_new(mine);
