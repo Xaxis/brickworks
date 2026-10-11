@@ -106,6 +106,19 @@ fixing what it got wrong.
   and brings a photograph of the subject into the conversation, credited. The loop
   calls it first, before any brick: a design asked for a lighthouse and working
   from memory gets the proportions wrong in a way no later critique recovers.
+  Each picture is also read into the plastic colours sets are made in
+  (`ReferenceFinder.colours_in`: CIELAB nearest of the current solid colours,
+  the frame's own colours taken as backdrop unless the picture is a cut-out on
+  a transparent ground, the middle weighted), and the answer says them once
+  as numbers to build in (`Assistant._colours_seen`): "White (15) 76%, Light
+  Bluish Grey (71) 10%, ..." for Commons' Falcon Heavy pictures. Found by the
+  owner's Falcon Heavy, built in three greys with a white rocket in the
+  pictures. `reference_probe` (offline): a white rocket with a black band on a
+  sky reads White with Black and no sky; a cut-out drawing running to its
+  frame reads White (it read Black before the cut-out rule); the answer names
+  both numbers. Photographs of launches, with towers, smoke and ground, read
+  muddier, and the answer tells the design to look at the picture to tell a
+  shade of the main colour from a colour of its own.
 - `measured, not just photographed`: every look — `check_design`, `view_model`,
   `edit_model` and the critique — carries the model's size in studs, its massing
   banded by height, and each named section measured as it is carried. "Is this the

@@ -9131,6 +9131,9 @@ func _find_reference(subject: String) -> Variant:
 	if _finder == null:
 		_finder = ReferenceFinder.new()
 		add_child(_finder)
+	if _finder.swatches.is_empty() and library != null:
+		for code: int in _current_colours(["solid"]):
+			_finder.swatches.append([code, (library.colors[code] as PartLibrary.BrickColor).rgb])
 
 	# Fields, not locals captured by the lambdas below.
 	#
@@ -9176,7 +9179,7 @@ func _find_reference(subject: String) -> Variant:
 			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
 			+ "is the thing you were asked for before you build to it: "
 			+ "Commons carries what is free to use, so a name can bring "
-			+ "back something else that shares it.")}]
+			+ "back something else that shares it." + _colours_seen(pictures))}]
 	for one: Variant in pictures:
 		var picture: Dictionary = one
 		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
@@ -9195,6 +9198,51 @@ func _find_reference(subject: String) -> Variant:
 			},
 		})
 	return blocks
+
+
+## The pictures' colours as LEGO colours, said as numbers to build in.
+##
+## The owner's Falcon Heavy came out in three greys with the photographs
+## in front of the design: a white rocket with black interstages, built
+## from memory of "rocket grey". ReferenceFinder reads each picture into
+## the plastic colours sets are made in, backdrop left out; this says them
+## once, averaged over the pictures, commonest first.
+func _colours_seen(pictures: Array) -> String:
+	var summed: Dictionary = {}
+	var counted: int = 0
+	for one: Variant in pictures:
+		var shares: Dictionary = (one as Dictionary).get("colours", {}) as Dictionary
+		if shares.is_empty():
+			continue
+		counted += 1
+		for code: int in shares:
+			summed[code] = float(summed.get(code, 0.0)) + float(shares[code])
+	if counted == 0:
+		return ""
+	var codes: Array = summed.keys()
+	codes.sort_custom(func(a: int, b: int) -> bool:
+		return float(summed[a]) > float(summed[b]))
+	var said := PackedStringArray()
+	for code: int in codes:
+		var share: float = float(summed[code]) / counted
+		if share < SEEN_AT_LEAST or said.size() >= SEEN_MOST:
+			break
+		said.append("%s (%d) %d%%" % [_colour_name(code), code, roundi(share * 100.0)])
+	if said.is_empty():
+		return ""
+	return ("\n\nIts colours in these pictures, read as the plastic colours sets "
+		+ "are made in, the backdrop left out: " + ", ".join(said) + ". Build in "
+		+ "these numbers, not the colour you remember the thing being: the "
+		+ "commonest is its main colour, a dark one in a band is a stripe or a "
+		+ "section, and a grey just lighter or darker than the main colour is "
+		+ "often the main colour in shadow or in light. Look at the picture to "
+		+ "tell which.")
+
+
+## Colours under this share of the pictures' subject go unsaid, and no
+## more than this many are said.
+const SEEN_AT_LEAST := 0.04
+const SEEN_MOST := 6
 
 
 ## How long to wait for pictures. Four searches and three downloads over
