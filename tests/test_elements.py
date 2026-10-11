@@ -15,12 +15,15 @@ Three kinds of claim:
   studs on the 20 LDU grid pointing up, tubes between them pointing down,
   walls and top 4 LDU thick — read off the geometry by stabbing it.
 - A standard size is the standard part: the maker's 2 x 4 brick is 3001
-  triangle for triangle, and its 45 degree slope's face is where 3039's is.
+  triangle for triangle, and its 45 degree slope's face is where 3039's is;
+  its brick with a stud on one side has 87087's studs, its bracket 99781's,
+  its Technic brick 3700's holes.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -64,20 +67,86 @@ def spec_of(name: str) -> dict:
             spec: dict = {}
             for word in words:
                 key, value = word.split("=")
-                spec[key] = value if key in ("family", "studs", "from") else int(value)
+                spec[key] = value if key in ("family", "studs", "from", "sides", "way") \
+                    else int(value)
+            spec.setdefault("sides", "")
             return spec
     raise AssertionError(f"{name} does not say what made it")
 
 
 def footprint(spec: dict) -> tuple[float, float]:
-    """The body's width on X and depth on Z, in LDU, as the library lays a
-    part out: the long side along X for a brick."""
+    """The stud grid's width on X and depth on Z, in LDU, centred, as the
+    library lays a part out: the long side along X for a brick. A
+    bracket's is its plate's; its upright stands in front of it."""
     if spec["family"] == "round":
         return spec["diameter"] * 20.0, spec["diameter"] * 20.0
     if spec["family"] == "brick":
         return (max(spec["across"], spec["deep"]) * 20.0,
                 min(spec["across"], spec["deep"]) * 20.0)
+    if spec["family"] == "technic":
+        return spec["across"] * 20.0, 20.0
     return spec["across"] * 20.0, spec["deep"] * 20.0
+
+
+def body(spec: dict) -> tuple[float, float, float, float]:
+    """Where the plastic is, seen from above, without studs standing off
+    it: x0, x1, z0, z1. A bracket's upright is 4 LDU thick in front of its
+    plate (99781: the plate's studs at z = 0, its upright's face at -14)."""
+    width, depth = footprint(spec)
+    if spec["family"] == "bracket":
+        return -width / 2, width / 2, -depth / 2 - 4.0, depth / 2
+    return -width / 2, width / 2, -depth / 2, depth / 2
+
+
+def extent(spec: dict) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """The bounds the part should have: its body, the studs on its top 4
+    LDU over it, and studs on a side or an upright 4 LDU out from it."""
+    x0, x1, z0, z1 = body(spec)
+    family = spec["family"]
+    h = spec["plates"] * 8.0
+    flat_rows = spec.get("deep", 0) - spec.get("run", 0)
+    studded_top = spec["studs"] == "yes" and not (family == "curved" and flat_rows <= 0)
+    y0, y1 = (-4.0 if studded_top else 0.0), h
+    if "f" in spec["sides"]:
+        z0 -= 4.0
+    if "b" in spec["sides"]:
+        z1 += 4.0
+    if "l" in spec["sides"]:
+        x0 -= 4.0
+    if "r" in spec["sides"]:
+        x1 += 4.0
+    if family == "bracket":
+        z0 -= 4.0
+        rise = spec["rise"] * 20.0
+        if spec["way"] == "down":
+            y1 = rise
+        else:
+            y0 = min(y0, h - rise)
+    return (x0, y0, z0), (x1, y1, z1)
+
+
+def curve_y(spec: dict, z: float) -> float:
+    """A curved slope's face under the top at z: an eighth of a circle seen
+    in the part's own proportions, as 11477 is drawn — z = edge + Az (sin t
+    - cos t), y = Ay (sqrt 2 - cos t - sin t) for t from 45 degrees at the
+    top of the curve to 0 at its foot, Az the curve's run and Ay chosen so
+    the foot is 4 LDU over the bottom. Found here by bisection on t."""
+    depth = spec["deep"] * 20.0
+    back, front = depth / 2, -depth / 2
+    edge = back - (spec["deep"] - spec["run"]) * 20.0
+    if z >= edge:
+        return 0.0
+    run = edge - front
+    rise = (spec["plates"] * 8.0 - 4.0) / (math.sqrt(2.0) - 1.0)
+    lo, hi = 0.0, math.pi / 4
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if edge + run * (math.sin(mid) - math.cos(mid)) < z:
+            lo = mid
+        else:
+            hi = mid
+    t = (lo + hi) / 2
+    return rise * (math.sqrt(2.0) - math.cos(t) - math.sin(t))
 
 
 def stab(mesh: Mesh, x: float, z: float) -> list[tuple[float, float]]:
@@ -144,8 +213,17 @@ def top_at(spec: dict, x: float, z: float) -> float | None:
     if spec["family"] == "round":
         r = width / 2
         return 0.0 if (x * x + z * z) ** 0.5 < r - 1.0 else None
-    if abs(x) > width / 2 - 0.5 or abs(z) > depth / 2 - 0.5:
+    x0, x1, z0, z1 = body(spec)
+    if not (x0 + 0.5 < x < x1 - 0.5 and z0 + 0.5 < z < z1 - 0.5):
         return None
+    if spec["family"] == "bracket" and spec["way"] == "up":
+        # The upright stands over the strip in front of the plate.
+        if z < -depth / 2 - 0.5:
+            return 8.0 - spec["rise"] * 20.0
+        if z < -depth / 2 + 0.5:
+            return None
+    if spec["family"] == "curved":
+        return curve_y(spec, z)
     if spec["family"] == "slope":
         h = spec["plates"] * 8.0
         front, edge = -depth / 2, depth / 2 - (spec["deep"] - spec["run"]) * 20.0
@@ -175,7 +253,7 @@ def test_header_is_an_unofficial_part(library: Library, name: str) -> None:
     assert part.description == lines[0][2:]
     assert part.part_type == "Unofficial_Part"
     assert part.bfc_certified and part.bfc_ccw
-    assert part.category in ("Brick", "Plate", "Tile", "Slope")
+    assert part.category in ("Brick", "Plate", "Tile", "Slope", "Bracket", "Technic")
     assert part.path.parent == FIXTURES
 
 
@@ -205,17 +283,24 @@ def test_the_top_is_closed_and_where_it_should_be(library: Library, name: str) -
     wound inside out makes the line miss the top, or start inside."""
     spec = spec_of(name)
     mesh = flatten(library, name)
-    width, depth = footprint(spec)
+    x0, x1, z0, z1 = body(spec)
+    # A curve is drawn in straight strips between points on it, so its top
+    # is the chord, up to an eighth of an LDU under the circle on the
+    # tallest curve here.
+    within = 0.2 if spec["family"] == "curved" else 0.01
     for i in range(-5, 6):
         for k in range(-5, 6):
-            x = i * width / 11.0 + 0.37
-            z = k * depth / 11.0 + 0.71
+            x = x0 + (x1 - x0) * (i + 5.5) / 11.0 + 0.37
+            z = z0 + (z1 - z0) * (k + 5.5) / 11.0 + 0.71
             expected = top_at(spec, x, z)
             if expected is None:
                 continue
             spans = stab(mesh, x, z)
             assert spans, f"{name}: nothing at x={x:.2f} z={z:.2f}"
-            assert spans[0][0] == pytest.approx(expected, abs=0.01), (name, x, z, spans)
+            # The highest plastic: a line through a Technic hole's mouth
+            # crosses plastic, the hole, and plastic again.
+            top = min(span[0] for span in spans)
+            assert top == pytest.approx(expected, abs=within), (name, x, z, spans)
 
 
 # -- it is the size it says -------------------------------------------------
@@ -223,18 +308,15 @@ def test_the_top_is_closed_and_where_it_should_be(library: Library, name: str) -
 
 @pytest.mark.parametrize("name", FILES)
 def test_bounds_are_the_named_size(library: Library, name: str) -> None:
+    """The footprint centred on the origin, as the app's stud snapping
+    assumes; the body's bottom the height in plates under a top at y = 0;
+    studs 4 LDU off whatever face they stand on; a bracket's upright 4 LDU
+    in front of its plate and 20 LDU a stud of it, down or up."""
     spec = spec_of(name)
     lo, hi = flatten(library, name).bounds()
-    width, depth = footprint(spec)
-    assert hi.x - lo.x == pytest.approx(width, abs=0.01)
-    assert hi.z - lo.z == pytest.approx(depth, abs=0.01)
-    # Centred, as the app's stud snapping assumes a part's origin is.
-    assert (hi.x + lo.x) == pytest.approx(0.0, abs=0.01)
-    assert (hi.z + lo.z) == pytest.approx(0.0, abs=0.01)
-    # The body's bottom is the height in plates; the studs stand 4 above
-    # its top, which is y = 0.
-    assert hi.y == pytest.approx(spec["plates"] * 8.0)
-    assert lo.y == pytest.approx(-4.0 if spec["studs"] == "yes" else 0.0)
+    (ex0, ey0, ez0), (ex1, ey1, ez1) = extent(spec)
+    assert (lo.x, lo.y, lo.z) == pytest.approx((ex0, ey0, ez0), abs=0.01)
+    assert (hi.x, hi.y, hi.z) == pytest.approx((ex1, ey1, ez1), abs=0.01)
 
 
 def _studs(library: Library, name: str):
@@ -246,11 +328,19 @@ def _gripping(library: Library, name: str):
     return [c for c in extract(library, name) if c.kind.value == "tube"]
 
 
+def _top_studs(library: Library, name: str):
+    return [c for c in _studs(library, name) if c.axis.y < -0.99]
+
+
 @pytest.mark.parametrize("name", FILES)
 def test_studs_sit_on_the_grid_and_point_up(library: Library, name: str) -> None:
     spec = spec_of(name)
     width, depth = footprint(spec)
-    studs = _studs(library, name)
+    studs = _top_studs(library, name)
+    # Every other stud is on a side or an upright, and only where the
+    # part has one.
+    if not spec["sides"] and spec["family"] != "bracket":
+        assert len(studs) == len(_studs(library, name))
     for stud in studs:
         assert stud.position.y == pytest.approx(0.0)
         assert (stud.axis.x, stud.axis.y, stud.axis.z) == pytest.approx((0.0, -1.0, 0.0))
@@ -260,13 +350,55 @@ def test_studs_sit_on_the_grid_and_point_up(library: Library, name: str) -> None
         assert abs(stud.position.x) < width / 2 and abs(stud.position.z) < depth / 2
     if spec["studs"] == "no":
         assert not studs
-    elif spec["family"] == "brick" or spec["family"] == "inverted":
+    elif spec["family"] in ("brick", "inverted", "bracket", "technic"):
         assert len(studs) == spec["across"] * spec["deep"]
-    elif spec["family"] == "slope":
+    elif spec["family"] in ("slope", "curved"):
         # Only the flat rows: the face falls over `run` of them.
         assert len(studs) == spec["across"] * (spec["deep"] - spec["run"])
         flat_from = depth / 2 - (spec["deep"] - spec["run"]) * 20.0
         assert all(s.position.z > flat_from for s in studs)
+
+
+def _side_rows(spec: dict) -> list[float]:
+    """Side studs stand 10 LDU under the top, as 87087's does, so a plate
+    on one lines up with the top; then every 20 down while a row fits."""
+    h = spec["plates"] * 8.0
+    return [10.0 + 20.0 * k for k in range(8) if 20.0 * k + 20.0 <= h]
+
+
+@pytest.mark.parametrize("name", [n for n in FILES
+                                  if spec_of(n)["sides"] or spec_of(n)["family"] == "bracket"])
+def test_studs_on_a_side_point_out_of_it_on_the_grid(library: Library, name: str) -> None:
+    """A brick's side studs stand on the face they are named for, pointing
+    straight out of it, one per stud of the top along that face, in rows
+    20 LDU apart starting 10 under the top. A bracket's stand on its
+    upright's face, 4 LDU in front of the plate, 10 LDU from the plate's
+    top hanging down or its bottom standing up (99781, 99780)."""
+    spec = spec_of(name)
+    width, depth = footprint(spec)
+    found = sorted((round(c.position.x, 3) + 0.0, round(c.position.y, 3) + 0.0,
+                    round(c.position.z, 3) + 0.0, round(c.axis.x, 3) + 0.0,
+                    round(c.axis.y, 3) + 0.0, round(c.axis.z, 3) + 0.0)
+                   for c in _studs(library, name) if c.axis.y > -0.99)
+    columns_x = [-width / 2 + 10.0 + 20.0 * i for i in range(int(width / 20))]
+    columns_z = [-depth / 2 + 10.0 + 20.0 * j for j in range(int(depth / 20))]
+    expected = []
+    if spec["family"] == "bracket":
+        face = -depth / 2 - 4.0
+        rows = [10.0 + 20.0 * k for k in range(spec["rise"])] if spec["way"] == "down" \
+            else [8.0 - 10.0 - 20.0 * k for k in range(spec["rise"])]
+        expected = [(x, y, face, 0.0, 0.0, -1.0) for x in columns_x for y in rows]
+    else:
+        for y in _side_rows(spec):
+            if "f" in spec["sides"]:
+                expected += [(x, y, -depth / 2, 0.0, 0.0, -1.0) for x in columns_x]
+            if "b" in spec["sides"]:
+                expected += [(x, y, depth / 2, 0.0, 0.0, 1.0) for x in columns_x]
+            if "l" in spec["sides"]:
+                expected += [(-width / 2, y, z, -1.0, 0.0, 0.0) for z in columns_z]
+            if "r" in spec["sides"]:
+                expected += [(width / 2, y, z, 1.0, 0.0, 0.0) for z in columns_z]
+    assert found and found == sorted(tuple(round(v, 3) + 0.0 for v in e) for e in expected)
 
 
 @pytest.mark.parametrize("name,expected", [
@@ -289,6 +421,8 @@ def test_tubes_sit_between_studs_and_point_down(library: Library, name: str) -> 
     tubes = _gripping(library, name)
     # What stands on the bottom: an inverted slope's flat rows only.
     deep = spec.get("deep", 9) - (spec["run"] if spec["family"] == "inverted" else 0)
+    if spec["family"] == "technic":
+        deep = 1
     one_wide = spec["family"] != "round" and min(spec.get("across", 9), deep) == 1
     for tube in tubes:
         assert (tube.axis.x, tube.axis.y, tube.axis.z) == pytest.approx((0.0, 1.0, 0.0))
@@ -385,6 +519,119 @@ def test_a_slope_is_four_ldu_thick_under_its_face(library: Library, name: str) -
     assert spans[-1][1] == pytest.approx(h)
 
 
+@pytest.mark.parametrize("name", [n for n in FILES if spec_of(n)["family"] == "curved"])
+def test_a_curved_slope_is_four_ldu_thick_under_its_curve(library: Library, name: str) -> None:
+    """Under the curve the plastic is the four LDU between the face and the
+    cavity's ceiling, which follows it down; the foot is a 4 LDU lip."""
+    spec = spec_of(name)
+    mesh = flatten(library, name)
+    width, depth = footprint(spec)
+    h = spec["plates"] * 8.0
+    front = -depth / 2
+    edge = depth / 2 - (spec["deep"] - spec["run"]) * 20.0
+    x = -width / 2 + 5.3
+    for z in (front + 8.7, (front + edge) / 2 + 0.3, edge - 4.6):
+        if z <= front + 4.0 or z >= depth / 2 - 4.0:
+            continue
+        spans = stab(mesh, x, z)
+        assert spans[0][0] == pytest.approx(curve_y(spec, z), abs=0.2), (name, z, spans)
+        # Four LDU between the face's chords and the ceiling's.
+        assert spans[0][1] - spans[0][0] == pytest.approx(4.0, abs=0.1), (name, z, spans)
+    spans = stab(mesh, x, front + 1.3)
+    assert spans[-1][1] == pytest.approx(h)
+
+
+@pytest.mark.parametrize("name", [n for n in FILES if spec_of(n)["family"] == "bracket"])
+def test_a_bracket_is_a_plate_and_a_four_ldu_upright(library: Library, name: str) -> None:
+    """Through its plate, 8 LDU of plastic with a 4 LDU top over a cavity;
+    through its upright, 4 LDU thick in front of the plate, solid for the
+    whole of the upright: 20 LDU a stud of it, hanging from the plate's
+    top or standing on its bottom."""
+    spec = spec_of(name)
+    mesh = flatten(library, name)
+    width, depth = footprint(spec)
+    rise = spec["rise"] * 20.0
+    x = -width / 2 + 5.3
+    for into in (0.43, 2.07, 3.61):
+        upright = stab(mesh, x, -depth / 2 - into)
+        assert upright == ([(0.0, rise)] if spec["way"] == "down" else [(8.0 - rise, 8.0)])
+    # Inside the plate's back wall, and past it over the cavity.
+    assert stab(mesh, x, depth / 2 - 2.07) == [(0.0, 8.0)]
+    assert stab(mesh, x, depth / 2 - 4.31)[0] == (0.0, 4.0)
+
+
+def pierce(mesh: Mesh, x: float, y: float) -> list[tuple[float, int]]:
+    """Every face a line along Z through (x, y) crosses, as (z, +1 facing
+    -Z or -1 facing +Z), nearest -Z first: stab() turned on its side."""
+    hits: list[tuple[float, int]] = []
+    for t in mesh.triangles:
+        d = (t.b.x - t.a.x) * (t.c.y - t.a.y) - (t.b.y - t.a.y) * (t.c.x - t.a.x)
+        if abs(d) < 1e-9:
+            continue
+        w0 = ((t.b.x - x) * (t.c.y - y) - (t.b.y - y) * (t.c.x - x)) / d
+        w1 = ((t.c.x - x) * (t.a.y - y) - (t.c.y - y) * (t.a.x - x)) / d
+        if min(w0, w1, 1.0 - w0 - w1) < 0.0:
+            continue
+        z = w0 * t.a.z + w1 * t.b.z + (1.0 - w0 - w1) * t.c.z
+        hits.append((round(z, 3), 1 if t.normal().z < 0 else -1))
+    return sorted(hits)
+
+
+@pytest.mark.parametrize("name", [n for n in FILES if spec_of(n)["family"] == "technic"])
+def test_a_technic_brick_has_a_hole_a_pin_goes_through(library: Library, name: str) -> None:
+    """A hole between every two studs (under the stud of a 1 x 1), 10 LDU
+    under the top, running through front to back: one pin hole where each
+    face's peghole was, a 12 LDU bore nothing crosses, a 16 LDU mouth 2
+    deep in each face, and plastic round it — as 3700 has."""
+    spec = spec_of(name)
+    mesh = flatten(library, name)
+    n = spec["across"]
+    holes = [0.0] if n == 1 else [-n * 10.0 + 20.0 * i for i in range(1, n)]
+    found = sorted((round(c.position.x, 3) + 0.0, round(c.position.y, 3) + 0.0,
+                    round(c.position.z, 3) + 0.0)
+                   for c in extract(library, name) if c.kind.value == "pin_hole")
+    assert found == [(c, 10.0, 0.0) for c in holes]
+    for c in holes:
+        # Down the middle of the hole: nothing at all.
+        assert pierce(mesh, c + 0.31, 10.0 + 0.27) == []
+        # Between the bore and the mouth: plastic from one mouth's floor
+        # to the other's.
+        between = pierce(mesh, c + 0.31, 10.0 + 6.9)
+        assert between[0][0] == pytest.approx(-8.0, abs=0.01)
+        assert between[-1][0] == pytest.approx(8.0, abs=0.01)
+        # Past the mouth: the whole depth.
+        past = pierce(mesh, c + 0.31, 10.0 + 8.6)
+        assert (past[0][0], past[-1][0]) == (-10.0, 10.0)
+        # From above, beside the pin under the hole (4.7 off its middle,
+        # inside the bore's 6): the top down to the bore, the bore empty,
+        # then plastic under it to the cavity at 18. Not down the middle:
+        # a pin is an open tube stood on the cavity's ceiling, as a brick's
+        # tubes are, so a line down its middle never comes out of it.
+        spans = sorted(stab(mesh, c + 4.7, 0.29))
+        assert len(spans) == 2, (name, spans)
+        (top, over_bore), (under_bore, floor) = spans
+        assert top == 0.0 and 5.5 < over_bore < 7.0, (name, spans)
+        assert 13.0 < under_bore < 14.5 and floor == 18.0, (name, spans)
+
+
+@needs_numpy
+@pytest.mark.parametrize("name", [n for n in FILES if spec_of(n)["family"] == "technic"])
+def test_a_technic_brick_cover_leaves_its_holes_open(name: str) -> None:
+    """The collision cover the pipeline makes has no cell in a hole's bore,
+    or a pin pushed into it would be refused as an overlap."""
+    kept = json.loads((FIXTURES / "pipeline.json").read_text())["parts"]
+    part = kept[name[:-4]]
+    holes = [c for c in part["connectors"] if c[0] == "pin_hole"]
+    assert holes
+    for hole in holes:
+        hx, hy, _hz = hole[2]
+        for x0, y0, _z0, sx, sy, _sz in part["boxes"]:
+            for cx in range(x0, x0 + sx):
+                for cy in range(y0, y0 + sy):
+                    px, py = (cx + 0.5) * 2.0, (cy + 0.5) * 2.0
+                    assert (px - hx) ** 2 + (py - hy) ** 2 > 25.0, (name, hole)
+
+
 # -- a standard size is the standard part ------------------------------------
 
 
@@ -414,6 +661,14 @@ def test_a_standard_brick_is_the_library_part(library: Library) -> None:
     ("bw-s3x2x3r2.dat", "3298.dat", -20.0, "top"),   # Slope 33 3 x 2
     ("bw-i2x2x3r1.dat", "3660a.dat", -10.0, "bottom"),  # Slope 45 2 x 2 Inverted
     ("bw-r2x3.dat", "3941.dat", 0.0, "top"),         # Brick 2 x 2 Round
+    ("bw-b1x1x3-sf.dat", "87087.dat", 0.0, "top"),   # Brick 1 x 1 with Stud on 1 Side
+    ("bw-b1x4x3-sf.dat", "30414.dat", 0.0, "top"),   # Brick 1 x 4 with Studs on Side
+    ("bw-k1x2x1d.dat", "99781.dat", 0.0, "top"),     # Bracket 1 x 2 - 1 x 2 Down
+    ("bw-k1x2x1u.dat", "99780.dat", 0.0, "top"),     # Bracket 1 x 2 - 1 x 2 Up
+    ("bw-k1x2x2d.dat", "44728.dat", 0.0, "top"),     # Bracket 1 x 2 - 2 x 2 Down
+    ("bw-h1x1.dat", "6541.dat", 0.0, "top"),         # Technic Brick 1 x 1 with Hole
+    ("bw-h1x2.dat", "3700.dat", 0.0, "top"),         # Technic Brick 1 x 2 with Hole
+    ("bw-h1x4.dat", "3701.dat", 0.0, "top"),         # Technic Brick 1 x 4 with Holes
 ])
 def test_a_standard_size_has_the_library_parts_shape(
     library: Library, made: str, real: str, shift: float, surface: str
@@ -441,16 +696,34 @@ def test_a_standard_size_has_the_library_parts_shape(
             # The outside: the top, or for an inverted slope the face
             # underneath, since 3660a is cored out from above under its
             # front studs where the maker draws it solid.
+            # The highest plastic, or the lowest: a library side stud is
+            # hollow, so a line through it crosses it twice.
             if surface == "top":
-                assert mine[0][0] == pytest.approx(real_spans[0][0], abs=0.02), (x, z)
+                assert min(s[0] for s in mine) == pytest.approx(
+                    min(s[0] for s in real_spans), abs=0.02), (x, z)
             else:
-                assert mine[-1][1] == pytest.approx(real_spans[-1][1], abs=0.02), (x, z)
+                assert max(s[1] for s in mine) == pytest.approx(
+                    max(s[1] for s in real_spans), abs=0.02), (x, z)
     # Where on the top, not how high: 3660a's front studs stand in its
     # coring, their bases 4 LDU down.
     def top_studs(name: str, dz: float = 0.0) -> list[tuple[float, float]]:
         return sorted((round(c.position.x, 2), round(c.position.z + dz, 2))
                       for c in _studs(library, name) if c.axis.y < -0.99)
     assert top_studs(made, shift) == top_studs(real)
+
+    # And those on a side or an upright: where, and which way.
+    def side_studs(name: str, dz: float = 0.0) -> list[tuple]:
+        return sorted((round(c.position.x, 2) + 0.0, round(c.position.y, 2) + 0.0,
+                       round(c.position.z + dz, 2) + 0.0, round(c.axis.x, 3) + 0.0,
+                       round(c.axis.y, 3) + 0.0, round(c.axis.z, 3) + 0.0)
+                      for c in _studs(library, name) if c.axis.y > -0.99)
+    assert side_studs(made, shift) == side_studs(real)
+
+    def holes(name: str) -> list[tuple]:
+        return sorted((round(c.position.x, 2) + 0.0, round(c.position.y, 2) + 0.0,
+                       round(c.position.z, 2) + 0.0)
+                      for c in extract(library, name) if c.kind.value == "pin_hole")
+    assert holes(made) == holes(real)
 
     def tubes(name: str, dz: float = 0.0) -> set[tuple[float, float]]:
         return {(round(c.position.x, 2), round(c.position.z + dz, 2))

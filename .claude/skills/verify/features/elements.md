@@ -1,7 +1,8 @@
 # Elements
 
-Making a part LEGO has not made — a brick, plate, tile, slope, inverted slope
-or round part of any size — as a real LDraw part, and building it into the
+Making a part LEGO has not made — a brick, plate, tile, slope, curved slope,
+inverted slope, round part, bracket or Technic brick of any size, or a brick
+with studs on its sides — as a real LDraw part, and building it into the
 same geometry, connectors and collision the library's own parts have.
 
 <!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts, ui:make a part, lib:made parts in the library and in files -->
@@ -13,31 +14,48 @@ same geometry, connectors and collision the library's own parts have.
   side and any height in plates; slopes by width, depth, run and height, with LEGO's four named
   angles (33, 45, 65, 75) as presets that set the run and height of 3298,
   3039, 60481 and 4460b; inverted slopes; round bricks, plates and tiles by
-  diameter. Every part is drawn the way the library draws the part it
-  resembles: `stud.dat` per stud, `stud4.dat` tubes and `stud3.dat` pins,
-  `box5.dat` shell and cavity, 4 LDU walls and top. The header is the one
+  diameter. Then the families a modern set is built from: a brick with studs
+  on any of its four sides (`sides=fblr`; 87087, 30414, 47905, 4733, 22885)
+  in rows 10 LDU under the top and every 20 down; a bracket (99781, 99780,
+  44728) by plate, upright and which way the upright goes, its upright 4 LDU
+  in front of the plate's footprint with the origin on the plate's studs as
+  the library has it; a curved slope (11477, 15068, 93606) whose face is an
+  eighth of a circle in the part's proportions, as 11477 draws its 1-8cyli,
+  over some or all of its rows; and a Technic brick one stud wide (6541,
+  3700, 3701) with a hole between every two studs, each a 12 LDU bore with a
+  16 LDU mouth counterbored into both faces by `peghole.dat`. Every part is
+  drawn the way the library draws the part it resembles: `stud.dat` per stud,
+  `stud4.dat` tubes and `stud3.dat` pins, `box5.dat` shell and cavity, 4 LDU
+  walls and top. The header is the one
   ldraw.org's header spec asks of an unofficial part (`Unofficial_Part`, CC BY
   4.0, `BFC CERTIFY CCW`, a real `!CATEGORY`) and carries the spec it was made
   from, so a part can be read back and remade. `from_part()` turns a plain
-  library part's name ("Brick  2 x  4") into its spec: the resize path.
+  library part's name ("Brick  2 x  4", "Brick  1 x  4 with Studs on Side",
+  "Bracket  1 x  2 -  2 x  2 Down", "Slope Brick Curved  2 x  1", "Technic
+  Brick  1 x  4 with Holes") into its spec: the resize path.
   Named `bw-<shape>`, never an LDraw `u`/`t` number (those are assigned by
   the Parts Library admin).
 - `build a part in the app` (`PartForge`): tools/build_meshes.py's
   conversion, step for step, in GDScript — flatten with BFC, crease-aware
   normals, per-colour surfaces, connectors from primitives, voxelise, remove
-  studs, fill cavities, boxes, sockets — ending in the same `.lbm` bytes.
+  studs, fill cavities (clearing a Technic hole's bore), boxes, sockets, and
+  a hole's two faces merged into one hole — ending in the same `.lbm` bytes.
   Needed because neither a desktop export nor a browser has Python.
-  Primitives: the nine in `assets/ldraw/` (shipped in every export) and
-  `vendor/ldraw` when present. Measured at load 70: 2 x 7 brick 0.14 s,
+  Primitives: the eleven in `assets/ldraw/` (shipped in every export;
+  `peghole` and `4-4ndis` came with the Technic brick) and `vendor/ldraw`
+  when present. Measured at load 70: 2 x 7 brick 0.14 s,
   8 x 8 plate 0.8 s, 16 x 16 plate about 2.2 s (normals are the largest
   stage), 32 x 32 about 10 s — hence the cap, and the dialog saying
   "Building the part…" before anything over 48 studs.
-- `make a part` (`ElementDialog`): **Make a part…** in the parts bin. Family,
-  sizes (two to a row), LEGO's four named angles for a slope, studs on or
-  off, a name, and "Resize a part" — a part number, or the part in hand when
-  the dialog opens. The preview is the part built by `PartForge`, turning; a
-  sentence under it gives the size in mm, the studs, the places a stud goes
-  in underneath and a slope's true angle. **Add to parts** makes it, keeps
+- `make a part` (`ElementDialog`): **Make a part…** in the parts bin. A
+  button for each of the seven families (all on show, one press each), sizes
+  (two to a row), LEGO's four named angles for a slope, studs on or off,
+  Front/Back/Left/Right for studs on a brick's sides, a bracket's upright and
+  which way it goes, a name, and "Resize a part" — a part number, or the part
+  in hand when the dialog opens. The preview is the part built by
+  `PartForge`, turning; a sentence under it gives the size in mm, the studs
+  on top and on the sides, the places a stud goes in underneath, the Technic
+  holes, and a slope's true angle (a curved slope's at its foot). **Add to parts** makes it, keeps
   it, holds it, and shows the bin's Custom category.
 - `made parts in the library and in files` (`CustomParts`, and the custom
   half of `PartLibrary`, `LdrModel`, `ModelStore`): a made part is kept as
@@ -69,6 +87,7 @@ same geometry, connectors and collision the library's own parts have.
 ```sh
 godot --headless --path . --script src/dev/element_files_probe.gd            # check
 godot --headless --path . --script src/dev/element_files_probe.gd -- --write  # rewrite fixtures
+PYTHON=<venv>/bin/python tools/element_pipeline.sh   # rewrite pipeline.json (numpy)
 tools/build_custom.py tests/fixtures/elements/*.dat --out /tmp/custom       # needs numpy
 tools/build_custom.py model.mpd --into /tmp/copy-of-generated
 tools/build_custom.py model.mpd --check                                     # no numpy
@@ -79,8 +98,10 @@ tools/web/serve.py /tmp/web 8147 &
 node tools/web/element_flow.mjs --url=http://localhost:8147/index.html --out=shots/element_web
 ```
 
-The flow ends "a part made in the browser is placed, kept and back after a
-reload" and leaves `shots/element_web/{1_dialog,2_placed,3_reloaded}.png`.
+The flow ends "parts made in the browser are placed, kept and back after a
+reload" — a 2 x 7 brick and then, pressed from its family button, a 1 x 6
+Technic brick, whose holes are drawn with primitives the build ships — and
+leaves `shots/element_web/{1_dialog,2_placed,3_technic,4_technic_placed,5_reloaded}.png`.
 
 ## How to check it
 
@@ -94,28 +115,37 @@ env -u DISPLAY -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw \
   godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd
 ```
 
-Proves it when: the tests say `180 passed, 3 skipped` without numpy and
-`183 passed` with it (`uv venv` + `uv pip install numpy scipy`; see
+Proves it when: the tests say `350 passed, 7 skipped` without numpy and
+`357 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
 pipeline.md), and the probe ends on "the maker makes the measured files, and
 the app builds them as the pipeline does" with every line `ok`: each of the
-19 fixtures "the same .lbm, byte for byte" built from only the shipped
-primitives, and the 16 library parts the same from vendor/ldraw.
+36 fixtures "the same .lbm, byte for byte" built from only the shipped
+primitives, and the 28 library parts in `tests/fixtures/elements/library.txt`
+the same from vendor/ldraw — among them 3700, 3701 and 6541, whose holes'
+two faces the app merges and whose bores it clears as the pipeline does.
 
 `element_probe` proves it when it ends "a made part is placed, clutched,
 checked, listed and saved like any other": the 2 x 7 brick, 1 x 5 plate and
 3 x 3 x 2/3 slope made through the dialog's controls (and 3001 resized to
-2 x 7), each found in the bin's Custom category, placed by the mouse's ray on
-a 2 x 4 on a baseplate with a 2 x 4 on top, the lower brick's studs reaching
-into it at its own sockets (8, 4 and 6) and its studs into the upper one (8,
-4 and 3), a 1 x 1 plate fitting against each side and refused one cell
-closer, the slope's cover following its face, the assistant's checker
-passing it and counting three pieces (one per stack), the parts list saying
-"(custom element)", and the saved file carrying all three, read strictly by
-`tools/build_custom.py --check`, and reopened into a fresh library 9 of 9
-bricks where they were. `element_shot_probe` ends "the dialog makes parts in
-the window" and leaves `shots/element_dialog.png` and
-`shots/element_beside.png` (made parts red, their library cousins grey) —
-look at them.
+2 x 7), then a 1 x 4 brick with studs on its side, a 1 x 2 - 1 x 2 bracket,
+a 3 x 3 curved slope and a 1 x 2 Technic brick, each found in the bin's
+Custom category; all but the bracket placed by the mouse's ray on a 2 x 4 on
+a baseplate with a 2 x 4 on top, the lower brick's studs reaching into it at
+its own sockets and its top studs into the upper one, a 1 x 1 plate fitting
+against each side of its plastic and refused one cell closer, the slope's
+cover following its face and the curve's its curve, the assistant's checker
+passing it and counting six pieces (one per stack). Then each family used
+as only it can be, asked of the checker: a 1 x 4 plate on the side studs and
+a 1 x 2 plate on the bracket's upright held, and each a stud further out
+floating; a Technic pin through the hole held and fitting (3700's place for
+it), turned across the hole an overlap; the hole left out of the cover. The
+parts list says "(custom element)", and the saved file carries six parts,
+read strictly by `tools/build_custom.py --check`, and reopened into a fresh
+library 18 of 18 bricks where they were. `element_shot_probe` ends "the
+dialog makes parts in the window" and leaves `shots/element_dialog.png`,
+`shots/element_beside.png` and `shots/element_families.png` (made parts
+red, their library cousins grey — 30414, 99781, 99780, 93606, 3701 — and
+what is put on them white) — look at them.
 
 What the tests measure, each by stabbing the flattened geometry with a
 vertical line the way the voxeliser does: the header lines in order; every
@@ -130,7 +160,10 @@ should be and 4 LDU thick; the top and bottom faces wound outward. The maker's
 
 Mutations that each test was seen to catch: a slope face wound inside out
 (`faces_out`), a stud 1 LDU off the grid (`studs`), a 3 LDU wall (`walls`), a
-tube under a stud (`tubes`).
+tube under a stud (`tubes`), side studs 1 LDU low (`studs_on_a_side`, and the
+comparison with 87087 and 30414), a Technic hole with no bore
+(`technic_brick_has_a_hole`), a 3 LDU bracket upright (`bracket_is_a_plate`,
+`bounds`, `studs_on_a_side`).
 
 ## Gotchas
 
@@ -172,10 +205,29 @@ tube under a stud (`tubes`).
   whose face runs exactly through cell centres — which is also why that
   slope has 44 boxes and 3039 has 19: the staircase is ragged by rounding in
   both, identically.
-- **Not ported:** connectivity's merging of a Technic hole's two faces and
-  occupancy's clearing of a hole's bore. Nothing the maker makes has a hole;
-  3700 is the library part that shows the difference and is left out of the
-  probe's list on purpose.
+- **Ported with the Technic brick:** connectivity's merging of a Technic
+  hole's two faces (`PartForge._merge_half_holes`: the faces on one axis
+  line within 44 LDU, at their midpoint, with the axis of the face that sorts
+  first — which is why the maker writes the back peghole first, as 3700 does)
+  and occupancy's clearing of a hole's bore (`_clear_bores`). 3700, 3701 and
+  6541 match the pipeline byte for byte. **Not ported:** the axle and axle
+  hole families, which the pipeline classifies from each primitive's own
+  description; nothing the maker makes has one.
+- **A line down a Technic pin never comes out of it.** A pin, like a brick's
+  tube, is an open cylinder stood on the cavity's ceiling, so the winding a
+  vertical line counts through it stays up through the bore above it. The
+  cover is right anyway (the bore is cleared by the hole's connector, as for
+  3700); a test stabbing for the bore stabs beside the pin.
+- **The bounds are not the plastic.** A brick with side studs, or a
+  bracket, has studs standing 4 LDU off a face; its cover leaves them out,
+  as it leaves out the top studs, and a plate may stand against the face
+  between them. `element_probe` measures "touching" from the cover.
+- **`stab()` lists spans from the bottom up.** The first span is the top only
+  when there is one; a line through a Technic mouth or a hollow side stud
+  crosses plastic twice. The tests take the highest plastic as the top.
+- **A curve is chords.** The face is 8 straight strips round an eighth of a
+  circle, up to 0.12 LDU under the circle on the tallest curve the fixtures
+  have; the tests allow 0.2.
 - **Ported, and compared:** `connectivity.rounds`, the shafts and bores a
   part's cylinders give (`PartForge._rounds`). A made round brick has a
   shaft for its wall and a bore for its cavity, and 3062b, 3039, 3040b,

@@ -10,6 +10,12 @@
 ## 3023b, 3039, 3660a, 3941 — with the 2 x 7 clutched between two 2 x 4s:
 ## shots/element_beside.png. Made parts are red, the library's grey.
 ##
+## Then the families that came after: a brick with studs on its side, two
+## brackets, a curved slope and a Technic brick, made through the same
+## controls, each beside its cousin (30414, 99781, 99780, 93606, 3701) and
+## each in use — round plates on the side studs, a tile on each upright, a
+## pin through a hole — in white: shots/element_families.png.
+##
 ## A window is needed because the preview and the thumbnails are drawn by
 ## SubViewports. Run it on Xvfb, never on somebody's screen (tools/check.sh
 ## does that for you).
@@ -19,6 +25,7 @@ const SHOTS := "res://shots/"
 const PROBE_DIR := "user://custom_parts_shot/"
 const MADE := 4      ## red
 const LIBRARY := 71  ## light bluish grey
+const USED := 15     ## white: what is put on them
 
 var _failures: int = 0
 var _main: Node
@@ -136,6 +143,9 @@ func _run() -> void:
 	placed.append(_put(world, builder, library, ids[0], MADE, Vector3(400.0, 24.0, 150.0)))
 	placed.append(_put(world, builder, library, "3001", LIBRARY, Vector3(410.0, 48.0, 150.0)))
 	_main.call("_lay_baseplate")
+	# Nothing in hand: the app redraws the ghost of the held part under the
+	# pointer every frame, and it stood in the picture as a green phantom.
+	builder.held_part = ""
 	builder.hide_preview()
 	# Framed on the parts, not the baseplate under them.
 	var box := AABB()
@@ -166,7 +176,129 @@ func _run() -> void:
 	builder.hide_preview()
 	await RenderingServer.frame_post_draw
 	_save("element_beside.png")
+	await _families(button, dialog, library, world, builder, store, camera)
 	_finish()
+
+
+## The families after the first five, made through the dialog, beside
+## their cousins and in use.
+func _families(button: Button, dialog: ElementDialog, library: PartLibrary,
+		world: BrickWorld, builder: Builder, store: ModelStore, camera: CadCamera) -> void:
+	var makes: Array = [
+		[{"family": "brick", "across": 4, "deep": 1, "plates": 3, "sides": "f"},
+			"30414", "Brick  1 x  4 with Studs on 1 Side"],
+		[{"family": "bracket", "across": 2, "deep": 1, "rise": 1, "way": "down"},
+			"99781", "Bracket  1 x  2 -  1 x  2 Down"],
+		[{"family": "bracket", "across": 2, "deep": 1, "rise": 1, "way": "up"},
+			"99780", "Bracket  1 x  2 -  1 x  2 Up"],
+		[{"family": "curved", "across": 2, "deep": 4, "plates": 3, "run": 4},
+			"93606", "Slope Brick Curved  4 x  2"],
+		[{"family": "technic", "across": 4}, "3701", "Technic Brick  1 x  4 with Holes"],
+	]
+	var ids: Array[String] = []
+	for entry: Array in makes:
+		button.pressed.emit()
+		var fields: Dictionary = entry[0]
+		dialog.set_field("family", fields["family"])
+		for key: String in fields:
+			if key != "family":
+				dialog.set_field(key, fields[key])
+		var id: String = await _add(dialog, library)
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		_ok(info != null and info.name == str(entry[2]),
+			"made %s, \"%s\"" % [id, info.name if info != null else "nothing"])
+		ids.append(id)
+	if ids.has(""):
+		return
+	world.clear()
+	builder.lattice.clear()
+	store.scenery.clear()
+	var placed: Array[int] = []
+	# Two rows, three pairs and two, so the picture is not a strip.
+	var cursor: float = 0.0
+	for index: int in makes.size():
+		var row: int = 0 if index < 3 else 1
+		if index == 3:
+			cursor = 40.0
+		for n: int in 2:
+			var part_id: String = ids[index] if n == 0 else str(makes[index][1])
+			var wide: float = library.mesh_for(part_id).bounds.size.x
+			var brick: int = _put(world, builder, library, part_id,
+				MADE if n == 0 else LIBRARY,
+				Vector3(cursor + wide * 0.5, 0.0, -row * 110.0))
+			placed.append(brick)
+			placed.append_array(_in_use(world, builder, library, brick))
+			cursor += wide + 16.0
+		cursor += 30.0
+	var used: int = placed.size() - makes.size() * 2
+	# Four round plates on each brick's side, a tile on each upright, a pin
+	# in each Technic brick: 4 + 4 + 1 + 1 + 1 + 1 + 1 + 1.
+	_ok(used == 14, "and put to use: %d white parts on their studs and in their holes" % used)
+	_main.call("_lay_baseplate")
+	builder.held_part = ""
+	builder.hide_preview()
+	var box := AABB()
+	for brick_id: int in placed:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var bounds: AABB = brick.transform * library.mesh_for(brick.part_id).bounds
+		box = bounds if box.size == Vector3.ZERO else box.merge(bounds)
+	for _n: int in 30:
+		await process_frame
+	# From the front and to the right, a little above: the side studs,
+	# the uprights and the holes all face the front.
+	camera.set("_target_yaw", deg_to_rad(-20.0))
+	camera.set("_target_pitch", deg_to_rad(26.0))
+	camera.frame(box.merge(AABB(box.position - Vector3(box.size.x * 0.45, 0.0, 0.0),
+		Vector3.ONE)), 0.72)
+	for _n: int in 180:
+		await process_frame
+	builder.hide_preview()
+	await RenderingServer.frame_post_draw
+	_save("element_families.png")
+
+
+## Put things on a placed part the way it is used: a 1 x 1 round plate on
+## every stud that does not point up, a 1 x 2 tile across a bracket's
+## upright, a pin through a Technic brick's middle hole. Returns them.
+func _in_use(world: BrickWorld, builder: Builder, library: PartLibrary,
+		brick_id: int) -> Array[int]:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	var sideways: Array[Lbm.Connector] = []
+	var holes: Array[Lbm.Connector] = []
+	for c: Lbm.Connector in mesh.connectors:
+		if c.kind == "stud" and absf(c.axis.y) < 0.5:
+			sideways.append(c)
+		elif c.kind == "pin_hole":
+			holes.append(c)
+	var out: Array[int] = []
+	var bracket: bool = library.parts[brick.part_id].name.begins_with("Bracket")
+	if bracket and sideways.size() == 2:
+		var a: Vector3 = brick.transform * sideways[0].position
+		var b: Vector3 = brick.transform * sideways[1].position
+		var way: Vector3 = (brick.transform.basis * sideways[0].axis).normalized()
+		out.append(_put_at(world, builder, "3069b",
+			Transform3D(Basis(Quaternion(Vector3.UP, way)), (a + b) * 0.5 + way * 8.0)))
+	elif not bracket:
+		for c: Lbm.Connector in sideways:
+			var way: Vector3 = (brick.transform.basis * c.axis).normalized()
+			out.append(_put_at(world, builder, "4073",
+				Transform3D(Basis(Quaternion(Vector3.UP, way)),
+					brick.transform * c.position + way * 8.0)))
+	if not holes.is_empty():
+		var middle: Lbm.Connector = holes[holes.size() / 2]
+		var along: Vector3 = (brick.transform.basis * middle.axis).normalized()
+		out.append(_put_at(world, builder, "3673",
+			Transform3D(Basis(Quaternion(Vector3.RIGHT, along)),
+				brick.transform * middle.position)))
+	return out
+
+
+func _put_at(world: BrickWorld, builder: Builder, part_id: String,
+		where: Transform3D) -> int:
+	var id: int = world.add_brick(part_id, USED, where)
+	builder.register(id, part_id, where)
+	return id
 
 
 func _finish() -> void:

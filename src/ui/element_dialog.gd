@@ -24,7 +24,7 @@ var library: PartLibrary
 var color_code: int = 4
 
 var _spec := ElementMaker.Spec.new()
-var _family: OptionButton
+var _family_buttons: Dictionary = {}   ## family -> its Button
 var _from: LineEdit
 var _across: SpinBox
 var _deep: SpinBox
@@ -32,6 +32,9 @@ var _plates: SpinBox
 var _run: SpinBox
 var _diameter: SpinBox
 var _studs: CheckBox
+var _sides: Dictionary = {}          ## letter -> its CheckBox
+var _rise: SpinBox
+var _way: OptionButton
 var _angles: HBoxContainer
 var _name: LineEdit
 var _about: Label
@@ -50,12 +53,19 @@ var _dragging: bool = false
 signal made(part_id: String)
 signal cancelled
 
+## [family, the button's word, what it makes].
 const FAMILIES: Array = [
-	["brick", "Brick, plate or tile"],
-	["slope", "Slope"],
-	["inverted", "Inverted slope"],
-	["round", "Round brick, plate or tile"],
+	["brick", "Brick", "A brick, plate or tile; studs on its sides if you want them"],
+	["slope", "Slope", "A slope at LEGO's angles or any other"],
+	["curved", "Curved", "A curved slope, with flat rows behind the curve if you want them"],
+	["inverted", "Inverted", "An inverted slope"],
+	["round", "Round", "A round brick, plate or tile"],
+	["bracket", "Bracket", "A plate with an upright whose studs face forward"],
+	["technic", "Technic", "A Technic brick, one stud wide, with a hole between every two studs"],
 ]
+
+## The sides a brick's studs can go on, as the checkboxes name them.
+const SIDE_LABELS: Array = [["f", "Front"], ["b", "Back"], ["l", "Left"], ["r", "Right"]]
 
 
 func _ready() -> void:
@@ -161,25 +171,32 @@ func _build() -> void:
 	use.pressed.connect(func() -> void: _start_from(_from.text))
 	from_row.add_child(use)
 
-	var family_row := _row(column, "Family")
-	_family = OptionButton.new()
-	for entry: Array in FAMILIES:
-		_family.add_item(entry[1])
-	_family.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_family.item_selected.connect(func(index: int) -> void:
-		if FAMILIES[index][0] != _spec.family:
-			# A 3001 made into a slope is not 3001 resized.
-			_spec.derived_from = ""
-			_from.text = ""
-		_spec.family = FAMILIES[index][0]
-		if _spec.family == "slope" or _spec.family == "inverted":
-			if _spec.deep < 2:
-				_spec.deep = 2
-			if _spec.plates < 2:
-				ElementMaker.use_angle(_spec, 45)
-		_show_spec())
-	family_row.add_child(_family)
-
+	# Every family on show, one press each: a menu hid six of the seven.
+	var family_holder := VBoxContainer.new()
+	family_holder.add_theme_constant_override("separation", 3)
+	column.add_child(family_holder)
+	var family_words := Label.new()
+	family_words.text = "Family"
+	family_words.add_theme_font_size_override("font_size", 11)
+	family_words.modulate = Color(1, 1, 1, 0.7)
+	family_holder.add_child(family_words)
+	var family_grid := GridContainer.new()
+	family_grid.columns = 4
+	family_grid.add_theme_constant_override("h_separation", 4)
+	family_grid.add_theme_constant_override("v_separation", 4)
+	family_holder.add_child(family_grid)
+	var family_group := ButtonGroup.new()
+	for index: int in FAMILIES.size():
+		var entry: Array = FAMILIES[index]
+		var choice := Button.new()
+		choice.text = entry[1]
+		choice.tooltip_text = entry[2]
+		choice.toggle_mode = true
+		choice.button_group = family_group
+		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choice.pressed.connect(func() -> void: _choose_family(index))
+		family_grid.add_child(choice)
+		_family_buttons[entry[0]] = choice
 	# Two to a row: five spin boxes stacked one per line were most of
 	# the panel's height.
 	var grid := GridContainer.new()
@@ -190,9 +207,21 @@ func _build() -> void:
 	_across = _number(grid, "across", "Length, studs", 1, ElementMaker.MOST_STUDS)
 	_deep = _number(grid, "deep", "Width, studs", 1, ElementMaker.MOST_STUDS)
 	_diameter = _number(grid, "diameter", "Diameter, studs", 1, 16)
-	_run = _number(grid, "run", "Slope falls over, rows", 1, ElementMaker.MOST_STUDS - 1)
+	_run = _number(grid, "run", "Slope falls over, rows", 1, ElementMaker.MOST_STUDS)
 	_plates = _number(grid, "plates", "Height, plates (3 = a brick)", 1,
 		ElementMaker.MOST_PLATES)
+	_rise = _number(grid, "rise", "Upright, studs", 1, ElementMaker.MOST_RISE)
+	var way_row := _row(grid, "The upright")
+	_rows["way"] = way_row.get_parent()
+	_way = OptionButton.new()
+	_way.add_item("hangs down from the plate")
+	_way.add_item("stands up from the plate")
+	_way.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_way.item_selected.connect(func(index: int) -> void:
+		if not _filling:
+			_spec.way = "down" if index == 0 else "up"
+			_changed())
+	way_row.add_child(_way)
 
 	var angle_row := _row(column, "LEGO's angles")
 	_rows["angles"] = angle_row.get_parent()
@@ -215,6 +244,22 @@ func _build() -> void:
 			_spec.studs = on
 			_changed())
 	column.add_child(_studs)
+
+	# Studs-not-on-top: a brick with studs on its faces, for building a
+	# face sideways.
+	var sides_row := _row(column, "Studs on its sides")
+	_rows["sides"] = sides_row.get_parent()
+	for entry: Array in SIDE_LABELS:
+		var box := CheckBox.new()
+		box.text = entry[1]
+		box.tooltip_text = "Studs on the %s face, 10 LDU under the top and every stud down" \
+			% str(entry[1]).to_lower()
+		box.toggled.connect(func(_on: bool) -> void:
+			if not _filling:
+				_spec.sides = _sides_ticked()
+				_changed())
+		sides_row.add_child(box)
+		_sides[entry[0]] = box
 
 	var name_row := _row(column, "Name")
 	_name = LineEdit.new()
@@ -302,12 +347,14 @@ func _start_from(part_id: String, quietly: bool = false) -> bool:
 			_say("There is no part %s in the library." % id, true)
 		return false
 	var spec: ElementMaker.Spec = ElementMaker.parse_spec(library.custom_source(id)) \
-		if info.custom else ElementMaker.from_part(id, info.name)
+		if info.custom else ElementMaker.from_part(id, info.name, info.size.y)
 	if spec == null:
 		if not quietly:
-			_say("%s (%s) is not a plain brick, plate, tile, slope or round part, "
+			_say("%s (%s) is not one of the families the maker draws — a plain "
 				% [id, Inventory._tidy(info.name)]
-				+ "so it cannot be resized here. Start from the family instead.", true)
+				+ "brick, plate, tile, slope, curved slope, round part, bracket, "
+				+ "Technic brick or brick with side studs — so it cannot be resized "
+				+ "here. Start from the family instead.", true)
 		return false
 	if info.custom:
 		spec.derived_from = ""
@@ -321,32 +368,92 @@ func _start_from(part_id: String, quietly: bool = false) -> bool:
 ## Put the spec into the controls, then rebuild.
 func _show_spec() -> void:
 	_filling = true
-	for index: int in FAMILIES.size():
-		if FAMILIES[index][0] == _spec.family:
-			_family.select(index)
+	var shown: Button = _family_buttons.get(_spec.family)
+	if shown != null:
+		shown.set_pressed_no_signal(true)
 	_across.value = _spec.across
 	_deep.value = _spec.deep
 	_plates.value = _spec.plates
 	_run.value = _spec.run
 	_diameter.value = _spec.diameter
+	_rise.value = _spec.rise
+	_way.select(0 if _spec.way == "down" else 1)
 	_studs.button_pressed = _spec.studs
+	for letter: String in _sides:
+		(_sides[letter] as CheckBox).button_pressed = _spec.sides.contains(letter)
 	_name.text = _spec.title
-	var is_round: bool = _spec.family == "round"
-	var sloped: bool = _spec.family == "slope" or _spec.family == "inverted"
+	var family: String = _spec.family
+	var is_round: bool = family == "round"
+	var sloped: bool = family == "slope" or family == "inverted" or family == "curved"
 	_rows["across"].visible = not is_round
-	_rows["deep"].visible = not is_round
+	_rows["deep"].visible = not is_round and family != "technic"
 	_rows["diameter"].visible = is_round
 	_rows["run"].visible = sloped
-	_rows["angles"].visible = sloped
+	_rows["angles"].visible = family == "slope" or family == "inverted"
+	_rows["plates"].visible = family != "bracket" and family != "technic"
+	_rows["rise"].visible = family == "bracket"
+	_rows["way"].visible = family == "bracket"
+	_rows["sides"].visible = family == "brick"
 	# A brick is named "2 x 7", short side first, and its long side runs
 	# along X as the library's do; a slope is as wide as its face and as
-	# deep as its back is from its foot.
+	# deep as its back is from its foot; a bracket's plate as wide as its
+	# upright.
 	(_rows["across"].get_child(0) as Label).text = \
-		"Width, studs (along the face)" if sloped else "Length, studs"
+		"Width, studs (along the face)" if sloped \
+		else ("Width, studs (along the upright)" if family == "bracket" else "Length, studs")
 	(_rows["deep"].get_child(0) as Label).text = \
-		"Depth, studs (back to foot)" if sloped else "Width, studs"
+		"Depth, studs (back to foot)" if sloped \
+		else ("Plate depth, studs" if family == "bracket" else "Width, studs")
+	(_rows["run"].get_child(0) as Label).text = \
+		"Curve falls over, rows" if family == "curved" else "Slope falls over, rows"
 	_filling = false
 	_changed()
+
+
+## A family's button pressed: the spec becomes one of that family, keeping
+## what sizes it can.
+func _choose_family(index: int) -> void:
+	if FAMILIES[index][0] != _spec.family:
+		# A 3001 made into a slope is not 3001 resized.
+		_spec.derived_from = ""
+		_from.text = ""
+	_spec.family = FAMILIES[index][0]
+	_fit_family(_spec)
+	_show_spec()
+
+
+## What a family needs of a spec carried over from another: a slope two
+## rows deep, a bracket's plate one plate tall, a Technic brick one stud
+## wide and one brick tall, studs on the sides only on a brick that is one.
+static func _fit_family(spec: ElementMaker.Spec) -> void:
+	match spec.family:
+		"slope", "inverted":
+			if spec.deep < 2:
+				spec.deep = 2
+			if spec.plates < 2:
+				ElementMaker.use_angle(spec, 45)
+			spec.run = mini(spec.run, spec.deep - 1)
+		"curved":
+			if spec.plates < 2:
+				spec.plates = 2
+			spec.run = clampi(spec.run, 1, spec.deep)
+		"bracket":
+			spec.plates = 1
+		"technic":
+			spec.deep = 1
+			spec.plates = 3
+	if spec.family != "brick":
+		spec.sides = ""
+	elif not spec.sides.is_empty() and spec.plates < 3:
+		spec.plates = 3
+
+
+func _sides_ticked() -> String:
+	var ticked: String = ""
+	for entry: Array in SIDE_LABELS:
+		if (_sides[entry[0]] as CheckBox).button_pressed:
+			ticked += str(entry[0])
+	return ticked
 
 
 func _changed() -> void:
@@ -408,22 +515,40 @@ static func describe(spec: ElementMaker.Spec, built: PartForge.Result) -> String
 		built.bounds_max[1] - built.bounds_min[1],
 		built.bounds_max[2] - built.bounds_min[2])
 	var body: float = spec.plates * ElementMaker.PLATE
-	var studs: int = int(built.connector_counts.get("stud", 0))
+	var on_top: int = 0
+	var aside: int = 0
+	for c: Array in built.connectors:
+		if c[0] != "stud":
+			continue
+		# In the app's axes, +Y up: a stud pointing up is on the top.
+		if float(c[6]) > 0.99:
+			on_top += 1
+		else:
+			aside += 1
 	var under: int = int(built.connector_counts.get("tube", 0))
+	var holes: int = int(built.connector_counts.get("pin_hole", 0))
 	var words: String = "%s — %.1f x %.1f mm, %.1f mm tall without studs. " % [
 		Inventory._tidy(ElementMaker.title_for(spec)), size.x * MM, size.z * MM,
 		body * MM]
-	words += "%d stud%s on top, %d place%s a stud goes in underneath" % [
-		studs, "" if studs == 1 else "s", built.sockets.size(),
+	words += "%d stud%s on top" % [on_top, "" if on_top == 1 else "s"]
+	if aside > 0:
+		words += ", %d on %s" % [aside, "the upright" if spec.family == "bracket"
+			else "its sides"]
+	words += ", %d place%s a stud goes in underneath" % [built.sockets.size(),
 		"" if built.sockets.size() == 1 else "s"]
 	if under > 0:
 		words += ", %d tube%s or pin%s" % [under, "" if under == 1 else "s",
 			"" if under == 1 else "s"]
+	if holes > 0:
+		words += ", %d Technic hole%s a pin goes through" % [holes, "" if holes == 1 else "s"]
 	words += "."
 	if spec.family == "slope" or spec.family == "inverted":
 		var named: int = ElementMaker.named_angle(spec)
 		words += " The face is at %.1f°" % ElementMaker.true_angle(spec)
 		words += (" — what LEGO calls a %d." % named) if named > 0 else "."
+	elif spec.family == "curved":
+		words += " The curve leaves the top level and meets its foot at %.1f°." \
+			% ElementMaker.true_angle(spec)
 	return words
 
 
@@ -482,12 +607,15 @@ func _make() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	return {
+	var named: Dictionary = {
 		"element length": _across.get_line_edit(),
 		"element width": _deep.get_line_edit(),
 		"element height": _plates.get_line_edit(),
 		"element add": _add,
 	}
+	for family: String in _family_buttons:
+		named["element family " + family] = _family_buttons[family]
+	return named
 
 
 ## For a probe: the spec on screen and the part it built.
@@ -506,16 +634,23 @@ func set_field(field: String, value: Variant) -> void:
 		"family":
 			for index: int in FAMILIES.size():
 				if FAMILIES[index][0] == str(value):
-					_family.select(index)
-					_family.item_selected.emit(index)
+					(_family_buttons[FAMILIES[index][0]] as Button).set_pressed_no_signal(true)
+					_choose_family(index)
 		"studs":
 			_studs.button_pressed = bool(value)
+		"sides":
+			var wanted: String = ElementMaker.canonical_sides(str(value))
+			for letter: String in _sides:
+				(_sides[letter] as CheckBox).button_pressed = wanted.contains(letter)
+		"way":
+			_way.select(0 if str(value) == "down" else 1)
+			_way.item_selected.emit(_way.selected)
 		"name":
 			_name.text = str(value)
 			_name.text_changed.emit(str(value))
 		_:
 			var box: SpinBox = {"across": _across, "deep": _deep, "plates": _plates,
-				"run": _run, "diameter": _diameter}.get(field)
+				"run": _run, "diameter": _diameter, "rise": _rise}.get(field)
 			if box != null:
 				box.value = float(value)
 	settle()

@@ -6,8 +6,11 @@
 // the part is written and built in GDScript from primitives the build ships,
 // and kept in IndexedDB. This is the check that that is so, the way a person
 // would find out: press "Make a part…" in the parts bin, make the 2 x 4 in
-// hand a 2 x 7, add it, click it onto the baseplate, reload the page, and see
-// the part come back in the bin and on the baseplate.
+// hand a 2 x 7, add it, click it onto the baseplate, then press the Technic
+// family and make a 1 x 6 Technic brick — drawn with peghole.dat and
+// 4-4ndis.dat, which a browser has only because the build ships them — and
+// click that down too; reload the page, and see both parts come back in the
+// bin and on the baseplate.
 //
 // Driven by position, as assistant_flow.mjs is: the app publishes where its
 // controls are (window.brickworksControls) and what is going on
@@ -99,22 +102,50 @@ ok(placed && placed.bricks === before.bricks + 1,
   `clicking the baseplate placed it: ${before?.bricks} bricks, then ${placed?.bricks}`);
 await shot("2_placed.png");
 
+// A family the first version did not have, from the primitives it ships.
+await click("make part");
+ok(await until(() => showing("element family technic"), 60, "element family technic"),
+  "the dialog shows its families, Technic among them");
+await click("element family technic");
+await page.waitForTimeout(1500);
+await click("element length");
+await page.keyboard.press("Control+A");
+await page.keyboard.type("6", { delay: 40 });
+await page.keyboard.press("Enter");
+await page.waitForTimeout(3000);
+await shot("3_technic.png");
+await click("element add");
+const technic = await until(async () => /^bw-h1x6/.test((await state())?.held || ""), 60,
+  "technic made");
+const madeTechnic = await state();
+ok(technic, `Add to parts put ${madeTechnic?.held} in hand, a Technic brick with holes`);
+await page.waitForTimeout(1500);
+await page.mouse.move(520, 790);
+await page.waitForTimeout(800);
+await page.mouse.click(520, 790);
+await page.waitForTimeout(2500);
+const placedTechnic = await state();
+ok(placedTechnic && placedTechnic.bricks === placed.bricks + 1,
+  `clicking the baseplate placed it: ${placed?.bricks} bricks, then ${placedTechnic?.bricks}`);
+await shot("4_technic_placed.png");
+
 // The autosave runs a few seconds after a change; then the page goes.
 await page.waitForTimeout(6000);
 await page.reload({ waitUntil: "domcontentloaded" });
 ok(await until(() => showing("make part"), 400, "make part again"), "the app came back after a reload");
 await page.waitForTimeout(8000);
 const again = await state();
-ok(again && (again.custom || []).includes(after.held),
-  `${after.held} is still among the parts made here: [${again?.custom}]`);
-ok(again && again.bricks === placed.bricks,
-  `and the model came back with it, ${again?.bricks} bricks`);
-await shot("3_reloaded.png");
+ok(again && (again.custom || []).includes(after.held)
+  && (again.custom || []).includes(madeTechnic?.held),
+  `${after.held} and ${madeTechnic?.held} are still among the parts made here: [${again?.custom}]`);
+ok(again && again.bricks === placedTechnic.bricks,
+  `and the model came back with them, ${again?.bricks} bricks`);
+await shot("5_reloaded.png");
 await browser.close();
 
 for (const line of errors.slice(0, 8)) console.log(`  error: ${line}`);
 const failed = said.filter((l) => l.includes("FAIL")).length + errors.length;
 console.log(failed
   ? `${failed} problem(s); screenshots in ${out}`
-  : `a part made in the browser is placed, kept and back after a reload; screenshots in ${out}`);
+  : `parts made in the browser are placed, kept and back after a reload; screenshots in ${out}`);
 process.exit(failed ? 1 : 0);

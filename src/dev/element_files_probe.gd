@@ -49,12 +49,15 @@ func _initialize() -> void:
 		_check_pipeline(ids, DIR, false)
 		# And parts the library has, from its own files, when this checkout
 		# has the library: a port that only ever saw the maker's output
-		# could be right about exactly the shapes the maker draws. 3700,
-		# a Technic brick, is left out on purpose: its hole's two faces are
-		# not merged here (see PartForge).
+		# could be right about exactly the shapes the maker draws. 3700 and
+		# 3701 are among them now that a Technic hole's two faces are
+		# merged here as the pipeline merges them.
 		if DirAccess.dir_exists_absolute(PartForge.LIBRARY + "parts"):
-			print("\n...and so are parts from the library's own files")
-			_check_pipeline(LIBRARY_PARTS, PartForge.LIBRARY + "parts/", true)
+			var library: PackedStringArray = _library_parts()
+			print("\n...and so are %d parts from the library's own files" % library.size())
+			_ok(library.has("3700") and library.size() >= 20,
+				"the list has the Technic bricks and more than the first sixteen")
+			_check_pipeline(library, PartForge.LIBRARY + "parts/", true)
 		else:
 			print("\n  --    no vendor/ldraw here, so the library's own parts are not checked")
 
@@ -104,10 +107,15 @@ func _check_file(spec: ElementMaker.Spec, write: bool) -> void:
 
 ## Official parts that pipeline.json also holds, every kind of primitive the
 ## common parts are drawn with: stud groups, logos, hollow studs, corners,
-## a stud on the side.
-const LIBRARY_PARTS: PackedStringArray = ["3001", "3005", "3023b", "3068b", "3039",
-	"3298", "3062b", "3040b", "3660a", "4286", "3024", "3070b", "6141", "2357",
-	"3045", "87087"]
+## studs on the side, brackets, curves and Technic holes. One list, which
+## tools/element_pipeline.sh writes pipeline.json for.
+static func _library_parts() -> PackedStringArray:
+	var out := PackedStringArray()
+	for raw: String in FileAccess.get_file_as_string(DIR + "library.txt").split("\n"):
+		var line: String = raw.strip_edges()
+		if not line.is_empty() and not line.begins_with("#"):
+			out.append(line)
+	return out
 
 
 ## The app's own build of each file, against the pipeline's.
@@ -115,7 +123,7 @@ func _check_pipeline(ids: PackedStringArray, folder: String, library: bool) -> v
 	var raw: Variant = JSON.parse_string(
 		FileAccess.get_file_as_string(DIR + "pipeline.json"))
 	if typeof(raw) != TYPE_DICTIONARY:
-		_ok(false, "pipeline.json is there (tools/build_custom.py --summary)")
+		_ok(false, "pipeline.json is there (tools/element_pipeline.sh)")
 		return
 	var built: Dictionary = (raw as Dictionary).get("parts", {})
 	for id: String in ids:
