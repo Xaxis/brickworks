@@ -804,9 +804,12 @@ static func _arrow(from: Vector2, to: Vector2, colour: String = "#15191e",
 		return ""
 	var side := Vector2(-way.y, way.x)
 	var base: Vector2 = to - way * head * 2.3
-	var outline: String = (" stroke=\"#fff\" stroke-width=\".35\" paint-order=\"stroke\""
-		if colour != "#15191e" else "")
-	return ("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"%s\" stroke-width=\"%s\"/>"
+	var outline: String = " stroke=\"#fff\" stroke-width=\".35\" paint-order=\"stroke\""
+	# Under the line a white one a little wider: a black arrow across a
+	# black tower was no arrow at all.
+	return ("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"#fff\" stroke-width=\"%s\" stroke-linecap=\"round\"/>"
+		% [_n(from.x), _n(from.y), _n(base.x), _n(base.y), _n(width + 0.7)]
+		+ "<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"%s\" stroke-width=\"%s\"/>"
 		% [_n(from.x), _n(from.y), _n(base.x), _n(base.y), colour, _n(width)]
 		+ "<path d=\"M%s %s L%s %s L%s %s Z\" fill=\"%s\"%s/>" % [
 			_n(to.x), _n(to.y), _n(base.x + side.x * head), _n(base.y + side.y * head),
