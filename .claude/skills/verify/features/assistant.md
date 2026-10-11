@@ -184,8 +184,16 @@ fixing what it got wrong.
   near the mouth as it is `CLUSTER_CLEAR` from both faces (nearer its own, the
   clutch check read a 2 x 2 as standing across that face's studs), and only if it
   meets every sightline through the channel from either face's look and 15
-  degrees past it, found by projecting both faces' bricks every 5 degrees. Only
-  on an open or odd-sided prism, and on a cluster's core. Found by run 16: a
+  degrees past it, found by projecting both faces' bricks every 5 degrees. Where
+  none fits square to either face, it is turned half way between them (or 5 or
+  10 degrees off half way, where half way is square to the grid) in a section
+  of its own, `prism N corner K`, where it stands symmetric to both and nearer
+  the mouth: square to one face it had to clear the other, which on a
+  ten-sided core put every candidate too far behind the mouth (run 17: no post
+  fitted any of its corners). On an open or odd-sided prism, on a cluster's
+  core, and on any corner whose outside row cannot run on into its groove — a
+  decagon's or a twelve-sided prism's, which were open straight through along
+  their corners even closed (54 and 172 sightlines). Found by run 16: a
   face's floored width leaves its inner corner 2.4 LDU short of its neighbour's,
   narrower than a lattice cell so the check never saw it, and the open back put
   the sky behind it — a white slit up the core's front, seen through at six
@@ -194,12 +202,19 @@ fixing what it got wrong.
   saved model). `patterns_probe` ("an open tower is not see-through"): octagons
   of radius 7 and 9 open at the back, no sightline from anywhere (18 and 9 per
   heading without posts); the guidance's open cluster, none from front or back
-  (9 each without); closed, none. Still open, and printed rather than judged: a
-  cluster has a corridor a clearance wide along the core's outside under each
-  pier (a pier's faces keep `CLUSTER_CLEAR` from the core), seen through only
-  straight along that core face — 9-18 sightlines from the diagonals, open or
-  closed; and a hexagon's or decagon's channel is wider than a post can cover,
-  and so is any one stud thick.
+  (9 each without), its core three faces open; closed, none; ten- and
+  twelve-sided prisms of radius 9, closed and open, none (54, 172 and 176
+  before); run 17's own cluster (a ten-sided core, eight-sided piers turned 45),
+  none from the front, back, sides or the 45/225 diagonals, three of its ten
+  faces open (five before, and 9 sightlines each from 45, 90, 225 and 270, the
+  2.5-stud gap from its front-right corner). Still open, and printed rather
+  than judged: a cluster has a corridor a clearance wide along the core's
+  outside under each pier (a pier's faces keep `CLUSTER_CLEAR` from the core),
+  seen through only straight along that core face — 9-18 sightlines from the
+  diagonals, open or closed; a pier's corners are not posted, and two of its
+  grooves can line up (run 17's cluster: a 5.4 and a 1.4 LDU slit from 135 and
+  315); an open hexagon's channel is wider than a post can cover, and so is
+  any one stud thick.
 - `faceted piers clustered round a core`: `"piers"` on `prism`
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
   `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
@@ -226,9 +241,12 @@ fixing what it got wrong.
   nearly as wide at each corner and the piers read as bundles of sticks.
   With `open`, the piers at the back drop every face looking back or across
   the opening, and any `open` at all opens the core's whole back, every face
-  that looks backwards (3 of an octagon), one more where the count would sit
+  looking within `OPEN_REACH` (67.5 degrees) of straight back (3 of an octagon
+  or a decagon, 5 of a twelve-sided core), one more where the count would sit
   off centre: run 15 asked for 2 and got one face and one pier, the rooms
-  behind a slot between two piers. Each horn ends square: a cap two plates
+  behind a slot between two piers. Counted as every face looking backwards at
+  all, run 17's ten-sided core opened five of ten, its sides with them, and its
+  front piers' hollows opened onto the core's inside. Each horn ends square: a cap two plates
   thick over its outline at `y + 3 x piers' courses + 2` (`_studs_within`,
   `_summit`, never a stud claimed by two caps), and on it a point
   (`_horn_point`): a 4 x 4 course where the cap has room, stepped in by four

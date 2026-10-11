@@ -714,8 +714,10 @@ func _cluster_opened() -> void:
 ## Still open, and printed rather than judged: on a cluster, a corridor a
 ## clearance wide runs along the core's outside under each pier (a pier's
 ## faces keep CLUSTER_CLEAR from the core), seen through only from straight
-## along that core face; and a hexagon's or decagon's corner is wider than a
-## post behind it can cover, so those keep their channel.
+## along that core face; a pier's corners are not posted, and two of its
+## grooves can line up; and an open hexagon's corner is wider than a post
+## behind it can cover. A decagon's and a twelve-sided prism's corners take a
+## post turned half way between their faces.
 func _no_daylight() -> void:
 	print("")
 	print("  an open tower is not see-through")
@@ -748,11 +750,35 @@ func _no_daylight() -> void:
 		["the guidance's cluster, closed", {"pattern": "prism",
 			"at": {"x": 24, "y": 0, "z": 24}, "sides": 8, "radius": 9, "courses": 14,
 			"color": 0, "piers": {"count": 4, "courses": 17}}, 42.0, everywhere],
+		# A face's outside row cannot run on into a ten- or twelve-sided
+		# prism's corner groove, so even closed it was open straight through
+		# along its corners (54 and 172 sightlines), and no post square to
+		# either face fitted.
+		["a ten-sided prism, closed", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 10, "radius": 9, "courses": 12},
+			36.0, everywhere],
+		["a twelve-sided prism, closed", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 12, "radius": 9, "courses": 12},
+			36.0, everywhere],
+		["...and open at the back", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 12, "radius": 9, "courses": 12,
+			"open": 3}, 36.0, everywhere],
+		# The seventeenth Orthanc's own cluster: its core opened five of its ten
+		# faces as "the back", which opened the hollows of its front piers onto
+		# the core's inside, and 2 to 2.5 studs of sky showed from its front
+		# right corner at every height (90 sightlines). Its piers' own corner
+		# grooves still pass a slit seen from the diagonals 135 and 315 degrees.
+		["the seventeenth Orthanc's ten-sided cluster, open at the back, but from the diagonals",
+			{"pattern": "prism", "at": {"x": 28, "y": 0, "z": 28}, "sides": 10, "radius": 9,
+			"courses": 14, "color": 0, "mix_color": 72, "mix": 0.12, "open": 3,
+			"sideways": 0.25, "piers": {"count": 4, "sides": 8, "radius": 6, "out": 10,
+				"courses": 17, "turn": 45}}, 42.0, [0.0, 45.0, 90.0, 180.0, 225.0, 270.0]],
 	]:
 		var model: Assistant.Model = assistant._read_model({"patterns": [case[1]]})
 		var verdict: Dictionary = assistant._check(model)
 		var parts: Array = []
 		var posts: int = 0
+		var core_faces: Dictionary = {}
 		for placement: Assistant.Placement in model.placements:
 			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
 			if mesh != null:
@@ -760,6 +786,8 @@ func _no_daylight() -> void:
 					model.section_for(placement)), mesh.bounds])
 			if placement.part in ["3062b", "3941"]:
 				posts += 1
+			elif placement.section.contains(" face ") and not placement.section.contains(" pier "):
+				core_faces[placement.section] = true
 		var prints: Array = daylight.footprints(parts)
 		var through: Dictionary = {}
 		var top: float = case[2]
@@ -776,9 +804,13 @@ func _no_daylight() -> void:
 			"no sightline through it" if judged.is_empty()
 				else "seen through from %s degrees" % str(judged)],
 			bool(verdict["ok"]) and judged.is_empty())
+		if (case[1] as Dictionary).has("piers") and int(case[1].get("open", 0)) > 0:
+			var sides: int = int(case[1]["sides"])
+			_check("...its core opened at the back, %d of its %d faces left out"
+				% [sides - core_faces.size(), sides], sides - core_faces.size() == 3)
 		if judged.size() < through.size():
-			print("  --    ...and still seen through from %s degrees (the corridor under each pier)"
-				% str(through))
+			print("  --    ...and still seen through from %s degrees, not judged (the corridor "
+				% str(through) + "under each pier, a pier's own corner grooves)")
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()

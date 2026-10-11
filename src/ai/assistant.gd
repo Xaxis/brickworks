@@ -4195,11 +4195,15 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	# backwards, whatever number was asked: the fifteenth Orthanc asked for
 	# two faces of an octagon and got one face and one pier opened, the
 	# rooms behind a slot between two piers again. One more where the
-	# count would leave it off centre.
+	# count would leave it off centre. The back is what looks within
+	# OPEN_REACH of straight back, an octagon's three faces: counted as
+	# every face looking backwards at all, a ten-sided core opened five of
+	# its ten, the seventeenth Orthanc's sides opened onto the hollows of its
+	# piers, and the sky showed through it from its front corner.
 	if pattern.has("piers") and open > 0:
 		var back: int = 0
 		for face: int in sides:
-			if cos(TAU * face / sides) < -0.01:
+			if absf(angle_difference(TAU * face / sides, PI)) <= deg_to_rad(OPEN_REACH) + 0.001:
 				back += 1
 		open = maxi(open, back)
 		if (open - back) % 2 != 0:
@@ -4232,7 +4236,7 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		laid[face] = _cluster_face(made, model, "prism %d face %d" % [index, face],
 			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0,
 			courses, true)
-	_corner_posts(made, func(face: int) -> String: return "prism %d face %d" % [index, face],
+	_corner_posts(made, model, func(face: int) -> String: return "prism %d face %d" % [index, face],
 		Vector2(cx, cz), sides, radius, spec, laid, [], courses)
 	return made
 
@@ -4382,6 +4386,10 @@ func _prism_brick(section: String, part: String, colour: int, x: float, y: float
 ## window is lit and never seen through).
 const WINDOW_COLOUR := 46
 const WINDOW_EVERY := 8
+## How far round from straight back a cluster's core is opened, in degrees:
+## an octagon's three back faces, a decagon's three, a twelve-sided core's
+## five.
+const OPEN_REACH := 67.5
 
 
 ## A post up the inside of each corner where two laid faces of a shaft meet:
@@ -4395,19 +4403,33 @@ const WINDOW_EVERY := 8
 ## cell collide), so the channel is closed from behind, as a builder puts a
 ## column in the corner of a polygonal tower. Only where it could be seen
 ## through: a tower open at the back, or with an odd number of sides, whose
-## corners face each other across it. [param laid] is each laid face's runs,
-## by number, the first looking [param turn] degrees round; [param against]
-## outlines a post must keep clear of.
-func _corner_posts(made: Array, name_of: Callable, origin: Vector2, sides: int,
-		radius: float, spec: Dictionary, laid: Dictionary, against: Array,
+## corners face each other across it, or a corner whose outside row could not
+## run on into its groove — a decagon's or a twelve-sided prism's, closed or
+## not, is open straight through along the corner. [param laid] is each laid
+## face's runs, by number, the first looking [param turn] degrees round;
+## [param against] outlines a post must keep clear of.
+##
+## A post square to one of the two faces has to stand clear of the other, and
+## where the faces meet at a wider angle than an octagon's that puts it too
+## far behind the channel's mouth to meet the sightlines that slant through:
+## no post fitted any corner of the seventeenth Orthanc's ten-sided core. So
+## where none fits square to either face, the post is turned half way between
+## them, in a section of its own ("prism N corner K"), where it sits as near
+## both as it can.
+func _corner_posts(made: Array, model: Model, name_of: Callable, origin: Vector2,
+		sides: int, radius: float, spec: Dictionary, laid: Dictionary, against: Array,
 		courses: int, turn: float = 0.0) -> Array:
 	var posts: Array = []
-	if int(spec["open"]) == 0 and sides % 2 == 0:
-		return posts
 	var step: float = 360.0 / sides
 	for face: int in sides:
 		var next: int = (face + 1) % sides
 		if not laid.has(face) or not laid.has(next):
+			continue
+		# A face's outside row runs on past its right-hand end into the groove.
+		var runs: Array = laid[face]
+		var last: Array = runs[runs.size() - 1]
+		var run_on: bool = last.size() > 2 and int(last[2]) > 0
+		if int(spec["open"]) == 0 and sides % 2 == 0 and run_on:
 			continue
 		# In whichever face is turned off the grid first: a face square to it
 		# is judged on its studs, and the half-stud grid seldom has a place
@@ -4417,6 +4439,7 @@ func _corner_posts(made: Array, name_of: Callable, origin: Vector2, sides: int,
 			hosts.reverse()
 		var at: Array = []
 		var host: int = -1
+		var frame: float = NAN
 		for size: int in [1, 2]:
 			for pair: Array in hosts:
 				var mine: float = turn + step * int(pair[0])
@@ -4430,15 +4453,34 @@ func _corner_posts(made: Array, name_of: Callable, origin: Vector2, sides: int,
 					break
 			if not at.is_empty():
 				break
+		# Half way between the faces, or a little either side where half way is
+		# square to the grid and the half-stud grid has no place that covers it
+		# (a ten-sided core's corners at 90 and 270 degrees).
+		for off: float in [0.0, 5.0, -5.0, 10.0, -10.0]:
+			if not at.is_empty():
+				break
+			frame = turn + step * (face + 0.5) + off
+			for size: int in [1, 2]:
+				at = _corner_post([origin, turn + step * face, laid[face], radius], true,
+					[origin, turn + step * next, laid[next], radius], int(spec["thick"]),
+					against + posts, size, frame)
+				if not at.is_empty():
+					break
 		if at.is_empty():
 			continue
+		var section: String = name_of.call(host) if is_nan(frame) \
+			else str(name_of.call(face)).replace(" face ", " corner ")
+		if not is_nan(frame) and not model.sections.has(section):
+			model.sections[section] = Section.from_dict({"name": section, "x": origin.x,
+				"y": spec["y"], "z": origin.y, "axis": "y", "degrees": frame})
 		var size: float = 1.0 if at[2] == "3062b" else 2.0
-		posts.append(_face_slab(origin, turn + step * host, float(at[0]) - CLUSTER_CLEAR,
+		var turned: float = turn + step * host if is_nan(frame) else frame
+		posts.append(_face_slab(origin, turned, float(at[0]) - CLUSTER_CLEAR,
 			float(at[0]) + size + CLUSTER_CLEAR, float(at[1]) - CLUSTER_CLEAR,
 			float(at[1]) + size + CLUSTER_CLEAR))
 		for course: int in courses:
 			made.append({"part": at[2], "color": spec["colour"], "x": at[0],
-				"y": 3.0 * course, "z": at[1], "rot": 0, "section": name_of.call(host)})
+				"y": 3.0 * course, "z": at[1], "rot": 0, "section": section})
 	return posts
 
 
@@ -4471,9 +4513,12 @@ static func _square_to_grid(degrees: float) -> bool:
 ## sightline that passes between them there, from either face's look and
 ## fifteen degrees past it: those are found by looking across the corner
 ## every five degrees and keeping the gaps between the faces' bricks at its
-## mouth.
+## mouth. With [param frame], the post is square to that turn instead of to
+## the host face, and [x, z] are in that frame: a post turned half way
+## between the two faces stands symmetric to both, centred on the mouth and
+## just behind it.
 static func _corner_post(host: Array, right: bool, beside: Array, thick: int,
-		against: Array, size: int = 1) -> Array:
+		against: Array, size: int = 1, frame: float = NAN) -> Array:
 	var origin: Vector2 = host[0]
 	var degrees: float = host[1]
 	var mine: Array = host[2]
@@ -4555,20 +4600,31 @@ static func _corner_post(host: Array, right: bool, beside: Array, thick: int,
 		if not gaps.is_empty():
 			sightlines.append([across, gaps, way])
 	var half: float = size / 2.0
-	var on_grid: bool = _square_to_grid(degrees)
+	var square_to: float = degrees if is_nan(frame) else frame
+	var placed_in: Array = host if is_nan(frame) else [origin, frame]
+	var on_grid: bool = _square_to_grid(square_to)
 	var best: Array = []
 	var nearest: float = INF
 	var z_top: float = floor((inner - CLUSTER_CLEAR - size) * 10.0 + 0.001) / 10.0
 	var x_mid: float = floor((mine_end - (size if right else 0.0)) * 10.0) / 10.0
-	for dz: int in 16:
+	var deep: int = 16
+	if not is_nan(frame):
+		# Centred on the mouth across, and from just behind it inwards.
+		var turned: float = deg_to_rad(frame)
+		var mouth := Vector2((at_mouth - origin).dot(Vector2(cos(turned), -sin(turned))),
+			(at_mouth - origin).dot(_towards(frame)))
+		z_top = floor((mouth.y - size) * 10.0 + 0.001) / 10.0
+		x_mid = floor((mouth.x - half) * 10.0 + 0.5) / 10.0
+		deep = 21
+	for dz: int in deep:
 		var z: float = snappedf(z_top - 0.1 * dz, 0.1)
 		for dx: int in 41:
 			var x: float = snappedf(x_mid + 0.1 * (dx - 20), 0.1)
-			var middle: Vector2 = to_plan.call(host, Vector2(x + half, z + half))
+			var middle: Vector2 = to_plan.call(placed_in, Vector2(x + half, z + half))
 			var off: float = middle.distance_to(at_mouth)
 			if off >= nearest:
 				continue
-			var square: PackedVector2Array = _face_slab(origin, degrees, x, x + size, z, z + size)
+			var square: PackedVector2Array = _face_slab(origin, square_to, x, x + size, z, z + size)
 			var clear: bool = true
 			for shape: PackedVector2Array in kept_off + against:
 				clear = clear and not _convex_meet(square, shape)
@@ -4738,7 +4794,7 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses, true)
 		if not runs.is_empty():
 			laid[face] = runs
-	_corner_posts(made, func(face: int) -> String: return name_of.call(-1, face),
+	_corner_posts(made, model, func(face: int) -> String: return name_of.call(-1, face),
 		middle, sides, radius, spec, laid, [], courses)
 	# The piers, short of the core's outside.
 	var whole: PackedVector2Array = _outline(middle, sides, radius + clear, 0.0)
