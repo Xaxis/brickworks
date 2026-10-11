@@ -4230,12 +4230,20 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	# had a channel at each corner too wide for the post behind it to cover.
 	var made: Array = []
 	var laid: Dictionary = {}
+	# A door in its front only when asked: a plain prism is as often a column,
+	# a chimney or a turret as a tower with a way in.
+	var door: float = NAN
+	if bool(pattern.get("door", false)) and not left_out.has(0):
+		door = _door_for(Vector2(cx, cz), radius, sides, thick, [])
+		if is_nan(door):
+			_pattern_advice.append("No door was laid in the prism's front: its faces "
+				+ "are narrower than four studs, or one stud thick.")
 	for face: int in sides:
 		if left_out.has(face):
 			continue
 		laid[face] = _cluster_face(made, model, "prism %d face %d" % [index, face],
 			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0,
-			courses, true)
+			courses, true, door if face == 0 else NAN)
 	_corner_posts(made, model, func(face: int) -> String: return "prism %d face %d" % [index, face],
 		Vector2(cx, cz), sides, radius, spec, laid, [], courses)
 	return made
@@ -4245,10 +4253,13 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 ## in the face's own frame, which looks +z, and how many studs further the
 ## outside row runs on past the right-hand end), from [param base] plates up.
 ## [param clear] says whether a brick's dressing would be clear of what
-## stands beside the face, for a face that meets another shaft.
+## stands beside the face, for a face that meets another shaft. [param door]
+## is the left end of a door's arch at its foot, in the face's own frame (see
+## [method _door_for]), or NAN.
 func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 		radius: float, base: float, courses: int,
-		clear: Callable = Callable(), windows: Dictionary = {}) -> void:
+		clear: Callable = Callable(), windows: Dictionary = {},
+		door: float = NAN) -> void:
 	var wide: Array = [[4, "3001"], [3, "3002"], [2, "3003"]]
 	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var thick: int = spec["thick"]
@@ -4267,6 +4278,10 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			var left: float = run[0]
 			var width: int = run[1]
 			var extra: int = int(run[2]) if run.size() > 2 else 0
+			if n == widest and course < DOOR_BELOW + DOOR_ARCH_COURSES and not is_nan(door):
+				_lay_door_course(made, name, spec, left, width, extra, radius, course, y,
+					door, clear)
+				continue
 			var gap: float = NAN
 			if windows.has(course) and n == widest and width >= 2:
 				gap = left + floor(width / 2.0)
@@ -4301,24 +4316,98 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
 
 
-## A row as [method _lay_row] lays it, but for the stud at [param gap] (a
-## window, laid by the caller), or whole where [param gap] is NAN.
+## A row as [method _lay_row] lays it, but for the [param across] studs from
+## [param gap] (a window or a door, laid by the caller), or whole where
+## [param gap] is NAN.
 func _lay_row_around(made: Array, section: String, lengths: Array, left: float,
 		width: int, gap: float, y: float, z: float, course: int, colour: int,
 		mix_colour: int, mix: float, masonry: float, sideways: float,
-		clear: Callable = Callable()) -> void:
-	if is_nan(gap) or gap < left or gap >= left + width:
+		clear: Callable = Callable(), across: int = 1) -> void:
+	if is_nan(gap) or gap + across <= left or gap >= left + width:
 		_lay_row(made, section, lengths, left, width, y, z, course, colour,
 			mix_colour, mix, masonry, sideways, clear)
 		return
-	var before: int = int(round(gap - left))
-	var after: int = width - before - 1
+	var before: int = maxi(0, int(round(gap - left)))
+	var after: int = width - int(round(gap + across - left))
 	if before > 0:
 		_lay_row(made, section, lengths, left, before, y, z, course, colour,
 			mix_colour, mix, masonry, sideways, clear)
 	if after > 0:
-		_lay_row(made, section, lengths, gap + 1.0, after, y, z, course, colour,
+		_lay_row(made, section, lengths, gap + across, after, y, z, course, colour,
 			mix_colour, mix, masonry, sideways, clear)
+
+
+## A great door at the foot of a tower's front: a 1 x 4 x 2 arch in the
+## outside row DOOR_BELOW courses up, the two studs under it open, and the
+## inside row behind the opening laid as the door, reddish brown log bricks
+## set back a stud — in the inside row, so the opening is never a window onto
+## an open back. Both rows are one-wide through the door's courses, and the
+## course over the arch ties them again. The seventeenth Orthanc built a
+## stair up to its tower and nothing at the top of it; Orthanc's great door
+## is up its steps.
+const DOOR_ARCH := "6182"
+const DOOR_ARCH_COURSES := 2
+const DOOR_BELOW := 4
+const DOOR_PANEL := "30136"
+const DOOR_COLOUR := 70
+
+
+## One course of a face's run through its door, whose arch's left end is at
+## [param door]: the outside row around the opening (around the arch, where
+## the arch is), the inside row around the door, and the door and the arch.
+func _lay_door_course(made: Array, name: String, spec: Dictionary, left: float,
+		width: int, extra: int, radius: float, course: int, y: float, door: float,
+		clear: Callable) -> void:
+	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
+	var colour: int = spec["colour"]
+	var arch: bool = course >= DOOR_BELOW
+	_lay_row_around(made, name, narrow, left, width + extra, door if arch else door + 1.0,
+		y, radius - 1.0, course, colour, spec["mix_colour"], spec["mix"],
+		spec["masonry"], spec["sideways"], clear, 4 if arch else 2)
+	_lay_row_around(made, name, narrow, left, width, door + 1.0, y, radius - 2.0,
+		course + 1, colour, spec["mix_colour"], spec["mix"], 0.0, 0.0, Callable(), 2)
+	made.append(_prism_brick(name, DOOR_PANEL, DOOR_COLOUR, door + 1.0, y,
+		radius - 2.0, 0, -1, 0.0, 0.0))
+	if course == DOOR_BELOW:
+		made.append({"part": DOOR_ARCH, "color": colour, "x": door, "y": y,
+			"z": radius - 1.0, "rot": 0, "section": name})
+
+
+## Where a door goes in the face of a prism of [param sides] about
+## [param origin] that looks straight ahead (+z): the left end of its arch in
+## the face's own frame, on the face's brick grid, its two-stud opening inside
+## the stretch of the face's outside that [param covers] (outlines in plan, a
+## cluster's piers) leaves in view and as near that stretch's middle as the
+## grid allows; NAN where none fits. The seventeenth Orthanc's piers left two
+## studs of its core's front in view.
+static func _door_for(origin: Vector2, radius: float, sides: int, thick: int,
+		covers: Array) -> float:
+	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
+	if thick < 2 or width < 4:
+		return NAN
+	var left: float = -width / 2.0
+	# In view: from the face's middle out to the nearest cover either way.
+	var lo: float = left
+	var hi: float = left + width
+	for shape: PackedVector2Array in covers:
+		var span: Array = _span_in_face(shape, origin, 0.0, radius - 0.05, radius + 0.05)
+		if span.is_empty():
+			continue
+		if float(span[1]) <= 0.0:
+			lo = maxf(lo, float(span[1]))
+		elif float(span[0]) >= 0.0:
+			hi = minf(hi, float(span[0]))
+		else:
+			return NAN
+	var best: float = NAN
+	for k: int in width - 3:
+		var at: float = left + k
+		if at + 1.0 < lo - 0.01 or at + 3.0 > hi + 0.01:
+			continue
+		var off: float = absf(at + 2.0 - (lo + hi) / 2.0)
+		if is_nan(best) or off < absf(best + 2.0 - (lo + hi) / 2.0) - 0.001:
+			best = at
+	return best
 
 
 ## One row of a prism's face, in its own frame: bonded by the course,
@@ -4786,12 +4875,26 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	for k: int in count:
 		grown.append(_outline(middle + _towards(angles[k]) * out, p_sides,
 			p_radius + clear, angles[k]))
+	# A great door in the core's front, at the top of whatever stair a design
+	# builds to it, unless told not to: in the stretch the piers leave in view.
+	var door: float = NAN
+	if bool(pattern.get("door", true)) and not left_out.has(0):
+		var piers_in_plan: Array = []
+		for k: int in count:
+			piers_in_plan.append(_outline(middle + _towards(angles[k]) * out, p_sides,
+				p_radius, angles[k]))
+		door = _door_for(middle, radius, sides, thick, piers_in_plan)
+		if is_nan(door):
+			_pattern_advice.append("No door was laid in the core's front: the piers "
+				+ "leave less than two studs of it in view, or its faces are narrower "
+				+ "than four. Set the piers further out, or build a door yourself.")
 	var laid: Dictionary = {}
 	for face: int in sides:
 		if left_out.has(face):
 			continue
 		var runs: Array = _cluster_face(made, model, name_of.call(-1, face), middle,
-			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses, true)
+			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses, true,
+			door if face == 0 else NAN)
 		if not runs.is_empty():
 			laid[face] = runs
 	_corner_posts(made, model, func(face: int) -> String: return name_of.call(-1, face),
@@ -5027,7 +5130,7 @@ func _corner_slope_turn(inner: Vector2i) -> int:
 func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 		degrees: float, radius: float, sides: int, spec: Dictionary,
 		against: Array, dressed: Array, base: float, courses: int,
-		windowed: bool = false) -> Array:
+		windowed: bool = false, door: float = NAN) -> Array:
 	var thick: int = spec["thick"]
 	var runs: Array = _runs(origin, degrees, radius, thick, sides, against)
 	if runs.is_empty():
@@ -5066,11 +5169,15 @@ func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 	var windows: Dictionary = {}
 	if windowed and bool(spec.get("windows", true)):
 		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash()) % 2 == 1 else 0)
+		# Over a door, the first a storey above its arch.
+		if not is_nan(door):
+			first = DOOR_BELOW + DOOR_ARCH_COURSES + WINDOW_EVERY / 2
 		for course: int in range(first, courses - 2, WINDOW_EVERY):
 			windows[course] = true
 			windows[course + 1] = true
 	_lay_face(made, name, spec, runs, radius, base, courses,
-		_dressing_clear.bind(origin, degrees, radius, dressed + beside), windows)
+		_dressing_clear.bind(origin, degrees, radius, dressed + beside), windows,
+		door if runs.size() == 1 and courses > DOOR_BELOW + DOOR_ARCH_COURSES else NAN)
 	return runs
 
 
@@ -8679,7 +8786,9 @@ alongside the bricks you write by hand:
            all together: build on it at y + 3 x courses + 2. Each horn \
            is capped square the same way, two plates at y + 3 x the \
            piers' courses + 2, with a black point standing on the cap. \
-           With piers, any "open" opens the core's whole back. Without \
+           With piers, any "open" opens the core's whole back, and an \
+           arched door stands at the foot of the core's front (+z), at y, \
+           for a stair to lead up to ("door": false for none). Without \
            "piers" a prism is one shaft with a groove up each corner; \
            stack them, shrinking, for a taper. Its faces come dressed as a \
            finished wall's are — a quarter worked stone, some bricks \
@@ -9503,6 +9612,10 @@ func _tools() -> Array:
 			"windows": {"type": "boolean", "description":
 				"prism: narrow lit windows up its faces, every eight courses; "
 				+ "true unless said"},
+			"door": {"type": "boolean", "description":
+				"prism: an arched door at the foot of the face looking +z, two "
+				+ "studs wide and six courses tall, for a stair to lead up to; "
+				+ "true unless said with piers, false unless said without"},
 			"piers": {"type": "object", "description":
 				"prism: faceted piers clustered round it, each a prism of its "
 				+ "own built against the core, with a cleft between each two "

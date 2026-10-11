@@ -267,7 +267,22 @@ fixing what it got wrong.
   are refused; and run 15's own cluster with `"open": 2` has no core face
   looking back and every column across the core's inside is open from behind
   to its middle (7 of 10 before). Its core's corners are posted (`an open tower
-  is not see-through`, below the many-sided shaft).
+  is not see-through`, below the many-sided shaft). A great door stands at the
+  foot of the core's front face (the one looking +z), at `y`, unless
+  `"door": false` (`_door_for`, `_lay_door_course`): a 6182 arch in the outside
+  row `DOOR_BELOW` (4) courses up, the two studs under it open, and the inside
+  row behind the opening laid as the door in reddish-brown 30136 log bricks —
+  set back a stud, and never a window onto the open back. It goes in the
+  stretch of the face the piers leave in view, as near its middle as the face's
+  brick grid allows, and the check's advice says so when there is none (fewer
+  than two studs in view, or faces narrower than four). A plain prism takes one
+  only with `"door": true`. Both rows are one-wide through the door's courses
+  and the course over the arch ties them; the windows on that face start a
+  storey over it. Found by run 17, whose stair led to a blank wall.
+  `patterns_probe`: the guidance's cluster has the arch in `face 0` at y 12
+  over six courses of door, none with `"door": false`, and run 17's own
+  cluster (piers pulled in to 10, two studs of the core's front in view) has
+  it at x -2 and passes the check.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty

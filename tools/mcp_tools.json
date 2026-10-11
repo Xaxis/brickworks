@@ -169,6 +169,10 @@
                 "description": "fill, rock: studs in z",
                 "type": "number"
               },
+              "door": {
+                "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
+                "type": "boolean"
+              },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
@@ -1177,6 +1181,10 @@
               "deep": {
                 "description": "fill, rock: studs in z",
                 "type": "number"
+              },
+              "door": {
+                "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
+                "type": "boolean"
               },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",

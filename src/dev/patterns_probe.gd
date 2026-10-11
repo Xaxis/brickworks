@@ -463,6 +463,46 @@ func _clustered() -> void:
 	dark["windows"] = false
 	_check("...and none with \"windows\": false",
 		lights.call(assistant._read_model({"patterns": [dark]}).placements).is_empty())
+	# A great door at the foot of the core's front, at the top of whatever
+	# stair a design builds: the seventeenth Orthanc's stair led to a blank
+	# wall. An arch in the front face's outside row, the door set back a stud
+	# behind it, two studs wide.
+	var doors := func(placements: Array) -> Array:
+		var arch: Array = []
+		var panels: int = 0
+		for placement: Assistant.Placement in placements:
+			if placement.part == Assistant.DOOR_ARCH:
+				arch.append(placement)
+			elif placement.part == Assistant.DOOR_PANEL and placement.color == Assistant.DOOR_COLOUR:
+				panels += 1
+		return [arch, panels]
+	var door_found: Array = doors.call(model.placements)
+	var arch_at: String = "none"
+	if (door_found[0] as Array).size() == 1:
+		var arch: Assistant.Placement = door_found[0][0]
+		arch_at = "%s at x %s, y %s" % [arch.section, arch.x, arch.y]
+	_check("a door at the foot of the core's front: an arch (%s) over %d courses of door"
+		% [arch_at, door_found[1]], (door_found[0] as Array).size() == 1
+			and (door_found[0][0] as Assistant.Placement).section.ends_with(" face 0")
+			and is_equal_approx((door_found[0][0] as Assistant.Placement).y, 3.0 * Assistant.DOOR_BELOW)
+			and int(door_found[1]) == Assistant.DOOR_BELOW + Assistant.DOOR_ARCH_COURSES)
+	var shut: Dictionary = tower.duplicate(true)
+	shut["door"] = false
+	_check("...and none with \"door\": false",
+		(doors.call(assistant._read_model({"patterns": [shut]}).placements)[0] as Array).is_empty())
+	# The seventeenth Orthanc's own cluster, its piers pulled in to 10: they
+	# leave two studs of the core's front in view, and the door is in them.
+	var seventeen := {"pattern": "prism", "at": {"x": 28, "y": 0, "z": 28}, "sides": 10,
+		"radius": 9, "courses": 20, "color": 0, "mix_color": 72, "mix": 0.12, "open": 3,
+		"sideways": 0.25, "piers": {"count": 4, "sides": 8, "radius": 6, "out": 10,
+			"courses": 24, "turn": 45}}
+	var its: Assistant.Model = assistant._read_model({"patterns": [seventeen]})
+	var its_door: Array = doors.call(its.placements)
+	var its_check: Dictionary = assistant._check(its)
+	_check("...and on the seventeenth Orthanc's cluster, in the two studs its piers leave in view, %s"
+		% its_check["summary"], (its_door[0] as Array).size() == 1
+			and is_equal_approx((its_door[0][0] as Assistant.Placement).x, -2.0)
+			and bool(its_check["ok"]))
 	var headings: Dictionary = {}
 	var turned: Dictionary = {}
 	var piers: Dictionary = {}
