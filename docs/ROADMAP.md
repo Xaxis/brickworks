@@ -409,10 +409,9 @@ through holes 6 of 57, hinges 3 of 10, panes 5 of 25. The library has its
 first angled example, Cafe Corner's corner entrance steps on their
 turntable at 45 degrees (`corner on a turntable`). Still refused: handles
 and gates whose cover fills the opening a clip passes through, 75937 (its
-cover is its bounding box), and a long tail of covers. **The shipped
-catalogue predates the rounds**: 17,539 parts need rebuilding to carry
-them (`.claude/skills/verify/features/pipeline.md`); until then the
-checker forgives none of these. Not yet measured on an Orthanc run.
+cover is its bounding box), and a long tail of covers. The catalogue was rebuilt with the rounds the same day (29,587 parts; the
+16,360 meshes that changed uploaded for the web), so the checker forgives
+them everywhere. Not yet measured on an Orthanc run.
 
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety
