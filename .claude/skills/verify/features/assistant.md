@@ -484,10 +484,20 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  61 constructions with real part numbers and real coordinates, each in a group
-  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, angles,
-  roofs and spires, windows and doors, rock and ground, plants, furniture and
-  interiors, lights). An entry may carry `sections` and its bricks a `section`,
+  77 constructions with real part numbers and real coordinates, each in a group
+  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round
+  bodies, machines and joints, angles, roofs and spires, windows and doors,
+  rock and ground, plants, furniture and interiors, lights, display and
+  touches). The round bodies, machines and display groups came with the round
+  pattern: what it lays, named for the technique and not the subject (a round
+  body, one lying down, a dome and cone cap, a ring of cones under a round
+  plate, spokes with tiles, struts pinned to a Technic course, two rounds
+  pinned side by side, a display stand with a nameplate), and six as LEGO
+  built them in 21309 Saturn V (a curved skin panel, a studs-out core, a grille
+  band, a cone bell on round plates, a round tip, a fin root on a Technic pin).
+  `wide round tower` had two of its four 48092 turned the wrong way — a bow
+  tie that stacked and checked — and is a ring now, tied by a 74611 round
+  plate; `techniques_probe` checks each quarter curves out of the ring. An entry may carry `sections` and its bricks a `section`,
   as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
   entrance steps, taken off their 2x2 turntable and put back on at the set's 45
   degrees by a section turned about the turntable's middle, and `leaning on a
