@@ -32,7 +32,11 @@
 class_name Brain
 extends RefCounted
 
-const WHERE := "user://assistant.cfg"
+## Where the person's choice of model and effort is kept. A probe points
+## this at a file of its own: it read this machine's choice, and when
+## that was Haiku — which takes no effort setting — every check about
+## effort failed for a reason that had nothing to do with the code.
+static var where: String = "user://assistant.cfg"
 
 
 class Choice extends RefCounted:
@@ -169,12 +173,12 @@ static func find(id: String) -> Choice:
 
 static func _settings() -> ConfigFile:
 	var file := ConfigFile.new()
-	file.load(WHERE)
+	file.load(where)
 	return file
 
 
 static func _keep(file: ConfigFile) -> void:
-	file.save(WHERE)
+	file.save(where)
 
 
 ## Chosen for this run only, by a command line rather than a person.
