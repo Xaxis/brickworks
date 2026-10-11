@@ -670,10 +670,23 @@ bricks, plates, tiles, slopes, inverted slopes and round parts of any size,
 or resizes a plain library part, as unofficial LDraw parts drawn from the
 library's primitives. The app builds them with a port of the mesh build
 that matches it byte for byte, so they clutch, collide and check like any
-part, and a saved model carries them inside it. Next: the design loop asking
-for a part it lacks (a tool that makes one), families with clips, bars and
-Technic holes (the hole merge is the one piece of the pipeline not yet
-ported), and draft and wall checks for a part a mould designer could take.
+part, and a saved model carries them inside it.
+
+**Second version, 2026-10-11.** The families a modern set is built from:
+bricks with studs on any side, brackets up and down, curved slopes, and
+Technic bricks with holes — each standard size with its library part's
+bounds, studs, holes and tubes (87087, 30414, 99781, 99780, 44728, 3700,
+3701), the hole merge and bore clearing now ported so 3700 and 3701 match
+the pipeline byte for byte. A part that exists can be changed rather than
+redrawn: any part, from its own built mesh (so in a browser too), made
+longer, wider or taller by repeating a slice of it where its cut faces
+match, its studs taken off or put on; 3700 made six long is 3894 to the
+connector and the collision cell, and a part with no such slice is refused
+in words. Next: families with clips and bars (the checker's
+round joints need the catalogue's rounds), wedge plates and corner shapes, a
+cut-out in a part that exists (a boolean with the walls put back), axle
+holes in the app's build, and draft and wall checks for a part a mould
+designer could take.
 
 ## How progress is judged
 

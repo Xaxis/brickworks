@@ -16,6 +16,13 @@
 ## each in use — round plates on the side studs, a tile on each upright, a
 ## pin through a hole — in white: shots/element_families.png.
 ##
+## Then parts that exist, changed from their own geometry through "Start
+## from a part": 98283 made four long beside 98283 and 15533 (the 1 x 4
+## LEGO made), 32000 made four long beside 32000, 2877 made four long
+## beside 2877, 3062b with its stud taken off and 3068bp04, a printed tile,
+## with studs put on round its print, each beside the part it came from:
+## shots/element_changed.png.
+##
 ## A window is needed because the preview and the thumbnails are drawn by
 ## SubViewports. Run it on Xvfb, never on somebody's screen (tools/check.sh
 ## does that for you).
@@ -177,7 +184,68 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	_save("element_beside.png")
 	await _families(button, dialog, library, world, builder, store, camera)
+	await _changed(button, dialog, library, world, builder, store, camera)
 	_finish()
+
+
+## Parts that exist, changed through "Start from a part", beside what they
+## came from.
+func _changed(button: Button, dialog: ElementDialog, library: PartLibrary,
+		world: BrickWorld, builder: Builder, store: ModelStore, camera: CadCamera) -> void:
+	var changes: Array = [
+		["98283", {"across": 4}, ["98283", "15533"]],
+		["32000", {"across": 4}, ["32000"]],
+		["2877", {"across": 4}, ["2877"]],
+		["3062b", {"studs_top": "none"}, ["3062b"]],
+		["3068bp04", {"studs_top": "fill"}, ["3068bp04"]],
+	]
+	var rows: Array = []
+	for change: Array in changes:
+		button.pressed.emit()
+		var started: bool = dialog.start_from(str(change[0]))
+		# Changed as itself, not redrawn as one of the families.
+		var as_itself: bool = dialog.edit() != null
+		for key: String in change[1]:
+			dialog.set_field(key, change[1][key])
+		var id: String = await _add(dialog, library)
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		_ok(started and as_itself and info != null,
+			"changed %s into %s, \"%s\"" % [change[0], id, info.name if info != null else "nothing"])
+		if info == null:
+			return
+		rows.append([id] + change[2])
+	world.clear()
+	builder.lattice.clear()
+	store.scenery.clear()
+	var placed: Array[int] = []
+	for index: int in rows.size():
+		var row: Array = rows[index]
+		var cursor: float = 0.0
+		for n: int in row.size():
+			var part_id: String = row[n]
+			var wide: float = library.mesh_for(part_id).bounds.size.x
+			placed.append(_put(world, builder, library, part_id, MADE if n == 0 else LIBRARY,
+				Vector3(cursor + wide * 0.5, 0.0, -index * 50.0)))
+			cursor += wide + 16.0
+	_main.call("_lay_baseplate")
+	builder.held_part = ""
+	builder.hide_preview()
+	var box := AABB()
+	for brick_id: int in placed:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var bounds: AABB = brick.transform * library.mesh_for(brick.part_id).bounds
+		box = bounds if box.size == Vector3.ZERO else box.merge(bounds)
+	for _n: int in 30:
+		await process_frame
+	camera.set("_target_yaw", deg_to_rad(-18.0))
+	camera.set("_target_pitch", deg_to_rad(30.0))
+	camera.frame(box.merge(AABB(box.position - Vector3(box.size.x * 0.45, 0.0, 0.0),
+		Vector3.ONE)), 0.72)
+	for _n: int in 180:
+		await process_frame
+	builder.hide_preview()
+	await RenderingServer.frame_post_draw
+	_save("element_changed.png")
 
 
 ## The families after the first five, made through the dialog, beside

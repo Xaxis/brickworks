@@ -14,6 +14,9 @@ Three kinds of claim:
 - It is the size it says, in the system's units: 20 LDU a stud, 8 a plate,
   studs on the 20 LDU grid pointing up, tubes between them pointing down,
   walls and top 4 LDU thick — read off the geometry by stabbing it.
+- A part changed from a library part's own geometry keeps what was not
+  changed: 3700 made six long has 3894's studs, holes and pins, read by the
+  same walk from the connectors the file states for itself.
 - A standard size is the standard part: the maker's 2 x 4 brick is 3001
   triangle for triangle, and its 45 degree slope's face is where 3039's is;
   its brick with a stud on one side has 87087's studs, its bracket 99781's,
@@ -40,6 +43,9 @@ from ldraw.parser import parse_text  # noqa: E402
 LDRAW_ROOT = ROOT / "vendor" / "ldraw"
 FIXTURES = ROOT / "tests" / "fixtures" / "elements"
 FILES = sorted(p.name for p in FIXTURES.glob("*.dat"))
+# Parts changed from a library part's geometry (src/parts/part_editor.gd).
+MODIFIED = FIXTURES / "modified"
+CHANGED = sorted(p.name for p in MODIFIED.glob("*.dat"))
 
 pytestmark = pytest.mark.skipif(
     not (LDRAW_ROOT / "parts").is_dir(),
@@ -56,7 +62,7 @@ needs_numpy = pytest.mark.skipif(
 
 @pytest.fixture(scope="session")
 def library() -> Library:
-    return Library(LDRAW_ROOT, extra=[FIXTURES])
+    return Library(LDRAW_ROOT, extra=[FIXTURES, MODIFIED])
 
 
 def spec_of(name: str) -> dict:
@@ -731,6 +737,128 @@ def test_a_standard_size_has_the_library_parts_shape(
     assert tubes(made, shift) == tubes(real)
 
 
+# -- a part changed from another's geometry -------------------------------------
+
+
+def test_there_are_changed_parts() -> None:
+    assert len(CHANGED) >= 5, "run src/dev/element_files_probe.gd -- --write"
+
+
+@pytest.mark.parametrize("name", CHANGED)
+def test_a_changed_part_is_an_unofficial_part_that_says_where_it_came_from(
+    library: Library, name: str
+) -> None:
+    """The header an unofficial part has, what it was changed from and how,
+    and the library's licence it is made under."""
+    text = (MODIFIED / name).read_text()
+    lines = [l for l in text.splitlines() if l.strip()]
+    assert lines[1] == f"0 Name: {name}"
+    assert lines[3] == "0 !LDRAW_ORG Unofficial_Part"
+    assert lines[4] == "0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt"
+    assert lines[5] == "0 BFC CERTIFY CCW"
+    said = [l for l in lines if l.startswith("0 // Modified by Brickworks:")]
+    assert len(said) == 1 and " from=" in said[0]
+    source = said[0].split("from=")[1].split()[0]
+    assert f"Made from {source}.dat of the LDraw Parts Library (CC BY 4.0)" in text
+    part = library.get(name)
+    assert part is not None and part.part_type == "Unofficial_Part"
+    assert part.bfc_certified and part.bfc_ccw
+
+
+@pytest.mark.parametrize("name", CHANGED)
+def test_a_changed_part_reads_strictly_and_draws_only_with_primitives(
+    library: Library, name: str
+) -> None:
+    """Every line parses; its own faces and edges are its own, and the only
+    files it draws with are primitives every LDraw library has: stud.dat
+    for a stud put on, 4-4disc.dat to plug the hole where a hollow one was
+    taken off."""
+    text = (MODIFIED / name).read_text()
+    list(parse_text(text, strict=True))
+    used = {line.split()[-1] for line in text.splitlines() if line.startswith("1 ")}
+    assert used <= {"stud.dat", "4-4disc.dat"}
+    mesh = flatten(library, name)
+    assert not mesh.missing and len(mesh.triangles) > 50
+
+
+def _plan(library: Library, name: str) -> list[tuple]:
+    """A part's connectors as the pipeline finds them, rounds aside: kind,
+    where to a tenth of an LDU, and which way (a pin hole either way)."""
+    out = []
+    for c in extract(library, name):
+        if c.kind.value in ("shaft", "bore"):
+            continue
+        axis = (c.axis.x, c.axis.y, c.axis.z)
+        if c.kind.value == "pin_hole" and min(axis) < -0.5:
+            axis = (-axis[0], -axis[1], -axis[2])
+        out.append((c.kind.value, round(c.position.x, 1) + 0.0, round(c.position.y, 1) + 0.0,
+                    round(c.position.z, 1) + 0.0) + tuple(round(v) + 0 for v in axis))
+    return sorted(out)
+
+
+def test_a_technic_brick_made_longer_is_the_longer_one_lego_made(library: Library) -> None:
+    """3700, the 1 x 2 Technic brick, made six long in the app from its own
+    geometry: the pipeline finds 3894's six studs, five holes and five pins
+    on it, each where 3894 has it — the holes and pins the file states for
+    itself, since its triangles alone no longer say where they are."""
+    assert _plan(library, "bw-3700-l6.dat") == _plan(library, "3894.dat")
+    lo, hi = flatten(library, "bw-3700-l6.dat").bounds()
+    rlo, rhi = flatten(library, "3894.dat").bounds()
+    assert (lo.x, lo.y, lo.z, hi.x, hi.y, hi.z) == pytest.approx(
+        (rlo.x, rlo.y, rlo.z, rhi.x, rhi.y, rhi.z), abs=0.01)
+
+
+def test_a_brick_with_side_studs_made_longer_has_more_of_them(library: Library) -> None:
+    """30414 made six long: six studs on top and six on its side, on the
+    grid and pointing out of its face, and a pin between every two."""
+    plan = _plan(library, "bw-30414-l6.dat")
+    side = [c for c in plan if c[0] == "stud" and c[6] == -1]
+    top = [c for c in plan if c[0] == "stud" and c[5] == -1]
+    assert sorted(c[1] for c in side) == [-50.0, -30.0, -10.0, 10.0, 30.0, 50.0]
+    assert all(c[2] == 10.0 and c[3] == -10.0 for c in side)
+    assert sorted(c[1] for c in top) == [-50.0, -30.0, -10.0, 10.0, 30.0, 50.0]
+    assert len([c for c in plan if c[0] == "tube"]) == 5
+
+
+def test_a_round_brick_made_taller_keeps_its_axle_hole(library: Library) -> None:
+    """3941 made two bricks tall: its axle hole still where it was, its
+    studs on its top, and its bottom 48 LDU under it."""
+    plan = _plan(library, "bw-3941-p6.dat")
+    assert any(c[0] == "axle_hole" for c in plan)
+    assert len([c for c in plan if c[0] == "stud"]) == 4
+    lo, hi = flatten(library, "bw-3941-p6.dat").bounds()
+    assert hi.y == pytest.approx(48.0, abs=0.01)
+
+
+def test_a_stud_taken_off_leaves_the_top_closed(library: Library) -> None:
+    """3062b without its hollow stud: no stud, and a line down its middle,
+    where the hollow stud's hole went right through the top, meets 4 LDU
+    of plastic there — the plug — and no round of the stud's bore is left
+    above it."""
+    assert not [c for c in _plan(library, "bw-3062b-s0.dat") if c[0] == "stud"]
+    mesh = flatten(library, "bw-3062b-s0.dat")
+    spans = stab(mesh, 0.31, 0.27)
+    assert spans and min(s[0] for s in spans) == pytest.approx(0.0, abs=0.01)
+    assert (0.0, 4.0) in spans
+    # No round of the stud's left above the plug's bottom; the brick's own
+    # wall, 10 LDU round, from its top as it was.
+    for c in extract(library, "bw-3062b-s0.dat"):
+        if c.kind.value in ("shaft", "bore") and c.radius <= 6.1:
+            assert min(c.position.y, c.position.y + c.axis.y * c.length) >= 4.0 - 1e-6
+    wall = [c for c in extract(library, "bw-3062b-s0.dat")
+            if c.kind.value == "shaft" and abs(c.radius - 10.0) < 0.1]
+    assert wall and min(c.position.y for c in wall) == pytest.approx(0.0, abs=0.01)
+    lo, _hi = mesh.bounds()
+    assert lo.y == pytest.approx(0.0, abs=0.01)
+
+
+def test_studs_put_on_a_tile_are_on_the_grid(library: Library) -> None:
+    """3068b with studs put on: four, on the 2 x 2 grid, on its top."""
+    studs = [c for c in _plan(library, "bw-3068b-sa.dat") if c[0] == "stud"]
+    assert sorted((c[1], c[2], c[3]) for c in studs) == [
+        (-10.0, 0.0, -10.0), (-10.0, 0.0, 10.0), (10.0, 0.0, -10.0), (10.0, 0.0, 10.0)]
+
+
 # -- the build path --------------------------------------------------------
 
 
@@ -775,7 +903,8 @@ def test_pipeline_json_is_what_the_pipeline_makes_now() -> None:
     files or the pipeline moved and it did not, that comparison is stale."""
     import build_custom
     kept = json.loads((FIXTURES / "pipeline.json").read_text())["parts"]
-    built = build_custom.build([FIXTURES / name for name in FILES])
+    built = build_custom.build([FIXTURES / name for name in FILES]
+                               + [MODIFIED / name for name in CHANGED])
     for part_id, blob, _record, _source in built:
         assert build_custom.summary(part_id, blob) == kept[part_id], part_id
 

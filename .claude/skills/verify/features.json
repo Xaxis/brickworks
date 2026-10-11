@@ -252,6 +252,14 @@
       "tests": []
     },
     {
+      "id": "lib:change a part",
+      "kind": "lib",
+      "entry": "src/parts/part_editor.gd",
+      "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "lib:command socket",
       "kind": "lib",
       "entry": "src/net/command_socket.gd",

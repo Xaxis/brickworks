@@ -693,6 +693,16 @@ const CONNECTORS: Dictionary = {
 func _connectors(name: String) -> Array:
 	var found: Array = []
 	_find_connectors(name, PackedFloat64Array(IDENTITY), found, 0, {})
+	# A part changed from another's mesh says where its connectors are in
+	# meta lines of its own (PartEditor), after whatever its primitives
+	# give: connectivity.extract reads them the same way, in the same place.
+	var said: Array = _said_connectors(name)
+	var rounds_said: Array = []
+	for c: Array in said:
+		if Lbm.ROUNDS.has(str(c[0])):
+			rounds_said.append(c)
+		else:
+			found.append(c.slice(0, 8))
 	var seen: Dictionary = {}
 	var unique: Array = []
 	for c: Array in found:
@@ -704,7 +714,34 @@ func _connectors(name: String) -> Array:
 		unique.append(c)
 	var merged: Array = _merge_half_holes(unique)
 	merged.append_array(_rounds(name))
+	merged.append_array(rounds_said)
 	return merged
+
+
+## The connectors a part file states in `0 !BRICKWORKS CONNECTOR kind
+## gender x y z ax ay az [length radius]` lines, in LDraw's axes, as
+## [kind, gender, x, y, z, ax, ay, az] and a round's length and radius.
+func _said_connectors(name: String) -> Array:
+	var out: Array = []
+	var source: Source = _source_for(name)
+	if source == null:
+		return out
+	for command: Array in source.commands:
+		if int(command[0]) != 0 or command[1] != PartEditor.CONNECTOR:
+			continue
+		var words: PackedStringArray = command[2]
+		if words.size() < 9 or words[0].to_upper() != "CONNECTOR":
+			continue
+		var row: Array = [words[1], words[2]]
+		for n: int in range(3, 9):
+			row.append(_num(words[n]))
+		if Lbm.ROUNDS.has(words[1]):
+			if words.size() < 11:
+				continue
+			row.append(_num(words[9]))
+			row.append(_num(words[10]))
+		out.append(row)
+	return out
 
 
 # -- a hole's two faces, as connectivity._merge_half_holes -------------------

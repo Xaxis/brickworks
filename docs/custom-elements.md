@@ -129,6 +129,22 @@ parts** puts it in the bin under Custom.
   part's, the same collision cover, and the same sockets: a plate clutches a
   made brick's side studs, a Technic pin goes through a made hole, and the
   assistant's checker counts both as holding.
+- **A part that exists can be changed** — what a LEGO designer is asked
+  for far more often than a new element. Any part, typed into "Start from a
+  part": a part of the families is resized as its family; any other is
+  changed from its own geometry (`src/parts/part_editor.gd`) — made longer,
+  wider or taller, its studs taken off or put on — so whatever the change
+  does not touch stays as LEGO made it, print included. Longer repeats a
+  stud's slice of the part where its cut faces match: 3700 made six long has
+  3894's studs, holes, pins and collision exactly, 3001 made eight long is
+  3007, 98283 made four long has 15533's studs and tubes. A part with no
+  such slice (a 1 x 1, a round brick across, a one-wide slope) is refused,
+  and the dialog says so. It works from the part's built mesh, which every
+  build of the app has — a browser fetches it if it must — rather than its
+  LDraw source, which neither a browser nor an exported desktop has; so the
+  file it writes is the mesh's triangles and creases with each connector
+  stated in a `0 !BRICKWORKS CONNECTOR` meta line, which other LDraw programs
+  ignore and both the app and the mesh pipeline read.
 - **The file goes with the model.** Saving a model that uses one embeds the
   part as a `0 FILE bw-….dat` section; opening it anywhere — including a
   copy of the app that never made the part — rebuilds it from that section.

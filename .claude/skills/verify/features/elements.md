@@ -2,10 +2,11 @@
 
 Making a part LEGO has not made — a brick, plate, tile, slope, curved slope,
 inverted slope, round part, bracket or Technic brick of any size, or a brick
-with studs on its sides — as a real LDraw part, and building it into the
-same geometry, connectors and collision the library's own parts have.
+with studs on its sides — or changing a part that exists, from its own
+geometry, as a real LDraw part, and building it into the same geometry,
+connectors and collision the library's own parts have.
 
-<!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts, ui:make a part, lib:made parts in the library and in files -->
+<!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts, ui:make a part, lib:made parts in the library and in files, lib:change a part -->
 
 ## Sub-features
 
@@ -47,12 +48,39 @@ same geometry, connectors and collision the library's own parts have.
   8 x 8 plate 0.8 s, 16 x 16 plate about 2.2 s (normals are the largest
   stage), 32 x 32 about 10 s — hence the cap, and the dialog saying
   "Building the part…" before anything over 48 studs.
+- `change a part` (`PartEditor`): any library part (or made part) changed
+  from its own geometry — the built mesh every build has, the browser's
+  fetched if it is not resident — rather than redrawn: made longer, wider or
+  taller, its top studs taken off or put on wherever its top is flat. Longer
+  repeats (or takes out) a 20 LDU slice, taller an 8 LDU one, chosen nearest
+  the middle where the part's cross-sections at both cuts are the same face
+  (compared on a half-LDU grid, a cell either way allowed: a 45 degree face
+  runs through the grid's corners); features cut by the slice's ends are
+  clipped exactly and the copies meet. Connectors go by where they are: before
+  the cut kept, in the slice repeated, after it moved. A part with no such
+  slice (a 1 x 1, a round brick across, a 33 degree slope one stud wide) is
+  refused, in words. The part file is the mesh's triangles (exact to its
+  64ths of an LDU), the creases its normals keep as edge lines, and each
+  connector as `0 !BRICKWORKS CONNECTOR kind gender x y z ax ay az [length
+  radius]`, which `PartForge` and `tools/ldraw/connectivity.py` both read (after
+  the primitives' connectors, rounds after rounds); studs put on are
+  `stud.dat`; a hollow stud taken off leaves its hole plugged with two
+  `4-4disc`s, 4 LDU apart, and its bore record cut off under the plug. Named
+  `bw-<part>-<change>` (`bw-3700-l6`, `bw-3062b-s0`), its header the change
+  (`0 // Modified by Brickworks: from=3700 length=6 …`) and the LDraw part it
+  came from, CC BY 4.0.
 - `make a part` (`ElementDialog`): **Make a part…** in the parts bin. A
   button for each of the seven families (all on show, one press each), sizes
   (two to a row), LEGO's four named angles for a slope, studs on or off,
   Front/Back/Left/Right for studs on a brick's sides, a bracket's upright and
-  which way it goes, a name, and "Resize a part" — a part number, or the part
-  in hand when the dialog opens. The preview is the part built by
+  which way it goes, a name, and "Start from a part" — a part number, or the
+  part in hand when the dialog opens. A part of the families is resized as
+  its family; any other (a printed part, a grille, 32000) is changed as
+  itself: Length, Width and Height in studs and plates, "Studs on its top" as
+  they are, taken off or put on, and a note saying what it is changing. A
+  part whose geometry the browser has not fetched is fetched first ("Fetching
+  32000's geometry…"). A part in hand that is not one of the families is
+  offered in the box, not started on. The preview is the part built by
   `PartForge`, turning; a sentence under it gives the size in mm, the studs
   on top and on the sides, the places a stud goes in underneath, the Technic
   holes, and a slope's true angle (a curved slope's at its foot). **Add to parts** makes it, keeps
@@ -85,6 +113,7 @@ same geometry, connectors and collision the library's own parts have.
 ## How to reach it
 
 ```sh
+godot --headless --path . --script src/dev/modify_probe.gd                   # changing parts
 godot --headless --path . --script src/dev/element_files_probe.gd            # check
 godot --headless --path . --script src/dev/element_files_probe.gd -- --write  # rewrite fixtures
 PYTHON=<venv>/bin/python tools/element_pipeline.sh   # rewrite pipeline.json (numpy)
@@ -101,7 +130,11 @@ node tools/web/element_flow.mjs --url=http://localhost:8147/index.html --out=sho
 The flow ends "parts made in the browser are placed, kept and back after a
 reload" — a 2 x 7 brick and then, pressed from its family button, a 1 x 6
 Technic brick, whose holes are drawn with primitives the build ships — and
-leaves `shots/element_web/{1_dialog,2_placed,3_technic,4_technic_placed,5_reloaded}.png`.
+then 32000, which the build does not carry, typed into "Start from a part",
+fetched, made four long as itself — and leaves
+`shots/element_web/{1_dialog,2_placed,3_technic,4_technic_placed,5_changed,6_changed_placed,7_reloaded}.png`.
+Serve with `--parts assets/generated/parts`, which stands in for the
+deployment's part storage, or the fetch has nowhere to go.
 
 ## How to check it
 
@@ -115,37 +148,60 @@ env -u DISPLAY -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw \
   godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd
 ```
 
-Proves it when: the tests say `350 passed, 7 skipped` without numpy and
-`357 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
+Proves it when: the tests say `366 passed, 7 skipped` without numpy and
+`373 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
 pipeline.md), and the probe ends on "the maker makes the measured files, and
 the app builds them as the pipeline does" with every line `ok`: each of the
 36 fixtures "the same .lbm, byte for byte" built from only the shipped
 primitives, and the 28 library parts in `tests/fixtures/elements/library.txt`
 the same from vendor/ldraw — among them 3700, 3701 and 6541, whose holes'
-two faces the app merges and whose bores it clears as the pipeline does.
+two faces the app merges and whose bores it clears as the pipeline does —
+and each changed part in `tests/fixtures/elements/modified.txt`
+(`modified/*.dat`, written by the probe from the catalogue's meshes) "byte
+for byte what the editor makes" and the same `.lbm` as the pipeline's,
+connectors read from its meta lines on both sides.
+
+`modify_probe` proves it when it ends "a part changed from its own geometry
+keeps what the change left alone": 3700 made six long has 3894's 16
+connectors where 3894 has them, its bounds, and its cover to the cell (0 of
+5400 differ); 3701 made two long is 3700; 3001 made eight long is 3007; 3039
+made four long has 3037's studs and its tubes where 3037's stand (3039's own
+are drawn from higher up, so their heights are left out, and said); 3001
+copied unchanged is 3001; 30414 six long has 6 studs on top, 6 on its side and
+5 pins; 3001 two bricks tall has its 8 studs and 3 tubes; 3062b three long,
+3010 two wide and 3040b three long are refused, saying why; 3001 without its
+studs keeps its tubes, 3062b without its hollow stud is plugged, and 3068b
+with studs put on has four on the grid.
 
 `element_probe` proves it when it ends "a made part is placed, clutched,
 checked, listed and saved like any other": the 2 x 7 brick, 1 x 5 plate and
 3 x 3 x 2/3 slope made through the dialog's controls (and 3001 resized to
-2 x 7), then a 1 x 4 brick with studs on its side, a 1 x 2 - 1 x 2 bracket,
-a 3 x 3 curved slope and a 1 x 2 Technic brick, each found in the bin's
-Custom category; all but the bracket placed by the mouse's ray on a 2 x 4 on
+2 x 7, and 3001p01 changed as itself rather than redrawn without its print),
+then a 1 x 4 brick with studs on its side, a 1 x 2 - 1 x 2 bracket, a 3 x 3
+curved slope and a 1 x 2 Technic brick, and 98283 started from by number and
+made four long as itself — 15533's studs and tubes, each where 15533 has
+it — with 3062b three long refused in the dialog's words; each found in the
+bin's Custom category; all but the bracket placed by the mouse's ray on a 2 x 4 on
 a baseplate with a 2 x 4 on top, the lower brick's studs reaching into it at
 its own sockets and its top studs into the upper one, a 1 x 1 plate fitting
 against each side of its plastic and refused one cell closer, the slope's
 cover following its face and the curve's its curve, the assistant's checker
-passing it and counting six pieces (one per stack). Then each family used
+passing it and counting seven pieces (one per stack). Then each family used
 as only it can be, asked of the checker: a 1 x 4 plate on the side studs and
 a 1 x 2 plate on the bracket's upright held, and each a stud further out
 floating; a Technic pin through the hole held and fitting (3700's place for
 it), turned across the hole an overlap; the hole left out of the cover. The
-parts list says "(custom element)", and the saved file carries six parts,
+parts list says "(custom element)", and the saved file carries seven parts,
 read strictly by `tools/build_custom.py --check`, and reopened into a fresh
-library 18 of 18 bricks where they were. `element_shot_probe` ends "the
+library 21 of 21 bricks where they were — the changed part rebuilt from the
+connectors its own text states. `element_shot_probe` ends "the
 dialog makes parts in the window" and leaves `shots/element_dialog.png`,
-`shots/element_beside.png` and `shots/element_families.png` (made parts
+`shots/element_beside.png`, `shots/element_families.png` (made parts
 red, their library cousins grey — 30414, 99781, 99780, 93606, 3701 — and
-what is put on them white) — look at them.
+what is put on them white) and `shots/element_changed.png` (98283 four long
+beside 98283 and 15533, 32000 and 2877 four long, 3062b without its stud,
+the printed tile 3068bp04 with studs put on round its print, each beside
+what it came from) — look at them.
 
 What the tests measure, each by stabbing the flattened geometry with a
 vertical line the way the voxeliser does: the header lines in order; every
@@ -225,6 +281,23 @@ comparison with 87087 and 30414), a Technic hole with no bore
 - **`stab()` lists spans from the bottom up.** The first span is the top only
   when there is one; a line through a Technic mouth or a hollow side stud
   crosses plastic twice. The tests take the highest plastic as the top.
+- **A changed part is made from the catalogue's mesh, so its fixtures move
+  with the catalogue.** `modified/*.dat` are the editor's output from the
+  meshes in `assets/generated`; after a catalogue rebuild, write them again
+  (`element_files_probe.gd -- --write`) and then `tools/element_pipeline.sh`.
+- **The cut is found, not computed.** Each candidate cut half an LDU off the
+  whole numbers (where faces lie in planes) is tried from the middle out, and
+  the first whose two cross-sections match is used: 3001's is through its
+  stud's middle, 3700's through its studs with its hole and pin in the slice.
+  A baseplate has six hundred candidates; searching from the middle out is
+  what made it 1.4 s rather than 18.
+- **A plug, not a lid.** A disc over a hollow stud's hole closed the top to
+  the eye and to nothing else: the winding a line counts saw no plastic under
+  it. Two discs 4 LDU apart, the lower the bore's width, are a top. A
+  cylinder primitive for the plug's side was tried and read as a new shaft.
+- **A round brick's wall is on its stud's axis.** Rounds trimmed with a
+  removed stud are only those no wider than a stud (6 LDU); the first version
+  cut 3062b's 10 LDU wall at 4 LDU down.
 - **A curve is chords.** The face is 8 straight strips round an eighth of a
   circle, up to 0.12 LDU under the circle on the tallest curve the fixtures
   have; the tests allow 0.2.

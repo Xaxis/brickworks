@@ -13,6 +13,12 @@
 ## makes every element in specs.txt again and fails on any difference.
 ## --write rewrites them, after which the Python suite has to pass again.
 ##
+## The same holds for parts changed from another's geometry (PartEditor):
+## modified.txt lists the changes, modified/ keeps what each made from the
+## catalogue's own mesh of the part, and the app's build of each is held to
+## the pipeline's — which reads the connectors such a part states for
+## itself, as the app does.
+##
 ## pipeline.json is what tools/build_custom.py got by putting the same files
 ## through tools/build_meshes.py's own conversion: the connectors the
 ## primitives give, the collision boxes the voxeliser gives, the sockets
@@ -38,6 +44,9 @@ func _initialize() -> void:
 	for spec: ElementMaker.Spec in specs:
 		_check_file(spec, write)
 
+	print("\nand the parts changed from library parts' own geometry")
+	var changed: PackedStringArray = _check_modified(write)
+
 	if not write:
 		var ids: PackedStringArray = PackedStringArray()
 		for spec: ElementMaker.Spec in specs:
@@ -47,6 +56,8 @@ func _initialize() -> void:
 		# From the primitives the app ships and nothing else, as a browser
 		# or an exported desktop build has to.
 		_check_pipeline(ids, DIR, false)
+		print("\n...and each changed part, from them and the connectors it states")
+		_check_pipeline(changed, DIR + "modified/", false)
 		# And parts the library has, from its own files, when this checkout
 		# has the library: a port that only ever saw the maker's output
 		# could be right about exactly the shapes the maker draws. 3700 and
@@ -67,6 +78,43 @@ func _initialize() -> void:
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
+
+
+## The changes in modified.txt, each made again from the catalogue's mesh
+## of its part and held to the file kept from last time (or, with --write,
+## written). Returns the ids.
+func _check_modified(write: bool) -> PackedStringArray:
+	var ids := PackedStringArray()
+	var library := PartLibrary.new()
+	if not library.load_catalogue():
+		_ok(false, "the catalogue loads, for the parts the changes start from")
+		return ids
+	for raw: String in FileAccess.get_file_as_string(DIR + "modified.txt").split("\n"):
+		var line: String = raw.strip_edges()
+		if line.is_empty() or line.begins_with("#"):
+			continue
+		var edit: PartEditor.Edit = PartEditor.parse_edit(PartEditor.MODIFIED_BY + " " + line)
+		var made: Dictionary = CustomParts.modified_text(library, edit)
+		var id: String = made["id"]
+		_ok(str(made["problem"]).is_empty(), "%s can be made (%s)" % [line,
+			made["problem"] if not str(made["problem"]).is_empty() else id])
+		if not str(made["problem"]).is_empty():
+			continue
+		ids.append(id)
+		var path: String = DIR + "modified/" + id + ".dat"
+		if write:
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(DIR + "modified"))
+			var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+			file.store_string(made["text"])
+			file.close()
+			print("        wrote %s" % path)
+			continue
+		_ok(FileAccess.get_file_as_string(path) == str(made["text"]),
+			"%s.dat is byte for byte what the editor makes" % id)
+		var back: PartEditor.Edit = PartEditor.parse_edit(made["text"])
+		_ok(back != null and back.to_words() == edit.to_words(),
+			"%s reads back as the change that made it" % id)
+	return ids
 
 
 func _ok(passed: bool, said: String) -> void:

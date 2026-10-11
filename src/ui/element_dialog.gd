@@ -3,7 +3,9 @@
 ## What a LEGO element designer is asked for, in the terms they are asked
 ## in: a 2 x 7 brick, a 1 x 5 plate, a 33 degree slope three studs deep. Or
 ## a part that exists, at another size — start from 3001 and make it a
-## 2 x 7. The preview is the part itself, built by [PartForge] from the
+## 2 x 7 — or changed: start from any part at all and make it longer,
+## wider or taller, or take its studs off or put them on, from its own
+## geometry ([PartEditor]), so whatever is not changed is as LEGO made it. The preview is the part itself, built by [PartForge] from the
 ## LDraw file the maker wrote, so what turns on screen is what gets placed,
 ## saved and opened elsewhere.
 ##
@@ -25,6 +27,17 @@ var color_code: int = 4
 
 var _spec := ElementMaker.Spec.new()
 var _family_buttons: Dictionary = {}   ## family -> its Button
+## "family", making a part of one of the maker's families; or "modify",
+## changing a part that exists from its own geometry ([PartEditor]).
+var _mode: String = "family"
+var _edit: PartEditor.Edit = null
+## The size of the part being changed, in studs, plates and studs.
+var _source_size := Vector3i.ONE
+var _modify_note: Label
+var _studs_top: Dictionary = {}        ## "keep", "none", "fill" -> its Button
+var _start: Button
+## The part whose geometry is on its way, to change once it is here.
+var _waiting_for: String = ""
 var _from: LineEdit
 var _across: SpinBox
 var _deep: SpinBox
@@ -72,6 +85,12 @@ func _ready() -> void:
 	visible = false
 	_build()
 	set_process(true)
+	if library != null:
+		library.fetched.connect(_on_fetched)
+		library.fetch_failed.connect(func(part_id: String, reason: String) -> void:
+			if part_id == _waiting_for:
+				_waiting_for = ""
+				_say("%s's geometry did not arrive: %s" % [part_id, reason], true))
 
 
 func _build() -> void:
@@ -159,17 +178,24 @@ func _build() -> void:
 	scroll.add_child(controls)
 	column = controls
 
-	# Start from a part that exists: the resize path.
-	var from_row := _row(column, "Resize a part")
+	# Start from a part that exists: one of the families, resized; any
+	# other, changed from its own geometry.
+	var from_row := _row(column, "Start from a part")
 	_from = LineEdit.new()
-	_from.placeholder_text = "a part number, e.g. 3001"
+	_from.placeholder_text = "a part number: 3001, 3700, 3062b…"
 	_from.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_from.text_submitted.connect(func(_t: String) -> void: _start_from(_from.text))
 	from_row.add_child(_from)
-	var use := Button.new()
-	use.text = "Start from it"
-	use.pressed.connect(func() -> void: _start_from(_from.text))
-	from_row.add_child(use)
+	_start = Button.new()
+	_start.text = "Start from it"
+	_start.pressed.connect(func() -> void: _start_from(_from.text))
+	from_row.add_child(_start)
+	_modify_note = Label.new()
+	_modify_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_modify_note.add_theme_font_size_override("font_size", 11)
+	_modify_note.modulate = Color(1, 0.86, 0.6, 0.9)
+	_modify_note.visible = false
+	column.add_child(_modify_note)
 
 	# Every family on show, one press each: a menu hid six of the seven.
 	var family_holder := VBoxContainer.new()
@@ -245,6 +271,26 @@ func _build() -> void:
 			_changed())
 	column.add_child(_studs)
 
+	# A part being changed keeps its studs, or has them taken off, or put
+	# on wherever its top is flat.
+	var studs_row := _row(column, "Studs on its top")
+	_rows["studs_top"] = studs_row.get_parent()
+	var studs_group := ButtonGroup.new()
+	for entry: Array in [["keep", "As they are"], ["none", "Take them off"],
+			["fill", "Put them on"]]:
+		var choice := Button.new()
+		choice.text = entry[1]
+		choice.toggle_mode = true
+		choice.button_group = studs_group
+		choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var way: String = entry[0]
+		choice.pressed.connect(func() -> void:
+			if _edit != null:
+				_edit.studs = way
+				_changed())
+		studs_row.add_child(choice)
+		_studs_top[way] = choice
+
 	# Studs-not-on-top: a brick with studs on its faces, for building a
 	# face sideways.
 	var sides_row := _row(column, "Studs on its sides")
@@ -266,7 +312,10 @@ func _build() -> void:
 	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name.text_changed.connect(func(text: String) -> void:
 		if not _filling:
-			_spec.title = text.strip_edges()
+			if _mode == "modify":
+				_edit.title = text.strip_edges()
+			else:
+				_spec.title = text.strip_edges()
 			_changed())
 	name_row.add_child(_name)
 
@@ -320,19 +369,28 @@ func _number(column: Container, field: String, label: String, low: int,
 	box.value_changed.connect(func(value: float) -> void:
 		if _filling:
 			return
-		_spec.set(field, int(value))
+		if _mode == "modify":
+			_edit_size(field, int(value))
+		else:
+			_spec.set(field, int(value))
 		_changed())
 	row.add_child(box)
 	return box
 
 
 ## Open, starting from [param part_id] when it is a plain part that can be
-## resized, and from a 2 x 4 brick otherwise.
+## resized, and from a 2 x 4 brick otherwise. Any other part in hand is
+## offered — its number in "Start from a part" — but not started on: a
+## 32 x 32 baseplate in hand should not begin rebuilding itself because a
+## button was pressed.
 func open(part_id: String = "") -> void:
 	visible = true
 	if not part_id.is_empty() and _start_from(part_id, true):
 		return
+	if not part_id.is_empty() and library != null and library.parts.has(part_id):
+		_from.text = part_id
 	if _built == null:
+		_mode = "family"
 		_spec = ElementMaker.Spec.new()
 		_show_spec()
 
@@ -349,24 +407,68 @@ func _start_from(part_id: String, quietly: bool = false) -> bool:
 	var spec: ElementMaker.Spec = ElementMaker.parse_spec(library.custom_source(id)) \
 		if info.custom else ElementMaker.from_part(id, info.name, info.size.y)
 	if spec == null:
-		if not quietly:
-			_say("%s (%s) is not one of the families the maker draws — a plain "
-				% [id, Inventory._tidy(info.name)]
-				+ "brick, plate, tile, slope, curved slope, round part, bracket, "
-				+ "Technic brick or brick with side studs — so it cannot be resized "
-				+ "here. Start from the family instead.", true)
-		return false
+		# Not one of the families: changed from its own geometry instead.
+		if quietly:
+			return false
+		_start_modify(id)
+		return true
 	if info.custom:
 		spec.derived_from = ""
 		spec.title = ""
+	_mode = "family"
 	_spec = spec
 	_from.text = id
 	_show_spec()
 	return true
 
 
+## Change [param part_id] itself. Its geometry may have to be fetched first
+## (a browser has only some parts' to hand); the controls wait for it.
+func _start_modify(part_id: String) -> void:
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	_from.text = part_id
+	if mesh == null:
+		if library.request_mesh(part_id, true):
+			_waiting_for = part_id
+			_say("Fetching %s's geometry…" % part_id, false)
+			_add.disabled = true
+		else:
+			_say("There is no geometry for %s here to change." % part_id, true)
+		return
+	_mode = "modify"
+	_edit = PartEditor.Edit.new()
+	_edit.from = part_id
+	_source_size = PartEditor.size_of(mesh)
+	_show_spec()
+
+
+func _on_fetched(part_id: String) -> void:
+	if part_id == _waiting_for:
+		_waiting_for = ""
+		_start_modify(part_id)
+
+
+## A size control changed while changing a part: the part's own size is
+## no change at all.
+func _edit_size(field: String, value: int) -> void:
+	match field:
+		"across":
+			_edit.length = 0 if value == _source_size.x else value
+		"deep":
+			_edit.width = 0 if value == _source_size.z else value
+		"plates":
+			_edit.plates = 0 if value == _source_size.y else value
+
+
 ## Put the spec into the controls, then rebuild.
 func _show_spec() -> void:
+	if _mode == "modify":
+		_show_edit()
+		return
+	_modify_note.visible = false
+	_rows["studs_top"].visible = false
+	_studs.visible = true
+	_rows["plates"].get_child(0).text = "Height, plates (3 = a brick)"
 	_filling = true
 	var shown: Button = _family_buttons.get(_spec.family)
 	if shown != null:
@@ -410,9 +512,38 @@ func _show_spec() -> void:
 	_changed()
 
 
+## The controls for changing a part: its size in studs and plates, what to
+## do with its studs, a name; and what it is, said above them.
+func _show_edit() -> void:
+	_filling = true
+	for family: String in _family_buttons:
+		(_family_buttons[family] as Button).set_pressed_no_signal(false)
+	_across.value = _edit.length if _edit.length > 0 else _source_size.x
+	_deep.value = _edit.width if _edit.width > 0 else _source_size.z
+	_plates.value = _edit.plates if _edit.plates > 0 else _source_size.y
+	(_studs_top[_edit.studs] as Button).set_pressed_no_signal(true)
+	_name.text = _edit.title
+	for row: String in _rows:
+		_rows[row].visible = row in ["across", "deep", "plates", "studs_top"]
+	_studs.visible = false
+	(_rows["across"].get_child(0) as Label).text = "Length, studs"
+	(_rows["deep"].get_child(0) as Label).text = "Width, studs"
+	(_rows["plates"].get_child(0) as Label).text = "Height, plates"
+	var info: PartLibrary.PartInfo = library.parts.get(_edit.from)
+	_modify_note.text = ("Changing %s, %s, from its own geometry: whatever you do not "
+		+ "change stays as LEGO made it. Longer, wider and taller repeat a slice of it; "
+		+ "or press a family to make a new part instead.") % [_edit.from,
+		Inventory._tidy(info.name) if info != null else ""]
+	_modify_note.visible = true
+	_filling = false
+	_changed()
+
+
 ## A family's button pressed: the spec becomes one of that family, keeping
 ## what sizes it can.
 func _choose_family(index: int) -> void:
+	_mode = "family"
+	_waiting_for = ""
 	if FAMILIES[index][0] != _spec.family:
 		# A 3001 made into a slope is not 3001 resized.
 		_spec.derived_from = ""
@@ -476,6 +607,8 @@ func _process(delta: float) -> void:
 func _rebuild_shown() -> void:
 	var studs: int = _spec.diameter * _spec.diameter if _spec.family == "round" \
 		else _spec.across * _spec.deep
+	if _mode == "modify":
+		studs = int(_across.value) * int(_deep.value)
 	if studs > 48:
 		_say("Building the part…", false)
 		_add.disabled = true
@@ -486,6 +619,9 @@ func _rebuild_shown() -> void:
 
 ## Build what the controls say and show it.
 func _rebuild() -> void:
+	if _mode == "modify":
+		_rebuild_edit()
+		return
 	_name.placeholder_text = ElementMaker.title_for(_without_title())
 	var problem: String = ElementMaker.problem(_spec)
 	if not problem.is_empty():
@@ -501,6 +637,62 @@ func _rebuild() -> void:
 		return
 	_show_mesh(_built.mesh)
 	_say(describe(_spec, _built), false)
+
+
+func _rebuild_edit() -> void:
+	var info: PartLibrary.PartInfo = library.parts.get(_edit.from)
+	var mesh: Lbm.PartMesh = library.mesh_for(_edit.from)
+	if info == null or mesh == null:
+		_built = null
+		_show_mesh(null)
+		_say("Not yet: there is no geometry for %s here." % _edit.from, true)
+		return
+	var bare: PartEditor.Edit = _edit.duplicate()
+	bare.title = ""
+	_name.placeholder_text = PartEditor.title_for(bare, info.name, _source_size)
+	var made: Dictionary = CustomParts.modified_text(library, _edit)
+	if not str(made["problem"]).is_empty():
+		_built = null
+		_show_mesh(null)
+		_say("Not yet: " + str(made["problem"]) + ".", true)
+		return
+	_built = PartForge.build(made["text"], made["id"], {}, true)
+	if not _built.problem.is_empty():
+		_say("It did not build: " + _built.problem, true)
+		_show_mesh(null)
+		return
+	_show_mesh(_built.mesh)
+	_say(describe_modified(_edit, _built), false)
+
+
+## What a changed part is, and what it kept.
+static func describe_modified(edit: PartEditor.Edit, built: PartForge.Result) -> String:
+	var size := Vector3(built.bounds_max[0] - built.bounds_min[0],
+		built.bounds_max[1] - built.bounds_min[1], built.bounds_max[2] - built.bounds_min[2])
+	var counts: Dictionary = {}
+	var on_top: int = 0
+	for c: Array in built.connectors:
+		counts[c[0]] = int(counts.get(c[0], 0)) + 1
+		if c[0] == "stud" and float(c[6]) > 0.99:
+			on_top += 1
+	var aside: int = int(counts.get("stud", 0)) - on_top
+	var words: String = "%s — %.1f x %.1f mm, %.1f mm tall with its studs. " % [
+		Inventory._tidy(built.name), size.x * MM, size.z * MM, size.y * MM]
+	words += "%d stud%s on top" % [on_top, "" if on_top == 1 else "s"]
+	if aside > 0:
+		words += ", %d on its sides" % aside
+	var holes: int = int(counts.get("pin_hole", 0)) + int(counts.get("axle_hole", 0))
+	if holes > 0:
+		words += ", %d Technic hole%s" % [holes, "" if holes == 1 else "s"]
+	var under: int = int(counts.get("tube", 0))
+	if under > 0:
+		words += ", %d tube%s or pin%s underneath" % [under, "" if under == 1 else "s",
+			"" if under == 1 else "s"]
+	# Said plainly: a count of connectors "where they were" counted new holes
+	# that landed where old ones had been once the part was put back on its
+	# middle, and meant nothing.
+	words += ". Everything else about it is %s's own" % edit.from
+	return words + "."
 
 
 func _without_title() -> ElementMaker.Spec:
@@ -592,9 +784,15 @@ func _on_preview_input(event: InputEvent) -> void:
 
 ## Make it: into the library, kept, and announced.
 func _make() -> void:
-	if library == null or not ElementMaker.problem(_spec).is_empty():
+	if library == null:
 		return
-	var result: Dictionary = CustomParts.make(library, _spec)
+	var result: Dictionary = {}
+	if _mode == "modify":
+		result = CustomParts.make_modified(library, _edit)
+	elif not ElementMaker.problem(_spec).is_empty():
+		return
+	else:
+		result = CustomParts.make(library, _spec)
 	if not str(result["problem"]).is_empty():
 		_say("It was not made: " + str(result["problem"]), true)
 		return
@@ -615,12 +813,22 @@ func controls_by_name() -> Dictionary:
 	}
 	for family: String in _family_buttons:
 		named["element family " + family] = _family_buttons[family]
+	named["element from"] = _from
+	named["element start"] = _start
+	for way: String in _studs_top:
+		if _mode == "modify":
+			named["element studs " + way] = _studs_top[way]
 	return named
 
 
 ## For a probe: the spec on screen and the part it built.
 func spec() -> ElementMaker.Spec:
 	return _spec
+
+
+## What is being changed, when a part is ("modify" mode), else null.
+func edit() -> PartEditor.Edit:
+	return _edit if _mode == "modify" else null
 
 
 func built() -> PartForge.Result:
@@ -645,6 +853,11 @@ func set_field(field: String, value: Variant) -> void:
 		"way":
 			_way.select(0 if str(value) == "down" else 1)
 			_way.item_selected.emit(_way.selected)
+		"studs_top":
+			var choice: Button = _studs_top.get(str(value))
+			if choice != null:
+				choice.button_pressed = true
+				choice.pressed.emit()
 		"name":
 			_name.text = str(value)
 			_name.text_changed.emit(str(value))

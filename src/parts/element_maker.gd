@@ -567,7 +567,11 @@ static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
 		if technic.is_empty() or int(technic[0]) != 1 or int(technic[2]) != 0:
 			return null
 		var tail: String = " ".join(words.slice(int(technic[3])))
-		if tail != "with Hole" and tail != "with Holes":
+		# Only the layout the maker draws: one hole for a 1 x 1 or 1 x 2,
+		# else one between every two studs. 32000, "1 x 2 with Holes", has
+		# two and is not one of these.
+		var one: bool = int(technic[1]) <= 2
+		if tail != ("with Hole" if one else "with Holes"):
 			return null
 		spec.family = "technic"
 		spec.across = int(technic[1])

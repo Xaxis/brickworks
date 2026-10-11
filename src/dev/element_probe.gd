@@ -28,6 +28,13 @@
 ## each held, and each refused one stud away (or, for the pin, turned
 ## across the hole).
 ##
+## And a part that exists, changed rather than redrawn: 98283, the 1 x 2
+## brick with embossed bricks, made four long through the same dialog. It
+## has 15533's studs and tubes — the 1 x 4 LEGO made — is stacked and
+## checked as the others are, and travels in the saved file with the
+## connectors it states for itself. 3062b made three long is refused, and
+## the dialog says why.
+##
 ## Made parts go to user://custom_parts_probe/, never the person's own.
 extends SceneTree
 
@@ -98,6 +105,13 @@ func _initialize() -> void:
 		_finish()
 		return
 
+	print("\na part that exists, changed from its own geometry")
+	var changed: String = await _change(dialog)
+	if changed.is_empty():
+		_finish()
+		return
+	later.append(changed)
+
 	print("\nin the library and the parts bin")
 	_in_the_bin([brick, plate, slope] + later)
 
@@ -116,6 +130,8 @@ func _initialize() -> void:
 	_curve_face(curved)
 	print("\nthe 1 x 2 Technic brick")
 	_stack(technic, Vector3(0, 0, 160))
+	print("\n98283 made four long")
+	_stack(changed, Vector3(0, 0, -160))
 
 	print("\nwhat the assistant's checker makes of all of it")
 	_checker()
@@ -124,10 +140,10 @@ func _initialize() -> void:
 	_used(sided, bracket, technic)
 
 	print("\nin the parts list")
-	_parts_list([brick, plate, slope, sided, curved, technic])
+	_parts_list([brick, plate, slope, sided, curved, technic, changed])
 
 	print("\nsaved, and opened where the parts were never made")
-	await _round_trip([brick, plate, slope, sided, curved, technic])
+	await _round_trip([brick, plate, slope, sided, curved, technic, changed])
 	_finish()
 
 
@@ -193,8 +209,12 @@ func _resized(dialog: ElementDialog) -> void:
 	var source: String = _library.custom_source(id)
 	_ok(source.contains("0 // Resized from 3001.dat"),
 		"resized to 7 long it is %s, and says it came from 3001" % id)
-	_ok(not dialog.start_from("3001p01"),
-		"a printed part is not offered for resizing")
+	# A printed part is not one of the families: it is not redrawn as a
+	# plain brick, which would lose its print, but changed as itself.
+	_ok(dialog.start_from("3001p01") and dialog.edit() != null
+			and dialog.edit().from == "3001p01",
+		"a printed part is not redrawn as a plain one: it is changed as itself, print and all")
+	dialog.set_field("family", "brick")
 
 
 func _in_the_bin(ids: Array) -> void:
@@ -401,13 +421,68 @@ func _checker() -> void:
 	for complaint: String in ["floating", "nothing holding", "overlap", "no stud anywhere",
 			"no stud can reach", "collide"]:
 		_ok(not said.to_lower().contains(complaint), "it says nothing about \"%s\"" % complaint)
-	# Six stacks on the baseplate, and the checker finds six pieces: each
-	# made part is joined to the 2 x 4 under it and the one over it, or a
-	# stack would come apart into more.
-	_ok(said.contains("in 6 pieces"),
-		"it finds six pieces, one per stack: each made part joins both its 2 x 4s")
+	# Seven stacks on the baseplate, and the checker finds seven pieces:
+	# each made part is joined to the 2 x 4 under it and the one over it,
+	# or a stack would come apart into more.
+	_ok(said.contains("in 7 pieces"),
+		"it finds seven pieces, one per stack: each made part joins both its 2 x 4s")
 	if not said.is_empty():
 		print("        (it said: %s)" % said.left(400).replace("\n", " / "))
+
+
+## 98283 changed through the dialog: started from by number, made four
+## long, added. Returns its id, or "" if it was not made.
+func _change(dialog: ElementDialog) -> String:
+	dialog.open()
+	_ok(dialog.start_from("98283") and dialog.edit() != null,
+		"98283, not one of the families, is started from as itself: \"%s\""
+			% _library.parts["98283"].name)
+	dialog.set_field("across", 4)
+	var built: PartForge.Result = dialog.built()
+	var said: String = dialog.get("_about").text
+	_ok(built != null and built.problem.is_empty() and said.contains("is 98283's own"),
+		"made four long, the preview built: %s" % said)
+	var made: Array = []
+	dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
+	dialog.press_add()
+	await process_frame
+	var id: String = made[0] if not made.is_empty() else ""
+	var info: PartLibrary.PartInfo = _library.parts.get(id)
+	_ok(info != null and info.name == "Brick  1 x  2 with Embossed Bricks (4 Long)",
+		"Add made %s, \"%s\"" % [id, info.name if info != null else "nothing"])
+	_ok(FileAccess.file_exists(PROBE_DIR + id + ".dat")
+		and _library.custom_source(id).contains("0 !BRICKWORKS CONNECTOR"),
+		"and kept it, its connectors stated in the file")
+	if info == null:
+		return ""
+	# The 1 x 4 LEGO made, 15533: the same studs and tubes in the same places.
+	var ours: PackedStringArray = _plan(_library.mesh_for(id))
+	var theirs: PackedStringArray = _plan(_library.mesh_for("15533"))
+	_ok(not theirs.is_empty() and ours == theirs,
+		"it has 15533's %d studs and tubes, each where 15533 has it" % theirs.size())
+	# And what cannot be done is said, not made.
+	dialog.open()
+	dialog.start_from("3062b")
+	dialog.set_field("across", 3)
+	var refusal: String = dialog.get("_about").text
+	var add: Button = dialog.get("_add")
+	_ok(dialog.built() == null and add.disabled and refusal.contains("no 20 LDU slice"),
+		"3062b made three long is refused, and says why: %s" % refusal)
+	dialog.set_field("family", "brick")
+	return id
+
+
+## A part's studs and tubes as words: kind and where, to a tenth.
+static func _plan(mesh: Lbm.PartMesh) -> PackedStringArray:
+	var out := PackedStringArray()
+	if mesh == null:
+		return out
+	for c: Lbm.Connector in mesh.connectors:
+		if c.kind == "stud" or c.kind == "tube":
+			out.append("%s (%.1f, %.1f, %.1f)" % [c.kind, c.position.x, c.position.y,
+				c.position.z])
+	out.sort()
+	return out
 
 
 ## A curved slope's collision is the curve: over the face is free, under

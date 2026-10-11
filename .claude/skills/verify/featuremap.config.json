@@ -460,6 +460,13 @@
       "entry": "src/parts/custom_parts.gd",
       "reach": "godot --headless --path . --script src/dev/element_probe.gd",
       "area": "elements"
+    },
+    {
+      "kind": "lib",
+      "label": "change a part",
+      "entry": "src/parts/part_editor.gd",
+      "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
+      "area": "elements"
     }
   ]
 }
