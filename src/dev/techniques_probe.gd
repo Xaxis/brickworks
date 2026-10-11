@@ -61,11 +61,23 @@ func _run() -> void:
 		var model := Assistant.Model.new()
 		for raw: Variant in technique["bricks"]:
 			model.placements.append(Assistant.Placement.from_dict(raw))
+		# Turned as it says, where it says: an angled construction is a
+		# section, and built without one it is a different construction.
+		for raw: Variant in technique.get("sections", []):
+			var section: Assistant.Section = Assistant.Section.from_dict(raw)
+			model.sections[section.name] = section
 		var verdict: Dictionary = assistant._check(model)
 		if not bool(verdict["ok"]):
 			_fail("%s does not build: %s" % [name, verdict["summary"]])
 			print("        " + str(verdict["feedback"]).replace(
 				"\n", " ").substr(0, 200))
+			# The one cause that is not the technique's: a turntable, a
+			# hinge or a clip needs the catalogue's shafts and bores, and
+			# a catalogue built before them reads every one as an overlap.
+			var base: PartLibrary.PartInfo = library.parts.get("3680")
+			if base != null and not base.has_connector("bore"):
+				print("        the catalogue has no shafts or bores: it predates "
+					+ "them, and needs tools/build_meshes.py run again")
 			continue
 
 		# And it says what it is for. A construction with no "when" is a

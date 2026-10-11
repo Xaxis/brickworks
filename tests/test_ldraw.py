@@ -407,6 +407,111 @@ def test_stickers_have_no_connectors(library: Library) -> None:
     assert extract(library, "003238a.dat") == []
 
 
+# -- shafts and bores: what round things fit what ------------------------
+
+
+def _rounds_of(library: Library, part: str, kind: ConnectorKind) -> list:
+    return [c for c in extract(library, part) if c.kind is kind]
+
+
+def _spans(found: list) -> list[tuple]:
+    """Each round as radius, then its ends along its axis, rounded."""
+    out = []
+    for c in found:
+        a = c.position
+        b = c.position + c.axis * c.length
+        out.append((round(c.radius, 2), round(a.x, 1), round(a.y, 1), round(a.z, 1),
+                    round(b.x, 1), round(b.y, 1), round(b.z, 1)))
+    return sorted(out)
+
+
+def test_a_bar_is_a_shaft_four_across(library: Library) -> None:
+    """Bar 4L: one shaft, radius 4 (3.2 mm), the bar's whole 80 LDU."""
+    assert _spans(_rounds_of(library, "30374.dat", ConnectorKind.SHAFT)) == [
+        (4.0, 0.0, 0.0, 0.0, 0.0, 80.0, 0.0)]
+    assert _rounds_of(library, "30374.dat", ConnectorKind.BORE) == []
+
+
+def test_a_mirrored_bar_is_still_a_shaft(library: Library) -> None:
+    """The lance lays its bars along z with a mirroring matrix. Counting
+    the mirror as a turn inside out made every one of them a bore."""
+    shafts = _rounds_of(library, "3849.dat", ConnectorKind.SHAFT)
+    assert {round(c.radius, 2) for c in shafts} == {4.0}
+    assert max(c.length for c in shafts) == pytest.approx(132.0)
+    assert _rounds_of(library, "3849.dat", ConnectorKind.BORE) == []
+
+
+@pytest.mark.parametrize("part", ["4085c.dat", "63868.dat", "60470b.dat", "15712.dat"])
+def test_a_clip_is_a_bore_four_across(library: Library, part: str) -> None:
+    """Every clip's eye is a bore a bar fits, and a clip has no shaft."""
+    bores = _rounds_of(library, part, ConnectorKind.BORE)
+    assert bores and {round(c.radius, 2) for c in bores} == {4.0}
+    assert all(c.gender is Gender.FEMALE for c in bores)
+    assert _rounds_of(library, part, ConnectorKind.SHAFT) == []
+
+
+def test_a_hollow_stud_brick_is_bored_right_through(library: Library) -> None:
+    """3062b: radius 4 from the top of its open stud down to the tube, and
+    the tube's 6 on to the bottom — where a lightsaber blade goes."""
+    assert _spans(_rounds_of(library, "3062b.dat", ConnectorKind.BORE)) == [
+        (4.0, 0.0, -4.0, 0.0, 0.0, 4.0, 0.0),
+        (6.0, 0.0, 4.0, 0.0, 0.0, 24.0, 0.0)]
+
+
+@pytest.mark.parametrize("part", ["3001.dat", "3003.dat", "3024.dat", "3068b.dat",
+                                  "3005.dat", "3020.dat"])
+def test_plain_parts_have_no_rounds(library: Library, part: str) -> None:
+    """A tube's inside is where studs go, not a hole through anything, so
+    it is not a bore unless it carries one on; plain bricks have none.
+    Two things that look like exceptions are not: the solid post under a
+    one-wide brick (3622) is radius 4 and a clip grips it as it grips a
+    bar, and a tube drawn by hand rather than from stud4 (3039) is a
+    bore, because the inside of a tube is a hole a pin fits."""
+    found = extract(library, part)
+    assert not [c for c in found
+                if c.kind in (ConnectorKind.SHAFT, ConnectorKind.BORE)]
+
+
+def test_a_hinge_brick_is_a_pin_in_an_eye(library: Library) -> None:
+    """3830's pin and 3831's eye are the same round, radius 6, on the same
+    axis through both origins: the two halves turn about it."""
+    pins = _spans(_rounds_of(library, "3830.dat", ConnectorKind.SHAFT))
+    eyes = _spans(_rounds_of(library, "3831.dat", ConnectorKind.BORE))
+    assert (6.0, 0.0, 8.0, 0.0, 0.0, 22.4, 0.0) in pins
+    assert (6.0, 0.0, 8.0, 0.0, 0.0, 24.0, 0.0) in eyes
+
+
+def test_a_turntable_top_sits_in_its_base(library: Library) -> None:
+    """3679's disc and 3680's recess: radius 17.5, 4 LDU, both at the
+    origin they share when the turntable is assembled at any angle."""
+    disc = _spans(_rounds_of(library, "3679.dat", ConnectorKind.SHAFT))
+    recess = _spans(_rounds_of(library, "3680.dat", ConnectorKind.BORE))
+    assert (17.5, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0) in disc
+    assert (17.5, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0) in recess
+
+
+def test_a_round_survives_the_part_file() -> None:
+    """A shaft keeps its radius and length through the .lbm, where the
+    gender byte carries the radius and the axis the length."""
+    from ldraw import meshfile
+
+    part = meshfile.PartMesh()
+    part.connectors = [
+        meshfile.ConnectorOut("bore", "female", (0.0, 4.0, 0.0), (0.0, -1.0, 0.0),
+                              length=20.0, radius=6.0),
+        meshfile.ConnectorOut("shaft", "male", (30.0, -2.0, 4.0), (0.0, 0.0, -1.0),
+                              length=8.0, radius=17.5),
+        meshfile.ConnectorOut("stud", "male", (10.0, 0.0, 10.0), (0.0, 1.0, 0.0)),
+    ]
+    back = meshfile.read(meshfile.write(part)).connectors
+    assert [(c.kind, c.gender) for c in back] == [
+        ("bore", "female"), ("shaft", "male"), ("stud", "male")]
+    assert back[0].radius == 6.0 and back[0].length == pytest.approx(20.0)
+    assert back[0].axis == pytest.approx((0.0, -1.0, 0.0))
+    assert back[1].radius == 17.5 and back[1].length == pytest.approx(8.0)
+    assert back[2].axis == pytest.approx((0.0, 1.0, 0.0)) and back[2].radius == 0.0
+
+
 # -- occupancy and sockets -----------------------------------------------
 
 if TYPE_CHECKING:

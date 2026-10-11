@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints -->
 
 ## Sub-features
 
@@ -38,7 +38,23 @@ can occupy the same millimetre.
 - `technic joints`: pins, axles and ball joints as real attachments, alongside
   studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
   pin is not a collision), and the two connectors have to be *matched*
-  (`Assistant._connectors_mating`, so the pinned part is not floating).
+  (`Joints.both_ways` over `Assistant._mating_entries`, so the pinned part is
+  not floating).
+- `round joints`: something round turning in something round that fits it —
+  a clip on a bar, a bar in a hollow stud, a hinge's pin in its eye, a 2x2
+  turntable's top on its base, at any angle about their shared axis. The
+  pipeline records each part's **shafts** (cylinders facing out) and **bores**
+  (facing in, after `BFC INVERTNEXT`) with radius and length
+  (`connectivity.rounds`); `Joints.rounds` pairs a shaft with a coaxial bore of
+  the same size (within `ROUND_FIT` 1 LDU across and `ROUND_OFF_AXIS` 1 LDU off
+  the axis) that it reaches into, and the checker forgives an overlap between
+  the two only where every shared cell lies inside a bore on that axis that the
+  other part reaches into, and not in plastic standing inside that bore
+  (`Joints.overlap_within`, `Assistant._joints_out`) — so the same two parts
+  meeting anywhere else still collide. A round joint holds both ways for
+  support and pieces, as a pin does. Pins, panes and rounds are forgiven inside
+  a section too, which nothing was before. Needs a catalogue built with the
+  rounds; see `pipeline.md`.
 
 ## How to reach it
 
@@ -60,6 +76,7 @@ godot --headless --path . --script src/dev/dimensions_probe.gd   # in millimetre
 godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes
+godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
@@ -68,6 +85,14 @@ godot --headless --path . --script src/dev/holds_probe.gd        # and whether t
 godot --headless --path . --script src/dev/attach_probe.gd       # are the coordinates usable
 python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if installed
 ```
+
+`joints_probe` ends on "the joints real sets use pass, and the same parts apart
+do not": each family where real sets put it, and wrong — a bar through a brick
+with no hole, a Technic axle in a clip, a hinge's top half a stud into its base
+or 2 LDU off its pivot or swung into its base, a turntable's top 2 LDU or a stud
+off its base, or turned 45 degrees about the wrong point. On a catalogue built
+before the rounds its first five lines fail, and every case that should pass
+fails with them.
 
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at
@@ -179,6 +204,30 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   within `OFF_AXIS` 4 LDU of the mate's axis line and `ALONG_AXIS` 20 LDU along
   it. Do not "simplify" one into the other.
 
+- **Which way a cylinder faces is its INVERTNEXTs, not its matrix.**
+  `geometry.flatten` reverses the winding under a mirrored matrix, but only
+  because mirroring reversed it first; the two cancel. Counting the mirror in
+  `connectivity._round_walk` made every bar of the lance 3849 a bore (its
+  cylinders are laid along z by a matrix with a negative determinant) and every
+  clip's eye a shaft. `test_a_mirrored_bar_is_still_a_shaft` holds it.
+- **A round joint's zone has slack, and a turned part needs more.** A square
+  part's cells are those whose middles are inside it, and its boxes reach half a
+  cell's diagonal (1.41 LDU) past a curve, so `ROUND_SLACK` is 1.5. A turned part
+  keeps every cell its boxes touch at all, another half diagonal (1.73), so
+  `ROUND_SLACK_TURNED` is 3.2. Measured with `joints_probe`: at 1.5 a turntable's
+  top turned 10, 30 or 45 degrees on its base is an overlap; at 2.5 it passes.
+  Only the zone grows; the joint itself still needs the axes within 1 LDU.
+- **A bore is empty only between its wall and what stands inside it.** 3941, a
+  2x2 round brick, is a bore 16 across with its centre tube, a shaft 8 across,
+  inside it. So a joint's zone is each part's bores on that axis *that the
+  other's shafts reach*, less the part's own narrower shafts in them (`cores`,
+  `Joints._zones_of`). Taking every coaxial bore as empty would have forgiven
+  anything overlapping the tube once a pin was in its foot; the probe's
+  synthetic 3941 fails without the cores.
+- **A loose fit is not a joint.** A bar 4 across in a tube 6 across (the
+  bottom of 3062b) is physically clear of it, but it is also what a bar pushed
+  into solid plastic would look like to a looser rule, so `ROUND_FIT` stays at
+  1 LDU and that lamp (31038) stays refused.
 - **A section is checked against itself in its own frame.** Checked against the
   world, a tipped section collides with itself at every angle — three overlaps,
   every time, for a model that is perfectly fine.

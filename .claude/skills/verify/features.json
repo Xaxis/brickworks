@@ -40,19 +40,19 @@
       "tests": []
     },
     {
-      "id": "cli:build the desktop packages",
-      "kind": "cli",
-      "entry": "tools/release.py",
-      "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
-      "area": "release",
-      "tests": []
-    },
-    {
       "id": "cli:build custom parts",
       "kind": "cli",
       "entry": "tools/build_custom.py",
       "reach": "tools/build_custom.py PART.dat --out DIR   (needs numpy and scipy)",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "cli:build the desktop packages",
+      "kind": "cli",
+      "entry": "tools/release.py",
+      "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
+      "area": "release",
       "tests": []
     },
     {
@@ -366,6 +366,14 @@
       "tests": []
     },
     {
+      "id": "lib:round joints",
+      "kind": "lib",
+      "entry": "src/assembly/joints.gd",
+      "reach": "godot --headless --path . --script src/dev/joints_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:save and reopen",
       "kind": "lib",
       "entry": "src/parts/model_store.gd",
@@ -478,19 +486,19 @@
       "tests": []
     },
     {
-      "id": "ui:minifig builder",
-      "kind": "ui",
-      "entry": "src/ui/minifig_dialog.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   (by hand: M, or the Minifig button)",
-      "area": "minifig",
-      "tests": []
-    },
-    {
       "id": "ui:make a part",
       "kind": "ui",
       "entry": "src/ui/element_dialog.gd",
       "reach": "godot --path .  (Parts bin, Make a part\u2026)  /  godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "ui:minifig builder",
+      "kind": "ui",
+      "entry": "src/ui/minifig_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   (by hand: M, or the Minifig button)",
+      "area": "minifig",
       "tests": []
     },
     {

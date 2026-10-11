@@ -4476,7 +4476,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## Which placements a pin, axle or ball joins to which. Needed before
 	## the first brick goes into the lattice, because a joint is allowed
 	## to overlap and the lattice finds out in placement order.
-	var joined: Dictionary = _connectors_mating(model)
+	var entries: Array = _mating_entries(model)
+	var joined: Dictionary = Joints.both_ways(entries)
+	## And which turn in something round that fits them, with where: a clip
+	## on a bar, a bar in a hollow stud, a hinge, a turntable. See
+	## [method Joints.rounds].
+	var rounds: Dictionary = Joints.rounds(entries)
 	## index -> where that placement went, for the inserts below.
 	var placed_at: Dictionary = {}
 
@@ -4615,8 +4620,14 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# to put it in — and on a model with four sections that was
 			# the whole cost of checking it.
 			var here: PackedInt32Array = builder.boxes_for(part, square)
-			var near: PackedInt64Array = _give_way(own.blockers_boxes(here),
-				placement, index, model, gave_way)
+			# The joints below are forgiven here as well. They were only ever
+			# asked about between sections, so a hinge, a clip on a bar or a
+			# pin inside one turned assembly was refused for what the same
+			# parts did square.
+			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
+				index, model, placed_at, joined, rounds, here, own,
+				model.section_for(placement).placed(), true)
+			near = _give_way(near, placement, index, model, gave_way)
 			if gave_way.has(index):
 				continue
 			if not near.is_empty():
@@ -4659,28 +4670,18 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# the bore stays at the shaft's radius and the joint is forgiven
 		# instead — only between the two parts the joint actually names,
 		# so every other overlap still reports.
-		if not blockers.is_empty() and joined.has(index):
-			var mates: Dictionary = joined[index]
-			var rest: PackedInt64Array = PackedInt64Array()
-			for key: int in blockers:
-				if key > 0 and not mates.has(key - 1):
-					rest.append(key)
-				elif key <= 0:
-					rest.append(key)
-			blockers = rest
-
+		#
 		# A pane in its window frame, or a door in its door frame, where
 		# real sets put it. See [constant NESTS].
-		if not blockers.is_empty():
-			var kept: PackedInt64Array = PackedInt64Array()
-			for key: int in blockers:
-				var other: int = key - 1
-				if key > 0 and placed_at.has(other) and _seated(
-						placement.part, at, model.placements[other].part,
-						placed_at[other]):
-					continue
-				kept.append(key)
-			blockers = kept
+		#
+		# And something round in something round that fits it, which is a
+		# clip on a bar, a bar in a hollow stud, a hinge and a turntable:
+		# of 880 real sets' sub-models the checker refused 232 for
+		# overlaps, and these were most of them. Forgiven only where the
+		# overlap lies inside the bore, so the same two parts meeting
+		# anywhere else still collide. See [method Joints.rounds].
+		blockers = _joints_out(blockers, index, model, placed_at, joined,
+			rounds, packed, lattice, Transform3D.IDENTITY, false)
 
 		if not blockers.is_empty() and placement.id != 0 \
 				and not placement.moved:
@@ -4776,7 +4777,15 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## kind -> Array of sentences, said as advice once the faults are in.
 	var loose: Dictionary = {}
 	var floating: Dictionary = {}
-	_check_support(model, cells_of, lattice, issues, crowded, joined,
+	# A round joint holds both ways, as a pin does: a flag clipped to a
+	# lance hangs from the lance, and a turntable's top is held by its base.
+	var holds: Dictionary = joined.duplicate(true)
+	for index: Variant in rounds:
+		if not holds.has(index):
+			holds[index] = {}
+		for other: Variant in rounds[index]:
+			(holds[index] as Dictionary)[other] = true
+	_check_support(model, cells_of, lattice, issues, crowded, holds,
 		loose, boxes_of, floating)
 	for kind: String in loose:
 		var said: Array = loose[kind]
@@ -4859,7 +4868,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not lopsided.is_empty():
 		advice.append(lopsided)
 
-	var pieces: int = _count_pieces(model, cells_of, lattice, boxes_of)
+	var pieces: int = _count_pieces(model, cells_of, lattice, boxes_of, holds)
 
 	var errors: int = 0
 	for kind: String in issues:
@@ -5545,13 +5554,21 @@ func _unbonded_seam(box_of: Dictionary) -> String:
 
 
 func _count_pieces(model: Model, cells_of: Dictionary,
-		lattice: BrickLattice, boxes_of: Dictionary = {}) -> int:
+		lattice: BrickLattice, boxes_of: Dictionary = {},
+		holds: Dictionary = {}) -> int:
 	if cells_of.size() <= 1:
 		return cells_of.size()
 
 	var joined: Dictionary = {}   ## index -> Array of index
 	for index: int in cells_of:
 		joined[index] = []
+	# And the joints, which support counts and this did not: a flag clipped
+	# to a lance was held up and yet a piece of its own.
+	for index: Variant in holds:
+		for other: Variant in holds[index]:
+			if joined.has(index) and joined.has(other):
+				joined[index].append(other)
+				joined[other].append(index)
 	# What sits directly on each brick, asked as a slab across its top
 	# rather than cell by cell. A brick is nine thousand six hundred
 	# cells and each was a question for the lattice: free while a cell
@@ -5646,13 +5663,14 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 	return held
 
 
-## Which placements are held by something pushed into them, or by
-## something they are pushed into.
+## Each placement as [Joints] wants it, to ask which are held by something
+## pushed into them, or by something they are pushed into, and which turn
+## in something round.
 ##
 ## The matching itself lives in [Joints], because the booklet needs the
 ## same answer from a world of bricks rather than a model of placements,
 ## and two copies of it would drift.
-func _connectors_mating(model: Model) -> Dictionary:
+func _mating_entries(model: Model) -> Array:
 	var entries: Array = []
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
@@ -5661,7 +5679,7 @@ func _connectors_mating(model: Model) -> Dictionary:
 			continue
 		entries.append([index, _transform(placement, part,
 			model.section_for(placement)), part])
-	return Joints.both_ways(entries)
+	return entries
 
 
 ## Where a brick stops, in the units the placement was written in.
@@ -6209,16 +6227,74 @@ static func _gives(gives: Dictionary, holder: int, held: int) -> void:
 ## the frame's own LDraw coordinates. Only there is the overlap
 ## forgiven, to within an LDU: a pane anywhere else is a fault as
 ## before.
+##
+## Measured again over the same sets, 2026-10-10, for the panes 880 real
+## sub-models were still refused for: 3854 in 6556 (28 a side, in three
+## files, 4 to 6 in) and in 60594, 60607 in 60594 (15 a side) where 60608
+## sits, 86210 in 60594 (18, 4 in, give or take an LDU in seven files),
+## 38320 at 60592's origin (64), and 57895 in 57894 (6, 3 out). And the
+## seats the table had one way round that sets use both: 57895 turned
+## half round in 60596 (9 of 29), 60603 4 in and square (2 files). Then
+## the two seats still refused after that: 10190 Market Street sets its
+## left 3854 3 in where the right is 4 (five sub-models of one window),
+## and 10297 Boutique Hotel turns 86210 half round 2 in (7).
 const NESTS: Dictionary = {
 	"60601": [["60592", 0, 0, 0, 0]],
 	"60602": [["60593", 0, 0, 0, 0]],
-	"57895": [["60596", 0, 4, 5, 0]],
+	"38320": [["60592", 0, 0, 0, 0]],
+	"57895": [["60596", 0, 4, 5, 0], ["60596", 0, 4, 5, 2],
+		["57894", 0, 4, -3, 0], ["57894", 0, 4, -3, 2]],
 	"60623": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
 	"60616a": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
 	"60616b": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
-	"60603": [["60594", 0, 8, 5, 2]],
+	"60603": [["60594", 0, 8, 5, 2], ["60594", 0, 8, 4, 0]],
 	"60608": [["60594", -32, 4, 4, 3], ["60594", 32, 4, 4, 1]],
+	"60607": [["60594", -32, 4, 4, 3], ["60594", 32, 4, 4, 1]],
+	"86210": [["60594", 0, 8, 4, 0], ["60594", 0, 8, 2, 2]],
+	"3854": [["6556", -34, 4, 5, 3], ["6556", 34, 4, 5, 1], ["6556", -34, 4, 3, 3],
+		["60594", -34, 4, 4, 3], ["60594", 34, 4, 4, 1]],
 }
+
+
+## What is left of [param blockers] once the parts that are meant to meet
+## inside one another are taken out: a pin in its hole, a pane in its
+## frame, and something round in something round that fits it where they
+## overlap nowhere but in the round.
+##
+## [param mine] is this placement's cover, [param against] the lattice
+## the others' covers are in, and [param to_world] carries that lattice's
+## cells into the world's coordinates, which the joints are in — the two
+## differ only inside a section. [param square] says the cells are square
+## to both parts, as a section's own are.
+func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
+		placed_at: Dictionary, joined: Dictionary, rounds: Dictionary,
+		mine: PackedInt32Array, against: BrickLattice, to_world: Transform3D,
+		square: bool) -> PackedInt64Array:
+	if blockers.is_empty():
+		return blockers
+	var pinned: Dictionary = joined.get(index, {})
+	var turning: Dictionary = rounds.get(index, {})
+	var at: Transform3D = placed_at[index]
+	var kept := PackedInt64Array()
+	for key: int in blockers:
+		var other: int = key - 1
+		if key > 0 and other < model.placements.size():
+			if pinned.has(other):
+				continue
+			if placed_at.has(other) and _seated(model.placements[index].part, at,
+					model.placements[other].part, placed_at[other]):
+				continue
+			if turning.has(other) and placed_at.has(other):
+				var slack: float = Joints.ROUND_SLACK
+				if not square and not (BrickLattice.is_square_to_grid(at.basis)
+						and BrickLattice.is_square_to_grid(
+							(placed_at[other] as Transform3D).basis)):
+					slack = Joints.ROUND_SLACK_TURNED
+				if Joints.overlap_within(mine, against.boxes_of(key),
+						turning[other], to_world, slack):
+					continue
+		kept.append(key)
+	return kept
 
 
 ## Whether two parts are an insert and its frame, seated as real sets
@@ -7443,20 +7519,37 @@ func _show_technique(wanted: String) -> String:
 			% [wanted, Techniques.listing()])
 
 	var rows := PackedStringArray()
+	# An angled one is a section, said first so the bricks that name it
+	# read as being in it.
+	for raw: Variant in technique.get("sections", []):
+		var section: Dictionary = raw
+		rows.append("  section \"%s\" at x=%s y=%s z=%s, turned %s degrees about %s"
+			% [section["name"], Placement._num(float(section["x"])),
+				Placement._num(float(section["y"])), Placement._num(float(section["z"])),
+				Placement._num(float(section["degrees"])), section["axis"]])
 	for raw: Variant in technique["bricks"]:
 		var brick: Dictionary = raw
 		var face: String = str(brick.get("face", "up"))
-		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s" % [
+		var inside: String = str(brick.get("section", ""))
+		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s%s" % [
 			brick["part"], brick["color"],
 			Placement._num(float(brick["x"])),
 			Placement._num(float(brick["y"])),
 			Placement._num(float(brick["z"])),
 			brick.get("rot", 0),
-			"" if face == "up" else " face=" + face])
+			"" if face == "up" else " face=" + face,
+			"" if inside.is_empty() else " section=" + inside])
+	# A section's bricks are in its own coordinates and go where it goes.
+	# Told only to add to x, y and z, a design would move them twice and
+	# take a turntable's top off its base.
+	var move: String = "Move it where you need it by adding to x, y and z"
+	if not (technique.get("sections", []) as Array).is_empty():
+		move += (" of the section and of the bricks outside it; the bricks "
+			+ "in the section are in its own coordinates and move with it")
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
 		% [str(technique["name"]).capitalize(), technique["when"],
 			technique["why"], "\n".join(rows)]
-		+ "Move it where you need it by adding to x, y and z. Every one "
+		+ move + ". Every one "
 		+ "of these is checked against the same lattice your design is, "
 		+ "so it holds together as it stands.")
 

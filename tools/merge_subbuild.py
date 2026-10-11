@@ -21,9 +21,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 GENERATED = ROOT / "assets" / "generated"
 
-# Added later by tools/refresh_catalogue.py, so not part of the compare.
+# Added later by tools/refresh_catalogue.py, so not part of the compare,
+# and carried over to a merged entry because the sub-build does not make
+# them. in_sets was missing: merging 2,379 rebuilt parts on 2026-10-10
+# took it off 1,239 of them, so the parts bin and search, which rank by
+# it, would have sunk every one of them below parts no set uses.
 LATER = ("colors", "colors_recent", "colors_partial", "years",
-         "packed", "reachable")
+         "packed", "reachable", "in_sets")
 
 
 def bare(entry: dict) -> dict:

@@ -395,6 +395,25 @@ example passes. That checker work (turntables and bars in
 `tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
 angled example can. Not yet measured on an Orthanc run.
 
+Round joints, 2026-10-10. A clip on a bar, a bar in a hollow stud, a
+hinge's pin in its eye and a turntable's top on its base are one joint,
+something round in something round that fits it, and the parts pipeline
+now records it: each part's shafts and bores, read off the cylinders it
+is drawn with and which way their winding faces. The checker forgives an
+overlap between a shaft and a coaxial bore of its size only inside the
+bore, so the same parts meeting anywhere else still collide
+(`Joints.rounds`, `src/dev/joints_probe.gd`). Over the same 880 real
+sub-models: 564 pass → 617, refused for overlaps 232 → 182, none newly
+refused; hollow studs 20 of 75 now pass, clips 6 of 36, bars and axles
+through holes 6 of 57, hinges 3 of 10, panes 5 of 25. The library has its
+first angled example, Cafe Corner's corner entrance steps on their
+turntable at 45 degrees (`corner on a turntable`). Still refused: handles
+and gates whose cover fills the opening a clip passes through, 75937 (its
+cover is its bounding box), and a long tail of covers. **The shipped
+catalogue predates the rounds**: 17,539 parts need rebuilding to carry
+them (`.claude/skills/verify/features/pipeline.md`); until then the
+checker forgives none of these. Not yet measured on an Orthanc run.
+
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety
 (shapes, colours) moved least of all. `add_rooms` lays a floor at each
@@ -420,9 +439,8 @@ at the fantasy median (23) for the first time, from six.** Angled 13% from
 the prism. What fell is the finish: the faces were prism sections, which the
 finishing pass cannot reach ("restyle only touched 5 bricks"), and the
 prism was laid without its own masonry and sideways, so sideways 1% and
-plain 61%; it ran out of its 90 minutes placing figures. Next on the same
-rule: the prism's masonry and sideways in its recipe by default, or the
-finishing pass reaching into sections.
+plain 61%; it ran out of its 90 minutes placing figures. Since: the prism dresses its faces by default (masonry 0.25, sideways
+0.15), and the catalogue is rebuilt with the rounds.
 
 ## Long term: custom elements
 
