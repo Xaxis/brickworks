@@ -176,6 +176,23 @@ picture the assistant is shown.
   On a 1,895-part castle the jump between consecutive steps went from a median
   of 12.5 studs (90th 38) to 6.2 (90th 12). `--booklet=PATH` with `--model=`
   writes the booklet and quits — about three minutes for that castle on the GPU.
+  Sub-assemblies are built on the side, as a real booklet's callouts are: a
+  minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
+  places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
+  the model) and one piece — a top-level one, or one nested a level inside a
+  big one (`LdrModel.Placement.unit` keeps "House#1/Window#3", and the brick
+  carries it as `Brick.unit`). Each stands in the main build as one node; its
+  own steps (`Step.in_callout()`, up to `CALLOUT_PER_STEP`, a figure in one)
+  come just before the step that puts it on (`Step.attaches()`, no bricks of
+  its own, `copies` holding each copy). Copies of one kind (same name, parts
+  and colours) ready together are built once, "2x" (`Step.times`; the picture
+  shows `shown_ids`, the first copy). A callout's steps carry the number of
+  the step it goes on in (`Step.number`; `Step.caption()` is what the timeline
+  prints). A part with nothing under it (a tap on a side stud, a wheel) waits
+  for what it touches (`_find_hangers`), unless that makes a loop. Steps take
+  4 bricks under 150 parts, 6 under 500, else 8 (`_per_step`). Supports are
+  found through a two-stud grid and the order through a set of ready bricks:
+  the 8,603-part Orthanc planned in 87 s and now in 5.
 - `mosaic`: a picture turned into a plate of tiles that still looks like the
   picture.
 
@@ -201,7 +218,9 @@ godot --headless --path . --script src/dev/controls_probe.gd      # every advert
 godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd  # the pointer in every state, and back
 godot --headless --path . --script src/dev/glyph_probe.gd         # the font can draw every character shown
 godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet could be followed
-#   covers the Technic ordering case via models/kart.ldr
+#   covers the Technic ordering case via models/kart.ldr, a shed whose two
+#   windows are one sub-model placed twice (a "2x" callout) and a figure, and
+#   31009 Skaters House from vendor/omr when it is there
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face

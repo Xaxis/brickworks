@@ -44,6 +44,9 @@ class Brick extends RefCounted:
 	## The part of the model it belongs to — an assembly a design named,
 	## or a sub-model of the file it came from. Empty for most bricks.
 	var group: String = ""
+	## Which copy of which sub-model it was read from, for the booklet to
+	## build as a sub-assembly: see LdrModel.Placement.unit.
+	var unit: String = ""
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id

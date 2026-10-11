@@ -35,6 +35,12 @@ class Placement extends RefCounted:
 	## The sub-model of the document it was placed in at the top level,
 	## by that sub-model's title: which assembly of the model it is.
 	var group: String = ""
+	## Which copy of which sub-model it came in, two levels deep: a part
+	## of the third window in the house is "House#1/Window#3". A document
+	## that builds its window once and places it four times is saying
+	## what a booklet says with a "4x" callout, and flattening it into
+	## the wall threw that away. Empty for a part the model places itself.
+	var unit: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -334,7 +340,8 @@ static func from_transform(at: Transform3D) -> PackedFloat64Array:
 func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
 	if main != null:
-		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "")
+		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
+			{})
 	return out
 
 
@@ -346,7 +353,9 @@ func _inline(
 	known_parts: Dictionary,
 	visiting: Dictionary,
 	depth: int,
-	group: String
+	group: String,
+	unit: String,
+	copies: Dictionary
 ) -> void:
 	if depth > 32 or visiting.has(_key(sub.name)):
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
@@ -362,14 +371,23 @@ func _inline(
 			# A sub-model referenced by the model itself is one of its
 			# assemblies; what that sub-model nests stays part of it.
 			var named: String = group
+			var inside: String = unit
+			var kind: String = (nested.title if not nested.title.is_empty()
+				else _key(nested.name))
 			if depth == 0:
-				named = (nested.title if not nested.title.is_empty()
-					else _key(nested.name))
+				named = kind
+			if depth <= 1:
+				# Each copy its own unit: the four windows are four
+				# assemblies of one kind, not one assembly of sixteen parts.
+				copies[kind] = int(copies.get(kind, 0)) + 1
+				var copy: String = "%s#%d" % [kind, int(copies[kind])]
+				inside = copy if depth == 0 else "%s/%s" % [unit, copy]
 			_inline(
 				nested,
 				at * placement.transform,
 				placement.color_code if placement.color_code != 16 else color,
-				out, known_parts, visiting.duplicate(), depth + 1, named)
+				out, known_parts, visiting.duplicate(), depth + 1, named,
+				inside, copies)
 			continue
 
 		var resolved: int = placement.color_code
@@ -378,6 +396,7 @@ func _inline(
 		var placed := Placement.new(
 			placement.part_id, resolved, at * placement.transform, placement.step)
 		placed.group = group
+		placed.unit = unit
 		out.append(placed)
 
 	visiting.erase(sub.name.to_lower())
