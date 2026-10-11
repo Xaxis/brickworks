@@ -12,11 +12,40 @@
 //
 // No client address is passed on, so api/otp.js's per-address limit has
 // nothing to count here; its per-email limit, the one a probe checks, does.
+//
+// With --static=DIR it also serves a web export from DIR, with the two
+// headers the threaded build needs, so a local build talks to these same
+// functions as it would on Vercel: tools/web/freeze_check.mjs drives one
+// over the connector this way.
+//
+//   node tools/web/relay_server.mjs 8790 --static=build/web
 import http from "node:http";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, normalize } from "node:path";
 
 const port = Number(process.argv[2] || 8790);
+const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
 const routes = new Map();
+const TYPES = {
+  ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm",
+  ".pck": "application/octet-stream", ".png": "image/png", ".json": "application/json",
+  ".svg": "image/svg+xml", ".ico": "image/x-icon", ".css": "text/css",
+};
+
+// A file of the export, or false when there is none by that name.
+function serveFile(pathname, outgoing) {
+  if (!site) return false;
+  const file = normalize(join(site, decodeURIComponent(pathname === "/" ? "/index.html" : pathname)));
+  if (!file.startsWith(normalize(site)) || !existsSync(file) || !statSync(file).isFile()) return false;
+  outgoing.writeHead(200, {
+    "content-type": TYPES[extname(file)] || "application/octet-stream",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-embedder-policy": "require-corp",
+    "cache-control": "no-store",
+  });
+  outgoing.end(readFileSync(file));
+  return true;
+}
 
 async function route(name) {
   if (!/^[a-z]+$/.test(name)) return null;
@@ -31,6 +60,7 @@ http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
   const found = /^\/api\/([a-z]+)\/?$/.exec(url.pathname);
   const handler = found ? await route(found[1]) : null;
+  if (!handler && !found && serveFile(url.pathname, outgoing)) return;
   if (!handler) {
     outgoing.writeHead(404);
     return outgoing.end();

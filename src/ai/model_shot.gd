@@ -49,6 +49,13 @@ const MOST_FRAMES := 90
 ## A variable so a probe can set it to nothing and watch the fallback.
 var give_up_after: float = 20.0
 
+## Time spent waiting for the graphics card to hand a picture back, summed
+## until whoever times frames takes it (Main._watch_own_frames). Reading a
+## picture waits for everything queued to be drawn: a few milliseconds on a
+## graphics card, and in a browser drawing in software, tens of seconds. A
+## frame that waited on drawing has not been doing this app's work.
+static var gpu_wait_us: int = 0
+
 ## Where each named view looks from, as a direction the camera sits
 ## along. The default is a three-quarter view, because an elevation
 ## flattens exactly the depth that tells you whether a shape works.
@@ -157,6 +164,8 @@ func _build() -> void:
 
 	_stage = BrickWorld.new()
 	_stage.library = library
+	# A copy made for pictures has no history worth keeping.
+	_stage.keeps_history = false
 	_viewport.add_child(_stage)
 
 
@@ -175,11 +184,38 @@ var highlight: Dictionary = {}
 const PICKED_OUT := 5
 
 
+## What was last staged, so a second picture of an unchanged model does not
+## stage it again: the world, its revision, what was left out and what was
+## picked out. Staging the owner's 4,242-part Falcon Heavy is every brick
+## added to a second world and every batch written, and a picture used to
+## do it twice — once to aim the camera, once more before reading the
+## pixels — and every picture after it again.
+var _staged: Array = []
+var _staged_bounds := AABB()
+
+
+##
+## And a slice a frame (FramePace), drawn when whole: copying four thousand
+## bricks was most of a second of a browser's one thread in one go.
 func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
+	var wanted: Array = [world.get_instance_id(), world.generation(),
+		world.revision, skip.size(), skip.hash(), highlight.hash()]
+	if wanted == _staged:
+		return _staged_bounds
+	_staged = wanted
 	_stage.clear()
+	_stage.hold_drawing()
+	var pace := FramePace.new()
 	var box := AABB()
 	var first: bool = true
 	for brick: BrickWorld.Brick in world.bricks():
+		if pace.due():
+			await pace.next()
+			if world.revision != wanted[2]:
+				# The model changed while it was being copied: start again.
+				_stage.release_drawing()
+				_staged = []
+				return await _restage(world, skip)
 		if skip.has(brick.id):
 			continue
 		# What just changed, in a colour it cannot be in otherwise.
@@ -198,6 +234,8 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 		var here: AABB = (brick.transform * part.bounds).abs()
 		box = here if first else box.merge(here)
 		first = false
+	_stage.release_drawing()
+	_staged_bounds = box
 	return box
 
 
@@ -292,7 +330,7 @@ func _take(world: BrickWorld, from: String,
 	# frame, and the model the picture was taken of was a few percent of
 	# it in one corner — so the assistant was shown, over and over, a
 	# large grey square.
-	var bounds: AABB = _restage(world, skip)
+	var bounds: AABB = await _restage(world, skip)
 	if bounds.size.length() <= 0.0:
 		return null
 	# Staged in full either way, so what is around the part being looked
@@ -357,7 +395,11 @@ func _take(world: BrickWorld, from: String,
 	# about twenty-five frames and every one after it takes six,
 	# because the first one is also compiling shaders. Six gave a blank
 	# picture once per session — always the first, always silently.
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	#
+	# Drawn once a try, not every frame of it. Updating always drew the
+	# copy six times a picture, and reading the picture back waits for the
+	# graphics card to finish everything queued: on the owner's 4,242-part
+	# Falcon Heavy in a browser, drawing in software, that read took 45 s.
 	var frames: int = 0
 	var taken: Image = null
 	var until: float = Time.get_unix_time_from_system() + give_up_after
@@ -367,16 +409,21 @@ func _take(world: BrickWorld, from: String,
 		# hands back the state it had at the previous staging, so a
 		# model staged once and then waited on comes back as whatever
 		# was there before it — which, the first time, is nothing.
+		# Only if the model changed meanwhile: _restage keeps what it
+		# staged, and an unchanged model is already there.
 		if frames > 0:
-			_restage(world, skip)
+			await _restage(world, skip)
 		_camera.current = true
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 		for _n: int in FRAMES_TO_DRAW:
 			await get_tree().process_frame
 		frames += FRAMES_TO_DRAW
 		var texture: ViewportTexture = _viewport.get_texture()
 		if texture == null:
 			continue
+		var asked: int = Time.get_ticks_usec()
 		var image: Image = texture.get_image()
+		gpu_wait_us += Time.get_ticks_usec() - asked
 		# One flat colour is what a viewport that has not drawn yet
 		# hands back, and a picture of nothing offered as a picture of
 		# the model is worse than none — it is a confident answer about
@@ -409,14 +456,27 @@ func block(world: BrickWorld, from: String,
 	var image: Image = await take(world, from, skip, only)
 	if image == null:
 		return {}
-	var bytes: PackedByteArray = image.save_png_to_buffer()
-	if bytes.is_empty():
+	# Encoded on a worker where there are workers: a megapixel PNG and its
+	# base64 are a few hundred milliseconds of the page's one thread on the
+	# web, for every picture a design takes. The image is this call's own.
+	var encoded: Array = [PackedByteArray(), ""]
+	var encode := func() -> void:
+		encoded[0] = image.save_png_to_buffer()
+		encoded[1] = Marshalls.raw_to_base64(encoded[0])
+	if OS.has_feature("nothreads"):
+		encode.call()
+	else:
+		var task: int = WorkerThreadPool.add_task(encode, false, "encode a picture")
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+	if (encoded[0] as PackedByteArray).is_empty():
 		return {}
 	return {
 		"type": "image",
 		"source": {
 			"type": "base64",
 			"media_type": "image/png",
-			"data": Marshalls.raw_to_base64(bytes),
+			"data": encoded[1],
 		},
 	}

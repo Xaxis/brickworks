@@ -50,8 +50,10 @@ picture the assistant is shown.
   `Main`'s `built` handler; never in a run driven from the command line). Only
   what is new: `Assistant.fresh_ids` is what the last build or edit put down or
   moved, and everything else stays on show (`Main._already_standing`), so a
-  recolour plays nothing and `add_rooms` plays the rooms. Up to
-  `PLANNED_UP_TO` (300) new bricks the order is the booklet's
+  recolour plays nothing and `add_rooms` plays the rooms; a design shown by
+  `check_design` (or drawn as it streamed in) and then submitted unchanged is
+  already standing and plays nothing either. Up to
+  `PLANNED_UP_TO` (200) new bricks the order is the booklet's
   (`Instructions.plan`); past it, course by course, one sort of packed keys. A
   step costs a count per batch: `BrickWorld.begin_reveal` writes each batch
   once with its bricks in build order, so the ones on show are always the first
@@ -114,7 +116,15 @@ picture the assistant is shown.
   seen; a close look at one part of a model too big to judge whole; and, after an
   edit, the bricks that edit added or moved restaged in magenta, so the design can
   find its own change by looking rather than by re-reading coordinates. The stage
-  is a copy of the world — the model keeps the colours it was given.
+  is a copy of the world — the model keeps the colours it was given. It is
+  staged again only when the world's `revision`, what is left out or what is
+  picked out changed (`ModelShot._restage`, a slice a frame by `FramePace`
+  and drawn when whole), keeps no history, and is drawn
+  once a try (`UPDATE_ONCE`), not every frame of six: reading a picture back
+  waits for everything queued to be drawn, and on the owner's 4,242-part Falcon
+  Heavy in a browser drawing in software that read was 45 s. The PNG and its
+  base64 are made on a worker. `ModelShot.gpu_wait_us` sums the read-back wait,
+  which `Main._watch_own_frames` reports apart from the app's own work.
 - `seams between bricks`: `src/render/plastic_body.gdshaderinc`. A real brick
   is 0.2 mm short of its pitch, so two that meet show a seam; the meshes carry no
   edge lines, and without one a wall of forty bricks and a wall of four drew as

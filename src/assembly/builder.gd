@@ -619,6 +619,11 @@ func _rotated_bounds(part: Lbm.PartMesh, basis: Basis) -> AABB:
 ## box they came from.
 ## Turned covers already worked out, by part and angle.
 var _turned_cache: Dictionary = {}
+## The same for a check running on a worker thread (Assistant._checked),
+## kept apart so neither thread writes a Dictionary the other is reading,
+## and locked because the design loop and a connector could both check.
+var _turned_off_main: Dictionary = {}
+var _turned_lock := Mutex.new()
 
 
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
@@ -640,11 +645,21 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	# in a section shares one angle, so a section of two hundred costs
 	# one.
 	var key: String = "%d|%s" % [part.get_instance_id(), at.basis]
-	var shape: PackedInt32Array = _turned_cache.get(key, PackedInt32Array())
-	if shape.is_empty():
-		shape = BrickLattice.boxes_for_turned(
-			part.boxes, Vector3i.ZERO, at.basis)
-		_turned_cache[key] = shape
+	var shape: PackedInt32Array
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		shape = _turned_cache.get(key, PackedInt32Array())
+		if shape.is_empty():
+			shape = BrickLattice.boxes_for_turned(
+				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_cache[key] = shape
+	else:
+		_turned_lock.lock()
+		shape = _turned_off_main.get(key, PackedInt32Array())
+		if shape.is_empty():
+			shape = BrickLattice.boxes_for_turned(
+				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_off_main[key] = shape
+		_turned_lock.unlock()
 	var out := PackedInt32Array()
 	out.resize(shape.size())
 	var n: int = 0

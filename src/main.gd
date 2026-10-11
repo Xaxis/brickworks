@@ -23,6 +23,10 @@ var _counts_base: String = ""
 var _stability_at: int = 0
 ## The world's revision the stability line was worked out for.
 var _stability_revision: int = -1
+## Whether a worker is weighing the model now.
+var _weighing: bool = false
+## Bricks from which the model is weighed on a worker.
+const WEIGH_OFF_THREAD_FROM := 600
 var _counts: Label
 var _bin_dock: SideDock
 var _chat_dock: SideDock
@@ -202,9 +206,15 @@ func _tell_page() -> void:
 		"bricks": _world.brick_count() - _store.scenery.size(),
 		"held": _builder.held_part,
 		"custom": _library.custom.keys(),
-		# What the renderer is drawing it with, for tools/web/freeze_check.mjs.
+		# What the renderer is drawing it with, and the frames this app's own
+		# work made slow, for tools/web/freeze_check.mjs: a browser's long
+		# tasks include drawing, which in software is most of a second a
+		# frame and says nothing about this code.
 		"batches": _drawn[0],
 		"triangles": _drawn[1],
+		"now": Time.get_ticks_msec(),
+		"slow": _slow_frames,
+		"playing": _playback != null and _playback.is_playing(),
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1171,6 +1181,7 @@ func _build_ui() -> void:
 	_playback.world = _world
 	_playback.library = _library
 	add_child(_playback)
+	_watch_own_frames()
 
 	# What the camera turns around. Without this it orbits the middle of
 	# whatever was last framed, so grabbing a chimney and dragging swings
@@ -1999,9 +2010,14 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 ## when the model changed, not when what is drawn of it did: the build
 ## animation rebuilt every frame and this ran each time, 4.4 s on the
 ## Falcon Heavy's 4,242 parts.
+##
+## And on a worker for a big model: a quarter of a second on the desktop for
+## the 4,242-part Falcon, several times that in a browser, after every
+## change. The worker reads copies of the world and the lattice, made here
+## in a few milliseconds, and the library holds new parts aside meanwhile.
 func _weigh() -> void:
-	if _stability == null or _world == null or _counts == null \
-			or _world.revision == _stability_revision:
+	if _stability == null or _world == null or _counts == null or _weighing \
+			or _world.revision == _stability_revision or _world.is_drawing_held():
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _stability_at <= 900:
@@ -2012,7 +2028,29 @@ func _weigh() -> void:
 	if _world.brick_count() <= scenery.size() and not _stats_shown:
 		_stability_text = ""
 		return
-	var report: Stability.Report = _stability.check(_world)
+	var report: Stability.Report
+	if _world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+		report = _stability.check(_world)
+	else:
+		_weighing = true
+		var judge := Stability.new()
+		judge.library = _library
+		judge.lattice = _builder.lattice.copy_for_reading()
+		var still: BrickWorld = _world.copy_for_reading()
+		var weighed: Array = [null]
+		_library.begin_reading()
+		var task: int = WorkerThreadPool.add_task(func() -> void:
+			weighed[0] = judge.check(still), false, "weigh the model")
+		_library.reading_in(task)
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+		_library.end_reading(task)
+		still.free()
+		_weighing = false
+		report = weighed[0]
+		if report == null:
+			return
 	for id: int in scenery:
 		var plate: BrickWorld.Brick = _world.get_brick(id)
 		var info: PartLibrary.PartInfo = \
@@ -2082,6 +2120,38 @@ func _steer_from_keys(delta: float) -> void:
 	var sliding: bool = Input.is_key_pressed(KEY_SHIFT)
 	_camera.key_hold(delta, zoom, Vector2.ZERO if sliding else arrows,
 		arrows if sliding else Vector2.ZERO)
+
+
+## Frames whose own work — scripts, coroutines, deferred calls, not drawing —
+## took over SLOW_FRAME_MS, as [when in ticks, ms of work, ms waiting for a
+## picture to be read back], the latest SLOW_FRAMES of them. Kept on the web
+## only, where the page reads them. Timed from the tree's process_frame,
+## which begins a frame's work, to the renderer's frame_pre_draw, which ends
+## it; the wait for a picture (ModelShot.gpu_wait_us) is the graphics card's
+## time, not this app's, and is said apart.
+var _slow_frames: Array = []
+var _frame_began: int = 0
+const SLOW_FRAME_MS := 50.0
+const SLOW_FRAMES := 200
+
+
+func _watch_own_frames() -> void:
+	if not OS.has_feature("web"):
+		return
+	get_tree().process_frame.connect(func() -> void:
+		_frame_began = Time.get_ticks_usec())
+	RenderingServer.frame_pre_draw.connect(func() -> void:
+		if _frame_began == 0:
+			return
+		var spent: float = (Time.get_ticks_usec() - _frame_began) / 1000.0
+		var waited: float = ModelShot.gpu_wait_us / 1000.0
+		ModelShot.gpu_wait_us = 0
+		_frame_began = 0
+		if spent > SLOW_FRAME_MS:
+			_slow_frames.append([Time.get_ticks_msec(),
+				roundi(maxf(spent - waited, 0.0)), roundi(waited)])
+			if _slow_frames.size() > SLOW_FRAMES:
+				_slow_frames = _slow_frames.slice(-SLOW_FRAMES))
 
 
 func _process(_delta: float) -> void:

@@ -126,6 +126,13 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "a big check on a worker",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
+      "area": "assistant"
+    },
+    {
       "kind": "cli",
       "label": "design from a brief",
       "entry": "tools/design.py",
@@ -221,6 +228,13 @@
       "label": "browser check",
       "entry": "tools/web/check.mjs",
       "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "freeze check",
+      "entry": "tools/web/freeze_check.mjs",
+      "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
       "area": "web"
     },
     {

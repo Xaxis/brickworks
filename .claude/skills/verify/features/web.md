@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check -->
 
 ## Sub-features
 
@@ -137,6 +137,26 @@ plan with Claude as the client.
   drawers were cut off down their right edge.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
+- `freeze check`: `tools/web/freeze_check.mjs` makes the design that froze the
+  owner's computer — their 4,242-part Falcon Heavy, `src/dev/fixtures/
+  falcon_heavy.json` — in a real browser, playing Claude over the connector
+  (check it, submit it, read it back, look at it, recolour a brick, review
+  it), and times the page through each call and the build animation after:
+  the app's own slowest frame (`Main._watch_own_frames`, published as
+  `brickworksState.slow`, from a frame's start to its drawing), long tasks,
+  the longest gap between frames, a mouse move's wait, bricks, batches,
+  triangles and the WebAssembly heap. With `--dir=build/web` it serves the
+  export itself through `tools/web/relay_server.mjs --static`, the deployment's
+  real functions; with `--url=` it drives a preview (`BW_BYPASS`). `--calls=`
+  replays a run's own calls. Fails when a frame of the app's own work is over
+  `--budget` (200 ms) or a call goes unanswered; a build from before the app
+  timed its own frames is judged by its longest task (`--task-budget`, 10 s).
+  Long tasks are otherwise printed beside the idle page's and not judged:
+  drawn in software (SwiftShader), an idle page's every frame is a task of a
+  second here. So is the wait for a picture to be read back
+  (`ModelShot.gpu_wait_us`), printed apart: in software it waits on every
+  frame queued before it, tens of seconds. Leaves `console.log` (what the app
+  printed, as it came) and `freeze.json`.
 - The desktop downloads page (`web/download.html`, `download.js`,
   `releases.json`) ships with every deploy like the rest of `web/`; what it
   does and how it is checked is in [release](release.md). The landing page
@@ -172,6 +192,9 @@ python3 tools/web/serve.py build/web 8099    # locally, with the isolation heade
 # ...and standing in for the deployment on a slow network: /api/account names
 # its own /parts/, served from the directory after a delay (see parts.md previews)
 python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 2500
+# the export and the deployment's functions together, for the connector
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 --static=build/web
+node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze   # a big design, timed
 ```
 
 ## How to check it
@@ -206,6 +229,19 @@ at <url>`, then four `ok` lines for the view controls it drives in the browser �
 turn (right-drag), zoom (wheel), slide (shift-scroll), turn (middle-drag) — ending
 `check ok: <url>`. The PNG shows the baseplate with the model on it, not the
 loading colour and not a blank canvas. Measured against production 2026-10-02.
+
+And a big design, made the way the owner's froze their computer:
+
+```sh
+set -a; . ./.env; set +a
+node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze
+```
+
+Proves it when: it exits 0 and ends `the page stayed alive: the app's longest
+frame was N ms (budget 200)`, every call answered. Against the build before
+2026-10-11 it fails: a check_design was one 31 s task, a submit 43 s, and the
+look that followed came back "The Brickworks tab did not answer in time" while
+the build animation weighed the model once a step.
 
 ## Gotchas
 

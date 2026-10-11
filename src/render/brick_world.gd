@@ -240,7 +240,6 @@ func clear_ghosts() -> void:
 
 
 func _place(part_id: String, color_code: int, at: Transform3D) -> int:
-	_stop_reveal()
 	if library == null:
 		push_error("brick world: no part library set")
 		return 0
@@ -269,6 +268,7 @@ func _place(part_id: String, color_code: int, at: Transform3D) -> int:
 		if batch == null:
 			batch = _create_batch(key, part, surface_index, color_code)
 			_batches[key] = batch
+		_touching(batch)
 		batch.brick_ids.append(brick.id)
 		keys.append(key)
 		_mark_dirty(key)
@@ -286,11 +286,11 @@ func remove_brick(brick_id: int) -> bool:
 
 
 func _unplace(brick_id: int) -> void:
-	_stop_reveal()
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		var batch: Batch = _batches.get(key)
 		if batch == null:
 			continue
+		_touching(batch)
 		var at: int = batch.brick_ids.find(brick_id)
 		if at >= 0:
 			batch.brick_ids.remove_at(at)
@@ -303,7 +303,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
-	_stop_reveal()
+	_touching_brick(brick_id)
 	brick.transform = to
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		_mark_dirty(key)
@@ -327,7 +327,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
-	_stop_reveal()
+	_touching_brick(brick_id)
 
 	# Out of its old batches, into the ones for the new colour, under the
 	# same id throughout.
@@ -352,6 +352,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 		if batch == null:
 			batch = _create_batch(key, part, surface_index, color_code)
 			_batches[key] = batch
+		_touching(batch)
 		batch.brick_ids.append(brick_id)
 		keys.append(key)
 		_mark_dirty(key)
@@ -415,6 +416,25 @@ func bricks() -> Array:
 		if not _ghosts.has(brick_id):
 			standing.append(_bricks[brick_id])
 	return standing
+
+
+## The model's bricks, copied into a world of their own that draws nothing
+## and is in no tree, to be read on another thread while this one goes on
+## changing. The caller frees it.
+func copy_for_reading() -> BrickWorld:
+	var copy := BrickWorld.new()
+	copy.library = library
+	copy.keeps_history = false
+	for brick_id: int in _bricks:
+		if _ghosts.has(brick_id):
+			continue
+		var brick: Brick = _bricks[brick_id]
+		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
+			brick.transform)
+		twin.group = brick.group
+		copy._bricks[brick_id] = twin
+	copy._next_id = _next_id
+	return copy
 
 
 ## The bounding box of everything placed, in LDU.
@@ -501,8 +521,31 @@ func _mark_dirty(key: String) -> void:
 		_flush.call_deferred()
 
 
+## Holding what is drawn: changes are made but not drawn until the hold is
+## released, so a design put down over several frames (Assistant._apply,
+## gradually) appears whole rather than a slice at a time.
+var _drawing_held: int = 0
+
+
+func hold_drawing() -> void:
+	_drawing_held += 1
+
+
+func release_drawing() -> void:
+	_drawing_held = maxi(0, _drawing_held - 1)
+	if _drawing_held == 0 and not _dirty.is_empty() and not _rebuild_queued:
+		_rebuild_queued = true
+		_flush.call_deferred()
+
+
+func is_drawing_held() -> bool:
+	return _drawing_held > 0
+
+
 func _flush() -> void:
 	_rebuild_queued = false
+	if _drawing_held > 0:
+		return
 	var triangles: int = 0
 	for key: String in _dirty:
 		var batch: Batch = _batches.get(key)
@@ -695,6 +738,24 @@ func reveal_through(rank: int) -> void:
 ## Everything on show again, however far the reveal had got.
 func end_reveal() -> void:
 	_stop_reveal()
+
+
+## A change to a batch whose bricks are being revealed in order: the order
+## would no longer hold, so the reveal ends first, everything shown. A change
+## anywhere else leaves it playing — the ground laid wider under a design
+## that outgrew it, the moment it was built, ended every big one at once.
+func _touching(batch: Batch) -> void:
+	if not _reveal_order.is_empty() and _revealing.has(batch):
+		_stop_reveal()
+
+
+func _touching_brick(brick_id: int) -> void:
+	if _reveal_order.is_empty():
+		return
+	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
 
 
 func _stop_reveal() -> void:

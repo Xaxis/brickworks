@@ -52,10 +52,10 @@ const SLOWEST_MS := 320.0
 ## assistant had long since moved on.
 const LONGEST_MS := 8000.0
 ## New bricks up to this many go up in the booklet's order. Beyond it, the
-## plan's cost is the problem: on main it grows with the square of the
-## bricks (730 bricks, 0.3 s; 4,242, 15.5 s), and a frame is not the place
-## to spend it.
-const PLANNED_UP_TO := 300
+## plan's cost is the problem: it grows with the square of the bricks (730
+## bricks, 0.3 s; 4,242, 15.5 s), and a frame is not the place to spend it.
+## Two hundred is about 25 ms.
+const PLANNED_UP_TO := 200
 ## Bricks a step adds, course by course: what the booklet adds at most.
 const PER_STEP := 8
 
