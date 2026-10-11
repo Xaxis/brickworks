@@ -336,15 +336,19 @@ static func _fill(pattern: Dictionary, trouble: Array,
 	# of twenty however well it is bonded: run 21's castle was 349 of
 	# one brick and 47% one grey, where a real set its size is 28% its
 	# main colour.
-	# A wall of black bricks gets its second tone unless told otherwise:
-	# black on black read as a void on the homepage's Orthanc, and LEGO's
-	# own is 13% dark bluish grey through its black. Walls only — courses of
-	# bricks — not a floor or a hull of plates.
-	var walls: bool = is_equal_approx(float(pattern.get("rise", 1.0)), 3.0)
 	var mix_colour: int = int(pattern.get("mix_color",
-		pattern.get("mix_colour", SECOND_TONE.get(colour, -1) if walls else -1)))
+		pattern.get("mix_colour", -1)))
 	var mix: float = clampf(float(pattern.get("mix",
 		MIX if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	# A wall of black bricks gets its second tone unless told otherwise, as
+	# a course of it every BAND_EVERY — a string course, a ledge. Black on
+	# black read as a void on the homepage's Orthanc; sprinkled with dark
+	# bluish grey, the next one read as noise. LEGO's own is 13% dark
+	# bluish grey, on its ledges and buttresses. Walls only — courses of
+	# bricks — not a floor or a hull of plates.
+	var walls: bool = is_equal_approx(float(pattern.get("rise", 1.0)), 3.0)
+	var band_colour: int = int(pattern.get("band_color", pattern.get("band_colour",
+		SECOND_TONE.get(colour, -1) if walls and mix_colour < 0 else -1)))
 	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
 	var dark: bool = library != null and library.colors.has(colour) \
 		and (library.colors[colour] as PartLibrary.BrickColor).rgb.get_luminance() <= 0.2
@@ -442,7 +446,11 @@ static func _fill(pattern: Dictionary, trouble: Array,
 			if not ring.is_empty():
 				made.append_array(_tile(ring, at_y, edge_colour, tiles,
 					below, laid, course))
-		made.append_array(_tile(here, at_y, colour, tiles, below, laid,
+		var tone: int = colour
+		if band_colour >= 0 and layer % BAND_EVERY == BAND_EVERY - 1 \
+				and layer < layers - 1:
+			tone = band_colour
+		made.append_array(_tile(here, at_y, tone, tiles, below, laid,
 			course))
 		# Before the masonry, which would otherwise have every 1x2 first.
 		if sideways > 0.0:
@@ -624,6 +632,10 @@ const MIX := 0.15
 ## The second tone a wall of a dark colour takes unless told: dark bluish
 ## grey through black, as 10237 Tower of Orthanc has it (66% and 13%).
 const SECOND_TONE: Dictionary = {0: 72}
+
+## Courses from one band of that second tone to the next: a string course
+## a storey apart, where a real tower has its ledges.
+const BAND_EVERY := 8
 
 ## The masonry brick for each plain one: the same size, with stonework
 ## moulded on one long face. That face is LDraw's -Z, which this app's

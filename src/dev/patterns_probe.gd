@@ -491,19 +491,32 @@ func _clustered() -> void:
 		lights.call(assistant._read_model({"patterns": [dark]}).placements).is_empty())
 	# A black face takes a second tone and grille bricks among its masonry,
 	# unless told otherwise: LEGO's 10237 is 66% black and 13% dark bluish
-	# grey, with 86 grille bricks.
+	# grey, with 86 grille bricks. The grey in bands, a course of it every
+	# eight, where 10237 has its ledges: scattered through the bricks, the
+	# next Orthanc's grey read as noise.
 	var bare: Dictionary = dark.duplicate(true)
 	bare.erase("mix_color")
 	var toned: Assistant.Model = assistant._read_model({"patterns": [bare]})
 	var greys: int = 0
 	var grilles: int = 0
+	var off_band: int = 0
+	var band_black: int = 0
 	for placement: Assistant.Placement in toned.placements:
+		var course: int = int(round(placement.y / 3.0))
+		var on_band: bool = course % Assistant.BAND_EVERY == Assistant.BAND_EVERY - 1
 		if placement.color == 72:
 			greys += 1
+			if not on_band:
+				off_band += 1
+		elif on_band and placement.color == 0 and placement.section.contains("face") \
+				and placement.part != "87087" and is_equal_approx(placement.y, course * 3.0):
+			band_black += 1
 		if placement.part == "2877":
 			grilles += 1
-	_check("a black prism takes dark bluish grey through it and grille bricks: %d grey, %d grille"
-		% [greys, grilles], greys > 50 and grilles > 10)
+	_check("a black prism takes dark bluish grey in bands and grille bricks: %d grey, %d grille"
+		% [greys, grilles], greys > 50 and grilles > 5)
+	_check("...the grey in its band courses only, none sprinkled (%d off them, %d black in them)"
+		% [off_band, band_black], off_band == 0 and band_black * 4 < greys)
 	var headings: Dictionary = {}
 	var turned: Dictionary = {}
 	var piers: Dictionary = {}
@@ -1256,6 +1269,26 @@ func _a_wall_has_texture() -> void:
 		str(made) == str(again))
 	_check("a share over a half is held to a half",
 		_dark_share({"mix_color": 72, "mix": 0.9}) <= 0.55)
+	# Black, nothing said: a band of dark bluish grey a storey up, the
+	# whole way round, and none sprinkled — the scattered grey of the
+	# Orthanc after run 18 read as noise.
+	var black: Dictionary = wall.duplicate(true)
+	black.erase("mix_color")
+	black["color"] = 0
+	black["layers"] = 16
+	var heights: Dictionary = {}
+	var banded: int = 0
+	var black_in_band: int = 0
+	for raw: Variant in Patterns.expand([black], [], [], _library):
+		var one: Dictionary = raw
+		if int(one["color"]) == 72:
+			banded += 1
+			heights[float(one["y"])] = true
+		elif is_equal_approx(float(one["y"]), 3.0 * (Patterns.BAND_EVERY - 1)):
+			black_in_band += 1
+	_check("a black wall takes its grey as one band a storey up, %d bricks at %s, %d black in it"
+		% [banded, str(heights.keys()), black_in_band], banded > 20
+			and heights.keys() == [3.0 * (Patterns.BAND_EVERY - 1)] and black_in_band == 0)
 
 
 func _dark_share(extra: Dictionary) -> float:

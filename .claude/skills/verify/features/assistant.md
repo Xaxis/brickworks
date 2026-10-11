@@ -218,13 +218,19 @@ fixing what it got wrong.
   `restyle_model` leaves transparent bricks alone. They were lit yellow every
   eight courses up every face by default, and the homepage's Orthanc (run 18)
   read as an office block, 228 lit 1 x 1s in rows — the owner's worst verdict
-  yet. A black face takes dark bluish grey through it unless told
-  (`SECOND_TONE`, as 10237's 66% black and 13% grey), and as many 1 x 2s again
-  as its masonry laid as grille bricks (2877, faced out), which catch light
-  where masonry in black does not. `patterns_probe`: asked for, 16 window studs
-  on the guidance's cluster, each paired two courses tall, Trans-Brown, no
-  office block said; none unless asked; a black cluster with no mix_color has
-  hundreds of grey and some grille; the finishing pass leaves the windows.
+  yet. A black face takes dark bluish grey unless told (`SECOND_TONE`, as
+  10237's 66% black and 13% grey) as a band: one course of it every
+  `BAND_EVERY` (8), a string course where 10237 has its ledges, never
+  sprinkled — scattered through the bricks (Orthanc rk1) it read as noise.
+  `band_color` sets another; a `mix_color` said means a scatter instead. A
+  black `fill` wall with `rise` 3 does the same (`Patterns.BAND_EVERY`). As
+  many 1 x 2s again as its masonry are laid as grille bricks (2877, faced
+  out), which catch light where masonry in black does not. `patterns_probe`:
+  asked for, 16 window studs on the guidance's cluster, each paired two
+  courses tall, Trans-Brown, no office block said; none unless asked; a black
+  cluster with no mix_color has hundreds of grey, every one in a band course,
+  and some grille; a black wall's grey is one course at y 21 with no black in
+  it; the finishing pass leaves the windows.
   `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
 - `the faults of a picture`: three checks in every check's advice, each a
   fault the homepage's Orthanc had and any subject can: `_window_grid` (12 or

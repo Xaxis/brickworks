@@ -1217,9 +1217,10 @@ gathered where something happens — their colour and light from the \
 subject: a dark fortress has dark slits, a lighthouse one lit lantern.
   A dark face with nothing on it. A big face of plain bricks in black or \
 another dark colour reads as a hole in the picture. Texture in the same \
-colour (grille bricks, masonry, bricks with a handle, cheese slopes), a \
-second tone through it, and depth — an inset or outset course, a \
-pilaster, a rib — so light and shadow draw the form.
+colour (grille bricks, masonry, bricks with a handle, cheese slopes) for \
+most of it, a second tone in bands where the ledges are (sprinkled \
+through the bricks it is noise), and depth — an inset or outset course, \
+a pilaster, a rib — so light and shadow draw the form.
   No silhouette. A tall thing the same width all the way up, with its top \
 stuck on. Its profile is the design: taper, flare at the foot, a waist, \
 facets catching light, a crown that grows out of the body.
@@ -1850,7 +1851,7 @@ point; more of the same one is not.
 
 Four things to catch by name: windows as a repeating grid (few, each \
 with a reason, coloured by the subject); a face of one dark colour with \
-nothing on it (texture in that colour, a second tone, depth); a shape \
+nothing on it (texture in that colour, a second tone in bands, depth); a shape \
 with no profile (taper, flare, a top that grows out of it); and a base \
 that is an afterthought (a composed plinth that leads the eye up).
 
@@ -4198,12 +4199,15 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var courses: int = int(round(float(pattern.get("courses", 8))))
 	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
-	# A black face gets its second tone unless told otherwise: the homepage's
-	# Orthanc was black on black and read as a void; LEGO's own (10237) is 66%
-	# black and 13% dark bluish grey through the same walls.
-	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour",
-		SECOND_TONE.get(colour, -1))))
+	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
 	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	# A black face gets its second tone unless told otherwise — in bands, a
+	# course of it every BAND_EVERY, where a real tower's string courses and
+	# setbacks are. The homepage's Orthanc was black on black and read as a
+	# void; the next, sprinkled with dark bluish grey bricks and dressing,
+	# read as noise. LEGO's 10237 is 13% dark bluish grey, on its ledges.
+	var band_colour: int = int(pattern.get("band_color", pattern.get("band_colour",
+		SECOND_TONE.get(colour, -1) if mix_colour < 0 else -1)))
 	# Dressed unless asked not to be. Both were zero unless given, the
 	# guidance said to give them, and no run did: the thirteenth Orthanc
 	# stood a prism of plain faces (61% plain, 1% on its side) which the
@@ -4251,6 +4255,7 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var spec := {"x": cx, "y": y0, "z": cz, "sides": sides, "radius": radius,
 		"courses": courses, "thick": thick, "colour": colour,
 		"mix_colour": mix_colour, "mix": mix, "masonry": masonry,
+		"band_colour": band_colour,
 		"sideways": sideways, "open": open, "left_out": left_out,
 		# Only when asked. They were on by default, Trans-Yellow every eight
 		# courses up every face, and the homepage's Orthanc read as an
@@ -4296,8 +4301,13 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 	for n: int in runs.size():
 		if int(runs[n][1]) > int(runs[widest][1]):
 			widest = n
+	var band_colour: int = int(spec.get("band_colour", -1))
 	for course: int in courses:
 		var y: float = base + 3.0 * course
+		# A string course in the second tone, the whole way round.
+		var tone: int = colour
+		if band_colour >= 0 and course % BAND_EVERY == BAND_EVERY - 1 and course < courses - 1:
+			tone = band_colour
 		for n: int in runs.size():
 			var run: Array = runs[n]
 			var left: float = run[0]
@@ -4316,13 +4326,13 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# Orthanc built with it came out 94% plain.
 			if thick == 2 and course % 2 == 0:
 				_lay_row_around(made, name, wide, left, width, gap, y, radius - 2.0,
-					course, colour, mix_colour, mix, 0.0, 0.0)
+					course, tone, mix_colour, mix, 0.0, 0.0)
 				if not is_nan(gap):
-					made.append(_prism_brick(name, "3005", colour, gap, y,
+					made.append(_prism_brick(name, "3005", tone, gap, y,
 						radius - 2.0, 0, mix_colour, mix, 0.0))
 				if extra > 0:
 					_lay_row(made, name, narrow, left + width, extra, y, radius - 1.0,
-						course, colour, mix_colour, mix, 0.0, 0.0)
+						course, tone, mix_colour, mix, 0.0, 0.0)
 				continue
 			# The bond of the one-wide rows counts their own courses: on a
 			# two-thick face they are only ever the odd ones, and counted by
@@ -4330,11 +4340,11 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# only, so not one of them could be a masonry brick.
 			var bond: int = course / 2 if thick == 2 else course
 			_lay_row_around(made, name, narrow, left, width + extra, gap, y,
-				radius - 1.0, bond, colour, mix_colour, mix, spec["masonry"],
+				radius - 1.0, bond, tone, mix_colour, mix, spec["masonry"],
 				spec["sideways"], clear)
 			if thick == 2:
 				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
-					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
+					bond + 1, tone, mix_colour, mix, 0.0, 0.0)
 
 
 ## A row as [method _lay_row] lays it, but for the stud at [param gap] (a
@@ -4436,6 +4446,8 @@ func _is_dark(code: int) -> bool:
 ## face, and lit an Orthanc up as an office block.
 const WINDOW_COLOUR := 40
 const WINDOW_EVERY := 16
+## Courses from one band of a black face's second tone to the next.
+const BAND_EVERY: int = Patterns.BAND_EVERY
 
 ## The second tone a wall of a dark colour gets unless told: dark bluish
 ## grey through black, as 10237 Tower of Orthanc has it (66% and 13%).
@@ -6777,10 +6789,12 @@ func _dark_and_plain(model: Model) -> String:
 			+ "face with nothing on it reads as a hole in a picture. Break it up "
 			+ "the way 10237 Tower of Orthanc breaks up its black: texture in the "
 			+ "same colour (grille bricks 2877, masonry 98283, bricks with a "
-			+ "handle 2921, headlight bricks, cheese slopes, ingots), a second "
-			+ "tone through the bricks (dark bluish grey on black: mix_color), "
-			+ "and depth — an inset or outset course, a pilaster, a rib — so "
-			+ "light and shadow draw the form.")
+			+ "handle 2921, headlight bricks, cheese slopes, ingots) for most "
+			+ "of it; a second tone in bands, where the ledges and string "
+			+ "courses are (dark bluish grey on black: band_color), never "
+			+ "sprinkled through the bricks, which reads as noise; and depth — "
+			+ "an inset or outset course, a pilaster, a rib — so light and "
+			+ "shadow draw the form.")
 	return ""
 
 
@@ -8939,7 +8953,8 @@ alongside the bricks you write by hand:
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
            "sideways" set how much, 0 for a plain face; a black face \
-           takes dark bluish grey through it and grille bricks among \
+           takes a course of dark bluish grey every eight, a string \
+           course ("band_color" for another), and grille bricks among \
            its masonry. "windows": true puts a few narrow dark slits up \
            every other face ("window_color" for another; lit yellow in \
            rows makes any tower an office block). Once it stands, \
@@ -9230,7 +9245,8 @@ little smaller, says a taper in plain calls.
 on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
 black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
 bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
-bluish grey: texture in the same colour, a second tone, depth.
+bluish grey on its ledges: texture in the same colour, a second tone in \
+bands rather than sprinkled (scattered, it reads as noise), depth.
   Windows have reasons. A few, varied, framed, where something happens \
 inside — never a grid of identical lit squares, which makes a fortress an \
 office block. Their colour comes from the subject: dark slits for a dark \
@@ -9975,6 +9991,11 @@ func _tools() -> Array:
 				+ "chosen by where they are, the same every time — a "
 				+ "weathered wall. Real castle walls are 9-19% their "
 				+ "second grey."},
+			"band_color": {"type": "integer", "description":
+				"fill with rise 3, prism: a course in this colour every "
+				+ "eight, a string course where a storey's ledge is. A "
+				+ "black wall gets dark bluish grey bands unless "
+				+ "mix_color or this says otherwise."},
 			"mix": {"type": "number", "description":
 				"fill: the share in mix_color, up to 0.5; 0.15 if not "
 				+ "said."},
