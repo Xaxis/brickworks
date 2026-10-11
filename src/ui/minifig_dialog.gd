@@ -583,7 +583,8 @@ func _fill_palette() -> void:
 
 
 ## A dot on the colours the part in the slot is made in, from the
-## inventories; for a print, those of the moulding it is printed on.
+## inventories; for a print, those of the moulding it is printed on, and
+## for a worn drawing of cloth (50231c01), the cloth's.
 func _mark_swatches() -> void:
 	var part: String = figure.part_for_colour(_slot)
 	var info: PartLibrary.PartInfo = null if part.is_empty() \
@@ -603,8 +604,13 @@ func _mark_swatches() -> void:
 	var colour: PartLibrary.BrickColor = library.color(int(figure.colours[_slot]))
 	var note: String = "%s: %s." % [Minifig.TITLES[_slot], colour.name]
 	if info != null and info.availability_known():
-		note += " A dot marks the %d colours %s%s comes in." % [info.colors.size(),
-			info.id, "" if info.id == part else " (what %s is printed on)" % part]
+		if info.id == Minifig.flat_of(library.parts.get(part)):
+			# A worn drawing of cloth stands for the cloth.
+			note += " A dot marks the %d colours %s comes in: %s is that cloth as worn." \
+				% [info.colors.size(), info.id, part]
+		else:
+			note += " A dot marks the %d colours %s%s comes in." % [info.colors.size(),
+				info.id, "" if info.id == part else " (what %s is printed on)" % part]
 	_colour_note.text = note
 
 

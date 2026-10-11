@@ -120,7 +120,8 @@ the model, and the design assistant doing the same with `add_minifig`.
   [parts](parts.md) `previews`; a waiting cell is a placeholder with the part
   number under it, and the slots' pictures are tiles beside their words, so the
   words do not move when a picture lands),
-  and the colours with a dot on the ones the part is made in; the figure turning
+  and the colours with a dot on the ones the part is made in (a worn cape's are
+  its cloth's, which the note under them says); the figure turning
   on the right (its own `SubViewport` and `BrickWorld`; drag to turn), a name,
   Surprise me, Keep, Place in model, and the kept figures. Escape closes it.
 - `placing` (`Builder.hold_figure` / `settle_figure` / `put_figure`): Place hands
@@ -234,7 +235,7 @@ Proves it when:
   moulded skirt with a tiara and a cloth cape, a frogman on flippers, a battle
   droid, a captain with a hook and a wooden leg, a mermaid, a skeleton with a
   quiver on its back. On the way it chooses a shield for the left hand and a cape
-  by clicking, pages through the torsos with the "+160" cell and shows one mould
+  by clicking (50231c01, its colours 50231's), pages through the torsos with the "+160" cell and shows one mould
   of them. **Look at them**: head on the neck, arms at the shoulders, hands in
   the arms, legs under the hips, the spear upright in a raised hand, the cutlass
   blade up and forward, visors over faces, capes and quivers behind. Plain
@@ -242,9 +243,10 @@ Proves it when:
   `gpu env GODOT_GPU=1 ...` with Forward+.
 - `minifig_flow.mjs` ends `minifig flow: made, placed and photographed`, with the
   part count up by the figure's parts, then the Cape slot found, its first part
-  (50231c01, the cloth cape as it is worn) chosen and a caped figure placed too (up by 8 or more; `4_cape.png` shows the
-  grid of capes and the figure wearing one, `5_caped.png` it standing). A local
-  export works as the hosted one does with
+  (50231c01, the cloth cape as it is worn) chosen and a caped figure placed too
+  (up by 8 or more; `4_cape.png` shows the grid of capes and the figure wearing
+  one, `5_caped.png` it standing beside the first and `5_caped_close.png` close
+  up, to see the cape hang). A local export works as the hosted one does with
   `PARTS_URL=http://127.0.0.1:PORT/parts/ tools/export.sh web`, then
   `python3 tools/web/serve.py build/web PORT --parts assets/generated/parts
   --delay 300`, which answers `/api/account` with its own `/parts/`; the flow's
