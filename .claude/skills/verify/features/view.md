@@ -192,7 +192,15 @@ picture the assistant is shown.
   shows `shown_ids`, the first copy). A callout's steps carry the number of
   the step it goes on in (`Step.number`; `Step.caption()` is what the timeline
   prints). A part with nothing under it (a tap on a side stud, a wheel) waits
-  for what it touches (`_find_hangers`), unless that makes a loop. Steps take
+  for what it touches (`_find_hangers`), outward from what is held a wave at a
+  time, and one that touches nothing waits for the nearest part below it; a
+  link that would make a loop (`_cycles`, the parts on a loop, not those
+  downstream of one) is undone and relinked to a part that does not wait for
+  it. On Orthanc, parts placed touching nothing already placed went from 193 to
+  6 of 8,603, with no step forced. Wheels go on what holds them and tyres on
+  their wheels (`_wheels`, by name: "Wheel …", "Tyre …"), whether or not the
+  joint is known; a wheel holds nothing up, and goes in last within its
+  region: the example car's booklet began with four wheels on the table. Steps take
   4 bricks under 150 parts, 6 under 500, else 8 (`_per_step`). Supports are
   found through a two-stud grid and the order through a set of ready bricks:
   the 8,603-part Orthanc planned in 87 s and now in 5.
@@ -232,7 +240,11 @@ picture the assistant is shown.
   fitting a page at 4 mm a stud) is framed on the part being built, the rest
   fading out at the picture's edges (`BookletStudio.fade`). New parts are not
   highlighted: modern booklets keep colours true and rely on the parts box and
-  the ink line (the ink shader can ring them, `mark_new`, off). Measured
+  the ink line (the ink shader can ring them, `mark_new`, off); a step whose
+  new parts are small and in one place (under 14 mm) gets a red arrow down
+  onto them, as a booklet points at a flag on a tower. Inside a part a fainter
+  line marks where the shading turns a corner (`crease`: stud rims, a top's
+  edge), found from the lightness, within one brick. Measured
   2026-10-11 on the GPU: house 71 pieces, 14 pages, 7 s and 1 MB; castle 2,438
   pieces, 364 pages, 3.5 min and 60 MB (a LEGO PDF is about 0.5 MB a page too).
 - `mosaic`: a picture turned into a plate of tiles that still looks like the
@@ -272,6 +284,10 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall, the timeline's numbers = the booklet's;
 #   leaves shots/booklet/{shed,house,turned}.html — print and look at them
+# In a browser, on a local web export (tools/export.sh web, then
+# python3 tools/web/serve.py build/web PORT): presses Instructions, follows
+# the tab it opens, checks the booklet in it and prints it to booklet.pdf
+node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
 godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking a colour recolours something
 godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd # every finish drawn as itself

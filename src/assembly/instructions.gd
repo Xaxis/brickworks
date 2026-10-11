@@ -154,6 +154,8 @@ class Node2 extends RefCounted:
 	var after: PackedInt64Array = PackedInt64Array()
 	## Set on the node that stands for a whole sub-assembly.
 	var assembly: Assembly = null
+	## A wheel rim (1) or a tyre (2): see [method _find_joints].
+	var wheel: int = 0
 
 
 ## A part of the model built on the side and put on whole.
@@ -339,8 +341,39 @@ static func _find_joints(nodes: Array[Node2], world: BrickWorld,
 		by_id[node.id] = node
 	for pair: Array in Joints.pairs(entries):
 		var plug: Node2 = by_id.get(pair[0])
-		if plug != null and not plug.needs.has(pair[1]):
-			plug.needs.append(pair[1])
+		var socket: Node2 = by_id.get(pair[1])
+		if plug == null or socket == null:
+			continue
+		# Except a wheel, which is pushed on to its pin: the car's wheels
+		# were step 1, four of them standing on the table, because the
+		# hole is in the wheel.
+		if socket.wheel > 0:
+			if not socket.needs.has(plug.id):
+				socket.needs.append(plug.id)
+		elif not plug.needs.has(socket.id):
+			plug.needs.append(socket.id)
+	_wheels(nodes)
+
+
+## A wheel goes on what holds it, and a tyre on its wheel.
+##
+## Whether or not the joint between them was found: the example car's
+## wheel pins are not a joint the library knows, so its wheels needed
+## nothing, stood on the table, and were the first thing built — the
+## first step of the first booklet a visitor makes.
+static func _wheels(nodes: Array[Node2]) -> void:
+	for wheel: Node2 in nodes:
+		if wheel.wheel == 0:
+			continue
+		var box: AABB = wheel.box.grow(1.0)
+		for other: Node2 in nodes:
+			if other.id == wheel.id or not box.intersects(other.box) \
+					or other.needs.has(wheel.id) or wheel.needs.has(other.id):
+				continue
+			# A rim needs what it is on; a tyre needs its rim.
+			if (wheel.wheel == 1 and other.wheel == 0) \
+					or (wheel.wheel == 2 and other.wheel == 1):
+				wheel.needs.append(other.id)
 
 
 ## A part with nothing under it is held by what it touches.
@@ -364,7 +397,8 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 	var hanging: Dictionary = {}
 	for index: int in nodes.size():
 		var node: Node2 = nodes[index]
-		if node.needs.is_empty() and node.box.position.y > floor_y + 2.0:
+		if node.needs.is_empty() and node.box.position.y > floor_y + 2.0 \
+				and node.wheel == 0:
 			hanging[index] = true
 	if hanging.is_empty():
 		return
@@ -374,34 +408,191 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 			if not grid.has(cell):
 				grid[cell] = []
 			(grid[cell] as Array).append(index)
-	for index: int in hanging:
+	# Outward from what is held, a wave at a time: a part hangs from what
+	# it touches that is already held, and is then held itself. A tower's
+	# pinnacles are 1 x 1 plates clipped to round tiles clipped to a wall:
+	# only the first touches the wall, and linking parts to held parts only
+	# left the rest free — Orthanc put them at step 36, a hundred and fifty
+	# studs up in the air.
+	var held: Dictionary = {}
+	for index: int in nodes.size():
+		if not hanging.has(index):
+			held[index] = true
+	var waiting: Dictionary = hanging.duplicate()
+	for _wave: int in 64:
+		var now_held: Array[int] = []
+		for index: int in waiting:
+			var node: Node2 = nodes[index]
+			var box: AABB = node.box.grow(1.0)
+			var seen: Dictionary = {}
+			for cell: Vector2i in _cells(box, CELL):
+				for other_index: int in grid.get(cell, []):
+					if other_index == index or seen.has(other_index) \
+							or not held.has(other_index):
+						continue
+					seen[other_index] = true
+					if box.intersects(nodes[other_index].box) \
+							and not nodes[other_index].needs.has(node.id):
+						node.needs.append(nodes[other_index].id)
+			if not node.needs.is_empty():
+				now_held.append(index)
+		if now_held.is_empty():
+			break
+		for index: int in now_held:
+			held[index] = true
+			waiting.erase(index)
+	# And a part that touches nothing at all — a design's floating detail,
+	# a pinnacle a hair off its tower — goes in when the model has reached
+	# it: after the nearest held part whose top is at its height or below.
+	# Orthanc had 188 of these, and every one was free to go in at step 1.
+	for index: int in waiting:
 		var node: Node2 = nodes[index]
-		var box: AABB = node.box.grow(1.0)
-		var seen: Dictionary = {}
-		for cell: Vector2i in _cells(box, CELL):
-			for other_index: int in grid.get(cell, []):
-				if other_index == index or seen.has(other_index) \
-						or hanging.has(other_index):
-					continue
-				seen[other_index] = true
-				if box.intersects(nodes[other_index].box) \
-						and not nodes[other_index].needs.has(node.id):
-					node.needs.append(nodes[other_index].id)
-	var before: Dictionary = _in_loops(nodes)
+		var nearest: float = INF
+		var under: int = -1
+		for other_index: int in held:
+			var other: Node2 = nodes[other_index]
+			if other.box.end.y > node.box.position.y + 5.0 \
+					or other.box.end.y < node.box.position.y - 48.0:
+				continue
+			var gap: float = other.box.get_center().distance_to(node.box.get_center())
+			if gap < nearest:
+				nearest = gap
+				under = other_index
+		if under >= 0:
+			node.needs.append(nodes[under].id)
 	for node: Node2 in nodes:
 		node.after = node.needs.duplicate()
-	for _attempt: int in 3:
-		var stuck: Dictionary = _in_loops(nodes)
+	# Only a part on a loop gives up what it hangs from, not every part
+	# downstream of one: clearing those too left a pinnacle that merely
+	# hung below a loop free to go in first.
+	var cleared: Array[int] = []
+	for _attempt: int in 4:
+		var looped: Dictionary = _cycles(nodes)
 		var undone: bool = false
 		for index: int in hanging:
 			var node: Node2 = nodes[index]
-			if stuck.has(node.id) and not before.has(node.id) \
-					and not node.needs.is_empty():
+			if looped.has(node.id) and not node.needs.is_empty():
 				node.needs = PackedInt64Array()
 				node.after = PackedInt64Array()
+				cleared.append(index)
 				undone = true
 		if not undone:
 			break
+	# A part that gave up what it hangs from still waits for the model to
+	# reach its height: for the nearest part below it that does not, by
+	# any route, wait for it. One at a time, so two of them cannot make a
+	# loop between them.
+	var dependents: Dictionary = {}
+	if not cleared.is_empty():
+		for other: Node2 in nodes:
+			for need: int in other.after:
+				if not dependents.has(need):
+					dependents[need] = []
+				(dependents[need] as Array).append(other.id)
+	for index: int in cleared:
+		var node: Node2 = nodes[index]
+		var after_it: Dictionary = _waiting_on(dependents, node.id)
+		var nearest: float = INF
+		var under: int = -1
+		for other_index: int in nodes.size():
+			var other: Node2 = nodes[other_index]
+			if other_index == index or after_it.has(other.id) \
+					or other.box.end.y > node.box.position.y + 5.0 \
+					or other.box.end.y < node.box.position.y - 48.0:
+				continue
+			var gap: float = other.box.get_center().distance_to(node.box.get_center())
+			if gap < nearest:
+				nearest = gap
+				under = other_index
+		if under >= 0:
+			node.needs.append(nodes[under].id)
+			node.after = node.needs.duplicate()
+			if not dependents.has(nodes[under].id):
+				dependents[nodes[under].id] = []
+			(dependents[nodes[under].id] as Array).append(node.id)
+
+
+## Every node that waits, by any route, for [param id], given who waits
+## on whom directly.
+static func _waiting_on(dependents: Dictionary, id: int) -> Dictionary:
+	var found: Dictionary = {}
+	var pending: Array = [id]
+	while not pending.is_empty():
+		var at: int = pending.pop_back()
+		for dependent: int in dependents.get(at, []):
+			if not found.has(dependent):
+				found[dependent] = true
+				pending.append(dependent)
+	return found
+
+
+## The nodes on a loop of needs — a part that, through what it rests on
+## and hangs from, waits for itself. Not the ones merely waiting on such a
+## loop (see [method _in_loops]). Strongly connected components, found
+## with two passes of a depth-first walk kept on a stack of its own, since
+## a tower of eight thousand bricks is deeper than GDScript's call stack.
+static func _cycles(nodes: Array[Node2]) -> Dictionary:
+	var index_of: Dictionary = {}
+	for index: int in nodes.size():
+		index_of[nodes[index].id] = index
+	# Plain arrays: a packed array taken out of an array is a copy, and
+	# appending to it appended to nothing — the first version of this found
+	# no loops at all.
+	var forward: Array = []
+	var backward: Array = []
+	for index: int in nodes.size():
+		forward.append([])
+		backward.append([])
+	for index: int in nodes.size():
+		for need: int in nodes[index].after:
+			if index_of.has(need):
+				var target: int = index_of[need]
+				(forward[index] as Array).append(target)
+				(backward[target] as Array).append(index)
+	var finished: PackedInt32Array = PackedInt32Array()
+	var visited := PackedByteArray()
+	visited.resize(nodes.size())
+	for start: int in nodes.size():
+		if visited[start] == 1:
+			continue
+		var stack: Array = [[start, 0]]
+		visited[start] = 1
+		while not stack.is_empty():
+			var top: Array = stack[-1]
+			var edges: Array = forward[top[0]]
+			if int(top[1]) < edges.size():
+				var next: int = edges[top[1]]
+				top[1] = int(top[1]) + 1
+				if visited[next] == 0:
+					visited[next] = 1
+					stack.append([next, 0])
+			else:
+				finished.append(top[0])
+				stack.pop_back()
+	var component := PackedInt32Array()
+	component.resize(nodes.size())
+	component.fill(-1)
+	var sizes: Array[int] = []
+	for at: int in range(finished.size() - 1, -1, -1):
+		var root: int = finished[at]
+		if component[root] >= 0:
+			continue
+		var label: int = sizes.size()
+		sizes.append(0)
+		var pending: Array[int] = [root]
+		component[root] = label
+		while not pending.is_empty():
+			var here: int = pending.pop_back()
+			sizes[label] += 1
+			for previous: int in backward[here]:
+				if component[previous] < 0:
+					component[previous] = label
+					pending.append(previous)
+	var looped: Dictionary = {}
+	for index: int in nodes.size():
+		if sizes[component[index]] > 1 or (forward[index] as Array).has(index):
+			looped[nodes[index].id] = true
+	return looped
 
 
 ## Needs only on bricks that are being built, once each. A joint into the
@@ -435,6 +626,12 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 		node.box = brick.transform * part.bounds
 		node.group = brick.group
 		node.unit = brick.unit
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		var name: String = info.name.strip_edges() if info != null else ""
+		if name.begins_with("Wheel"):
+			node.wheel = 1
+		elif name.begins_with("Tyre") or name.begins_with("Tire"):
+			node.wheel = 2
 		nodes.append(node)
 	return nodes
 
@@ -477,6 +674,11 @@ static func _find_supports(nodes: Array[Node2]) -> void:
 					continue
 				seen[other_index] = true
 				var other: Node2 = nodes[other_index]
+				# A wheel holds nothing up: it goes on last, and a chassis
+				# whose underside happens to meet a tyre's top is held by
+				# the axle, not the tyre.
+				if other.wheel > 0:
+					continue
 				# other is under node when other's top meets node's
 				# underside, allowing for the stud that reaches up into it.
 				var sits_on: bool = (other.box.end.y >= node.box.position.y - SLACK
@@ -638,7 +840,6 @@ static func _name_of(key: String) -> String:
 ## brick of the wall sitting between two of the assembly's own parts —
 ## it cannot be built on the side after all, and is built in place.
 static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array[Node2]:
-	var loops: Dictionary = _in_loops(nodes)
 	for _attempt: int in 6:
 		var member_of: Dictionary = {}
 		for index: int in assemblies.size():
@@ -664,14 +865,11 @@ static func _contract(nodes: Array[Node2], assemblies: Array[Assembly]) -> Array
 			made.node.after = _mapped(needs, member_of, made)
 			built.append(made.node)
 
-		var stuck: Dictionary = _in_loops(built)
+		var looped: Dictionary = _cycles(built)
 		var kept: Array[Assembly] = []
 		for made: Assembly in assemblies:
-			var already: bool = made.members.any(
-				func(member: Node2) -> bool: return loops.has(member.id))
-			if stuck.has(made.node.id) and not already:
-				continue
-			kept.append(made)
+			if not looped.has(made.node.id):
+				kept.append(made)
 		if kept.size() == assemblies.size():
 			return built
 		assemblies.assign(kept)
@@ -908,6 +1106,10 @@ static func _best(ready: Dictionary, last_at: Vector3, have_last: bool,
 		var score: float = (distance * 1000.0 + node.box.position.y
 			if nearest_first
 			else node.box.position.y * 1000.0 + distance)
+		# Wheels go on at the end, as a set's do, not with the chassis
+		# plate they hang from at the bottom of it.
+		if node.wheel > 0:
+			score += 1.0e9
 		if score < best_score:
 			best_score = score
 			best = node

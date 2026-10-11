@@ -32,6 +32,8 @@ func _initialize() -> void:
 	_a_pin_goes_in_last(world, library)
 	_built_on_the_side(world, library)
 	_a_published_model(world, library)
+	_wheels_go_on_last(world, library)
+	_floating_detail(world, library)
 
 	print("")
 	print("%d failed" % _failures if _failures else "every booklet can be followed")
@@ -82,8 +84,19 @@ func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 			order[id] = place
 			place += 1
 
+	# A wheel is the exception, the other way round: it is pushed on to
+	# its axle, so the axle goes in first and the wheel after it.
 	var early: int = 0
+	var wheels_first: int = 0
+	var wheels: int = 0
 	for pair: Array in joints:
+		var socket: BrickWorld.Brick = world.get_brick(pair[1])
+		var info: PartLibrary.PartInfo = library.parts.get(socket.part_id)
+		if info != null and info.name.strip_edges().begins_with("Wheel"):
+			wheels += 1
+			if int(order.get(pair[1], 0)) < int(order.get(pair[0], 0)):
+				wheels_first += 1
+			continue
 		if int(order.get(pair[0], 0)) < int(order.get(pair[1], 0)):
 			early += 1
 
@@ -94,6 +107,8 @@ func _a_pin_goes_in_last(world: BrickWorld, library: PartLibrary) -> void:
 		order.size(), world.bricks().size()],
 		order.size() == world.bricks().size())
 	_assert("no pin goes in before the hole exists (%d do)" % early, early == 0)
+	_assert("no wheel goes on before its axle (%d of %d do)" % [wheels_first, wheels],
+		wheels > 0 and wheels_first == 0)
 
 
 ## Ten bricks stacked. There is only one legal order, and it is bottom up.
@@ -307,6 +322,56 @@ func _a_published_model(world: BrickWorld, library: PartLibrary) -> void:
 		callouts.has("Window") and callouts.has("Table") and callouts.has("Chair")
 		and callouts.has("Skateboard") and callouts.has("MiniFig1"))
 	_assert("...and a window is built once for two (%dx)" % most, most >= 2)
+
+
+## The example car a first visit opens: its booklet began with four
+## wheels standing on the table, because the hole is in the wheel and a
+## pin needs its hole.
+func _wheels_go_on_last(world: BrickWorld, library: PartLibrary) -> void:
+	_load(world, library, LdrModel.load_file("res://models/car.ldr"))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	var first: Array = Array(steps[0].brick_ids).map(func(id: int) -> String:
+		var info: PartLibrary.PartInfo = library.parts.get(world.get_brick(id).part_id)
+		return info.name.strip_edges() if info != null else "")
+	print("\n  the example car, %d parts in %d steps" % [world.brick_count(), steps.size()])
+	_assert("it starts with the chassis, not the wheels (%s)" % ", ".join(first),
+		not first.any(func(name: String) -> bool:
+			return name.begins_with("Wheel") or name.begins_with("Tyre")))
+	var at: Dictionary = {}
+	var place: int = 0
+	for step: Instructions.Step in steps:
+		for id: int in step.brick_ids:
+			at[id] = place
+			place += 1
+	var tyres_after: bool = true
+	for tyre: BrickWorld.Brick in world.bricks():
+		if not library.parts[tyre.part_id].name.begins_with("Tyre"):
+			continue
+		var box: AABB = _box(tyre.id, world, library)
+		for rim: BrickWorld.Brick in world.bricks():
+			if library.parts[rim.part_id].name.begins_with("Wheel") \
+					and _box(rim.id, world, library).grow(1.0).intersects(box):
+				tyres_after = tyres_after and int(at[tyre.id]) > int(at[rim.id])
+	_assert("...and every tyre goes on after its rim", tyres_after)
+
+
+## A detail that touches nothing — a design's pinnacle a hair off its
+## tower — was free to go in at step 1, hanging in the air above an empty
+## table: Orthanc had 188 of them. It waits until the model reaches it.
+func _floating_detail(world: BrickWorld, library: PartLibrary) -> void:
+	world.clear()
+	for level: int in 6:
+		world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, level * 24.0, 0)))
+	var detail: int = world.add_brick("3024", 14, Transform3D(Basis.IDENTITY,
+		Vector3(160.0, 5 * 24.0, 0.0)))
+	var steps: Array[Instructions.Step] = Instructions.plan(world, library)
+	var before: int = 0
+	for step: Instructions.Step in steps:
+		if step.brick_ids.has(detail):
+			break
+		before += step.brick_ids.size()
+	print("\n  a detail floating beside a stack of six")
+	_assert("it goes in once the stack has reached it (after %d of 6)" % before, before >= 5)
 
 
 func _load(world: BrickWorld, library: PartLibrary, ldr: LdrModel) -> void:
