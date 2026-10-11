@@ -20,6 +20,8 @@ var _new: Button
 ## The last thing on the bar, so a check can tell the bar fits the page.
 var _clear: Button
 var _save: Button
+var _open_button: Button
+var _export_button: Button
 var _account: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: PickModel
@@ -100,8 +102,8 @@ func _build() -> void:
 	# keeps the name, the conversation and the autosave of what was there.
 	_new = _button(row, "New", ask_for_new, "Start a new model on an empty baseplate (Ctrl+N)")
 	_save = _button(row, "Save", _on_save, "Keep this model under its name")
-	_button(row, "Open…", _on_open, "Reopen a saved model")
-	_button(row, "Export", _on_export,
+	_open_button = _button(row, "Open…", _on_open, "Reopen a saved model")
+	_export_button = _button(row, "Export", _on_export,
 		"Write an LDraw file, which any brick tool reads — an .mpd of its assemblies when it has them")
 	row.add_child(VSeparator.new())
 	_button(row, "Parts list", func() -> void: parts_wanted.emit(),
@@ -204,7 +206,7 @@ func bind(to: ModelStore) -> void:
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
 	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear,
-		"account": _account}
+		"account": _account, "open": _open_button, "export": _export_button}
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has

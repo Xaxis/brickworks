@@ -221,5 +221,11 @@ print made before, or from a picture of one's own. It is saved as a real
 LDraw part with standard TEXMAP and the picture in the model file as !DATA:
 LDView, a program that has never seen Brickworks, draws the face, the badge
 and the lettering where the app does (`shots/print_ldview_front.png`,
-`_back.png`). See `.claude/skills/verify/features/minifig.md`, `custom
-prints` and `print designer`.
+`_back.png`). Where Studio's decal tool places an imported PNG, this places
+a PNG, JPEG, WebP or SVG on any face found from the part's own geometry —
+fitted, covering, cropped, turned, see-through, its background cleared,
+in full colour or mapped to at most so many of LEGO's inks — and draws on it
+after. And stickers as LEGO makes them: a film of their own over a part's
+face or two parts' faces, sized to the faces less LEGO's 0.1 mm a side, and
+the model's sheet of them printed at true size with cut lines. See
+`.claude/skills/verify/features/prints.md`.

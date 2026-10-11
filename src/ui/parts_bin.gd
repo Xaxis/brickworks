@@ -39,7 +39,7 @@ const SEARCH_DEBOUNCE := 160
 ## because LDraw has 94 categories and most of them are not things you
 ## would think to type.
 const LEADING: Array[String] = [
-	"Custom", "Brick", "Plate", "Tile", "Slope", "Technic", "Wedge", "Panel",
+	"My prints", "My stickers", "Custom", "Brick", "Plate", "Tile", "Slope", "Technic", "Wedge", "Panel",
 	"Bracket", "Arch", "Hinge", "Plant", "Animal", "Minifig",
 ]
 
@@ -100,6 +100,8 @@ var _category_scroll: ScrollContainer
 
 var _category: String = "All"
 var _make_button: Button
+var _print_button: Button
+var _stickers_button: Button
 var _results: Array[PartLibrary.PartInfo] = []
 var _shown: int = 0
 var _categories: Array[String] = []
@@ -115,6 +117,10 @@ signal color_chosen(color_code: int)
 ## "Make a part" was pressed: the element maker, for a part that is not
 ## in the library yet.
 signal make_wanted
+## "Print…" was pressed: the print designer, for the part in hand; and
+## "Stickers…": the model's sticker sheet (PrintStudio).
+signal print_wanted
+signal stickers_wanted
 
 
 func _ready() -> void:
@@ -153,6 +159,20 @@ func _build() -> void:
 	make.add_theme_font_size_override("font_size", 12)
 	make.pressed.connect(func() -> void: make_wanted.emit())
 	head.add_child(make)
+	_print_button = Button.new()
+	_print_button.text = "Print…"
+	_print_button.tooltip_text = ("Print a picture or a drawing on the part in hand — a tile, a "
+		+ "slope, any face — as a part of its own, under My prints")
+	_print_button.add_theme_font_size_override("font_size", 12)
+	_print_button.pressed.connect(func() -> void: print_wanted.emit())
+	head.add_child(_print_button)
+	_stickers_button = Button.new()
+	_stickers_button.text = "Stickers…"
+	_stickers_button.tooltip_text = ("The model's stickers: a new one for any face, the sheet "
+		+ "to print at true size")
+	_stickers_button.add_theme_font_size_override("font_size", 12)
+	_stickers_button.pressed.connect(func() -> void: stickers_wanted.emit())
+	head.add_child(_stickers_button)
 
 	_search = LineEdit.new()
 	# Filled in once the catalogue is loaded; the count differs between
@@ -624,6 +644,9 @@ func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"parts list": _scroll}
 	if _make_button != null:
 		named["make part"] = _make_button
+	if _print_button != null:
+		named["print part"] = _print_button
+		named["stickers"] = _stickers_button
 	return named
 
 

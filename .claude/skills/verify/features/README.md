@@ -10,7 +10,7 @@ files here hold the recipes. Each declares the ids it covers in a
 `<!-- covers: -->` line, and `featuremap check` fails when an id has no recipe or
 a recipe covers an id that no longer exists.
 
-Seventy-five features in fourteen areas. The analyser sees Python, the API routes and
+Eighty-two features in fifteen areas. The analyser sees Python, the API routes and
 the main scene; **everything inside the Godot app is declared by hand** in
 `../featuremap.config.json`, because `featuremap` has no GDScript or `.tscn`
 reader. If you add a scene, a panel or a probe-worth-of-behaviour, add it there —
@@ -80,6 +80,9 @@ Never driven from here:
   the GitHub release, and the download page.
 - [minifig](minifig.md): making a minifigure from real parts, standing it on a
   stud, saving it as a sub-model, and the assistant's `add_minifig`.
+- [prints](prints.md): printed parts and stickers of one's own on any face —
+  drawn, or brought in from a picture — LDraw TEXMAP files with their pictures
+  in the model, and the sticker sheet printed at true size.
 
 ## Entry contract
 

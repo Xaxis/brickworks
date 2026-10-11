@@ -318,9 +318,9 @@
     {
       "id": "lib:custom prints",
       "kind": "lib",
-      "entry": "src/minifig/part_prints.gd",
+      "entry": "src/prints/part_prints.gd",
       "reach": "godot --headless --path . --script src/dev/print_probe.gd",
-      "area": "minifig",
+      "area": "prints",
       "tests": []
     },
     {
@@ -467,6 +467,22 @@
       "entry": "src/assembly/stability.gd",
       "reach": "godot --headless --path . --script src/dev/stability_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:sticker sheet",
+      "kind": "lib",
+      "entry": "src/prints/sticker_sheet.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd   (writes shots/print_stickers.pdf)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "lib:stickers",
+      "kind": "lib",
+      "entry": "src/prints/stickers.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd",
+      "area": "prints",
       "tests": []
     },
     {
@@ -632,9 +648,17 @@
     {
       "id": "ui:print designer",
       "kind": "ui",
-      "entry": "src/minifig/print_editor.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd   (by hand: M, a Head, Torso, Hips or Legs slot, Draw a print\u2026)",
-      "area": "minifig",
+      "entry": "src/prints/print_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: hold a part, Parts bin > Print\u2026; or in the figure builder, Draw a print\u2026)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "ui:prints and stickers in the parts bin",
+      "kind": "ui",
+      "entry": "src/prints/print_studio.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print\u2026 / Stickers\u2026)",
+      "area": "prints",
       "tests": []
     },
     {

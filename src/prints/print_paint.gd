@@ -28,6 +28,9 @@ class Layer extends RefCounted:
 	var name: String = "Layer"
 	var image: Image
 	var visible: bool = true
+	## A picture brought in, placed and kept as itself until it is drawn
+	## on or made ink (see [PrintPicture]); null for a layer of ink.
+	var picture: PrintPicture = null
 
 	func _init(called: String, w: int, h: int) -> void:
 		name = called
@@ -123,26 +126,57 @@ func load_image(picture: Image, called: String = "Ink") -> void:
 	active = 0
 
 
-## A picture onto a new layer of its own, fitted inside the canvas and
-## centred: an imported drawing or photograph to trace or keep.
-func place_image(picture: Image, called: String = "Picture") -> void:
-	var copy: Image = picture.duplicate()
-	if copy.get_format() != Image.FORMAT_RGBA8:
-		copy.convert(Image.FORMAT_RGBA8)
-	var scale: float = minf(float(width) / copy.get_width(), float(height) / copy.get_height())
-	var w: int = maxi(1, int(copy.get_width() * scale))
-	var h: int = maxi(1, int(copy.get_height() * scale))
-	copy.resize(w, h, Image.INTERPOLATE_BILINEAR)
+## A picture onto a new layer of its own, fitted inside [param box] — the
+## face's extent — and centred, kept as itself to be placed: a photograph,
+## a logo, a drawing brought in. [param palette] is the inks it can be
+## mapped to.
+func add_picture(image: Image, box: Rect2, palette: Array[Color],
+		called: String = "Picture") -> Layer:
 	var made: Layer = add_layer(called)
-	made.image.blit_rect(copy, Rect2i(0, 0, w, h), Vector2i((width - w) / 2, (height - h) / 2))
+	made.picture = PrintPicture.new(image)
+	made.picture.palette = palette
+	made.picture.fit(box)
+	made.image = made.picture.render(width, height)
+	return made
+
+
+## Change how the active layer's picture is placed: [param values] as
+## [method PrintPicture.params] has them. One undo step each call, unless
+## [param joining] (a drag, which is one step from press to release).
+func change_picture(values: Dictionary, joining: bool = false) -> bool:
+	var target: Layer = layer()
+	if target.picture == null:
+		return false
+	if not joining:
+		_remember(active)
+	target.picture.set_params(values)
+	target.image = target.picture.render(width, height)
+	return true
+
+
+## The active layer's picture made ink: from now on it is pixels, and the
+## brush and the fill work on it.
+func bake_picture() -> void:
+	var target: Layer = layer()
+	if target.picture == null:
+		return
+	_remember(active)
+	target.picture = null
+
+
+## A picture on the canvas, fitted to all of it.
+func place_image(picture: Image, called: String = "Picture") -> void:
+	add_picture(picture, Rect2(0, 0, width, height), [], called)
 
 
 # -- undo ---------------------------------------------------------------------
 
 
 func _remember(index: int) -> void:
-	_push({"layer": index, "image": layers[index].image.duplicate(),
-		"target": layers[index]})
+	var target: Layer = layers[index]
+	_push({"layer": index, "image": target.image.duplicate(), "target": target,
+		"picture": target.picture,
+		"params": target.picture.params() if target.picture != null else {}})
 
 
 func _remember_layers() -> void:
@@ -182,8 +216,13 @@ func _swap(from: Array, to: Array) -> bool:
 		active = clampi(int(step["active"]), 0, layers.size() - 1)
 		return true
 	var target: Layer = step["target"]
-	to.append({"layer": step["layer"], "image": target.image.duplicate(), "target": target})
+	to.append({"layer": step["layer"], "image": target.image.duplicate(), "target": target,
+		"picture": target.picture,
+		"params": target.picture.params() if target.picture != null else {}})
 	target.image = step["image"]
+	target.picture = step.get("picture")
+	if target.picture != null:
+		target.picture.set_params(step.get("params", {}))
 	return true
 
 
@@ -194,6 +233,8 @@ func _swap(from: Array, to: Array) -> bool:
 func begin() -> void:
 	if not _stroking:
 		_remember(clampi(active, 0, layers.size() - 1))
+		# A mark on a picture makes it ink: it is pixels from then on.
+		layer().picture = null
 		_stroking = true
 	_last = Vector2(-1, -1)
 

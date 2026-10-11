@@ -944,6 +944,32 @@ def test_check_says_whether_a_file_carries_its_parts_whole() -> None:
         assert build_custom.check([bad]) == 1
 
 
+def test_check_says_whether_a_print_carries_its_pictures() -> None:
+    """A print drawn in the app (src/prints) names its picture in a TEXMAP
+    line and the model file carries it as `0 !DATA`; --check finds the
+    picture, and refuses a file that dropped it, by name."""
+    import build_custom
+    part = ("0 Tile 2 x 2, Custom Print Sign\n0 Name: bw-3068b-pabc123.dat\n"
+            "0 !LDRAW_ORG Unofficial_Part\n0 BFC CERTIFY CCW\n"
+            "0 !TEXMAP START PLANAR -20 0 20 20 0 20 -20 0 -20 bw-3068b-pabc123-top.png\n"
+            "4 16 -20 0 20 20 0 20 20 0 -20 -20 0 -20\n0 !TEXMAP END\n")
+    model = ("0 FILE model.ldr\n0 Model\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 bw-3068b-pabc123.dat\n"
+             "0 NOFILE\n0 FILE bw-3068b-pabc123.dat\n" + part + "0 NOFILE\n")
+    picture = ("0 !DATA bw-3068b-pabc123-top.png\n"
+               "0 !: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA"
+               "hKmMIQAAAABJRU5ErkJggg==\n")
+    assert build_custom.texmap_pictures(part) == ["bw-3068b-pabc123-top.png"]
+    assert build_custom.data_names(model + picture) == {"bw-3068b-pabc123-top.png"}
+    import tempfile
+    with tempfile.TemporaryDirectory() as scratch:
+        good = Path(scratch) / "good.mpd"
+        good.write_text(model + picture)
+        assert build_custom.check([good]) == 0
+        bad = Path(scratch) / "bad.mpd"
+        bad.write_text(model)
+        assert build_custom.check([bad]) == 1
+
+
 @needs_numpy
 def test_pipeline_json_is_what_the_pipeline_makes_now() -> None:
     """pipeline.json is what the app's own build is held against. If the

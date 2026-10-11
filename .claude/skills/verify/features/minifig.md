@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom prints, ui:print designer -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow -->
 
 ## Sub-features
 
@@ -159,76 +159,21 @@ the model, and the design assistant doing the same with `add_minifig`.
   part count it publishes (`window.brickworksBricks`). It also chooses a cape —
   a part the pack does not ship, fetched over the wire — and places the caped
   figure.
-- `custom prints` (`src/minifig/part_prints.gd`, `PartPrints`; the pixels in
-  `print_paint.gd`, `PrintPaint`): a print drawn here is an `Area` of a part and a
-  picture for it. `areas_for` finds them from the part's own mesh: a round head's
-  face and the back of it, each half way round its cylinder (CYLINDRICAL, 180
-  degrees, from 3 LDU above where the cylinder starts to 3 below where it ends:
-  3626c's canvas is 408 x 190); a torso's front and back (PLANAR, the largest face
-  turned that way and any as large as a third of it further out, its canvas the
-  face's extent plus half an LDU: 973's front is a trapezoid on a 390 x 330
-  canvas); a right leg with its hips and left leg as one front over all three, the
-  legs 12 under the hips (`LEGS_UNDER_HIPS`, as `Minifig.LEGS` has them); any
-  other part's largest outward faces, named by how they face (a tile's top, a
-  slope's slope). Ten pixels to the LDU, no side over 512. A canvas pixel's place
-  on the part is LDraw's !TEXMAP projection worked out as LDView works it out
-  (`Area.uv`, after TREModel.cpp): PLANAR's first point the picture's top left,
-  second top right, third bottom left; CYLINDRICAL's U `0.5 + angle/a` round from
-  the third point's side, growing to the right seen from outside, V down from the
-  top point. The part file (`part_text`) is the plain part's triangles from its
-  mesh, each area's faces inside its own `0 !TEXMAP START ... <png>` /
-  `0 !TEXMAP END`, its connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases,
-  and `0 // Printed by Brickworks: from=<part> areas=<keys>`; named
-  `bw-<part>-p<tag>`, the tag six hex digits of MD5 over the part, the title and
-  every picture, so the same print twice is the same part. A pair of legs is
-  three files sharing one picture and one tag. `build` is `PartForge.build` with
-  each block's faces handed over in colour `UNDER_PICTURE + n`, so they come out
-  as surfaces of their own, then given texture coordinates by the block's own
-  projection, colour 16 back, and the picture (`Lbm.PartMesh.prints`, by surface;
-  `print_files`, the PNG bytes by name). `BrickWorld` and `PartThumbnails` draw a
-  printed surface with `plastic_print.gdshader` (`#define PLASTIC_PRINT` in
-  `plastic_body`: the picture mixed over the plastic by its alpha, linearised as
-  the plastic's colour is, clear off the picture as LDView's clamp-to-border is).
-  `finished` keeps a picture to the area's mask, grown a pixel, and clears its
-  outermost pixels. `picture_of` reads one of LEGO's prints off its part (every
-  face not in colour 16, on the area) onto a canvas: 3626cp01's grin on 3626c's
-  face; `prints_of` lists a mould's real prints, the most used first.
-  Kept like any made part (`CustomParts.add`: a print's text is built by
-  `PartPrints.build`, its pictures kept beside it in `user://custom_parts/` and
-  found there again at start-up); a model carries each picture as an MPD
-  `0 !DATA <name>.png` section, base64 in `0 !:` lines of 76 characters after the
-  FILE sections (`LdrModel.write_ldr`, `embedded_data` when read), so it opens in
-  a library that never saw it and in LDView. On a figure (`Minifig`): a part made
-  here stands where the part it was made from stands (`PartPrints.bases`;
+- `prints on a figure` (the print designer and its files are in
+  [prints](prints.md)): "Draw a print…" beside the search in the Head, Torso, Hips
+  and Legs slots (`MinifigDialog.PRINTED`; the hips are drawn with the legs) opens
+  the print designer over the builder on the slot's part — its plain mould; a
+  printed part LEGO made is started from, one made here loaded to change. A
+  right leg is printed with its hips and left leg as one front. Save print puts
+  the parts on the figure; a part for no slot (a tile typed into "or print on")
+  goes to the parts bin and the builder says so. On a figure (`Minifig`): a part
+  made here stands where the part it was made from stands (`PartPrints.bases`;
   `assemble` and `torso_local` work with a stand-in and swap the made parts back,
-  a printed pair's left leg for the plain left leg, `made_with`); choosing printed
-  legs brings the hips printed with them and plain legs give plain hips back
-  (`_fit_hips`); made parts are offered first in their slot, in a group "My prints
-  and moulds" (`MADE_HERE`), in their original's colours (`colours_of`); the slot
-  index is rebuilt when the library has made parts it did not.
-- `print designer` (`src/minifig/print_editor.gd`, `PrintEditor`; the canvas
-  `print_canvas.gd`, `PrintCanvas`): "Draw a print…" beside the search in the
-  Head, Torso, Hips and Legs slots of the figure builder (`MinifigDialog.PRINTED`;
-  the hips are drawn with the legs). Opens over the builder on the slot's part
-  (its plain mould; a printed part LEGO made is started from, one made here is
-  loaded to change), a tab per area. Tools: brush and eraser (round, hard-edged),
-  line, box and oval (filled or outlined), fill (a run of one colour on the active
-  layer, on the raw pixels as one int each), text (the font's own glyphs from the
-  text server, so headless too), pick a colour; a size; Mirror, which draws every
-  mark again reflected about the canvas's middle; layers (add, delete, up, down,
-  show); undo and redo (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y; a stroke is one step, 40
-  kept). Colours: LEGO's solid, metallic and pearl colours in sets today, with
-  black and white. The canvas shades what is not on the part and dashes its
-  middle; right button, middle button or Space-drag pans, the wheel zooms. Beside
-  it the part turns wearing the picture as it is drawn (`preview_meshes`: the
-  part's surfaces cut by area, texture coordinates from the same projection, each
-  canvas a texture updated per mark); Start from (a clean sheet, prints made here
-  of the mould, LEGO's prints of it, fetched first in a browser); Add a picture…
-  (`PickImage`, a file dialog or the browser's picker, onto a layer of its own,
-  fitted); "or print on" a part number (3068b, 3039, anything; the slot kept only
-  if the part goes in it). Save print makes the parts and puts them on the figure;
-  a part for no slot goes to the parts bin under Custom and the builder says so.
-  Escape closes it.
+  a printed pair's left leg for the plain left leg, `made_with`); choosing
+  printed legs brings the hips printed with them and plain legs give plain hips
+  back (`_fit_hips`); made parts are offered first in their slot, in a group "My
+  prints and moulds" (`MADE_HERE`), in their original's colours (`colours_of`);
+  the slot index is rebuilt when the library has made parts it did not.
 
 ## How to reach it
 
@@ -251,7 +196,6 @@ godot --headless --path . --script src/dev/minifig_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   # needs a display: see tools/check.sh for xvfb-run
 python3 tools/minitest.py tests/test_minifig.py
 node tools/web/minifig_flow.mjs --url=<a build>/app --out=shots/minifig_web
-godot --headless --path . --script src/dev/print_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd     # needs a display
 ```
 
@@ -326,29 +270,6 @@ Proves it when:
   --delay 300`, which answers `/api/account` with its own `/parts/`; the flow's
   `--url` is `http://127.0.0.1:PORT/index.html`.
 
-- `print_probe` ends `a print drawn here is on the part where it was drawn, in the
-  app and the file`: 3626c's face and back (CYLINDRICAL 180), 973's front and back
-  with the front's TEXMAP points top left, top right, bottom left and its mask a
-  trapezoid, one front over 3815b, 3816c and 3817c, 3068b's top 410 x 410, 3039's
-  slope; the paint document's brush, mirror, fill, undo, redo, words and layers;
-  then a face, a torso front and back, a pair of legs and a tile printed, each
-  part its plain part to the triangle, the collision box and the connector, its
-  pictures on surfaces of their own, and every printed corner carrying exactly
-  the coordinates its file's TEXMAP line gives its position (160 on the head);
-  the same print twice is the same part; a figure in the prints stands exactly as
-  the plain one, the printed left leg on the left; the hips come and go with the
-  legs; the print is first in its slot; the model file carries the pictures as
-  !DATA in lines under 80, reads back to the same bytes, and a library that never
-  saw them builds all four parts and keeps the pictures; 3626cp01's grin lands on
-  the middle of the face and nothing on the back; 973p01's stripes on the front.
-  It leaves the figure's file in `shots/print_probe.mpd`, and
-  `tools/build_custom.py shots/print_probe.mpd --check` reads it strictly ("all
-  complete"). Another program draws it too: LDView 4.7 (the release AppImage,
-  `--appimage-extract`, under Xvfb: `AppRun MODEL.mpd -LDrawDir=vendor/ldraw
-  -SaveSnapshot=out.png -SaveWidth=600 -SaveHeight=600 -cg15,0`, and `-cg15,180`
-  from behind) showed a printed face, a badge on the left breast and "CREW" on the
-  back where the app has them, 2026-10-11 (`shots/print_ldview_front.png`,
-  `_back.png`).
 - `print_ui_probe` ends `a face, a jacket and trousers were drawn by hand, worn and
   placed`, every mark an input event: the face drawn on a clean sheet (the editor
   first opened on 3626cp01's grin), hair round the back, a jacket front with a
@@ -361,27 +282,6 @@ Proves it when:
   `print_figure_back.png` ("CREW" reads from behind) and `print_with_tile.png`.
 
 ## Gotchas
-
-- **A print is a surface with texture coordinates, and nothing else is.** The
-  .lbm format has no UVs; a printed part's are worked out when it is built, from
-  its file's TEXMAP lines, and live only in memory (`Lbm.PartMesh.prints`). A
-  printed part changed by the element maker (`PartEditor.shape_of`) loses its
-  picture.
-- **LDraw's cylindrical spec contradicts itself** on which way V runs (ldraw.org
-  forum thread 13633). LDView and LDCad measure it down from the top point;
-  `Area.uv` does too, and U as LDView does, per corner rather than per triangle
-  (a print's faces never reach the cylinder's seam, which is behind the area).
-  Off the picture, LDView clamps to a clear border and LDCad (2014) stretched the
-  edge pixels, so every finished picture has a clear outermost pixel.
-- **A packed array read out of an Array or Dictionary is a copy**, as in
-  elements.md: `preview_meshes` collected each piece's corners by appending to
-  `(piece[0] as PackedVector3Array)` and built empty meshes. Corners are gathered
-  in plain Arrays now.
-- **The head is 30% cylinder.** 3626c's faces are 3557 LDU² of which 1055 are on
-  its 13 LDU cylinder; the rest is its top, neck and both their insides. A head
-  counts as round at 20%.
-- **`set_size` is Control's.** A method of that name on a panel is a parse error
-  under this project's warnings-as-errors.
 
 - **Measured, not looked up**: three conventions are in real sets' files. The
   library's (76382), Mad_Marc's (hands 0.5 LDU off, sets 10176-10184) and an older

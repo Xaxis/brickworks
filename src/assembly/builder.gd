@@ -826,6 +826,33 @@ func put_figure(parts: Array, called: String, at: Transform3D) -> PackedInt64Arr
 	return ids
 
 
+## Put a part exactly somewhere a click on the grid could not put it — a
+## sticker laid on a face — as one step that undo takes back. Returns the
+## brick, or 0.
+func put_part(part_id: String, color_code: int, at: Transform3D) -> int:
+	var brick_id: int = world.add_brick(part_id, color_code, at)
+	if brick_id == 0:
+		return 0
+	lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(part_id), at))
+	_history.append({"undo": "remove", "brick": brick_id})
+	_redo.clear()
+	placed.emit(brick_id, part_id)
+	return brick_id
+
+
+## Take a brick off as one step that undo puts back: a sticker peeled off.
+func take_off(brick_id: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return false
+	var step: Dictionary = _apply({"undo": "remove", "brick": brick_id})
+	_history.append(step)
+	_redo.clear()
+	selection.erase(brick_id)
+	removed.emit(brick_id)
+	return true
+
+
 ## A group name no part of the model carries yet: a second Guard is
 ## "Guard 2", so the two stay two figures in the file and in a selection.
 func unused_group(wanted: String) -> String:
