@@ -58,7 +58,12 @@ picture the assistant is shown.
   step costs a count per batch: `BrickWorld.begin_reveal` writes each batch
   once with its bricks in build order, so the ones on show are always the first
   so many, and `reveal_through` raises `visible_instance_count`. Any change to
-  the model ends a reveal with everything shown (`reveal_ended`). The whole
+  the bricks being revealed ends it with everything shown (`reveal_ended`);
+  a change elsewhere — the ground laid wider under a design that outgrew it,
+  the moment it is built — leaves it playing. A batch written in order is not
+  also rebuilt first. Outside a reveal the world on screen rebuilds a big
+  change a slice a frame (`BrickWorld.rebuilds_in_slices`, set by `Main`;
+  ModelShot's copy rebuilds whole, because its picture must be). The whole
   assembly takes at most `LONGEST_MS` (8 s), several steps to a frame on a big
   model. `playback_probe` checks the order and the prefix on a small model, that
   only new bricks are hidden, and on the owner's Falcon Heavy

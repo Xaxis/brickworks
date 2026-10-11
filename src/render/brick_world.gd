@@ -518,7 +518,37 @@ func _mark_dirty(key: String) -> void:
 	if not _rebuild_queued:
 		_rebuild_queued = true
 		# One rebuild per frame however many bricks were touched.
-		_flush.call_deferred()
+		_flush_when_due.call_deferred()
+
+
+## Whether a big rebuild may be spread over frames (FramePace), batches
+## not yet rebuilt drawing as they were a frame or two longer. The world on
+## screen does: writing every batch of the owner's 4,242-part Falcon Heavy,
+## once it was down, was most of a second of a browser's one thread. A copy
+## made to be photographed does not, because its picture must be whole.
+var rebuilds_in_slices: bool = false
+
+
+## The deferred rebuild: all of it, or a slice a frame.
+func _flush_when_due() -> void:
+	if not rebuilds_in_slices:
+		_flush()
+		return
+	_rebuild_queued = false
+	if _drawing_held > 0:
+		return
+	var pace := FramePace.new()
+	for key: String in _dirty.keys():
+		_dirty.erase(key)
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_rebuild(batch, key)
+		if pace.due() and not _dirty.is_empty():
+			_rebuild_queued = true
+			if not get_tree().process_frame.is_connected(_flush_when_due):
+				get_tree().process_frame.connect(_flush_when_due, CONNECT_ONE_SHOT)
+			return
+	_flush()
 
 
 ## Holding what is drawn: changes are made but not drawn until the hold is
@@ -535,7 +565,7 @@ func release_drawing() -> void:
 	_drawing_held = maxi(0, _drawing_held - 1)
 	if _drawing_held == 0 and not _dirty.is_empty() and not _rebuild_queued:
 		_rebuild_queued = true
-		_flush.call_deferred()
+		_flush_when_due.call_deferred()
 
 
 func is_drawing_held() -> bool:
@@ -679,11 +709,11 @@ func is_revealing() -> bool:
 ## Hide [param order]'s bricks, to be shown in that order by
 ## [method reveal_through]. Every other brick stays on show.
 func begin_reveal(order: PackedInt64Array) -> void:
-	# From a world with everything on show and nothing waiting to be drawn,
-	# so the order written below is the whole truth about each batch.
+	# From a world with everything on show, so the order written below is
+	# the whole truth about each batch. A batch written in order is written
+	# whole, so one waiting to be rebuilt is not rebuilt first as well: the
+	# rest are, at the end.
 	show_only({})
-	if not _dirty.is_empty():
-		_flush()
 	_reveal_order = PackedInt64Array()
 	for brick_id: int in order:
 		var brick: Brick = get_brick(brick_id)
@@ -693,6 +723,8 @@ func begin_reveal(order: PackedInt64Array) -> void:
 		_reveal_order.append(brick_id)
 		brick.hidden = true
 	if _reveal_order.is_empty():
+		if not _dirty.is_empty():
+			_flush()
 		return
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
@@ -715,7 +747,10 @@ func begin_reveal(order: PackedInt64Array) -> void:
 		batch.ranks = ranks
 		batch.revealed = 0
 		_write_in_order(batch, key)
+		_dirty.erase(key)
 		_revealing.append(batch)
+	if not _dirty.is_empty():
+		_flush()
 
 
 ## Show every brick up to [param rank] in the order begun with: a count

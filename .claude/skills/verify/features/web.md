@@ -145,7 +145,9 @@ plan with Claude as the client.
   the app's own slowest frame (`Main._watch_own_frames`, published as
   `brickworksState.slow`, from a frame's start to its drawing), long tasks,
   the longest gap between frames, a mouse move's wait, bricks, batches,
-  triangles and the WebAssembly heap. With `--dir=build/web` it serves the
+  triangles and the WebAssembly heap. Each slow frame carries what the app
+  was doing (the tool called, the assistant's last step), and the longest of
+  each call is printed with it. With `--dir=build/web` it serves the
   export itself through `tools/web/relay_server.mjs --static`, the deployment's
   real functions; with `--url=` it drives a preview (`BW_BYPASS`). `--calls=`
   replays a run's own calls. Fails when a frame of the app's own work is over

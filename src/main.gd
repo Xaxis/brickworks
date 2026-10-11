@@ -1182,6 +1182,7 @@ func _build_ui() -> void:
 	_playback.library = _library
 	add_child(_playback)
 	_watch_own_frames()
+	_world.rebuilds_in_slices = true
 
 	# What the camera turns around. Without this it orbits the middle of
 	# whatever was last framed, so grabbing a chimney and dragging swings
@@ -2124,13 +2125,15 @@ func _steer_from_keys(delta: float) -> void:
 
 ## Frames whose own work — scripts, coroutines, deferred calls, not drawing —
 ## took over SLOW_FRAME_MS, as [when in ticks, ms of work, ms waiting for a
-## picture to be read back], the latest SLOW_FRAMES of them. Kept on the web
+## picture to be read back, what the app was doing: the tool Claude called
+## and the assistant's last step], the latest SLOW_FRAMES of them. Kept on the web
 ## only, where the page reads them. Timed from the tree's process_frame,
 ## which begins a frame's work, to the renderer's frame_pre_draw, which ends
 ## it; the wait for a picture (ModelShot.gpu_wait_us) is the graphics card's
 ## time, not this app's, and is said apart.
 var _slow_frames: Array = []
 var _frame_began: int = 0
+var _doing: String = ""
 const SLOW_FRAME_MS := 50.0
 const SLOW_FRAMES := 200
 
@@ -2138,6 +2141,11 @@ const SLOW_FRAMES := 200
 func _watch_own_frames() -> void:
 	if not OS.has_feature("web"):
 		return
+	_assistant.progress.connect(func(note: String) -> void:
+		_doing = note)
+	if _connector != null and _connector.rpc != null:
+		_connector.rpc.asked.connect(func(tool: String) -> void:
+			_doing = tool)
 	get_tree().process_frame.connect(func() -> void:
 		_frame_began = Time.get_ticks_usec())
 	RenderingServer.frame_pre_draw.connect(func() -> void:
@@ -2149,7 +2157,7 @@ func _watch_own_frames() -> void:
 		_frame_began = 0
 		if spent > SLOW_FRAME_MS:
 			_slow_frames.append([Time.get_ticks_msec(),
-				roundi(maxf(spent - waited, 0.0)), roundi(waited)])
+				roundi(maxf(spent - waited, 0.0)), roundi(waited), _doing])
 			if _slow_frames.size() > SLOW_FRAMES:
 				_slow_frames = _slow_frames.slice(-SLOW_FRAMES))
 

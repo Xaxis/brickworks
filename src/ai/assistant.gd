@@ -3242,7 +3242,12 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	# time the model is described. On a two thousand brick model that
 	# was nine seconds to answer "what is on the baseplate", which is
 	# the question a design asks most.
-	var packed: PackedInt32Array = builder.boxes_for(part, brick.transform)
+	# The lattice's own record where it has one: the same boxes, worked out
+	# when the brick was registered, and this is asked for every brick each
+	# time a model is read back.
+	var packed: PackedInt32Array = builder.lattice.boxes_of(brick.id)
+	if packed.is_empty():
+		packed = builder.boxes_for(part, brick.transform)
 	if packed.is_empty():
 		return []
 	var lo := Vector3i(packed[0], packed[1], packed[2])
@@ -5660,8 +5665,11 @@ func _checked(model: Model, alone: bool = false) -> Dictionary:
 	_standing_held = true
 	await _ensure_parts(model)
 	Style.norms()
+	var named: Dictionary = {}
 	for placement: Placement in model.placements:
-		Minifig.slot_for(library.parts.get(placement.part))
+		named[placement.part] = true
+	for part_id: String in named:
+		Minifig.slot_for(library.parts.get(part_id))
 	_standing_now = _others_standing(alone)
 	library.begin_reading()
 	var report: Dictionary = {}

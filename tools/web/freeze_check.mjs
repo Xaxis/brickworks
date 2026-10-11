@@ -179,8 +179,10 @@ const state = () => page.evaluate(() => {
 // and apart from it the longest wait for a picture to be read back.
 const own = (slow, from) => {
   const since = slow.filter(([t]) => t >= from);
-  return { ownLongest: Math.max(0, ...since.map(([, ms]) => ms)), ownSlow: since.length,
-    pictureWait: Math.max(0, ...since.map(([, , gpu]) => gpu || 0)) };
+  const worst = since.reduce((a, b) => (b[1] > (a ? a[1] : -1) ? b : a), null);
+  return { ownLongest: worst ? worst[1] : 0, ownSlow: since.length,
+    pictureWait: Math.max(0, ...since.map(([, , gpu]) => gpu || 0)),
+    ownDoing: worst ? String(worst[3] || "") : "" };
 };
 const window_ = (from, to) => page.evaluate(([a, b]) => {
   const p = window.brickworksPerf;
@@ -267,6 +269,7 @@ for (const call of calls) {
   const timed = s.now > 0;
   const over = (timed ? mine.ownLongest > budget : w.longest > taskBudget) || unanswered;
   if (over) failures += 1;
+  if (mine.ownDoing) console.log(`       (its longest own frame was during: ${mine.ownDoing.slice(0, 80)})`);
   console.log(`${over ? "FAIL" : "ok  "} ${call.name.padEnd(14)} ${String(took).padStart(6)} ms ${String(mine.ownLongest).padStart(6)} ms ${String(mine.pictureWait).padStart(6)} ms ${w.longest.toFixed(0).padStart(7)} ms ${w.busy.toFixed(0).padStart(7)} (${(w.span / 1000).toFixed(0).padStart(3)} s) ${w.frozen.toFixed(0).padStart(7)} ${String(worstInput).padStart(6)}  | ${String(s.bricks).padStart(6)} ${String(s.batches ?? "?").padStart(7)} ${String(s.triangles ?? "?").padStart(9)} ${(s.wasm / 1048576).toFixed(0).padStart(7)} ${(s.js / 1048576).toFixed(0).padStart(5)}  ${text.slice(0, 50)}`);
 }
 await page.screenshot({ path: `${out}/after.png`, timeout: 120000 }).catch(() => {});

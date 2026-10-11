@@ -5,7 +5,7 @@
 ## spent, then gives the frame back so the page can draw and answer.
 ##
 ## A slice is 12 ms where frames come sixty a second, and grows to half a
-## frame where frames are slow. In a browser drawing in software a frame is
+## frame, up to 50 ms, where frames are slow. In a browser drawing in software a frame is
 ## more than a second, and giving one back forty times over made putting
 ## the owner's 4,242-part Falcon Heavy down take most of a minute: Claude's
 ## call ran out of time before the tab answered it.
@@ -19,7 +19,7 @@ class_name FramePace
 extends RefCounted
 
 const LEAST_US := 12000
-const MOST_US := 100000
+const MOST_US := 50000
 
 var _until: int = 0
 
