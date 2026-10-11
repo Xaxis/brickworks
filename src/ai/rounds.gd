@@ -181,11 +181,12 @@ static func lay(raw: Dictionary, trouble: Array, library: PartLibrary) -> Array:
 	for pair: Array in outer:
 		var side: Vector2i = pair[0]
 		var theirs: Dictionary = pair[1]
-		if holes.has(side) and theirs.has(-side):
-			var one: Vector3 = holes[side]
-			var two: Vector3 = theirs[-side]
-			if is_equal_approx(one.y, two.y):
-				_pin(made, (one + two) / 2.0, side)
+		if not holes.has(side) or not theirs.has(-side):
+			continue
+		for one: Vector3 in holes[side]:
+			for two: Vector3 in theirs[-side]:
+				if is_equal_approx(one.y, two.y):
+					_pin(made, (one + two) / 2.0, side)
 	if made.size() > Patterns.MOST:
 		trouble.append("that round would be %d parts, which is a mistake "
 			% made.size() + "in the numbers rather than a body")
@@ -268,13 +269,20 @@ static func _stack(stack: Array, centre: Vector2, y: float, base: int, colour: i
 				trouble.append("a Technic course needs a round 4 studs across or more, "
 					+ "to have a brick at each side")
 				break
-			holes = _technic(made, centre, y, d, tone)
+			var course: Dictionary = _technic(made, centre, y, d, tone)
+			# Every course's holes, side by side: a body beside is pinned at
+			# each height both stacks have one, top and bottom like a real
+			# booster's attach points.
+			for side: Variant in course:
+				if not holes.has(side):
+					holes[side] = []
+				(holes[side] as Array).append(course[side])
 			var free: Array[Vector2i] = []
 			for side: Vector2i in STRUT_SIDES:
 				if not joined.has(side):
 					free.append(side)
 			for n: int in mini(struts, free.size()):
-				_strut(made, holes[free[n]], free[n],
+				_strut(made, course[free[n]], free[n],
 					int(entry.get("strut_length", {4: 7, 6: 9, 8: 11}[d])),
 					int(entry.get("strut_color", 0)))
 			y += 3.0
@@ -302,8 +310,13 @@ static func _stack(stack: Array, centre: Vector2, y: float, base: int, colour: i
 						or float(tops[side]) > y)
 					if not by and (spokes == 4 or side.x != 0):
 						clear.append(side)
-				y = _spokes(made, centre, y, d, tone,
-					str(entry.get("tile", GRILLE)), int(entry.get("tile_color", 72)), clear)
+				# A part number, or the grille: a design that said "tile": true
+				# was asking for the default and got a part called "true".
+				var tile: String = GRILLE
+				if entry.get("tile") is String and not str(entry["tile"]).is_empty():
+					tile = str(entry["tile"])
+				y = _spokes(made, centre, y, d, tone, tile,
+					int(entry.get("tile_color", 72)), clear)
 				state["below"] = "plate"
 		if not known:
 			trouble.append("a round's stack entry says plates (a length of body), "

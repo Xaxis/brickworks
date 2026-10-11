@@ -931,6 +931,28 @@ func _round_bodies() -> void:
 	_check("...held on by its two joint pins: without them, %d pieces" % int(apart["pieces"]),
 		dropped == 2 and int(apart["pieces"]) == 3)
 
+	# Pinned at every height both have a Technic course, as a real
+	# booster is attached top and bottom; and a spoke told "tile": true
+	# carries the grille, not a part called "true" (the first Falcon Heavy
+	# after this said both).
+	var twice := {"pattern": "round", "at": {"x": 10, "y": 0, "z": 6}, "diameter": 4,
+		"color": 15, "stack": [{"technic": true}, {"plates": 30}, {"technic": true},
+			{"plates": 4, "spokes": 4, "tile": true}],
+		"beside": {"count": 2, "stack": [{"technic": true}, {"plates": 30},
+			{"technic": true}, {"nose": "cone"}]}}
+	var tied: Assistant.Model = assistant._read_model({"patterns": [twice]})
+	var joints: int = 0
+	var grilles: int = 0
+	for placement: Assistant.Placement in tied.placements:
+		if placement.part == "2780":
+			joints += 1
+		if placement.part == "2412b":
+			grilles += 1
+	var both: Dictionary = assistant._check(tied)
+	_check("two Technic courses each side pin it at both: %d pins, %s, %d grille spokes"
+		% [joints, both["summary"], grilles],
+		joints == 4 and bool(both["ok"]) and int(both["pieces"]) == 1 and grilles > 0)
+
 	# The same calls lying down: a boiler, a fuselage, a log.
 	for axis: String in ["x", "z"]:
 		var lying: Assistant.Model = assistant._read_model({"patterns": [
