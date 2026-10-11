@@ -324,6 +324,36 @@ fixing what it got wrong.
   looking back and every column across the core's inside is open from behind
   to its middle (7 of 10 before). Its core's corners are posted (`an open tower
   is not see-through`, below the many-sided shaft).
+- `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
+  (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
+  here rose the same width from foot to horns, and the owner's verdict named it.
+  The courses split into `count` storeys (the remainder to the lowest), each
+  the prism again with its core `in` whole studs smaller than the one below and
+  its piers the same size drawn in with it (`out` recomputed) — piers shrunk
+  with the core reached the least radius, and an octagonal core of 7 with piers
+  of 4.5 overlaps itself in six pieces, with or without storeys (a fault of the
+  cluster at that size, not fixed here). Each storey's sections are named for
+  it (`prism N storey S face J`), since a face's section turns from its own foot.
+  Every storey but the top is capped with a ledge (`_ledge`): two plates in the
+  second tone (`band_color`, else `SECOND_TONE`, else the prism's colour) over
+  its outline less the studs wholly inside `r - in - thickness - 1.5` — a ring,
+  so the rooms are not floored over, reaching under the next storey's wall and
+  the posts behind its corners. `_summit` keeps every piece of a ledge over
+  `LEDGE_CRUMBS` (6) plates: a ring crossing a cleft on the diagonal comes in
+  pieces, and keeping only the largest left a whole pier of the storey above
+  on nothing. Only the top storey's piers rise into horns; its summit is in the
+  second tone too, and the faces take no bands (the ledges are the bands). The
+  reply says the top's radius (for add_rooms) and its summit's y. A top storey
+  with faces under two studs is refused with the radius that would do.
+  `patterns_probe`: a 45-course octagon of radius 7 is told it is a straight
+  shaft and in three storeys is not, passes the check in one piece, grey only
+  on its two ledges (y 45 and 92, two plates each), its outsides 8, 7 and 6;
+  five storeys at that radius are refused; the guidance's cluster in storeys
+  passes in one piece with four horn points and add_rooms at the top radius
+  furnishes four floors, taking out at most one column (its plate and tile; the
+  top storey's corner posts stand on its ledge inside the rooms — the same
+  cluster without storeys loses none). Looked at: `shots/runs/rk_storeys_corner.png` steps in
+  on grey ledges as 10237 does.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty

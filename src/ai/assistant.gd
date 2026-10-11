@@ -4217,6 +4217,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	if sides < 5 or sides > 16 or courses < 1 or courses > 200:
 		trouble.append("prism wants 5 to 16 sides and 1 to 200 courses")
 		return []
+	if pattern.has("storeys") and not pattern.has("_storey"):
+		return _storeys(pattern, model, index, trouble)
 	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
 	if width < 2:
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
@@ -4263,7 +4265,14 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		# narrow and few, in "window_color" (dark unless said).
 		"windows": bool(pattern.get("windows", false)),
 		"window_colour": int(pattern.get("window_color", pattern.get("window_colour",
-			WINDOW_COLOUR)))}
+			WINDOW_COLOUR))),
+		# A storey of a prism in storeys (_storeys) is named for its storey
+		# too: each face is a section turned about the middle from its own
+		# foot, and two storeys' faces in one section would stand one on the
+		# other's foot.
+		"tag": str(index) if not pattern.has("_storey")
+			else "%d storey %d" % [index, int(pattern["_storey"])],
+		"summit_colour": int(pattern.get("_summit_colour", colour))}
 	if pattern.has("piers"):
 		return _cluster(pattern, spec, model, index, trouble)
 	# Each face as a cluster's core lays one, its outside row run on into the
@@ -4271,15 +4280,138 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	# had a channel at each corner too wide for the post behind it to cover.
 	var made: Array = []
 	var laid: Dictionary = {}
+	var tag: String = spec["tag"]
 	for face: int in sides:
 		if left_out.has(face):
 			continue
-		laid[face] = _cluster_face(made, model, "prism %d face %d" % [index, face],
+		laid[face] = _cluster_face(made, model, "prism %s face %d" % [tag, face],
 			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0,
 			courses, true)
-	_corner_posts(made, func(face: int) -> String: return "prism %d face %d" % [index, face],
+	_corner_posts(made, func(face: int) -> String: return "prism %s face %d" % [tag, face],
 		Vector2(cx, cz), sides, radius, spec, laid, [], courses)
+	if pattern.has("_ledge"):
+		made.append_array(_ledge(pattern, [_outline(Vector2(cx, cz), sides, radius, 0.0)],
+			y0 + 3.0 * courses))
 	return made
+
+
+## A prism in storeys, each set back from the one below on a ledge: the
+## answer to a tower with no silhouette. Every Orthanc built here rose the
+## same width from its foot to its horns, a shaft with a top stuck on, where
+## LEGO's 10237 steps in at each storey on a ledge of grey. Each storey is
+## the prism again — piers, horns, windows and all — its core [code]in[/code]
+## studs smaller than the one below and its piers the same size, drawn in
+## with it, standing on a ledge two plates thick laid round the top of the
+## one below in the second tone; only the top storey's piers rise into
+## horns. The piers keep their size because a cluster of small piers on a
+## small core does not hold: an octagonal core of radius 7 with piers of
+## 4.5 overlaps itself and comes apart in six pieces. The ledge is a ring,
+## so the rooms inside are not floored over at every storey.
+##
+##   "storeys": {"count": 3, "in": 1}
+func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Array:
+	var raw: Variant = pattern["storeys"]
+	var asked: Dictionary = raw if raw is Dictionary else {"count": int(raw)}
+	var count: int = int(asked.get("count", 3))
+	var inset: float = float(asked.get("in", 1))
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var sides: int = int(pattern.get("sides", 8))
+	var radius: float = float(pattern.get("radius", 6))
+	var courses: int = int(round(float(pattern.get("courses", 8))))
+	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
+	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
+	if count < 2 or count > 8 or inset < 1.0 or inset != floor(inset) \
+			or courses < 3 * count:
+		trouble.append("storeys wants a count of 2 to 8, set in by a whole number of "
+			+ "studs (\"in\", 1 or more), with at least 3 courses to a storey")
+		return []
+	var top: float = radius - inset * (count - 1)
+	if floor(2.0 * (top - thick) * tan(PI / sides) + 0.001) < 2:
+		trouble.append(("%d storeys set in %s each leave the top one radius %s, with "
+			+ "faces narrower than two studs: fewer storeys, a smaller in, or a "
+			+ "radius of %s or more") % [count, Placement._num(inset), Placement._num(top),
+			Placement._num(_least_radius(sides, thick) + inset * (count - 1))])
+		return []
+	# The ledges are the second tone's bands on a prism in storeys, in
+	# band_color if it is said; a colour with no second tone, its own.
+	var ledge: int = int(pattern.get("band_color", pattern.get("band_colour",
+		SECOND_TONE.get(colour, colour))))
+	if ledge < 0:
+		ledge = colour
+	var piers: Dictionary = {}
+	if pattern.has("piers"):
+		var given: Variant = pattern["piers"]
+		piers = (given as Dictionary).duplicate(true) if given is Dictionary \
+			else {"count": int(given)}
+	var p_sides: int = int(piers.get("sides", sides))
+	var p_radius: float = float(piers.get("radius", round(radius * 2.0 / 3.0)))
+	var least: float = _least_radius(p_sides, thick)
+	var further: float = float(piers["out"]) - (radius + maxf(least, p_radius) - thick) \
+		if piers.has("out") else 0.0
+	var horns: int = int(round(float(piers.get("courses",
+		courses + maxi(2, courses / 5))))) - courses
+	var each: int = courses / count
+	var y: float = float(at.get("y", 0.0))
+	var made: Array = []
+	for s: int in count:
+		var storey: Dictionary = pattern.duplicate(true)
+		storey.erase("storeys")
+		storey["_storey"] = s
+		storey["_summit_colour"] = ledge
+		storey["band_color"] = -1
+		var high: int = each + (1 if s < courses % count else 0)
+		var r: float = radius - inset * s
+		storey["courses"] = high
+		storey["radius"] = r
+		storey["at"] = {"x": float(at.get("x", 0.0)), "y": y, "z": float(at.get("z", 0.0))}
+		if s < count - 1:
+			storey["_ledge"] = ledge
+			# Under the whole of the next storey's wall and the posts in the
+			# grooves behind its corners, which stand up to a stud and a half
+			# inside it, so they stand on the ledge and not on the air inside
+			# this one.
+			storey["_hole"] = r - inset - thick - 1.5
+		if not piers.is_empty():
+			var these: Dictionary = piers.duplicate(true)
+			var pr: float = maxf(least, p_radius)
+			these["radius"] = pr
+			these["out"] = r + pr - thick + further
+			these["courses"] = high + (maxi(horns, 0) if s == count - 1 else 0)
+			storey["piers"] = these
+		made.append_array(_prism(storey, model, index, trouble))
+		y += 3.0 * high + SUMMIT
+	_pattern_advice.append(("The prism stands in %d storeys, each %s in from the one "
+		+ "below on a ledge; the top one is radius %s, so add_rooms with that radius "
+		+ "fits every storey, and its summit is at y %s.") % [count,
+		Placement._num(inset), Placement._num(top), Placement._num(y - SUMMIT)])
+	return made
+
+
+## The most plates a piece of a ledge can be and still be left off: the
+## crumbs where a ring crosses a diagonal were two and four, over air; the
+## least piece that carried a pier of the storey above was thirty.
+const LEDGE_CRUMBS := 6
+
+
+## A ledge two plates thick round the top of a storey: over the studs inside
+## [param outlines] (this storey's, in plan) but not wholly inside the
+## pattern's [code]_hole[/code], the inside of the next storey's wall.
+func _ledge(pattern: Dictionary, outlines: Array, y: float) -> Array:
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var middle := Vector2(float(at.get("x", 0.0)), float(at.get("z", 0.0)))
+	var sides: int = int(pattern.get("sides", 8))
+	var low := Vector2i(1 << 20, 1 << 20)
+	var high := Vector2i(-(1 << 20), -(1 << 20))
+	for outline: PackedVector2Array in outlines:
+		for point: Vector2 in outline:
+			low = Vector2i(mini(low.x, int(floor(point.x))), mini(low.y, int(floor(point.y))))
+			high = Vector2i(maxi(high.x, int(ceil(point.x))), maxi(high.y, int(ceil(point.y))))
+	var cells: Dictionary = _studs_within(outlines, low, high)
+	var hole: float = float(pattern.get("_hole", 0.0))
+	if hole > 0.0:
+		for cell: Variant in _studs_within([_outline(middle, sides, hole, 0.0)], low, high):
+			cells.erase(cell)
+	return _summit(cells, y, int(pattern["_ledge"]), LEDGE_CRUMBS)
 
 
 ## The courses of one face of a prism, over each of its runs ([left, studs]
@@ -4788,9 +4920,10 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		inward.append(-across.normalized() if across.length() > 0.001 else Vector2.ZERO)
 
 	var made: Array = []
+	var tag: String = spec["tag"]
 	var name_of := func(pier: int, face: int) -> String:
-		return ("prism %d face %d" % [index, face]) if pier < 0 \
-			else "prism %d pier %d face %d" % [index, pier, face]
+		return ("prism %s face %d" % [tag, face]) if pier < 0 \
+			else "prism %s pier %d face %d" % [tag, pier, face]
 	# The core whole, but for its open back: each pier is built against it, as
 	# a buttress is against a wall. The first clusters had the core stop short
 	# of each pier instead, and its faces could only stop a groove short, so
@@ -4840,9 +4973,13 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	var span: float = radius + out + p_radius * 2.0
 	var low := Vector2i(int(floor(middle.x - span)), int(floor(middle.y - span)))
 	var high := Vector2i(int(ceil(middle.x + span)), int(ceil(middle.y + span)))
-	for plate: Dictionary in _summit(_studs_within(outline, low, high),
-			float(spec["y"]) + top, spec["colour"]):
-		made.append(plate)
+	if pattern.has("_ledge"):
+		# A storey with another on it: a ledge round its top, not a floor.
+		made.append_array(_ledge(pattern, outline, float(spec["y"]) + top))
+	else:
+		for plate: Dictionary in _summit(_studs_within(outline, low, high),
+				float(spec["y"]) + top, spec["summit_colour"]):
+			made.append(plate)
 
 	# The horns: each pier again, whole, standing on the summit, capped
 	# square at its top and carrying a point. Without the cap a horn ends in
@@ -5277,7 +5414,7 @@ static func _plate_studs(plate: Dictionary) -> Array[Vector2i]:
 ## Two layers of plates over [param cells]: strips along z, then strips
 ## along x across them, so each plate crosses several of the other layer
 ## and the whole floor holds wherever its edge rests.
-static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
+static func _summit(cells: Dictionary, y: float, colour: int, crumbs: int = 0) -> Array:
 	var along_z: Array = SUMMIT_ALONG_Z
 	var along_x: Array = SUMMIT_ALONG_X
 	var ordered: Array = cells.keys()
@@ -5297,7 +5434,14 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 	# The two layers are one floor only where they cross. A corner of the
 	# outline a stud across is a 1x1 plate on a 1x1 plate, held by nothing,
 	# and the first open cluster had one hanging over its open back. The
-	# largest piece is the summit; anything apart from it is left off.
+	# largest piece is the summit; anything apart from it is left off —
+	# unless [param crumbs] is said, when only pieces of that many plates
+	# or fewer are: a ledge round a storey is a ring, and where it crosses
+	# a cleft on a diagonal its studs meet only at their corners, so it
+	# comes in several pieces, each standing on the walls under it. Keeping
+	# only the largest dropped the ledge under a whole pier of the storey
+	# above; keeping every piece kept crumbs of four plates on a diagonal,
+	# over the air inside the wall.
 	var under: Dictionary = {}
 	var over: Dictionary = {}
 	for n: int in made.size():
@@ -5316,6 +5460,8 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 				(links[pair[0]] as Dictionary)[pair[1]] = true
 	var seen: Dictionary = {}
 	var largest: Dictionary = {}
+	var pieces: Dictionary = {}     ## plate -> the first plate of its piece
+	var sizes: Dictionary = {}      ## that first plate -> how many in the piece
 	for start: int in made.size():
 		if seen.has(start):
 			continue
@@ -5330,9 +5476,12 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 					queue.append(next)
 		if piece.size() > largest.size():
 			largest = piece
+		sizes[start] = piece.size()
+		for n: Variant in piece:
+			pieces[n] = start
 	var kept: Array = []
 	for n: int in made.size():
-		if largest.has(n):
+		if largest.has(n) or crumbs > 0 and int(sizes[pieces[n]]) > crumbs:
 			kept.append(made[n])
 	return kept
 
@@ -6842,8 +6991,8 @@ func _straight_shaft(model: Model, box_of: Dictionary) -> String:
 		+ "let its top grow out of the body — an oversail on inverted slopes, a "
 		+ "corbelled crown, a spire stepping in (show_technique \"oversail on "
 		+ "inverted slopes\", \"turret spire\") — rather than a cap with spikes "
-		+ "stuck on. A stack of prisms each a little smaller is a taper in plain "
-		+ "calls; the base should lead the eye up, a composed plinth and not rubble "
+		+ "stuck on. A prism with \"storeys\" steps in on a ledge at each storey in "
+		+ "one call; the base should lead the eye up, a composed plinth and not rubble "
 		+ "ringed round its foot.")
 
 
@@ -8930,25 +9079,30 @@ alongside the bricks you write by hand:
 
            And a tower that is not square is one object too: \
            {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, \
-           "sides": 8, "radius": 9, "courses": 30, "color": 0, \
-           "mix_color": 72, "open": 3, "piers": {"count": 4, "courses": \
-           38}} is an eight-sided core with four faceted piers clustered \
-           round it and deep clefts between them, the piers rising past \
-           its summit into horns, its back open on the rooms — Orthanc, \
-           a keep with corner towers, anything clustered. Each face is a \
-           bonded wall in a section of its own, turned to its angle. One \
-           run built octagonal piers by hand from 150 turned sections, \
-           reached the real-set share of parts at an angle and spent \
-           itself doing it; another built them square and had none; this \
-           is that, in one line. "piers" also takes sides, radius and out \
-           (how far from the middle each stands). The core is capped with \
-           a summit two plates thick at y + 3 x courses, which ties it \
-           all together: build on it at y + 3 x courses + 2. Each horn \
-           is capped square the same way, two plates at y + 3 x the \
-           piers' courses + 2, with a black point standing on the cap. \
-           With piers, any "open" opens the core's whole back. Without \
-           "piers" a prism is one shaft with a groove up each corner; \
-           stack them, shrinking, for a taper. Its faces come dressed as a \
+           "sides": 8, "radius": 10, "courses": 36, "color": 0, \
+           "open": 3, "piers": {"count": 4, "courses": 44}, "storeys": \
+           {"count": 3, "in": 2}} is an eight-sided core with four \
+           faceted piers clustered round it and deep clefts between \
+           them, in three storeys, each two studs in from the one below \
+           on a ledge of dark bluish grey, the top one's piers rising \
+           past its summit into horns, its back open on the rooms — \
+           Orthanc, a keep with corner towers, anything clustered. Each \
+           face is a bonded wall in a section of its own, turned to its \
+           angle. One run built octagonal piers by hand from 150 turned \
+           sections, reached the real-set share of parts at an angle and \
+           spent itself doing it; another built them square and had \
+           none; this is that, in one line. "piers" also takes sides, \
+           radius and out (how far from the middle each stands). \
+           "storeys" is the silhouette: every Orthanc built without it \
+           rose the same width from foot to horns, a shaft with a top \
+           stuck on. The top is capped with a summit two plates thick, \
+           which ties it all together; the reply says at what y (without \
+           storeys, y + 3 x courses), so build on it two plates higher. \
+           Each horn is capped square the same way, with a black point \
+           standing on the cap. With piers, any "open" opens the core's \
+           whole back. Without "piers" a prism is one shaft with a groove \
+           up each corner, and "storeys" steps it in the same way. Its \
+           faces come dressed as a \
            finished wall's are — a quarter worked stone, some bricks \
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
@@ -8958,7 +9112,9 @@ alongside the bricks you write by hand:
            its masonry. "windows": true puts a few narrow dark slits up \
            every other face ("window_color" for another; lit yellow in \
            rows makes any tower an office block). Once it stands, \
-           add_rooms with "prism": the same at, sides and radius, and \
+           add_rooms with "prism": the same at and sides, the top \
+           storey's radius (the reply says it; without storeys, the \
+           radius), and \
            "floors": [{"room": "dungeon"}, {"room": "forge", "stair": \
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
            each storey and furnishes each room, in one call.
@@ -9239,8 +9395,9 @@ stand a buttress out: the shadows are what the eye reads \
   The profile is the design. A tall subject the same width all the way \
 up is a shaft, whatever is on it: taper it, flare its foot, gather it at \
 a waist, facet its edges, and let its top grow out of the body rather \
-than sit on it with spikes stuck on. A stack of prisms or rounds, each a \
-little smaller, says a taper in plain calls.
+than sit on it with spikes stuck on. A prism's "storeys" steps a tower in \
+on ledges in one call; a round's stack takes a smaller diameter; a stack \
+of either, each a little smaller, says a taper in plain calls.
   Dark is not one colour. A big face of black or dark brown with nothing \
 on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
 black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
@@ -9930,6 +10087,17 @@ func _tools() -> Array:
 			"window_color": {"type": "integer", "description":
 				"prism: the windows' colour (40, Trans-Brown, a dark slit, "
 				+ "unless said)"},
+			"storeys": {"type": "object", "description":
+				"prism: {\"count\": 2 to 8, \"in\": studs} — the courses "
+				+ "split into storeys, each in studs smaller than the one "
+				+ "below (its piers drawn in with it) and standing on a ledge two "
+				+ "plates thick in the second tone, only the top storey's "
+				+ "piers rising into horns: a tower that steps in as it "
+				+ "rises, not a shaft. The reply says the top's radius "
+				+ "(for add_rooms) and its summit's y.",
+				"properties": {
+					"count": {"type": "integer"},
+					"in": {"type": "integer"}}},
 			"piers": {"type": "object", "description":
 				"prism: faceted piers clustered round it, each a prism of its "
 				+ "own built against the core, with a cleft between each two "
