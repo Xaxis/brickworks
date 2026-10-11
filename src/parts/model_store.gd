@@ -301,58 +301,105 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	builder.lattice.clear()
 	builder.forget_history()
 	scenery.clear()
+	awaited.clear()
 
+	# Stood on the ground before anything is placed, from every part in it.
+	var up: Vector3 = lift_for(known)
 	var placed: int = 0
 	for item: Variant in known:
 		var placement: LdrModel.Placement = item
+		placement.transform.origin += up
+		# Asked for first: on the desktop the geometry is read from disk
+		# when it is asked for, and only a part that still has none is
+		# waited for.
 		var brick_id: int = world.add_brick(
 			placement.part_id, placement.color_code, placement.transform)
-		if brick_id != 0:
-			world.get_brick(brick_id).group = placement.group
-			builder.register(brick_id, placement.part_id, placement.transform)
-			placed += 1
-	_stand_it_on_the_ground()
+		if brick_id == 0:
+			awaited.append(placement)
+			continue
+		world.get_brick(brick_id).group = placement.group
+		builder.register(brick_id, placement.part_id, placement.transform)
+		placed += 1
+	_awaited_in = world.generation()
 
-	# Ask for the ones that were not to hand, so a second attempt lands
-	# them rather than losing them for good.
-	for part_id: String in waiting:
-		library.request_mesh(part_id, true)
+	# Ask for the ones that were not to hand, and put each down as it
+	# arrives (place_awaited).
+	var asked: Dictionary = {}
+	for placement: LdrModel.Placement in awaited:
+		if not asked.has(placement.part_id):
+			asked[placement.part_id] = true
+			library.request_mesh(placement.part_id, true)
 
-	whole = missing.is_empty() and waiting.is_empty()
+	_missing_at_open = missing.size()
+	whole = missing.is_empty() and awaited.is_empty()
 	title = _title_of(model, name)
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "error": ""}
 
 
-## Lift a model that opens below the ground.
+## Placements whose geometry is on its way, put down as each part arrives.
+##
+## There were two ways to open a model. The app's own, for the sample on a
+## first visit, waited for parts that were not yet fetched and put them
+## down later, and did not stand the model on the ground; this one stood it
+## on the ground and dropped the parts that had not arrived. So on the web
+## a first visit saved the car buried to its axles, a reload lifted it a
+## brick, and New said the model had changed. Main opens through here now.
+var awaited: Array[LdrModel.Placement] = []
+var _awaited_in: int = -1
+var _missing_at_open: int = 0
+
+
+## Put down what was waiting for [param part_id]. Returns how many landed;
+## none once the world has been cleared since the model opened.
+func place_awaited(part_id: String) -> int:
+	if awaited.is_empty():
+		return 0
+	if world.generation() != _awaited_in:
+		awaited.clear()
+		return 0
+	var still: Array[LdrModel.Placement] = []
+	var landed: int = 0
+	for placement: LdrModel.Placement in awaited:
+		if placement.part_id != part_id:
+			still.append(placement)
+			continue
+		var brick_id: int = world.add_brick(
+			placement.part_id, placement.color_code, placement.transform)
+		if brick_id != 0:
+			world.get_brick(brick_id).group = placement.group
+			builder.register(brick_id, placement.part_id, placement.transform)
+			landed += 1
+	awaited = still
+	whole = awaited.is_empty() and _missing_at_open == 0
+	return landed
+
+
+## How far [param placements] must come up to stand on the ground: zero
+## when nothing is below it.
 ##
 ## The ground here is zero and nothing is meant to go under it. Other
-## people's files do not know that: the LDraw demonstration car, which
-## is what this app opens the very first time anybody runs it, is built
-## around an origin one brick lower — so it arrived buried to the
-## axles in the baseplate, which is the first thing a new visitor saw.
+## people's files do not know that: the LDraw demonstration car, which is
+## what this app opens the very first time anybody runs it, is built
+## around an origin one brick lower, and arrived buried to the axles in
+## the baseplate. The model comes up rather than the plate going down,
+## because the plate is where everything else is measured from.
 ##
-## Lifting the model rather than dropping the plate, because the plate
-## is where everything else is measured from, and because this then
-## works for any file somebody imports rather than for one known car.
-func _stand_it_on_the_ground() -> void:
-	var lowest: int = 0x7FFFFFFF
-	for brick: BrickWorld.Brick in world.bricks():
-		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if part == null:
+## From the catalogue's bounds of every part, so the answer is the same
+## whatever geometry has arrived yet. It was measured on the bricks
+## already placed, and on the web which those are depends on the network.
+func lift_for(placements: Array) -> Vector3:
+	var lowest: float = INF
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part_id)
+		if info == null:
 			continue
-		for cell: Vector3i in builder._cells_for(part, brick.transform):
-			lowest = mini(lowest, cell.y)
-	if lowest == 0x7FFFFFFF or lowest >= 0:
-		return
-
-	var up: Vector3 = BrickLattice.to_ldu(Vector3i(0, -lowest, 0))
-	for brick: BrickWorld.Brick in world.bricks():
-		var to := Transform3D(brick.transform.basis, brick.transform.origin + up)
-		builder.lattice.release(brick.id)
-		world.move_brick(brick.id, to)
-		builder.register(brick.id, brick.part_id, to)
+		lowest = minf(lowest, (placement.transform * info.bounds).position.y)
+	if lowest == INF or lowest >= -0.001:
+		return Vector3.ZERO
+	return Vector3(0.0, ceilf(-lowest / BrickLattice.CELL - 0.001) * BrickLattice.CELL, 0.0)
 
 
 ## Whether the model on screen is the whole of what was opened.
@@ -471,9 +518,37 @@ func _write(path: String, title: String, with_steps: bool = false) -> bool:
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	file.store_string(to_text(title, with_steps))
+	var text: String = to_text(title, with_steps)
+	file.store_string(text)
 	file.close()
+	_tell_page_wrote(path, text.to_utf8_buffer().size())
 	return true
+
+
+## On the web, tell the page a file was written, so it can watch for it
+## to reach the browser's storage (the shell's brickworksWrote).
+##
+## user:// there is IndexedDB, written by the engine on its own schedule:
+## a save reached it 25 to 52 s after Save on a loaded machine, and a tab
+## closed before then lost the save. The page knows when it has really
+## landed; the app says "saved" only then (stored), and the page warns
+## before a tab with a write still on its way is closed.
+static func _tell_page_wrote(path: String, size: int) -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval("window.brickworksWrote && window.brickworksWrote(%s, %d)"
+		% [JSON.stringify(ProjectSettings.globalize_path(path)), size], true)
+
+
+## Whether a file written here has reached the browser's storage. Always
+## true off the web, where a written file is on disk.
+static func stored(path: String) -> bool:
+	if not OS.has_feature("web"):
+		return true
+	var answer: Variant = JavaScriptBridge.eval(
+		"window.brickworksStored ? window.brickworksStored(%s) : true"
+		% JSON.stringify(ProjectSettings.globalize_path(path)), true)
+	return answer == null or bool(answer)
 
 
 static func _count_bricks(path: String) -> int:

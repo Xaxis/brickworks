@@ -72,6 +72,14 @@ Layout
     box[]        6 x i16                x y z w h d, in lattice cells
     socket[]     2 x f32                x z, in LDU
 
+A shaft or a bore (connectivity.rounds) is a length of round rather than
+a point, and the record is laid out differently for those two kinds: pos
+is one end of its axis, axis runs to the other end (so its length is the
+round's), and the gender byte is its radius in quarter LDU. Their gender
+is their kind's own, a shaft male and a bore female, and a round joint
+needs a radius where the record has no other room for one. A reader that
+predates them sees a kind it does not know and passes over it.
+
 Why the connectivity rides along with the geometry
 --------------------------------------------------
 A part's connectors, collision boxes and sockets could live in the
@@ -135,9 +143,13 @@ class Surface:
 # Connector kinds, as a byte.  The order is the wire format; append only.
 CONNECTOR_KINDS = (
     "stud", "tube", "ridge", "axle", "axle_hole", "pin", "pin_hole",
-    "clip", "bar", "ball", "socket",
+    "clip", "bar", "ball", "socket", "shaft", "bore",
 )
 GENDERS = ("male", "female", "neutral")
+# The kinds whose gender byte is a radius; see the layout above.
+ROUND_KINDS = {"shaft": "male", "bore": "female"}
+# Quarter LDU per step of that byte.
+ROUND_STEPS = 4.0
 
 # The occupancy lattice is stored in sixteenths of an LDU so it stays an
 # integer in the header whatever it is set to.
@@ -150,6 +162,9 @@ class ConnectorOut:
     gender: str
     pos: tuple[float, float, float]
     axis: tuple[float, float, float]
+    # A shaft's or a bore's, with axis then a unit vector; zero otherwise.
+    length: float = 0.0
+    radius: float = 0.0
 
 
 @dataclass(slots=True)
@@ -363,11 +378,18 @@ def write(part: PartMesh, *, scale: float | None = None) -> bytes:
             out += struct.pack(f"<{len(surface.indices)}I", *surface.indices)
 
     for connector in part.connectors:
+        if connector.kind in ROUND_KINDS:
+            gender = max(0, min(255, int(round(connector.radius * ROUND_STEPS))))
+            axis = tuple(v * connector.length for v in connector.axis)
+        else:
+            gender = (GENDERS.index(connector.gender)
+                      if connector.gender in GENDERS else 255)
+            axis = connector.axis
         out += struct.pack(
             "<BB6f",
             CONNECTOR_KINDS.index(connector.kind) if connector.kind in CONNECTOR_KINDS else 255,
-            GENDERS.index(connector.gender) if connector.gender in GENDERS else 255,
-            *connector.pos, *connector.axis,
+            gender,
+            *connector.pos, *axis,
         )
     for box in part.boxes:
         out += struct.pack("<6h", *box)
@@ -426,8 +448,18 @@ def read(data: bytes) -> PartMesh:
     for _ in range(n_connectors):
         values = struct.unpack_from("<BB6f", data, offset)
         offset += 26
+        kind = CONNECTOR_KINDS[values[0]] if values[0] < len(CONNECTOR_KINDS) else ""
+        if kind in ROUND_KINDS:
+            span = values[5:8]
+            length = sum(v * v for v in span) ** 0.5
+            part.connectors.append(ConnectorOut(
+                kind=kind, gender=ROUND_KINDS[kind], pos=values[2:5],
+                axis=tuple(v / length for v in span) if length > 0 else span,
+                length=length, radius=values[1] / ROUND_STEPS,
+            ))
+            continue
         part.connectors.append(ConnectorOut(
-            kind=CONNECTOR_KINDS[values[0]] if values[0] < len(CONNECTOR_KINDS) else "",
+            kind=kind,
             gender=GENDERS[values[1]] if values[1] < len(GENDERS) else "",
             pos=values[2:5], axis=values[5:8],
         ))

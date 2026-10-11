@@ -311,7 +311,7 @@ func _preview_colour(bin: PartsBin, part_id: String, code: int) -> Color:
 		await process_frame
 
 	var cells: Dictionary = bin.get("_cells")
-	var cell: TextureRect = cells.get(part_id)
+	var cell: ThumbTile = cells.get(part_id)
 	if cell == null or cell.texture == null:
 		return Color(0, 0, 0, 0)
 

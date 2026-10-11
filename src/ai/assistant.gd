@@ -1158,7 +1158,8 @@ on a castle that stood up perfectly: 23 shapes against the 117 a real \
 set of its size has, and 208 of one corner brick against 81.
   Inside. If it is a building, can you see in? Real sets are open at the \
 back with furnished rooms on floors; a closed shell is the one place a \
-model of this kind is plainer than every set of its kind.
+model of this kind is plainer than every set of its kind. add_rooms lays \
+the floors and furnishes them in one call.
   Craft. Is anything in it not studs-up, not square, not mirrored where \
 the subject is not? Is there one part used for what it looks like rather \
 than what it is for? Does the texture change where the material does, \
@@ -1973,6 +1974,23 @@ func _run_tool(block: Dictionary) -> Variant:
 			if said is Array:
 				return [{"type": "text", "text": change["summary"]}] + (said as Array)
 			return "%s\n%s" % [change["summary"], str(said)]
+		"add_rooms":
+			progress.emit("laying floors and furnishing the rooms")
+			var rooms: Dictionary = await _rooms(args)
+			if rooms.has("trouble"):
+				return str(rooms["trouble"])
+			# Seen from the side the rooms open to, in their own colours: an
+			# edit's picture is from a corner with what it added in magenta,
+			# which is a picture of where the rooms are and not of them.
+			_look_after_edit = {"from": rooms["view"], "only": rooms["box"],
+				"ask": "That is what it looks like now, from the side the rooms "
+					+ "open to. Does each read as the room it is?"}
+			var laid: Variant = await _run_tool({"name": "edit_model",
+				"input": {"add": rooms["bricks"]}})
+			_look_after_edit = {}
+			if laid is Array:
+				return [{"type": "text", "text": rooms["summary"]}] + (laid as Array)
+			return "%s\n%s" % [rooms["summary"], str(laid)]
 		"add_minifig":
 			# The figure is made and stood up in src/minifig/figure_tool.gd.
 			# Its parts are this design's, so a new submission replaces
@@ -2029,8 +2047,14 @@ func _run_tool(block: Dictionary) -> Variant:
 			var framed := AABB()
 			if not _detailing.is_empty():
 				framed = _bounds_of(_bricks_inside(_detailing["where"]))
+			var from: String = "corner"
+			if not _look_after_edit.is_empty():
+				_shot.highlight = {}
+				ask_about_it = str(_look_after_edit["ask"])
+				from = str(_look_after_edit["from"])
+				framed = _look_after_edit["only"]
 			var answer: Variant = await _with_a_look(said, ask_about_it,
-				"corner", framed)
+				from, framed)
 			_shot.highlight = {}
 			return answer
 		"submit_design":
@@ -3353,10 +3377,24 @@ func _variety(model: Model) -> String:
 			+ "or a second grey")
 	if said.is_empty():
 		return ""
+	# The call that does it, by name, for a building: a real set's different
+	# pieces and colours are its interior, and twelve Orthancs that were told
+	# so in words built solid shells. The style advice naming restyle_model
+	# is what got the finishing pass used.
+	var rooms: String = ""
+	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	if Style.group_for(about) in ["fantasy", "buildings_since_2010"] \
+			and (thin_shapes > 0 and shapes.size() < thin_shapes
+				or thin_lots > 0 and lots.size() < thin_lots):
+		rooms = ("\nOne call for a tower, a keep or a house: add_rooms, a "
+			+ "floor at each storey inside it, each a furnished room — a "
+			+ "library, a forge, a dungeon — which is where a real set's "
+			+ "different pieces and colours are.")
 	return ("Thinner than a set of this size:\n  " + "\n  ".join(said)
 		+ "\nThis is what separates a model that is built from one that is "
 		+ "designed — the detail that needs a different piece. Measured "
-		+ "over %d real sets of this size." % int(normal.get("sets", 0)))
+		+ "over %d real sets of this size." % int(normal.get("sets", 0))
+		+ rooms)
 
 
 ## Up to how many available colours are worth naming rather than counting.
@@ -3822,6 +3860,58 @@ func _restyle(args: Dictionary) -> Dictionary:
 			% [turned + stoned, "" if turned + stoned == 1 else "s", turned, stoned]}
 
 
+## How the picture after an edit is taken when the edit was not the
+## design's own bricks: {"from", "only", "ask"}, or {} for the usual corner
+## with what changed in magenta. Set by add_rooms around its edit.
+var _look_after_edit: Dictionary = {}
+## What the last add_rooms came to (Rooms.answer, and "dropped": how many
+## items the check took back out), for rooms_probe to hold it to.
+var _last_rooms: Dictionary = {}
+
+
+## Floors and furnished rooms in what stands (see [Rooms]), checked the way
+## the edit that lays them will be. What the check finds floating is taken
+## back out, a piece of furniture or a floor at a time, and the rest checked
+## again: a room short of a chest is still a room, and an edit refused whole
+## for one is no rooms at all. Returns Rooms.plan's answer.
+func _rooms(args: Dictionary) -> Dictionary:
+	if world == null or builder == null or builder.lattice == null:
+		return {"trouble": "There is no model standing to put rooms in."}
+	var wanted := Model.new()
+	for part: String in Rooms.parts_wanted():
+		wanted.placements.append(Placement.from_dict({"part": part}))
+	await _ensure_parts(wanted)
+	var rooms := Rooms.new(self)
+	var plan: Dictionary = rooms.plan(args)
+	if plan.has("trouble"):
+		return plan
+	var dropped: int = 0
+	for _try: int in 3:
+		var trial: Model = _model_from_world()
+		var standing: int = trial.placements.size()
+		for brick: Dictionary in rooms.bricks():
+			trial.placements.append(Placement.from_dict(brick))
+		_pattern_trouble = []
+		_repeat_trouble = []
+		var report: Dictionary = _check(trial, true)
+		if bool(report["ok"]):
+			break
+		var ours: Array = []
+		for index: Variant in report.get("floating", []):
+			if int(index) >= standing:
+				ours.append(int(index) - standing)
+		var gone: int = rooms.drop(ours) if not ours.is_empty() else 0
+		if gone == 0:
+			break
+		dropped += gone
+		plan = rooms.answer()
+	_last_rooms = plan.duplicate()
+	_last_rooms["dropped"] = dropped
+	if (plan["bricks"] as Array).is_empty():
+		return {"trouble": "Nothing would fit: %s" % str(plan["summary"])}
+	return plan
+
+
 ## Whether every stud of a one-wide brick has a part directly under it
 ## or on top of it, so the brick can be split into 1x1s and each still be
 ## held. A course's end brick in a bonded wall overhangs the course below
@@ -3904,7 +3994,12 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
 	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
 	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
-	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
+	# Dressed unless asked not to be. Both were zero unless given, the
+	# guidance said to give them, and no run did: the thirteenth Orthanc
+	# stood a prism of plain faces (61% plain, 1% on its side) which the
+	# finishing pass cannot reach once they are turned. "masonry": 0 and
+	# "sideways": 0 still give a plain face.
+	var masonry: float = clampf(float(pattern.get("masonry", 0.25)), 0.0, 1.0)
 	if sides < 5 or sides > 16 or courses < 1 or courses > 200:
 		trouble.append("prism wants 5 to 16 sides and 1 to 200 courses")
 		return []
@@ -3913,7 +4008,7 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
 			% Placement._num(radius) + "make the radius larger or the sides fewer")
 		return []
-	var sideways: float = clampf(float(pattern.get("sideways", 0.0)), 0.0, 0.5)
+	var sideways: float = clampf(float(pattern.get("sideways", 0.15)), 0.0, 0.5)
 	# Faces left out, centred on the back (the face looking -z, which is the
 	# one turned half way round), so the inside shows the way a real set's
 	# tower opens: rooms on floors, behind. Every Orthanc built here was a
@@ -4381,7 +4476,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## Which placements a pin, axle or ball joins to which. Needed before
 	## the first brick goes into the lattice, because a joint is allowed
 	## to overlap and the lattice finds out in placement order.
-	var joined: Dictionary = _connectors_mating(model)
+	var entries: Array = _mating_entries(model)
+	var joined: Dictionary = Joints.both_ways(entries)
+	## And which turn in something round that fits them, with where: a clip
+	## on a bar, a bar in a hollow stud, a hinge, a turntable. See
+	## [method Joints.rounds].
+	var rounds: Dictionary = Joints.rounds(entries)
 	## index -> where that placement went, for the inserts below.
 	var placed_at: Dictionary = {}
 
@@ -4520,8 +4620,14 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# to put it in — and on a model with four sections that was
 			# the whole cost of checking it.
 			var here: PackedInt32Array = builder.boxes_for(part, square)
-			var near: PackedInt64Array = _give_way(own.blockers_boxes(here),
-				placement, index, model, gave_way)
+			# The joints below are forgiven here as well. They were only ever
+			# asked about between sections, so a hinge, a clip on a bar or a
+			# pin inside one turned assembly was refused for what the same
+			# parts did square.
+			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
+				index, model, placed_at, joined, rounds, here, own,
+				model.section_for(placement).placed(), true)
+			near = _give_way(near, placement, index, model, gave_way)
 			if gave_way.has(index):
 				continue
 			if not near.is_empty():
@@ -4564,28 +4670,18 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# the bore stays at the shaft's radius and the joint is forgiven
 		# instead — only between the two parts the joint actually names,
 		# so every other overlap still reports.
-		if not blockers.is_empty() and joined.has(index):
-			var mates: Dictionary = joined[index]
-			var rest: PackedInt64Array = PackedInt64Array()
-			for key: int in blockers:
-				if key > 0 and not mates.has(key - 1):
-					rest.append(key)
-				elif key <= 0:
-					rest.append(key)
-			blockers = rest
-
+		#
 		# A pane in its window frame, or a door in its door frame, where
 		# real sets put it. See [constant NESTS].
-		if not blockers.is_empty():
-			var kept: PackedInt64Array = PackedInt64Array()
-			for key: int in blockers:
-				var other: int = key - 1
-				if key > 0 and placed_at.has(other) and _seated(
-						placement.part, at, model.placements[other].part,
-						placed_at[other]):
-					continue
-				kept.append(key)
-			blockers = kept
+		#
+		# And something round in something round that fits it, which is a
+		# clip on a bar, a bar in a hollow stud, a hinge and a turntable:
+		# of 880 real sets' sub-models the checker refused 232 for
+		# overlaps, and these were most of them. Forgiven only where the
+		# overlap lies inside the bore, so the same two parts meeting
+		# anywhere else still collide. See [method Joints.rounds].
+		blockers = _joints_out(blockers, index, model, placed_at, joined,
+			rounds, packed, lattice, Transform3D.IDENTITY, false)
 
 		if not blockers.is_empty() and placement.id != 0 \
 				and not placement.moved:
@@ -4681,7 +4777,15 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## kind -> Array of sentences, said as advice once the faults are in.
 	var loose: Dictionary = {}
 	var floating: Dictionary = {}
-	_check_support(model, cells_of, lattice, issues, crowded, joined,
+	# A round joint holds both ways, as a pin does: a flag clipped to a
+	# lance hangs from the lance, and a turntable's top is held by its base.
+	var holds: Dictionary = joined.duplicate(true)
+	for index: Variant in rounds:
+		if not holds.has(index):
+			holds[index] = {}
+		for other: Variant in rounds[index]:
+			(holds[index] as Dictionary)[other] = true
+	_check_support(model, cells_of, lattice, issues, crowded, holds,
 		loose, boxes_of, floating)
 	for kind: String in loose:
 		var said: Array = loose[kind]
@@ -4764,7 +4868,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not lopsided.is_empty():
 		advice.append(lopsided)
 
-	var pieces: int = _count_pieces(model, cells_of, lattice, boxes_of)
+	var pieces: int = _count_pieces(model, cells_of, lattice, boxes_of, holds)
 
 	var errors: int = 0
 	for kind: String in issues:
@@ -5450,13 +5554,21 @@ func _unbonded_seam(box_of: Dictionary) -> String:
 
 
 func _count_pieces(model: Model, cells_of: Dictionary,
-		lattice: BrickLattice, boxes_of: Dictionary = {}) -> int:
+		lattice: BrickLattice, boxes_of: Dictionary = {},
+		holds: Dictionary = {}) -> int:
 	if cells_of.size() <= 1:
 		return cells_of.size()
 
 	var joined: Dictionary = {}   ## index -> Array of index
 	for index: int in cells_of:
 		joined[index] = []
+	# And the joints, which support counts and this did not: a flag clipped
+	# to a lance was held up and yet a piece of its own.
+	for index: Variant in holds:
+		for other: Variant in holds[index]:
+			if joined.has(index) and joined.has(other):
+				joined[index].append(other)
+				joined[other].append(index)
 	# What sits directly on each brick, asked as a slab across its top
 	# rather than cell by cell. A brick is nine thousand six hundred
 	# cells and each was a question for the lattice: free while a cell
@@ -5551,13 +5663,14 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 	return held
 
 
-## Which placements are held by something pushed into them, or by
-## something they are pushed into.
+## Each placement as [Joints] wants it, to ask which are held by something
+## pushed into them, or by something they are pushed into, and which turn
+## in something round.
 ##
 ## The matching itself lives in [Joints], because the booklet needs the
 ## same answer from a world of bricks rather than a model of placements,
 ## and two copies of it would drift.
-func _connectors_mating(model: Model) -> Dictionary:
+func _mating_entries(model: Model) -> Array:
 	var entries: Array = []
 	for index: int in model.placements.size():
 		var placement: Placement = model.placements[index]
@@ -5566,7 +5679,7 @@ func _connectors_mating(model: Model) -> Dictionary:
 			continue
 		entries.append([index, _transform(placement, part,
 			model.section_for(placement)), part])
-	return Joints.both_ways(entries)
+	return entries
 
 
 ## Where a brick stops, in the units the placement was written in.
@@ -6114,16 +6227,74 @@ static func _gives(gives: Dictionary, holder: int, held: int) -> void:
 ## the frame's own LDraw coordinates. Only there is the overlap
 ## forgiven, to within an LDU: a pane anywhere else is a fault as
 ## before.
+##
+## Measured again over the same sets, 2026-10-10, for the panes 880 real
+## sub-models were still refused for: 3854 in 6556 (28 a side, in three
+## files, 4 to 6 in) and in 60594, 60607 in 60594 (15 a side) where 60608
+## sits, 86210 in 60594 (18, 4 in, give or take an LDU in seven files),
+## 38320 at 60592's origin (64), and 57895 in 57894 (6, 3 out). And the
+## seats the table had one way round that sets use both: 57895 turned
+## half round in 60596 (9 of 29), 60603 4 in and square (2 files). Then
+## the two seats still refused after that: 10190 Market Street sets its
+## left 3854 3 in where the right is 4 (five sub-models of one window),
+## and 10297 Boutique Hotel turns 86210 half round 2 in (7).
 const NESTS: Dictionary = {
 	"60601": [["60592", 0, 0, 0, 0]],
 	"60602": [["60593", 0, 0, 0, 0]],
-	"57895": [["60596", 0, 4, 5, 0]],
+	"38320": [["60592", 0, 0, 0, 0]],
+	"57895": [["60596", 0, 4, 5, 0], ["60596", 0, 4, 5, 2],
+		["57894", 0, 4, -3, 0], ["57894", 0, 4, -3, 2]],
 	"60623": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
 	"60616a": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
 	"60616b": [["60596", -32, 0, 5, 0], ["60596", 32, 0, 5, 2]],
-	"60603": [["60594", 0, 8, 5, 2]],
+	"60603": [["60594", 0, 8, 5, 2], ["60594", 0, 8, 4, 0]],
 	"60608": [["60594", -32, 4, 4, 3], ["60594", 32, 4, 4, 1]],
+	"60607": [["60594", -32, 4, 4, 3], ["60594", 32, 4, 4, 1]],
+	"86210": [["60594", 0, 8, 4, 0], ["60594", 0, 8, 2, 2]],
+	"3854": [["6556", -34, 4, 5, 3], ["6556", 34, 4, 5, 1], ["6556", -34, 4, 3, 3],
+		["60594", -34, 4, 4, 3], ["60594", 34, 4, 4, 1]],
 }
+
+
+## What is left of [param blockers] once the parts that are meant to meet
+## inside one another are taken out: a pin in its hole, a pane in its
+## frame, and something round in something round that fits it where they
+## overlap nowhere but in the round.
+##
+## [param mine] is this placement's cover, [param against] the lattice
+## the others' covers are in, and [param to_world] carries that lattice's
+## cells into the world's coordinates, which the joints are in — the two
+## differ only inside a section. [param square] says the cells are square
+## to both parts, as a section's own are.
+func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
+		placed_at: Dictionary, joined: Dictionary, rounds: Dictionary,
+		mine: PackedInt32Array, against: BrickLattice, to_world: Transform3D,
+		square: bool) -> PackedInt64Array:
+	if blockers.is_empty():
+		return blockers
+	var pinned: Dictionary = joined.get(index, {})
+	var turning: Dictionary = rounds.get(index, {})
+	var at: Transform3D = placed_at[index]
+	var kept := PackedInt64Array()
+	for key: int in blockers:
+		var other: int = key - 1
+		if key > 0 and other < model.placements.size():
+			if pinned.has(other):
+				continue
+			if placed_at.has(other) and _seated(model.placements[index].part, at,
+					model.placements[other].part, placed_at[other]):
+				continue
+			if turning.has(other) and placed_at.has(other):
+				var slack: float = Joints.ROUND_SLACK
+				if not square and not (BrickLattice.is_square_to_grid(at.basis)
+						and BrickLattice.is_square_to_grid(
+							(placed_at[other] as Transform3D).basis)):
+					slack = Joints.ROUND_SLACK_TURNED
+				if Joints.overlap_within(mine, against.boxes_of(key),
+						turning[other], to_world, slack):
+					continue
+		kept.append(key)
+	return kept
 
 
 ## Whether two parts are an insert and its frame, seated as real sets
@@ -6323,6 +6494,14 @@ func _square_transform(placement: Placement,
 func _ensure_parts(model: Model) -> void:
 	var wanted: Dictionary = {}
 	for placement: Placement in model.placements:
+		# From disk first, where the build has it: only what is not there is
+		# fetched. Not resident meant fetched over HTTP even on the desktop,
+		# whose every part is on disk; the request failed, and the wait for it
+		# was the twenty seconds below. add_rooms, which asks for seventy
+		# parts at once, spent most of its time here, and the first Orthanc
+		# run to use it logged a column of "could not fetch".
+		if not library.is_resident(placement.part):
+			library.mesh_for(placement.part)
 		if not library.is_resident(placement.part):
 			wanted[placement.part] = true
 	if wanted.is_empty():
@@ -6979,6 +7158,9 @@ alongside the bricks you write by hand:
              a stone wall    the same, mix_color 72, masonry 0.5,
                              sideways 0.15
              a room          rectangle, wall 1, layers 4, rise 3
+             what is in it   add_rooms once it stands, where= its box,
+                             floors= [{"room": "hall"}, {"room":
+                             "bedchamber"}]
 
            Rock is its own pattern, because stepped plates centred on \
            each other are a wedding cake, never a crag: \
@@ -7011,10 +7193,16 @@ alongside the bricks you write by hand:
            the real-set share of parts at an angle and spent itself \
            doing it; this is that, in one line. Stack prisms of shrinking \
            radius for a taper, and put a floor of plates on a square \
-           core inside to build on. It takes masonry and sideways as a \
-           wall does — "masonry": 0.3, "sideways": 0.2 — for a face of \
-           worked stone with things on its side, which the finishing \
-           pass cannot reach once the faces are turned.
+           core inside to build on. Its faces come dressed as a finished \
+           wall's are — a quarter worked stone, some bricks turned out \
+           with things on their side (the finishing pass cannot reach \
+           them once the faces are turned); "masonry" and "sideways" set \
+           how much, 0 for a plain face. Leave its back \
+           open ("open": 3) and, once it stands, add_rooms with "prism": \
+           the same at, sides and radius, and "floors": [{"room": \
+           "dungeon"}, {"room": "forge", "stair": true}, {"room": \
+           "library"}, {"room": "study"}] lays a floor at each storey and \
+           furnishes each room, in one call.
 
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
@@ -7276,9 +7464,11 @@ model.
 rooms: a library, a stair, a throne, a forge, a figure at a table. That \
 is where most of a set's different pieces and colours are — furniture, \
 books, lamps, tools — and a solid shell has none of them. Leave the back \
-open (a prism takes "open"), lay floors, and furnish them \
-(show_technique: bookcase, fireplace, anvil, four-poster bed, wall \
-lantern, and the rest of furniture and interiors).
+open (a prism takes "open"; a house leaves its back wall out), and then \
+add_rooms lays the floors and furnishes every room, one call for the lot, \
+from the furniture real sets built (show_technique: bookcase, fireplace, \
+anvil, four-poster bed, wall lantern, and the rest of furniture and \
+interiors).
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -7329,20 +7519,37 @@ func _show_technique(wanted: String) -> String:
 			% [wanted, Techniques.listing()])
 
 	var rows := PackedStringArray()
+	# An angled one is a section, said first so the bricks that name it
+	# read as being in it.
+	for raw: Variant in technique.get("sections", []):
+		var section: Dictionary = raw
+		rows.append("  section \"%s\" at x=%s y=%s z=%s, turned %s degrees about %s"
+			% [section["name"], Placement._num(float(section["x"])),
+				Placement._num(float(section["y"])), Placement._num(float(section["z"])),
+				Placement._num(float(section["degrees"])), section["axis"]])
 	for raw: Variant in technique["bricks"]:
 		var brick: Dictionary = raw
 		var face: String = str(brick.get("face", "up"))
-		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s" % [
+		var inside: String = str(brick.get("section", ""))
+		rows.append("  %-8s colour %-3s x=%-5s y=%-5s z=%-5s rot=%s%s%s" % [
 			brick["part"], brick["color"],
 			Placement._num(float(brick["x"])),
 			Placement._num(float(brick["y"])),
 			Placement._num(float(brick["z"])),
 			brick.get("rot", 0),
-			"" if face == "up" else " face=" + face])
+			"" if face == "up" else " face=" + face,
+			"" if inside.is_empty() else " section=" + inside])
+	# A section's bricks are in its own coordinates and go where it goes.
+	# Told only to add to x, y and z, a design would move them twice and
+	# take a turntable's top off its base.
+	var move: String = "Move it where you need it by adding to x, y and z"
+	if not (technique.get("sections", []) as Array).is_empty():
+		move += (" of the section and of the bricks outside it; the bricks "
+			+ "in the section are in its own coordinates and move with it")
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
 		% [str(technique["name"]).capitalize(), technique["when"],
 			technique["why"], "\n".join(rows)]
-		+ "Move it where you need it by adding to x, y and z. Every one "
+		+ move + ". Every one "
 		+ "of these is checked against the same lattice your design is, "
 		+ "so it holds together as it stands.")
 
@@ -8074,6 +8281,75 @@ func _tools() -> Array:
 					"face_color": {"type": "integer", "description":
 						"colour of what is laid on the side studs; the brick's own if not said"},
 				},
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "add_rooms",
+			"description": ("Floors and furnished rooms inside a building that "
+				+ "already stands — a tower, a keep, a house — in one call, as "
+				+ "a real set opens at the back onto them (10237 Orthanc: a "
+				+ "library, Saruman's chamber, a dungeon, the palantír). Give "
+				+ "the building's box (where) or, for a prism, the prism's own "
+				+ "at, sides and radius (prism), and the floors bottom up, each "
+				+ "a kind of room: %s. Each floor is laid as plates and tiles "
+				% ", ".join(PackedStringArray(Rooms.KINDS.keys()))
+				+ "held up on columns; each room is furnished from the worked "
+				+ "examples real sets built — bookcases, a fireplace, an anvil, "
+				+ "a four-poster bed, lamps, chests, barrels — against its walls "
+				+ "and facing in, varied by the seed; stair: true climbs to the "
+				+ "next floor. The shell is left as it is and the edit is "
+				+ "checked like any other, so build it open at the back (a "
+				+ "prism's open, or no back wall) for the rooms to be seen. "
+				+ "This is where a real set's different pieces and colours "
+				+ "are, and a solid shell has none of them."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"where": {"type": "object", "description":
+						"the building, in studs and plates, as look_at_model "
+						+ "takes a box: its walls and the inside between them. "
+						+ "y_from is where the lowest floor goes if no floor says",
+						"properties": {
+							"x_from": {"type": "number"}, "x_to": {"type": "number"},
+							"y_from": {"type": "number"}, "y_to": {"type": "number"},
+							"z_from": {"type": "number"}, "z_to": {"type": "number"},
+						},
+						"additionalProperties": false},
+					"prism": {"type": "object", "description":
+						"for a prism's inside: the same at, sides and radius "
+						+ "(and thickness, if not 2) as the prism pattern, so "
+						+ "the floors follow its faces",
+						"properties": {
+							"at": {"type": "object", "properties": {
+								"x": {"type": "number"}, "y": {"type": "number"},
+								"z": {"type": "number"}},
+								"additionalProperties": false},
+							"sides": {"type": "integer"},
+							"radius": {"type": "number"},
+							"thickness": {"type": "integer"},
+						},
+						"additionalProperties": false},
+					"floors": {"type": "array", "description":
+						"bottom up, one a floor",
+						"items": {"type": "object", "properties": {
+							"room": {"type": "string", "description":
+								"what the room is, e.g. library or Saruman's chamber"},
+							"y": {"type": "number", "description":
+								"plates up, where its floor is laid; left out, "
+								+ "floors stack up from the bottom"},
+							"stair": {"type": "boolean", "description":
+								"a stair from this floor up to the next"},
+						},
+						"required": ["room"],
+						"additionalProperties": false}},
+					"height": {"type": "number", "description":
+						"plates from one floor to the next when no y is said; "
+						+ "24 where the building is tall enough"},
+					"seed": {"type": "integer", "description":
+						"another seed is another arrangement and other colours"},
+				},
+				"required": ["floors"],
 				"additionalProperties": false,
 			},
 		},

@@ -176,6 +176,14 @@ tube under a stud (`tubes`).
   occupancy's clearing of a hole's bore. Nothing the maker makes has a hole;
   3700 is the library part that shows the difference and is left out of the
   probe's list on purpose.
+- **Ported, and compared:** `connectivity.rounds`, the shafts and bores a
+  part's cylinders give (`PartForge._rounds`). A made round brick has a
+  shaft for its wall and a bore for its cavity, and 3062b, 3039, 3040b,
+  3045, 3298, 4286, 6141 and 87087 in the probe's list have rounds too, so
+  every one of them is in `pipeline.json` with its length and radius and the
+  forge's `.lbm` still matches byte for byte. Python's sort is stable and
+  GDScript's is not, so the forge sorts a line's pieces by where they start
+  and then by the order they were found.
 - **A slope's named angle is a name.** LEGO's "33" is 26.6 degrees in 3298 and
   its "75" is 73.6 in 4460b. The maker titles a slope by the named angle when
   it is within five degrees of one, else by its true angle ("Slope Brick 17

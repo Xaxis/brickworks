@@ -31,11 +31,13 @@ an axis, and the mating rules live with the assembly engine.
 
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass
 from enum import Enum
 
 from .library import Detail, Library
-from .parser import Matrix, SubfileRef, Vec3
+from .parser import MetaLine, Matrix, SubfileRef, Vec3
 
 # In LDraw, -Y is up.  A stud primitive is modelled pointing that way, so
 # transforming this direction by the accumulated matrix gives the real
@@ -55,6 +57,8 @@ class ConnectorKind(Enum):
     BAR = "bar"              # the 3.2 mm rod a clip grips
     BALL = "ball"
     SOCKET = "socket"
+    SHAFT = "shaft"          # round and solid: a bar, a pin, a turntable's disc
+    BORE = "bore"            # round and empty: a clip, a hollow stud, a hinge's eye
 
 
 class Gender(Enum):
@@ -222,6 +226,11 @@ class Connection:
     position: Vec3   # part-local, LDU
     axis: Vec3       # unit vector pointing out of the part
     source: str      # the primitive that produced it, for debugging
+    # A shaft or a bore is a length of round, not a point: position is
+    # one end of its axis, axis points along it, and these say how far it
+    # runs and how wide it is. Zero for every other kind.
+    length: float = 0.0
+    radius: float = 0.0
 
     def key(self) -> tuple:
         """A rounded identity, for de-duplicating coincident connectors."""
@@ -233,6 +242,8 @@ class Connection:
             round(self.axis.x, 3),
             round(self.axis.y, 3),
             round(self.axis.z, 3),
+            round(self.length, 2),
+            round(self.radius, 2),
         )
 
 
@@ -260,7 +271,7 @@ def extract(
             seen.add(k)
             unique.append(connection)
 
-    return _merge_half_holes(unique)
+    return _merge_half_holes(unique) + rounds(library, name, max_depth=max_depth)
 
 
 def _merge_half_holes(connections: list[Connection]) -> list[Connection]:
@@ -432,6 +443,288 @@ def _walk(
             max_depth,
             stack,
         )
+
+
+# -- round shafts and bores ----------------------------------------------
+#
+# A clip on a bar, a bar in a hollow stud, a hinge's pin in its eye and a
+# turntable's top in its base are one joint: something round turning in
+# something round that fits it. None of them has a primitive of its own,
+# which is why BAR above is never produced, but every one is drawn from
+# the same few cylinder primitives — and LDraw's winding says which side
+# of a cylinder is plastic. A bar is a 4 LDU cylinder facing out; a clip's
+# eye, a hollow stud's bore and a hinge's eye are cylinders facing in,
+# drawn after BFC INVERTNEXT. Measured on the parts the checker refused:
+# a clip's eye is radius 4 in every clip primitive (clip1, 3, 9, 13), a
+# hollow stud's is 4, a hinge brick's pin and eye are 6 (3830, 3831) and
+# a 2x2 turntable's disc and recess 17.5 (3679, 3680).
+#
+# The cover cannot hold these. It is filled layer by layer, so the eye of
+# a clip or a hinge closes like any other ring and the part that goes in
+# reads as a collision. What is recorded here is the round itself, so the
+# checker can forgive an overlap that lies inside a bore where a shaft
+# that fits it actually runs, and nothing else.
+
+## The primitives a cylinder's side is drawn with: n-dcyli and n-dcyli2,
+## at 16 or 48 segments. Every other cylinder primitive (cylo, cylc,
+## cylc2, cylc3) is one of these with edges or a disc added, so walking
+## through those reaches the side once.
+_SURFACE = re.compile(r"^(\d+)-(\d+)cyli2?$")
+
+## The side of a Technic axle, one LDU long and 6 across the cross at
+## unit scale. An axle is round where it meets a round hole.
+_AXLE_SIDE = frozenset({"axle", "axlehol8"})
+
+## Connector primitives whose round surfaces are walked into, and which
+## of them are kept. A pin's barrel and the bore inside it (a bar fits a
+## pin's end), a clip's eye, which is all a clip is, and a pin hole's
+## bore. The rest stop the walk as they do above.
+_WALKED_INTO: dict[ConnectorKind, tuple[bool, bool]] = {
+    # kind: (shafts kept, bores kept)
+    ConnectorKind.PIN: (True, True),
+    ConnectorKind.CLIP: (False, True),
+    ConnectorKind.PIN_HOLE: (False, True),
+}
+
+## And the ones whose bores count only where they carry on a bore of the
+## part itself. Every brick has tubes and studs, and on their own their
+## insides are where studs go, not a hole through anything; but a bar
+## pushed into a hollow-stud brick (3062b) runs on down through the tube
+## beneath its stud, and an axle through a Technic plate (3709b) through
+## the tube under each hole, and without the tube the bore stops short of
+## where the bar does.
+_CONTINUES = frozenset({ConnectorKind.STUD, ConnectorKind.TUBE, ConnectorKind.RIDGE})
+
+## How much of a circle a round must go round to count. A clip's eye is
+## five eighths of one, and the quarter rounds that soften a brick's
+## edges are not a shaft or a bore of anything.
+ROUND_ARC = 0.5
+## And how long. Shorter is a chamfer or a lip.
+ROUND_LENGTH = 1.0
+## The widest round recorded, in LDU: the part file keeps a round's radius
+## in a byte of quarter LDU (see meshfile.py). A 4x4 turntable's disc is
+## well inside it; a dish's rim is not a joint.
+ROUND_WIDEST = 63.75
+
+
+@dataclass(slots=True)
+class _Piece:
+    kind: ConnectorKind
+    radius: float
+    start: Vec3
+    end: Vec3
+    arc: float       # the share of a full circle this primitive draws
+    source: str
+    continues: bool  # from inside a stud or tube: see _CONTINUES
+
+
+@dataclass(slots=True)
+class _Walk:
+    """What a branch of the walk keeps, decided by the primitive above it."""
+
+    shafts: bool = True
+    bores: bool = True
+    continues: bool = False
+
+
+def rounds(library: Library, name: str, *, max_depth: int = 64) -> list[Connection]:
+    """Every shaft and bore of a part, merged along their axes.
+
+    Pieces drawn end to end along one axis at one radius — a lance is
+    three cylinders, a bar with a stop is two — are one shaft, so each is
+    recorded as a single length of round with the radius it has.
+    """
+    pieces: list[_Piece] = []
+    _round_walk(library, name, Matrix.identity(), False, True, _Walk(), pieces,
+                0, max_depth, set())
+    return _merge_rounds(pieces)
+
+
+def _round_walk(
+    library: Library,
+    name: str,
+    transform: Matrix,
+    invert: bool,
+    certified: bool,
+    keep: _Walk,
+    found: list[_Piece],
+    depth: int,
+    max_depth: int,
+    stack: set[str],
+) -> None:
+    if depth > max_depth or name in stack:
+        return
+    ldfile = library.get(name, Detail.STANDARD)
+    if ldfile is None:
+        return
+    stack = stack | {name}
+    # Which way a surface faces is only known where every file down to it
+    # declares its winding. Below one that does not, a hole and a bar are
+    # the same cylinder, so neither is claimed.
+    certified = certified and ldfile.bfc_certified
+    invert_next = False
+
+    for command in ldfile.commands:
+        if isinstance(command, MetaLine):
+            if command.keyword == "BFC" and "INVERTNEXT" in command.text.upper().split():
+                invert_next = True
+            continue
+        if not isinstance(command, SubfileRef):
+            continue
+        child = transform @ command.matrix
+        # Which way a surface faces is the INVERTNEXTs above it and nothing
+        # else. geometry.flatten also reverses the winding under a mirrored
+        # matrix, but only because mirroring reversed it first: the two
+        # cancel, and the surface faces where it did. Counting the mirror
+        # here made every bar of the lance, 3849, a bore, because its
+        # cylinders are laid along z by a matrix with a negative
+        # determinant, and every clip's eye a shaft.
+        child_invert = invert ^ invert_next
+        invert_next = False
+
+        stem = command.filename.rsplit("/", 1)[-1]
+        if stem.endswith(".dat"):
+            stem = stem[:-4]
+
+        surface = _SURFACE.match(stem)
+        if surface is not None:
+            if certified and (keep.bores if child_invert else keep.shafts):
+                arc = float(surface.group(1)) / float(surface.group(2))
+                _add_piece(found, child, child_invert, arc, stem, 1.0,
+                           keep.continues)
+            continue
+        if stem in _AXLE_SIDE:
+            # Always solid: an axle is never drawn as a hole.
+            if keep.shafts:
+                _add_piece(found, child, False, 1.0, stem, 6.0, keep.continues)
+            continue
+        entry = _CONNECTORS.get(stem)
+        below = keep
+        if entry is not None:
+            if entry[0] in _WALKED_INTO:
+                shafts, bores = _WALKED_INTO[entry[0]]
+                below = _Walk(keep.shafts and shafts, keep.bores and bores,
+                              keep.continues)
+            elif entry[0] in _CONTINUES:
+                below = _Walk(False, keep.bores, True)
+            else:
+                continue
+
+        _round_walk(library, command.filename, child, child_invert, certified,
+                    below, found, depth + 1, max_depth, stack)
+
+
+def _add_piece(found: list[_Piece], at: Matrix, inward: bool, arc: float,
+               source: str, scale: float, continues: bool) -> None:
+    """One cylinder side, if it is a circle and not an ellipse."""
+    across = at.transform_direction(Vec3(1.0, 0.0, 0.0))
+    along = at.transform_direction(Vec3(0.0, 1.0, 0.0))
+    deep = at.transform_direction(Vec3(0.0, 0.0, 1.0))
+    r1, r2, length = across.length(), deep.length(), along.length()
+    if length < 1e-6 or r1 < 1e-6 or r2 < 1e-6:
+        return
+    # Round, and square to its own axis. A cylinder squashed into an oval
+    # or sheared into a slope fits nothing round.
+    if abs(r1 - r2) > 0.02 * max(r1, r2):
+        return
+    if (abs(across.dot(deep)) > 0.01 * r1 * r2
+            or abs(across.dot(along)) > 0.01 * r1 * length
+            or abs(deep.dot(along)) > 0.01 * r2 * length):
+        return
+    start = at.transform_point(Vec3(0.0, 0.0, 0.0))
+    found.append(_Piece(
+        kind=ConnectorKind.BORE if inward else ConnectorKind.SHAFT,
+        radius=scale * 0.5 * (r1 + r2),
+        start=start,
+        end=start + along,
+        arc=arc,
+        source=source,
+        continues=continues,
+    ))
+
+
+def _merge_rounds(pieces: list[_Piece]) -> list[Connection]:
+    """Pieces on one axis line, at one radius, touching end to end, as one."""
+    lines: list[tuple[ConnectorKind, float, Vec3, Vec3, list]] = []
+    for piece in pieces:
+        span = piece.end - piece.start
+        length = span.length()
+        way = span * (1.0 / length)
+        start, end = piece.start, piece.end
+        # Canonical sign, so a cylinder drawn top-down and one drawn
+        # bottom-up along the same line agree.
+        for component in (way.x, way.y, way.z):
+            if abs(component) > 1e-6:
+                if component < 0:
+                    way = way * -1.0
+                    start, end = end, start
+                break
+        along = start.dot(way)
+        foot = start - way * along
+        for kind, radius, line_way, line_foot, members in lines:
+            if (kind is piece.kind and abs(radius - piece.radius) <= 0.1
+                    and way.dot(line_way) >= 0.9999
+                    and (foot - line_foot).length() <= 0.1):
+                members.append((along, along + length, piece))
+                break
+        else:
+            lines.append((piece.kind, piece.radius, way, foot,
+                          [(along, along + length, piece)]))
+
+    # Each line's clusters: [kind, radius, way, foot, low, high, arc,
+    # continues only, source].
+    found: list[list] = []
+    for kind, radius, way, foot, members in lines:
+        members.sort(key=lambda m: m[0])
+        clusters: list[list] = [[members[0]]]
+        reach = members[0][1]
+        for member in members[1:]:
+            if member[0] <= reach + 0.5:
+                clusters[-1].append(member)
+                reach = max(reach, member[1])
+            else:
+                clusters.append([member])
+                reach = member[1]
+        for cluster in clusters:
+            low = min(m[0] for m in cluster)
+            high = max(m[1] for m in cluster)
+            # How far round it goes: two half cylinders over the same span
+            # are a whole one, two quarter rounds at either end of an edge
+            # are still a quarter.
+            arc = max(
+                sum(q[2].arc for q in cluster
+                    if min(p[1], q[1]) - max(p[0], q[0]) > 0.01)
+                for p in cluster)
+            if min(arc, 1.0) < ROUND_ARC or high - low < ROUND_LENGTH:
+                continue
+            found.append([kind, sum(m[2].radius for m in cluster) / len(cluster),
+                          way, foot, low, high,
+                          all(m[2].continues for m in cluster), cluster[0][2].source])
+
+    out: list[Connection] = []
+    for kind, radius, way, foot, low, high, continues, source in found:
+        # A tube's or a stud's bore is kept where it carries on one of the
+        # part's own, at whatever radius: 3062b's bore is 4 under its stud
+        # and 6 through the tube below it.
+        if continues and not any(
+                not other[6] and other[0] is ConnectorKind.BORE
+                and abs(way.dot(other[2])) >= 0.9999
+                and (foot - other[3]).length() <= 0.1
+                and other[4] <= high + 0.5 and low <= other[5] + 0.5
+                for other in found):
+            continue
+        if radius > ROUND_WIDEST:
+            continue
+        out.append(Connection(
+            kind=kind,
+            gender=Gender.MALE if kind is ConnectorKind.SHAFT else Gender.FEMALE,
+            position=foot + way * low,
+            axis=way,
+            source=source,
+            length=high - low,
+            radius=radius,
+        ))
+    return out
 
 
 def summarise(connections: list[Connection]) -> dict[str, int]:

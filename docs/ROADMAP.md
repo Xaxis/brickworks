@@ -307,6 +307,8 @@ colours at the median):
 | 9 | prism faces take masonry and sideways | 2,869 | **13%** | 0% | 64% | 58% | 41 | 4 |
 | 10 | open prisms, rooms inside; both calls named | 2,838 | 0% | 0% | 80% | 57% | 34 | 6 |
 | 11 | run 10 again, the MCP port fixed | 4,437 | **16%** | 9% | 62% | 56% | 35 | 5 |
+| 12 | minifigures, 59 worked examples, dressing gives way, true lighting | 4,167 | **18%** | 0.3% | **38%** | 42% | **46** | 6 |
+| 13 | `add_rooms`, named in the recipes and the variety advice | 3,120 | 1.1% | **13%** | 61% | 36% | **80** | **22** |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -365,6 +367,16 @@ horns on a pale wedding-cake rock: the rock is light grey banded in white,
 and the shaft's faces are flat. Variety has not moved in eleven runs; what
 moves it in real sets is the interior, the details and the figures.
 
+Run 12 had the minifigure builder and the 59 worked examples, and used both
+unprompted: Saruman and Gandalf face each other on the summit, Uruk-hai at the
+door, the shaft ribbed and tied with plate rings, glowing slit windows up its
+grooves, horns leaning out on hinged sections, rock outcrops round a paved
+court. Plain fell to 38% (the lowest of twelve, against a median of 28%),
+curve 22% and texture 20% are in or past the real range, sideways 18%, and
+shapes reached 46, the most yet. Angled fell to 0.3%: no prism this run. It is
+still a square shaft where Orthanc is a faceted spire, and six colours where a
+set has twenty-three; and it saved itself, by name, with the app's own models.
+
 The worked examples, 2026-10-10. The runs say a technique is taken up
 when it is shaped like what the design is doing, and run 23 said a
 worked example moves a design where words do not; the library had
@@ -382,6 +394,52 @@ bars — is refused by the checker as two parts in one place, so no honest angle
 example passes. That checker work (turntables and bars in
 `tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
 angled example can. Not yet measured on an Orthanc run.
+
+Round joints, 2026-10-10. A clip on a bar, a bar in a hollow stud, a
+hinge's pin in its eye and a turntable's top on its base are one joint,
+something round in something round that fits it, and the parts pipeline
+now records it: each part's shafts and bores, read off the cylinders it
+is drawn with and which way their winding faces. The checker forgives an
+overlap between a shaft and a coaxial bore of its size only inside the
+bore, so the same parts meeting anywhere else still collide
+(`Joints.rounds`, `src/dev/joints_probe.gd`). Over the same 880 real
+sub-models: 564 pass → 617, refused for overlaps 232 → 182, none newly
+refused; hollow studs 20 of 75 now pass, clips 6 of 36, bars and axles
+through holes 6 of 57, hinges 3 of 10, panes 5 of 25. The library has its
+first angled example, Cafe Corner's corner entrance steps on their
+turntable at 45 degrees (`corner on a turntable`). Still refused: handles
+and gates whose cover fills the opening a clip passes through, 75937 (its
+cover is its bounding box), and a long tail of covers. The catalogue was rebuilt with the rounds the same day (29,587 parts; the
+16,360 meshes that changed uploaded for the web), so the checker forgives
+them everywhere. Not yet measured on an Orthanc run.
+
+Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
+bare open backs though the guidance asked for rooms in words, and variety
+(shapes, colours) moved least of all. `add_rooms` lays a floor at each
+storey of a building that stands and furnishes each room by its kind —
+library, study, bedchamber, hall, throne room, forge, armoury, dungeon,
+kitchen, lookout, palantír room — from the worked examples, against the
+walls and facing in, with a stair or a ladder where asked. An edit of what
+stands, like the finishing pass and the figures (the two calls runs took up
+unprompted), named in the recipes and in the variety advice. On an
+octagonal prism open at the back, a dungeon, a forge, a library and a study
+take the model from 5 shapes and 2 colours to 56 and 23. On run 12's own
+shaft it finds the inside and furnishes four floors, and says none of it
+shows: that shaft was closed all round.
+
+Run 13 used it unprompted, three times: straight after standing an
+open-backed prism ("Now the floors inside, from the cellars up to the
+summit"), again after widening the shaft, and once more to put back a study
+floor the first version had dropped (fixed: floors hold as laid). Then it
+peopled the rooms — Gríma in the study, an orc smith in the forge, a
+skeleton in the dungeon — eight storeys from a dungeon to the palantír's
+carpet under the horns. **Shapes 80 and colours 22, both records: colours
+at the fantasy median (23) for the first time, from six.** Angled 13% from
+the prism. What fell is the finish: the faces were prism sections, which the
+finishing pass cannot reach ("restyle only touched 5 bricks"), and the
+prism was laid without its own masonry and sideways, so sideways 1% and
+plain 61%; it ran out of its 90 minutes placing figures. Since: the prism dresses its faces by default (masonry 0.25, sideways
+0.15), and the catalogue is rebuilt with the rounds.
 
 ## Long term: custom elements
 

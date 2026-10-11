@@ -135,6 +135,8 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
                 pos=(connection.position.x, -connection.position.y,
                      -connection.position.z),
                 axis=(connection.axis.x, -connection.axis.y, -connection.axis.z),
+                length=connection.length,
+                radius=connection.radius,
             ))
         # Unpacked rather than mapped, so a box that is not six numbers
         # fails here instead of being written out short.

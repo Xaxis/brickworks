@@ -1277,6 +1277,54 @@ static func all() -> Array:
 				{"part": "6141", "color": 38, "x": 1, "y": 1, "z": 0.9, "rot": 0},
 			],
 		},
+		# Angled, and as LEGO angles a wall. Real sets turn an assembly on a
+		# 2x2 turntable far more than any other way — 13 assemblies turned
+		# 45 degrees in six of the repository's sets, seven of them this
+		# set's corner — and the checker read the top over its base as two
+		# parts in one place until the parts pipeline learned shafts and
+		# bores. This is the set's own sub-model, taken off its turntable
+		# and put back on at its own angle by a section, so it is the
+		# corner exactly as built.
+		{
+			"name": "corner on a turntable",
+			"group": "angles",
+			"when": "a corner entrance, a corner window or tower, a wall "
+				+ "or anything else that stands at an angle to the street "
+				+ "on a square base",
+			"why": "A 2 x 2 turntable is a base (3680) and a top (3679) that "
+				+ "turns on it about their shared middle. Build the base "
+				+ "square, and the top and everything on it in a section "
+				+ "turned about that middle, at any angle; the top's studs "
+				+ "carry the rest. As LEGO built it in 10182 Cafe Corner, "
+				+ "the corner entrance's steps turned 45 degrees: 20 parts, "
+				+ "from LDraw's model repository (model by Max Martin "
+				+ "Richter, CC BY 2.0).",
+			"sections": [
+				{"name": "corner", "x": 1, "y": 0, "z": 1, "axis": "y", "degrees": 45},
+			],
+			"bricks": [
+				{"part": "3680", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3679", "color": 71, "x": -0.9, "y": 0, "z": -0.9, "rot": 0, "section": "corner"},
+				{"part": "3020", "color": 71, "x": -2, "y": 1, "z": -2, "rot": 0, "section": "corner"},
+				{"part": "6180", "color": 71, "x": -3, "y": 1, "z": 0, "rot": 0, "section": "corner"},
+				{"part": "2431", "color": 71, "x": -2, "y": 2, "z": -2, "rot": 0, "section": "corner"},
+				{"part": "3023b", "color": 71, "x": 1, "y": 2, "z": -1, "rot": 3, "section": "corner"},
+				{"part": "3023b", "color": 71, "x": -2, "y": 2, "z": -1, "rot": 3, "section": "corner"},
+				{"part": "3021", "color": 71, "x": -1, "y": 2, "z": -1, "rot": 3, "section": "corner"},
+				{"part": "2420", "color": 71, "x": 1, "y": 2, "z": 0, "rot": 1, "section": "corner"},
+				{"part": "2420", "color": 71, "x": -3, "y": 2, "z": 0, "rot": 0, "section": "corner"},
+				{"part": "3070b", "color": 71, "x": -3, "y": 2, "z": 3, "rot": 0, "section": "corner"},
+				{"part": "3070b", "color": 71, "x": 2, "y": 2, "z": 3, "rot": 0, "section": "corner"},
+				{"part": "6636", "color": 71, "x": -3, "y": 2, "z": 2, "rot": 0, "section": "corner"},
+				{"part": "3070b", "color": 71, "x": 0, "y": 3, "z": 0, "rot": 0, "section": "corner"},
+				{"part": "3069b", "color": 71, "x": 2, "y": 3, "z": 1, "rot": 3, "section": "corner"},
+				{"part": "3069b", "color": 71, "x": -3, "y": 3, "z": 1, "rot": 3, "section": "corner"},
+				{"part": "3069b", "color": 71, "x": 0, "y": 3, "z": 1, "rot": 2, "section": "corner"},
+				{"part": "2431", "color": 71, "x": -2, "y": 3, "z": -1, "rot": 0, "section": "corner"},
+				{"part": "3068b", "color": 71, "x": -2, "y": 3, "z": 0, "rot": 0, "section": "corner"},
+				{"part": "3024", "color": 71, "x": 1, "y": 3, "z": 0, "rot": 0, "section": "corner"},
+			],
+		},
 	]
 
 
@@ -1329,15 +1377,16 @@ static func names() -> PackedStringArray:
 ## sixty names in one line a design looking for a roof reads them all;
 ## grouped, it reads one group.
 ##
-## No angles and no banners yet, and not for want of real ones: real
-## sets turn a wall on a turntable (3679 over 3680 at one origin: 13
-## assemblies turned 45 degrees in six sets, seven of them 10182 Cafe
-## Corner's corner entrance, corner windows and tower), on hinge bricks
-## or hinge plates, and hang banners and torches on clips on bars, and the
-## checker reads every one of those as two parts in one place. A worked
-## example that only passes by being built wrong would teach it wrong.
+## Angles came last, and not for want of real ones: real sets turn a
+## wall on a turntable (3679 over 3680 at one origin: 13 assemblies
+## turned 45 degrees in six sets, seven of them 10182 Cafe Corner's
+## corner entrance, corner windows and tower), on hinge bricks or hinge
+## plates, and hang banners and torches on clips on bars, and the checker
+## read every one of those as two parts in one place until the parts
+## pipeline recorded shafts and bores (Joints.rounds). A worked example
+## that only passed by being built wrong would have taught it wrong.
 const GROUPS: Array[String] = ["basics", "walls and stone",
-	"towers and columns", "roofs and spires", "windows and doors",
+	"towers and columns", "angles", "roofs and spires", "windows and doors",
 	"rock and ground", "plants", "furniture and interiors", "lights"]
 
 

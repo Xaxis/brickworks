@@ -24,8 +24,12 @@ const SOCKET_SIZE := 8
 ## Wire order of connector kinds and genders; append only.
 const KINDS: PackedStringArray = [
 	"stud", "tube", "ridge", "axle", "axle_hole", "pin", "pin_hole",
-	"clip", "bar", "ball", "socket"]
+	"clip", "bar", "ball", "socket", "shaft", "bore"]
 const GENDERS: PackedStringArray = ["male", "female", "neutral"]
+## The kinds whose gender byte is a radius, and the gender they have.
+const ROUNDS: Dictionary = {"shaft": "male", "bore": "female"}
+## Quarter LDU per step of that byte.
+const ROUND_STEPS := 4.0
 const VERTEX_SIZE := 10
 const I16_MAX := 32767.0
 const SURFACE_TWO_SIDED := 1
@@ -51,6 +55,11 @@ class Connector extends RefCounted:
 	var gender: String
 	var position: Vector3   ## part-local, LDU
 	var axis: Vector3       ## unit, pointing out of the part
+	## A shaft or a bore is a length of round: it runs [member length] LDU
+	## from [member position] along [member axis], [member radius] LDU
+	## across. Zero for every other kind.
+	var length: float = 0.0
+	var radius: float = 0.0
 
 
 class PartMesh extends RefCounted:
@@ -211,6 +220,15 @@ static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMe
 			bytes.decode_float(offset + 14),
 			bytes.decode_float(offset + 18),
 			bytes.decode_float(offset + 22))
+		# A shaft or a bore runs from its position along its axis, and its
+		# gender byte is its radius: see tools/ldraw/meshfile.py. Read back
+		# so that axis is a unit vector here as it is for every other kind.
+		if ROUNDS.has(connector.kind):
+			connector.gender = ROUNDS[connector.kind]
+			connector.radius = gender_index / ROUND_STEPS
+			connector.length = connector.axis.length()
+			if connector.length > 0.0:
+				connector.axis /= connector.length
 		part.connectors.append(connector)
 		offset += CONNECTOR_SIZE
 

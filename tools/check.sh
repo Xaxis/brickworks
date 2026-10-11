@@ -136,7 +136,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns style turned detail chat project minifig; do
+for name in element_files element dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig; do
   probe "$name"
 done
 
@@ -209,6 +209,13 @@ run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
 # builder and of a row of figures in shots/minifig_*.png.
 run "minifig builder" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/minifig_ui_probe.gd
+# A picture still coming looks like it is coming: the bin's and the
+# builder's tiles wait as placeholders, become their pictures without
+# moving, are drawn in sight first, and say "no preview" for a part with
+# no geometry. Drawn by a SubViewport, so a window. Pictures of each state
+# in shots/placeholders/.
+run "placeholders" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/placeholder_probe.gd
 # The element maker pressed from the parts bin, its preview drawn, and
 # made parts beside the library's: shots/element_dialog.png and
 # shots/element_beside.png are worth a look.

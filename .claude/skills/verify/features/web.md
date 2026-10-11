@@ -108,6 +108,9 @@ tools/deploy.sh --prod          # the one brickworks.diy points at
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
 python3 tools/web/serve.py build/web 8099    # locally, with the isolation headers
+# ...and standing in for the deployment on a slow network: /api/account names
+# its own /parts/, served from the directory after a delay (see parts.md previews)
+python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 2500
 ```
 
 ## How to check it

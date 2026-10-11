@@ -137,7 +137,9 @@ fixing what it got wrong.
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
   a band measures 43% sideways in `tools/style.py`.
-- `a many-sided shaft`: the `prism` pattern (`Assistant._prism`, in the
+- `a many-sided shaft`: dressed by default (masonry 0.25, sideways 0.15; 0 for a
+  plain face): the thirteenth Orthanc stood a prism of plain faces, 61% plain,
+  that the finishing pass cannot reach. The `prism` pattern (`Assistant._prism`, in the
   assistant because it adds sections). `sides` 5-16 faces, each a bonded wall in
   a section of its own (`prism N face K`) turned `360 * K / sides` about the
   middle (`at`), its outer face at `radius`; faces as wide as lets the inside
@@ -150,8 +152,8 @@ fixing what it got wrong.
   and dressed in the face's frame (`_lay_row`). Run 8 used `prism` (31% angled)
   and could not finish its faces: `restyle_model` skips sections and two-wide
   bricks. `open` leaves that many faces out, centred on the one turned half
-  way round (looking -z), so the inside shows as a real set's tower does; the
-  guidance and `CRITIQUE` ask for rooms inside, because nine Orthancs were
+  way round (looking -z), so the inside shows as a real set's tower does, and
+  `add_rooms` furnishes it (rooms inside, below); asked for because nine Orthancs were
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
@@ -185,6 +187,38 @@ fixing what it got wrong.
   from the whole core to get past them. `patterns_probe`: a wall of 1x1s where a
   studs_out face's 18 tiles go is buildable built before or after it, and says
   so; with give-way off it is 18 overlaps.
+- `rooms inside`: `add_rooms` (`src/ai/rooms.gd`, run through `edit_model` by
+  `Assistant._rooms`), a tool and not a pattern because it works on what stands:
+  the variety advice that names it arrives after the build, when a design is
+  told never to submit again, and the two calls made on what stands
+  (`restyle_model`, `add_minifig`) are the two the runs took up. Given `where`
+  (the building's box) or `prism` (the prism's own at, sides, radius) and
+  `floors` bottom up (a kind each: `Rooms.KINDS`, words mapped by `kind_of`, so
+  "Saruman's chamber" is a study), it reads the inside off the live lattice —
+  inside the prism's inner faces, or walled on two opposite sides in the box —
+  stacks floors 26 plates apart (fitted to the shell) unless `y` is said, and
+  lays each as two layers: 2/1-wide plates along z, each strip one plate, and
+  over them a layer along x — tiles (boards, flags or a checker, by kind) where
+  it is walked on, plates where something stands, joints a stud off the
+  strips', a 1 x 2 stitched across any joint left untied — held up on two or
+  three columns in the corners of the room below (never on its furniture).
+  Furniture stands on top, only where plates are. `stair: true` is a straight
+  flight of 2 x 2 bricks where it fits, else a ladder (4175 every six plates) up
+  a 1 x 2 pillar. Each room gets its kind's furniture, signature first: the
+  worked examples (`Techniques`) and a few of castle parts (`Rooms.FURNITURE`),
+  turned as transforms to stand back to a wall and face in, coloured by a seed
+  in colours the parts were made in. Every part is tried against the live
+  lattice and what it has laid, so the shell is never touched; the whole is
+  checked before the edit, and anything floating would be taken out (the probe
+  holds every room to none). Found by twelve Orthancs that were solid shells,
+  46 shapes and 6 colours against a set's 109 and 23. `rooms_probe`: every
+  piece holds every way round and every tone is a colour it was made in; an
+  octagonal prism open at the back takes a dungeon, a forge with a ladder up, a
+  library and a study, passes the check as laid, shell untouched, 5 to 56
+  shapes and 2 to 23 colours; two libraries in a box differ; every other kind
+  gets its signature piece. With a window it leaves `shots/rooms/` (tower from
+  the back, each floor). `Assistant._ensure_parts` loads a part from disk before
+  fetching it: on the desktop it fetched over HTTP, failed, and waited 20 s.
 - `people in it`: `add_minifig` stands a figure made of real parts on whatever is
   under its feet; declared and passed through here, made in
   `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
@@ -256,14 +290,19 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  59 constructions with real part numbers and real coordinates, each in a group
-  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, roofs and
-  spires, windows and doors, rock and ground, plants, furniture and interiors,
-  lights), and the tool's description and its answer to an empty or unknown name
+  60 constructions with real part numbers and real coordinates, each in a group
+  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, angles,
+  roofs and spires, windows and doors, rock and ground, plants, furniture and
+  interiors, lights). An entry may carry `sections` and its bricks a `section`,
+  as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
+  entrance steps, taken off their 2x2 turntable and put back on at the set's 45
+  degrees by a section turned about the turntable's middle, and
+  `show_technique` says the section before the bricks that name it. The
+  tool's description and its answer to an empty or unknown name
   list them by group (`Techniques.listing()`). Eleven are hand-made (a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,
   a smooth top, a round tower, a wide round tower, a taper, a window and a door
-  in a wall); 48 are real sets as LEGO built them, from LDraw's model repository,
+  in a wall); 49 are real sets as LEGO built them, from LDraw's model repository,
   each naming its set and modeller (CC BY 2.0 or 4.0; `docs/ATTRIBUTION.md`):
   named sub-models (`tools/omr.py harvest WORD... --most 40`; a set number as
   the word takes every small sub-model of that set) and, since 2026-10-10, the
@@ -283,16 +322,26 @@ fixing what it got wrong.
   Measured as a library with `tools/style.py shots/techniques/library.ldr`:
   156 parts, 48 shapes, sideways 3.9%, plain 46% with the twenty; 658 parts,
   129 shapes, 34 colours, sideways 18%, plain 31%, organic 2% with 59. Angled
-  is still 0%: the ones the checker refuses are real constructions, so a corpus
-  for its false positives. Of 880 distinct real sub-models (2026-10-10) 583
-  pass, 247 are refused for overlaps and 50 for floating; the overlaps are
-  bars and axles through holes, clips on bars (flags, lances,
-  lanterns), panes in frames `NESTS` does not list (3854 in 6556, 60607 and
-  86210 in 60594, 38320 in 60592, 57895 in 57894), hinge bricks 3830/3831,
-  hinge plates, parts in hollow studs, and the 2x2 turntable, whose top 3679
-  sits over its base 3680 at one origin — how 10182 Cafe Corner stands its
-  corner entrance, corner windows and tower at 45 degrees (13 turned
-  assemblies in six sets), and why there is no angled example yet.
+  was 0% until the checker learned round joints: the ones it refuses are real
+  constructions, so a corpus for its false positives. Of 880 distinct real
+  sub-models (`named2` and `fantasy_subs`, harvested 2026-10-10) the checker
+  at 24c3422 passed 564, refused 232 for overlaps and 84 for floating or below
+  ground. With shafts and bores (`geometry.md`, `round joints`) and the panes
+  NESTS lacked, on a catalogue rebuilt for the parts they use: **617 pass, 182
+  are refused for overlaps, none newly refused**. By the family of what
+  overlapped (a model in more than one counts in each; passing after, of those
+  refused for it): parts in hollow studs 20 of 75, clips on bars 6 of 36, bars
+  and axles through holes 6 of 57, hinges 3 of 10, the one square turntable 1
+  of 1, panes 5 of 25. What still refuses them, measured: a handle or a gate
+  whose cover fills the opening a clip's fingers pass through (60478, 48336,
+  42448 — inside the joint's length, 5.8 to 7.6 LDU off the bar); 75937, whose
+  cover is its bounding box (over 64 boxes), with every axle and plate on it;
+  a bar loose in a tube (4 in 6, not a joint); a pane its modeller mirrored;
+  and parts beside the joint that overlap for reasons of their own. The
+  turntable is how 10182 Cafe Corner stands its corner entrance, corner
+  windows and tower at 45 degrees (13 turned assemblies in six sets); the
+  harvest only takes square sub-models, so `joints_probe` is where a turntable
+  turned 10, 30 and 45 degrees is checked.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a
@@ -311,9 +360,12 @@ fixing what it got wrong.
   every glazed window was refused. Measured over the model repository's sets
   (2026-10-09): panes in 60592/60593 at the frame's own origin and turn (185 and
   110 of them), doors at (±32, 0, 5) in a 60596, the far hand turned half round
-  (46), 57895 glass at (0, 4, 5) (19). The overlap is forgiven only there, to an
-  LDU, in the frame's LDraw coordinates; `techniques_probe` asserts a pane a
-  plate high and a door half a stud along are still refused.
+  (46), 57895 glass at (0, 4, 5) (19). And on 2026-10-10 the panes still
+  refused: 3854 in 6556 and 60594, 60607 and 86210 in 60594, 38320 in 60592,
+  57895 in 57894, with the seats sets use both ways round. The overlap is
+  forgiven only there, to an LDU, in the frame's LDraw coordinates;
+  `techniques_probe` asserts a pane a plate high and a door half a stud along
+  are still refused, and `joints_probe` a 3854 not turned into its groove.
   Known: nothing can be laid on a 60596. Its two outer top studs are notched for
   the hinge and drawn with `3-4cylc` rather than a stud primitive, so
   `occupancy.remove_studs` never sees a stud there and keeps them as solid. The
@@ -358,6 +410,8 @@ godot --headless --path . --script src/dev/brain_probe.gd       # the request ca
 godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets in
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out
+godot --headless --path . --script src/dev/rooms_probe.gd       # floors and furnished rooms in what stands
+xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd  # ...and pictures: shots/rooms/
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts

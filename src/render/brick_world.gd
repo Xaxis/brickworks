@@ -175,6 +175,12 @@ func _note(event: Dictionary) -> void:
 		history = history.slice(history.size() - HISTORY_MOST * 9 / 10)
 
 
+## How many times the world has been cleared: what was placed in one
+## generation is never put down in the next.
+func generation() -> int:
+	return _generation
+
+
 ## A brick's number as the history names it: with its generation.
 func key_of(brick_id: int) -> String:
 	return "%d:%d" % [_generation, brick_id]

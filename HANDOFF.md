@@ -132,12 +132,12 @@ says whether everything agrees with it.
 ## What is next
 
 1. **Orthanc, the owner's yardstick** (`docs/ROADMAP.md`, "Beyond variety:
-   beauty", runs 1-11). Run 11 is the first with sideways and angles in one
-   model (16%, 9%) and detailed itself from the review; variety (35 shapes
-   against 109, 5 colours against 23) has not moved in eleven runs. Real sets
-   get it from interiors, details and figures: rooms inside as one call shaped
-   like the work, and minifigures once the builder lands. A master-level
-   Orthanc goes on the homepage (task #29).
+   beauty"). Run 13 used `add_rooms` unprompted: eight furnished storeys,
+   figures in the rooms, 80 shapes and 22 colours (the fantasy median is 23),
+   but its faces were plain prism sections. Since then the prism dresses its
+   faces by default and the checker accepts real joints (clips, hinges,
+   hollow studs, turntables), so angled techniques can pass. Run 14 is the
+   first with all of it. A master-level Orthanc goes on the homepage (task #29).
 2. **Desktop 0.1.0 is out** (2026-10-10): checked by the release workflow on
    Linux, macOS (Apple silicon and Intel) and Windows, then published from that
    draft; brickworks.diy/download.html offers it. Next release by the cadence in
@@ -151,11 +151,15 @@ says whether everything agrees with it.
    slopes). Still out: control icons and context cursors (an agent's
    worktree). Desktop signing waits on the owner: an Apple Developer ID and a
    Windows code-signing certificate (`docs/RELEASING.md`).
-4. **The checker refuses real techniques:** of 880 real sub-models, 247 are
-   refused for overlaps that are real LEGO (bars through holes, clips on
-   bars, hinges, panes in frames `Assistant.NESTS` lacks, the 2x2 turntable).
-   The turntable is how real sets turn a wall, so no angled worked example
-   can pass until it is understood.
+4. **Round joints need the catalogue rebuilt.** The checker forgives a clip
+   on a bar, a bar in a hollow stud, a hinge and a turntable's top on its
+   base, inside the round only (`Joints.rounds`, `joints_probe`): of 880 real
+   sub-models 617 pass where 564 did, and the first angled worked example is
+   in (`corner on a turntable`). Those joints are records in each part's
+   `.lbm`, and the shipped catalogue predates them, so until the 17,539 parts
+   that have them are rebuilt the checker forgives none and `joints_probe` and
+   `techniques_probe` fail (`.claude/skills/verify/features/pipeline.md`).
+   Next on the same corpus: handles whose opening the cover fills, and 75937.
 5. Roofs, from the 32 real roof sub-models that pass.
 
 ## Gotchas that will cost you hours
@@ -173,11 +177,18 @@ says whether everything agrees with it.
   on SwiftShader (`tools/web/browser.mjs`).
 - **No display.** `tools/check.sh` and `tools/design.py` give themselves
   Xvfb. Anything new that drives the app needs the same, or it hangs.
-- **Probes write this machine's real desktop user data.** Every probe that
-  opens `src/main.tscn` keeps the autosave (`~/.local/share/godot/app_userdata/
-  Brickworks/autosave.ldr`), and so do agents' suites in their worktrees: the
-  desktop app here reopens whatever the last probe left. `project_probe` puts
-  it back; most do not. The owner works in the browser, whose storage is apart.
+- **The parts catalogue was rebuilt on 2026-10-10** with shafts and bores for
+  the checker's round joints; the one before is at `assets/generated.prev`
+  until it is clearly not needed. A rebuild is `tools/build_meshes.py --out
+  <new dir>` in a uv venv with numpy and scipy (well over an hour), then
+  `tools/refresh_catalogue.py` with that dir in place, the suite against it,
+  a rename into place, and `tools/storage_parts.py` for the web.
+- **Probes share this machine's real desktop user data** (`~/.local/share/
+  godot/app_userdata/Brickworks/`). A run with `--script` no longer keeps the
+  autosave (it did, and the desktop app reopened whatever the last probe
+  left); a probe about the autosave turns `store.keeps` on and puts the file
+  back, as `project_probe` does. Saved models and connector files there are
+  still shared. The owner works in the browser, whose storage is apart.
 - **On the web a save is durable only once IndexedDB has it.** The engine
   syncs `user://` behind its own back; at a load of eighty that took 44 s, and
   a reload before then reopens the older autosave.

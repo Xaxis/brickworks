@@ -123,6 +123,14 @@ for (let n = 0; n < 240; n++) {
 }
 check(`the saved model reaches the browser's storage${kept >= 0 ? ` after ${kept.toFixed(1)} s` : " — not within two minutes"}`,
   kept >= 0);
+// And the page knew it was on its way, and knows it has landed: the app
+// says "saved" by asking it (the shell's brickworksStored).
+let settled = false;
+for (let n = 0; n < 60 && !settled; n++) {
+  settled = (await page.evaluate(() => window.brickworksUnstored ? window.brickworksUnstored() : -1)) === 0;
+  if (!settled) await page.waitForTimeout(500);
+}
+check("...and the page sees it land, with nothing left on its way", settled);
 // And the autosave, which is what a reload opens.
 let named = false;
 for (let n = 0; n < 240 && !named; n++) {
@@ -148,6 +156,24 @@ await page.screenshot({ path: `${out}/3_new.png` });
 
 check(`the page raised no errors${problems.length ? ": " + problems[0] : ""}`,
   problems.length === 0);
+
+// Closing the tab while a save is still on its way asks first.
+const field2 = await controlAt("model_name");
+await page.mouse.click(field2.x, field2.y);
+await page.keyboard.press("Control+A");
+await page.keyboard.type("Flow Tower Two");
+await page.keyboard.press("Enter");
+const again = await controlAt("save");
+await page.mouse.click(again.x, again.y);
+const pending = await page.evaluate(() => window.brickworksUnstored ? window.brickworksUnstored() : 0);
+let asked = "";
+page.on("dialog", async (dialog) => { asked = dialog.type(); await dialog.dismiss(); });
+if (pending > 0) {
+  await page.close({ runBeforeUnload: true });
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+}
+check(`closing the tab with a save on its way asks first (${pending} on its way, asked: ${asked || "no"})`,
+  pending > 0 && asked === "beforeunload");
 await browser.close();
 console.log(failed ? `${failed} failed` : "a model keeps its name across a reload, and New begins another");
 process.exit(failed ? 1 : 0);

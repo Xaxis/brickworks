@@ -366,6 +366,14 @@
       "tests": []
     },
     {
+      "id": "lib:round joints",
+      "kind": "lib",
+      "entry": "src/assembly/joints.gd",
+      "reach": "godot --headless --path . --script src/dev/joints_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:save and reopen",
       "kind": "lib",
       "entry": "src/parts/model_store.gd",

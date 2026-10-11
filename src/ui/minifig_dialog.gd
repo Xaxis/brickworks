@@ -28,6 +28,12 @@ const MOST_SHOWN := 160
 
 var _slot: String = "head"
 var _slot_buttons: Dictionary = {}       ## slot -> Button
+var _slot_tiles: Dictionary = {}         ## slot -> ThumbTile
+var _slot_words: Dictionary = {}         ## slot -> Label
+## The slots' pictures have changed since the thumbnailer was last told
+## what is in sight.
+var _slots_moved: bool = false
+var _sight: ThumbTile.Sight
 var _name: LineEdit
 var _search: LineEdit
 var _found: Label
@@ -53,13 +59,17 @@ func _ready() -> void:
 	_build()
 	if library != null:
 		library.fetched.connect(_on_geometry)
-	if thumbnails != null:
-		thumbnails.ready_for.connect(_on_thumbnail)
+	# Hidden is nothing in sight, however it was hidden: Place in model
+	# hides it without closing it.
+	visibility_changed.connect(func() -> void:
+		if not visible and thumbnails != null:
+			thumbnails.watch(self, []))
 
 
 func open() -> void:
 	visible = true
 	_name.text = figure.name
+	_sight.forget()
 	_refresh_all()
 
 
@@ -97,32 +107,34 @@ func _process(delta: float) -> void:
 	if not _dragging:
 		_turn += delta * 0.35
 	_aim()
-	_since_asked += delta
-	if _since_asked > 0.5:
-		_since_asked = 0.0
-		_fill_icons()
+	_watch_tiles()
 
 
-var _since_asked: float = 0.0
-
-
-## Ask again for every picture still missing. A request made once can be
-## lost two ways: the thumbnailer is shared with the parts bin, which
-## empties its queue whenever it searches, and a part that has to come
-## over the wire first is drawn only when somebody asks again after it
-## lands. Asking twice a second covers both, and costs nothing for a
-## picture already queued or already drawn.
-func _fill_icons() -> void:
-	var colour: int = int(figure.colours[_slot])
-	for cell: Node in _grid.get_children():
-		var part: String = str(cell.get_meta("part"))
-		if not part.is_empty() and (cell as Button).icon == null:
-			(cell as Button).icon = thumbnails.request(part, colour, true)
+## Tell the thumbnailer what is in sight: the slots' pictures, then the
+## grid's rows on screen. This used to ask again twice a second for
+## every picture still missing, because a request could be lost — the
+## bin emptied the shared queue whenever it searched, and a part fetched
+## over the wire was drawn only if somebody asked after it landed. Tiles
+## in sight are not a request that can be lost: the thumbnailer keeps
+## the list until it is told another, and draws a part when it lands.
+func _watch_tiles() -> void:
+	if thumbnails == null or not (_sight.changed() or _slots_moved):
+		return
+	_slots_moved = false
+	var tiles: Array[ThumbTile] = []
 	for slot: String in Minifig.SLOTS:
-		var button: Button = _slot_buttons[slot]
-		var part: String = figure.part_for_colour(slot)
-		if button.icon == null and not part.is_empty():
-			button.icon = thumbnails.request(part, int(figure.colours[slot]), true)
+		tiles.append(_slot_tiles[slot])
+	tiles.append_array(_sight.tiles())
+	thumbnails.watch(self, tiles)
+
+
+## Point a tile at a part, with its picture at once if it is to hand.
+func _point(tile: ThumbTile, part: String, colour: int) -> void:
+	tile.show_part(part, colour, true)
+	if tile.state == ThumbTile.State.LOADING and thumbnails != null:
+		var ready_now: ImageTexture = thumbnails.peek(part, colour, true)
+		if ready_now != null:
+			tile.show_picture(ready_now, false)
 
 
 # -- building the panel ------------------------------------------------------
@@ -194,15 +206,34 @@ func _build_slots() -> Control:
 		button.toggle_mode = true
 		button.button_group = group
 		button.focus_mode = Control.FOCUS_NONE
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.expand_icon = false
-		button.add_theme_font_size_override("font_size", 12)
-		button.add_theme_constant_override("icon_max_width", 34)
 		button.custom_minimum_size = Vector2(0, 40)
-		button.clip_text = true
 		button.pressed.connect(_choose_slot.bind(slot))
 		list.add_child(button)
 		_slot_buttons[slot] = button
+		# The picture and the words are the button's children rather than
+		# its own icon and text. Its icon was nothing until the picture
+		# landed, and then the words jumped sideways to make room for it.
+		var row := HBoxContainer.new()
+		row.set_anchors_preset(Control.PRESET_FULL_RECT)
+		row.offset_left = 6
+		row.offset_right = -6
+		row.add_theme_constant_override("separation", 6)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(row)
+		var tile := ThumbTile.new()
+		tile.custom_minimum_size = Vector2(34, 34)
+		tile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(tile)
+		_slot_tiles[slot] = tile
+		var words := Label.new()
+		words.add_theme_font_size_override("font_size", 12)
+		words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.clip_text = true
+		words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(words)
+		_slot_words[slot] = words
 	return scroll
 
 
@@ -233,6 +264,7 @@ func _build_picker() -> Control:
 	_grid.add_theme_constant_override("h_separation", 4)
 	_grid.add_theme_constant_override("v_separation", 4)
 	scroll.add_child(_grid)
+	_sight = ThumbTile.Sight.new(scroll, _grid)
 	scroll.resized.connect(func() -> void:
 		_grid.columns = maxi(2, int((scroll.size.x - 14.0) / (CELL + 4))))
 
@@ -373,10 +405,10 @@ func _refresh_slots() -> void:
 				if what == "plain" else library.color(int(figure.colours[slot])).name
 		if slot == "hips" and figure.is_short():
 			what = "one piece with the short legs"
-		button.text = "%s\n%s" % [Minifig.TITLES[slot], what]
+		(_slot_words[slot] as Label).text = "%s\n%s" % [Minifig.TITLES[slot], what]
 		button.tooltip_text = "%s: %s" % [Minifig.TITLES[slot], what]
-		button.icon = null if part.is_empty() else thumbnails.request(
-			part, int(figure.colours[slot]), true)
+		_point(_slot_tiles[slot], part, int(figure.colours[slot]))
+	_slots_moved = true
 
 
 ## A part's name without what every name in the slot says.
@@ -439,8 +471,6 @@ func _cell(info: PartLibrary.PartInfo) -> Button:
 			back.border_color = Color(1.0, 0.92, 0.55)
 			back.set_border_width_all(2)
 		cell.add_theme_stylebox_override(state, back)
-	cell.expand_icon = true
-	cell.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var id: String = "" if info == null else info.id
 	cell.set_meta("part", id)
 	cell.set_pressed_no_signal(str(figure.parts.get(_slot, "")) == id)
@@ -449,7 +479,18 @@ func _cell(info: PartLibrary.PartInfo) -> Button:
 		cell.tooltip_text = "Nothing in this slot"
 	else:
 		cell.tooltip_text = "%s\n%s" % [info.id, info.name.strip_edges().replace("  ", " ")]
-		cell.icon = thumbnails.request(info.id, int(figure.colours[_slot]), true)
+		# Named while it waits: these cells have no label, and a grid of
+		# forty identical placeholders says nothing about what is coming.
+		var tile := ThumbTile.new()
+		tile.caption = info.id
+		tile.set_anchors_preset(Control.PRESET_FULL_RECT)
+		for side: Side in [SIDE_LEFT, SIDE_TOP]:
+			tile.set_offset(side, 3)
+		for side: Side in [SIDE_RIGHT, SIDE_BOTTOM]:
+			tile.set_offset(side, -3)
+		cell.add_child(tile)
+		cell.set_meta("tile", tile)
+		_point(tile, info.id, int(figure.colours[_slot]))
 	cell.pressed.connect(_choose_part.bind(id))
 	return cell
 
@@ -616,25 +657,6 @@ func _restage() -> void:
 func _on_geometry(part_id: String) -> void:
 	if _waiting.erase(part_id) and visible:
 		_restage()
-
-
-func _on_thumbnail(part_id: String, color_code: int, _texture: ImageTexture) -> void:
-	if not visible:
-		return
-	# Printed previews are asked for under a key of their own, so the one
-	# that has just landed may be the plain one; ask again for ours.
-	for cell: Node in _grid.get_children():
-		if str(cell.get_meta("part")) == part_id \
-				and color_code == int(figure.colours[_slot]):
-			var texture: ImageTexture = thumbnails.request(part_id, color_code, true)
-			if texture != null:
-				(cell as Button).icon = texture
-	for slot: String in Minifig.SLOTS:
-		if figure.part_for_colour(slot) == part_id \
-				and int(figure.colours[slot]) == color_code:
-			var texture: ImageTexture = thumbnails.request(part_id, color_code, true)
-			if texture != null:
-				(_slot_buttons[slot] as Button).icon = texture
 
 
 func _on_preview_input(event: InputEvent) -> void:

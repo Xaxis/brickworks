@@ -33,13 +33,30 @@ Whether what you built is still there tomorrow, and still means the same thing.
   presses New). On the web the engine titles the page itself as it starts, after
   the restored model was named, so `_tell_page` puts the title back when it has
   drifted. A save on the web is in IndexedDB only once the engine's sync has run:
-  44 s at a load of eighty drawing in software. A reload before then reopens the
-  autosave, and New rightly says the model is not saved.
+  25 to 52 s at a load of thirty to eighty drawing in software. So the page
+  watches for it: the store reports each write (`_tell_page_wrote`), the shell
+  polls IndexedDB until that path holds that many bytes written since
+  (`brickworksWrote`, `brickworksStored`, `brickworksUnstored`), the bar says
+  "saving … in this browser" until then and "saved" after, and closing the tab
+  with a write on its way asks first (`beforeunload`). The flow checks the page
+  sees the save land and that closing mid-save asks.
 - `made parts in the file`: a model that uses a part made in the element
   maker carries it as an LDraw `0 FILE bw-….dat` section, and opening one
   builds the part first — see [elements](elements.md). `element_probe` saves
   three, reopens them into a fresh library, and has the Python reader check
   the file.
+- `one way to open a model`: the first visit's sample, `--model`, a restore,
+  the Open menu and an imported file all open through `ModelStore.open_text`.
+  A model below the ground comes up by `lift_for`, worked out before anything
+  is placed from the catalogue's bounds of every part, so it is the same lift
+  whatever geometry has arrived; parts not yet fetched wait in `store.awaited`
+  and are put down as they arrive (`place_awaited`, from `Main._on_part_fetched`),
+  never into a world cleared since. There were two ways: the app's own opened
+  the sample without lifting it, so on the web a first visit saved the car
+  buried to its axles, a reload lifted it a brick, and New said it had changed;
+  the store's lifted it and dropped parts still arriving. `project_probe` opens
+  every shipped model as a first visit does and checks its lowest occupied cell
+  is on the ground; `open_probe` (network) opens them all over the wire.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is. Export, the booklet and the
   parts list are written to Downloads under the model's name, which a design
