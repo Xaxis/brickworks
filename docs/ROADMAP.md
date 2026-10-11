@@ -454,6 +454,26 @@ prism was laid without its own masonry and sideways, so sideways 1% and
 plain 61%; it ran out of its 90 minutes placing figures. Since: the prism dresses its faces by default (masonry 0.25, sideways
 0.15), and the catalogue is rebuilt with the rounds.
 
+On their studs, 2026-10-10. The owner saw the spires and points of a tower
+of Orthanc not sitting on their studs, on a model built over MCP. Two causes,
+both the engine's. A placement's corner was its cover's, and a part drawn
+inside its footprint — a 4 x 4 wing's cut edge at -38 of -40, a turntable's
+top 36 across a 2 x 2, a flag's narrow clip, plant leaves — stood 2 to 4 LDU
+off the studs below at whole-stud coordinates: 24 wing tips on that tower,
+the castle's six flags, the house's four plants, while the wing patterns had
+meant the footprint all along. The corner is now the footprint's, read off
+the part's own studs (`Assistant._footprint_start`); 20 worked examples were
+rewritten to stay put, most to cleaner numbers (1.1 → 1, -0.9 → -1), and
+`src/dev/reseat.gd` moves a part only where undoing exactly that error puts
+it on its studs. And a section leaning out was held by touching: run 12's horn
+tips sat at a slant on the studs below, gripping none. A section turned about
+x or z now has to turn on a joint along its axis or it is "leaning on
+nothing"; a hinge's halves, turned, graze by less than a cell and are
+forgiven that, and `leaning on a hinge` (6085's gatehouse flag on 3937/3938)
+is the worked answer with the pin already found. Still open: a plate set half
+a stud off on a plain plate, with no jumper under it, is passed — the half is
+legal only on a jumper, and the check does not look for one.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

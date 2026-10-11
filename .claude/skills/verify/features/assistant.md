@@ -290,14 +290,17 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  60 constructions with real part numbers and real coordinates, each in a group
+  61 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, angles,
   roofs and spires, windows and doors, rock and ground, plants, furniture and
   interiors, lights). An entry may carry `sections` and its bricks a `section`,
   as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
   entrance steps, taken off their 2x2 turntable and put back on at the set's 45
-  degrees by a section turned about the turntable's middle, and
-  `show_technique` says the section before the bricks that name it. The
+  degrees by a section turned about the turntable's middle, and `leaning on a
+  hinge` is 6085 Black Monarch's Castle's gatehouse flag on 3937/3938, its
+  section's origin on the pin and the hinge top's studs at y=1.25 in it — the
+  answer the "leaning on nothing" fault names. `show_technique` says the
+  section before the bricks that name it. The
   tool's description and its answer to an empty or unknown name
   list them by group (`Techniques.listing()`). Eleven are hand-made (a staggered
   wall, a half-stud offset, a face turned sideways, a porthole, a smooth diagonal,

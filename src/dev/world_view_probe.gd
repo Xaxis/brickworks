@@ -75,6 +75,65 @@ func _initialize() -> void:
 		% [cases.size(), "" if first_bad.is_empty() else " — " + first_bad],
 		wrong == 0)
 
+	# Parts drawn inside their footprint, placed at whole studs, on them.
+	#
+	# A placement's corner was its cover's, and a 4 x 4 wing's cover
+	# starts at its cut edge, two LDU in from its footprint. So at whole
+	# studs it stood a tenth of a stud off the studs below it, and 24 of
+	# the wing tips on one tower of Orthanc did, and the owner saw them.
+	# Read back by the same corner, too, or every save and reopen moves
+	# them. A wing, its other hand, a 4 x 6 wing, a turntable's top, a
+	# tap, a flag, an antenna, plant leaves.
+	var inset: Array = ["3935", "3936", "48205", "3679", "4599b", "4495b",
+		"3957a", "2423"]
+	var seated_wrong: Array = []
+	var read_wrong: Array = []
+	for part: String in inset:
+		for rot: int in 4:
+			for at: Vector3i in [Vector3i(0, 0, 0), Vector3i(3, 6, 2),
+					Vector3i(-5, 0, -7)]:
+				world.clear()
+				var placement := Assistant.Placement.from_dict({"part": part,
+					"color": 4, "x": at.x, "y": at.y, "z": at.z, "rot": rot})
+				var mesh: Lbm.PartMesh = library.mesh_for(part)
+				var put: Transform3D = assistant._transform(placement, mesh)
+				var off: float = _off_the_studs(mesh, put)
+				if off > 0.5:
+					seated_wrong.append("%s rot %d at %v, %.1f LDU off" % [part, rot, at, off])
+				var brick: BrickWorld.Brick = world.get_brick(world.add_brick(part, 4, put))
+				var back: Vector3 = assistant._to_studs(brick, library.parts[part])
+				if not back.is_equal_approx(Vector3(at)):
+					read_wrong.append("%s rot %d at %v read back as %v" % [part, rot, at, back])
+	_check("parts drawn inside their footprint, at whole studs, sit on studs%s"
+		% ("" if seated_wrong.is_empty() else ": %d off, first %s" % [seated_wrong.size(), seated_wrong[0]]),
+		seated_wrong.is_empty())
+	_check("...and read back where they were put%s"
+		% ("" if read_wrong.is_empty() else ": %d moved, first %s" % [read_wrong.size(), read_wrong[0]]),
+		read_wrong.is_empty())
+
+	# And the wings a pattern lays round an ellipse, which is where the
+	# tower's came from: the pattern meant the footprint all along.
+	world.clear()
+	var wings: Array = Patterns.expand([{"pattern": "fill", "shape": "ellipse",
+		"at": {"x": 0, "y": 0, "z": 0}, "across": 14, "deep": 10, "layers": 1,
+		"rise": 1, "color": 71}], [], [], library)
+	var laid: int = 0
+	var laid_off: Array = []
+	for raw: Variant in wings:
+		var one: Dictionary = raw
+		if not Patterns.WEDGES.has(str(one["part"])):
+			continue
+		laid += 1
+		var mesh: Lbm.PartMesh = library.mesh_for(str(one["part"]))
+		var off: float = _off_the_studs(mesh, assistant._transform(
+			Assistant.Placement.from_dict(one), mesh))
+		if off > 0.5:
+			laid_off.append("%s rot %d at %s,%s, %.1f LDU off"
+				% [one["part"], one.get("rot", 0), one["x"], one["z"], off])
+	_check("the %d wings an ellipse is laid with sit on their studs%s"
+		% [laid, "" if laid_off.is_empty() else ": %d off, first %s" % [laid_off.size(), laid_off[0]]],
+		laid > 0 and laid_off.is_empty())
+
 	# And the description itself has to say something usable.
 	world.clear()
 	world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
@@ -222,6 +281,26 @@ func _initialize() -> void:
 	print("%d failed" % _failures if _failures
 		else "the assistant reads back exactly what it writes")
 	quit(1 if _failures else 0)
+
+
+## How far the part's upward studs stand from the middles of the
+## baseplate's, in LDU, the worst of them; its tubes where it has no
+## studs, which for a one-by-one stand at a middle too.
+static func _off_the_studs(mesh: Lbm.PartMesh, at: Transform3D) -> float:
+	var worst: float = 0.0
+	for kind: String in ["stud", "tube"]:
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind != kind \
+					or absf((at.basis * connector.axis).normalized().y) < 0.99:
+				continue
+			var where: Vector3 = at * connector.position
+			for v: float in [where.x - 10.0, where.z - 10.0]:
+				var r: float = fposmod(v, 20.0)
+				worst = maxf(worst, minf(r, 20.0 - r))
+		if worst > 0.0 or kind == "stud" and mesh.connectors.any(
+				func(c: Lbm.Connector) -> bool: return c.kind == "stud"):
+			return worst
+	return worst
 
 
 func _check(what: String, ok: bool) -> void:

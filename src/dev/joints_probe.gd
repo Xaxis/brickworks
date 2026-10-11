@@ -165,6 +165,26 @@ func _initialize() -> void:
 		"turned 45 degrees about a point a stud off the base's axis, refused: %s"
 		% off["summary"])
 
+	print("\na section that leans has to lean on a joint")
+	# The spires of a tower of Orthanc leaned on nothing: a section tipped
+	# out sat on the studs below at a slant, gripping none of them.
+	# Held by its joint, a lean holds — which it did not, at first, for
+	# want of a cell: the halves are shaped to clear each other as the top
+	# turns, by less than a cover can show, and 3938 tipped ten degrees
+	# shared 99 cells with 3937 outside the pin. Turned on round into its
+	# own base, it is a collision and still refused.
+	for degrees: float in [10.0, -10.0, 45.0]:
+		var hinged: Dictionary = await _leaning(true, degrees)
+		_ok(bool(hinged["ok"]),
+			"a hinge top turned %d degrees on its hinge brick holds: %s"
+			% [int(degrees), hinged["summary"]])
+	var over: Dictionary = await _leaning(true, 180.0)
+	_ok(not bool(over["ok"]) and str(over["summary"]).contains("overlap"),
+		"turned on round into its own base, refused: %s" % over["summary"])
+	var bare: Dictionary = await _leaning(false, 12.0)
+	_ok(not bool(bare["ok"]) and str(bare["feedback"]).contains("nothing in it turns"),
+		"a brick tipped 12 degrees on a plain brick is refused: %s" % bare["summary"])
+
 	print("\na pane in a frame the table did not list (Assistant.NESTS)")
 	# Where three of the repository's sets seat it: 34 along, 4 down, 5 in,
 	# a quarter turn.
@@ -300,6 +320,55 @@ func _turned(degrees: float, off: Vector2) -> Dictionary:
 	model.sections["turned"] = Assistant.Section.from_dict({"name": "turned",
 		"x": axis.x + off.x, "y": 0.0, "z": axis.z + off.y, "axis": "y",
 		"degrees": degrees})
+	return _assistant._check(model, true)
+
+
+## A closed tilting hinge (3937 with 3938 on it) on a 1 x 2, with its top
+## in a section turned [param degrees] about the hinge pin — or, unhinged,
+## a plain 1 x 2 where the base was and another tipped the same way on it.
+## (3830/3831 swivel about the upright: a door, not a lean.)
+func _leaning(hinged: bool, degrees: float) -> Dictionary:
+	var closed: Assistant.Model = await _design("""
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3004.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3937.dat
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3938.dat
+""")
+	# By part: a design read back from the world comes in the world's order.
+	var by_part: Dictionary = {}
+	for put: Assistant.Placement in closed.placements:
+		by_part[put.part] = put
+	var under: Assistant.Placement = by_part["3004"]
+	var base: Assistant.Placement = by_part["3937"]
+	var top: Assistant.Placement = by_part["3938"]
+	var mesh: Lbm.PartMesh = _library.mesh_for(base.part)
+	var at: Transform3D = _assistant._transform(base, mesh)
+	# The pin: the base's flat round bores and the top's shafts share an
+	# axis; any point on it will do for the pivot.
+	var pin := Vector3.ZERO
+	var way := Vector3.RIGHT
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "bore" and absf(connector.axis.y) < 0.5:
+			pin = at * connector.position
+			way = (at.basis * connector.axis).normalized()
+			break
+	var axis: String = "x" if absf(way.x) > absf(way.z) else "z"
+	var pivot := Vector3(pin.x / Assistant.STUD, pin.y / Assistant.PLATE, pin.z / Assistant.STUD)
+	var model := Assistant.Model.new()
+	model.placements.append(under)
+	if hinged:
+		model.placements.append(base)
+		model.placements.append(Assistant.Placement.from_dict({"part": top.part,
+			"color": top.color, "x": top.x - pivot.x, "y": top.y - pivot.y,
+			"z": top.z - pivot.z, "face": top.face, "rot": top.rot, "section": "lean"}))
+	else:
+		model.placements.append(Assistant.Placement.from_dict({"part": "3004",
+			"color": base.color, "x": under.x, "y": under.y + 3.0, "z": under.z,
+			"face": under.face, "rot": under.rot}))
+		model.placements.append(Assistant.Placement.from_dict({"part": "3004",
+			"color": top.color, "x": under.x - pivot.x, "y": under.y + 6.0 - pivot.y,
+			"z": under.z - pivot.z, "face": under.face, "rot": under.rot, "section": "lean"}))
+	model.sections["lean"] = Assistant.Section.from_dict({"name": "lean",
+		"x": pivot.x, "y": pivot.y, "z": pivot.z, "axis": axis, "degrees": degrees})
 	return _assistant._check(model, true)
 
 

@@ -248,10 +248,11 @@ func _run() -> void:
 	# And the advice is not itself counted as a fault. It was added with
 	# the same call that records a problem, and every one of those is
 	# counted — so the one thing here trying to help was reported as a
-	# second problem.
+	# second problem. Two here: the overlap, and the lean, because this
+	# pylon leans on no hinge.
 	_check("and the advice is not counted as a problem, %s"
 		% str(far_off["summary"]),
-		str(far_off["summary"]).begins_with("1 problem"))
+		str(far_off["summary"]) == "2 problems (overlap 1, leaning on nothing 1)")
 
 	# And that the place it names actually works.
 	var fitted := Assistant.Model.new()
@@ -266,8 +267,11 @@ func _run() -> void:
 	fitted.sections["pylon"] = Assistant.Section.from_dict({
 		"name": "pylon", "x": 2.0, "y": 3.25, "z": 0.0,
 		"axis": "z", "degrees": 20.0})
-	_check("and a tipped section really can be attached",
-		bool(_assistant._check(fitted)["ok"]))
+	# Met, and not run into: its one fault is that it leans on nothing,
+	# which a hinge answers (joints_probe, "leaning on a hinge").
+	var met: Dictionary = _assistant._check(fitted)
+	_check("and where it says, a tipped section meets the model without running into it: %s"
+		% met["summary"], str(met["summary"]) == "1 problem (leaning on nothing 1)")
 
 	# And once it is standing, it can be measured by name.
 	#
@@ -464,11 +468,13 @@ func _run() -> void:
 		_check("a four-brick pylon at %d degrees is not called floating: %s"
 			% [int(angle), held["summary"]],
 			not str(held["feedback"]).contains("floating"))
-		# And up to eighty it is a design that could be built as it
-		# stands, not merely one that was not complained about.
+		# And up to eighty nothing else is wrong with it: not adrift, not
+		# run into the hull. It leans on no joint, which is the one thing
+		# said, and the thing a hinge would answer.
 		if int(angle) < 90:
-			_check("  ...and holds together at %d" % int(angle),
-				bool(held["ok"]))
+			_check("  ...and leaning on nothing is all that is wrong at %d"
+				% int(angle),
+				str(held["summary"]) == "1 problem (leaning on nothing 1)")
 
 
 

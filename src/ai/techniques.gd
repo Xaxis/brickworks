@@ -354,9 +354,9 @@ static func all() -> Array:
 				{"part": "3623", "color": 0, "x": 1.5, "y": 0, "z": 0, "rot": 3},
 				{"part": "3623", "color": 0, "x": 6.5, "y": 0, "z": 0, "rot": 3},
 				{"part": "3034", "color": 0, "x": 0.5, "y": 1, "z": 1, "rot": 0},
-				{"part": "4079", "color": 0, "x": 0.5, "y": 2, "z": 0.8, "rot": 0},
-				{"part": "4079", "color": 0, "x": 3.5, "y": 2, "z": 0.8, "rot": 0},
-				{"part": "4079", "color": 0, "x": 6.5, "y": 2, "z": 0.8, "rot": 0},
+				{"part": "4079", "color": 0, "x": 0.5, "y": 2, "z": 0, "rot": 0},
+				{"part": "4079", "color": 0, "x": 3.5, "y": 2, "z": 0, "rot": 0},
+				{"part": "4079", "color": 0, "x": 6.5, "y": 2, "z": 0, "rot": 0},
 			],
 		},
 		{
@@ -365,9 +365,9 @@ static func all() -> Array:
 			"when": "a room: an office, a parlour, a lounge",
 			"why": "A chair is a seat, a back and arms, a few small parts. As LEGO built it in 10246 Detective’s Office: 8 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
 			"bricks": [
-				{"part": "3679", "color": 71, "x": 1.1, "y": 0, "z": 1.1, "rot": 1},
-				{"part": "99207", "color": 0, "x": 1, "y": 1, "z": 0.8, "rot": 2},
-				{"part": "4079", "color": 70, "x": 0.8, "y": 2, "z": 1, "rot": 1},
+				{"part": "3679", "color": 71, "x": 1, "y": 0, "z": 1, "rot": 1},
+				{"part": "99207", "color": 0, "x": 1, "y": 1, "z": 0, "rot": 2},
+				{"part": "4079", "color": 70, "x": 0, "y": 2, "z": 1, "rot": 1},
 				{"part": "99207", "color": 0, "x": 1, "y": 1, "z": 2, "rot": 0},
 				{"part": "3839b", "color": 0, "x": 0.5, "y": 1, "z": 3.1, "rot": 0, "face": "+z"},
 				{"part": "3839b", "color": 0, "x": 0.5, "y": 1, "z": 0.4, "rot": 2, "face": "-z"},
@@ -390,7 +390,7 @@ static func all() -> Array:
 				{"part": "6141", "color": 0, "x": 0.5, "y": 6, "z": 3.5, "rot": 0},
 				{"part": "3062b", "color": 46, "x": 0.5, "y": 7, "z": 3.5, "rot": 0},
 				{"part": "4740", "color": 0, "x": 0, "y": 10, "z": 3, "rot": 0},
-				{"part": "3899", "color": 14, "x": 1, "y": 5, "z": 0.8, "rot": 0},
+				{"part": "3899", "color": 14, "x": 1, "y": 5, "z": 0.5, "rot": 0},
 			],
 		},
 		{
@@ -518,7 +518,7 @@ static func all() -> Array:
 			"when": "the top of a castle wall or tower, where the walk is wider than the wall",
 			"why": "Inverted 45 slopes (3665) under the top course flare the wall out so the walkway oversails the face below: the corbel a castle's wall-walk stands on. A plate with a clip carries a flag or a torch. As LEGO built it in 6080 King's Castle: 6 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
-				{"part": "4085a", "color": 7, "x": 0, "y": 0, "z": 0.3, "rot": 2},
+				{"part": "4085a", "color": 7, "x": 0, "y": 0, "z": 0, "rot": 2},
 				{"part": "3024", "color": 7, "x": 0, "y": 0, "z": 2, "rot": 2},
 				{"part": "3004", "color": 7, "x": 0, "y": 1, "z": 1, "rot": 1},
 				{"part": "3023b", "color": 7, "x": 0, "y": 4, "z": 1, "rot": 3},
@@ -568,7 +568,7 @@ static func all() -> Array:
 				{"part": "4490", "color": 15, "x": 0.5, "y": 1, "z": 3.5, "rot": 3},
 				{"part": "3623", "color": 15, "x": 0.5, "y": 0, "z": 1.5, "rot": 3},
 				{"part": "6541", "color": 15, "x": 0.5, "y": 1, "z": 2.5, "rot": 3},
-				{"part": "38585", "color": 15, "x": 0, "y": 1, "z": 1, "rot": 2},
+				{"part": "38585", "color": 15, "x": -0.5, "y": 1, "z": 0.5, "rot": 2},
 				{"part": "4490", "color": 15, "x": 1.5, "y": 1, "z": 10.5, "rot": 2},
 				{"part": "3623", "color": 15, "x": 3.5, "y": 0, "z": 10.5, "rot": 2},
 				{"part": "6541", "color": 15, "x": 4.5, "y": 1, "z": 10.5, "rot": 0},
@@ -617,7 +617,7 @@ static func all() -> Array:
 				{"part": "6141", "color": 19, "x": 2.5, "y": 19, "z": 0.5, "rot": 0},
 				{"part": "6141", "color": 19, "x": 0.5, "y": 19, "z": 0.5, "rot": 0},
 				{"part": "38585", "color": 19, "x": 0.5, "y": 20, "z": 0.5, "rot": 0},
-				{"part": "38585", "color": 19, "x": 2, "y": 20, "z": 0.5, "rot": 3},
+				{"part": "38585", "color": 19, "x": 1.5, "y": 20, "z": 0.5, "rot": 3},
 			],
 		},
 		{
@@ -841,9 +841,9 @@ static func all() -> Array:
 				{"part": "3002", "color": 7, "x": 5, "y": 2, "z": 3.8, "rot": 3},
 				{"part": "3002", "color": 7, "x": 2, "y": 2, "z": 2.8, "rot": 0},
 				{"part": "3003", "color": 7, "x": 0, "y": 2, "z": 3.8, "rot": 0},
-				{"part": "2423", "color": 2, "x": 0.2, "y": 2, "z": 6.9, "rot": 2},
-				{"part": "2423", "color": 2, "x": 3.2, "y": 4, "z": 5.9, "rot": 2},
-				{"part": "2423", "color": 2, "x": 1, "y": 5, "z": 3, "rot": 1},
+				{"part": "2423", "color": 2, "x": 0, "y": 2, "z": 6.8, "rot": 2},
+				{"part": "2423", "color": 2, "x": 3, "y": 4, "z": 5.8, "rot": 2},
+				{"part": "2423", "color": 2, "x": 1, "y": 5, "z": 2.8, "rot": 1},
 			],
 		},
 		{
@@ -854,11 +854,11 @@ static func all() -> Array:
 			"bricks": [
 				{"part": "3023b", "color": 7, "x": 2, "y": 0, "z": 1, "rot": 0},
 				{"part": "3710", "color": 7, "x": 1, "y": 1, "z": 1, "rot": 0},
-				{"part": "3831", "color": 7, "x": 0.6, "y": 2, "z": 0.6, "rot": 2},
+				{"part": "3831", "color": 7, "x": 0, "y": 2, "z": 0, "rot": 2},
 				{"part": "3003", "color": 7, "x": 3, "y": 2, "z": 1, "rot": 0},
 				{"part": "3010", "color": 7, "x": 1, "y": 5, "z": 1, "rot": 0},
 				{"part": "3010", "color": 7, "x": 1, "y": 8, "z": 1, "rot": 0},
-				{"part": "3831", "color": 7, "x": 0.6, "y": 11, "z": 0.6, "rot": 2},
+				{"part": "3831", "color": 7, "x": 0, "y": 11, "z": 0, "rot": 2},
 				{"part": "3004", "color": 7, "x": 3, "y": 11, "z": 1, "rot": 0},
 				{"part": "3024", "color": 7, "x": 1, "y": 14, "z": 1, "rot": 0},
 				{"part": "3024", "color": 7, "x": 4, "y": 14, "z": 1, "rot": 0},
@@ -1100,7 +1100,7 @@ static func all() -> Array:
 			"when": "a wizard's study, an apothecary, a kitchen wall",
 			"why": "A bracket (99780) turned up off the wall carries a plate with three transparent round 1 x 1 bricks for bottles: a shelf that hangs on the wall rather than standing on the floor. As LEGO built it in 75953 Hogwarts Whomping Willow: 5 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
-				{"part": "99780", "color": 70, "x": 0.9, "y": 0, "z": 0.8, "rot": 2},
+				{"part": "99780", "color": 70, "x": 0.9, "y": 0, "z": 0, "rot": 2},
 				{"part": "3062b", "color": 33, "x": 0.9, "y": 1, "z": 1, "rot": 2},
 				{"part": "3062b", "color": 34, "x": 1.9, "y": 1, "z": 1, "rot": 2},
 				{"part": "3023b", "color": 70, "x": 0.9, "y": 4, "z": 1, "rot": 2},
@@ -1181,7 +1181,7 @@ static func all() -> Array:
 				{"part": "3020", "color": 70, "x": 2.5, "y": 3, "z": 0, "rot": 3},
 				{"part": "34103", "color": 70, "x": 2.5, "y": 4, "z": 0, "rot": 0},
 				{"part": "32124", "color": 70, "x": 1.5, "y": 2, "z": 3, "rot": 0},
-				{"part": "60897", "color": 70, "x": 0.8, "y": 3, "z": 3, "rot": 3},
+				{"part": "60897", "color": 70, "x": 0.5, "y": 3, "z": 3, "rot": 3},
 				{"part": "60897", "color": 70, "x": 5.5, "y": 3, "z": 3, "rot": 1},
 				{"part": "3020", "color": 191, "x": 1.5, "y": 4, "z": 2, "rot": 0},
 				{"part": "3023b", "color": 191, "x": 1.5, "y": 5, "z": 2, "rot": 3},
@@ -1231,7 +1231,7 @@ static func all() -> Array:
 			"bricks": [
 				{"part": "6141", "color": 0, "x": 0.5, "y": 0, "z": 1.5, "rot": 0},
 				{"part": "6141", "color": 38, "x": 0.5, "y": 1, "z": 1.5, "rot": 0},
-				{"part": "4599b", "color": 0, "x": 0.6, "y": 2, "z": 1, "rot": 0},
+				{"part": "4599b", "color": 0, "x": 0.5, "y": 2, "z": 0.5, "rot": 0},
 				{"part": "87087", "color": 19, "x": 0.5, "y": 2.75, "z": 0.5, "rot": 0},
 			],
 		},
@@ -1259,7 +1259,7 @@ static func all() -> Array:
 				{"part": "15573", "color": 15, "x": 0, "y": 1.5, "z": 1.3, "rot": 0, "face": "+z"},
 				{"part": "15573", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 1},
 				{"part": "15573", "color": 15, "x": 1, "y": 0, "z": 0, "rot": 1},
-				{"part": "4599b", "color": 297, "x": 0.6, "y": 5, "z": 0, "rot": 0},
+				{"part": "4599b", "color": 297, "x": 0.5, "y": 5, "z": -0.5, "rot": 0},
 				{"part": "6141", "color": 46, "x": 0.5, "y": 8, "z": 0.5, "rot": 0},
 				{"part": "85975", "color": 297, "x": 0.5, "y": 9, "z": 0.5, "rot": 0},
 			],
@@ -1304,7 +1304,7 @@ static func all() -> Array:
 			],
 			"bricks": [
 				{"part": "3680", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
-				{"part": "3679", "color": 71, "x": -0.9, "y": 0, "z": -0.9, "rot": 0, "section": "corner"},
+				{"part": "3679", "color": 71, "x": -1, "y": 0, "z": -1, "rot": 0, "section": "corner"},
 				{"part": "3020", "color": 71, "x": -2, "y": 1, "z": -2, "rot": 0, "section": "corner"},
 				{"part": "6180", "color": 71, "x": -3, "y": 1, "z": 0, "rot": 0, "section": "corner"},
 				{"part": "2431", "color": 71, "x": -2, "y": 2, "z": -2, "rot": 0, "section": "corner"},
@@ -1323,6 +1323,35 @@ static func all() -> Array:
 				{"part": "2431", "color": 71, "x": -2, "y": 3, "z": -1, "rot": 0, "section": "corner"},
 				{"part": "3068b", "color": 71, "x": -2, "y": 3, "z": 0, "rot": 0, "section": "corner"},
 				{"part": "3024", "color": 71, "x": 1, "y": 3, "z": 0, "rot": 0, "section": "corner"},
+			],
+		},
+		{
+			"name": "leaning on a hinge",
+			"group": "angles",
+			"when": "a spire's tip, a horn, a flagpole, a jib or anything "
+				+ "else that leans out of the upright",
+			"why": "A hinge brick (3937) is a base, and its top (3938) "
+				+ "turns on it about a pin along its length. Build the base "
+				+ "square, and the top and everything on it in a section "
+				+ "whose origin is that pin: at the base's own x, 1.75 "
+				+ "plates above its bottom, half a stud in. Inside the "
+				+ "section the top sits at y=-0.75, and what it carries "
+				+ "starts on its studs at y=1.25. Turn the section about x "
+				+ "to lean it; to lean the other way, turn the base round "
+				+ "(rot 2) and the section with it. As LEGO built it in 6085 "
+				+ "Black Monarch's Castle, the gatehouse flag leaning out 30 "
+				+ "degrees: 6 parts, from LDraw's model repository (model by "
+				+ "Stefan Frenz, CC BY 2.0).",
+			"sections": [
+				{"name": "flag", "x": 0, "y": 4.75, "z": 0.5, "axis": "x", "degrees": 30},
+			],
+			"bricks": [
+				{"part": "3004", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3937", "color": 0, "x": 0, "y": 3, "z": 0, "rot": 0},
+				{"part": "3938", "color": 0, "x": 0, "y": -0.75, "z": -0.5, "rot": 0, "section": "flag"},
+				{"part": "3794a", "color": 0, "x": 0, "y": 1.25, "z": -0.5, "rot": 0, "section": "flag"},
+				{"part": "3957a", "color": 7, "x": 0.5, "y": 2.25, "z": -0.5, "rot": 0, "section": "flag"},
+				{"part": "2335p41", "color": 1, "x": 0.7, "y": 8.75, "z": -0.2, "rot": 2, "section": "flag"},
 			],
 		},
 	]

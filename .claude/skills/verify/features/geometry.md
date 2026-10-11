@@ -12,7 +12,8 @@ can occupy the same millimetre.
   two-stud bucket index, and an exact box-overlap test. An ordinary brick is one
   box; a Technic beam is 36. A stud is 20 LDU
   across (10 cells), a plate 8 LDU tall (4 cells), a brick three plates. A
-  placement names its lowest-leftmost-backmost cell.
+  placement names its lowest-leftmost-backmost cell, across and deep of the
+  whole studs it stands on.
 - `sideways building`: a part can be held by a stud that does not point up —
   `face` (up/down/±x/±z) × `rot` (quarter turns) gives 24 orientations, and the
   occupied cells are recomputed for each.
@@ -55,6 +56,18 @@ can occupy the same millimetre.
   support and pieces, as a pin does. Pins, panes and rounds are forgiven inside
   a section too, which nothing was before. Needs a catalogue built with the
   rounds; see `pipeline.md`.
+- `leaning on a joint`: a section turned about x or z must turn on a joint whose
+  pin lies along its axis — a hinge brick, finger hinge plates, a clip on a bar,
+  a ball — with one half outside the section and the other in it, or it is
+  refused as "leaning on nothing" (`Assistant._check_sections_attached`,
+  `_turns_on_a_joint`). Touching was enough before, and a horn tip tipped out on
+  the studs below gripped none of them. Turning about y and quarter turns are
+  exempt. Two halves of a joint turned against each other, and the rest of a
+  section turning on a joint against that joint's other half, are forgiven a
+  shared cell at either part's surface (`Joints.overlap_within` with `own`,
+  `Assistant._turns_against`): 3938 tipped ten degrees shared 99 cells with
+  3937 outside the pin, all grazing. Deeper is still a collision — the top
+  swung on round into its own base is refused.
 
 ## How to reach it
 
@@ -80,6 +93,7 @@ godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, 
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
+godot --headless --path . --script src/dev/world_view_probe.gd   # parts drawn inside their footprint sit on studs
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
 godot --headless --path . --script src/dev/holds_probe.gd        # and whether the assistant is told
 godot --headless --path . --script src/dev/attach_probe.gd       # are the coordinates usable
@@ -180,7 +194,21 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   A placement's x is the part's *corner*; an LDraw origin is wherever the author
   put it. Dividing the origin by a stud puts a 1x1 plate half a stud out and
   invents off-grid offsets — six of them, across models that have none. Invert
-  `_square_transform`: `to_cell(origin) + _corner_cell(part, id, basis)`.
+  `_square_transform`: `to_cell(origin) + _corner_cell(part, id, basis)`, and
+  `_corners_in_studs` does.
+
+- **The corner is the footprint's, not the cover's.** For a part drawn inside
+  its footprint the two differ: a 4 x 4 wing (3935) starts at -38 of a -40 box, a
+  turntable's top is 36 across on a 2 x 2. Named by the cover's corner, every
+  one placed at whole studs stood 2 LDU off the studs below — 24 wing tips on the
+  owner's tower of Orthanc — while the wing patterns had meant the footprint all
+  along. `_footprint_start` moves the corner out to the part's own stud grid,
+  read off its upward studs (tubes where it has none), trying the half-shifted
+  grid too because a jumper's stud sits on a line. A part with neither, a pane
+  or a pin, keeps the cover's corner. Upright parts only. `world_view_probe`
+  checks it; switch the snapping off and it reports 78 placements off and the
+  ellipse's wings 2.0 LDU off. Changing it means rewriting every worked example
+  that names such a part so it stays put (20 did, most to cleaner numbers).
 
 - **A vertical hole was being filled solid, which refused most of Technic.**
   `fill_cavities` closes voids layer by horizontal layer, which is right for a

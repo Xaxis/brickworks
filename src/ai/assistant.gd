@@ -3197,6 +3197,11 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 			mini(lo.z, packed[n + 2]))
 		hi = Vector3i(maxi(hi.x, packed[n + 3] - 1),
 			maxi(hi.y, packed[n + 4] - 1), maxi(hi.z, packed[n + 5] - 1))
+	# Named by the same corner a placement is written with, or a model read
+	# back and written again moves every part drawn inside its footprint.
+	if BrickLattice.is_square_to_grid(brick.transform.basis):
+		lo = BrickLattice.to_cell(brick.transform.origin) + _corner_cell(part,
+			brick.part_id, BrickLattice.snap_basis(brick.transform.basis))
 	var near: Vector3 = BrickLattice.to_ldu(lo)
 	# One cell past the last one filled, because a cell is a step and
 	# not a point: a 1 x 1 plate fills one cell and reaches to the next.
@@ -4570,14 +4575,22 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		# hold together", listing thirteen wheels the edit never
 		# touched and could not have moved. A fault nobody can act on
 		# is not a fault.
-		if placement.y < 0 and (placement.id == 0 or placement.moved):
+		var at: Transform3D = _transform(placement, part,
+			model.section_for(placement))
+		# In a section, y is measured from the section's pivot, not the
+		# ground, so it is where the brick ends up that says. A hinge top
+		# leaning on a tilting hinge was refused as below the ground at
+		# twenty-eight LDU above it.
+		var under_ground: bool = placement.y < 0
+		if not placement.section.is_empty():
+			var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+			under_ground = info != null and (at * info.bounds).position.y < -1.0
+		if under_ground and (placement.id == 0 or placement.moved):
 			_note(issues, "below ground",
 				"brick %d (%s) is at y=%d, below the ground" % [
 					index, placement.part, placement.y])
 			continue
 
-		var at: Transform3D = _transform(placement, part,
-			model.section_for(placement))
 		placed_at[index] = at
 		var packed: PackedInt32Array = builder.boxes_for(part, at)
 		# Cells out of the boxes, not worked out a second time. For a
@@ -4800,7 +4813,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# when the model is picked up, which is the one thing a section
 	# makes easy to do by accident.
 	_check_sections_attached(model, cells_of, lattice, issues, crowded,
-		stuck, boxes_of)
+		stuck, boxes_of, joined, rounds)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -6009,7 +6022,42 @@ static func _sections_present(model: Model, cells_of: Dictionary) -> Array:
 func _check_sections_attached(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice, issues: Dictionary,
 		crowded: Dictionary = {}, stuck: Dictionary = {},
-		boxes_of: Dictionary = {}) -> void:
+		boxes_of: Dictionary = {}, joined: Dictionary = {},
+		rounds: Dictionary = {}) -> void:
+	# A section that leans has to lean on something that turns.
+	#
+	# Touching was enough, so a horn tip tipped eight degrees out sat on
+	# the studs of the brick below it at a slant, gripping none of them:
+	# the owner saw the spires of a tower of Orthanc not sitting on their
+	# studs, and that is exactly what they were. Real sets lean a part on
+	# a hinge, a clip on a bar or a ball, and the checker knows those now
+	# (Joints). Turning about the upright is not leaning, and a quarter
+	# turn is studs on their side. Judged from the design, not from what
+	# was placed: a leaning brick that also overlapped was never placed.
+	for group: String in model.sections:
+		var section: Section = model.sections[group]
+		if section.axis == "y" or is_zero_approx(fposmod(section.degrees, 90.0)):
+			continue
+		if not model.placements.any(func(p: Placement) -> bool: return p.section == group):
+			continue
+		if _turns_on_a_joint(model, group, joined, rounds):
+			continue
+		stuck[group] = true
+		_note(issues, "leaning on nothing",
+			"section '%s' leans %s degrees but nothing in it turns on "
+				% [group, Placement._num(absf(section.degrees))]
+				+ "anything: its bottom sits on the studs below at a "
+				+ "slant and grips none of them. Stand it upright on "
+				+ "its studs, or turn it about the upright (axis y) "
+				+ "instead. A part leans in a real set only on a joint "
+				+ "whose pin lies along the section's axis at its pivot "
+				+ "— a tilting hinge (3937 with 3938 on it), finger "
+				+ "hinge plates (4275b with 4276b), a clip on a bar, a "
+				+ "ball in a socket — one half outside the section and "
+				+ "the other in it; show_technique(\"leaning on a "
+				+ "hinge\") is one, with the pin worked out. (3830/3831 "
+				+ "and 2429/2430 swivel flat, like a door; they do not "
+				+ "lean.)")
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
 			continue
@@ -6060,6 +6108,21 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 					+ "Touching anywhere counts and in any direction: a "
 					+ "pylon fixed to the side of a hull is held, and "
 					+ "needs nothing underneath it.")
+
+
+## Whether any brick in [param group] is pinned, clipped, hinged or
+## balled to a brick outside it.
+static func _turns_on_a_joint(model: Model, group: String, joined: Dictionary,
+		rounds: Dictionary) -> bool:
+	for index: int in model.placements.size():
+		if model.placements[index].section != group:
+			continue
+		for mates: Dictionary in [joined.get(index, {}), rounds.get(index, {})]:
+			for other: Variant in mates:
+				if int(other) < model.placements.size() \
+						and model.placements[int(other)].section != group:
+					return true
+	return false
 
 
 func _check_support(
@@ -6286,15 +6349,55 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 				continue
 			if turning.has(other) and placed_at.has(other):
 				var slack: float = Joints.ROUND_SLACK
+				var own: Array = []
 				if not square and not (BrickLattice.is_square_to_grid(at.basis)
 						and BrickLattice.is_square_to_grid(
 							(placed_at[other] as Transform3D).basis)):
 					slack = Joints.ROUND_SLACK_TURNED
+					own = [_own_cover(model, index), _own_cover(model, other)]
 				if Joints.overlap_within(mine, against.boxes_of(key),
-						turning[other], to_world, slack):
+						turning[other], to_world, slack, own):
 					continue
+			# And the rest of a section that turns on a joint, against the
+			# joint's other half. A jumper on a hinge top turned thirty
+			# degrees clears the hinge's base by an LDU in 6085 Black
+			# Monarch's Castle, and a cover keeping every cell it touches
+			# put it a cell into the base.
+			if not square and placed_at.has(other) \
+					and _turns_against(model, index, other, rounds) \
+					and Joints.overlap_within(mine, against.boxes_of(key), [],
+						to_world, 0.0, [_own_cover(model, index),
+							_own_cover(model, other)]):
+				continue
 		kept.append(key)
 	return kept
+
+
+## Whether [param index] is in a section, turned, that turns on a joint
+## whose other half is [param other].
+func _turns_against(model: Model, index: int, other: int,
+		rounds: Dictionary) -> bool:
+	var group: String = model.placements[index].section
+	if group.is_empty() or model.placements[other].section == group:
+		return false
+	var section: Section = model.sections.get(group)
+	if section == null or is_zero_approx(fposmod(section.degrees, 90.0)):
+		return false
+	for k: Variant in rounds.get(other, {}):
+		if int(k) < model.placements.size() \
+				and model.placements[int(k)].section == group:
+			return true
+	return false
+
+
+## A placement's frame, its section's or the world's, and its cover
+## square in that frame, where the cover is exact.
+func _own_cover(model: Model, index: int) -> Array:
+	var placement: Placement = model.placements[index]
+	var part: Lbm.PartMesh = library.mesh_for(placement.part)
+	var section: Section = model.section_for(placement)
+	return [section.placed() if section != null else Transform3D.IDENTITY,
+		builder.boxes_for(part, _square_transform(placement, part))]
 
 
 ## Whether two parts are an insert and its frame, seated as real sets
@@ -6433,9 +6536,19 @@ static func _cover_studs(part: Lbm.PartMesh, info: PartLibrary.PartInfo) -> Vect
 
 
 ## Where a part's lowest, leftmost, backmost cell falls if its origin is
-## at the middle of cell zero. Cached: a design of four hundred bricks
-## asks this for each of them, twice, and the answer depends only on the
-## part and which way it is turned.
+## at the middle of cell zero — across and deep, the corner of the whole
+## studs it stands on rather than of its cover. Cached: a design of four
+## hundred bricks asks this for each of them, twice, and the answer
+## depends only on the part and which way it is turned.
+##
+## The cover's own corner was the answer, and for most parts it is the
+## same one. Not for a part drawn inside its footprint: a 4 x 4 wing
+## (3935) has its cut edge at -38 of a -40 box, a turntable's top (3679)
+## is 36 across on a 2 x 2, a flag's (4495b) clip is 16 wide on its stud.
+## Placed at whole studs by that corner, each landed a tenth of a stud
+## off the studs it stood on, and the owner saw it: the wing tips of a
+## tower of Orthanc not sitting on their studs, 24 of them in one model.
+## The patterns that lay wings meant the footprint all along.
 var _corner_cache: Dictionary = {}
 
 func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
@@ -6443,12 +6556,59 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 	if _corner_cache.has(key):
 		return _corner_cache[key]
 	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
+	var hi := -lo
 	for cell: Vector3i in builder._cells_for(part, Transform3D(basis, Vector3.ZERO)):
 		lo = Vector3i(mini(lo.x, cell.x), mini(lo.y, cell.y), mini(lo.z, cell.z))
+		hi = Vector3i(maxi(hi.x, cell.x), maxi(hi.y, cell.y), maxi(hi.z, cell.z))
 	if lo.x == 0x7FFFFFFF:
 		lo = Vector3i.ZERO
+	# Upright or upside down only. On its side a part's height runs across,
+	# and that is measured in plates, not studs.
+	elif absf((basis * Vector3.UP).y) > 0.99:
+		lo.x = _footprint_start(part, basis, 0, lo.x, hi.x + 1)
+		lo.z = _footprint_start(part, basis, 2, lo.z, hi.z + 1)
 	_corner_cache[key] = lo
 	return lo
+
+
+## The cell a part's footprint starts at along x (0) or z (2): its cover's
+## first cell [param lo], moved out to a line of the part's own stud grid.
+##
+## The grid is read off the studs facing up or down, or the tubes when it
+## has no studs. A stud stands in the middle of a square of that grid, so
+## its lines are half a stud either side — except on a jumper, whose one
+## stud sits on a line, so both are tried and the grid that fits the cover
+## more closely wins. Ties go to the stud's middle: a tap's spout reaches
+## half a stud past its stud, and both grids leave as much over. A part
+## with neither stands on no stud — a pane, a pin, a door — and keeps the
+## cover's corner.
+func _footprint_start(part: Lbm.PartMesh, basis: Basis, axis: int,
+		lo: int, hi: int) -> int:
+	var per: int = int(round(STUD / BrickLattice.CELL))
+	var phases: Array[int] = []
+	for kind: String in ["stud", "tube"]:
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind != kind \
+					or absf((basis * connector.axis).normalized().y) < 0.99:
+				continue
+			var at: int = int(round((basis * connector.position)[axis]
+				/ BrickLattice.CELL))
+			var middle: int = posmod(at - per / 2, per)
+			phases = [middle, posmod(middle + per / 2, per)]
+			break
+		if not phases.is_empty():
+			break
+	if phases.is_empty():
+		return lo
+	var best: int = lo
+	var least: int = 0x7FFFFFFF
+	for phase: int in phases:
+		var start: int = lo - posmod(lo - phase, per)
+		var over: int = (lo - start) + posmod(phase - hi, per)
+		if over < least:
+			least = over
+			best = start
+	return best
 
 
 ## Where the part goes, given the corner it is meant to occupy.
@@ -6927,6 +7087,9 @@ Positions are in brick units, not millimetres.
   A brick is 3 plates tall. A plate is 1. A tile is 1.
   x, y, z is the LOW CORNER of the part's footprint, not its centre.
   A 2x4 brick at x=0,z=0 covers studs 0..3 across and 0..1 deep.
+  The footprint is the whole studs a part stands on, even where it is \
+drawn inside them — a wing plate's cut edge, a turntable's round top, \
+an antenna's base — so whole numbers seat those on their studs too.
   face says which way the studs point: up (the default), down, +x, -x, \
 +z or -z.
   rot is quarter turns about the face direction: 0, 1, 2 or 3. Rotating \
@@ -7067,11 +7230,21 @@ and spent a turn finding out. A positive angle:
 Negate it to go the other way. For a pair of raked pylons, one is the \
 negative of the other.
 
+A section that leans — turned about x or z — turns on a joint, as it \
+does in plastic: a hinge brick (3937 under 3938), finger hinge plates, \
+a clip on a bar, a ball in a socket. One half stands outside the \
+section and the other is in it, and the section's origin is the pin. \
+show_technique("leaning on a hinge") has one with the pin worked out: \
+a spire's tip, a horn or a flagpole is that, with more on top. A \
+section that only rests against the model at a slant grips none of the \
+studs it sits on and is refused. Turning about y and quarter turns \
+stand on studs as anything else does.
+
 Something rigid and turned meets a flat face along a line, so the \
-height at which a section rests against the hull without digging into \
-it is a narrow band — a fraction of a plate, not a whole one. Do not \
-hunt for it. When a section does not fit, the checker sweeps and tells \
-you the y where it would; use that number.
+height at which a section touches the hull without digging into it is \
+a narrow band — a fraction of a plate, not a whole one. Do not hunt for \
+it. When a section does not fit, the checker sweeps and tells you the y \
+where it would; use that number.
 
 Keep sections for the few places the angle is what makes the shape \
 read — a raked pylon, a swept wing, an opened hatch. Everything else \

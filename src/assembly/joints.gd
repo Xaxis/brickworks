@@ -316,8 +316,22 @@ static func _buckets_along(row: Array) -> Array[Vector3i]:
 ## each, low corner then high; [param to_world] carries a cell's middle
 ## into the coordinates the zones are in, which differ only inside a
 ## section. False when they share no cell at all.
+##
+## And, for two halves turned against each other, [param own] — each
+## half's frame and its boxes square in that frame — forgives a shared
+## cell at either half's surface as well. A hinge's halves are shaped to
+## clear each other as the top turns, by less than a cell, and the turned
+## half's cover keeps every cell it touches: 3938 tipped ten degrees on
+## 3937 shared 149 cells with it, 99 of them outside the pin, along the
+## knuckle and under the plate's edges, and the hinge was refused for
+## turning. A real collision, the top swung on into the base, is deeper
+## than a cell, and still is.
 static func overlap_within(mine: PackedInt32Array, theirs: PackedInt32Array,
-		zones: Array, to_world: Transform3D, slack: float) -> bool:
+		zones: Array, to_world: Transform3D, slack: float,
+		own: Array = []) -> bool:
+	var frames: Array[Transform3D] = []
+	for cover: Array in own:
+		frames.append((cover[0] as Transform3D).affine_inverse())
 	var any: bool = false
 	var i: int = 0
 	while i < mine.size():
@@ -333,12 +347,42 @@ static func overlap_within(mine: PackedInt32Array, theirs: PackedInt32Array,
 						for z: int in range(from.z, to.z):
 							var middle: Vector3 = to_world * (
 								Vector3(x + 0.5, y + 0.5, z + 0.5) * BrickLattice.CELL)
-							if not _in_a_zone(middle, zones, slack):
+							if not _in_a_zone(middle, zones, slack) \
+									and not _at_a_surface(middle, own, frames):
 								return false
 							any = true
 			j += 6
 		i += 6
 	return any
+
+
+## Whether a point is in a cell either cover leaves empty, or in one with
+## an empty cell beside it, each cover read in its own square frame.
+static func _at_a_surface(point: Vector3, own: Array,
+		frames: Array[Transform3D]) -> bool:
+	for n: int in own.size():
+		var boxes: PackedInt32Array = own[n][1]
+		var at: Vector3 = frames[n] * point / BrickLattice.CELL
+		var cell := Vector3i(floori(at.x), floori(at.y), floori(at.z))
+		for step: Vector3i in SIDES:
+			if not _in_boxes(cell + step, boxes):
+				return true
+	return false
+
+
+const SIDES: Array[Vector3i] = [Vector3i.ZERO, Vector3i.LEFT, Vector3i.RIGHT,
+	Vector3i.DOWN, Vector3i.UP, Vector3i.FORWARD, Vector3i.BACK]
+
+
+static func _in_boxes(cell: Vector3i, boxes: PackedInt32Array) -> bool:
+	var i: int = 0
+	while i < boxes.size():
+		if cell.x >= boxes[i] and cell.x < boxes[i + 3] \
+				and cell.y >= boxes[i + 1] and cell.y < boxes[i + 4] \
+				and cell.z >= boxes[i + 2] and cell.z < boxes[i + 5]:
+			return true
+		i += 6
+	return false
 
 
 static func _in_a_zone(point: Vector3, zones: Array, slack: float) -> bool:

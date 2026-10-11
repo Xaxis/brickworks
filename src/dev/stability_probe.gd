@@ -55,11 +55,14 @@ func _initialize() -> void:
 ## cannot settle: `brick_at` names one owner per cell, so where two
 ## parts are registered over the same cells — a tyre around a hub — the
 ## walk sees one relationship and the boxes see both. 58 is the rule as
-## stated; 56 is what an index with one owner per cell can report.
+## stated; 56 is what an index with one owner per cell can report. The
+## house is one such too since its plant leaves were seated on their
+## studs (src/dev/reseat.gd): four LDU over, the leaves reach across the
+## 2 x 2 tile beside them, over cells the tile owns.
 func _contacts_are_what_the_lattice_says(library: PartLibrary) -> void:
 	print("\nthe contact graph against a cell-by-cell walk of the lattice:")
 	for pair: Array in [["kart.ldr", 0], ["car.ldr", 0],
-			["bench.ldr", 0], ["house.ldr", 0], ["lighthouse.ldr", 2]]:
+			["bench.ldr", 0], ["house.ldr", 1], ["lighthouse.ldr", 2]]:
 		var name: String = pair[0]
 		var allowed: int = pair[1]
 		var ldr: LdrModel = LdrModel.load_file("res://models/" + name)
