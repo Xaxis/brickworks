@@ -27,12 +27,21 @@ plan with Claude as the client.
   `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
   lagged `vercel promote` by up to a minute, twice, and checks run on "done"
   measured the previous build.
-- `POST /api/mcp` — the Claude connector relay: someone on a Claude plan turns
-  on Connect Claude in the app, adds the tab's private address
-  (`/api/mcp?t=<token>`) to Claude as a custom connector (claude.ai, the Claude
-  app, or `claude mcp add --transport http`), and asks Claude to build. Claude
+- `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
+  Brickworks to Claude as a connector (claude.ai and the Claude apps, or
+  `claude mcp add --transport http`), and asks Claude to build. **Two ways
+  in** (2026-10-11): `https://brickworks.diy/api/mcp`, one address for
+  everybody, which Claude signs in to with OAuth (`api/oauth.js`, see
+  [account](account.md)) — each call then goes to that account's open tab on
+  any device (`accountTabs`: answering before paused, the tab the connection
+  last built in, then in view, then latest heard; the handshake and tool list
+  from that tab, else the account's last, else the fullest recent one, so
+  Claude can add it before the app is opened) — and one browser's private
+  address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
+  everyone who added one (`oneTab`). With no `t` and no good token: 401 and a
+  `WWW-Authenticate` naming the protected resource metadata. Claude
   is the client, on the person's own plan; Brickworks never sees a login, a
-  token or a key, and never calls a model — Anthropic's terms allow exactly
+  Claude token or a key, and never calls a model — Anthropic's terms allow exactly
   this (a product may not offer Claude.ai login or route plan credentials;
   an end user using Anthropic's own apps is ordinary use). The function only
   carries JSON-RPC between Claude and the tab through `supabase/relay.sql`
@@ -63,7 +72,11 @@ plan with Claude as the client.
   `sendBeacon`; a call taken and not answered is handed out again on the next
   ask; the newest page load to switch on (`&i=`) takes over and an older one
   gets 409. The address is kept on the device (`ClaudeConnector.where`) and the
-  connector resumes on load, so it is added to Claude once.
+  connector resumes on load, so it is added to Claude once. The relay is the
+  page's own site on the web, and on the desktop `Deployment.api_base()` — the
+  live site or `BRICKWORKS_API`, the deployment the account signs in to (it was
+  always the live site, so a desktop signed in to another deployment said
+  hello to the live one with a session it could not know).
   **A connector belongs to an account** (2026-10-11): `op=hello` carries the
   session's access token (`ClaudeConnector._hello`, from `Account.access_token`)
   and is verified with `api/_auth.js` (Supabase's ES256 JWKS); without it, 401,
@@ -74,9 +87,8 @@ plan with Claude as the client.
   owner (401, and the tab says hello again), and a tab with no owner counts as
   closed to Claude, so rows from before the change read as switched off until
   a signed-in page switches them on. The tab resumes the connector only once
-  somebody is signed in, and Sign out switches it off. That is the foundation
-  for connectors that follow a person rather than a browser; the admin page
-  already lists connectors per account. Prove it: `node
+  somebody is signed in, and Sign out switches it off. The owner is what a
+  call signed in to an account is routed by. Prove it: `node
   tools/web/relay_server.mjs 8790` (the real handlers, real queue, needs
   `.env`; it serves every route in `api/`) and `godot --headless --path .
   --script src/dev/connector_probe.gd -- 8790`: refused signed out (by the app
@@ -85,13 +97,18 @@ plan with Claude as the client.
   recorded, handshake, takeover, another account's hello 403, out of view and
   alive (answers), busy past the relay's patience with its page alive (not
   called closed — the owner's bug), a page frozen out of view (told paused, in
-  under a minute), dropped and re-taken, closed, and off after Sign out. claude.ai's help centre says custom connectors accept authless
-  servers (support.claude.com/en/articles/11503834); OAuth can follow if that
-  changes. Real Claude Code has been through it: `claude -p` with
+  under a minute), dropped and re-taken, closed, and off after Sign out; then the same through
+  the account's address — Claude signed in with OAuth as the probe's account
+  (registration, a code approved with the session, PKCE, tokens), its calls
+  answered by the app's own tab with no address of the tab's ever given to
+  Claude, a call told no tab is open once the tab is off, and refused after
+  Disconnect. `tools/web/oauth_probe.mjs` covers the OAuth endpoints
+  ([account](account.md)). Real Claude Code went through the private address
+  first (2026-10-09): `claude -p` with
   `--mcp-config` naming the address (type http), `--strict-mcp-config` and
   `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,
   called `search_parts` in the tab and answered 3001. On a deployment,
-  `tools/web/connector_flow.mjs` does it as a person and as Claude: the switch
+  `tools/web/connector_flow.mjs` does it for the private address, as a person and as Claude: Private address, its switch
   and Copy in a real browser, the address off the clipboard, then initialize,
   tools/list and real calls through the deployed relay; then the page out of
   view with its frames stopped (a browser driven from a test never hides a

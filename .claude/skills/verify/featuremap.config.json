@@ -537,6 +537,34 @@
       "entry": "src/parts/part_tool.gd",
       "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
       "area": "elements"
+    },
+    {
+      "kind": "api",
+      "label": "Claude's sign-in (OAuth)",
+      "entry": "api/oauth.js",
+      "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "connect Claude sign-in page",
+      "entry": "web/authorize.html",
+      "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "oauth probe",
+      "entry": "tools/web/oauth_probe.mjs",
+      "reach": "node tools/web/oauth_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "connect Claude browser flow",
+      "entry": "tools/web/oauth_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
+      "area": "account"
     }
   ]
 }

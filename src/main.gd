@@ -211,6 +211,18 @@ func _tell_page() -> void:
 			"offline": _account.offline,
 			"gated": _gated(),
 		}), true)
+	# And where Claude stands: listening here, which of its apps are
+	# connected to the account, and the panel's line about it — what a
+	# person reads, which a test cannot read off the canvas.
+	if _connector != null:
+		var clients: Array = []
+		for one: Variant in _connector.connections:
+			clients.append(str((one as Dictionary).get("client", "")))
+		JavaScriptBridge.eval("window.brickworksClaude = %s" % JSON.stringify({
+			"on": _connector.is_on(),
+			"connected": clients,
+			"status": _chat.connector_status(),
+		}), true)
 
 
 ## The model's name where a window shows one: the browser tab, or the
@@ -733,6 +745,8 @@ func _on_account_changed() -> void:
 		_connector_resumed = false
 		if _connector.is_on():
 			_connector.stop()
+		# Whose connections they were is nobody's business here now.
+		_connector.refresh_connections()
 
 
 ## The panels either side of the viewport: the parts bin on the left, the
@@ -1241,6 +1255,8 @@ func _build_ui() -> void:
 	# Who is signed in, and the way out: from Account on the bar.
 	_account_panel = AccountPanel.new()
 	_account_panel.setup(_account)
+	if _connector != null:
+		_account_panel.use_connector(_connector)
 	$HUD.add_child(_account_panel)
 	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
 	get_viewport().size_changed.connect(func() -> void:

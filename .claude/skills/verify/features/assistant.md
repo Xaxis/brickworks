@@ -65,16 +65,30 @@ fixing what it got wrong.
   Code is installed the composer stays without a key, because "My Claude" sits
   in it: `chat_probe` builds that panel too and checks Build waits for the tick.
 - `design on your Claude plan`: `ConnectorForm` in the panel, under "Or with
-  your Claude plan", is a switch for a `ClaudeConnector` on this tab. Off, it
-  says what it is for; on, it shows a coloured state line — waiting (amber),
-  connected with the time Claude reached it (green), building with a count and
-  a clock, trouble (red), or taken over by another tab — and the address and
-  steps until Claude has used the address once, then folds them away. It says
-  to keep the tab in view. The address is kept on this device and the switch
-  comes back on by itself; "Make a new address" forgets it. An address added
-  to Claude before — another browser, cleared storage — can be pasted ("Added
-  Brickworks to Claude before? Use that address", `ClaudeConnector.adopt`),
-  so nothing changes in Claude. Claude's calls go
+  your Claude plan" (2026-10-11). Not connected, it says what it is for and
+  offers **Connect Claude** (`ClaudeConnector.connect_claude`): this tab
+  starts listening, the shared address (`/api/mcp`) goes on the clipboard, and
+  claude.ai's documented install link opens — `https://claude.ai/customize/
+  connectors?modal=add-custom-connector&connectorName=Brickworks&connectorUrl=…`
+  — with a three-step guide (Add then Connect; sign in as <the account's
+  address> and Allow; come back) and the address to paste if no tab opened.
+  Links beside it open, one at a time, **Claude Code** (the `claude mcp add
+  --transport http brickworks …/api/mcp` command, then `/mcp` and
+  Authenticate), **Claude app** (it shows claude.ai's connectors; or Customize,
+  Connectors, Add custom connector, and the address) and **Private address**
+  (this browser's own `?t=` address, the way before, with its switch, Copy,
+  "Make a new address" and a field to paste one added before —
+  `ClaudeConnector.adopt`). The state line: waiting for Claude (amber),
+  "Connected to Claude [and Claude Code] — it builds in this tab" (green),
+  building with a count and a clock, switched off in this tab (grey), trouble
+  (red), taken over by another tab. The account's connections come from
+  `/api/oauth?op=connections`: on sign-in (`resume`), when the section is
+  shown, every 5 s for ten minutes after Connect Claude, and at once when the
+  relay says `brickworks/connected`. Once Claude is connected the switch
+  ("Let Claude build in this tab") is on by itself in every tab the person
+  signs in to, unless they switched it off there (`off_here`, kept on the
+  device), and **Disconnect Claude** ends every connection. `window.
+  brickworksClaude` tells the page `{on, connected, status}`. Claude's calls go
   into the conversation as a run card ("Claude is building"), every step kept
   with what came of it ("— refused: …" when a tool said no), and the card says
   Done with Build steps and Parts list once Claude has been quiet 90 s, or
@@ -85,12 +99,16 @@ fixing what it got wrong.
   your Claude plan"; until Claude's first call there is no empty conversation
   above it, so the steps sit under the title (they were at the panel's foot
   under a blank two-thirds of it). The panel's secondary actions — that one,
-  "Use that address", "Make a new address", "Change key", "Add a picture of
-  it" — are links (`Look.link`: blue, underlined, as wide as their words), not
+  Claude Code, Claude app, Private address, "Make a new address", "Disconnect
+  Claude", "Change key", "Add a picture of it" — are links (`Look.link`: blue, underlined, as wide as their words), not
   flat buttons in body text, which the owner could not tell were pressable.
   The switch and every tick box are drawn by `Look.apply`, outlined so an
   unticked one shows on a dark panel. `chat_probe` covers all of it on a
-  closed port and its own file; `connector_probe` the protocol (see `web.md`).
+  closed port and its own file — Connect Claude's link and guide, connected,
+  the Claude Code command, switched off here and kept off next visit, both apps
+  named, the account panel's Claude section, the private address — and
+  `connector_probe` the protocol (see `web.md`); `tools/web/oauth_flow.mjs`
+  the whole of it in a browser on a deployment ([account](account.md)).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and

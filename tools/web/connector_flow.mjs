@@ -3,8 +3,9 @@
 //   node tools/web/connector_flow.mjs --url=https://brickworks.diy/app --out=shots/connector
 //   BW_BYPASS=… node tools/web/connector_flow.mjs --url=<a preview>/app --out=…
 //
-// In a real browser: switch the connector on, press Copy, and read the
-// address off the clipboard — the way a person gets it. Then, from here, ask
+// The private per-browser address, which everyone who added one keeps
+// using. In a real browser: open Private address, switch it on, press
+// Copy, and read the address off the clipboard — the way a person gets it. Then, from here, ask
 // that address what Claude asks (initialize, tools/list, real tool calls)
 // through the deployed relay, and check the tab answered and shows it. Then
 // the page goes out of view, as it does while the person is in claude.ai:
@@ -64,9 +65,14 @@ async function click(name) {
   throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
 }
 
-await click("connect_claude");
+// The private address, the way before Claude could sign in (2026-10-11):
+// folded away under "Private address", switched on there, and copied. The
+// way most people connect now is oauth_flow.mjs.
+await click("connector_private");
+await page.waitForTimeout(1500);
+await click("claude_here");
 await page.waitForTimeout(3000);
-await click("connector_copy");
+await click("connector_private_copy");
 await page.waitForTimeout(1500);
 const address = await page.evaluate(() => navigator.clipboard.readText());
 console.log(`address from the clipboard: ${address.slice(0, 60)}…`);

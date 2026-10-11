@@ -72,13 +72,15 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # path, so a route importing a shared ./_*.js finds nothing unless the
 # file is sitting beside it.
 #
-# Four routes. /api/account says where the parts are (PARTS_URL) and
+# Five routes. /api/account says where the parts are (PARTS_URL) and
 # where to sign in (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); without those
 # the app asks nobody to sign in. /api/otp emails a sign-in code
 # (SUPABASE_SECRET_KEY, RESEND_API_KEY, EMAIL_FROM, EMAIL_FROM_FALLBACK).
 # /api/admin is the owner's account list (MASTER_EMAIL). /api/mcp, the
 # Claude connector's relay, needs SUPABASE_URL and SUPABASE_SECRET_KEY for
 # its queue; without them it says the connector is not configured.
+# /api/oauth is how Claude signs in to it (the same keys); the paths OAuth
+# clients look for are mapped onto it in the routes below.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)
@@ -174,12 +176,29 @@ signin_origin=""
 # Once each, even when they are the same place, as they are today.
 connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
 csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+# Where Claude sends someone to sign in (web/authorize.html). Stricter than
+# the app's: no eval, and it talks only to itself and the sign-in service.
+# And none of the cross-origin isolation headers: the app's threaded build
+# needs those, and a page claude.ai opens must not cut itself off from the
+# window that opened it, which Cross-Origin-Opener-Policy would.
+authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signin_origin}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/\$1" },
+    { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
+    { "src": "/[.]well-known/oauth-authorization-server(/.*)?", "dest": "/api/oauth?op=metadata" },
+    { "src": "/oauth/register/?", "dest": "/api/oauth?op=register" },
+    { "src": "/oauth/token/?", "dest": "/api/oauth?op=token" },
+    { "src": "/oauth/revoke/?", "dest": "/api/oauth?op=revoke" },
+    { "src": "/oauth/authorize/?", "dest": "/authorize.html",
+      "headers": {
+        "Content-Security-Policy": "$authorize_csp",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-store" } },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },

@@ -24,6 +24,14 @@
   "launch": [],
   "features": [
     {
+      "id": "api:Claude's sign-in (OAuth)",
+      "kind": "api",
+      "entry": "api/oauth.js",
+      "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:GET /api/account",
       "kind": "api",
       "entry": "api/account.js",
@@ -101,6 +109,14 @@
       "entry": ".github/workflows/release.yml",
       "reach": "gh workflow run release.yml -f tag=v0.1.0",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:connect Claude browser flow",
+      "kind": "cli",
+      "entry": "tools/web/oauth_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
+      "area": "account",
       "tests": []
     },
     {
@@ -201,6 +217,14 @@
       "entry": "tools/web/minifig_flow.mjs",
       "reach": "node tools/web/minifig_flow.mjs --url=https://brickworks.diy/app --out=shots/minifig_web",
       "area": "minifig",
+      "tests": []
+    },
+    {
+      "id": "cli:oauth probe",
+      "kind": "cli",
+      "entry": "tools/web/oauth_probe.mjs",
+      "reach": "node tools/web/oauth_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "account",
       "tests": []
     },
     {
@@ -539,6 +563,14 @@
       "entry": "src/camera/cad_camera.gd",
       "reach": "godot --headless --path . --script src/dev/camera_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:connect Claude sign-in page",
+      "kind": "ui",
+      "entry": "web/authorize.html",
+      "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
+      "area": "account",
       "tests": []
     },
     {
