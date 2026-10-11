@@ -83,6 +83,10 @@ var _turning: PivotMark
 var _tools: TouchTools
 var _marquee: Marquee
 var _thumbnails: PartThumbnails
+## Copy, paste, duplicate, moving and turning a selection: src/ui/edit_verbs.gd.
+var _verbs: EditVerbs
+## Those verbs as buttons down the left of the model.
+var _edit_bar: EditBar
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
@@ -164,6 +168,8 @@ func _tell_page() -> void:
 		named.merge(_elements.controls_by_name())
 	if _account_panel != null:
 		named.merge(_account_panel.controls_by_name())
+	if _edit_bar != null:
+		named.merge(_edit_bar.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -944,7 +950,13 @@ func _build_ui() -> void:
 	# Above the key strip, so the strip stays where it always is rather
 	# than jumping down the screen when playback starts.
 	_steps = StepsBar.new()
-	_steps.reveal.connect(func(ids: Dictionary) -> void: _world.show_only(ids))
+	# The end of the timeline shows the model again as it was, which is
+	# with whatever was hidden by hand still hidden.
+	_steps.reveal.connect(func(ids: Dictionary) -> void:
+		if ids.is_empty() and _verbs != null:
+			_verbs.apply_hidden()
+		else:
+			_world.show_only(ids))
 	_steps.export_wanted.connect(_export_booklet)
 	middle.add_child(_steps)
 
@@ -1187,13 +1199,38 @@ func _build_ui() -> void:
 	_outline.world = _world
 	_outline.library = _library
 	add_child(_outline)
+
+	_verbs = EditVerbs.new()
+	_verbs.builder = _builder
+	_verbs.world = _world
+	_verbs.library = _library
+	_verbs.say = _bar.say
+	_verbs.edited = _on_model_edited
+	_verbs.aim_again = _hover_again
+	_verbs.scenery = _store.scenery
+	_verbs.camera = _camera
+	add_child(_verbs)
+	# Not where a finger is the pointer: TouchTools is there, at a size a
+	# finger can hit.
+	if not TouchTools.wanted():
+		_edit_bar = EditBar.new()
+		_edit_bar.verbs = _verbs
+		_edit_bar.builder = _builder
+		_edit_bar.anchor_left = 0.0
+		_edit_bar.anchor_right = 0.0
+		_edit_bar.anchor_top = 0.5
+		_edit_bar.anchor_bottom = 0.5
+		_edit_bar.offset_left = 10.0
+		_edit_bar.offset_right = 10.0
+		_edit_bar.grow_vertical = Control.GROW_DIRECTION_BOTH
+		spacer.add_child(_edit_bar)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		if count == 0:
 			_bar.say("")
 		else:
-			_bar.say("%d selected — Delete, C to paint, arrows to move"
-				% count))
+			_bar.say("%d selected — %s-C copies, X moves, R turns, C paints, Delete removes"
+				% [count, ControlsHint._hold()]))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -2294,6 +2331,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 	if _store != null and _store.scenery.has(brick.id):
 		return null
+	# Nor what is hidden: a box drawn over a hidden roof takes what is
+	# under it.
+	if brick.hidden:
+		return null
 	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
 	if part == null:
 		return null
@@ -2463,7 +2504,7 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _edit_bar]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -2567,6 +2608,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if not key.echo and not key.ctrl_pressed and not key.meta_pressed:
 			_camera.key_zoom(zoom)
 		return
+	if _verbs != null and _verbs.handle_key(key):
+		return
 	match key.keycode:
 		KEY_F:
 			# The selection if there is one, everything with shift —
@@ -2649,11 +2692,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Everything the assistant built, in one go, so that
 			# "start again from mine" is one key rather than a hunt.
 			if key.meta_pressed or key.ctrl_pressed:
-				_builder.clear_selection()
-				for brick: BrickWorld.Brick in _world.bricks():
-					if not _store.scenery.has(brick.id):
-						_builder.selection[brick.id] = true
-				_builder.selection_changed.emit(_builder.selection.size())
+				# What can be seen: a hidden roof is not in "everything".
+				_verbs.select_by("all")
 		KEY_G:
 			# And take a colour and part back off the model.
 			_builder.pick_hovered()

@@ -137,12 +137,16 @@ static func for_keyboard() -> Array[Binding]:
 	_section(everything, "Building", [
 		Binding.new(["click"], "place", "place"),
 		Binding.new(["right-click"], "remove", "remove"),
-		Binding.new(["R"], "rotate"),
+		Binding.new(["R"], "rotate, or turn the selection"),
 		Binding.new(["T"], "tip on side"),
 		Binding.new(["[", "]"], "colour"),
 		Binding.new(["C"], "paint", "paint"),
 		Binding.new(["G"], "pick"),
-		Binding.new(["X"], "lift"),
+		Binding.new(["X"], "lift, or move the selection"),
+		Binding.new(["%s-C" % _hold(), "%s-V" % _hold()], "copy, paste"),
+		Binding.new(["%s-D" % _hold()], "duplicate"),
+		Binding.new(["%s-X" % _hold()], "cut"),
+		Binding.new(["shift-M"], "mirror the selection"),
 		# The command symbol, U+2318, is not in the font this ships, so
 		# it drew as an empty box followed by a Z — which has been on
 		# screen since the strip was written. Words render everywhere.
@@ -160,6 +164,9 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["%s-A" % _hold()], "select all"),
 		Binding.new(["arrows"], "turn the view, or move a selection"),
 		Binding.new(["Delete"], "remove the selection"),
+		Binding.new(["H"], "hide the selection; with none, show all"),
+		Binding.new(["shift-H"], "show only the selection"),
+		Binding.new(["alt-H"], "show everything"),
 		Binding.new(["Esc"], "out of whatever is open"),
 	])
 	_section(everything, "The view", [
@@ -243,7 +250,7 @@ const PICTURED_BY_TOUCH := {
 }
 
 ## What a key is called on its cap, where the list's own word is not it.
-const CAPS := {"space": "Space", "shift": "Shift"}
+const CAPS := {"space": "Space", "shift": "Shift", "alt": "Alt"}
 
 
 ## The pieces one key of a binding is drawn with, in order: a cap for
@@ -256,7 +263,7 @@ const CAPS := {"space": "Space", "shift": "Shift"}
 static func pieces(key: String, by_touch: bool = false) -> Array:
 	var out: Array = []
 	var rest: String = key
-	var holding: Array[String] = ["shift", _hold()]
+	var holding: Array[String] = ["shift", "alt", _hold()]
 	var found: bool = true
 	while found:
 		found = false

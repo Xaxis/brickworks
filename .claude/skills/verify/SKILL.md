@@ -25,7 +25,7 @@ reading, by eye.
 
 | Check | Command | Proves | Baseline |
 |---|---|---|---|
-| the suite | `tools/check.sh` | the parse check, the Python pipeline, 56 headless probes, 13 windowed ones (the sign-in screen among them), and a session driving the app over MCP | passes, ~250s, with 25 occupancy tests skipped |
+| the suite | `tools/check.sh` | the parse check, the Python pipeline, 56 headless probes, 14 windowed ones (the sign-in screen among them), and a session driving the app over MCP | passes, ~250s, with 25 occupancy tests skipped |
 | network suite | `tools/check.sh --network` | also fetching a part over the wire, and opening a model the way the browser does | passes, +~15s |
 | types | `pyright` | the Python pipeline and tools | passes, 3s, warnings only for pytest, numpy and scipy imports |
 | pipeline only | `python3 -m pytest tests/ -q`, or `python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py tests/test_release.py tests/test_minifig.py tests/test_elements.py` | the LDraw facts everything rests on: 8 mm stud pitch, 9.6 mm brick, −Y up; the colour join; the style measures on hand-made models; and where a minifigure's parts go | 102 passed, 25 skipped, 2.7s |

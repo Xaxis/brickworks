@@ -523,6 +523,69 @@
       "entry": "api/mcp.js",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "copy paste and duplicate",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (select, Ctrl-C then Ctrl-V, or Ctrl-D; click to put down, R turns, Esc puts away)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "move and turn a selection",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, X picks it up, click puts it down, Esc puts it back; R turns it where it stands)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "select by colour part or connection",
+      "entry": "src/assembly/select_by.gd",
+      "reach": "godot --path .  (select a brick, then the Select button on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "hide and show only",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (select, H hides, Shift-H shows only it, Alt-H or H with nothing selected shows all)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "edit bar",
+      "entry": "src/ui/edit_bar.gd",
+      "reach": "godot --path .  (the column of tools down the left of the model)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "replace part",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select, hold another part, Replace on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "undo history",
+      "entry": "src/ui/edit_bar.gd",
+      "reach": "godot --path .  (History on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "mirror a selection",
+      "entry": "src/assembly/mirror.gd",
+      "reach": "godot --path .  (select, Shift-M or Mirror on the edit bar)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "place under a part and on side studs",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
+      "area": "building"
     }
   ]
 }
