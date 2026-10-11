@@ -137,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print; do
   probe "$name"
 done
 
@@ -229,6 +229,11 @@ run "placeholders" "${screen[@]}" godot --path . --resolution 1400x900 \
 # shots/element_beside.png are worth a look.
 run "make a part" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/element_shot_probe.gd
+# Prints drawn in the figure builder with the mouse: a face, a jacket,
+# trousers and a tile, saved, worn and placed. The canvas's live preview
+# and the figure are drawn, so a window; shots/print_*.png are the proof.
+run "draw a print" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/print_ui_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

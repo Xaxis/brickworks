@@ -78,6 +78,12 @@ class PartMesh extends RefCounted:
 	var surface_colors: PackedInt32Array = PackedInt32Array()
 	var surface_two_sided: PackedByteArray = PackedByteArray()
 	var triangle_count: int = 0
+	## A print drawn in the app (PartPrints): surface index -> its picture,
+	## for the surfaces that carry one, and the pictures' PNG files by
+	## name, which go out with any model the part is in. Empty for every
+	## part LEGO made.
+	var prints: Dictionary = {}
+	var print_files: Dictionary = {}
 
 	## True when the part has at least one surface that follows the colour
 	## it is placed in, which is every ordinary brick.

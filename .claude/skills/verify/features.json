@@ -340,6 +340,14 @@
       "tests": []
     },
     {
+      "id": "lib:custom prints",
+      "kind": "lib",
+      "entry": "src/minifig/part_prints.gd",
+      "reach": "godot --headless --path . --script src/dev/print_probe.gd",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "lib:design loop",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",
@@ -731,6 +739,14 @@
       "entry": "src/ui/cursors.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:print designer",
+      "kind": "ui",
+      "entry": "src/minifig/print_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd   (by hand: M, a Head, Torso, Hips or Legs slot, Draw a print\u2026)",
+      "area": "minifig",
       "tests": []
     },
     {

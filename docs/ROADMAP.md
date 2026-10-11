@@ -902,7 +902,14 @@ and the collision cell, a corner cut out of 3003 has 2357's studs, and a
 part with no slice to repeat is refused in words. And the design loop makes the parts it lacks: `make_part`, in the
 assistant's tools and every MCP session's, makes a family part or changes a
 real one through the same rules a person's part goes through, and the
-design builds with it. Next: families with clips and bars (the checker's
+design builds with it.
+
+**Third version, 2026-10-11: prints of one's own.** The figure builder's
+"Draw a print…" paints a face, a torso front and back, a pair of legs with
+their hips, or any part's face (a tile, a slope) on a canvas that is the
+part's printable area, with the part wearing it as it is drawn; saved as a
+real LDraw part with !TEXMAP and its picture carried in the model as !DATA,
+which LDView draws as the app does. Next: families with clips and bars (the checker's
 round joints need the catalogue's rounds), wedge plates, cut-outs that are
 not boxes (a cut through a round part is closed in 2 LDU steps), axle holes
 in the app's build, and draft and wall checks for a part a mould designer

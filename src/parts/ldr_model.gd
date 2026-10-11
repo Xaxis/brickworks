@@ -66,6 +66,11 @@ var main: SubModel = null
 ## header says it is one. Kept out of [member submodels], so a part is
 ## placed as a part and never inlined as though it were an assembly.
 var embedded_parts: Dictionary = {}
+## Files the document carries as `0 !DATA <name>` sections (MPD spec rev.
+## 2): base64 in `0 !:` lines, ended by the next FILE, NOFILE or !DATA.
+## The pictures of a print drawn in the app, which its part's TEXMAP lines
+## name. Lowercase file name -> the bytes.
+var embedded_data: Dictionary = {}
 
 
 static func load_file(path: String) -> LdrModel:
@@ -96,9 +101,23 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	## The FILE section being read, and its lines as written.
 	var section: String = ""
 	var sections: Dictionary = {}
+	## The !DATA section being read, and its base64 so far.
+	var data_name: String = ""
+	var data := PackedStringArray()
 
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
+		if not data_name.is_empty():
+			if line.begins_with("0 !:"):
+				data.append(line.substr(4).strip_edges())
+				continue
+			model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
+			data_name = ""
+		if line.begins_with("0 !DATA ") or line.begins_with("0 !DATA\t"):
+			section = ""
+			data_name = line.substr(7).strip_edges().get_file().to_lower()
+			data = PackedStringArray()
+			continue
 		if not section.is_empty() and not _is_file_line(line):
 			# An Array, not a PackedStringArray: a packed array is a value,
 			# and appending to one read out of a Dictionary appends to a
@@ -177,6 +196,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		current.placements.append(
 			Placement.new(part_id, color, to_transform(numbers), step))
 
+	if not data_name.is_empty():
+		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called.
@@ -191,7 +212,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 static func _is_file_line(line: String) -> bool:
 	var tokens: PackedStringArray = line.split(" ", false)
 	return tokens.size() >= 2 and tokens[0] == "0" \
-		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE")
+		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE"
+			or tokens[1].to_upper() == "!DATA")
 
 
 ## Whether a FILE section is a part rather than a sub-model: its header
@@ -442,8 +464,19 @@ static func write_ldr(
 	var names: Array = embedded.keys()
 	names.sort()
 	for part_name: Variant in names:
+		if embedded[part_name] is PackedByteArray:
+			continue
 		text += "0 FILE " + str(part_name) + "\n" \
 			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
+	# And the files the parts need that are not LDraw: a print's pictures,
+	# as the MPD spec carries them, base64 in lines of 76 characters.
+	for data_name: Variant in names:
+		if not (embedded[data_name] is PackedByteArray):
+			continue
+		var encoded: String = Marshalls.raw_to_base64(embedded[data_name])
+		text += "0 !DATA " + str(data_name) + "\n"
+		for at: int in range(0, encoded.length(), 76):
+			text += "0 !: " + encoded.substr(at, 76) + "\n"
 	return text
 
 

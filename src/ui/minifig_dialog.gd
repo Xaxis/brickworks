@@ -54,6 +54,10 @@ var _rng := RandomNumberGenerator.new()
 var _viewport: SubViewport
 var _camera: Camera3D
 var _stage: BrickWorld
+## "Draw a print…" where the slot takes one, and the editor it opens
+## (made the first time it is wanted).
+var _make: Button
+var _print_editor: PrintEditor
 var _waiting: Dictionary = {}            ## part id -> true, geometry on its way
 var _turn: float = 0.45
 var _dragging: bool = false
@@ -273,6 +277,13 @@ func _build_picker() -> Control:
 	_found.add_theme_font_size_override("font_size", 11)
 	_found.modulate = Color(1, 1, 1, 0.6)
 	row.add_child(_found)
+	# A print of one's own for a head, a torso or a pair of legs.
+	_make = Button.new()
+	_make.focus_mode = Control.FOCUS_NONE
+	_make.add_theme_font_size_override("font_size", 12)
+	_make.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
+	_make.pressed.connect(_make_own)
+	row.add_child(_make)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -406,6 +417,10 @@ func _choose_slot(slot: String) -> void:
 	_search.placeholder_text = "Search %s…" % noun
 	_search.text = ""
 	_search.editable = true
+	_make.visible = PRINTED.has(slot)
+	_make.text = "Draw a print…"
+	_make.tooltip_text = ("Draw your own print for this part: a face, a torso's front and "
+		+ "back, a pair of legs")
 	_limit = MOST_SHOWN
 	_fill_groups()
 	_fill_grid()
@@ -435,6 +450,9 @@ func _refresh_slots() -> void:
 		if part in [Minifig.PLAIN_HIPS, Minifig.PLAIN_LEGS, "973", "3626c", "3626b",
 				Minifig.ARM_RIGHT, Minifig.HAND]:
 			what = "plain"
+		# A print or mould made here, by what it was called.
+		if PartPrints.bases.has(part) and library.parts.has(part):
+			what = PartPrints.made_title(library.parts[part].name)
 		if what == "plain":
 			what = "%s, %s" % [what, library.color(int(figure.colours[slot])).name]
 		if slot == "hips" and not figure.legs_take_hips(library):
@@ -629,6 +647,72 @@ func _choose_colour(code: int) -> void:
 	_restage()
 
 
+# -- prints of one's own ---------------------------------------------------------
+
+
+## The slots a print is drawn for, and the part to draw on when the slot
+## is empty; the hips are printed with the legs, as one picture.
+const PRINTED: Dictionary = {"head": "3626c", "torso": "973", "legs": Minifig.PLAIN_LEGS,
+	"hips": Minifig.PLAIN_LEGS}
+
+
+func _make_own() -> void:
+	if PRINTED.has(_slot):
+		_open_print_editor()
+
+
+func _overlay(editor: Control) -> void:
+	get_parent().add_child(editor)
+	editor.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side: Side in [SIDE_LEFT, SIDE_TOP]:
+		editor.set_offset(side, 24)
+	for side: Side in [SIDE_RIGHT, SIDE_BOTTOM]:
+		editor.set_offset(side, -24)
+
+
+func print_editor() -> PrintEditor:
+	if _print_editor == null:
+		_print_editor = PrintEditor.new()
+		_print_editor.library = library
+		_overlay(_print_editor)
+		_print_editor.made.connect(_on_made)
+	return _print_editor
+
+
+func _open_print_editor() -> void:
+	var slot: String = "legs" if _slot == "hips" else _slot
+	var part: String = figure.part(slot)
+	if part.is_empty() or Minifig.is_short_legs(part) and slot == "legs":
+		part = str(PRINTED[slot])
+	var with: Dictionary = {}
+	if slot == "legs":
+		var hips: String = figure.part("hips")
+		with = {"hips": hips if not hips.is_empty() else Minifig.PLAIN_HIPS,
+			"left": figure.left_leg(library)}
+	print_editor().open(part, slot, int(figure.colours[slot]), with)
+
+
+## A print made: on the figure, in the slot it was made for — a
+## pair of legs by its right leg, which brings its hips.
+func _on_made(ids: Array, slot: String) -> void:
+	if ids.is_empty():
+		return
+	if slot.is_empty():
+		# Not for the figure: a tile or a slope, in the parts bin.
+		_summary.text = "Made %s: it is in the parts bin under Custom." % ", ".join(ids)
+		return
+	var chosen: String = str(ids[0])
+	for id: Variant in ids:
+		var info: PartLibrary.PartInfo = library.parts.get(str(id))
+		if info != null and Minifig.slot_for(info) == ("accessory" if slot == "accessory_left"
+				else slot) and (slot != "legs" or Minifig.side_of(info) == "r"):
+			chosen = str(id)
+			break
+	figure.choose(library, slot, chosen)
+	_slot = slot
+	_refresh_all()
+
+
 func _surprise() -> void:
 	var called: String = _name.text
 	figure = Minifig.surprise(library, _rng)
@@ -750,6 +834,10 @@ func controls_by_name() -> Dictionary:
 		named["minifig_" + slot] = _slot_buttons[slot]
 	named["minifig_search"] = _search
 	named["minifig_group"] = _group
+	named["minifig_make"] = _make
+	# And the editor in front, while one is open.
+	if _print_editor != null and _print_editor.visible:
+		named.merge(_print_editor.controls_by_name())
 	# The first part the grid offers, so a browser check can choose one.
 	for cell: Node in _grid.get_children():
 		var id: String = str(cell.get_meta("part", ""))

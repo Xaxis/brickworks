@@ -684,6 +684,20 @@
       "entry": "src/ui/measure.gd",
       "reach": "godot --path .  (U, then click two points)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "custom prints",
+      "entry": "src/minifig/part_prints.gd",
+      "reach": "godot --headless --path . --script src/dev/print_probe.gd",
+      "area": "minifig"
+    },
+    {
+      "kind": "ui",
+      "label": "print designer",
+      "entry": "src/minifig/print_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd   (by hand: M, a Head, Torso, Hips or Legs slot, Draw a print…)",
+      "area": "minifig"
     }
   ]
 }
