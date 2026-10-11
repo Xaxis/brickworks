@@ -254,7 +254,10 @@ class Sight extends RefCounted:
 				var index: int = row * columns + column
 				if index >= count:
 					break
-				var tile: Variant = grid.get_child(index).get_meta("tile", null)
+				# Asked first: Godot reports a missing key as an error even
+				# with a default of null, once a frame for every such cell.
+				var cell: Node = grid.get_child(index)
+				var tile: Variant = cell.get_meta("tile") if cell.has_meta("tile") else null
 				if tile is ThumbTile:
 					out.append(tile)
 		return out
