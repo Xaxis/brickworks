@@ -8,7 +8,10 @@
 ## it. Then stands a row of different figures and photographs them
 ## close, from the front and from a corner, for a person to look at:
 ## head on the neck, arms at the shoulders, hands in the arms, legs
-## under the hips. Pictures go to shots/minifig_*.png.
+## under the hips. And the slots the builder did not use to have — a
+## visor, a cape, back gear, a skirt, flippers, the left hand — chosen by
+## clicking, and a second row of figures wearing them, photographed from
+## the front and from behind. Pictures go to shots/minifig_*.png.
 extends SceneTree
 
 var _failures: int = 0
@@ -84,6 +87,57 @@ func _run() -> void:
 		await _click_control(_figures._grid.get_child(0))
 	_check("and a hat: %s" % _figures.figure.parts["headwear"],
 		not str(_figures.figure.parts["headwear"]).is_empty())
+	# The new slots, by clicking: a shield in the left hand, a visor
+	# over the face, a cape.
+	await _click_control(_figures._slot_buttons["accessory_left"])
+	await _type_into(_figures._search, "shield triangular")
+	if _figures._grid.get_child_count() > 0:
+		await _click_control(_figures._grid.get_child(0))
+	_check("the left hand takes a shield: %s" % _figures.figure.part("accessory_left"),
+		_library.parts.has(_figures.figure.part("accessory_left"))
+		and _library.parts[_figures.figure.part("accessory_left")].name.contains("Shield"))
+	await _click_control(_figures._slot_buttons["cape"])
+	await _type_into(_figures._search, "cape cloth formed")
+	if _figures._grid.get_child_count() > 0:
+		await _click_control(_figures._grid.get_child(0))
+	_check("and a cape: %s" % _figures.figure.part("cape"),
+		not _figures.figure.part("cape").is_empty())
+	var held_too: bool = _figures.figure.assemble(_library).any(
+		func(item: Dictionary) -> bool: return item["slot"] == "accessory_left")
+	_check("both are on the figure the builder shows", held_too
+		and _figures.figure.assemble(_library).any(
+			func(item: Dictionary) -> bool: return item["slot"] == "cape"))
+
+	# A slot of nine hundred torsos: a page of them, a cell that shows
+	# the next page, and the moulds to choose from.
+	await _click_control(_figures._slot_buttons["torso"])
+	var first_page: int = _figures._grid.get_child_count()
+	var more: Button = _figures._grid.get_child(first_page - 1)
+	_check("torsos open on a page of %d and a cell for more (%s)"
+		% [first_page - 1, more.text], str(more.get_meta("part")) == "+"
+		and first_page - 1 == MinifigDialog.MOST_SHOWN)
+	await _click_control(more)
+	_check("clicking it shows the next page too (%d)" % (_figures._grid.get_child_count() - 1),
+		_figures._grid.get_child_count() - 1 == 2 * MinifigDialog.MOST_SHOWN)
+	var moulds: int = _figures._group.item_count - 1
+	var droids: int = -1
+	for n: int in moulds:
+		if str(_figures._groups[n]["key"]) == "30375":
+			droids = n + 1
+	_figures._group.select(droids)
+	_figures._group.item_selected.emit(droids)
+	await _frames(4)
+	var shown: Array = _figures._grid.get_children().map(
+		func(cell: Node) -> String: return str(cell.get_meta("part")))
+	_check("torsos come in %d moulds; choosing the battle droid's shows its %d"
+		% [moulds, shown.size()], moulds >= 20 and shown.size() >= 2
+		and shown.all(func(id: String) -> bool: return id.begins_with("30375")))
+	_figures._group.select(0)
+	_figures._group.item_selected.emit(0)
+	await _type_into(_figures._search, "police")
+	if _figures._grid.get_child_count() > 0:
+		await _click_control(_figures._grid.get_child(0))
+
 	await _click_control(_figures._name)
 	await _type_into(_figures._name, "Officer Bob")
 	_check("the name is typed in: %s" % _figures.figure.name, _figures.figure.name == "Officer Bob")
@@ -161,6 +215,39 @@ func _run() -> void:
 	await _frames(90)
 	await _shot("minifig_close")
 
+	print("  a row of figures wearing the new slots")
+	_main.call("clear_model")
+	await _frames(5)
+	x = -280.0
+	for figure: Minifig in _new_row():
+		var parts: Array[Dictionary] = figure.assemble(_library)
+		for item: Dictionary in parts:
+			_library.request_mesh(str(item["part"]), true)
+		for _n: int in 600:
+			if parts.all(func(item: Dictionary) -> bool:
+					return _library.mesh_for(str(item["part"])) != null):
+				break
+			await process_frame
+		var at: Transform3D = _builder.settle_figure(Vector3(x, 0.0, 10.0), 0)
+		var ids: PackedInt64Array = _builder.put_figure(parts, figure.name, at)
+		_check("%s stands in the model, %d parts" % [figure.name, ids.size()],
+			ids.size() == parts.size())
+		x += 80.0
+	await _frames(10)
+	var wide := AABB(Vector3(-320, 0, -40), Vector3(640, 140, 90))
+	_camera.frame(wide, 1.0)
+	_camera.set_view("front")
+	await _frames(90)
+	await _shot("minifig_new_slots_front")
+	_camera.set_view("back")
+	_camera.frame(wide, 1.0)
+	await _frames(90)
+	await _shot("minifig_new_slots_back")
+	_camera.set_view("default")
+	_camera.frame(AABB(Vector3(-320, 0, -40), Vector3(330, 140, 90)), 1.0)
+	await _frames(90)
+	await _shot("minifig_new_slots_corner")
+
 	DirAccess.remove_absolute(Minifig.shelf_file)
 	print("")
 	if _failures == 0:
@@ -215,6 +302,43 @@ func _row() -> Array[Minifig]:
 	pirate.parts["headwear"] = "2543" if _library.parts.has("2543") else "3901"
 	pirate.colours["headwear"] = 4
 	out.append(pirate)
+	return out
+
+
+## Eight figures in the slots and moulds the builder did not use to
+## offer, each chosen the way the builder chooses them.
+func _new_row() -> Array[Minifig]:
+	var out: Array[Minifig] = []
+	var make := func(called: String, chosen: Array) -> void:
+		var figure := Minifig.new()
+		figure.name = called
+		figure.parts["headwear"] = ""
+		for pair: Array in chosen:
+			if _library.parts.has(str(pair[1])) or str(pair[1]).is_empty():
+				figure.choose(_library, pair[0], pair[1])
+			if pair.size() > 2:
+				figure.colours[pair[0]] = int(pair[2])
+		out.append(figure)
+	make.call("Spaceman", [["torso", "973p90", 1], ["headwear", "3842b", 1],
+		["hat_extra", "2447b", 47], ["back", "3838", 72], ["legs", "3816c", 1],
+		["accessory", "3962b", 0]])
+	make.call("Knight", [["torso", "973p40", 0], ["headwear", "3896", 72],
+		["hat_extra", "2594a", 72], ["cape", "4524", 4], ["accessory", "4497", 70],
+		["accessory_left", "3846p4g", 15], ["legs", "3816c", 0]])
+	make.call("Princess", [["head", "3626bp02", 14], ["headwear", "4530", 70],
+		["hat_extra", "33322", 82], ["torso", "973pba", 5], ["legs", "36036", 5],
+		["cape", "50231c01", 1]])
+	make.call("Frogman", [["torso", "973", 0], ["head", "28621", 14],
+		["hat_extra", "30090b", 47], ["back", "3838", 0], ["footwear", "10190", 0],
+		["legs", "3816c", 0], ["accessory_left", "4479a", 72]])
+	make.call("Droid", [["torso", "30375", 19]])
+	make.call("Captain", [["torso", "973p36", 1], ["headwear", "2528a", 0],
+		["hands", "2531", 72], ["legs", "2532", 6], ["accessory", "2530", 72],
+		["hipwear", "27145", 6]])
+	make.call("Mermaid", [["torso", "973", 14], ["legs", "51345", 2],
+		["headwear", "6093a", 70], ["neck", "27151", 5]])
+	make.call("Skeleton", [["torso", "6260", 15], ["head", "3626bpaq", 15],
+		["accessory", "3847", 71], ["back", "4498", 6]])
 	return out
 
 

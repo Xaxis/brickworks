@@ -1333,7 +1333,7 @@ func _tag_assemblies() -> void:
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
-		if members.has(brick.group) and Minifig.is_figure(members[brick.group]):
+		if members.has(brick.group) and Minifig.is_figure(members[brick.group], library):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:

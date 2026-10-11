@@ -97,6 +97,85 @@ def test_a_bow_has_no_bar_and_is_held_at_its_origin(library: Library) -> None:
     assert minifig.grip_of(library, "4499") == ((0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
 
 
+def test_the_tool_sorts_parts_into_slots_by_the_apps_rule() -> None:
+    # The rule is written twice: here, to know which parts to work the
+    # tables out for, and in minifig.gd, which the app offers parts by.
+    # Every name pattern of one is in the other, word for word.
+    for _slot, rule in minifig.NAME_RULES:
+        assert rule.replace("\\", "\\\\") in GDSCRIPT, rule
+    for rule in (minifig.HAT_EXTRA_NAMES.pattern, minifig.BACK_NAMES.pattern):
+        assert rule.replace("\\", "\\\\") in GDSCRIPT, rule
+
+
+@pytest.mark.parametrize("name, category, slot", [
+    ("Minifig Head with Vented Stud", "Minifig", "head"),
+    ("Minifig Mechanical Head and Torso", "Minifig", "torso"),
+    ("Minifig Hips and Skirt", "Minifig", "legs"),
+    ("Minifig Hips with Gold Belt Pattern", "Minifig", "hips"),
+    ("Minifig Helmet Visor Standard", "Minifig", "hat_extra"),
+    ("Minifig Plume Small", "Minifig Headwear", "hat_extra"),
+    ("Minifig Helmet Classic with Thick Chin Guard and Visor Dimples", "Minifig Headwear",
+     "headwear"),
+    ("Minifig Airtanks", "Minifig Neckwear", "back"),
+    ("Minifig Cape Cloth (Formed)", "Minifig Neckwear", "cape"),
+    ("Minifig Cape Cloth", "Sheet Fabric", "cape"),
+    ("Minifig Skirt  1.5L Fringed", "Sheet Fabric", "hipwear"),
+    ("Minifig Bowtie", "Minifig Neckwear", "neck"),
+    ("Minifig Hand Hook", "Minifig", "hands"),
+    ("Arm Skeleton with Vertical Clip Bent 53.13", "Minifig", "arms"),
+    ("Minifig Bicycle Frame", "Vehicle", "accessory"),
+    ("Sail 17 x 21 Triangular", "Sheet Fabric", ""),
+    ("Brick  2 x  4", "Brick", ""),
+])
+def test_each_kind_of_part_has_its_slot(name: str, category: str, slot: str) -> None:
+    assert minifig.slot_of(name, category) == slot
+
+
+def test_a_print_belongs_to_its_mould() -> None:
+    assert minifig.family("3816cp0b") == "3816c"
+    assert minifig.family("973pbn") == "973"
+    assert minifig.family("3626bpc94") == "3626b"
+    assert minifig.family("43741-f1") == "43741-f1"
+    assert minifig.family("u9209p01c01") == "u9209"
+    assert minifig.family("50231c01") == "50231c01"
+
+
+def test_a_mirrored_arm_is_turned_instead() -> None:
+    # The library mirrors a left arm to stand for the right (11263, the
+    # bird wing); a real part can only be turned. A part symmetric in its
+    # own X (a hand) just loses the mirror.
+    mirrored = minifig.mat([-15.552, 9, 0, -0.985, -0.17, 0, -0.17, 0.985, 0, 0, 0, 1])
+    turned = minifig.unmirrored(mirrored)
+    assert [row[:3] for row in turned[:3]] == [[-0.985, -0.17, -0.0], [-0.17, 0.985, -0.0],
+                                               [0, 0, -1]]
+    hand = minifig.unmirrored(mirrored, symmetric=True)
+    assert [row[:3] for row in hand[:3]] == [[0.985, -0.17, 0], [0.17, 0.985, 0], [-0.0, 0, 1]]
+
+
+@needs_ldraw
+def test_a_visor_turns_where_its_helmet_takes_it(library: Library) -> None:
+    # The current visor is drawn about its pins, the old one in the head's
+    # frame with its pins 6.5 down, as the old helmet's dimples are; the
+    # current classic helmet's dimples are 5 down. The castle visor's pins
+    # are its bumps, not the rings round its hinge 2.7 LDU off.
+    assert minifig.pivot_of(library, "2447b") == (0.0, 0.0)
+    assert minifig.pivot_of(library, "2447") == (6.5, 0.0)
+    assert minifig.pivot_of(library, "2446") == (6.5, 0.0)
+    assert minifig.pivot_of(library, "3842b") == (5.0, 0.0)
+    assert minifig.pivot_of(library, "2594a") == (0.0, 0.0)
+    assert minifig.pivot_of(library, "3844") is None
+
+
+@needs_ldraw
+def test_a_head_sits_on_its_neck_socket(library: Library) -> None:
+    # The classic head is drawn from its top, its socket opening 24 down;
+    # the moulded ones (a goblin, a baby) from the neck up.
+    assert minifig.neck_seat(library, "3626c") == 24.0
+    assert minifig.neck_seat(library, "28621") == 24.0
+    assert minifig.neck_seat(library, "42109") == 0.0
+    assert minifig.neck_seat(library, "24581") == 0.0
+
+
 @needs_ldraw
 def test_airtanks_have_a_collar(library: Library) -> None:
     # Real figures wearing 3838 sit the head up 3 LDU (29 of 38); the

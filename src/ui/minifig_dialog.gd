@@ -36,7 +36,13 @@ var _slots_moved: bool = false
 var _sight: ThumbTile.Sight
 var _name: LineEdit
 var _search: LineEdit
+## The slot's choices by mould or kind: every head mould, every kind of
+## thing to hold (Minifig.groups).
+var _group: OptionButton
+var _groups: Array[Dictionary] = []
 var _found: Label
+## How many of the matching parts the grid shows; "more" adds a page.
+var _limit: int = MOST_SHOWN
 var _grid: GridContainer
 var _palette: FlowContainer
 var _colour_note: Label
@@ -206,7 +212,7 @@ func _build_slots() -> Control:
 		button.toggle_mode = true
 		button.button_group = group
 		button.focus_mode = Control.FOCUS_NONE
-		button.custom_minimum_size = Vector2(0, 40)
+		button.custom_minimum_size = Vector2(0, 35)
 		button.pressed.connect(_choose_slot.bind(slot))
 		list.add_child(button)
 		_slot_buttons[slot] = button
@@ -221,7 +227,7 @@ func _build_slots() -> Control:
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(row)
 		var tile := ThumbTile.new()
-		tile.custom_minimum_size = Vector2(34, 34)
+		tile.custom_minimum_size = Vector2(30, 30)
 		tile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(tile)
 		_slot_tiles[slot] = tile
@@ -248,8 +254,21 @@ func _build_picker() -> Control:
 	_search = LineEdit.new()
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.clear_button_enabled = true
-	_search.text_changed.connect(func(_text: String) -> void: _fill_grid())
+	_search.text_changed.connect(func(_text: String) -> void:
+		_limit = MOST_SHOWN
+		_fill_grid())
 	row.add_child(_search)
+	_group = OptionButton.new()
+	_group.focus_mode = Control.FOCUS_NONE
+	_group.custom_minimum_size = Vector2(190, 0)
+	_group.fit_to_longest_item = false
+	_group.clip_text = true
+	_group.tooltip_text = "Show one mould, or one kind of thing, at a time"
+	_group.add_theme_font_size_override("font_size", 12)
+	_group.item_selected.connect(func(_index: int) -> void:
+		_limit = MOST_SHOWN
+		_fill_grid())
+	row.add_child(_group)
 	_found = Label.new()
 	_found.add_theme_font_size_override("font_size", 11)
 	_found.modulate = Color(1, 1, 1, 0.6)
@@ -382,12 +401,27 @@ func _refresh_all() -> void:
 func _choose_slot(slot: String) -> void:
 	_slot = slot
 	(_slot_buttons[slot] as Button).set_pressed_no_signal(true)
-	var noun: String = str(Minifig.TITLES[slot]).to_lower()
+	var noun: String = "things to hold" if Minifig.HELD.has(slot) \
+		else str(Minifig.TITLES[slot]).to_lower()
 	_search.placeholder_text = "Search %s…" % noun
 	_search.text = ""
-	_search.editable = not Minifig.COLOUR_ONLY.has(slot)
+	_search.editable = true
+	_limit = MOST_SHOWN
+	_fill_groups()
 	_fill_grid()
 	_fill_palette()
+
+
+## The slot's moulds or kinds, biggest first, behind "every one".
+func _fill_groups() -> void:
+	_group.clear()
+	_groups = Minifig.groups(library, _slot)
+	var total: int = Minifig.choices(library, _slot).size()
+	_group.add_item("All %d" % total)
+	for group: Dictionary in _groups:
+		_group.add_item("%s · %d" % [group["label"], int(group["count"])])
+	_group.select(0)
+	_group.visible = _groups.size() > 1
 
 
 func _refresh_slots() -> void:
@@ -398,13 +432,16 @@ func _refresh_slots() -> void:
 		if not part.is_empty():
 			var info: PartLibrary.PartInfo = library.parts.get(part)
 			what = _short(info.name if info != null else part)
-		if part in [Minifig.PLAIN_HIPS, Minifig.PLAIN_LEGS, "973", "3626c", "3626b"]:
+		if part in [Minifig.PLAIN_HIPS, Minifig.PLAIN_LEGS, "973", "3626c", "3626b",
+				Minifig.ARM_RIGHT, Minifig.HAND]:
 			what = "plain"
-		if Minifig.COLOUR_ONLY.has(slot) or what == "plain":
-			what = "%s, %s" % [what, library.color(int(figure.colours[slot])).name] \
-				if what == "plain" else library.color(int(figure.colours[slot])).name
-		if slot == "hips" and figure.is_short():
-			what = "one piece with the short legs"
+		if what == "plain":
+			what = "%s, %s" % [what, library.color(int(figure.colours[slot])).name]
+		if slot == "hips" and not figure.legs_take_hips(library):
+			what = "one piece with the legs"
+		if part.is_empty() and slot in ["head", "arms", "hands", "hips", "legs"] \
+				and Minifig.body_of(library, figure.part("torso")).has(slot):
+			what = "none on this body"
 		(_slot_words[slot] as Label).text = "%s\n%s" % [Minifig.TITLES[slot], what]
 		button.tooltip_text = "%s: %s" % [Minifig.TITLES[slot], what]
 		_point(_slot_tiles[slot], part, int(figure.colours[slot]))
@@ -426,24 +463,43 @@ func _fill_grid() -> void:
 	for child: Node in _grid.get_children():
 		_grid.remove_child(child)
 		child.queue_free()
-	if Minifig.COLOUR_ONLY.has(_slot):
-		_found.text = "the same moulding on every figure — choose a colour"
-		return
 	var words: PackedStringArray = _search.text.to_lower().split(" ", false)
 	var all: Array[PartLibrary.PartInfo] = Minifig.choices(library, _slot)
+	var group: String = ""
+	if _group.selected > 0 and _group.selected - 1 < _groups.size():
+		group = str(_groups[_group.selected - 1]["key"])
 	var shown: int = 0
 	var matching: int = 0
-	if Minifig.OPTIONAL.has(_slot) and words.is_empty():
+	if Minifig.OPTIONAL.has(_slot) and words.is_empty() and group.is_empty():
 		_grid.add_child(_cell(null))
 	for info: PartLibrary.PartInfo in all:
+		if not group.is_empty() and Minifig.group_of(info, _slot) != group:
+			continue
 		if not _matches(info, words):
 			continue
 		matching += 1
-		if shown < MOST_SHOWN:
+		if shown < _limit:
 			_grid.add_child(_cell(info))
 			shown += 1
-	_found.text = ("%d" % matching) if matching <= MOST_SHOWN \
-		else "%d of %d — search to narrow" % [MOST_SHOWN, matching]
+	if matching > shown:
+		_grid.add_child(_more(matching - shown))
+	_found.text = ("%d" % matching) if matching <= shown \
+		else "%d of %d" % [shown, matching]
+
+
+## The last cell when there are more than are shown: another page.
+func _more(left: int) -> Button:
+	var more := Button.new()
+	more.focus_mode = Control.FOCUS_NONE
+	more.custom_minimum_size = Vector2(CELL, CELL)
+	more.text = "+%d" % mini(left, MOST_SHOWN)
+	more.tooltip_text = "Show %d more of the %d not shown" % [mini(left, MOST_SHOWN), left]
+	more.add_theme_font_size_override("font_size", 12)
+	more.set_meta("part", "+")
+	more.pressed.connect(func() -> void:
+		_limit += MOST_SHOWN
+		_fill_grid())
+	return more
 
 
 static func _matches(info: PartLibrary.PartInfo, words: PackedStringArray) -> bool:
@@ -496,10 +552,7 @@ func _cell(info: PartLibrary.PartInfo) -> Button:
 
 
 func _choose_part(id: String) -> void:
-	if _slot == "torso":
-		figure.dress_torso(id)
-	else:
-		figure.parts[_slot] = id
+	figure.choose(library, _slot, id)
 	for cell: Node in _grid.get_children():
 		(cell as Button).set_pressed_no_signal(str(cell.get_meta("part")) == id)
 	_refresh_slots()
@@ -690,4 +743,11 @@ func controls_by_name() -> Dictionary:
 	for slot: String in _slot_buttons:
 		named["minifig_" + slot] = _slot_buttons[slot]
 	named["minifig_search"] = _search
+	named["minifig_group"] = _group
+	# The first part the grid offers, so a browser check can choose one.
+	for cell: Node in _grid.get_children():
+		var id: String = str(cell.get_meta("part", ""))
+		if not id.is_empty() and id != "+" and (cell as Control).is_visible_in_tree():
+			named["minifig_choice"] = cell
+			break
 	return named

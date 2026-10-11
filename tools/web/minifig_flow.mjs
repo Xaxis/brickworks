@@ -4,7 +4,9 @@
 //   node tools/web/minifig_flow.mjs --url=http://127.0.0.1:8137/index.html --out=…   (a local export)
 //
 // Presses M, photographs the builder, presses Place in model, clicks the
-// baseplate, then opens it again and presses Surprise me. The web build
+// baseplate, then opens it again, chooses the first part of the Cape slot
+// (a part the pack does not ship) and places that figure too, then opens
+// it again and presses Surprise me. The web build
 // draws with the Compatibility renderer and fetches most parts as they are
 // wanted, so this is the path the desktop probes cannot vouch for: a
 // builder that works on the desktop and shows an empty preview here would
@@ -100,6 +102,42 @@ await page.screenshot({ path: `${out}/3_placed.png`, timeout: 120000 });
 check(`a click on the baseplate stands the figure there: ${before} parts, then ${after}`,
   after - before >= 7);
 
+// A slot the builder did not use to have, with a part the pack does not
+// ship: the cape slot, its first part (fetched over the wire), and the
+// caped figure placed beside the first. The app publishes where the
+// grid's first part is (minifig_choice) as it does its buttons.
+await page.keyboard.press("m");
+const capeSlot = await where("minifig_cape", 120);
+check("the builder has a Cape slot", Boolean(capeSlot));
+if (capeSlot) await page.mouse.click(capeSlot.x, capeSlot.y);
+await page.waitForTimeout(3000);
+const firstCape = await where("minifig_choice", 60);
+check("the Cape slot offers capes to choose", Boolean(firstCape));
+if (firstCape) await page.mouse.click(firstCape.x, firstCape.y);
+await page.waitForTimeout(Number(args.draw || 60000));
+await page.screenshot({ path: `${out}/4_cape.png`, timeout: 120000 });
+const placeCaped = await where("minifig_place");
+if (placeCaped) await page.mouse.click(placeCaped.x, placeCaped.y);
+const caped = { x: spot.x + 120, y: spot.y };
+const beforeCape = await count();
+await page.mouse.move(caped.x - 20, caped.y - 20);
+await page.waitForTimeout(1500);
+await page.mouse.move(caped.x, caped.y);
+// The cape comes over the wire: the ghost stays red until it has.
+await page.waitForTimeout(20000);
+await page.mouse.click(caped.x, caped.y);
+let afterCape = beforeCape;
+for (let n = 0; n < 240 && afterCape === beforeCape; n++) {
+  await page.waitForTimeout(500);
+  afterCape = await count();
+}
+await page.keyboard.press("Escape");
+await page.mouse.move(700, 12);
+await page.waitForTimeout(3000);
+await page.screenshot({ path: `${out}/5_caped.png`, timeout: 120000 });
+check(`the caped figure stands beside the first: ${beforeCape} parts, then ${afterCape}`,
+  afterCape - beforeCape >= 8);
+
 // A figure nobody chose, for looking at: its parts mostly come over the
 // wire, and its thumbnails one a frame, so a browser drawing in software
 // shows them late. On this machine, at a load of 65, SwiftShader drew one
@@ -108,7 +146,7 @@ await page.keyboard.press("m");
 const surprise = await where("minifig_surprise", 120);
 if (surprise) await page.mouse.click(surprise.x, surprise.y);
 await page.waitForTimeout(Number(args.draw || 60000));
-await page.screenshot({ path: `${out}/4_surprise.png`, timeout: 120000 });
+await page.screenshot({ path: `${out}/6_surprise.png`, timeout: 120000 });
 check(`no script errors in the console${errors.length ? ": " + errors[0] : ""}`,
   errors.length === 0);
 
