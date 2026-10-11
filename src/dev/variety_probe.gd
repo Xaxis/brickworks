@@ -48,7 +48,10 @@ func _initialize() -> void:
 	ids.sort()
 	for id: String in ids:
 		var size: float = assistant._piece_size(id)
-		if size >= 0.0 and size < Assistant.BIG_PIECE:
+		# Building shapes: not a figure's cape, which LDraw files as sheet
+		# fabric and the variety leaves out with the rest of the figure.
+		if size >= 0.0 and size < Assistant.BIG_PIECE \
+				and not Minifig.is_body_part(library.parts[id]):
 			_shapes.append(id)
 		if _shapes.size() == 400:
 			break

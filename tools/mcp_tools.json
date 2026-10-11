@@ -1463,11 +1463,27 @@
           "description": "what it holds in its right hand",
           "type": "string"
         },
+        "accessory_left": {
+          "description": "what it holds in its left hand",
+          "type": "string"
+        },
+        "arms": {
+          "description": "plain, printed sleeves, or another arm (\"skeleton\", \"wing\")",
+          "type": "string"
+        },
+        "back": {
+          "description": "airtanks, a backpack, a quiver, wings, or left out",
+          "type": "string"
+        },
+        "cape": {
+          "description": "a cape, or left out",
+          "type": "string"
+        },
         "colors": {
           "additionalProperties": {
             "type": "integer"
           },
-          "description": "LDraw colour codes by slot: headwear, head, neck, torso, arms, hands, hips, legs, accessory. A printed torso brings arm and hand colours of its own.",
+          "description": "LDraw colour codes by slot: headwear, hat_extra, head, neck, back, cape, torso, arms, hands, hips, hipwear, legs, footwear, accessory, accessory_left. A printed torso brings arm and hand colours of its own.",
           "type": "object"
         },
         "facing": {
@@ -1478,6 +1494,18 @@
             "+x",
             "-x"
           ],
+          "type": "string"
+        },
+        "footwear": {
+          "description": "flippers, skis, skates, or left out",
+          "type": "string"
+        },
+        "hands": {
+          "description": "plain, or a hook, boxing gloves, a prosthetic",
+          "type": "string"
+        },
+        "hat_extra": {
+          "description": "a visor, plume or feathers fixed onto the headgear",
           "type": "string"
         },
         "head": {
@@ -1492,8 +1520,12 @@
           "description": "a printed belt or sash, or left out",
           "type": "string"
         },
+        "hipwear": {
+          "description": "a skirt, a tail or a belt over the hips",
+          "type": "string"
+        },
         "legs": {
-          "description": "plain, printed, or \"short\" for a child",
+          "description": "plain, printed, \"short\" for a child, a wooden leg, a mermaid tail",
           "type": "string"
         },
         "name": {
@@ -1501,11 +1533,11 @@
           "type": "string"
         },
         "neck": {
-          "description": "cape, armour, backpack, or left out",
+          "description": "armour, a scarf, a beard, a life jacket, or left out",
           "type": "string"
         },
         "torso": {
-          "description": "what is printed on the chest",
+          "description": "what is printed on the chest; an odd body (a battle droid, a skeleton) brings its own head, arms and legs",
           "type": "string"
         },
         "x": {

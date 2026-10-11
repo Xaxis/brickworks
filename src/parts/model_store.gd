@@ -486,8 +486,8 @@ func figure_frames() -> Dictionary:
 		(members[brick.group] as Array).append(brick)
 	var frames: Dictionary = {}
 	for group: String in members:
-		if Minifig.is_figure(members[group]):
-			var frame: Variant = Minifig.frame_of(members[group])
+		if Minifig.is_figure(members[group], library):
+			var frame: Variant = Minifig.frame_of(members[group], library)
 			if frame != null:
 				frames[group] = frame
 	return frames
