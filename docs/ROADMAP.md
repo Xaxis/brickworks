@@ -309,6 +309,7 @@ colours at the median):
 | 11 | run 10 again, the MCP port fixed | 4,437 | **16%** | 9% | 62% | 56% | 35 | 5 |
 | 12 | minifigures, 59 worked examples, dressing gives way, true lighting | 4,167 | **18%** | 0.3% | **38%** | 42% | **46** | 6 |
 | 13 | `add_rooms`, named in the recipes and the variety advice | 3,120 | 1.1% | **13%** | 61% | 36% | **80** | **22** |
+| 14 | prism dressed by default, round joints, rebuilt catalogue | 4,748 | 13% | 0% | 54% | **28%** | 70 | 16 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -394,6 +395,18 @@ bars — is refused by the checker as two parts in one place, so no honest angle
 example passes. That checker work (turntables and bars in
 `tools/ldraw/connectivity.py` and `Assistant.NESTS`) comes before an
 angled example can. Not yet measured on an Orthanc run.
+
+Run 14, with everything at once: the best form of the fourteen by eye —
+four piers clustered round a core and rising into horns, stone faces with
+lit windows, a door and stair on a paved court with Uruk-hai at it, rock
+outcrops, and seven furnished storeys behind a slot in the back, Saruman
+with the palantír among them. Sideways 13% and texture 15% came back, and
+symmetry fell to 28%, the most natural yet. But it built no prism and no
+turntable, so nothing is at an angle (0%), the piers are square where
+Orthanc's are faceted, and the slot shows far less of the inside than run
+13's open back did; shapes 70 and colours 16 sit between runs 12 and 13.
+The levers left: faceted piers as one call (a prism per pier), and an
+opening as wide as the real set's.
 
 Round joints, 2026-10-10. A clip on a bar, a bar in a hollow stud, a
 hinge's pin in its eye and a turntable's top on its base are one joint,
