@@ -446,7 +446,7 @@ func _clustered() -> void:
 	await process_frame
 	var tower := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
 		"radius": 9, "courses": 30, "color": 0, "mix_color": 72, "open": 3,
-		"piers": {"count": 4, "courses": 38}}
+		"piers": {"count": 4, "courses": 38}, "windows": true}
 	var model: Assistant.Model = assistant._read_model({"name": "Orthanc",
 		"patterns": [tower]})
 	_check("it is laid without trouble: %s" % str(assistant._pattern_trouble),
@@ -475,12 +475,35 @@ func _clustered() -> void:
 		var below: String = "%s %s %s %s" % [bits[0], bits[1], float(bits[2]) - 3.0, bits[3]]
 		if windows.has(above) or windows.has(below):
 			paired += 1
-	_check("its faces have narrow lit windows, %d studs of them, each two courses tall (%d)"
-		% [windows.size(), paired], windows.size() >= 40 and paired == windows.size())
+	# Asked for, a few dark slits, each two courses tall. They were lit
+	# yellow every eight courses up every face by default, and the homepage
+	# Orthanc read as an office block: 228 of them in rows.
+	_check("asked for, its faces have a few narrow dark windows, %d studs, each two courses tall (%d)"
+		% [windows.size(), paired], windows.size() >= 6 and windows.size() <= 40
+			and paired == windows.size())
+	_check("...in Trans-Brown, a dark slit, not lit yellow",
+		Assistant.WINDOW_COLOUR == 40)
+	_check("...and the check does not call them an office block",
+		not str(verdict["feedback"]).contains("office block"))
 	var dark: Dictionary = tower.duplicate(true)
-	dark["windows"] = false
-	_check("...and none with \"windows\": false",
+	dark.erase("windows")
+	_check("...and none unless asked",
 		lights.call(assistant._read_model({"patterns": [dark]}).placements).is_empty())
+	# A black face takes a second tone and grille bricks among its masonry,
+	# unless told otherwise: LEGO's 10237 is 66% black and 13% dark bluish
+	# grey, with 86 grille bricks.
+	var bare: Dictionary = dark.duplicate(true)
+	bare.erase("mix_color")
+	var toned: Assistant.Model = assistant._read_model({"patterns": [bare]})
+	var greys: int = 0
+	var grilles: int = 0
+	for placement: Assistant.Placement in toned.placements:
+		if placement.color == 72:
+			greys += 1
+		if placement.part == "2877":
+			grilles += 1
+	_check("a black prism takes dark bluish grey through it and grille bricks: %d grey, %d grille"
+		% [greys, grilles], greys > 50 and grilles > 10)
 	var headings: Dictionary = {}
 	var turned: Dictionary = {}
 	var piers: Dictionary = {}

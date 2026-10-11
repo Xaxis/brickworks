@@ -208,18 +208,42 @@ fixing what it got wrong.
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. Each face is laid as a cluster's core face is (`_cluster_face`), its outer
-  row run on into the corner groove where there is room. Narrow lit windows go
-  up its faces by default (`"windows": false` for none): a Trans-Yellow 3005 in
-  the outside row at the widest run's middle stud, two courses tall, every
-  `WINDOW_EVERY` (8) courses from the fourth, alternate faces half a storey
-  apart (`_lay_face`, `_lay_row_around`); on a cluster, the core's faces and the
-  piers' faces that look away from the core, not the horns. The inside row stays
-  whole, so a window is lit and never seen through, and `restyle_model` leaves
-  transparent bricks alone. Run 16 had none, and with its dressing black on
-  black the tower would read as one black mass. `patterns_probe`: 78 window
-  studs on the guidance's cluster, every one paired two courses tall, none with
-  `"windows": false`, and the finishing pass leaves all 78. `patterns_probe`: an
-  octagon and a hexagon hold, each face its own angle.
+  row run on into the corner groove where there is room. Windows only when
+  asked (`"windows": true`): a 3005 in `window_color` (`WINDOW_COLOUR`, 40
+  Trans-Brown, a dark slit, unless said) in the outside row at the widest
+  run's middle stud, two courses tall, every `WINDOW_EVERY` (16) courses, on
+  every other face (`_lay_face`, `_lay_row_around`); on a cluster, the core's
+  faces and the piers' faces that look away from the core, not the horns. The
+  inside row stays whole, so a window is never seen through, and
+  `restyle_model` leaves transparent bricks alone. They were lit yellow every
+  eight courses up every face by default, and the homepage's Orthanc (run 18)
+  read as an office block, 228 lit 1 x 1s in rows — the owner's worst verdict
+  yet. A black face takes dark bluish grey through it unless told
+  (`SECOND_TONE`, as 10237's 66% black and 13% grey), and as many 1 x 2s again
+  as its masonry laid as grille bricks (2877, faced out), which catch light
+  where masonry in black does not. `patterns_probe`: asked for, 16 window studs
+  on the guidance's cluster, each paired two courses tall, Trans-Brown, no
+  office block said; none unless asked; a black cluster with no mix_color has
+  hundreds of grey and some grille; the finishing pass leaves the windows.
+  `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
+- `the faults of a picture`: three checks in every check's advice, each a
+  fault the homepage's Orthanc had and any subject can: `_window_grid` (12 or
+  more of one lit window — a warm transparent colour — 70% of them in rows:
+  "reads as an office block"; glass is not counted, because Big Ben's facade
+  is 380 trans-brown 1 x 1s in rows), `_dark_and_plain` (40% of a model of 200
+  parts plain bricks and plates in one dark colour: "reads as a hole", with
+  10237's texture parts named) and `_straight_shaft` (taller than twice its
+  width and the same width within 12% from a tenth of its height to nine
+  tenths, said with taper, flare and a crown; not of a round or a vehicle).
+  All three fire on run 18 and on none of the eleven shipped models, the runs
+  of 2026-10-11, or eight real sets from LDraw's repository (Big Ben, Tower
+  Bridge, Hogwarts Astronomy Tower and Great Hall, two castles, the Bookshop,
+  Minecraft's Mountain Cave); the critique, the assembly critique and the
+  guidance name them with the fourth, a base that is an afterthought.
+  `style_probe` ("the faults of the homepage's Orthanc"): a black 4 x 4 shaft is
+  told hole and no profile, light grey not a hole, a rocket not a shaft, a
+  stepped tower has a profile, lit windows in rows are an office block and the
+  same in dark glass are not, and none is said of any shipped model.
 - `an open tower is not see-through`: a post up the inside of each corner where
   two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of
   3062b — or 3941 where the channel's mouth is wider than one covers (radius 9

@@ -1211,6 +1211,21 @@ not as a detail. Look at whether the odd one is doing something — a \
 light, a marking, a stripe that carries across — and if it is not, \
 make it match. A single contrasting piece that is clearly deliberate \
 is fine; it is the structural part in the wrong colour that is not.
+  Windows as a grid. Rows of identical lit windows make any building an \
+office block. Few windows, each with a reason — arched, framed, varied, \
+gathered where something happens — their colour and light from the \
+subject: a dark fortress has dark slits, a lighthouse one lit lantern.
+  A dark face with nothing on it. A big face of plain bricks in black or \
+another dark colour reads as a hole in the picture. Texture in the same \
+colour (grille bricks, masonry, bricks with a handle, cheese slopes), a \
+second tone through it, and depth — an inset or outset course, a \
+pilaster, a rib — so light and shadow draw the form.
+  No silhouette. A tall thing the same width all the way up, with its top \
+stuck on. Its profile is the design: taper, flare at the foot, a waist, \
+facets catching light, a crown that grows out of the body.
+  The base as an afterthought. Rubble ringed round the foot. A composed \
+plinth — steps, a terrace, ground that rises to the door — leads the eye \
+up.
   The wrong technique for the shape. Something round built of square \
 bricks, a slanted edge stepped, a hull or a body boxy where it curves, \
 a hinge or a leg built rigid. WHAT THE SUBJECT NEEDS names the call for \
@@ -1832,6 +1847,12 @@ its walkway, the sill and head of a window, the top of a tower, a \
 corner, a doorway, a base. Use the parts real sets of this kind reach \
 for, above, where the shape calls for them. A different piece is the \
 point; more of the same one is not.
+
+Four things to catch by name: windows as a repeating grid (few, each \
+with a reason, coloured by the subject); a face of one dark colour with \
+nothing on it (texture in that colour, a second tone, depth); a shape \
+with no profile (taper, flare, a top that grows out of it); and a base \
+that is an afterthought (a composed plinth that leads the eye up).
 
 Keep to the {name}; every other assembly gets its own turn. look_at_model \
 with where= lists its bricks and their numbers, if you need to take any \
@@ -4177,7 +4198,11 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var courses: int = int(round(float(pattern.get("courses", 8))))
 	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
-	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
+	# A black face gets its second tone unless told otherwise: the homepage's
+	# Orthanc was black on black and read as a void; LEGO's own (10237) is 66%
+	# black and 13% dark bluish grey through the same walls.
+	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour",
+		SECOND_TONE.get(colour, -1))))
 	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
 	# Dressed unless asked not to be. Both were zero unless given, the
 	# guidance said to give them, and no run did: the thirteenth Orthanc
@@ -4227,7 +4252,13 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		"courses": courses, "thick": thick, "colour": colour,
 		"mix_colour": mix_colour, "mix": mix, "masonry": masonry,
 		"sideways": sideways, "open": open, "left_out": left_out,
-		"windows": bool(pattern.get("windows", true))}
+		# Only when asked. They were on by default, Trans-Yellow every eight
+		# courses up every face, and the homepage's Orthanc read as an
+		# office block: 228 lit 1 x 1s in rows. "windows": true lays them
+		# narrow and few, in "window_color" (dark unless said).
+		"windows": bool(pattern.get("windows", false)),
+		"window_colour": int(pattern.get("window_color", pattern.get("window_colour",
+			WINDOW_COLOUR)))}
 	if pattern.has("piers"):
 		return _cluster(pattern, spec, model, index, trouble)
 	# Each face as a cluster's core lays one, its outside row run on into the
@@ -4275,7 +4306,7 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			var gap: float = NAN
 			if windows.has(course) and n == widest and width >= 2:
 				gap = left + floor(width / 2.0)
-				made.append(_prism_brick(name, "3005", WINDOW_COLOUR, gap, y,
+				made.append(_prism_brick(name, "3005", int(spec.get("window_colour", WINDOW_COLOUR)), gap, y,
 					radius - 1.0, 0, -1, 0.0, 0.0))
 			# Two thick: a course of two-wide bricks, then a course of two
 			# rows of one-wide ones, which the courses either side tie
@@ -4383,14 +4414,32 @@ func _prism_brick(section: String, part: String, colour: int, x: float, y: float
 	if Patterns.MASONRY.has(part) and rot == 0 \
 			and Patterns._scatter(x, y, z + float(section.hash() % 97), 47) < masonry:
 		one["part"] = Patterns.MASONRY[part]
+	# And on a dark wall, as many again as grille: 10237 breaks its black
+	# with 86 grille bricks, which catch light where masonry's shallow relief
+	# in black does not. Its grille faces out the way masonry's does.
+	elif part == "3004" and rot == 0 and _is_dark(colour) \
+			and Patterns._scatter(x, y, z + float(section.hash() % 97), 59) < masonry:
+		one["part"] = "2877"
 	return one
 
 
-## A prism's windows: Trans-Yellow, one stud wide and two courses tall, in
-## the outside row, every so many courses (the inside row stays whole, so a
-## window is lit and never seen through).
-const WINDOW_COLOUR := 46
-const WINDOW_EVERY := 8
+## Whether a colour is dark enough that a plain face of it reads as a hole.
+func _is_dark(code: int) -> bool:
+	var colour: PartLibrary.BrickColor = library.colors.get(code) if library != null else null
+	return colour != null and colour.rgb.get_luminance() <= DARK_LUMINANCE
+
+
+## A prism's windows, when asked: one stud wide and two courses tall, in the
+## outside row, every so many courses (the inside row stays whole, so a
+## window is never seen through). Trans-Brown by default, LEGO's smoked
+## glass: a dark slit. They were Trans-Yellow every eight courses on every
+## face, and lit an Orthanc up as an office block.
+const WINDOW_COLOUR := 40
+const WINDOW_EVERY := 16
+
+## The second tone a wall of a dark colour gets unless told: dark bluish
+## grey through black, as 10237 Tower of Orthanc has it (66% and 13%).
+const SECOND_TONE: Dictionary = Patterns.SECOND_TONE
 
 
 ## A post up the inside of each corner where two laid faces of a shaft meet:
@@ -5016,9 +5065,10 @@ func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 	# Narrow lit windows, two courses tall, every WINDOW_EVERY courses up the
 	# face, alternate faces half a storey apart: Orthanc's faces have them,
 	# and the sixteenth, whose dressing is now black on black, had none.
+	# Asked for, they are few: every other face, a storey apart.
 	var windows: Dictionary = {}
-	if windowed and bool(spec.get("windows", true)):
-		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash()) % 2 == 1 else 0)
+	if windowed and bool(spec.get("windows", false)) and absi(name.hash()) % 2 == 0:
+		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash() / 2) % 2 == 1 else 0)
 		for course: int in range(first, courses - 2, WINDOW_EVERY):
 			windows[course] = true
 			windows[course + 1] = true
@@ -6131,6 +6181,14 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not touches.is_empty():
 		advice.append(touches)
 
+	# And the three things that made the homepage's Orthanc "the ugliest
+	# piece of shit I've ever seen", each a fault of any subject: windows
+	# in a grid, a dark face of plain bricks, a tall thing with no profile.
+	for said: String in [_window_grid(model), _dark_and_plain(model),
+			_straight_shaft(model, box_of)]:
+		if not said.is_empty():
+			advice.append(said)
+
 	# And whether a nearly-symmetric model has a brick on one side only.
 	var lopsided: String = _lopsided(model, box_of, lattice)
 	if not lopsided.is_empty():
@@ -6643,6 +6701,152 @@ func _touches(model: Model) -> String:
 		+ ". While you are there: a figure who belongs to it or a small scene "
 		+ "hidden in it (add_minifig), a nod to the subject's story, and for a "
 		+ "display model a stand with a nameplate.")
+
+
+## Windows laid as a grid: one transparent part in one colour, many of
+## them, most in rows. The homepage's Orthanc had 71 lit yellow 1 x 1s up
+## every face at the same heights and read as an office block; the
+## owner's verdict was the worst yet. A real set places few windows, each
+## with a reason, and takes their colour from the subject.
+func _window_grid(model: Model) -> String:
+	if library == null:
+		return ""
+	var groups: Dictionary = {}   ## "part colour" -> [y, ...]
+	for placement: Placement in model.placements:
+		var colour: PartLibrary.BrickColor = library.colors.get(placement.color)
+		# Lit: a warm transparent colour, yellow to red. Glass in rows is
+		# how real buildings are glazed — Big Ben's facade is 380 trans-brown
+		# 1 x 1s, Tower Bridge's 48 clear panes — and asked of eight real
+		# sets, counting every transparent colour fired on three of them.
+		if colour == null or colour.finish != "transparent" or colour.rgb.s < 0.4 \
+				or colour.rgb.v < 0.5 or (colour.rgb.h > 0.18 and colour.rgb.h < 0.95):
+			continue
+		var key: String = "%s %d" % [placement.part, placement.color]
+		if not groups.has(key):
+			groups[key] = []
+		(groups[key] as Array).append(snappedf(placement.y, 0.25))
+	# The biggest group first: that is the grid the eye sees.
+	var order: Array = groups.keys()
+	order.sort_custom(func(a: String, b: String) -> bool:
+		return (groups[a] as Array).size() > (groups[b] as Array).size())
+	for key: String in order:
+		var heights: Array = groups[key]
+		if heights.size() < WINDOW_GRID:
+			continue
+		var at: Dictionary = {}
+		for y: float in heights:
+			at[y] = int(at.get(y, 0)) + 1
+		var in_rows: int = 0
+		for y: float in heights:
+			if int(at[y]) >= 4:
+				in_rows += 1
+		if float(in_rows) < 0.7 * heights.size():
+			continue
+		var named: PackedStringArray = key.split(" ")
+		return ("%d of one lit window (%s in %s), most of them in rows at the same "
+			% [heights.size(), named[0], _colour_name(int(named[1]))]
+			+ "heights: a grid of windows reads as an office block, whatever the "
+			+ "building is. Few windows, each with a reason — arched, framed, "
+			+ "varied, gathered where something happens inside — and their colour "
+			+ "from the subject: a dark fortress has dark slits, a lighthouse one "
+			+ "lit lantern. Take most of these out and make the rest count.")
+	return ""
+
+
+## A model mostly plain bricks in one dark colour. In a picture a dark face
+## with nothing on it is a hole: the homepage's Orthanc was black on black
+## and read as a void. 10237, LEGO's own Orthanc, is 66% black and breaks
+## it with 86 grille bricks, 63 headlight bricks, 58 bricks with handles,
+## 47 cheese slopes, 36 curved 10 x 1 ribs and 13% dark bluish grey.
+func _dark_and_plain(model: Model) -> String:
+	if model.placements.size() < DARK_FROM or library == null:
+		return ""
+	var dark: Dictionary = {}
+	for placement: Placement in model.placements:
+		var colour: PartLibrary.BrickColor = library.colors.get(placement.color)
+		if colour == null or colour.rgb.get_luminance() > DARK_LUMINANCE \
+				or not Style.kinds_of(placement.part).contains("p"):
+			continue
+		dark[placement.color] = int(dark.get(placement.color, 0)) + 1
+	for code: int in dark:
+		var share: float = float(dark[code]) / model.placements.size()
+		if share < DARK_AND_PLAIN:
+			continue
+		return ("%d%% of the model is plain bricks and plates in %s. A big dark "
+			% [roundi(share * 100.0), _colour_name(code)]
+			+ "face with nothing on it reads as a hole in a picture. Break it up "
+			+ "the way 10237 Tower of Orthanc breaks up its black: texture in the "
+			+ "same colour (grille bricks 2877, masonry 98283, bricks with a "
+			+ "handle 2921, headlight bricks, cheese slopes, ingots), a second "
+			+ "tone through the bricks (dark bluish grey on black: mix_color), "
+			+ "and depth — an inset or outset course, a pilaster, a rib — so "
+			+ "light and shadow draw the form.")
+	return ""
+
+
+## A tall model the same width all the way up: no taper, no flare, no
+## crown growing out of it. The homepage's Orthanc was square shafts
+## glued together, the horns reading as spikes stuck on. Not said of a
+## subject that is a straight round (a rocket, a column): its straightness
+## is its shape.
+func _straight_shaft(model: Model, box_of: Dictionary) -> String:
+	if box_of.size() < DARK_FROM:
+		return ""
+	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	var traits: Dictionary = Style.traits_of(about)
+	if traits.has("round") or traits.has("vehicle"):
+		return ""
+	var low: Dictionary = {}    ## plate layer -> Vector2i low x, z in cells
+	var high: Dictionary = {}
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var lo: Vector3i = corners[0]
+		var hi: Vector3i = corners[1]
+		for layer: int in range(floori(float(lo.y) / BrickLattice.CELLS_PER_PLATE),
+				floori(float(hi.y) / BrickLattice.CELLS_PER_PLATE) + 1):
+			var was_lo: Vector2i = low.get(layer, Vector2i(lo.x, lo.z))
+			var was_hi: Vector2i = high.get(layer, Vector2i(hi.x, hi.z))
+			low[layer] = Vector2i(mini(was_lo.x, lo.x), mini(was_lo.y, lo.z))
+			high[layer] = Vector2i(maxi(was_hi.x, hi.x), maxi(was_hi.y, hi.z))
+	var layers: Array = low.keys()
+	if layers.size() < 30:
+		return ""
+	layers.sort()
+	var tall: float = layers.size() / 2.5            ## studs
+	var widths: Array = []
+	for n: int in range(layers.size() / 10, layers.size() * 9 / 10):
+		var span: Vector2i = (high[layers[n]] as Vector2i) - (low[layers[n]] as Vector2i)
+		widths.append(float(maxi(span.x, span.y)) / BrickLattice.CELLS_PER_STUD)
+	var widest: float = widths.max()
+	var narrowest: float = widths.min()
+	if tall < 2.0 * widest or widest - narrowest > STRAIGHT_WITHIN * widest:
+		return ""
+	return ("It rises %d studs as one straight shaft about %d across, the same "
+		% [roundi(tall), roundi(widest)]
+		+ "width from a tenth of its height to nine tenths. A tall subject's profile "
+		+ "is its design: let it taper, flare at the foot, gather at a waist, and "
+		+ "let its top grow out of the body — an oversail on inverted slopes, a "
+		+ "corbelled crown, a spire stepping in (show_technique \"oversail on "
+		+ "inverted slopes\", \"turret spire\") — rather than a cap with spikes "
+		+ "stuck on. A stack of prisms each a little smaller is a taper in plain "
+		+ "calls; the base should lead the eye up, a composed plinth and not rubble "
+		+ "ringed round its foot.")
+
+
+## Twelve of one window before a grid of them is a pattern and not a choice.
+const WINDOW_GRID := 12
+## From this many parts, a model has faces big enough to read as holes.
+const DARK_FROM := 200
+## Darker than this (CIELAB-ish luminance of the plastic's colour) is dark:
+## black, dark brown, dark blue, dark green — not dark bluish grey.
+const DARK_LUMINANCE := 0.2
+## And this share of the model plain in one dark colour is a void. The
+## shipped models and real sets are measured in patterns_probe/style_probe.
+const DARK_AND_PLAIN := 0.4
+## How much a shaft's width may vary, as a share of it, and still be
+## straight: run 18's Orthanc varied 2.5 studs in 28 with its dressing and
+## windows, a tapering tower a third or more.
+const STRAIGHT_WITHIN := 0.12
 
 
 ## A part with a print or a sticker on it: LDraw files them as their
@@ -8734,9 +8938,11 @@ alongside the bricks you write by hand:
            finished wall's are — a quarter worked stone, some bricks \
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
-           "sideways" set how much, 0 for a plain face; and narrow lit \
-           windows go up them every eight courses ("windows": false for \
-           none). Once it stands, \
+           "sideways" set how much, 0 for a plain face; a black face \
+           takes dark bluish grey through it and grille bricks among \
+           its masonry. "windows": true puts a few narrow dark slits up \
+           every other face ("window_color" for another; lit yellow in \
+           rows makes any tower an office block). Once it stands, \
            add_rooms with "prism": the same at, sides and radius, and \
            "floors": [{"room": "dungeon"}, {"room": "forge", "stair": \
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
@@ -9015,6 +9221,22 @@ plastic (show_technique "rough stone wall", "weathered stone wall").
 it. Set windows in, let a cornice oversail, recess a doorway a plate, \
 stand a buttress out: the shadows are what the eye reads \
 (show_technique "oversail on inverted slopes", "corbelled wall walk").
+  The profile is the design. A tall subject the same width all the way \
+up is a shaft, whatever is on it: taper it, flare its foot, gather it at \
+a waist, facet its edges, and let its top grow out of the body rather \
+than sit on it with spikes stuck on. A stack of prisms or rounds, each a \
+little smaller, says a taper in plain calls.
+  Dark is not one colour. A big face of black or dark brown with nothing \
+on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
+black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
+bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
+bluish grey: texture in the same colour, a second tone, depth.
+  Windows have reasons. A few, varied, framed, where something happens \
+inside — never a grid of identical lit squares, which makes a fortress an \
+office block. Their colour comes from the subject: dark slits for a dark \
+tower, a lit lantern for a lighthouse.
+  The base leads the eye up: a plinth, steps, a terrace, ground that \
+rises to the door — composed, not rubble ringed round the foot.
   A focal point. Somewhere the eye goes first — the top of a tower, a \
 gate, a figure on a balcony — gets the most interesting parts in the \
 model.
@@ -9687,8 +9909,11 @@ func _tools() -> Array:
 				+ "with piers, any number opens the core's whole back and the "
 				+ "backs of the piers there"},
 			"windows": {"type": "boolean", "description":
-				"prism: narrow lit windows up its faces, every eight courses; "
-				+ "true unless said"},
+				"prism: a few narrow windows up every other face, a storey "
+				+ "apart, dark slits unless window_color says; none unless said"},
+			"window_color": {"type": "integer", "description":
+				"prism: the windows' colour (40, Trans-Brown, a dark slit, "
+				+ "unless said)"},
 			"piers": {"type": "object", "description":
 				"prism: faceted piers clustered round it, each a prism of its "
 				+ "own built against the core, with a cleft between each two "

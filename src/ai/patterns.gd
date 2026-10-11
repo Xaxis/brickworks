@@ -336,11 +336,18 @@ static func _fill(pattern: Dictionary, trouble: Array,
 	# of twenty however well it is bonded: run 21's castle was 349 of
 	# one brick and 47% one grey, where a real set its size is 28% its
 	# main colour.
+	# A wall of black bricks gets its second tone unless told otherwise:
+	# black on black read as a void on the homepage's Orthanc, and LEGO's
+	# own is 13% dark bluish grey through its black. Walls only — courses of
+	# bricks — not a floor or a hull of plates.
+	var walls: bool = is_equal_approx(float(pattern.get("rise", 1.0)), 3.0)
 	var mix_colour: int = int(pattern.get("mix_color",
-		pattern.get("mix_colour", -1)))
+		pattern.get("mix_colour", SECOND_TONE.get(colour, -1) if walls else -1)))
 	var mix: float = clampf(float(pattern.get("mix",
 		MIX if mix_colour >= 0 else 0.0)), 0.0, 0.5)
 	var masonry: float = clampf(float(pattern.get("masonry", 0.0)), 0.0, 1.0)
+	var dark: bool = library != null and library.colors.has(colour) \
+		and (library.colors[colour] as PartLibrary.BrickColor).rgb.get_luminance() <= 0.2
 	# A share of the 1x2s laid as two 1x1 bricks with a stud on the side
 	# instead, facing out, for the assistant to dress with a tile or a
 	# round plate on its side (Assistant._dress). Real fantasy sets build
@@ -442,7 +449,7 @@ static func _fill(pattern: Dictionary, trouble: Array,
 			_sideways(made, from_here, sideways, middle)
 		if mix > 0.0 or masonry > 0.0:
 			_texture(made, from_here, colour, mix_colour, mix, masonry,
-				middle)
+				middle, dark)
 		below = laid
 		if made.size() > MOST:
 			trouble.append("that fill would be %d bricks, which is a "
@@ -614,6 +621,10 @@ static func _wobble(angle: float, course: int, seed: int) -> float:
 ## Castle in the Forest 14%, Löwenstein 19%).
 const MIX := 0.15
 
+## The second tone a wall of a dark colour takes unless told: dark bluish
+## grey through black, as 10237 Tower of Orthanc has it (66% and 13%).
+const SECOND_TONE: Dictionary = {0: 72}
+
 ## The masonry brick for each plain one: the same size, with stonework
 ## moulded on one long face. That face is LDraw's -Z, which this app's
 ## axes turn into +Z at rot 0, +X at 1, -Z at 2 and -X at 3.
@@ -629,7 +640,7 @@ const MASONRY: Dictionary = {"3004": "98283", "3010": "15533"}
 ## Only bricks in the fill's own colour: an outline in an edge colour is
 ## a decision already made.
 static func _texture(made: Array, from: int, colour: int, mix_colour: int,
-		mix: float, masonry: float, middle: Vector2) -> void:
+		mix: float, masonry: float, middle: Vector2, dark: bool = false) -> void:
 	for n: int in range(from, made.size()):
 		var one: Dictionary = made[n]
 		if int(one["color"]) != colour:
@@ -640,8 +651,15 @@ static func _texture(made: Array, from: int, colour: int, mix_colour: int,
 		if mix_colour >= 0 and _scatter(x, y, z, 1) < mix:
 			one["color"] = mix_colour
 		var stone: String = str(MASONRY.get(str(one["part"]), ""))
-		if stone.is_empty() or _scatter(x, y, z, 2) >= masonry:
+		if stone.is_empty():
 			continue
+		if _scatter(x, y, z, 2) >= masonry:
+			# On a dark wall, as many 1 x 2s again as grille: masonry's
+			# shallow relief barely shows in black, and 10237 breaks its
+			# black with 86 grille bricks. Faced out as the stonework is.
+			if not dark or str(one["part"]) != "3004" or _scatter(x, y, z, 3) >= masonry:
+				continue
+			stone = "2877"
 		one["part"] = stone
 		# Along x or along z, from the turn it was laid at; then whichever
 		# way is out.

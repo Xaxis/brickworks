@@ -147,12 +147,110 @@ func _run() -> void:
 	_check(assistant._touches(bare).is_empty(), "...and with a hinge too, of nothing")
 	assistant.queue_free()
 
+	await _three_faults(library)
+
 	print("")
 	if _failures == 0:
 		print("a model is measured for how it is built")
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
+
+
+## The three faults that made the homepage's Orthanc "the ugliest piece of
+## shit I've ever seen", as advice any subject gets: lit windows in a grid,
+## a face of plain dark bricks, a tall shaft with no profile. Each fires on
+## a case made to have it and not on its fix; none fires on any model this
+## app ships. (Measured too, outside the suite: all three fire on run 18's
+## Orthanc and on none of eight real sets from LDraw's repository, among
+## them Big Ben's grid of trans-brown windows and Tower Bridge's panes.)
+func _three_faults(library: PartLibrary) -> void:
+	print("\nthe faults of the homepage's Orthanc, as any subject's")
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	# A black shaft 4 x 4 and 90 courses: dark, plain and straight.
+	var shaft: Array = []
+	for course: int in 90:
+		for one: Array in [[0, 0, 0], [2, 0, 0], [0, 2, 0], [2, 2, 0]]:
+			shaft.append({"part": "3003", "color": 0, "x": one[0], "y": course * 3,
+				"z": one[1], "rot": 0})
+	var said: String = _advice_of(assistant, "a tower", shaft)
+	_check(said.contains("reads as a hole") and said.contains("straight shaft"),
+		"a black 4 x 4 shaft of plain bricks is told it is a hole and has no profile")
+	var grey: Array = []
+	for one: Dictionary in shaft:
+		var lighter: Dictionary = one.duplicate()
+		lighter["color"] = 71
+		grey.append(lighter)
+	_check(not _advice_of(assistant, "a tower", grey).contains("reads as a hole"),
+		"...the same in light grey is not a hole")
+	_check(not _advice_of(assistant, "a rocket", shaft).contains("straight shaft"),
+		"...and a rocket's straightness is its shape")
+	var tapered: Array = []
+	for course: int in 90:
+		var inset: int = course / 30
+		for x: int in range(inset, 8 - inset, 2):
+			for z: int in range(inset, 8 - inset, 2):
+				tapered.append({"part": "3003", "color": 71, "x": x, "y": course * 3,
+					"z": z, "rot": 0})
+	_check(not _advice_of(assistant, "a tower", tapered).contains("straight shaft"),
+		"...a tower that steps in has a profile")
+	# Four columns of six lit windows: rows of them, at the same heights.
+	var lit: Array = [{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0}]
+	for row: int in 6:
+		for n: int in 4:
+			lit.append({"part": "3005", "color": 46, "x": n, "y": 1 + row * 3,
+				"z": 0, "rot": 0})
+	_check(_advice_of(assistant, "a house", lit).contains("office block"),
+		"lit windows in rows are an office block")
+	var smoked: Array = []
+	for one: Dictionary in lit:
+		var dark: Dictionary = one.duplicate()
+		if dark["part"] == "3005":
+			dark["color"] = 40
+		smoked.append(dark)
+	_check(not _advice_of(assistant, "a house", smoked).contains("office block"),
+		"...the same in dark glass are not")
+	var quiet := PackedStringArray()
+	var here: DirAccess = DirAccess.open("res://models")
+	for file: String in here.get_files():
+		if not file.ends_with(".ldr"):
+			continue
+		var store := ModelStore.new()
+		store.world = world
+		store.builder = builder
+		store.library = library
+		store.keeps = false
+		world.clear()
+		store.open("res://models/" + file)
+		var model: Assistant.Model = assistant._model_from_world()
+		var report: Dictionary = assistant._check(model, true)
+		var advice: String = "\n".join(report.get("advice", []))
+		if advice.contains("office block") or advice.contains("reads as a hole") \
+				or advice.contains("straight shaft"):
+			quiet.append(file)
+	_check(quiet.is_empty(), "...and none of the three is said of any model this app ships%s"
+		% ("" if quiet.is_empty() else ": " + ", ".join(quiet)))
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+func _advice_of(assistant: Assistant, brief: String, bricks: Array) -> String:
+	assistant._brief = brief
+	var model: Assistant.Model = assistant._read_model({"bricks": bricks})
+	return "\n".join(assistant._check(model, true).get("advice", []))
 
 
 ## The style advice for a model on disk, measured from its bricks as a
