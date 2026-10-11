@@ -36,9 +36,15 @@ picture the assistant is shown.
   dialog once and ended a design run 46 minutes in. Ctrl+Q (Cmd+Q) quits on the
   desktop. `controls_probe` presses Escape with nothing open and fails, from
   `_finalize`, if the app quit under it.
-- `status line`: bricks, whether it stands and what it weighs. Batches,
-  triangles, the catalogue count and the frame rate come back with `--stats`;
-  they were the first line every visitor read.
+- `status line`: bricks, whether it stands and what it weighs, of the model and
+  not the baseplate under it (`Main._on_rebuilt` takes `ModelStore.scenery` off
+  the count and the weight): it said 62 bricks and 149 g over the 61-brick
+  example car whose parts list says 48 g. An empty baseplate says "Nothing
+  built yet: pick a part, then click the baseplate". On a dark pill
+  (`_viewport_label`), not a thick outline, which at 1x over the pale sky
+  filled every letter in. Batches, triangles, the catalogue count and the
+  frame rate come back with `--stats` (and count everything); they were the
+  first line every visitor read.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit

@@ -823,6 +823,10 @@ func _build_ui() -> void:
 	middle.add_theme_constant_override("separation", 0)
 	layout.add_child(middle)
 
+	var above := Control.new()
+	above.custom_minimum_size = Vector2(0, 6)
+	above.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(above)
 	_counts = _viewport_label(12)
 	_counts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	middle.add_child(_counts)
@@ -1151,12 +1155,24 @@ func _build_ui() -> void:
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
+##
+## On a dark pill as wide as its words. It was white with a black outline
+## four units thick, which at twelve points filled in every letter's
+## counters: over the pale sky on an ordinary screen "62 bricks" was a
+## grey smudge, and smaller than 1040 points across it could not be read.
 static func _viewport_label(size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
-	label.add_theme_constant_override("outline_size", 4)
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = Color(0.09, 0.1, 0.12, 0.66)
+	pill.set_corner_radius_all(10)
+	pill.content_margin_left = 10
+	pill.content_margin_right = 10
+	pill.content_margin_top = 2
+	pill.content_margin_bottom = 3
+	label.add_theme_stylebox_override("normal", pill)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
@@ -1826,20 +1842,40 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 	# it stands. Batches, triangles, the catalogue and the frame rate are
 	# for whoever is working on the renderer, and were the first line
 	# every visitor read; they come back with --stats.
+	#
+	# The model's own bricks, not the baseplate under them. Counted with
+	# it, the line over the example car said 62 bricks and 149 g while the
+	# toolbar said it opened 61 and the parts list 61 pieces, 48 g; and an
+	# empty baseplate was "1 brick · stands up · 101 g".
+	var scenery: Dictionary = _store.scenery if _store != null else {}
+	var own: int = maxi(brick_count - scenery.size(), 0)
 	if _stats_shown:
 		_counts_base = "%s bricks · %d batches · %s triangles · %s parts" % [
 			_comma(brick_count), batch_count, _comma(triangle_count),
 			_comma(_placeable_parts())]
+	elif own == 0:
+		_counts_base = "Nothing built yet: pick a part, then click the baseplate"
 	else:
-		_counts_base = "%s brick%s" % [_comma(brick_count),
-			"" if brick_count == 1 else "s"]
+		_counts_base = "%s brick%s" % [_comma(own), "" if own == 1 else "s"]
 	# Stability is cheap but not free, and a rebuild can fire several
 	# times while a model is being dropped in. Once a second is plenty
 	# for something a person reads.
 	var now: int = Time.get_ticks_msec()
 	if _stability != null and now - _stability_at > 900:
 		_stability_at = now
-		_stability_text = _stability.check(_world).summary()
+		var report: Stability.Report = _stability.check(_world)
+		for id: int in scenery:
+			var plate: BrickWorld.Brick = _world.get_brick(id)
+			var info: PartLibrary.PartInfo = \
+				_library.parts.get(plate.part_id) if plate != null else null
+			if info != null:
+				report.total_grams -= Stability.grams(info)
+		_stability_text = report.summary()
+	# Nothing to stand up, whenever the last check was; and the first
+	# brick placed is weighed at once rather than up to a second later.
+	if own == 0 and not _stats_shown:
+		_stability_text = ""
+		_stability_at = 0
 
 
 ## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.
@@ -1927,6 +1963,8 @@ func _process(_delta: float) -> void:
 	if not _stability_text.is_empty():
 		line += " · " + _stability_text
 	_counts.text = line
+	# No empty pill before the first count.
+	_counts.self_modulate.a = 0.0 if line.is_empty() else 1.0
 
 
 ## The palette the number keys reach for: a readable spread rather than
