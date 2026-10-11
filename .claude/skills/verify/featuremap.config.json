@@ -575,6 +575,13 @@
     },
     {
       "kind": "ui",
+      "label": "seat an old model",
+      "entry": "src/ui/seat_offer.gd",
+      "reach": "godot --path .  (open a model saved before 2026-10-10 with parts off their studs)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
       "label": "mirror a selection",
       "entry": "src/assembly/mirror.gd",
       "reach": "godot --path .  (select, Shift-M or Mirror on the edit bar)",

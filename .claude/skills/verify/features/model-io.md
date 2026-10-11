@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model -->
 
 ## Sub-features
 
@@ -64,6 +64,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   title with "../" in it wrote outside the folder. `store_probe` names a download
   to climb out and checks it lands inside.
 
+- `seat an old model` (`src/ui/seat_offer.gd`, `src/assembly/seating.gd`): a
+  model saved before 2026-10-10 can carry parts drawn inside their footprint a
+  tenth of a stud off their studs. Opening one (or the one restored at start)
+  says how many, over the top of the model, with one choice: *Seat them on
+  their studs*, which moves each as one undoable step, or *Leave them*. A part
+  is moved only where undoing exactly the old corner's error puts its studs on
+  stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
+
 ## How to reach it
 
 ```sh
@@ -78,6 +86,9 @@ Static: nothing static reads `.ldr`.
 Runtime:
 
 ```sh
+# opening an old model offers to seat its parts; one click does, one undo
+# takes it back (the "seating an old model" section)
+godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
 #   also: the build order is written as 0 STEP, and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given

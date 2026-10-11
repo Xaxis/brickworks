@@ -662,6 +662,14 @@
       "tests": []
     },
     {
+      "id": "ui:seat an old model",
+      "kind": "ui",
+      "entry": "src/ui/seat_offer.gd",
+      "reach": "godot --path .  (open a model saved before 2026-10-10 with parts off their studs)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:select by colour part or connection",
       "kind": "ui",
       "entry": "src/assembly/select_by.gd",

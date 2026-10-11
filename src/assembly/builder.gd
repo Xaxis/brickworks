@@ -635,6 +635,37 @@ func _reposition(to: Callable, words: String = "") -> int:
 	return steps.size()
 
 
+## Move each of these bricks to its own new place, as one step: brick id
+## -> Transform3D. Each that has room goes; one that would run into
+## something stays where it was. Returns how many moved.
+func move_bricks(moves: Dictionary) -> int:
+	var was: Dictionary = {}
+	for brick_id: int in moves:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		was[brick_id] = brick.transform
+		lattice.release(brick_id)
+	var steps: Array = []
+	for brick_id: int in was:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var to: Transform3D = moves[brick_id]
+		var packed: PackedInt32Array = boxes_for(part, to)
+		if lattice.collides_boxes(packed):
+			lattice.occupy_boxes(brick_id, boxes_for(part, was[brick_id]))
+			continue
+		world.move_brick(brick_id, to)
+		lattice.occupy_boxes(brick_id, packed)
+		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps,
+		"words": "seated %s on their studs" % _many(steps.size())})
+	_redo.clear()
+	return steps.size()
+
+
 ## Swap every selected brick for another part, in its colour, where it
 ## stands: a wall of 1 x 2s made 1 x 2 masonry bricks, a plain tile made a
 ## printed one. One step to undo. A part that would not fit where the old

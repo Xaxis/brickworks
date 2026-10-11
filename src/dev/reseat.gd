@@ -1,5 +1,6 @@
 ## Seat parts back on their studs in a model written before placements
-## were named by their footprint.
+## were named by their footprint. The app offers the same when such a model
+## is opened (SeatOffer); this does it to files.
 ##
 ##   godot --headless --path . --script src/dev/reseat.gd -- FILE... [--write]
 ##
@@ -61,22 +62,10 @@ func _initialize() -> void:
 			for k: int in range(2, 14):
 				numbers.append(fields[k].to_float())
 			var at: Transform3D = LdrModel.to_transform(numbers)
-			if not BrickLattice.is_square_to_grid(at.basis):
-				continue
-			var basis: Basis = BrickLattice.snap_basis(at.basis)
-			if absf((basis * Vector3.UP).y) < 0.99:
-				continue
-			var cover := Vector3i(0x7FFFFFFF, 0, 0x7FFFFFFF)
-			for cell: Vector3i in builder._cells_for(mesh, Transform3D(basis, Vector3.ZERO)):
-				cover = Vector3i(mini(cover.x, cell.x), 0, mini(cover.z, cell.z))
-			var footprint: Vector3i = assistant._corner_cell(mesh, part, basis)
-			var shift := Vector3((cover.x - footprint.x) * BrickLattice.CELL, 0.0,
-				(cover.z - footprint.z) * BrickLattice.CELL)
+			# The rule is Seating's, which the app uses to offer the same
+			# when such a model is opened.
+			var shift: Vector3 = Seating.shift_for(mesh, part, at, builder, assistant)
 			if shift == Vector3.ZERO:
-				continue
-			if _off_the_studs(mesh, at) <= 0.5:
-				continue
-			if _off_the_studs(mesh, at.translated(shift)) > 0.5:
 				continue
 			# LDraw's z runs the other way to the app's; its x does not.
 			fields[2] = _number(fields[2].to_float() + shift.x)
@@ -100,24 +89,6 @@ func _initialize() -> void:
 			out.close()
 			print("  written; the original is %s.bak" % path.get_file())
 	quit(0)
-
-
-## How far a part's upward studs stand from the middles of the grid's, in
-## LDU, the worst of them; its tubes where it has no studs.
-static func _off_the_studs(mesh: Lbm.PartMesh, at: Transform3D) -> float:
-	for kind: String in ["stud", "tube"]:
-		var worst: float = -1.0
-		for connector: Lbm.Connector in mesh.connectors:
-			if connector.kind != kind \
-					or absf((at.basis * connector.axis).normalized().y) < 0.99:
-				continue
-			var where: Vector3 = at * connector.position
-			for v: float in [where.x - 10.0, where.z - 10.0]:
-				var r: float = fposmod(v, 20.0)
-				worst = maxf(worst, minf(r, 20.0 - r))
-		if worst >= 0.0:
-			return worst
-	return 0.0
 
 
 static func _number(value: float) -> String:

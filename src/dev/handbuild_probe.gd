@@ -77,6 +77,7 @@ func _run() -> void:
 	await _select_by()
 	await _hide_and_isolate()
 	await _the_edit_bar()
+	await _seat_an_old_model()
 	await _replace_and_history()
 	await _under_a_part()
 	await _onto_side_studs()
@@ -400,6 +401,61 @@ func _the_edit_bar() -> void:
 	await _shot("edit_bar")
 
 
+func _seat_an_old_model() -> void:
+	print("  seating an old model's parts")
+	var assistant: Assistant = _main.get("_assistant")
+	var offer: SeatOffer = _main.get("_seat_offer")
+	# Parts drawn inside their footprint, put where the old corner put
+	# them: a good placement, moved by exactly the old error.
+	var lines := PackedStringArray(["0 Old model", "0 Name: old.ldr"])
+	var off: int = 0
+	var x: float = -100.0
+	for part: String in ["30503", "2417", "3680", "2335", "6064", "4495"]:
+		var mesh: Lbm.PartMesh = _library.mesh_for(part)
+		if mesh == null:
+			continue
+		var error: Vector3 = _old_error(mesh, part, assistant)
+		if error == Vector3.ZERO:
+			continue
+		var good: Variant = _seated_near(mesh, Vector3(x, 8, 60))
+		if good == null:
+			continue
+		var old: Transform3D = (good as Transform3D).translated(-error)
+		lines.append("1 7 %s %s.dat" % [LdrModel._line_numbers(old), part])
+		off += 1
+		x += 120.0
+	lines.append("1 4 %s 3001.dat" % LdrModel._line_numbers(
+		Transform3D(Basis.IDENTITY, Vector3(-100, 24, -60))))
+	_check("an old model with parts off their studs (%d of them)" % off, off >= 2)
+	var store: ModelStore = _store
+	var result: Dictionary = store.open_text("\n".join(lines), "old")
+	var bar: ModelBar = _main.get("_bar")
+	bar.opened.emit(int(result["placed"]))
+	await _frames(10)
+	_check("opening it offers to seat them", offer.visible)
+	_check("...saying how many (%s)" % offer._words.text,
+		offer._words.text.begins_with("%d parts" % off))
+	_camera.frame(_main.call("_built_bounds"))
+	await _frames(30)
+	await _shot("seat_offer")
+	var before: Array = _snapshot()
+	await _click(offer._seat.get_global_rect().get_center())
+	_check("one click seats them and the offer goes", not offer.visible
+		and _snapshot() != before)
+	var seated: bool = true
+	for brick: BrickWorld.Brick in _model():
+		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		seated = seated and Seating.off_the_studs(mesh, brick.transform) <= 0.5
+	_check("every part now stands on stud middles", seated)
+	await _key(KEY_Z, true)
+	_check("one undo puts them back as they were saved", _snapshot() == before)
+	# A model that needs nothing is offered nothing.
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	_check("a model on its studs is offered nothing", offer.check() == 0
+		and not offer.visible)
+
+
 func _replace_and_history() -> void:
 	print("  replacing parts, and the history")
 	_main.call("clear_model")
@@ -542,6 +598,27 @@ func _mirrored() -> void:
 	await _key(KEY_Z, true)
 	_check("one undo brings back the original", _snapshot() == before)
 	_camera.set_view("default")
+
+
+## The old corner's error for a part standing upright: its cover's corner
+## less its footprint's, as Seating measures it.
+func _old_error(mesh: Lbm.PartMesh, part: String, assistant: Assistant) -> Vector3:
+	var cover := Vector3i(0x7FFFFFFF, 0, 0x7FFFFFFF)
+	for cell: Vector3i in _builder._cells_for(mesh, Transform3D.IDENTITY):
+		cover = Vector3i(mini(cover.x, cell.x), 0, mini(cover.z, cell.z))
+	var footprint: Vector3i = assistant._corner_cell(mesh, part, Basis.IDENTITY)
+	return Vector3((cover.x - footprint.x) * BrickLattice.CELL, 0.0,
+		(cover.z - footprint.z) * BrickLattice.CELL)
+
+
+## A place near a point where the part's studs are on stud middles.
+func _seated_near(mesh: Lbm.PartMesh, near: Vector3) -> Variant:
+	for i: int in 10:
+		for k: int in 10:
+			var at := Transform3D(Basis.IDENTITY, near + Vector3(i * 2.0, 0, k * 2.0))
+			if Seating.off_the_studs(mesh, at) <= 0.01:
+				return at
+	return null
 
 
 # -- helpers ------------------------------------------------------------------

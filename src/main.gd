@@ -87,6 +87,8 @@ var _thumbnails: PartThumbnails
 var _verbs: EditVerbs
 ## Those verbs as buttons down the left of the model.
 var _edit_bar: EditBar
+## The offer to seat an old model's parts on their studs.
+var _seat_offer: SeatOffer
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
@@ -170,6 +172,8 @@ func _tell_page() -> void:
 		named.merge(_account_panel.controls_by_name())
 	if _edit_bar != null:
 		named.merge(_edit_bar.controls_by_name())
+	if _seat_offer != null:
+		named.merge(_seat_offer.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -314,6 +318,10 @@ func _ready() -> void:
 	# real before framing them.
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
+	# The model that came back may be one saved before parts were seated
+	# by their footprint.
+	if _seat_offer != null:
+		_seat_offer.check()
 
 	_unthrottle_if_nobody_is_watching()
 
@@ -1224,6 +1232,23 @@ func _build_ui() -> void:
 		_edit_bar.offset_right = 10.0
 		_edit_bar.grow_vertical = Control.GROW_DIRECTION_BOTH
 		spacer.add_child(_edit_bar)
+
+	# Over the top of the model, when a model opened with parts a fraction
+	# of a stud off their studs: src/ui/seat_offer.gd.
+	_seat_offer = SeatOffer.new()
+	_seat_offer.builder = _builder
+	_seat_offer.world = _world
+	_seat_offer.assistant = _assistant
+	_seat_offer.scenery = _store.scenery
+	_seat_offer.say = _bar.say
+	_seat_offer.edited = _on_model_edited
+	_seat_offer.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_seat_offer.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_seat_offer.offset_top = 10.0
+	spacer.add_child(_seat_offer)
+	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
+	_bar.started_new.connect(_seat_offer.dismiss)
+	_bar.cleared.connect(_seat_offer.dismiss)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		if count == 0:
@@ -2504,7 +2529,7 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _edit_bar]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _edit_bar, _seat_offer]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
