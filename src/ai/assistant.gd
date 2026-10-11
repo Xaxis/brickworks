@@ -393,6 +393,19 @@ class Section extends RefCounted:
 	var z: float = 0.0        ## studs
 	var axis: String = "z"    ## which way the hinge pin runs: x, y or z
 	var degrees: float = 0.0
+	## Built on a hinge brick, 3937 with 3938 on it. Then x, y and z are
+	## where the hinge's base stands, like any brick's, the section's own
+	## coordinates start on the hinge top's studs, and it turns about the
+	## hinge's real pin. The app puts the two halves in and finds the pin
+	## ([method Assistant._fit_hinge]): working it out by hand is the
+	## arithmetic designs get wrong, and since a lean has to turn on a
+	## joint, it is the arithmetic every lean needs.
+	var hinge: bool = false
+	var hinge_color: int = 72
+	## For a hinged section, in LDU: the pin from the base's corner, and
+	## the section's own origin from the pin.
+	var pin_from_corner := Vector3.ZERO
+	var origin_from_pin := Vector3.ZERO
 
 	static func from_dict(raw: Dictionary) -> Section:
 		var s := Section.new()
@@ -404,6 +417,24 @@ class Section extends RefCounted:
 		if not ["x", "y", "z"].has(s.axis):
 			s.axis = "z"
 		s.degrees = float(raw.get("degrees", 0))
+		# A hinge brick's pin lies flat; about the upright it is a turntable.
+		s.hinge = bool(raw.get("hinge", false)) and s.axis != "y"
+		s.hinge_color = int(raw.get("hinge_color", 72))
+		return s
+
+	## The same section somewhere else, its hinge with it.
+	func copied(as_name: String) -> Section:
+		var s := Section.new()
+		s.name = as_name
+		s.x = x
+		s.y = y
+		s.z = z
+		s.axis = axis
+		s.degrees = degrees
+		s.hinge = hinge
+		s.hinge_color = hinge_color
+		s.pin_from_corner = pin_from_corner
+		s.origin_from_pin = origin_from_pin
 		return s
 
 	## Where this section sits in the world, and how it is turned.
@@ -413,8 +444,16 @@ class Section extends RefCounted:
 			pin = Vector3.RIGHT
 		elif axis == "y":
 			pin = Vector3.UP
-		return Transform3D(Basis(pin, deg_to_rad(degrees)),
-			Vector3(x * STUD, y * PLATE, z * STUD))
+		var turn := Basis(pin, deg_to_rad(degrees))
+		var corner := Vector3(x * STUD, y * PLATE, z * STUD)
+		if hinge:
+			return Transform3D(turn, corner + pin_from_corner) \
+				* Transform3D(Basis.IDENTITY, origin_from_pin)
+		return Transform3D(turn, corner)
+
+	## The quarter turn that lays a hinge brick's pin along [member axis].
+	func hinge_rot() -> int:
+		return 0 if axis == "x" else 1
 
 
 class Model extends RefCounted:
@@ -2206,10 +2245,14 @@ func _edit(args: Dictionary) -> Model:
 		var section: Section = Section.from_dict(raw)
 		if section.name.is_empty():
 			continue
+		var was: Section = model.sections.get(section.name)
 		model.sections[section.name] = section
 		for placement: Placement in model.placements:
 			if placement.section == section.name:
 				placement.moved = true
+		if section.hinge:
+			_fit_hinge(section)
+			_rehinge(model, section, was)
 		_touched += 1
 
 	for raw: Variant in args.get("add", []):
@@ -3780,6 +3823,11 @@ func _read_model(args: Dictionary) -> Model:
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
 	_read_sections(model, args)
+	for section: Section in model.sections.values():
+		if section.hinge:
+			_fit_hinge(section)
+			model.placements.append(_hinge_base(section))
+			model.placements.append(_hinge_top(section))
 	var written: Array = args.get("bricks", [])
 	for raw: Variant in written:
 		model.placements.append(Placement.from_dict(raw))
@@ -4918,8 +4966,7 @@ static func _expand_repeats(model: Model, args: Dictionary,
 			while model.sections.has(name):
 				at += 1
 				name = "%s %d" % [base, at]
-			var copy := Section.new()
-			copy.name = name
+			var copy: Section = source.copied(name)
 			copy.x = source.x + step.x * n
 			copy.y = source.y + step.y * n
 			copy.z = source.z + step.z * n
@@ -4928,6 +4975,10 @@ static func _expand_repeats(model: Model, args: Dictionary,
 			model.sections[name] = copy
 			for placement: Placement in body:
 				model.placements.append(placement.copied_into(name))
+			# The hinge's top is in the section and came with it; its base
+			# stands outside, so each copy gets its own.
+			if copy.hinge:
+				model.placements.append(_hinge_base(copy))
 
 
 ## The sections a model declares, before any brick refers to one.
@@ -4938,6 +4989,67 @@ static func _read_sections(model: Model, args: Dictionary) -> void:
 		var section: Section = Section.from_dict(raw)
 		if not section.name.is_empty():
 			model.sections[section.name] = section
+
+
+const HINGE_BASE := "3937"
+const HINGE_TOP := "3938"
+
+
+## Where a hinged section's pin is, and where its own coordinates start,
+## read off the hinge brick itself: the base's flat bore is the pin, and
+## closed, the top stands a plate up on the base's corner with its studs
+## two plates above that. Measured on 6085's gatehouse flag (`leaning on
+## a hinge`): the pin 1.75 plates up and half a stud in, the top's studs
+## 1.25 plates above it.
+func _fit_hinge(section: Section) -> void:
+	var mesh: Lbm.PartMesh = library.mesh_for(HINGE_BASE) if library != null else null
+	if mesh == null:
+		return
+	var at: Transform3D = _square_transform(Placement.from_dict({
+		"part": HINGE_BASE, "rot": section.hinge_rot()}), mesh)
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "bore" and absf(connector.axis.y) < 0.5:
+			section.pin_from_corner = at * connector.position
+			break
+	section.origin_from_pin = Vector3(0, 3 * PLATE, 0) - section.pin_from_corner
+
+
+static func _hinge_base(section: Section) -> Placement:
+	return Placement.from_dict({"part": HINGE_BASE, "color": section.hinge_color,
+		"x": section.x, "y": section.y, "z": section.z,
+		"rot": section.hinge_rot()})
+
+
+static func _hinge_top(section: Section) -> Placement:
+	return Placement.from_dict({"part": HINGE_TOP, "color": section.hinge_color,
+		"x": 0, "y": -2, "z": 0, "rot": section.hinge_rot(),
+		"section": section.name})
+
+
+## An edit declaring a hinged section: its base moves with it, and a
+## section newly hinged gets both halves. The base stands outside the
+## section, so it is found where the section said it was.
+func _rehinge(model: Model, section: Section, was: Section) -> void:
+	var base: Placement = null
+	if was != null:
+		for placement: Placement in model.placements:
+			if placement.part == HINGE_BASE and placement.section.is_empty() \
+					and is_equal_approx(placement.x, was.x) \
+					and is_equal_approx(placement.y, was.y) \
+					and is_equal_approx(placement.z, was.z):
+				base = placement
+				break
+	if base == null:
+		model.placements.append(_hinge_base(section))
+	else:
+		base.x = section.x
+		base.y = section.y
+		base.z = section.z
+		base.rot = section.hinge_rot()
+		base.moved = true
+	if not model.placements.any(func(p: Placement) -> bool:
+			return p.section == section.name and p.part == HINGE_TOP):
+		model.placements.append(_hinge_top(section))
 
 
 # -- validation ----------------------------------------------------------
@@ -6590,10 +6702,11 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 				+ "— a tilting hinge (3937 with 3938 on it), finger "
 				+ "hinge plates (4275b with 4276b), a clip on a bar, a "
 				+ "ball in a socket — one half outside the section and "
-				+ "the other in it; show_technique(\"leaning on a "
-				+ "hinge\") is one, with the pin worked out. (3830/3831 "
-				+ "and 2429/2430 swivel flat, like a door; they do not "
-				+ "lean.)")
+				+ "the other in it. hinge: true on the section puts a "
+				+ "hinge brick under it and turns it about the pin for "
+				+ "you; show_technique(\"leaning on a hinge\") is one "
+				+ "written out. (3830/3831 and 2429/2430 swivel flat, "
+				+ "like a door; they do not lean.)")
 	for group: String in _sections_present(model, cells_of):
 		if group.is_empty():
 			continue
@@ -7791,11 +7904,18 @@ Negate it to go the other way. For a pair of raked pylons, one is the \
 negative of the other.
 
 A section that leans — turned about x or z — turns on a joint, as it \
-does in plastic: a hinge brick (3937 under 3938), finger hinge plates, \
-a clip on a bar, a ball in a socket. One half stands outside the \
-section and the other is in it, and the section's origin is the pin. \
-show_technique("leaning on a hinge") has one with the pin worked out: \
-a spire's tip, a horn or a flagpole is that, with more on top. A \
+does in plastic, and the one-line way is hinge: true:
+
+  sections: [{name: "spire", x: 6, y: 18, z: 3, axis: "x",
+              degrees: 15, hinge: true}]
+
+puts a hinge brick's base (3937) at 6,18,3 like any brick and its top \
+(3938) on it, and turns the section about the hinge's own pin. The \
+section's bricks start at 0,0,0 on the hinge top's two studs, which run \
+along the pin — 0..2 along x, 0..1 along z here — so a spire, a horn or \
+a raked pylon is written as if it stood square on a 1 x 2 plate. Finger \
+hinge plates, a clip on a bar and a ball in a socket are joints too, \
+written out by hand (show_technique("leaning on a hinge") shows one). A \
 section that only rests against the model at a slant grips none of the \
 studs it sits on and is refused. Turning about y and quarter turns \
 stand on studs as anything else does.
@@ -8798,6 +8918,15 @@ func _tools() -> Array:
 					+ "round."},
 			"degrees": {"type": "number", "description":
 				"how far it is turned about that pin. Any angle."},
+			"hinge": {"type": "boolean", "description":
+				"lean it on a hinge brick (3937 under 3938), put in for "
+				+ "you: x, y, z are then where the hinge's base stands, "
+				+ "the bricks in the section start at 0,0,0 on the hinge "
+				+ "top's two studs (along the pin), and it turns about the "
+				+ "hinge's own pin. A section leaning about x or z must "
+				+ "turn on a joint; this is the one-line way."},
+			"hinge_color": {"type": "integer", "description":
+				"the hinge's colour, if not 72"},
 		},
 		"required": ["name", "x", "y", "z", "axis", "degrees"],
 		"additionalProperties": false,

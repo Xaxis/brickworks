@@ -188,7 +188,10 @@ plainer — see the first lever below.
    co-occurrence data, downloaded and unread.
 6. **Angled structure.** Two of three cruiser runs failed on pods on
    pylons; the third laid them flush. The tools now say where a section
-   meets, but no run has yet built a raked pylon that held.
+   meets, but no run has yet built a raked pylon that held. Since
+   2026-10-10 a lean must turn on a joint, and `hinge: true` on a section
+   is that joint in one line: the hinge brick put in, the pin found, the
+   section written as if square on a 1 x 2 plate. Not yet tried by a run.
 7. **The booklet's pictures.** A castle's booklet enters its parts 18-30
    times because walls stand on a shared base; whether a person can
    follow 250 pages is the next thing to measure, by building from one.
