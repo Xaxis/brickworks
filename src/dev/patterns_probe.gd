@@ -439,6 +439,30 @@ func _clustered() -> void:
 		not str(verdict["feedback"]).contains("left out"))
 	_check("...and it stands in one piece, %d" % int(verdict["pieces"]),
 		int(verdict["pieces"]) == 1)
+	# Narrow lit windows up the faces, two courses tall: the sixteenth
+	# Orthanc had none, and its faces dressed black on black would read as
+	# one black mass without them.
+	var lights := func(placements: Array) -> Dictionary:
+		var at: Dictionary = {}
+		for placement: Assistant.Placement in placements:
+			if placement.part == "3005" and placement.color == Assistant.WINDOW_COLOUR:
+				at["%s %s %s %s" % [placement.section, placement.x, placement.y,
+					placement.z]] = true
+		return at
+	var windows: Dictionary = lights.call(model.placements)
+	var paired: int = 0
+	for key: Variant in windows:
+		var bits: PackedStringArray = str(key).rsplit(" ", true, 3)
+		var above: String = "%s %s %s %s" % [bits[0], bits[1], float(bits[2]) + 3.0, bits[3]]
+		var below: String = "%s %s %s %s" % [bits[0], bits[1], float(bits[2]) - 3.0, bits[3]]
+		if windows.has(above) or windows.has(below):
+			paired += 1
+	_check("its faces have narrow lit windows, %d studs of them, each two courses tall (%d)"
+		% [windows.size(), paired], windows.size() >= 40 and paired == windows.size())
+	var dark: Dictionary = tower.duplicate(true)
+	dark["windows"] = false
+	_check("...and none with \"windows\": false",
+		lights.call(assistant._read_model({"patterns": [dark]}).placements).is_empty())
 	var headings: Dictionary = {}
 	var turned: Dictionary = {}
 	var piers: Dictionary = {}
@@ -567,6 +591,9 @@ func _clustered() -> void:
 		% [after["two"], before["two"]], int(after["two"]) < int(before["two"]) - 50)
 	_check("...dressing only the faces' outsides, none looking into a shaft or a groove (%d do)"
 		% int(after["inward"]), int(after["inward"]) == 0)
+	_check("...and leaving the windows as they were, %d"
+		% lights.call(assistant._model_from_world().placements).size(),
+		lights.call(assistant._model_from_world().placements).size() == windows.size())
 	whole = assistant._check(assistant._model_from_world(), true)
 	_check("...and it still passes the check: %s" % whole["summary"], bool(whole["ok"]))
 

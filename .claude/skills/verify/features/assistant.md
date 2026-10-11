@@ -164,7 +164,17 @@ fixing what it got wrong.
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. Each face is laid as a cluster's core face is (`_cluster_face`), its outer
-  row run on into the corner groove where there is room. `patterns_probe`: an
+  row run on into the corner groove where there is room. Narrow lit windows go
+  up its faces by default (`"windows": false` for none): a Trans-Yellow 3005 in
+  the outside row at the widest run's middle stud, two courses tall, every
+  `WINDOW_EVERY` (8) courses from the fourth, alternate faces half a storey
+  apart (`_lay_face`, `_lay_row_around`); on a cluster, the core's faces and the
+  piers' faces that look away from the core, not the horns. The inside row stays
+  whole, so a window is lit and never seen through, and `restyle_model` leaves
+  transparent bricks alone. Run 16 had none, and with its dressing black on
+  black the tower would read as one black mass. `patterns_probe`: 78 window
+  studs on the guidance's cluster, every one paired two courses tall, none with
+  `"windows": false`, and the finishing pass leaves all 78. `patterns_probe`: an
   octagon and a hexagon hold, each face its own angle.
 - `an open tower is not see-through`: a post up the inside of each corner where
   two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of

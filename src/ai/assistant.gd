@@ -3920,6 +3920,10 @@ func _restyle(args: Dictionary) -> Dictionary:
 		var long: int = int(long_of.get(placement.part, TWO_WIDE.get(placement.part, 0)))
 		if long == 0 or placement.face != "up":
 			continue
+		# A window is not a wall to finish.
+		var tint: PartLibrary.BrickColor = library.color(placement.color)
+		if tint != null and tint.is_transparent():
+			continue
 		# A brick in a section is in the section's own square coordinates,
 		# so it is restyled in them and carried with it: the faces of a prism
 		# or a cluster, which are most of a tower built with one. The
@@ -4213,7 +4217,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var spec := {"x": cx, "y": y0, "z": cz, "sides": sides, "radius": radius,
 		"courses": courses, "thick": thick, "colour": colour,
 		"mix_colour": mix_colour, "mix": mix, "masonry": masonry,
-		"sideways": sideways, "open": open, "left_out": left_out}
+		"sideways": sideways, "open": open, "left_out": left_out,
+		"windows": bool(pattern.get("windows", true))}
 	if pattern.has("piers"):
 		return _cluster(pattern, spec, model, index, trouble)
 	# Each face as a cluster's core lays one, its outside row run on into the
@@ -4225,7 +4230,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		if left_out.has(face):
 			continue
 		laid[face] = _cluster_face(made, model, "prism %d face %d" % [index, face],
-			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0, courses)
+			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0,
+			courses, true)
 	_corner_posts(made, func(face: int) -> String: return "prism %d face %d" % [index, face],
 		Vector2(cx, cz), sides, radius, spec, laid, [], courses)
 	return made
@@ -4238,19 +4244,30 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 ## stands beside the face, for a face that meets another shaft.
 func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 		radius: float, base: float, courses: int,
-		clear: Callable = Callable()) -> void:
+		clear: Callable = Callable(), windows: Dictionary = {}) -> void:
 	var wide: Array = [[4, "3001"], [3, "3002"], [2, "3003"]]
 	var narrow: Array = [[4, "3010"], [3, "3622"], [2, "3004"], [1, "3005"]]
 	var thick: int = spec["thick"]
 	var colour: int = spec["colour"]
 	var mix_colour: int = spec["mix_colour"]
 	var mix: float = spec["mix"]
+	# A window is in the face's widest run, at its middle stud.
+	var widest: int = 0
+	for n: int in runs.size():
+		if int(runs[n][1]) > int(runs[widest][1]):
+			widest = n
 	for course: int in courses:
 		var y: float = base + 3.0 * course
-		for run: Array in runs:
+		for n: int in runs.size():
+			var run: Array = runs[n]
 			var left: float = run[0]
 			var width: int = run[1]
 			var extra: int = int(run[2]) if run.size() > 2 else 0
+			var gap: float = NAN
+			if windows.has(course) and n == widest and width >= 2:
+				gap = left + floor(width / 2.0)
+				made.append(_prism_brick(name, "3005", WINDOW_COLOUR, gap, y,
+					radius - 1.0, 0, -1, 0.0, 0.0))
 			# Two thick: a course of two-wide bricks, then a course of two
 			# rows of one-wide ones, which the courses either side tie
 			# together. The outside row is where a face can be turned out
@@ -4258,8 +4275,11 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# bricks, was a face the finishing pass could not touch, and an
 			# Orthanc built with it came out 94% plain.
 			if thick == 2 and course % 2 == 0:
-				_lay_row(made, name, wide, left, width, y, radius - 2.0, course,
-					colour, mix_colour, mix, 0.0, 0.0)
+				_lay_row_around(made, name, wide, left, width, gap, y, radius - 2.0,
+					course, colour, mix_colour, mix, 0.0, 0.0)
+				if not is_nan(gap):
+					made.append(_prism_brick(name, "3005", colour, gap, y,
+						radius - 2.0, 0, mix_colour, mix, 0.0))
 				if extra > 0:
 					_lay_row(made, name, narrow, left + width, extra, y, radius - 1.0,
 						course, colour, mix_colour, mix, 0.0, 0.0)
@@ -4269,11 +4289,32 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# the course every outside row started short — 1x3s and 1x1s
 			# only, so not one of them could be a masonry brick.
 			var bond: int = course / 2 if thick == 2 else course
-			_lay_row(made, name, narrow, left, width + extra, y, radius - 1.0, bond,
-				colour, mix_colour, mix, spec["masonry"], spec["sideways"], clear)
+			_lay_row_around(made, name, narrow, left, width + extra, gap, y,
+				radius - 1.0, bond, colour, mix_colour, mix, spec["masonry"],
+				spec["sideways"], clear)
 			if thick == 2:
 				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
 					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
+
+
+## A row as [method _lay_row] lays it, but for the stud at [param gap] (a
+## window, laid by the caller), or whole where [param gap] is NAN.
+func _lay_row_around(made: Array, section: String, lengths: Array, left: float,
+		width: int, gap: float, y: float, z: float, course: int, colour: int,
+		mix_colour: int, mix: float, masonry: float, sideways: float,
+		clear: Callable = Callable()) -> void:
+	if is_nan(gap) or gap < left or gap >= left + width:
+		_lay_row(made, section, lengths, left, width, y, z, course, colour,
+			mix_colour, mix, masonry, sideways, clear)
+		return
+	var before: int = int(round(gap - left))
+	var after: int = width - before - 1
+	if before > 0:
+		_lay_row(made, section, lengths, left, before, y, z, course, colour,
+			mix_colour, mix, masonry, sideways, clear)
+	if after > 0:
+		_lay_row(made, section, lengths, gap + 1.0, after, y, z, course, colour,
+			mix_colour, mix, masonry, sideways, clear)
 
 
 ## One row of a prism's face, in its own frame: bonded by the course,
@@ -4334,6 +4375,13 @@ func _prism_brick(section: String, part: String, colour: int, x: float, y: float
 			and Patterns._scatter(x, y, z + float(section.hash() % 97), 47) < masonry:
 		one["part"] = Patterns.MASONRY[part]
 	return one
+
+
+## A prism's windows: Trans-Yellow, one stud wide and two courses tall, in
+## the outside row, every so many courses (the inside row stays whole, so a
+## window is lit and never seen through).
+const WINDOW_COLOUR := 46
+const WINDOW_EVERY := 8
 
 
 ## A post up the inside of each corner where two laid faces of a shaft meet:
@@ -4687,7 +4735,7 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		if left_out.has(face):
 			continue
 		var runs: Array = _cluster_face(made, model, name_of.call(-1, face), middle,
-			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses)
+			360.0 * face / sides, radius, sides, spec, [], grown, 0.0, courses, true)
 		if not runs.is_empty():
 			laid[face] = runs
 	_corner_posts(made, func(face: int) -> String: return name_of.call(-1, face),
@@ -4710,7 +4758,8 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 					or _towards(degrees).dot(inward[k]) > 0.5):
 				continue
 			_cluster_face(made, model, name_of.call(k, face), centre, degrees,
-				p_radius, p_sides, spec, against, dressed, 0.0, courses)
+				p_radius, p_sides, spec, against, dressed, 0.0, courses,
+				_towards(degrees).dot(_towards(angles[k])) > 0.3)
 
 	# The summit, across everything that stands inside the outline.
 	var top: float = 3.0 * courses
@@ -4921,7 +4970,8 @@ func _corner_slope_turn(inner: Vector2i) -> int:
 ## it laid, each [left, studs, how far the outside row ran on], or [].
 func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 		degrees: float, radius: float, sides: int, spec: Dictionary,
-		against: Array, dressed: Array, base: float, courses: int) -> Array:
+		against: Array, dressed: Array, base: float, courses: int,
+		windowed: bool = false) -> Array:
 	var thick: int = spec["thick"]
 	var runs: Array = _runs(origin, degrees, radius, thick, sides, against)
 	if runs.is_empty():
@@ -4954,8 +5004,17 @@ func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 	if not model.sections.has(name):
 		model.sections[name] = Section.from_dict({"name": name, "x": origin.x,
 			"y": spec["y"], "z": origin.y, "axis": "y", "degrees": degrees})
+	# Narrow lit windows, two courses tall, every WINDOW_EVERY courses up the
+	# face, alternate faces half a storey apart: Orthanc's faces have them,
+	# and the sixteenth, whose dressing is now black on black, had none.
+	var windows: Dictionary = {}
+	if windowed and bool(spec.get("windows", true)):
+		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash()) % 2 == 1 else 0)
+		for course: int in range(first, courses - 2, WINDOW_EVERY):
+			windows[course] = true
+			windows[course + 1] = true
 	_lay_face(made, name, spec, runs, radius, base, courses,
-		_dressing_clear.bind(origin, degrees, radius, dressed + beside))
+		_dressing_clear.bind(origin, degrees, radius, dressed + beside), windows)
 	return runs
 
 
@@ -8570,7 +8629,9 @@ alongside the bricks you write by hand:
            finished wall's are — a quarter worked stone, some bricks \
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
-           "sideways" set how much, 0 for a plain face. Once it stands, \
+           "sideways" set how much, 0 for a plain face; and narrow lit \
+           windows go up them every eight courses ("windows": false for \
+           none). Once it stands, \
            add_rooms with "prism": the same at, sides and radius, and \
            "floors": [{"room": "dungeon"}, {"room": "forge", "stair": \
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
@@ -9383,6 +9444,9 @@ func _tools() -> Array:
 				"prism: faces left out at the back, so the rooms inside show; "
 				+ "with piers, any number opens the core's whole back and the "
 				+ "backs of the piers there"},
+			"windows": {"type": "boolean", "description":
+				"prism: narrow lit windows up its faces, every eight courses; "
+				+ "true unless said"},
 			"piers": {"type": "object", "description":
 				"prism: faceted piers clustered round it, each a prism of its "
 				+ "own built against the core, with a cleft between each two "
