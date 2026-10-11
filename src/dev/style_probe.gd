@@ -73,6 +73,15 @@ func _run() -> void:
 	_check(orthanc.contains("sideways") and orthanc.contains("plain")
 			and orthanc.contains("mirrored"),
 		"the square Orthanc is told it is square, plain and mirrored")
+	# And, a tower with nothing at an angle, of the call shaped like a tower:
+	# run 14 built four piers round a core square, by hand, with the prism
+	# named here only "for a tower, a pier or a turret".
+	_check(orthanc.contains("\"piers\"") and orthanc.contains("clustered"),
+		"...and, being a tower, told of the clustered prism by name")
+	var hull: String = await _advice_for(library,
+		"res://src/dev/fixtures/orthanc_square.ldr", "a cargo barge")
+	_check(not hull.contains("\"piers\""),
+		"...which a brief that is not a tower is not told of")
 	var real: String = await _advice_for(library,
 		"res://models/castle.ldr", "a medieval castle")
 	_check(not real.contains("mirrored"),
@@ -119,7 +128,7 @@ func _advice_for(library: PartLibrary, path: String, brief: String) -> String:
 		int(found.get("symmetry", 0) * 100)])
 	world.queue_free()
 	builder.queue_free()
-	return Style.advice(found, Style.group_for(brief))
+	return Style.advice(found, Style.group_for(brief), brief)
 
 
 func _check(ok: bool, what: String) -> void:
