@@ -422,6 +422,14 @@
       "tests": []
     },
     {
+      "id": "lib:the assistant makes a part",
+      "kind": "lib",
+      "entry": "src/parts/part_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "lib:true colour",
       "kind": "lib",
       "entry": "src/render/brick_world.gd",

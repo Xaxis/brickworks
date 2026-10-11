@@ -6,7 +6,7 @@ with studs on its sides — or changing a part that exists, from its own
 geometry, as a real LDraw part, and building it into the same geometry,
 connectors and collision the library's own parts have.
 
-<!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts, ui:make a part, lib:made parts in the library and in files, lib:change a part -->
+<!-- covers: lib:element maker, lib:build a part in the app, cli:build custom parts, ui:make a part, lib:made parts in the library and in files, lib:change a part, lib:the assistant makes a part -->
 
 ## Sub-features
 
@@ -85,6 +85,19 @@ connectors and collision the library's own parts have.
   on top and on the sides, the places a stud goes in underneath, the Technic
   holes, and a slope's true angle (a curved slope's at its foot). **Add to parts** makes it, keeps
   it, holds it, and shows the bin's Custom category.
+- `the assistant makes a part` (`PartTool`, `make_part`): a tool in the
+  assistant's list, and so in every MCP session's, for a part no real one
+  will do: a family and its sizes, as the dialog takes them (`across`, `deep`,
+  `plates`, `run`, `angle`, `diameter`, `rise`, `way`, `sides`, `studs`,
+  `name`), or `from` a real part with its new size and what to do with its
+  studs. Made through `CustomParts.make` / `make_modified`, so it is the very
+  file a person's spec makes, refused by the same `problem()`s in the same
+  words, built by `PartForge`, filed under Custom and kept. The answer says
+  the part's number, its footprint in studs and plates, its studs on top and
+  on which face, its holes and tubes, and how a part on a side stud is
+  placed. On the web a part to change is fetched first, waited for up to 30
+  s. `assistant.gd` only declares it (`PartTool.schema()` beside
+  `FigureTool.schema()`) and passes the call through.
 - `made parts in the library and in files` (`CustomParts`, and the custom
   half of `PartLibrary`, `LdrModel`, `ModelStore`): a made part is kept as
   its `.dat` only, in `user://custom_parts/` (IndexedDB on the web), and
@@ -114,6 +127,7 @@ connectors and collision the library's own parts have.
 
 ```sh
 godot --headless --path . --script src/dev/modify_probe.gd                   # changing parts
+godot --headless --path . --script src/dev/part_tool_probe.gd                # the assistant's tool
 godot --headless --path . --script src/dev/element_files_probe.gd            # check
 godot --headless --path . --script src/dev/element_files_probe.gd -- --write  # rewrite fixtures
 PYTHON=<venv>/bin/python tools/element_pipeline.sh   # rewrite pipeline.json (numpy)
@@ -172,6 +186,19 @@ copied unchanged is 3001; 30414 six long has 6 studs on top, 6 on its side and
 3010 two wide and 3040b three long are refused, saying why; 3001 without its
 studs keeps its tubes, 3062b without its hollow stud is plugged, and 3068b
 with studs put on has four on the grid.
+
+`part_tool_probe` proves it when it ends "the assistant makes the part it
+needs, and builds with it": `make_part` is offered with a schema; called as
+a design calls a tool (`Assistant.use_tool`, which the MCP socket uses too)
+it makes a 1 x 9 Technic brick — the file `ElementMaker.dat` makes of the
+same spec, kept, described with its footprint and 8 holes — a bracket whose
+upright studs it says face +z, a named brick with side studs, and 3700 made
+six long; it refuses a Technic brick two wide, side studs on a plate, a
+family called wing, 3062b three long and a part that does not exist, each in
+the dialog's words; check_design passes a pin in the made brick's first hole
+and refuses one between holes, passes a plate on the made bracket's upright
+and a pin in the changed 3700's fourth hole; submit_design stands a design
+with the made brick in it, and the saved file carries it.
 
 `element_probe` proves it when it ends "a made part is placed, clutched,
 checked, listed and saved like any other": the 2 x 7 brick, 1 x 5 plate and

@@ -1563,6 +1563,86 @@
     "name": "add_minifig"
   },
   {
+    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size \u2014 a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides \u2014 or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "across": {
+          "description": "studs along X: a brick's length; a slope's, bracket's or curved slope's width along its face or upright; a Technic brick's length. With from: the new length.",
+          "type": "integer"
+        },
+        "angle": {
+          "description": "slope, inverted: one of LEGO's named angles, which sets run and plates as the real part has them",
+          "enum": [
+            33,
+            45,
+            65,
+            75
+          ],
+          "type": "integer"
+        },
+        "deep": {
+          "description": "studs along Z: a brick's width; a slope's depth from back to foot; a bracket's plate depth. With from: the new width.",
+          "type": "integer"
+        },
+        "diameter": {
+          "description": "round: studs across",
+          "type": "integer"
+        },
+        "family": {
+          "description": "for a new part: brick (also plates and tiles: plates 1, studs false), slope, curved (a curved slope), inverted (slope), round, bracket (a plate with an upright whose studs face forward), technic (a 1 x N brick with a hole between every two studs)",
+          "enum": [
+            "brick",
+            "slope",
+            "inverted",
+            "round",
+            "curved",
+            "bracket",
+            "technic"
+          ],
+          "type": "string"
+        },
+        "from": {
+          "description": "instead of a family: a real part's number to change, keeping everything not changed as LEGO made it. Longer, wider and taller repeat a slice of it; a part with no slice that repeats (a 1 x 1, a round brick across) is refused.",
+          "type": "string"
+        },
+        "name": {
+          "description": "what to call it; left out, it is named as LDraw names its parts",
+          "type": "string"
+        },
+        "plates": {
+          "description": "height in plates, 3 to a brick (a bracket is 1, a Technic brick 3). With from: the new height.",
+          "type": "integer"
+        },
+        "rise": {
+          "description": "bracket: the upright's height in studs",
+          "type": "integer"
+        },
+        "run": {
+          "description": "slope, inverted, curved: the rows the face falls over, from the front; the rest are flat with studs",
+          "type": "integer"
+        },
+        "sides": {
+          "description": "brick: the sides with studs on them, letters of fblr: f is the +z face (the front), b -z, l -x, r +x; studs 10 LDU under the top and every stud down. Needs 3 plates or more.",
+          "type": "string"
+        },
+        "studs": {
+          "description": "a new part: true for studs on top (the default), false for a tile. With from: \"keep\", \"none\" to take them off, \"fill\" to put them on wherever the top is flat."
+        },
+        "way": {
+          "description": "bracket: whether the upright hangs down from the plate's front edge or stands up from it",
+          "enum": [
+            "down",
+            "up"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "make_part"
+  },
+  {
     "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind \u2014 shapes, colours, the one-off pieces, how coarse \u2014 and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of. Call it after submit_design, then once per assembly, detailing each with edit_model before the next.",
     "input_schema": {
       "additionalProperties": false,

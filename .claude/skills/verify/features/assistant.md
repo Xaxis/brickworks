@@ -338,6 +338,10 @@ fixing what it got wrong.
   `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
   model without its figures' bodies, as real sets' inventories are counted, and
   `_tag_assemblies` leaves a figure in its own group.
+- `parts it needs`: `make_part` makes a part LEGO has not made — a family at
+  any size, or a real part changed — when no real part will do, as a person
+  does in Make a part; declared and passed through here, made in
+  `src/parts/part_tool.gd`. See [elements](elements.md).
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,
