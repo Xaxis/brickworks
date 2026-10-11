@@ -288,7 +288,13 @@ take, which is what made a design run give up on looking at itself.
   said "arrow" where a click would place. It aims at `get_mouse_position()`,
   which for the root window is the system pointer, not the last event — so
   `cursor_probe` moves the system pointer too (`Input.warp_mouse`), only under
-  Xvfb, and `check.sh` always runs it there.
+  Xvfb, and `check.sh` always runs it there. The same replay is asked for on
+  every change of state, because in Chromium `Input.set_default_cursor_shape`'s
+  own replay did not land: after the wheel's moment the page said "place" and
+  the canvas showed the zoom glass until the mouse moved. And whenever the
+  control under the pointer changes, because a panel keeps from the model the
+  motion that crossed into it: the ghost stayed drawn at the panel's edge, and a
+  browser check read its going away as the view moving.
 - **Six of these need a display** (`shot`, `gizmo`, `colour`, `feel`, `cursor`, and
   `marquee` in [building](building.md)). A headless run has no rendering device
   for the SubViewport, so they are last in `tools/check.sh` and flash a window

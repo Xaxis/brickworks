@@ -153,6 +153,18 @@ var _recheck: bool = false
 ## ghost has to be told.
 signal looked_again
 
+## The control the pointer was over last frame, by instance id.
+var _was_over: int = 0
+
+## Whether the last pointer event was a finger's, raised as a mouse by
+## emulation. There is no pointer on a touchscreen, and where the system
+## thinks one is has nothing to do with where the finger went.
+var _by_finger: bool = false
+
+## Whether the button held now went down on the interface rather than
+## the model.
+var _pressed_on_interface: bool = false
+
 
 func _ready() -> void:
 	# Above every panel and dialog, or a drag across one loses its shape.
@@ -201,10 +213,15 @@ func show_state(state: String) -> void:
 	elif shielding():
 		_shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_shield.mouse_default_cursor_shape = Control.CURSOR_ARROW
-		# The drag may have ended over a panel, which should show its
-		# own shape now rather than at the next movement.
-		_recheck = true
 	Input.set_default_cursor_shape(shape as Input.CursorShape)
+	# And the window asked to pick its shape again, now, where the pointer
+	# stands. Setting the default is meant to do that by itself and on the
+	# desktop does, a frame late; in a browser it did not, so when the
+	# wheel's moment ended with the pointer still the page said "place"
+	# and the canvas went on showing the zoom glass until the mouse moved.
+	# A drag that ended over a panel wants the panel's own shape back for
+	# the same reason.
+	_recheck = true
 	# Said to the page, as the controls' positions are (main._tell_page),
 	# so a browser test can tell which state a picture belongs to.
 	if OS.has_feature("web"):
@@ -222,14 +239,31 @@ func _input(event: InputEvent) -> void:
 	# Not for a click a finger made. There is no pointer to correct on a
 	# touchscreen, and the ghost a hold-to-remove hides on purpose would
 	# be put straight back.
+	if event is InputEventMouse:
+		_by_finger = event.device == InputEvent.DEVICE_ID_EMULATION
+	if event is InputEventMouseButton and event.is_pressed():
+		# Godot has already found what is under this press.
+		var over: Control = get_viewport().gui_get_hovered_control()
+		_pressed_on_interface = over != null and over != _shield
 	if event is InputEventKey or (event is InputEventMouseButton
-			and not event.is_pressed()
-			and event.device != InputEvent.DEVICE_ID_EMULATION):
+			and not event.is_pressed()):
 		_recheck = true
 
 
 func _process(_delta: float) -> void:
-	if _recheck:
+	# Onto a panel or off one. A panel keeps the motion that crossed into
+	# it from the model, so the model never heard the pointer leave: its
+	# ghost stayed drawn at the panel's edge and the pointer's state went
+	# on saying "place" over the parts bin. The control under the pointer
+	# is the window's own answer, so a change of it is asked about too.
+	var over: Control = get_viewport().gui_get_hovered_control()
+	var over_id: int = 0 if over == null or over == _shield else over.get_instance_id()
+	if over_id != _was_over:
+		_was_over = over_id
+		_recheck = true
+	if _recheck and _by_finger:
+		_recheck = false
+	elif _recheck and not _holding_a_control():
 		_recheck = false
 		# A motion where the pointer already is, through the whole
 		# window: the interface picks its shape again and the model
@@ -238,6 +272,21 @@ func _process(_delta: float) -> void:
 		looked_again.emit()
 	if not _css.is_empty():
 		_crisp_on_the_web()
+
+
+## Whether a button is down that went down on the interface, in which
+## case the look again waits for it to come up.
+##
+## The replay goes where the system says the pointer is, and a button
+## being pressed takes any motion as the pointer moving: one somewhere
+## else and the button reads it as the pointer having left, and the
+## click is lost. On a desktop the two places are the same; the minifig
+## builder's probe, whose clicks are events and never move the system's
+## pointer, lost every click to it. A press on the model has no control
+## to lose it, so the pointer there still changes while the button is
+## held (the minus of a right button about to take a brick off).
+func _holding_a_control() -> bool:
+	return _pressed_on_interface and Input.get_mouse_button_mask() != 0
 
 
 ## The cursor pictures, drawn for this screen and handed to the system.
