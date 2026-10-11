@@ -99,11 +99,8 @@ func setup() -> void:
 		+ "just for this, in a Console workspace with a spend limit.", 11, 0.65))
 	add_child(_line(EXPECT, 11, 0.65))
 
-	var where := LinkButton.new()
-	where.text = "No key yet? Get one at console.anthropic.com"
+	var where := Look.link("No key yet? Get one at console.anthropic.com", 12)
 	where.uri = "https://console.anthropic.com/settings/keys"
-	where.add_theme_font_size_override("font_size", 12)
-	where.modulate = Color(0.65, 0.8, 1.0, 1.0)
 	add_child(where)
 
 

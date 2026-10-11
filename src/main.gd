@@ -750,6 +750,12 @@ func _build_ui() -> void:
 		_assistant.direct_key = key
 	add_child(_assistant)
 
+	# Before the first panel, so every tick box and switch is made with
+	# pictures that show on a dark panel; redrawn when the density changes.
+	Look.apply(get_viewport())
+	get_tree().root.size_changed.connect(func() -> void:
+		Look.apply.call_deferred(get_viewport()))
+
 	var column := VBoxContainer.new()
 	column.set_anchors_preset(Control.PRESET_FULL_RECT)
 	column.add_theme_constant_override("separation", 0)
