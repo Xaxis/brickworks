@@ -262,9 +262,14 @@ func _lower(library: PartLibrary) -> Dictionary:
 			placed_legs.append({"slot": "legs", "part": legs, "at": at})
 		else:
 			var pair: Dictionary = _leg_parts(library)
+			# Legs joined in one moulding with no hips of their own (43220,
+			# which springs go into) are one part, not one each side.
+			var joined: bool = pair["r"] == pair["l"] and _side(library, legs) == "c" \
+				and library != null and not _narrow(library, legs) \
+				and _place(torso_id, legs, "r") == null
 			for side: String in ["r", "l"]:
 				var leg: String = pair[side]
-				if leg.is_empty():
+				if leg.is_empty() or joined and side == "l":
 					continue
 				var at: Variant = _place_on(torso_id, leg, side)
 				if at == null:
@@ -275,6 +280,11 @@ func _lower(library: PartLibrary) -> Dictionary:
 						standard.origin.x = -FOOT_APART if side == "r" else FOOT_APART
 					at = standard
 				placed_legs.append({"slot": "legs", "part": leg, "at": at})
+			# Legs in pieces: springs with the legs they go into, and those
+			# legs with their springs, where 43743-f1 puts them.
+			for other: Array in MinifigData.LEGS_WITH.get(legs, []):
+				placed_legs.append({"slot": "legs", "part": str(other[0]),
+					"at": _ldraw(other[1])})
 	found.append_array(placed_legs)
 	# A skirt, a tail or a belt at the hips' joint, LDraw's convention for
 	# hipwear, a cloth one as it is worn (worn_as). Cloth with no worn
@@ -303,6 +313,12 @@ func _lower(library: PartLibrary) -> Dictionary:
 				return item["slot"] == "hips"))
 			if not hips.is_empty():
 				ground = maxf(ground, float(hips[0]))
+			# Legs bent at an angle (43220 with the bent springs) stand a
+			# cell up: a turned part's cover is rounded out to whole cells,
+			# as a held spear's is.
+			if standing_on.any(func(item: Dictionary) -> bool:
+					return not BrickLattice.is_square_to_grid((item["at"] as Transform3D).basis)):
+				ground += BrickLattice.CELL
 	var footwear: String = part("footwear")
 	if not footwear.is_empty():
 		var info: PartLibrary.PartInfo = _info(library, footwear)
@@ -600,6 +616,11 @@ func _hand_parts(library: PartLibrary) -> Dictionary:
 	var side: String = _side(library, chosen)
 	if side != "c":
 		return _pair(library, chosen, HAND, HAND)
+	# On the side of the arm it goes on, where it goes on one.
+	var needs: Array = MinifigData.ON_ARMS.get(_family(chosen), [])
+	if not needs.is_empty():
+		return {"r": chosen, "l": HAND} if _side(library, str(needs[0])) == "r" \
+			else {"r": HAND, "l": chosen}
 	var on_right: bool = _place("", chosen, "r") != null
 	var on_left: bool = _place("", chosen, "l") != null
 	if on_right and on_left:
@@ -626,6 +647,10 @@ static func _standard_hand_in_arm(side: String) -> Transform3D:
 ## for an arm with no hand to take (a wing, a clip, a hand moulded on).
 static func _hand_at(torso_id: String, arm: String, arm_at: Transform3D, hand: String,
 		side: String) -> Variant:
+	# A hand that goes on an arm of its own, on it where the arm says.
+	var needs: Array = MinifigData.ON_ARMS.get(_family(hand), [])
+	if needs.size() == 13 and _family(arm) == _family(str(needs[0])):
+		return arm_at * _ldraw(needs.slice(1))
 	var on_arm: Variant = MinifigData.HANDS.get(_family(arm))
 	if on_arm is Dictionary and (on_arm as Dictionary).is_empty():
 		return null
@@ -1430,17 +1455,38 @@ func dress_torso(torso: String) -> void:
 ## figure has with it — a battle droid torso its droid head, arms and
 ## legs, and no hips or hands — where the figure has the plain ones; a
 ## body moulded down to the ground no legs. Choosing the plain torso
-## again gives the plain parts back.
+## again gives the plain parts back. The other way round too, where the
+## library only ever attaches a part to another: a battle droid's head
+## brings its body, printed legs their printed hips, springs the legs and
+## hips they go into, a prosthetic hand the arm it goes on.
 func choose(library: PartLibrary, slot: String, part_id: String) -> void:
 	var was_colour: int = int(colours.get(slot, 16))
 	if library != null and not part_id.is_empty():
 		colours[slot] = fitting_colour(library, part_id, was_colour)
+	var was: String = part(slot)
 	if slot == "torso":
-		var was: String = part("torso")
 		dress_torso(part_id)
 		_fit_body(library, was, part_id)
 	else:
 		parts[slot] = part_id
+	match slot:
+		"head":
+			# A head with no socket for the neck post, which the library
+			# only puts on its own body — a battle droid's clips onto its
+			# torso's bar, and a plain torso has none — brings that body,
+			# as the body brings it.
+			var body: String = str(MinifigData.HEADS_ON.get(_family(part_id), ""))
+			if not body.is_empty() and _family(part("torso")) == "973":
+				choose(library, "torso", body)
+		"legs":
+			_fit_hips(library, was, part_id)
+		"hands":
+			_fit_arm(was, part_id)
+		"arms":
+			# An arm the hand cannot go on: the plain hand back.
+			var needs: Array = MinifigData.ON_ARMS.get(_family(part("hands")), [])
+			if not needs.is_empty() and _family(part_id) != _family(str(needs[0])):
+				parts["hands"] = HAND
 	if PAIRED.has(slot) and library != null:
 		if _has_plain_partner(library, slot):
 			if not colours.has(slot + OTHER):
@@ -1468,6 +1514,47 @@ func _has_plain_partner(library: PartLibrary, slot: String) -> bool:
 		_: sides = _leg_parts(library)
 	return (sides["r"] != chosen or sides["l"] != chosen) \
 		and partner(library, chosen).is_empty()
+
+
+## Legs with the hips the library's own assemblies put them with
+## (MinifigData.LEG_HIPS): a printed pair the hips printed to match
+## (3816cpx0 with 3815bpx0, as 73200bpx0 has them), in the colour the
+## assembly gives them (3816cp30's are reddish brown); springs the hips
+## they go into (43221, as 43743-f1). Only over plain hips or the ones
+## the legs before brought: hips somebody chose stay.
+func _fit_hips(library: PartLibrary, was: String, legs: String) -> void:
+	var before: Array = MinifigData.LEG_HIPS.get(was, [])
+	var after: Array = MinifigData.LEG_HIPS.get(legs, [])
+	var now: String = part("hips")
+	var by_legs: bool = not before.is_empty() and str(before[0]) == now
+	if not (by_legs or now == PLAIN_HIPS):
+		return
+	if after.is_empty():
+		parts["hips"] = PLAIN_HIPS
+		return
+	parts["hips"] = str(after[0])
+	var colour: int = int(after[1])
+	colours["hips"] = int(colours["legs"]) if colour < 0 else colour
+	if library != null:
+		colours["hips"] = fitting_colour(library, part("hips"), int(colours["hips"]))
+
+
+## A hand the library puts on an arm of its own brings that arm
+## (MinifigData.ON_ARMS): the prosthetic hand 5059 goes on the stump
+## 6828, where 6828.dat's HELP line says, and on no other — on a plain
+## arm it pointed back up it. Over a plain arm or one the hand before
+## brought; the plain arm back when the hand goes.
+func _fit_arm(was: String, hand: String) -> void:
+	var before: Array = MinifigData.ON_ARMS.get(_family(was), [])
+	var after: Array = MinifigData.ON_ARMS.get(_family(hand), [])
+	var now: String = part("arms")
+	var by_hand: bool = not before.is_empty() and str(before[0]) == now
+	if not (by_hand or now == ARM_RIGHT):
+		return
+	if not after.is_empty():
+		parts["arms"] = str(after[0])
+	elif by_hand:
+		parts["arms"] = ARM_RIGHT
 
 
 func _fit_body(library: PartLibrary, was: String, torso: String) -> void:

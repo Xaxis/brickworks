@@ -177,6 +177,30 @@ def test_a_head_sits_on_its_neck_socket(library: Library) -> None:
 
 
 @needs_ldraw
+def test_a_head_drawn_as_a_brick_rests_on_its_rim(library: Library) -> None:
+    # A Minion's tube for the neck post opens 20 LDU up inside it; its rim
+    # is 40 down, and that is what rests on the shoulders.
+    assert minifig.neck_seat(library, "67649") == 40.0
+    assert minifig.neck_seat(library, "29030") == 32.0
+    # A head with no socket at all says so.
+    assert minifig.neck_seat(library, "30378") is None
+
+
+def test_the_library_says_what_odd_parts_attach_to() -> None:
+    data = (ROOT / "src" / "minifig" / "minifig_data.gd").read_text()
+    # 73200bpx0: printed legs with their printed hips; 43743-f1: springs
+    # in hips 43221 and legs 43220; 6828.dat's HELP: the prosthetic hand on
+    # the stump; 30375cs0: the droid's head on the droid's torso.
+    assert '"3816cpx0": ["3815bpx0", -1],' in data
+    assert '"43741-f1": ["43221", -1],' in data
+    assert '"43741-f1": [["43220", [0.0, 44.0, 0.0,' in data
+    assert '"5059": ["6828", 5.311, 5.023, -30.326,' in data
+    assert '"30378": "30375",' in data
+    # Not the plain hand, which goes on every arm.
+    assert '"3820": [' not in data.split("const ON_ARMS")[1].split("}")[0]
+
+
+@needs_ldraw
 def test_airtanks_have_a_collar(library: Library) -> None:
     # Real figures wearing 3838 sit the head up 3 LDU (29 of 38); the
     # geometry says 4. The table uses what real figures do where they do.

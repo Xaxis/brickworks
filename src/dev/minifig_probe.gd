@@ -361,6 +361,112 @@ func _against_the_library() -> void:
 	_check("medium legs pair and hang from the hips as 37364.dat: within %.3f LDU, none missing %s"
 		% [against[0], against[2]], float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
 
+	# The other way round: a part the library only ever attaches to
+	# another brings it. A battle droid's head has no socket for a neck
+	# post — it clips onto its own torso's bar — so it brings the droid.
+	var droid_head := Minifig.new()
+	droid_head.choose(library, "head", "30378")
+	against = _against_file(droid_head.assemble(library), _library_file("30375cs0"), "30375")
+	_check("a battle droid's head brings its body, torso %s, and stands as 30375cs0.dat: within %.3f LDU, none missing %s"
+		% [droid_head.part("torso"), against[0], against[2]],
+		droid_head.part("torso") == "30375" and float(against[0]) <= 0.01
+		and (against[2] as Array).is_empty())
+	# A head drawn as a brick is, hollow underneath round a tube for the
+	# neck post — a Minion's, a pencil top — rests on the shoulders by
+	# its rim; seated by the tube it sank over the torso.
+	var sunk: Array[String] = []
+	for head: String in ["67649", "67650", "67902", "29030"]:
+		var figure := Minifig.new()
+		figure.choose(library, "head", head)
+		var top: float = NAN
+		var bottom: float = NAN
+		for item: Dictionary in figure.assemble(library):
+			if item["slot"] == "torso":
+				top = (item["at"] as Transform3D).origin.y
+			elif item["slot"] == "head":
+				bottom = ((item["at"] as Transform3D) * library.parts[head].bounds).position.y
+		sunk.append("%s %.1f" % [head, bottom - top])
+	_check("Minion heads and the pencil top rest on the shoulders by their rim, LDU over the torso's top: %s"
+		% ", ".join(sunk), sunk.all(func(line: String) -> bool:
+			return absf(float(line.split(" ")[1])) < 0.05))
+	# Printed legs bring the hips printed to match, in the colour the
+	# library's own hips-and-legs assembly gives them.
+	var belted := Minifig.new()
+	belted.choose(library, "legs", "3816cpx0")
+	against = _against_file(belted.assemble(library), _library_file("73200bpx0"), "3815bpx0")
+	_check("printed legs 3816cpx0 bring their hips, %s, as 73200bpx0.dat: within %.3f LDU, none missing %s"
+		% [belted.part("hips"), against[0], against[2]], belted.part("hips") == "3815bpx0"
+		and float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+	var ragged := Minifig.new()
+	ragged.choose(library, "legs", "3816cp30")
+	_check("and 3816cp30's rags their reddish brown hips, as 73200bp30.dat: %s in %d"
+		% [ragged.part("hips"), int(ragged.colours["hips"])],
+		ragged.part("hips") == Minifig.PLAIN_HIPS and int(ragged.colours["hips"]) == 70)
+	belted.choose(library, "legs", Minifig.PLAIN_LEGS)
+	_check("and the plain legs again the plain hips (%s)" % belted.part("hips"),
+		belted.part("hips") == Minifig.PLAIN_HIPS)
+	# Springs go into the hips and legs 43743-f1 puts them in; alone they
+	# stood the figure on two springs.
+	var bouncy := Minifig.new()
+	bouncy.choose(library, "legs", "43741-f1")
+	against = _against_file(bouncy.assemble(library), _library_file("43743-f1"), "43221")
+	_check("springs 43741-f1 go into hips %s and the legs under them, as 43743-f1.dat: within %.3f LDU, none missing %s"
+		% [bouncy.part("hips"), against[0], against[2]], bouncy.part("hips") == "43221"
+		and float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+	var joined := Minifig.new()
+	joined.choose(library, "legs", "43220")
+	var once: int = joined.assemble(library).filter(func(item: Dictionary) -> bool:
+		return item["part"] == "43220").size()
+	against = _against_file(joined.assemble(library), _library_file("43743-f1"), "43221")
+	_check("and legs 43220 are one part (%d), with their springs and hips: within %.3f LDU, none missing %s"
+		% [once, against[0], against[2]], once == 1 and float(against[0]) <= 0.01
+		and (against[2] as Array).is_empty())
+	# The prosthetic hand goes on the stump, where 6828.dat's HELP line
+	# says; on a plain arm it pointed back up it.
+	var helper := Minifig.new()
+	helper.choose(library, "hands", "5059")
+	var stump: Variant = null
+	var prosthetic: Variant = null
+	for item: Dictionary in helper.assemble(library):
+		if item["part"] == "6828":
+			stump = item["at"]
+		elif item["part"] == "5059":
+			prosthetic = item["at"]
+	var said: Variant = _help_line("6828", "5059")
+	var off: float = INF
+	if stump != null and prosthetic != null and said != null:
+		var ours: Transform3D = (stump as Transform3D).affine_inverse() * (prosthetic as Transform3D)
+		off = ours.origin.distance_to((said as Transform3D).origin)
+		for n: int in 3:
+			off = maxf(off, (ours.basis[n] - (said as Transform3D).basis[n]).length())
+	_check("a prosthetic hand brings the stump arm (%s) and goes on it as 6828.dat says: %.3f off"
+		% [helper.part("arms"), off], helper.part("arms") == "6828" and off <= 0.01)
+	helper.choose(library, "hands", Minifig.HAND)
+	_check("and the plain hand again the plain arm (%s)" % helper.part("arms"),
+		helper.part("arms") == Minifig.ARM_RIGHT)
+
+
+## Where a library file's HELP line puts a part, in the app's axes as
+## LdrModel reads a placement: the library's word for how a part goes on
+## another it does not include.
+func _help_line(name: String, part: String) -> Variant:
+	var path: String = "res://vendor/ldraw/parts/%s.dat" % name
+	if not FileAccess.file_exists(path):
+		path = "res://vendor/ldraw/unofficial/parts/%s.dat" % name
+	if not FileAccess.file_exists(path):
+		return null
+	for line: String in FileAccess.get_file_as_string(path).split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() == 17 and words[1] == "!HELP" and words[2] == "1" \
+				and words[16].to_lower() == part + ".dat":
+			var v: Array = []
+			for n: int in range(4, 16):
+				v.append(float(words[n]))
+			var at := Transform3D(Basis(Vector3(v[3], v[6], v[9]), Vector3(v[4], v[7], v[10]),
+				Vector3(v[5], v[8], v[11])), Vector3(v[0], v[1], v[2]))
+			return Minifig.FLIP * at * Minifig.FLIP
+	return null
+
 
 ## LDraw draws cloth flat, as it is sold, and again "(Formed)", as it is
 ## worn; every cloth cape on a figure in vendor/omr is a worn drawing

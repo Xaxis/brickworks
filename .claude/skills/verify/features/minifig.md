@@ -36,10 +36,23 @@ the model, and the design assistant doing the same with `add_minifig`.
     37364's medium legs, the skeleton, the super battle droid, wing and flipper
     arms. Choosing an odd torso brings its companions (`choose` -> `body_of`:
     the droid's head, arms and legs and no hips or hands; a body moulded from
-    its feet up — Sebulba, Gollum, the babies — stands on its own);
+    its feet up — Sebulba, Gollum, the babies — stands on its own); and the
+    other way round, where the library only ever attaches a part to another
+    (`choose`): the droid's head, which has no socket for a neck post and
+    clips onto its own torso's bar, brings the droid (`HEADS_ON`); printed
+    legs their printed hips in the colour 73200bpXX gives them (`LEG_HIPS`:
+    3816cpx0 with 3815bpx0, 3816cp30's hips reddish brown); springs 43741 the
+    hips 43221 and legs 43220 they go into, and 43220 its springs, as
+    43743-f1.dat (`LEGS_WITH`; legs joined in one moulding are one part); the
+    prosthetic hand 5059 the stump arm 6828, on it where 6828.dat's HELP line
+    says (`ON_ARMS`; on a plain arm it pointed back up it). Each is undone
+    the same way: the plain legs give the plain hips back;
   - a head sits by its neck socket (`MinifigData.SEATS`, measured off its
     geometry: 24 under the origin for the classic heads, 0 for the moulded ones
-    drawn from the neck up); headgear goes where the classic head's top is;
+    drawn from the neck up), or by its rim if it is drawn as a brick is,
+    hollow round a tube for the post (the Minions at 40, 56 and 32, the
+    pencil top at 32; by the tube they sank 20 LDU over the torso);
+    headgear goes where the classic head's top is;
   - a visor turns on its helmet's dimples (`MinifigData.PIVOTS`: 2447b's pins at
     its origin onto 3842b's dimples at y 5; an unknown helmet gets the classic's);
     a plume or feathers at the head's origin, or where an assembly puts them
@@ -86,7 +99,10 @@ the model, and the design assistant doing the same with `add_minifig`.
   geometry otherwise), 736 torso prints' arm and hand colours from the library's
   76382pXX assemblies, and what the library's own assemblies say about the odd
   parts: 40 placements, 19 arms' hands, 8 bodies, 6 headgear extras; 73 head
-  seats, 43 visor and helmet pivots, 1 part worn turned. GDScript constants because
+  seats, 43 visor and helmet pivots, 1 part worn turned; 138 legs' hips (from
+  hips-and-legs assemblies, not whole figures), 3 legs in pieces, 1 hand on an
+  arm of its own (from the arms' HELP lines, the plain hand left out), 1 head
+  on a body of its own. GDScript constants because
   the web build has no LDraw library to read and the export takes no loose JSON.
   The script sorts parts into slots by a copy of `slot_for`'s rule, which
   `tests/test_minifig.py` holds to the app's word for word.
@@ -189,7 +205,15 @@ Proves it when:
   pilot (the two drawings of the helmet differ by that). Against the library's
   own assemblies, part for part within 0.01: 30375cs0's battle droid (and the
   plain torso giving the plain parts back), 84638's hook, 84637b's wooden leg,
-  15998's baby, 37364's medium legs. Then: all 4263 minifig parts available
+  15998's baby, 37364's medium legs. And the other way round, against the
+  library too: the droid's head bringing the droid of 30375cs0 (fails on the
+  old builder, which put it on the plain torso); Minion heads and the pencil
+  top resting on the shoulders by their rim (they sank 20 and 29); 3816cpx0
+  bringing 3815bpx0 as 73200bpx0, 3816cp30 reddish brown hips, the plain legs
+  the plain hips back; springs 43741-f1 in 43221 over 43220 as 43743-f1, and
+  43220 one part with its springs (it was two, the springs stood alone); the
+  prosthetic hand on the stump as 6828.dat's HELP line says (0.001 off), the
+  plain hand the plain arm back. Then: all 4263 minifig parts available
   (fails on the old builder, which offered 3284 and had no slot for 979);
   each slot opens on the classic mould; 1966 families each put together with
   nothing in the floor; 176 families of legs, feet, bodies, skirts, capes and
@@ -252,12 +276,16 @@ Proves it when:
   photographs Surprise me.
 - **Probes keep figures somewhere of their own** (`Minifig.shelf_file`), or a
   check run on this machine writes onto its owner's shelf.
-- **Odd parts are not all put right.** Where the library has no assembly and no
-  geometry says (a prosthetic hand, a Minion's head, the cyborg torso), a part
-  sits at its slot's standard joint, LDraw's convention, and can look wrong on a
-  classic figure — as it would in the hand. Mixing families (a droid's legs on a
-  plain torso) is allowed: legs drawn from their feet up hang from the hips'
-  top. Look at a family with the contact sheets the probe's numbers stand for.
+- **Odd parts are not all put right.** Where the library has no assembly, no
+  HELP line and no geometry says (the cyborg torso), a part sits at its slot's
+  standard joint, LDraw's convention, and can look wrong on a classic figure —
+  as it would in the hand. Mixing families (a droid's legs on a plain torso) is
+  allowed: legs drawn from their feet up hang from the hips' top; legs bent at
+  an angle (the springs bent 45 degrees) stand a cell up, their cover being
+  rounded out. u9661c01, an unofficial worn cape, is drawn folded out in front
+  and looks it when chosen; its flat cloth hangs flat instead. Something held
+  in the prosthetic hand is held where a plain hand's grip would be. Look at a
+  family with the contact sheets the probe's numbers stand for.
 - **A web export without `PARTS_URL` offers about half the figure parts.** The
   self-contained pack publishes only 120 MB of on-demand geometry and marks the
   rest of the catalogue unreachable, which the builder (rightly) does not offer:
