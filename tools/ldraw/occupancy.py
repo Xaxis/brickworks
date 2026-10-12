@@ -35,6 +35,7 @@ using the stud positions already recovered in connectivity.py.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import numpy as np
@@ -279,6 +280,8 @@ def fill_cavities(
     cells, so a hole on a surface cannot reach beyond the plastic.
 
     A hole drawn without a peghole is cleared too: see [holes].
+
+    And a bar in a loop is given back the air round it: see [bars].
     """
     if occupancy.cell_count == 0:
         return occupancy
@@ -294,8 +297,114 @@ def fill_cavities(
     if found:
         grid = grid & ~_bore(occupancy, found, whole_line=False)
 
+    for window, room in _clip_rooms(occupancy, bars(connections or []), before):
+        grid[window] &= ~(room & ~before[window])
+
     return Occupancy(
         origin=occupancy.origin, shape=occupancy.shape, bits=grid.reshape(-1))
+
+
+## A bar's radius, in LDU: 3.2 mm across, within BAR_FIT.
+BAR_RADIUS = 4.0
+BAR_FIT = 0.5
+## How far from a bar's axis a clip on it reaches, in LDU. A clip's ring is
+## 4 inside, and the thick clips (clip7, clip12, clip13) are 7.6 at their
+## widest, clip16 8.1.
+CLIP_REACH = 8.0
+
+
+@dataclass(slots=True)
+class Bar:
+    """A bar a clip goes on, in the application's axes."""
+
+    point: np.ndarray
+    axis: np.ndarray                 # unit
+    length: float
+
+
+def bars(connections: list[Connection]) -> list[Bar]:
+    """Every bar a clip could be put on, across the stud axis.
+
+    A handle is a bar held off a part at both ends: 2540's runs beside
+    its plate, an arm at each end. In the plate's own layers the plate's
+    edge, the arms and the bar close a ring of plastic round the gap a
+    clip goes into, so the fill closed it, and the bar was buried in
+    cover a clip could not go round. That is the same for every bar in a
+    loop beside a part, under it or at its end.
+
+    So where nothing but air and the fill is within CLIP_REACH of a bar
+    along its length, which is room for a clip, the fill there is taken
+    back out ([_clip_rooms]). Only the fill's: the bar, the arms and the
+    part are plastic and stay, and a bar in the open has none to take.
+
+    Not along the stud axis. An upright bar's layers are rounds across it,
+    and a loop beside it is open in each one, so the fill never closed
+    one (2921, a brick with an upright handle, was always open). What it
+    does close round an upright round is a brick's underside: the post of
+    a 1 x 2 is a bar's size, and the studs of what it stands on are held
+    by the plastic round it (see [holes]).
+    """
+    out: list[Bar] = []
+    for c in connections:
+        if (c.kind is not ConnectorKind.SHAFT
+                or abs(c.radius - BAR_RADIUS) > BAR_FIT
+                or abs(c.axis.y) >= 0.99 or c.length <= 0.0):
+            continue
+        axis = np.array([c.axis.x, -c.axis.y, -c.axis.z])
+        length = float(np.linalg.norm(axis))
+        if length < 1e-9:
+            continue
+        out.append(Bar(
+            point=np.array([c.position.x, -c.position.y, -c.position.z]),
+            axis=axis / length, length=c.length))
+    return out
+
+
+def _clip_rooms(
+    occupancy: Occupancy, gripped: list[Bar], plastic: np.ndarray,
+) -> Iterator[tuple[tuple[slice, ...], np.ndarray]]:
+    """Each bar with room round it for a clip, as the window of the grid it
+    is in and the cells within CLIP_REACH of its axis, along it, there.
+
+    Room is no ``plastic`` between the bar's own cells and CLIP_REACH. A
+    shaft a bar's size with plastic that close round it is not a bar a
+    clip goes on: the pin of a minifigure's hip inside its legs, a
+    pneumatic pump's rod inside its cylinder. Their cavities stay filled,
+    as every cavity does.
+    """
+    ox, oy, oz = occupancy.origin
+    shape = occupancy.shape
+    centres = [
+        (np.arange(shape[n]) + (ox, oy, oz)[n] + 0.5) * CELL for n in range(3)
+    ]
+    for bar in gripped:
+        far = bar.point + bar.axis * bar.length
+        # Only the box the bar and its clip can reach: a handle's bar is a
+        # few cells across a grid of hundreds.
+        window = []
+        for n in range(3):
+            low = (min(bar.point[n], far[n]) - CLIP_REACH) / CELL - (ox, oy, oz)[n]
+            high = (max(bar.point[n], far[n]) + CLIP_REACH) / CELL - (ox, oy, oz)[n]
+            window.append(slice(max(0, int(np.floor(low))),
+                                min(shape[n], int(np.ceil(high)) + 1)))
+        if any(w.start >= w.stop for w in window):
+            continue
+        local = [centres[n][window[n]] for n in range(3)]
+        gx, gy, gz = np.meshgrid(*local, indexing="ij")
+        dx, dy, dz = gx - bar.point[0], gy - bar.point[1], gz - bar.point[2]
+        along = dx * bar.axis[0] + dy * bar.axis[1] + dz * bar.axis[2]
+        px = dx - along * bar.axis[0]
+        py = dy - along * bar.axis[1]
+        pz = dz - along * bar.axis[2]
+        off = px * px + py * py + pz * pz
+        room = (off <= CLIP_REACH * CLIP_REACH) & (along >= 0.0) & (along <= bar.length)
+        # The bar's own cells are those whose middles are in it, and the
+        # nearest middles outside it are a cell's half diagonal further.
+        ring = room & (off > (BAR_RADIUS + CELL * 0.5) ** 2)
+        held = tuple(window)
+        if plastic[held][ring].any():
+            continue
+        yield held, room
 
 
 ## How far a drawn hole's radius may be from a pin's, in LDU. 6222's and
@@ -639,13 +748,18 @@ def to_boxes(
     bounding box everywhere but on a hole's line, where it is the part's
     own cells: the hole, and the air a pin comes in through. 18897 is 330
     boxes exact and 42 so.
+
+    A bar with room for a clip round it is the same ([bars]): BAR_BOXES
+    more for each, and past that its room is carved like a hole's line.
     """
     if occupancy.cell_count == 0:
         return []
 
     grid = occupancy.to_grid()
     found = holes(connections or [])
-    allowed = min(limit + HOLE_BOXES * len(found), CARVED_LIMIT)
+    rooms = list(_clip_rooms(occupancy, bars(connections or []), grid))
+    allowed = min(limit + HOLE_BOXES * len(found) + BAR_BOXES * len(rooms),
+                  CARVED_LIMIT)
     boxes = _greedy(grid, occupancy.origin, allowed)
     if boxes is not None:
         return boxes
@@ -654,9 +768,12 @@ def to_boxes(
     bounds = np.zeros(grid.shape, dtype=bool)
     bounds[xs.min():xs.max() + 1, ys.min():ys.max() + 1, zs.min():zs.max() + 1] = True
     whole = _greedy(bounds, occupancy.origin, 1)
-    if not found:
+    if not found and not rooms:
         return whole or []
-    bounds &= ~(_bore(occupancy, found, whole_line=True) & ~grid)
+    carved = _bore(occupancy, found, whole_line=True)
+    for window, room in rooms:
+        carved[window] |= room
+    bounds &= ~(carved & ~grid)
     return _greedy(bounds, occupancy.origin, CARVED_LIMIT) or whole or []
 
 
@@ -665,6 +782,10 @@ def to_boxes(
 ## without them a part a few over the limit lost its exact cover for
 ## having its holes opened. A Technic beam is about ten a hole.
 HOLE_BOXES = 16
+## And a bar with room round it. Opening the loops of a sprue's bars took
+## 6246, six minifig tools on one, from 35 boxes to 229 for its nine bars,
+## 21.6 a bar; no other part opened more than 14 a bar.
+BAR_BOXES = 24
 
 
 ## The most boxes a bounding box with its holes carved may take. A hole

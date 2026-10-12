@@ -141,7 +141,7 @@ godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
-godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand
+godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
@@ -394,6 +394,35 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   `tests/test_ldraw.py` (`test_a_round_brick_cover_leaves_its_side_holes_open`,
   `test_a_pin_in_any_hole_misses_the_cover`) holds both rules to the `.lbm` the
   build writes.
+
+- **A bar in a loop was buried in the fill.** A handle is a bar held off a
+  part at both ends, and in 2540's own layers the plate's edge, the two arms
+  and the bar close a ring, so `fill_cavities` filled the gap a clip goes
+  into. A clip on that bar was refused by hand and by check_design, unless it
+  was held with its plate straight out from the handle: its open side then
+  faces the plate and its jaw stays out of the loop. Now `occupancy.bars`
+  takes every shaft a bar's size (4, within 0.5) across the stud axis, and
+  where nothing but the bar, air and the fill is within `CLIP_REACH` (8: the
+  thick clips are 7.6 round) of its axis along it, the fill there is taken
+  back out (`_clip_rooms`). Only the fill's cells: plastic never goes. The
+  plastic test is what keeps it to bars a clip can go on. Without it, every
+  shaft within 1 of a bar's size had its fill taken, 2,467 parts and 1,423 of
+  them minifig parts: the pin of a hip inside its legs, a pump's rod inside
+  its cylinder. Upright bars are left alone. The fill never closes a loop
+  round one (2921's handle was always open), and what it does close round an
+  upright round is a brick's underside, where a 1 x 2's post is a bar's size.
+  A bar with room brings its own boxes (`HOLE_BOXES` each), and past the limit
+  each bar's room is carved out of the bounding box as a hole's line is:
+  69934, a 10 x 16 plate with eight handles, was one box. Of the 4,318 parts
+  with a sideways shaft of radius 3 to 5, 187 had a bar's loop filled
+  (handles on plates, bricks, windscreens and dishes, rod frames, grilles,
+  rigging, snowshoes) and 324 more had a bar buried in a bounding box; 511
+  covers changed, each only losing cells. `PartForge` does not do this, as
+  it does not do drawn holes; no element fixture moved (`pipeline.md`).
+  `test_a_clip_on_a_handle_misses_the_cover` holds it for 2540, 60478, 48336,
+  30236, 78257 and 69934: a 4085c on each handle, its plate out, up or down,
+  shares no cell outside its bore, and 2 LDU toward the plate it still does.
+  `technic_hand_probe` ("a clip on a plate's handle") does it by hand.
 
 - **A pin cannot be found the way a stud is found.** `_studs_reaching_in` samples
   just past a stud's tip and asks who owns that lattice cell, which works because

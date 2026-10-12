@@ -827,6 +827,89 @@ def test_a_pin_in_any_hole_misses_the_cover(part: str) -> None:
     assert checked > 0
 
 
+# Parts whose handle is a bar in a loop: 2540's runs beside the plate
+# between two arms, 60478's off its end, 48336's beside it the whole length,
+# 30236's beside a brick, 78257's off both ends. 69934, a 10 x 16 plate with
+# eight handles down one side, was past the box limit, so its cover was its
+# bounding box and buried every one.
+HANDLES = ["2540.dat", "60478.dat", "48336.dat", "30236.dat", "78257.dat", "69934.dat"]
+
+
+def _clip_on(clip: set, bore: tuple, bar: tuple, out: tuple) -> set:
+    """4085c's cover with its clip's middle on ``bar`` and its plate out
+    along ``out``: its bore, upright in its own frame (y), along the bar,
+    and the plate it stands off (-z) turned to ``out``. Square turns and
+    even offsets, so a cell goes to a cell exactly."""
+    along = bar[1]
+    back = tuple(-v for v in out)
+    side = (along[1] * back[2] - along[2] * back[1],
+            along[2] * back[0] - along[0] * back[2],
+            along[0] * back[1] - along[1] * back[0])
+
+    def turn(q: tuple) -> tuple:
+        return tuple(q[0] * side[n] + q[1] * along[n] + q[2] * back[n] for n in range(3))
+
+    shift = tuple(bar[0][n] - turn(bore)[n] for n in range(3))
+    moved = set()
+    for cell in clip:
+        middle = turn(tuple((v + 0.5) * occ.CELL for v in cell))
+        moved.add(tuple(int((middle[n] + shift[n]) // occ.CELL) for n in range(3)))
+    return moved
+
+
+def _outside_the_clip(shared: set, bar: tuple) -> list:
+    """The shared cells a clip on a bar has no business sharing: those not
+    within the clip's bore, 4 LDU round and 4 either side of its middle,
+    give or take the slack the checker gives a round (Joints.ROUND_SLACK)."""
+    slack = 1.5
+    (at, way) = bar
+    out = []
+    for cell in shared:
+        gap = [(cell[n] + 0.5) * occ.CELL - at[n] for n in range(3)]
+        along = sum(gap[n] * way[n] for n in range(3))
+        off = sum((gap[n] - along * way[n]) ** 2 for n in range(3)) ** 0.5
+        if abs(along) > 4.0 + slack or off > 4.0 + slack:
+            out.append(cell)
+    return out
+
+
+@needs_numpy
+@pytest.mark.parametrize("part", HANDLES)
+def test_a_clip_on_a_handle_misses_the_cover(part: str) -> None:
+    """A clip put on a plate's handle, its plate held out from the handle,
+    up or down, shares no cell with the handle's part but inside its own
+    bore, which is where the bar is. The fill closed the loop of every
+    handle beside a plate, so the bar was buried in cover and a clip on it
+    was refused as an overlap with the plate it was clipped to.
+
+    And not by hollowing: the same clip two LDU off the bar's line, which
+    is a clip pressed into the side of the bar, still shares cells."""
+    cells, connectors = _built_cover(part)
+    clip, clip_connectors = _built_cover("4085c.dat")
+    eye = [c for c in clip_connectors if c.kind == "bore" and abs(c.radius - 4.0) < 0.1]
+    assert len(eye) == 1 and abs(abs(eye[0].axis[1]) - 1.0) < 1e-6, eye
+    bore = tuple(eye[0].pos[n] + eye[0].axis[n] * eye[0].length * 0.5 for n in range(3))
+
+    handles = [c for c in connectors if c.kind == "shaft" and abs(c.radius - 4.0) < 0.1
+               and abs(c.axis[1]) < 0.01 and c.length >= 8.0 - 1e-6]
+    assert handles, part
+    for c in handles:
+        middle = tuple(c.pos[n] + c.axis[n] * c.length * 0.5 for n in range(3))
+        # Out from the plate: across the bar, level, away from the middle.
+        across = (-c.axis[2], 0.0, c.axis[0])
+        if across[0] * middle[0] + across[2] * middle[2] < 0:
+            across = tuple(-v for v in across)
+        bar = (middle, tuple(c.axis))
+        for out in (across, (0.0, 1.0, 0.0), (0.0, -1.0, 0.0)):
+            on = _clip_on(clip, bore, bar, out)
+            stray = _outside_the_clip(on & cells, bar)
+            assert stray == [], (part, c.pos, out, len(stray))
+
+            toward = tuple(middle[n] - 2.0 * across[n] for n in range(3))
+            pressed = _clip_on(clip, bore, (toward, tuple(c.axis)), out)
+            assert pressed & cells, (part, c.pos, out)
+
+
 # -- things the library does not tell you plainly -----------------------
 
 
