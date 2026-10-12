@@ -129,12 +129,30 @@ const MOST := 4000
 static func expand(raw_patterns: Array, already: Array,
 		trouble: Array, library: PartLibrary = null) -> Array:
 	var made: Array = []
+	# Where each shape stands, so a shape under another keeps its studs
+	# there rather than tiling them: a cabin on a body, a head on a neck.
+	var footings: Array = []
 	for raw: Variant in raw_patterns:
+		var standing: Dictionary = {}
+		if raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() == "shape":
+			standing = Shapes.feet(raw)
+		footings.append(standing)
+	var n: int = -1
+	for raw: Variant in raw_patterns:
+		n += 1
 		if typeof(raw) != TYPE_DICTIONARY:
 			trouble.append("a pattern has to be an object")
 			continue
 		var pattern: Dictionary = raw
 		var kind: String = str(pattern.get("pattern", "")).to_lower()
+		if kind == "shape" and footings.size() > 1:
+			var carried: Dictionary = {}
+			for m: int in footings.size():
+				if m != n:
+					carried.merge(footings[m])
+			if not carried.is_empty():
+				pattern = pattern.duplicate()
+				pattern["_carried"] = carried
 		var from: Array = already + made
 		match kind:
 			"repeat":

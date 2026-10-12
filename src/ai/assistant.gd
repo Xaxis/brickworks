@@ -3895,9 +3895,15 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 	# reported as resting on something with no studs. It has four. Two
 	# to four such complaints per model, on the eight that ship with the
 	# app and are known good.
+	#
+	# And only a part that grips nothing at all: a part clutched by its own
+	# studs elsewhere is held, whatever it happens to rest on. A shell laid
+	# on its side is rows of tiles and slopes held on side studs, each row
+	# resting on the edge of the row under it, and every one of them was
+	# called "held by nothing".
 	var holder: PartLibrary.PartInfo = library.parts.get(below.part)
 	if holder != null and holder.stud_count == 0 \
-			and SMOOTH_ON_TOP.has(holder.family_category()):
+			and SMOOTH_ON_TOP.has(holder.family_category()) and not reached:
 		_note(loose, "Resting on a smooth face, held by nothing:",
 			"  brick %d (%s at %s) stands on brick %d (%s), which has no "
 			% [index, placement.part, placement.where(), under, below.part]
@@ -5447,8 +5453,12 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 		treads.append([float(edge) + 1.0, 0.0])
 		cuts.append({"extrude": {"along": "z", "from": -2, "width": 4, "under": treads,
 			"profile": [[head + 1, tall_ + 1], [edge + 1, tall_ + 1]]}})
+	# Square terraces in bricks, as they were measured: their steps are not
+	# a curve to turn on its side, and the courses over the hollow are tied
+	# by the tower's foot.
 	var made: Array = Shapes.lay({"pattern": "shape", "at": {"x": cx, "y": y0, "z": cz},
 		"color": colour, "top_color": ledge, "surface": "none", "panels": false,
+		"sideways": false, "bridges": false,
 		"studs_at": under, "solids": solids, "cuts": cuts}, trouble, library)
 	if not trouble.is_empty():
 		return []
@@ -12133,7 +12143,13 @@ pattern's nose; a fill with layers and a shrink; cones and dishes.
   A body that is not a box — a car's body, a hull, a fuselage, a \
 creature's body or head: the shape pattern, said as its solids (a loft \
 through sections, a profile extruded, a revolve, ellipsoids), which \
-lays its slopes, curved slopes, wedges and tiles for you.
+lays its slopes, curved slopes, wedges and tiles for you, a round \
+section in round parts, and a side that curves up and down turned out \
+on side studs, so its outside is smooth parts and not a staircase. \
+Shapes stack: a cabin said as a shape on a body keeps the body's studs \
+under it. When a shape comes back in pieces or floating, the check \
+names the parts: fix what it stands on or the cut that splits it, and \
+keep the body — rebuilt by hand, its curves are lost.
   Edges at a slant — a swept wing, a car's shoulder, a bow: wedge \
 plates (show_technique "smooth diagonal"). A curved surface — a \
 bonnet, a hull's bilge, a cab roof: curved slopes, studs-up or on \
@@ -12758,8 +12774,11 @@ func _tools() -> Array:
 					+ "would choose: bricks and plates inside, slopes and "
 					+ "curved slopes fitted to the surface's fall, inverted "
 					+ "slopes under it, wedge plates on a diagonal edge, "
+					+ "round parts where a section is round, a side that "
+					+ "curves up and down laid on its side on side studs, "
 					+ "tiles on top, one half and its mirror; a car's body, "
-					+ "a hull, a fuselage, an animal's body."},
+					+ "a hull, a fuselage, an animal's body. Another shape "
+					+ "standing on it keeps its studs there."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",

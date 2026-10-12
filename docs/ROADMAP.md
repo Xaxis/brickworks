@@ -1423,6 +1423,82 @@ in plan and stepped in elevation, where they were lumpy in plan and sloped
 on top. A body round only in part (the egg with its white front, an owl's
 oval sections) is unchanged except at its ends. Not yet a held-out run.
 
+**A curved side on its side, round tops tiled, and why the car threw its
+body away (2026-10-12).** The second next step, and the third: a side of a
+`shape` that curves up and down — an owl's breast, an egg's flank, a hull's
+side — is no longer laid in courses that step out a stud at a time. The box
+of it past a face two studs in is laid by the same plan turned on its side
+(plates out from the face, rows of 2.5 plates down it) and held by 87087s in
+the core's outer wall, every lane of every second row; its outside is
+tiles, slopes and curved slopes facing out. Upright against sideways, on
+the probe bodies:
+
+| body | sideways | curved | plain | parts | pieces |
+|---|---|---|---|---|---|
+| egg, upright | 1.8% | 10% | 73% | 438 | 1 |
+| egg, sideways | 32% | 2.6% | 60% | 453 | 1 |
+| bird, upright | 0% | 12% | 68% | 255 | 1 |
+| bird, sideways | 25% | 7.8% | 55% | 359 | 1 |
+| hull, upright | 0.3% | 7.4% | 72% | 1,405 | 1 |
+| hull, sideways | 19% | 2.7% | 54% | 1,823 | 1 |
+| owl body, upright | 2.7% | 6.1% | 80% | 589 | 1 |
+| owl body, sideways | 37% | 1.8% | 58% | 729 | 1 |
+
+By eye (`shots/runs/cmp_{egg,owl}{,_up}_{corner,front}.png`): the flanks
+follow the curve in tiles where they were brown blocks with studs on every
+step; the breast is flat white tiles on its side, smoother but blocky, and
+the curved share falls because the corner rounds at the rim become the
+shell's plates. Where the core is cut thin (the probe car's axle tunnels)
+turning its sides out left it in pieces, so it is laid upright.
+
+The round sections of the unit before now finish as a set finishes them,
+on the owner's note: a smooth top in round tiles (98138, 14769, four 27925,
+7212; a round of 8 in the 4 x 4 corner round tiles, which are a ring, so
+its middle keeps studs — no round tile of 8 exists) and a round tile on a
+dish crown's studs. Not done: easing a dome's steps with curved-top
+corner rounds (5651, 65617, 7426), which have no studs where the next ring
+stands.
+
+Why the held-out car threw its body away, read from its session: its three
+`shape` attempts came back "floating (302)", then "3 pieces" with its
+cabin's curved slopes "resting on a smooth face, held by nothing" — a cabin
+said as a second shape stood on the body's tiles — then "11 pieces, 120
+floating": the body's nose came away over the wheel arches, a course of
+bricks with tiles over it and the cut under it. The run concluded
+"hand-building gives much better control". Fixed where the body was at
+fault: a shape under another keeps its studs where the other stands
+(`Shapes.feet`), and a course with nothing under it and nothing studded
+over it is laid in plates, which cross the joints (the session's last body
+went from 7 pieces of its own to 2; the rest of its floating parts are its
+own hand-placed axle bricks). The guidance says the shape now lays round
+sections and turns curved sides out, that shapes stack, and to fix what a
+piece stands on rather than rebuild by hand.
+
+Held-out again, on the subscription (`env -u ANTHROPIC_API_KEY`, under
+`heavy`), measured by `tools/style.py`:
+
+| run | parts | shapes | colours | sideways | angled | curved | plain | mirrored |
+|---|---|---|---|---|---|---|---|---|
+| barn owl (`owl_r1`) | 1,313 | 49 | 11 | 19% | 0% | 5.3% | 64% | 88% |
+| *last round (`owl_w1`)* | *825* | *43* | *10* | *2.7%* | *0%* | *6.3%* | *70%* | *94%* |
+| sports car (`car_r1`) | 544 | 46 | 6 | 16% | 0% | 4.6% | 53% | 90% |
+| *last round (`car_w1`)* | *220* | *34* | *8* | *1.8%* | *0%* | *14%* | *56%* | *69%* |
+
+Both kept their `shape` bodies this time: the car said its body as a fill
+and a shape and submitted it as laid, where `car_w1` threw it away after
+three tries. By eye (`shots/runs/{owl,car}_r1_{corner,front,close}.png`):
+the **owl** from the front is a rounded body with a smooth white breast and
+flanks that follow the curve, where `owl_w1` was stepped brown blocks; its
+head and shoulders are still small plates stepping. The **car** is a red
+coupe whose flanks are smooth sideways tiles, tiled bonnet and a curved
+cabin, wheels in arches, a wing and a plaque. Curved share fell in both
+(the shell's plates replace the rim's corner rounds, and the car's run used
+fewer curved slopes); plain fell and sideways rose by an order. One run
+each. Left: easing a dome's steps (curved-top corner rounds), the middle of
+a round of 8's top, fewer side-stud bricks (an 87087 a lane; 1 x 2 and 1 x 4
+in runs would do), shells where arches thin the core, and a curved share
+for the shell's own outline (it lays few curved slopes on its side).
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

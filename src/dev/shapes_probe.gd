@@ -170,7 +170,9 @@ func _run() -> void:
 					"profile": [[0, 5], [6, 5]]}}]}, 8, 4],
 			["a box with 45 degree corners", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
 				"color": 4, "box": {"from": [0, 0, 0], "size": [10, 6, 10], "chamfer": 3}}, 0, 8],
+			# Its plan edges, with its curved sides left upright to show them.
 			["an egg", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+				"sideways": false,
 				"solids": [{"ellipsoid": {"centre": [6, 16, 6], "radii": [5, 16, 5]}},
 					{"ellipsoid": {"centre": [6, 15, 8], "radii": [3.8, 14, 3.5], "color": 15}}]},
 				8, 8]]:
@@ -200,6 +202,49 @@ func _run() -> void:
 			# Was 4%: two wedges in 409 parts, and the side panels of its flanks.
 			_check("...the egg curved or sideways in a tenth of its parts or more",
 				share >= 0.10)
+	print("")
+	print("  a side that curves up and down is laid on its side")
+	# The held-out owl kept its shape body and still read as a staircase from
+	# the front: an egg's flank laid in courses steps out a stud at a time.
+	# Laid on its side, on studs out of the core, its outside is plates,
+	# tiles and slopes. Upright (above, "sideways": false) it was 2% turned.
+	for one: Array in [
+			["an egg", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+				"solids": [{"ellipsoid": {"centre": [6, 16, 6], "radii": [5, 16, 5]}},
+					{"ellipsoid": {"centre": [6, 15, 8], "radii": [3.8, 14, 3.5], "color": 15}}]}],
+			["a hull", BODIES["hull"]],
+			["a bird", BODIES["bird"]]]:
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model({"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model, true)
+		var turned: int = 0
+		var faces: int = 0
+		var anchors: int = 0
+		for placement: Assistant.Placement in model.placements:
+			if placement.face != "up":
+				turned += 1
+				if Style.kinds_of(placement.part).contains("c") or placement.part in [
+						"3070b", "3069b", "3068b", "2431", "63864", "26603", "87079", "54200",
+						"85984", "11477", "15068", "50950", "24309", "61678", "93606"]:
+					faces += 1
+			elif placement.part == "87087":
+				anchors += 1
+		var total: int = maxi(1, model.placements.size())
+		_check("%s: %d of %d parts turned out (%d%%), %d of them tiles and slopes, on %d side studs: %s, %d pieces"
+			% [one[0], turned, total, roundi(100.0 * turned / total), faces, anchors,
+			verdict["summary"], int(verdict["pieces"])],
+			turned * 10 >= total and faces > 0 and anchors > 0 and bool(verdict["ok"])
+				and int(verdict["pieces"]) == 1)
+	# A cylinder curves round, not up: its side is the round parts', and a
+	# ramp's low end is its slopes'.
+	var tower: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+		"solids": [{"revolve": {"axis": "y", "centre": [6, 0, 6], "profile": [[0, 5], [12, 5]]}}]})
+	var turned_tower: int = 0
+	for one: Dictionary in tower:
+		if str(one.get("face", "up")) != "up":
+			turned_tower += 1
+	_check("...and a cylinder's side is not turned: %d" % turned_tower, turned_tower == 0)
+
 	print("")
 	print("  a round section is laid in round parts, as the round pattern lays one")
 	# A cylinder of radius 4, a dome and a stepped column came out as plates

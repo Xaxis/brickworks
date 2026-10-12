@@ -912,8 +912,8 @@ fixing what it got wrong.
   in one piece; a ramp's straight edges take none. Before (held-out round,
   2026-10-12, docs/ROADMAP.md) all three were staircases: 0, 0 and 2 wedges,
   the egg 4% — the wedge's cut side had to lie outside every stud of the
-  plan, and on a round plan the studs the edge cuts are the plan's own. A
-  curved flank still gets no side panels.
+  plan, and on a round plan the studs the edge cuts are the plan's own (the
+  egg is laid with `"sideways": false` there, to show its plan edges).
   A layer whose section is a disc 1, 2, 4, 6 or 8 studs across (`Plan.round_runs`:
   one colour, its box holding nothing else, nearer a disc of its own area
   than its box on a 4 x 4 grid in every stud, its own mirror where the shape
@@ -928,8 +928,43 @@ fixing what it got wrong.
   round (48092 and 74611; a 44375b crown; 5152 and 3941), each one piece; a
   square post takes none. The cylinder, the dome, the column and an
   ellipsoid 4 x 12 x 4 laid side by side were 370 parts, 9% curved, 49%
-  plain before, and 60 parts, 100% curved after. `Shapes.last` says the runs (`round_runs`) and where each piece but
-  the largest is (`apart`).
+  plain before, and 60 parts, 100% curved after. `Shapes.last` says the
+  runs (`round_runs`) and where each piece but the largest is (`apart`).
+  The top of a smooth round run is its round tiles (`_round_tiles`: 98138,
+  14769, four 27925, 7212; the 4 x 4 corner round tiles 27507 are a ring,
+  so a round of 8 keeps studs in the middle) and a dish crown carries a
+  round tile on its middle studs.
+  A side that curves up and down is laid on its side (`Plan.shells`,
+  `lay_shell`): for each way out, where the shape reaches past a face two
+  studs in from its outermost, steeply (out no more than two studs in four
+  plates), curving up the side (a cylinder and a flat side are not), at
+  least five plates tall and with a core two studs deep behind it, the box
+  of those lanes past the face is taken out of the core and laid by the same
+  plan turned on its side — local x along the side, local plates out
+  (0.4 stud), local studs down (2.5 plates a row) — then each part turned by
+  the basis that takes up to out (`Rounds._cover`/`_placed`). It is held by
+  87087s in the core's outer wall in every lane of every second row (the
+  side stud is 1.75 plates up the brick; one lane in two cut the wall into
+  columns of 1 x 1s); the shell's own plan keeps only parts joined to a
+  side stud the core kept (`Plan.held` in `prune`), is not stitched, and
+  samples a row only where every plate it reaches into is its own. Where
+  turning sides out leaves the core in more pieces than upright, it is laid
+  upright (the probe car, cut by axle tunnels). Off for a sculpt's grid
+  (`"sideways"`). Also: a course with nothing under it and nothing studded
+  over it is laid in plates, not bricks (`bridges`, off for a grid): a
+  car's body over its arches came apart from its nose; and where another
+  shape of the same design stands on a shape's top, those studs are kept
+  (`Shapes.feet`, `_carried` from `Patterns.expand`): a cabin on a body
+  stood on tiles. The check's "resting on a smooth face" advice now fires
+  only for a part that grips nothing (`_note_loose`): every row of a shell
+  rests on the edge of the one under it. `shapes_probe` ("a side that
+  curves up and down is laid on its side"): the egg, the hull and the bird
+  each a tenth or more turned out, tiles and slopes among them, on side
+  studs, buildable, one piece; a cylinder's side is not turned. Upright
+  against sideways (`"sideways": false`): egg 1.8% to 32% sideways, plain 73
+  to 60%; bird 0 to 25%, 68 to 55%; hull 0.3 to 19%, 72 to 54%; the owl
+  body 2.7 to 37%, 80 to 58% — and the curved share falls (12 to 8%, 10 to
+  3%), because the corner rounds at the rim become the shell's plates.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
