@@ -36,6 +36,7 @@ func _initialize() -> void:
 	await _contacts_are_what_the_lattice_says(library)
 	await _checking_costs_about_what_building_costs(library)
 	await _a_tall_model_costs_no_more(library)
+	await _turned_parts_cost_no_more(library)
 
 	if _failures > 0:
 		print("\n%d case(s) wrong" % _failures)
@@ -220,6 +221,86 @@ func _a_tall_model_costs_no_more(library: PartLibrary) -> void:
 				% [checked / 1000, built / 1000]
 			+ "times when every cut summed every brick")
 	assistant.queue_free()
+	world.queue_free()
+	builder.queue_free()
+	await process_frame
+
+
+## And one built of turned parts. A turned part's cover is a slice a cell
+## deep for every z it spans, forty boxes for a turned 2 x 4 and eight
+## hundred for a big turned plate, and counting what two of them share box
+## against box was 10.4 s of Orthanc's 11 s check (8,785 parts, 5,345 of
+## them turned; run 18), four times building it. The covers are compared
+## slice by slice now (BrickLattice.shared_cells_sliced), which must count
+## exactly what box against box counts.
+func _turned_parts_cost_no_more(library: PartLibrary) -> void:
+	var ldr: LdrModel = LdrModel.load_file("res://models/orthanc.ldr")
+	if ldr == null:
+		_failures += 1
+		print("  FAIL  no models/orthanc.ldr")
+		return
+	var world := BrickWorld.new()
+	world.library = library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	get_root().add_child(builder)
+	await process_frame
+	var pieces: Array = ldr.flatten()
+	for piece: LdrModel.Placement in pieces:
+		library.mesh_for(piece.part_id.to_lower().trim_suffix(".dat"))
+	var began: int = Time.get_ticks_usec()
+	for piece: LdrModel.Placement in pieces:
+		var part_id: String = piece.part_id.to_lower().trim_suffix(".dat")
+		if library.mesh_for(part_id) == null:
+			continue
+		var id: int = world.add_brick(part_id, piece.color_code, piece.transform)
+		if id != 0:
+			builder.register(id, part_id, piece.transform)
+	var built: int = maxi(1, Time.get_ticks_usec() - began)
+	var lattice: BrickLattice = builder.lattice
+	# Slice by slice against box by box, on every joint of the first
+	# thousand turned parts.
+	var pairs: int = 0
+	var wrong: int = 0
+	var turned: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if turned >= 1000 or BrickLattice.is_square_to_grid(brick.transform.basis):
+			continue
+		turned += 1
+		var lid: PackedInt32Array = BrickLattice.moved_by(
+			lattice.boxes_of(brick.id), Vector3i(0, 1, 0))
+		var slices: Array = BrickLattice.slices_of(lid)
+		for over: int in lattice.near_bounds(lid, brick.id):
+			var theirs: PackedInt32Array = lattice.boxes_of(over)
+			pairs += 1
+			if BrickLattice.shared_cells_sliced(lid, slices, theirs) \
+					!= BrickLattice.shared_cells(lid, theirs):
+				wrong += 1
+	if wrong == 0 and pairs > 1000:
+		print("  ok    sliced and box by box count the same on %d pairs of Orthanc's turned parts"
+			% pairs)
+	else:
+		_failures += 1
+		print("  FAIL  sliced and box by box differ on %d of %d pairs" % [wrong, pairs])
+	began = Time.get_ticks_usec()
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = lattice
+	var report: Stability.Report = judge.check(world)
+	var checked: int = Time.get_ticks_usec() - began
+	var times: float = float(checked) / float(built)
+	if times < 2.0 and world.brick_count() > 8000:
+		print("  ok    Orthanc, %d bricks: built in %d ms, checked in %d — %.2f times (%s, %d joints)"
+			% [world.brick_count(), built / 1000, checked / 1000, times,
+				report.summary(), report.joints])
+	else:
+		_failures += 1
+		print("  FAIL  checking the %d-brick Orthanc costs %.1f times building it "
+			% [world.brick_count(), times] + "(%d ms against %d) — it was 4.4 "
+				% [checked / 1000, built / 1000]
+			+ "times when turned covers were compared box against box")
 	world.queue_free()
 	builder.queue_free()
 	await process_frame

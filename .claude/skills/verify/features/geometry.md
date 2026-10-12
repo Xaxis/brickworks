@@ -174,9 +174,21 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   risks to four decimals on all eleven shipped models, the square Orthanc, run
   18's 8,506-part tower and run 1's Falcon. `stability_probe` holds the Falcon
   under three times the cost of building it; the old code was twelve times.
-  Still slow: on run 18's Orthanc the contact graph itself is 10 s, all of it
-  `BrickLattice.shared_cells` between turned parts, whose covers are many small
-  boxes.
+  The contact graph on Orthanc (`models/orthanc.ldr`, 8,785 parts, 5,345 of
+  them turned) was 10.4 s of an 11.0 s check, four times building it: a turned
+  part's cover is a slice a cell deep for every z it spans (38 boxes on
+  average, 837 for the biggest turned plate), and two covers were compared box
+  against box twice, once by `blockers_boxes` to find what touches and again
+  by `shared_cells` to count it (3.8 s and 6.5 s). Now the candidates are
+  every brick whose bounds meet (`BrickLattice.near_bounds`), the count is the
+  test, and a cover of eight boxes or more is sorted into its slices once
+  (`slices_of`) so each box of the other meets only the slices at its own z
+  (`shared_cells_sliced`): the graph is 1.6 s and the check 2.2 s, 0.78 times
+  building it, with every pair's count the same (all 23,501, compared
+  2026-10-11) and the same 7,531 joints and verdict. `stability_probe`
+  compares the two counts on every joint of a thousand of Orthanc's turned
+  parts and holds the check under twice the cost of building it; the old code
+  was 4.4 times.
 - **The lattice stores boxes, and anything that asks it per *cell* is a bug.**
   It used to be a Dictionary with one entry per 2 LDU cell — 9,600 for a single
   2x4 brick — plus `_columns` holding the same volume again. Eight thousand
