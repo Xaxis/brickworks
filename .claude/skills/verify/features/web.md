@@ -179,11 +179,21 @@ plan with Claude as the client.
   (`ModelShot.gpu_wait_us`), printed apart: in software it waited on every
   frame queued before it, tens of seconds, until the read waited for a fence
   with the drawing held (`GpuFence`, 2026-10-11); now milliseconds. Still
-  over budget then: frames of 650 to 890 ms while check_design's design goes
-  down (between the check and the picture), and one of about 590 ms after
-  edit_model's picture (measuring the model and answering), against 221 ms
-  for the build before drawing only what changed; not yet attributed. Leaves `console.log` (what the app
-  printed, as it came) and `freeze.json`.
+  over budget then: frames of 670 to 1,750 ms while check_design's design
+  went down, and as much drawing every frame as drawing only what changed
+  (902 and 973 ms in one build; 1,645 ms on integrate with `IdleDraw` taken
+  out). Timed, each was one new batch counting its triangles from its
+  mesh's arrays, which are read back off the card: a synchronous
+  getBufferSubData that waits for the frame before to be rasterised, once
+  for every part new to the page. `BrickWorld._triangles_of` now takes the
+  index count the mesh keeps: side by side, check_design's longest frame
+  went from 1,754 ms to 413 ms. The longest left is the autosave
+  (`ModelStore.tick`, writing the whole model a second after it changed):
+  about 200 ms on a quiet box, 450 to 540 ms on a busy one, so a run on a
+  loaded machine can still go over on submit_design. The 590 ms once seen
+  after edit_model's picture did not come back (edit_model 190 to 350 ms
+  in six runs). Leaves `console.log` (what the app printed, as it came)
+  and `freeze.json`.
 - `redraw check`: `tools/web/redraw_check.mjs --url=…` puts one red brick on an
   empty baseplate in a browser, turns it (`R`), mirrors it (`Shift-M`), nudges
   it three studs (arrows) and lets go, finding the red on the canvas after each:
