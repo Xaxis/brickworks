@@ -125,7 +125,7 @@ func place() -> int:
 
 ## Remove whatever is under the cursor.
 func remove_hovered() -> bool:
-	if _hovered == 0:
+	if _hovered == 0 or locked.has(_hovered):
 		return false
 	var brick: BrickWorld.Brick = world.get_brick(_hovered)
 	if brick == null:
@@ -155,7 +155,7 @@ func remove_hovered() -> bool:
 ## dismantling what is on top of it. BrickWorld could already do it;
 ## nothing had ever asked.
 func paint_hovered(color_code: int) -> bool:
-	if _hovered == 0:
+	if _hovered == 0 or locked.has(_hovered):
 		return false
 	var brick: BrickWorld.Brick = world.get_brick(_hovered)
 	if brick == null or brick.color_code == color_code:
@@ -182,8 +182,15 @@ func paint_hovered(color_code: int) -> bool:
 ## brick comes off, becomes what you are holding, at its own colour and
 ## rotation, and the next click puts it down. Undo puts it back where it
 ## was, because the removal is an ordinary history step.
+## lift_hovered for a brick named rather than aimed at: X over a part with
+## nothing in hand, where no ghost has aimed at anything.
+func lift_brick(brick_id: int) -> bool:
+	_hovered = brick_id
+	return lift_hovered()
+
+
 func lift_hovered() -> bool:
-	if _hovered == 0:
+	if _hovered == 0 or locked.has(_hovered):
 		return false
 	var brick: BrickWorld.Brick = world.get_brick(_hovered)
 	if brick == null:
@@ -255,6 +262,7 @@ func forget_history() -> void:
 	_history.clear()
 	_redo.clear()
 	_renumbered.clear()
+	locked.clear()
 	# The selection names bricks by id too, and after an Open those ids
 	# are the new model's: a selection carried across lit up bricks the
 	# person never chose, and Delete would have taken them.
@@ -386,7 +394,7 @@ func _live(brick_id: int) -> int:
 
 ## Add the brick under the cursor to the selection, or take it out.
 func toggle_hovered() -> bool:
-	if _hovered == 0:
+	if _hovered == 0 or locked.has(_hovered):
 		return false
 	# A figure is one thing to whoever points at it. Picking out its
 	# arm alone and moving it would leave the arm floating beside the
@@ -411,6 +419,21 @@ func toggle_hovered() -> bool:
 	return true
 
 
+## Pick one brick out, as a click with the Select tool does: the
+## selection becomes it (its whole figure, for a minifigure part), or with
+## ``add`` it is added or taken away.
+func select_brick(brick_id: int, add: bool) -> bool:
+	if brick_id == 0 or locked.has(brick_id) or world.get_brick(brick_id) == null:
+		return false
+	if not add:
+		selection.clear()
+	var was: int = _hovered
+	_hovered = brick_id
+	var done: bool = toggle_hovered()
+	_hovered = was
+	return done
+
+
 ## Take everything a box on the screen covers.
 ##
 ## ``where`` turns a brick into its rectangle on screen; ``touching``
@@ -430,7 +453,7 @@ func select_in(box: Rect2, where: Callable, touching: bool,
 			continue
 		var caught: bool = (box.intersects(on_screen) if touching
 			else box.encloses(on_screen))
-		if caught and not selection.has(brick.id):
+		if caught and not selection.has(brick.id) and not locked.has(brick.id):
 			selection[brick.id] = true
 			took += 1
 	if took > 0 or not add:
@@ -457,7 +480,8 @@ func select_alike() -> int:
 		return 0
 	for brick: BrickWorld.Brick in world.bricks():
 		if (brick.part_id == seed.part_id
-				and brick.color_code == seed.color_code):
+				and brick.color_code == seed.color_code
+				and not locked.has(brick.id)):
 			selection[brick.id] = true
 	selection_changed.emit(selection.size())
 	return selection.size()
@@ -559,6 +583,73 @@ func turn_selection(quarter_turns: int) -> int:
 		_turned_about = pivot
 		_turned_last = _turn_state(alive)
 	return turned
+
+
+## Turn the selection about the vertical by any angle, as one step: the
+## Rotate tool and R at a turn step finer than a quarter. A right angle
+## goes through turn_selection, which keeps every stud on a stud; anything
+## else leaves the parts off the grid, held as turned covers the way a
+## swung hinge is.
+func turn_selection_by(degrees: float) -> int:
+	var quarters: float = degrees / 90.0
+	if is_equal_approx(quarters, roundf(quarters)):
+		return turn_selection(roundi(quarters))
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	var bricks: Array = []
+	for brick_id: int in alive:
+		bricks.append(world.get_brick(brick_id))
+	var pivot: Vector3 = Carry.pivot_of(bricks, library)
+	if _turned_last == _turn_state(alive):
+		pivot = _turned_about
+	var around: Transform3D = Transform3D(Basis.IDENTITY, pivot) \
+		* Transform3D(Basis(Vector3.UP, deg_to_rad(degrees)), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -pivot)
+	var turned: int = _reposition(func(at: Transform3D) -> Transform3D:
+		var to: Transform3D = around * at
+		to = Transform3D(to.basis.orthonormalized(), to.origin)
+		return _tidy(to, BrickLattice.is_square_to_grid(to.basis)),
+		"turned %s %d°" % [_many(alive.size()), roundi(degrees)])
+	if turned > 0:
+		_turned_about = pivot
+		_turned_last = _turn_state(alive)
+	return turned
+
+
+## Tip the selection a quarter over, about a level axis through its middle
+## (``axis`` is x or z), keeping its bottom where it was. Studio's up and
+## down arrows; T here. One step; refused, changing nothing, where it would
+## run into something.
+func tip_selection(axis: Vector3, quarters: int) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or posmod(quarters, 4) == 0:
+		return 0
+	var box: AABB = _bounds_of(alive, Transform3D.IDENTITY)
+	var middle: Vector3 = box.get_center()
+	var around: Transform3D = Transform3D(Basis.IDENTITY, middle) \
+		* Transform3D(Basis(axis.normalized(), quarters * PI * 0.5), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -middle)
+	var turned: AABB = _bounds_of(alive, around)
+	var shift := Vector3(0.0, box.position.y - turned.position.y, 0.0)
+	var lay: Transform3D = Transform3D(Basis.IDENTITY, shift) * around
+	return _reposition(func(at: Transform3D) -> Transform3D:
+		return _tidy(lay * at, true), "tipped %s over" % _many(alive.size()))
+
+
+## The box round some bricks, each moved by ``by`` first.
+func _bounds_of(ids: PackedInt64Array, by: Transform3D) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var here: AABB = ((by * brick.transform) * mesh.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
+	return box
 
 
 ## What a selection turned last looked like after the turn, and what it
@@ -789,6 +880,62 @@ func mirror_selection(axis: int) -> int:
 		selection[brick_id] = true
 	selection_changed.emit(selection.size())
 	return made.size()
+
+
+## Bricks that cannot be picked out, moved, painted or taken off until
+## they are unlocked: id -> true. A finished base, kept safe while the
+## building on it is worked on. Not saved with the model.
+var locked: Dictionary = {}
+
+
+## Lock the selection, or unlock it. Returns how many changed.
+func lock_selection(lock: bool) -> int:
+	var count: int = 0
+	for brick_id: int in _living_selection():
+		if lock and not locked.has(brick_id):
+			locked[brick_id] = true
+			count += 1
+		elif not lock and locked.erase(brick_id):
+			count += 1
+	if lock:
+		clear_selection()
+	return count
+
+
+## Unlock everything.
+func unlock_all() -> int:
+	var count: int = locked.size()
+	locked.clear()
+	return count
+
+
+func is_locked(brick_id: int) -> bool:
+	return locked.has(brick_id)
+
+
+## Paint one brick, as one step: what Paint mode does to a brick clicked.
+func paint_brick(brick_id: int, color_code: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null or brick.color_code == color_code or locked.has(brick_id):
+		return false
+	_history.append({"undo": "recolor", "brick": brick_id, "color": brick.color_code})
+	_redo.clear()
+	return world.recolor_brick(brick_id, color_code)
+
+
+## Take one brick off, as one step: what Delete mode does to a brick clicked.
+func remove_brick_id(brick_id: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null or locked.has(brick_id):
+		return false
+	_history.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+		"transform": brick.transform, "group": brick.group, "was": brick.id})
+	_redo.clear()
+	lattice.release(brick_id)
+	world.remove_brick(brick_id)
+	selection.erase(brick_id)
+	removed.emit(brick_id)
+	return true
 
 
 ## Make the selection a sub-model of its own under ``name``, or take it out
@@ -1096,6 +1243,22 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	preview_changed.emit(held_part, _ghost_valid)
 
 
+## How far apart the places a part can be put down are, across the
+## ground, in LDU: a stud (the default), half a stud, or the lattice's
+## own two LDU. Set from the toolbar's snap; a jumper plate's half-stud
+## offset, or a part nudged off the grid, needs the finer ones.
+var snap_across: float = BrickLattice.STUD
+
+
+## A point put on the grid ``snap_across`` says: on the studs, keeping a
+## part's own phase, at a stud; on whole multiples of the step otherwise.
+func snap_across_to(target: Vector3, footprint: Vector2i) -> Vector3:
+	if snap_across >= BrickLattice.STUD - 0.01:
+		return BrickLattice.snap_to_studs(target, footprint)
+	return Vector3(snappedf(target.x, snap_across), target.y,
+		snappedf(target.z, snap_across))
+
+
 ## Snap a target point to the lattice and drop the part onto what is below.
 func _settle(
 	part: Lbm.PartMesh, basis: Basis, target: Vector3, hit: BrickLattice.Hit
@@ -1108,7 +1271,7 @@ func _settle(
 	var footprint := Vector2i(
 		int(round(box.size.x / BrickLattice.STUD)),
 		int(round(box.size.z / BrickLattice.STUD)))
-	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
+	var snapped: Vector3 = snap_across_to(target, footprint)
 
 	# Then drop it: the resting height is the highest surface under any
 	# column the part covers, so a part laid across a step sits on the step

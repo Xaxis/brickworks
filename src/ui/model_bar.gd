@@ -1,9 +1,12 @@
-## The strip across the top: what this model is called, and what can be
-## done with it.
+## The strip across the top: the menus, what this model is called, and who
+## is signed in.
 ##
-## Deliberately small. A model has a name, it can be saved and reopened,
-## it can leave as a file, and it can be thrown away — and none of that
-## should need a menu to find.
+## It was a row of a dozen buttons — New, Save, Open, Export, Parts list,
+## Timeline, Mosaic, Minifig, Help, Account, Clear — with a status line
+## squeezed between them. Those are menu items now (Shell), each with its
+## key beside it, and the status line is the status bar along the foot.
+## What is left here is what a CAD program's title row holds: the menus and
+## the document's name. The work behind each item is still done here.
 class_name ModelBar
 extends PanelContainer
 
@@ -11,16 +14,15 @@ var store: ModelStore
 var world: BrickWorld
 var builder: Builder
 
+## Where the menus go, between the name of the app and the model's.
+var menus: HBoxContainer
+
 var _name: LineEdit
-var _status: Label
+## Written by say(); the status bar shows it (use_status).
+var _status: Label = Label.new()
 var _saves: PopupMenu
 var _confirm: ConfirmationDialog
 var _confirm_new: ConfirmationDialog
-var _new: Button
-## The last thing on the bar, so a check can tell the bar fits the page.
-var _clear: Button
-var _save: Button
-var _open_button: Button
 var _account: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: ModelFilePicker
@@ -55,9 +57,6 @@ signal picture_wanted()
 signal shop_list_wanted(shop: String)
 
 
-var _export: Button
-var _exports: PopupMenu
-
 ## A button's face in each state, faint until pointed at.
 const BUTTON_FACES := {"normal": Color(1, 1, 1, 0.06), "hover": Color(1, 1, 1, 0.14),
 	"pressed": Color(0.36, 0.6, 1.0, 0.32)}
@@ -69,37 +68,46 @@ func _ready() -> void:
 
 func _build() -> void:
 	var backing := StyleBoxFlat.new()
-	backing.bg_color = Color(0.11, 0.12, 0.14, 0.94)
+	backing.bg_color = Color(0.11, 0.12, 0.14, 0.97)
 	backing.content_margin_left = 10
 	backing.content_margin_right = 10
-	backing.content_margin_top = 6
-	backing.content_margin_bottom = 6
+	backing.content_margin_top = 3
+	backing.content_margin_bottom = 3
 	add_theme_stylebox_override("panel", backing)
 
-	# Wraps onto a second line rather than running off the side. As one
-	# row it needs about a thousand units and a phone has about 720, and
-	# the bar set the width of everything under it: on a phone Clear, the
-	# assistant's rail and the end of the key strip were off the page,
-	# so the assistant could not be opened at all.
+	# Wraps onto a second line rather than running off the side, on a
+	# phone: the bar sets the width of everything under it, and a row wider
+	# than the page once took the assistant's rail off it.
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 6)
-	row.add_theme_constant_override("v_separation", 4)
+	row.add_theme_constant_override("h_separation", 4)
+	row.add_theme_constant_override("v_separation", 2)
 	add_child(row)
 
 	var mark := Label.new()
 	mark.text = "Brickworks"
 	mark.add_theme_font_size_override("font_size", 14)
 	mark.modulate = Color(1, 1, 1, 0.75)
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.custom_minimum_size = Vector2(0, 28)
 	row.add_child(mark)
 
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(10, 0)
+	gap.custom_minimum_size = Vector2(8, 0)
 	row.add_child(gap)
+
+	menus = HBoxContainer.new()
+	menus.add_theme_constant_override("separation", 0)
+	row.add_child(menus)
+
+	var gap_two := Control.new()
+	gap_two.custom_minimum_size = Vector2(12, 0)
+	row.add_child(gap_two)
 
 	_name = LineEdit.new()
 	_name.text = "Untitled"
-	_name.custom_minimum_size = Vector2(190, 0)
+	_name.custom_minimum_size = Vector2(200, 0)
 	_name.tooltip_text = "What this model is called"
+	_name.add_theme_font_size_override("font_size", 13)
 	# The store keeps the name, so the autosave keeps it too.
 	_name.text_changed.connect(func(text: String) -> void:
 		if store != null:
@@ -107,52 +115,19 @@ func _build() -> void:
 				else ModelStore.UNTITLED
 			store.touch()
 		model_named.emit(model_name()))
+	# Escape puts back the name it had (FocusGuard).
+	_name.set_meta("revert_on_escape", true)
 	row.add_child(_name)
 
-	# In groups: the file, what to make of it, and help. Seven identical
-	# buttons in a row gave Clear the same weight as Save, one place
-	# along from Controls.
-	# There was no way to begin another model: Clear empties the board and
-	# keeps the name, the conversation and the autosave of what was there.
-	_new = _button(row, "New", ask_for_new, "Start a new model on an empty baseplate (Ctrl+N)")
-	_save = _button(row, "Save", _on_save, "Keep this model under its name")
-	_open_button = _button(row, "Open…", _on_open, "Reopen a saved model")
-	_export = _button(row, "Export…", _offer_exports,
-		"An LDraw file any brick tool reads, a picture of the model, or its parts list for BrickLink or Rebrickable")
-	row.add_child(VSeparator.new())
-	_button(row, "Parts list", func() -> void: parts_wanted.emit(),
-		"Every part this model needs, by colour and count")
-	_button(row, "Timeline", func() -> void: timeline_wanted.emit(),
-		"Play the build from an empty baseplate to the finished model and back, or drag along it (B)")
-	_button(row, "Mosaic", func() -> void: mosaic_wanted.emit(),
-		"Turn a picture into a wall of plates")
-	_button(row, "Minifig", func() -> void: minifig_wanted.emit(),
-		"Make a minifigure from real parts and stand it in the model (M)")
-	row.add_child(VSeparator.new())
-	_button(row, "Help", func() -> void: controls_wanted.emit(),
-		"What every button and key does, and how to change two of them")
+	var push := Control.new()
+	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	push.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(push)
+
 	# Who is signed in, and the way out. Everyone using Brickworks is.
 	_account = _button(row, "Account", func() -> void: account_wanted.emit(),
 		"Who is signed in, and Sign out")
 
-	# Cut short with an ellipsis rather than as wide as what it says: a
-	# long "opened …" pushed Clear off the end of the bar.
-	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 12)
-	_status.modulate = Color(1, 1, 1, 0.65)
-	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status.clip_text = true
-	_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_status.custom_minimum_size = Vector2(120, 0)
-	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_status)
-
-	# At the far end, and asked about. It empties the baseplate and the
-	# undo history with it, and sat between Controls and the status line
-	# as one more grey button that did it without a word.
-	_clear = _button(row, "Clear…", _ask_to_clear,
-		"Empty the baseplate. Asks first: it cannot be undone")
-	_clear.modulate = Color(1.0, 0.75, 0.72)
 	_confirm = ConfirmationDialog.new()
 	_confirm.title = "Clear the baseplate?"
 	_confirm.dialog_text = ("Every brick on it goes, and it cannot be undone. "
@@ -178,17 +153,11 @@ func _build() -> void:
 	_saves.id_pressed.connect(_on_pick)
 	add_child(_saves)
 
-	# What Export can write. One button had written an LDraw file and
-	# nothing else; a picture and a shop's list are what a person who
-	# built something by hand wants next.
-	_exports = PopupMenu.new()
-	_exports.add_item("LDraw model (.ldr, or .mpd with its assemblies)", 0)
-	_exports.add_item("Picture of the model (.png)", 1)
-	_exports.add_separator("Parts list for a shop")
-	_exports.add_item("BrickLink wanted list (.xml)", 2)
-	_exports.add_item("Rebrickable parts list (.csv)", 3)
-	_exports.id_pressed.connect(_on_export_chosen)
-	add_child(_exports)
+
+## Show what say() says in a label of someone else's: the status bar's.
+func use_status(label: Label) -> void:
+	label.text = _status.text
+	_status = label
 
 
 func _button(row: Container, text: String, action: Callable,
@@ -247,8 +216,7 @@ func bind(to: ModelStore) -> void:
 
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
-	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear,
-		"account": _account, "open": _open_button, "export": _export}
+	return {"model_name": _name, "account": _account}
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has
@@ -380,6 +348,8 @@ func _import() -> void:
 	_picker.ask()
 
 
+## What File, Export writes: 0 LDraw, 1 a picture, 2 BrickLink's list,
+## 3 Rebrickable's.
 func _on_export_chosen(id: int) -> void:
 	match id:
 		0:
@@ -390,12 +360,6 @@ func _on_export_chosen(id: int) -> void:
 			shop_list_wanted.emit("bricklink")
 		3:
 			shop_list_wanted.emit("rebrickable")
-
-
-func _offer_exports() -> void:
-	_exports.reset_size()
-	_exports.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
-	_exports.popup()
 
 
 func _on_export() -> void:

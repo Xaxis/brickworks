@@ -3,10 +3,22 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
+<!-- covers: ui:navigation presets, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
 
 ## Sub-features
 
+- `navigation presets` (`ViewPrefs.preset`, Settings, "Navigate like"): the
+  view is driven as BrickLink Studio drives it by default — right-drag turns
+  about the point under the pointer, middle-drag and shift with a right drag
+  slide, the wheel zooms to the pointer, F frames the selection or everything,
+  1–7 and the keypad give the views, O and ` square on and back. Blender's
+  turns with the middle button; Mecabricks' turns with a left drag on empty
+  space, slides with the right and zooms with the middle. The left button acts
+  on the model in all three (`ViewPrefs.drag_verb`, read by the camera, the
+  controls list and the strip alike). Researched from each program's own help
+  pages, 2026-10-11 (Studio's help centre, Mecabricks' manual, LDCad's key
+  list, Onshape's, Fusion's and Blender's manuals). `feel_probe`,
+  `camera_probe` and `cursor_probe` drive each preset.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
@@ -24,7 +36,9 @@ picture the assistant is shown.
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
   and Down; `Main._zoom_key`) zoom a wheel notch a tap; arrows turn the view
   and shift-arrows slide it, unless a selection (nudged) or the booklet (stepped)
-  has them; held past `HOLD_AFTER` (0.22 s) the view keeps moving at a rate per
+  has them; W A S D slide it as in Studio, and nudge a selection; Page Up and
+  Down raise and lower a selection instead of zooming when there is one; held
+  past `HOLD_AFTER` (0.22 s) the view keeps moving at a rate per
   second (`Main._steer_from_keys`, `CadCamera.key_hold`); nothing fires while a
   text field has the caret. Asked for by the owner. `controls_probe` presses each
   (zoom in, out, keypad, Page Down, turn, tilt, slide, held +, typed -), and the
@@ -36,13 +50,23 @@ picture the assistant is shown.
   dialog once and ended a design run 46 minutes in. Ctrl+Q (Cmd+Q) quits on the
   desktop. `controls_probe` presses Escape with nothing open and fails, from
   `_finalize`, if the app quit under it.
+- `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
+  Escape or a press anywhere outside a text field ends the typing, in every
+  field — the model's name, the part search, the brief, the properties'
+  numbers, a minifigure's name — and every key acts on the model at once.
+  Escape also puts the model's name back. Owner: "When the user names a build
+  (renames it), the text input never loses focus and can't control the CAD
+  controls." `handbuild_probe` ends a field each way and presses a view key;
+  `tools/web/focus_check.mjs --url=…` does the same in a browser and reads the
+  picture, so it fails on a build from before (9 failures on 2026-10-11's
+  live site) and passes after.
 - `status line`: bricks, whether it stands and what it weighs, of the model and
   not the baseplate under it (`Main._on_rebuilt` takes `ModelStore.scenery` off
   the count and the weight): it said 62 bricks and 149 g over the 61-brick
   example car whose parts list says 48 g. An empty baseplate says "Nothing
-  built yet: pick a part, then click the baseplate". On a dark pill
-  (`_viewport_label`), not a thick outline, which at 1x over the pale sky
-  filled every letter in. Batches, triangles, the catalogue count and the
+  built yet: pick a part, then click the baseplate". It is the status bar's
+  (`src/ui/status_bar.gd`), along the foot of the window — see
+  [building](building.md). Batches, triangles, the catalogue count and the
   frame rate come back with `--stats` (and count everything); they were the
   first line every visitor read.
 - `build animation`: what the assistant just put down goes up on the baseplate
@@ -82,15 +106,17 @@ picture the assistant is shown.
   only new bricks are hidden, and on the owner's Falcon Heavy
   (`src/dev/fixtures/falcon_heavy.json`, 4,242 parts) that starting takes
   milliseconds and no frame of it more than 30.
-- `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
-  Mosaic), Help — and Clear at the far end, which asks first, because it takes
-  the undo history with it. It wraps onto a second line where it does not fit
-  (an `HFlowContainer`) and its status words end in "…" rather than widen it:
-  as one row it set the width of the whole window, and on a phone Clear and
-  the assistant's rail were off the page. `tools/web/fit_check.mjs` requires
-  both on both phones.
+- `toolbar`: the bar across the top holds the menus (File, Edit, View, Build,
+  Tools, Help), the model's name and Account; the toolbar under it the file,
+  undo, the tools, the clipboard, snap and turn step and the view. Both are
+  [building](building.md)'s `menus and toolbar`. The bar wraps onto a second
+  line where it does not fit (an `HFlowContainer`) and the toolbar folds its
+  least-needed groups away (`Toolbar._fit`): as one row the old bar set the
+  width of the whole window, and on a phone the assistant's rail was off the
+  page. `tools/web/fit_check.mjs` asks for New, Save and both rails on both
+  phones.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,` or the Help button — and every key on it actually doing that. Its last
+  `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
   line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
   released 2026-10-10 (3f2a9c1)" in a release, ", development build" from
   source, and on the web the version before the deploy's commit and time. The

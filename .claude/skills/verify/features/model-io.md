@@ -72,29 +72,30 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is moved only where undoing exactly the old corner's error puts its studs on
   stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
 - `open a studio model` (`src/parts/studio_io.gd`, `src/ui/model_file_picker.gd`):
-  Open → From a file reads LDraw or BrickLink Studio's `.io` — a zip with
+  File, Import (or Open → From a file) reads LDraw or BrickLink Studio's `.io` — a zip with
   Studio's published password around `model2.ldr` (or `model.ldr`), opened by
   hand (PKWARE decryption, then the raw deflate wrapped as gzip, which Godot
   inflates). The file is read as bytes, in a browser too. LDD's `.lxf` is
   refused with a sentence saying Studio opens it and saves an `.io`.
   `tests/fixtures/studio_bay.io` was made by the system's `zip -P`, not by
   this app.
-- `picture of the model` (`src/ui/picture.gd`, Export → Picture): the model
+- `picture of the model` (`src/ui/picture.gd`, File, Export → Picture): the model
   alone — no baseplate, ghost or outline — from the view's direction, framed to
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
   the same world with a copy of the scene's environment that clears instead of
   drawing the sky. Downloaded in a browser, written to Downloads on the desktop.
-- `parts lists for shops` (`src/assembly/shop_lists.gd`, Export → BrickLink
+- `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list): BrickLink's wanted-list XML (item, its
   colour number, quantity) and Rebrickable's `Part,Color,Quantity` CSV. The
   BrickLink colour numbers are a sourced table of 55 colours
   (`ShopLists.BRICKLINK_COLOUR`, from the SetDB colour guide); a lot in any other
-  colour, or a made part, is left off and the status line says how many.
+  colour, or a made part, is left off and the status bar says how many.
 
 ## How to reach it
 
 ```sh
-godot --path .     # Cmd-S saves, Cmd-O opens, Export writes a .ldr
+godot --path .     # Cmd-S saves, Cmd-Shift-S saves as, Cmd-O opens, File, Open recent,
+                   # File, Export writes a .ldr
 godot --headless --path . -- --model=models/car.ldr --out=/tmp/car.ldr
 ```
 

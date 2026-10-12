@@ -199,21 +199,26 @@ func _the_button() -> void:
 	var main: Node = load("res://src/main.tscn").instantiate()
 	root.add_child(main)
 	var bar: Node = null
+	var shell: Shell = null
 	for _n: int in 400:
 		await process_frame
 		bar = main.get("_bar")
-		if bar != null and is_instance_valid(BookletMaker.shown_button) \
+		shell = main.get("_shell")
+		if bar != null and shell != null and shell.toolbar != null \
 				and (main.get("_world") as BrickWorld).brick_count() > 1:
 			break
-	var button: Button = BookletMaker.shown_button
+	# The CAD toolbar's (Shell), the one the browser flows press as
+	# "instructions"; Build > Instructions runs the same command.
+	var tools: Dictionary = shell.toolbar.controls_by_name() if shell != null else {}
+	var button: Button = tools.get("instructions")
 	_assert("the toolbar has it", is_instance_valid(button) and button.is_visible_in_tree())
 	if not is_instance_valid(button):
 		main.queue_free()
 		return
 	var row: Node = button.get_parent()
 	var before: Node = row.get_child(button.get_index() - 1)
-	_assert("...after Timeline (%s)" % (before as Button).text if before is Button else "?",
-		before is Button and (before as Button).text == "Timeline")
+	_assert("...after Timeline (%s)" % (before as Button).tooltip_text if before is Button else "?",
+		before != null and before == tools.get("tool_timeline"))
 	# The example car, or whatever a first run puts on the baseplate.
 	var title: String = (bar as ModelBar).model_name()
 	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(

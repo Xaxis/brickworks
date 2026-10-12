@@ -10,7 +10,7 @@
       "kind": "ui",
       "label": "place and remove",
       "entry": "src/main.gd",
-      "reach": "godot --path .  (click to place, right-click to remove)",
+      "reach": "godot --path .  (Q or a part in the bin puts it in hand, a click puts it down; Esc lets go; a click selects, a drag moves, Delete removes)",
       "area": "building"
     },
     {
@@ -584,7 +584,7 @@
       "kind": "ui",
       "label": "select by colour part or connection",
       "entry": "src/assembly/select_by.gd",
-      "reach": "godot --path .  (select a brick, then the Select button on the edit bar)",
+      "reach": "godot --path .  (select a brick, then Select by on the toolbar or in Edit)",
       "area": "building"
     },
     {
@@ -596,23 +596,23 @@
     },
     {
       "kind": "ui",
-      "label": "edit bar",
-      "entry": "src/ui/edit_bar.gd",
-      "reach": "godot --path .  (the column of tools down the left of the model)",
+      "label": "menus and toolbar",
+      "entry": "src/ui/shell.gd",
+      "reach": "godot --path .  (the menus along the top and the toolbar under them)",
       "area": "building"
     },
     {
       "kind": "ui",
       "label": "replace part",
       "entry": "src/assembly/builder.gd",
-      "reach": "godot --path .  (select, hold another part, Replace on the edit bar)",
+      "reach": "godot --path .  (select, hold another part, Edit, Replace with the part in hand)",
       "area": "building"
     },
     {
       "kind": "ui",
       "label": "undo history",
-      "entry": "src/ui/edit_bar.gd",
-      "reach": "godot --path .  (History on the edit bar)",
+      "entry": "src/ui/toolbar.gd",
+      "reach": "godot --path .  (History on the toolbar, or Edit, History)",
       "area": "building"
     },
     {
@@ -633,7 +633,7 @@
       "kind": "ui",
       "label": "mirror a selection",
       "entry": "src/assembly/mirror.gd",
-      "reach": "godot --path .  (select, Shift-M or Mirror on the edit bar)",
+      "reach": "godot --path .  (select, Shift-M or Edit, Mirror)",
       "area": "building"
     },
     {
@@ -647,14 +647,14 @@
       "kind": "ui",
       "label": "picture of the model",
       "entry": "src/ui/picture.gd",
-      "reach": "godot --path .  (Export, then Picture of the model)",
+      "reach": "godot --path .  (File, Export, then Picture of the model)",
       "area": "model-io"
     },
     {
       "kind": "ui",
       "label": "parts lists for shops",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
       "area": "model-io"
     },
     {
@@ -684,6 +684,69 @@
       "entry": "src/ui/measure.gd",
       "reach": "godot --path .  (U, then click two points)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "tool modes",
+      "entry": "src/ui/edit_verbs.gd",
+      "reach": "godot --path .  (Select, Move, Rotate, Hinge, Clone, Paint, Hide, Delete on the toolbar; V, Esc)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "properties panel",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path .  (select a part; the panel over the model's top right)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "status bar",
+      "entry": "src/ui/status_bar.gd",
+      "reach": "godot --path .  (the line along the foot of the window)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "snap and turn step",
+      "entry": "src/ui/toolbar.gd",
+      "reach": "godot --path .  (Snap and Turn on the toolbar; then place, nudge with the arrows, R)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "lock parts",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (select, L locks, Shift-L unlocks everything)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "stud grid",
+      "entry": "src/ui/stud_grid.gd",
+      "reach": "godot --path .  (View, Stud grid, or the grid button)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "tour",
+      "entry": "src/ui/tour.gd",
+      "reach": "godot --path .  (Help, Take the tour)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "remembered layout",
+      "entry": "src/ui/shell_prefs.gd",
+      "reach": "godot --path .  (fold a panel, change the snap, quit and start again)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "navigation presets",
+      "entry": "src/camera/view_prefs.gd",
+      "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
+      "area": "view"
     },
     {
       "kind": "lib",

@@ -154,8 +154,23 @@ func _mouse() -> void:
 	# about one run in three, and said nothing about turning.
 	_check("a turn a moment ago does not swallow this click",
 		not _camera.swallowing_click())
+	# Select is where the app rests: a click on a part picks it out and
+	# puts nothing down.
+	var verbs: EditVerbs = _main.get("_verbs")
+	_check("the app starts with nothing in hand, in Select", verbs.mode == "select")
 	await _click(MOUSE_BUTTON_LEFT, _middle)
-	_check("a plain click still places", _world.brick_count() > before)
+	_check("a click with nothing in hand selects and places nothing (%d selected)"
+		% _builder.selection.size(), _world.brick_count() == before
+		and _builder.selection.size() > 0)
+	_builder.clear_selection()
+	# Q takes the last part back in hand; then a click puts it down, and
+	# the next click another, as Studio does.
+	await _key(KEY_Q)
+	_check("Q puts the last part in hand", verbs.mode == "place")
+	await _click(MOUSE_BUTTON_LEFT, _middle)
+	_check("with a part in hand, a plain click places", _world.brick_count() > before)
+	await _click(MOUSE_BUTTON_LEFT, _middle)
+	_check("...and the next click places another", _world.brick_count() > before + 1)
 
 	# A box let go where this handler never sees the release.
 	#
@@ -202,7 +217,33 @@ func _mouse() -> void:
 
 	before = _world.brick_count()
 	await _click(MOUSE_BUTTON_RIGHT, _middle)
-	_check("a right click takes a brick off", _world.brick_count() < before)
+	_check("a right click lets go of the part in hand and takes nothing off",
+		_world.brick_count() == before and verbs.mode == "select")
+	# A drag on a part moves it, and Ctrl and a drag copies it.
+	await _settle()
+	_builder.clear_selection()
+	var moving: int = _builder.lattice.raycast(_camera.project_ray_origin(_middle),
+		_camera.project_ray_normal(_middle)).brick_id
+	var was: Vector3 = _world.get_brick(moving).transform.origin if moving != 0 else Vector3.ZERO
+	before = _world.brick_count()
+	await _drag(MOUSE_BUTTON_LEFT, _middle, _middle + Vector2(0.0, 110.0))
+	var moved_to: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _builder.selection.has(brick.id):
+			moved_to = brick
+	_check("a left drag on a part moves it (%s to %s)" % [was,
+		moved_to.transform.origin if moved_to != null else "nowhere"],
+		moved_to != null and not moved_to.transform.origin.is_equal_approx(was)
+		and _world.brick_count() == before)
+	await _key(KEY_Z, true)
+	await _settle()
+	_builder.clear_selection()
+	before = _world.brick_count()
+	await _drag(MOUSE_BUTTON_LEFT, _middle, _middle + Vector2(0.0, 110.0), true)
+	_check("Ctrl and a drag on a part copies it (%d to %d)" % [before, _world.brick_count()],
+		_world.brick_count() == before + 1)
+	await _key(KEY_Z, true)
+	_builder.clear_selection()
 
 	before = _world.brick_count()
 	var yaw: float = _camera._target_yaw
@@ -218,9 +259,17 @@ func _mouse() -> void:
 	yaw = _camera._target_yaw
 	var focus: Vector3 = _camera._target_focus
 	await _drag(MOUSE_BUTTON_MIDDLE, _middle, _middle + Vector2(90.0, 40.0))
-	_check("a middle drag turns the view",
-		not is_equal_approx(_camera._target_yaw, yaw)
-			and _camera._target_focus.distance_to(focus) > 0.0)
+	_check("a middle drag slides the view, as Studio's does",
+		is_equal_approx(_camera._target_yaw, yaw)
+			and _camera._target_focus.distance_to(focus) > 1.0)
+	# Shift and a right drag slides too.
+	await _settle()
+	yaw = _camera._target_yaw
+	focus = _camera._target_focus
+	await _drag(MOUSE_BUTTON_RIGHT, _middle, _middle + Vector2(90.0, 40.0), false, true)
+	_check("shift and a right drag slides it",
+		is_equal_approx(_camera._target_yaw, yaw)
+			and _camera._target_focus.distance_to(focus) > 1.0)
 
 	var distance: float = _camera._target_distance
 	_wheel(MOUSE_BUTTON_WHEEL_UP)
@@ -246,9 +295,11 @@ func _keyboard() -> void:
 	# wrong — and the thing they try first after discovering a control
 	# they did not mean to use.
 	var before: int = _world.brick_count()
+	await _key(KEY_Q)
 	await _click(MOUSE_BUTTON_LEFT, _middle)
 	var placed: int = _world.brick_count()
 	_check("a click placed something to undo", placed > before)
+	await _key(KEY_ESCAPE)
 	await _key(KEY_Z, true)
 	_check("undo takes the last brick back off",
 		_world.brick_count() == before)
@@ -394,28 +445,42 @@ func _settings() -> void:
 		_camera._target_distance > near)
 	ViewPrefs.invert_zoom = false
 
-	# And the middle button, which turns or slides depending.
-	ViewPrefs.middle_slides = false
+	# And the navigation preset: the middle button slides in Studio's and
+	# turns in Blender's, and the hint says which.
+	ViewPrefs.use("studio")
 	await _settle()
 	var yaw: float = _camera._target_yaw
 	var focus: Vector3 = _camera._target_focus
 	await _drag(MOUSE_BUTTON_MIDDLE, _middle, _middle + Vector2(90.0, 30.0))
-	_check("middle turns by default",
-		not is_equal_approx(_camera._target_yaw, yaw))
+	_check("Studio's preset is the default, and its middle button slides",
+		ViewPrefs.preset == "studio" and is_equal_approx(_camera._target_yaw, yaw)
+			and _camera._target_focus.distance_to(focus) > 1.0)
+	_check("and the hint says so", _names_middle("slide"))
 
-	ViewPrefs.middle_slides = true
+	ViewPrefs.use("blender")
 	await _settle()
 	yaw = _camera._target_yaw
-	focus = _camera._target_focus
 	await _drag(MOUSE_BUTTON_MIDDLE, _middle, _middle + Vector2(90.0, 30.0))
-	_check("set the other way, middle slides instead",
+	_check("Blender's turns with it instead",
+		not is_equal_approx(_camera._target_yaw, yaw))
+	_check("and the hint says the other thing", _names_middle("turn"))
+
+	ViewPrefs.use("mecabricks")
+	await _settle()
+	_builder.clear_selection()
+	yaw = _camera._target_yaw
+	# A drag on empty space, above the model.
+	await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(0.0, 250.0),
+		_middle - Vector2(-90.0, 250.0))
+	_check("Mecabricks' turns with a left drag on empty space",
+		not is_equal_approx(_camera._target_yaw, yaw))
+	focus = _camera._target_focus
+	yaw = _camera._target_yaw
+	await _drag(MOUSE_BUTTON_RIGHT, _middle, _middle + Vector2(90.0, 30.0))
+	_check("...and slides with the right button",
 		is_equal_approx(_camera._target_yaw, yaw)
 			and _camera._target_focus.distance_to(focus) > 1.0)
-	_check("and the hint says so",
-		_names_middle("slide"))
-	ViewPrefs.middle_slides = false
-	_check("and says the other thing when it is set back",
-		_names_middle("turn"))
+	ViewPrefs.use("studio")
 	# The strip picks its entries out of the full list by key, so a key
 	# that is renamed there leaves a gap here rather than an error.
 	_check("the strip carries every control it means to",
@@ -578,10 +643,13 @@ func _check(what: String, ok: bool) -> void:
 ## it begins, which reads as the app ignoring the drag. It was the
 ## harness, not the app, and it took a print inside the camera to tell
 ## them apart.
-func _press(which: int, at: Vector2, down: bool) -> void:
+func _press(which: int, at: Vector2, down: bool, command: bool = false,
+		shift: bool = false) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = which
 	event.pressed = down
+	event.ctrl_pressed = command
+	event.shift_pressed = shift
 	event.position = _as_event(at)
 	event.global_position = event.position
 	Input.parse_input_event(event)
@@ -681,7 +749,8 @@ func _click(which: int, at: Vector2) -> void:
 		await process_frame
 
 
-func _drag(which: int, from: Vector2, to: Vector2) -> void:
+func _drag(which: int, from: Vector2, to: Vector2, command: bool = false,
+		shift: bool = false) -> void:
 	var mask: int = MOUSE_BUTTON_MASK_LEFT
 	if which == MOUSE_BUTTON_RIGHT:
 		mask = MOUSE_BUTTON_MASK_RIGHT
@@ -689,12 +758,12 @@ func _drag(which: int, from: Vector2, to: Vector2) -> void:
 		mask = MOUSE_BUTTON_MASK_MIDDLE
 	_move_to(from, Vector2.ZERO, 0)
 	await process_frame
-	_press(which, from, true)
+	_press(which, from, true, command, shift)
 	await process_frame
 	for n: int in range(1, 9):
 		var at: Vector2 = from.lerp(to, float(n) / 8.0)
 		_move_to(at, (to - from) / 8.0, mask)
 		await process_frame
-	_press(which, to, false)
+	_press(which, to, false, command, shift)
 	for _n: int in 6:
 		await process_frame

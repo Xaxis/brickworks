@@ -190,6 +190,9 @@ func _click_model(aimed: bool) -> void:
 	var view: Control = (_main.get("_marquee") as Control).get_parent()
 	var at: Vector2 = view.get_global_rect().get_center() + Vector2(0, 60)
 	var builder: Builder = _main.get("_builder")
+	# A part in hand, so a click on the model is one that would put it
+	# down: Select, where the app rests, puts nothing down.
+	(_main.get("_verbs") as EditVerbs).set_mode("place")
 	builder.hide_preview()
 	await process_frame
 	_move(at)

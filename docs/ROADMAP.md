@@ -867,10 +867,46 @@ Found on the way, and fixed or owed below:
   faces; the key strip sits on dark pills; a phone held upright frames the
   model across it. The Timeline's caption and buttons are the booklet's work.
 
+**The shell, 2026-10-11.** The owner: "you didn't build the UI/UX and features
+of an actual LEGO CAD platform, including the top controls." Laid out as
+Studio, Mecabricks and LDCad lay one out (`src/ui/shell.gd`):
+
+- Menus along the top — File, Edit, View, Build, Tools, Help — every command
+  with its key beside it, greyed where it would do nothing, ticked where it is
+  a setting that is on. The dozen buttons the bar had are items in them.
+- A toolbar under them: the file, undo and history, the tools, the clipboard,
+  snap and turn step, the grid, square-on, fit and three views, measure,
+  properties, timeline, instructions, parts list. On a narrow screen it folds
+  what the menus also hold; on a phone the tools stay.
+- Tools a click acts through, the one in use lit: Build, Select, Move, Rotate,
+  Hinge, Clone, Paint, Hide, Delete. `V` is Select; `Esc` is back to Build.
+- Snap (stud, ½ stud, ½ plate, free) for placing, carrying and the arrows; a
+  turn step (90°, 45°, 15°, 5°) for `R` and the Rotate tool.
+- Properties of the selection: the part by LDraw's and BrickLink's numbers, the
+  colour by every name it has, X, Y, Z and the turn typed over to move it, what
+  it is joined to, its sub-model and its step.
+- A status bar: what just happened or what the tool does, the parts and whether
+  they stand, the selection, the snap, the size of a stud on screen.
+- Locking (20): `L`, `Shift-L`. A stud grid, full screen, Save as, Open
+  recent, a tour, About. The layout — panels, properties, key strip, grid,
+  snap, turn step — comes back next time.
+- Escape closes the Controls sheet on the web with a tooltip up (`Main._input`).
+- Text fields give the keys back on Enter, Tab, Escape or a click elsewhere
+  (`src/ui/focus_guard.gd`): naming the model no longer left every shortcut dead.
+- The controls, as Studio's (the owner: "super awkward to switch between
+  selecting a placed piece and placing a new piece"): Select is where the app
+  rests and a drag moves a part; a part chosen (or Q) stays in hand until Esc
+  or a right click; the right and middle buttons only look; navigation presets
+  for Studio (default), Blender and Mecabricks. `tools/web/controls_flow.mjs`
+  counts a person's first tasks on the old build and the new.
+
 Left, in order: Technic pins and axles and clips on bars placed by connection
-(13); LDD's .lxf (16); cut-away beyond hiding (18); locking (20). And: Escape does not close the Controls sheet on the web
-(it does on the desktop and in every probe), and a part's tooltip still counts
-side studs into its footprint.
+(13); LDD's .lxf (16); cut-away beyond hiding (18); x-ray, edge lines and
+studs-off views, which are the renderer's (BrickWorld); panels that can be
+moved to another edge, not only folded. And: a part's tooltip still counts side
+studs into its footprint; on the web a moved brick is not redrawn until
+something else is (BrickWorld's, being fixed there).
+
 ## Any subject: round, mechanical, on show (2026-10-11)
 
 The owner asked for a Falcon Heavy and got, in their words, "the ugliest most

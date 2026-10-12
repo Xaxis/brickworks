@@ -57,15 +57,26 @@ func _run() -> void:
 		wheel.shift_pressed = true
 		camera._unhandled_input(wheel))
 
-	_moves("middle-drag turns it", camera, "yaw", func() -> void:
+	# Studio's preset, the default: the middle button slides, and shift
+	# with it turns.
+	ViewPrefs.use("studio")
+	_moves("middle-drag slides it, as Studio's does", camera, "focus", func() -> void:
 		_press(camera, MOUSE_BUTTON_MIDDLE, true)
 		_move(camera, Vector2(30.0, 0.0))
 		_press(camera, MOUSE_BUTTON_MIDDLE, false))
 
-	_moves("shift-middle-drag slides it", camera, "focus", func() -> void:
+	_moves("shift-middle-drag turns it", camera, "yaw", func() -> void:
 		_press(camera, MOUSE_BUTTON_MIDDLE, true, true)
 		_move(camera, Vector2(30.0, 0.0))
 		_press(camera, MOUSE_BUTTON_MIDDLE, false, true))
+
+	# Blender's: the middle button turns.
+	ViewPrefs.use("blender")
+	_moves("in Blender's, middle-drag turns it", camera, "yaw", func() -> void:
+		_press(camera, MOUSE_BUTTON_MIDDLE, true)
+		_move(camera, Vector2(30.0, 0.0))
+		_press(camera, MOUSE_BUTTON_MIDDLE, false))
+	ViewPrefs.use("studio")
 
 	# The left button belongs to the app. A camera that also takes it
 	# with a modifier takes a share of the one button the app is about,
@@ -344,6 +355,9 @@ func _lets_go(camera: CadCamera) -> void:
 ## hand on a model and a camera on a boom. The point you started the
 ## drag on should stay where it is.
 func _turns_around_what_you_grabbed(camera: CadCamera) -> void:
+	# The middle button turns in Blender's preset; in Studio's, the default,
+	# it slides, and the right button turns (checked above).
+	ViewPrefs.use("blender")
 	camera.focus = Vector3.ZERO
 	camera._target_focus = Vector3.ZERO
 	camera.distance = 400.0
@@ -411,3 +425,4 @@ func _turns_around_what_you_grabbed(camera: CadCamera) -> void:
 	else:
 		print("  ok    and the mark goes when you let go")
 	camera.pick = Callable()
+	ViewPrefs.use("studio")

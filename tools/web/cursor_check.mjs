@@ -254,11 +254,18 @@ async function settle(point = at) {
 }
 
 console.log(`at ${scale}x`);
+// Select is where the app rests (2026-10-11): over a part, the pointer
+// says a click takes it. Q puts the last part in hand.
+await page.mouse.move(at.x + 3, at.y + 3);
+await page.mouse.move(at.x, at.y);
+await record("select_resting", "nothing in hand, over a part", "select", keyword("pointer"), at);
+await page.keyboard.press("KeyQ");
 await settle();
 await record("place", "a held part over the model", "place", picture, at);
 
+// The right button is for looking: down, it changes nothing yet.
 await page.mouse.down({ button: "right" });
-await record("remove", "the right button down over a brick", "remove", picture, at);
+await record("right_down", "the right button down over a brick", "place", picture, at);
 for (let n = 1; n <= 6; n += 1) await page.mouse.move(at.x + n * 10, at.y);
 const turned = { x: at.x + 60, y: at.y };
 await record("orbit", "a right drag", "orbit", picture, turned);
@@ -275,7 +282,8 @@ await page.keyboard.press("KeyF");
 await settle();
 await page.mouse.down({ button: "middle" });
 for (let n = 1; n <= 6; n += 1) await page.mouse.move(at.x - n * 10, at.y);
-await record("middle", "a middle drag", "orbit", picture, { x: at.x - 60, y: at.y });
+// Studio's preset, the default: the middle button slides, shift with it turns.
+await record("middle", "a middle drag", "slide", picture, { x: at.x - 60, y: at.y });
 await page.mouse.up({ button: "middle" });
 
 await page.keyboard.press("Digit0");
@@ -284,7 +292,7 @@ await settle();
 await page.keyboard.down("Shift");
 await page.mouse.down({ button: "middle" });
 for (let n = 1; n <= 6; n += 1) await page.mouse.move(at.x + n * 10, at.y + n * 4);
-await record("slide", "shift and a middle drag", "slide", picture, { x: at.x + 60, y: at.y + 24 });
+await record("slide", "shift and a middle drag", "orbit", picture, { x: at.x + 60, y: at.y + 24 });
 await page.mouse.up({ button: "middle" });
 await page.keyboard.up("Shift");
 

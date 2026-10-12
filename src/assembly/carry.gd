@@ -203,6 +203,12 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 		return hit.brick_id
 	var at := Vector3(_on_phase(target.x, _reference.x), 0.0,
 		_on_phase(target.z, _reference.z))
+	# A finer snap than a stud, from the toolbar: whole steps from where
+	# it was, rather than whole studs.
+	if builder.snap_across < BrickLattice.STUD - 0.01:
+		var step: float = builder.snap_across
+		at = Vector3(_reference.x + snappedf(target.x - _reference.x, step), 0.0,
+			_reference.z + snappedf(target.z - _reference.z, step))
 
 	# Against a wall, out from it until the near edge meets the face.
 	# Centred on the cell beside the face, a group wider than a stud
