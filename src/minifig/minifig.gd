@@ -762,7 +762,15 @@ func _held(held: String, arm: Transform3D, hand: Transform3D, stance: Transform3
 		# whatever the figure stands on.
 		var along: float = (FLIP.basis * (stance * hand).basis * GRIP_AXIS).y
 		if absf(along) > 0.05:
-			grip.origin += GRIP_AXIS * ((BrickLattice.CELL - low) / along)
+			var slide: float = (BrickLattice.CELL - low) / along
+			# Stood on the ground, no further than the bar the hand is on:
+			# a spear's shaft goes through it to the ground, and a
+			# greatsword's hilt stops at the guard and the pommel. Slid
+			# on, the hand closed on the flat of the blade, which nothing
+			# holds. Out of the floor, as far as that takes.
+			if bar.size() >= 8 and low >= 0.0:
+				slide = clampf(slide, -float(bar[7]), -float(bar[6]))
+			grip.origin += GRIP_AXIS * slide
 	return [raised, hand, grip]
 
 

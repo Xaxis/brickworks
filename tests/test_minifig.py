@@ -92,9 +92,39 @@ def test_a_shortsword_is_held_by_its_handle_not_its_guard(library: Library) -> N
 
 
 @needs_ldraw
-def test_a_bow_has_no_bar_and_is_held_at_its_origin(library: Library) -> None:
-    assert minifig.bars(library, "4499") == []
+def test_a_bow_is_held_at_its_origin_on_its_ribbed_handle(library: Library) -> None:
+    # 4499's handle is rings of a bar 1.3 LDU long with waists between,
+    # which a hand closes over as one bar; real figures hold it at the
+    # origin, an LDU and a bit short of the handle's end.
+    [(centre, axis, length)] = minifig.bars(library, "4499")
+    assert abs(length - 27.3) < 0.01 and abs(abs(axis[1]) - 1.0) < 1e-6
     assert minifig.grip_of(library, "4499") == ((0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+
+
+@needs_ldraw
+def test_a_lightsaber_hilt_is_held_by_its_grip_not_its_emitter(library: Library) -> None:
+    # 64567a's grip is one bar 15.5 LDU long, and the rings of its emitter
+    # are a rib away above it. Joined, the hand went to the middle of all
+    # of it, 4 LDU up the emitter and the hilt upside down; real figures
+    # hold it (as 577b, its old number) at y 19 to 20.5, the emitter up.
+    (at, along) = minifig.grip_of(library, "64567a")
+    assert abs(at[1] - 20.25) < 0.01 and along[1] > 0.99
+
+
+@needs_ldraw
+def test_a_greatsword_slides_no_further_than_its_hilt(library: Library) -> None:
+    # 66964's hilt is ribbed too, from 5 to 20.25 LDU above its pommel at
+    # the origin: the hand is on the middle of it, and can slide along it
+    # to either end and no further, so the blade is never in the hand.
+    (at, along) = minifig.grip_of(library, "66964")
+    assert abs(at[1] + 12.625) < 0.01 and abs(abs(along[1]) - 1.0) < 1e-6
+    assert minifig.along_bar(library, "66964", at, along) == (-7.625, 7.625)
+    # A spear's shaft runs the length of it.
+    (at, along) = minifig.grip_of(library, "4497")
+    low, high = minifig.along_bar(library, "4497", at, along)
+    assert high - low > 90.0
+    # And a carrot, with no bar to slide on, says so.
+    assert minifig.along_bar(library, "33172", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0)) is None
 
 
 def test_the_tool_sorts_parts_into_slots_by_the_apps_rule() -> None:
