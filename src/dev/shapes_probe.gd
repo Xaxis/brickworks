@@ -200,6 +200,45 @@ func _run() -> void:
 			# Was 4%: two wedges in 409 parts, and the side panels of its flanks.
 			_check("...the egg curved or sideways in a tenth of its parts or more",
 				share >= 0.10)
+	print("")
+	print("  a round section is laid in round parts, as the round pattern lays one")
+	# A cylinder of radius 4, a dome and a stepped column came out as plates
+	# tiled stud by stud with corner rounds at the rim: a staircase in plan.
+	# Real sets lay a round of 8 in four corner rounds tied by a round plate,
+	# of 4 in round bricks, and crown a dome with a dish.
+	for one: Array in [
+			["a cylinder of radius 4", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 84, "solids": [{"revolve": {"axis": "y", "centre": [5, 0, 5],
+					"profile": [[0, 4], [9, 4]]}}]}, ["48092", "74611"]],
+			["a dome", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+				"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 12, 4]}}]},
+				["74611", "11213", "44375b"]],
+			["a column stepping in", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 15, "solids": [{"revolve": {"axis": "y", "centre": [4, 0, 4], "profile": [
+					[0, 3], [6, 3], [7, 2], [16, 2], [17, 1], [22, 1]]}}]}, ["5152", "3941"]]]:
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model({"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model, true)
+		var curved: int = 0
+		var named: Dictionary = {}
+		for placement: Assistant.Placement in model.placements:
+			if Style.kinds_of(placement.part).contains("c"):
+				curved += 1
+			named[placement.part] = true
+		var wanted: Array = one[2]
+		var has_all: bool = true
+		for part: String in wanted:
+			has_all = has_all and named.has(part)
+		_check("%s: %d of %d parts round, %s among them: %s, %d pieces" % [one[0], curved,
+			model.placements.size(), ", ".join(PackedStringArray(wanted)), verdict["summary"],
+			int(verdict["pieces"])], curved == model.placements.size() and has_all
+			and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	# A square post is not a round one: its section fills its box.
+	var post: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 15,
+		"box": {"from": [0, 0, 0], "size": [2, 9, 2]}})
+	_check("...and a square post is laid square: %s" % _counted(post),
+		_count(post, ["3941", "4032a", "87081", "60474"]) == 0)
+
 	# A straight edge a stud's middle crosses is the studs' own: a ramp's
 	# falls each cross a stud half way, and wedges laid there sawed teeth.
 	var straight: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},

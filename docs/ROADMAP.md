@@ -1399,6 +1399,30 @@ turned out on their side — the plan view is fixed, the side view is not.
 Pictures: `shots/runs/{owl_w1,car_w1,lay_disc_w,lay_egg_w}_{corner,front,close}.png`
 in this worktree.
 
+**A round section in round parts (2026-10-12).** The first of the two next
+steps above. Where a layer of a `shape` is a disc of 1, 2, 4, 6 or 8 studs
+(one colour, nothing else in its box, nearer a disc of its own area than
+its box), it is handed to the round pattern's own body (`Rounds._body`):
+round plates and bricks, cylinder halves, four corner rounds tied by a
+round plate; a dome's crown, where no more than a dish is left over a run,
+is the dish. Whole round parts were kept out of the edge fitter because the
+check reads them as squares; laid where the square holds nothing else,
+that is true of them. Measured on four bodies laid side by side (a
+cylinder of radius 4, a dome 4 x 12, a column stepping 6, 4, 2, an
+ellipsoid 4 x 12 x 4):
+
+| | parts | curved | plain | pieces |
+|---|---|---|---|---|
+| before | 370 | 9.2% | 49% | 1 each |
+| after | 60 | 100% | 0% | 1 each |
+
+By eye (`shots/runs/{before,after}_rounds_corner.png` in this worktree):
+the cylinder and the column are round where they were octagons of plates;
+the dome and the ellipsoid are stacks of rounds with a dish on top, round
+in plan and stepped in elevation, where they were lumpy in plan and sloped
+on top. A body round only in part (the egg with its white front, an owl's
+oval sections) is unchanged except at its ends. Not yet a held-out run.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

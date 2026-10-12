@@ -914,6 +914,22 @@ fixing what it got wrong.
   the egg 4% — the wedge's cut side had to lie outside every stud of the
   plan, and on a round plan the studs the edge cuts are the plan's own. A
   curved flank still gets no side panels.
+  A layer whose section is a disc 1, 2, 4, 6 or 8 studs across (`Plan.round_runs`:
+  one colour, its box holding nothing else, nearer a disc of its own area
+  than its box on a 4 x 4 grid in every stud, its own mirror where the shape
+  is) is laid by the round pattern's own `Rounds._body` for each run of
+  plates: round plates and bricks, cylinder halves, four corner rounds tied
+  by a round plate. Its plates are taken, so nothing else is laid there, no
+  slope stands on them (`_fit`) and no wedge cuts in; where all the shape has
+  left over a run of 4, 6 or 8 is no taller than a dish, a dish (3960,
+  44375b, 3961) crowns it. Off for a sculpt's grid (`"rounds"`; Brickify is
+  unchanged). `shapes_probe` ("a round section is laid in round parts"): a
+  cylinder of radius 4, a dome and a column stepping 6, 4, 2 are every part
+  round (48092 and 74611; a 44375b crown; 5152 and 3941), each one piece; a
+  square post takes none. The cylinder, the dome, the column and an
+  ellipsoid 4 x 12 x 4 laid side by side were 370 parts, 9% curved, 49%
+  plain before, and 60 parts, 100% curved after. `Shapes.last` says the runs (`round_runs`) and where each piece but
+  the largest is (`apart`).
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps

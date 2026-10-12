@@ -36,6 +36,10 @@
 ##                  curved for a rounded shape, straight for a chamfered one
 ##   an overhang    where the foot steps up as far, an inverted slope under it
 ##   a plan edge    on a diagonal, wedge plates in the plate layers
+##   a round        where a layer is a disc 1, 2, 4, 6 or 8 studs across,
+##                  the round parts the round pattern lays there (round
+##                  plates and bricks, corner rounds round a ring), and a
+##                  dish on a dome's crown
 ##   the top        tiles, so a body reads as a surface and not as studs
 ##   a flat side    every other course, bricks with studs on their side and a
 ##                  tile laid flat on them, as a set's flank is
@@ -212,8 +216,19 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 				for j: int in tall:
 					if _inside(cut, Vector3(x + 0.5, y0 + j + 0.5, z + 0.5)):
 						plan.taken[Vector3i(x, j, z)] = true
+	plan.colour_at = func(x: float, j: float, z: float) -> int:
+		return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands)
+	# A sculpt's grid has no sections said round: a scan's 2 x 2 is as likely
+	# a square leg as a round one, and Brickify's own lay is left as it was.
+	var gridded: bool = false
+	for solid: Dictionary in solids:
+		gridded = gridded or solid["kind"] == GRID
+	plan.rounds = bool(pattern.get("rounds", not gridded))
 	plan.mirror_of()
 	last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall}
+	plan.round_runs()
+	last["rounds"] = plan.round_made.size()
+	last["round_runs"] = plan.round_said
 	if surface != "none":
 		plan.surface(surface)
 	plan.lay()
@@ -224,7 +239,21 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		plan.stitch()
 	plan.prune()
 	plan.stitch()
-	last["pieces"] = plan.pieces().size()
+	var pieces: Array = plan.pieces()
+	last["pieces"] = pieces.size()
+	# Where each piece but the largest is, for a probe to say: parts, and
+	# the low and high corner in studs and plates.
+	var apart: Array = []
+	for piece: Array in pieces.slice(1):
+		var low := Vector3(INF, INF, INF)
+		var high := -low
+		for n: int in piece:
+			var one: Dictionary = plan.made[n]
+			var p := Vector3(float(one["x"]), float(one["y"]), float(one["z"]))
+			low = low.min(p)
+			high = high.max(p)
+		apart.append([piece.size(), low + origin + Vector3(0, y0, 0), high + origin + Vector3(0, y0, 0)])
+	last["apart"] = apart
 	var made: Array = plan.made
 	var top_colour: int = int(pattern.get("top_color", pattern.get("top_colour", -1)))
 	var placed: Array = []
@@ -894,6 +923,16 @@ class Plan extends RefCounted:
 	## "curved" or "straight": a sculpt says where it is round and where
 	## it is a flat facet, and a chamfered cube is not a sphere.
 	var prefer: Callable = Callable()
+	## The shape's colour at a point, as [member sample] says whether it is
+	## there: -1 outside.
+	var colour_at: Callable = Callable()
+	## Whether a section that is a disc of a size round parts come in is
+	## laid in them (round_runs).
+	var rounds: bool = true
+	## The round parts round_runs laid, put into [member made] by lay(), and
+	## the runs said, for a probe.
+	var round_made: Array = []
+	var round_said: Array = []
 
 	func _init(given: Dictionary, height: int, tiles: bool, parts: PartLibrary) -> void:
 		columns = given
@@ -1004,6 +1043,202 @@ class Plan extends RefCounted:
 					out[key] = j
 					break
 		return out
+
+	## Where a layer's section is a disc of a size round parts come in — a
+	## cylinder, a dome's or an egg's narrowing sections, a post — the
+	## round parts a set lays there, by the round pattern's own choice for
+	## that diameter (Rounds._body: round plates and bricks, cylinder
+	## halves, four corner rounds tied by a round plate), instead of plates
+	## and corner pieces tiled stud by stud. A whole round part's collision
+	## cover is its square box, so it is laid only where the box holds
+	## nothing else of the layer; the plates it stands in are taken, so
+	## nothing else is laid there, no slope stands on them and no wedge's
+	## cut side reaches in. The edge fitter left them out for that reason:
+	## beside parts that follow the curve, the check reads them as squares.
+	func round_runs() -> void:
+		if not rounds or library == null or not colour_at.is_valid():
+			return
+		# Every layer's discs, by where and how wide: "x z d colour" -> plates.
+		var discs: Dictionary = {}
+		for j: int in tall:
+			var seen: Dictionary = {}
+			for key: Variant in columns:
+				var cell: Vector2i = key
+				var c: int = at(cell, j)
+				if c < 0 or seen.has(cell):
+					continue
+				var blob: Array[Vector2i] = [cell]
+				seen[cell] = true
+				var low: Vector2i = cell
+				var high: Vector2i = cell
+				var n: int = 0
+				while n < blob.size():
+					var here: Vector2i = blob[n]
+					n += 1
+					low = Vector2i(mini(low.x, here.x), mini(low.y, here.y))
+					high = Vector2i(maxi(high.x, here.x), maxi(high.y, here.y))
+					for step: Vector2i in Shapes.OUT:
+						var next: Vector2i = here + step
+						if not seen.has(next) and at(next, j) == c:
+							seen[next] = true
+							blob.append(next)
+				var d: int = high.x - low.x + 1
+				if d != high.y - low.y + 1 or not d in Rounds.DIAMETERS:
+					continue
+				# Its own mirror where the shape is one: a disc off the plane
+				# has no twin, and the check would call the model lopsided.
+				if not axis.is_empty() and across(low) + across(high) != sum:
+					continue
+				if _is_disc(low, d, j, blob.size()):
+					var said: String = "%d %d %d %d" % [low.x, low.y, d, c]
+					if not discs.has(said):
+						discs[said] = []
+					(discs[said] as Array).append(j)
+		# Runs of plates one over the next, each to be laid as a length of
+		# round body: [low, d, colour, from, to].
+		var runs: Array = []
+		for said: Variant in discs:
+			var plates: Array = discs[said]
+			var parts: PackedStringArray = str(said).split(" ")
+			var from: int = 0
+			while from < plates.size():
+				var to: int = from + 1
+				while to < plates.size() and int(plates[to]) == int(plates[to - 1]) + 1:
+					to += 1
+				runs.append([Vector2i(parts[0].to_int(), parts[1].to_int()), parts[2].to_int(),
+					parts[3].to_int(), int(plates[from]), int(plates[to - 1]) + 1])
+				from = to
+		runs.sort_custom(func(a: Array, b: Array) -> bool: return int(a[3]) < int(b[3]))
+		Rounds._parts = library
+		var capped: Dictionary = {}    ## Vector2i cell -> the plate a dish caps it from
+		for run: Array in runs:
+			var low: Vector2i = run[0]
+			var d: int = run[1]
+			if capped.has(low + Vector2i(d / 2, d / 2)) \
+					and int(run[3]) >= int(capped[low + Vector2i(d / 2, d / 2)]):
+				continue
+			_round_run(low, d, run[2], run[3], run[4])
+			round_said.append("%d at %d,%d plates %d-%d" % [d, low.x, low.y, run[3], int(run[4]) - 1])
+			# A dome's crown: where all the shape has left over the run, in its
+			# box, is no taller than a dish, the dish — not a cake of rings.
+			if not DISHES.has(d):
+				continue
+			var top: int = run[4]
+			var highest: int = -1
+			for i: int in d:
+				for k: int in d:
+					var cell := Vector2i(low.x + i, low.y + k)
+					for j: int in range(top, tall):
+						if at(cell, j) >= 0:
+							highest = maxi(highest, j)
+			var cap: int = highest + 1 - top
+			var dish: Array = DISHES[d]
+			if highest < 0 or cap > int(dish[1]) + 1 or not _cap_free(low, d, top, highest):
+				continue
+			var cells: Array[Vector2i] = []
+			for i: int in d:
+				for k: int in d:
+					cells.append(Vector2i(low.x + i, low.y + k))
+					for j: int in range(top, highest + 1):
+						taken[Vector3i(low.x + i, j, low.y + k)] = true
+			round_made.append({"part": dish[0], "color": int(run[2]), "x": low.x, "y": top,
+				"z": low.y, "rot": 0, "_cells": cells, "_h": int(dish[1]),
+				"_studs": [] as Array[Vector2i], "_base": cells, "_round": true, "_top": true})
+			capped[low + Vector2i(d / 2, d / 2)] = top
+
+	## The dish that crowns a round of each diameter, and how many plates
+	## of it there are, as the round pattern's dome nose lays them.
+	const DISHES: Dictionary = {4: ["3960", 2], 6: ["44375b", 2], 8: ["3961", 3]}
+
+	## Whether nothing of the box at [param low], [param d] studs across,
+	## from plate [param from] to [param to], is taken or another colour's.
+	func _cap_free(low: Vector2i, d: int, from: int, to: int) -> bool:
+		for i: int in d:
+			for k: int in d:
+				for j: int in range(from, to + 1):
+					if taken.has(Vector3i(low.x + i, j, low.y + k)):
+						return false
+		return true
+
+	## The heights of the round parts the round pattern lays, in plates.
+	const ROUND_TALL: Dictionary = {"3062b": 3, "3941": 3, "87081": 3, "6222": 3, "5152": 3,
+		"48092": 3, "85941": 15, "24593": 6, "30562": 18}
+
+	## Lay plates [param from] to [param to] of a disc [param d] studs across
+	## with its low corner at [param low], in colour [param c].
+	func _round_run(low: Vector2i, d: int, c: int, from: int, to: int) -> void:
+		var parts: Array = []
+		var state := {"d": d, "below": "", "last_d": d}
+		var centre := Vector2(low.x + d / 2.0, low.y + d / 2.0)
+		Rounds._body(parts, centre, float(from), d, to - from, c, state)
+		for one: Dictionary in parts:
+			var part: String = str(one["part"])
+			var tall_: int = int(ROUND_TALL.get(part, 1))
+			# A quarter covers its own corner of the box; a half its half; a
+			# whole round part all of it.
+			var size := Vector2i(d, d)
+			if part in ["5152", "48092", "30562"]:
+				size = Vector2i(d / 2, d / 2)
+			elif part in ["85941", "24593"]:
+				size = Vector2i(d, d / 2)
+			var cells: Array[Vector2i] = []
+			for i: int in size.x:
+				for k: int in size.y:
+					cells.append(Vector2i(roundi(float(one["x"])) + i, roundi(float(one["z"])) + k))
+			one["_cells"] = cells
+			one["_h"] = tall_
+			one["_studs"] = cells
+			one["_base"] = cells
+			one["_round"] = true
+			round_made.append(one)
+		for i: int in d:
+			for k: int in d:
+				for j: int in range(from, to):
+					taken[Vector3i(low.x + i, j, low.y + k)] = true
+
+	## Whether the blob of [param count] studs at plate [param j] is, over
+	## the box of [param d] studs at [param low] and a stud round it, nearer
+	## a disc filling the box than the box itself, on a 4 x 4 grid in every
+	## stud, and within a tenth of the disc; and the box holds nothing else.
+	func _is_disc(low: Vector2i, d: int, j: int, count: int) -> bool:
+		var c: int = -1
+		var inside: int = 0
+		for i: int in d:
+			for k: int in d:
+				var cell := Vector2i(low.x + i, low.y + k)
+				if at(cell, j) >= 0:
+					c = at(cell, j)
+					inside += 1
+				if taken.has(Vector3i(cell.x, j, cell.y)):
+					return false
+		if inside != count:
+			return false
+		# The section against a disc of its own area about the box's middle,
+		# and against the box: a dome's section a third of a stud wider than
+		# the disc of six is still a disc, and a square post is not.
+		var centre := Vector2(low.x + d / 2.0, low.y + d / 2.0)
+		var points: Array[Vector2] = []
+		var here: Array[bool] = []
+		var area: int = 0
+		var y: float = j + 0.5
+		for i: int in range(-1, d + 1):
+			for k: int in range(-1, d + 1):
+				for v: int in 4:
+					for u: int in 4:
+						var p := Vector2(low.x + i + (u + 0.5) / 4.0, low.y + k + (v + 0.5) / 4.0)
+						var inside_: bool = int(colour_at.call(p.x, y, p.y)) == c
+						points.append(p)
+						here.append(inside_)
+						area += 1 if inside_ else 0
+		var r2: float = area / 16.0 / PI
+		var off_disc: int = 0
+		var off_box: int = 0
+		for n: int in points.size():
+			var p: Vector2 = points[n]
+			var box: bool = p.x >= low.x and p.y >= low.y and p.x < low.x + d and p.y < low.y + d
+			off_disc += 1 if here[n] != (p.distance_squared_to(centre) <= r2) else 0
+			off_box += 1 if here[n] != box else 0
+		return off_disc < off_box and off_disc <= 0.15 * area
 
 	## Cells whose top plate carries a slope, so is laid with studs, not tiled.
 	var studded: Dictionary = {}
@@ -1184,7 +1419,8 @@ class Plan extends RefCounted:
 								# there: over a wheel arch a slope took the place of
 								# a bridge one plate thick and stood on nothing.
 								if here < base or here > base + tall_ \
-										or (base > 0 and at(at_, base - 1) < 0):
+										or (base > 0 and (at(at_, base - 1) < 0
+											or taken.has(Vector3i(at_.x, base - 1, at_.y)))):
 									fits = false
 									break
 								error += absf(float(here - base) - float(profile[n]))
@@ -1365,6 +1601,7 @@ class Plan extends RefCounted:
 	## across the middle tying them.
 	func lay() -> Array:
 		var covered: Dictionary = {}
+		made.append_array(round_made)
 		for j: int in tall:
 			if j % 3 == 0:
 				var k: int = j / 3
