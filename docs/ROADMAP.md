@@ -1330,6 +1330,175 @@ does not yet count as held. Pictures, logs and saves:
 `.log`, `saves/`, and `lay_{egg,hull,boiler,owl,disc}_*.png` in this
 worktree.
 
+**Why `shape` laid no wedge on a round plan, and the fix (2026-10-12).**
+Measured with the `lay_disc` cases, laid through `Shapes.lay` as the call
+lays them: a revolve about y of radius 5, a box with `"chamfer": 3` and an
+egg (ellipsoid 5 x 16 x 5 with a white front). Every wedge position that
+passed `Patterns._wedge_fits` failed `_diagonal`, and the reason was the
+first rule: a wedge's cut side had to lie outside every stud of the plan.
+On a stepped round plan the studs the edge cuts across are the plan's own
+(a stud is in when its middle is), so the only places left were flat sides,
+where `_diagonal` rightly said fin. The twin, `near_edges` and the wedge
+table were never reached. Two more faults were found on the way: the plates
+the twin was matched by (`Shapes.wedge_plan`) read the collision boxes,
+which are in 2 LDU lattice cells, as LDU, so every plan was the middle half
+of the part and twins were found by chance; and nothing at 45 degrees was in
+the table, which a chamfer and the diagonal of a circle both need.
+
+Now an edge part goes where it brings the layer's outline nearest the
+shape's own edge, measured on a 4 x 4 grid in every stud of its box against
+what the shape covers there (`Plan._gain`); its cut side may take a stud the
+edge cuts; round parts first (corner rounds 30565, 30357, 79491; bricks
+2577, 5152, 3063b), then plates and bricks without a corner (2450, 26601,
+30505), wing plates and wedge bricks; never across a stud whose edge runs
+square (a ramp's falls), never cutting a column of studs through the middle,
+and a part at a joint between pieces is laid again plain so they can be
+stitched (a 20-stud brickified bunny otherwise stood on its feet with its
+body beside them). Whole round plates and bricks, 30503 and the double
+wedges have one square collision box, so they are left out: the check would
+read them as squares.
+
+| case | parts | round parts | wedges, cut corners | curved | sideways | plain | pieces |
+|---|---|---|---|---|---|---|---|
+| cylinder r 5, before | 45 | 0 | 0 | 0% | 0% | 76% | 1 |
+| cylinder r 5, after | 57 | 8 | 4 | 14% | 0% | 60% | 1 |
+| chamfered box, before | 63 | 0 | 0 | 0% | 0% | 70% | 1 |
+| chamfered box, after | 67 | 0 | 12 | 0% | 0% | 54% | 1 |
+| egg, before | 409 | 0 | 2 | 0.5% | 3.9% | 75% | 1 |
+| egg, after | 411 | 26 | 24 | 12% | 1.5% | 68% | 1 |
+
+(2450, 26601 and 30505 are not "curved" in `style.py`'s kinds, so the box's
+twelve are in no share.) Every `shapes_probe` body still one piece (the car
+255 parts); `patterns`, `style`, `stability`, `rooms`, `techniques`,
+`world_view`, `brickify` and `brickify_ui` probes pass; a forty-stud
+bunny lays in 6 s against 1.7 (the edge search is most of it now).
+
+Held-out again, on the subscription (`env -u ANTHROPIC_API_KEY`, under
+`heavy`), measured by `tools/style.py`:
+
+| run | parts | shapes | colours | sideways | angled | curved | plain | mirrored | s |
+|---|---|---|---|---|---|---|---|---|---|
+| barn owl (`owl_w1`) | 825 | 43 | 10 | 2.7% | 0% | 6.3% | 70% | 94% | 431 |
+| *last round (`owl_h1`)* | *738* | *46* | *14* | *4.3%* | *0%* | *6.8%* | *74%* | *94%* | |
+| sports car (`car_w1`) | 220 | 34 | 8 | 1.8% | 0% | 14% | 56% | 69% | 1,111 |
+| *last round (`car_h1`)* | *223* | *50* | *7* | *1.8%* | *4.6%* | *10%* | *58%* | *83%* | |
+
+By eye: the **owl** said its body as a `shape` again and kept it: 36
+corner rounds (30357), 28 plates without a corner (26601) and 6 cut-corner
+bricks in its 825 parts, and its head and flanks read rounder than
+`owl_h1`'s from the corner, but it is still a stepped body, its curved share
+no higher (26601 and 30505 are not "curved" in `style.py`'s kinds) and its
+sideways share lower. The **car** threw the `shape` body away again ("hand-
+building gives much better control than the body-shape generator here") and
+was built by hand, so it says nothing about this change: an orange
+Gallardo-like coupe with a wing, grilles, roundels on the doors, a driver and
+a plaque. One run each, and a run's choices move these numbers more than
+this did. **Next**: a body round in section laid in round parts (a revolve's
+diameters 1 to 8 handed to the `round` pattern), and a round body's flanks
+turned out on their side — the plan view is fixed, the side view is not.
+Pictures: `shots/runs/{owl_w1,car_w1,lay_disc_w,lay_egg_w}_{corner,front,close}.png`
+in this worktree.
+
+**A round section in round parts (2026-10-12).** The first of the two next
+steps above. Where a layer of a `shape` is a disc of 1, 2, 4, 6 or 8 studs
+(one colour, nothing else in its box, nearer a disc of its own area than
+its box), it is handed to the round pattern's own body (`Rounds._body`):
+round plates and bricks, cylinder halves, four corner rounds tied by a
+round plate; a dome's crown, where no more than a dish is left over a run,
+is the dish. Whole round parts were kept out of the edge fitter because the
+check reads them as squares; laid where the square holds nothing else,
+that is true of them. Measured on four bodies laid side by side (a
+cylinder of radius 4, a dome 4 x 12, a column stepping 6, 4, 2, an
+ellipsoid 4 x 12 x 4):
+
+| | parts | curved | plain | pieces |
+|---|---|---|---|---|
+| before | 370 | 9.2% | 49% | 1 each |
+| after | 60 | 100% | 0% | 1 each |
+
+By eye (`shots/runs/{before,after}_rounds_corner.png` in this worktree):
+the cylinder and the column are round where they were octagons of plates;
+the dome and the ellipsoid are stacks of rounds with a dish on top, round
+in plan and stepped in elevation, where they were lumpy in plan and sloped
+on top. A body round only in part (the egg with its white front, an owl's
+oval sections) is unchanged except at its ends. Not yet a held-out run.
+
+**A curved side on its side, round tops tiled, and why the car threw its
+body away (2026-10-12).** The second next step, and the third: a side of a
+`shape` that curves up and down — an owl's breast, an egg's flank, a hull's
+side — is no longer laid in courses that step out a stud at a time. The box
+of it past a face two studs in is laid by the same plan turned on its side
+(plates out from the face, rows of 2.5 plates down it) and held by 87087s in
+the core's outer wall, every lane of every second row; its outside is
+tiles, slopes and curved slopes facing out. Upright against sideways, on
+the probe bodies:
+
+| body | sideways | curved | plain | parts | pieces |
+|---|---|---|---|---|---|
+| egg, upright | 1.8% | 10% | 73% | 438 | 1 |
+| egg, sideways | 32% | 2.6% | 60% | 453 | 1 |
+| bird, upright | 0% | 12% | 68% | 255 | 1 |
+| bird, sideways | 25% | 7.8% | 55% | 359 | 1 |
+| hull, upright | 0.3% | 7.4% | 72% | 1,405 | 1 |
+| hull, sideways | 19% | 2.7% | 54% | 1,823 | 1 |
+| owl body, upright | 2.7% | 6.1% | 80% | 589 | 1 |
+| owl body, sideways | 37% | 1.8% | 58% | 729 | 1 |
+
+By eye (`shots/runs/cmp_{egg,owl}{,_up}_{corner,front}.png`): the flanks
+follow the curve in tiles where they were brown blocks with studs on every
+step; the breast is flat white tiles on its side, smoother but blocky, and
+the curved share falls because the corner rounds at the rim become the
+shell's plates. Where the core is cut thin (the probe car's axle tunnels)
+turning its sides out left it in pieces, so it is laid upright.
+
+The round sections of the unit before now finish as a set finishes them,
+on the owner's note: a smooth top in round tiles (98138, 14769, four 27925,
+7212; a round of 8 in the 4 x 4 corner round tiles, which are a ring, so
+its middle keeps studs — no round tile of 8 exists) and a round tile on a
+dish crown's studs. Not done: easing a dome's steps with curved-top
+corner rounds (5651, 65617, 7426), which have no studs where the next ring
+stands.
+
+Why the held-out car threw its body away, read from its session: its three
+`shape` attempts came back "floating (302)", then "3 pieces" with its
+cabin's curved slopes "resting on a smooth face, held by nothing" — a cabin
+said as a second shape stood on the body's tiles — then "11 pieces, 120
+floating": the body's nose came away over the wheel arches, a course of
+bricks with tiles over it and the cut under it. The run concluded
+"hand-building gives much better control". Fixed where the body was at
+fault: a shape under another keeps its studs where the other stands
+(`Shapes.feet`), and a course with nothing under it and nothing studded
+over it is laid in plates, which cross the joints (the session's last body
+went from 7 pieces of its own to 2; the rest of its floating parts are its
+own hand-placed axle bricks). The guidance says the shape now lays round
+sections and turns curved sides out, that shapes stack, and to fix what a
+piece stands on rather than rebuild by hand.
+
+Held-out again, on the subscription (`env -u ANTHROPIC_API_KEY`, under
+`heavy`), measured by `tools/style.py`:
+
+| run | parts | shapes | colours | sideways | angled | curved | plain | mirrored |
+|---|---|---|---|---|---|---|---|---|
+| barn owl (`owl_r1`) | 1,313 | 49 | 11 | 19% | 0% | 5.3% | 64% | 88% |
+| *last round (`owl_w1`)* | *825* | *43* | *10* | *2.7%* | *0%* | *6.3%* | *70%* | *94%* |
+| sports car (`car_r1`) | 544 | 46 | 6 | 16% | 0% | 4.6% | 53% | 90% |
+| *last round (`car_w1`)* | *220* | *34* | *8* | *1.8%* | *0%* | *14%* | *56%* | *69%* |
+
+Both kept their `shape` bodies this time: the car said its body as a fill
+and a shape and submitted it as laid, where `car_w1` threw it away after
+three tries. By eye (`shots/runs/{owl,car}_r1_{corner,front,close}.png`):
+the **owl** from the front is a rounded body with a smooth white breast and
+flanks that follow the curve, where `owl_w1` was stepped brown blocks; its
+head and shoulders are still small plates stepping. The **car** is a red
+coupe whose flanks are smooth sideways tiles, tiled bonnet and a curved
+cabin, wheels in arches, a wing and a plaque. Curved share fell in both
+(the shell's plates replace the rim's corner rounds, and the car's run used
+fewer curved slopes); plain fell and sideways rose by an order. One run
+each. Left: easing a dome's steps (curved-top corner rounds), the middle of
+a round of 8's top, fewer side-stud bricks (an 87087 a lane; 1 x 2 and 1 x 4
+in runs would do), shells where arches thin the core, and a curved share
+for the shell's own outline (it lays few curved slopes on its side).
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

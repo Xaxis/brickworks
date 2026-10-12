@@ -158,6 +158,141 @@ func _run() -> void:
 			builder.lattice.clear()
 
 	print("")
+	print("  a round or cut plan is laid in round parts and wedges, not a staircase")
+	# Each of these came out a staircase of plain plates and bricks with no
+	# wedge in it: the wedge's cut side had to lie outside every stud of the
+	# plan, and on a round plan the studs the edge cuts are the plan's own.
+	var round_parts: Array = Shapes.ROUND_PLATES + Shapes.ROUND_BRICKS
+	var edge_parts: Array = Shapes.EDGE_PLATES + Shapes.EDGE_BRICKS + Patterns.WEDGES
+	for one: Array in [
+			["a cylinder of radius 5", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 84, "solids": [{"revolve": {"axis": "y", "centre": [6, 0, 6],
+					"profile": [[0, 5], [6, 5]]}}]}, 8, 4],
+			["a box with 45 degree corners", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 4, "box": {"from": [0, 0, 0], "size": [10, 6, 10], "chamfer": 3}}, 0, 8],
+			# Its plan edges, with its curved sides left upright to show them.
+			["an egg", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+				"sideways": false,
+				"solids": [{"ellipsoid": {"centre": [6, 16, 6], "radii": [5, 16, 5]}},
+					{"ellipsoid": {"centre": [6, 15, 8], "radii": [3.8, 14, 3.5], "color": 15}}]},
+				8, 8]]:
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model({"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model, true)
+		var rounds: int = 0
+		var cut: int = 0
+		var curved: int = 0
+		var sideways: int = 0
+		for placement: Assistant.Placement in model.placements:
+			if placement.part in round_parts:
+				rounds += 1
+			elif placement.part in edge_parts:
+				cut += 1
+			if Style.kinds_of(placement.part).contains("c"):
+				curved += 1
+			if placement.face != "up":
+				sideways += 1
+		var total: int = maxi(1, model.placements.size())
+		var share: float = float(curved + sideways) / float(total)
+		_check("%s: %d round parts, %d wedges and cut corners, %d%% curved or sideways, %s, %d pieces"
+			% [one[0], rounds, cut, roundi(100.0 * share), verdict["summary"], int(verdict["pieces"])],
+			rounds >= int(one[2]) and cut >= int(one[3]) and bool(verdict["ok"])
+				and int(verdict["pieces"]) == 1)
+		if str(one[0]) == "an egg":
+			# Was 4%: two wedges in 409 parts, and the side panels of its flanks.
+			_check("...the egg curved or sideways in a tenth of its parts or more",
+				share >= 0.10)
+	print("")
+	print("  a side that curves up and down is laid on its side")
+	# The held-out owl kept its shape body and still read as a staircase from
+	# the front: an egg's flank laid in courses steps out a stud at a time.
+	# Laid on its side, on studs out of the core, its outside is plates,
+	# tiles and slopes. Upright (above, "sideways": false) it was 2% turned.
+	for one: Array in [
+			["an egg", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+				"solids": [{"ellipsoid": {"centre": [6, 16, 6], "radii": [5, 16, 5]}},
+					{"ellipsoid": {"centre": [6, 15, 8], "radii": [3.8, 14, 3.5], "color": 15}}]}],
+			["a hull", BODIES["hull"]],
+			["a bird", BODIES["bird"]]]:
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model({"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model, true)
+		var turned: int = 0
+		var faces: int = 0
+		var anchors: int = 0
+		for placement: Assistant.Placement in model.placements:
+			if placement.face != "up":
+				turned += 1
+				if Style.kinds_of(placement.part).contains("c") or placement.part in [
+						"3070b", "3069b", "3068b", "2431", "63864", "26603", "87079", "54200",
+						"85984", "11477", "15068", "50950", "24309", "61678", "93606"]:
+					faces += 1
+			elif placement.part == "87087":
+				anchors += 1
+		var total: int = maxi(1, model.placements.size())
+		_check("%s: %d of %d parts turned out (%d%%), %d of them tiles and slopes, on %d side studs: %s, %d pieces"
+			% [one[0], turned, total, roundi(100.0 * turned / total), faces, anchors,
+			verdict["summary"], int(verdict["pieces"])],
+			turned * 10 >= total and faces > 0 and anchors > 0 and bool(verdict["ok"])
+				and int(verdict["pieces"]) == 1)
+	# A cylinder curves round, not up: its side is the round parts', and a
+	# ramp's low end is its slopes'.
+	var tower: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+		"solids": [{"revolve": {"axis": "y", "centre": [6, 0, 6], "profile": [[0, 5], [12, 5]]}}]})
+	var turned_tower: int = 0
+	for one: Dictionary in tower:
+		if str(one.get("face", "up")) != "up":
+			turned_tower += 1
+	_check("...and a cylinder's side is not turned: %d" % turned_tower, turned_tower == 0)
+
+	print("")
+	print("  a round section is laid in round parts, as the round pattern lays one")
+	# A cylinder of radius 4, a dome and a stepped column came out as plates
+	# tiled stud by stud with corner rounds at the rim: a staircase in plan.
+	# Real sets lay a round of 8 in four corner rounds tied by a round plate,
+	# of 4 in round bricks, and crown a dome with a dish.
+	for one: Array in [
+			["a cylinder of radius 4", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 84, "solids": [{"revolve": {"axis": "y", "centre": [5, 0, 5],
+					"profile": [[0, 4], [9, 4]]}}]}, ["48092", "74611"]],
+			["a dome", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+				"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 12, 4]}}]},
+				["74611", "11213", "44375b"]],
+			["a column stepping in", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 15, "solids": [{"revolve": {"axis": "y", "centre": [4, 0, 4], "profile": [
+					[0, 3], [6, 3], [7, 2], [16, 2], [17, 1], [22, 1]]}}]}, ["5152", "3941"]]]:
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model({"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model, true)
+		var curved: int = 0
+		var named: Dictionary = {}
+		for placement: Assistant.Placement in model.placements:
+			if Style.kinds_of(placement.part).contains("c"):
+				curved += 1
+			named[placement.part] = true
+		var wanted: Array = one[2]
+		var has_all: bool = true
+		for part: String in wanted:
+			has_all = has_all and named.has(part)
+		_check("%s: %d of %d parts round, %s among them: %s, %d pieces" % [one[0], curved,
+			model.placements.size(), ", ".join(PackedStringArray(wanted)), verdict["summary"],
+			int(verdict["pieces"])], curved == model.placements.size() and has_all
+			and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	# A square post is not a round one: its section fills its box.
+	var post: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 15,
+		"box": {"from": [0, 0, 0], "size": [2, 9, 2]}})
+	_check("...and a square post is laid square: %s" % _counted(post),
+		_count(post, ["3941", "4032a", "87081", "60474"]) == 0)
+
+	# A straight edge a stud's middle crosses is the studs' own: a ramp's
+	# falls each cross a stud half way, and wedges laid there sawed teeth.
+	var straight: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+		"color": 15, "surface": "straight", "extrude": {"along": "x", "width": 4,
+			"profile": [[0, 2], [12, 14]]}})
+	_check("a ramp's straight edges take no wedge: %d" % _count(straight, edge_parts + round_parts),
+		_count(straight, edge_parts + round_parts) == 0)
+
+	print("")
 	print("  what each surface is laid in")
 	# A ramp falling a plate a stud: an 18 degree slope or a curved 4 x 1 fits
 	# that fall; a chamfer falling three plates a stud, a 45.

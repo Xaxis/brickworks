@@ -660,7 +660,7 @@ static func pattern(grid: Grid, options: Options) -> Dictionary:
 		"cuts": cuts,
 		"surface": "mixed" if options.smooth else "none",
 		"top": "smooth" if options.smooth else "studs",
-		"panels": options.smooth, "wedges": options.smooth, "near_edges": true,
+		"panels": options.smooth, "wedges": options.smooth,
 		"stitch_first": true,
 		"prefer": grid.prefer, "most_cells": grid.across * grid.deep * grid.tall + 1}
 
@@ -676,7 +676,8 @@ static func parts_needed() -> PackedStringArray:
 			for id: Variant in [entry[3], entry[4]]:
 				if not str(id).is_empty():
 					out[str(id)] = true
-	for id: Variant in Patterns.WEDGES + Shapes.BRICK_WEDGES:
+	for id: Variant in Shapes.ROUND_PLATES + Shapes.EDGE_PLATES + Patterns.WEDGES \
+			+ Shapes.ROUND_BRICKS + Shapes.EDGE_BRICKS:
 		out[str(id)] = true
 	for id: String in ["30414", "11211", "87087"]:
 		out[id] = true
