@@ -67,7 +67,8 @@ var _mesh: ImmediateMesh
 var _lines: MeshInstance3D
 ## The bend points, as balls: a line one pixel wide is lost on a model.
 var _balls: Array[MeshInstance3D] = []
-var _kind_picker: OptionButton
+## What to lay: kind -> its button.
+var _kind_buttons: Dictionary = {}
 var _length_picker: OptionButton
 var _told: Label
 var _status: Label
@@ -859,22 +860,33 @@ func _build_panel() -> void:
 	title.text = "Hose, tube or chain"
 	title.add_theme_font_size_override("font_size", 14)
 	column.add_child(title)
-	_kind_picker = OptionButton.new()
-	_kind_picker.add_theme_font_size_override("font_size", 12)
-	_kind_picker.focus_mode = Control.FOCUS_NONE
+	# What to lay, every choice in sight as a button: a list that has to be
+	# opened hides six of seven, and a finger opens it with difficulty.
+	var kinds := GridContainer.new()
+	kinds.columns = 2
+	kinds.add_theme_constant_override("h_separation", 4)
+	kinds.add_theme_constant_override("v_separation", 4)
+	column.add_child(kinds)
+	var group := ButtonGroup.new()
 	for key: String in KIND_ORDER:
-		_kind_picker.add_item(str(Flex.KINDS[key]["label"]))
-		_kind_picker.set_item_metadata(_kind_picker.item_count - 1, key)
-	_kind_picker.item_selected.connect(func(index: int) -> void:
-		kind = str(_kind_picker.get_item_metadata(index))
-		length_choice = -1
-		_real_id = ""
-		_length_kept = false
-		_item = ""
-		_laid = null
-		_begin()
-		_draw())
-	column.add_child(_kind_picker)
+		var button := Button.new()
+		button.text = str(Flex.KINDS[key]["label"])
+		button.toggle_mode = true
+		button.button_group = group
+		button.focus_mode = Control.FOCUS_NONE
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.add_theme_font_size_override("font_size", 12)
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var down := StyleBoxFlat.new()
+		down.bg_color = Color(0.36, 0.6, 1.0, 0.38)
+		down.set_corner_radius_all(3)
+		down.content_margin_top = 3
+		down.content_margin_bottom = 3
+		button.add_theme_stylebox_override("pressed", down)
+		var chosen: String = key
+		button.pressed.connect(func() -> void: choose_kind(chosen))
+		kinds.add_child(button)
+		_kind_buttons[key] = button
 	_length_picker = OptionButton.new()
 	_length_picker.add_theme_font_size_override("font_size", 12)
 	_length_picker.focus_mode = Control.FOCUS_NONE
@@ -928,11 +940,24 @@ func _button(into: Control, words: String, action: Callable, tip: String) -> But
 
 
 func _select_kind_quietly() -> void:
-	if _kind_picker == null:
+	for key: String in _kind_buttons:
+		(_kind_buttons[key] as Button).set_pressed_no_signal(key == kind)
+
+
+## Lay a [param chosen] next: the ends are picked again, and what is laid
+## stays.
+func choose_kind(chosen: String) -> void:
+	if not Flex.KINDS.has(chosen):
 		return
-	for n: int in _kind_picker.item_count:
-		if str(_kind_picker.get_item_metadata(n)) == kind:
-			_kind_picker.select(n)
+	kind = chosen
+	length_choice = -1
+	_real_id = ""
+	_length_kept = false
+	_item = ""
+	_laid = null
+	_select_kind_quietly()
+	_begin()
+	_draw()
 
 
 func _fill_lengths() -> void:
@@ -953,9 +978,12 @@ func _fill_lengths() -> void:
 func controls_by_name() -> Dictionary:
 	if not active:
 		return {}
-	return {"flex_kind": _kind_picker, "flex_length": _length_picker,
+	var out: Dictionary = {"flex_length": _length_picker,
 		"flex_add_bend": _add_bend, "flex_straighten": _clear_bends, "flex_again": _again,
 		"flex_done": _done}
+	for key: String in _kind_buttons:
+		out["flex_kind_" + key] = _kind_buttons[key]
+	return out
 
 
 func _process(_delta: float) -> void:
