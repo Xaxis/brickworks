@@ -3,10 +3,22 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic, lib:finishes, lib:true colour -->
+<!-- covers: ui:navigation presets, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic, lib:finishes, lib:true colour -->
 
 ## Sub-features
 
+- `navigation presets` (`ViewPrefs.preset`, Settings, "Navigate like"): the
+  view is driven as BrickLink Studio drives it by default — right-drag turns
+  about the point under the pointer, middle-drag and shift with a right drag
+  slide, the wheel zooms to the pointer, F frames the selection or everything,
+  1–7 and the keypad give the views, O and ` square on and back. Blender's
+  turns with the middle button; Mecabricks' turns with a left drag on empty
+  space, slides with the right and zooms with the middle. The left button acts
+  on the model in all three (`ViewPrefs.drag_verb`, read by the camera, the
+  controls list and the strip alike). Researched from each program's own help
+  pages, 2026-10-11 (Studio's help centre, Mecabricks' manual, LDCad's key
+  list, Onshape's, Fusion's and Blender's manuals). `feel_probe`,
+  `camera_probe` and `cursor_probe` drive each preset.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
@@ -24,7 +36,9 @@ picture the assistant is shown.
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
   and Down; `Main._zoom_key`) zoom a wheel notch a tap; arrows turn the view
   and shift-arrows slide it, unless a selection (nudged) or the booklet (stepped)
-  has them; held past `HOLD_AFTER` (0.22 s) the view keeps moving at a rate per
+  has them; W A S D slide it as in Studio, and nudge a selection; Page Up and
+  Down raise and lower a selection instead of zooming when there is one; held
+  past `HOLD_AFTER` (0.22 s) the view keeps moving at a rate per
   second (`Main._steer_from_keys`, `CadCamera.key_hold`); nothing fires while a
   text field has the caret. Asked for by the owner. `controls_probe` presses each
   (zoom in, out, keypad, Page Down, turn, tilt, slide, held +, typed -), and the

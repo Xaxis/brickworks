@@ -32,7 +32,7 @@ const FACES := {
 const GROUPS: Array = [
 	[9, [["new", "new"], ["open", "open"], ["save", "save"]]],
 	[7, [["undo", "undo"], ["redo", "redo"], ["history", "history"]]],
-	[10, [["mode_build", "build"], ["mode_select", "pointer"], ["mode_move", "move"],
+	[10, [["mode_select", "pointer"], ["mode_place", "build"], ["mode_move", "move"],
 		["mode_rotate", "rotate"], ["mode_hinge", "swing"], ["mode_clone", "clone"],
 		["mode_paint", "paint"], ["mode_hide", "hide"], ["mode_delete", "delete"]]],
 	[3, [["copy", "copy"], ["paste", "paste"], ["mirror", "mirror"], ["select", "select"],
@@ -47,8 +47,8 @@ const GROUPS: Array = [
 ## What a tool button's tooltip says beyond its name, where the command's
 ## own words are not enough.
 const SAYS: Dictionary = {
-	"mode_build": "Click the model to put the part in hand down; right-click takes one off",
-	"mode_select": "Click a part to select it, Shift-click to add one, drag a box round several",
+	"mode_place": "The last part back in hand: a click puts one down, and the next. Esc or a right click lets go",
+	"mode_select": "Where the app rests. Click a part to select it, drag it to move it (Ctrl-drag copies it), drag a box round several, Alt-click takes it into hand",
 	"mode_move": "Click a part to pick it up — the whole selection, if it is in it — and click again to put it down",
 	"mode_rotate": "Click a part to turn it by the turn step; Shift-click turns it back",
 	"mode_hinge": "Click a part on a hinge, clip or turntable to swing it about the joint",
@@ -297,6 +297,14 @@ func _show_state() -> void:
 				button.set_meta("lit", lit)
 				button.add_theme_stylebox_override("normal",
 					button.get_theme_stylebox("pressed") if lit else _plain())
+	# The Place button names the part it puts back in hand.
+	var place: Button = _buttons.get("mode_place")
+	var held: String = shell.builder.held_part
+	if place != null and str(place.get_meta("for_part", "")) != held:
+		place.set_meta("for_part", held)
+		var info: PartLibrary.PartInfo = shell.library.parts.get(held)
+		place.tooltip_text = "Place %s   Q\n%s" % [
+			Inventory._tidy(info.name) if info != null else held, SAYS["mode_place"]]
 	var snap_at: int = SNAP_CHOICES.map(func(c: Array) -> String: return str(c[0])).find(
 		shell.verbs.snap)
 	if _snap != null and snap_at >= 0 and _snap.selected != snap_at:

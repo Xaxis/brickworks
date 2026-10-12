@@ -182,6 +182,13 @@ func paint_hovered(color_code: int) -> bool:
 ## brick comes off, becomes what you are holding, at its own colour and
 ## rotation, and the next click puts it down. Undo puts it back where it
 ## was, because the removal is an ordinary history step.
+## lift_hovered for a brick named rather than aimed at: X over a part with
+## nothing in hand, where no ghost has aimed at anything.
+func lift_brick(brick_id: int) -> bool:
+	_hovered = brick_id
+	return lift_hovered()
+
+
 func lift_hovered() -> bool:
 	if _hovered == 0 or locked.has(_hovered):
 		return false
@@ -608,6 +615,41 @@ func turn_selection_by(degrees: float) -> int:
 		_turned_about = pivot
 		_turned_last = _turn_state(alive)
 	return turned
+
+
+## Tip the selection a quarter over, about a level axis through its middle
+## (``axis`` is x or z), keeping its bottom where it was. Studio's up and
+## down arrows; T here. One step; refused, changing nothing, where it would
+## run into something.
+func tip_selection(axis: Vector3, quarters: int) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or posmod(quarters, 4) == 0:
+		return 0
+	var box: AABB = _bounds_of(alive, Transform3D.IDENTITY)
+	var middle: Vector3 = box.get_center()
+	var around: Transform3D = Transform3D(Basis.IDENTITY, middle) \
+		* Transform3D(Basis(axis.normalized(), quarters * PI * 0.5), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -middle)
+	var turned: AABB = _bounds_of(alive, around)
+	var shift := Vector3(0.0, box.position.y - turned.position.y, 0.0)
+	var lay: Transform3D = Transform3D(Basis.IDENTITY, shift) * around
+	return _reposition(func(at: Transform3D) -> Transform3D:
+		return _tidy(lay * at, true), "tipped %s over" % _many(alive.size()))
+
+
+## The box round some bricks, each moved by ``by`` first.
+func _bounds_of(ids: PackedInt64Array, by: Transform3D) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var here: AABB = ((by * brick.transform) * mesh.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
+	return box
 
 
 ## What a selection turned last looked like after the turn, and what it

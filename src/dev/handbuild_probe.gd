@@ -257,6 +257,8 @@ func _cut_and_clipboard() -> void:
 func _ghost_in_its_colour() -> void:
 	print("  the ghost in its own colour")
 	_builder.clear_selection()
+	# A part in hand, as choosing one in the bin puts it.
+	(_main.get("_verbs") as EditVerbs).set_mode("place")
 	_builder.held_part = "3001"
 	_builder.held_face = "up"
 	_builder.held_rotation = 0
@@ -421,9 +423,9 @@ func _the_shell() -> void:
 	# The tools.
 	_builder.clear_selection()
 	await _click((buttons["mode_select"] as Button).get_global_rect().get_center())
-	_check("the Select tool lights and Build goes dark",
+	_check("the Select tool lights and Place goes dark",
 		(buttons["mode_select"] as Button).button_pressed
-		and not (buttons["mode_build"] as Button).button_pressed and verbs.mode == "select")
+		and not (buttons["mode_place"] as Button).button_pressed and verbs.mode == "select")
 	await _move(on_red)
 	await _move(on_red + Vector2(1, 0))
 	_check("...and no part in hand follows the pointer", not _builder.has_preview())
@@ -512,8 +514,12 @@ func _the_shell() -> void:
 
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
-	_check("Escape goes back to the Build tool, lit", verbs.mode == "build"
-		and (buttons["mode_build"] as Button).button_pressed)
+	_check("Escape goes back to the Select tool, lit, with nothing in hand",
+		verbs.mode == "select" and (buttons["mode_select"] as Button).button_pressed
+		and not _builder.is_carrying())
+	await _key(KEY_Q)
+	_check("Q puts the last part back in hand, Place lit", verbs.mode == "place"
+		and (buttons["mode_place"] as Button).button_pressed)
 	await _key(KEY_V)
 	_check("V is the Select tool", verbs.mode == "select")
 	var tools_menu: MenuButton = shell.menu("Tools")
@@ -521,11 +527,12 @@ func _the_shell() -> void:
 	var listed: PopupMenu = tools_menu.get_popup()
 	_check("...ticked in the Tools menu too",
 		listed.is_item_checked(listed.get_item_index(shell.menu_id("mode_select")))
-		and not listed.is_item_checked(listed.get_item_index(shell.menu_id("mode_build"))))
+		and not listed.is_item_checked(listed.get_item_index(shell.menu_id("mode_place"))))
 	await _shot("tools_menu")
 	listed.hide()
-	await _key(KEY_V)
-	_check("...and V again goes back to Build", verbs.mode == "build")
+	await _key(KEY_Q)
+	await _key(KEY_ESCAPE)
+	_check("...and Escape lets go of the part again", verbs.mode == "select")
 
 	# What a part snaps to, and how far the arrows move it.
 	tools._snap.select(1)
@@ -670,6 +677,12 @@ func _text_fields_give_keys_back() -> void:
 	_check("a click on the model's name puts the caret in it", field.has_focus())
 	await _type("Renamed")
 	await _key(KEY_ENTER)
+	# The field lets go after it has done what Enter does there, a frame
+	# or so later on a loaded machine.
+	for _n: int in 30:
+		if not field.has_focus():
+			break
+		await process_frame
 	_check("Enter ends the typing (%s)" % field.text, not field.has_focus()
 		and field.text.contains("Renamed"))
 	await _key(KEY_1)

@@ -106,7 +106,7 @@ async function controls(page, problems) {
       }
       await page.keyboard.up("Shift");
     }],
-    ["turn (middle-drag)", async () => {
+    ["slide (middle-drag, as Studio)", async () => {
       await page.mouse.move(at.x, at.y);
       await page.mouse.down({ button: "middle" });
       for (let n = 1; n <= 8; n += 1) {

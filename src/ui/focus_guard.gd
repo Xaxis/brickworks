@@ -59,13 +59,16 @@ func _input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_ESCAPE:
 			var field: LineEdit = focused as LineEdit
+			focused.release_focus()
 			if field != null and bool(field.get_meta("revert_on_escape", false)):
 				var was: Variant = _before.get(field.get_instance_id())
 				if was != null and field.text != str(was):
 					field.text = str(was)
 					field.text_changed.emit(field.text)
-			focused.release_focus()
-			get_viewport().set_input_as_handled()
+				# The name put back is all this Escape was for.
+				get_viewport().set_input_as_handled()
+			# Anywhere else it goes on, to close the dialog the field is in
+			# (the minifigure builder's search) as it always did.
 		KEY_TAB:
 			# A field of more than one line may want Tab; a one-line field
 			# never does here.

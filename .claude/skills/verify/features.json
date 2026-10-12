@@ -630,6 +630,14 @@
       "tests": []
     },
     {
+      "id": "ui:navigation presets",
+      "kind": "ui",
+      "entry": "src/camera/view_prefs.gd",
+      "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:open a studio model",
       "kind": "ui",
       "entry": "src/parts/studio_io.gd",
@@ -673,7 +681,7 @@
       "id": "ui:place and remove",
       "kind": "ui",
       "entry": "src/main.gd",
-      "reach": "godot --path .  (click to place, right-click to remove)",
+      "reach": "godot --path .  (Q or a part in the bin puts it in hand, a click puts it down; Esc lets go; a click selects, a drag moves, Delete removes)",
       "area": "building",
       "tests": []
     },

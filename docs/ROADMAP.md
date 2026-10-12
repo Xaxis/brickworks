@@ -891,6 +891,14 @@ Studio, Mecabricks and LDCad lay one out (`src/ui/shell.gd`):
   recent, a tour, About. The layout — panels, properties, key strip, grid,
   snap, turn step — comes back next time.
 - Escape closes the Controls sheet on the web with a tooltip up (`Main._input`).
+- Text fields give the keys back on Enter, Tab, Escape or a click elsewhere
+  (`src/ui/focus_guard.gd`): naming the model no longer left every shortcut dead.
+- The controls, as Studio's (the owner: "super awkward to switch between
+  selecting a placed piece and placing a new piece"): Select is where the app
+  rests and a drag moves a part; a part chosen (or Q) stays in hand until Esc
+  or a right click; the right and middle buttons only look; navigation presets
+  for Studio (default), Blender and Mecabricks. `tools/web/controls_flow.mjs`
+  counts a person's first tasks on the old build and the new.
 
 Left, in order: Technic pins and axles and clips on bars placed by connection
 (13); LDD's .lxf (16); cut-away beyond hiding (18); x-ray, edge lines and

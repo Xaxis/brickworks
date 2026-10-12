@@ -83,7 +83,13 @@ var _target_focus: Vector3 = Vector3.ZERO
 ## later mouse move spun the view. The probe passed because it built a
 ## synthetic release with the modifier still down — the one sequence
 ## fingers do not perform.
-enum Doing { NOTHING, ORBIT, SLIDE }
+enum Doing { NOTHING, ORBIT, SLIDE, ZOOM }
+
+## Where a zooming drag began, which it zooms towards.
+var _zoom_from: Vector2 = Vector2.ZERO
+## Shift as the right button went down: it decides whether the drag that
+## follows turns or slides.
+var _right_shift: bool = false
 
 var _doing: Doing = Doing.NOTHING
 var _doing_with: int = 0
@@ -394,21 +400,22 @@ func _unhandled_input(event: InputEvent) -> void:
 					# without changing how far away you are.
 					_centre_on(button.position)
 				elif button.pressed:
-					var slide: bool = (button.shift_pressed
-						!= ViewPrefs.middle_slides)
-					_begin(Doing.SLIDE if slide else Doing.ORBIT,
-						MOUSE_BUTTON_MIDDLE, button.position)
+					# What the preset says the middle button does
+					# (ViewPrefs.drag_verb); shift gives the other.
+					begin_drag(MOUSE_BUTTON_MIDDLE, button.position,
+						ViewPrefs.drag_verb(MOUSE_BUTTON_MIDDLE, button.shift_pressed))
 				else:
 					_end(MOUSE_BUTTON_MIDDLE)
 			MOUSE_BUTTON_RIGHT:
-				# Right-drag turns the model; right-click still takes a
-				# brick off. Which of the two it was is decided by
+				# Right-drag turns the model; a right click lets go of
+				# the part in hand. Which of the two it was is decided by
 				# whether the pointer moved, the same way a tap is told
 				# from a drag on glass — so nothing has to be chosen in
 				# advance and neither gesture is lost.
 				if button.pressed:
 					_dragging_right = true
 					_right_travel = 0.0
+					_right_shift = button.shift_pressed
 					# A fresh press decides afresh. Without this, a
 					# release that never reached the app — let go over a
 					# panel, say — would leave the answer set for the
@@ -427,10 +434,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				# It is a turn, not a click, so the release must not
 				# also take a brick off.
 				_turned_not_clicked = true
-				_begin(Doing.ORBIT, MOUSE_BUTTON_RIGHT, motion.position)
+				# Turns, or with shift slides, as Studio's does — or
+				# whatever the preset says the right button does.
+				begin_drag(MOUSE_BUTTON_RIGHT, motion.position,
+					ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT, _right_shift))
 		match _doing:
 			Doing.ORBIT: _turn_by(motion.relative, 0.01)
 			Doing.SLIDE: _slide_by(motion.relative)
+			Doing.ZOOM: _zoom_by(exp(motion.relative.y * 0.01), _zoom_from)
 
 
 ## Whether this event would start something over the interface: a
@@ -519,6 +530,25 @@ func _begin(doing: Doing, with_button: int, at: Vector2) -> void:
 	if doing == Doing.ORBIT:
 		_pivot_on(aim)
 		pivot_shown = true
+
+
+## Begin moving the view with a button held: "turn", "slide" or "zoom".
+## Public for the left button, which the app owns and lends to the view
+## only in the Mecabricks preset, on empty space.
+func begin_drag(with_button: int, at: Vector2, verb: String) -> void:
+	match verb:
+		"turn":
+			_begin(Doing.ORBIT, with_button, at)
+		"slide":
+			_begin(Doing.SLIDE, with_button, at)
+		"zoom":
+			_zoom_from = at
+			_begin(Doing.ZOOM, with_button, at)
+
+
+## The end of a drag begun with begin_drag.
+func end_drag(with_button: int) -> void:
+	_end(with_button)
 
 
 ## Stop, if this is the button that started it.

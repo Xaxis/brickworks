@@ -35,9 +35,16 @@ func handle_key(key: InputEventKey) -> bool:
 			if held and not key.shift_pressed:
 				paste()
 				return true
-			# V alone is the Select tool, and again goes back to Build.
+			# V alone is the Select tool, as in Studio.
 			if not held and not key.alt_pressed:
-				set_mode("build" if mode == "select" else "select")
+				if builder.is_carrying():
+					put_away()
+				set_mode("select")
+				return true
+		KEY_Q:
+			# The last part back in hand. Shift-Q turns the model.
+			if not held and not key.shift_pressed and not key.alt_pressed:
+				take_last_part()
 				return true
 		KEY_D:
 			if held and not key.shift_pressed:
@@ -72,8 +79,11 @@ func handle_key(key: InputEventKey) -> bool:
 				aim_again.call()
 				say.call("")
 				return true
+			# Out of whatever is carried, and back to Select with nothing
+			# in hand, in one press.
 			if builder.is_carrying():
 				put_away()
+				set_mode("select")
 				return true
 		KEY_U:
 			if not held:
@@ -514,6 +524,24 @@ func turn(quarter_turns: int) -> int:
 	return turn_by(quarter_turns * 90.0)
 
 
+## Tip the selection over, forwards as the view looks at it (``way`` -1:
+## back), a quarter, where it stands: T and Shift-T.
+func tip_selection(way: int) -> int:
+	var axis := Vector3.RIGHT
+	if camera != null:
+		var right: Vector3 = camera.global_transform.basis.x
+		axis = Vector3(signf(right.x), 0, 0) if absf(right.x) >= absf(right.z) \
+			else Vector3(0, 0, signf(right.z))
+	var count: int = builder.tip_selection(axis, -way)
+	if count == 0:
+		say.call("no room to tip it over there")
+		return 0
+	edited.call()
+	aim_again.call()
+	say.call("tipped %s over — T again, Shift-T back" % _parts(count))
+	return count
+
+
 ## Turn the selection where it stands by any angle: the turn step, from R
 ## and the Rotate tool.
 func turn_by(degrees: float) -> int:
@@ -560,9 +588,14 @@ func unlock_all() -> int:
 ## Every verb was a key or a button that acted on a selection made first,
 ## so turning one brick was three gestures: Shift-click it, press R, press
 ## Escape. Studio and Mecabricks both have tools a click acts through.
-const MODES: Array[String] = ["build", "select", "move", "rotate", "hinge",
+const MODES: Array[String] = ["select", "place", "move", "rotate", "hinge",
 	"clone", "paint", "hide", "delete"]
-var mode: String = "build"
+## Select is where the app rests, as Studio does: nothing in hand, a click
+## picks a part out and a drag moves it. A part chosen from the bin (or Q,
+## or Alt-click on one in the model) is in hand — "place" — until Escape
+## or a right click lets go of it; it stays in hand for the next, as
+## Studio's "repeat inserting" does by default.
+var mode: String = "select"
 signal mode_changed(mode: String)
 
 ## How far R and the Rotate tool turn a selection, in degrees. The part in
@@ -602,17 +635,62 @@ func set_mode(to: String) -> void:
 	mode = to
 	if measure != null and measure.active:
 		measure.leave()
-	if to != "build" and not builder.is_carrying():
+	if to != "place" and not builder.is_carrying():
 		builder.hide_preview()
 	mode_changed.emit(mode)
 	aim_again.call()
+
+
+## The part in hand again, the last one chosen: Q, as the coordinator's
+## brief and Studio's "repeat" both have it.
+func take_last_part() -> void:
+	set_mode("place")
+	var info: PartLibrary.PartInfo = library.parts.get(builder.held_part)
+	say.call("placing %s — click to put one down, Esc or a right click to stop"
+		% (Inventory._tidy(info.name) if info != null else builder.held_part))
+
+
+## Alt-click: the part under the pointer, in its colour, into hand —
+## Studio's eyedropper.
+func pick_at(at: Vector2) -> bool:
+	var brick_id: int = brick_at(at)
+	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
+	if brick == null:
+		return false
+	builder.held_part = brick.part_id
+	builder.held_color = brick.color_code
+	builder.picked.emit(brick.part_id, brick.color_code)
+	set_mode("place")
+	return true
+
+
+## A left drag that began on a part with the Select tool: the part (with
+## the selection, if it is in it) picked up to follow the pointer and be
+## let go where the drag ends — or, with Ctrl, a copy of it. False when
+## there was nothing it could take.
+func drag_start(brick_id: int, copy: bool) -> bool:
+	if builder.is_locked(brick_id):
+		say.call("that part is locked — Shift-L unlocks everything")
+		return false
+	if not builder.selection.has(brick_id):
+		builder.select_brick(brick_id, false)
+	if builder.selection.is_empty():
+		return false
+	if copy:
+		return duplicate_selection() > 0
+	return lift() > 0
 
 
 ## What the active tool does, for the status bar.
 func hint() -> String:
 	match mode:
 		"select":
-			return "Select: click a part, Shift-click to add or take one away, drag a box round several"
+			return "Select: click a part, drag it to move it (Ctrl-drag copies), drag a box round several; Q takes the last part"
+		"place":
+			var info: PartLibrary.PartInfo = library.parts.get(builder.held_part) \
+				if library != null else null
+			return "Placing %s: click to put one down, and again for the next — Esc or a right click stops" % (
+				Inventory._tidy(info.name) if info != null else builder.held_part)
 		"move":
 			return "Move: click a part to pick it up (the whole selection, if it is in it), click again to put it down"
 		"rotate":
@@ -627,13 +705,13 @@ func hint() -> String:
 			return "Hide: click a part to hide it — Alt-H shows everything again"
 		"delete":
 			return "Delete: click a part to take it off"
-	return "Build: click to put the part down — right-click takes one off, Shift-click selects"
+	return ""
 
 
-## Whether the ghost of the part in hand belongs under the pointer: in
-## Build, and while anything is carried, whatever the tool.
+## Whether the ghost of the part in hand belongs under the pointer: while
+## placing, and while anything is carried, whatever the tool.
 func shows_ghost() -> bool:
-	return mode == "build" or builder.is_carrying() or builder.is_holding_figure()
+	return mode == "place" or builder.is_carrying() or builder.is_holding_figure()
 
 
 ## The part under a point on the screen, or 0 for none, the baseplate or a

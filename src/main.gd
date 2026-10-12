@@ -230,6 +230,11 @@ func _tell_page() -> void:
 		"bricks": _world.brick_count() - _store.scenery.size(),
 		"held": _builder.held_part,
 		"custom": _library.custom.keys(),
+		# The tool in use and what is selected, so a browser check can
+		# tell a click that selected from one that put a part down.
+		"mode": _verbs.mode if _verbs != null else "",
+		"selected": _builder.selection.size(),
+		"carrying": _builder.is_carrying(),
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1751,10 +1756,10 @@ func _hold_figure(figure: Minifig) -> void:
 
 func _on_part_chosen(part_id: String) -> void:
 	_builder.drop_figure()
-	# A part picked is a part to put down: the Build tool.
-	if _verbs != null:
-		_verbs.set_mode("build")
 	_builder.held_part = part_id
+	# A part picked is a part in hand, to put down.
+	if _verbs != null:
+		_verbs.set_mode("place")
 	# On the web most parts are a request away rather than resident. Ask
 	# for it as soon as it is picked, so it is usually there by the time
 	# the cursor reaches the model.
@@ -2117,19 +2122,27 @@ func _steer_from_keys(delta: float) -> void:
 	if focused is LineEdit or focused is TextEdit or _camera == null or _gated():
 		_held_for = 0.0
 		return
+	var free: bool = _builder.selection.is_empty()
 	var zoom: int = 0
 	if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_PLUS) \
-			or Input.is_key_pressed(KEY_KP_ADD) or Input.is_key_pressed(KEY_PAGEUP):
+			or Input.is_key_pressed(KEY_KP_ADD) or (free and Input.is_key_pressed(KEY_PAGEUP)):
 		zoom += 1
 	if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT) \
-			or Input.is_key_pressed(KEY_PAGEDOWN):
+			or (free and Input.is_key_pressed(KEY_PAGEDOWN)):
 		zoom -= 1
 	var arrows := Vector2.ZERO
-	if _builder.selection.is_empty() and not _steps.is_playing_back():
+	var wasd := Vector2.ZERO
+	var modified: bool = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META) \
+		or Input.is_key_pressed(KEY_ALT)
+	if free and not _steps.is_playing_back():
 		arrows = Vector2(
 			float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
 			float(Input.is_key_pressed(KEY_UP)) - float(Input.is_key_pressed(KEY_DOWN)))
-	if zoom == 0 and arrows == Vector2.ZERO:
+		if not modified:
+			wasd = Vector2(
+				float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
+				float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
+	if zoom == 0 and arrows == Vector2.ZERO and wasd == Vector2.ZERO:
 		_held_for = 0.0
 		return
 	_held_for += delta
@@ -2137,7 +2150,7 @@ func _steer_from_keys(delta: float) -> void:
 		return
 	var sliding: bool = Input.is_key_pressed(KEY_SHIFT)
 	_camera.key_hold(delta, zoom, Vector2.ZERO if sliding else arrows,
-		arrows if sliding else Vector2.ZERO)
+		(arrows if sliding else Vector2.ZERO) + wasd)
 
 
 func _process(_delta: float) -> void:
@@ -2161,6 +2174,16 @@ func _process(_delta: float) -> void:
 	if _box_began and _marquee != null and _marquee.is_drawing() \
 			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_finish_box(Input.is_key_pressed(KEY_SHIFT))
+	# And a dragged part whose release went somewhere this never heard.
+	if (_dragging_part or _press_brick != 0 or _left_turning) \
+			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
+			and not DisplayServer.is_touchscreen_available():
+		_press_brick = 0
+		if _left_turning:
+			_left_turning = false
+			_camera.end_drag(MOUSE_BUTTON_LEFT)
+		if _dragging_part:
+			_drop_dragged(get_viewport().get_mouse_position())
 	if _store != null:
 		_store.tick()
 	_tell_page()
@@ -2201,6 +2224,40 @@ const HOLD_MS := 480
 
 var _touch_down_at: int = 0
 var _touch_index: int = -1
+
+## A left press on a part with the Select tool, not yet a click or a drag:
+## the part, where the press was, and whether it copies (Ctrl).
+var _press_brick: int = 0
+var _press_at: Vector2 = Vector2.ZERO
+var _press_copies: bool = false
+## A part (with its selection) picked up by a drag and following it.
+var _dragging_part: bool = false
+## A left drag turning the view, in the Mecabricks preset.
+var _left_turning: bool = false
+## How far a press may move and still be a click, in interface units.
+const DRAG_SLOP := 5.0
+
+
+## The part under the pointer, for a key that acts on it: none when the
+## pointer is over a panel, which a key must not reach through.
+func _brick_under_pointer() -> int:
+	var at: Vector2 = get_viewport().get_mouse_position()
+	if _verbs == null or _over_interface(at):
+		return 0
+	return _verbs.brick_at(at)
+
+
+## The end of a drag that carried a part: down where the pointer is, if it
+## fits there, and back where it came from (or the copy gone) if not.
+func _drop_dragged(at: Vector2) -> void:
+	_dragging_part = false
+	if not _builder.is_carrying():
+		return
+	_aim_at(at)
+	if _builder.place() == 0:
+		_verbs.put_away()
+		_bar.say("no room there — put back where it was")
+	_refresh_preview(at)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -2257,6 +2314,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseMotion:
 		var moved: InputEventMouseMotion = event
+		# A left drag that began on a part, with the Select tool: past a
+		# few pixels it picks the part up (Ctrl: a copy of it), and from
+		# then on the part follows the pointer until the button comes up.
+		if _press_brick != 0 and not _dragging_part \
+				and (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 \
+				and moved.position.distance_to(_press_at) > DRAG_SLOP:
+			_dragging_part = _verbs.drag_start(_press_brick, _press_copies)
+			_press_brick = 0
+		if _dragging_part:
+			_refresh_preview(moved.position)
+			return
 		# Drawing a box, which is not aiming the ghost. Any left drag,
 		# with or without shift — shift only decides whether what it
 		# catches is added to the selection or replaces it.
@@ -2273,7 +2341,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
 	var button: InputEventMouseButton = event
+	# Alt and a click takes the part under the pointer into hand, in its
+	# colour: Studio's eyedropper. Any other Alt button is the system's.
 	if button.alt_pressed:
+		if button.button_index == MOUSE_BUTTON_LEFT and button.pressed \
+				and not _over_panel_at(button.position) and _verbs != null:
+			if _verbs.pick_at(button.position):
+				_refresh_preview(button.position)
 		return
 	# A press that lands on a panel belongs to the panel. A release does
 	# not always: if a box is being drawn, that drag started out here
@@ -2312,18 +2386,40 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _camera.turned_rather_than_clicked():
 			return
-		# With a tool other than Build the right button only turns the
-		# view, but for Delete, whose right click is its left.
-		if _verbs != null and not _verbs.shows_ghost():
-			if _verbs.mode == "delete":
-				_verbs.click(button.position, false)
-			return
-		_aim_at(button.position)
-		_builder.remove_hovered()
+		# The right button is for looking. A right click lets go of what
+		# is in hand and goes back to Select, as Studio's does; it takes
+		# nothing off the model (Delete does, or the Delete tool).
+		if _verbs != null:
+			if _builder.is_carrying():
+				_verbs.put_away()
+			_builder.drop_figure()
+			_verbs.set_mode("select")
 		_refresh_preview()
 		return
 
 	if button.button_index != MOUSE_BUTTON_LEFT:
+		return
+
+	# A left drag lent to the view (the Mecabricks preset), let go; one
+	# that never moved was a click on nothing, which lets go of the
+	# selection.
+	if _left_turning and not button.pressed:
+		_left_turning = false
+		_camera.end_drag(MOUSE_BUTTON_LEFT)
+		if button.position.distance_to(_press_at) <= DRAG_SLOP:
+			_verbs.click(button.position, false)
+		return
+	# A part being dragged, let go of where the drag ends: put down there
+	# if it fits, and back where it was if not.
+	if _dragging_part and not button.pressed:
+		_drop_dragged(button.position)
+		return
+	# A click on a part with the Select tool that never became a drag.
+	if _press_brick != 0 and not button.pressed:
+		_press_brick = 0
+		if not _camera.swallowing_click():
+			_verbs.click(button.position, button.shift_pressed or button.ctrl_pressed
+				or button.meta_pressed)
 		return
 
 	# Shift picks bricks out instead of placing them, on the press —
@@ -2336,6 +2432,25 @@ func _unhandled_input(event: InputEvent) -> void:
 	# picks a brick out when shift is held.
 	if button.pressed:
 		_box_dropped = false
+		# With the Select tool a press on a part is the start of a click
+		# that selects it or a drag that moves it — not of a box.
+		# (Not while anything is in hand — a carried group or a minifigure
+		# — whose click puts it down.)
+		if _verbs != null and _verbs.mode == "select" and not _verbs.shows_ghost() \
+				and not button.shift_pressed and not button.double_click:
+			var under: int = _verbs.brick_at(button.position)
+			if under != 0:
+				_press_brick = under
+				_press_at = button.position
+				_press_copies = button.ctrl_pressed or button.meta_pressed
+				return
+			# Empty space, in the Mecabricks preset: the left button turns
+			# the view there.
+			if ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT) == "turn":
+				_left_turning = true
+				_press_at = button.position
+				_camera.begin_drag(MOUSE_BUTTON_LEFT, button.position, "turn")
+				return
 		_marquee.begin(button.position)
 		_box_began = true
 		if button.shift_pressed and button.double_click:
@@ -2666,7 +2781,9 @@ func _cursor_state() -> String:
 	# remembers from before the pointer went over a panel is not one a
 	# click there would touch.
 	var over_brick: bool = now.aimed and _builder.hovered_brick() != 0
-	now.removing = over_brick and _camera.right_pending()
+	# A right click takes nothing off any more; only the Delete tool's
+	# pointer says "remove" (below).
+	now.removing = false
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	var typing: bool = focused is LineEdit or focused is TextEdit
 	# Held, C paints whatever comes under the pointer: the key repeats,
@@ -2722,7 +2839,7 @@ func _escape_closes_something() -> bool:
 		or not _builder.selection.is_empty() \
 		or (_inventory != null and _inventory.is_showing()) \
 		or (_steps != null and _steps.is_playing_back()) \
-		or (_verbs != null and _verbs.mode != "build")
+		or (_verbs != null and _verbs.mode != "select")
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -2742,6 +2859,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# goes on in _steer_from_keys. "+" is shift and = on most keyboards and
 	# a key of its own on others, so the character is asked as well.
 	var zoom: int = _zoom_key(key)
+	# Page Up and Down raise and lower a selection rather than zoom.
+	if key.keycode in [KEY_PAGEUP, KEY_PAGEDOWN] and not _builder.selection.is_empty():
+		zoom = 0
 	if zoom != 0:
 		if not key.echo and not key.ctrl_pressed and not key.meta_pressed:
 			_camera.key_zoom(zoom)
@@ -2781,18 +2901,54 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_camera.square_on(not _camera.is_square_on())
 			_bar.say("square on" if _camera.is_square_on()
 				else "in perspective")
-		KEY_1: _camera.set_view("front")
-		KEY_2: _camera.set_view("back")
-		KEY_3: _camera.set_view("left")
-		KEY_4: _camera.set_view("right")
-		KEY_5: _camera.set_view("top")
-		KEY_0: _camera.set_view("default")
+		KEY_1, KEY_KP_1: _camera.set_view("front")
+		KEY_2, KEY_KP_2: _camera.set_view("back")
+		KEY_3, KEY_KP_3: _camera.set_view("left")
+		KEY_4, KEY_KP_4: _camera.set_view("right")
+		KEY_5, KEY_KP_5: _camera.set_view("top")
+		KEY_KP_6: _camera.set_view("bottom")
+		KEY_KP_7: _camera.set_view("isometric")
+		KEY_0, KEY_KP_0: _camera.set_view("default")
+		KEY_KP_PERIOD:
+			# Blender's and Mecabricks' key for the selection, framed.
+			_camera.frame(_selection_bounds())
+		KEY_QUOTELEFT:
+			# Studio's: back into perspective.
+			_camera.square_on(false)
+			_bar.say("in perspective")
 		KEY_R:
 			_builder.rotate_held(-1 if key.shift_pressed else 1)
 			_refresh_preview()
 		KEY_T:
-			_builder.tip_held(-1 if key.shift_pressed else 1)
-			_refresh_preview()
+			# Tip the selection over, forwards as you look (Shift: back),
+			# or the part in hand onto its next face.
+			if not _builder.selection.is_empty() and not _builder.is_carrying():
+				_verbs.tip_selection(-1 if key.shift_pressed else 1)
+			else:
+				_builder.tip_held(-1 if key.shift_pressed else 1)
+				_refresh_preview()
+		KEY_W, KEY_S, KEY_A, KEY_D:
+			# Studio's WASD: a selection nudged by the snap across the
+			# ground as you look at it, and with nothing selected the view
+			# slid. Ctrl with them is Save, Select all and Duplicate.
+			if key.ctrl_pressed or key.meta_pressed or key.alt_pressed:
+				if key.keycode == KEY_A and (key.ctrl_pressed or key.meta_pressed):
+					_verbs.select_by("all")
+				if key.keycode == KEY_S and (key.ctrl_pressed or key.meta_pressed) and _bar:
+					_bar._on_save()
+				return
+			var way: Vector3 = {KEY_W: Vector3.FORWARD, KEY_S: Vector3.BACK,
+				KEY_A: Vector3.LEFT, KEY_D: Vector3.RIGHT}[key.keycode]
+			if not _builder.selection.is_empty() and not _steps.is_playing_back():
+				_nudge(way)
+			elif not key.echo:
+				_camera.key_slide(Vector2(way.x, -way.z))
+		KEY_PAGEUP, KEY_PAGEDOWN:
+			# Up and down a plate with a selection; the zoom took them
+			# above when there is none.
+			if not _builder.selection.is_empty():
+				_nudge_by(Vector3i(0, _verbs.up_cells()
+					* (1 if key.keycode == KEY_PAGEUP else -1), 0))
 		KEY_BRACKETLEFT, KEY_BRACKETRIGHT:
 			var step: int = 1 if key.keycode == KEY_BRACKETRIGHT else -1
 			_color_index = posmod(_color_index + step, QUICK_COLORS.size())
@@ -2806,7 +2962,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				if not OS.has_feature("web"):
 					get_tree().quit()
 				return
-			_turn_model(1 if key.keycode == KEY_E else -1)
+			# Shift with them turns the whole model; Q alone takes the last
+			# part again (EditVerbs).
+			if key.shift_pressed:
+				_turn_model(1 if key.keycode == KEY_E else -1)
 		KEY_B:
 			_toggle_steps()
 		KEY_P:
@@ -2821,27 +2980,39 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				if painted > 0:
 					_on_model_edited()
 					_bar.say("painted %d" % painted)
-			elif _builder.paint_hovered(_builder.held_color):
-				_on_model_changed()
+			else:
+				# The brick under the pointer, found by the pointer: with
+				# nothing in hand there is no ghost to say which it is.
+				var under: int = _brick_under_pointer()
+				# With a part in hand, the brick its ghost was last aimed at.
+				if under == 0 and _verbs.mode == "place":
+					under = _builder.hovered_brick()
+				if _builder.paint_brick(under, _builder.held_color):
+					_on_model_edited()
 		KEY_DELETE, KEY_BACKSPACE:
 			var gone: int = _builder.remove_selection()
 			if gone > 0:
 				_on_model_edited()
 				_bar.say("removed %d" % gone)
-		KEY_A:
-			# Everything the assistant built, in one go, so that
-			# "start again from mine" is one key rather than a hunt.
-			if key.meta_pressed or key.ctrl_pressed:
-				# What can be seen: a hidden roof is not in "everything".
-				_verbs.select_by("all")
 		KEY_G:
-			# And take a colour and part back off the model.
-			_builder.pick_hovered()
+			# And take a colour and part back off the model, into hand.
+			if _brick_under_pointer() != 0 \
+					and _verbs.pick_at(get_viewport().get_mouse_position()):
+				_refresh_preview()
+			elif _verbs.mode == "place" and _builder.pick_hovered():
+				_refresh_preview()
 		KEY_X:
 			# Lift a brick off to move it. The next click puts it down.
-			if _builder.lift_hovered():
+			var lifting: int = _brick_under_pointer()
+			if lifting == 0 and _verbs.mode == "place":
+				lifting = _builder.hovered_brick()
+			# Off the model and into hand, to put down again where a click
+			# says; undo puts it back where it was.
+			if lifting != 0 and _builder.lift_brick(lifting):
+				_verbs.set_mode("place")
 				_on_model_changed()
 				_bar.say("lifted — click to put it down")
+				_refresh_preview()
 		KEY_LEFT, KEY_RIGHT:
 			# Three claims on these keys, in order. A booklet being read
 			# owns them; then a selection being nudged; then whatever
@@ -2898,9 +3069,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_SLASH:
 			if _bin:
 				_bin.focus_search()
-		KEY_S:
-			if (key.ctrl_pressed or key.meta_pressed) and _bar:
-				_bar._on_save()
 		KEY_N:
 			# Not on the web, where Ctrl+N is the browser's new window and
 			# never reaches the page.
@@ -2951,6 +3119,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if _elements != null and _elements.visible:
 				_elements.visible = false
 				return
+			# Back to Select with nothing in hand, from placing or any
+			# other tool — and on down the ladder in the same press, so
+			# one Escape is always enough to be back at rest.
+			if _verbs != null and _verbs.mode != "select":
+				_verbs.set_mode("select")
+				_refresh_preview()
 			if not _builder.selection.is_empty():
 				_builder.clear_selection()
 				return
@@ -2960,9 +3134,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if _steps.is_playing_back():
 				_steps.stop()
 				return
-			# And the outermost: back to Build from any other tool.
-			if _verbs != null:
-				_verbs.set_mode("build")
 
 
 static func _comma(value: int) -> String:

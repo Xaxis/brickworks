@@ -8,14 +8,28 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 
 - `scene:main`: the one scene. It restores whatever was on the baseplate last
   time, falls back to a sample model, lays the baseplate under it and frames it.
-- `place and remove`: a left **click** places the ghost brick; right-click removes
-  the brick under the cursor. A left **drag** draws a selection box and places
-  nothing — that distinction is the whole fix for "the controls feel like shit".
+- `place and remove`: as BrickLink Studio does it (2026-10-11; the owner: "it's
+  super awkward to switch between selecting a placed piece and placing a new
+  piece"). Select is where the app rests, with nothing in hand: a click on a
+  part selects it, a **drag** on a part moves it on the studs, `Ctrl`-drag
+  copies it, a drag on empty space boxes, `Alt`-click (or `G`) takes that part
+  into hand. Choosing a part in the bin, or `Q` for the last one, puts it in
+  hand: its ghost follows the pointer and each click puts one down, staying in
+  hand for the next as Studio's "repeat inserting" does by default. `Esc` or a
+  right click lets go, back to Select, leaving nothing behind. Taking a part off
+  is `Delete` (or the Delete tool): the right button is for looking, never for
+  acting. The mode is always on the toolbar (Select or Place lit, Place's
+  tooltip naming the part), in the status bar's hint and in the pointer.
+  `tools/web/controls_flow.mjs` counts a person's first tasks in clicks and keys
+  on a build, the old way (`--recipe=old`) or this one.
 - `box select`: drag on empty space, and every brick whose screen position falls
   inside the box is selected. Releasing over a panel still ends the box.
 - `selection edits`: with bricks selected, `C` paints them the current colour,
-  the arrow keys move them, `Delete` or `Backspace` removes them. `shift-click`
-  adds to the selection; `G` picks a brick's colour, `X` lifts.
+  the arrow keys and W A S D move them across the ground by the snap, Page Up
+  and Down raise and lower them, `R` turns them by the turn step and `T` tips
+  them over, `Delete` or `Backspace` removes them. `shift-click` or `Ctrl`-click
+  adds to the selection; `G` takes the part under the pointer into hand, `X`
+  lifts it off into hand.
 - `undo and redo`: `Cmd/Ctrl-Z` and `Cmd/Ctrl-Shift-Z`, over placements, removals,
   paints, nudges and whole assistant designs. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
@@ -59,14 +73,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Instructions, Parts list — each tooltip its name, key and what it does.
   Narrower than it needs, it folds its least-needed groups (all in the menus
   too); on a phone the file, history and tools stay.
-- `tool modes` (`EditVerbs.mode`): Build (the default: a click puts the part in
-  hand down) and Select, Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a
-  click on a part does that tool's one thing to it, or to the whole selection
-  when the part is in it (`EditVerbs.click`). The tool in use is lit on the
-  toolbar and ticked in Tools. Only Build shows the ghost; a part carried by
-  Move or Clone shows its own. Right-click takes a part off only in Build and
-  Delete. `V` is Select (again, Build); `Esc`, after closing whatever is up,
-  goes back to Build; picking a part in the bin does too.
+- `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
+  hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
+  does that tool's one thing to it, or to the whole selection when the part is
+  in it (`EditVerbs.click`). The tool in use is lit on the toolbar and ticked
+  in Tools. Only Place shows the ghost; a part carried by a drag, Move or Clone
+  shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
+  back to Select with nothing in hand, in one press.
 - `properties panel` (`src/ui/inspector.gd`): over the model's top right, under
   the axes. One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;

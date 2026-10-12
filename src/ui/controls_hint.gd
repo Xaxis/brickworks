@@ -83,7 +83,7 @@ static func bindings() -> Array[Binding]:
 ## glyph check passed with three empty boxes on screen.
 static func for_touch() -> Array[Binding]:
 	return [
-			Binding.new(["tap"], "place"),
+			Binding.new(["tap"], "select, or put down the part in hand"),
 			Binding.new(["hold"], "remove"),
 			Binding.new(["drag"], "turn"),
 			Binding.new(["2 fingers"], "slide and zoom"),
@@ -101,8 +101,7 @@ static func for_touch() -> Array[Binding]:
 ## something the handler does not do.
 ##
 ## Six and a pointer, which fits one row at any width worth supporting.
-const ON_THE_STRIP := ["click", "right-click", "right-drag", "drag",
-	"middle-drag", "scroll"]
+const ON_THE_STRIP := ["click", "drag", "right-drag", "middle-drag", "scroll", "Q"]
 
 
 ## What the strip along the bottom shows: the handful somebody reaches
@@ -135,13 +134,19 @@ static func for_strip() -> Array[Binding]:
 static func for_keyboard() -> Array[Binding]:
 	var everything: Array[Binding] = []
 	_section(everything, "Building", [
-		Binding.new(["click"], "place", "place"),
-		Binding.new(["right-click"], "remove", "remove"),
-		Binding.new(["R"], "rotate, or turn the selection"),
-		Binding.new(["T"], "tip on side"),
+		# Select is where the app rests and a part chosen is in hand
+		# until let go, as in Studio: the left button acts, the right and
+		# the middle look.
+		Binding.new(["click"], "select; with a part in hand, put it down", "place"),
+		Binding.new(["drag"], "move a part, or box round several", "box"),
+		Binding.new(["%s-drag" % _hold()], "copy a part to where it is let go"),
+		Binding.new(["alt-click", "G"], "take that part into hand"),
+		Binding.new(["Q"], "the last part back in hand"),
+		Binding.new(["right-click"], "let go of the part in hand"),
+		Binding.new(["R", "shift-R"], "turn the part in hand, or the selection"),
+		Binding.new(["T", "shift-T"], "tip it over"),
 		Binding.new(["[", "]"], "colour"),
 		Binding.new(["C"], "paint", "paint"),
-		Binding.new(["G"], "pick"),
 		Binding.new(["X"], "lift, or move the selection"),
 		Binding.new(["%s-C" % _hold(), "%s-V" % _hold()], "copy, paste"),
 		Binding.new(["%s-D" % _hold()], "duplicate"),
@@ -160,43 +165,21 @@ static func for_keyboard() -> Array[Binding]:
 		# after plain drag started doing it, which is the exact failure
 		# the note at the top of this file is about — so the verb comes
 		# from the same place the handler gets it.
-		Binding.new(["drag"], "box select", "box"),
-		Binding.new(["shift-click"], "add to selection", "select"),
+		Binding.new(["shift-click", "%s-click" % _hold()], "add to the selection, or take away", "select"),
 		Binding.new(["shift-double-click"], "every brick like it"),
 		Binding.new(["%s-A" % _hold()], "select all"),
-		Binding.new(["arrows"], "turn the view, or move a selection"),
+		Binding.new(["arrows", "W", "A", "S", "D"],
+			"move the selection; with none, turn or slide the view"),
+		Binding.new(["Page Up", "Page Down"], "raise or lower the selection"),
 		Binding.new(["Delete"], "remove the selection"),
 		Binding.new(["H"], "hide the selection; with none, show all"),
 		Binding.new(["shift-H"], "show only the selection"),
 		Binding.new(["alt-H"], "show everything"),
-		Binding.new(["V"], "the Select tool; V again, back to Build"),
+		Binding.new(["V"], "the Select tool"),
 		Binding.new(["L", "shift-L"], "lock the selection, unlock everything"),
-		Binding.new(["Esc"], "out of whatever is open, then back to Build"),
+		Binding.new(["Esc"], "out of whatever is open, then back to Select with nothing in hand"),
 	])
-	_section(everything, "The view", [
-		# Turn first among the view verbs, because it is the one people
-		# reach for and the one that had nothing bound to it.
-		Binding.new(["right-drag", "2 fingers"], "turn", "orbit"),
-		Binding.new(["middle-drag"], ViewPrefs.middle_verb(),
-			"slide" if ViewPrefs.middle_slides else "orbit"),
-		# Shift always gives the one the plain middle drag does not, so
-		# this row is the other half of the preference.
-		Binding.new(["shift-middle-drag"],
-			"turn" if ViewPrefs.middle_slides else "slide",
-			"orbit" if ViewPrefs.middle_slides else "slide"),
-		Binding.new(["middle double-click"], "turn about that point"),
-		Binding.new(["shift-2 fingers"], "slide", "slide"),
-		Binding.new(["scroll", "pinch", "+", "-"], "zoom", "zoom_in"),
-		Binding.new(["shift-scroll"], "slide", "slide"),
-		Binding.new(["shift-arrows"], "slide the view", "slide"),
-		Binding.new(["Q", "E"], "turn model"),
-		Binding.new(["F"], "frame"),
-		Binding.new(["U"], "measure between two points"),
-		Binding.new(["O"], "square on"),
-		Binding.new(["1", "2", "3", "4", "5", "6", "7"],
-			"front, back, left, right, top, bottom, three-quarter"),
-		Binding.new(["0"], "the usual view"),
-	])
+	_section(everything, "The view", _view_bindings())
 	_section(everything, "The timeline", [
 		Binding.new(["B"], "timeline"),
 		Binding.new(["space"], "play the timeline"),
@@ -219,6 +202,43 @@ static func for_keyboard() -> Array[Binding]:
 		rest.append(Binding.new(["%s-Q" % _hold()], "quit"))
 	_section(everything, "Panels", rest)
 	return everything
+
+
+## The view's controls, as the navigation preset (ViewPrefs) has them: the
+## verbs come from the same place the camera gets them.
+static func _view_bindings() -> Array:
+	var cursor_of := func(verb: String) -> String:
+		return {"turn": "orbit", "slide": "slide", "zoom": "zoom_in"}.get(verb, "")
+	var right: String = ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT)
+	var middle: String = ViewPrefs.drag_verb(MOUSE_BUTTON_MIDDLE)
+	var out: Array = []
+	# Turn first among the view verbs, because it is the one people
+	# reach for and the one that had nothing bound to it.
+	if ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT) == "turn":
+		out.append(Binding.new(["drag on nothing"], "turn", "orbit"))
+	out.append(Binding.new(["right-drag", "2 fingers"], right, cursor_of.call(right)))
+	out.append(Binding.new(["shift-right-drag"], ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT, true),
+		cursor_of.call(ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT, true))))
+	out.append(Binding.new(["middle-drag"], middle, cursor_of.call(middle)))
+	# Shift always gives the other of turning and sliding, so this row is
+	# the other half of the preset.
+	out.append(Binding.new(["shift-middle-drag"], ViewPrefs.drag_verb(MOUSE_BUTTON_MIDDLE, true),
+		cursor_of.call(ViewPrefs.drag_verb(MOUSE_BUTTON_MIDDLE, true))))
+	out.append_array([
+		Binding.new(["middle double-click"], "turn about that point"),
+		Binding.new(["shift-2 fingers"], "slide", "slide"),
+		Binding.new(["scroll", "pinch", "+", "-"], "zoom to the pointer", "zoom_in"),
+		Binding.new(["shift-scroll"], "slide", "slide"),
+		Binding.new(["shift-arrows"], "slide the view", "slide"),
+		Binding.new(["shift-Q", "shift-E"], "turn the model"),
+		Binding.new(["F"], "frame the selection, or everything"),
+		Binding.new(["U"], "measure between two points"),
+		Binding.new(["O", "`"], "square on, and back to perspective"),
+		Binding.new(["1", "2", "3", "4", "5", "6", "7"],
+			"front, back, left, right, top, bottom, three-quarter (the keypad too)"),
+		Binding.new(["0"], "the usual view"),
+	])
+	return out
 
 
 static func _section(into: Array[Binding], named: String,

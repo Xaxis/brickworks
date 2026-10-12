@@ -10,7 +10,7 @@
       "kind": "ui",
       "label": "place and remove",
       "entry": "src/main.gd",
-      "reach": "godot --path .  (click to place, right-click to remove)",
+      "reach": "godot --path .  (Q or a part in the bin puts it in hand, a click puts it down; Esc lets go; a click selects, a drag moves, Delete removes)",
       "area": "building"
     },
     {
@@ -698,6 +698,13 @@
       "entry": "src/ui/shell_prefs.gd",
       "reach": "godot --path .  (fold a panel, change the snap, quit and start again)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "navigation presets",
+      "entry": "src/camera/view_prefs.gd",
+      "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
+      "area": "view"
     }
   ]
 }

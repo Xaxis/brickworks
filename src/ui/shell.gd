@@ -73,7 +73,7 @@ const MENUS: Array = [
 	["Build", ["timeline", "instructions", "parts_list", "-", "make_submodel",
 		"leave_submodel", "select_submodel", "-", "minifig", "mosaic", "part_maker",
 		"-", "rotate_held", "tip_held"]],
-	["Tools", ["mode_build", "mode_select", "mode_move", "mode_rotate", "mode_hinge",
+	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
 		"stability", "reseat", "-", "connector", "settings"]],
 	["Help", ["keys", "tour", "-", "website", "about"]],
@@ -380,13 +380,15 @@ func _define() -> void:
 		builder.tip_held(1)
 		app.call("_refresh_preview"))
 	# Tools
-	for tool: Array in [["build", "Build", KEY_ESCAPE], ["select", "Select", KEY_V],
+	for tool: Array in [["select", "Select", KEY_V], ["place", "Place the part in hand", KEY_Q],
 			["move", "Move", 0], ["rotate", "Rotate", 0], ["hinge", "Hinge", 0],
 			["clone", "Clone", 0], ["paint", "Paint", 0], ["hide", "Hide", 0],
 			["delete", "Delete", 0]]:
 		var which: String = tool[0]
-		var made: Command = _add("mode_" + which, str(tool[1]) + " tool", tool[2],
-			func() -> void: verbs.set_mode(which))
+		var made: Command = _add("mode_" + which,
+			str(tool[1]) + ("" if which == "place" else " tool"), tool[2],
+			(func() -> void: verbs.take_last_part()) if which == "place"
+				else func() -> void: verbs.set_mode(which))
 		made.ticked = func() -> bool: return verbs.mode == which
 		made.radio = true
 	_add("measure", "Measure", KEY_U, func() -> void: verbs.ruler(), Callable(),

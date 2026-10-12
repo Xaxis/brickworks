@@ -204,20 +204,31 @@ func _drawn_near(picture: Image, at: Vector2i, reach: int) -> bool:
 
 
 func _over_the_model() -> void:
+	# Select is where the app rests: over a part, the pointer says a
+	# click takes it.
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("select")
 	await _move_to(_middle)
-	await _expect("a held part over the model", "place")
+	await _expect("nothing in hand, over a part", "select")
+	await _key_down(KEY_Q, true)
+	await _key_down(KEY_Q, false)
+	await _move_to(_middle)
+	await _expect("a part in hand (Q) over the model", "place")
 
-	# The right button down and not yet moved: letting go takes the
-	# brick off, and the pointer says so before it happens.
+	# The right button is for looking: down and let go, it lets go of the
+	# part in hand and takes nothing off.
 	var before: int = _world.brick_count()
 	_press(MOUSE_BUTTON_RIGHT, _middle, true)
-	await _expect("the right button down over a brick", "remove")
+	await _expect("the right button down over a brick", "place")
 	_press(MOUSE_BUTTON_RIGHT, _middle, false)
 	await _frames(4)
-	_check("...and letting go did take it off, %d -> %d"
-		% [before, _world.brick_count()], _world.brick_count() < before)
+	_check("...and letting go took nothing off, %d -> %d, and let go of the part"
+		% [before, _world.brick_count()], _world.brick_count() == before
+		and verbs.mode == "select")
 	await _settle()
-	await _expect("...and then the pointer is back to placing", "place")
+	await _expect("...and then the pointer is back to selecting", "select")
+	await _key_down(KEY_Q, true)
+	await _key_down(KEY_Q, false)
 
 	# Shift over a brick: a click picks it out instead.
 	await _key_down(KEY_SHIFT, true)
@@ -291,15 +302,15 @@ func _dragging() -> void:
 	await _expect("...and let go of", "place")
 	_check("...with the sheet gone", not _cursors.shielding())
 
-	# The middle button, which turns by default and slides with shift.
-	ViewPrefs.middle_slides = false
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "a middle drag", "orbit")
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "shift and a middle drag", "slide")
-	# The other way round, as the setting has it.
-	ViewPrefs.middle_slides = true
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "set to slide, a middle drag", "slide")
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "...and with shift", "orbit")
-	ViewPrefs.middle_slides = false
+	# The middle button, which slides in Studio's preset (the default) and
+	# turns with shift — and the other way round in Blender's.
+	ViewPrefs.use("studio")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "a middle drag", "slide")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "shift and a middle drag", "orbit")
+	ViewPrefs.use("blender")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "in Blender's, a middle drag", "orbit")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "...and with shift", "slide")
+	ViewPrefs.use("studio")
 
 	# A box, with the left button.
 	_builder.clear_selection()
@@ -691,16 +702,18 @@ func _the_list() -> void:
 
 	# The middle button's row follows the setting: its verb, and the
 	# pointer it shows. Changed through the panel's own box.
-	var middle_slides: CheckBox = _checkbox_called(controls, "Middle button")
-	_check("the panel has the middle button setting", middle_slides != null)
-	if middle_slides != null:
-		middle_slides.button_pressed = false
+	var preset: OptionButton = (controls as ControlsDialog).preset_choice
+	_check("the panel has the navigation preset", preset != null)
+	if preset != null:
+		preset.select(ViewPrefs.PRESETS.find("blender"))
+		preset.item_selected.emit(ViewPrefs.PRESETS.find("blender"))
 		await _frames(3)
-		_check("set to turn, the middle row shows the turning pointer",
+		_check("set to Blender's, the middle row shows the turning pointer",
 			_middle_row_pointer(controls, density) == "orbit")
-		middle_slides.button_pressed = true
+		preset.select(ViewPrefs.PRESETS.find("studio"))
+		preset.item_selected.emit(ViewPrefs.PRESETS.find("studio"))
 		await _frames(3)
-		_check("set to slide, it shows the sliding one",
+		_check("set to Studio's, it shows the sliding one",
 			_middle_row_pointer(controls, density) == "slide")
 		var hint: ControlsHint = _main.get("_hint")
 		var says: String = ""
@@ -708,8 +721,6 @@ func _the_list() -> void:
 			if label.text == "slide":
 				says = label.text
 		_check("...and the strip says slide too", says == "slide")
-		middle_slides.button_pressed = false
-		await _frames(3)
 
 	await _shot(_out + "/help_dialog.png")
 	controls.visible = false

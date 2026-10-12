@@ -79,10 +79,7 @@ func _build() -> void:
 		"Scroll away from you to zoom out instead of in.",
 		ViewPrefs.invert_zoom,
 		func(on: bool) -> void: ViewPrefs.invert_zoom = on)
-	_toggle(column, "Middle button slides instead of turning",
-		"Like Fusion and Onshape. Shift always does the other one.",
-		ViewPrefs.middle_slides,
-		func(on: bool) -> void: ViewPrefs.middle_slides = on)
+	_presets(column)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -197,6 +194,48 @@ func _toggle(column: VBoxContainer, text: String, why: String,
 	note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(note)
+
+
+## The navigation preset: how the mouse looks round the model, after the
+## program a person comes from (ViewPrefs). Studio's is the default.
+var preset_choice: OptionButton
+
+
+func _presets(column: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	var words := Label.new()
+	words.text = "Navigate like"
+	words.add_theme_font_size_override("font_size", 12)
+	row.add_child(words)
+	preset_choice = OptionButton.new()
+	preset_choice.focus_mode = Control.FOCUS_NONE
+	preset_choice.add_theme_font_size_override("font_size", 12)
+	for name: String in ViewPrefs.PRESETS:
+		preset_choice.add_item(ViewPrefs.preset_name(name))
+	preset_choice.select(ViewPrefs.PRESETS.find(ViewPrefs.preset))
+	row.add_child(preset_choice)
+	var note := Label.new()
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(note)
+	var say := func() -> void:
+		note.text = {
+			"studio": "BrickLink Studio: right-drag turns, middle-drag or shift and right-drag slides, the wheel zooms to the pointer.",
+			"blender": "Blender: middle-drag turns, shift and middle-drag slides; the right button turns too.",
+			"mecabricks": "Mecabricks: a left drag on empty space turns, right-drag slides, middle-drag zooms.",
+		}[ViewPrefs.preset]
+	say.call()
+	preset_choice.item_selected.connect(func(index: int) -> void:
+		ViewPrefs.use(ViewPrefs.PRESETS[index])
+		ViewPrefs.keep()
+		say.call()
+		# The list above says what each button does, so it is wrong the
+		# moment that changes.
+		_fill()
+		changed.emit())
 
 
 var _version: Label

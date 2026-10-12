@@ -54,10 +54,15 @@ func _run() -> void:
 		func() -> Variant: return builder.held_color, KEY_BRACKETRIGHT)
 	_check("[ changes it back",
 		func() -> Variant: return builder.held_color, KEY_BRACKETLEFT)
-	_check("E turns the whole model",
-		func() -> Variant: return _model_signature(world), KEY_E)
-	_check("Q turns it the other way",
-		func() -> Variant: return _model_signature(world), KEY_Q)
+	_check("Shift-E turns the whole model",
+		func() -> Variant: return _model_signature(world), KEY_E, true)
+	_check("Shift-Q turns it the other way",
+		func() -> Variant: return _model_signature(world), KEY_Q, true)
+	var verbs: EditVerbs = _main.get("_verbs")
+	_press(KEY_Q)
+	_assert("Q alone puts the last part in hand", verbs.mode == "place")
+	_press(KEY_ESCAPE)
+	_assert("...and Escape lets go of it", verbs.mode == "select")
 	# Pushed off the model first. F on an already-framed scene correctly
 	# does nothing, so checking that the transform changed would fail a
 	# working key — the question is whether F brings the camera back,
@@ -175,6 +180,10 @@ func _run() -> void:
 	# run there is not — so the ray is aimed by hand at a brick whose
 	# position is known, which exercises the same hover path a mouse
 	# does rather than poking at the hovered id directly.
+	# A part in hand, so the ghost and what it is over are what the keys
+	# act on; with nothing in hand they act on what is under the pointer,
+	# which a headless run has nowhere.
+	(_main.get("_verbs") as EditVerbs).set_mode("place")
 	var target: BrickWorld.Brick = world.bricks()[0]
 	var aim: Vector3 = target.transform.origin
 	builder.update_preview(aim + Vector3(0, 400, 0), Vector3.DOWN)
@@ -408,9 +417,9 @@ func _model_signature(world: BrickWorld) -> float:
 	return total
 
 
-func _check(what: String, reading: Callable, key: int) -> void:
+func _check(what: String, reading: Callable, key: int, shift: bool = false) -> void:
 	var before: Variant = reading.call()
-	_press(key)
+	_press(key, false, shift)
 	_assert(what, reading.call() != before)
 
 
@@ -423,9 +432,10 @@ func _assert(what: String, ok: bool) -> void:
 ## Delivered the way the window delivers one, so it travels the same path
 ## a real press does — including past the "is someone typing?" guard that
 ## a direct call to the handler would skip.
-func _press(keycode: int, command: bool = false) -> void:
+func _press(keycode: int, command: bool = false, shift: bool = false) -> void:
 	var event := InputEventKey.new()
 	event.keycode = keycode
 	event.pressed = true
 	event.meta_pressed = command
+	event.shift_pressed = shift
 	root.push_input(event)
