@@ -322,8 +322,12 @@ static func lengths_of(library: PartLibrary, kind: String) -> Array:
 				continue
 			var longest: float = maxf(info.size.x, maxf(info.size.y, info.size.z))
 			out.append({"id": id, "name": info.name, "length": longest})
+		# Two strings are 416 LDU, one with minifig grips: by number too,
+		# so the same item is read as the same part every time.
 		out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-			return float(a["length"]) < float(b["length"]))
+			if not is_equal_approx(float(a["length"]), float(b["length"])):
+				return float(a["length"]) < float(b["length"])
+			return str(a["id"]) < str(b["id"]))
 	_lengths[kind] = out
 	return out
 
@@ -1097,26 +1101,92 @@ static func lay_chain(kind: String, sprockets: Array) -> Laid:
 static func kind_of(part_ids: Array) -> String:
 	if part_ids.is_empty():
 		return ""
-	for kind: String in KINDS:
-		var spec: Dictionary = KINDS[kind]
-		var own: Array = []
-		for key: String in ["segment", "end", "middle", "link"]:
-			if spec.has(key):
-				own.append(spec[key])
-		own.append_array(spec.get("ends", []))
-		var all: bool = true
-		for part: Variant in part_ids:
-			if not own.has(str(part)):
-				all = false
-				break
-		if all:
-			return kind
-	return ""
+	var kind: String = kind_of_piece(str(part_ids[0]))
+	for part: Variant in part_ids:
+		if kind_of_piece(str(part)) != kind:
+			return ""
+	return kind
 
 
-## Whether a part is any kind's segment.
-static func is_segment(part_id: String) -> bool:
-	return not kind_of([part_id]).is_empty()
+## part -> the kind it is a piece of. No part is a piece of two kinds.
+static var _piece_kinds: Dictionary = {}
+
+
+## Which kind a part is a segment, end or link of: "" for any other part.
+static func kind_of_piece(part_id: String) -> String:
+	if _piece_kinds.is_empty():
+		for kind: String in KINDS:
+			var spec: Dictionary = KINDS[kind]
+			for key: String in ["segment", "end", "middle", "link"]:
+				if spec.has(key):
+					_piece_kinds[str(spec[key])] = kind
+			for part: Variant in spec.get("ends", []):
+				_piece_kinds[str(part)] = kind
+	return str(_piece_kinds.get(part_id, ""))
+
+
+## The flexible items in the world: every sub-model whose bricks are all
+## one kind's pieces, which is how the flex tool lays one and how Studio
+## and LDCad write one. path -> {"kind", "bricks": [BrickWorld.Brick]}.
+## Pieces loose in the model are no item: nothing says which hose a ring
+## is of. Bricks in [param skip] are left out.
+static func items_in(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
+	# The counts line asks after every change, of models of thousands of
+	# parts: the pieces first, by a lookup each, and only where there are
+	# any the sub-models they are in.
+	var bricks: Array = world.bricks()
+	var found: Dictionary = {}
+	var not_items: Dictionary = {}
+	for brick: BrickWorld.Brick in bricks:
+		var kind: String = kind_of_piece(brick.part_id)
+		if kind.is_empty() or (brick.unit.is_empty() and brick.group.is_empty()) \
+				or skip.has(brick.id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		var item: Dictionary = found.get(path, {})
+		if item.is_empty():
+			item = {"kind": kind, "bricks": []}
+			found[path] = item
+		elif str(item["kind"]) != kind:
+			not_items[path] = true
+		(item["bricks"] as Array).append(brick)
+	if found.is_empty():
+		return found
+	# And a sub-model with any other part in it is no item. A brick with a
+	# group and no unit is in its group's one copy, "Hose#1".
+	var by_group: Dictionary = {}
+	for path: String in found:
+		if path.ends_with("#1") and not path.contains("/"):
+			by_group[path.trim_suffix("#1")] = path
+	for brick: BrickWorld.Brick in bricks:
+		if skip.has(brick.id) or not kind_of_piece(brick.part_id).is_empty():
+			continue
+		if not brick.unit.is_empty():
+			if found.has(brick.unit):
+				not_items[brick.unit] = true
+		elif by_group.has(brick.group):
+			not_items[by_group[brick.group]] = true
+	for path: String in not_items:
+		found.erase(path)
+	return found
+
+
+## The part a shop sells a swept item as: the kind's straight part nearest
+## its length, which is the part it was laid as. "" for a chain or a tread,
+## which are sold as their links, and where the library has none of the
+## kind.
+static func real_part(library: PartLibrary, kind: String, pieces: Array) -> String:
+	if str(KINDS[kind]["family"]) == "links":
+		return ""
+	var real: float = item_length(kind, pieces)
+	var found: String = ""
+	var nearest: float = INF
+	for one: Dictionary in lengths_of(library, kind):
+		var off: float = absf(float(one["length"]) - real)
+		if off < nearest:
+			nearest = off
+			found = str(one["id"])
+	return found
 
 
 ## A swept item's two ends read off its end pieces, as free ports: where

@@ -20,6 +20,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "https://brickworks.diy/app";
+// A preview is behind Vercel's protection: the bypass, and a cookie for
+// what the page fetches after.
+const bypass = args.bypass || process.env.BW_BYPASS || "";
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = args.out || "shots/project";
 const NAME = "Flow Tower";
 mkdirSync(out, { recursive: true });
@@ -99,7 +105,7 @@ async function titleBecomes(wanted, seconds = 60) {
   return false;
 }
 
-await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 await controlAt("model_name");
 // The example on the baseplate is something to save; give the parts a
 // moment to arrive so the save is of the whole of it.

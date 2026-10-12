@@ -166,6 +166,17 @@ func _a_hose() -> void:
 		_tree.ids_under(item).size()], _builder.selection.size() == _tree.ids_under(item).size())
 	_check("and Edit can reshape it", _shell.can("reshape_flex"))
 	_builder.clear_selection()
+	# Its end pin sits in a hole, which reads as a hinge: Pose once offered
+	# the tube a slider, and swung it off its other hole.
+	var pose: Control = _main.get("_pose")
+	if pose != null:
+		_shell.run("pose")
+		await _frames(5)
+		var offered: Array = (pose.get("poser") as Poser).joints.map(
+			func(j: Poser.Joint) -> String: return j.path)
+		_check("Pose offers the laid tube no slider (%s)" % str(offered), not offered.has(item))
+		pose.call("close")
+		await _frames(3)
 
 
 func _a_chain() -> void:

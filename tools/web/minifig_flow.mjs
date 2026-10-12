@@ -1,6 +1,7 @@
 // Make a minifigure and stand it in the model, in a real browser.
 //
 //   node tools/web/minifig_flow.mjs --url=https://brickworks.diy/app --out=shots/minifig_web
+//   node tools/web/minifig_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=…
 //   node tools/web/minifig_flow.mjs --url=http://127.0.0.1:8137/index.html --out=…   (a local export)
 //
 // Presses M, photographs the builder, presses Place in model, clicks the
@@ -27,6 +28,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const url = args.url || "https://brickworks.diy/app";
 const out = args.out || "shots/minifig_web";
+// A preview is behind Vercel's protection: the bypass, and a cookie for
+// what the page fetches after.
+const bypass = args.bypass || process.env.BW_BYPASS || "";
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 mkdirSync(out, { recursive: true });
 
 const browser = await launch();
@@ -42,7 +49,7 @@ const check = (what, ok) => {
   if (!ok) failed += 1;
 };
 
-await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 const until = Date.now() + 300000;
 while (!(await page.evaluate(() => Boolean(window.brickworksControls)))) {
   if (Date.now() > until) throw new Error("the app never came up");

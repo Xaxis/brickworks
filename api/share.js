@@ -72,6 +72,26 @@ const COLOUR = /^(\d+|0x[0-9A-Fa-f]{7})$/;
 // How many numbers follow the line type and colour for each kind of line.
 const COORDS = { 2: 6, 3: 9, 4: 12, 5: 12 };
 
+// The pieces a hose, a tube, a flexible axle or a string is laid from
+// along a bend, by the kind they are of (Flex.KINDS, src/assembly/flex.gd).
+// A submodel of nothing but one kind's pieces is the one part a shop sells,
+// as the app's parts list counts it (Inventory.of): a ribbed hose is two
+// ends and thirty rings in the file and one hose to buy. A chain is its
+// links, which are what is sold, and they count as themselves.
+const FLEX_PIECES = new Map([
+  ["71944k01", "ribbed_hose"], ["71944k02", "ribbed_hose"],
+  ["71533k02", "pneumatic_tube"], ["71533k03", "pneumatic_tube"],
+  ["u9053", "flex_hose"], ["77", "flex_hose"],
+  ["u9010", "flex_axle"], ["u9011", "flex_axle"], ["u9012", "flex_axle"],
+  ["71149k01", "string"], ["71149k02", "string"],
+]);
+
+/// Whether a file's parts are all one flexible part's pieces.
+function laidFlexible(placed) {
+  const kinds = new Set(placed.map((ref) => FLEX_PIECES.get(ref.replace(/\.dat$/, ""))));
+  return placed.length > 0 && kinds.size === 1 && !kinds.has(undefined);
+}
+
 export class Refusal extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -91,7 +111,8 @@ export class Refusal extends Error {
 /// Parts are counted through the model's own submodels: a submodel
 /// placed three times is its parts three times. A `0 FILE` whose name
 /// ends .dat is a part (LDraw's own convention, and how the app writes a
-/// custom part), so it counts once wherever it is placed.
+/// custom part), so it counts once wherever it is placed; so does a
+/// submodel that is a hose laid along a bend (FLEX_PIECES).
 export function checkModel(text) {
   if (typeof text !== "string" || text.trim() === "") {
     throw new Refusal("there is no model to share");
@@ -172,7 +193,7 @@ export function checkModel(text) {
   const count = (name) => {
     const file = files.get(name);
     if (!file) return 1;
-    if (file.isPart) return 1;
+    if (file.isPart || laidFlexible(file.placed)) return 1;
     if (counted.has(name)) return counted.get(name);
     if (visiting.has(name)) throw new Refusal("that model places itself inside itself", 415);
     visiting.add(name);
