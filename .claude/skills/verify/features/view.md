@@ -65,7 +65,9 @@ picture the assistant is shown.
   change a slice a frame (`BrickWorld.rebuilds_in_slices`, set by `Main`;
   ModelShot's copy rebuilds whole, because its picture must be). The whole
   assembly takes at most `LONGEST_MS` (2.5 s), several steps to a frame on a
-  big model. A click or a key ends it, with the model whole. Nothing plays
+  big model, by the clock on the wall: the engine's frame time is smoothed
+  towards the display's rate, and timed by it the Falcon's 2.5 s took 16 s in
+  a browser drawing in software. A click or a key ends it, with the model whole. Nothing plays
   where nobody can see it (`Main._watch_view`): a browser tab out of view
   (`document.hidden`) or a minimised window. A tab that goes out of view
   while it plays ends it. Out of view, `Main` also turns off the window's 3D
