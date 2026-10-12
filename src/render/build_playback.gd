@@ -36,21 +36,27 @@
 ##   a walk of the model;
 ## - and the whole of it takes at most [constant LONGEST_MS], however many
 ##   steps, several to a frame if need be.
+##
+## It is a flourish, never a wait. A click or a key ends it with the model
+## whole (Main), and it does not play at all where nobody can see it: the
+## owner, designing from claude.ai with the tab out of view, came back to
+## find the model still going up after Claude had said it was done
+## (2026-10-11).
 class_name BuildPlayback
 extends Node
 
 ## Roughly how long the whole assembly should take, in milliseconds.
-## Long enough to follow, short enough that nobody reaches for a
-## keyboard to skip it.
-const TARGET_MS := 3600.0
+## Long enough to see it go up, short enough that nobody waits on it.
+const TARGET_MS := 2000.0
 ## No step may be quicker than this or it reads as a flicker, nor slower
 ## than this or a small model feels like it is stalling.
 const FASTEST_MS := 45.0
 const SLOWEST_MS := 320.0
 ## And no assembly longer than this. The Falcon's 4,242 parts are about 530
 ## steps, which at the fastest step was 24 s of a model going up while the
-## assistant had long since moved on.
-const LONGEST_MS := 8000.0
+## assistant had long since moved on; then 8 s, which was still the model
+## held back from somebody who had come to look at it.
+const LONGEST_MS := 2500.0
 ## New bricks up to this many go up in the booklet's order. Beyond it, the
 ## plan's cost is the problem: it grows with the square of the bricks (730
 ## bricks, 0.3 s; 4,242, 15.5 s), and a frame is not the place to spend it.

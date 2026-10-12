@@ -726,6 +726,13 @@
       "entry": "tools/web/freeze_check.mjs",
       "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "arrival check",
+      "entry": "tools/web/arrival_check.mjs",
+      "reach": "node tools/web/arrival_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
     }
   ]
 }

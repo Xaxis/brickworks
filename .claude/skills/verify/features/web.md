@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check -->
 
 ## Sub-features
 
@@ -178,6 +178,41 @@ plan with Claude as the client.
   (`ModelShot.gpu_wait_us`), printed apart: in software it waits on every
   frame queued before it, tens of seconds. Leaves `console.log` (what the app
   printed, as it came) and `freeze.json`.
+- `arrival check`: `tools/web/arrival_check.mjs` times what the owner meant by
+  "the rendering after Claude reports being done is EXTREMELY SLOW": from
+  submit_design's answer to the last brick drawn. It plays Claude over the
+  connector in a fresh page per case, for the Falcon's lowest 300 and 2,000
+  parts and all 4,242. Each case runs twice: with the tab in view (`shown`),
+  and with the tab out of view from before the check until 5 s after the
+  answer (`hidden`), as when designing from claude.ai. `--flow=submit`
+  submits onto the bare baseplate with no check first, so every brick is new.
+  It times every engine frame in the page by wrapping requestAnimationFrame,
+  and takes the time spent inside WebGL calls off each one. In software
+  (SwiftShader) the page waits a second or more a frame on the rasteriser,
+  inside those calls. It counts the instances each frame asks WebGL to draw.
+  - `drawn`: the first frame in view from which every frame draws what the
+    last does, to within 1%.
+  - `idle`: the last frame in view with over 100 ms of the engine's own work.
+
+  It also prints the slowest own frame, long task and evaluate round trip in
+  view, and how many frames ran between the answer and the tab being shown.
+  It hides a tab the way `connector_flow.mjs` does: `document.hidden`, plus
+  a gate on the browser's frames. A browser driven from here never hides a
+  page itself, not even behind another tab (tried 2026-10-11). It reads the
+  same way on a build that does not time itself, so the old build is judged
+  by the same numbers. Fails when a case is not drawn within three frames of
+  being in view, or took more than `--budget` ms (2,000) of the engine's own
+  work to get there. It is judged in frames because in software a frame of a
+  4,000-part model is 2 to 3 s of rasterising, which a graphics card does in
+  milliseconds. Three frames because the ground is laid wider under a design
+  that outgrew it, a frame after it is built. If a case's tab never answers
+  the connector, the case is tried again on a fresh page, up to three pages
+  in all. The test account is shared by every check on the machine, and a
+  page can come up saying "Sign in to Brickworks again to connect Claude".
+  A case that still never answers fails as that, not as a slow model. Leaves
+  `<size>_<mode>.png`, `.frames.json` (every frame: start, length, own work,
+  instances, draws, slowest WebGL call; and each instanced draw's count
+  whenever they changed) and `arrival.json`.
 - The desktop downloads page (`web/download.html`, `download.js`,
   `releases.json`) ships with every deploy like the rest of `web/`; what it
   does and how it is checked is in [release](release.md). The landing page

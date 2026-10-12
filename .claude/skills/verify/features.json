@@ -72,6 +72,14 @@
       "tests": []
     },
     {
+      "id": "cli:arrival check",
+      "kind": "cli",
+      "entry": "tools/web/arrival_check.mjs",
+      "reach": "node tools/web/arrival_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",

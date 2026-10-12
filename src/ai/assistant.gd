@@ -3321,6 +3321,9 @@ static func _quarter_turns(basis: Basis) -> int:
 	return posmod(int(round(atan2(-right.z, right.x) / (PI * 0.5))), 4)
 
 
+const PREFETCH_FOUND := 5
+
+
 func _search(query: String, limit: int) -> String:
 	var found: Array[PartLibrary.PartInfo] = library.search(query, maxi(1, limit))
 	var usable: Array[PartLibrary.PartInfo] = []
@@ -3331,6 +3334,14 @@ func _search(query: String, limit: int) -> String:
 
 	if usable.is_empty():
 		return "No parts match '%s'. Try fewer or plainer words." % query
+
+	# The parts a design is about to name, fetched while it is still being
+	# thought about, so check_design is not the first to ask for them. Only
+	# the web build fetches; the best few, since a search lists alternatives.
+	if OS.has_feature("web"):
+		for info: PartLibrary.PartInfo in usable.slice(0, PREFETCH_FOUND):
+			if not library.is_resident(info.id):
+				library.request_mesh(info.id)
 
 	var lines: PackedStringArray = PackedStringArray()
 	for info: PartLibrary.PartInfo in usable:

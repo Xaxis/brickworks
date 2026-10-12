@@ -1375,7 +1375,10 @@ func _build_ui() -> void:
 		# nobody could see. Without it a look is 0.3 s and each of those
 		# 12 s. And only what the change put down: what was standing
 		# already does not vanish to be built again.
-		if not _driven and _playback.play_new(_assistant.fresh_ids):
+		# Nor when nobody can see it: a design made from claude.ai with the
+		# tab out of view is there, whole, when the tab is looked at.
+		_watch_view()
+		if not _driven and not _out_of_view and _playback.play_new(_assistant.fresh_ids):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
 	# it would be an assembly that never finishes.
@@ -2164,7 +2167,38 @@ func _watch_own_frames() -> void:
 				_slow_frames = _slow_frames.slice(-SLOW_FRAMES))
 
 
+## Whether nobody can see the model: the browser tab out of view, or the
+## window minimised.
+##
+## Claude designs from claude.ai with the Brickworks tab out of view, and the
+## connector keeps the app running there (ClaudeConnector._watch_the_page).
+## It went on drawing the model every frame for nobody, and went on to play
+## the build animation for nobody, so when the person looked the model was
+## still going up (2026-10-11). Out of view now nothing 3D is drawn, and a
+## design arrives whole.
+var _out_of_view: bool = false
+
+
+func _watch_view() -> void:
+	var away: bool = _nobody_looking()
+	if away == _out_of_view:
+		return
+	_out_of_view = away
+	get_viewport().disable_3d = away
+	FramePace.unwatched = away
+	if away and _playback != null and _playback.is_playing():
+		_playback.stop()
+
+
+static func _nobody_looking() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("document.hidden", true))
+	return DisplayServer.get_name() != "headless" \
+		and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED
+
+
 func _process(_delta: float) -> void:
+	_watch_view()
 	_steer_from_keys(_delta)
 	if _cursors != null:
 		_cursors.show_state(_cursor_state())
