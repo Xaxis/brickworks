@@ -170,7 +170,10 @@ plan with Claude as the client.
   `deploy.sh` 308s to `/b/<sha>/?view=<id>` (Vercel keeps a query across that
   redirect by itself; `?copy=` likewise), and which the shell hands the app as `--view=<id>`
   (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
-  read-only, no second renderer: one GET of `/api/share?id=`, the model opened
+  read-only, no second renderer: one GET of `/api/share?id=` (asked again, up
+  to three times, when nothing at all comes back: on a preview a viewer said
+  "Could not reach Brickworks" once in four runs, and the same link opened at
+  the next try), the model opened
   through `ModelStore.open_text` (made parts and prints built from the file),
   the parts fetched, then the timeline (`StepsBar`) at the finished model; a bar
   along the top with the name, part count and author, Steps, Booklet, Parts list

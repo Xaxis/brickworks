@@ -29,8 +29,20 @@ static func embed_for(id: String) -> String:
 
 ## The model at a link: {code, body}. 200 with {name, author, parts,
 ## model, url…}; 410 taken down; 404 never there; 0 unreachable.
+##
+## Asked up to three times when nothing came back at all. A visitor's first
+## request goes out while the engine is still starting, and a browser drawing
+## in software can stall a frame long enough for it to come back as nothing:
+## a viewer on a preview said "Could not reach Brickworks" once in four runs,
+## and the same link opened at the next try. Reading is safe to repeat.
 func fetch(id: String) -> Dictionary:
-	return await _fetch("/api/share?id=" + id.uri_encode(), HTTPClient.METHOD_GET, "", "")
+	var answer: Dictionary = {}
+	for attempt: int in 3:
+		answer = await _fetch("/api/share?id=" + id.uri_encode(), HTTPClient.METHOD_GET, "", "")
+		if int(answer["code"]) != 0:
+			break
+		await get_tree().create_timer(1.5 * (attempt + 1)).timeout
+	return answer
 
 
 ## Publish {name, author?, model, image?, id?} as the session's account.

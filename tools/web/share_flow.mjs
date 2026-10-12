@@ -267,8 +267,10 @@ try {
   let pages = 0;
   if (tab) {
     listen(tab, "booklet");
-    const end = Date.now() + 600000;
-    while (Date.now() < end && pages === 0) {
+    // Twenty minutes: alone it is about a minute, but at a load of 45 with
+    // the viewer drawing beside it in software it once took over ten.
+    const started = Date.now();
+    while (Date.now() - started < 1200000 && pages === 0) {
       pages = await tab.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0);
       if (!pages) await tab.waitForTimeout(2000);
     }
@@ -276,8 +278,13 @@ try {
       await tab.waitForTimeout(1500);
       await shot(tab, "6_booklet.png");
     }
+    check(`it opens in a tab, ${pages} pages, ${Math.round((Date.now() - started) / 1000)} s`, pages > 0);
+    // Closed, so a booklet still drawing takes no more of the machine
+    // from the pages after it.
+    await tab.close().catch(() => {});
+  } else {
+    check("it opens in a tab", false);
   }
-  check(`it opens in a tab, ${pages} pages`, pages > 0);
 
   console.log("nothing that edits");
   const before = await visitor.evaluate(() => window.brickworksState.bricks);
@@ -313,10 +320,13 @@ try {
   const blog = await visitorContext.newPage();
   listen(blog, "blog");
   await blog.goto(`http://127.0.0.1:${blogServer.address().port}/post.html`, { waitUntil: "load", timeout: 60000 });
-  await blog.waitForTimeout(6000);
+  let cardText = "";
+  for (let n = 0; n < 30 && !cardText.includes("View in 3D"); n++) {
+    const framed = blog.frames().find((f) => f.url().includes(`/m/${id}/embed`));
+    cardText = framed ? await framed.evaluate(() => document.body.innerText).catch(() => "") : "";
+    if (!cardText.includes("View in 3D")) await blog.waitForTimeout(2000);
+  }
   blogServer.close();
-  const framed = blog.frames().find((f) => f.url().includes(`/m/${id}/embed`));
-  const cardText = framed ? await framed.evaluate(() => document.body.innerText).catch(() => "") : "";
   check(`it renders in an iframe: "${cardText.replace(/\s+/g, " ").trim()}"`, cardText.includes(NAME) && cardText.includes("View in 3D"));
   await shot(blog, "7_embed.png");
   await blog.close();
