@@ -1048,14 +1048,30 @@ func _every_family() -> void:
 	builder.lattice.clear()
 
 
-## Arms the checker finds no socket in for the hand the builder puts on
-## them. Three have none: a Bionicle Barraki's arm ends in a claw of its own,
-## Dug's arm is what he walks on, and a mutant dog's is a leg, so nothing
-## holds a hand there and the builder should not hang one. The stump's peg is
-## in the catalogue but the hole in the prosthetic hand that goes on it (5059)
-## is not, which is the connector pipeline's to find.
+## Arms with no socket for a hand, which the builder leaves without one
+## (Minifig._has_socket): a Bionicle Barraki's arm ends in a claw of its own,
+## Dug's arm is what he walks on, and a mutant dog's is a leg, and a plain
+## hand hung on any of them was held by nothing.
 const NO_SOCKET: Dictionary = {"57588": "a Barraki's claw", "92754": "Dug's arm",
-	"12613": "a mutant dog's leg", "6828": "the stump, 5059's hole unread"}
+	"12613": "a mutant dog's leg"}
+
+## The slots whose whole figures are asked to be one piece, part kind by
+## part kind: a visor on its helmet, a cloth cape round the neck, a droid's
+## or a skeleton's arm, a prosthetic hand on its stump, legs on springs and
+## everything a hand holds.
+const WHOLE: Array[String] = ["hat_extra", "cape", "arms", "hands", "legs",
+	"accessory", "accessory_left"]
+
+## Figures still in pieces, and why, which the checker is right about: the
+## builder slides a sword as long as a figure is tall through the hand like
+## a spear, so the hand is round its flat blade; a string or a suitcase's
+## long handle is held by a thread too thin for the grip to find; the bent
+## spring stands off its hips when the figure is turned a quarter.
+const STILL_APART: Dictionary = {"59": "a greatsword held by its blade",
+	"66964": "a greatsword held by its blade", "2674a": "an elvish sword held by its blade",
+	"2674b": "an elvish sword held by its blade", "56823": "a thread",
+	"71149": "a braided string", "37178-f2": "a suitcase by its long handle",
+	"43741-f2": "the bent spring, turned a quarter"}
 
 
 ## A hand goes into its arm by a peg, and the design checker has to see the
@@ -1089,6 +1105,9 @@ func _one_piece() -> void:
 	var apart: Array[String] = []
 	var whole: int = 0
 	var broken: Array[String] = []
+	var figures: Dictionary = {}   ## slot -> figures asked
+	var in_pieces: Dictionary = {}   ## slot -> Array of what came apart
+	var still: Dictionary = {}
 	for slot: String in Minifig.SLOTS:
 		var seen: Dictionary = {}
 		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
@@ -1097,8 +1116,19 @@ func _one_piece() -> void:
 				continue
 			seen[family] = true
 			var figure := Minifig.new()
+			# A visor on the helmet it turns on: the one an assembly of the
+			# library's puts it on, or the classic helmet's dimples.
+			if slot == "hat_extra":
+				var on: Array = MinifigData.EXTRAS.get(family, [])
+				figure.choose(library, "headwear", str(on[0]) if on.size() == 13 else "3842b")
 			figure.choose(library, slot, info.id)
 			var parts: Array[Dictionary] = figure.assemble(library)
+			# A hand on an arm with no socket for one.
+			if NO_SOCKET.has(family) and slot == "arms":
+				for item: Dictionary in parts:
+					if str(item["slot"]) == "hands" and NO_SOCKET.has(
+							Minifig._family(str(parts[parts.find(item) - 1]["part"]))):
+						no_socket[family] = true
 			for n: int in stands.size():
 				world.clear()
 				builder.lattice.clear()
@@ -1109,35 +1139,52 @@ func _one_piece() -> void:
 					continue
 				# Each hand, and the arm it is on: the arm comes just before.
 				var arm: int = 0
-				var unheld: bool = false
 				for k: int in parts.size():
 					if str(parts[k]["slot"]) == "arms":
 						arm = ids[k]
 					elif str(parts[k]["slot"]) == "hands" and arm != 0:
-						var on: String = Minifig._family(world.get_brick(arm).part_id)
-						if NO_SOCKET.has(on):
-							no_socket[on] = true
-							unheld = true
-							continue
 						pairs += 1
 						if pieces.call([arm, ids[k]]) != 1:
 							apart.append("%s %s at stand %d: %s off %s" % [slot, info.id, n,
 								parts[k]["part"], world.get_brick(arm).part_id])
-				if slot == "hands" and not unheld:
+				if slot == "hands":
 					whole += 1
 					if pieces.call(Array(ids)) != 1:
 						broken.append("%s at stand %d" % [info.id, n])
+				# The whole figure, where it stands at the origin and turned a
+				# quarter on top of Orthanc.
+				if WHOLE.has(slot) and (n == 0 or n == 3):
+					figures[slot] = int(figures.get(slot, 0)) + 1
+					if pieces.call(Array(ids)) != 1:
+						if STILL_APART.has(info.id):
+							still[info.id] = true
+						else:
+							if not in_pieces.has(slot):
+								in_pieces[slot] = []
+							(in_pieces[slot] as Array).append("%s at stand %d" % [info.id, n])
 	for line: String in apart.slice(0, 10):
 		print("    apart: %s" % line)
-	_check("each of %d hands on a figure of every family of every slot, at four places, is one piece with its arm%s (not asked: on %s, no socket seen)"
-		% [pairs, "" if apart.is_empty() else ": %d are not" % apart.size(),
-			", ".join(PackedStringArray(no_socket.keys()))],
+	_check("each of %d hands on a figure of every family of every slot, at four places, is one piece with its arm%s, 5059 on its stump among them"
+		% [pairs, "" if apart.is_empty() else ": %d are not" % apart.size()],
 		apart.is_empty() and pairs >= 4000)
+	_check("and no hand is hung on an arm with no socket for one (%s)%s"
+		% [", ".join(PackedStringArray(NO_SOCKET.values())),
+			"" if no_socket.is_empty() else ": on %s" % ", ".join(PackedStringArray(no_socket.keys()))],
+		no_socket.is_empty())
 	for line: String in broken.slice(0, 10):
 		print("    in pieces: %s" % line)
 	_check("and %d figures of every kind of hand, at the same four, are each one piece%s"
 		% [whole, "" if broken.is_empty() else ": %d are not" % broken.size()],
 		broken.is_empty() and whole >= 20)
+	for slot: String in WHOLE:
+		var said: Array = in_pieces.get(slot, [])
+		for line: String in said.slice(0, 6):
+			print("    in pieces: %s %s" % [slot, line])
+		_check("%d whole figures of every family of %s, at the origin and turned on Orthanc, are each one piece%s"
+			% [int(figures.get(slot, 0)), slot, "" if said.is_empty() else ": %d are not" % said.size()],
+			said.is_empty() and int(figures.get(slot, 0)) >= 8)
+	print("    still in pieces, as they are: %s" % ", ".join(PackedStringArray(
+		still.keys().map(func(id: String) -> String: return "%s (%s)" % [id, STILL_APART[id]]))))
 
 	# Saruman as run 5's Orthanc stands him, turned a quarter, his staff
 	# raised in his right hand: cut out of models/orthanc.ldr as it was.
@@ -1166,6 +1213,43 @@ func _one_piece() -> void:
 	var count: int = pieces.call(Array(loose))
 	_check("a hand two studs out from its arm is a piece of its own (%d pieces)" % count,
 		moved and count == 2)
+
+	# Nor a sword out of the hand, nor a cape off the neck: what joins them
+	# is being in the grip and round the post, not being near.
+	for kept: Array in [["accessory", "3847", Vector3(-40, 0, 0), "a sword two studs out of the hand"],
+			["cape", "65384", Vector3(0, 0, -40), "a cloth cape two studs off the neck"],
+			["hat_extra", "2447b", Vector3(40, 0, 0), "a visor two studs off its helmet's pivots"]]:
+		world.clear()
+		builder.lattice.clear()
+		var dressed := Minifig.new()
+		if kept[0] == "hat_extra":
+			dressed.choose(library, "headwear", "3842b")
+		dressed.choose(library, kept[0], kept[1])
+		var placed: Array[Dictionary] = dressed.assemble(library)
+		var off: bool = false
+		for item: Dictionary in placed:
+			if str(item["slot"]) == kept[0] and not off:
+				item["at"] = (item["at"] as Transform3D).translated(kept[2])
+				off = true
+		var in_place: Array[Dictionary] = dressed.assemble(library)
+		var whole_ids: PackedInt64Array = builder.put_figure(in_place, "Probe", Transform3D.IDENTITY)
+		var together: int = pieces.call(Array(whole_ids))
+		world.clear()
+		builder.lattice.clear()
+		var apart_ids: PackedInt64Array = builder.put_figure(placed, "Probe", Transform3D.IDENTITY)
+		var away: int = pieces.call(Array(apart_ids))
+		_check("%s is a piece of its own (%d pieces), and in place one piece (%d)"
+			% [kept[3], away, together], off and away == 2 and together == 1)
+
+	# And the page's Orthanc, run 5, every figure on it whole.
+	world.clear()
+	builder.lattice.clear()
+	store.open("res://models/orthanc.ldr")
+	var tower: int = world.bricks().size()
+	var report: Dictionary = assistant._check(assistant._model_from_world(), true)
+	_check("the page's Orthanc, %d parts, is one piece as the checker reads it (%d)"
+		% [tower, int(report.get("pieces", 0))],
+		tower >= 9400 and int(report.get("pieces", 0)) == 1)
 	world.clear()
 	builder.lattice.clear()
 	assistant.queue_free()

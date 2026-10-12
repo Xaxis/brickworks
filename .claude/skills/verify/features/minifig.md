@@ -298,12 +298,23 @@ Proves it when:
   out from its arm is a piece of its own. Read at the nearest square turn, as
   the checker read a figure's parts before `Assistant._joined_at`, some 3700 of
   the hands came apart and Saruman was 3 pieces (run 5's whole Orthanc too:
-  `candidate_probe` said 3 pieces, and says 1 now). Not asked (`NO_SOCKET`): hands
-  the builder hangs on arms with no socket for one (57588, 92754, 12613), and
-  5059 on the stump 6828, whose hole the connectors lack. Whole figures of the
-  other slots are not all one piece yet: visors and goggles, cloth capes,
-  mechanical and droid arms, spring legs and many held things have no joint
-  the checker reads.
+  `candidate_probe` said 3 pieces, and says 1 now). 5059 on the stump 6828 is
+  among the pairs: its hole is drawn in raw quads the connectors cannot read,
+  and the stump's peg is found in it by 5059's cover all round it
+  (`Joints.pushed_in`). No hand is hung on an arm with no socket for one
+  (`NO_SOCKET`: 57588, 92754, 12613; `Minifig._has_socket`, which asks the
+  arm's and hand's own connectors at the standard joint). Whole figures of
+  every family of visors (on the helmet an assembly puts them on, or 3842b),
+  capes, arms, hands, legs and both hands' held things, at the origin and a
+  quarter turn on Orthanc, are each one piece: visors by their pivots, cloth
+  capes round the neck post, droid and skeleton arms by the plastic in the
+  torso's shoulder socket, everything held by being in the grip. Still in
+  pieces, and named (`STILL_APART`): four swords as long as a figure the
+  builder slides through the hand by the flat blade, two strings, a
+  suitcase's long handle, and the bent spring 43741-f2 turned a quarter. A
+  sword two studs out of the hand, a cape two studs off the neck and a visor
+  two studs off its pivots are pieces of their own. And the page's Orthanc,
+  run 5, 9,429 parts, is one piece.
 - `minifig_ui_probe` ends `a figure was made by clicking, named, placed on a stud
   and photographed`, and leaves `shots/minifig_builder.png`,
   `minifig_builder_surprise.png`, `minifig_figures_front.png`,

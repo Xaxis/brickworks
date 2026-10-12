@@ -216,6 +216,9 @@ func assemble(library: PartLibrary = null) -> Array[Dictionary]:
 		var arm_at: Transform3D = _arm_at(torso_id, arm, side)
 		var hand: String = hands[side]
 		var hand_at: Variant = _hand_at(torso_id, arm, arm_at, hand, side)
+		if hand_at != null and not hand.is_empty() \
+				and not _has_socket(library, arm, arm_at, hand, hand_at):
+			hand_at = null
 		var holds: String = part("accessory" if side == "r" else "accessory_left")
 		var natural: Transform3D = hand_at if hand_at != null \
 			else arm_at * _standard_hand_in_arm(side)
@@ -678,6 +681,28 @@ static func _hand_at(torso_id: String, arm: String, arm_at: Transform3D, hand: S
 		var plain: Transform3D = _ldraw(ARM_R if side == "r" else ARM_L)
 		return arm_at * plain.affine_inverse() * _ldraw(anywhere[side])
 	return arm_at * _standard_hand_in_arm(side)
+
+
+## Whether an arm has a socket for a hand where the standard joint puts
+## one, by the two parts' own connectors: the hand's peg in a bore of the
+## arm that fits it ([method Joints.rounds]). Asked only of a hand at the
+## standard joint, which no table of the library's says is right for this
+## arm: a Barraki's arm ends in a claw of its own, Dug's arm is what he
+## walks on and a mutant dog's is a leg, and a plain hand hung on any of
+## them was held by nothing. Where a part is not to hand, it is put on.
+static func _has_socket(library: PartLibrary, arm: String, arm_at: Transform3D,
+		hand: String, hand_at: Transform3D) -> bool:
+	if library == null:
+		return true
+	var side: String = "r" if arm_at.origin.x < 0.0 else "l"
+	if not (arm_at * _standard_hand_in_arm(side)).is_equal_approx(hand_at):
+		return true
+	var arm_mesh: Lbm.PartMesh = library.mesh_for(arm)
+	var hand_mesh: Lbm.PartMesh = library.mesh_for(hand)
+	if arm_mesh == null or hand_mesh == null:
+		return true
+	var entries: Array = [[0, FLIP * arm_at * FLIP, arm_mesh], [1, FLIP * hand_at * FLIP, hand_mesh]]
+	return Joints.rounds(entries).has(1) or Joints.both_ways(entries).has(1)
 
 
 ## An arm with its hand moulded on, or a clip where a hand would be, by
