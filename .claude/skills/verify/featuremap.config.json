@@ -1083,6 +1083,20 @@
       "entry": "tools/web/share_probe.mjs",
       "reach": "node tools/web/share_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "flexible parts along a path",
+      "entry": "src/assembly/flex.gd",
+      "reach": "godot --headless --path . --script src/dev/flex_probe.gd",
+      "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "hoses and chains by hand",
+      "entry": "src/ui/flex_tool.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain…, click two pin holes or two gears; Edit, Reshape the hose or chain)",
+      "area": "building"
     }
   ]
 }

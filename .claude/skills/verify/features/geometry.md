@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints, lib:flexible parts along a path -->
 
 ## Sub-features
 
@@ -128,6 +128,27 @@ can occupy the same millimetre.
   (`_rehinge`). `section_probe` ("a section on a hinge"): leans of -20 to 25
   degrees about x and z hold, closed it stacks exactly where a brick would.
 
+- `flexible parts along a path` (`src/assembly/flex.gd`, pure): a bent hose is
+  the real part's LDraw segments along the bend, as every tool that bends one
+  writes it. Ribbed hose: `71944k01` ends and `71944k02` rings every 6.25 LDU
+  (the 17L is 54 pieces either way). Pneumatic tube, flex-system hose: the
+  one-LDU tube (`71533k03`, `77`) **stretched** piece by piece, cut wherever the
+  path has turned `PIECE_TURN` (4°) and where each straight lead into a
+  connector ends, end caps at the tips. Flexible axle: only the 26L (72892) has
+  LDraw parts to bend (`u9011` and `u9010` rigid ends, `u9012` stretched
+  between); the 7–19L are drawn from subparts and cannot be. String: `71149k01`
+  stud ends on studs and `71149k02` braids every 6, hanging (its middle drops
+  until it is 588 LDU, 14225's). The path is straight out of each connector,
+  then a Hermite bend through any control points whose end tangents are as
+  long as makes it the real part's length; too short says "the path is longer
+  than this …", tighter than `bend` says so. Chains (3711) and treads (3873):
+  the pin circles of `SPROCKETS` (a gear takes a link every other tooth; r =
+  8 / sin(π/N)), the outer tangents between them, links chord-walked exactly 16
+  apart, as many as go round rounded up, the spare hung in the longest, lowest
+  run until the last link's pins are in the first one's hook. A stretched
+  part's cover is its own stretched (`Builder.boxes_for`): the turned covers
+  took a turn only, and gave a piece 40 long a cover one long.
+
 ## How to reach it
 
 GDScript: `src/assembly/lattice.gd` (cells, `cells_for_turned`, `is_square_to_grid`),
@@ -149,6 +170,7 @@ godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
+godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid

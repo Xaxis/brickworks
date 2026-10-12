@@ -572,6 +572,14 @@
       "tests": []
     },
     {
+      "id": "lib:flexible parts along a path",
+      "kind": "lib",
+      "entry": "src/assembly/flex.gd",
+      "reach": "godot --headless --path . --script src/dev/flex_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:ldr read and write",
       "kind": "lib",
       "entry": "src/parts/ldr_model.gd",
@@ -874,6 +882,14 @@
       "kind": "ui",
       "entry": "src/ui/edit_verbs.gd",
       "reach": "godot --path .  (select, H hides, Shift-H shows only it, Alt-H or H with nothing selected shows all)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:hoses and chains by hand",
+      "kind": "ui",
+      "entry": "src/ui/flex_tool.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain\u2026, click two pin holes or two gears; Edit, Reshape the hose or chain)",
       "area": "building",
       "tests": []
     },
