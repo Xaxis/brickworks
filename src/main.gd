@@ -3032,44 +3032,44 @@ func _hover_again() -> void:
 ## frame. Cursors.choose decides; this only gathers.
 func _cursor_state() -> String:
 	var now := Cursors.Situation.new()
-	now.turning = _camera.is_turning()
-	now.sliding = _camera.is_sliding()
+	now.holding_view = _camera.is_dragging()
+	now.holding_part = _dragging_part
 	now.boxing = _marquee != null and _marquee.is_drawing()
-	now.aimed = _builder.has_preview()
-	now.can_place = _builder.can_place()
-	# The ghost is only up over the model, so a brick the builder still
-	# remembers from before the pointer went over a panel is not one a
-	# click there would touch.
-	var over_brick: bool = now.aimed and _builder.hovered_brick() != 0
-	# A right click takes nothing off any more; only the Delete tool's
-	# pointer says "remove" (below).
-	now.removing = false
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	var typing: bool = focused is LineEdit or focused is TextEdit
+	# Keys typed into a field are words, not the mouse's modifiers.
+	now.shift = not typing and Input.is_key_pressed(KEY_SHIFT)
+	now.ctrl = not typing and Input.is_key_pressed(
+		KEY_META if EditVerbs.on_mac() else KEY_CTRL)
 	# Held, C paints whatever comes under the pointer: the key repeats,
 	# and each repeat paints what is there.
 	now.painting = not typing and Input.is_key_pressed(KEY_C)
-	now.moment = _camera.moment()
+	var moment: String = _camera.moment()
+	now.moment = "hand" if moment == "slide" else moment
 	now.playing = _playback != null and _playback.is_playing()
-	now.selecting = over_brick and Input.is_key_pressed(KEY_SHIFT)
-	now.loading = _library.is_on_its_way(_builder.held_part)
+	now.left_drag = Cursors.VERBS.get(ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT, now.shift), "orbit")
 	# The view's: a view tool on, or a key held that lends it the left
-	# button (Space slides, Alt turns).
+	# button — what _left_drag_verb will do with the next press.
 	if _verbs != null and _verbs.is_view_tool():
-		now.tool = {"turn": "orbit", "slide": "slide", "zoom": "zoom_in"}[_verbs.view_verb()]
+		var own: String = _verbs.view_verb()
+		if own == "zoom":
+			now.tool = "zoom_out" if now.shift else "zoom_in"
+		elif now.shift:
+			now.tool = "hand" if own == "turn" else "orbit"
+		else:
+			now.tool = Cursors.VERBS[own]
 	elif not typing and Input.is_key_pressed(KEY_SPACE):
-		now.tool = "slide"
+		now.tool = "hand"
 	elif not typing and Input.is_key_pressed(KEY_ALT):
-		now.tool = "orbit"
-	# A tool other than Build: what a click on the part under the pointer
-	# would do to it.
-	if _verbs != null and not _verbs.shows_ghost():
-		var under: int = _verbs.brick_at(get_viewport().get_mouse_position())
-		now.aimed = false
-		now.loading = false
-		now.selecting = under != 0 and not _verbs.mode in ["paint", "delete"]
-		now.painting = now.painting or (under != 0 and _verbs.mode == "paint")
-		now.removing = now.removing or (under != 0 and _verbs.mode == "delete")
+		now.tool = "zoom_in" if now.ctrl else ("hand" if now.shift else "orbit")
+	if _verbs != null:
+		now.mode = _verbs.mode
+		now.in_hand = _verbs.shows_ghost()
+	now.aimed = _builder.has_preview()
+	now.can_place = _builder.can_place()
+	now.loading = _library.is_on_its_way(_builder.held_part)
+	if not now.in_hand:
+		now.over_part = _brick_under_pointer() != 0
 	return Cursors.choose(now)
 
 

@@ -120,6 +120,9 @@ func _run() -> void:
 	print("  the way back")
 	await _the_way_back()
 	print("")
+	print("  the tools, the keys held, and what is under the pointer")
+	await _tools_and_contexts()
+	print("")
 	print("  the controls list")
 	await _the_list()
 	_finish()
@@ -233,7 +236,7 @@ func _over_the_model() -> void:
 	# Shift over a brick: a click picks it out instead.
 	await _key_down(KEY_SHIFT, true)
 	await _move_to(_middle)
-	await _expect("shift over a brick", "select")
+	await _expect("shift over a brick, with a part in hand: a drag slides", "hand")
 	await _key_down(KEY_SHIFT, false)
 	await _move_to(_middle)
 	await _expect("...and let go of", "place")
@@ -264,10 +267,16 @@ func _over_the_model() -> void:
 	# per-frame choice held off for those frames, or it puts "place"
 	# straight back before the window has drawn anything.
 	var now := Cursors.Situation.new()
+	now.in_hand = true
 	now.aimed = true
 	now.can_place = false
 	_check("a ghost that cannot go down is shown as blocked",
 		Cursors.choose(now) == "blocked")
+	now.can_place = true
+	_check("...and one that can, as the crosshair", Cursors.choose(now) == "place")
+	now.aimed = false
+	_check("...and in hand over nothing it could go on, as a turn",
+		Cursors.choose(now) == "orbit")
 	_main.set_process(false)
 	_cursors.show_state("blocked")
 	var shown_as: int = -1
@@ -290,13 +299,13 @@ func _dragging() -> void:
 	await _frames(2)
 	for n: int in range(1, 5):
 		await _move_to(_middle + Vector2(n * 12.0, 0.0), MOUSE_BUTTON_MASK_RIGHT)
-	await _expect("a right drag", "orbit")
+	await _expect("a right drag", "grabbing")
 	_check("...with the sheet up so it keeps its shape over panels",
 		_cursors.shielding())
 	# Across a panel and still turning: the pointer stays the turn.
 	var panel: Vector2 = _panel_point()
 	await _move_to(panel, MOUSE_BUTTON_MASK_RIGHT)
-	await _expect("...carried over a panel", "orbit")
+	await _expect("...carried over a panel", "grabbing")
 	await _move_to(_middle, MOUSE_BUTTON_MASK_RIGHT)
 	_press(MOUSE_BUTTON_RIGHT, _middle, false)
 	await _expect("...and let go of", "place")
@@ -305,20 +314,20 @@ func _dragging() -> void:
 	# The middle button, which slides in Studio's preset (the default) and
 	# turns with shift — and the other way round in Blender's.
 	ViewPrefs.use("studio")
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "a middle drag", "slide")
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "shift and a middle drag", "orbit")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "a middle drag", "grabbing")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "shift and a middle drag", "grabbing")
 	ViewPrefs.use("blender")
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "in Blender's, a middle drag", "orbit")
-	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "...and with shift", "slide")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, false, "in Blender's, a middle drag", "grabbing")
+	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "...and with shift", "grabbing")
 	ViewPrefs.use("studio")
 
 	# A left drag turns the view, with a part in hand too, and places
 	# nothing; with Ctrl it draws a box.
 	_builder.clear_selection()
 	var placed: int = _world.brick_count()
-	await _drag_and_look(MOUSE_BUTTON_LEFT, false, "a left drag", "orbit")
+	await _drag_and_look(MOUSE_BUTTON_LEFT, false, "a left drag", "grabbing")
 	_check("...which placed nothing", _world.brick_count() == placed)
-	await _drag_and_look(MOUSE_BUTTON_LEFT, true, "shift and a left drag", "slide")
+	await _drag_and_look(MOUSE_BUTTON_LEFT, true, "shift and a left drag", "grabbing")
 	_ctrl = true
 	await _drag_and_look(MOUSE_BUTTON_LEFT, false, "Ctrl and a left drag", "box")
 	_ctrl = false
@@ -368,7 +377,7 @@ func _wheel_and_keys() -> void:
 	await _key_down(KEY_SHIFT, true)
 	_press(MOUSE_BUTTON_WHEEL_UP, _middle, true, true)
 	_press(MOUSE_BUTTON_WHEEL_UP, _middle, false, true)
-	await _expect("shift and the wheel", "slide")
+	await _expect("shift and the wheel", "hand")
 	await _key_down(KEY_SHIFT, false)
 	await _expect("...and back", "place")
 
@@ -605,13 +614,13 @@ func _the_way_back() -> void:
 	await _frames(2)
 	for n: int in range(1, 6):
 		await _move_to(_middle + Vector2(n * 14.0, 0.0), MOUSE_BUTTON_MASK_RIGHT)
-	await _expect("a turn under way", "orbit")
+	await _expect("a turn under way", "grabbing")
 	var outside := Vector2(-60.0, -40.0)
 	await _move_to(outside, MOUSE_BUTTON_MASK_RIGHT)
 	_press(MOUSE_BUTTON_RIGHT, outside, false)
 	await _frames(4)
 	_check("a turn let go outside the window is over, got '%s'" % _cursors.shown(),
-		_cursors.shown() != "orbit" and not _cursors.shielding())
+		_cursors.shown() != "grabbing" and not _cursors.shielding())
 	await _move_to(_middle)
 	await _expect("...and coming back in, the pointer places", "place")
 
@@ -692,6 +701,191 @@ func _the_way_back() -> void:
 	await _expect("back to placing", "place")
 
 
+## Every tool, every key that lends the left button to the view, and what
+## is under the pointer.
+##
+## The owner, on the live site: "we're not seeing the cursor change based
+## on the mode and context, as you obviously need to do." Hide, Clone,
+## Rotate, Hinge and Move showed Select's pointing hand, the background
+## the arrow though a drag there turns the view, and the Orbit, Pan and
+## Zoom tools, Space and Alt nothing at all.
+func _tools_and_contexts() -> void:
+	var verbs: EditVerbs = _main.get("_verbs")
+	await _key_tap(KEY_ESCAPE)
+	verbs.set_mode("select")
+	_builder.clear_selection()
+	await _settle()
+	var nothing: Vector2 = _nothing_point()
+	await _move_to(_middle)
+	await _expect("Select, over a part: a click picks it", "select")
+	await _move_to(nothing)
+	await _expect("Select, over nothing: a drag turns the view", "orbit")
+	await _key_down(KEY_SHIFT, true)
+	await _expect("...with Shift: a drag slides it", "hand")
+	await _move_to(_middle, 0, true)
+	await _expect("...over a part as well", "hand")
+	await _key_down(KEY_SHIFT, false)
+	await _key_down(KEY_CTRL, true)
+	await _expect("Ctrl over a part: a drag copies it", "copy")
+	await _move_to(nothing)
+	await _expect("Ctrl over nothing: a drag draws a box", "box")
+	await _key_down(KEY_CTRL, false)
+	await _expect("...and let go of", "orbit")
+
+	for tool: Array in [["paint", "paint"], ["delete", "delete"], ["hide", "hide"],
+			["clone", "copy"], ["rotate", "rotate"], ["hinge", "hinge"], ["move", "move"]]:
+		verbs.set_mode(tool[0])
+		await _move_to(_middle)
+		await _expect("%s, over a part" % str(tool[0]).capitalize(), tool[1])
+		await _move_to(nothing)
+		await _expect("...and over nothing", tool[1])
+	verbs.set_mode("select")
+
+	# The view tools: their own pointer over everything, the other verb
+	# with Shift, and a closed hand while they hold the view.
+	for tool: Array in [["orbit", "orbit", "hand"], ["pan", "hand", "orbit"],
+			["zoom", "zoom_in", "zoom_out"]]:
+		verbs.view_tool(tool[0])
+		await _move_to(_middle)
+		await _expect("the %s tool, over a part" % str(tool[0]).capitalize(), tool[1])
+		await _key_down(KEY_SHIFT, true)
+		await _expect("...with Shift", tool[2])
+		await _key_down(KEY_SHIFT, false)
+		await _left_drag_held("...dragging", "grabbing")
+		_check("...which had hold of the view", _held_the_view)
+		await _expect("...and let go of", tool[1])
+	await _key_tap(KEY_ESCAPE)
+	_check("Esc is Select again (%s)" % verbs.mode, verbs.mode == "select")
+
+	# The keys held that lend the left button to the view, in any tool.
+	await _settle()
+	await _move_to(_middle)
+	await _expect("Select over a part again", "select")
+	await _key_down(KEY_SPACE, true)
+	await _expect("Space held: a drag slides the view", "hand")
+	await _left_drag_held("...dragging", "grabbing")
+	await _expect("...and let go of the button", "hand")
+	await _key_down(KEY_SPACE, false)
+	await _expect("...and of Space", "select")
+	await _key_down(KEY_ALT, true)
+	await _expect("Alt held: a drag turns the view", "orbit")
+	await _key_down(KEY_SHIFT, true)
+	await _expect("Alt and Shift: it slides", "hand")
+	await _key_down(KEY_SHIFT, false)
+	await _key_down(KEY_CTRL, true)
+	await _expect("Alt and Ctrl: it zooms", "zoom_in")
+	await _key_down(KEY_CTRL, false)
+	await _key_down(KEY_ALT, false)
+	await _expect("...and let go of", "select")
+
+	# A part in hand: the crosshair where it would go, a turn where there
+	# is nothing it could go on.
+	await _settle()
+	await _key_tap(KEY_Q)
+	await _move_to(_middle)
+	await _expect("a part in hand, over a spot it fits", "place")
+	var sky: Vector2 = await _sky_point()
+	_check("there is somewhere with nothing to put it on (%s)" % sky, sky != Vector2.ZERO)
+	if sky != Vector2.ZERO:
+		await _expect("...over nothing: a drag turns the view", "orbit")
+	_camera.set_view("default")
+	await _key_tap(KEY_ESCAPE)
+	verbs.set_mode("select")
+
+	# A part taken by a drag: held, it is a closed hand.
+	await _settle()
+	_builder.clear_selection()
+	await _move_to(_middle)
+	await _expect("over a part to drag", "select")
+	await _left_drag_held("dragging a part", "grabbing")
+	_check("...which had hold of the part, not the view", _held_a_part and not _held_the_view)
+	await _expect_not("...and let go of", "grabbing")
+
+	# The interface: the view cube is pressed, so it points; a splitter
+	# resizes. The app has no splitter of its own yet, so one is put over
+	# the model for the length of the check, to see that a picture never
+	# hangs on the shapes Godot gives its controls.
+	var cube: Control = _main.get("_gizmo")
+	if cube != null and cube.is_visible_in_tree():
+		await _move_to(_centre(cube))
+		await _expect_shape("over the view cube", DisplayServer.CURSOR_POINTING_HAND)
+	else:
+		_check("there is a view cube to point at", false)
+	var split := HSplitContainer.new()
+	split.position = _middle - Vector2(200.0, 80.0)
+	split.size = Vector2(400.0, 160.0)
+	for _n: int in 2:
+		var side := Panel.new()
+		side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		split.add_child(side)
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	layer.add_child(split)
+	root.add_child(layer)
+	await _frames(3)
+	await _move_to(_middle)
+	await _expect_shape("over a splitter", DisplayServer.CURSOR_HSPLIT)
+	_check("...which no picture hangs on", not Cursors.SLOTS.has(Input.CURSOR_HSPLIT)
+		and not Cursors.SLOTS.has(Input.CURSOR_VSPLIT))
+	layer.queue_free()
+	await _frames(3)
+
+
+## What the last [method _left_drag_held] had hold of.
+var _held_a_part: bool = false
+var _held_the_view: bool = false
+
+
+## A left drag from the middle, checked while the button is still down,
+## then let go of.
+func _left_drag_held(what: String, state: String) -> void:
+	var from: Vector2 = _middle
+	_press(MOUSE_BUTTON_LEFT, from, true)
+	await _frames(2)
+	for n: int in range(1, 6):
+		await _move_to(from + Vector2(n * 12.0, n * 5.0), MOUSE_BUTTON_MASK_LEFT)
+	await _expect(what, state)
+	_held_a_part = bool(_main.get("_dragging_part"))
+	_held_the_view = _camera.is_dragging()
+	var to: Vector2 = from + Vector2(60.0, 25.0)
+	_press(MOUSE_BUTTON_LEFT, to, false)
+	await _frames(4)
+	await _move_to(_middle)
+
+
+## A point over the model's part of the window with no part under it.
+func _nothing_point() -> Vector2:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var size: Vector2 = root.get_visible_rect().size
+	for offset: Vector2 in [Vector2(0, 220), Vector2(0, -200), Vector2(-260, 160),
+			Vector2(260, 160), Vector2(-300, -120), Vector2(0, 300)]:
+		var at: Vector2 = _middle + offset
+		if Rect2(Vector2.ZERO, size).has_point(at) and verbs.brick_at(at) == 0 \
+				and not _main._over_panel_at(at):
+			return at
+	_check("there is somewhere over the model with no part under it", false)
+	return _middle + Vector2(0, 220)
+
+
+## A point where the part in hand has nowhere to go, walking up from the
+## middle into the sky; ZERO if there is none. From the front, level: from
+## above, every ray down reaches the ground, which a part can go on.
+func _sky_point() -> Vector2:
+	_camera.set_view("front")
+	for _n: int in 40:
+		_camera._apply(0.5)
+		await process_frame
+	var y: float = _middle.y
+	while y > 30.0:
+		var at := Vector2(_middle.x, y)
+		if not _main._over_panel_at(at):
+			await _move_to(at)
+			if not _builder.has_preview():
+				return at
+		y -= 25.0
+	return Vector2.ZERO
+
+
 func _the_list() -> void:
 	var controls: ControlsDialog = _main.get("_controls")
 	controls.open()
@@ -722,7 +916,7 @@ func _the_list() -> void:
 		preset.item_selected.emit(ViewPrefs.PRESETS.find("studio"))
 		await _frames(3)
 		_check("set to Studio's, it shows the sliding one",
-			_middle_row_pointer(controls, density) == "slide")
+			_middle_row_pointer(controls, density) == "hand")
 		var hint: ControlsHint = _main.get("_hint")
 		var says: String = ""
 		for label: Label in _all(hint, "Label"):
@@ -757,7 +951,7 @@ func _middle_row_pointer(controls: ControlsDialog, density: float) -> String:
 			continue
 		var row: Node = keys.get_parent().get_parent()
 		for picture: TextureRect in _all(row, "TextureRect"):
-			for state: String in ["orbit", "slide"]:
+			for state: String in ["orbit", "hand"]:
 				if picture.texture == Icons.texture_for(Icons.CURSORS + state + ".svg",
 						ControlsDialog.POINTER_TALL, density):
 					return state
@@ -772,22 +966,37 @@ func _middle_row_pointer(controls: ControlsDialog, density: float) -> String:
 ## In time, not frames: a moment of the wheel lasts a third of a second,
 ## and with the frame rate uncapped that is anything from twenty frames
 ## to two hundred.
+##
+## A picture's shape is whichever slot it hangs on (Cursors.SLOTS), so
+## it is asked for as it is shown.
 func _expect(what: String, state: String, seconds: float = 3.0) -> void:
-	var wants: int = Cursors.SHAPES[state]
 	var until: int = Time.get_ticks_msec() + int(seconds * 1000.0)
 	while Time.get_ticks_msec() < until:
 		await process_frame
-		if _cursors.shown() == state and DisplayServer.cursor_get_shape() == wants:
+		var wants: int = _cursors.shape_of(state)
+		if _cursors.shown() == state and wants != -1 \
+				and DisplayServer.cursor_get_shape() == wants:
 			_check("%s: %s" % [what, state], true)
 			return
-	_check("%s: wanted %s (shape %d), got %s (shape %d)" % [what, state, wants,
-		_cursors.shown(), DisplayServer.cursor_get_shape()], false)
+	_check("%s: wanted %s (shape %d), got %s (shape %d)" % [what, state,
+		_cursors.shape_of(state), _cursors.shown(), DisplayServer.cursor_get_shape()], false)
+
+
+## Wait for the pointer to have left a state, whatever it went to.
+func _expect_not(what: String, state: String) -> void:
+	var until: int = Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		if _cursors.shown() != state and not _cursors.shielding():
+			_check("%s: %s" % [what, _cursors.shown()], true)
+			return
+	_check("%s: still %s" % [what, state], false)
 
 
 ## Wait for a drag's state to be over: neither the app nor the window
 ## still showing it, and the sheet gone.
 func _expect_over(what: String, state: String) -> void:
-	var was: int = Cursors.SHAPES[state]
+	var was: int = _cursors.shape_of(state)
 	var until: int = Time.get_ticks_msec() + 3000
 	while Time.get_ticks_msec() < until:
 		await process_frame

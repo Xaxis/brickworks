@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <!-- A click puts the held part down: the pointer, with a plus. Hotspot 2.5,2.5. -->
-  <path d="M2.5 2.5 L2.5 21 L7.2 16.6 L10.6 24.2 L13.8 22.8 L10.5 15.4 L16.8 15.4 Z"
-        fill="#ffffff" stroke="#16181d" stroke-width="1.5" stroke-linejoin="round"/>
-  <circle cx="23" cy="23" r="7.4" fill="#16181d"/>
-  <circle cx="23" cy="23" r="6.3" fill="#ffffff"/>
-  <circle cx="23" cy="23" r="5.1" fill="#3b82f6"/>
-  <path d="M23 19.9 V26.1 M19.9 23 H26.1" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <!-- A click puts the part in hand down here: a crosshair, with a plus. Hotspot 16,16. -->
+  <path d="M16 4 V12.5 M16 19.5 V28 M4 16 H12.5 M19.5 16 H28" stroke="#16181d" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M16 4 V12.5 M16 19.5 V28 M4 16 H12.5 M19.5 16 H28" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="2.1" fill="#ffffff" stroke="#16181d" stroke-width="1.2"/>
+  <circle cx="25" cy="25" r="6.6" fill="#16181d"/>
+  <circle cx="25" cy="25" r="5.5" fill="#ffffff"/>
+  <circle cx="25" cy="25" r="4.4" fill="#3b82f6"/>
+  <path d="M25 22.4 V27.6 M22.4 25 H27.6" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
 </svg>
