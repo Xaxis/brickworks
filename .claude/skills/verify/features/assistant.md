@@ -267,11 +267,15 @@ fixing what it got wrong.
   `band_color` sets another; a `mix_color` said means a scatter instead. A
   black `fill` wall with `rise` 3 does the same (`Patterns.BAND_EVERY`). As
   many 1 x 2s again as its masonry are laid as grille bricks (2877, faced
-  out), which catch light where masonry in black does not. `patterns_probe`:
+  out), which catch light where masonry in black does not, and `GRILLE_SHARE`
+  (0.5) of its outside row's 1 x 3s and 1 x 4s that lie wholly on the face
+  (`_grille_until`; one run on into the groove split, and hung there) as two
+  grille bricks (2877, with a 3005 after a 1 x 3): 10237 is 86 grille bricks in
+  2,359 parts, 3.6%, and the Orthanc after the bands was 0.2%. `patterns_probe`:
   asked for, 16 window studs on the guidance's cluster, each paired two
   courses tall, Trans-Brown, no office block said; none unless asked; a black
   cluster with no mix_color has hundreds of grey, every one in a band course,
-  and some grille; a black wall's grey is one course at y 21 with no black in
+  and 2-8% of its parts grille bricks; a black wall's grey is one course at y 21 with no black in
   it; the finishing pass leaves the windows.
   `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
 - `the faults of a picture`: three checks in every check's advice, each a

@@ -585,8 +585,12 @@ func _clustered() -> void:
 			band_black += 1
 		if placement.part == "2877":
 			grilles += 1
-	_check("a black prism takes dark bluish grey in bands and grille bricks: %d grey, %d grille"
-		% [greys, grilles], greys > 50 and grilles > 5)
+	# As densely as 10237 has them, 86 in 2,359 parts: the Orthanc built
+	# after the bands had 12 in 7,222, its long bricks out of the grille's
+	# reach.
+	_check("a black prism takes dark bluish grey in bands and grille bricks near 10237's 3.6%%: %d grey, %d grille in %d parts (%.1f%%)"
+		% [greys, grilles, toned.placements.size(), 100.0 * grilles / toned.placements.size()],
+		greys > 50 and grilles * 100 >= toned.placements.size() * 2 and grilles * 100 <= toned.placements.size() * 8)
 	_check("...the grey in its band courses only, none sprinkled (%d off them, %d black in them)"
 		% [off_band, band_black], off_band == 0 and band_black * 4 < greys)
 	var headings: Dictionary = {}
