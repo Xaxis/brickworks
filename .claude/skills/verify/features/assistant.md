@@ -609,7 +609,12 @@ fixing what it got wrong.
   plates where a plan edge runs on the diagonal (the cut side a fifth to four
   fifths inside the shape, sampled, so none stands out from a flat side as a
   fin), plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
-  on top unless `"top": "studs"` (`TOPS`). A shape that is its own mirror
+  on top unless `"top": "studs"` (`TOPS`), and every other course the outside
+  row of a straight side (clear for two courses, its stud above part of the
+  side) as bricks with side studs, 30414/11211/87087 in runs, marked `panel`
+  so `Assistant._panel` turns each to face out and lays a tile two studs tall
+  (87079/3068b/3069b) flat on its studs over the course above (`"panels":
+  false` for plain sides). A shape that is its own mirror
   (`mirror_of`) is laid as one half, its reflection, and a strip across the
   plane two and four (or three and one) studs wide by turns so every layer is
   tied across it; surface picks pair into two-wide parts and are laid with
@@ -628,9 +633,12 @@ fixing what it got wrong.
   surfaces and are mirrors of themselves; a ramp falling a plate a stud takes
   18 degree slopes (curved 4 x 2s said curved); a box's top is tiled, not with
   `"top": "studs"`; a band colours by height; a loft without sections is
-  refused saying what it wants. Measured against real vehicles
-  (`tools/style.py`): curved 5-14% (median 14%), plain 63-69% (median 33%) —
-  the solid core is plates and bricks; looked at on the GPU:
+  refused saying what it wants; a box's straight sides carry eight side-stud
+  bricks each with its tile, in one piece, and none with `"panels": false`.
+  Measured against real vehicles
+  (`tools/style.py`): curved 5-14% (median 14%), plain 58-67% (median 33%),
+  sideways up to 5% (median 23%) — the solid core is plates and bricks, and
+  round bodies have few straight sides; looked at on the GPU:
   `shots/runs/shapes/shape_*_corner.png`.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off

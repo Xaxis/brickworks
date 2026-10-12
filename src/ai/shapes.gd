@@ -37,6 +37,8 @@
 ##   an overhang    where the foot steps up as far, an inverted slope under it
 ##   a plan edge    on a diagonal, wedge plates in the plate layers
 ##   the top        tiles, so a body reads as a surface and not as studs
+##   a flat side    every other course, bricks with studs on their side and a
+##                  tile laid flat on them, as a set's flank is
 ##   two sides      a shape that is its own mirror is laid as one half and
 ##                  its mirror, tied across the middle by parts that span it,
 ##                  so a left wing is never a stud out from a right one
@@ -177,6 +179,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		return []
 
 	var plan := Plan.new(columns, tall, smooth, library)
+	plan.sides_smooth = bool(pattern.get("panels", true))
 	plan.sample = func(x: float, j: float, z: float) -> bool:
 		return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands) >= 0
 	plan.mirror_of()
@@ -195,6 +198,8 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		var out := {"part": one["part"], "color": one["color"],
 			"x": float(one["x"]) + origin.x, "y": float(one["y"]) + y0 + origin.y,
 			"z": float(one["z"]) + origin.z, "rot": int(one["rot"])}
+		if one.has("panel"):
+			out["panel"] = one["panel"]
 		placed.append(out)
 	return placed
 
@@ -681,6 +686,8 @@ class Plan extends RefCounted:
 	var columns: Dictionary          ## Vector2i -> PackedInt32Array
 	var tall: int
 	var smooth: bool
+	## Straight sides as tiles on bricks with side studs.
+	var sides_smooth: bool = true
 	var library: PartLibrary
 	## Plates taken by a surface part: Vector3i(x, j, z) -> true.
 	var taken: Dictionary = {}
@@ -1173,6 +1180,15 @@ class Plan extends RefCounted:
 					if not bricks.has(key):
 						for n: int in 3:
 							covered[Vector3i((key as Vector2i).x, j + n, (key as Vector2i).y)] = true
+				# Every other course, the outside of a straight side as bricks
+				# with studs on it and a tile on them: the side smooth, as a
+				# set's is, and not a face of plain bricks.
+				if sides_smooth and k % 2 == 0:
+					for one: Dictionary in _panels(bricks, j, k):
+						made.append(one)
+						for cell: Vector2i in one["_cells"]:
+							for n: int in 3:
+								covered[Vector3i(cell.x, j + n, cell.y)] = true
 				for one: Dictionary in _layer(bricks, j, Shapes.CORE_BRICKS, k):
 					made.append(_annotated(one, Shapes.CORE_BRICKS, 3, true))
 				for key: Variant in bricks:
@@ -1728,6 +1744,99 @@ class Plan extends RefCounted:
 				if placed:
 					break
 		return made_here
+
+	## Bricks with studs on one side for the outside row of a straight side
+	## in course [param k]: studs whose way out is clear for this course and
+	## the next, and whose stud over them is part of the side too, so the
+	## tile on them lies flat over both. In runs along the side, 1 x 4, 1 x 2
+	## and 1 x 1 (30414, 11211, 87087); one side of a mirror and the other its
+	## reflection. They come out of [param bricks]; the core's next course
+	## ties them in.
+	func _panels(bricks: Dictionary, j: int, k: int) -> Array:
+		var above: Dictionary = full(k + 1)
+		var facing_of: Dictionary = {}
+		for key: Variant in bricks:
+			var cell: Vector2i = key
+			if not above.has(cell) or bricks[cell] != at(cell, j + 3):
+				continue
+			var found := Vector2i.ZERO
+			var count: int = 0
+			for step: Vector2i in Shapes.OUT:
+				var clear: bool = true
+				for n: int in 6:
+					if at(cell + step, j + n) >= 0 or taken.has(Vector3i(cell.x + step.x,
+							j + n, cell.y + step.y)):
+						clear = false
+						break
+				if clear:
+					found = step
+					count += 1
+			if count == 1:
+				facing_of[cell] = found
+		var out: Array = []
+		var done: Dictionary = {}
+		var cells: Array = facing_of.keys()
+		cells.sort()
+		for key: Variant in cells:
+			var cell: Vector2i = key
+			if done.has(cell):
+				continue
+			if not axis.is_empty() and across(cell) * 2 > sum:
+				continue
+			var facing: Vector2i = facing_of[cell]
+			var along := Vector2i(absi(facing.y), absi(facing.x))
+			# The run this stud starts, along the side, on this side of the
+			# plane or across it.
+			var run: Array[Vector2i] = []
+			var at_: Vector2i = cell
+			while facing_of.get(at_) == facing and not done.has(at_) \
+					and bricks.get(at_) == bricks[cell] \
+					and (axis.is_empty() or across(at_) * 2 <= sum):
+				run.append(at_)
+				at_ += along
+			var placed: int = 0
+			while placed < run.size():
+				var left: int = run.size() - placed
+				var long: int = 4 if left >= 4 else (2 if left >= 2 else 1)
+				# A stud on the plane stands alone, its own mirror.
+				if not axis.is_empty():
+					for n: int in long:
+						if across(run[placed + n]) * 2 == sum:
+							long = n if n > 0 else 1
+							break
+				var part: String = {4: "30414", 2: "11211", 1: "87087"}[long]
+				var piece: Array[Vector2i] = []
+				for n: int in long:
+					piece.append(run[placed + n])
+				out.append(_panel_brick(part, piece, facing, j, int(bricks[cell])))
+				var twin: Array[Vector2i] = []
+				if not axis.is_empty():
+					for one: Vector2i in piece:
+						twin.append(reflect(one))
+				if not twin.is_empty() and not twin.has(piece[0]):
+					var flipped: Vector2i = Vector2i(facing.x, -facing.y) if axis == "z" \
+						else Vector2i(-facing.x, facing.y)
+					out.append(_panel_brick(part, twin, flipped, j, int(bricks[cell])))
+					for one: Vector2i in twin:
+						done[one] = true
+				for one: Vector2i in piece:
+					done[one] = true
+				placed += long
+		for one: Dictionary in out:
+			for cell: Vector2i in one["_cells"]:
+				bricks.erase(cell)
+		return out
+
+	func _panel_brick(part: String, cells: Array[Vector2i], facing: Vector2i, j: int,
+			colour: int) -> Dictionary:
+		var low := Vector2i(1 << 30, 1 << 30)
+		for one: Vector2i in cells:
+			low = Vector2i(mini(low.x, one.x), mini(low.y, one.y))
+		var way: String = {Vector2i(0, 1): "+z", Vector2i(1, 0): "+x", Vector2i(0, -1): "-z",
+			Vector2i(-1, 0): "-x"}[facing]
+		return {"part": part, "color": colour, "x": low.x, "y": j, "z": low.y,
+			"rot": 0 if facing.x == 0 else 1, "panel": way, "_cells": cells, "_h": 3,
+			"_studs": cells, "_base": cells}
 
 	## [param cells] in the order a layer's parts are tried at: along x on
 	## even plates, along z on odd ones.

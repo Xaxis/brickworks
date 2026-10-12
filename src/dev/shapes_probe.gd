@@ -191,6 +191,29 @@ func _run() -> void:
 			high_white = false
 	_check("a band colours it by height: black under plate 3, white over it",
 		low_black and high_white)
+	# A straight side: bricks with studs on it every other course, each with a
+	# tile two studs tall laid flat on them; "panels": false for none.
+	var box: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 15,
+		"box": {"from": [0, 0, 0], "size": [8, 12, 4]}}
+	var smooth: Assistant.Model = assistant._read_model({"patterns": [box]})
+	var side_bricks: int = 0
+	var side_tiles: int = 0
+	for placement: Assistant.Placement in smooth.placements:
+		if placement.part in ["30414", "11211", "87087"]:
+			side_bricks += 1
+		elif placement.face != "up":
+			side_tiles += 1
+	var verdict: Dictionary = assistant._check(smooth)
+	_check("a box's straight sides are tiles on side-stud bricks: %d bricks, %d tiles, %s"
+		% [side_bricks, side_tiles, verdict["summary"]], side_bricks >= 8
+			and side_tiles == side_bricks and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	var plain: Dictionary = box.duplicate(true)
+	plain["panels"] = false
+	var bare: int = 0
+	for placement: Assistant.Placement in assistant._read_model({"patterns": [plain]}).placements:
+		if placement.part in ["30414", "11211", "87087"] or placement.face != "up":
+			bare += 1
+	_check("...and none with \"panels\": false (%d)" % bare, bare == 0)
 	var trouble: Array = []
 	Shapes.lay({"pattern": "shape", "loft": {"along": "x", "sections": []}}, trouble, _library)
 	_check("a loft without sections is refused, saying what it wants: %s" % str(trouble),
