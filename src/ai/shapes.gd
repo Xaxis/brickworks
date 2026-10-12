@@ -182,15 +182,12 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	plan.sides_smooth = bool(pattern.get("panels", true))
 	plan.sample = func(x: float, j: float, z: float) -> bool:
 		return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands) >= 0
-	# Studs left showing over a disc, for something to stand on: a tower on
-	# its plinth stands on bricks, not on tiles.
-	if pattern.get("studs_within") is Dictionary:
-		var within: Dictionary = pattern["studs_within"]
-		var middle: Vector3 = _vec(within.get("centre", within.get("center", [0, 0, 0])))
-		var reach: float = float(within.get("radius", 0.0))
-		for key: Variant in columns:
-			var cell: Vector2i = key
-			if Vector2(cell.x + 0.5 - middle.x, cell.y + 0.5 - middle.z).length() <= reach:
+	# Studs left showing on the studs named, [x, z] from at, for something to
+	# stand on: a tower on its plinth stands on bricks, not on tiles.
+	for raw: Variant in pattern.get("studs_at", []):
+		if raw is Array and (raw as Array).size() >= 2:
+			var cell := Vector2i(int(raw[0]), int(raw[1]))
+			if columns.has(cell):
 				plan.studded[cell] = true
 	# A cut marked "keep" is kept clear of everything: a wedge's cut side, a
 	# slope, a panel's tile. A plinth's stair stands in its cut, and the

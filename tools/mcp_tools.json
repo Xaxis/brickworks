@@ -342,7 +342,7 @@
                 "type": "object"
               },
               "plinth": {
-                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} \u2014 the tower raised on terraces stepping down from its foot, two courses each, their edges sloped and tops tiled in the second tone, with a stair up the front (+z) to its door. The reply says the tower's foot (and add_rooms' y).",
+                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level. The reply says the tower's foot (and add_rooms' y).",
                 "properties": {
                   "out": {
                     "type": "integer"
@@ -1504,7 +1504,7 @@
                 "type": "object"
               },
               "plinth": {
-                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} \u2014 the tower raised on terraces stepping down from its foot, two courses each, their edges sloped and tops tiled in the second tone, with a stair up the front (+z) to its door. The reply says the tower's foot (and add_rooms' y).",
+                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level. The reply says the tower's foot (and add_rooms' y).",
                 "properties": {
                   "out": {
                     "type": "integer"

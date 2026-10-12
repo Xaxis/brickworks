@@ -4444,17 +4444,20 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 const LEDGE_CRUMBS := 6
 
 
-## A tower on a plinth: terraces stepping down from its foot, two courses
-## each, and a stair from the ground up the front (+z) to its door; the tower
-## stands on the top terrace. Every Orthanc built here stood on a ring of
-## rubble, and the owner named it: a base as an afterthought. LEGO's 10237
-## stands on a stepped black base with stairs up to its door.
+## A tower on a plinth: square terraces stepping down from its foot, two
+## courses each, and a stair from the ground up the front (+z) to the level
+## of its door; the tower stands on the top terrace. Every Orthanc built here
+## stood on a ring of rubble, and the owner named it: a base as an
+## afterthought. LEGO's 10237 stands on a stepped black base with stairs up
+## to its door.
 ##
-## The terraces are a shape (`Shapes`) — a revolve stepping in two courses at
-## a time, hollow under the tower's middle — so their edges are sloped, their
-## tops tiled in the second tone and their sides panelled, as a shape's are;
-## the stair is another, a step two plates high and a stud deep, tiled. Under
-## the tower the top keeps its studs.
+## The terraces are a shape (`Shapes`): boxes, so every edge is straight —
+## laid round, they were a circle stepped a stud at a time in plan, and read
+## as a staircase from above. Their tops are tiled in the second tone right
+## up to the tower's faces, studs only where the tower stands; inside they
+## are hollow under a cap four plates thick, which nothing shows — the
+## first hollow went up through the top, and the tower stood in a pit. The
+## stair is part of the same shape, a step two plates high and a stud deep.
 ##
 ##   "plinth": {"steps": 2, "out": 2}
 func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Array:
@@ -4469,46 +4472,61 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 	var cx: float = float(at.get("x", 0.0))
 	var cz: float = float(at.get("z", 0.0))
 	var y0: float = float(at.get("y", 0.0))
-	var reach: float = _reach(pattern)
+	# The top terrace two studs clear of the tower's farthest corner either
+	# way, and studs left showing under the tower and nowhere else.
+	var foot: Array = _foot(pattern)
+	var far: float = 0.0
+	for outline: PackedVector2Array in foot:
+		for point: Vector2 in outline:
+			far = maxf(far, maxf(absf(point.x), absf(point.y)))
+	var half: int = int(ceil(far - 0.001)) + 2
+	# Any stud the tower's foot reaches over at all: by its middle alone, a
+	# face turned off the grid stood its end bricks on tiles.
+	var under: Array = []
+	for x: int in range(-half, half):
+		for z: int in range(-half, half):
+			var reached: bool = false
+			for point: Vector2 in [Vector2(x + 0.5, z + 0.5), Vector2(x + 0.1, z + 0.1),
+					Vector2(x + 0.9, z + 0.1), Vector2(x + 0.1, z + 0.9), Vector2(x + 0.9, z + 0.9)]:
+				for outline: PackedVector2Array in foot:
+					reached = reached or Geometry2D.is_point_in_polygon(point, outline)
+			if reached:
+				under.append([x, z])
 	# Two courses a terrace: one course stood as a ring round the foot, and
 	# read from across the room as a kerb.
 	var rise: int = 6
 	var tall_: int = rise * steps
-	var profile: Array = []
+	var solids: Array = []
 	for k: int in steps:
-		var r: float = reach + out * (steps - k)
-		profile.append([rise * k, r])
-		profile.append([rise * k + rise - 0.01, r])
-	var front: float = reach + out
+		var w: int = half + out * (steps - 1 - k)
+		solids.append({"box": {"from": [-w, 0, -w], "size": [2 * w, rise * (k + 1), 2 * w]}})
+	var hollow: int = half - 3
+	# The stair: a flight cut into the terraces' front, four studs wide, a
+	# step two plates high and a stud deep, from a kerb at the front edge
+	# up to the top terrace, which runs on from its head to the door; its
+	# treads tiled in the second tone. Cut in, it is bonded to the terraces
+	# either side of it: stood out in front, in a colour of its own or laid
+	# on its own, it was one or two pieces that nothing joined.
+	var cuts: Array = [{"box": {"from": [-hollow, -1, -hollow],
+		"size": [2 * hollow, tall_ - 3, 2 * hollow]}}]
+	if bool(asked.get("stair", true)):
+		# The lowest step four plates high, a brick under its tread: two, it
+		# was plates beside the terraces' bricks, and a piece of its own.
+		var edge: int = half + out * (steps - 1)
+		var head: int = edge - tall_ / 2 + 1
+		var treads: Array = []
+		for c: int in range(head + 1, edge):
+			treads.append([float(c), float(2 * (edge - c) + 2)])
+			treads.append([float(c) + 0.999, float(2 * (edge - c) + 2)])
+		treads.append([float(edge), 0.0])
+		treads.append([float(edge) + 1.0, 0.0])
+		cuts.append({"extrude": {"along": "z", "from": -2, "width": 4, "under": treads,
+			"profile": [[head + 1, tall_ + 1], [edge + 1, tall_ + 1]]}})
 	var made: Array = Shapes.lay({"pattern": "shape", "at": {"x": cx, "y": y0, "z": cz},
-		"color": colour, "top_color": ledge, "surface": "straight", "panels": false,
-		"studs_within": {"centre": [0, 0, 0], "radius": reach},
-		"solids": [{"revolve": {"axis": "y", "centre": [0, 0, 0], "profile": profile}}],
-		"cuts": [{"box": {"from": [-2, 0, front - 0.5], "size": [4, tall_ + 1, out * steps + 2],
-				"keep": true}},
-			# Hollow under the tower's middle, which stands on its walls: a
-			# solid plinth a tower wide was a thousand bricks nobody sees.
-			{"revolve": {"axis": "y", "centre": [0, 0, 0],
-				"profile": [[-1, maxf(reach - 3.0, 0.5)], [tall_ + 1, maxf(reach - 3.0, 0.5)]]}}]},
-		trouble, library)
+		"color": colour, "top_color": ledge, "surface": "none", "panels": false,
+		"studs_at": under, "solids": solids, "cuts": cuts}, trouble, library)
 	if not trouble.is_empty():
 		return []
-	# The stair: a step a plate high and a stud deep from the top terrace's
-	# edge down to the ground, four studs wide, where the terraces are cut.
-	if bool(asked.get("stair", true)):
-		# Two plates a stud, so the flight is half as long as the plinth is
-		# tall.
-		var flight: int = tall_ / 2
-		var steps_down: Array = [[0.0, float(tall_)]]
-		for n: int in flight:
-			steps_down.append([float(n) + 0.999, float(tall_ - 2 * n)])
-			steps_down.append([float(n) + 1.0, float(tall_ - 2 * n - 2)])
-		steps_down.append([float(flight), 0.0])
-		made.append_array(Shapes.lay({"pattern": "shape",
-			"at": {"x": cx - 2, "y": y0, "z": cz + front - 1.0}, "color": ledge,
-			"surface": "none", "panels": false,
-			"extrude": {"along": "z", "from": 0, "width": 4, "profile": steps_down}},
-			trouble, library))
 	var raised: Dictionary = pattern.duplicate(true)
 	raised.erase("plinth")
 	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
@@ -4519,24 +4537,31 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 	return made + tower
 
 
-## How far a prism reaches from its middle at its foot, in studs: its corner
-## radius, or with piers the farthest corner of a pier.
-func _reach(pattern: Dictionary) -> float:
+## What a prism stands on at its foot, in plan about its middle: its core's
+## outline, and with piers each pier's, as its lowest storey lays them.
+func _foot(pattern: Dictionary) -> Array:
 	var sides: int = int(pattern.get("sides", 8))
-	var radius: float = float(pattern.get("radius", 6))
 	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
-	var far: float = radius / cos(PI / sides)
+	var radius: float = _clear_radius(sides, float(pattern.get("radius", 6)), thick)
+	var outlines: Array = [_outline(Vector2.ZERO, sides, radius, 0.0)]
 	if not pattern.has("piers"):
-		return ceil(far)
+		return outlines
 	var given: Variant = pattern["piers"]
 	var piers: Dictionary = given if given is Dictionary else {"count": int(given)}
+	var count: int = maxi(int(piers.get("count", 4)), 1)
 	var p_sides: int = int(piers.get("sides", sides))
-	var least: float = _least_radius(p_sides, thick)
-	var pr: float = maxf(least, float(piers.get("radius", round(radius * 2.0 / 3.0))))
-	pr = _clear_radius(p_sides, pr, thick, float(piers.get("turn",
-		180.0 / maxi(int(piers.get("count", 4)), 1))))
-	var out: float = float(piers.get("out", radius + pr - thick))
-	return ceil(maxf(far, out + pr / cos(PI / p_sides)))
+	var turn: float = float(piers.get("turn", 180.0 / count))
+	var asked: float = maxf(_least_radius(p_sides, thick),
+		float(piers.get("radius", round(radius * 2.0 / 3.0))))
+	var pr: float = _clear_radius(p_sides, asked, thick, turn)
+	# In storeys the piers are set out by the radius asked, not the one
+	# spaced (_storeys).
+	var out: float = float(piers.get("out", radius + (asked if pattern.has("storeys")
+		else pr) - thick))
+	for k: int in count:
+		var angle: float = turn + 360.0 * k / count
+		outlines.append(_outline(_towards(angle) * out, p_sides, pr, angle))
+	return outlines
 
 
 ## A ledge two plates thick round the top of a storey: over the studs inside
@@ -10867,10 +10892,10 @@ func _tools() -> Array:
 				+ "unless said)"},
 			"plinth": {"type": "object", "description":
 				"prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} — "
-				+ "the tower raised on terraces stepping down from its foot, two "
-				+ "courses each, their edges sloped and tops tiled in the second tone, with a "
-				+ "stair up the front (+z) to its door. The reply says the tower's foot "
-				+ "(and add_rooms' y).",
+				+ "the tower raised on square terraces stepping down from its foot, two "
+				+ "courses each, their tops tiled in the second tone up to its faces, "
+				+ "with a stair cut into the front (+z) up to its door's level. The reply "
+				+ "says the tower's foot (and add_rooms' y).",
 				"properties": {
 					"steps": {"type": "integer"},
 					"out": {"type": "integer"},
