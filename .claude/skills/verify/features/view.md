@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:mosaic, lib:finishes, lib:true colour -->
+<!-- covers: ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
 
 ## Sub-features
 
@@ -45,6 +45,30 @@ picture the assistant is shown.
   filled every letter in. Batches, triangles, the catalogue count and the
   frame rate come back with `--stats` (and count everything); they were the
   first line every visitor read.
+- `build animation`: what the assistant just put down goes up on the baseplate
+  in build order instead of appearing at once (`BuildPlayback`, played from
+  `Main`'s `built` handler; never in a run driven from the command line). Only
+  what is new: `Assistant.fresh_ids` is what the last build or edit put down or
+  moved, and everything else stays on show (`BuildPlayback.play_new`), so a
+  recolour plays nothing and `add_rooms` plays the rooms; a design shown by
+  `check_design` (or drawn as it streamed in) and then submitted unchanged is
+  already standing and plays nothing either. Up to
+  `PLANNED_UP_TO` (200) new bricks the order is the booklet's
+  (`Instructions.plan`); past it, course by course, one sort of packed keys. A
+  step costs a count per batch: `BrickWorld.begin_reveal` writes each batch
+  once with its bricks in build order, so the ones on show are always the first
+  so many, and `reveal_through` raises `visible_instance_count`. Any change to
+  the bricks being revealed ends it with everything shown (`reveal_ended`);
+  a change elsewhere — the ground laid wider under a design that outgrew it,
+  the moment it is built — leaves it playing. A batch written in order is not
+  also rebuilt first. Outside a reveal the world on screen rebuilds a big
+  change a slice a frame (`BrickWorld.rebuilds_in_slices`, set by `Main`;
+  ModelShot's copy rebuilds whole, because its picture must be). The whole
+  assembly takes at most `LONGEST_MS` (8 s), several steps to a frame on a big
+  model. `playback_probe` checks the order and the prefix on a small model, that
+  only new bricks are hidden, and on the owner's Falcon Heavy
+  (`src/dev/fixtures/falcon_heavy.json`, 4,242 parts) that starting takes
+  milliseconds and no frame of it more than 30.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit
@@ -97,7 +121,15 @@ picture the assistant is shown.
   seen; a close look at one part of a model too big to judge whole; and, after an
   edit, the bricks that edit added or moved restaged in magenta, so the design can
   find its own change by looking rather than by re-reading coordinates. The stage
-  is a copy of the world — the model keeps the colours it was given.
+  is a copy of the world — the model keeps the colours it was given. It is
+  staged again only when the world's `revision`, what is left out or what is
+  picked out changed (`ModelShot._restage`, a slice a frame by `FramePace`
+  and drawn when whole), keeps no history, and is drawn
+  once a try (`UPDATE_ONCE`), not every frame of six: reading a picture back
+  waits for everything queued to be drawn, and on the owner's 4,242-part Falcon
+  Heavy in a browser drawing in software that read was 45 s. The PNG and its
+  base64 are made on a worker. `ModelShot.gpu_wait_us` sums the read-back wait,
+  which `Main._watch_own_frames` reports apart from the app's own work.
 - `seams between bricks`: `src/render/plastic_body.gdshaderinc`. A real brick
   is 0.2 mm short of its pitch, so two that meet show a seam; the meshes carry no
   edge lines, and without one a wall of forty bricks and a wall of four drew as
@@ -153,7 +185,12 @@ picture the assistant is shown.
   baseplate to the finished model: drag it, Start/End (Home/End), Back/Next a
   step (arrows), Play and Reverse (space plays), at 0.5x-4x, the whole build
   taking 6-40 s at 1x. Three orders: Build order (`Instructions.plan`, the
-  booklet's, with its step captions), As made (brick numbers, the order what
+  booklet's, numbered as the booklet numbers them — `Step.caption()`, "Step 12
+  of 40 · Window (2x), 1 of 3": a callout's steps go up where the assembly
+  will stand and carry the number of the step it goes on in; `booklet_probe`
+  checks the timeline and the pages print the same numbers; what the step
+  adds is a line of its own under the slider, and the buttons have faces),
+  As made (brick numbers, the order what
   stands was placed — by hand, or the order Claude thought of it) and History
   (every add and removal since the baseplate was last cleared, from
   `BrickWorld.history`, which notes add/remove/move/paint/clear with a key of
@@ -172,10 +209,87 @@ picture the assistant is shown.
   nothing placed before what holds it. A model wider than 24 studs is built a
   region at a time (`Instructions.REGION`): one tile of its plan finished before
   the next, borrowing only the bricks a region is directly waiting on, and the
-  booklet frames each region on its own and names it ("Step 39 of 350 · part 2").
+  booklet starts each on a new page under a banner ("Part 2", or its name).
   On a 1,895-part castle the jump between consecutive steps went from a median
   of 12.5 studs (90th 38) to 6.2 (90th 12). `--booklet=PATH` with `--model=`
   writes the booklet and quits — about three minutes for that castle on the GPU.
+  Sub-assemblies are built on the side, as a real booklet's callouts are: a
+  minifigure (by its parts, `Minifig.is_figure`), and any sub-model the file
+  places that is small (at most `ASSEMBLY_MOST`, 60 parts, and under 30% of
+  the model) and one piece — a top-level one, or one nested a level inside a
+  big one (`LdrModel.Placement.unit` keeps "House#1/Window#3", and the brick
+  carries it as `Brick.unit`). Each stands in the main build as one node; its
+  own steps (`Step.in_callout()`, up to `CALLOUT_PER_STEP`, a figure in one)
+  come just before the step that puts it on (`Step.attaches()`, no bricks of
+  its own, `copies` holding each copy). Copies of one kind (same name, parts
+  and colours) ready together are built once, "2x" (`Step.times`; the picture
+  shows `shown_ids`, the first copy). A callout's steps carry the number of
+  the step it goes on in (`Step.number`; `Step.caption()` is what the timeline
+  prints). A part with nothing under it (a tap on a side stud, a wheel) waits
+  for what it touches (`_find_hangers`), outward from what is held a wave at a
+  time, and one that touches nothing waits for the nearest part below it; a
+  link that would make a loop (`_cycles`, the parts on a loop, not those
+  downstream of one) is undone and relinked to a part that does not wait for
+  it. On Orthanc, parts placed touching nothing already placed went from 193 to
+  6 of 8,603, with no step forced. Wheels go on what holds them and tyres on
+  their wheels (`_wheels`, by name: "Wheel …", "Tyre …"), whether or not the
+  joint is known; a wheel holds nothing up, and goes in last within its
+  region: the example car's booklet began with four wheels on the table. Steps take
+  4 bricks under 150 parts, 6 under 500, else 8 (`_per_step`). Supports are
+  found through a two-stud grid and the order through a set of ready bricks:
+  the 8,603-part Orthanc planned in 87 s and now in 5.
+- `the booklet`: build instructions laid out as a LEGO booklet, one HTML
+  file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
+  inside both) and reads on screen (`--mm` scales the same millimetres to the
+  window). From the toolbar's **Instructions** (added after Timeline by
+  `BookletMaker.add_button`, by its words, because `model_bar.gd` is someone
+  else's at the moment), the timeline's Instructions, or `--booklet=OUT.html
+  --model=M`. On the desktop it is written to Downloads and opened in the
+  browser; on the web it is written into a tab opened as the button was pressed
+  (`BookletMaker.open_tab`, then `fill_tab`; a page may only open a tab in
+  answer to a click), or downloaded if the browser blocked the tab.
+  `BookletMaker` (`src/render/booklet_maker.gd`) plans, decides each step's
+  view, lays out (`Booklet.lay_out`, `src/assembly/booklet.gd`) and draws;
+  `BookletStudio` (`src/render/booklet_studio.gd`) draws off screen, never
+  touching the person's view: the model alone, orthographic, from one fixed
+  angle (`FRONT`), every part outlined in ink. The ink comes from a second
+  pass where each brick is a flat colour that is its number
+  (`booklet_codes.gdshader`) and a third that draws a line wherever the number
+  changes (`booklet_ink.gdshader`), so the seam between two bricks of one
+  colour is drawn, which is how a reader counts a wall. Bricks go on the
+  stage in the order the plan builds them, so a step's picture is a prefix
+  (`BrickWorld.show_first`). What a page has: a cover with the model, steps
+  with a big number and a parts box above it (a picture of each part at one
+  scale, `Booklet.PART_SCALE`, and its "2x"), one to four steps a page — the
+  fullest page whose shared scale is still readable (`FOUR_UP` 6 mm a stud,
+  `TWO_UP` 5), never more than `MOST_SCALE` (10 mm a stud) — and every step
+  on a page at the same scale; a step whose new parts are hidden from the
+  front (less than 40% of them in view, measured by drawing the codes again
+  with only the new parts) drawn from the back with the turn sign, and turned
+  back when the front shows 70%; a callout (cream box, sub-steps 1 2 3, "2x")
+  with an arrow to each copy, projected through the step's own camera and
+  drawn as print draws it, out of the box at a right angle and round one corner
+  (`Booklet.elbow`), with a white edge so it shows on a black model, or, past
+  three steps, pages of its own in a frame; a figure looked at in the face
+  (`Minifig.frame_of`); the finished model front and back; then the parts by
+  colour with counts and element numbers. A model too big to read whole (not
+  fitting a page at 4 mm a stud) is framed on the part being built, the rest
+  fading out at the picture's edges (`BookletStudio.fade`). New parts are not
+  highlighted: modern booklets keep colours true and rely on the parts box and
+  the ink line (the ink shader can ring them, `mark_new`, off). Pictures are
+  5 px a millimetre, 4.2 past 300 steps and 3.6 past 1,000 (Orthanc's 1,405
+  steps were 256 MB at 5); a step whose
+  new parts are small and in one place (under 14 mm) gets a red arrow down
+  onto them, as a booklet points at a flag on a tower. Inside a part a fainter
+  line marks where the shading turns a corner (`crease`: stud rims, a top's
+  edge), found from the lightness, within one brick. Black and the darkest
+  greys are lifted towards charcoal, as print draws black so its faces can be
+  told apart; coloured plastic is left alone (lifted too, a red's shaded side
+  came out neon), and black stays well clear of dark bluish grey. Measured
+  2026-10-11 on the GPU: house 71 pieces, 14 pages, 7 s and 1.6 MB; castle
+  2,438 pieces, 364 pages, 2 min and 72 MB; Orthanc 8,603 pieces, 1,298 pages,
+  6 min, 137 MB and a 105 MB PDF (LEGO's own PDFs run about 0.5 MB a page). In
+  Chromium on SwiftShader the web build makes the example car's in 89 s.
 - `mosaic`: a picture turned into a plate of tiles that still looks like the
   picture.
 
@@ -186,6 +300,8 @@ godot --path .             # right-drag turns, scroll zooms, F frames, O squares
                            # middle-drag slides or turns (a preference), , lists every key
 godot --path . -- --shot=/tmp/model.png --model=models/car.ldr   # one render, then quit
 godot --path . -- --booklet=/tmp/b.html --model=models/station.ldr  # the booklet, then quit
+#   on the GPU: ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . -- --booklet=…
+node tools/web/booklet_print.mjs /tmp/b.html /tmp/b   # print it: a4.pdf, letter.pdf, page-N.png
 tools/shot.sh              # the screenshots used in the README and the site
 ```
 
@@ -201,9 +317,23 @@ godot --headless --path . --script src/dev/controls_probe.gd      # every advert
 godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd  # the pointer in every state, and back
 godot --headless --path . --script src/dev/glyph_probe.gd         # the font can draw every character shown
 godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet could be followed
-#   covers the Technic ordering case via models/kart.ldr
+#   covers the Technic ordering case via models/kart.ldr, a shed whose two
+#   windows are one sub-model placed twice (a "2x" callout) and a figure, and
+#   31009 Skaters House from vendor/omr when it is there
+godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
+godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
+#   every step pictured and framed on the model, new parts in frame, a parts box
+#   with a picture of every part, the shed's 2x callout with two arrows and its
+#   figure, the turn sign behind a wall, the timeline's numbers = the booklet's,
+#   and the app's own toolbar: Instructions after Timeline, pressed, writes
+#   the booklet to Downloads (BookletMaker.open_when_written off, no browser);
+#   leaves shots/booklet/{shed,house,turned}.html — print and look at them
+# In a browser, on a local web export (tools/export.sh web, then
+# python3 tools/web/serve.py build/web PORT): presses Instructions, follows
+# the tab it opens, checks the booklet in it and prints it to booklet.pdf
+node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
 godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking a colour recolours something
 godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd # every finish drawn as itself
@@ -229,6 +359,38 @@ picture: under two seconds with vsync on, against the six seconds it used to
 take, which is what made a design run give up on looking at itself.
 
 ## Gotchas
+
+- **Under Compatibility a dark value written by a shader does not come back.**
+  What the booklet's code pass writes is stored in eight bits of linear light
+  and read back as sRGB: 4 came back as 0 or 6, 12 as 16, 20 as 25, and every
+  value from about 60 up exactly. So the codes go out as levels from 64 up
+  (`booklet_codes.gdshader`), and the tokens that prove a picture is fresh are
+  light colours. The same pass under Forward+ is converted on the way out, so
+  the shader writes the linear value there.
+- **A booklet's pictures are JPEGs on the page colour.** WebP keeps alpha
+  losslessly, and the castle's booklet was 96 MB with it; flattened, WebP
+  made it 60 MB, but Chromium printing to PDF re-encodes anything but a JPEG
+  without loss, and that PDF was 360 MB. As JPEGs the PDF is about the size
+  of the page. Parts keep their alpha, in WebP: they sit on the parts box.
+- **The corner of every picture carries the tokens** that prove it was drawn
+  for the state asked for (`BookletStudio._drawn`). The ink shader once ringed
+  them as if they were a brick, a dot at the corner of every part in every
+  parts box; the corner is blanked now.
+- **Reading a picture's pixels in GDScript is the slow part.** A walk over
+  every pixel of a page-sized code image was 1.5 s a step and most of the
+  castle's ten minutes; it is read at a sixth of its size now.
+- **The build animation froze the page on a big model.** The owner asked the web
+  app for a Falcon Heavy (4,242 parts) and it "damn near froze my computer".
+  Measured on that model on the desktop GPU: every submit and every edit replayed
+  the whole model; planning the booklet's order took 15.5 s in one frame; each
+  step called `show_only`, which walked every brick and flushed at once, and
+  every flush emitted `rebuilt`, where `Main` asked whether the model stands —
+  4.4 s a time, about once a step. 848 steps of that is most of an hour, and in
+  a browser the tab stopped answering the connector ("The Brickworks tab did not
+  answer in time"). Now only new bricks play, a step is a count, the stability
+  line is worked out only when `BrickWorld.revision` moved, and
+  `Stability._check_levels` is one pass up and one down (3.3 s to 0.1 s on that
+  model). `tools/web/freeze_check.mjs` times the same design in a browser.
 
 - **The two renderers do not light in the same colour space.** Forward+ lights
   linear values and converts on output; Compatibility (the web build's) lights

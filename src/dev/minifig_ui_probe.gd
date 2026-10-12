@@ -102,6 +102,10 @@ func _run() -> void:
 		await _click_control(_figures._grid.get_child(0))
 	_check("and a cape: %s" % _figures.figure.part("cape"),
 		not _figures.figure.part("cape").is_empty())
+	# A worn drawing of cloth comes in its cloth's colours, and says so.
+	_check("its colours are its cloth's: \"%s\"" % _figures._colour_note.text,
+		_figures.figure.part("cape") != "50231c01"
+		or _figures._colour_note.text.contains("colours 50231 comes in: 50231c01 is that cloth as worn"))
 	var held_too: bool = _figures.figure.assemble(_library).any(
 		func(item: Dictionary) -> bool: return item["slot"] == "accessory_left")
 	_check("both are on the figure the builder shows", held_too

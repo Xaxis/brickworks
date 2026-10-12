@@ -35,6 +35,12 @@ class Placement extends RefCounted:
 	## The sub-model of the document it was placed in at the top level,
 	## by that sub-model's title: which assembly of the model it is.
 	var group: String = ""
+	## Which copy of which sub-model it came in, two levels deep: a part
+	## of the third window in the house is "House#1/Window#3". A document
+	## that builds its window once and places it four times is saying
+	## what a booklet says with a "4x" callout, and flattening it into
+	## the wall threw that away. Empty for a part the model places itself.
+	var unit: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -66,6 +72,11 @@ var main: SubModel = null
 ## header says it is one. Kept out of [member submodels], so a part is
 ## placed as a part and never inlined as though it were an assembly.
 var embedded_parts: Dictionary = {}
+## Files the document carries as `0 !DATA <name>` sections (MPD spec rev.
+## 2): base64 in `0 !:` lines, ended by the next FILE, NOFILE or !DATA.
+## The pictures of a print drawn in the app, which its part's TEXMAP lines
+## name. Lowercase file name -> the bytes.
+var embedded_data: Dictionary = {}
 
 
 static func load_file(path: String) -> LdrModel:
@@ -96,9 +107,23 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	## The FILE section being read, and its lines as written.
 	var section: String = ""
 	var sections: Dictionary = {}
+	## The !DATA section being read, and its base64 so far.
+	var data_name: String = ""
+	var data := PackedStringArray()
 
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
+		if not data_name.is_empty():
+			if line.begins_with("0 !:"):
+				data.append(line.substr(4).strip_edges())
+				continue
+			model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
+			data_name = ""
+		if line.begins_with("0 !DATA ") or line.begins_with("0 !DATA\t"):
+			section = ""
+			data_name = line.substr(7).strip_edges().get_file().to_lower()
+			data = PackedStringArray()
+			continue
 		if not section.is_empty() and not _is_file_line(line):
 			# An Array, not a PackedStringArray: a packed array is a value,
 			# and appending to one read out of a Dictionary appends to a
@@ -177,6 +202,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		current.placements.append(
 			Placement.new(part_id, color, to_transform(numbers), step))
 
+	if not data_name.is_empty():
+		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called.
@@ -191,7 +218,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 static func _is_file_line(line: String) -> bool:
 	var tokens: PackedStringArray = line.split(" ", false)
 	return tokens.size() >= 2 and tokens[0] == "0" \
-		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE")
+		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE"
+			or tokens[1].to_upper() == "!DATA")
 
 
 ## Whether a FILE section is a part rather than a sub-model: its header
@@ -334,7 +362,8 @@ static func from_transform(at: Transform3D) -> PackedFloat64Array:
 func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
 	if main != null:
-		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "")
+		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
+			{})
 	return out
 
 
@@ -346,7 +375,9 @@ func _inline(
 	known_parts: Dictionary,
 	visiting: Dictionary,
 	depth: int,
-	group: String
+	group: String,
+	unit: String,
+	copies: Dictionary
 ) -> void:
 	if depth > 32 or visiting.has(_key(sub.name)):
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
@@ -362,14 +393,23 @@ func _inline(
 			# A sub-model referenced by the model itself is one of its
 			# assemblies; what that sub-model nests stays part of it.
 			var named: String = group
+			var inside: String = unit
+			var kind: String = (nested.title if not nested.title.is_empty()
+				else _key(nested.name))
 			if depth == 0:
-				named = (nested.title if not nested.title.is_empty()
-					else _key(nested.name))
+				named = kind
+			if depth <= 1:
+				# Each copy its own unit: the four windows are four
+				# assemblies of one kind, not one assembly of sixteen parts.
+				copies[kind] = int(copies.get(kind, 0)) + 1
+				var copy: String = "%s#%d" % [kind, int(copies[kind])]
+				inside = copy if depth == 0 else "%s/%s" % [unit, copy]
 			_inline(
 				nested,
 				at * placement.transform,
 				placement.color_code if placement.color_code != 16 else color,
-				out, known_parts, visiting.duplicate(), depth + 1, named)
+				out, known_parts, visiting.duplicate(), depth + 1, named,
+				inside, copies)
 			continue
 
 		var resolved: int = placement.color_code
@@ -378,6 +418,7 @@ func _inline(
 		var placed := Placement.new(
 			placement.part_id, resolved, at * placement.transform, placement.step)
 		placed.group = group
+		placed.unit = unit
 		out.append(placed)
 
 	visiting.erase(sub.name.to_lower())
@@ -442,8 +483,19 @@ static func write_ldr(
 	var names: Array = embedded.keys()
 	names.sort()
 	for part_name: Variant in names:
+		if embedded[part_name] is PackedByteArray:
+			continue
 		text += "0 FILE " + str(part_name) + "\n" \
 			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
+	# And the files the parts need that are not LDraw: a print's pictures,
+	# as the MPD spec carries them, base64 in lines of 76 characters.
+	for data_name: Variant in names:
+		if not (embedded[data_name] is PackedByteArray):
+			continue
+		var encoded: String = Marshalls.raw_to_base64(embedded[data_name])
+		text += "0 !DATA " + str(data_name) + "\n"
+		for at: int in range(0, encoded.length(), 76):
+			text += "0 !: " + encoded.substr(at, 76) + "\n"
 	return text
 
 

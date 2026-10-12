@@ -27,3 +27,25 @@ family=inverted across=3 deep=3 plates=4 run=2 studs=yes
 family=round diameter=4 plates=1 studs=yes
 family=round diameter=1 plates=1 studs=no
 family=round diameter=3 plates=6 studs=yes
+# Stage two's families. Standard sizes, held against the library part
+# named before each: 87087, 30414, 4733, 22885 (studs on the sides),
+# 99781, 99780, 44728 (brackets), 11477, 15068, 93606 (curved slopes),
+# 6541, 3700, 3701 (Technic bricks):
+family=brick across=1 deep=1 plates=3 sides=f studs=yes
+family=brick across=4 deep=1 plates=3 sides=f studs=yes
+family=brick across=1 deep=1 plates=3 sides=fblr studs=yes
+family=brick across=2 deep=1 plates=5 sides=f studs=yes
+family=bracket across=2 deep=1 plates=1 rise=1 way=down studs=yes
+family=bracket across=2 deep=1 plates=1 rise=1 way=up studs=yes
+family=bracket across=2 deep=1 plates=1 rise=2 way=down studs=yes
+family=curved across=1 deep=2 plates=2 run=2 studs=yes
+family=curved across=2 deep=2 plates=2 run=2 studs=yes
+family=curved across=2 deep=4 plates=3 run=4 studs=yes
+family=technic across=1 deep=1 plates=3 studs=yes
+family=technic across=2 deep=1 plates=3 studs=yes
+family=technic across=4 deep=1 plates=3 studs=yes
+# And sizes nothing in the library has:
+family=brick across=3 deep=2 plates=6 sides=lr studs=no
+family=bracket across=3 deep=2 plates=1 rise=3 way=up studs=yes
+family=curved across=3 deep=4 plates=4 run=2 studs=yes
+family=technic across=7 deep=1 plates=3 studs=yes

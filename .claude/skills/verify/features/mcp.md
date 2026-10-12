@@ -34,6 +34,9 @@ Nine tools reach a session: the assistant's seven (`search_parts`, `check_design
 plus two the design loop never needs — `clear_model`, because a loop clears the
 board itself when a design begins and a session has no such moment, and
 `save_model`, because the person normally saves from the window.
+(The list has grown since; among the later ones is `make_part`, with which a
+session makes a part LEGO has not made and builds with it — see
+[elements](elements.md).)
 
 ## How to reach it
 
@@ -83,7 +86,12 @@ Proves it when: it ends on "a design run can reach the bricks and nothing else" 
 the command carries `--strict-mcp-config`, `--tools ""` and `--restricted`, and
 never anything with "dangerously" or "bypass" in it. That is what makes the
 feature safe, and it is not the allowlist: `--allowedTools` only grants
-permission, it never takes any away. A real run spends somebody's subscription and
+permission, it never takes any away. And "the session sees no key and no token:
+key=none token=none" — a real child started the way a design starts, with
+`ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` set in the app, must not see
+either, or Claude Code bills the key instead of the subscription (it did, from
+any shell that had sourced `.env`); the app keeps both afterwards. A plain
+`OS.execute_with_pipe` fails it. A real run spends somebody's subscription and
 is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
 tools, all of them this app's" when it connects.
 
@@ -167,7 +175,10 @@ Both are in `tools/check.sh`.
   see. An app driven from the command line (`main._driven`, the same flags that
   turn vsync off) skips it: the same calls took 3.6 s, 11.6 s and 11.8 s, and a
   look 0.3 s. Time a driven session's calls with `tools/brick.py` before
-  blaming the model's size.
+  blaming the model's size. Since 2026-10-11 the animation is cheap in a window
+  too (only what is new, a step a count per batch; see view.md's build
+  animation), so this is now about not drawing for nobody rather than about
+  surviving it.
 - **`check_design` puts the trial on the baseplate**, and the baseplate is saved
   and restored on the next start. A design checked at the origin overlaps that
   saved model next time, which reads as a broken checker and is not. Call

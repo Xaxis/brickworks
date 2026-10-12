@@ -1,0 +1,35 @@
+# Library parts the app's build of a part is held against, from the
+# library's own files, beside the fixtures: every kind of primitive the
+# common parts are drawn with — stud groups, logos, hollow studs, corners,
+# studs on the side, brackets, curves, and Technic holes, whose two faces
+# the app now merges as the pipeline does. src/dev/element_files_probe.gd
+# reads this list; pipeline.json is written for it and the fixtures by
+#   tools/element_pipeline.sh
+3001
+3005
+3023b
+3068b
+3039
+3298
+3062b
+3040b
+3660a
+4286
+3024
+3070b
+6141
+2357
+3045
+87087
+3700
+3701
+6541
+30414
+4733
+22885
+99781
+99780
+44728
+11477
+15068
+93606

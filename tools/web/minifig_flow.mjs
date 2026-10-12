@@ -125,8 +125,12 @@ const beforeCape = await count();
 let afterCape = beforeCape;
 // The cape comes over the wire: the ghost stays red until it has.
 await page.waitForTimeout(20000);
-for (const [dx, dy] of [[320, 20], [440, 30], [-220, 40], [560, 10]]) {
+// Nearest first, so the photograph shows the cape whole rather than at the
+// edge of the view.
+let placedAt = null;
+for (const [dx, dy] of [[170, 20], [320, 20], [440, 30], [-220, 40], [560, 10]]) {
   const caped = { x: spot.x + dx, y: spot.y + dy };
+  placedAt = caped;
   await page.mouse.move(caped.x - 20, caped.y - 20);
   await page.waitForTimeout(1500);
   await page.mouse.move(caped.x, caped.y);
@@ -142,6 +146,15 @@ await page.keyboard.press("Escape");
 await page.mouse.move(700, 12);
 await page.waitForTimeout(3000);
 await page.screenshot({ path: `${out}/5_caped.png`, timeout: 120000 });
+// And close, for looking at how the cape hangs.
+if (afterCape !== beforeCape && placedAt) {
+  const view = page.viewportSize();
+  const clip = { x: Math.max(0, placedAt.x - 170), y: Math.max(0, placedAt.y - 380),
+    width: 340, height: 420 };
+  clip.width = Math.min(clip.width, view.width - clip.x);
+  clip.height = Math.min(clip.height, view.height - clip.y);
+  await page.screenshot({ path: `${out}/5_caped_close.png`, clip, timeout: 120000 });
+}
 check(`the caped figure stands beside the first: ${beforeCape} parts, then ${afterCape}`,
   afterCape - beforeCape >= 8);
 

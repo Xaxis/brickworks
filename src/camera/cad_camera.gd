@@ -820,10 +820,17 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 		return
 	_target_focus = box.get_center()
 	var radius: float = maxf(box.size.length() * 0.5, min_distance)
-	# The distance at which a sphere of this radius subtends the vertical
-	# field of view.
+	# The distance at which a sphere of this radius fits the narrower of
+	# the two fields of view. The vertical one alone is the narrower only
+	# on a window wider than it is tall: a phone held upright framed the
+	# model to its height and cut off both its sides.
+	var half: float = deg_to_rad(fov) * 0.5
+	if is_inside_tree():
+		var room: Vector2 = get_viewport().get_visible_rect().size
+		if room.y > 0.0 and room.x < room.y:
+			half = atan(tan(half) * room.x / room.y)
 	_target_distance = clampf(
-		radius / sin(deg_to_rad(fov) * 0.5) * margin, min_distance, max_distance)
+		radius / sin(half) * margin, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
 		size = radius * 2.0 * margin
 

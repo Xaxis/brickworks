@@ -557,11 +557,23 @@ static func _rock(pattern: Dictionary, trouble: Array) -> Array:
 			_texture(made, from_here, colour, mix_colour, mix, 0.0, middle)
 		below = laid
 
-	# The faces: a slope on every edge where the rock steps in, facing
-	# away from the course above it.
+	made.append_array(_face_steps(steps, y, colour, mix_colour, mix, true))
+	return made
+
+
+## The faces of courses that step in, [param steps] each a course's studs
+## (Vector2i -> true) from the bottom, the first standing at [param y]: a
+## slope on every edge where a course steps in, facing away from the course
+## above it — a 1 x 2 slope where there are two studs of ledge, else a cheese
+## slope, a pebble, a smooth patch or the bare stud. The top course is faced
+## too where [param top] says so. [param slope] is the 1 x 2 slope for a ledge
+## two studs deep: 3040b, or a steeper one as tall as the courses that step.
+static func _face_steps(steps: Array, y: float, colour: int, mix_colour: int,
+		mix: float, top: bool, slope: String = "3040b") -> Array:
+	var made: Array = []
 	var outward: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0),
 		Vector2i(0, -1), Vector2i(-1, 0)]
-	for k: int in steps.size():
+	for k: int in steps.size() - (0 if top else 1):
 		var here: Dictionary = steps[k]
 		var above: Dictionary = steps[k + 1] if k + 1 < steps.size() else {}
 		var top_y: float = y + 3.0 * (k + 1)
@@ -589,7 +601,7 @@ static func _rock(pattern: Dictionary, trouble: Array) -> Array:
 			var rot: int = outward.find(facing)
 			var low: Vector2i = cell + facing
 			if here.has(low) and not above.has(low) and not used.has(low):
-				made.append({"part": "3040b", "color": tone,
+				made.append({"part": slope, "color": tone,
 					"x": mini(cell.x, low.x), "y": top_y,
 					"z": mini(cell.y, low.y), "rot": rot})
 				used[low] = true

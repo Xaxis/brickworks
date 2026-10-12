@@ -1,0 +1,54 @@
+0 Technic Brick  1 x  2 with Hole
+0 Name: bw-h1x2.dat
+0 Author: Brickworks element maker
+0 !LDRAW_ORG Unofficial_Part
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !CATEGORY Technic
+0 !KEYWORDS Brickworks, custom element
+
+0 // Made by Brickworks: family=technic across=2 deep=1 plates=3 studs=yes
+
+0 // Studs
+1 16 -10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+0 // Top and ends
+4 16 20 0 10 -20 0 10 -20 0 -10 20 0 -10
+4 16 20 24 -10 20 24 10 20 0 10 20 0 -10
+4 16 -20 0 -10 -20 0 10 -20 24 10 -20 24 -10
+2 24 20 0 10 -20 0 10
+2 24 -20 0 10 -20 0 -10
+2 24 -20 0 -10 20 0 -10
+2 24 20 0 -10 20 0 10
+2 24 20 0 -10 20 24 -10
+2 24 20 0 10 20 24 10
+2 24 -20 0 -10 -20 24 -10
+2 24 -20 0 10 -20 24 10
+0 // Faces, with a mouth for every hole
+4 16 20 0 -10 -20 0 -10 -20 2 -10 20 2 -10
+4 16 20 18 -10 -20 18 -10 -20 24 -10 20 24 -10
+4 16 -20 18 -10 -8 18 -10 -8 2 -10 -20 2 -10
+4 16 8 18 -10 20 18 -10 20 2 -10 8 2 -10
+2 24 20 24 -10 -20 24 -10
+4 16 20 2 10 -20 2 10 -20 0 10 20 0 10
+4 16 20 24 10 -20 24 10 -20 18 10 20 18 10
+4 16 -20 2 10 -8 2 10 -8 18 10 -20 18 10
+4 16 8 2 10 20 2 10 20 18 10 8 18 10
+2 24 20 24 10 -20 24 10
+1 16 0 10 -10 8 0 0 0 0 -8 0 1 0 4-4ndis.dat
+1 16 0 10 10 8 0 0 0 0 8 0 -1 0 4-4ndis.dat
+1 16 0 10 10 1 0 0 0 0 1 0 -1 0 peghole.dat
+1 16 0 10 -10 1 0 0 0 0 -1 0 1 0 peghole.dat
+0 BFC INVERTNEXT
+1 16 0 10 -8 6 0 0 0 0 -6 0 16 0 4-4cyli.dat
+0 // Underneath: a cavity for studs, and a pin under each hole
+4 16 20 24 10 16 24 6 -16 24 6 -20 24 10
+4 16 -20 24 10 -16 24 6 -16 24 -6 -20 24 -10
+4 16 -20 24 -10 -16 24 -6 16 24 -6 20 24 -10
+4 16 20 24 -10 16 24 -6 16 24 6 20 24 10
+0 BFC INVERTNEXT
+1 16 0 24 0 16 0 0 0 -6 0 0 0 6 box5.dat
+1 16 0 18 0 1 0 0 0 -1.5 0 0 0 1 stud3.dat
+0

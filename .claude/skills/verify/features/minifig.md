@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom prints, ui:print designer -->
 
 ## Sub-features
 
@@ -36,10 +36,23 @@ the model, and the design assistant doing the same with `add_minifig`.
     37364's medium legs, the skeleton, the super battle droid, wing and flipper
     arms. Choosing an odd torso brings its companions (`choose` -> `body_of`:
     the droid's head, arms and legs and no hips or hands; a body moulded from
-    its feet up — Sebulba, Gollum, the babies — stands on its own);
+    its feet up — Sebulba, Gollum, the babies — stands on its own); and the
+    other way round, where the library only ever attaches a part to another
+    (`choose`): the droid's head, which has no socket for a neck post and
+    clips onto its own torso's bar, brings the droid (`HEADS_ON`); printed
+    legs their printed hips in the colour 73200bpXX gives them (`LEG_HIPS`:
+    3816cpx0 with 3815bpx0, 3816cp30's hips reddish brown); springs 43741 the
+    hips 43221 and legs 43220 they go into, and 43220 its springs, as
+    43743-f1.dat (`LEGS_WITH`; legs joined in one moulding are one part); the
+    prosthetic hand 5059 the stump arm 6828, on it where 6828.dat's HELP line
+    says (`ON_ARMS`; on a plain arm it pointed back up it). Each is undone
+    the same way: the plain legs give the plain hips back;
   - a head sits by its neck socket (`MinifigData.SEATS`, measured off its
     geometry: 24 under the origin for the classic heads, 0 for the moulded ones
-    drawn from the neck up); headgear goes where the classic head's top is;
+    drawn from the neck up), or by its rim if it is drawn as a brick is,
+    hollow round a tube for the post (the Minions at 40, 56 and 32, the
+    pencil top at 32; by the tube they sank 20 LDU over the torso);
+    headgear goes where the classic head's top is;
   - a visor turns on its helmet's dimples (`MinifigData.PIVOTS`: 2447b's pins at
     its origin onto 3842b's dimples at y 5; an unknown helmet gets the classic's);
     a plume or feathers at the head's origin, or where an assembly puts them
@@ -47,12 +60,21 @@ the model, and the design assistant doing the same with `add_minifig`.
   - neck, back and cape items at the torso's origin, a cape up its own collar
     (4524 at y -2, as nine real figures wear it), the quiver turned to the back
     (`TURNED`, as 19 real figures wear it); the head up by the highest collar;
-    cloth LDraw draws flat (50231, 14295) hangs down the back (`_hung_flat`), and
-    anything reaching the floor swings back about the shoulders until it clears;
+    cloth LDraw draws flat, as it is sold (50231, 14295), is worn as its
+    "(Formed)" drawing (`worn_as`: 50231 -> 50231c01), as every cloth cape on a
+    figure in vendor/omr is (522, 50231c02, 99464c01) — one a figure can wear,
+    no lower than its feet and not out in front (not 50231c03, a curtain, or
+    u9661c01, drawn folded flat); cloth with none (tuxedo tails 26697, the
+    short skirt 26701, u9661) hangs straight down against the back
+    (`_hung_flat`); a cape longer than the figure is tall (a full one on a
+    child) is raised until it clears the ground, never swung out at an angle;
+    back gear reaching the floor swings back about the shoulders;
   - hipwear at the hips' joint; legs paired by name or print (3816cp30 with
     3817cp30, 20461bp00 with 20460bp00), one-piece legs (a mermaid's tail, a
-    skirt moulded on) at the hips; feet one each side on the foot's hole, the
-    figure raised by what is under the sole, rounded to whole lattice cells;
+    skirt moulded on) at the hips; feet one each side, the foot on the stud
+    every footwear part has at its origin (a ski's binding and a snowshoe's
+    rim reach higher, round the foot), the figure raised by what is under the
+    sole, which stands on the plate;
   - a one-sided part (a hook, a robot arm, a wooden leg) keeps the plain part
     opposite in the colour it had (`colours["<slot>_other"]`).
   Every part in the catalogue's `Minifig*` categories or named `Minifig ...` is
@@ -61,7 +83,11 @@ the model, and the design assistant doing the same with `add_minifig`.
   one: 4263 parts, 4038 offered, 225 as pairs. Choices per slot (`Minifig.choices`)
   are real parts only — no redirect, alias, sticker or shortcut, so every part is
   an element on the parts list — plain moulds first, the classic figure's mould
-  first of all (973, 3626c, 3816c). `groups` sorts a slot by mould (body) or kind
+  first of all (973, 3626c, 3816c); the Cape slot opens on the worn drawings of
+  cloth capes, 50231c01 first (its cloth is in 258 sets), and in the cloth
+  slots cloth drawn flat comes last. A worn drawing is its cloth's element on
+  the parts list (`PartLibrary.element_for`: 50231c01 in black is 4124171, as
+  50231 is) and comes in its cloth's colours (`colours_of`). `groups` sorts a slot by mould (body) or kind
   (worn or held) for browsing. A printed part's colours are its moulding's
   (`colours_of`: 3626cp01 -> 3626c, 973 -> 76382); a part chosen for a slot not
   made in its colour comes in its most-made one (`fitting_colour`). `surprise()`
@@ -73,7 +99,10 @@ the model, and the design assistant doing the same with `add_minifig`.
   geometry otherwise), 736 torso prints' arm and hand colours from the library's
   76382pXX assemblies, and what the library's own assemblies say about the odd
   parts: 40 placements, 19 arms' hands, 8 bodies, 6 headgear extras; 73 head
-  seats, 43 visor and helmet pivots, 1 part worn turned. GDScript constants because
+  seats, 43 visor and helmet pivots, 1 part worn turned; 138 legs' hips (from
+  hips-and-legs assemblies, not whole figures), 3 legs in pieces, 1 hand on an
+  arm of its own (from the arms' HELP lines, the plain hand left out), 1 head
+  on a body of its own. GDScript constants because
   the web build has no LDraw library to read and the export takes no loose JSON.
   The script sorts parts into slots by a copy of `slot_for`'s rule, which
   `tests/test_minifig.py` holds to the app's word for word.
@@ -91,7 +120,8 @@ the model, and the design assistant doing the same with `add_minifig`.
   [parts](parts.md) `previews`; a waiting cell is a placeholder with the part
   number under it, and the slots' pictures are tiles beside their words, so the
   words do not move when a picture lands),
-  and the colours with a dot on the ones the part is made in; the figure turning
+  and the colours with a dot on the ones the part is made in (a worn cape's are
+  its cloth's, which the note under them says); the figure turning
   on the right (its own `SubViewport` and `BrickWorld`; drag to turn), a name,
   Surprise me, Keep, Place in model, and the kept figures. Escape closes it.
 - `placing` (`Builder.hold_figure` / `settle_figure` / `put_figure`): Place hands
@@ -129,6 +159,76 @@ the model, and the design assistant doing the same with `add_minifig`.
   part count it publishes (`window.brickworksBricks`). It also chooses a cape —
   a part the pack does not ship, fetched over the wire — and places the caped
   figure.
+- `custom prints` (`src/minifig/part_prints.gd`, `PartPrints`; the pixels in
+  `print_paint.gd`, `PrintPaint`): a print drawn here is an `Area` of a part and a
+  picture for it. `areas_for` finds them from the part's own mesh: a round head's
+  face and the back of it, each half way round its cylinder (CYLINDRICAL, 180
+  degrees, from 3 LDU above where the cylinder starts to 3 below where it ends:
+  3626c's canvas is 408 x 190); a torso's front and back (PLANAR, the largest face
+  turned that way and any as large as a third of it further out, its canvas the
+  face's extent plus half an LDU: 973's front is a trapezoid on a 390 x 330
+  canvas); a right leg with its hips and left leg as one front over all three, the
+  legs 12 under the hips (`LEGS_UNDER_HIPS`, as `Minifig.LEGS` has them); any
+  other part's largest outward faces, named by how they face (a tile's top, a
+  slope's slope). Ten pixels to the LDU, no side over 512. A canvas pixel's place
+  on the part is LDraw's !TEXMAP projection worked out as LDView works it out
+  (`Area.uv`, after TREModel.cpp): PLANAR's first point the picture's top left,
+  second top right, third bottom left; CYLINDRICAL's U `0.5 + angle/a` round from
+  the third point's side, growing to the right seen from outside, V down from the
+  top point. The part file (`part_text`) is the plain part's triangles from its
+  mesh, each area's faces inside its own `0 !TEXMAP START ... <png>` /
+  `0 !TEXMAP END`, its connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases,
+  and `0 // Printed by Brickworks: from=<part> areas=<keys>`; named
+  `bw-<part>-p<tag>`, the tag six hex digits of MD5 over the part, the title and
+  every picture, so the same print twice is the same part. A pair of legs is
+  three files sharing one picture and one tag. `build` is `PartForge.build` with
+  each block's faces handed over in colour `UNDER_PICTURE + n`, so they come out
+  as surfaces of their own, then given texture coordinates by the block's own
+  projection, colour 16 back, and the picture (`Lbm.PartMesh.prints`, by surface;
+  `print_files`, the PNG bytes by name). `BrickWorld` and `PartThumbnails` draw a
+  printed surface with `plastic_print.gdshader` (`#define PLASTIC_PRINT` in
+  `plastic_body`: the picture mixed over the plastic by its alpha, linearised as
+  the plastic's colour is, clear off the picture as LDView's clamp-to-border is).
+  `finished` keeps a picture to the area's mask, grown a pixel, and clears its
+  outermost pixels. `picture_of` reads one of LEGO's prints off its part (every
+  face not in colour 16, on the area) onto a canvas: 3626cp01's grin on 3626c's
+  face; `prints_of` lists a mould's real prints, the most used first.
+  Kept like any made part (`CustomParts.add`: a print's text is built by
+  `PartPrints.build`, its pictures kept beside it in `user://custom_parts/` and
+  found there again at start-up); a model carries each picture as an MPD
+  `0 !DATA <name>.png` section, base64 in `0 !:` lines of 76 characters after the
+  FILE sections (`LdrModel.write_ldr`, `embedded_data` when read), so it opens in
+  a library that never saw it and in LDView. On a figure (`Minifig`): a part made
+  here stands where the part it was made from stands (`PartPrints.bases`;
+  `assemble` and `torso_local` work with a stand-in and swap the made parts back,
+  a printed pair's left leg for the plain left leg, `made_with`); choosing printed
+  legs brings the hips printed with them and plain legs give plain hips back
+  (`_fit_hips`); made parts are offered first in their slot, in a group "My prints
+  and moulds" (`MADE_HERE`), in their original's colours (`colours_of`); the slot
+  index is rebuilt when the library has made parts it did not.
+- `print designer` (`src/minifig/print_editor.gd`, `PrintEditor`; the canvas
+  `print_canvas.gd`, `PrintCanvas`): "Draw a print…" beside the search in the
+  Head, Torso, Hips and Legs slots of the figure builder (`MinifigDialog.PRINTED`;
+  the hips are drawn with the legs). Opens over the builder on the slot's part
+  (its plain mould; a printed part LEGO made is started from, one made here is
+  loaded to change), a tab per area. Tools: brush and eraser (round, hard-edged),
+  line, box and oval (filled or outlined), fill (a run of one colour on the active
+  layer, on the raw pixels as one int each), text (the font's own glyphs from the
+  text server, so headless too), pick a colour; a size; Mirror, which draws every
+  mark again reflected about the canvas's middle; layers (add, delete, up, down,
+  show); undo and redo (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y; a stroke is one step, 40
+  kept). Colours: LEGO's solid, metallic and pearl colours in sets today, with
+  black and white. The canvas shades what is not on the part and dashes its
+  middle; right button, middle button or Space-drag pans, the wheel zooms. Beside
+  it the part turns wearing the picture as it is drawn (`preview_meshes`: the
+  part's surfaces cut by area, texture coordinates from the same projection, each
+  canvas a texture updated per mark); Start from (a clean sheet, prints made here
+  of the mould, LEGO's prints of it, fetched first in a browser); Add a picture…
+  (`PickImage`, a file dialog or the browser's picker, onto a layer of its own,
+  fitted); "or print on" a part number (3068b, 3039, anything; the slot kept only
+  if the part goes in it). Save print makes the parts and puts them on the figure;
+  a part for no slot goes to the parts bin under Custom and the builder says so.
+  Escape closes it.
 
 ## How to reach it
 
@@ -142,6 +242,8 @@ tools/minifig.py data              # rewrite src/minifig/minifig_data.gd (~2 min
 On the web the builder's parts come over the wire like any other; the default
 figure's are in the pack (`tools/web_pack.py` ESSENTIAL).
 
+Prints: M, a Head, Torso, Hips or Legs slot, **Draw a print…**.
+
 ## How to check it
 
 ```sh
@@ -149,6 +251,8 @@ godot --headless --path . --script src/dev/minifig_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   # needs a display: see tools/check.sh for xvfb-run
 python3 tools/minitest.py tests/test_minifig.py
 node tools/web/minifig_flow.mjs --url=<a build>/app --out=shots/minifig_web
+godot --headless --path . --script src/dev/print_probe.gd
+godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd     # needs a display
 ```
 
 Proves it when:
@@ -164,6 +268,11 @@ Proves it when:
   second of the same name, save -> reopen -> save byte-identical, the parts list,
   `_variety` unchanged by a dozen figures, and `add_minifig` (placed, on top of a
   brick, in the colour asked, refused in the air and where somebody stands).
+  Cloth: the Cape slot opens on 50231c01 with its 20 worn drawings first and
+  flat cloth last; 23 flat cloths worn as their worn drawings and 7 with none
+  hanging straight down against the back, clear of the ground; none of 94
+  capes held out at an angle on a grown figure or a child; 50231c01 is
+  50231's element in its colours.
   The new slots against real figures: 6067's cape at y -2 (0.01), 6061's quiver
   turned to the back (0.01), 10176's soldiers' shields in the left hand (on the
   real hand's bar, within 3 LDU along it, as the right hand's grip rule is), the
@@ -171,14 +280,26 @@ Proves it when:
   pilot (the two drawings of the helmet differ by that). Against the library's
   own assemblies, part for part within 0.01: 30375cs0's battle droid (and the
   plain torso giving the plain parts back), 84638's hook, 84637b's wooden leg,
-  15998's baby, 37364's medium legs. Then: all 4263 minifig parts available
+  15998's baby, 37364's medium legs. And the other way round, against the
+  library too: the droid's head bringing the droid of 30375cs0 (fails on the
+  old builder, which put it on the plain torso); Minion heads and the pencil
+  top resting on the shoulders by their rim (they sank 20 and 29); 3816cpx0
+  bringing 3815bpx0 as 73200bpx0, 3816cp30 reddish brown hips, the plain legs
+  the plain hips back; springs 43741-f1 in 43221 over 43220 as 43743-f1, and
+  43220 one part with its springs (it was two, the springs stood alone); the
+  prosthetic hand on the stump as 6828.dat's HELP line says (0.001 off), the
+  plain hand the plain arm back. Then: all 4263 minifig parts available
   (fails on the old builder, which offered 3284 and had no slot for 979);
   each slot opens on the classic mould; 1966 families each put together with
   nothing in the floor; 176 families of legs, feet, bodies, skirts, capes and
   back gear stood on a 6 x 6 plate with none refused by the lattice; a frogman
   with a visor, airtanks, a cape, a skirt, flippers, a spear and a shield
-  stood on a plate on his flippers, lifted with X and put back, saved and
-  reopened as one figure.
+  stood on a plate on his flippers, their undersides on its top, lifted with
+  X and put back, saved and reopened as one figure. On footwear: on each of 12
+  kinds the feet are on its top and its sole on the plate (the snowshoes had
+  the feet 2 LDU up, the hinged ski 9; flippers and skis stood 1 LDU above the
+  plate), and the lattice takes a flipper on a plate, its origin 3 LDU up,
+  but not 1 LDU into it.
 - `minifig_ui_probe` ends `a figure was made by clicking, named, placed on a stud
   and photographed`, and leaves `shots/minifig_builder.png`,
   `minifig_builder_surprise.png`, `minifig_figures_front.png`,
@@ -188,7 +309,7 @@ Proves it when:
   moulded skirt with a tiara and a cloth cape, a frogman on flippers, a battle
   droid, a captain with a hook and a wooden leg, a mermaid, a skeleton with a
   quiver on its back. On the way it chooses a shield for the left hand and a cape
-  by clicking, pages through the torsos with the "+160" cell and shows one mould
+  by clicking (50231c01, its colours 50231's), pages through the torsos with the "+160" cell and shows one mould
   of them. **Look at them**: head on the neck, arms at the shoulders, hands in
   the arms, legs under the hips, the spear upright in a raised hand, the cutlass
   blade up and forward, visors over faces, capes and quivers behind. Plain
@@ -196,15 +317,71 @@ Proves it when:
   `gpu env GODOT_GPU=1 ...` with Forward+.
 - `minifig_flow.mjs` ends `minifig flow: made, placed and photographed`, with the
   part count up by the figure's parts, then the Cape slot found, its first part
-  chosen and a caped figure placed too (up by 8 or more; `4_cape.png` shows the
-  grid of capes and the figure wearing one, `5_caped.png` it standing). A local
-  export works as the hosted one does with
+  (50231c01, the cloth cape as it is worn) chosen and a caped figure placed too
+  (up by 8 or more; `4_cape.png` shows the grid of capes and the figure wearing
+  one, `5_caped.png` it standing beside the first and `5_caped_close.png` close
+  up, to see the cape hang). A local export works as the hosted one does with
   `PARTS_URL=http://127.0.0.1:PORT/parts/ tools/export.sh web`, then
   `python3 tools/web/serve.py build/web PORT --parts assets/generated/parts
   --delay 300`, which answers `/api/account` with its own `/parts/`; the flow's
   `--url` is `http://127.0.0.1:PORT/index.html`.
 
+- `print_probe` ends `a print drawn here is on the part where it was drawn, in the
+  app and the file`: 3626c's face and back (CYLINDRICAL 180), 973's front and back
+  with the front's TEXMAP points top left, top right, bottom left and its mask a
+  trapezoid, one front over 3815b, 3816c and 3817c, 3068b's top 410 x 410, 3039's
+  slope; the paint document's brush, mirror, fill, undo, redo, words and layers;
+  then a face, a torso front and back, a pair of legs and a tile printed, each
+  part its plain part to the triangle, the collision box and the connector, its
+  pictures on surfaces of their own, and every printed corner carrying exactly
+  the coordinates its file's TEXMAP line gives its position (160 on the head);
+  the same print twice is the same part; a figure in the prints stands exactly as
+  the plain one, the printed left leg on the left; the hips come and go with the
+  legs; the print is first in its slot; the model file carries the pictures as
+  !DATA in lines under 80, reads back to the same bytes, and a library that never
+  saw them builds all four parts and keeps the pictures; 3626cp01's grin lands on
+  the middle of the face and nothing on the back; 973p01's stripes on the front.
+  It leaves the figure's file in `shots/print_probe.mpd`, and
+  `tools/build_custom.py shots/print_probe.mpd --check` reads it strictly ("all
+  complete"). Another program draws it too: LDView 4.7 (the release AppImage,
+  `--appimage-extract`, under Xvfb: `AppRun MODEL.mpd -LDrawDir=vendor/ldraw
+  -SaveSnapshot=out.png -SaveWidth=600 -SaveHeight=600 -cg15,0`, and `-cg15,180`
+  from behind) showed a printed face, a badge on the left breast and "CREW" on the
+  back where the app has them, 2026-10-11 (`shots/print_ldview_front.png`,
+  `_back.png`).
+- `print_ui_probe` ends `a face, a jacket and trousers were drawn by hand, worn and
+  placed`, every mark an input event: the face drawn on a clean sheet (the editor
+  first opened on 3626cp01's grin), hair round the back, a jacket front with a
+  collar, pockets, a zip and a badge with "BW", "CREW" on the back, trousers with a
+  belt and patches, a sign on a 3068b tile; saved, worn, the figure placed (10
+  parts, 5 printed here) and the tile put down beside it. **Look at**
+  `shots/print_face_editor.png`, `print_torso_editor.png`, `print_legs_editor.png`,
+  `print_tile_editor.png`, `print_builder.png`, `print_figure_front.png` (face the
+  right way up, badge on his left breast, belt over the hips),
+  `print_figure_back.png` ("CREW" reads from behind) and `print_with_tile.png`.
+
 ## Gotchas
+
+- **A print is a surface with texture coordinates, and nothing else is.** The
+  .lbm format has no UVs; a printed part's are worked out when it is built, from
+  its file's TEXMAP lines, and live only in memory (`Lbm.PartMesh.prints`). A
+  printed part changed by the element maker (`PartEditor.shape_of`) loses its
+  picture.
+- **LDraw's cylindrical spec contradicts itself** on which way V runs (ldraw.org
+  forum thread 13633). LDView and LDCad measure it down from the top point;
+  `Area.uv` does too, and U as LDView does, per corner rather than per triangle
+  (a print's faces never reach the cylinder's seam, which is behind the area).
+  Off the picture, LDView clamps to a clear border and LDCad (2014) stretched the
+  edge pixels, so every finished picture has a clear outermost pixel.
+- **A packed array read out of an Array or Dictionary is a copy**, as in
+  elements.md: `preview_meshes` collected each piece's corners by appending to
+  `(piece[0] as PackedVector3Array)` and built empty meshes. Corners are gathered
+  in plain Arrays now.
+- **The head is 30% cylinder.** 3626c's faces are 3557 LDU² of which 1055 are on
+  its 13 LDU cylinder; the rest is its top, neck and both their insides. A head
+  counts as round at 20%.
+- **`set_size` is Control's.** A method of that name on a panel is a parse error
+  under this project's warnings-as-errors.
 
 - **Measured, not looked up**: three conventions are in real sets' files. The
   library's (76382), Mad_Marc's (hands 0.5 LDU off, sets 10176-10184) and an older
@@ -230,24 +407,35 @@ Proves it when:
   photographs Surprise me.
 - **Probes keep figures somewhere of their own** (`Minifig.shelf_file`), or a
   check run on this machine writes onto its owner's shelf.
-- **Odd parts are not all put right.** Where the library has no assembly and no
-  geometry says (a prosthetic hand, a Minion's head, the cyborg torso), a part
-  sits at its slot's standard joint, LDraw's convention, and can look wrong on a
-  classic figure — as it would in the hand. Mixing families (a droid's legs on a
-  plain torso) is allowed: legs drawn from their feet up hang from the hips'
-  top. Look at a family with the contact sheets the probe's numbers stand for.
+- **Odd parts are not all put right.** Where the library has no assembly, no
+  HELP line and no geometry says (the cyborg torso), a part sits at its slot's
+  standard joint, LDraw's convention, and can look wrong on a classic figure —
+  as it would in the hand. Mixing families (a droid's legs on a plain torso) is
+  allowed: legs drawn from their feet up hang from the hips' top; legs bent at
+  an angle (the springs bent 45 degrees) stand a cell up, their cover being
+  rounded out. u9661c01, an unofficial worn cape, is drawn folded out in front
+  and looks it when chosen; its flat cloth hangs flat instead. Something held
+  in the prosthetic hand is held where a plain hand's grip would be. Look at a
+  family with the contact sheets the probe's numbers stand for.
 - **A web export without `PARTS_URL` offers about half the figure parts.** The
   self-contained pack publishes only 120 MB of on-demand geometry and marks the
   rest of the catalogue unreachable, which the builder (rightly) does not offer:
   2271 of the 4263 figure parts. The hosted build serves every part from object
   storage and offers all of them; a local check should export the same way.
 - **LDraw draws cloth flat**, as it is sold (50231, 14295); its "(Formed)"
-  versions are the shapes it is worn in. Both are offered; the flat one hangs
-  down the back, wider than the figure, and swings back clear of the floor.
-- **Everything a figure stands on is on the lattice's 2 LDU cells**: a part's
-  cover is reckoned from its origin's cell, so a figure whose feet end 3 LDU
-  under the torso, or a flipper 3 LDU thick, would read as standing in the
-  plate. The ground and the footwear's lift are rounded up to whole cells.
+  versions are the shapes it is worn in, and the only ones real sets' files put
+  on a figure. Both are offered and a figure wears the formed one either way;
+  the slot's picture is the flat one, as sold. Flat cloth with no worn drawing
+  hangs flat behind, as wide as LDraw draws it (26701 is 120 LDU across).
+  106700, a robe 13 studs long, is taller than any figure: raised clear of the
+  ground it stands far above the head.
+- **A part's cover is reckoned from its origin's cell**, which off the lattice
+  moves it up to a cell lower than the part: a flipper 3 LDU thick on a plate,
+  its origin 3 LDU up, read as standing a cell into it, so figures used to
+  stand up to 2 LDU above the plate. `Builder.boxes_for` (and `Stability`'s
+  own) now keep a square part's cover off the lattice inside its own box
+  (`BrickLattice.within`), which only takes away cells the part is not in;
+  a figure stands on the plate.
 - **Godot reports a missing meta key as an error even with a null default**, so
   `ThumbTile.Sight` asks `has_meta` first: the builder's "none" and "+160" cells
   have no tile, and asked for one every frame they flooded the log.

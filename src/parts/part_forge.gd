@@ -14,10 +14,12 @@
 ## the sockets, the cells and the bounds exactly; pipeline.json is what the
 ## Python made. Matching it means doing the arithmetic in the same order in
 ## 64-bit floats — Godot's Vector3 is 32-bit, so none is used here — and
-## rounding halves to even, as Python's round() does. Two places differ on
-## purpose and say so: a Technic hole's two faces are not merged and its
-## bore is not cleared (connectivity._merge_half_holes and the hole half of
-## occupancy.fill_cavities), because nothing the maker makes has one.
+## rounding halves to even, as Python's round() does. A Technic hole is
+## as the pipeline has it too: its two faces merged into the one hole
+## (connectivity._merge_half_holes) and its bore cleared through the cover
+## (the hole half of occupancy.fill_cavities), because the maker makes
+## Technic bricks. What is still not here is the axle family, which the
+## pipeline classifies from each primitive's own description.
 ##
 ## Primitives come from res://assets/ldraw/, the few the maker draws with,
 ## shipped with the app (CC BY 4.0, credited in docs/ATTRIBUTION.md), and
@@ -691,6 +693,16 @@ const CONNECTORS: Dictionary = {
 func _connectors(name: String) -> Array:
 	var found: Array = []
 	_find_connectors(name, PackedFloat64Array(IDENTITY), found, 0, {})
+	# A part changed from another's mesh says where its connectors are in
+	# meta lines of its own (PartEditor), after whatever its primitives
+	# give: connectivity.extract reads them the same way, in the same place.
+	var said: Array = _said_connectors(name)
+	var rounds_said: Array = []
+	for c: Array in said:
+		if Lbm.ROUNDS.has(str(c[0])):
+			rounds_said.append(c)
+		else:
+			found.append(c.slice(0, 8))
 	var seen: Dictionary = {}
 	var unique: Array = []
 	for c: Array in found:
@@ -700,8 +712,130 @@ func _connectors(name: String) -> Array:
 			continue
 		seen[key] = true
 		unique.append(c)
-	unique.append_array(_rounds(name))
-	return unique
+	var merged: Array = _merge_half_holes(unique)
+	merged.append_array(_rounds(name))
+	merged.append_array(rounds_said)
+	return merged
+
+
+## The connectors a part file states in `0 !BRICKWORKS CONNECTOR kind
+## gender x y z ax ay az [length radius]` lines, in LDraw's axes, as
+## [kind, gender, x, y, z, ax, ay, az] and a round's length and radius.
+func _said_connectors(name: String) -> Array:
+	var out: Array = []
+	var source: Source = _source_for(name)
+	if source == null:
+		return out
+	for command: Array in source.commands:
+		if int(command[0]) != 0 or command[1] != PartEditor.CONNECTOR:
+			continue
+		var words: PackedStringArray = command[2]
+		if words.size() < 9 or words[0].to_upper() != "CONNECTOR":
+			continue
+		var row: Array = [words[1], words[2]]
+		for n: int in range(3, 9):
+			row.append(_num(words[n]))
+		if Lbm.ROUNDS.has(words[1]):
+			if words.size() < 11:
+				continue
+			row.append(_num(words[9]))
+			row.append(_num(words[10]))
+		out.append(row)
+	return out
+
+
+# -- a hole's two faces, as connectivity._merge_half_holes -------------------
+
+
+## connectivity.MERGE_WITHIN: how far apart two faces of one hole can be.
+const MERGE_WITHIN := 44.0
+const HOLE_KINDS: Array[String] = ["pin_hole", "axle_hole"]
+
+
+## Collapse the two faces of a Technic hole into the one hole it is: two
+## pegholes, one recessed into each face and pointing opposite ways, are
+## one hole at their midpoint. Faces on the same axis line and within a
+## brick of each other along it; the rest pass through, first, in order.
+static func _merge_half_holes(connectors: Array) -> Array:
+	var lines: Dictionary = {}   ## line key -> connectors on it, in order
+	var passthrough: Array = []
+	for c: Array in connectors:
+		if not HOLE_KINDS.has(str(c[0])):
+			passthrough.append(c)
+			continue
+		var key: String = _axis_line_key(c)
+		if not lines.has(key):
+			lines[key] = []
+		(lines[key] as Array).append(c)
+	var merged: Array = []
+	for key: String in lines:
+		for cluster: Array in _clusters_along(lines[key]):
+			var count: float = float(cluster.size())
+			var sx: float = 0.0
+			var sy: float = 0.0
+			var sz: float = 0.0
+			for c: Array in cluster:
+				sx += float(c[2])
+				sy += float(c[3])
+				sz += float(c[4])
+			var first: Array = cluster[0]
+			merged.append([first[0], first[1], sx / count, sy / count, sz / count,
+				first[5], first[6], first[7]])
+	return passthrough + merged
+
+
+## The infinite line a connector's axis runs along: the axis to one sign,
+## and the foot of the perpendicular from the origin.
+static func _axis_line_key(c: Array) -> String:
+	var ax: float = c[5]
+	var ay: float = c[6]
+	var az: float = c[7]
+	for component: float in [ax, ay, az]:
+		if absf(component) > 1e-6:
+			if component < 0.0:
+				ax = -ax
+				ay = -ay
+				az = -az
+			break
+	var along: float = float(c[2]) * ax + float(c[3]) * ay + float(c[4]) * az
+	var fx: float = float(c[2]) - ax * along
+	var fy: float = float(c[3]) - ay * along
+	var fz: float = float(c[4]) - az * along
+	# Rounded as Python's tuple of round()s compares, and -0 is 0 there.
+	return "%s|%s|%s|%s|%s|%s|%s" % [c[0], _keyed(ax, 3), _keyed(ay, 3), _keyed(az, 3),
+		_keyed(fx, 2), _keyed(fy, 2), _keyed(fz, 2)]
+
+
+static func _keyed(value: float, places: int) -> String:
+	var scale: float = pow(10.0, places)
+	return str(_rint(value * scale))
+
+
+## The faces on one line, split into the holes they describe: sorted along
+## the line (stably, as Python's sort is), a new hole wherever the next
+## face is more than [constant MERGE_WITHIN] past the last.
+static func _clusters_along(group: Array) -> Array:
+	if group.size() == 1:
+		return [group]
+	var first: Array = group[0]
+	var axis: Array = [float(first[5]), float(first[6]), float(first[7])]
+	var keyed: Array = []
+	for n: int in group.size():
+		var c: Array = group[n]
+		keyed.append([float(c[2]) * axis[0] + float(c[3]) * axis[1]
+			+ float(c[4]) * axis[2], n, c])
+	keyed.sort_custom(func(a: Array, b: Array) -> bool:
+		return float(a[0]) < float(b[0]) or (float(a[0]) == float(b[0])
+			and int(a[1]) < int(b[1])))
+	var clusters: Array = [[keyed[0][2]]]
+	var last: float = keyed[0][0]
+	for n: int in range(1, keyed.size()):
+		if float(keyed[n][0]) - last <= MERGE_WITHIN:
+			(clusters[-1] as Array).append(keyed[n][2])
+		else:
+			clusters.append([keyed[n][2]])
+		last = keyed[n][0]
+	return clusters
 
 
 # -- shafts and bores, as connectivity.rounds --------------------------------
@@ -1318,8 +1452,10 @@ static func _trim(grid: Grid) -> Grid:
 
 ## Close each horizontal layer's enclosed voids: scipy's binary_fill_holes,
 ## which fills whatever empty cells cannot reach the layer's edge through
-## empty cells, four ways.
-func _fill_cavities(grid: Grid) -> Grid:
+## empty cells, four ways. Then, where a connector says there is a hole,
+## clear its bore, as occupancy.fill_cavities does: a pin goes into a
+## Technic hole, so the hole cannot be cover.
+func _fill_cavities(grid: Grid, connectors: Array = []) -> Grid:
 	if grid.count() == 0:
 		return grid
 	var out: Grid = grid.copy()
@@ -1333,7 +1469,55 @@ func _fill_cavities(grid: Grid) -> Grid:
 		for x: int in grid.shape.x:
 			for z: int in grid.shape.z:
 				out.put(x, y, z, filled[x * grid.shape.z + z])
+	_clear_bores(out, connectors)
 	return out
+
+
+## occupancy.HOLE_RADIUS.
+const HOLE_RADIUS := 6.0
+
+
+## Take every cell within a hole's radius of its axis line out of the grid,
+## within the slab the hole can touch (all of the grid for a hole at an
+## angle to it), as the hole half of occupancy.fill_cavities does.
+static func _clear_bores(grid: Grid, connectors: Array) -> void:
+	for hole: Array in connectors:
+		if not HOLE_KINDS.has(str(hole[0])):
+			continue
+		# The connectors are in LDraw's axes and the grid in the app's.
+		var point: Array[float] = [float(hole[2]), -float(hole[3]), -float(hole[4])]
+		var axis: Array[float] = [float(hole[5]), -float(hole[6]), -float(hole[7])]
+		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
+		if length < 1e-9:
+			continue
+		axis = [axis[0] / length, axis[1] / length, axis[2] / length]
+		var square: bool = maxf(absf(axis[0]), maxf(absf(axis[1]), absf(axis[2]))) > 0.99
+		var lo := Vector3i.ZERO
+		var hi := Vector3i(grid.shape)
+		var empty: bool = false
+		for n: int in 3:
+			if not square or absf(axis[n]) > 0.99:
+				continue
+			var middle: float = point[n] / CELL - grid.origin[n]
+			var reach: float = HOLE_RADIUS / CELL + 1.0
+			lo[n] = maxi(0, int(floor(middle - reach)))
+			hi[n] = mini(grid.shape[n], int(ceil(middle + reach)) + 1)
+			if lo[n] >= hi[n]:
+				empty = true
+		if empty:
+			continue
+		for x: int in range(lo.x, hi.x):
+			var dx: float = (float(x + grid.origin.x) + 0.5) * CELL - point[0]
+			for y: int in range(lo.y, hi.y):
+				var dy: float = (float(y + grid.origin.y) + 0.5) * CELL - point[1]
+				for z: int in range(lo.z, hi.z):
+					var dz: float = (float(z + grid.origin.z) + 0.5) * CELL - point[2]
+					var along: float = dx * axis[0] + dy * axis[1] + dz * axis[2]
+					var px: float = dx - along * axis[0]
+					var py: float = dy - along * axis[1]
+					var pz: float = dz - along * axis[2]
+					if px * px + py * py + pz * pz <= HOLE_RADIUS * HOLE_RADIUS:
+						grid.put(x, y, z, 0)
 
 
 static func _fill_holes(mask: PackedByteArray, sx: int, sz: int) -> PackedByteArray:
@@ -1551,7 +1735,7 @@ func _build(text: String, id: String, others: Dictionary) -> Result:
 			row.append_array([c[8], c[9]])     # a round's length and radius
 		result.connectors.append(row)
 
-	var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found))
+	var solid: Grid = _fill_cavities(_remove_studs(_voxelise(), found), found)
 	result.cells = solid.count()
 	result.boxes = _to_boxes(solid)
 	result.sockets = _bottom_sockets(solid)

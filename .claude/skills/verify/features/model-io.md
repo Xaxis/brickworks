@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model -->
 
 ## Sub-features
 
@@ -64,6 +64,33 @@ Whether what you built is still there tomorrow, and still means the same thing.
   title with "../" in it wrote outside the folder. `store_probe` names a download
   to climb out and checks it lands inside.
 
+- `seat an old model` (`src/ui/seat_offer.gd`, `src/assembly/seating.gd`): a
+  model saved before 2026-10-10 can carry parts drawn inside their footprint a
+  tenth of a stud off their studs. Opening one (or the one restored at start)
+  says how many, over the top of the model, with one choice: *Seat them on
+  their studs*, which moves each as one undoable step, or *Leave them*. A part
+  is moved only where undoing exactly the old corner's error puts its studs on
+  stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
+- `open a studio model` (`src/parts/studio_io.gd`, `src/ui/model_file_picker.gd`):
+  Open → From a file reads LDraw or BrickLink Studio's `.io` — a zip with
+  Studio's published password around `model2.ldr` (or `model.ldr`), opened by
+  hand (PKWARE decryption, then the raw deflate wrapped as gzip, which Godot
+  inflates). The file is read as bytes, in a browser too. LDD's `.lxf` is
+  refused with a sentence saying Studio opens it and saves an `.io`.
+  `tests/fixtures/studio_bay.io` was made by the system's `zip -P`, not by
+  this app.
+- `picture of the model` (`src/ui/picture.gd`, Export → Picture): the model
+  alone — no baseplate, ghost or outline — from the view's direction, framed to
+  fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
+  the same world with a copy of the scene's environment that clears instead of
+  drawing the sky. Downloaded in a browser, written to Downloads on the desktop.
+- `parts lists for shops` (`src/assembly/shop_lists.gd`, Export → BrickLink
+  wanted list / Rebrickable parts list): BrickLink's wanted-list XML (item, its
+  colour number, quantity) and Rebrickable's `Part,Color,Quantity` CSV. The
+  BrickLink colour numbers are a sourced table of 55 colours
+  (`ShopLists.BRICKLINK_COLOUR`, from the SetDB colour guide); a lot in any other
+  colour, or a made part, is left off and the status line says how many.
+
 ## How to reach it
 
 ```sh
@@ -78,6 +105,9 @@ Static: nothing static reads `.ldr`.
 Runtime:
 
 ```sh
+# opening an old model offers to seat its parts; one click does, one undo
+# takes it back (the "seating an old model" section)
+godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
 #   also: the build order is written as 0 STEP, and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given

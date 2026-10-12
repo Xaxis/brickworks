@@ -50,6 +50,9 @@ var _viewport: SubViewport
 var _camera: Camera3D
 var _holder: MeshInstance3D
 var _material: ShaderMaterial
+var _environment: Environment
+var _key_light: DirectionalLight3D
+var _fill_light: DirectionalLight3D
 
 var _cache: Dictionary = {}        ## String key -> ImageTexture
 var _order: Array[String] = []     ## least recently used first
@@ -103,6 +106,7 @@ func _ready() -> void:
 	environment.ambient_light_color = Color(0.86, 0.88, 0.94)
 	environment.ambient_light_energy = 1.35
 	world.environment = environment
+	_environment = environment
 	_viewport.world_3d = world
 
 	_viewport.msaa_3d = Viewport.MSAA_4X
@@ -118,12 +122,14 @@ func _ready() -> void:
 	key_light.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
 	key_light.light_energy = 2.0
 	_viewport.add_child(key_light)
+	_key_light = key_light
 
 	var fill_light := DirectionalLight3D.new()
 	fill_light.rotation_degrees = Vector3(-14.0, 132.0, 0.0)
 	fill_light.light_energy = 0.7
 	fill_light.light_color = Color(0.86, 0.9, 1.0)
 	_viewport.add_child(fill_light)
+	_fill_light = fill_light
 
 	_material = ShaderMaterial.new()
 	_material.shader = BrickWorld.SHADERS["opaque"]
@@ -132,6 +138,20 @@ func _ready() -> void:
 	_holder = MeshInstance3D.new()
 	_holder.material_override = _material
 	_viewport.add_child(_holder)
+
+
+## Less light on a light part.
+##
+## The lights are set for the middle of the palette, and on white they
+## burn every face to the same white: a white 1 x 2 with studs on its
+## sides was a flat silhouette with no studs, no top and no sides. Turned
+## down as the colour gets lighter, so the faces part again; a dark part
+## keeps all of it.
+func _light_for(colour: Color) -> void:
+	var tame: float = 1.0 - 0.42 * clampf((colour.get_luminance() - 0.5) / 0.45, 0.0, 1.0)
+	_environment.ambient_light_energy = 1.35 * tame
+	_key_light.light_energy = 2.0 * tame
+	_fill_light.light_energy = 0.7 * tame
 
 
 ## The surfaces past the first, drawn only for a preview that asks for
@@ -369,6 +389,7 @@ func _render(job: Dictionary) -> void:
 	# has no instance data for — so it rides in as a material tint here.
 	_material.set_shader_parameter("tint_override", color.shown)
 	_material.set_shader_parameter("finish_override", color.instance_custom)
+	_light_for(color.shown)
 
 	var printed: bool = bool(job.get("printed", false))
 	for n: int in _print_holders.size():
@@ -380,6 +401,13 @@ func _render(job: Dictionary) -> void:
 			var own: int = part.surface_colors[n]
 			var ink: PartLibrary.BrickColor = library.color(
 				int(job["color"]) if own == Lbm.COLOR_INHERIT else own)
+			# A print drawn in the app is a picture on the surface.
+			if not holder.has_meta("plain"):
+				holder.set_meta("plain", holder.material_override)
+			holder.material_override = holder.get_meta("plain")
+			if part.prints.has(n):
+				holder.material_override = PartPrints.material_for(
+					holder.material_override, part.prints[n], false)
 			var material: ShaderMaterial = holder.material_override
 			material.set_shader_parameter("tint_override", ink.shown)
 			material.set_shader_parameter("finish_override", ink.instance_custom)

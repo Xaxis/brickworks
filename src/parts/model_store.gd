@@ -318,6 +318,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 			awaited.append(placement)
 			continue
 		world.get_brick(brick_id).group = placement.group
+		world.get_brick(brick_id).unit = placement.unit
 		builder.register(brick_id, placement.part_id, placement.transform)
 		placed += 1
 	_awaited_in = world.generation()
@@ -369,6 +370,7 @@ func place_awaited(part_id: String) -> int:
 			placement.part_id, placement.color_code, placement.transform)
 		if brick_id != 0:
 			world.get_brick(brick_id).group = placement.group
+			world.get_brick(brick_id).unit = placement.unit
 			builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	awaited = still

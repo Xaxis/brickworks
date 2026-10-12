@@ -61,6 +61,12 @@ func _initialize() -> void:
 	print("  against the library's own assemblies")
 	_against_the_library()
 	print("")
+	print("  cloth as figures wear it")
+	_cloth()
+	print("")
+	print("  on footwear")
+	_footwear()
+	print("")
 	print("  what each slot can be")
 	_choices()
 	print("")
@@ -354,6 +360,285 @@ func _against_the_library() -> void:
 	against = _against_file(medium.assemble(library), _library_file("37364"), "3815b")
 	_check("medium legs pair and hang from the hips as 37364.dat: within %.3f LDU, none missing %s"
 		% [against[0], against[2]], float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+
+	# The other way round: a part the library only ever attaches to
+	# another brings it. A battle droid's head has no socket for a neck
+	# post — it clips onto its own torso's bar — so it brings the droid.
+	var droid_head := Minifig.new()
+	droid_head.choose(library, "head", "30378")
+	against = _against_file(droid_head.assemble(library), _library_file("30375cs0"), "30375")
+	_check("a battle droid's head brings its body, torso %s, and stands as 30375cs0.dat: within %.3f LDU, none missing %s"
+		% [droid_head.part("torso"), against[0], against[2]],
+		droid_head.part("torso") == "30375" and float(against[0]) <= 0.01
+		and (against[2] as Array).is_empty())
+	# A head drawn as a brick is, hollow underneath round a tube for the
+	# neck post — a Minion's, a pencil top — rests on the shoulders by
+	# its rim; seated by the tube it sank over the torso.
+	var sunk: Array[String] = []
+	for head: String in ["67649", "67650", "67902", "29030"]:
+		var figure := Minifig.new()
+		figure.choose(library, "head", head)
+		var top: float = NAN
+		var bottom: float = NAN
+		for item: Dictionary in figure.assemble(library):
+			if item["slot"] == "torso":
+				top = (item["at"] as Transform3D).origin.y
+			elif item["slot"] == "head":
+				bottom = ((item["at"] as Transform3D) * library.parts[head].bounds).position.y
+		sunk.append("%s %.1f" % [head, bottom - top])
+	_check("Minion heads and the pencil top rest on the shoulders by their rim, LDU over the torso's top: %s"
+		% ", ".join(sunk), sunk.all(func(line: String) -> bool:
+			return absf(float(line.split(" ")[1])) < 0.05))
+	# Printed legs bring the hips printed to match, in the colour the
+	# library's own hips-and-legs assembly gives them.
+	var belted := Minifig.new()
+	belted.choose(library, "legs", "3816cpx0")
+	against = _against_file(belted.assemble(library), _library_file("73200bpx0"), "3815bpx0")
+	_check("printed legs 3816cpx0 bring their hips, %s, as 73200bpx0.dat: within %.3f LDU, none missing %s"
+		% [belted.part("hips"), against[0], against[2]], belted.part("hips") == "3815bpx0"
+		and float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+	var ragged := Minifig.new()
+	ragged.choose(library, "legs", "3816cp30")
+	_check("and 3816cp30's rags their reddish brown hips, as 73200bp30.dat: %s in %d"
+		% [ragged.part("hips"), int(ragged.colours["hips"])],
+		ragged.part("hips") == Minifig.PLAIN_HIPS and int(ragged.colours["hips"]) == 70)
+	belted.choose(library, "legs", Minifig.PLAIN_LEGS)
+	_check("and the plain legs again the plain hips (%s)" % belted.part("hips"),
+		belted.part("hips") == Minifig.PLAIN_HIPS)
+	# Springs go into the hips and legs 43743-f1 puts them in; alone they
+	# stood the figure on two springs.
+	var bouncy := Minifig.new()
+	bouncy.choose(library, "legs", "43741-f1")
+	against = _against_file(bouncy.assemble(library), _library_file("43743-f1"), "43221")
+	_check("springs 43741-f1 go into hips %s and the legs under them, as 43743-f1.dat: within %.3f LDU, none missing %s"
+		% [bouncy.part("hips"), against[0], against[2]], bouncy.part("hips") == "43221"
+		and float(against[0]) <= 0.01 and (against[2] as Array).is_empty())
+	var joined := Minifig.new()
+	joined.choose(library, "legs", "43220")
+	var once: int = joined.assemble(library).filter(func(item: Dictionary) -> bool:
+		return item["part"] == "43220").size()
+	against = _against_file(joined.assemble(library), _library_file("43743-f1"), "43221")
+	_check("and legs 43220 are one part (%d), with their springs and hips: within %.3f LDU, none missing %s"
+		% [once, against[0], against[2]], once == 1 and float(against[0]) <= 0.01
+		and (against[2] as Array).is_empty())
+	# The prosthetic hand goes on the stump, where 6828.dat's HELP line
+	# says; on a plain arm it pointed back up it.
+	var helper := Minifig.new()
+	helper.choose(library, "hands", "5059")
+	var stump: Variant = null
+	var prosthetic: Variant = null
+	for item: Dictionary in helper.assemble(library):
+		if item["part"] == "6828":
+			stump = item["at"]
+		elif item["part"] == "5059":
+			prosthetic = item["at"]
+	var said: Variant = _help_line("6828", "5059")
+	var off: float = INF
+	if stump != null and prosthetic != null and said != null:
+		var ours: Transform3D = (stump as Transform3D).affine_inverse() * (prosthetic as Transform3D)
+		off = ours.origin.distance_to((said as Transform3D).origin)
+		for n: int in 3:
+			off = maxf(off, (ours.basis[n] - (said as Transform3D).basis[n]).length())
+	_check("a prosthetic hand brings the stump arm (%s) and goes on it as 6828.dat says: %.3f off"
+		% [helper.part("arms"), off], helper.part("arms") == "6828" and off <= 0.01)
+	helper.choose(library, "hands", Minifig.HAND)
+	_check("and the plain hand again the plain arm (%s)" % helper.part("arms"),
+		helper.part("arms") == Minifig.ARM_RIGHT)
+
+
+## Where a library file's HELP line puts a part, in the app's axes as
+## LdrModel reads a placement: the library's word for how a part goes on
+## another it does not include.
+func _help_line(name: String, part: String) -> Variant:
+	var path: String = "res://vendor/ldraw/parts/%s.dat" % name
+	if not FileAccess.file_exists(path):
+		path = "res://vendor/ldraw/unofficial/parts/%s.dat" % name
+	if not FileAccess.file_exists(path):
+		return null
+	for line: String in FileAccess.get_file_as_string(path).split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() == 17 and words[1] == "!HELP" and words[2] == "1" \
+				and words[16].to_lower() == part + ".dat":
+			var v: Array = []
+			for n: int in range(4, 16):
+				v.append(float(words[n]))
+			var at := Transform3D(Basis(Vector3(v[3], v[6], v[9]), Vector3(v[4], v[7], v[10]),
+				Vector3(v[5], v[8], v[11])), Vector3(v[0], v[1], v[2]))
+			return Minifig.FLIP * at * Minifig.FLIP
+	return null
+
+
+## LDraw draws cloth flat, as it is sold, and again "(Formed)", as it is
+## worn; every cloth cape on a figure in vendor/omr is a worn drawing
+## (522 in 7150, 9469 and 10212; 50231c02 in 9471; 99464c01 in 9470).
+## The Cape slot opens on one; a flat cloth on a figure is worn as its
+## worn drawing; one with none hangs straight down against the back,
+## never held out at an angle; and the worn drawing is the element its
+## cloth is on the parts list.
+func _cloth() -> void:
+	var capes: Array[PartLibrary.PartInfo] = Minifig.choices(library, "cape")
+	var last_worn: int = -1
+	var first_flat: int = capes.size()
+	var worn_drawings: int = 0
+	for n: int in capes.size():
+		if not _formed_of(capes[n]).is_empty() \
+				and _fits_a_figure(capes[n]):
+			last_worn = n
+			worn_drawings += 1
+		if _flat(capes[n]):
+			first_flat = mini(first_flat, n)
+	_check("the Cape slot opens on the cloth cape as figures wear it: %s %s, its %d worn drawings first (to %d) and cloth drawn flat last (from %d)"
+		% [capes[0].id, capes[0].name, worn_drawings, last_worn, first_flat],
+		capes[0].id == "50231c01" and last_worn + 1 == worn_drawings
+		and worn_drawings > 10 and first_flat > last_worn
+		and capes.slice(first_flat).all(func(info: PartLibrary.PartInfo) -> bool:
+			return _flat(info)))
+	# Every flat cloth in the slots that take cloth, on a plain figure.
+	var worn: int = 0
+	var hung: int = 0
+	var wrong: Array[String] = []
+	for slot: String in ["cape", "hipwear"]:
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			if not _flat(info):
+				continue
+			var figure := Minifig.new()
+			figure.choose(library, slot, info.id)
+			var placed: Dictionary = {}
+			for item: Dictionary in figure.assemble(library):
+				if item["slot"] == slot:
+					placed = item
+			var twin: String = info.id + "c01"
+			if library.parts.has(twin) and library.parts[twin].name.contains("(Formed") \
+					and _fits_a_figure(library.parts[twin]):
+				worn += 1
+				# As real figures wear it: the worn drawing, square on the
+				# figure.
+				if placed.get("part") != twin \
+						or not (placed["at"] as Transform3D).basis.is_equal_approx(Basis.IDENTITY):
+					wrong.append("%s wears %s" % [info.id, placed.get("part")])
+				continue
+			hung += 1
+			# Straight down: a quarter turn about X and nothing else, so the
+			# sheet stands upright behind the figure; its hem above the ground.
+			var at: Transform3D = placed["at"]
+			var upright: bool = absf((at.basis * Vector3.UP).y) < 0.01 \
+				and at.basis.x.is_equal_approx(Vector3.RIGHT)
+			var low: float = Minifig._lowest(Minifig.FLIP * at * Minifig.FLIP, info.bounds)
+			var behind: float = INF
+			for n: int in 8:
+				var corner: Vector3 = info.bounds.position + info.bounds.size * Vector3(
+					n & 1, (n >> 1) & 1, (n >> 2) & 1)
+				behind = minf(behind, -(at * corner).z)
+			if not upright or low < BrickLattice.CELL - 0.01 or behind < 10.0:
+				wrong.append("%s hangs %s, its hem %.1f up, %.1f behind" % [info.id,
+					"upright" if upright else "at an angle", low, behind])
+	for line: String in wrong.slice(0, 8):
+		print("    %s" % line)
+	_check("%d flat cloths are worn as their worn drawings, and %d with none (tuxedo tails, a short skirt) hang straight down against the back, clear of the ground%s"
+		% [worn, hung, "" if wrong.is_empty() else ": %d not" % wrong.size()],
+		wrong.is_empty() and worn >= 20 and hung >= 2)
+	# And no cape is held out at an angle, on a grown figure or on a child
+	# it is too long for: one that would reach the ground is worn higher.
+	var tilted: Array[String] = []
+	var tried: int = 0
+	for legs: String in [Minifig.PLAIN_LEGS, "41879a"]:
+		for info: PartLibrary.PartInfo in capes:
+			var figure := Minifig.new()
+			figure.choose(library, "legs", legs)
+			figure.choose(library, "cape", info.id)
+			tried += 1
+			for item: Dictionary in figure.assemble(library):
+				if item["slot"] != "cape":
+					continue
+				var at: Transform3D = item["at"]
+				var part: PartLibrary.PartInfo = library.parts[str(item["part"])]
+				var square: bool = at.basis.is_equal_approx(Basis.IDENTITY) \
+					or at.basis.x.is_equal_approx(Vector3.RIGHT) \
+					and absf((at.basis * Vector3.UP).y) < 0.01
+				var low: float = Minifig._lowest(Minifig.FLIP * at * Minifig.FLIP, part.bounds)
+				if not square or low < BrickLattice.CELL - 0.01:
+					tilted.append("%s on %s%s, %.1f up" % [item["part"], legs,
+						"" if square else " at an angle", low])
+	for line: String in tilted.slice(0, 8):
+		print("    %s" % line)
+	_check("none of %d capes, on a grown figure and on a child, is held out at an angle or reaches the ground%s"
+		% [tried, "" if tilted.is_empty() else ": %d are" % tilted.size()], tilted.is_empty())
+	# What the parts list makes of it: the cloth's own element.
+	var as_sold: String = library.element_for("50231", 0)
+	var as_worn: String = library.element_for("50231c01", 0)
+	_check("the worn drawing is the cloth's element on the parts list: 50231c01 in black %s, 50231 %s"
+		% [as_worn, as_sold], not as_sold.is_empty() and as_worn == as_sold)
+	var made_in: PartLibrary.PartInfo = Minifig.colours_of(library, "50231c01")
+	_check("and comes in the cloth's colours (%d)" % (made_in.colors.size() if made_in != null else 0),
+		made_in != null and made_in.colors.size() >= 10)
+
+
+## Every footwear part in the library has the stud a foot goes on at its
+## origin, the top it stands on at y 0: the feet on that, its sole on the
+## plate under it, and the lattice taking it there.
+func _footwear() -> void:
+	var off: Array[String] = []
+	var tried: int = 0
+	for info: PartLibrary.PartInfo in Minifig.choices(library, "footwear"):
+		var figure := Minifig.new()
+		figure.choose(library, "footwear", info.id)
+		tried += 1
+		var feet: float = INF
+		var sole: float = INF
+		var top: float = INF
+		for item: Dictionary in figure.assemble(library):
+			var part: PartLibrary.PartInfo = library.parts[str(item["part"])]
+			var box: AABB = (item["at"] as Transform3D) * part.bounds
+			if item["slot"] == "legs":
+				feet = minf(feet, box.position.y)
+			elif item["slot"] == "footwear":
+				sole = minf(sole, box.position.y)
+				top = minf(top, (item["at"] as Transform3D).origin.y)
+		if absf(sole) > 0.01 or absf(feet - top) > 0.01:
+			off.append("%s: its sole %.2f over the plate, the feet %.2f over its top"
+				% [info.id, sole, feet - top])
+	for line: String in off.slice(0, 8):
+		print("    %s" % line)
+	_check("on each of %d kinds of footwear the feet are on its top and its sole on the plate%s"
+		% [tried, "" if off.is_empty() else ": %d not" % off.size()],
+		off.is_empty() and tried >= 10)
+	# What lets it: a part off the lattice is reckoned as where it is, not
+	# a cell lower. A flipper 3 LDU thick on a plate, its origin 3 LDU up:
+	# clear of the plate; 1 LDU lower, into it.
+	world.clear()
+	builder.lattice.clear()
+	var plate := Transform3D(Basis.IDENTITY, Vector3(10, 8, 10))
+	builder.register(world.add_brick("3958", 7, plate), "3958", plate)
+	var flipper: Lbm.PartMesh = library.mesh_for("10190")
+	var on_it: bool = flipper != null and not builder.lattice.collides_boxes(builder.boxes_for(
+		flipper, Transform3D(Basis.IDENTITY, Vector3(10, 8 + 3, 10))))
+	var into_it: bool = flipper != null and builder.lattice.collides_boxes(builder.boxes_for(
+		flipper, Transform3D(Basis.IDENTITY, Vector3(10, 8 + 2, 10))))
+	_check("the lattice takes a flipper standing on a plate, origin 3 LDU up (%s), and not 1 LDU into it (%s)"
+		% [on_it, into_it], on_it and into_it)
+	world.clear()
+	builder.lattice.clear()
+
+
+## Cloth as LDraw draws it to be sold: a sheet less than a cell thick.
+static func _flat(info: PartLibrary.PartInfo) -> bool:
+	return info.bounds.size.y < 2.0
+
+
+## The flat cloth a "(Formed)" drawing is of, 50231c01 -> 50231, or "".
+static func _formed_of(info: PartLibrary.PartInfo) -> String:
+	if not info.name.contains("(Formed"):
+		return ""
+	var found: RegExMatch = RegEx.create_from_string("^(.+)c\\d\\d$").search(info.id)
+	return found.get_string(1) if found != null else ""
+
+
+## A worn drawing a figure can wear: hanging no lower than a classic
+## figure's feet, a cell clear, and not out in front of it (u9661c01 is
+## drawn folded the way the flat sheet lies; 50231c03 is a curtain).
+static func _fits_a_figure(info: PartLibrary.PartInfo) -> bool:
+	return -info.bounds.position.y <= 70.0 \
+		and info.bounds.end.z <= -info.bounds.position.z + 2.0
 
 
 func _against_real_figures() -> void:
@@ -691,7 +976,7 @@ func _every_part() -> void:
 
 ## Each family of each slot — every mould, every kind — put on the plain
 ## figure: real parts in real places, and nothing in the floor it
-## stands on. A cape long enough to reach it flies out behind; a skirt,
+## stands on. A cape long enough to reach it is worn higher; a skirt,
 ## a tail, a long robe, a droid's legs all end above it.
 func _every_family() -> void:
 	var tried: int = 0
@@ -950,10 +1235,9 @@ func _new_slots_stand() -> void:
 		low = minf(low, box.position.y)
 		if brick.part_id == "10190":
 			flipper_low = minf(flipper_low, box.position.y)
-	# Raised by the flippers' 3 LDU, rounded up to the lattice's 2 LDU
-	# cells: on the plate, a cell or less above its top.
+	# Raised by the flippers' 3 LDU, and no more: on the plate's top.
 	_check("on its flippers, on the plate's top (y 8): the flippers' undersides at %.2f, nothing lower (%.2f)"
-		% [flipper_low, low], flipper_low >= 8.0 - 0.01 and flipper_low <= 8.0 + BrickLattice.CELL
+		% [flipper_low, low], absf(flipper_low - 8.0) <= 0.01
 		and is_equal_approx(low, flipper_low))
 	var placed: Dictionary = _relative(ids)
 	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)

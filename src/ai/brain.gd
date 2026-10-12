@@ -32,7 +32,11 @@
 class_name Brain
 extends RefCounted
 
-const WHERE := "user://assistant.cfg"
+## Where the person's choice of model and effort is kept. A probe points
+## this at a file of its own: it read this machine's choice, and when
+## that was Haiku — which takes no effort setting — every check about
+## effort failed for a reason that had nothing to do with the code.
+static var where: String = "user://assistant.cfg"
 
 
 class Choice extends RefCounted:
@@ -169,12 +173,34 @@ static func find(id: String) -> Choice:
 
 static func _settings() -> ConfigFile:
 	var file := ConfigFile.new()
-	file.load(WHERE)
+	if _probing():
+		if _in_memory != null:
+			file.parse(_in_memory.encode_to_text())
+		return file
+	file.load(where)
 	return file
 
 
 static func _keep(file: ConfigFile) -> void:
-	file.save(WHERE)
+	if _probing():
+		_in_memory = ConfigFile.new()
+		_in_memory.parse(file.encode_to_text())
+		return
+	file.save(where)
+
+
+## A probe's choices, held for its run and never written. Every probe
+## reads and writes these, not the person's file: two of them failed
+## because this machine's choice was Haiku, which takes no effort and no
+## thinking, and one that wrote would change what the app opens with.
+static var _in_memory: ConfigFile = null
+
+
+## Run as a probe: a script, not the app. A probe that wants a file of
+## its own (brain_probe, which checks what is kept) points [member where]
+## away from the default and is let through to it.
+static func _probing() -> bool:
+	return OS.get_cmdline_args().has("--script") and where == "user://assistant.cfg"
 
 
 ## Chosen for this run only, by a command line rather than a person.

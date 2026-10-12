@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts -->
 
 ## Sub-features
 
@@ -96,6 +96,17 @@ geometry in front of them.
   CSV also carries `lego_colour` (LEGO's name) and `rebrickable_colour`, last so
   the first eight columns stay where they were.
 
+- `recent and favourite parts` (`src/ui/part_shelf.gd`): *Recent* and
+  *Favourites* sit beside *All* in the bin. A part chosen (or picked off the
+  model with G) goes to the front of Recent, 24 kept; right-click any part to
+  keep it in Favourites, marked with a star. Kept in `user://part_shelf.cfg`,
+  never under a probe (`PartShelf.keeps`), which points it at a file of its own.
+- `a part asked for by number` lists its own family first: `3023` gives 3023b,
+  3023a and the 3023 prints before 30236 or the 30239 spider (`NUMBER` in
+  `_match_score`).
+- `thumbnails of light parts` are lit less (`PartThumbnails._light_for`), so a
+  white part has a top and sides instead of one flat silhouette.
+
 ## How to reach it
 
 ```sh
@@ -114,6 +125,7 @@ Runtime:
 
 ```sh
 godot --headless --path . --script src/dev/search_probe.gd          # what it returns
+godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 godot --headless --path . --script src/dev/search_quality_probe.gd  # how much is worth reading
 godot --headless --path . --script src/dev/inventory_probe.gd       # parts lists of known models

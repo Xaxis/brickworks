@@ -52,6 +52,10 @@ var _column_bucket: Dictionary = {}
 ## brick id -> one box around all of its boxes, tested first so two
 ## bricks that are merely in the same bucket cost six comparisons.
 var _bounds: Dictionary = {}
+## Bricks the pointer passes through: hidden ones, so the inside of a
+## model can be reached with its roof hidden. They still take up their
+## room — nothing can be put down inside a hidden brick.
+var unseen: Dictionary = {}
 
 
 static func _bound_of(packed: PackedInt32Array) -> PackedInt32Array:
@@ -150,6 +154,54 @@ static func boxes_for_turned(
 	boxes: Array[AABB], origin_cell: Vector3i, basis: Basis
 ) -> PackedInt32Array:
 	return compress(cells_for_turned(boxes, origin_cell, basis))
+
+
+## Whether a point is off the lattice: not on a cell corner on some axis,
+## beyond float dust.
+static func is_off_lattice(point: Vector3) -> bool:
+	for axis: int in 3:
+		var past: float = fposmod(point[axis], CELL)
+		if past > 0.01 and past < CELL - 0.01:
+			return true
+	return false
+
+
+## A cover cut back to the part it covers.
+##
+## A part's boxes are counted from the cell its origin is in. On the
+## lattice that is exact; off it — a minifigure's parts, and whatever a
+## figure stands on — it moves the cover down and back by up to a cell
+## from the part: a flipper with its sole on a plate and its origin 3 LDU
+## above it was reckoned from 2 LDU, and read as a cell into the plate,
+## so a figure on flippers had to stand a LDU above it. So a square
+## part's cover off the lattice is kept inside the part's own box, placed
+## where it is and rounded out to whole cells. That only ever takes away
+## cells the part is not in. (A turned part's cover is rounded out all
+## round on purpose — a tipped section finds what it leans on by it —
+## and is left alone.)
+static func within(packed: PackedInt32Array, bounds: AABB, at: Transform3D) -> PackedInt32Array:
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	for n: int in 8:
+		var corner: Vector3 = at * (bounds.position + bounds.size * Vector3(
+			n & 1, (n >> 1) & 1, (n >> 2) & 1))
+		lo = lo.min(corner)
+		hi = hi.max(corner)
+	var from := Vector3i(int(floor((lo.x + 0.01) / CELL)), int(floor((lo.y + 0.01) / CELL)),
+		int(floor((lo.z + 0.01) / CELL)))
+	var to := Vector3i(int(ceil((hi.x - 0.01) / CELL)), int(ceil((hi.y - 0.01) / CELL)),
+		int(ceil((hi.z - 0.01) / CELL)))
+	var out := PackedInt32Array()
+	var n: int = 0
+	while n + 5 < packed.size():
+		var a := Vector3i(maxi(packed[n], from.x), maxi(packed[n + 1], from.y),
+			maxi(packed[n + 2], from.z))
+		var b := Vector3i(mini(packed[n + 3], to.x), mini(packed[n + 4], to.y),
+			mini(packed[n + 5], to.z))
+		if a.x < b.x and a.y < b.y and a.z < b.z:
+			out.append_array([a.x, a.y, a.z, b.x, b.y, b.z])
+		n += 6
+	return out
 
 
 ## Loose cells merged into runs along x.
@@ -294,6 +346,16 @@ static func corners_in(packed: PackedInt32Array) -> Array:
 			maxi(hi.y, packed[n + 4] - 1), maxi(hi.z, packed[n + 5] - 1))
 		n += 6
 	return [lo, hi]
+
+
+## How many cells boxes cover, counted as [method cells_in] would count
+## them, a box at a time and overlaps twice.
+static func volume_of(packed: PackedInt32Array) -> int:
+	var total: int = 0
+	for n: int in range(0, packed.size(), 6):
+		total += (packed[n + 3] - packed[n]) * (packed[n + 4] - packed[n + 1]) \
+			* (packed[n + 5] - packed[n + 2])
+	return total
 
 
 static func cells_in(packed: PackedInt32Array) -> Array[Vector3i]:
@@ -761,6 +823,21 @@ func clear() -> void:
 	_bucket.clear()
 	_column_bucket.clear()
 	_bounds.clear()
+	unseen.clear()
+
+
+## A copy to be read on another thread while this one goes on changing.
+## Shallow, and still a copy: every value is a packed array, and a packed
+## array is copied the moment either side writes to it, so nothing the
+## live lattice does afterwards reaches this one. Without the columns,
+## which only placing a brick by hand asks about.
+func copy_for_reading() -> BrickLattice:
+	var copy := BrickLattice.new()
+	copy.keeps_columns = false
+	copy._boxes = _boxes.duplicate()
+	copy._bucket = _bucket.duplicate()
+	copy._bounds = _bounds.duplicate()
+	return copy
 
 
 ## The height a part would rest at in this column: one cell above the
@@ -784,6 +861,34 @@ func surface_height(cell_x: int, cell_z: int, floor_cell: int = 0) -> int:
 					and packed[n + 4] > top:
 				top = packed[n + 4]
 			n += 6
+	return top
+
+
+## The highest surface under a rectangle of columns, high corner
+## exclusive: [method surface_height] for a whole box at once. What
+## several parts held together drop onto, asked once per box rather than
+## once per column — a 2 x 4 brick is eight hundred columns.
+func surface_under(lo_x: int, lo_z: int, hi_x: int, hi_z: int,
+		floor_cell: int = 0) -> int:
+	var top: int = floor_cell
+	var seen: Dictionary = {}
+	for bx: int in range(_floor_div(lo_x, BUCKET), _floor_div(hi_x - 1, BUCKET) + 1):
+		for bz: int in range(_floor_div(lo_z, BUCKET), _floor_div(hi_z - 1, BUCKET) + 1):
+			var here: Variant = _column_bucket.get(Vector2i(bx, bz))
+			if here == null:
+				continue
+			for brick_id: int in here:
+				if seen.has(brick_id):
+					continue
+				seen[brick_id] = true
+				var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
+				var n: int = 0
+				while n < packed.size():
+					if packed[n] < hi_x and lo_x < packed[n + 3] \
+							and packed[n + 2] < hi_z and lo_z < packed[n + 5] \
+							and packed[n + 4] > top:
+						top = packed[n + 4]
+					n += 6
 	return top
 
 
@@ -981,7 +1086,7 @@ func raycast(origin: Vector3, direction: Vector3, max_distance: float = 20000.0)
 	# anything would hang the frame.
 	for _n: int in 20000:
 		var owner: int = brick_at(cell)
-		if owner != 0:
+		if owner != 0 and not unseen.has(owner):
 			hit.brick_id = owner
 			hit.cell = cell
 			hit.normal = entered

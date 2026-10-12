@@ -13,7 +13,13 @@ can occupy the same millimetre.
   box; a Technic beam is 36. A stud is 20 LDU
   across (10 cells), a plate 8 LDU tall (4 cells), a brick three plates. A
   placement names its lowest-leftmost-backmost cell, across and deep of the
-  whole studs it stands on.
+  whole studs it stands on. A part's boxes are counted from its origin's cell;
+  for a square part placed off the lattice (a minifigure's) that sits up to a
+  cell below the part, so `Builder.boxes_for` and `Stability` keep such a cover
+  inside the part's own box, rounded out (`BrickLattice.within`) — it only
+  ever drops cells the part is not in (a flipper on a plate read as in it).
+  Turned covers stay rounded out all round: tipped sections find what they
+  lean on by them (`section_probe` fails if they are cut back too).
 - `sideways building`: a part can be held by a stud that does not point up —
   `face` (up/down/±x/±z) × `rot` (quarter turns) gives 24 orientations, and the
   occupied cells are recomputed for each.
@@ -157,6 +163,20 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   else on the same machine: the old check cost **84x** what building the model
   cost, the new one a tenth. `stability_probe` asserts under 3x, and the old code
   fails it.
+- **A tall model made the check slow where a wide one never did.** Whether it
+  leans or is top-heavy is asked at every course, of everything above and below
+  it, and `_check_levels` summed every brick at every cut: on the owner's Falcon
+  Heavy (4,242 parts, 332 plates, about seven hundred cuts) that was 3.3 s of a
+  3.5 s check, and the app ran it after every change and, while the build
+  animation played, about once a frame. The 800-brick wall above is forty
+  courses and never showed it. Now the load above each cut is summed once from
+  the top and the footprint below grown once from the bottom: 0.25 s, the same
+  risks to four decimals on all eleven shipped models, the square Orthanc, run
+  18's 8,506-part tower and run 1's Falcon. `stability_probe` holds the Falcon
+  under three times the cost of building it; the old code was twelve times.
+  Still slow: on run 18's Orthanc the contact graph itself is 10 s, all of it
+  `BrickLattice.shared_cells` between turned parts, whose covers are many small
+  boxes.
 - **The lattice stores boxes, and anything that asks it per *cell* is a bug.**
   It used to be a Dictionary with one entry per 2 LDU cell — 9,600 for a single
   2x4 brick — plus `_columns` holding the same volume again. Eight thousand

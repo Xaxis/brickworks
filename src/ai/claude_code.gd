@@ -77,6 +77,31 @@ static func arguments(brief: String, config: String,
 		])
 
 
+## What makes Claude Code bill an API key rather than the subscription it
+## is signed in to. It reads them from its environment before anything
+## else, and a child has the app's environment: an app started from a
+## shell that had an API key in it — every web check here sources .env,
+## which has one — designed "on your subscription" and billed the key.
+const BILLING: Array[String] = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]
+
+
+## Start [param program] with the billing variables hidden from it, and
+## put them back at once: the app's own API-key designing still reads
+## ANTHROPIC_API_KEY, so they come out of the environment only while the
+## child is made.
+static func start_on_subscription(program: String,
+		args: PackedStringArray) -> Dictionary:
+	var kept: Dictionary = {}
+	for name: String in BILLING:
+		if OS.has_environment(name):
+			kept[name] = OS.get_environment(name)
+			OS.unset_environment(name)
+	var started: Dictionary = OS.execute_with_pipe(program, args)
+	for name: String in kept:
+		OS.set_environment(name, kept[name])
+	return started
+
+
 ## Where the command is, or "" if this machine has not got it.
 static func found() -> String:
 	# A browser cannot start a program, and asking it to is not a quiet
@@ -121,7 +146,7 @@ func design(brief: String, port: int, tools: PackedStringArray) -> void:
 		allowed.append("mcp__%s__%s" % [SERVER, tool])
 
 	var args: PackedStringArray = arguments(brief, config, allowed)
-	var started: Dictionary = OS.execute_with_pipe(claude, args)
+	var started: Dictionary = start_on_subscription(claude, args)
 	if started.is_empty() or not started.has("stdio"):
 		finished.emit(false, "Could not start %s." % claude)
 		return

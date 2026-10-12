@@ -41,6 +41,10 @@ var held_figure: Array = []
 var held_figure_name: String = ""
 var _figure_ghosts: Array[MeshInstance3D] = []
 
+## Several parts in hand at once, when something is: a paste, a duplicate,
+## or a selection picked up to move it. See [Carry].
+var carrying: Carry
+
 var _ghost: MeshInstance3D
 var _ghost_material: ShaderMaterial
 var _ghost_valid: bool = false
@@ -84,6 +88,8 @@ func _ready() -> void:
 	_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ghost.visible = false
 	add_child(_ghost)
+	carrying = Carry.new()
+	add_child(carrying)
 
 
 ## Register a brick that was placed by something other than the mouse —
@@ -98,6 +104,8 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 
 ## Place the held part where the ghost is, if the ghost is legal.
 func place() -> int:
+	if is_carrying():
+		return _put_carried()
 	if not _ghost_valid:
 		return 0
 	if not held_figure.is_empty():
@@ -128,7 +136,7 @@ func remove_hovered() -> bool:
 		"part": brick.part_id,
 		"color": brick.color_code,
 		"transform": brick.transform,
-		"group": brick.group,
+		"group": brick.group, "was": brick.id,
 	})
 	_redo.clear()
 
@@ -193,7 +201,7 @@ func lift_hovered() -> bool:
 		"part": brick.part_id,
 		"color": brick.color_code,
 		"transform": brick.transform,
-		"group": brick.group,
+		"group": brick.group, "was": brick.id,
 	})
 	_redo.clear()
 
@@ -246,6 +254,17 @@ static func _quarter_turns(basis: Basis) -> int:
 func forget_history() -> void:
 	_history.clear()
 	_redo.clear()
+	_renumbered.clear()
+	# The selection names bricks by id too, and after an Open those ids
+	# are the new model's: a selection carried across lit up bricks the
+	# person never chose, and Delete would have taken them.
+	if not selection.is_empty():
+		selection.clear()
+		selection_changed.emit(0)
+	# A selection picked up to move has no way back once the model it
+	# came off is gone.
+	if carrying != null and carrying.lifted:
+		carrying.drop()
 
 
 func undo() -> bool:
@@ -253,6 +272,9 @@ func undo() -> bool:
 		return false
 	var step: Dictionary = _history.pop_back()
 	_redo.append(_apply(step))
+	# What an undo took away is no longer selected: an outline round
+	# nothing, and a Delete that finds nothing to delete.
+	_living_selection()
 	return true
 
 
@@ -261,6 +283,7 @@ func redo() -> bool:
 		return false
 	var step: Dictionary = _redo.pop_back()
 	_history.append(_apply(step))
+	_living_selection()
 	return true
 
 
@@ -274,10 +297,15 @@ func _apply(step: Dictionary) -> Dictionary:
 		for inner: Variant in step.get("steps", []):
 			back.append(_apply(inner))
 		back.reverse()
-		return {"undo": "group", "steps": back}
+		var reverse: Dictionary = {"undo": "group", "steps": back}
+		# What it is called comes back with it, so a step redone reads
+		# the same in the history as when it was first done.
+		if step.has("words"):
+			reverse["words"] = step["words"]
+		return reverse
 
 	if step.get("undo", "") == "move":
-		var moving: int = int(step["brick"])
+		var moving: int = _live(int(step["brick"]))
 		var was: BrickWorld.Brick = world.get_brick(moving)
 		if was == null:
 			return step
@@ -289,10 +317,18 @@ func _apply(step: Dictionary) -> Dictionary:
 			boxes_for(library.mesh_for(was.part_id), to))
 		return {"undo": "move", "brick": moving, "transform": previous}
 
+	if step.get("undo", "") == "regroup":
+		var named: BrickWorld.Brick = world.get_brick(_live(int(step["brick"])))
+		if named == null:
+			return step
+		var before: String = named.group
+		named.group = str(step["group"])
+		return {"undo": "regroup", "brick": named.id, "group": before}
+
 	if step.get("undo", "") == "recolor":
 		# Its own reverse: put the old colour back and remember the one
 		# that was there, so redo works without a second kind of entry.
-		var brick_id: int = int(step["brick"])
+		var brick_id: int = _live(int(step["brick"]))
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null:
 			return step
@@ -301,7 +337,7 @@ func _apply(step: Dictionary) -> Dictionary:
 		return {"undo": "recolor", "brick": brick_id, "color": was}
 
 	if step.get("undo", "") == "remove":
-		var brick_id: int = int(step["brick"])
+		var brick_id: int = _live(int(step["brick"]))
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null:
 			return step
@@ -310,7 +346,7 @@ func _apply(step: Dictionary) -> Dictionary:
 			"part": brick.part_id,
 			"color": brick.color_code,
 			"transform": brick.transform,
-			"group": brick.group,
+			"group": brick.group, "was": brick.id,
 		}
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -323,7 +359,26 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.get_brick(new_id).group = str(step.get("group", ""))
 		lattice.occupy_boxes(new_id,
 			boxes_for(library.mesh_for(part_id), at))
+		# The brick that comes back is a new id. Steps further back that
+		# name the one that went — a paint before a swap, a move before a
+		# removal — are read through this, or undoing past it did nothing.
+		if step.has("was"):
+			_renumbered[int(step["was"])] = new_id
 	return {"undo": "remove", "brick": new_id}
+
+
+## Brick ids that went and came back as another: old id -> new id. Ids
+## are never reused within a world, so the chain only grows until the
+## world is replaced, which forgets it with the history.
+var _renumbered: Dictionary = {}
+
+
+func _live(brick_id: int) -> int:
+	var seen: int = 0
+	while _renumbered.has(brick_id) and seen < 64:
+		brick_id = int(_renumbered[brick_id])
+		seen += 1
+	return brick_id
 
 
 # -- working on several at once ------------------------------------------
@@ -450,7 +505,7 @@ func remove_selection() -> int:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group})
+			"group": brick.group, "was": brick.id})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)
@@ -468,8 +523,75 @@ func remove_selection() -> int:
 ## rest is how a wall becomes two half walls, and there is no way to see
 ## that it happened until later.
 func move_selection(by: Vector3i) -> int:
+	if by == Vector3i.ZERO:
+		return 0
+	var shift: Vector3 = BrickLattice.to_ldu(by)
+	return _reposition(func(at: Transform3D) -> Transform3D:
+		return Transform3D(at.basis, at.origin + shift))
+
+
+## Turn the selection a quarter at a time about the stud nearest its
+## middle, where it stands, or refuse and change nothing.
+##
+## About a stud, so that every stud of every part lands on another stud.
+## Nothing could turn a part once it was down: the only way to face a
+## finished window the other way was to take it apart and build it again.
+func turn_selection(quarter_turns: int) -> int:
 	var alive: PackedInt64Array = _living_selection()
-	if alive.is_empty() or by == Vector3i.ZERO:
+	if alive.is_empty() or posmod(quarter_turns, 4) == 0:
+		return 0
+	var bricks: Array = []
+	for brick_id: int in alive:
+		bricks.append(world.get_brick(brick_id))
+	# The same point again for a selection turned again, so four turns
+	# bring it back exactly where it was: the middle of a turned box can
+	# round to a different stud than the middle of the box before it.
+	var pivot: Vector3 = Carry.pivot_of(bricks, library)
+	if _turned_last == _turn_state(alive):
+		pivot = _turned_about
+	var around: Transform3D = Transform3D(Basis.IDENTITY, pivot) \
+		* Transform3D(Basis(Vector3.UP, quarter_turns * PI * 0.5), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -pivot)
+	var turned: int = _reposition(func(at: Transform3D) -> Transform3D:
+		return _tidy(around * at, BrickLattice.is_square_to_grid(at.basis)),
+		"turned %s" % _many(alive.size()))
+	if turned > 0:
+		_turned_about = pivot
+		_turned_last = _turn_state(alive)
+	return turned
+
+
+## What a selection turned last looked like after the turn, and what it
+## was turned about.
+var _turned_last: String = ""
+var _turned_about: Vector3 = Vector3.ZERO
+
+
+func _turn_state(ids: PackedInt64Array) -> String:
+	var parts := PackedStringArray()
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			parts.append("%d %s" % [brick_id, brick.transform])
+	parts.sort()
+	return "|".join(parts)
+
+
+## A transform with the arithmetic's dust taken off: a turned basis put
+## back on the axes it was on, and a position to the thousandth of an LDU
+## LDraw writes. Turned a right angle four times, it drifts otherwise.
+static func _tidy(at: Transform3D, square: bool) -> Transform3D:
+	var basis: Basis = BrickLattice.snap_basis(at.basis) if square else at.basis
+	var origin := Vector3(snappedf(at.origin.x, 0.001),
+		snappedf(at.origin.y, 0.001), snappedf(at.origin.z, 0.001))
+	return Transform3D(basis, origin)
+
+
+## Put every selected brick where ``to`` says, as one step, or none of
+## them if any would go through another brick or the floor.
+func _reposition(to: Callable, words: String = "") -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
 		return 0
 
 	# Out of the lattice first, so the selection does not collide with
@@ -479,15 +601,13 @@ func move_selection(by: Vector3i) -> int:
 		was[brick_id] = world.get_brick(brick_id).transform
 		lattice.release(brick_id)
 
-	var shift: Vector3 = BrickLattice.to_ldu(by)
 	var landing: Dictionary = {}
 	var blocked: bool = false
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		var to := Transform3D(brick.transform.basis,
-			brick.transform.origin + shift)
+		var to_here: Transform3D = to.call(brick.transform)
 		var packed: PackedInt32Array = boxes_for(
-			library.mesh_for(brick.part_id), to)
+			library.mesh_for(brick.part_id), to_here)
 		# Through the floor if any box starts below it. The low corner
 		# is every sixth int, so the test is the box's bottom rather
 		# than every cell inside it.
@@ -500,7 +620,7 @@ func move_selection(by: Vector3i) -> int:
 		if blocked or lattice.collides_boxes(packed):
 			blocked = true
 			break
-		landing[brick_id] = {"at": to, "boxes": packed}
+		landing[brick_id] = {"at": to_here, "boxes": packed}
 
 	if blocked:
 		for brick_id: int in alive:
@@ -515,13 +635,422 @@ func move_selection(by: Vector3i) -> int:
 			"transform": was[brick_id]})
 		world.move_brick(brick_id, landing[brick_id]["at"])
 		lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
-	_history.append({"undo": "group", "steps": steps})
+	var step: Dictionary = {"undo": "group", "steps": steps}
+	if not words.is_empty():
+		step["words"] = words
+	_history.append(step)
 	_redo.clear()
 	return steps.size()
 
 
+## Move each of these bricks to its own new place, as one step: brick id
+## -> Transform3D. Each that has room goes; one that would run into
+## something stays where it was. Returns how many moved.
+func move_bricks(moves: Dictionary) -> int:
+	var was: Dictionary = {}
+	for brick_id: int in moves:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		was[brick_id] = brick.transform
+		lattice.release(brick_id)
+	var steps: Array = []
+	for brick_id: int in was:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var to: Transform3D = moves[brick_id]
+		var packed: PackedInt32Array = boxes_for(part, to)
+		if lattice.collides_boxes(packed):
+			lattice.occupy_boxes(brick_id, boxes_for(part, was[brick_id]))
+			continue
+		world.move_brick(brick_id, to)
+		lattice.occupy_boxes(brick_id, packed)
+		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps,
+		"words": "seated %s on their studs" % _many(steps.size())})
+	_redo.clear()
+	return steps.size()
+
+
+## Swap every selected brick for another part, in its colour, where it
+## stands: a wall of 1 x 2s made 1 x 2 masonry bricks, a plain tile made a
+## printed one. One step to undo. A part that would not fit where the old
+## one was is left as it was. Returns [how many swapped, how many did not].
+##
+## Kept on its studs: a part of a different footprint is centred on the
+## stud grid its own way, and stands on what the old one stood on.
+func replace_selection(part_id: String) -> Vector2i:
+	var alive: PackedInt64Array = _living_selection()
+	var into: Lbm.PartMesh = library.mesh_for(part_id)
+	if alive.is_empty() or into == null:
+		return Vector2i.ZERO
+	var steps: Array = []
+	var refused: int = 0
+	var swapped := PackedInt64Array()
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick.part_id == part_id:
+			continue
+		var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var at: Transform3D = _in_place_of(brick.transform, was, into)
+		lattice.release(brick_id)
+		var packed: PackedInt32Array = boxes_for(into, at)
+		if lattice.collides_boxes(packed):
+			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))
+			refused += 1
+			continue
+		var made: int = world.add_brick(part_id, brick.color_code, at)
+		if made == 0:
+			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))
+			refused += 1
+			continue
+		world.get_brick(made).group = brick.group
+		lattice.occupy_boxes(made, packed)
+		steps.append({"undo": "remove", "brick": made})
+		steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+			"transform": brick.transform, "group": brick.group, "was": brick.id})
+		world.remove_brick(brick_id)
+		removed.emit(brick_id)
+		swapped.append(made)
+	if steps.is_empty():
+		return Vector2i(0, refused)
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	_history.append({"undo": "group", "steps": steps, "words": "swapped %s for %s" % [
+		_many(swapped.size()), Inventory._tidy(info.name) if info != null else part_id]})
+	_redo.clear()
+	selection.clear()
+	for brick_id: int in swapped:
+		selection[brick_id] = true
+	selection_changed.emit(selection.size())
+	return Vector2i(swapped.size(), refused)
+
+
+## The selection made into its mirror image, in place, across the plane
+## through its middle square to world axis ``axis`` (0 for x, 2 for z).
+## Handed parts are swapped for their other hand (Mirror.counterpart).
+## All or nothing, one step. Returns how many, or zero when it would run
+## into something.
+func mirror_selection(axis: int) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	var bricks: Array = []
+	for brick_id: int in alive:
+		bricks.append(world.get_brick(brick_id))
+	var pivot: Vector3 = Carry.pivot_of(bricks, library)
+	var across: float = pivot[axis]
+	var plan: Array = []
+	for brick: BrickWorld.Brick in bricks:
+		var part: String = brick.part_id
+		var other: String = Mirror.counterpart(library, part)
+		if not other.is_empty() and library.mesh_for(other) != null:
+			part = other
+		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across),
+			BrickLattice.is_square_to_grid(brick.transform.basis))
+		plan.append({"brick": brick, "part": part, "at": at})
+	for brick_id: int in alive:
+		lattice.release(brick_id)
+	var blocked: bool = false
+	for item: Dictionary in plan:
+		var packed: PackedInt32Array = boxes_for(library.mesh_for(str(item["part"])), item["at"])
+		item["boxes"] = packed
+		if lattice.collides_boxes(packed):
+			blocked = true
+			break
+	if blocked:
+		for brick: BrickWorld.Brick in bricks:
+			lattice.occupy_boxes(brick.id, boxes_for(library.mesh_for(brick.part_id),
+				brick.transform))
+		return 0
+	var steps: Array = []
+	var made := PackedInt64Array()
+	for item: Dictionary in plan:
+		var brick: BrickWorld.Brick = item["brick"]
+		steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+			"transform": brick.transform, "group": brick.group, "was": brick.id})
+		world.remove_brick(brick.id)
+		removed.emit(brick.id)
+	for item: Dictionary in plan:
+		var brick: BrickWorld.Brick = item["brick"]
+		var new_id: int = world.add_brick(str(item["part"]), brick.color_code, item["at"])
+		if new_id == 0:
+			continue
+		world.get_brick(new_id).group = brick.group
+		lattice.occupy_boxes(new_id, item["boxes"])
+		steps.push_front({"undo": "remove", "brick": new_id})
+		made.append(new_id)
+	_history.append({"undo": "group", "steps": steps,
+		"words": "mirrored %s" % _many(made.size())})
+	_redo.clear()
+	selection.clear()
+	for brick_id: int in made:
+		selection[brick_id] = true
+	selection_changed.emit(selection.size())
+	return made.size()
+
+
+## Make the selection a sub-model of its own under ``name``, or take it out
+## of whatever sub-model it was in with "". One step to undo. A model's
+## sub-models are what its .mpd is written as and what the booklet builds
+## one at a time; until now only a design or an opened file could make one.
+func name_group(name: String) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	var steps: Array = []
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick.group == name:
+			continue
+		steps.append({"undo": "regroup", "brick": brick_id, "group": brick.group})
+		brick.group = name
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps,
+		"words": ("made %s the sub-model %s" % [_many(steps.size()), name]) if not name.is_empty()
+			else "took %s out of its sub-model" % _many(steps.size())})
+	_redo.clear()
+	return steps.size()
+
+
+## Turn the selection about the joint it hangs from — a hinge's pin, a
+## clip on a bar, a turntable — by ``degrees``, as one step. The joint is
+## a shaft of one part in a bore of another (Joints.rounds) with the
+## selection on one side and the rest of the model on the other. Returns
+## how many turned: zero when there is no such joint, or when the turn
+## would run into anything but the part it is joined to.
+##
+## The parts it turns stand off the grid afterwards, which the lattice
+## holds as turned covers, as it holds an angled section a design builds.
+## Studio's hinge tool does this; here a hinged wing could only stand at
+## the angle it was put down at.
+func swing_selection(degrees: float) -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or is_zero_approx(degrees):
+		return 0
+	var joint: Dictionary = _joint_of(alive)
+	if joint.is_empty():
+		return 0
+	var at_point: Vector3 = joint["point"]
+	var axis: Vector3 = (joint["axis"] as Vector3).normalized()
+	var around: Transform3D = Transform3D(Basis.IDENTITY, at_point) \
+		* Transform3D(Basis(axis, deg_to_rad(degrees)), Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -at_point)
+	var partners: Dictionary = joint["partners"]
+	var was: Dictionary = {}
+	for brick_id: int in alive:
+		was[brick_id] = world.get_brick(brick_id).transform
+		lattice.release(brick_id)
+	var landing: Dictionary = {}
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var to: Transform3D = around * brick.transform
+		to = Transform3D(to.basis.orthonormalized(), to.origin)
+		var packed: PackedInt32Array = boxes_for(library.mesh_for(brick.part_id), to)
+		for other: int in lattice.blockers_boxes(packed):
+			if not partners.has(other):
+				for back: int in alive:
+					lattice.occupy_boxes(back, boxes_for(
+						library.mesh_for(world.get_brick(back).part_id), was[back]))
+				return 0
+		landing[brick_id] = {"at": to, "boxes": packed}
+	var steps: Array = []
+	for brick_id: int in alive:
+		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
+		world.move_brick(brick_id, landing[brick_id]["at"])
+		lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
+	_history.append({"undo": "group", "steps": steps,
+		"words": "swung %s on its joint" % _many(steps.size())})
+	_redo.clear()
+	return steps.size()
+
+
+## The round joint between the selection and the rest of the model: a
+## point on its axis, the axis, and every part on the far side of any such
+## joint (which the swing may press against). Empty when there is none.
+func _joint_of(ids: PackedInt64Array) -> Dictionary:
+	var picked: Dictionary = {}
+	var box := AABB()
+	var first: bool = true
+	var entries: Array = []
+	for brick_id: int in ids:
+		picked[brick_id] = true
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		entries.append([brick_id, brick.transform, part])
+		if part != null:
+			var here: AABB = (brick.transform * part.bounds).abs()
+			box = here if first else box.merge(here)
+			first = false
+	if first:
+		return {}
+	var reach: AABB = box.grow(BrickLattice.STUD * 2.0)
+	for brick: BrickWorld.Brick in world.bricks():
+		if picked.has(brick.id):
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part != null and (brick.transform * part.bounds).abs().intersects(reach):
+			entries.append([brick.id, brick.transform, part])
+	var held: Dictionary = Joints.rounds(entries)
+	var found: Dictionary = {}
+	var partners: Dictionary = {}
+	for mine: Variant in held:
+		if not picked.has(mine):
+			continue
+		for other: Variant in held[mine]:
+			if picked.has(other):
+				continue
+			partners[other] = true
+			var zones: Array = held[mine][other]
+			if found.is_empty() and not zones.is_empty():
+				found = {"point": zones[0][0], "axis": zones[0][1]}
+	if found.is_empty():
+		return {}
+	found["partners"] = partners
+	return found
+
+
+## Where a part goes to take another's place: the same turn, its middle on
+## the stud grid for its own footprint, its bottom where the other's was.
+func _in_place_of(at: Transform3D, was: Lbm.PartMesh, into: Lbm.PartMesh) -> Transform3D:
+	if was == null or not BrickLattice.is_square_to_grid(at.basis) \
+			or absf((at.basis * Vector3.UP).y) < 0.99:
+		return at
+	var old_box: AABB = _rotated_bounds(was, at.basis)
+	var new_box: AABB = _rotated_bounds(into, at.basis)
+	var footprint := Vector2i(
+		int(round(new_box.size.x / BrickLattice.STUD)),
+		int(round(new_box.size.z / BrickLattice.STUD)))
+	var middle: Vector3 = at.origin + old_box.get_center() - new_box.get_center()
+	var snapped: Vector3 = BrickLattice.snap_to_studs(middle, footprint)
+	var bottom: float = at.origin.y + old_box.position.y
+	return Transform3D(at.basis, Vector3(snapped.x, bottom - new_box.position.y, snapped.z))
+
+
+# -- several parts in hand ------------------------------------------------
+
+
+func is_carrying() -> bool:
+	return carrying != null and carrying.is_holding()
+
+
+## Copy the selection to the clipboard. Returns how many parts.
+func copy_selection() -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	Carry.clipboard = Carry.gather(world, library, Array(alive))
+	return Carry.clipboard.size()
+
+
+## Hold a copy of these parts, to put down where the pointer says.
+func hold_copy(parts: Array) -> int:
+	if parts.is_empty():
+		return 0
+	carrying.library = library
+	carrying.hold(parts, false)
+	return parts.size()
+
+
+## Pick the selection up off the model to move it: it follows the pointer
+## until a click puts it down, and picking it up and putting it down are
+## one step to undo. Escape puts it back where it was.
+func lift_selection() -> int:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	var parts: Array = Carry.gather(world, library, Array(alive))
+	if parts.is_empty():
+		return 0
+	var steps: Array = []
+	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		steps.append({"undo": "add", "part": brick.part_id,
+			"color": brick.color_code, "transform": brick.transform,
+			"group": brick.group, "was": brick.id})
+		lattice.release(brick_id)
+		world.remove_brick(brick_id)
+		removed.emit(brick_id)
+	_history.append({"undo": "group", "steps": steps, "lift": true})
+	_redo.clear()
+	clear_selection()
+	carrying.library = library
+	carrying.hold(parts, true)
+	return parts.size()
+
+
+## Put away what is held without putting it down. What was lifted off
+## the model goes back where it was, and is selected again.
+func cancel_carry() -> bool:
+	if not is_carrying():
+		return false
+	var lifted: bool = carrying.lifted
+	carrying.drop()
+	if lifted and _lift_on_top():
+		var back: Dictionary = _apply(_history.pop_back())
+		selection.clear()
+		for step: Dictionary in back.get("steps", []):
+			if step.get("undo", "") == "remove":
+				selection[int(step["brick"])] = true
+		selection_changed.emit(selection.size())
+	return true
+
+
+func _lift_on_top() -> bool:
+	return not _history.is_empty() and bool(_history.back().get("lift", false))
+
+
+## Put what is held down where its ghost is, as one step, and select it so
+## it can be nudged or turned straight away.
+func _put_carried() -> int:
+	if not carrying.can_place():
+		return 0
+	var steps: Array = []
+	var ids := PackedInt64Array()
+	# A copy of a minifigure or a named assembly is another one, not more
+	# of the same: "Guard" pasted beside "Guard" is "Guard 2".
+	var renamed: Dictionary = {}
+	for item: Dictionary in carrying.placements(self):
+		var group: String = str(item["group"])
+		if not carrying.lifted and not group.is_empty():
+			if not renamed.has(group):
+				renamed[group] = unused_group(group)
+			group = renamed[group]
+		var brick_id: int = world.add_brick(str(item["part"]),
+			int(item["color"]), item["at"])
+		if brick_id == 0:
+			continue
+		world.get_brick(brick_id).group = group
+		lattice.occupy_boxes(brick_id, item["boxes"])
+		steps.append({"undo": "remove", "brick": brick_id})
+		ids.append(brick_id)
+	if ids.is_empty():
+		return 0
+	var words: String = "pasted %s" % _many(ids.size())
+	if carrying.lifted and _lift_on_top():
+		# One move: what picked it up and what put it down undo together.
+		steps.append_array(_history.pop_back()["steps"])
+		words = "moved %s" % _many(ids.size())
+	_history.append({"undo": "group", "steps": steps, "words": words})
+	_redo.clear()
+	carrying.drop()
+	selection.clear()
+	for brick_id: int in ids:
+		selection[brick_id] = true
+	selection_changed.emit(selection.size())
+	placed.emit(ids[0], world.get_brick(ids[0]).part_id)
+	return ids[0]
+
+
 ## Work out where the held part would go, given a ray from the camera.
 func update_preview(origin: Vector3, direction: Vector3) -> void:
+	if is_carrying():
+		_ghost.visible = false
+		_ghost_valid = false
+		_hide_figure_ghosts()
+		carrying.library = library
+		_hovered = carrying.aim(lattice, self, origin, direction)
+		return
 	if not held_figure.is_empty():
 		_preview_figure(origin, direction)
 		return
@@ -552,9 +1081,11 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 			return
 		target = landing
 
-	_ghost_transform = _settle(part, basis, target, hit)
-	_ghost_valid = not lattice.collides_boxes(
-		boxes_for(part, _ghost_transform))
+	var onto: Variant = _onto_side_studs(part, basis, hit, origin, direction)
+	_ghost_transform = onto if onto != null else _settle(part, basis, target, hit)
+	_seated_on = hit.brick_id if onto != null else 0
+	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
+		if _seated_on != 0 else not lattice.collides_boxes(boxes_for(part, _ghost_transform))
 
 	_ghost.mesh = part.surfaces[0]
 	_ghost.transform = _ghost_transform
@@ -591,6 +1122,32 @@ func _settle(
 		for z: int in range(from.z, maxi(to.z, from.z + 1)):
 			columns.append(Vector2i(x, z))
 
+	# Aimed at the underside of a part: hung under it, its top against
+	# that underside, the way a plate is pressed up under an overhang.
+	# Dropping it to whatever was below — the floor, usually — made the
+	# underside of anything unreachable by hand, where Studio and
+	# Mecabricks both attach there.
+	# Never below the ground: under the baseplate is not somewhere a part
+	# can be.
+	if hit.is_valid() and hit.normal.y < 0:
+		# The struck cell is the lowest of the part above, and a box's
+		# cell n starts at n cells, as resting_height counts them.
+		var top: float = hit.cell.y * BrickLattice.CELL
+		# Against the top of its body, not of its studs: the studs go up
+		# into the part above, as they do on a real one.
+		var cover: PackedInt32Array = boxes_for(part, Transform3D(basis, Vector3.ZERO))
+		var reach: float = box.end.y
+		if not cover.is_empty():
+			var highest: int = -(1 << 30)
+			var n: int = 4
+			while n < cover.size():
+				highest = maxi(highest, cover[n])
+				n += 6
+			reach = highest * BrickLattice.CELL
+		var hung: float = _on_cell(top - reach)
+		if hung + box.position.y >= GROUND_CELL * BrickLattice.CELL:
+			return Transform3D(basis, Vector3(snapped.x, hung, snapped.z))
+
 	var rest_cell: int = lattice.resting_height(columns, GROUND_CELL)
 	# Placing against a side face should not slide the part down onto the
 	# floor, so a sideways hit keeps the height the face implies.
@@ -599,6 +1156,96 @@ func _settle(
 
 	var y: float = rest_cell * BrickLattice.CELL - box.position.y
 	return Transform3D(basis, Vector3(snapped.x, y, snapped.z))
+
+
+## A part laid on its side, aimed at a face with studs on it — a brick
+## with studs on its side, a headlight brick — seated on those studs: its
+## underside against the face, one of its sockets on the stud nearest the
+## pointer, and the part as near the pointer as that allows. Null when
+## there is no such stud or the part is not turned to take one, and the
+## part is placed the ordinary way.
+##
+## The ordinary way put a sideways part against the face at whatever
+## height the pointer was, on the lattice's two-LDU grid: off the side
+## studs nearly always, and only right by chance. Studs not on top is
+## half of how modern sets are built.
+func _onto_side_studs(part: Lbm.PartMesh, basis: Basis, hit: BrickLattice.Hit,
+		origin: Vector3, direction: Vector3) -> Variant:
+	if not hit.is_valid() or hit.normal.y != 0 or part.sockets.is_empty():
+		return null
+	var out := Vector3(hit.normal)
+	# The part's underside has to face the wall: its studs point out of it.
+	if (basis * Vector3.UP).dot(out) < 0.99:
+		return null
+	var struck: BrickWorld.Brick = world.get_brick(hit.brick_id)
+	if struck == null:
+		return null
+	var mesh: Lbm.PartMesh = library.mesh_for(struck.part_id)
+	if mesh == null:
+		return null
+	var pointer: Vector3 = origin + direction.normalized() * hit.distance
+	var nearest: Variant = null
+	var best: float = INF
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud":
+			continue
+		if (struck.transform.basis * connector.axis).normalized().dot(out) < 0.99:
+			continue
+		var at: Vector3 = struck.transform * connector.position
+		var away: float = (at - pointer).length()
+		if away < best:
+			best = away
+			nearest = at
+	if nearest == null or best > BrickLattice.STUD * 2.0:
+		return null
+	var stud: Vector3 = nearest
+	var middle: Vector3 = part.bounds.get_center()
+	# The face is where the stud stands on it: a stud's point is drawn at
+	# its base. The pointer meets the stud's own cover first, half a
+	# plate proud of the face, and a part seated there floated.
+	var axis: int = 0 if hit.normal.x != 0 else 2
+	var face: float = stud[axis]
+	var chosen: Variant = null
+	var closest: float = INF
+	for socket: Vector2 in part.sockets:
+		var under: Vector3 = basis * Vector3(socket.x, part.bounds.position.y, socket.y)
+		var place: Vector3 = stud - under
+		place[axis] = face - under[axis]
+		var off: float = (place + basis * middle - pointer).length()
+		if off < closest:
+			closest = off
+			chosen = place
+	if chosen == null:
+		return null
+	var at: Vector3 = chosen
+	return Transform3D(basis, Vector3(snappedf(at.x, 0.001), snappedf(at.y, 0.001),
+		snappedf(at.z, 0.001)))
+
+
+## The brick the ghost is seated on by its side studs, or 0.
+var _seated_on: int = 0
+
+
+## Whether a part seated on side studs fits: nothing in its way but the
+## studs it is pressed onto. A side stud is in its brick's cover, as a
+## stud on top is not, so the part overlaps it by the stud's height —
+## moved out by that much it must clear the brick entirely.
+func _fits_on_studs(part: Lbm.PartMesh, at: Transform3D, onto: int,
+		out: Vector3i) -> bool:
+	var packed: PackedInt32Array = boxes_for(part, at)
+	var blockers: PackedInt64Array = lattice.blockers_boxes(packed)
+	if blockers.is_empty():
+		return true
+	if blockers.size() > 1 or blockers[0] != onto:
+		return false
+	var stud_high: int = int(round(4.0 / BrickLattice.CELL))
+	return not lattice.blockers_boxes(
+		BrickLattice.moved_by(packed, out * stud_high)).has(onto)
+
+
+## A height put on the lattice's own grid of cells.
+static func _on_cell(y: float) -> float:
+	return round(y / BrickLattice.CELL) * BrickLattice.CELL
 
 
 func _rotated_bounds(part: Lbm.PartMesh, basis: Basis) -> AABB:
@@ -619,6 +1266,11 @@ func _rotated_bounds(part: Lbm.PartMesh, basis: Basis) -> AABB:
 ## box they came from.
 ## Turned covers already worked out, by part and angle.
 var _turned_cache: Dictionary = {}
+## The same for a check running on a worker thread (Assistant._checked),
+## kept apart so neither thread writes a Dictionary the other is reading,
+## and locked because the design loop and a connector could both check.
+var _turned_off_main: Dictionary = {}
+var _turned_lock := Mutex.new()
 
 
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
@@ -631,7 +1283,14 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 		# clearance that keeps two round bricks from touching.
 		return BrickLattice.compress(_cells_for(part, at))
 	if BrickLattice.is_square_to_grid(at.basis):
-		return BrickLattice.boxes_for(part.boxes, cell, at.basis)
+		var square: PackedInt32Array = BrickLattice.boxes_for(part.boxes, cell, at.basis)
+		# Counted from its origin's cell, a cover off the lattice reaches
+		# up to a cell past the part (BrickLattice.within). A turned cover
+		# is rounded out all round on purpose, and left so: what a tipped
+		# section leans on is found by it.
+		if BrickLattice.is_off_lattice(at.origin):
+			return BrickLattice.within(square, part.bounds, at)
+		return square
 
 	# A turned part has no box image, so its cover is worked out cell by
 	# cell and merged back into runs, which is far too slow to repeat per
@@ -640,11 +1299,21 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	# in a section shares one angle, so a section of two hundred costs
 	# one.
 	var key: String = "%d|%s" % [part.get_instance_id(), at.basis]
-	var shape: PackedInt32Array = _turned_cache.get(key, PackedInt32Array())
-	if shape.is_empty():
-		shape = BrickLattice.boxes_for_turned(
-			part.boxes, Vector3i.ZERO, at.basis)
-		_turned_cache[key] = shape
+	var shape: PackedInt32Array
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		shape = _turned_cache.get(key, PackedInt32Array())
+		if shape.is_empty():
+			shape = BrickLattice.boxes_for_turned(
+				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_cache[key] = shape
+	else:
+		_turned_lock.lock()
+		shape = _turned_off_main.get(key, PackedInt32Array())
+		if shape.is_empty():
+			shape = BrickLattice.boxes_for_turned(
+				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_off_main[key] = shape
+		_turned_lock.unlock()
 	var out := PackedInt32Array()
 	out.resize(shape.size())
 	var n: int = 0
@@ -703,6 +1372,9 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 
 
 func rotate_held(quarter_turns: int) -> void:
+	if is_carrying():
+		carrying.turn(quarter_turns)
+		return
 	held_rotation = posmod(held_rotation + quarter_turns, 4)
 
 
@@ -722,6 +1394,8 @@ func hovered_brick() -> int:
 ## somewhere a part could go. A figure being held is shown by a ghost per
 ## part instead of the one ghost, which is hidden the whole time.
 func has_preview() -> bool:
+	if is_carrying():
+		return carrying.is_aimed()
 	if not held_figure.is_empty():
 		for ghost: MeshInstance3D in _figure_ghosts:
 			if ghost.visible:
@@ -732,6 +1406,8 @@ func has_preview() -> bool:
 
 ## Whether a click would put the held part down where the ghost is.
 func can_place() -> bool:
+	if is_carrying():
+		return carrying.can_place()
 	return has_preview() and _ghost_valid
 
 
@@ -739,6 +1415,8 @@ func hide_preview() -> void:
 	_ghost.visible = false
 	_ghost_valid = false
 	_hide_figure_ghosts()
+	if carrying != null:
+		carrying.hide_ghost()
 
 
 # -- a minifigure, as one thing ------------------------------------------
@@ -887,7 +1565,7 @@ func _lift_figure(brick_id: int) -> bool:
 			"at": home.affine_inverse() * brick.transform})
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group})
+			"group": brick.group, "was": brick.id})
 		lattice.release(brick.id)
 		world.remove_brick(brick.id)
 		selection.erase(brick.id)
@@ -950,3 +1628,60 @@ func _hide_figure_ghosts() -> void:
 
 func history_depth() -> int:
 	return _history.size()
+
+
+## What each step undo would take back said in words, the most recent
+## first, at most ``most`` of them: "placed Brick 2 x 4", "moved 12 parts".
+func history_words(most: int = 25) -> PackedStringArray:
+	var out := PackedStringArray()
+	for n: int in range(_history.size() - 1, maxi(_history.size() - 1 - most, -1), -1):
+		out.append(_words_for(_history[n]))
+	return out
+
+
+func _words_for(step: Dictionary) -> String:
+	if step.has("words"):
+		return str(step["words"])
+	var kind: String = str(step.get("undo", ""))
+	if kind == "group":
+		var inner: Array = step.get("steps", [])
+		var kinds: Dictionary = {}
+		for each: Dictionary in inner:
+			kinds[str(each.get("undo", ""))] = true
+		var count: int = inner.size()
+		if kinds.size() == 1:
+			var only: String = kinds.keys()[0]
+			var verb: String = {"remove": "placed", "add": "removed", "recolor": "painted",
+				"move": "moved"}.get(only, "changed")
+			return "%s %s" % [verb, _many(count)]
+		if kinds.has("remove") and kinds.has("add"):
+			return "moved %s" % _many(count / 2)
+		return "changed %s" % _many(count)
+	var brick: BrickWorld.Brick = world.get_brick(int(step.get("brick", 0))) \
+		if step.has("brick") else null
+	var part: String = str(step.get("part", brick.part_id if brick != null else "a part"))
+	var info: PartLibrary.PartInfo = library.parts.get(part) if library != null else null
+	var name: String = Inventory._tidy(info.name) if info != null else part
+	match kind:
+		"remove":
+			return "placed %s" % name
+		"add":
+			return "removed %s" % name
+		"recolor":
+			return "painted %s" % name
+		"move":
+			return "moved %s" % name
+	return "changed %s" % name
+
+
+static func _many(count: int) -> String:
+	return "1 part" if count == 1 else "%d parts" % count
+
+
+## Undo this many steps at once: going back through the history to a
+## point in it. Returns how many were undone.
+func undo_steps(count: int) -> int:
+	var done: int = 0
+	while done < count and undo():
+		done += 1
+	return done

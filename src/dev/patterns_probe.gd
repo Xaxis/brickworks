@@ -490,6 +490,65 @@ func _clustered() -> void:
 	dark.erase("windows")
 	_check("...and none unless asked",
 		lights.call(assistant._read_model({"patterns": [dark]}).placements).is_empty())
+	# A great door at the foot of the core's front, at the top of whatever
+	# stair a design builds: the seventeenth Orthanc's stair led to a blank
+	# wall. An arch in the front face's outside row, the door set back a stud
+	# behind it, two studs wide.
+	var doors := func(placements: Array) -> Array:
+		var arch: Array = []
+		var panels: int = 0
+		for placement: Assistant.Placement in placements:
+			if placement.part == Assistant.DOOR_ARCH:
+				arch.append(placement)
+			elif placement.part == Assistant.DOOR_PANEL and placement.color == Assistant.DOOR_COLOUR:
+				panels += 1
+		return [arch, panels]
+	var door_found: Array = doors.call(model.placements)
+	var arch_at: String = "none"
+	if (door_found[0] as Array).size() == 1:
+		var arch: Assistant.Placement = door_found[0][0]
+		arch_at = "%s at x %s, y %s" % [arch.section, arch.x, arch.y]
+	_check("a door at the foot of the core's front: an arch (%s) over %d courses of door"
+		% [arch_at, door_found[1]], (door_found[0] as Array).size() == 1
+			and (door_found[0][0] as Assistant.Placement).section.ends_with(" face 0")
+			and is_equal_approx((door_found[0][0] as Assistant.Placement).y, 3.0 * Assistant.DOOR_BELOW)
+			and int(door_found[1]) == Assistant.DOOR_BELOW + Assistant.DOOR_ARCH_COURSES)
+	var shut: Dictionary = tower.duplicate(true)
+	shut["door"] = false
+	_check("...and none with \"door\": false",
+		(doors.call(assistant._read_model({"patterns": [shut]}).placements)[0] as Array).is_empty())
+	# The seventeenth Orthanc's own cluster, its piers pulled in to 10: they
+	# leave two studs of the core's front in view, and the door is in them.
+	var seventeen := {"pattern": "prism", "at": {"x": 28, "y": 0, "z": 28}, "sides": 10,
+		"radius": 9, "courses": 20, "color": 0, "mix_color": 72, "mix": 0.12, "open": 3,
+		"sideways": 0.25, "piers": {"count": 4, "sides": 8, "radius": 6, "out": 10,
+			"courses": 24, "turn": 45}}
+	var its: Assistant.Model = assistant._read_model({"patterns": [seventeen]})
+	var its_door: Array = doors.call(its.placements)
+	var its_check: Dictionary = assistant._check(its)
+	_check("...and on the seventeenth Orthanc's cluster, in the two studs its piers leave in view, %s"
+		% its_check["summary"], (its_door[0] as Array).size() == 1
+			and is_equal_approx((its_door[0][0] as Assistant.Placement).x, -2.0)
+			and bool(its_check["ok"]))
+	# The summit is whole where a figure stands. Only its largest piece is
+	# kept, and the eighteenth Orthanc's ten-sided cluster lost a 6 x 6 block
+	# from its middle: six-long strips both ways over a block six by six, tied
+	# to nothing round it. Its run found "nothing to stand on" for Gandalf and
+	# laid a plate over the hole by hand. 468 of 544 studs before.
+	var middle := Vector2(24, 24)
+	var outline: Array = [Assistant._outline(middle, 10, 9.0, 0.0)]
+	for k: int in 4:
+		var angle: float = 45.0 + 90.0 * k
+		outline.append(Assistant._outline(middle + Assistant._towards(angle) * 11.0, 10, 6.0, angle))
+	var studs: Dictionary = Assistant._studs_within(outline, Vector2i(0, 0), Vector2i(48, 48))
+	var on_top: Dictionary = {}
+	for plate: Dictionary in Assistant._summit(studs, 171.0, 0):
+		if not is_equal_approx(float(plate["y"]), 171.0):
+			for cell: Vector2i in Assistant._plate_studs(plate):
+				on_top[cell] = true
+	_check("the eighteenth Orthanc's summit is whole: %d of its %d studs, the middle %s"
+		% [on_top.size(), studs.size(), "covered" if on_top.has(Vector2i(23, 23)) else "open"],
+		on_top.has(Vector2i(23, 23)) and on_top.size() >= studs.size() * 0.97)
 	# A black face takes a second tone and grille bricks among its masonry,
 	# unless told otherwise: LEGO's 10237 is 66% black and 13% dark bluish
 	# grey, with 86 grille bricks. The grey in bands, a course of it every
@@ -530,7 +589,7 @@ func _clustered() -> void:
 		headings[heading] = true
 		if not is_zero_approx(fposmod(heading, 90.0)):
 			turned[heading] = true
-		if section.name.contains(" pier "):
+		if section.name.contains(" pier ") and section.name.contains(" face "):
 			piers[section.name.get_slice(" face ", 0)] = true
 		elif is_equal_approx(heading, 180.0):
 			looking_back += 1
@@ -550,16 +609,17 @@ func _clustered() -> void:
 		% [int(round(float(style["angled"]) * 100)), int(round(float(style["snot"]) * 100))],
 		float(style["angled"]) >= 0.27)
 
-	# The horns end square: a cap of plates on the grid over each, and a point
-	# standing on the cap's studs. The fifteenth Orthanc took its horns down
-	# because their tops were turned to 45 degrees and nothing square sat on
-	# them. The point's first course is two 2 x 4 bricks on a cap, and the
-	# whole passed the check above, so a square part sits on every horn.
+	# The horns end square: a cap of plates on the grid over each, and on the
+	# cap's studs a crown of square bricks. The fifteenth Orthanc took its
+	# horns down because their tops were turned to 45 degrees and nothing
+	# square sat on them; the whole passed the check above, so a square part
+	# sits on every horn.
 	var crown: float = 3.0 * 38 + Assistant.SUMMIT
 	var capping: int = 0
 	var on_caps: int = 0
-	var bars: int = 0
 	var turned_caps: int = 0
+	var tips: Array = []
+	var steep: int = 0
 	for placement: Assistant.Placement in model.placements:
 		var at_cap: bool = is_equal_approx(placement.y, crown) \
 			or is_equal_approx(placement.y, crown + 1.0)
@@ -569,14 +629,33 @@ func _clustered() -> void:
 			continue
 		if at_cap:
 			capping += 1
-		if is_equal_approx(placement.y, crown + Assistant.SUMMIT) and placement.part == "3001":
+		if is_equal_approx(placement.y, crown + Assistant.SUMMIT) and placement.part != "54200" \
+				and placement.part != Assistant.HORN_SLOPE:
 			on_caps += 1
 		if placement.part == "30374":
-			bars += 1
+			tips.append(placement)
+		if placement.part == Assistant.HORN_SLOPE:
+			steep += 1
 	_check("each horn is capped square at y %s: %d plates, none turned (%d are)"
 		% [crown, capping, turned_caps], capping >= 4 * 8 and turned_caps == 0)
-	_check("...and on each cap's studs a point: %d 2 x 4 bricks on the caps, %d bars at the tips"
-		% [on_caps, bars], on_caps == 8 and bars == 4)
+	# And rises from its cap to a point at its outer edge: the seventeenth
+	# Orthanc's horns were flat caps with a point stood in the middle, four
+	# turrets with roofs from the front. Each crown steps in two studs every
+	# two courses towards the cap's outermost 2 x 2, its ledges faced with 65
+	# degree slopes looking in, and the bar at its tip is further from the
+	# tower's middle than the horn's own middle is.
+	var out: float = 9.0 + 6.0 - 2.0
+	var outer: int = 0
+	var tallest: float = 0.0
+	for tip: Assistant.Placement in tips:
+		tallest = maxf(tallest, tip.y)
+		if Vector2(tip.x + 0.2 - 24.0, tip.z + 0.2 - 24.0).length() > out + 2.0:
+			outer += 1
+	_check("...and rises from its cap to a point at its outer edge: %d bricks on the caps, "
+		% on_caps + "%d 65 degree slopes looking in, %d of 4 tips out past the horn's middle, "
+		% [steep, outer] + "the highest %s plates over the cap" % (tallest - crown),
+		on_caps >= 4 * 6 and steep >= 4 * 8 and tips.size() == 4 and outer == 4
+			and tallest - crown >= 3.0 * Assistant.HORN_RING * 3)
 
 	assistant._brief = "The Tower of Orthanc"
 	assistant._apply(model)
@@ -663,7 +742,7 @@ func _clustered() -> void:
 	var kept: Assistant.Model = assistant._read_model({"patterns": [small]})
 	var most: int = -1
 	for name: Variant in kept.sections:
-		if str(name).contains(" pier "):
+		if str(name).contains(" pier ") and str(name).contains(" face "):
 			most = maxi(most, int(str(name).get_slice(" face ", 1)))
 	var laid_small: Dictionary = assistant._check(kept)
 	_check("piers of radius 4 at eight sides are laid, not refused: %s, %s"
@@ -880,8 +959,10 @@ func _cluster_opened() -> void:
 ## Still open, and printed rather than judged: on a cluster, a corridor a
 ## clearance wide runs along the core's outside under each pier (a pier's
 ## faces keep CLUSTER_CLEAR from the core), seen through only from straight
-## along that core face; and a hexagon's or decagon's corner is wider than a
-## post behind it can cover, so those keep their channel.
+## along that core face; a pier's corners are not posted, and two of its
+## grooves can line up; and an open hexagon's corner is wider than a post
+## behind it can cover. A decagon's and a twelve-sided prism's corners take a
+## post turned half way between their faces.
 func _no_daylight() -> void:
 	print("")
 	print("  an open tower is not see-through")
@@ -907,18 +988,55 @@ func _no_daylight() -> void:
 		["...and one of radius 9, as the rooms probe's", {"pattern": "prism", "color": 0,
 			"at": {"x": 20, "y": 0, "z": 20}, "sides": 8, "radius": 9, "courses": 12,
 			"mix_color": 72, "open": 3}, 36.0, everywhere],
-		["the guidance's cluster open at the back, from the front and behind",
+		# And from its front-right and back-left corners, the view a picture of
+		# it is taken from: a groove between two outward faces of a pier at
+		# the back looked into that open frame and out behind it, 9 sightlines
+		# of 12 LDU up the right cleft, until those piers' corners were posted.
+		["the guidance's cluster open at the back, from the front, the sides, behind and the 45 and 225 corners",
 			{"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
 			"radius": 9, "courses": 14, "color": 0, "open": 3,
-			"piers": {"count": 4, "courses": 17}}, 42.0, [0.0, 180.0]],
+			"piers": {"count": 4, "courses": 17}}, 42.0, [0.0, 45.0, 90.0, 180.0, 225.0, 270.0]],
 		["the guidance's cluster, closed", {"pattern": "prism",
 			"at": {"x": 24, "y": 0, "z": 24}, "sides": 8, "radius": 9, "courses": 14,
 			"color": 0, "piers": {"count": 4, "courses": 17}}, 42.0, everywhere],
+		# A face's outside row cannot run on into a ten- or twelve-sided
+		# prism's corner groove, so even closed it was open straight through
+		# along its corners (54 and 172 sightlines), and no post square to
+		# either face fitted.
+		["a ten-sided prism, closed", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 10, "radius": 9, "courses": 12},
+			36.0, everywhere],
+		["a twelve-sided prism, closed", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 12, "radius": 9, "courses": 12},
+			36.0, everywhere],
+		["...and open at the back", {"pattern": "prism", "color": 0,
+			"at": {"x": 20, "y": 0, "z": 20}, "sides": 12, "radius": 9, "courses": 12,
+			"open": 3}, 36.0, everywhere],
+		# The seventeenth Orthanc's own cluster: its core opened five of its ten
+		# faces as "the back", which opened the hollows of its front piers onto
+		# the core's inside, and 2 to 2.5 studs of sky showed from its front
+		# right corner at every height (90 sightlines). Its piers' own corner
+		# grooves still pass a slit seen from the diagonals 135 and 315 degrees.
+		# The eighteenth's: ten-sided piers of radius 6 on a ten-sided core, their
+		# faces two studs wide and their outside rows unable to run on, so two
+		# grooves of a front pier lined up and the sky showed up both front
+		# clefts from the corner (9 sightlines from 45 and from 225).
+		["the eighteenth Orthanc's cluster, its piers ten-sided, from all but 135 and 315",
+			{"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 10, "radius": 9,
+			"courses": 14, "color": 0, "open": 1, "door": true, "piers": {"count": 4,
+				"out": 11, "radius": 6, "courses": 17}}, 42.0,
+			[0.0, 45.0, 90.0, 180.0, 225.0, 270.0]],
+		["the seventeenth Orthanc's ten-sided cluster, open at the back, but from the diagonals",
+			{"pattern": "prism", "at": {"x": 28, "y": 0, "z": 28}, "sides": 10, "radius": 9,
+			"courses": 14, "color": 0, "mix_color": 72, "mix": 0.12, "open": 3,
+			"sideways": 0.25, "piers": {"count": 4, "sides": 8, "radius": 6, "out": 10,
+				"courses": 17, "turn": 45}}, 42.0, [0.0, 45.0, 90.0, 180.0, 225.0, 270.0]],
 	]:
 		var model: Assistant.Model = assistant._read_model({"patterns": [case[1]]})
 		var verdict: Dictionary = assistant._check(model)
 		var parts: Array = []
 		var posts: int = 0
+		var core_faces: Dictionary = {}
 		for placement: Assistant.Placement in model.placements:
 			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
 			if mesh != null:
@@ -926,6 +1044,8 @@ func _no_daylight() -> void:
 					model.section_for(placement)), mesh.bounds])
 			if placement.part in ["3062b", "3941"]:
 				posts += 1
+			elif placement.section.contains(" face ") and not placement.section.contains(" pier "):
+				core_faces[placement.section] = true
 		var prints: Array = daylight.footprints(parts)
 		var through: Dictionary = {}
 		var top: float = case[2]
@@ -942,9 +1062,13 @@ func _no_daylight() -> void:
 			"no sightline through it" if judged.is_empty()
 				else "seen through from %s degrees" % str(judged)],
 			bool(verdict["ok"]) and judged.is_empty())
+		if (case[1] as Dictionary).has("piers") and int(case[1].get("open", 0)) > 0:
+			var sides: int = int(case[1]["sides"])
+			_check("...its core opened at the back, %d of its %d faces left out"
+				% [sides - core_faces.size(), sides], sides - core_faces.size() == 3)
 		if judged.size() < through.size():
-			print("  --    ...and still seen through from %s degrees (the corridor under each pier)"
-				% str(through))
+			print("  --    ...and still seen through from %s degrees, not judged (the corridor "
+				% str(through) + "under each pier, a pier's own corner grooves)")
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()

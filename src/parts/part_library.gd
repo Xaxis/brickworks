@@ -134,7 +134,15 @@ func element_for(part_id: String, code: int) -> String:
 					var pairs: Variant = (raw as Dictionary).get("pairs", {})
 					if typeof(pairs) == TYPE_DICTIONARY:
 						_elements = pairs
-	return str(_elements.get("%s/%d" % [part_id, plain_code(code)], ""))
+	var found: String = str(_elements.get("%s/%d" % [part_id, plain_code(code)], ""))
+	# LDraw draws cloth twice, flat as it is sold (50231) and as it is
+	# worn (50231c01 "Cape Cloth (Formed)"); Rebrickable lists the element
+	# once, by its flat number. A figure wears the worn drawing.
+	var info: PartInfo = parts.get(part_id)
+	if found.is_empty() and info != null and info.name.contains("(Formed") \
+			and part_id.length() > 3 and part_id[-3] == "c" and part_id.right(2).is_valid_int():
+		return element_for(part_id.left(-3), code)
+	return found
 
 
 ## The colour a part in this code is filed under by LEGO and Rebrickable:
@@ -606,6 +614,14 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		return _mesh_cache[info.mesh_hash]
 	if _custom_meshes.has(info.mesh_hash):
 		return _custom_meshes[info.mesh_hash]
+	if _readers > 0:
+		# A reader on another thread only reads: what it needs was loaded
+		# before it began (Assistant._checked), and loading here would
+		# write the cache it is reading.
+		if not _on_main_thread():
+			return null
+		if _arrived.has(info.mesh_hash):
+			return _arrived[info.mesh_hash]
 
 	var path: String = _resolve_root() + "parts/" + info.mesh_hash + ".lbm"
 	if not FileAccess.file_exists(path):
@@ -621,8 +637,68 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 			push_warning("part library: %s has no geometry at %s" % [part_id, path])
 		return null
 
-	_mesh_cache[info.mesh_hash] = part
+	_keep(info.mesh_hash, part)
 	return part
+
+
+# -- read from another thread ----------------------------------------------
+#
+# Checking a big design is seconds of work, and on the web the page has one
+# thread: the owner's 4,242-part Falcon Heavy held it for 31 s a check. So the
+# check runs on a worker (Assistant._checked), reading this library. A
+# Dictionary written on one thread while another reads it can be read in the
+# middle of growing, so while any reader is out nothing it reads is written:
+# geometry that arrives waits in _arrived, and a part being made or the cache
+# being dropped waits for the readers to finish (_wait_for_readers) — a
+# moment, and only when the two meet.
+
+
+## Readers on other threads now. Changed only on the main thread.
+var _readers: int = 0
+## Geometry that arrived while a reader was out: hash -> Lbm.PartMesh. Main
+## thread only.
+var _arrived: Dictionary = {}
+## The WorkerThreadPool tasks reading, for _wait_for_readers.
+var _reading_tasks: Array[int] = []
+
+
+## Called before a reader's task is started, so nothing is written between
+## starting it and its first read. Name the task with [method reading_in].
+func begin_reading() -> void:
+	_readers += 1
+
+
+func reading_in(task: int) -> void:
+	_reading_tasks.append(task)
+
+
+## After the task has been waited for.
+func end_reading(task: int = -1) -> void:
+	_reading_tasks.erase(task)
+	_readers = maxi(0, _readers - 1)
+	if _readers > 0:
+		return
+	_mesh_cache.merge(_arrived)
+	_arrived.clear()
+
+
+## Until every reader's task has finished, so what they read can be written.
+## Main thread only.
+func _wait_for_readers() -> void:
+	for task: int in _reading_tasks:
+		while not WorkerThreadPool.is_task_completed(task):
+			OS.delay_usec(500)
+
+
+static func _on_main_thread() -> bool:
+	return OS.get_thread_caller_id() == OS.get_main_thread_id()
+
+
+func _keep(hash_name: String, part: Lbm.PartMesh) -> void:
+	if _readers > 0:
+		_arrived[hash_name] = part
+	else:
+		_mesh_cache[hash_name] = part
 
 
 ## Where HTTPRequest nodes are parented. The library is a RefCounted and
@@ -635,7 +711,7 @@ func set_fetch_host(host: Node) -> void:
 func is_resident(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
 	return info != null and (_mesh_cache.has(info.mesh_hash)
-		or _custom_meshes.has(info.mesh_hash))
+		or _custom_meshes.has(info.mesh_hash) or _arrived.has(info.mesh_hash))
 
 
 ## True while the part's geometry has been asked for and has not arrived:
@@ -644,7 +720,8 @@ func is_resident(part_id: String) -> bool:
 ## coming at all.
 func is_on_its_way(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
-	if info == null or _mesh_cache.has(info.mesh_hash):
+	if info == null or _mesh_cache.has(info.mesh_hash) \
+			or _arrived.has(info.mesh_hash):
 		return false
 	return (_fetching.has(info.mesh_hash) or _queued_fetches.has(part_id)
 		or _waiting.has(part_id))
@@ -669,7 +746,8 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 	var info: PartInfo = parts.get(part_id)
 	if info == null:
 		return false
-	if _mesh_cache.has(info.mesh_hash) or _custom_meshes.has(info.mesh_hash):
+	if _mesh_cache.has(info.mesh_hash) or _custom_meshes.has(info.mesh_hash) \
+			or _arrived.has(info.mesh_hash):
 		fetched.emit(part_id)
 		return true
 	if _fetching.has(info.mesh_hash):
@@ -818,7 +896,7 @@ func _on_fetched(
 		for asked: String in asked_for:
 			fetch_failed.emit(asked, "the geometry did not parse")
 		return
-	_mesh_cache[hash_name] = part
+	_keep(hash_name, part)
 	# Everyone who asked for this geometry, not only whoever asked
 	# first.
 	for asked: String in asked_for:
@@ -828,6 +906,7 @@ func _on_fetched(
 ## Drop cached geometry. The catalogue stays; only vertices go. A made
 ## part's stay too: there is nowhere to fetch one back from.
 func release_geometry() -> void:
+	_wait_for_readers()
 	_mesh_cache.clear()
 
 
@@ -843,6 +922,7 @@ signal custom_added(part_id: String)
 
 ## Put a made part beside the catalogue's, or replace one made before.
 func add_custom(info: PartInfo, mesh: Lbm.PartMesh, source: String) -> void:
+	_wait_for_readers()
 	if not parts.has(info.id):
 		_ordered_ids.append(info.id)
 	parts[info.id] = info

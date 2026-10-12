@@ -1,5 +1,6 @@
-## Making an element LEGO has not made: a brick, plate, tile, slope or
-## round part of any size, written as a real LDraw part file.
+## Making an element LEGO has not made: a brick, plate, tile, slope,
+## curved slope, round part, bracket or Technic brick of any size, or a
+## brick with studs on its sides, written as a real LDraw part file.
 ##
 ## A LEGO element designer asks for a new mould, or a change to an existing
 ## one, inside the system's dimensions. This is the same request made of the
@@ -18,6 +19,9 @@
 ##   wall 4 LDU (1.6 mm)           top 4 LDU                   (s/3001s01)
 ##   tube 16 across, 12 inside     between four studs          (stud4.dat)
 ##   slope lip 4 LDU               the vertical foot of a slope (3039, 3298)
+##   side stud 10 under the top    then every 20 down          (87087, 22885)
+##   bracket upright 4 LDU         past the plate's footprint  (99781, 44728)
+##   Technic hole 10 under the top a 12 LDU bore, 16 mouth     (3700, 3701)
 ##
 ## Everything is in LDraw's own space: X right, Y *down*, origin at the
 ## middle of the footprint on the top of the body, the long side along X.
@@ -49,7 +53,25 @@ const MOST_STUDS := 32
 const MOST_PLATES := 36
 
 ## The families, by the word a designer would use.
-const FAMILIES: Array[String] = ["brick", "slope", "inverted", "round"]
+const FAMILIES: Array[String] = ["brick", "slope", "inverted", "round", "curved",
+	"bracket", "technic"]
+
+## The sides a brick can carry studs on, in the order they are written:
+## front (LDraw's -Z, the long face 87087 and 30414 put theirs on), back,
+## left (-X) and right.
+const SIDES := "fblr"
+## The tallest bracket upright, in studs.
+const MOST_RISE := 8
+## A Technic brick's hole: its middle under the top, its bore and the
+## mouth each face is counterbored to, as 3700 draws them; and the solid
+## under the holes stops this far down, leaving a cavity for studs.
+const HOLE_Y := 10.0
+const BORE := 6.0
+const MOUTH := 8.0
+const HOLE_FLOOR := 18.0
+## Steps along a curved slope's face: an eighth of a circle, as 11477 draws
+## its own, in steps of 5.6 degrees.
+const CURVE_STEPS := 8
 
 ## The four slope angles LEGO names, as the drop and run the library draws
 ## them with. LEGO's angle is a name, not a measurement: the "33" is 20 LDU
@@ -90,6 +112,12 @@ class Spec extends RefCounted:
 	var title: String = ""
 	## The part this was resized from, as "3001", when it was.
 	var derived_from: String = ""
+	## A brick's sides that carry studs, as letters of [constant SIDES].
+	var sides: String = ""
+	## A bracket's upright, in studs, and whether it hangs "down" from the
+	## plate's front edge or stands "up" from it.
+	var rise: int = 1
+	var way: String = "down"
 
 	func duplicate() -> Spec:
 		var copy := Spec.new()
@@ -102,6 +130,9 @@ class Spec extends RefCounted:
 		copy.diameter = diameter
 		copy.title = title
 		copy.derived_from = derived_from
+		copy.sides = sides
+		copy.rise = rise
+		copy.way = way
 		return copy
 
 	## The spec as a line of words, the form the header carries and the
@@ -113,9 +144,16 @@ class Spec extends RefCounted:
 		else:
 			words += " across=%d deep=%d" % [across, deep]
 		words += " plates=%d" % plates
-		if family == "slope" or family == "inverted":
+		if family == "slope" or family == "inverted" or family == "curved":
 			words += " run=%d" % run
-		words += " studs=%s" % ("yes" if studs else "no")
+		if family == "bracket":
+			words += " rise=%d way=%s" % [rise, way]
+		if not sides.is_empty():
+			words += " sides=%s" % sides
+		# A curve over the whole depth has no flat rows for a stud to stand
+		# on, so with studs or without it is the same part.
+		var studded: bool = studs or (family == "curved" and run == deep)
+		words += " studs=%s" % ("yes" if studded else "no")
 		if not derived_from.is_empty():
 			words += " from=%s" % derived_from
 		return words
@@ -128,6 +166,17 @@ static func problem(spec: Spec) -> String:
 		return "there is no family called %s" % spec.family
 	if spec.plates < 1 or spec.plates > MOST_PLATES:
 		return "a part is 1 to %d plates tall" % MOST_PLATES
+	if not spec.sides.is_empty():
+		if spec.family != "brick":
+			return "only a brick carries studs on its sides"
+		for n: int in spec.sides.length():
+			var letter: String = spec.sides[n]
+			if not SIDES.contains(letter) or spec.sides.count(letter) > 1:
+				return "the sides are f, b, l and r (front, back, left, right), each once"
+		if spec.plates < 3:
+			# A side stud is 12 LDU across and its row 20 LDU, which a part
+			# shorter than a brick has no room for.
+			return "studs on a side need a part at least a brick (3 plates) tall"
 	if spec.family == "round":
 		if spec.diameter < 1 or spec.diameter > 16:
 			return "a round part is 1 to 16 studs across"
@@ -143,11 +192,34 @@ static func problem(spec: Spec) -> String:
 				% (spec.deep - 1)
 		if spec.plates < 2:
 			return "a slope is at least 2 plates tall"
+	if spec.family == "curved":
+		if spec.run < 1 or spec.run > spec.deep:
+			return "the curve falls over 1 to %d rows" % spec.deep
+		if spec.plates < 2:
+			return "a curved slope is at least 2 plates tall"
+	if spec.family == "bracket":
+		if spec.plates != 1:
+			return "a bracket's flat part is a plate: 1 plate tall"
+		if spec.rise < 1 or spec.rise > MOST_RISE:
+			return "a bracket's upright is 1 to %d studs tall" % MOST_RISE
+		if spec.way != "down" and spec.way != "up":
+			return "a bracket's upright goes down or up"
+	if spec.family == "technic":
+		if spec.deep != 1:
+			return "a Technic brick is one stud wide; its holes run through that way"
+		if spec.plates != 3:
+			return "a Technic brick is one brick (3 plates) tall"
 	return ""
 
 
-## The angle a slope's face really makes with the ground, in degrees.
+## The angle a slope's face really makes with the ground, in degrees. A
+## curved slope's is where it is steepest, at its foot.
 static func true_angle(spec: Spec) -> float:
+	if spec.family == "curved":
+		var foot_rise: float = spec.plates * PLATE - LIP
+		# The eighth of a circle leaves the foot at dy/dz = Ay / Az, with
+		# Ay the drop over (sqrt 2 - 1): see [method curve_profile].
+		return rad_to_deg(atan2(foot_rise / (sqrt(2.0) - 1.0), spec.run * STUD))
 	if spec.family != "slope" and spec.family != "inverted":
 		return 0.0
 	var drop: float = spec.plates * PLATE - LIP
@@ -199,10 +271,59 @@ static func title_for(spec: Spec) -> String:
 			return "Slope Brick %s %s x %s%s%s" % [angle, _pad(spec.deep),
 				_pad(spec.across), _bricks_words(spec),
 				" Inverted" if spec.family == "inverted" else ""]
+		"curved":
+			return "Slope Brick Curved %s x %s%s%s" % [_pad(spec.deep), _pad(spec.across),
+				_bricks_words(spec), "" if spec.studs or spec.run == spec.deep
+					else " without Studs"]
+		"bracket":
+			# The library's way: the plate, then the upright, both short
+			# side first — "Bracket  1 x  2 -  2 x  2 Down".
+			return "Bracket %s x %s - %s x %s %s%s" % [_pad(spec.deep), _pad(spec.across),
+				_pad(spec.rise), _pad(spec.across), spec.way.capitalize(),
+				"" if spec.studs else " without Top Studs"]
+		"technic":
+			return "Technic Brick %s x %s with Hole%s%s" % [_pad(1), _pad(spec.across),
+				"" if spec.across <= 2 else "s", "" if spec.studs else " without Studs"]
 	var short: int = mini(spec.across, spec.deep)
 	var long: int = maxi(spec.across, spec.deep)
-	return "%s %s x %s%s" % [_word(spec), _pad(short), _pad(long),
-		_height_words(spec)]
+	return "%s %s x %s%s%s" % [_word(spec), _pad(short), _pad(long),
+		_height_words(spec), _sides_words(spec)]
+
+
+## "with Stud on 1 Side", "with Studs on Two Opposite Sides": what the
+## library calls a brick with studs on its sides (87087, 47905, 4733).
+static func _sides_words(spec: Spec) -> String:
+	if spec.sides.is_empty():
+		return ""
+	var count: int = 0
+	for n: int in spec.sides.length():
+		var letter: String = spec.sides[n]
+		count += maxi(spec.across, spec.deep) if letter == "f" or letter == "b" \
+			else mini(spec.across, spec.deep)
+	count *= side_rows(spec).size()
+	var studs_word: String = "Stud" if count == 1 else "Studs"
+	var opposite: bool = spec.sides.length() == 2 and (
+		(spec.sides.contains("f") and spec.sides.contains("b"))
+		or (spec.sides.contains("l") and spec.sides.contains("r")))
+	if opposite:
+		return " with %s on Two Opposite Sides" % studs_word
+	if spec.sides.length() == 1:
+		return " with %s on 1 Side" % studs_word
+	return " with %s on %s Sides" % [studs_word,
+		["", "", "Two Adjacent", "Three", "Four"][spec.sides.length()]]
+
+
+## The heights a brick's side studs stand at, in LDU under its top: the
+## first 10 down, as 87087's is, so a plate on it lines up with the top,
+## and then one every 20, as 22885's two rows are, while a whole row fits.
+static func side_rows(spec: Spec) -> Array[float]:
+	var rows: Array[float] = []
+	var h: float = spec.plates * PLATE
+	var k: int = 0
+	while k * STUD + STUD <= h:
+		rows.append(STUD * 0.5 + k * STUD)
+		k += 1
+	return rows
 
 
 ## Plate, Tile or Brick, by height and top.
@@ -247,8 +368,12 @@ static func _pad(n: int) -> String:
 ## is to every other tool.
 static func category_for(spec: Spec) -> String:
 	match spec.family:
-		"slope", "inverted":
+		"slope", "inverted", "curved":
 			return "Slope"
+		"bracket":
+			return "Bracket"
+		"technic":
+			return "Technic"
 	return _word(spec)
 
 
@@ -264,11 +389,19 @@ static func id_for(spec: Spec) -> String:
 			tail = "s%dx%dx%dr%d" % [spec.deep, spec.across, spec.plates, spec.run]
 		"inverted":
 			tail = "i%dx%dx%dr%d" % [spec.deep, spec.across, spec.plates, spec.run]
+		"curved":
+			tail = "c%dx%dx%dr%d" % [spec.deep, spec.across, spec.plates, spec.run]
+		"bracket":
+			tail = "k%dx%dx%d%s" % [spec.deep, spec.across, spec.rise, spec.way.left(1)]
+		"technic":
+			tail = "h1x%d" % spec.across
 		_:
 			tail = "b%dx%dx%d" % [mini(spec.across, spec.deep),
 				maxi(spec.across, spec.deep), spec.plates]
-	if not spec.studs:
+	if not spec.studs and not (spec.family == "curved" and spec.run == spec.deep):
 		tail += "t"
+	if not spec.sides.is_empty():
+		tail += "-s" + spec.sides
 	return "bw-" + tail
 
 
@@ -302,8 +435,16 @@ static func dat(spec: Spec, id: String = "") -> String:
 			_slope(spec, body)
 		"inverted":
 			_inverted(spec, body)
+		"curved":
+			_curved(spec, body)
+		"bracket":
+			_bracket(spec, body)
+		"technic":
+			_technic(spec, body)
 		_:
 			_box(spec, body)
+			if not spec.sides.is_empty():
+				_side_studs(spec, body)
 	out.append_array(body)
 	out.append("0")
 	return "\n".join(out) + "\n"
@@ -342,7 +483,26 @@ static func from_words(words: String) -> Spec:
 			"diameter": spec.diameter = pair[1].to_int()
 			"studs": spec.studs = pair[1] != "no"
 			"from": spec.derived_from = pair[1]
+			"sides": spec.sides = canonical_sides(pair[1])
+			"rise": spec.rise = pair[1].to_int()
+			"way": spec.way = pair[1]
 	return spec
+
+
+## Sides in the order they are written, each once, whatever order they
+## were given in: "rf" and "fr" are the same brick.
+static func canonical_sides(text: String) -> String:
+	var out: String = ""
+	var given: String = text.to_lower()
+	for n: int in SIDES.length():
+		if given.contains(SIDES[n]):
+			out += SIDES[n]
+	# A letter that is not a side is kept, so problem() can say so rather
+	# than a typo quietly becoming a different brick.
+	for n: int in given.length():
+		if not SIDES.contains(given[n]) and not out.contains(given[n]):
+			out += given[n]
+	return out
 
 
 ## The spec that makes a standard part, read from its LDraw name: the way
@@ -353,7 +513,7 @@ static func from_words(words: String) -> Spec:
 ## 3 x  2 Inverted", "Brick  2 x  2 Round", "Plate  4 x  4 Round" — and a
 ## name that says anything more (printed, with a clip, with a hole) is not
 ## a plain part and returns null rather than a part it is not.
-static func from_part(part_id: String, name: String) -> Spec:
+static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
 	var text: String = name.strip_edges()
 	if text.begins_with("~") or text.begins_with("="):
 		return null
@@ -364,6 +524,60 @@ static func from_part(part_id: String, name: String) -> Spec:
 	spec.derived_from = part_id
 	var at: int = 0
 	var head: String = words[0]
+	# "Slope Brick Curved  2 x  1": its name has no height, so the part's
+	# own ([param tall], LDU from top to bottom) says how many plates.
+	if head == "Slope" and words.size() > 2 and words[1] == "Brick" \
+			and words[2] == "Curved":
+		var found_curve: Array = _dims(words, 3)
+		if found_curve.is_empty() or int(found_curve[3]) != words.size():
+			return null
+		spec.family = "curved"
+		spec.deep = int(found_curve[0])
+		spec.across = int(found_curve[1])
+		spec.run = spec.deep
+		spec.studs = false
+		spec.plates = int(found_curve[2]) if int(found_curve[2]) > 0 \
+			else int(round(tall / PLATE))
+		return spec if problem(spec).is_empty() else null
+	# "Bracket  1 x  2 -  2 x  2 Down": the plate, then the upright.
+	if head == "Bracket":
+		var plate: Array = _dims(words, 1)
+		if plate.is_empty() or int(plate[2]) != 0:
+			return null
+		var dash: int = int(plate[3])
+		if dash >= words.size() or words[dash] != "-":
+			return null
+		var upright: Array = _dims(words, dash + 1)
+		if upright.is_empty() or int(upright[2]) != 0 \
+				or int(upright[3]) != words.size() - 1:
+			return null
+		var way: String = words[words.size() - 1].to_lower()
+		if (way != "down" and way != "up") or int(upright[1]) != int(plate[1]):
+			return null
+		spec.family = "bracket"
+		spec.deep = int(plate[0])
+		spec.across = int(plate[1])
+		spec.plates = 1
+		spec.rise = int(upright[0])
+		spec.way = way
+		return spec if problem(spec).is_empty() else null
+	# "Technic Brick  1 x  4 with Holes".
+	if head == "Technic" and words.size() > 1 and words[1] == "Brick":
+		var technic: Array = _dims(words, 2)
+		if technic.is_empty() or int(technic[0]) != 1 or int(technic[2]) != 0:
+			return null
+		var tail: String = " ".join(words.slice(int(technic[3])))
+		# Only the layout the maker draws: one hole for a 1 x 1 or 1 x 2,
+		# else one between every two studs. 32000, "1 x 2 with Holes", has
+		# two and is not one of these.
+		var one: bool = int(technic[1]) <= 2
+		if tail != ("with Hole" if one else "with Holes"):
+			return null
+		spec.family = "technic"
+		spec.across = int(technic[1])
+		spec.deep = 1
+		spec.plates = 3
+		return spec if problem(spec).is_empty() else null
 	if head == "Slope" and words.size() > 2 and words[1] == "Brick":
 		var angle: int = words[2].to_int()
 		if not NAMED_ANGLES.has(angle):
@@ -398,9 +612,15 @@ static func from_part(part_id: String, name: String) -> Spec:
 	if not rest.is_empty() and rest[0] == "Round":
 		is_round = true
 		rest = rest.slice(1)
-	# A tile's groove is the only qualifier a plain part carries.
+	# A tile's groove is the only qualifier a plain part carries — and a
+	# brick's studs on its sides, which the maker makes too.
 	if rest.size() == 2 and rest[0] == "with" and rest[1] == "Groove":
 		rest = PackedStringArray()
+	if not is_round and head == "Brick":
+		var sides: String = SIDE_NAMES.get(" ".join(rest), "")
+		if not sides.is_empty():
+			spec.sides = sides
+			rest = PackedStringArray()
 	if not rest.is_empty():
 		return null
 	spec.studs = head != "Tile"
@@ -415,6 +635,21 @@ static func from_part(part_id: String, name: String) -> Spec:
 		spec.across = maxi(int(found[0]), int(found[1]))
 		spec.deep = mini(int(found[0]), int(found[1]))
 	return spec if problem(spec).is_empty() else null
+
+
+## What the library's names for bricks with side studs say, as the sides
+## the maker puts them on: the long face first, as 87087 and 30414 do.
+const SIDE_NAMES: Dictionary = {
+	"with Stud on 1 Side": "f",
+	"with Studs on 1 Side": "f",
+	"with Studs on Side": "f",
+	"with Studs on One Side": "f",
+	"with Two Studs on One Side": "f",
+	"with Studs on Two Opposite Sides": "fb",
+	"with Studs on 2 Opposite Sides": "fb",
+	"with Studs on Four Sides": "fblr",
+	"with Studs on 4 Sides": "fblr",
+}
 
 
 ## "2 x 4" or "2 x 4 x 2/3" from words[at], as [first, second, plates or
@@ -433,6 +668,10 @@ static func _dims(words: PackedStringArray, at: int) -> Array:
 		var cursor: int = next + 1
 		if words[cursor].is_valid_int():
 			thirds = words[cursor].to_int() * 3
+			cursor += 1
+		elif words[cursor].is_valid_float():
+			# The library's newer names: "x  0.667", "x  1.667".
+			thirds = int(round(words[cursor].to_float() * 3.0))
 			cursor += 1
 		if cursor < words.size() and words[cursor].contains("/3"):
 			thirds += words[cursor].get_slice("/", 0).to_int()
@@ -646,6 +885,340 @@ static func _round(spec: Spec, out: PackedStringArray) -> void:
 				if sqrt(tx * tx + tz * tz) + TUBE_RADIUS <= inner:
 					out.append(_ref(tx, TOP, tz, 1, 0, 0, 0, -(h - TOP) / 4.0,
 						0, 0, 0, 1, "stud4.dat"))
+
+
+## Studs on a brick's sides: 87087, 47905, 4733 and 30414 at any size.
+##
+## stud.dat stood on the wall and turned to point out of it, in rows 10
+## LDU under the top and every 20 down from there ([method side_rows]), one
+## per stud of the top along that side — so a plate held by them lines up
+## with the top of the brick and with the studs above, which is what makes
+## a sideways face of plates and tiles meet the rest of a model square.
+## The library's own draw a hollow stud let into the wall; this one is the
+## solid stud on the face, which takes a plate the same way.
+static func _side_studs(spec: Spec, out: PackedStringArray) -> void:
+	var along: int = maxi(spec.across, spec.deep)
+	var over: int = mini(spec.across, spec.deep)
+	var x: float = along * STUD * 0.5
+	var z: float = over * STUD * 0.5
+	out.append("0 // Studs on the sides")
+	for y: float in side_rows(spec):
+		if spec.sides.contains("f"):
+			for i: int in along:
+				out.append(_ref(-x + STUD * 0.5 + i * STUD, y, -z,
+					1, 0, 0, 0, 0, -1, 0, 1, 0, "stud.dat"))
+		if spec.sides.contains("b"):
+			for i: int in along:
+				out.append(_ref(-x + STUD * 0.5 + i * STUD, y, z,
+					1, 0, 0, 0, 0, 1, 0, -1, 0, "stud.dat"))
+		if spec.sides.contains("l"):
+			for j: int in over:
+				out.append(_ref(-x, y, -z + STUD * 0.5 + j * STUD,
+					0, 1, 0, -1, 0, 0, 0, 0, 1, "stud.dat"))
+		if spec.sides.contains("r"):
+			for j: int in over:
+				out.append(_ref(x, y, -z + STUD * 0.5 + j * STUD,
+					0, -1, 0, 1, 0, 0, 0, 0, 1, "stud.dat"))
+
+
+## A bracket: 99781, 99780 and 44728 at any size. A plate with an upright
+## on its front edge whose studs point forward, which is how a model turns
+## a face of studs to the side.
+##
+## Measured off the library's: the upright is 4 LDU thick and stands just
+## in front of the plate's footprint, so the plate's own studs stay on the
+## grid and the origin stays on their middle, as 99781's does; its studs are
+## 10 LDU from the plate's top (hanging down) or its bottom (standing up),
+## then every 20, so a plate held by them meets the bracket's plate square.
+static func _bracket(spec: Spec, out: PackedStringArray) -> void:
+	var x: float = spec.across * STUD * 0.5
+	var d: float = spec.deep * STUD * 0.5
+	var zf: float = -d - WALL                 ## the upright's face
+	var p: float = PLATE
+	var r: float = spec.rise * STUD
+	var down: bool = spec.way == "down"
+	var low: float = r if down else p         ## the upright's bottom
+	var high: float = 0.0 if down else p - r  ## and its top
+	if spec.studs:
+		_studs_on_top(out, spec.across, spec.deep, 0.0, 0.0, 0.0)
+	out.append("0 // Plate and upright")
+	# The top: the plate's, and with the upright hanging down, the
+	# upright's top edge with it.
+	_face(out, [[x, 0, d], [-x, 0, d], [-x, 0, zf if down else -d],
+		[x, 0, zf if down else -d]], [0, -1, 0])
+	if not down:
+		_face(out, [[x, high, -d], [-x, high, -d], [-x, high, zf], [x, high, zf]],
+			[0, -1, 0])
+		_face(out, [[x, high, -d], [x, 0, -d], [-x, 0, -d], [-x, high, -d]], [0, 0, 1])
+	else:
+		_face(out, [[x, low, zf], [-x, low, zf], [-x, low, -d], [x, low, -d]],
+			[0, 1, 0])
+		_face(out, [[x, p, -d], [x, low, -d], [-x, low, -d], [-x, p, -d]], [0, 0, 1])
+	_face(out, [[x, high, zf], [-x, high, zf], [-x, low, zf], [x, low, zf]], [0, 0, -1])
+	_face(out, [[x, 0, d], [x, p, d], [-x, p, d], [-x, 0, d]], [0, 0, 1])
+	for side: float in [x, -x]:
+		var way: float = signf(side)
+		_face(out, [[side, 0, -d], [side, 0, d], [side, p, d], [side, p, -d]], [way, 0, 0])
+		_face(out, [[side, high, zf], [side, high, -d], [side, low, -d], [side, low, zf]],
+			[way, 0, 0])
+	# The underside: a ring round the cavity, which has the upright for its
+	# front wall.
+	var ix: float = x - WALL
+	if down:
+		_face(out, [[x, p, d], [-x, p, d], [-ix, p, d - WALL], [ix, p, d - WALL]], [0, 1, 0])
+		for side: float in [x, -x]:
+			var inner: float = side - signf(side) * WALL
+			_face(out, [[side, p, d], [inner, p, d - WALL], [inner, p, -d], [side, p, -d]],
+				[0, 1, 0])
+	else:
+		_rim(out, p, -x, x, zf, d, -ix, ix, -d, d - WALL)
+	_outline(out, [[x, 0, d], [-x, 0, d], [-x, 0, zf if down else -d],
+		[x, 0, zf if down else -d]])
+	_outline(out, [[x, high, zf], [-x, high, zf], [-x, low, zf], [x, low, zf]])
+	_line(out, [x, p, d], [-x, p, d])
+	_line(out, [x, low, -d], [-x, low, -d])
+	if not down:
+		_line(out, [x, high, -d], [-x, high, -d])
+	for side: float in [x, -x]:
+		_line(out, [side, 0, d], [side, p, d])
+		_line(out, [side, p, d], [side, p, -d])
+		_line(out, [side, high, -d], [side, low, -d])
+		_line(out, [side, p if down else 0.0, -d], [side, low if down else high, -d])
+	_cavity(out, p, ix, d - WALL * 0.5, -WALL * 0.5)
+	_underside(out, spec.across, spec.deep, 0.0, 0.0, p,
+		func(_at: float) -> float: return TOP)
+	out.append("0 // Studs on the upright")
+	for k: int in spec.rise:
+		var y: float = (STUD * 0.5 + k * STUD) if down else (p - STUD * 0.5 - k * STUD)
+		for i: int in spec.across:
+			out.append(_ref(-x + STUD * 0.5 + i * STUD, y, zf,
+				1, 0, 0, 0, 0, -1, 0, 1, 0, "stud.dat"))
+
+
+## A curved slope's face, as points (z, y) from the top of the curve at
+## the back to its foot at the front: an eighth of a circle drawn in the
+## part's own proportions, as 11477 draws its 1-8cyli — level where it
+## leaves the flat rows, and at its steepest where it meets the 4 LDU lip.
+##
+## In terms of how far along the curve a point is, u (0 at the top, 1 at
+## the foot), the face is foot * (2 + sqrt 2) * (1 - sqrt(1 - u^2 / 2))
+## under the top, which is the circle x^2 + y^2 = 1 seen through the
+## part's own scale. [param steps] points are spaced evenly round it.
+static func curve_profile(spec: Spec, steps: int = CURVE_STEPS) -> Array:
+	var back: float = spec.deep * STUD * 0.5
+	var front: float = -back
+	var edge: float = back - (spec.deep - spec.run) * STUD
+	var foot: float = spec.plates * PLATE - LIP
+	var rise: float = foot / (sqrt(2.0) - 1.0)
+	var points: Array = []
+	for k: int in steps + 1:
+		var theta: float = deg_to_rad(45.0) * (1.0 - float(k) / steps)
+		var z: float = edge + (edge - front) * (sin(theta) - cos(theta))
+		var y: float = rise * (sqrt(2.0) - cos(theta) - sin(theta))
+		if k == 0:
+			z = edge
+			y = 0.0
+		elif k == steps:
+			z = front
+			y = foot
+		points.append([z, y])
+	return points
+
+
+## Where a curved slope's face is under its top at [param z], in LDU: 0
+## on the flat rows, the curve of [method curve_profile] over the rest.
+static func curve_at(spec: Spec, z: float) -> float:
+	var back: float = spec.deep * STUD * 0.5
+	var front: float = -back
+	var edge: float = back - (spec.deep - spec.run) * STUD
+	if z >= edge:
+		return 0.0
+	var u: float = clampf((edge - z) / (edge - front), 0.0, 1.0)
+	return (spec.plates * PLATE - LIP) * (2.0 + sqrt(2.0)) * (1.0 - sqrt(1.0 - u * u * 0.5))
+
+
+## A curved slope: 11477, 15068, 50950 and 93606 at any width, depth,
+## height and length of curve, with flat studded rows behind it when the
+## curve does not take the whole depth.
+##
+## The face is drawn in [constant CURVE_STEPS] strips so that it shades as
+## one curve; only its edges are lines. The cavity's ceiling follows the
+## face four LDU under it, as a slope's does, and the tubes start on it.
+static func _curved(spec: Spec, out: PackedStringArray) -> void:
+	var x: float = spec.across * STUD * 0.5
+	var back: float = spec.deep * STUD * 0.5
+	var front: float = -back
+	var flat: int = spec.deep - spec.run
+	var edge: float = back - flat * STUD
+	var h: float = spec.plates * PLATE
+	var foot: float = h - LIP
+	var profile: Array = curve_profile(spec)
+	# The whole top, back to front: the flat rows, then the curve.
+	var top: Array = []
+	if flat > 0:
+		top.append([back, 0.0])
+	top.append_array(profile)
+
+	if spec.studs and flat > 0:
+		_studs_on_top(out, spec.across, flat, 0.0, 0.0, back - flat * STUD * 0.5)
+	out.append("0 // Top, curve, lip and back")
+	for n: int in top.size() - 1:
+		var a: Array = top[n]
+		var b: Array = top[n + 1]
+		var dz: float = float(b[0]) - float(a[0])
+		var dy: float = float(b[1]) - float(a[1])
+		_face(out, [[x, a[1], a[0]], [-x, a[1], a[0]], [-x, b[1], b[0]], [x, b[1], b[0]]],
+			[0, dz, -dy])
+	_face(out, [[x, foot, front], [-x, foot, front], [-x, h, front], [x, h, front]],
+		[0, 0, -1])
+	_face(out, [[x, 0, back], [x, h, back], [-x, h, back], [-x, 0, back]], [0, 0, 1])
+	for side: float in [x, -x]:
+		var way: float = signf(side)
+		for n: int in top.size() - 1:
+			var a: Array = top[n]
+			var b: Array = top[n + 1]
+			_face(out, [[side, a[1], a[0]], [side, b[1], b[0]], [side, h, b[0]],
+				[side, h, a[0]]], [way, 0, 0])
+	if flat > 0:
+		_outline(out, [[x, 0, back], [-x, 0, back], [-x, 0, edge], [x, 0, edge]])
+	else:
+		_line(out, [x, 0, back], [-x, 0, back])
+	_line(out, [x, foot, front], [-x, foot, front])
+	_line(out, [x, h, front], [-x, h, front])
+	_line(out, [x, h, back], [-x, h, back])
+	for side: float in [x, -x]:
+		_line(out, [side, 0, back], [side, h, back])
+		_line(out, [side, foot, front], [side, h, front])
+		_line(out, [side, h, back], [side, h, front])
+		for n: int in profile.size() - 1:
+			var a: Array = profile[n]
+			var b: Array = profile[n + 1]
+			_line(out, [side, a[1], a[0]], [side, b[1], b[0]])
+
+	# The cavity, its ceiling four LDU under the top all the way along.
+	var ix: float = x - WALL
+	var ib: float = back - WALL
+	var iff: float = front + WALL
+	var ceiling: Callable = func(at: float) -> float:
+		return TOP + curve_at(spec, at)
+	var inside: Array = [[ib, ceiling.call(ib)]]
+	for point: Array in top:
+		if float(point[0]) < ib and float(point[0]) > iff:
+			inside.append([point[0], TOP + float(point[1])])
+	inside.append([iff, ceiling.call(iff)])
+	out.append("0 // Cavity")
+	_rim(out, h, -x, x, front, back, -ix, ix, iff, ib)
+	for n: int in inside.size() - 1:
+		var a: Array = inside[n]
+		var b: Array = inside[n + 1]
+		var dz: float = float(b[0]) - float(a[0])
+		var dy: float = float(b[1]) - float(a[1])
+		_face(out, [[ix, a[1], a[0]], [-ix, a[1], a[0]], [-ix, b[1], b[0]], [ix, b[1], b[0]]],
+			[0, -dz, dy])
+	var first: Array = inside[0]
+	var last: Array = inside[inside.size() - 1]
+	_face(out, [[ix, first[1], ib], [ix, h, ib], [-ix, h, ib], [-ix, first[1], ib]],
+		[0, 0, -1])
+	_face(out, [[ix, last[1], iff], [-ix, last[1], iff], [-ix, h, iff], [ix, h, iff]],
+		[0, 0, 1])
+	for side: float in [ix, -ix]:
+		var inward: float = -signf(side)
+		for n: int in inside.size() - 1:
+			var a: Array = inside[n]
+			var b: Array = inside[n + 1]
+			_face(out, [[side, a[1], a[0]], [side, b[1], b[0]], [side, h, b[0]],
+				[side, h, a[0]]], [inward, 0, 0])
+	_line(out, [ix, first[1], ib], [-ix, first[1], ib])
+	_line(out, [ix, last[1], iff], [-ix, last[1], iff])
+	for side: float in [ix, -ix]:
+		_line(out, [side, first[1], ib], [side, h, ib])
+		_line(out, [side, last[1], iff], [side, h, iff])
+	_underside(out, spec.across, spec.deep, 0.0, 0.0, h, ceiling)
+
+
+## A Technic brick: 3700, 3701 and the rest of the 1 x N bricks with holes,
+## at any length. A hole between every two studs (one under the stud of a
+## 1 x 1, as 6541's), each a 12 LDU bore with a 16 LDU mouth counterbored
+## into both faces — peghole.dat, as the library draws every pin hole — so
+## a Technic pin goes through it.
+##
+## The library's bricks are hollow round each hole; this one is solid from
+## the top to 18 LDU down, under the holes, and hollow below that for the
+## studs of the part it stands on, with a pin under each hole as 3700 has.
+## The same outside, the same holes and the same clutch, and nothing for a
+## part to be pushed into.
+static func _technic(spec: Spec, out: PackedStringArray) -> void:
+	var n: int = spec.across
+	var x: float = n * STUD * 0.5
+	var z: float = STUD * 0.5
+	var h: float = 3 * PLATE
+	var holes: Array[float] = holes_of(spec)
+	if spec.studs:
+		_studs_on_top(out, n, 1, 0.0, 0.0, 0.0)
+	out.append("0 // Top and ends")
+	_face(out, [[x, 0, z], [-x, 0, z], [-x, 0, -z], [x, 0, -z]], [0, -1, 0])
+	for side: float in [x, -x]:
+		_face(out, [[side, 0, -z], [side, 0, z], [side, h, z], [side, h, -z]],
+			[signf(side), 0, 0])
+	_outline(out, [[x, 0, z], [-x, 0, z], [-x, 0, -z], [x, 0, -z]])
+	for side: float in [x, -x]:
+		_line(out, [side, 0, -z], [side, h, -z])
+		_line(out, [side, 0, z], [side, h, z])
+	out.append("0 // Faces, with a mouth for every hole")
+	var top_of_mouth: float = HOLE_Y - MOUTH
+	var foot_of_mouth: float = HOLE_Y + MOUTH
+	for face_z: float in [-z, z]:
+		var out_way: float = signf(face_z)
+		_face(out, [[x, 0, face_z], [-x, 0, face_z], [-x, top_of_mouth, face_z],
+			[x, top_of_mouth, face_z]], [0, 0, out_way])
+		_face(out, [[x, foot_of_mouth, face_z], [-x, foot_of_mouth, face_z],
+			[-x, h, face_z], [x, h, face_z]], [0, 0, out_way])
+		var from: float = -x
+		for c: float in holes:
+			if c - MOUTH > from:
+				_face(out, [[from, top_of_mouth, face_z], [c - MOUTH, top_of_mouth, face_z],
+					[c - MOUTH, foot_of_mouth, face_z], [from, foot_of_mouth, face_z]],
+					[0, 0, out_way])
+			from = c + MOUTH
+		if x > from:
+			_face(out, [[from, top_of_mouth, face_z], [x, top_of_mouth, face_z],
+				[x, foot_of_mouth, face_z], [from, foot_of_mouth, face_z]], [0, 0, out_way])
+		_line(out, [x, h, face_z], [-x, h, face_z])
+	for c: float in holes:
+		# The square round each mouth, less the mouth: 4-4ndis, facing out
+		# of the face. Then peghole.dat, which counterbores the mouth two
+		# LDU in, and a bore through between the two.
+		out.append(_ref(c, HOLE_Y, -z, MOUTH, 0, 0, 0, 0, -MOUTH, 0, 1, 0, "4-4ndis.dat"))
+		out.append(_ref(c, HOLE_Y, z, MOUTH, 0, 0, 0, 0, MOUTH, 0, -1, 0, "4-4ndis.dat"))
+		# The back one first, as 3700 has them: the merged hole takes the
+		# axis of the face it sorts first by, and so has 3700's.
+		out.append(_ref(c, HOLE_Y, z, 1, 0, 0, 0, 0, 1, 0, -1, 0, "peghole.dat"))
+		out.append(_ref(c, HOLE_Y, -z, 1, 0, 0, 0, 0, -1, 0, 1, 0, "peghole.dat"))
+		out.append("0 BFC INVERTNEXT")
+		out.append(_ref(c, HOLE_Y, -z + 2.0, BORE, 0, 0, 0, 0, -BORE, 0, 2.0 * (z - 2.0), 0,
+			"4-4cyli.dat"))
+	out.append("0 // Underneath: a cavity for studs, and a pin under each hole")
+	_rim(out, h, -x, x, -z, z, -x + WALL, x - WALL, -z + WALL, z - WALL)
+	out.append("0 BFC INVERTNEXT")
+	out.append(_ref(0, h, 0, x - WALL, 0, 0, 0, -(h - HOLE_FLOOR), 0, 0, 0, z - WALL,
+		"box5.dat"))
+	if n >= 2:
+		for c: float in holes:
+			out.append(_ref(c, HOLE_FLOOR, 0, 1, 0, 0, 0, -(h - HOLE_FLOOR) / 4.0, 0,
+				0, 0, 1, "stud3.dat"))
+
+
+## Where a Technic brick's holes are along it, in LDU from its middle: one
+## between every two studs, or the one under a 1 x 1's stud.
+static func holes_of(spec: Spec) -> Array[float]:
+	var holes: Array[float] = []
+	var x: float = spec.across * STUD * 0.5
+	if spec.across == 1:
+		holes.append(0.0)
+	else:
+		for i: int in range(1, spec.across):
+			holes.append(-x + i * STUD)
+	return holes
 
 
 ## The sixteen points LDraw's round primitives are drawn on, as written in

@@ -260,6 +260,11 @@ def extract(
     """
     found: list[Connection] = []
     _walk(library, name, Matrix.identity(), found, 0, max_depth, set())
+    # A part made from another's mesh in the app (src/parts/part_editor.gd)
+    # states its connectors in meta lines of its own, after whatever its
+    # primitives give; PartForge reads them the same way, in the same place.
+    said = said_connectors(library, name)
+    found.extend(c for c in said if c.kind not in _ROUND_KINDS)
 
     # Coincident duplicates happen where a part references both a stud and
     # a decorated version of it at the same spot.
@@ -271,7 +276,44 @@ def extract(
             seen.add(k)
             unique.append(connection)
 
-    return _merge_half_holes(unique) + rounds(library, name, max_depth=max_depth)
+    return (_merge_half_holes(unique) + rounds(library, name, max_depth=max_depth)
+            + [c for c in said if c.kind in _ROUND_KINDS])
+
+
+## The meta line a part carries its own connectors in:
+##   0 !BRICKWORKS CONNECTOR kind gender x y z ax ay az [length radius]
+## in the part's LDraw axes, a round (shaft or bore) with its length and
+## radius. Written by the app for a part changed from another's mesh,
+## whose triangles no longer say where its studs and holes are.
+CONNECTOR_META = "!BRICKWORKS"
+_ROUND_KINDS = (ConnectorKind.SHAFT, ConnectorKind.BORE)
+
+
+def said_connectors(library: Library, name: str) -> list[Connection]:
+    """The connectors a part file states for itself, in file order."""
+    ldfile = library.get(name, Detail.STANDARD)
+    out: list[Connection] = []
+    if ldfile is None:
+        return out
+    for command in ldfile.commands:
+        if not isinstance(command, MetaLine) or command.keyword != CONNECTOR_META:
+            continue
+        words = command.text.split()
+        if len(words) < 9 or words[0].upper() != "CONNECTOR":
+            continue
+        kind = ConnectorKind(words[1])
+        numbers = [float(w) for w in words[3:9]]
+        length = radius = 0.0
+        if kind in _ROUND_KINDS:
+            if len(words) < 11:
+                continue
+            length, radius = float(words[9]), float(words[10])
+        out.append(Connection(
+            kind=kind, gender=Gender(words[2]),
+            position=Vec3(numbers[0], numbers[1], numbers[2]),
+            axis=Vec3(numbers[3], numbers[4], numbers[5]),
+            source="meta", length=length, radius=radius))
+    return out
 
 
 def _merge_half_holes(connections: list[Connection]) -> list[Connection]:
