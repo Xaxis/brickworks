@@ -716,6 +716,56 @@ const KEY_SLIDE_PER_SECOND := 0.6
 const KEY_ZOOM_PER_SECOND := 3.0
 
 
+## A drag's worth of turning, sliding or zooming from something that is
+## not a held button the camera saw go down: the view cube's arrows and
+## its pan and zoom pads (ViewCube). In screen pixels, as a drag is.
+func turn_by_drag(by: Vector2) -> void:
+	_note("orbit")
+	_turn_by(by, 0.01)
+
+
+func slide_by_drag(by: Vector2) -> void:
+	_note("slide")
+	_slide_by(by)
+
+
+func zoom_by_drag(by: float, at: Vector2 = Vector2.INF) -> void:
+	_zoom_by(exp(by * 0.01), at)
+
+
+## Look at the focus from a direction, from the focus towards the eye: the
+## view cube's faces, edges and corners. Straight up and down stop at the
+## same limit a drag does.
+func look_from(direction: Vector3) -> void:
+	if direction.length_squared() < 0.0001:
+		return
+	var way: Vector3 = direction.normalized()
+	_target_pitch = clampf(asin(clampf(way.y, -1.0, 1.0)), -_PITCH_LIMIT, _PITCH_LIMIT)
+	if Vector2(way.x, way.z).length() > 0.001:
+		# The nearest turn to the one already taken, so the view swings
+		# the short way round rather than spinning back through zero.
+		var aim: float = atan2(way.x, way.z)
+		_target_yaw = aim + TAU * roundf((_target_yaw - aim) / TAU)
+
+
+## How far the view has turned round in all, in radians, without wrapping:
+## a browser check turning it "all the way round" reads it.
+func yaw_turned() -> float:
+	return _target_yaw
+
+
+func pitch_now() -> float:
+	return _target_pitch
+
+
+func distance_now() -> float:
+	return _target_distance
+
+
+func focus_now() -> Vector3:
+	return _target_focus
+
+
 ## One step in or out, as a wheel notch is, towards the middle of the view.
 func key_zoom(steps: int) -> void:
 	if steps == 0:

@@ -332,9 +332,9 @@ func _hide_and_isolate() -> void:
 	var pair: Array = _bricks_near(Vector3(-60, 0, 20))
 	_select_only(pair)
 	await _frames(2)
-	await _key(KEY_H)
+	await _key(KEY_H, true)
 	var hidden: bool = pair.all(func(b: int) -> bool: return _world.get_brick(b).hidden)
-	_check("H hides the selection", hidden and _builder.selection.is_empty())
+	_check("Ctrl-H hides the selection", hidden and _builder.selection.is_empty())
 	_check("...without taking it off the model (%d parts)" % _count(), _count() == 4)
 	# The ground under the hidden pair: the pointer reaches it through them.
 	var where: Vector2 = _screen(Vector3(-60, 0, 20))
@@ -348,8 +348,8 @@ func _hide_and_isolate() -> void:
 	_check("Ctrl-A takes only what can be seen (%d)" % _builder.selection.size(),
 		_builder.selection.size() == 2)
 	await _key(KEY_ESCAPE)
-	await _key(KEY_H)
-	_check("H with nothing selected shows everything again",
+	await _key(KEY_H, true)
+	_check("Ctrl-H with nothing selected shows everything again",
 		_model().all(func(b: BrickWorld.Brick) -> bool: return not b.hidden))
 	var other: Array = _bricks_near(Vector3(20, 0, 20))
 	_select_only(other)

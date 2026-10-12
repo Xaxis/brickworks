@@ -17,7 +17,7 @@
       "kind": "ui",
       "label": "box select",
       "entry": "src/ui/marquee.gd",
-      "reach": "godot --path .  (drag on the baseplate)",
+      "reach": "godot --path .  (Ctrl-drag on the baseplate)",
       "area": "building"
     },
     {
@@ -747,6 +747,20 @@
       "entry": "src/ui/shell_prefs.gd",
       "reach": "godot --path .  (fold a panel, change the snap, quit and start again)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "left-button navigation",
+      "entry": "src/main.gd",
+      "reach": "node tools/web/nav_flow.mjs --url=<a preview>/app --bypass=…   (or godot --path .: drag on nothing, Space/Alt-drag, O H Z F)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "view cube",
+      "entry": "src/ui/view_cube.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
+      "area": "view"
     },
     {
       "kind": "ui",

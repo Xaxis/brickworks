@@ -134,14 +134,32 @@ func _run() -> void:
 func _mouse() -> void:
 	print("  the mouse")
 
-	# The gesture everyone tries first.
+	# The gesture everyone tries first: it turns the view, and places and
+	# selects nothing. With Ctrl it draws a box.
 	var before: int = _world.brick_count()
 	_builder.clear_selection()
+	var yaw0: float = _camera._target_yaw
+	var pitch0: float = _camera._target_pitch
+	var focus0: Vector3 = _camera._target_focus
+	var distance0: float = _camera._target_distance
 	await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(300.0, 160.0),
 		_middle + Vector2(300.0, 160.0))
 	_check("a left drag places nothing", _world.brick_count() == before)
-	_check("a left drag draws a box that catches bricks",
-		_builder.selection.size() > 0)
+	_check("...selects nothing", _builder.selection.is_empty())
+	_check("...and turns the view (%.2f rad)" % (_camera._target_yaw - yaw0),
+		absf(_camera._target_yaw - yaw0) > 0.3)
+	# Back to where it was, so the clicks below land on the model.
+	_camera._target_yaw = yaw0
+	_camera._target_pitch = pitch0
+	_camera._target_focus = focus0
+	_camera._target_distance = distance0
+	_camera._apply(1.0)
+	await process_frame
+	await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(300.0, 160.0),
+		_middle + Vector2(300.0, 160.0), true)
+	_check("Ctrl and a left drag draw a box that catches bricks",
+		_builder.selection.size() > 0 and _world.brick_count() == before)
+	_check("...without turning the view", is_equal_approx(_camera._target_yaw, yaw0))
 	_builder.clear_selection()
 
 	before = _world.brick_count()
@@ -200,7 +218,7 @@ func _mouse() -> void:
 		_check("the corner to let go on is over a panel too",
 			_main._over_panel_at(corner))
 		await _drag(MOUSE_BUTTON_LEFT, _middle - Vector2(320.0, 240.0),
-			corner)
+			corner, true)
 		# What actually goes wrong is that the selection silently does
 		# not happen, so that is what to ask about. Asking only whether
 		# the box stopped being drawn was not enough: the next press
@@ -333,9 +351,9 @@ func _keyboard() -> void:
 			or not is_equal_approx(_camera._target_yaw, 0.0))
 
 	var square: bool = _camera.is_square_on()
-	await _key(KEY_O)
-	_check("o toggles square-on", _camera.is_square_on() != square)
-	await _key(KEY_O)
+	await _key(KEY_QUOTELEFT)
+	_check("` toggles square-on", _camera.is_square_on() != square)
+	await _key(KEY_QUOTELEFT)
 
 
 ## Wait until events actually arrive, by sending one and watching.

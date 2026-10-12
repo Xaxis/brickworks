@@ -101,7 +101,7 @@ static func for_touch() -> Array[Binding]:
 ## something the handler does not do.
 ##
 ## Six and a pointer, which fits one row at any width worth supporting.
-const ON_THE_STRIP := ["click", "drag", "right-drag", "middle-drag", "scroll", "Q"]
+const ON_THE_STRIP := ["click", "drag", "shift-drag", "space-drag", "scroll", "Q"]
 
 
 ## What the strip along the bottom shows: the handful somebody reaches
@@ -138,8 +138,10 @@ static func for_keyboard() -> Array[Binding]:
 		# until let go, as in Studio: the left button acts, the right and
 		# the middle look.
 		Binding.new(["click"], "select; with a part in hand, put it down", "place"),
-		Binding.new(["drag"], "move a part, or box round several", "box"),
-		Binding.new(["%s-drag" % _hold()], "copy a part to where it is let go"),
+		# A drag never places: on a part with Select it moves the part,
+		# anywhere else (or with a part in hand) it turns the view.
+		Binding.new(["drag"], "on a part, move it; anywhere else, turn the view", "orbit"),
+		Binding.new(["%s-drag" % _hold()], "copy a part; on nothing, draw a box round several", "box"),
 		Binding.new(["alt-click", "G"], "take that part into hand"),
 		Binding.new(["Q"], "the last part back in hand"),
 		Binding.new(["right-click"], "let go of the part in hand"),
@@ -172,7 +174,7 @@ static func for_keyboard() -> Array[Binding]:
 			"move the selection; with none, turn or slide the view"),
 		Binding.new(["Page Up", "Page Down"], "raise or lower the selection"),
 		Binding.new(["Delete"], "remove the selection"),
-		Binding.new(["H"], "hide the selection; with none, show all"),
+		Binding.new(["%s-H" % _hold()], "hide the selection; with none, show all"),
 		Binding.new(["shift-H"], "show only the selection"),
 		Binding.new(["alt-H"], "show everything"),
 		Binding.new(["V"], "the Select tool"),
@@ -214,8 +216,16 @@ static func _view_bindings() -> Array:
 	var out: Array = []
 	# Turn first among the view verbs, because it is the one people
 	# reach for and the one that had nothing bound to it.
-	if ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT) == "turn":
-		out.append(Binding.new(["drag on nothing"], "turn", "orbit"))
+	# With the left button alone: a drag turns, and these change what it
+	# does, in any tool and with a part in hand.
+	out.append_array([
+		Binding.new(["shift-drag"], "slide", "slide"),
+		Binding.new(["space-drag"], "slide, whatever is under the pointer", "slide"),
+		Binding.new(["alt-drag"], "turn, whatever is under the pointer", "orbit"),
+		Binding.new(["alt-shift-drag"], "slide", "slide"),
+		Binding.new(["%s-alt-drag" % _hold()], "zoom", "zoom_in"),
+		Binding.new(["O", "H", "Z"], "the Orbit, Pan and Zoom tools: a drag only moves the view"),
+	])
 	out.append(Binding.new(["right-drag", "2 fingers"], right, cursor_of.call(right)))
 	out.append(Binding.new(["shift-right-drag"], ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT, true),
 		cursor_of.call(ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT, true))))
@@ -233,7 +243,7 @@ static func _view_bindings() -> Array:
 		Binding.new(["shift-Q", "shift-E"], "turn the model"),
 		Binding.new(["F"], "frame the selection, or everything"),
 		Binding.new(["U"], "measure between two points"),
-		Binding.new(["O", "`"], "square on, and back to perspective"),
+		Binding.new(["`"], "square on, and back to perspective"),
 		Binding.new(["1", "2", "3", "4", "5", "6", "7"],
 			"front, back, left, right, top, bottom, three-quarter (the keypad too)"),
 		Binding.new(["0"], "the usual view"),
@@ -289,7 +299,7 @@ const CAPS := {"space": "Space", "shift": "Shift", "alt": "Alt"}
 static func pieces(key: String, by_touch: bool = false) -> Array:
 	var out: Array = []
 	var rest: String = key
-	var holding: Array[String] = ["shift", "alt", _hold()]
+	var holding: Array[String] = ["shift", "alt", "space", _hold()]
 	var found: bool = true
 	while found:
 		found = false

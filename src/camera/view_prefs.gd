@@ -30,8 +30,12 @@ static var invert_zoom: bool = false
 ##   "mecabricks"  A left drag on empty space turns, the right button
 ##                 slides and the middle button zooms.
 ##
-## The left button acts on the model in all three: select, move, place.
-## Only Mecabricks takes it for looking, and only on empty space.
+## The left button clicks on the model in all three: select, place, and a
+## drag that starts on a part moves it. A left drag anywhere else turns the
+## view (shift slides it), in all three and with a part in hand too: asked
+## for by the owner, because a trackpad has no middle button and a drag
+## that put a brick down where it ended was a drag nobody dared make. A box
+## is drawn with Ctrl (Cmd on a Mac) held.
 const PRESETS: Array[String] = ["studio", "blender", "mecabricks"]
 static var preset: String = "studio"
 
@@ -72,9 +76,9 @@ static func keep() -> void:
 	file.save(WHERE)
 
 
-## What a drag with each button does: "turn", "slide", "zoom", or "" for
-## the left button where it acts on the model. Shift gives the other of
-## turning and sliding.
+## What a drag with each button does: "turn", "slide" or "zoom" — for the
+## left button, a drag that does not start on a part with the Select tool.
+## Shift gives the other of turning and sliding.
 static func drag_verb(button: int, shift: bool = false) -> String:
 	var verb: String = ""
 	match button:
@@ -83,7 +87,7 @@ static func drag_verb(button: int, shift: bool = false) -> String:
 		MOUSE_BUTTON_MIDDLE:
 			verb = {"studio": "slide", "blender": "turn", "mecabricks": "zoom"}[preset]
 		MOUSE_BUTTON_LEFT:
-			verb = "turn" if preset == "mecabricks" else ""
+			verb = "turn"
 	if shift and verb == "turn":
 		return "slide"
 	if shift and (verb == "slide" or verb == "zoom"):

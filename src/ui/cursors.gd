@@ -77,6 +77,10 @@ class Situation extends RefCounted:
 	var removing: bool = false
 	## C is held, which paints what is under the pointer.
 	var painting: bool = false
+	## What a left drag will do to the view whatever is under the pointer:
+	## a view tool is on, or Space or Alt is held. "orbit", "slide",
+	## "zoom_in" or "".
+	var tool: String = ""
 	## The view moved a moment ago without a button: the wheel, a
 	## trackpad, a pinch, a key. "orbit", "slide", "zoom_in", "zoom_out"
 	## or "".
@@ -109,6 +113,8 @@ static func choose(now: Situation) -> String:
 		return "remove"
 	if now.painting:
 		return "paint"
+	if not now.tool.is_empty():
+		return now.tool
 	if not now.moment.is_empty():
 		return now.moment
 	if now.playing:

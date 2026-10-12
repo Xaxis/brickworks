@@ -70,7 +70,7 @@ func _ready() -> void:
 	anchor_right = 1.0
 	anchor_top = 0.0
 	anchor_bottom = 0.0
-	var top: float = AxisGizmo.size_for() + 14.0 + 10.0
+	var top: float = ViewCube.size_for().y + 14.0 + 10.0
 	offset_left = -14.0 - WIDE
 	offset_right = -14.0
 	offset_top = top

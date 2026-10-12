@@ -107,17 +107,29 @@ func handle_key(key: InputEventKey) -> bool:
 				mirror()
 				return true
 		KEY_H:
-			if held:
-				return false
+			# H alone is the Pan tool (the owner's hand), so hiding is Ctrl-H.
 			if key.alt_pressed:
 				show_all()
 			elif key.shift_pressed:
 				isolate()
-			elif builder.selection.is_empty():
-				show_all()
+			elif held:
+				if builder.selection.is_empty():
+					show_all()
+				else:
+					hide_selection()
 			else:
-				hide_selection()
+				view_tool("pan")
 			return true
+		KEY_O:
+			# O the Orbit tool, Z the Zoom tool: the view's own tools, whose
+			# left drag only moves the view. Ctrl-O is Open, Ctrl-Z undo.
+			if not held and not key.alt_pressed and not key.shift_pressed:
+				view_tool("orbit")
+				return true
+		KEY_Z:
+			if not held and not key.alt_pressed and not key.shift_pressed:
+				view_tool("zoom")
+				return true
 	return false
 
 
@@ -685,7 +697,7 @@ func unlock_all() -> int:
 ## so turning one brick was three gestures: Shift-click it, press R, press
 ## Escape. Studio and Mecabricks both have tools a click acts through.
 const MODES: Array[String] = ["select", "place", "move", "rotate", "hinge",
-	"clone", "paint", "hide", "delete"]
+	"clone", "paint", "hide", "delete", "orbit", "pan", "zoom"]
 ## Select is where the app rests, as Studio does: nothing in hand, a click
 ## picks a part out and a drag moves it. A part chosen from the bin (or Q,
 ## or Alt-click on one in the model) is in hand — "place" — until Escape
@@ -737,6 +749,30 @@ func set_mode(to: String) -> void:
 	aim_again.call()
 
 
+## The view tools: while one is on, the left button only turns, slides or
+## zooms the view, whatever is under it. Esc or the Select tool (V) is the
+## way back.
+const VIEW_TOOLS: Dictionary = {"orbit": "turn", "pan": "slide", "zoom": "zoom"}
+
+
+func is_view_tool() -> bool:
+	return VIEW_TOOLS.has(mode)
+
+
+## What a left drag does with the view tool on: "turn", "slide", "zoom".
+func view_verb() -> String:
+	return str(VIEW_TOOLS.get(mode, ""))
+
+
+func view_tool(name: String) -> void:
+	if builder.is_carrying():
+		put_away()
+	builder.drop_figure()
+	set_mode(name)
+	say.call("%s: drag to %s the view — Esc or V for Select" % [name.capitalize(),
+		{"orbit": "turn", "pan": "slide", "zoom": "zoom"}[name]])
+
+
 ## The part in hand again, the last one chosen: Q, as the coordinator's
 ## brief and Studio's "repeat" both have it.
 func take_last_part() -> void:
@@ -777,30 +813,58 @@ func drag_start(brick_id: int, copy: bool) -> bool:
 	return lift() > 0
 
 
-## What the active tool does, for the status bar.
+## Whether this is a Mac, where Cmd is the held key and Ctrl-click is a
+## right click — the browser's Mac as well as the desktop's.
+static func on_mac() -> bool:
+	return OS.has_feature("macos") or OS.has_feature("web_macos")
+
+
+## The held key, as a Mac or anything else names it.
+static func held_key() -> String:
+	return "Cmd" if on_mac() else "Ctrl"
+
+
+## What the mouse will do now, in one line, for the status bar: the tool,
+## the keys held, and what is under the pointer.
 func hint() -> String:
+	var held: String = held_key()
+	if is_view_tool():
+		return {"orbit": "Orbit: drag turns the view", "pan": "Pan: drag slides the view",
+			"zoom": "Zoom: drag up or down zooms, a click zooms in (Shift-click out)"}[mode] \
+			+ " — Esc or V back to Select"
+	if Input.is_key_pressed(KEY_SPACE):
+		return "Space held: drag slides the view — let go of Space to carry on"
+	if Input.is_key_pressed(KEY_ALT):
+		return "Alt held: drag turns the view, with Shift slides it, with %s zooms; a click takes that part into hand" % held
+	var over: int = brick_at(camera.get_viewport().get_mouse_position()) \
+		if camera != null and camera.is_inside_tree() else 0
+	var look: String = "drag turns the view, Shift-drag slides it, scroll zooms"
 	match mode:
 		"select":
-			return "Select: click a part, drag it to move it (Ctrl-drag copies), drag a box round several; Q takes the last part"
+			if builder.is_carrying():
+				return "Select: a click puts it down · %s · Esc puts it back" % look
+			if over != 0:
+				return "Select: click selects it · drag moves it · %s-drag copies it · double-click edits inside a sub-assembly" % held
+			return "Select: click lets go of the selection · %s · %s-drag draws a box" % [look, held]
 		"place":
 			var info: PartLibrary.PartInfo = library.parts.get(builder.held_part) \
 				if library != null else null
-			return "Placing %s: click to put one down, and again for the next — Esc or a right click stops" % (
-				Inventory._tidy(info.name) if info != null else builder.held_part)
+			return "Placing %s: click puts one down · %s, the part stays in hand · Esc lets go" % [
+				Inventory._tidy(info.name) if info != null else builder.held_part, look]
 		"move":
-			return "Move: click a part to pick it up (the whole selection, if it is in it), click again to put it down"
+			return "Move: click a part to pick it up (the selection with it), click again to put it down · %s" % look
 		"rotate":
-			return "Rotate: click a part to turn it %d° (Shift-click turns it back)" % roundi(turn_step)
+			return "Rotate: click a part to turn it %d° (Shift-click back) · %s" % [roundi(turn_step), look]
 		"hinge":
-			return "Hinge: click a part on a hinge, clip or turntable to swing it %d° (Shift-click swings it back)" % roundi(SWING)
+			return "Hinge: click a part on a hinge, clip or turntable to swing it %d° · %s" % [roundi(SWING), look]
 		"clone":
-			return "Clone: click a part to hold a copy of it, then click where the copy goes"
+			return "Clone: click a part to hold a copy of it, then click where it goes · %s" % look
 		"paint":
-			return "Paint: click a part to paint it the colour in hand"
+			return "Paint: click a part to paint it the colour in hand · %s" % look
 		"hide":
-			return "Hide: click a part to hide it — Alt-H shows everything again"
+			return "Hide: click a part to hide it — Alt-H shows everything · %s" % look
 		"delete":
-			return "Delete: click a part to take it off"
+			return "Delete: click a part to take it off · %s" % look
 	return ""
 
 

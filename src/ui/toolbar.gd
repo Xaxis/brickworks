@@ -38,8 +38,14 @@ const GROUPS: Array = [
 	[3, [["copy", "copy"], ["paste", "paste"], ["mirror", "mirror"], ["select", "select"],
 		["show_all", "show_all"], ["make_submodel", "submodel"]]],
 	[5, [["snap", "snap"], ["turn", "angle"]]],
-	[2, [["grid", "grid"], ["ortho", "ortho"], ["fit_model", "fit"], ["view_iso", "view_iso"],
-		["view_front", "view_front"], ["view_top", "view_top"]]],
+	# The view's own tools, labelled as such: a left drag with one of these
+	# on only moves the view. Asked for by the owner, for a mouse or a
+	# trackpad with no middle button.
+	# The straight-on views and square-on are the view cube's and the View
+	# menu's now (and the number keys and `), which is what keeps the
+	# toolbar whole on a 1280-wide screen.
+	[8, [["mode_orbit", "orbit"], ["mode_pan", "pan"], ["mode_zoom", "zoom"], ["fit", "fit"],
+		["grid", "grid"]], "View"],
 	[6, [["measure", "measure"], ["panel_properties", "properties"]]],
 	[4, [["timeline", "timeline"], ["instructions", "booklet"], ["parts_list", "parts_list"]]],
 ]
@@ -47,8 +53,8 @@ const GROUPS: Array = [
 ## What a tool button's tooltip says beyond its name, where the command's
 ## own words are not enough.
 const SAYS: Dictionary = {
-	"mode_place": "The last part back in hand: a click puts one down, and the next. Esc or a right click lets go",
-	"mode_select": "Where the app rests. Click a part to select it, drag it to move it (Ctrl-drag copies it), drag a box round several, Alt-click takes it into hand",
+	"mode_place": "The last part back in hand: a click puts one down, and the next; a drag turns the view and puts nothing down. Esc or a right click lets go",
+	"mode_select": "Where the app rests. Click a part to select it, drag it to move it (Ctrl-drag copies it), drag anywhere else to turn the view, Ctrl-drag a box round several, Alt-click takes a part into hand",
 	"mode_move": "Click a part to pick it up — the whole selection, if it is in it — and click again to put it down",
 	"mode_rotate": "Click a part to turn it by the turn step; Shift-click turns it back",
 	"mode_hinge": "Click a part on a hinge, clip or turntable to swing it about the joint",
@@ -56,6 +62,10 @@ const SAYS: Dictionary = {
 	"mode_paint": "Click a part to paint it the colour in hand",
 	"mode_hide": "Click a part to hide it, to reach what is behind it",
 	"mode_delete": "Click a part to take it off",
+	"mode_orbit": "A left drag turns the view, wherever it starts. Esc or V is back to Select",
+	"mode_pan": "A left drag slides the view, wherever it starts. Esc or V is back to Select",
+	"mode_zoom": "A left drag up or down zooms; a click zooms in, Shift-click out. Esc or V is back to Select",
+	"fit": "Zoom to show the selection, or the whole model",
 	"history": "Every change so far, newest first: choose one to go back to before it",
 	"select": "Select by colour, by part, everything connected, or the opposite",
 	"snap": "What a part snaps to as it is put down, and how far the arrow keys move a selection",
@@ -101,6 +111,15 @@ func _ready() -> void:
 			line.modulate = Color(1, 1, 1, 0.45)
 			_row.add_child(line)
 			members.append(line)
+		if group.size() > 2:
+			var caption := Label.new()
+			caption.text = str(group[2])
+			caption.add_theme_font_size_override("font_size", 11)
+			caption.modulate = Color(1, 1, 1, 0.55)
+			caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_row.add_child(caption)
+			members.append(caption)
 		for item: Array in group[1]:
 			var made: Control = _item(str(item[0]), str(item[1]))
 			_row.add_child(made)
