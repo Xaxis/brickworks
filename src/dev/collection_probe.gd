@@ -220,6 +220,26 @@ func _wanted_list(library: PartLibrary) -> void:
 		"the Rebrickable CSV says the same")
 	_ok(Collection.bricklink_page("3001", 4, library).ends_with("?P=3001&idColor=5"),
 		"a part's BrickLink page names BrickLink's red (%s)" % Collection.bricklink_page("3001", 4, library))
+	# A ribbed hose laid along a bend is its segments in the model and one
+	# hose to buy: what is short of it is the hose, under the shops' numbers.
+	world.clear()
+	var laid: Flex.Laid = Flex.lay_swept("ribbed_hose", Flex.free_port(Vector3.ZERO, Vector3.BACK, 2.0),
+		Flex.free_port(Vector3(80, 0, 0), Vector3.BACK, 2.0), 180.0)
+	for piece: Dictionary in laid.pieces:
+		var brick: BrickWorld.Brick = world.get_brick(world.add_brick(str(piece["part"]), 0, piece["at"]))
+		brick.unit = "Ribbed Hose 9L#1"
+		brick.group = "Ribbed Hose 9L"
+	var hose: Inventory = Inventory.of(world, library)
+	_ok(Collection.needs_of(hose, library) == {"71917/0": 1},
+		"a hose of %d pieces needs one 71917 (%s)" % [laid.pieces.size(), str(Collection.needs_of(hose, library))])
+	var none: Inventory = Collection.shortfall_stock(hose,
+		Collection.shortfall(Collection.needs_of(hose, library), {}), library)
+	var hose_xml: String = str(ShopLists.bricklink_xml(none, library)["text"])
+	var hose_csv: String = str(ShopLists.rebrickable_csv(none)["text"])
+	_ok(hose_xml.contains("<ITEMID>78c09</ITEMID>") and hose_csv.contains("\n78c09,0,1\n"),
+		"short of it, both lists ask for BrickLink's and Rebrickable's 78c09")
+	_ok(Collection.bricklink_page("71917", 0, library).contains("?P=78c09&"),
+		"and its BrickLink page is 78c09's (%s)" % Collection.bricklink_page("71917", 0, library))
 	world.queue_free()
 
 

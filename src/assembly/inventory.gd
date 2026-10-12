@@ -48,6 +48,10 @@ class Lot extends RefCounted:
 	var each_grams: float = 0.0
 	## Made in the element maker: not a part anyone can order.
 	var custom: bool = false
+	## The numbers BrickLink and Rebrickable list the part under, which
+	## are not always LDraw's (PartLibrary.shop_part).
+	var bricklink_id: String = ""
+	var rebrickable_id: String = ""
 
 	func total_grams() -> float:
 		return each_grams * count
@@ -56,6 +60,13 @@ class Lot extends RefCounted:
 var lots: Array[Lot] = []
 var pieces: int = 0
 var grams: float = 0.0
+## The flexible items counted as one part: item path -> its Lot, and each
+## of their bricks -> its item's path. A hose laid along a bend is an end,
+## thirty rings and an end in the model and one hose in a shop.
+var items: Dictionary = {}
+var whole_of: Dictionary = {}
+## item path -> the id of its first piece, which stands for it in a step.
+var _first: Dictionary = {}
 
 
 func lot_count() -> int:
@@ -66,46 +77,31 @@ func lot_count() -> int:
 ##
 ## [param skip] names bricks that are not part of the build — the
 ## baseplate. Pass an empty dictionary to count it too.
+##
+## A ribbed hose, a pneumatic tube, a flexible axle or a string laid along
+## a bend is counted as the one part LEGO sells, of the length it was laid
+## as: ordering its segments would order parts nobody makes. A chain or a
+## tread is its links, which are what is sold.
 static func of(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> Inventory:
 	var inventory := Inventory.new()
 	var by_key: Dictionary = {}
 
+	var whole: Dictionary = _sold_whole(world, library, skip)
+	for path: String in whole:
+		var item: Dictionary = whole[path]
+		inventory.items[path] = inventory._add(by_key, library, str(item["part"]),
+			int(item["color"]))
+		var first: int = -1
+		for brick: BrickWorld.Brick in item["bricks"]:
+			inventory.whole_of[brick.id] = path
+			if first < 0 or brick.id < first:
+				first = brick.id
+		inventory._first[path] = first
 	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id):
+		if skip.has(brick.id) or inventory.whole_of.has(brick.id):
 			continue
-		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
-		var lot: Lot = by_key.get(key)
-		if lot == null:
-			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-			var color: PartLibrary.BrickColor = library.color(brick.color_code)
-			lot = Lot.new()
-			lot.part_id = brick.part_id
-			lot.name = _tidy(info.name if info != null else brick.part_id)
-			# A made part has no element number and no shop to buy it from:
-			# the list says so rather than leaving it to look like one LEGO
-			# makes.
-			if info != null and info.custom:
-				lot.name += " (custom element)"
-				lot.custom = true
-			lot.color_code = brick.color_code
-			lot.color_name = color.name if color != null else "colour %d" % brick.color_code
-			if color != null:
-				lot.rgb_hex = "%02x%02x%02x" % [
-					int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
-					int(color.rgb.b * 255.0)]
-				# A tyre in Rubber Black is sold as a Black one.
-				var plain: PartLibrary.BrickColor = library.color(
-					library.plain_code(brick.color_code))
-				lot.lego_colour = plain.lego_name
-				lot.rebrickable_colour = plain.rebrickable_id
-			lot.each_grams = Stability.grams(info) if info != null else 0.0
-			lot.element = library.element_for(brick.part_id, brick.color_code)
-			by_key[key] = lot
-			inventory.lots.append(lot)
-		lot.count += 1
-		inventory.pieces += 1
-		inventory.grams += lot.each_grams
+		inventory._add(by_key, library, brick.part_id, brick.color_code)
 
 	# Grouped by part, and the parts ordered by how many of them there
 	# are altogether.
@@ -135,6 +131,97 @@ static func of(world: BrickWorld, library: PartLibrary,
 		# list that reshuffles between exports cannot be diffed.
 		return a.color_name < b.color_name)
 	return inventory
+
+
+## The lot a brick is counted in, by its "part:colour" key. A flexible
+## item's first piece stands for the whole of it and the rest are "", so a
+## booklet step lists the hose once, where it goes in.
+func key_of(brick: BrickWorld.Brick) -> String:
+	var path: String = str(whole_of.get(brick.id, ""))
+	if path.is_empty():
+		return "%s:%d" % [brick.part_id, brick.color_code]
+	if int(_first[path]) != brick.id:
+		return ""
+	var lot: Lot = items[path]
+	return "%s:%d" % [lot.part_id, lot.color_code]
+
+
+## How many pieces [method of] would count, without making the list: what
+## the counts line says.
+static func pieces_in(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary = {}) -> int:
+	var count: int = world.brick_count()
+	for brick_id: int in skip:
+		if world.get_brick(brick_id) != null:
+			count -= 1
+	var whole: Dictionary = _sold_whole(world, library, skip)
+	for path: String in whole:
+		count -= (whole[path]["bricks"] as Array).size() - 1
+	return count
+
+
+## The flexible items sold as one part: item path -> {"part", "color",
+## "bricks"}. The colour is its pieces' own, the most of them where a file
+## has them in two.
+static func _sold_whole(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var laid: Dictionary = Flex.items_in(world, skip)
+	for path: String in laid:
+		var item: Dictionary = laid[path]
+		var pieces: Array = []
+		var colours: Dictionary = {}
+		for brick: BrickWorld.Brick in item["bricks"]:
+			pieces.append({"part": brick.part_id, "at": brick.transform})
+			colours[brick.color_code] = int(colours.get(brick.color_code, 0)) + 1
+		var part: String = Flex.real_part(library, str(item["kind"]), pieces)
+		if part.is_empty():
+			continue
+		var colour: int = int(colours.keys()[0])
+		for code: int in colours:
+			if int(colours[code]) > int(colours[colour]):
+				colour = code
+		out[path] = {"part": part, "color": colour, "bricks": item["bricks"]}
+	return out
+
+
+## One more of a part in a colour, in its lot.
+func _add(by_key: Dictionary, library: PartLibrary, part_id: String, color_code: int) -> Lot:
+	var key: String = "%s:%d" % [part_id, color_code]
+	var lot: Lot = by_key.get(key)
+	if lot == null:
+		var info: PartLibrary.PartInfo = library.parts.get(part_id)
+		var color: PartLibrary.BrickColor = library.color(color_code)
+		lot = Lot.new()
+		lot.part_id = part_id
+		lot.name = _tidy(info.name if info != null else part_id)
+		# A made part has no element number and no shop to buy it from:
+		# the list says so rather than leaving it to look like one LEGO
+		# makes.
+		if info != null and info.custom:
+			lot.name += " (custom element)"
+			lot.custom = true
+		lot.color_code = color_code
+		lot.color_name = color.name if color != null else "colour %d" % color_code
+		if color != null:
+			lot.rgb_hex = "%02x%02x%02x" % [
+				int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
+				int(color.rgb.b * 255.0)]
+			# A tyre in Rubber Black is sold as a Black one.
+			var plain: PartLibrary.BrickColor = library.color(
+				library.plain_code(color_code))
+			lot.lego_colour = plain.lego_name
+			lot.rebrickable_colour = plain.rebrickable_id
+		lot.each_grams = Stability.grams(info) if info != null else 0.0
+		lot.element = library.element_for(part_id, color_code)
+		lot.bricklink_id = library.shop_part(part_id, "BrickLink")
+		lot.rebrickable_id = library.shop_part(part_id, "Rebrickable")
+		by_key[key] = lot
+		lots.append(lot)
+	lot.count += 1
+	pieces += 1
+	grams += lot.each_grams
+	return lot
 
 
 ## LDraw pads names into columns — "Brick  2 x  4" — which reads as a

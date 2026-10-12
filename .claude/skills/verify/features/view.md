@@ -575,7 +575,9 @@ picture the assistant is shown.
   panel over the model's left edge so the pose is seen as it is set): a
   slider per joint — every sub-assembly with a shaft of one of its parts in a
   bore of a part outside it (`Builder._joint_of`, as J finds one), a hinge or a
-  turntable — from -180° to 180° about where it stood when posing began.
+  turntable — from -180° to 180° about where it stood when posing began. A
+  laid hose, tube, string or chain is never one (`Flex.kind_of`): its end pin
+  in a hole read as a hinge, and swung, the tube tore off its other hole.
   Dragging moves it live (`Poser.stand`, nothing to undo); letting go, or a
   click on the track, keeps it as one step ("posed Arm at 45°"), as far as it
   has room, pressing only on what it is joined to (`Poser.settle`, a bisection
@@ -655,6 +657,7 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows
 # the tab it opens, checks the booklet in it and prints it to booklet.pdf
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
+BW_BYPASS=$VERCEL_BYPASS node tools/web/booklet_flow.mjs --url=<preview>/app --out=shots/booklet_web   # the app's security policy: only a deployment sends it
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
 godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking a colour recolours something
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd

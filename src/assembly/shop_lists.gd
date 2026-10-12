@@ -15,7 +15,9 @@ extends RefCounted
 ## Colours are BrickLink's numbers (PartLibrary.bricklink_colour, from
 ## colors.json). A colour with no BrickLink number known is left off and
 ## named, never guessed: a guessed colour orders the wrong plastic. Item
-## numbers are LDraw's, which are BrickLink's for nearly every plain part;
+## numbers are BrickLink's where LDraw records them (Inventory.Lot.
+## bricklink_id: a ribbed hose 9L is 78c09 there and 71917 here), and
+## LDraw's otherwise, which are BrickLink's for nearly every plain part;
 ## BrickLink names the few it does not know when the list is uploaded, and
 ## they are on the app's own CSV to find by hand.
 static func bricklink_xml(stock: Inventory, library: PartLibrary) -> Dictionary:
@@ -34,7 +36,8 @@ static func bricklink_xml(stock: Inventory, library: PartLibrary) -> Dictionary:
 			continue
 		lines.append("  <ITEM>")
 		lines.append("    <ITEMTYPE>P</ITEMTYPE>")
-		lines.append("    <ITEMID>%s</ITEMID>" % _xml(lot.part_id))
+		lines.append("    <ITEMID>%s</ITEMID>" % _xml(
+			lot.bricklink_id if not lot.bricklink_id.is_empty() else lot.part_id))
 		lines.append("    <COLOR>%d</COLOR>" % colour)
 		lines.append("    <MINQTY>%d</MINQTY>" % lot.count)
 		lines.append("  </ITEM>")
@@ -58,7 +61,9 @@ static func why_left_off(made: Dictionary, shop: String) -> String:
 	return "; ".join(why)
 
 
-## Rebrickable's parts-list import: part, Rebrickable colour, quantity.
+## Rebrickable's parts-list import: part, Rebrickable colour, quantity. The
+## part by Rebrickable's number where LDraw records it (a 9L pneumatic tube
+## is 5102c09.375 there and 21826-f1 here).
 static func rebrickable_csv(stock: Inventory) -> Dictionary:
 	var rows := PackedStringArray(["Part,Color,Quantity"])
 	var left: int = 0
@@ -66,7 +71,8 @@ static func rebrickable_csv(stock: Inventory) -> Dictionary:
 		if lot.custom or lot.rebrickable_colour < 0:
 			left += 1
 			continue
-		rows.append("%s,%d,%d" % [lot.part_id, lot.rebrickable_colour, lot.count])
+		rows.append("%s,%d,%d" % [lot.rebrickable_id if not lot.rebrickable_id.is_empty()
+			else lot.part_id, lot.rebrickable_colour, lot.count])
 	return {"text": "\n".join(rows) + "\n", "left_out": left,
 		"lots": stock.lots.size() - left}
 

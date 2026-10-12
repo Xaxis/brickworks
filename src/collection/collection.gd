@@ -411,7 +411,8 @@ static func shortfall_stock(stock: Inventory, rows: Array, library: PartLibrary 
 			continue
 		var copy := Inventory.Lot.new()
 		for field: String in ["part_id", "name", "color_code", "color_name", "lego_colour",
-				"rebrickable_colour", "element", "rgb_hex", "each_grams", "custom"]:
+				"rebrickable_colour", "element", "rgb_hex", "each_grams", "custom",
+				"bricklink_id", "rebrickable_id"]:
 			copy.set(field, lot.get(field))
 		copy.count = mini(wanted, lot.count)
 		given[key] = int(given.get(key, 0)) + copy.count
@@ -421,13 +422,15 @@ static func shortfall_stock(stock: Inventory, rows: Array, library: PartLibrary 
 	return out
 
 
-## BrickLink's catalogue page for a part, in a colour where BrickLink has
-## a number for it. Linked rather than priced: BrickLink's prices are
+## BrickLink's catalogue page for a part, under BrickLink's number for it
+## (PartLibrary.shop_part), in a colour where BrickLink has a number for
+## it. Linked rather than priced: BrickLink's prices are
 ## behind its API's sign-up and its terms, and a page is what a buyer
 ## wants anyway.
 static func bricklink_page(part: String, colour: int, library: PartLibrary = null) -> String:
 	var number: int = library.bricklink_colour(colour) if library != null else -1
-	var url: String = "https://www.bricklink.com/v2/catalog/catalogitem.page?P=%s" % part.uri_encode()
+	var listed: String = library.shop_part(part, "BrickLink") if library != null else part
+	var url: String = "https://www.bricklink.com/v2/catalog/catalogitem.page?P=%s" % listed.uri_encode()
 	if number >= 0:
 		url += "&idColor=%d" % number
 	return url

@@ -255,7 +255,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   at, length the nearest real one's, the fewest bend points that lay it within
   a few LDU of where it lies. `window.brickworksFlex` says the stage, the item,
   and where on screen each connector, sprocket and bend point is. Probe:
-  `flex_ui_probe` (windowed).
+  `flex_ui_probe` (windowed). The parts list, the shop lists, the counts line,
+  the booklet and a shared link count a laid hose, tube, flexible axle or
+  string as the one part sold (`Flex.items_in`, `Flex.real_part`, see
+  [model-io](model-io.md)); a chain or a tread as its links.
 
 ## How to reach it
 
@@ -306,8 +309,9 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # stud off and the same clip or bar 2 LDU off the line refused by both
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 # a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
-# refused past its bend, undone; a chain round two gears by two clicks; saved,
-# reopened and reshaped from its pieces. Pictures in shots/flex/
+# refused past its bend, undone; Pose offering the laid tube no slider; a chain
+# round two gears by two clicks; saved, reopened and reshaped from its pieces.
+# Pictures in shots/flex/
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
 ```
 

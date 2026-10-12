@@ -161,6 +161,23 @@ func bricklink_colour(code: int) -> int:
 	return found.bricklink if found != null else -1
 
 
+## The number [param shop] ("BrickLink" or "Rebrickable") lists a part
+## under: the one LDraw records for it ("BrickLink 78c09", a ribbed hose
+## 9L that LDraw numbers 71917), else LDraw's own, less a formed shape's
+## "-f1", which is the same part to a shop.
+func shop_part(part_id: String, shop: String) -> String:
+	var info: PartInfo = parts.get(part_id)
+	if info != null:
+		var prefix: String = shop + " "
+		for word: String in info.keywords:
+			if word.begins_with(prefix) and word.get_slice_count(" ") == 2:
+				return word.get_slice(" ", 1)
+	var formed: int = part_id.rfind("-f")
+	if formed > 0 and part_id.substr(formed + 2).is_valid_int():
+		return part_id.substr(0, formed)
+	return part_id
+
+
 ## What a part is, without its geometry.
 class PartInfo extends RefCounted:
 	var id: String              ## LDraw number, e.g. "3001"

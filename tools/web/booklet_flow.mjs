@@ -25,6 +25,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "https://brickworks.diy/app";
+// A preview is behind Vercel's protection: the bypass, and a cookie for
+// what the page fetches after.
+const bypass = args.bypass || process.env.BW_BYPASS || "";
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = args.out || "shots/booklet_web";
 mkdirSync(out, { recursive: true });
 
@@ -35,7 +41,11 @@ const errors = [];
 const listen = (p, who) => {
   p.on("pageerror", (e) => errors.push(`${who}: ${String(e).slice(0, 200)}`));
   p.on("console", (m) => {
-    if (/SCRIPT ERROR|Parse Error|ERROR:/.test(m.text())) errors.push(`${who}: ${m.text().slice(0, 200)}`);
+    // A refusal by the security policy too: the booklet's tab is under the
+    // app's, and its Print once did nothing for that.
+    if (/SCRIPT ERROR|Parse Error|ERROR:|Content Security Policy/.test(m.text())) {
+      errors.push(`${who}: ${m.text().slice(0, 200)}`);
+    }
   });
 };
 listen(page, "app");
@@ -46,7 +56,7 @@ const check = (what, ok) => {
 };
 
 try {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
   const until = Date.now() + 300000;
   let at = null;
   while (!(at = await page.evaluate(() => (window.brickworksControls || {}).instructions))) {
@@ -98,6 +108,12 @@ try {
         facts.pictures > 0 && facts.broken === 0);
       check(`parts boxes with pictures (${facts.boxes} boxes, ${facts.partPictures} parts)`,
         facts.boxes > 0 && facts.partPictures > facts.boxes);
+      // Print, pressed as a person does; print itself counted, not shown.
+      await tab.evaluate(() => { window.printed = 0; window.print = () => { window.printed += 1; }; });
+      await tab.click(".bar button");
+      await tab.waitForTimeout(500);
+      const printed = await tab.evaluate(() => window.printed);
+      check(`Print prints (${printed})`, printed === 1);
       await tab.setViewportSize({ width: 1060, height: 800 });
       await tab.addStyleTag({ content: ".bar { display: none !important; }" });
       for (const n of [1, 2, 3, pages]) {

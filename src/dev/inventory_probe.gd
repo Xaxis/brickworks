@@ -161,9 +161,183 @@ func _initialize() -> void:
 			and Inventory.of(world, library).to_csv().contains(
 				",Titanium,\n"))
 
+	_flexible(library, world)
+
 	print("")
 	print("%d failed" % _failures if _failures else "the parts list adds up")
 	quit(1 if _failures else 0)
+
+
+## A hose laid along a bend is LDraw's segments, an end, rings and an end,
+## and one hose in a shop. Somebody buying from the list has to be asked
+## for the hose of the length it was laid as, under the number the shop
+## lists it by, and not for thirty rings nobody sells. A chain is its links,
+## which are what is sold.
+func _flexible(library: PartLibrary, world: BrickWorld) -> void:
+	print("\n  flexible parts, counted as they are sold")
+	world.clear()
+	var laid: Dictionary = {}
+	laid["hose"] = _lay(world, "ribbed_hose", 180.0, "Ribbed Hose 9L#1", 0, Vector3.ZERO)
+	laid["hose2"] = _lay(world, "ribbed_hose", 180.0, "Ribbed Hose 9L 2#1", 0,
+		Vector3(0, 0, 200))
+	laid["tube"] = _lay(world, "pneumatic_tube", 180.0, "Pneumatic Tube 9L#1", 1,
+		Vector3(200, 0, 0))
+	var axle: Array = Flex.lengths_of(library, "flex_axle")
+	laid["axle"] = _lay(world, "flex_axle", float(axle[0]["length"]) if not axle.is_empty()
+		else 515.0, "Axle Flexible 26#1", 0, Vector3(400, 0, 0))
+	laid["string"] = _lay(world, "string", 816.0, "String Braided 41L#1", 0,
+		Vector3(600, 0, 0))
+	var sprockets: Array = []
+	for x: float in [0.0, 140.0]:
+		var gear: int = world.add_brick("3648b", 71, Transform3D(Basis.IDENTITY,
+			Vector3(x, 60, -300)))
+		sprockets.append(Flex.sprocket_of(world.get_brick(gear), library))
+	var chain: Flex.Laid = Flex.lay_chain("chain", sprockets)
+	for piece: Dictionary in chain.pieces:
+		_in_item(world.get_brick(world.add_brick(str(piece["part"]), 0, piece["at"])),
+			"Technic chain#1")
+	# A ring on its own, in no item: nothing says which hose it is of, so
+	# it is what it is.
+	world.add_brick("71944k02", 0, Transform3D(Basis.IDENTITY, Vector3(0, 100, 0)))
+	print("     laid %s, a chain of %d links" % [str(laid), chain.links])
+
+	var stock: Inventory = Inventory.of(world, library)
+	var lots: Dictionary = {}
+	for lot: Inventory.Lot in stock.lots:
+		lots["%s/%d" % [lot.part_id, lot.color_code]] = lot
+	var counts: Dictionary = {}
+	for key: String in lots:
+		counts[key] = (lots[key] as Inventory.Lot).count
+	print("     %d bricks in the world; the list: %s" % [world.brick_count(), str(counts)])
+	_check("two 9L ribbed hoses laid along bends are two of 71917, Technic Ribbed Hose 9L",
+		counts.get("71917/0", 0) == 2
+			and (lots["71917/0"] as Inventory.Lot).name == "Technic Ribbed Hose 9L")
+	_check("a 9L pneumatic tube is one 21826-f1, Technic Pneumatic Tube 9L",
+		counts.get("21826-f1/1", 0) == 1
+			and (lots["21826-f1/1"] as Inventory.Lot).name == "Technic Pneumatic Tube 9L")
+	_check("a 26L flexible axle is one 72892", counts.get("72892/0", 0) == 1)
+	_check("a 41L string with end studs is one 71149", counts.get("71149/0", 0) == 1)
+	_check("a chain is its %d links of 3711, which are what is sold" % chain.links,
+		chain.links > 10 and counts.get("3711/0", 0) == chain.links)
+	_check("the ring in no item is itself, and no other segment is listed",
+		counts.get("71944k02/0", 0) == 1 and not counts.has("71944k01/0")
+			and not counts.has("71533k03/1") and not counts.has("71533k02/1")
+			and not counts.has("u9012/0") and not counts.has("u9010/0")
+			and not counts.has("71149k02/0"))
+	var expected: int = 2 + 1 + 1 + 1 + chain.links + 2 + 1
+	_check("%d pieces in the list for %d bricks in the world (%d)"
+		% [expected, world.brick_count(), stock.pieces],
+		stock.pieces == expected and world.brick_count() > expected + 100)
+	_check("the counts line counts as the list does (%d)" % Inventory.pieces_in(world, library),
+		Inventory.pieces_in(world, library) == stock.pieces)
+	# A booklet step lists the hose once, with its first piece.
+	var standing: int = 0
+	var rest: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if stock.whole_of.get(brick.id, "") == "Ribbed Hose 9L#1":
+			if stock.key_of(brick) == "71917:0":
+				standing += 1
+			elif stock.key_of(brick).is_empty():
+				rest += 1
+	_check("one piece of a hose stands for it in a step, its %d others for nothing" % rest,
+		standing == 1 and rest == int(laid["hose"]) - 1)
+
+	# The shops' own numbers, which LDraw records and which are not LDraw's.
+	var wanted: Dictionary = {}
+	for block: String in str(ShopLists.bricklink_xml(stock, library)["text"]).split("<ITEM>"):
+		if block.contains("<ITEMID>"):
+			wanted[block.get_slice("<ITEMID>", 1).get_slice("</ITEMID>", 0)] = \
+				int(block.get_slice("<MINQTY>", 1).get_slice("</MINQTY>", 0))
+	print("     BrickLink: %s" % str(wanted))
+	_check("the wanted list asks BrickLink for 2 of 78c09, its ribbed hose 9L",
+		wanted.get("78c09", 0) == 2 and not wanted.has("71917"))
+	_check("1 of 21826, its pneumatic tube 9L", wanted.get("21826", 0) == 1)
+	_check("1 of x334c01, its flexible axle 26", wanted.get("x334c01", 0) == 1)
+	_check("1 of x127c40pb01, its 41L string", wanted.get("x127c40pb01", 0) == 1)
+	_check("%d of 3711, the chain link" % chain.links, wanted.get("3711", 0) == chain.links)
+	_check("and no segment", not wanted.has("71944k01") and not wanted.has("71533k03")
+		and not wanted.has("u9012") and not wanted.has("71149k02"))
+	var rebrickable: String = str(ShopLists.rebrickable_csv(stock)["text"])
+	print("     Rebrickable: %s" % rebrickable.strip_edges().replace("\n", " | "))
+	_check("Rebrickable's list names its own numbers: 78c09, 5102c09.375, 14226c41, 3711a",
+		rebrickable.contains("\n78c09,0,2\n") and rebrickable.contains("\n5102c09.375,1,1\n")
+			and rebrickable.contains("\n14226c41,0,1\n")
+			and rebrickable.contains("\n3711a,0,%d\n" % chain.links))
+	_check("and LDraw's where LDraw records none: 72892",
+		rebrickable.contains("\n72892,0,1\n"))
+	_check("a part LDraw records no shop number for keeps its own (3001)",
+		library.shop_part("3001", "BrickLink") == "3001"
+			and library.shop_part("3001", "Rebrickable") == "3001")
+	_check("a formed tube LDraw gives no BrickLink number is listed without its -f1 (%s)"
+		% library.shop_part("37461-f1", "BrickLink"),
+		library.shop_part("37461-f1", "BrickLink") == "37461")
+
+	# Saved and opened again, the hoses are the same hoses; and the count a
+	# shared link shows, which the server makes from the file itself
+	# (api/share.js), is the list's.
+	var placements: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		var placement := LdrModel.Placement.new(brick.part_id, brick.color_code,
+			brick.transform, 0)
+		placement.group = brick.group
+		placements.append(placement)
+	var text: String = LdrModel.write_ldr(placements, "Flex probe")
+	world.clear()
+	for placement: LdrModel.Placement in LdrModel.parse(text, "flex probe").flatten(library.parts):
+		var brick_id: int = world.add_brick(placement.part_id, placement.color_code,
+			placement.transform)
+		world.get_brick(brick_id).group = placement.group
+		world.get_brick(brick_id).unit = placement.unit
+	var reopened: Inventory = Inventory.of(world, library)
+	_check("written to a file and read back, the list is the same (%d pieces, %d lots)"
+		% [reopened.pieces, reopened.lot_count()],
+		reopened.pieces == stock.pieces and reopened.lot_count() == stock.lot_count())
+	var file_path: String = ProjectSettings.globalize_path("user://inventory_probe_flex.mpd")
+	var file: FileAccess = FileAccess.open(file_path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	var output: Array = []
+	var code: int = OS.execute("node", ["--input-type=module", "-e",
+		"import {checkModel} from '%s'; import {readFileSync} from 'node:fs';" \
+			% ProjectSettings.globalize_path("res://api/share.js")
+		+ " console.log(checkModel(readFileSync(process.argv[1], 'utf8')).parts)",
+		file_path], output, true)
+	var shared: String = "".join(output).strip_edges()
+	_check("the share page counts it as the list does (%s, node exited %d)" % [shared, code],
+		code == 0 and shared == str(stock.pieces))
+	DirAccess.remove_absolute(file_path)
+
+	# A sub-model with a brick among the rings is no hose, whatever its
+	# rings are: they are what is there.
+	world.clear()
+	var rings: int = _lay(world, "ribbed_hose", 180.0, "Mixed#1", 0, Vector3.ZERO)
+	var brick: BrickWorld.Brick = world.get_brick(world.add_brick("3001", 4, Transform3D.IDENTITY))
+	brick.group = "Mixed"
+	var mixed: Inventory = Inventory.of(world, library)
+	_check("a hose's pieces with a brick among them are %d pieces, not a hose (%d)"
+		% [rings + 1, mixed.pieces],
+		mixed.pieces == rings + 1 and mixed.items.is_empty()
+			and Inventory.pieces_in(world, library) == rings + 1)
+
+
+## Lay [param kind] from [param from], as the flex tool does, and put its
+## pieces in the world as item [param path]. How many pieces it is.
+func _lay(world: BrickWorld, kind: String, real: float, path: String, colour: int,
+		from: Vector3) -> int:
+	var rigid: Array = Flex.KINDS[kind].get("rigid", [2.0, 2.0])
+	var out: Vector3 = Vector3.UP if kind == "string" else Vector3.BACK
+	var a: Flex.Port = Flex.free_port(from, out, float(rigid[0]))
+	var b: Flex.Port = Flex.free_port(from + Vector3(80, 0, 0), out, float(rigid[1]))
+	var laid: Flex.Laid = Flex.lay_swept(kind, a, b, real)
+	for piece: Dictionary in laid.pieces:
+		_in_item(world.get_brick(world.add_brick(str(piece["part"]), colour, piece["at"])), path)
+	return laid.pieces.size()
+
+
+## As Builder.set_path puts a brick in an assembly.
+func _in_item(brick: BrickWorld.Brick, path: String) -> void:
+	brick.unit = path
+	brick.group = Assemblies.group_of(path)
 
 
 func _check(what: String, ok: bool) -> void:
