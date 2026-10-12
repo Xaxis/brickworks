@@ -426,10 +426,10 @@ static func shortfall_stock(stock: Inventory, rows: Array, library: PartLibrary 
 ## behind its API's sign-up and its terms, and a page is what a buyer
 ## wants anyway.
 static func bricklink_page(part: String, colour: int, library: PartLibrary = null) -> String:
-	var plain: int = library.plain_code(colour) if library != null else colour
+	var number: int = library.bricklink_colour(colour) if library != null else -1
 	var url: String = "https://www.bricklink.com/v2/catalog/catalogitem.page?P=%s" % part.uri_encode()
-	if ShopLists.BRICKLINK_COLOUR.has(plain):
-		url += "&idColor=%d" % int(ShopLists.BRICKLINK_COLOUR[plain])
+	if number >= 0:
+		url += "&idColor=%d" % number
 	return url
 
 

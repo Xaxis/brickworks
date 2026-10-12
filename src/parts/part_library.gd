@@ -153,6 +153,14 @@ func plain_code(code: int) -> int:
 	return found.plain_code if found != null else code
 
 
+## The colour number a BrickLink wanted list or catalogue page names this
+## code by: its plain colour's (a Rubber Black tyre is a Black one), or -1
+## where BrickLink has none known, which is left off and never guessed.
+func bricklink_colour(code: int) -> int:
+	var found: BrickColor = colors.get(plain_code(code))
+	return found.bricklink if found != null else -1
+
+
 ## What a part is, without its geometry.
 class PartInfo extends RefCounted:
 	var id: String              ## LDraw number, e.g. "3001"
@@ -287,6 +295,9 @@ class BrickColor extends RefCounted:
 	var lego_ids: PackedInt32Array = PackedInt32Array()
 	## Rebrickable's number for it, or -1 where the join reaches none.
 	var rebrickable_id: int = -1
+	## BrickLink's number for it (colors.json, from
+	## tools/bricklink_colours.py), or -1 where BrickLink has none known.
+	var bricklink: int = -1
 	## The years it was in catalogued sets, and in how many. Zero when
 	## nothing is known, which is never evidence it was not made.
 	var first_year: int = 0
@@ -578,6 +589,7 @@ func _load_colors() -> void:
 		for number: Variant in entry.get("lego_ids", []):
 			color.lego_ids.append(int(number))
 		color.rebrickable_id = int(entry.get("rebrickable_id", -1))
+		color.bricklink = int(entry.get("bricklink", -1))
 		var years: Array = entry.get("years", [0, 0])
 		color.first_year = int(years[0])
 		color.last_year = int(years[1])

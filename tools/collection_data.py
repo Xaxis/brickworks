@@ -33,8 +33,10 @@ place keeps Rebrickable's number, which is BrickLink's or LDraw's for
 nearly every plain part. A colour the join cannot name is left out and
 counted, never guessed.
 
-    tools/collection_data.py          write assets/generated/sets/
-    tools/collection_data.py --check  say what would be written
+    tools/collection_data.py              write assets/generated/sets/
+    tools/collection_data.py --check      say what would be written
+    tools/collection_data.py --bricklink  rewrite only the index's BrickLink
+                                          colours, from colors.json
 """
 
 from __future__ import annotations
@@ -67,17 +69,15 @@ def shard_of(set_num: str) -> int:
     return h % SHARDS
 
 
-def bricklink_colours() -> dict[int, int]:
-    """BrickLink colour number -> LDraw code, from the table the app exports
-    wanted lists with (ShopLists.BRICKLINK_COLOUR), read out of its source
-    so the import and the export cannot come to disagree. Where two LDraw
-    codes share a BrickLink number the lower code, the plain one, wins."""
-    import re
-    source = (ROOT / "src" / "assembly" / "shop_lists.gd").read_text()
-    table = source.split("const BRICKLINK_COLOUR: Dictionary = {", 1)[1].split("}", 1)[0]
+def bricklink_colours(colours: list[dict]) -> dict[int, int]:
+    """BrickLink colour number -> LDraw code, from colors.json's bricklink
+    numbers, which the app exports wanted lists with, so the import and the
+    export cannot come to disagree. Where two LDraw codes share a BrickLink
+    number the lower code, the plain one, wins."""
     out: dict[int, int] = {}
-    for code, number in re.findall(r"(\d+)\s*:\s*(\d+)", table):
-        out.setdefault(int(number), int(code))
+    for entry in sorted(colours, key=lambda e: e["code"]):
+        if "bricklink" in entry:
+            out.setdefault(int(entry["bricklink"]), int(entry["code"]))
     return out
 
 
@@ -184,7 +184,7 @@ def build() -> tuple[dict, dict[int, dict]]:
         "shard_rule": "h = (h * 31 + byte) % 1000003 over the lowercased set number; h % shards",
         "colours": {str(k): v for k, v in sorted(colour_of.items())},
         "parts": dict(sorted(renamed.items())),
-        "bricklink_colours": {str(k): v for k, v in sorted(bricklink_colours().items())},
+        "bricklink_colours": {str(k): v for k, v in sorted(bricklink_colours(colours).items())},
         "counts": counts,
     }
     return index, shards
@@ -193,7 +193,19 @@ def build() -> tuple[dict, dict[int, dict]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="write nothing")
+    parser.add_argument("--bricklink", action="store_true",
+                        help="rewrite only index.json's bricklink_colours, from colors.json")
     args = parser.parse_args()
+    if args.bricklink:
+        # The shards and the part join are left as they were built: a new
+        # colour number changes neither.
+        index = json.loads((OUT / "index.json").read_text())
+        colours = json.loads((GENERATED / "colors.json").read_text())
+        index["bricklink_colours"] = {
+            str(k): v for k, v in sorted(bricklink_colours(colours).items())}
+        (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+        print(f"  {len(index['bricklink_colours'])} BrickLink colours in {OUT / 'index.json'}")
+        return 0
     index, shards = build()
     sizes = [len(json.dumps({"sets": s}, separators=(",", ":"))) for s in shards.values()]
     print(f"sets: {index['counts']['sets']:,} sets, {index['counts']['lots']:,} lots, "

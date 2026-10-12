@@ -15,7 +15,9 @@ The Python side: LDraw in, mesh cache and catalogue out.
   the same function, and the two copies there were before had drifted to the
   point where neither filled the cross-references. It prints a `colour join:`
   line (210 LDraw colours with a Rebrickable colour, 77 current, 185 with a LEGO
-  number). See [parts](parts.md) for what each colour carries.
+  number, 197 a BrickLink number). `--colours` writes `colors.json` alone,
+  without reading or rewriting the catalogue. See [parts](parts.md) for what each
+  colour carries.
 - `pack the web parts`: chooses which parts the WebAssembly build carries, smallest
   mesh first, with per-family caps so no family is absent entirely. Everything else
   is a fetch away at run time.
@@ -39,6 +41,7 @@ tools/build_meshes.py                 # ~90 min on 20 cores; needs numpy and sci
 tools/build_meshes.py --only 3001 ... --out DIR   # just those parts
 tools/merge_subbuild.py DIR ids.txt   # merge such a build back, with a safety check
 tools/refresh_catalogue.py            # also joins colour availability, ~10s of it
+tools/refresh_catalogue.py --colours  # colors.json alone (after tools/bricklink_colours.py)
 tools/web_pack.py --list              # say what would be included, write nothing
 tools/web_pack.py --budget 40         # stop at 40 MB
 tools/storage_parts.py --check        # say what would be uploaded

@@ -292,7 +292,8 @@ func show_state(state: String, dragging: bool = false) -> void:
 	var shield: bool = dragging and not TouchTools.wanted()
 	if state == _shown and shield == shielding():
 		return
-	var shape: int = _hang(state) if state != _shown else _shown_shape
+	# The same picture with only the sheet changed stays on its shape.
+	var shape: int = _shown_shape if state == _shown else _hang(state)
 	_shown = state
 	_shown_shape = shape
 	if shield:

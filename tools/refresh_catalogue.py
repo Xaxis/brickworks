@@ -9,6 +9,9 @@ correct a field is forty-five minutes spent to move some strings.
 This reads the existing catalogue for the mesh hashes and per-part
 geometry facts, and refreshes everything that comes from the library
 headers and LDConfig around them.
+
+    tools/refresh_catalogue.py            both
+    tools/refresh_catalogue.py --colours  colors.json alone
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+from bricklink_colours import NUMBERS as BRICKLINK  # noqa: E402
 from ldraw.colors import Palette          # noqa: E402
 from ldraw.library import Library         # noqa: E402
 
@@ -29,6 +33,11 @@ LDRAW = ROOT / "vendor" / "ldraw"
 
 
 def main() -> int:
+    if "--colours" in sys.argv[1:]:
+        # colors.json alone: the palette and its cross-references, which
+        # change without the catalogue having to be read and rewritten.
+        print(write_colors(GENERATED, Palette.from_file(LDRAW / "LDConfig.ldr"))[1])
+        return 0
     path = GENERATED / "catalogue.json"
     if not path.exists():
         print(f"no catalogue at {path} — run tools/build_meshes.py first")
@@ -90,11 +99,12 @@ def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:
     LDConfig group, and LEGO's own numbers and name where LDConfig gives
     them.  The ones the Rebrickable join reaches also carry
     rebrickable_id and rebrickable_name, the years they were in sets,
-    how many sets, and whether they are current.  BrickLink's numbers
-    are not on disk anywhere, so there are none: a guessed one would
-    order the wrong colour.
+    how many sets, and whether they are current.  The ones
+    tools/bricklink_colours.py has a number for carry it as bricklink,
+    which a BrickLink wanted list is written in; the rest have none, and
+    a guessed one would order the wrong colour.
 
-    Returns the entries and a line saying what the join reached.
+    Returns the entries and a line saying what the joins reached.
     """
     colors = palette.entries()
     said = "colour join: skipped"
@@ -106,12 +116,15 @@ def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:
         said = f"colour join: skipped ({missing})"
     for entry in colors:
         entry.update(facts.get(entry["code"], {}))
+        if entry["code"] in BRICKLINK:
+            entry["bricklink"] = BRICKLINK[entry["code"]]
     if facts:
         current = sum(1 for f in facts.values() if f.get("current"))
         said = ("colour join: %d LDraw colours have a Rebrickable colour, "
                 "%d of them current, %d have a LEGO number"
                 % (len(facts), current,
                    sum(1 for e in colors if e.get("lego_ids"))))
+    said += ", %d a BrickLink number" % sum(1 for e in colors if "bricklink" in e)
     (out / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
     return colors, said
 

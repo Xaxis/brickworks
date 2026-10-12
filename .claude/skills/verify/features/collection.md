@@ -67,8 +67,9 @@ which models they could build from what they have. Added 2026-10-12.
   inside it (`inventory_minifigs`, `inventory_sets`, added to `fetch_data.sh`
   2026-10-12), spares apart. Rebrickable colours through the catalogue's own
   colour join, the few Rebrickable part numbers that are not LDraw's through
-  its part join (146 renamed), BrickLink colours from `ShopLists.BRICKLINK_COLOUR`
-  read out of its source. 21,173 sets, 256 shards, 26 MB, under
+  its part join (146 renamed), BrickLink colours from colors.json's `bricklink`,
+  the numbers the wanted list is written in (where two codes share one, the lower
+  wins: BrickLink 77 reads as 148, not 316). 21,173 sets, 256 shards, 26 MB, under
   `assets/generated/sets/`; the shard rule is the same sum in the Python and in
   `SetInventories.shard_of`.
 - `official models' parts lists` (`src/dev/collection_models.gd`): the 328
@@ -114,6 +115,7 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_probe.mjs --url=https://<a pr
 BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_flow.mjs --url=https://<a preview>/app --out=shots/collection_web
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
+python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
 godot --headless --path . --script src/dev/collection_models.gd
 node tools/apply_sql.mjs --look        # what the live table is (PG_MODULE=…, see the file)
 ```
@@ -123,9 +125,13 @@ Proves it when:
 - `test_collection` passes: 6020-1, 10237-1 and 3931-1 come out of the shards
   exactly as a straight count of the raw CSVs (their own parts, their
   minifigures' parts, spares apart) says, and BrickLink 5, 86 and 11 read back
-  as LDraw 4, 71 and 0.
-- `collection_probe` ends `every sum came out as it should`: 6020-1 is the Magic
-  Shop's 47 pieces in 33 lots, a made-up set is named not guessed, two shops,
+  as LDraw 4, 71 and 0 (and 9, 10, 77, 15, 74, 95 as 7, 8, 148, 43, 41, 315); every
+  colour the shipped models use and the 30 commonest in the set inventories has a
+  BrickLink number; colors.json carries `tools/bricklink_colours.py` exactly.
+- `collection_probe` ends `every sum came out as it should`: the example car,
+  owned as `collection_flow.mjs` owns it, is 61 pieces with 26 lots short, and
+  its BrickLink wanted list carries all 26 (21 before colors.json had BrickLink
+  numbers); 6020-1 is the Magic Shop's 47 pieces in 33 lots, a made-up set is named not guessed, two shops,
   Orthanc with spares and loose bricks sum exactly; 4073 compares as 6141 and a
   rubber tyre as black; the hand-made shortfall (12 pieces, 5 owned, 7 short;
   5/12 exact, 9/12 in any colour); 3794b standing in for 3794a; white 2 x 4s
@@ -154,9 +160,12 @@ Last proven 2026-10-12 on the preview of `133ed75`
 44 against the deployed function, and `collection_flow.mjs` end to end — the
 example car 61 pieces, 19 owned after the import and the typed 6020, 42 short
 in 26 lots; the BrickLink list carried 32 pieces in 21 lots and said 5 lots
-were left off, because `ShopLists.BRICKLINK_COLOUR` has no number for the
-car's Light Grey, Trans Very Light Blue and similar older colours. That table
-is the gap, not this panel.
+were left off, because the hand-made colour table had no number for the car's
+Light Grey and Trans Very Light Blue. colors.json's `bricklink` (2026-10-12)
+closed that: `collection_probe` has the same car and all 26 lots on the list.
+A deployment carries the numbers once `colors.json` is rebuilt
+(`tools/refresh_catalogue.py --colours`) and the index's BrickLink join with it
+(`tools/collection_data.py --bricklink`, which leaves the shards alone).
 
 ## Gotchas
 

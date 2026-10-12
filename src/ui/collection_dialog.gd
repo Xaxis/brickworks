@@ -617,8 +617,8 @@ func _export(shop: String) -> void:
 		made = ShopLists.rebrickable_csv(short)
 		line = Download.give(str(made["text"]), title + "_wanted.csv", "text/csv")
 	if int(made["left_out"]) > 0:
-		line += " — %d lots left off: a colour %s has no number for, or a made part" % [
-			int(made["left_out"]), "BrickLink" if shop == "bricklink" else "Rebrickable"]
+		line += " — %d lots left off: %s" % [int(made["left_out"]),
+			ShopLists.why_left_off(made, shop)]
 	_say("%s: %d pieces in %d lots%s" % [line.get_slice(" —", 0), short.pieces,
 		int(made["lots"]), "" if int(made["left_out"]) == 0 else " —" + line.get_slice(" —", 1)])
 

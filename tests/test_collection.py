@@ -28,7 +28,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 import collection_data  # noqa: E402
 
 VENDOR = ROOT / "vendor" / "rebrickable"
-SETS = ROOT / "assets" / "generated" / "sets"
+GENERATED = ROOT / "assets" / "generated"
+SETS = GENERATED / "sets"
 
 pytestmark = pytest.mark.skipif(
     not (VENDOR / "inventory_minifigs.csv.gz").exists() or not (SETS / "index.json").exists(),
@@ -102,3 +103,64 @@ def test_a_bricklink_colour_reads_back_as_the_ldraw_one_exported() -> None:
     assert index["bricklink_colours"]["5"] == 4
     assert index["bricklink_colours"]["86"] == 71
     assert index["bricklink_colours"]["11"] == 0
+    # Colours the hand-made table had no number for; Pearl Dark Grey's
+    # number, which Titanium shares; and the two it had wrong: Trans-Light
+    # Blue is LDraw 43, not 41, and Flat Silver is 315, not 179.
+    assert index["bricklink_colours"]["9"] == 7
+    assert index["bricklink_colours"]["10"] == 8
+    assert index["bricklink_colours"]["77"] == 148
+    assert index["bricklink_colours"]["15"] == 43
+    assert index["bricklink_colours"]["74"] == 41
+    assert index["bricklink_colours"]["95"] == 315
+
+
+def _colours() -> dict[int, dict]:
+    return {c["code"]: c for c in json.loads((GENERATED / "colors.json").read_text())}
+
+
+def _plain(code: int, colours: dict[int, dict]) -> int:
+    return colours[code].get("plain_code", code) if code in colours else code
+
+
+def test_every_colour_the_examples_use_has_a_bricklink_number() -> None:
+    # A lot without one is left off the wanted list: the example car lost
+    # 5 of its 26 to Light Grey and Trans Very Light Blue.
+    colours = _colours()
+    used: set[int] = set()
+    for path in sorted((ROOT / "models").glob("*.ldr")):
+        for line in path.read_text(errors="replace").splitlines():
+            bits = line.split()
+            if len(bits) >= 15 and bits[0] == "1" and bits[1] not in ("16", "24"):
+                used.add(_plain(int(bits[1]), colours))
+    assert len(used) >= 25
+    assert sorted(code for code in used if "bricklink" not in colours.get(code, {})) == []
+
+
+def test_the_thirty_commonest_colours_in_sets_have_bricklink_numbers() -> None:
+    colours = _colours()
+    pieces: Counter = Counter()
+    for shard in sorted(SETS.glob("[0-9]*.json")):
+        for record in json.loads(shard.read_text())["sets"].values():
+            for _part, colour, quantity in record["p"] + record.get("s", []):
+                pieces[_plain(int(colour), colours)] += quantity
+    commonest = [code for code, _n in pieces.most_common(30)]
+    assert [code for code in commonest if "bricklink" not in colours.get(code, {})] == []
+
+
+def test_colors_json_carries_the_table_and_nothing_else() -> None:
+    # Every number written is the table's, on a plastic colour LDConfig
+    # has, and nothing held back was written.
+    from bricklink_colours import HELD_BACK, NUMBERS
+    colours = _colours()
+    written = {code: c["bricklink"] for code, c in colours.items() if "bricklink" in c}
+    assert written == NUMBERS
+    assert all(colours[code]["group"] not in ("internal common material", "obsolete")
+               for code in written)
+    assert not set(HELD_BACK) & set(written)
+    # The owner's call on the two old pairs the sources contradicted:
+    # Trans Medium Blue is BrickLink's Trans-Medium Blue, and Pearl Silver
+    # has no number, since 95 Flat Silver is LDraw 315.
+    assert written[41] == 74
+    assert written[43] == 15
+    assert 179 not in written and 179 in HELD_BACK
+    assert written[315] == 95
