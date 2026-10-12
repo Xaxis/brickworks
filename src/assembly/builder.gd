@@ -1811,6 +1811,20 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	if part == null:
 		return PackedInt32Array()
 	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
+	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
+		# A part stretched, as LDraw lets a file do: a hose's one-LDU piece
+		# of tube made four long (Flex). Its cover is its own made as long,
+		# turned the way it is turned; the turned covers below take a turn
+		# and nothing else, and gave a piece four long a cover one long.
+		var stretched: Array[AABB] = []
+		var source: Array[AABB] = part.boxes
+		if source.is_empty():
+			source = [AABB(part.bounds.position / BrickLattice.CELL,
+				part.bounds.size / BrickLattice.CELL)]
+		for box: AABB in source:
+			stretched.append(AABB(box.position * stretch, box.size * stretch).abs())
+		return BrickLattice.boxes_for_turned(stretched, cell, at.basis.orthonormalized())
 	if part.boxes.is_empty():
 		# No cover was built for this part, so fall back to the bounding
 		# box by way of the cell path, which already handles the

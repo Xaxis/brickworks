@@ -71,6 +71,13 @@
     },
     {
       "kind": "lib",
+      "label": "flexible parts along a path",
+      "entry": "src/assembly/flex.gd",
+      "reach": "godot --headless --path . --script src/dev/flex_probe.gd",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
       "label": "part search",
       "entry": "src/parts/part_library.gd",
       "reach": "godot --headless --path . --script src/dev/vocab_probe.gd",

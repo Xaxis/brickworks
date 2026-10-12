@@ -540,6 +540,14 @@
       "tests": []
     },
     {
+      "id": "lib:flexible parts along a path",
+      "kind": "lib",
+      "entry": "src/assembly/flex.gd",
+      "reach": "godot --headless --path . --script src/dev/flex_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:ldr read and write",
       "kind": "lib",
       "entry": "src/parts/ldr_model.gd",
