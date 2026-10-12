@@ -162,7 +162,8 @@ func _build() -> void:
 	_print_button = Button.new()
 	_print_button.text = "Print…"
 	_print_button.tooltip_text = ("Print a picture or a drawing on the part in hand — a tile, a "
-		+ "slope, any face — as a part of its own, under My prints")
+		+ "slope, any face — as a part of its own, under My prints; with one part picked out in "
+		+ "the model (Shift-click), on that part, where it stands")
 	_print_button.add_theme_font_size_override("font_size", 12)
 	_print_button.pressed.connect(func() -> void: print_wanted.emit())
 	head.add_child(_print_button)
@@ -1106,14 +1107,21 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 
 	# Its size is the cell's, never the picture's, so nothing moves when
 	# the picture lands.
-	var image := ThumbTile.new(info.id, _selected_color)
+	# A print or sticker made here is drawn with its picture. The face it is
+	# on is a surface of its own, which a plain picture leaves out: under My
+	# prints every tile was a hole where its print should be.
+	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
+	var image := ThumbTile.new(info.id, _selected_color, made_print)
 	image.custom_minimum_size = Vector2(0, 60)
 	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(image)
 	button.set_meta("tile", image)
 
 	var label := Label.new()
-	label.text = info.id
+	var given: String = PartPrints.given_name(info.name) if info.id.begins_with("bw-") else ""
+	label.text = given if not given.is_empty() else info.id
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.clip_text = true
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 9)
 	label.modulate = Color(1, 1, 1, 0.65)
@@ -1122,7 +1130,7 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 
 	_cells[info.id] = image
 	if thumbnails:
-		var ready_now: ImageTexture = thumbnails.peek(info.id, _selected_color)
+		var ready_now: ImageTexture = thumbnails.peek(info.id, _selected_color, made_print)
 		if ready_now:
 			image.show_picture(ready_now, false)
 	return button

@@ -848,7 +848,8 @@ func take_off(brick_id: int) -> bool:
 	var step: Dictionary = _apply({"undo": "remove", "brick": brick_id})
 	_history.append(step)
 	_redo.clear()
-	selection.erase(brick_id)
+	if selection.erase(brick_id):
+		selection_changed.emit(selection.size())
 	removed.emit(brick_id)
 	return true
 
@@ -916,6 +917,7 @@ func _lift_figure(brick_id: int) -> bool:
 	var home: Transform3D = frame
 	var parts: Array = []
 	var steps: Array = []
+	var unpicked: bool = false
 	for brick: BrickWorld.Brick in bricks:
 		parts.append({"part": brick.part_id, "color": brick.color_code,
 			"at": home.affine_inverse() * brick.transform})
@@ -924,8 +926,10 @@ func _lift_figure(brick_id: int) -> bool:
 			"group": brick.group})
 		lattice.release(brick.id)
 		world.remove_brick(brick.id)
-		selection.erase(brick.id)
+		unpicked = selection.erase(brick.id) or unpicked
 		removed.emit(brick.id)
+	if unpicked:
+		selection_changed.emit(selection.size())
 	_history.append({"undo": "group", "steps": steps})
 	_redo.clear()
 	hold_figure(parts, (bricks[0] as BrickWorld.Brick).group)

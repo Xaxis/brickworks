@@ -31,6 +31,8 @@ var _picking: Control
 var _picked: Callable
 var _span: bool = true
 var _face: Stickers.Face
+## The brick a print is being drawn for, to put the print in its place.
+var _replacing: int = 0
 
 
 func setup(on: Node) -> void:
@@ -62,6 +64,15 @@ func _cover(panel: Control, inset: int = 24) -> void:
 
 ## Print on a part: the one in hand, or a 2 x 2 tile.
 func print_part(part_id: String) -> void:
+	# One part picked out in the model is printed where it stands: the
+	# printed part takes its place, in its colour, when it is saved.
+	_replacing = 0
+	if builder.selection.size() == 1:
+		var brick: BrickWorld.Brick = world.get_brick(int(builder.selection.keys()[0]))
+		if brick != null and not Stickers.is_sticker(library, brick.part_id):
+			_replacing = brick.id
+			editor.open(brick.part_id, "", brick.color_code)
+			return
 	var wanted: String = part_id if library.parts.has(part_id) else "3068b"
 	if Stickers.is_sticker(library, wanted):
 		wanted = "3068b"
@@ -139,10 +150,26 @@ func _on_made(ids: Array, slot: String) -> void:
 			"" if _face.bricks.size() == 1 else "s"] if brick != 0 else "Could not stick %s on" % id)
 		_face = null
 		sheet.refresh()
+	elif _replacing != 0 and _in_place(id):
+		said.emit("Printed it where it stands: %s, in the parts bin under My prints too" % id)
 	else:
 		said.emit("Made %s: it is in the parts bin under %s" % [id,
 			library.parts[id].category if library.parts.has(id) else "My prints"])
 	made.emit(id)
+
+
+## The print put where the part it was drawn for stands, in its colour, as
+## two steps of undo. False when that part is gone or is not what was
+## printed on.
+func _in_place(print_id: String) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(_replacing)
+	_replacing = 0
+	if brick == null or PartPrints.mould_of(library, brick.part_id) != PartPrints.base_of(print_id):
+		return false
+	var at: Transform3D = brick.transform
+	var colour: int = brick.color_code
+	builder.take_off(brick.id)
+	return builder.put_part(print_id, colour, at) != 0
 
 
 ## Stick a sticker that is made already on a face the next click names.

@@ -3,7 +3,7 @@
 // sticker sheet downloaded and measured, and the model downloaded and opened
 // in a browser that has never seen any of them.
 //
-//   node tools/web/studio_flow.mjs --url=https://<a preview>/app --out=shots/studio_web
+//   BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=https://<a preview>/app --out=shots/studio_web
 //   node tools/web/studio_flow.mjs --url=http://127.0.0.1:8147/index.html --out=…   (a local export)
 //
 // Opens tests/fixtures/prints/scene.ldr through Open… > From a file (the
@@ -29,6 +29,13 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "http://127.0.0.1:8147/index.html";
+// A preview sits behind Vercel's login; with BW_BYPASS (the project's
+// VERCEL_BYPASS) the first load carries the bypass and sets its cookie, so
+// the pack, the parts and the API answer too.
+const bypass = process.env.BW_BYPASS || "";
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = args.out || "shots/studio_web";
 mkdirSync(out, { recursive: true });
 const photo = args.photo || "/usr/share/backgrounds/Monument_valley_by_orbitelambda.jpg";
@@ -86,25 +93,38 @@ function tools(page) {
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(1500);
   }
-  // Whatever a click opens a file picker for, answered with a file.
+  // Whatever a press opens a file picker for, answered with a file. The app
+  // reads the click a frame or more after the page does, and on SwiftShader
+  // under load a frame can take seconds, so a press that brought no picker
+  // is tried again rather than taken for a failure.
+  async function picked(press, file, what) {
+    for (let n = 0; n < 3; n++) {
+      const waiting = page.waitForEvent("filechooser", { timeout: 30000 }).catch(() => null);
+      await press(n);
+      const picker = await waiting;
+      if (picker) {
+        await picker.setFiles(file);
+        return;
+      }
+      await shot(`no_picker_${what}_${n}.png`);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(3000);
+    }
+    throw new Error(`no file picker came up for ${what}`);
+  }
   async function choose(name, file) {
     const at = await where(name);
-    const [picker] = await Promise.all([
-      page.waitForEvent("filechooser", { timeout: 60000 }),
-      page.mouse.click(at.x, at.y),
-    ]);
-    await picker.setFiles(file);
+    await picked(async () => page.mouse.click(at.x, at.y), file, name);
   }
   async function open(file) {
     const at = await where("open");
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(1500);
-    // The menu opens under the pointer; its first line is "From a file".
-    const [picker] = await Promise.all([
-      page.waitForEvent("filechooser", { timeout: 60000 }),
-      page.mouse.click(at.x + 30, at.y + 22),
-    ]);
-    await picker.setFiles(file);
+    await picked(async (n) => {
+      await page.mouse.click(at.x, at.y);
+      // The menu opens under the pointer; its first line is "From a file".
+      await page.waitForTimeout(4000 + 4000 * n);
+      if (n === 0) await shot("open_menu.png");
+      await page.mouse.click(at.x + 40, at.y + 22);
+    }, file, "open");
   }
   async function type(name, words) {
     await click(name);
@@ -128,7 +148,7 @@ function tools(page) {
 
 const page = await page_for("first");
 const $ = tools(page);
-await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 ok(await $.until(async () => Boolean((await $.controls()).open), 400, "app"), "the app came up");
 await page.waitForTimeout(Number(args.load || 15000));
 
@@ -263,7 +283,7 @@ await page.close();
 
 const fresh = await page_for("second");
 const $$ = tools(fresh);
-await fresh.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+await fresh.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 ok(await $$.until(async () => Boolean((await $$.controls()).open), 400, "app again"),
   "a second browser, with nothing kept, came up");
 await fresh.waitForTimeout(Number(args.load || 15000));

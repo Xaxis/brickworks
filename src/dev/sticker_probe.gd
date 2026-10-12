@@ -322,6 +322,16 @@ func _stickers() -> void:
 			printed_up = (placed.transform.basis * normal).dot(Vector3.UP) > 0.999
 	_ok(printed_up, "its printed face turned up, out of the tiles")
 	_ok(Stickers.in_model(world, _library).has(id), "the model's sticker sheet lists it")
+	var listed: Inventory = Inventory.of(world, _library)
+	var lot_name: String = ""
+	for lot: Inventory.Lot in listed.lots:
+		if lot.part_id == id:
+			lot_name = lot.name
+	_ok(lot_name.begins_with("Sticker 31.4 x 15.4 mm") and lot_name.ends_with("(custom element)"),
+		"and the parts list: \"%s\"" % lot_name)
+	var given: String = PartPrints.given_name(_library.parts[id].name)
+	_ok(given == "Probe Plate" and PartPrints.given_name(_library.parts["3068b"].name).is_empty(),
+		"the bin calls it by the name it was given: \"%s\"" % given)
 	builder.undo()
 	_ok(world.get_brick(brick) == null, "one undo takes it off")
 	builder.redo()

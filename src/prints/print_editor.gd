@@ -900,8 +900,8 @@ func _load_made(id: String) -> void:
 		if pictures.has(area.key):
 			(_papers[area.key] as PrintPaint).load_image(pictures[area.key], "Print")
 	var info: PartLibrary.PartInfo = library.parts.get(id)
-	if info != null and info.name.contains("Custom Print "):
-		_name.text = info.name.get_slice("Custom Print ", 1)
+	if info != null and not PartPrints.given_name(info.name).is_empty():
+		_name.text = PartPrints.given_name(info.name)
 	_canvas.refresh()
 	_fill_layers()
 

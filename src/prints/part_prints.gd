@@ -733,6 +733,18 @@ static func has_pictures(text: String) -> bool:
 	return text.contains("0 !TEXMAP START")
 
 
+## The name someone gave a print, a mould or a sticker, read out of its
+## title ("Tile 2 x 2, Custom Print Monument Valley", "Sticker 31.4 x 15.4
+## mm, Brick Street"); empty for any other part.
+static func given_name(title: String) -> String:
+	for mark: String in ["Custom Print ", "Custom Mould "]:
+		if title.contains(mark):
+			return title.get_slice(mark, 1).strip_edges()
+	if title.begins_with("Sticker ") and title.contains(", "):
+		return title.get_slice(", ", 1).strip_edges()
+	return ""
+
+
 ## The parts bin's category for a made part: "My prints", "My stickers",
 ## or "Custom" for any other.
 static func bin_for(text: String) -> String:

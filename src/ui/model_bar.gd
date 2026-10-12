@@ -27,7 +27,10 @@ var _entries: Array[ModelStore.Entry] = []
 var _picker: PickModel
 
 ## An id no index can be, for the menu row that is not a saved model.
-const IMPORT := -2
+# A menu id no saved model's index reaches. Not negative: a PopupMenu
+# reports a negative id as the item's index, so "From a file…", first in
+# the menu, opened whichever model was first after it.
+const IMPORT := 1 << 30
 
 signal cleared()
 ## A new model: an empty baseplate, no name and a fresh conversation.

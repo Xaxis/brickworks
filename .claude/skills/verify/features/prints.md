@@ -5,7 +5,7 @@ app or brought in from a picture file, saved as real LDraw parts with !TEXMAP
 and their pictures carried in the model file, and a model's sticker sheet
 printed at true size.
 
-<!-- covers: lib:custom prints, ui:print designer, lib:stickers, lib:sticker sheet, ui:prints and stickers in the parts bin -->
+<!-- covers: lib:custom prints, ui:print designer, lib:stickers, lib:sticker sheet, ui:prints and stickers in the parts bin, cli:prints and stickers in a browser -->
 
 ## Sub-features
 
@@ -117,8 +117,15 @@ printed at true size.
 - `prints and stickers in the parts bin` (`src/prints/print_studio.gd`,
   `PrintStudio`, made by main; `sticker_sheet_dialog.gd`, `StickerSheetDialog`):
   the bin's **Print…** and **Stickers…** buttons (`print_wanted`,
-  `stickers_wanted`). Stickers… opens the sheet: the model's stickers with their
-  size and count, each with Stick on…, Move… and Peel off; the stickers made
+  `stickers_wanted`). Print… opens the designer on the part in hand, or, with
+  one part picked out in the model (Shift-click), on that part: saved, the
+  printed part takes its place, in its colour (`_in_place`: `take_off` then
+  `put_part`, two steps of undo), and is in My prints too. Under My prints and My
+  stickers a cell is labelled with the name its maker gave it
+  (`PartPrints.given_name`, out of "…, Custom Print Monument Valley" or "Sticker
+  … mm, Brick Street") and drawn with its picture (`ThumbTile.printed`); other
+  parts keep their id and the bin's plain picture. Stickers… opens the sheet: the
+  model's stickers with their size and count, each with Stick on…, Move… and Peel off; the stickers made
   before that the model does not use; New sticker…; Save sheet as PDF / as PNG
   (300 dpi) — a file dialog on the desktop, a download in a browser. A face is
   asked for by a pane laid over the view (`ask_for_face`), so the click goes to
@@ -138,6 +145,10 @@ godot --headless --path . --script src/dev/sticker_probe.gd     # needs pdftoppm
 godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd     # needs a display
 godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd    # needs a display
 tools/build_custom.py shots/print_probe.mpd --check
+# in a real browser, against a preview (tools/deploy.sh without --prod) or a local export;
+# source .env first so browser.mjs signs the page in; a preview is behind Vercel's login
+# without BW_BYPASS, and the flow sees only "Log in to Vercel"
+BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=https://<a preview>/app --out=shots/studio_web
 ```
 
 Proves it when:
@@ -171,10 +182,12 @@ Proves it when:
   My prints, the slope's print on its slanted face only; 98138's round top round
   on its canvas; 3960's dish printed from above over 496 curved faces. Then two
   2431 tiles side by side: a click on one finds the top of both (80 x 40 LDU, 2
-  bricks), one with Shift; the sticker 78.5 x 38.5 LDU (31.4 x 15.4 mm), a film
-  0.25 LDU thick with no connectors or cover, under My stickers; stuck on at the
-  middle of both tiles' top, its printed face up, stuck to both (`stuck_to`);
-  undo, redo, peeled off and undone; the model file read back into a library that
+  bricks), one with Shift, and one aimed along the edge a tile's two top
+  triangles share; the sticker 78.5 x 38.5 LDU (31.4 x 15.4 mm), a film 0.25 LDU
+  thick with no connectors or cover, under My stickers; stuck on at the middle of
+  both tiles' top, its printed face up, stuck to both (`stuck_to`), listed by the
+  parts list as "Sticker 31.4 x 15.4 mm, … (custom element)" and named in the bin
+  by the name it was given; undo, redo, peeled off and undone; the model file read back into a library that
   never saw it with the same picture bytes. The sheet: `pdfinfo` says one A4 page;
   `pdftoppm -r 600` renders it and the cut line measures 31.39 x 15.39 mm against
   the sticker's 31.40 x 15.40, inside the two real tiles' tops (31.8 x 15.8 mm) by
@@ -183,14 +196,29 @@ Proves it when:
   `print_sticker_probe.mpd`.
 - `studio_ui_probe` ends `a photo, a logo and a sticker were put on a model by hand,
   saved and opened`: Print… on a held 2 x 2 tile, a photograph brought in, covered
-  and dragged with the mouse, saved, clicked down; the Brickworks logo (web/icon.svg)
-  on 3037's slope, its background cleared, in LEGO inks; Stickers…, New sticker…,
-  a click on one of two 1 x 4 tiles, a street sign drawn with the fill, box and
-  text tools, saved and stuck across both; the sheet; the model saved with three
-  !DATA pictures and three made parts, and opened again with all three. **Look at**
-  `shots/studio_photo_editor.png`, `studio_slope_editor.png`,
+  and dragged with the mouse, saved — its bin cell says "Monument Valley" and
+  differs from the plain picture of it where the photograph is — and clicked
+  down; the Brickworks logo (web/icon.svg) on 3037's slope, its background
+  cleared, in LEGO inks; a plain 2 x 2 tile in the model picked out with
+  Shift-click, Print… on it, a dial starter saved, and the printed tile standing
+  where the plain one stood in its white, nothing left picked out and no outline
+  drawn; Stickers…, New sticker…, a click on one of two 1 x 4 tiles, a street sign
+  drawn with the fill, box and text tools, saved and stuck across both; the sheet;
+  the model saved with four !DATA pictures and four made parts, and opened again
+  through Open… > From a file on this computer… (its file dialog up, the file
+  chosen in it) with all four. **Look at** `shots/studio_photo_editor.png`, `studio_slope_editor.png`,
   `studio_sticker_editor.png`, `studio_model.png`, `studio_sticker_top.png`,
   `studio_sheet.png`, `studio_reopened.png`.
+- `studio_flow.mjs` (the web build, WebGL 2 and IndexedDB, which the desktop
+  probes cannot vouch for) ends `studio flow: a photo, a logo and a sticker made in the browser, measured, carried and opened`: the
+  scene opened through Open… > From a file; Print… with "or print on" 3068b, a
+  photograph brought in through Add a picture… (the page's own file input),
+  covered, saved and clicked down; web/icon.svg on 3037's slope, its background
+  cleared, in LEGO inks; Stickers… > New sticker…, a click on the two tiles, a
+  sign drawn and stuck on; the sheet saved as a PDF download and measured by
+  `tools/sticker_sheet_check.py` within 0.1 mm; the model exported and opened in
+  a second, empty browser with all its printed parts. No script error reaches
+  the console. **Look at** `shots/studio_web/*.png`.
 
 ## Gotchas
 
@@ -230,6 +258,15 @@ Proves it when:
   (`InputEventMouseButton.global_position`), not `get_mouse_position()`, which
   is the system's pointer that a check's clicks do not move; and the pane takes
   the release too, or the builder put the part in hand down.
+- **A made print's picture is a surface of its own**, and the bin draws surface
+  0 only (official prints read better at 96 pixels without their detail), so
+  every cell under My prints was a red frame round a hole until the bin asked
+  for those with their print.
+- **A brick leaving the selection has to say so.** `take_off` erased the plain
+  tile from the selection without `selection_changed`, and the world's rebuild
+  redraws the outline only while something is selected, so after a print in
+  place a yellow box stayed round the print. `take_off` and `_lift_figure` (a
+  figure picked up while picked out) now emit it.
 - **A sticker is in nobody's way, and in no lattice.** Having no cover, the
   lattice's ray does not find it: it is peeled off and moved from the sticker
   sheet, not by clicking it. `Stability` passes over a brick with no boxes.

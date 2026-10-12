@@ -100,6 +100,13 @@ is 61 parts, and the count printed and the count in the file must agree.
 
 ## Gotchas
 
+- **A PopupMenu reports a negative id as the item's index.** The Open menu's
+  "From a file on this computer…" had id -2, so pressing it said 0 and opened
+  the first model listed under it — the first saved one, or the Bench example —
+  on the desktop and in a browser alike. Its id is now `1 << 30`;
+  `studio_ui_probe` opens its saved model through that line and fails if no file
+  dialog comes up.
+
 - **The build order is written to the file, but not by the autosave.** Working it
   out compares every brick with every other: measured at 96 ms for 400 bricks,
   552 ms for a thousand and **2.2 s for two thousand**, and the autosave fires a

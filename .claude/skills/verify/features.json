@@ -170,6 +170,14 @@
       "tests": []
     },
     {
+      "id": "cli:figure prints and moulds in a browser",
+      "kind": "cli",
+      "entry": "tools/web/print_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -209,6 +217,14 @@
       "entry": "tools/web_pack.py",
       "reach": "tools/web_pack.py --list",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:prints and stickers in a browser",
+      "kind": "cli",
+      "entry": "tools/web/studio_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
+      "area": "prints",
       "tests": []
     },
     {

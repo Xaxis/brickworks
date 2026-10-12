@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser -->
 
 ## Sub-features
 
@@ -241,6 +241,7 @@ node tools/web/minifig_flow.mjs --url=<a build>/app --out=shots/minifig_web
 godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd     # needs a display
 godot --headless --path . --script src/dev/mould_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd     # needs a display
+BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web    # .env sourced
 ```
 
 Proves it when:
@@ -352,6 +353,15 @@ Proves it when:
   `mould_club.png`, `mould_builder.png`, `mould_figure_front.png`,
   `mould_figure_corner.png`, `mould_figure_side.png`: the hair on the head, not
   through it, its fringe a quiff; the club in the hand where a sword would be.
+- `print_flow.mjs` (`figure prints and moulds in a browser`: WebGL 2, IndexedDB
+  and GDScript in WebAssembly, which no desktop probe vouches for) ends `print
+  flow: drawn, sculpted, worn, placed and kept in the browser`: M, the Head
+  slot's Draw a print…, a face drawn with the mouse and saved; the Torso slot's,
+  a badge; the Headgear slot's Make a mould…, the hair's top pulled up and saved;
+  each save one more part made here (`window.brickworksState.custom`); the figure
+  placed with them (`window.brickworksBricks`); the page reloaded and all three
+  still made here, the model back with the figure. **Look at**
+  `shots/print_web/1_face.png` … `6_reloaded.png`.
 
 ## Gotchas
 

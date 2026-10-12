@@ -427,6 +427,13 @@
       "area": "minifig"
     },
     {
+      "kind": "cli",
+      "label": "figure prints and moulds in a browser",
+      "entry": "tools/web/print_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",
+      "area": "minifig"
+    },
+    {
       "kind": "lib",
       "label": "custom moulds",
       "entry": "src/minifig/mould.gd",
@@ -473,6 +480,13 @@
       "label": "prints and stickers in the parts bin",
       "entry": "src/prints/print_studio.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print… / Stickers…)",
+      "area": "prints"
+    },
+    {
+      "kind": "cli",
+      "label": "prints and stickers in a browser",
+      "entry": "tools/web/studio_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
       "area": "prints"
     },
     {
