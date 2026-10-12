@@ -437,6 +437,27 @@ fixing what it got wrong.
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
   it at x -2 and passes the check.
+- `a tower on a plinth`: `"plinth": {"steps", "out", "stair"}` on `prism`
+  (`Assistant._on_plinth`, `_foot`), the base as a call: every Orthanc built
+  here stood on rubble and the owner named it. Square terraces `steps` (1-4)
+  of two courses each, stepping out `out` studs, the top one two studs clear
+  of the tower's farthest corner (`_foot`: the core's and the lowest storey's
+  piers' outlines), laid by the shape pattern as boxes, so every edge is
+  straight (laid round, they were a circle stepped a stud at a time and read
+  as a staircase from above). Their tops are tiles in the second tone up to
+  the tower's faces, with studs (`studs_at`) on every stud the foot reaches
+  over at all (by the stud's middle alone, turned faces stood their end bricks
+  on tiles); hollow inside under a cap four plates thick (a three-plate cap
+  was one brick course, held by nothing in the shape, and pruned: the tower
+  stood in a pit). The stair is cut into the front (+z), four wide, two plates
+  a step from a four-plate kerb (a two-plate bottom step was plates beside the
+  terraces' bricks, a piece of its own), treads tiled in the second tone, up
+  to the top terrace at the door's level. `patterns_probe`: the guidance's
+  cluster on a plinth passes the check in one piece with its foot at y 12,
+  terrace parts and stair treads, and the reply says where its foot is. The
+  shape pattern's mirror strip takes its parity with `posmod` — a plinth
+  centred on its `at` has studs either side of nought, and `-1 % 2` is `-1`,
+  which laid a three-wide strip off the plane and overlapped itself.
 - `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
   (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
   here rose the same width from foot to horns, and the owner's verdict named it.
