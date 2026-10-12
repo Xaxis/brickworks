@@ -2293,6 +2293,8 @@ func _watch_view() -> void:
 	_out_of_view = away
 	get_viewport().disable_3d = away
 	FramePace.unwatched = away
+	if _verbs != null:
+		_verbs.out_of_view = away
 	if away and _playback != null and _playback.is_playing():
 		_playback.stop()
 
