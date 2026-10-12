@@ -867,10 +867,12 @@ Found on the way, and fixed or owed below:
 - 14, 15: Export offers a 2400 x 1600 picture of the model alone on a clear
   background, a BrickLink wanted list (55 colours, sourced) and a Rebrickable
   list.
-- 16, half of it: Open reads BrickLink Studio's `.io` (a zip with Studio's
-  published password around an LDraw file), in a browser too. LDD's `.lxf`
-  needs LDD's part and colour numbers mapped and is refused with a sentence
-  saying Studio converts it.
+- 16: Open reads BrickLink Studio's `.io` (a zip with Studio's published
+  password around an LDraw file), in a browser too; and, since 2026-10-12,
+  LDD's `.lxf`: LEGO's part and colour numbers and LDD's origins mapped by
+  the community's ldraw.xml (`assets/ldraw/ldd.json`, `src/parts/ldd_lxf.gd`),
+  a part it cannot place named rather than dropped. Proven on a file LDD 4.3
+  saved, every part where LDD put it (`lxf_probe`).
 - 18, 2026-10-12: `K` cuts the model along X, Y or Z, the plane dragged
   through it by a slider in a strip over the model (View → Cut away, or the
   toolbar); the faces it cuts through are drawn as faces, hatched, and what
@@ -919,7 +921,7 @@ Studio, Mecabricks and LDCad lay one out (`src/ui/shell.gd`):
   counts a person's first tasks on the old build and the new.
 
 Left, in order: Technic pins and axles and clips on bars placed by connection
-(13); LDD's .lxf (16); edge lines and studs-off views, which are the
+(13); edge lines and studs-off views, which are the
 renderer's (BrickWorld); panels that can be
 moved to another edge, not only folded. And: a part's tooltip still counts side
 studs into its footprint; on the web a moved brick is not redrawn until

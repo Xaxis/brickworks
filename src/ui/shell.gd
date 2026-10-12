@@ -290,8 +290,7 @@ func _define() -> void:
 		"Reopen a saved model, an example, or a file from this computer")
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
-	_add("import_lxf", "LEGO Digital Designer model (.lxf) — not yet", 0,
-		func() -> void: pass, func() -> bool: return false)
+	_add("import_lxf", "LEGO Digital Designer model (.lxf)…", 0, bar._import)
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,

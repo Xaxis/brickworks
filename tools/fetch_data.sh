@@ -45,6 +45,13 @@ if [ -f vendor/ldrawunf.zip ]; then
   unzip -q -o vendor/ldrawunf.zip -d vendor/ldraw/unofficial/ 2>/dev/null || true
 fi
 
+# LEGO Digital Designer's part, colour and origin numbers in LDraw's terms,
+# kept by the LDraw community: tools/ldd_map.py derives
+# assets/ldraw/ldd.json from it, which the .lxf importer reads. See
+# docs/ATTRIBUTION.md.
+fetch "ldraw.xml (LDD to LDraw)" \
+  "https://gitlab.com/sylvainls/lxf2ldr/-/raw/master/common/ldraw.xml" ldraw.xml
+
 # Rebrickable's parts tables, which record which part was ever actually
 # made in which colour.  LDraw models geometry and has no idea what LEGO
 # ever moulded: it will happily render a 4x12 wedge plate in sand green

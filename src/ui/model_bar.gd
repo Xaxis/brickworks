@@ -289,7 +289,7 @@ func _on_open() -> void:
 	# Exporting an .ldr and then having nowhere to put it back was the
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
-	_saves.add_item("From a file on this computer (LDraw, or Studio .io)…", IMPORT)
+	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
 	_saves.add_separator()
 	if _entries.is_empty() and examples.is_empty():
 		_saves.add_item("nothing saved yet")
@@ -343,6 +343,8 @@ func _import() -> void:
 			if int(result.get("waiting", 0)) > 0:
 				note += " — %d are still arriving, open it again in a moment" \
 					% int(result["waiting"])
+			if not _picker.notes.is_empty():
+				note += " — " + _picker.notes
 			_say(note))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()

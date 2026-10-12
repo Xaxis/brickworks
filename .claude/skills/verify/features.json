@@ -814,6 +814,14 @@
       "tests": []
     },
     {
+      "id": "ui:open an ldd model",
+      "kind": "ui",
+      "entry": "src/parts/ldd_lxf.gd",
+      "reach": "godot --headless --path . --script src/dev/lxf_probe.gd   (by hand: File, Import, then LEGO Digital Designer model, and choose an .lxf)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:palette",
       "kind": "ui",
       "entry": "src/ui/parts_bin.gd",
