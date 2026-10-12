@@ -196,6 +196,13 @@
       "area": "view"
     },
     {
+      "kind": "lib",
+      "label": "LEGO Art layout",
+      "entry": "src/assembly/mosaic_art.gd",
+      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
+      "area": "view"
+    },
+    {
       "kind": "api",
       "label": "GET /api/account",
       "entry": "api/account.js",
