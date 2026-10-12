@@ -39,7 +39,12 @@ picture the assistant is shown.
   publishes no trackpad convention we could find, so two-finger turning
   follows SketchUp for Web's. `tools/web/nav_flow.mjs` does all of it with the
   left button, the wheel, a pinch and keys and checks that no brick was put
-  down; it fails on brickworks.diy as of 2026-10-11.
+  down; it fails on brickworks.diy as of 2026-10-11. With each view tool on it
+  also clicks Paint on the toolbar and a part in the bin, which must be
+  pressed: on brickworks.diy at 91ae209 neither was, with Orbit or Pan on.
+  It reads the page only once the app has said it again since the input
+  (`fresh()`): with frames sixty a second a read straight after a drag was
+  from before it.
 - `view cube`: the cube at the model's top right (`ViewCube`, replacing the
   axis dots), the one thing over the model: the model tree and the properties
   are docked in the left-hand column ([building](building.md)'s `docked

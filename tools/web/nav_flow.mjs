@@ -15,7 +15,7 @@
 //
 // It reads where the view is off the page (window.brickworksState.view:
 // the turn in all, unwrapped; the tilt; the distance; what it looks at).
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -261,6 +261,27 @@ start = await view();
 await drag(spot(0, 0), spot(0, 100));
 check(`Z, the Zoom tool, zooms it (${(await state()).mode})`,
   (await state()).mode === "zoom" && Math.abs((await view()).distance - start.distance) > 20);
+// With a view tool on, a click on the toolbar or a panel still presses what
+// it is on. The sheet that keeps a drag's pointer over the panels went up
+// for the Orbit and Pan tools' pointers whenever the tool was on, and every
+// click turned the view instead (brickworks.diy at 91ae209, 2026-10-12).
+for (const [press, tool] of [["KeyO", "orbit"], ["KeyH", "pan"], ["KeyZ", "zoom"]]) {
+  await key(press);
+  await page.mouse.move(spot(0, 0).x, spot(0, 0).y, { steps: 3 });
+  await wait(400);
+  await click(await controlAt("tool_mode_paint"));
+  check(`with ${tool} on, a click on Paint on the toolbar presses it (${(await state()).mode})`,
+    (await state()).mode === "paint");
+  await key(press);
+  await openColumnFor(page, "first part");
+  await page.mouse.move(spot(0, 0).x, spot(0, 0).y, { steps: 3 });
+  await wait(400);
+  await click(await controlAt("first part"));
+  check(`...and a click on a part in the parts bin takes it (${(await state()).mode})`,
+    (await state()).mode === "place");
+  await key("Escape");
+}
+await key("KeyZ");
 await key("Escape");
 check(`Esc is back to Select (${(await state()).mode})`, (await state()).mode === "select");
 await nothingPlaced();
