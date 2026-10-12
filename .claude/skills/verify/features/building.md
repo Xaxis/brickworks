@@ -182,7 +182,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   ground. The same rule now decides the ordinary ghost too. The status
   bar says what it is on ("Placing Technic Pin on the pin hole of Technic
   Brick 1 x 2 with Hole") and what R and T do there. Probe:
-  `technic_hand_probe`.
+  `technic_hand_probe`. In a browser: `tools/web/technic_flow.mjs`, which
+  aims each part at the connector where the page says it is
+  (`brickworksState.joints`, with `on_joint` and `can_place`).
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it
@@ -239,7 +241,18 @@ Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `edit_menu.png`, `tools_menu.png`, `select_tool.png`, `properties.png`,
 `grid.png`, `tour.png`, the Select by and History menus, the seat offer and
 the 1280 x 720 window. In a browser, the deploy's `fit_check.mjs` finds New
-and Save on the toolbar at every size.
+and Save on the toolbar at every size, and on a preview
+
+```sh
+node tools/web/technic_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS   # .env sourced
+```
+
+builds two beams joined by pins, an axle through the upper one with a gear
+on its top, and a bar in a hollow stud with a clip on it, every part aimed
+at its connector and clicked, and ends "technic flow (1x): two beams joined
+by pins, an axle with a gear and a clip on a bar, built by hand" with
+pictures in `shots/technic_web/` (2026-10-12: 33 checks, nine parts,
+"stands up").
 
 For the scene itself, launch it and read the brick count in the status bar: with
 `--model=models/car.ldr` it is 61 parts, which is what
