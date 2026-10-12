@@ -886,6 +886,38 @@ func _in_storeys() -> void:
 		int(assistant._last_rooms.get("dropped", -1)) == 0)
 	var whole: Dictionary = assistant._check(assistant._model_from_world(), true)
 	_check("and the whole of it passes the check: %s" % whole["summary"], bool(whole["ok"]))
+
+	# On a plinth: square terraces stepping down from its foot and a stair
+	# cut into their front up to its door's level, the tower raised onto
+	# them. Every Orthanc built here stood on a ring of rubble; the first
+	# plinth was a ring, its hollow open through its top round the tower and
+	# its stair a piece of its own.
+	var raised: Dictionary = tower.duplicate(true)
+	raised["plinth"] = {"steps": 2, "out": 2}
+	var on_plinth: Assistant.Model = assistant._read_model({"name": "Orthanc", "patterns": [raised]})
+	var plinth_check: Dictionary = assistant._check(on_plinth)
+	var foot: float = INF
+	var treads: int = 0
+	var tiled: int = 0
+	var terraces: int = 0
+	for placement: Assistant.Placement in on_plinth.placements:
+		var section: Assistant.Section = on_plinth.section_for(placement)
+		if section != null:
+			foot = minf(foot, section.y)
+		elif placement.y < 12:
+			terraces += 1
+			if placement.color == 72 and placement.y < 11 and placement.z >= 24 + 17 \
+					and absf(placement.x - 23.5) <= 2.5:
+				treads += 1
+			elif placement.color == 72 and placement.y == 11:
+				tiled += 1
+	_check(("on a plinth it passes the check in one piece: %s, %d; its foot raised to y %s, "
+		+ "%d terrace parts, %d tiled on top, %d stair treads") % [plinth_check["summary"],
+			int(plinth_check["pieces"]), foot, terraces, tiled, treads],
+		bool(plinth_check["ok"]) and int(plinth_check["pieces"]) == 1
+			and is_equal_approx(foot, 12.0) and terraces > 100 and tiled > 100 and treads >= 4)
+	_check("...and the reply says where its foot is",
+		"\n".join(plinth_check.get("advice", [])).contains("its foot, and add_rooms' y, is at y 12"))
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
