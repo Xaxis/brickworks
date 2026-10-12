@@ -308,10 +308,26 @@
       "tests": []
     },
     {
+      "id": "cli:share browser flow",
+      "kind": "cli",
+      "entry": "tools/web/share_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web   (with .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:share probe",
       "kind": "cli",
       "entry": "tools/web/share_probe.mjs",
       "reach": "node tools/web/share_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:share view probe",
+      "kind": "cli",
+      "entry": "src/dev/share_view_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd",
       "area": "web",
       "tests": []
     },
@@ -947,6 +963,30 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (shift-click, then C paint / arrows nudge / Delete)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:share panel",
+      "kind": "ui",
+      "entry": "src/ui/share_panel.gd",
+      "reach": "godot --path .  (File \u203a Share\u2026, or Share on the toolbar, signed in)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:shared model page and card",
+      "kind": "ui",
+      "entry": "web/share-page.js",
+      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed   (served by api/share.js)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:shared model viewer",
+      "kind": "ui",
+      "entry": "src/ui/share_view.gd",
+      "reach": "https://brickworks.diy/m/<id>  (or /app?view=<id>; godot --path . -- --view=<id> with BRICKWORKS_API set)",
+      "area": "web",
       "tests": []
     },
     {

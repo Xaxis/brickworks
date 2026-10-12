@@ -403,6 +403,8 @@ func _start_new() -> void:
 	_name.text = ModelStore.UNTITLED
 	if store != null:
 		store.title = ModelStore.UNTITLED
+		# A new model is not the one that was shared.
+		store.share_id = ""
 		# Nothing in it is missing, so the autosave may keep it.
 		store.adopt()
 	model_named.emit(ModelStore.UNTITLED)
@@ -418,5 +420,9 @@ func _on_clear() -> void:
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
+	# Whatever is built next is not the model that was shared, and
+	# publishing it must not replace that one at its link.
+	if store != null:
+		store.share_id = ""
 	cleared.emit()
 	_say("cleared")

@@ -64,7 +64,7 @@ const ALT := KEY_MASK_ALT
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
 const MENUS: Array = [
 	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "-",
-		">export", "instructions", "-", "clear", "account", "quit"]],
+		"share", ">export", "instructions", "-", "clear", "account", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
@@ -245,7 +245,23 @@ func can(name: String) -> bool:
 	var found: Command = _commands.get(name)
 	if found == null:
 		return false
+	if read_only and not name in LOOKING:
+		return false
 	return not found.can.is_valid() or bool(found.can.call())
+
+
+## Set for a model shared by link and opened to look at (/app?view=<id>):
+## then only the commands in [constant LOOKING] can run, from the menus,
+## the toolbar or a key — a command that is not here cannot change the
+## model, save it or reach the account, whatever asks for it.
+var read_only: bool = false
+
+## What a visitor may do with somebody else's model: look at it from any
+## side, step through it, read its booklet and its parts list.
+const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
+	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
+	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
+	"website", "about"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.
@@ -291,6 +307,8 @@ func _define() -> void:
 		func() -> void: bar._on_export_chosen(3), something)
 	_add("instructions", "Instructions…", 0, _instructions, something,
 		"Building instructions for this model, step by step")
+	_add("share", "Share…", 0, func() -> void: app.call("_share_wanted"), something,
+		"A link anyone can open to see this model, its steps and its parts list")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),

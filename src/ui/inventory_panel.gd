@@ -17,8 +17,38 @@ var _rows: VBoxContainer
 var _heading: Label
 var _stock: Inventory
 var _title: String = "Model"
+var _csv: Button
+var _bricklink: Button
+var _rebrickable: Button
+var _done: Button
 
 signal closed
+## A shop's list was asked for: "bricklink" or "rebrickable".
+signal shop_wanted(shop: String)
+
+
+func _header_button(header: Container, words: String, tip: String) -> Button:
+	var button := Button.new()
+	button.text = words
+	button.tooltip_text = tip
+	button.add_theme_font_size_override("font_size", 11)
+	button.focus_mode = Control.FOCUS_NONE
+	header.add_child(button)
+	return button
+
+
+## What a shop's list came to, said where it was asked for.
+func tell(line: String) -> void:
+	if not line.is_empty():
+		_heading.text = line
+
+
+## Its controls, for the page to find.
+func controls_by_name() -> Dictionary:
+	if not visible:
+		return {}
+	return {"parts_csv": _csv, "parts_bricklink": _bricklink,
+		"parts_rebrickable": _rebrickable, "parts_done": _done}
 
 
 func _ready() -> void:
@@ -51,19 +81,20 @@ func _build() -> void:
 	_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_heading)
 
-	var csv := Button.new()
-	csv.text = "Save as CSV"
-	csv.tooltip_text = "A spreadsheet, or a shop's bulk-add box"
-	csv.add_theme_font_size_override("font_size", 11)
-	csv.pressed.connect(_on_csv)
-	header.add_child(csv)
+	_csv = _header_button(header, "Save as CSV", "A spreadsheet, or a shop's bulk-add box")
+	_csv.pressed.connect(_on_csv)
+	# The two shops' own lists, here as well as under File › Export: the
+	# list is where somebody decides to buy the parts, and a shared model's
+	# viewer has no File menu at all.
+	_bricklink = _header_button(header, "BrickLink",
+		"A BrickLink wanted list (.xml), to upload under Wanted › Upload")
+	_bricklink.pressed.connect(func() -> void: shop_wanted.emit("bricklink"))
+	_rebrickable = _header_button(header, "Rebrickable",
+		"A Rebrickable parts list (.csv), to import into a list of your own")
+	_rebrickable.pressed.connect(func() -> void: shop_wanted.emit("rebrickable"))
 
-	var close := Button.new()
-	close.text = "Done"
-	close.add_theme_font_size_override("font_size", 11)
-	close.focus_mode = Control.FOCUS_NONE
-	close.pressed.connect(hide_list)
-	header.add_child(close)
+	_done = _header_button(header, "Done", "")
+	_done.pressed.connect(hide_list)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

@@ -81,6 +81,9 @@ signal reveal(brick_ids: Dictionary)
 signal export_wanted()
 signal closed
 
+## Its buttons and the slider by name, for the page to find (controls_by_name).
+var _named: Dictionary = {}
+
 
 func _ready() -> void:
 	visible = false
@@ -146,21 +149,26 @@ func _build() -> void:
 	var start := _button("Start", "An empty baseplate (Home)")
 	start.pressed.connect(to_start)
 	row.add_child(start)
+	_named["steps_start"] = start
 	var back := _button("Back", "The step before (left arrow)")
 	back.pressed.connect(step_back)
 	row.add_child(back)
+	_named["steps_back"] = back
 	_reverse = _button("Reverse", "Play it coming apart, back to the start")
 	_reverse.pressed.connect(func() -> void: _toggle(-1))
 	row.add_child(_reverse)
 	_play = _button("Play", "Play the build (space)")
 	_play.pressed.connect(func() -> void: _toggle(1))
 	row.add_child(_play)
+	_named["steps_play"] = _play
 	var forward := _button("Next", "The step after (right arrow)")
 	forward.pressed.connect(step_forward)
 	row.add_child(forward)
+	_named["steps_next"] = forward
 	var end := _button("End", "The finished model (End)")
 	end.pressed.connect(to_end)
 	row.add_child(end)
+	_named["steps_end"] = end
 	_speed = _button("1x", "How fast it plays")
 	_speed.pressed.connect(func() -> void:
 		_speed_at = (_speed_at + 1) % SPEEDS.size()
@@ -181,10 +189,13 @@ func _build() -> void:
 		"These steps as a printable booklet, pictures and parts included")
 	save.pressed.connect(func() -> void: export_wanted.emit())
 	row.add_child(save)
+	_named["steps_booklet"] = save
 
 	var close := _button("Done", "Back to the whole model")
 	close.pressed.connect(stop)
 	row.add_child(close)
+	_named["steps_done"] = close
+	_named["steps_slider"] = _slider
 
 
 ## Words, not symbols.
@@ -247,6 +258,16 @@ func stop() -> void:
 
 func is_playing_back() -> bool:
 	return visible
+
+
+## Its controls, for the page to find, while it is up.
+func controls_by_name() -> Dictionary:
+	return _named.duplicate() if visible else {}
+
+
+## How many places along the timeline there are, and which is showing.
+func timeline_at() -> Vector2i:
+	return Vector2i(_shown, _length())
 
 
 ## Which order the timeline runs in: as made, or the build order.

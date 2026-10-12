@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow -->
+<!-- covers: ui:sign-in screen, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's sign-in (OAuth), ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel -->
 
 ## Sub-features
 
@@ -109,6 +109,28 @@ they have. A Claude connector belongs to the account that switched it on.
   is signed in as someone else; then one question, naming who asks and the host
   the answer goes back to (with a warning for a loopback program); Allow posts
   `op=approve` with the session and follows the answer back to Claude.
+- `share panel` (`src/ui/share_panel.gd`, File › Share… and Share on the
+  toolbar, `tool_share`; since 2026-10-12): publishes the open model as the
+  signed-in account (`POST /api/share`, [web](web.md)) — its LDraw
+  (`ModelStore.to_text`, made parts and prints inside), the name, the name to
+  credit only when Show who made it is ticked (offered from the address before
+  the @, never sent unticked), and a 1200 x 630 PNG of the model from where the
+  view looks, on a light ground (`Picture.take`, 800 x 420 if it would pass
+  560 KB). The link comes back with Copy link, Copy embed code, Open and
+  Unpublish. It is kept with the model as `0 !BRICKWORKS SHARE <id>` in the
+  autosave and saves (`ModelStore.share_id`, `with_share`, `share_in`; never in
+  what is published or exported), so publishing the same model again updates
+  the same link, and "Publish again" after Unpublish brings it back there. A
+  link that is another account's (403) or gone (404) is replaced by a new one;
+  New and Clear forget it. Opening the panel asks `?op=mine` whether its link
+  is up or taken down. Signed out, it says to sign in.
+- `Open in Brickworks` (`main._maybe_copy`, `/app?copy=<id>`): the viewer's
+  button. The app as everyone gets it, sign-in screen and all; once somebody
+  is signed in and what was on the baseplate is back, the shared model is
+  fetched and opened, what was there is saved first if it had unsaved work
+  (not the untouched example), the copy waits for its parts and is saved under
+  its own name — "Name (copy)" if one of theirs has it — with no link of its
+  own, and the address loses its `?copy=` so a reload makes no second copy.
 - `sign a machine in` (`src/dev/sign_in.gd`): for a windowed app driven from a
   checkout (`--mcp` and `tools/brick.py`, a look by hand), which opens on the
   sign-in screen like anyone's. Mints the code with the admin API (needs
