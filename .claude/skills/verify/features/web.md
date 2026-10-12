@@ -282,9 +282,11 @@ plan with Claude as the client.
   every frame again (16 of 16, Chromium 820%, the GPU process 720%): the
   bin's shimmering tiles below its fold were inside the window (see
   [parts](parts.md) gotchas); with only tiles in sight shimmering, 0 of 657
-  drawn and the GPU process 1% (2026-10-12). The main thread is still about
-  100% busy in the engine's own frames, which drew nothing: the shell's
-  scripts every frame, about 2.5 ms of a desktop frame, not yet cut down. The
+  drawn and the GPU process 1% (2026-10-12). The main thread was still about
+  100% busy in the engine's own frames, which drew nothing: the status line
+  and the pointer each looked up the part under the pointer every frame (see
+  `arrival check`). Looked up only on change, on the preview of ce4fc09 the
+  main thread is 5% busy standing still and 0 of 906 frames drawn. The
   part in hand is taken with Q, as Select is where the app rests. It waits 20 s after
   settling (`--after`) before it measures: in software the GPU process
   rasterises seconds behind the page, and straight after settling it was

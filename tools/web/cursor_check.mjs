@@ -547,8 +547,15 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     const c = document.getElementById("canvas");
     return { w: c.clientWidth, h: c.clientHeight };
   });
-  const half = { w: Math.min(at.x - 20, size.w - at.x - 20, 360), h: Math.min(at.y - 60, 300) };
-  const wholeView = [[at.x - half.w, at.y - half.h, half.w * 2, half.h * 2]];
+  // The model's part of the window as it is now. On a laptop the columns
+  // take turns, and opening the parts bin moves the model over: measured
+  // around where the view was before, the region took in the bin, and the
+  // list scrolling under the wheel read as the view moving.
+  async function wholeView() {
+    const c = (await where("view")) || at;
+    const half = { w: Math.min(c.x - 20, size.w - c.x - 20, 360), h: Math.min(c.y - 60, 300) };
+    return [[c.x - half.w, c.y - half.h, half.w * 2, half.h * 2]];
+  }
   // The assistant shows the brief once there is a key, and the key form
   // before; whichever is up.
   for (const [what, keys] of [["over the parts bin", ["parts list"]],
@@ -560,14 +567,15 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
       point = await page.evaluate((k) => (window.brickworksControls || {})[k], key);
       if (point) break;
     }
-    if (point) await scrolled(what, point, wholeView, false);
+    if (point) await scrolled(what, point, await wholeView(), false);
     else console.log(`        (no ${keys.join(" or ")} on screen at ${scale}x, so not checked there)`);
   }
-  await overPart(at);
-  await scrolled("over the controls panel", at, wholeView, false, {
+  const here = (await where("view")) || at;
+  await overPart(here);
+  await scrolled("over the controls panel", here, await wholeView(), false, {
     open: async () => { await page.keyboard.press("Comma"); await page.waitForTimeout(3000 * slow); },
     close: async () => { await page.keyboard.press("Escape"); },
   });
-  await overPart(at);
-  await scrolled("over the model, which it should move", at, wholeView, true);
+  await overPart(here);
+  await scrolled("over the model, which it should move", here, await wholeView(), true);
 }

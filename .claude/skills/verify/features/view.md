@@ -538,7 +538,10 @@ CSS cursor, names the picture by its pixels against the SVGs, checks its 1x and
 2x decode to 32 and 64 px, and leaves `shots/cursors/web_<context>_<n>x.png`
 with the computed cursor drawn where the pointer is (Playwright's screenshots
 do not draw the pointer), `web_pictures_<n>x.png` (the pictures as the browser
-decoded them from the CSS) and `cursors_<n>x.json`. So do `finish`
+decoded them from the CSS) and `cursors_<n>x.json`. (The wheel half
+measures the view where the model is as each wheel turns: on a laptop,
+opening the bin moves the model over, a region taken from before took in the
+bin, and its list scrolling failed the check at 1x and 2x, 2026-10-12.) So do `finish`
 (`shots/finishes_<renderer>.png`, a row of one real colour per finish, and
 `finishes_shot_<renderer>.png`, the same in the critique render) and
 `true colour` (`shots/true_colour_<renderer>.png`, with the sampled boxes drawn). `shot` also times a
