@@ -113,10 +113,12 @@ the desktop.
   worker starts, and the tables filled on first use are filled first
   (`BrickifyDialog._warm`), as `Assistant._checked` does. A part not here yet
   is remembered as absent by those tables (`Shapes._parts`, the wedge tables),
-  so `_warm` drops what they remember as absent and fills them again. Waiting
-  thirty seconds for the parts was not enough on a loaded machine: the same
-  bunny came out 1,057 parts in one browser and 1,004 in the next. It waits two
-  minutes, and the status line names any part that never came.
+  so `_warm` drops what they remember as absent and fills them again. The same
+  bunny came out 1,057 parts in one browser and 1,004 in the next: 22 of its
+  parts were queued behind the thumbnails the parts bin asks for, still there
+  two minutes on. They are asked for as urgent (ahead of the queue) as soon as
+  the panel opens, waited for up to two minutes, and the status line names any
+  part that never came — which the flow fails on.
 - **Hollow is less plastic, not fewer parts.** Measured on the 24-stud sphere:
   59% of the plastic in 1,517 parts against 1,524. Cut through a course, the
   hollow's floor and ceiling were plates and it came out a fifth more parts, so

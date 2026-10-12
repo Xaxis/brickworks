@@ -134,6 +134,8 @@ func show_for(mesh: MeshFile) -> void:
 	_on_up_changed()
 	_on_colours_changed()
 	visible = true
+	# While the size is chosen, the parts are on their way.
+	_fetch_parts()
 
 
 func _build() -> void:
@@ -528,17 +530,14 @@ func _set_enabled(on: bool) -> void:
 ## most are fetched rather than shipped, and a worker cannot fetch. The ones
 ## that never came, which it then lays without.
 ##
-## Thirty seconds was not enough on a loaded machine drawing in software:
-## the same bunny at the same size came out 1,057 parts in one browser and
-## 1,004 in the next, its slopes and tiles still on their way.
+## Asked for as urgent, and first as soon as the panel opens: the same
+## bunny at the same size came out 1,057 parts in one browser and 1,004 in
+## the next, twenty-two of its parts still queued behind the thumbnails the
+## parts bin had asked for, two minutes after.
 func _ensure_parts() -> PackedStringArray:
 	var waiting: Dictionary = {}
-	for id: String in Brickify.parts_needed():
-		if not library.is_resident(id):
-			library.mesh_for(id)
-		if not library.is_resident(id) and library.parts.has(id):
-			library.request_mesh(id)
-			waiting[id] = true
+	for id: String in _fetch_parts():
+		waiting[id] = true
 	var deadline: int = Time.get_ticks_msec() + 120000
 	while not waiting.is_empty() and Time.get_ticks_msec() < deadline:
 		_status.text = "fetching %d parts…" % waiting.size()
@@ -547,6 +546,21 @@ func _ensure_parts() -> PackedStringArray:
 			if library.is_resident(id):
 				waiting.erase(id)
 	return PackedStringArray(waiting.keys())
+
+
+## Ask for every part Brickify may lay that is not here, ahead of anything
+## else waiting. The ones still on their way.
+func _fetch_parts() -> PackedStringArray:
+	var out := PackedStringArray()
+	if library == null:
+		return out
+	for id: String in Brickify.parts_needed():
+		if not library.is_resident(id):
+			library.mesh_for(id)
+		if not library.is_resident(id) and library.parts.has(id):
+			library.request_mesh(id, true)
+			out.append(id)
+	return out
 
 
 ## The tables filled on first use, filled here rather than by the worker.
