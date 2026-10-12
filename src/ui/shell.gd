@@ -64,7 +64,7 @@ const ALT := KEY_MASK_ALT
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
 const MENUS: Array = [
 	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "-",
-		">export", "instructions", "-", "clear", "account", "quit"]],
+		">export", "render", "instructions", "-", "clear", "account", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
@@ -289,6 +289,8 @@ func _define() -> void:
 		func() -> void: bar._on_export_chosen(2), something)
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
 		func() -> void: bar._on_export_chosen(3), something)
+	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
+		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	_add("instructions", "Instructions…", 0, _instructions, something,
 		"Building instructions for this model, step by step")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,

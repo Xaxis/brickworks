@@ -792,6 +792,20 @@
     },
     {
       "kind": "ui",
+      "label": "photo-real render",
+      "entry": "src/ui/render_dialog.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (File, Render…, or the toolbar's camera)  /  node tools/web/render_flow.mjs --url=<preview>/app",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "studio renderer",
+      "entry": "src/render/studio_render.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (and -- --model=M --quality=best for one model)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "the booklet",
       "entry": "src/render/booklet_maker.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",

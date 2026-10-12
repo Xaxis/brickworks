@@ -47,7 +47,8 @@ const GROUPS: Array = [
 	[8, [["mode_orbit", "orbit"], ["mode_pan", "pan"], ["mode_zoom", "zoom"], ["fit", "fit"],
 		["grid", "grid"]], "View"],
 	[6, [["measure", "measure"], ["panel_properties", "properties"]]],
-	[4, [["timeline", "timeline"], ["instructions", "booklet"], ["parts_list", "parts_list"]]],
+	[4, [["timeline", "timeline"], ["instructions", "booklet"], ["render", "render"],
+		["parts_list", "parts_list"]]],
 ]
 
 ## What a tool button's tooltip says beyond its name, where the command's

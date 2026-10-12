@@ -68,11 +68,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   key (shown beside it in the menu, never answered by the menu: the keys stay
   the app's own) and whether it can be used now — greyed when not, ticked when
   it is a setting that is on. File: New, Open, Open recent, Import (LDraw,
-  Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as, Export, Instructions,
-  Clear, Account, Quit. The toolbar under it: New/Open/Save, Undo/Redo/History,
+  Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as, Export, Render…
+  (see [view](view.md)), Instructions, Clear, Account, Quit. The toolbar under it: New/Open/Save, Undo/Redo/History,
   the tools, Copy/Paste/Mirror/Select by/Show all, snap and turn step, grid,
   orthographic, fit and three views, Measure, Properties, Timeline,
-  Instructions, Parts list — each tooltip its name, key and what it does.
+  Instructions, Render, Parts list — each tooltip its name, key and what it does.
   Narrower than it needs, it folds its least-needed groups (all in the menus
   too); on a phone the file, history and tools stay.
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in

@@ -566,6 +566,14 @@
       "tests": []
     },
     {
+      "id": "lib:studio renderer",
+      "kind": "lib",
+      "entry": "src/render/studio_render.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (and -- --model=M --quality=best for one model)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:studs written on the render",
       "kind": "lib",
       "entry": "src/ai/shot_ruler.gd",
@@ -827,6 +835,14 @@
       "entry": "src/assembly/shop_lists.gd",
       "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:photo-real render",
+      "kind": "ui",
+      "entry": "src/ui/render_dialog.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (File, Render\u2026, or the toolbar's camera)  /  node tools/web/render_flow.mjs --url=<preview>/app",
+      "area": "view",
       "tests": []
     },
     {

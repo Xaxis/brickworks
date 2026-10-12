@@ -82,6 +82,24 @@ technique names its set and modeller in its own text, and here:
 - `hanging lamp`: 10246 Detective’s Office, modelled by Willy Tschager, CC BY 2.0.
 - `bedside lamp`: 75948 Hogwarts Clock Tower, modelled by Stefan Frenz, CC BY 2.0.
 
+## HDR panoramas for File, Render…
+
+The three photographed places a render can be lit by (`assets/hdri/`,
+`src/render/studio_render.gd`, `StudioRender.HDRIS`) are Poly Haven's,
+downloaded at 1K on 2026-10-12 and imported at 512 x 256. Poly Haven
+publishes every asset under **CC0 1.0** (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/): no attribution is
+required, and it is given anyway.
+
+- `studio_small_09.hdr`, "Studio Small 09", by Sergej Majboroda —
+  https://polyhaven.com/a/studio_small_09 ("Softbox studio").
+- `photo_studio_loft_hall.hdr`, "Photo Studio Loft Hall", by Sergej
+  Majboroda — https://polyhaven.com/a/photo_studio_loft_hall
+  ("Window light").
+- `kloofendal_48d_partly_cloudy_puresky.hdr`, "Kloofendal 48d Partly Cloudy
+  (Pure Sky)", by Greg Zaal (original) and Jarod Guest (sky edits) —
+  https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky ("Daylight").
+
 ## LEGO trademarks
 
 Quoted from the LEGO Group's Fair Play guidelines

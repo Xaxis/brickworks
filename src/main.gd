@@ -68,6 +68,8 @@ var _elements: ElementDialog
 var _studio: PrintStudio
 var _controls: ControlsDialog
 var _figures: MinifigDialog
+## File, Render… (src/ui/render_dialog.gd).
+var _render: RenderDialog
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -230,6 +232,8 @@ func _tell_page() -> void:
 		named.merge(_bar.controls_by_name())
 	if _figures != null and _figures.visible:
 		named.merge(_figures.controls_by_name())
+	if _render != null and _render.visible:
+		named.merge(_render.controls_by_name())
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
@@ -1415,6 +1419,22 @@ func _build_ui() -> void:
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)
+
+	# File, Render…: a photo-real picture or turntable, drawn off screen
+	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
+	_render = RenderDialog.new()
+	_render.world = _world
+	_render.library = _library
+	_render.scenery = _store.scenery
+	_render.eye = _camera
+	_render.look = ($WorldEnvironment as WorldEnvironment).environment
+	for light_name: String in ["Sun", "Fill", "Rim"]:
+		_render.rig_lights.append(get_node(light_name) as DirectionalLight3D)
+	_render.named = _bar.model_name
+	$HUD.add_child(_render)
+	_inset(_render, RenderDialog.WIDE, RenderDialog.TALL)
+	get_viewport().size_changed.connect(func() -> void:
+		_inset(_render, RenderDialog.WIDE, RenderDialog.TALL))
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		if count == 0:
@@ -1763,6 +1783,12 @@ func _on_model_edited() -> void:
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
+
+
+## File, Render….
+func open_render() -> void:
+	_builder.hide_preview()
+	_render.open()
 
 
 func _open_figures() -> void:
@@ -2976,6 +3002,8 @@ func _over_panel_at(point: Vector2) -> bool:
 	if _figures != null and _figures.visible:
 		return true
 	if _elements != null and _elements.visible:
+		return true
+	if _render != null and _render.visible:
 		return true
 	return false
 

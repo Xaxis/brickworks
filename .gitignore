@@ -45,6 +45,9 @@ tools/web/package-lock.json
 # Without the file a fresh checkout imports them as textures, the export
 # packs the texture and not the SVG, and every cursor quietly falls back.
 !assets/ui/**/*.svg.import
+# And the render's HDR panoramas, imported at 512 x 256 (process/size_limit):
+# without it a fresh checkout packs them at four times the size.
+!assets/hdri/*.hdr.import
 
 # Scratch probes. A review agent that tests its own hypothesis by
 # writing a probe and running it is doing the right thing — this
