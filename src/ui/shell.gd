@@ -73,7 +73,7 @@ const MENUS: Array = [
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
 		"-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
-		"rename_assembly", "make_unique"]],
+		"rename_assembly", "make_unique", "-", "reshape_flex"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
@@ -82,7 +82,7 @@ const MENUS: Array = [
 		"full_screen"]],
 	["Build", ["timeline", "instructions", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
-		"leave_submodel", "enter_assembly", "select_submodel", "-", "minifig", "mosaic",
+		"leave_submodel", "enter_assembly", "select_submodel", "-", "flex", "minifig", "mosaic",
 		"brickify", "part_maker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
@@ -382,6 +382,12 @@ func _define() -> void:
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# src/ui/flex_tool.gd.
+	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
+		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
+	_add("reshape_flex", "Reshape the hose or chain", 0, func() -> void: app.call("reshape_flex"),
+		func() -> bool: return bool(app.call("can_reshape_flex")),
+		"Drag the selected hose's bend, or put its chain round other sprockets")
 	# View
 	for view: Array in [["view_default", "Default view", KEY_0, "default"],
 			["view_front", "From the front", KEY_1, "front"],

@@ -117,6 +117,8 @@ var _seat_offer: SeatOffer
 var _exports: Exports
 ## The ruler: src/ui/measure.gd.
 var _measure: Measure
+## Laying a hose, a tube or a chain: src/ui/flex_tool.gd.
+var _flex: FlexTool
 var _assistant: Assistant
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
 var _commands: CommandSocket = null
@@ -274,6 +276,8 @@ func _tell_page() -> void:
 		named.merge(_seat_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
+	if _flex != null:
+		named.merge(_flex.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -1691,6 +1695,21 @@ func _build_ui() -> void:
 	add_child(_measure)
 	_verbs.measure = _measure
 
+	# Build, Hose, tube or chain…: src/ui/flex_tool.gd, its panel over the
+	# model's left edge.
+	_flex = FlexTool.new()
+	_flex.world = _world
+	_flex.builder = _builder
+	_flex.library = _library
+	_flex.assemblies = _shell.assemblies
+	_flex.camera = _camera
+	_flex.say = _bar.say
+	add_child(_flex)
+	spacer.add_child(_flex.panel)
+	_flex.panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_flex.panel.position = Vector2(12, 48)
+	_flex.changed.connect(_on_model_edited)
+
 	# Along the top of the model, when a model opened with parts a fraction
 	# of a stud off their studs: src/ui/seat_offer.gd.
 	_seat_offer = SeatOffer.new()
@@ -2175,6 +2194,23 @@ func _on_model_edited() -> void:
 func open_render() -> void:
 	_builder.hide_preview()
 	_render.open()
+
+
+## Build, Hose, tube or chain…; Edit, Reshape the hose or chain.
+func open_flex() -> void:
+	if _measure != null:
+		_measure.leave()
+	_flex.open()
+
+
+func reshape_flex() -> void:
+	var path: String = _flex.selected_item()
+	if path.is_empty() or not _flex.reshape(path):
+		_bar.say("select a hose, a tube or a chain first")
+
+
+func can_reshape_flex() -> bool:
+	return _flex != null and not _flex.selected_item().is_empty()
 
 
 func _open_figures() -> void:
@@ -2898,6 +2934,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _measure != null and _measure.takes(event):
 		_builder.hide_preview()
 		return
+	if _flex != null and _flex.takes(event):
+		_builder.hide_preview()
+		return
 	# Touch handles only what a mouse has no gesture for: holding a
 	# finger down to take a brick off, which is what a second button
 	# would have been. Placing is left to the click that emulation
@@ -3408,7 +3447,7 @@ func _over_panel_at(point: Vector2) -> bool:
 func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 	# No part to place while the ruler is out, or with a tool other than
 	# Build in hand.
-	if _measure != null and _measure.active:
+	if (_measure != null and _measure.active) or (_flex != null and _flex.active):
 		_builder.hide_preview()
 		return
 	if _verbs != null and not _verbs.shows_ghost():

@@ -979,6 +979,15 @@ func extend_last(steps: Array) -> void:
 	(last["steps"] as Array).append_array(steps)
 
 
+## Keep [param steps] as one step of the history, called [param words]:
+## what a tool did that the builder did not (a hose laid, a pose).
+func record(steps: Array, words: String) -> void:
+	if steps.is_empty():
+		return
+	_history.append({"undo": "group", "steps": steps, "words": words})
+	_redo.clear()
+
+
 ## Take these bricks off and put these down, without asking whether they
 ## fit: a copy of an assembly built again from another. ``adds`` are
 ## {part, color, at, path}. Returns the history steps, for extend_last.

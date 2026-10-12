@@ -854,6 +854,14 @@
       "tests": []
     },
     {
+      "id": "ui:hoses and chains by hand",
+      "kind": "ui",
+      "entry": "src/ui/flex_tool.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain\u2026, click two pin holes or two gears; Edit, Reshape the hose or chain)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:left-button navigation",
       "kind": "ui",
       "entry": "src/main.gd",

@@ -1117,3 +1117,138 @@ static func kind_of(part_ids: Array) -> String:
 ## Whether a part is any kind's segment.
 static func is_segment(part_id: String) -> bool:
 	return not kind_of([part_id]).is_empty()
+
+
+## A swept item's two ends read off its end pieces, as free ports: where
+## each tip is and which way the part leaves it. A file written by any
+## tool that lays the same segments reads back the same way. Empty when
+## the pieces have no two ends.
+static func ends_of_item(kind: String, pieces: Array) -> Array:
+	var spec: Dictionary = KINDS.get(kind, {})
+	var out: Array = []
+	for piece: Dictionary in pieces:
+		var part: String = piece["part"]
+		var at: Transform3D = piece["at"]
+		if spec.has("ends") and (spec["ends"] as Array).has(part):
+			var which: int = (spec["ends"] as Array).find(part)
+			var reach: float = float((spec["rigid"] as Array)[which])
+			var port: Port = free_port(at * Vector3(reach, 0, 0), -at.basis.x, reach)
+			port.set_meta("end", which)
+			out.append(port)
+		elif str(spec.get("end", "")) == part:
+			match kind:
+				"ribbed_hose":
+					var inward: Vector3 = at.basis.y.normalized()
+					out.append(free_port(at.origin - inward * float(spec["tip"]), inward, 2.0))
+				"string":
+					var up: Vector3 = at.basis.y.normalized()
+					out.append(free_port(at.origin - up * 8.0, up, 0.0))
+				_:
+					out.append(free_port(at.origin, -at.basis.y.normalized(), 2.0))
+	if out.size() != 2:
+		return []
+	if out[0].has_meta("end") and int(out[0].get_meta("end")) == 1:
+		out.reverse()
+	return out
+
+
+## A swept item's centreline as it lies, from [param from] on: where its
+## pieces run, ordered nearest to nearest. A file need not list them in
+## order, and undo puts them back in any.
+static func centreline(kind: String, pieces: Array, from: Vector3) -> PackedVector3Array:
+	var spec: Dictionary = KINDS.get(kind, {})
+	var cloud := PackedVector3Array()
+	var middle: String = str(spec.get("middle", spec.get("segment", "")))
+	var native: float = float(spec.get("native", 1.0))
+	for piece: Dictionary in pieces:
+		if str(piece["part"]) != middle:
+			continue
+		var at: Transform3D = piece["at"]
+		if str(spec.get("family", "")) == "scaled":
+			if str(spec.get("along", "y")) == "x":
+				cloud.append(at.origin - at.basis.x * native * 0.5)
+				cloud.append(at.origin + at.basis.x * native * 0.5)
+			else:
+				cloud.append(at.origin)
+				cloud.append(at.origin - at.basis.y)
+		else:
+			cloud.append(at.origin)
+	var out := PackedVector3Array()
+	var here: Vector3 = from
+	var used: Dictionary = {}
+	while used.size() < cloud.size():
+		var best: int = -1
+		var nearest: float = INF
+		for n: int in cloud.size():
+			if used.has(n):
+				continue
+			var gap: float = cloud[n].distance_squared_to(here)
+			if gap < nearest:
+				nearest = gap
+				best = n
+		used[best] = true
+		if out.is_empty() or out[out.size() - 1].distance_to(cloud[best]) > 0.05:
+			out.append(cloud[best])
+		here = cloud[best]
+	return out
+
+
+## How long a swept item is along its pieces, tip to tip near enough: the
+## stretched pieces' lengths, or the rings' count times their pitch.
+static func item_length(kind: String, pieces: Array) -> float:
+	var spec: Dictionary = KINDS.get(kind, {})
+	var run: float = 0.0
+	match str(spec.get("family", "")):
+		"scaled":
+			var native: float = float(spec.get("native", 1.0))
+			for piece: Dictionary in pieces:
+				if str(piece["part"]) != str(spec["middle"]):
+					continue
+				var basis: Basis = (piece["at"] as Transform3D).basis
+				run += (basis.x.length() if str(spec.get("along", "y")) == "x"
+					else basis.y.length()) * native
+			if spec.has("ends"):
+				run += float((spec["rigid"] as Array)[0]) + float((spec["rigid"] as Array)[1]) \
+					- float(spec.get("overlap", 0.0)) * 2.0
+		"pitched":
+			var segments: int = 0
+			for piece: Dictionary in pieces:
+				if str(piece["part"]) == str(spec["segment"]):
+					segments += 1
+			if kind == "string":
+				run = float(segments) * float(spec["pitch"]) + 28.0
+			else:
+				run = float(segments + 1) * float(spec["pitch"]) + float(spec["tip"]) * 2.0
+	return run
+
+
+## The sprockets a chain item runs on: every sprocket in the world whose
+## pin circle at least two of its links' pins lie on, in their plane.
+static func sprockets_of_item(world: BrickWorld, library: PartLibrary, pieces: Array) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		var sprocket: Sprocket = sprocket_of(brick, library)
+		if sprocket == null:
+			continue
+		var on: int = 0
+		for piece: Dictionary in pieces:
+			var gap: Vector3 = (piece["at"] as Transform3D).origin - sprocket.centre
+			var along: float = gap.dot(sprocket.axis)
+			if absf(along) < 0.5 and absf((gap - sprocket.axis * along).length()
+					- sprocket.radius) < 0.5:
+				on += 1
+		if on >= 2:
+			out.append(sprocket)
+	return out
+
+
+## The name an item goes by in the model tree: the real part's, without
+## "Technic", or the kind's.
+static func item_name(kind: String, library: PartLibrary, real_id: String) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(real_id) if not real_id.is_empty() \
+		else null
+	var said: String = str(KINDS[kind]["label"]) if info == null else info.name
+	said = said.trim_prefix("Technic ").replace("(", "").replace(")", "")
+	while said.contains("  "):
+		said = said.replace("  ", " ")
+	return said.strip_edges()

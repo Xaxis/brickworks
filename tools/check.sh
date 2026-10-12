@@ -227,6 +227,11 @@ run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
 # model tree and the properties once covered the model there.
 run "sub-assemblies" "${screen[@]}" godot --path . --resolution 1100x700 \
   --script src/dev/assembly_probe.gd
+# A hose and a chain laid by clicking their connectors, a bend dragged and
+# refused past what the tube goes round, undone; saved, reopened and
+# reshaped from its pieces. Pictures in shots/flex/.
+run "hose and chain" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/flex_ui_probe.gd
 # Seeing inside: a room cut open with K and the strip's slider, x-ray of a
 # part inside it and of a sub-assembly, a click reaching it through both,
 # the timeline with both on, the booklet made with both on the same as with

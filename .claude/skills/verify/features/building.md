@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
 
 ## Sub-features
 
@@ -233,6 +233,29 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   ground). A part tipped with `T` so its underside faces a wall with studs on it
   (a brick with studs on its side) goes onto those studs: a socket on the stud
   nearest the pointer, flat on the face (`Builder._onto_side_studs`).
+- `hoses and chains by hand` (`src/ui/flex_tool.gd`, the laying itself in
+  `src/assembly/flex.gd`): Build, Hose, tube or chain… opens a panel over the
+  model's left edge — what to lay (pneumatic tube, ribbed hose, flex-system
+  hose, flexible axle, string with end studs, Technic chain, tread) and how long
+  a real part ("The shortest that fits" by default: the shortest that neither
+  falls short nor bends tighter than it goes). The tool has the left button,
+  as the ruler does (`Main._unhandled_input` asks `FlexTool.takes` first):
+  pointing lights a connector it takes, a click picks it (the face of a hole
+  looking at the camera unless the other end says otherwise), the second click
+  lays it. A chain: click two or more sprockets or gears, each click lays it
+  again. Then Add a bend puts a ball on the path where it lies; dragging it
+  draws the new path blue, or amber where it would kink, and letting go lays
+  it — unless that bends it tighter than the real part goes, which leaves it
+  as it was and says so. Each lay is one undo step ("laid …", "reshaped …").
+  The item is a sub-assembly of its segments ("Pneumatic Tube 9L#1", a name of
+  its own so it is never taken for a copy of another), so a click takes all of
+  it and it saves as its own LDraw sub-model of segments. Edit, Reshape the
+  hose or chain reopens it; after an undo or a reopen it is read off its own
+  pieces (`Flex.ends_of_item`, `centreline`): ends on the connectors they are
+  at, length the nearest real one's, the fewest bend points that lay it within
+  a few LDU of where it lies. `window.brickworksFlex` says the stage, the item,
+  and where on screen each connector, sprocket and bend point is. Probe:
+  `flex_ui_probe` (windowed).
 
 ## How to reach it
 
@@ -282,6 +305,10 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # each aimed at, clicked, joined, and passed by check_design; the same pin a
 # stud off and the same clip or bar 2 LDU off the line refused by both
 godot --headless --path . --script src/dev/technic_hand_probe.gd
+# a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
+# refused past its bend, undone; a chain round two gears by two clicks; saved,
+# reopened and reshaped from its pieces. Pictures in shots/flex/
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
