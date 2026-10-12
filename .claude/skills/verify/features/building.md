@@ -227,9 +227,10 @@ godot --headless --path . --script src/dev/history_probe.gd
 # where a brick lands when you point at a stud
 godot --headless --path . --script src/dev/snap_probe.gd
 # Technic by hand: a pin into a hole, an axle through a beam with a gear on
-# it, a beam onto two pins, a clip on a bar and a bar in a clip, each aimed
-# at, clicked, joined, and passed by check_design; the same pin a stud off
-# and the same clip or bar 2 LDU off the line refused by both
+# it, a beam onto two pins, a clip on a bar, a clip on 2540's handle (room
+# with its plate out, up or down, not into the plate) and a bar in a clip,
+# each aimed at, clicked, joined, and passed by check_design; the same pin a
+# stud off and the same clip or bar 2 LDU off the line refused by both
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 ```
 

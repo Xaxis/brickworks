@@ -46,14 +46,15 @@ func _initialize() -> void:
 	_an_axle_and_a_gear()
 	_a_beam_on_two_pins()
 	_a_clip_on_a_bar()
+	_a_clip_on_a_handle()
 	_a_bar_in_a_clip()
 	_turning_on_a_joint()
 
 	print("")
 	if _failures == 0:
 		print("by hand: a pin into a hole, an axle through a beam with a gear on it, "
-			+ "a beam onto two pins, a clip on a bar and a bar in a clip, each joined, "
-			+ "and check_design agrees")
+			+ "a beam onto two pins, a clip on a bar, a clip on a plate's handle and a "
+			+ "bar in a clip, each joined, and check_design agrees")
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
@@ -220,11 +221,8 @@ func _a_beam_on_two_pins() -> void:
 
 
 ## A bar aimed at the hollow stud of a round brick stands in it, and a clip
-## aimed at the bar goes on it where the pointer is along it.
-##
-## Not a plate with a handle (2540): its cover fills the loop of the
-## handle, as it fills any hole running upright, so a clip round that bar
-## is refused by check_design and by hand alike.
+## aimed at the bar goes on it where the pointer is along it. A bar in a
+## loop, a plate's handle, is [method _a_clip_on_a_handle].
 func _a_clip_on_a_bar() -> void:
 	print("\na clip on a bar")
 	_clear()
@@ -266,6 +264,66 @@ func _a_clip_on_a_bar() -> void:
 	beside = stood.translated(Vector3(2, 0, 0))
 	_ok(not _room("30374", beside), "the same bar 2 LDU off the stud's line is refused by hand")
 	_builder.put_part("30374", 0, beside)
+	said = _design_says()
+	_ok(said.contains("overlap"), "...and by check_design: %s" % said)
+
+
+## A clip on a plate's handle. 2540's bar runs beside the plate between
+## two arms, and in the plate's own layers the plate's edge, the arms and
+## the bar close a ring the fill filled, so the bar was buried in cover
+## (tools/ldraw/occupancy.bars). Held out from the handle a clip still
+## went on, its open side to the plate; turned up or down, its jaw on the
+## plate's side went into the filled loop and was refused, by hand and by
+## check_design alike.
+func _a_clip_on_a_handle() -> void:
+	print("\na clip on a plate's handle")
+	_clear()
+	# 2540 on two 1 x 2 bricks, so a clip hung below its handle is off the
+	# ground: its plate 8 tall, the bar of its handle 4 across, along x at
+	# z = 20 and 2 under the top, with an arm from x = 6 to 12 each side and
+	# the bar free between them.
+	_put("3004", Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
+	_put("3004", Transform3D(Basis.IDENTITY, Vector3(0, 48, 0)))
+	var plate: int = _put("2540", Transform3D(Basis.IDENTITY, Vector3(0, 56, 0)))
+	var middle := Vector3(0, 54, 20)
+	var eye := Vector3(40, 190, 300)
+	_aim("4085c", middle, eye)
+	_ok(_on_joint() and _builder.joint_words().contains("Handle"),
+		"a clip aimed at the handle is on it: %s" % _builder.joint_words())
+
+	# Each quarter turn about the bar (R turns a clip an eighth): which way
+	# the clip's plate, 20 in front of its bore, points, and whether it fits.
+	var fits: Dictionary = {}
+	var turns: Dictionary = {}
+	for q: int in 4:
+		var stem: Vector3 = (_ghost().basis * Vector3.FORWARD).normalized()
+		var called: String = "up" if stem.y > 0.9 else "down" if stem.y < -0.9 \
+			else "out" if stem.z > 0.9 else "in" if stem.z < -0.9 else "%s" % stem
+		fits[called] = _builder.can_place()
+		turns[called] = q
+		_builder.rotate_held(2)
+		_again(middle, eye)
+	_ok(fits.get("out", false) and fits.get("up", false) and fits.get("down", false),
+		"its plate out from the handle, up or down, it has room: %s" % [fits])
+	_ok(fits.has("in") and not fits["in"],
+		"...and not with its plate pushed into the plate's own: %s" % [fits])
+
+	# Turned until its plate stands up, and a click.
+	_builder.rotate_held(2 * int(turns.get("up", 0)))
+	_again(middle, eye)
+	var at: Transform3D = _ghost()
+	var clip: int = _builder.place()
+	_ok(clip != 0 and _joined(clip).has(plate),
+		"a click puts it on standing up, joined to the handle: %s" % at)
+	var said: String = _design_says()
+	_ok(said.contains("4 bricks, buildable") and not said.contains("overlap"),
+		"check_design says the four are buildable: %s" % said)
+
+	# Off the bar's line toward the plate: a clip pushed into the bar.
+	_builder.remove_brick_id(clip)
+	var beside: Transform3D = at.translated(Vector3(0, 0, -2))
+	_ok(not _room("4085c", beside), "the same clip 2 LDU off the bar's line is refused by hand")
+	_builder.put_part("4085c", 0, beside)
 	said = _design_says()
 	_ok(said.contains("overlap"), "...and by check_design: %s" % said)
 
