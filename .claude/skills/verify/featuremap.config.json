@@ -736,6 +736,20 @@
     },
     {
       "kind": "cli",
+      "label": "idle check",
+      "entry": "tools/web/idle_check.mjs",
+      "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "drawing only what changed",
+      "entry": "src/render/idle_draw.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/idle_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
       "label": "figure prints and moulds in a browser",
       "entry": "tools/web/print_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",

@@ -273,6 +273,12 @@ if command -v xvfb-run >/dev/null 2>&1; then
 fi
 run "cursors" "${cursor_screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/cursor_probe.gd
+# Nothing drawn while nothing changes, and every change drawn: a turn
+# easing to rest, a drag, an edit, each step of the build animation, the
+# ghost, a lit button, a part's picture. The app drew every frame for
+# nobody. On Xvfb for the same reason as the cursors: it moves the pointer.
+run "draws only what changed" "${cursor_screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/idle_probe.gd
 
 # Two processes and a socket between them, which is a different kind of
 # failure from anything a single probe can have: the app's half can be

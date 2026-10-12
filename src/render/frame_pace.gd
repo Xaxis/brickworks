@@ -43,6 +43,9 @@ func due() -> bool:
 
 ## Give the frame back, and begin the next slice.
 func next() -> void:
+	# Work going on, though it may draw nothing until it is done: frames
+	# at full rate, not the slower ones of a model standing still.
+	IdleDraw.keep_awake()
 	await Engine.get_main_loop().process_frame
 	_until = Time.get_ticks_usec() + _slice()
 
