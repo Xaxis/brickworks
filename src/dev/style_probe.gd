@@ -225,10 +225,18 @@ func _three_faults(library: PartLibrary) -> void:
 	var quiet := PackedStringArray()
 	# A shipped model the check is right to fault goes here with the fault.
 	# Run 18's Orthanc was an office block; run 4, on the landing page since
-	# 2026-10-12, has no lit windows but is still 58% plain black, and its
-	# detail pass scattered its dressing one part at a time. The check is
-	# right about both, so it is the true case here until a run fixes them.
+	# 2026-10-12, has no lit windows but is still 58% plain black. (It was also
+	# called speckled, which was the check reading its file's turned faces at
+	# the nearest square turn.) The check is right about the black, so it is
+	# the true case here until a run fixes it.
 	var faulty: Dictionary = {"orthanc.ldr": "reads as a hole"}
+	# And every shipped model stands up as the app's status bar says it, the
+	# landing page's above all: run 4 reads "1 weak joint (overloaded)", the
+	# foot of its core's faces hanging a plate over the plinth in the clefts.
+	# Known until a candidate that stands replaces it; src/dev/candidate_probe.gd
+	# is what one passes first.
+	var weak_known: Dictionary = {"orthanc.ldr": true}
+	var weak := PackedStringArray()
 	var named := PackedStringArray()
 	var here: DirAccess = DirAccess.open("res://models")
 	for file: String in here.get_files():
@@ -241,6 +249,11 @@ func _three_faults(library: PartLibrary) -> void:
 		store.keeps = false
 		world.clear()
 		store.open("res://models/" + file)
+		var stability := Stability.new()
+		stability.library = library
+		stability.lattice = builder.lattice
+		if not stability.check(world).is_stable():
+			weak.append(file)
 		var model: Assistant.Model = assistant._model_from_world()
 		var report: Dictionary = assistant._check(model, true)
 		var advice: String = "\n".join(report.get("advice", []))
@@ -256,6 +269,12 @@ func _three_faults(library: PartLibrary) -> void:
 	_check(named.size() == faulty.size(),
 		"...and each model known to have one is called it: %s"
 		% (", ".join(named) if not named.is_empty() else "none known"))
+	weak.sort()
+	var known: Array = weak_known.keys()
+	known.sort()
+	_check(Array(weak) == known, "every shipped model stands with no weak joint but those "
+		+ "known to have one (%s): %s" % [", ".join(PackedStringArray(known)),
+			", ".join(weak) if not weak.is_empty() else "none"])
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
