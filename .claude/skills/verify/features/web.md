@@ -236,6 +236,15 @@ plan with Claude as the client.
   `<size>_<mode>.png`, `.frames.json` (every frame: start, length, own work,
   instances, draws, slowest WebGL call; and each instanced draw's count
   whenever they changed) and `arrival.json`.
+
+  It caught the status line and the pointer each looking up the part under
+  the pointer every frame (since the CAD shell, 1528ccc, and ab356d8). A ray
+  that hits nothing marches the whole lattice: 18 to 25 ms on the desktop with
+  the Falcon built, several times that in the page, twice a frame. Hidden 4,242
+  was never drawn in 600 s on brickworks.diy at 91ae209, and hidden 2,000 idle
+  only after 9 s. `EditVerbs.brick_at` now keeps its last answer until the ray
+  or `BrickLattice.revision` changes, and answers nothing out of view
+  (`Main._watch_view`).
 - The desktop downloads page (`web/download.html`, `download.js`,
   `releases.json`) ships with every deploy like the rest of `web/`; what it
   does and how it is checked is in [release](release.md). The landing page

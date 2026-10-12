@@ -56,6 +56,9 @@ var _bounds: Dictionary = {}
 ## model can be reached with its roof hidden. They still take up their
 ## room — nothing can be put down inside a hidden brick.
 var unseen: Dictionary = {}
+## Goes up with every brick put in or taken out, so an answer kept from
+## before can tell it still holds (EditVerbs.brick_at).
+var revision: int = 0
 
 
 static func _bound_of(packed: PackedInt32Array) -> PackedInt32Array:
@@ -699,6 +702,7 @@ var keeps_columns: bool = true
 
 ## Put a brick in, as boxes.
 func occupy_boxes(brick_id: int, packed: PackedInt32Array) -> void:
+	revision += 1
 	_boxes[brick_id] = packed
 	_bounds[brick_id] = _bound_of(packed)
 	var seen: Dictionary = {}
@@ -819,6 +823,7 @@ func occupy(brick_id: int, cells: Array[Vector3i]) -> void:
 
 
 func release(brick_id: int) -> void:
+	revision += 1
 	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
 	if packed.is_empty():
 		_boxes.erase(brick_id)
@@ -893,6 +898,7 @@ func occupied_cells() -> int:
 
 
 func clear() -> void:
+	revision += 1
 	_boxes.clear()
 	_bucket.clear()
 	_column_bucket.clear()

@@ -532,6 +532,8 @@ func show_all() -> int:
 ## Draw what is hidden as hidden. Called again when anything else that
 ## shows and hides bricks — the timeline — lets go of the world.
 func apply_hidden() -> void:
+	# A part hidden or shown is one the pointer passes through or stops at.
+	_asked = []
 	var hidden: Dictionary = builder.lattice.unseen
 	if hidden.is_empty():
 		world.show_only({})
@@ -885,16 +887,36 @@ func shows_ghost() -> bool:
 	return mode == "place" or builder.is_carrying() or builder.is_holding_figure()
 
 
+## Nobody can see the model: the tab is out of view or the window
+## minimised (Main._watch_view). Nothing is under a pointer then.
+var out_of_view: bool = false
+## The last look-up, what it was asked (the ray, and the model as it was)
+## and what it found.
+##
+## The status line and the pointer each ask for the part under the
+## pointer every frame. A ray that hits nothing marches the whole lattice:
+## 18 ms on the desktop with the 4,242-part Falcon Heavy built, and several
+## times that in a browser, twice a frame. A big design built in a hidden
+## tab was never seen to settle once shown (arrival_check, 2026-10-12). So
+## a frame looks again only when the pointer, the view or the model moved.
+var _asked: Array = []
+var _found: int = 0
+
+
 ## The part under a point on the screen, or 0 for none, the baseplate or a
 ## hidden one.
 func brick_at(at: Vector2) -> int:
-	if camera == null:
+	if camera == null or out_of_view:
 		return 0
-	var hit: BrickLattice.Hit = builder.lattice.raycast(
-		camera.project_ray_origin(at), camera.project_ray_normal(at))
-	if not hit.is_valid() or scenery.has(hit.brick_id):
-		return 0
-	return hit.brick_id
+	var origin: Vector3 = camera.project_ray_origin(at)
+	var normal: Vector3 = camera.project_ray_normal(at)
+	var asked: Array = [origin, normal, builder.lattice.revision]
+	if asked == _asked:
+		return _found
+	_asked = asked
+	var hit: BrickLattice.Hit = builder.lattice.raycast(origin, normal)
+	_found = 0 if not hit.is_valid() or scenery.has(hit.brick_id) else hit.brick_id
+	return _found
 
 
 ## A left click on the model with a tool other than Build. True when it
