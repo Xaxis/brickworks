@@ -459,7 +459,7 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 #   both on; the booklet made with both on = made with both off; Orthanc timed.
 #   Leaves shots/see_inside/*.png — look at the cut faces and the ghosts
 # In a browser, on a preview (with .env sourced): an .lxf through Open > From
-# a file, Orthanc cut from the toolbar and its slider dragged down to just over
+# a file, Orthanc cut from the toolbar and its slider clicked to just over
 # Saruman's head, a double-click on him through the cut, I, K off, and a click
 # on him through the ghosts. Pictures in shots/see_inside_web/.
 node tools/web/see_inside_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS

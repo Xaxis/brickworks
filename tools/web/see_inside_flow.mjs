@@ -8,10 +8,11 @@
 // Opens src/dev/fixtures/49311_test.lxf (saved by LDD 4.3) through Open… >
 // From a file, the page's own file picker answered by Playwright, and checks
 // its 16 parts came in. Opens Orthanc (models/orthanc.ldr, 8,785 parts) the
-// same way; presses the toolbar's cut button and checks the plane is on;
-// drags the strip's slider down through the tower, a step at a time, until a
-// double-click on Saruman's place edits inside him — he is in a room, and
-// only the cut lets the click reach him; presses I, and checks everything
+// same way; brings the view in on Saruman with the wheel; presses the
+// toolbar's cut button and checks the plane is on; clicks the strip's slider
+// to put the cut just over his head (window.brickworksState.heights says how
+// high he is); double-clicks him and checks that edits inside him — he is in
+// a room, and only the cut lets the click reach him; presses I, and checks everything
 // else is see-through; takes the cut off with K, and checks a click still
 // reaches him through the walls. Every step is a click, a drag or a key on
 // what window.brickworksControls says is where, and every result is read
@@ -173,37 +174,32 @@ ok(Boolean(cut), `the toolbar's cut button cuts it along ${cut ? "XYZ"[cut.cut.a
 await page.waitForTimeout(8000);
 await shot("3_cut.png");
 
-// Up to the top, then down through the tower a step at a time until the cut
-// is just over his head: under the ceiling of his room, over him.
+// Then down to just over his head — under the ceiling of his room, over
+// him. A click on the slider's track puts the cut there, so two clicks
+// measure how many LDU a pixel of it is, and a third puts it where it goes:
+// three of the app's frames, where a drag a step at a time was dozens, and a
+// frame of a close view in a software browser is many seconds.
 const slider = await where("cut_slider");
-const width = Number(args.slider || 220);
-let handle = slider.x + width / 2 + 12;
-await page.mouse.move(slider.x, slider.y, { steps: 2 });
-await page.mouse.down();
-await page.mouse.move(handle, slider.y, { steps: 6 });
-await page.mouse.up();
-await until((s) => s.cut && s.cut.at > cut.cut.at, 60);
-await page.waitForTimeout(3000);
-await shot("3b_cut_at_the_top.png");
-const over = (before.heights[figure] || [0, 0])[1] + Number(args.headroom || 40);
-handle = slider.x + width / 2;
-for (let step = 0; step < 60 && (await state()).cut.at > over; step++) {
-  const at = (await state()).cut.at;
-  const to = handle - width / 40;
-  await page.mouse.move(handle, slider.y, { steps: 2 });
-  await page.mouse.down();
-  await page.mouse.move(to, slider.y, { steps: 4 });
-  await page.mouse.up();
-  handle = to;
-  await until((s) => s.cut && s.cut.at < at, 60);
+async function clickSlider(x) {
+  const before = (await state()).cut.at;
+  await page.mouse.move(x, slider.y, { steps: 2 });
+  await page.mouse.click(x, slider.y);
+  const now = await until((s) => s.cut && Math.abs(s.cut.at - before) > 0.5, 120);
+  return now ? now.cut.at : (await state()).cut.at;
 }
-ok((await state()).cut.at <= over && (await state()).cut.at > over - 120,
-  `the slider dragged down to ${Math.round((await state()).cut.at)}, just over his head (${Math.round(over)})`);
+const left = await clickSlider(slider.x - 60);
+const right = await clickSlider(slider.x + 60);
+const perPixel = (right - left) / 120;
+const over = (before.heights[figure] || [0, 0])[1] + Number(args.headroom || 40);
+const aimAt = slider.x - 60 + (over - 10 - left) / perPixel;
+const reached = await clickSlider(aimAt);
+ok(perPixel > 0 && reached <= over && reached > over - 60,
+  `clicks on the slider measure ${perPixel.toFixed(1)} LDU a pixel and put the cut at ${Math.round(reached)}, just over his head (${Math.round(over)})`);
 await page.waitForTimeout(6000);
 await shot("4a_cut_over_his_head.png");
 // A double-click on him edits inside him: the cut is all that lets it reach.
 let inside = null;
-for (const below of [8, 16, 4, 24]) {
+for (const below of [8, 16]) {
   const place = ((await state()).places || {})[figure];
   if (!place) break;
   await page.mouse.move(place.x, place.y + below, { steps: 3 });
