@@ -259,6 +259,12 @@ static func advice(found: Dictionary, group: String, about: String = "") -> Stri
 	if band.is_empty():
 		return ""
 	var said := PackedStringArray()
+	var traits: Dictionary = traits_of(about)
+	# A model shaped by its curves is not built squarely, whatever share of
+	# it is turned: a rocket of round bricks and cylinder halves is round,
+	# and was told it was a pile of bricks for having nothing on its side.
+	var curved: bool = found.has("curve") and band.has("curve") \
+		and float(found["curve"]) > float((band["curve"] as Array)[2])
 	var low: Array = [
 		["snot", "of its parts sideways or upside down — a face of tiles on brackets, a headlight brick, a grille stood up"],
 		["shaped", "curved, sloped or at an angle"],
@@ -268,6 +274,8 @@ static func advice(found: Dictionary, group: String, about: String = "") -> Stri
 	for pair: Array in low:
 		var key: String = pair[0]
 		if not found.has(key) or not band.has(key):
+			continue
+		if curved and key in ["snot", "angled"]:
 			continue
 		var edges: Array = band[key]
 		if float(found[key]) < float(edges[0]):
@@ -287,22 +295,11 @@ static func advice(found: Dictionary, group: String, about: String = "") -> Stri
 	# The calls that do it, by name: designs take up a technique when it
 	# is one call they are told of — the finishing pass was used in two runs
 	# running once the advice named it, and a prism once in four without.
-	var calls := PackedStringArray()
-	if found.has("snot") and band.has("snot") and float(found["snot"]) < float((band["snot"] as Array)[0]) \
-			or found.has("plain") and band.has("plain") and float(found["plain"]) > float((band["plain"] as Array)[2]):
-		calls.append("restyle_model, for the plain faces already built")
-	if found.has("angled") and band.has("angled") and float(found["angled"]) < float((band["angled"] as Array)[0]):
-		# A tower is told of the clustered form by name. Run 14 had four piers
-		# round a core rising into horns and built them square, by hand, with
-		# the prism named here for a pier: nothing at an angle.
-		if is_tower(about):
-			calls.append("a prism with piers, for a tower like this one — {\"pattern\": "
-				+ "\"prism\", ..., \"sides\": 8, \"open\": 3, \"piers\": {\"count\": 4, "
-				+ "\"courses\": a fifth more than the core's}}: faceted piers clustered "
-				+ "round a many-sided core, deep clefts between them, rising past its "
-				+ "summit into horns")
-		else:
-			calls.append("a prism pattern, for a tower, a pier or a turret that should have more than four sides")
+	# And which calls, by what the subject is. The owner's Falcon Heavy was
+	# told "a prism with piers, for a tower like this one" — its description
+	# named the launch tower — and "restyle_model", which dresses a plain
+	# wall in round tiles: polka dots on a rocket.
+	var calls: PackedStringArray = calls_for(traits, found, band, about)
 	var who: String = "real sets since 2010" if group == "since_2010" else (
 		"real %s sets%s" % [group.replace("_since_2010", ""),
 			" since 2010" if group.ends_with("_since_2010") else ""])
@@ -316,6 +313,108 @@ static func advice(found: Dictionary, group: String, about: String = "") -> Stri
 		+ "pattern where the ground is irregular — and symmetry only where the "
 		+ "subject has it."
 		+ ("\nOne call each: " + "; ".join(calls) + "." if not calls.is_empty() else ""))
+
+
+## What a subject is, as the techniques for it go: round in section,
+## a vehicle, a living thing, a machine, a building. Read off the brief and
+## the model's own name, by words; a subject can be more than one (a
+## steam locomotive is a vehicle with a round boiler), and a rocket that
+## mentions its launch tower is still a rocket.
+const TRAITS: Dictionary = {
+	"round": ["rocket", "missile", "booster", "silo", "lighthouse", "chimney",
+		"column", "pillar", "boiler", "locomotive", "steam engine", "fuselage",
+		"submarine", "torpedo", "barrel", "pipe", "funnel", "smokestack",
+		"capsule", "airship", "zeppelin", "blimp", "tree trunk", "mushroom",
+		"bottle", "vase", "saturn v", "launcher"],
+	"vehicle": ["car", "truck", "lorry", "van", "bus", "train", "locomotive",
+		"tram", "plane", "aircraft", "airliner", "jet", "helicopter", "boat",
+		"ship", "yacht", "galleon", "schooner", "submarine", "tractor",
+		"motorbike", "motorcycle", "bicycle", "kart", "racer", "tank",
+		"spaceship", "starship", "shuttle", "rocket", "rover", "digger",
+		"excavator", "bulldozer", "vehicle"],
+	"living": ["animal", "dragon", "owl", "bird", "eagle", "parrot", "cat",
+		"dog", "horse", "dinosaur", "creature", "monster", "fish", "whale",
+		"shark", "insect", "butterfly", "bear", "lion", "elephant", "bust",
+		"tree", "flower", "plant", "bonsai"],
+	"machine": ["mech", "robot", "machine", "crane", "excavator", "digger",
+		"engine", "factory", "windmill", "clock", "mill", "pump", "drill",
+		"walker", "turbine"],
+}
+
+
+## The subject's traits, as {trait: true}. Whole words, plurals let in:
+## "car" is not in "carriage" or "scarlet".
+static func traits_of(about: String) -> Dictionary:
+	var said: String = about.to_lower()
+	var found: Dictionary = {}
+	for one: String in TRAITS:
+		for word: String in TRAITS[one]:
+			var whole := RegEx.create_from_string("\\b%s(s|es)?\\b" % word)
+			if whole.search(said) != null:
+				found[one] = true
+				break
+	if found.is_empty() and is_tower(about):
+		found["tower"] = true
+	return found
+
+
+## The calls to name, for what the subject is and what the measures said.
+## Each is one call, named, because designs take up a technique when it is
+## one call they are told of.
+static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
+		about: String) -> PackedStringArray:
+	var calls := PackedStringArray()
+	var low_snot: bool = found.has("snot") and band.has("snot") \
+		and float(found["snot"]) < float((band["snot"] as Array)[0])
+	var plain: bool = found.has("plain") and band.has("plain") \
+		and float(found["plain"]) > float((band["plain"] as Array)[2])
+	var low_angle: bool = found.has("angled") and band.has("angled") \
+		and float(found["angled"]) < float((band["angled"] as Array)[0])
+	if traits.has("round"):
+		calls.append("the round pattern, for whatever is round in section here — "
+			+ "round bricks, cylinder halves and corner rounds up one axis, with "
+			+ "bands of colour, cones, Technic struts and a nose, upright or lying "
+			+ "along x; a round of square bricks is the commonest way a model "
+			+ "here has looked like a pile of them")
+	if traits.has("vehicle"):
+		calls.append("the shape pattern, for a body that is not a box — a car's, a "
+			+ "hull, a fuselage — said as its solids (a side profile extruded, a "
+			+ "loft through sections, a revolve), which lays its slopes, curved "
+			+ "slopes, wedge plates and tiles for you")
+		calls.append("for a vehicle: wedge plates where an edge runs at a slant "
+			+ "(show_technique \"smooth diagonal\"), curved slopes over a bonnet, a "
+			+ "hull or a cab roof, studs_out for a smooth side panel, and a section "
+			+ "on a hinge (hinge: true) for a windscreen, a ramp or a hatch that "
+			+ "opens")
+	if traits.has("living"):
+		calls.append("the shape pattern, for a creature's body and head — "
+			+ "ellipsoids and a loft for a tail or a neck, laid with curved slopes "
+			+ "and wedges fitted to its surface")
+		calls.append("for a living thing: curved slopes and wedges for a body, "
+			+ "sections on hinges for wings, ears and limbs, the rock pattern for "
+			+ "anything rough, and nothing square that is not")
+	if traits.has("machine"):
+		calls.append("for a machine: Technic beams pinned to Technic bricks for "
+			+ "arms and frames, a section on a hinge for a joint, grille tiles, "
+			+ "round plates and levers for the machinery's texture")
+	if not calls.is_empty():
+		return calls
+	# A building, a tower, a castle — or nothing the words said.
+	if low_snot or plain:
+		calls.append("restyle_model, for the plain faces already built")
+	if low_angle:
+		# A tower is told of the clustered form by name. Run 14 had four piers
+		# round a core rising into horns and built them square, by hand, with
+		# the prism named here for a pier: nothing at an angle.
+		if traits.has("tower") or is_tower(about):
+			calls.append("a prism with piers, for a tower like this one — {\"pattern\": "
+				+ "\"prism\", ..., \"sides\": 8, \"open\": 3, \"piers\": {\"count\": 4, "
+				+ "\"courses\": a fifth more than the core's}}: faceted piers clustered "
+				+ "round a many-sided core, deep clefts between them, rising past its "
+				+ "summit into horns")
+		else:
+			calls.append("a prism pattern, for a tower, a pier or a turret that should have more than four sides")
+	return calls
 
 
 ## Whether a brief is of a tower: what a clustered prism is for.

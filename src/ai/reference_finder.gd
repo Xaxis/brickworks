@@ -35,6 +35,11 @@ const MOST := 3
 ## Somebody has to be able to say who is asking.
 const AGENT := "Brickworks/1 (https://brickworks.diy; a LEGO CAD application)"
 
+## The colours a picture may be read as, [code, Color] each — the plastic
+## colours sets are made in now, from whoever asks. Empty, and nothing is
+## read: the pictures still come.
+var swatches: Array = []
+
 var _host: Node = null
 var _pending: Array = []
 var _pictures: Array = []
@@ -209,8 +214,137 @@ func _on_fetched(_result: int, code: int, _headers: PackedStringArray,
 				"bytes": image.save_png_to_buffer(),
 				"title": about["title"],
 				"credit": about["credit"],
+				"colours": colours_in(image, swatches),
 			})
 	_fetch_next()
+
+
+## What a picture's subject is coloured, as LEGO colours: [param swatches]
+## code -> share of the subject, the background left out.
+##
+## A design given a Falcon Heavy chose its colours from memory and the
+## owner's came out in three greys, where the rocket is white with black
+## interstages. The picture was in front of it; what was not was the
+## number. So the picture is read here, pixel by pixel, into the plastic
+## colours sets are made in: the frame's own colours are taken to be the
+## background (a sky, a wall, a backdrop), and what is left counts more
+## the nearer it is to the middle, where a photograph puts its subject.
+## Light matters and is not undone: a white body in shadow reads partly as
+## a light grey, and the answer says so rather than pretend.
+static func colours_in(image: Image, swatches: Array) -> Dictionary:
+	if image == null or swatches.is_empty() or image.get_width() < 8:
+		return {}
+	var small: Image = image.duplicate()
+	if small.is_compressed():
+		return {}
+	# With its alpha: a drawing on a transparent ground has black there in
+	# its colour channels, and read without it the ground is the subject.
+	small.convert(Image.FORMAT_RGBA8)
+	var wide: int = SAMPLE
+	var high: int = maxi(8, int(float(image.get_height()) * SAMPLE / image.get_width()))
+	small.resize(wide, high, Image.INTERPOLATE_BILINEAR)
+	# The frame: whatever covers much of the outermost pixels is backdrop.
+	var frame: Dictionary = {}
+	var framed: int = 0
+	for y: int in high:
+		for x: int in wide:
+			if x >= EDGE and x < wide - EDGE and y >= EDGE and y < high - EDGE:
+				continue
+			if small.get_pixel(x, y).a < 0.5:
+				continue
+			var bin: int = _bin(small.get_pixel(x, y))
+			frame[bin] = int(frame.get(bin, 0)) + 1
+			framed += 1
+	# A picture with a transparent ground has its backdrop already taken
+	# out, and its subject may run to the frame: a rocket drawn the height
+	# of its picture had its own white read as the sky.
+	var clear: int = 0
+	for y: int in high:
+		for x: int in wide:
+			if small.get_pixel(x, y).a < 0.5:
+				clear += 1
+	var backdrop: Array[Vector3] = []
+	if clear < CUT_OUT * wide * high:
+		for bin: int in frame:
+			if float(frame[bin]) >= BACKDROP * framed:
+				backdrop.append(_lab(_unbin(bin)))
+	var labs: Array = []
+	for one: Variant in swatches:
+		labs.append([int((one as Array)[0]), _lab((one as Array)[1] as Color)])
+	var weights: Dictionary = {}
+	var total: float = 0.0
+	for y: int in high:
+		for x: int in wide:
+			if small.get_pixel(x, y).a < 0.5:
+				continue
+			var pixel: Vector3 = _lab(small.get_pixel(x, y))
+			var behind: bool = false
+			for back: Vector3 in backdrop:
+				if pixel.distance_to(back) < NEAR_BACKDROP:
+					behind = true
+					break
+			if behind:
+				continue
+			var best: int = -1
+			var nearest: float = INF
+			for one: Array in labs:
+				var gap: float = pixel.distance_to(one[1] as Vector3)
+				if gap < nearest:
+					nearest = gap
+					best = int(one[0])
+			var across: float = (float(x) + 0.5) / wide - 0.5
+			var weight: float = exp(-across * across / 0.045)
+			weights[best] = float(weights.get(best, 0.0)) + weight
+			total += weight
+	if total <= 0.0:
+		return {}
+	var shares: Dictionary = {}
+	for code: int in weights:
+		shares[code] = float(weights[code]) / total
+	return shares
+
+
+## How many pixels across a picture is read at: enough for a stripe on a
+## rocket, few enough to be quick.
+const SAMPLE := 72
+## The frame's depth, in those pixels.
+const EDGE := 3
+## A colour taking this share of the frame is backdrop.
+const BACKDROP := 0.06
+## A picture this much transparent is a cut-out: the transparency is its
+## backdrop.
+const CUT_OUT := 0.15
+## And a pixel this near one, in CIELAB, is backdrop too.
+const NEAR_BACKDROP := 9.0
+
+
+static func _bin(colour: Color) -> int:
+	return (int(colour.r * 15.0) << 8) | (int(colour.g * 15.0) << 4) | int(colour.b * 15.0)
+
+
+static func _unbin(bin: int) -> Color:
+	return Color(((bin >> 8) & 15) / 15.0, ((bin >> 4) & 15) / 15.0, (bin & 15) / 15.0)
+
+
+## A colour in CIELAB (D65), where distance is close to how different two
+## colours look.
+static func _lab(colour: Color) -> Vector3:
+	var lin := Vector3(_linear(colour.r), _linear(colour.g), _linear(colour.b))
+	var x: float = (0.4124 * lin.x + 0.3576 * lin.y + 0.1805 * lin.z) / 0.95047
+	var y: float = 0.2126 * lin.x + 0.7152 * lin.y + 0.0722 * lin.z
+	var z: float = (0.0193 * lin.x + 0.1192 * lin.y + 0.9505 * lin.z) / 1.08883
+	var fx: float = _f(x)
+	var fy: float = _f(y)
+	var fz: float = _f(z)
+	return Vector3(116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
+
+
+static func _linear(c: float) -> float:
+	return c / 12.92 if c <= 0.04045 else pow((c + 0.055) / 1.055, 2.4)
+
+
+static func _f(t: float) -> float:
+	return pow(t, 1.0 / 3.0) if t > 0.008856 else 7.787 * t + 16.0 / 116.0
 
 
 ## Which picture format a body holds, by its first bytes, or "".

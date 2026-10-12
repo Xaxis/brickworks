@@ -22,9 +22,10 @@ All part geometry derives from the LDraw Parts Library.
   > LDraw.org.
 
 - Source: https://library.ldraw.org/
-- Nine of the library's primitives are copied unchanged into
+- Eleven of the library's primitives are copied unchanged into
   `assets/ldraw/` and ship in every build — `stud`, `stud3`, `stud4`,
-  `box4`, `box5`, `4-4cyli`, `4-4disc`, `4-4edge` and `4-4ring3`, authored by
+  `box4`, `box5`, `4-4cyli`, `4-4disc`, `4-4edge`, `4-4ndis`, `4-4ring3` and
+  `peghole`, authored by
   James Jessiman (each file names him), CC BY 4.0 — because the element
   maker (`src/parts/element_maker.gd`) draws every part it makes from them
   and the app has to build those parts where the library is not to hand.
@@ -73,6 +74,7 @@ technique names its set and modeller in its own text, and here:
 - `hedge with flowers`, `sofa`: 10297 Boutique Hotel, modelled by Philippe Hurbain, CC BY 2.0.
 - `leafy plant`, `fireplace`, `wall lantern`, `campfire`: 5766 Log Cabin, modelled by Marc Giraudet, CC BY 2.0.
 - `flower bed`: 5891 Apple Tree House, modelled by Marc Giraudet, CC BY 2.0.
+- `curved skin panel`, `studs-out core`, `grille band`, `cone bell on round plates`, `round tip`, `fin root on a Technic pin`: 21309 NASA Apollo Saturn V, modelled by Jaco van der Molen, CC BY 2.0.
 - `hearth`: 30210 Frodo with Cooking Corner, modelled by Stan Isachenko, CC BY 2.0.
 - `chest`: 10267 Gingerbread House, modelled by Orion Pobursky, CC BY 2.0.
 - `potion shelf`: 75953 Hogwarts Whomping Willow, modelled by Stefan Frenz, CC BY 2.0.

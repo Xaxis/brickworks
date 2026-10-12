@@ -1025,14 +1025,18 @@ func _on_response(result: Array) -> void:
 		return
 
 	# A design arrived. Check it against the real lattice.
-	var report: Dictionary = _check(_pending)
+	progress.emit("checking %d bricks" % _pending.placements.size())
+	var report: Dictionary = await _checked(_pending)
+	# Stopped while it was being checked: nothing more to do with it.
+	if not _busy:
+		return
 	progress.emit(report["summary"])
 	if not report["ok"] and _repairs >= MAX_REPAIRS and not _looked_back:
 		report = _salvage(report)
 
 	if report["ok"]:
 		await _ensure_parts(_pending)
-		_apply(_pending)
+		await _apply(_pending, true, true)
 		if not _busy:
 			return
 		# One deliberate look before it is finished.
@@ -1211,6 +1215,31 @@ not as a detail. Look at whether the odd one is doing something — a \
 light, a marking, a stripe that carries across — and if it is not, \
 make it match. A single contrasting piece that is clearly deliberate \
 is fine; it is the structural part in the wrong colour that is not.
+  Windows as a grid. Rows of identical lit windows make any building an \
+office block. Few windows, each with a reason — arched, framed, varied, \
+gathered where something happens — their colour and light from the \
+subject: a dark fortress has dark slits, a lighthouse one lit lantern.
+  A dark face with nothing on it. A big face of plain bricks in black or \
+another dark colour reads as a hole in the picture. Texture in the same \
+colour (grille bricks, masonry, bricks with a handle, cheese slopes) for \
+most of it, a second tone in bands where the ledges are (sprinkled \
+through the bricks it is noise), and depth — an inset or outset course, \
+a pilaster, a rib — so light and shadow draw the form.
+  No silhouette. A tall thing the same width all the way up, with its top \
+stuck on. Its profile is the design: taper, flare at the foot, a waist, \
+facets catching light, a crown that grows out of the body.
+  The base as an afterthought. Rubble ringed round the foot. A composed \
+plinth — steps, a terrace, ground that rises to the door — leads the eye \
+up.
+  The wrong technique for the shape. Something round built of square \
+bricks, a slanted edge stepped, a hull or a body boxy where it curves, \
+a hinge or a leg built rigid. WHAT THE SUBJECT NEEDS names the call for \
+each; replace the shape with it.
+  Touches. Is there anything a person would find and smile at — a \
+figure or a small scene, a printed tile, a nod to the subject's story, \
+something that opens or turns, a stand with a nameplate for a display \
+model? An expert adds them unasked; a model with none is finished only \
+as a shape.
 
 Use view_model with where= to look closely at whatever you are \
 judging. A whole model in one frame makes every assembly on it a few \
@@ -1689,7 +1718,9 @@ func _bricks_inside(where: Dictionary) -> Array[BrickWorld.Brick]:
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		if _inside(_to_studs(brick, info), where):
+		# Everything is inside no box at all: working out where each brick
+		# is first was most of what reviewing a whole model cost.
+		if where.is_empty() or _inside(_to_studs(brick, info), where):
 			out.append(brick)
 	return out
 
@@ -1824,6 +1855,12 @@ corner, a doorway, a base. Use the parts real sets of this kind reach \
 for, above, where the shape calls for them. A different piece is the \
 point; more of the same one is not.
 
+Four things to catch by name: windows as a repeating grid (few, each \
+with a reason, coloured by the subject); a face of one dark colour with \
+nothing on it (texture in that colour, a second tone in bands, depth); a shape \
+with no profile (taper, flare, a top that grows out of it); and a base \
+that is an afterthought (a composed plinth that leads the eye up).
+
 Keep to the {name}; every other assembly gets its own turn. look_at_model \
 with where= lists its bricks and their numbers, if you need to take any \
 out or recolour them. Do not call submit_design: it replaces the whole \
@@ -1935,7 +1972,11 @@ func _run_tool(block: Dictionary) -> Variant:
 			# exist — they are simply not loaded yet — and it goes off
 			# and picks something else.
 			await _ensure_parts(trial)
-			var report: Dictionary = _check(trial)
+			var running: bool = _busy
+			var report: Dictionary = await _checked(trial)
+			# This app's own run, stopped while it was checked.
+			if running and not _busy:
+				return ""
 			# On screen, not just counted. A design runs for minutes and
 			# checks its work two or three times along the way; those
 			# are the only glimpses of the shape there are before the
@@ -1950,7 +1991,7 @@ func _run_tool(block: Dictionary) -> Variant:
 			var standing: bool = _outside_standing and not _busy \
 				and world != null and world.brick_count() > scenery.size()
 			if not trial.placements.is_empty() and not _edited and not standing:
-				_apply(trial, false)
+				await _apply(trial, false, true)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
 				report["summary"]])
@@ -2030,6 +2071,11 @@ func _run_tool(block: Dictionary) -> Variant:
 			if laid is Array:
 				return [{"type": "text", "text": rooms["summary"]}] + (laid as Array)
 			return "%s\n%s" % [rooms["summary"], str(laid)]
+		"make_part":
+			# A part LEGO has not made, made as a person makes one: see
+			# src/parts/part_tool.gd.
+			progress.emit("making a part")
+			return await PartTool.run(args, library)
 		"add_minifig":
 			# The figure is made and stood up in src/minifig/figure_tool.gd.
 			# Its parts are this design's, so a new submission replaces
@@ -2062,7 +2108,10 @@ func _run_tool(block: Dictionary) -> Variant:
 				return ("That would leave the baseplate empty. "
 					+ "If clearing it is what you meant, say so instead.")
 			await _ensure_parts(edited)
-			var verdict: Dictionary = _check(edited, true)
+			var running: bool = _busy
+			var verdict: Dictionary = await _checked(edited, true)
+			if running and not _busy:
+				return ""
 			if not bool(verdict["ok"]):
 				progress.emit("tried a change: %s" % verdict["summary"])
 				return ("Not applied — the model would not hold together.\n"
@@ -3231,7 +3280,12 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	# time the model is described. On a two thousand brick model that
 	# was nine seconds to answer "what is on the baseplate", which is
 	# the question a design asks most.
-	var packed: PackedInt32Array = builder.boxes_for(part, brick.transform)
+	# The lattice's own record where it has one: the same boxes, worked out
+	# when the brick was registered, and this is asked for every brick each
+	# time a model is read back.
+	var packed: PackedInt32Array = builder.lattice.boxes_of(brick.id)
+	if packed.is_empty():
+		packed = builder.boxes_for(part, brick.transform)
 	if packed.is_empty():
 		return []
 	var lo := Vector3i(packed[0], packed[1], packed[2])
@@ -3267,6 +3321,9 @@ static func _quarter_turns(basis: Basis) -> int:
 	return posmod(int(round(atan2(-right.z, right.x) / (PI * 0.5))), 4)
 
 
+const PREFETCH_FOUND := 5
+
+
 func _search(query: String, limit: int) -> String:
 	var found: Array[PartLibrary.PartInfo] = library.search(query, maxi(1, limit))
 	var usable: Array[PartLibrary.PartInfo] = []
@@ -3277,6 +3334,14 @@ func _search(query: String, limit: int) -> String:
 
 	if usable.is_empty():
 		return "No parts match '%s'. Try fewer or plainer words." % query
+
+	# The parts a design is about to name, fetched while it is still being
+	# thought about, so check_design is not the first to ask for them. Only
+	# the web build fetches; the best few, since a search lists alternatives.
+	if OS.has_feature("web"):
+		for info: PartLibrary.PartInfo in usable.slice(0, PREFETCH_FOUND):
+			if not library.is_resident(info.id):
+				library.request_mesh(info.id)
 
 	var lines: PackedStringArray = PackedStringArray()
 	for info: PartLibrary.PartInfo in usable:
@@ -4051,7 +4116,7 @@ func _rooms(args: Dictionary) -> Dictionary:
 		_pattern_trouble = []
 		_pattern_advice = []
 		_repeat_trouble = []
-		var report: Dictionary = _check(trial, true)
+		var report: Dictionary = await _checked(trial, true)
 		if bool(report["ok"]):
 			break
 		var ours: Array = []
@@ -4170,6 +4235,13 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
 	var mix_colour: int = int(pattern.get("mix_color", pattern.get("mix_colour", -1)))
 	var mix: float = clampf(float(pattern.get("mix", 0.15 if mix_colour >= 0 else 0.0)), 0.0, 0.5)
+	# A black face gets its second tone unless told otherwise — in bands, a
+	# course of it every BAND_EVERY, where a real tower's string courses and
+	# setbacks are. The homepage's Orthanc was black on black and read as a
+	# void; the next, sprinkled with dark bluish grey bricks and dressing,
+	# read as noise. LEGO's 10237 is 13% dark bluish grey, on its ledges.
+	var band_colour: int = int(pattern.get("band_color", pattern.get("band_colour",
+		SECOND_TONE.get(colour, -1) if mix_colour < 0 else -1)))
 	# Dressed unless asked not to be. Both were zero unless given, the
 	# guidance said to give them, and no run did: the thirteenth Orthanc
 	# stood a prism of plain faces (61% plain, 1% on its side) which the
@@ -4179,6 +4251,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	if sides < 5 or sides > 16 or courses < 1 or courses > 200:
 		trouble.append("prism wants 5 to 16 sides and 1 to 200 courses")
 		return []
+	if pattern.has("storeys") and not pattern.has("_storey"):
+		return _storeys(pattern, model, index, trouble)
 	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
 	if width < 2:
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
@@ -4221,8 +4295,22 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	var spec := {"x": cx, "y": y0, "z": cz, "sides": sides, "radius": radius,
 		"courses": courses, "thick": thick, "colour": colour,
 		"mix_colour": mix_colour, "mix": mix, "masonry": masonry,
+		"band_colour": band_colour,
 		"sideways": sideways, "open": open, "left_out": left_out,
-		"windows": bool(pattern.get("windows", true))}
+		# Only when asked. They were on by default, Trans-Yellow every eight
+		# courses up every face, and the homepage's Orthanc read as an
+		# office block: 228 lit 1 x 1s in rows. "windows": true lays them
+		# narrow and few, in "window_color" (dark unless said).
+		"windows": bool(pattern.get("windows", false)),
+		"window_colour": int(pattern.get("window_color", pattern.get("window_colour",
+			WINDOW_COLOUR))),
+		# A storey of a prism in storeys (_storeys) is named for its storey
+		# too: each face is a section turned about the middle from its own
+		# foot, and two storeys' faces in one section would stand one on the
+		# other's foot.
+		"tag": str(index) if not pattern.has("_storey")
+			else "%d storey %d" % [index, int(pattern["_storey"])],
+		"summit_colour": int(pattern.get("_summit_colour", colour))}
 	if pattern.has("piers"):
 		return _cluster(pattern, spec, model, index, trouble)
 	# Each face as a cluster's core lays one, its outside row run on into the
@@ -4230,6 +4318,7 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	# had a channel at each corner too wide for the post behind it to cover.
 	var made: Array = []
 	var laid: Dictionary = {}
+	var tag: String = spec["tag"]
 	# A door in its front only when asked: a plain prism is as often a column,
 	# a chimney or a turret as a tower with a way in.
 	var door: float = NAN
@@ -4241,12 +4330,134 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	for face: int in sides:
 		if left_out.has(face):
 			continue
-		laid[face] = _cluster_face(made, model, "prism %d face %d" % [index, face],
+		laid[face] = _cluster_face(made, model, "prism %s face %d" % [tag, face],
 			Vector2(cx, cz), 360.0 * face / sides, radius, sides, spec, [], [], 0.0,
 			courses, true, door if face == 0 else NAN)
-	_corner_posts(made, model, func(face: int) -> String: return "prism %d face %d" % [index, face],
+	_corner_posts(made, model, func(face: int) -> String: return "prism %s face %d" % [tag, face],
 		Vector2(cx, cz), sides, radius, spec, laid, [], courses)
+	if pattern.has("_ledge"):
+		made.append_array(_ledge(pattern, [_outline(Vector2(cx, cz), sides, radius, 0.0)],
+			y0 + 3.0 * courses))
 	return made
+
+
+## A prism in storeys, each set back from the one below on a ledge: the
+## answer to a tower with no silhouette. Every Orthanc built here rose the
+## same width from its foot to its horns, a shaft with a top stuck on, where
+## LEGO's 10237 steps in at each storey on a ledge of grey. Each storey is
+## the prism again — piers, horns, windows and all — its core [code]in[/code]
+## studs smaller than the one below and its piers the same size, drawn in
+## with it, standing on a ledge two plates thick laid round the top of the
+## one below in the second tone; only the top storey's piers rise into
+## horns. The piers keep their size because a cluster of small piers on a
+## small core does not hold: an octagonal core of radius 7 with piers of
+## 4.5 overlaps itself and comes apart in six pieces. The ledge is a ring,
+## so the rooms inside are not floored over at every storey.
+##
+##   "storeys": {"count": 3, "in": 1}
+func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Array:
+	var raw: Variant = pattern["storeys"]
+	var asked: Dictionary = raw if raw is Dictionary else {"count": int(raw)}
+	var count: int = int(asked.get("count", 3))
+	var inset: float = float(asked.get("in", 1))
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var sides: int = int(pattern.get("sides", 8))
+	var radius: float = float(pattern.get("radius", 6))
+	var courses: int = int(round(float(pattern.get("courses", 8))))
+	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
+	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
+	if count < 2 or count > 8 or inset < 1.0 or inset != floor(inset) \
+			or courses < 3 * count:
+		trouble.append("storeys wants a count of 2 to 8, set in by a whole number of "
+			+ "studs (\"in\", 1 or more), with at least 3 courses to a storey")
+		return []
+	var top: float = radius - inset * (count - 1)
+	if floor(2.0 * (top - thick) * tan(PI / sides) + 0.001) < 2:
+		trouble.append(("%d storeys set in %s each leave the top one radius %s, with "
+			+ "faces narrower than two studs: fewer storeys, a smaller in, or a "
+			+ "radius of %s or more") % [count, Placement._num(inset), Placement._num(top),
+			Placement._num(_least_radius(sides, thick) + inset * (count - 1))])
+		return []
+	# The ledges are the second tone's bands on a prism in storeys, in
+	# band_color if it is said; a colour with no second tone, its own.
+	var ledge: int = int(pattern.get("band_color", pattern.get("band_colour",
+		SECOND_TONE.get(colour, colour))))
+	if ledge < 0:
+		ledge = colour
+	var piers: Dictionary = {}
+	if pattern.has("piers"):
+		var given: Variant = pattern["piers"]
+		piers = (given as Dictionary).duplicate(true) if given is Dictionary \
+			else {"count": int(given)}
+	var p_sides: int = int(piers.get("sides", sides))
+	var p_radius: float = float(piers.get("radius", round(radius * 2.0 / 3.0)))
+	var least: float = _least_radius(p_sides, thick)
+	var further: float = float(piers["out"]) - (radius + maxf(least, p_radius) - thick) \
+		if piers.has("out") else 0.0
+	var horns: int = int(round(float(piers.get("courses",
+		courses + maxi(2, courses / 5))))) - courses
+	var each: int = courses / count
+	var y: float = float(at.get("y", 0.0))
+	var made: Array = []
+	for s: int in count:
+		var storey: Dictionary = pattern.duplicate(true)
+		storey.erase("storeys")
+		storey["_storey"] = s
+		storey["_summit_colour"] = ledge
+		storey["band_color"] = -1
+		var high: int = each + (1 if s < courses % count else 0)
+		var r: float = radius - inset * s
+		storey["courses"] = high
+		storey["radius"] = r
+		storey["at"] = {"x": float(at.get("x", 0.0)), "y": y, "z": float(at.get("z", 0.0))}
+		if s < count - 1:
+			storey["_ledge"] = ledge
+			# Under the whole of the next storey's wall and the posts in the
+			# grooves behind its corners, which stand up to a stud and a half
+			# inside it, so they stand on the ledge and not on the air inside
+			# this one.
+			storey["_hole"] = r - inset - thick - 1.5
+		if not piers.is_empty():
+			var these: Dictionary = piers.duplicate(true)
+			var pr: float = maxf(least, p_radius)
+			these["radius"] = pr
+			these["out"] = r + pr - thick + further
+			these["courses"] = high + (maxi(horns, 0) if s == count - 1 else 0)
+			storey["piers"] = these
+		made.append_array(_prism(storey, model, index, trouble))
+		y += 3.0 * high + SUMMIT
+	_pattern_advice.append(("The prism stands in %d storeys, each %s in from the one "
+		+ "below on a ledge; the top one is radius %s, so add_rooms with that radius "
+		+ "fits every storey, and its summit is at y %s.") % [count,
+		Placement._num(inset), Placement._num(top), Placement._num(y - SUMMIT)])
+	return made
+
+
+## The most plates a piece of a ledge can be and still be left off: the
+## crumbs where a ring crosses a diagonal were two and four, over air; the
+## least piece that carried a pier of the storey above was thirty.
+const LEDGE_CRUMBS := 6
+
+
+## A ledge two plates thick round the top of a storey: over the studs inside
+## [param outlines] (this storey's, in plan) but not wholly inside the
+## pattern's [code]_hole[/code], the inside of the next storey's wall.
+func _ledge(pattern: Dictionary, outlines: Array, y: float) -> Array:
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var middle := Vector2(float(at.get("x", 0.0)), float(at.get("z", 0.0)))
+	var sides: int = int(pattern.get("sides", 8))
+	var low := Vector2i(1 << 20, 1 << 20)
+	var high := Vector2i(-(1 << 20), -(1 << 20))
+	for outline: PackedVector2Array in outlines:
+		for point: Vector2 in outline:
+			low = Vector2i(mini(low.x, int(floor(point.x))), mini(low.y, int(floor(point.y))))
+			high = Vector2i(maxi(high.x, int(ceil(point.x))), maxi(high.y, int(ceil(point.y))))
+	var cells: Dictionary = _studs_within(outlines, low, high)
+	var hole: float = float(pattern.get("_hole", 0.0))
+	if hole > 0.0:
+		for cell: Variant in _studs_within([_outline(middle, sides, hole, 0.0)], low, high):
+			cells.erase(cell)
+	return _summit(cells, y, int(pattern["_ledge"]), LEDGE_CRUMBS)
 
 
 ## The courses of one face of a prism, over each of its runs ([left, studs]
@@ -4271,8 +4482,13 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 	for n: int in runs.size():
 		if int(runs[n][1]) > int(runs[widest][1]):
 			widest = n
+	var band_colour: int = int(spec.get("band_colour", -1))
 	for course: int in courses:
 		var y: float = base + 3.0 * course
+		# A string course in the second tone, the whole way round.
+		var tone: int = colour
+		if band_colour >= 0 and course % BAND_EVERY == BAND_EVERY - 1 and course < courses - 1:
+			tone = band_colour
 		for n: int in runs.size():
 			var run: Array = runs[n]
 			var left: float = run[0]
@@ -4285,7 +4501,7 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			var gap: float = NAN
 			if windows.has(course) and n == widest and width >= 2:
 				gap = left + floor(width / 2.0)
-				made.append(_prism_brick(name, "3005", WINDOW_COLOUR, gap, y,
+				made.append(_prism_brick(name, "3005", int(spec.get("window_colour", WINDOW_COLOUR)), gap, y,
 					radius - 1.0, 0, -1, 0.0, 0.0))
 			# Two thick: a course of two-wide bricks, then a course of two
 			# rows of one-wide ones, which the courses either side tie
@@ -4295,13 +4511,13 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# Orthanc built with it came out 94% plain.
 			if thick == 2 and course % 2 == 0:
 				_lay_row_around(made, name, wide, left, width, gap, y, radius - 2.0,
-					course, colour, mix_colour, mix, 0.0, 0.0)
+					course, tone, mix_colour, mix, 0.0, 0.0)
 				if not is_nan(gap):
-					made.append(_prism_brick(name, "3005", colour, gap, y,
+					made.append(_prism_brick(name, "3005", tone, gap, y,
 						radius - 2.0, 0, mix_colour, mix, 0.0))
 				if extra > 0:
 					_lay_row(made, name, narrow, left + width, extra, y, radius - 1.0,
-						course, colour, mix_colour, mix, 0.0, 0.0)
+						course, tone, mix_colour, mix, 0.0, 0.0)
 				continue
 			# The bond of the one-wide rows counts their own courses: on a
 			# two-thick face they are only ever the odd ones, and counted by
@@ -4309,11 +4525,11 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# only, so not one of them could be a masonry brick.
 			var bond: int = course / 2 if thick == 2 else course
 			_lay_row_around(made, name, narrow, left, width + extra, gap, y,
-				radius - 1.0, bond, colour, mix_colour, mix, spec["masonry"],
+				radius - 1.0, bond, tone, mix_colour, mix, spec["masonry"],
 				spec["sideways"], clear)
 			if thick == 2:
 				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
-					bond + 1, colour, mix_colour, mix, 0.0, 0.0)
+					bond + 1, tone, mix_colour, mix, 0.0, 0.0)
 
 
 ## A row as [method _lay_row] lays it, but for the [param across] studs from
@@ -4467,14 +4683,34 @@ func _prism_brick(section: String, part: String, colour: int, x: float, y: float
 	if Patterns.MASONRY.has(part) and rot == 0 \
 			and Patterns._scatter(x, y, z + float(section.hash() % 97), 47) < masonry:
 		one["part"] = Patterns.MASONRY[part]
+	# And on a dark wall, as many again as grille: 10237 breaks its black
+	# with 86 grille bricks, which catch light where masonry's shallow relief
+	# in black does not. Its grille faces out the way masonry's does.
+	elif part == "3004" and rot == 0 and _is_dark(colour) \
+			and Patterns._scatter(x, y, z + float(section.hash() % 97), 59) < masonry:
+		one["part"] = "2877"
 	return one
 
 
-## A prism's windows: Trans-Yellow, one stud wide and two courses tall, in
-## the outside row, every so many courses (the inside row stays whole, so a
-## window is lit and never seen through).
-const WINDOW_COLOUR := 46
-const WINDOW_EVERY := 8
+## Whether a colour is dark enough that a plain face of it reads as a hole.
+func _is_dark(code: int) -> bool:
+	var colour: PartLibrary.BrickColor = library.colors.get(code) if library != null else null
+	return colour != null and colour.rgb.get_luminance() <= DARK_LUMINANCE
+
+
+## A prism's windows, when asked: one stud wide and two courses tall, in the
+## outside row, every so many courses (the inside row stays whole, so a
+## window is never seen through). Trans-Brown by default, LEGO's smoked
+## glass: a dark slit. They were Trans-Yellow every eight courses on every
+## face, and lit an Orthanc up as an office block.
+const WINDOW_COLOUR := 40
+const WINDOW_EVERY := 16
+## Courses from one band of a black face's second tone to the next.
+const BAND_EVERY: int = Patterns.BAND_EVERY
+
+## The second tone a wall of a dark colour gets unless told: dark bluish
+## grey through black, as 10237 Tower of Orthanc has it (66% and 13%).
+const SECOND_TONE: Dictionary = Patterns.SECOND_TONE
 ## How far round from straight back a cluster's core is opened, in degrees:
 ## an octagon's three back faces, a decagon's three, a twelve-sided core's
 ## five.
@@ -4868,9 +5104,10 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		inward.append(-across.normalized() if across.length() > 0.001 else Vector2.ZERO)
 
 	var made: Array = []
+	var tag: String = spec["tag"]
 	var name_of := func(pier: int, face: int) -> String:
-		return ("prism %d face %d" % [index, face]) if pier < 0 \
-			else "prism %d pier %d face %d" % [index, pier, face]
+		return ("prism %s face %d" % [tag, face]) if pier < 0 \
+			else "prism %s pier %d face %d" % [tag, pier, face]
 	# The core whole, but for its open back: each pier is built against it, as
 	# a buttress is against a wall. The first clusters had the core stop short
 	# of each pier instead, and its faces could only stop a groove short, so
@@ -4952,9 +5189,13 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	var span: float = radius + out + p_radius * 2.0
 	var low := Vector2i(int(floor(middle.x - span)), int(floor(middle.y - span)))
 	var high := Vector2i(int(ceil(middle.x + span)), int(ceil(middle.y + span)))
-	for plate: Dictionary in _summit(_studs_within(outline, low, high),
-			float(spec["y"]) + top, spec["colour"]):
-		made.append(plate)
+	if pattern.has("_ledge"):
+		# A storey with another on it: a ledge round its top, not a floor.
+		made.append_array(_ledge(pattern, outline, float(spec["y"]) + top))
+	else:
+		for plate: Dictionary in _summit(_studs_within(outline, low, high),
+				float(spec["y"]) + top, spec["summit_colour"]):
+			made.append(plate)
 
 	# The horns: each pier again, whole, standing on the summit, capped
 	# square at its top and carrying a point. Without the cap a horn ends in
@@ -5154,9 +5395,10 @@ func _cluster_face(made: Array, model: Model, name: String, origin: Vector2,
 	# Narrow lit windows, two courses tall, every WINDOW_EVERY courses up the
 	# face, alternate faces half a storey apart: Orthanc's faces have them,
 	# and the sixteenth, whose dressing is now black on black, had none.
+	# Asked for, they are few: every other face, a storey apart.
 	var windows: Dictionary = {}
-	if windowed and bool(spec.get("windows", true)):
-		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash()) % 2 == 1 else 0)
+	if windowed and bool(spec.get("windows", false)) and absi(name.hash()) % 2 == 0:
+		var first: int = 4 + (WINDOW_EVERY / 2 if absi(name.hash() / 2) % 2 == 1 else 0)
 		# Over a door, the first a storey above its arch.
 		if not is_nan(door):
 			first = DOOR_BELOW + DOOR_ARCH_COURSES + WINDOW_EVERY / 2
@@ -5365,7 +5607,7 @@ static func _plate_studs(plate: Dictionary) -> Array[Vector2i]:
 ## six-long strips both ways over a block six by six, where its figures were to
 ## stand ("nothing to stand on"), and the run laid a plate over the hole by
 ## hand.
-static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
+static func _summit(cells: Dictionary, y: float, colour: int, crumbs: int = 0) -> Array:
 	var ordered: Array = cells.keys()
 	ordered.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return a.x < b.x or a.x == b.x and a.y < b.y)
@@ -5382,7 +5624,14 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 	# The two layers are one floor only where they cross. A corner of the
 	# outline a stud across is a 1x1 plate on a 1x1 plate, held by nothing,
 	# and the first open cluster had one hanging over its open back. The
-	# largest piece is the summit; anything apart from it is left off.
+	# largest piece is the summit; anything apart from it is left off —
+	# unless [param crumbs] is said, when only pieces of that many plates
+	# or fewer are: a ledge round a storey is a ring, and where it crosses
+	# a cleft on a diagonal its studs meet only at their corners, so it
+	# comes in several pieces, each standing on the walls under it. Keeping
+	# only the largest dropped the ledge under a whole pier of the storey
+	# above; keeping every piece kept crumbs of four plates on a diagonal,
+	# over the air inside the wall.
 	var under: Dictionary = {}
 	var over: Dictionary = {}
 	for n: int in made.size():
@@ -5401,6 +5650,8 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 				(links[pair[0]] as Dictionary)[pair[1]] = true
 	var seen: Dictionary = {}
 	var largest: Dictionary = {}
+	var pieces: Dictionary = {}     ## plate -> the first plate of its piece
+	var sizes: Dictionary = {}      ## that first plate -> how many in the piece
 	for start: int in made.size():
 		if seen.has(start):
 			continue
@@ -5415,9 +5666,12 @@ static func _summit(cells: Dictionary, y: float, colour: int) -> Array:
 					queue.append(next)
 		if piece.size() > largest.size():
 			largest = piece
+		sizes[start] = piece.size()
+		for n: Variant in piece:
+			pieces[n] = start
 	var kept: Array = []
 	for n: int in made.size():
-		if largest.has(n):
+		if largest.has(n) or crumbs > 0 and int(sizes[pieces[n]]) > crumbs:
 			kept.append(made[n])
 	return kept
 
@@ -5530,6 +5784,15 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 	if _side_stud(facing).is_empty():
 		trouble.append("the 1x1 brick with a side stud has not arrived yet")
 		return []
+	# What each stud carries: a mix by default, or one kind for a band of
+	# detail — rivets down a hull plate, round tiles for portholes or lights
+	# (in a transparent face_color), flat tiles for a smooth panel.
+	var dress: String = str(pattern.get("dress", "mixed")).to_lower()
+	var only: Array = DRESSES.get(dress, [])
+	if dress != "mixed" and not DRESSES.has(dress):
+		trouble.append("studs_out dresses its studs mixed, tiles, rivets, round "
+			+ "or lights")
+		return []
 	var along_x: bool = facing in ["+z", "-z"]
 	var made: Array = []
 	for course: int in courses:
@@ -5542,7 +5805,7 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 			var tone: int = face_colour
 			if mix_colour >= 0 and Patterns._scatter(x, y, z, 29) < 0.3:
 				tone = mix_colour
-			var dressing: Dictionary = _dress(one, facing, tone)
+			var dressing: Dictionary = _dress(one, facing, tone, only)
 			made.append(one)
 			if not dressing.is_empty():
 				made.append(dressing)
@@ -5562,6 +5825,11 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 					n2 += int(pair[0])
 					break
 	return made
+
+
+## The parts a studs_out band's studs carry, by the kind of band asked.
+const DRESSES: Dictionary = {"tiles": ["3070b"], "rivets": ["4073"],
+	"round": ["98138"], "lights": ["98138"]}
 
 
 func _tie(x0: float, y: float, z0: float, from: int, _long: int,
@@ -5600,7 +5868,8 @@ func _side_stud(facing: String) -> Array:
 ## Turn a 1x1 brick with a side stud (87087) to face the way asked, and
 ## return the part laid on its stud: a tile, round tile, round plate or
 ## cheese slope, chosen by where it is. {} when it cannot be worked out.
-func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
+func _dress(brick: Dictionary, facing: String, tone: int = -1,
+		only: Array = []) -> Dictionary:
 	if not facing in ["+x", "-x", "+z", "-z"]:
 		return {}
 	var side: Array = _side_stud(facing)
@@ -5617,6 +5886,8 @@ func _dress(brick: Dictionary, facing: String, tone: int = -1) -> Dictionary:
 	if facing in ["-x", "-z"]:
 		# Thicker than a plate hangs the other way on these sides.
 		faces = ["3070b", "98138", "4073", "3024"]
+	if not only.is_empty():
+		faces = only
 	var x: float = float(brick["x"])
 	var y: float = float(brick["y"])
 	var z: float = float(brick["z"])
@@ -5847,6 +6118,86 @@ func _rehinge(model: Model, section: Section, was: Section) -> void:
 # -- validation ----------------------------------------------------------
 
 
+## The check, off the main thread once a design is big enough to be felt.
+##
+## On the web the page has one thread, and the check held it: on the
+## owner's 4,242-part Falcon Heavy a check_design was one 31 s task in a
+## browser, and a submit, an edit and a review each another — no frame, no
+## click, no answer to Claude until it was done. On the desktop it was
+## 3.4 s of a frozen window. So a big check runs on a worker and this waits
+## for it a frame at a time, the page drawing and answering meanwhile.
+##
+## What the worker reads is made still first. Every part it needs is loaded
+## here, because a worker never loads one (PartLibrary.mesh_for); the
+## library holds new arrivals aside until it is done, and a part made
+## meanwhile waits for it; the bricks already
+## standing are listed here rather than read from a world that a person may
+## be adding to; and the tables filled on first use — the style norms, the
+## minifigure name patterns — are filled here. The probes call [method
+## _check] itself, on their own thread, as before.
+func _checked(model: Model, alone: bool = false) -> Dictionary:
+	# One worker at a time: a second check while one is out (the design
+	# loop and a connector both checking) is done here, as before.
+	if model.placements.size() < CHECK_OFF_THREAD_FROM or _standing_held \
+			or OS.has_feature("nothreads") or library == null:
+		return _check(model, alone)
+	_standing_held = true
+	await _ensure_parts(model)
+	Style.norms()
+	var named: Dictionary = {}
+	for placement: Placement in model.placements:
+		named[placement.part] = true
+	for part_id: String in named:
+		Minifig.slot_for(library.parts.get(part_id))
+	_standing_now = _others_standing(alone)
+	library.begin_reading()
+	var report: Dictionary = {}
+	var task: int = WorkerThreadPool.add_task(func() -> void:
+		report.merge(_check(model, alone)), false, "check a design")
+	library.reading_in(task)
+	while not WorkerThreadPool.is_task_completed(task):
+		await Engine.get_main_loop().process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+	library.end_reading(task)
+	_standing_held = false
+	_standing_now = []
+	if report.is_empty():
+		# A worker that failed leaves nothing. Checked here instead: slow,
+		# but an answer.
+		return _check(model, alone)
+	return report
+
+
+## Placements from which a check goes to a worker. Below it a check is a
+## few tens of milliseconds and a worker would only add a frame.
+const CHECK_OFF_THREAD_FROM := 300
+
+## The bricks a check has to fit around, as [method _others_standing] found
+## them before the worker began.
+var _standing_now: Array = []
+var _standing_held: bool = false
+
+
+## What will still be standing afterwards and is not this design's: none
+## of the bricks it placed, nor the baseplate. Copies, so a worker reading
+## them shares nothing with the world.
+func _others_standing(alone: bool) -> Array:
+	if _standing_held and OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return _standing_now
+	var standing: Array = []
+	if alone or world == null:
+		return standing
+	var mine: Dictionary = {}
+	for brick_id: int in _placed_ids + _sketched_ids:
+		mine[brick_id] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		if mine.has(brick.id) or scenery.has(brick.id):
+			continue
+		standing.append(BrickWorld.Brick.new(brick.id, brick.part_id,
+			brick.color_code, brick.transform))
+	return standing
+
+
 ## Check a proposed design against the real lattice.
 ##
 ## Runs on a scratch lattice rather than the live one, so a failing
@@ -5883,7 +6234,13 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	## as any.
 	var advice: Array = []
 	var issues: Dictionary = {}     ## kind -> Array[String]
-	var cells_of: Dictionary = {}   ## index -> Array[Vector3i]
+	## index -> its cover, as boxes. Every cell it was, once: 2,000 cells a
+	## brick on the owner's 4,242-part Falcon Heavy, 8.5 million Vector3i
+	## made and kept for a check — a third of a gigabyte of the browser's
+	## heap, and most of the time the loop below took. Everything that read
+	## them wanted a lowest cell, a highest or a count, and boxes answer
+	## each in six numbers.
+	var cells_of: Dictionary = {}
 	var boxes_of: Dictionary = {}   ## index -> its boxes, six ints each
 	var box_of: Dictionary = {}     ## index -> [low cell, high cell]
 
@@ -5934,13 +6291,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# What will still be there afterwards, standing in the way.
 	var theirs: Dictionary = {}     ## lattice key -> part id
 	if not alone and world != null:
-		var mine: Dictionary = {}
-		for brick_id: int in _placed_ids + _sketched_ids:
-			mine[brick_id] = true
 		var key: int = -1
-		for brick: BrickWorld.Brick in world.bricks():
-			if mine.has(brick.id) or scenery.has(brick.id):
-				continue
+		for brick: BrickWorld.Brick in _others_standing(alone):
 			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			if part == null:
 				continue
@@ -6033,13 +6385,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			continue
 
 		placed_at[index] = at
+		# Boxes, worked out once. For a turned part the cover costs a
+		# separating-axis test on every candidate cell, and asking for it
+		# twice — once as boxes, once as cells — is what made a model with
+		# four sections take thirty-five seconds to check against six and
+		# a half.
 		var packed: PackedInt32Array = builder.boxes_for(part, at)
-		# Cells out of the boxes, not worked out a second time. For a
-		# turned part the cover costs a separating-axis test on every
-		# candidate cell, and asking for it twice — once as boxes, once
-		# as cells — is what made a model with four sections take
-		# thirty-five seconds to check against six and a half.
-		var cells: Array[Vector3i] = BrickLattice.cells_in(packed)
 
 		# Inside a section, check the bricks against each other in the
 		# section's own square frame.
@@ -6198,7 +6549,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			continue
 
 		lattice.occupy_boxes(index + 1, packed)
-		cells_of[index] = cells
+		cells_of[index] = packed
 		boxes_of[index] = packed
 		# The corners, read off the boxes. Three checks below want them,
 		# and finding them by walking every cell is nine thousand six
@@ -6302,8 +6653,15 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not stepped.is_empty():
 		advice.append(stepped)
 
-	# And whether there is a line it would come apart along.
-	var seam: String = _unbonded_seam(box_of)
+	# And whether there is a line it would come apart along. Not between
+	# round parts: two cylinder halves back to back, four corner rounds of a
+	# ring and a booster beside its core are how a set builds a round, each
+	# column tied by a round plate, and a rocket was told to stagger them.
+	var walls: Dictionary = {}
+	for index: int in box_of:
+		if not Style.kinds_of(model.placements[index].part).contains("c"):
+			walls[index] = box_of[index]
+	var seam: String = _unbonded_seam(walls)
 	if not seam.is_empty():
 		advice.append(seam)
 
@@ -6316,6 +6674,19 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var coarse: String = _mostly_big_plates(model)
 	if not coarse.is_empty():
 		advice.append(coarse)
+
+	# And whether it has a touch nobody asked for.
+	var touches: String = _touches(model)
+	if not touches.is_empty():
+		advice.append(touches)
+
+	# And the three things that made the homepage's Orthanc "the ugliest
+	# piece of shit I've ever seen", each a fault of any subject: windows
+	# in a grid, a dark face of plain bricks, a tall thing with no profile.
+	for said: String in [_window_grid(model), _dark_and_plain(model),
+			_straight_shaft(model, box_of)]:
+		if not said.is_empty():
+			advice.append(said)
 
 	# And whether a nearly-symmetric model has a brick on one side only.
 	var lopsided: String = _lopsided(model, box_of, lattice)
@@ -6582,7 +6953,7 @@ func _courses(cells_of: Dictionary, box_of: Dictionary) -> Dictionary:
 			* (high.z - low.z + 1)
 		var filled: int = 0
 		if cells_of.has(index):
-			filled = (cells_of[index] as Array).size()
+			filled = BrickLattice.volume_of(cells_of[index])
 		if filled != volume:
 			continue
 		# Whole plates only, so that the stud on a part's top does not
@@ -6761,7 +7132,10 @@ func _mostly_big_plates(model: Model) -> String:
 		counted += 1
 		var footprint: Vector2i = info.footprint_studs()
 		var studs: float = float(footprint.x) * float(footprint.y)
-		if studs >= BIG_PART_STUDS:
+		# A round brick or a cylinder half is the skin of a rocket, not a
+		# plate under it: a body laid in them read as "structure, not yet
+		# finished" at every size.
+		if studs >= BIG_PART_STUDS and not Style.kinds_of(placement.part).contains("c"):
 			big += 1
 		elif studs <= 2.0:
 			small += 1
@@ -6781,6 +7155,212 @@ func _mostly_big_plates(model: Model) -> String:
 		+ "second colour where a panel line would run. The eight models "
 		+ "this app ships are 9 to 44 per cent big parts. If this is "
 		+ "meant to be a blocked-out shape, nothing needs doing.")
+
+
+## Whether a model has the touches nearly every real set has and nobody
+## asks for: a printed or stickered part, and something that moves.
+##
+## Measured over Rebrickable's inventories of the 2,517 sets of 300 parts
+## or more since 2015: 95% carry a printed or stickered part and 94% a
+## hinge, a turntable, a Technic pin or a ball joint, so each one missing
+## is a tail of one set in twenty, the rule every advice here keeps. Every
+## design the owner judged had neither: a Falcon Heavy of 4,252 parts with
+## one printed minifigure head in it, an Orthanc with figures but nothing
+## that opened. Said with the other touches an expert adds, because the
+## advice is where a design that thinks it is finished still listens.
+func _touches(model: Model) -> String:
+	if model.placements.size() < TOUCHES_FROM or library == null:
+		return ""
+	var printed: bool = false
+	var moving: bool = false
+	for placement: Placement in model.placements:
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		if info == null:
+			continue
+		if _decorated(info):
+			printed = true
+		if Style.kinds_of(placement.part).contains("a") or info.has_connector("pin") \
+				or info.has_connector("ball"):
+			moving = true
+	for section: Section in model.sections.values():
+		if section.hinge:
+			moving = true
+	if printed and moving:
+		return ""
+	var missing := PackedStringArray()
+	if not printed:
+		missing.append("no printed or stickered part, where 95% of real sets of 300 "
+			+ "parts or more have one — a gauge, a screen, a map, a logo, a nameplate: "
+			+ "search_parts with \"print\" or \"sticker\" and the subject's own word")
+	if not moving:
+		missing.append("nothing that moves, where 94% have a hinge, a turntable, a "
+			+ "Technic pin or a ball joint — a hatch, a door, a ramp, a turret: a "
+			+ "section with hinge: true")
+	return ("The touches an expert adds unasked: this has " + "; and ".join(missing)
+		+ ". While you are there: a figure who belongs to it or a small scene "
+		+ "hidden in it (add_minifig), a nod to the subject's story, and for a "
+		+ "display model a stand with a nameplate.")
+
+
+## Windows laid as a grid: one transparent part in one colour, many of
+## them, most in rows. The homepage's Orthanc had 71 lit yellow 1 x 1s up
+## every face at the same heights and read as an office block; the
+## owner's verdict was the worst yet. A real set places few windows, each
+## with a reason, and takes their colour from the subject.
+func _window_grid(model: Model) -> String:
+	if library == null:
+		return ""
+	var groups: Dictionary = {}   ## "part colour" -> [y, ...]
+	for placement: Placement in model.placements:
+		var colour: PartLibrary.BrickColor = library.colors.get(placement.color)
+		# Lit: a warm transparent colour, yellow to red. Glass in rows is
+		# how real buildings are glazed — Big Ben's facade is 380 trans-brown
+		# 1 x 1s, Tower Bridge's 48 clear panes — and asked of eight real
+		# sets, counting every transparent colour fired on three of them.
+		if colour == null or colour.finish != "transparent" or colour.rgb.s < 0.4 \
+				or colour.rgb.v < 0.5 or (colour.rgb.h > 0.18 and colour.rgb.h < 0.95):
+			continue
+		var key: String = "%s %d" % [placement.part, placement.color]
+		if not groups.has(key):
+			groups[key] = []
+		(groups[key] as Array).append(snappedf(placement.y, 0.25))
+	# The biggest group first: that is the grid the eye sees.
+	var order: Array = groups.keys()
+	order.sort_custom(func(a: String, b: String) -> bool:
+		return (groups[a] as Array).size() > (groups[b] as Array).size())
+	for key: String in order:
+		var heights: Array = groups[key]
+		if heights.size() < WINDOW_GRID:
+			continue
+		var at: Dictionary = {}
+		for y: float in heights:
+			at[y] = int(at.get(y, 0)) + 1
+		var in_rows: int = 0
+		for y: float in heights:
+			if int(at[y]) >= 4:
+				in_rows += 1
+		if float(in_rows) < 0.7 * heights.size():
+			continue
+		var named: PackedStringArray = key.split(" ")
+		return ("%d of one lit window (%s in %s), most of them in rows at the same "
+			% [heights.size(), named[0], _colour_name(int(named[1]))]
+			+ "heights: a grid of windows reads as an office block, whatever the "
+			+ "building is. Few windows, each with a reason — arched, framed, "
+			+ "varied, gathered where something happens inside — and their colour "
+			+ "from the subject: a dark fortress has dark slits, a lighthouse one "
+			+ "lit lantern. Take most of these out and make the rest count.")
+	return ""
+
+
+## A model mostly plain bricks in one dark colour. In a picture a dark face
+## with nothing on it is a hole: the homepage's Orthanc was black on black
+## and read as a void. 10237, LEGO's own Orthanc, is 66% black and breaks
+## it with 86 grille bricks, 63 headlight bricks, 58 bricks with handles,
+## 47 cheese slopes, 36 curved 10 x 1 ribs and 13% dark bluish grey.
+func _dark_and_plain(model: Model) -> String:
+	if model.placements.size() < DARK_FROM or library == null:
+		return ""
+	var dark: Dictionary = {}
+	for placement: Placement in model.placements:
+		var colour: PartLibrary.BrickColor = library.colors.get(placement.color)
+		if colour == null or colour.rgb.get_luminance() > DARK_LUMINANCE \
+				or not Style.kinds_of(placement.part).contains("p"):
+			continue
+		dark[placement.color] = int(dark.get(placement.color, 0)) + 1
+	for code: int in dark:
+		var share: float = float(dark[code]) / model.placements.size()
+		if share < DARK_AND_PLAIN:
+			continue
+		return ("%d%% of the model is plain bricks and plates in %s. A big dark "
+			% [roundi(share * 100.0), _colour_name(code)]
+			+ "face with nothing on it reads as a hole in a picture. Break it up "
+			+ "the way 10237 Tower of Orthanc breaks up its black: texture in the "
+			+ "same colour (grille bricks 2877, masonry 98283, bricks with a "
+			+ "handle 2921, headlight bricks, cheese slopes, ingots) for most "
+			+ "of it; a second tone in bands, where the ledges and string "
+			+ "courses are (dark bluish grey on black: band_color), never "
+			+ "sprinkled through the bricks, which reads as noise; and depth — "
+			+ "an inset or outset course, a pilaster, a rib — so light and "
+			+ "shadow draw the form.")
+	return ""
+
+
+## A tall model the same width all the way up: no taper, no flare, no
+## crown growing out of it. The homepage's Orthanc was square shafts
+## glued together, the horns reading as spikes stuck on. Not said of a
+## subject that is a straight round (a rocket, a column): its straightness
+## is its shape.
+func _straight_shaft(model: Model, box_of: Dictionary) -> String:
+	if box_of.size() < DARK_FROM:
+		return ""
+	var about: String = "%s %s %s" % [_brief, model.name, model.description]
+	var traits: Dictionary = Style.traits_of(about)
+	if traits.has("round") or traits.has("vehicle"):
+		return ""
+	var low: Dictionary = {}    ## plate layer -> Vector2i low x, z in cells
+	var high: Dictionary = {}
+	for index: int in box_of:
+		var corners: Array = box_of[index]
+		var lo: Vector3i = corners[0]
+		var hi: Vector3i = corners[1]
+		for layer: int in range(floori(float(lo.y) / BrickLattice.CELLS_PER_PLATE),
+				floori(float(hi.y) / BrickLattice.CELLS_PER_PLATE) + 1):
+			var was_lo: Vector2i = low.get(layer, Vector2i(lo.x, lo.z))
+			var was_hi: Vector2i = high.get(layer, Vector2i(hi.x, hi.z))
+			low[layer] = Vector2i(mini(was_lo.x, lo.x), mini(was_lo.y, lo.z))
+			high[layer] = Vector2i(maxi(was_hi.x, hi.x), maxi(was_hi.y, hi.z))
+	var layers: Array = low.keys()
+	if layers.size() < 30:
+		return ""
+	layers.sort()
+	var tall: float = layers.size() / 2.5            ## studs
+	var widths: Array = []
+	for n: int in range(layers.size() / 10, layers.size() * 9 / 10):
+		var span: Vector2i = (high[layers[n]] as Vector2i) - (low[layers[n]] as Vector2i)
+		widths.append(float(maxi(span.x, span.y)) / BrickLattice.CELLS_PER_STUD)
+	var widest: float = widths.max()
+	var narrowest: float = widths.min()
+	if tall < 2.0 * widest or widest - narrowest > STRAIGHT_WITHIN * widest:
+		return ""
+	return ("It rises %d studs as one straight shaft about %d across, the same "
+		% [roundi(tall), roundi(widest)]
+		+ "width from a tenth of its height to nine tenths. A tall subject's profile "
+		+ "is its design: let it taper, flare at the foot, gather at a waist, and "
+		+ "let its top grow out of the body — an oversail on inverted slopes, a "
+		+ "corbelled crown, a spire stepping in (show_technique \"oversail on "
+		+ "inverted slopes\", \"turret spire\") — rather than a cap with spikes "
+		+ "stuck on. A prism with \"storeys\" steps in on a ledge at each storey in "
+		+ "one call; the base should lead the eye up, a composed plinth and not rubble "
+		+ "ringed round its foot.")
+
+
+## Twelve of one window before a grid of them is a pattern and not a choice.
+const WINDOW_GRID := 12
+## From this many parts, a model has faces big enough to read as holes.
+const DARK_FROM := 200
+## Darker than this (CIELAB-ish luminance of the plastic's colour) is dark:
+## black, dark brown, dark blue, dark green — not dark bluish grey.
+const DARK_LUMINANCE := 0.2
+## And this share of the model plain in one dark colour is a void. The
+## shipped models and real sets are measured in patterns_probe/style_probe.
+const DARK_AND_PLAIN := 0.4
+## How much a shaft's width may vary, as a share of it, and still be
+## straight: run 18's Orthanc varied 2.5 studs in 28 with its dressing and
+## windows, a tapering tower a third or more.
+const STRAIGHT_WITHIN := 0.12
+
+
+## A part with a print or a sticker on it: LDraw files them as their
+## plain part's number with a pattern after it (3069bp01, 4515d03).
+func _decorated(info: PartLibrary.PartInfo) -> bool:
+	return info.name.contains("Sticker") or info.name.contains("Pattern") \
+		or _decorated_id.search(info.id) != null
+
+
+static var _decorated_id := RegEx.create_from_string("[0-9][a-z]?(p[0-9a-z]{2,}|d[0-9a-z]{2,}|pr[0-9]+)$")
+## Below this many parts a model is a vignette, and the touches are a
+## matter of taste.
+const TOUCHES_FROM := 300
 
 
 ## Whether the whole design sits in a single course.
@@ -6864,6 +7444,11 @@ func _lopsided(model: Model, box_of: Dictionary,
 			var filled: int = 0
 			var asked: int = 0
 			for point: Vector3i in _probe_points(near, far):
+				# Only where the part is: a wedge plate fills half its box, and
+				# a mirror pair of 2 x 3 wings, each the other's reflection,
+				# was called lopsided for the empty half of each box.
+				if lattice.brick_at(point) != index + 1:
+					continue
 				var mirror: Vector3i = point
 				mirror[axis] = lo[axis] + hi[axis] - point[axis]
 				asked += 1
@@ -7141,14 +7726,15 @@ func _mating_entries(model: Model) -> Array:
 ## Returns a clause to hang off an overlap message, or nothing at all
 ## when the brick that was hit is one already on the baseplate rather
 ## than one of these placements.
-static func _ends_at(cells: Variant) -> String:
-	if typeof(cells) != TYPE_ARRAY or (cells as Array).is_empty():
+static func _ends_at(cover: Variant) -> String:
+	if typeof(cover) != TYPE_PACKED_INT32_ARRAY or (cover as PackedInt32Array).is_empty():
 		return ""
-	var low: int = (cells[0] as Vector3i).y
-	var high: int = low
-	for cell: Vector3i in cells:
-		low = mini(low, cell.y)
-		high = maxi(high, cell.y)
+	var boxes: PackedInt32Array = cover
+	var low: int = boxes[1]
+	var high: int = boxes[4] - 1
+	for at: int in range(0, boxes.size(), 6):
+		low = mini(low, boxes[at + 1])
+		high = maxi(high, boxes[at + 4] - 1)
 	var from_y: float = float(low) / BrickLattice.CELLS_PER_PLATE
 	var to_y: float = float(high + 1) / BrickLattice.CELLS_PER_PLATE
 	return ", which fills y=%s up to y=%s — so the course above it starts at y=%s" % [
@@ -7605,10 +8191,10 @@ func _check_support(
 		# the fault that matters.
 		if crowded.has(placement.section):
 			continue
-		var cells: Array[Vector3i] = cells_of[index]
+		var cover: PackedInt32Array = cells_of[index]
 		var floor_y: int = 0x7FFFFFFF
-		for cell: Vector3i in cells:
-			floor_y = mini(floor_y, cell.y)
+		for at: int in range(1, cover.size(), 6):
+			floor_y = mini(floor_y, cover[at])
 		# Standing on the ground, read off where the brick actually
 		# ended up rather than off the number that was written.
 		#
@@ -7991,12 +8577,43 @@ static func _cover_studs(part: Lbm.PartMesh, info: PartLibrary.PartInfo) -> Vect
 ## off the studs it stood on, and the owner saw it: the wing tips of a
 ## tower of Orthanc not sitting on their studs, 24 of them in one model.
 ## The patterns that lay wings meant the footprint all along.
-var _corner_cache: Dictionary = {}
+##
+## Kept by part and then by the basis itself. The key was the two written
+## out as one string, and writing a Basis out is nine numbers formatted:
+## most of the 142 ms that placing the owner's 4,242-part Falcon Heavy
+## spent working out where its parts go, and asked again by every check,
+## every look and every reading of the model. A check on a worker
+## (_checked) keeps its own, behind a lock, so neither thread writes a
+## Dictionary the other is reading.
+var _corner_cache: Dictionary = {}     ## part id -> {Basis: Vector3i}
+var _corner_off_main: Dictionary = {}
+var _corner_lock := Mutex.new()
+
 
 func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
-	var key: String = "%s|%s" % [part_id, basis]
-	if _corner_cache.has(key):
-		return _corner_cache[key]
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		_corner_lock.lock()
+		var known: Variant = (_corner_off_main.get(part_id, {}) as Dictionary).get(basis)
+		if known == null:
+			known = _work_out_corner(part, part_id, basis)
+			if not _corner_off_main.has(part_id):
+				_corner_off_main[part_id] = {}
+			(_corner_off_main[part_id] as Dictionary)[basis] = known
+		_corner_lock.unlock()
+		return known
+	var by_basis: Variant = _corner_cache.get(part_id)
+	if by_basis == null:
+		by_basis = {}
+		_corner_cache[part_id] = by_basis
+	var found: Variant = (by_basis as Dictionary).get(basis)
+	if found != null:
+		return found
+	var lo: Vector3i = _work_out_corner(part, part_id, basis)
+	(by_basis as Dictionary)[basis] = lo
+	return lo
+
+
+func _work_out_corner(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i:
 	var lo := Vector3i(0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF)
 	var hi := -lo
 	for cell: Vector3i in builder._cells_for(part, Transform3D(basis, Vector3.ZERO)):
@@ -8011,7 +8628,6 @@ func _corner_cell(part: Lbm.PartMesh, part_id: String, basis: Basis) -> Vector3i
 	elif absf((basis * Vector3.UP).y) > 0.99 and not _figure_part(part_id):
 		lo.x = _footprint_start(part, basis, 0, lo.x, hi.x + 1)
 		lo.z = _footprint_start(part, basis, 2, lo.z, hi.z + 1)
-	_corner_cache[key] = lo
 	return lo
 
 
@@ -8249,12 +8865,28 @@ func _apply_edit(model: Model) -> void:
 		_placed_ids.append(brick_id)
 	# Whatever was a sketch is now built.
 	_sketched_ids = PackedInt64Array()
+	fresh_ids = _changed_ids.duplicate()
 	built.emit(_placed_ids.size())
 
 
 ## Put a model on the baseplate, replacing whatever the assistant built
 ## last time and leaving anything the person placed by hand alone.
-func _apply(model: Model, finished: bool = true) -> void:
+##
+## [param gradually] spreads it over frames, a slice at a time (FramePace),
+## for the tools: putting down the owner's 4,242-part Falcon Heavy was 0.4 s
+## in one frame on the desktop and more in a browser. What is drawn stays as it
+## was until the whole design is down (BrickWorld.hold_drawing), so the
+## build animation that follows is the first anyone sees of it. Without it,
+## as the probes call it, all at once and never waiting.
+##
+## A design of this app's own loop can be stopped while it is going down:
+## Stop puts the model back as it was (_restore) from what has been placed
+## so far, and the rest is then not placed.
+func _apply(model: Model, finished: bool = true, gradually: bool = false) -> void:
+	if gradually:
+		world.hold_drawing()
+	var running: bool = _busy
+	var pace := FramePace.new()
 	# What stands already and is the same as before stays, under its
 	# number; only what changed comes down or goes up.
 	#
@@ -8276,6 +8908,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 		if not standing.has(key):
 			standing[key] = []
 		standing[key].append(brick_id)
+		if gradually and pace.due():
+			await pace.next()
+			if running and not _busy:
+				world.release_drawing()
+				return
 
 	# A part whose geometry never arrived used to be skipped here in
 	# silence, and what the person got was the design minus its wheels
@@ -8296,6 +8933,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 			library.resolve(placement.part), placement.color, at), [])
 		if not same.is_empty():
 			kept[index] = same.pop_back()
+		if gradually and pace.due():
+			await pace.next()
+			if running and not _busy:
+				world.release_drawing()
+				return
 	# Down first, so nothing new is registered inside what is leaving.
 	for key: String in standing:
 		for brick_id: int in standing[key]:
@@ -8303,8 +8945,11 @@ func _apply(model: Model, finished: bool = true) -> void:
 			world.remove_brick(brick_id)
 	_sketched_ids = PackedInt64Array()
 	_placed_ids = PackedInt64Array()
+	fresh_ids = PackedInt64Array()
 
-	for index: int in at_of:
+	var order: Array = at_of.keys()
+	for step: int in order.size():
+		var index: int = order[step]
 		var placement: Placement = model.placements[index]
 		var brick_id: int = kept.get(index, 0)
 		if brick_id == 0:
@@ -8313,9 +8958,24 @@ func _apply(model: Model, finished: bool = true) -> void:
 			if brick_id == 0:
 				continue
 			builder.register(brick_id, placement.part, at_of[index])
+			fresh_ids.append(brick_id)
 		_remember_section(brick_id, placement, model)
 		if placement.mine:
 			_placed_ids.append(brick_id)
+		if gradually and pace.due():
+			await pace.next()
+			if running and not _busy:
+				# Stop put back the model from what had been placed; what
+				# was standing and not reached yet is part of neither.
+				for later: int in order.slice(step + 1):
+					var standing_id: int = kept.get(later, 0)
+					if standing_id != 0:
+						builder.lattice.release(standing_id)
+						world.remove_brick(standing_id)
+				world.release_drawing()
+				return
+	if gradually:
+		world.release_drawing()
 
 	if not missing.is_empty():
 		var names: Array = missing.keys()
@@ -8338,6 +8998,12 @@ static func _same_key(part_id: String, colour: int, at: Transform3D) -> String:
 	return "%s|%d|%.2f %.2f %.2f|%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" % [
 		part_id, colour, at.origin.x, at.origin.y, at.origin.z,
 		b.x.x, b.x.y, b.x.z, b.y.x, b.y.y, b.y.z, b.z.x, b.z.y, b.z.z]
+
+
+## The bricks the last build or edit put down or moved, which were not
+## standing as they are before it. What the build animation shows going up:
+## the rest was already there.
+var fresh_ids := PackedInt64Array()
 
 
 ## How many bricks in the world the assistant considers its own.
@@ -8767,7 +9433,13 @@ Four things before the first brick, in this order:
   2. find_reference, for anything that exists. A lighthouse you recall \
      is a tapering tower with a light on top, which is every lighthouse \
      and no lighthouse. A picture gives you this one.
-  3. Decide the main masses and their sizes in studs, off that picture.
+  3. Decide the main masses and their sizes in studs, off that picture, \
+     and what each is: round in section, tapered, at a slant, smooth, \
+     moving, mechanical, organic. WHAT THE SUBJECT NEEDS, below, says \
+     which call builds each; how_real_sets_build_this, asked with the \
+     plainest word for the kind (a rocket: space; a locomotive: train; \
+     a galleon: pirate; an owl: animal), says what real sets of it are \
+     made of and in. The picture's colours come with it as numbers.
   4. show_technique for any construction you have not built before. \
      Being told to stagger a wall or turn a face sideways is not the \
      same as knowing where the stud sits, and the arithmetic is the \
@@ -8797,7 +9469,7 @@ alongside the bricks you write by hand:
 
              a dome          ellipse, layers 8, shrink 2
              a cone          ellipse, layers 10, shrink 4
-             a round tube    ellipse, wall 1, layers 12, rise 3
+             a round tube    the round pattern (below), not a fill
              a hull          rectangle, layers 6, rise 3, shrink 0
              a bowl          ellipse, wall 2, layers 6, shrink -2
              a wall          rectangle, wall 1, layers 12, rise 3
@@ -8831,52 +9503,108 @@ alongside the bricks you write by hand:
 
            And a tower that is not square is one object too: \
            {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, \
-           "sides": 8, "radius": 9, "courses": 30, "color": 0, \
-           "mix_color": 72, "open": 3, "piers": {"count": 4, "courses": \
-           38}} is an eight-sided core with four faceted piers clustered \
-           round it and deep clefts between them, the piers rising past \
-           its summit into horns, its back open on the rooms — Orthanc, \
-           a keep with corner towers, anything clustered. Each face is a \
-           bonded wall in a section of its own, turned to its angle. One \
-           run built octagonal piers by hand from 150 turned sections, \
-           reached the real-set share of parts at an angle and spent \
-           itself doing it; another built them square and had none; this \
-           is that, in one line. "piers" also takes sides, radius and out \
-           (how far from the middle each stands). The core is capped with \
-           a summit two plates thick at y + 3 x courses, which ties it \
-           all together: build on it at y + 3 x courses + 2. Each horn \
-           is capped square the same way, two plates at y + 3 x the \
-           piers' courses + 2, and rises from its cap in black bricks \
-           stepping in to a point at its outer edge, so the four open \
-           outwards round the platform like claws. \
-           With piers, any "open" opens the core's whole back, and an \
-           arched door stands at the foot of the core's front (+z), at y, \
-           for a stair to lead up to ("door": false for none). Without \
-           "piers" a prism is one shaft with a groove up each corner; \
-           stack them, shrinking, for a taper. Its faces come dressed as a \
+           "sides": 8, "radius": 10, "courses": 36, "color": 0, \
+           "open": 3, "piers": {"count": 4, "courses": 44}, "storeys": \
+           {"count": 3, "in": 2}} is an eight-sided core with four \
+           faceted piers clustered round it and deep clefts between \
+           them, in three storeys, each two studs in from the one below \
+           on a ledge of dark bluish grey, the top one's piers rising \
+           past its summit into horns, its back open on the rooms — \
+           Orthanc, a keep with corner towers, anything clustered. Each \
+           face is a bonded wall in a section of its own, turned to its \
+           angle. One run built octagonal piers by hand from 150 turned \
+           sections, reached the real-set share of parts at an angle and \
+           spent itself doing it; another built them square and had \
+           none; this is that, in one line. "piers" also takes sides, \
+           radius and out (how far from the middle each stands). \
+           "storeys" is the silhouette: every Orthanc built without it \
+           rose the same width from foot to horns, a shaft with a top \
+           stuck on. The top is capped with a summit two plates thick, \
+           which ties it all together; the reply says at what y (without \
+           storeys, y + 3 x courses), so build on it two plates higher. \
+           Each horn is capped square the same way, and rises from its \
+           cap in black bricks stepping in to a point at its outer edge, \
+           so the four open outwards round the platform like claws. With \
+           piers, any "open" opens the core's whole back, and an arched \
+           door stands at the foot of the core's front (+z), at y, for a \
+           stair to lead up to ("door": false for none). Without "piers" \
+           a prism is one shaft with a groove up each corner, and \
+           "storeys" steps it in the same way. Its faces come dressed as a \
            finished wall's are — a quarter worked stone, some bricks \
            turned out with things on their side (the finishing pass cannot \
            reach them once the faces are turned); "masonry" and \
-           "sideways" set how much, 0 for a plain face; and narrow lit \
-           windows go up them every eight courses ("windows": false for \
-           none). Once it stands, \
-           add_rooms with "prism": the same at, sides and radius, and \
+           "sideways" set how much, 0 for a plain face; a black face \
+           takes a course of dark bluish grey every eight, a string \
+           course ("band_color" for another), and grille bricks among \
+           its masonry. "windows": true puts a few narrow dark slits up \
+           every other face ("window_color" for another; lit yellow in \
+           rows makes any tower an office block). Once it stands, \
+           add_rooms with "prism": the same at and sides, the top \
+           storey's radius (the reply says it; without storeys, the \
+           radius), and \
            "floors": [{"room": "dungeon"}, {"room": "forge", "stair": \
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
            each storey and furnishes each room, in one call.
 
+           A body that is not a box is one object too, said as the \
+           solids it is: {"pattern": "shape", "at": {"x": 0, "y": 0, \
+           "z": 0}, "color": 4, "solids": [{"extrude": {"along": "x", \
+           "width": 10, "round": 1.5, "profile": [[0, 5], [2, 7], [9, 8], \
+           [24, 8], [26, 7]]}}, {"loft": {"along": "x", "centre": 5, \
+           "sections": [{"at": 8, "width": 9, "height": 1, "bottom": 7}, \
+           {"at": 12, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
+           {"at": 18, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
+           {"at": 23, "width": 9, "height": 1, "bottom": 7}]}}], "cuts": \
+           [{"revolve": {"axis": "z", "centre": [5, 1.5, -1], "profile": \
+           [[0, 2], [12, 2]]}}, {"revolve": {"axis": "z", "centre": [20, \
+           1.5, -1], "profile": [[0, 2], [12, 2]]}}]} is a car's body: \
+           its side profile pulled across ten studs with its shoulders \
+           rounded, a cabin lofted on it, two wheel arches cut out. It is \
+           laid as a builder lays one: bricks and plates inside; on the \
+           surface, wherever it falls from one stud to the next, the \
+           slope or curved slope whose fall is nearest; inverted slopes \
+           under an overhang; wedge plates where an edge runs on the \
+           diagonal; tiles on top; one half and its mirror, tied across \
+           the middle. A hull is a loft with "keel" narrowing its lower \
+           half and a box cut off its top for the deck; a fuselage a \
+           revolve along x; a bird's or a beast's body ellipsoids and a \
+           loft for its tail; "bands" colour it by height (a waterline, a \
+           belly), and a solid's own "color" a part of it (a canopy). The \
+           car that was told every check to use wedge plates and curved \
+           slopes and used none of them would have had both from this.
+
+           Anything round in section is one object too, upright or \
+           lying down: {"pattern": "round", "at": {"x": 10, "y": 0, \
+           "z": 10}, "diameter": 4, "color": 15, "stack": [{"cones": 9, \
+           "color": 0}, {"technic": true, "struts": 2, "color": 0}, \
+           {"plates": 60}, {"plates": 9, "color": 0, "spokes": 4}, \
+           {"diameter": 6, "plates": 18}, {"nose": "ogive"}]}. It lays \
+           the round parts real sets lay at each diameter — 1 and 2 \
+           studs round bricks; 4, a round brick or two cylinder halves \
+           back to back; 6 and 8, four corner rounds tied by a round \
+           plate — so the surface is a true circle, not a staircase of \
+           bricks. Up the stack go bands of colour, a wider or narrower \
+           length, cones under a round plate, a Technic course with \
+           beams pinned on, a plate whose spokes carry tiles out past \
+           the round, and a nose (cone, ogive, dome, point, flat). \
+           "axis": "x" lays the same stack along x; "beside" stands two \
+           or four more round it, pinned to it. A rocket stage and its \
+           boosters, a lighthouse with its gallery, a silo, a column, a \
+           chimney, a locomotive's boiler, a fuselage, a submarine, a \
+           tree trunk: every one of these built square here read as a \
+           pile of bricks, and real sets never build round square.
+
            Say it that way. A dome written out by hand is three hundred \
            plates, and the ones that go wrong are the ones nobody can \
            check.
-           A round *tower* is the exception, and it used to say tower \
-           here. An ellipse with a wall has no room for a long brick in \
-           any run once it curves, so a small one comes out as a \
-           staircase of 1x1 bricks: measured on a castle, 354 of them, \
-           four towers' worth. Anything round and more than a couple of \
-           studs across wants show_technique("wide round tower") — four \
-           4x4 corner-round bricks a course. But round is a choice: 15 \
-           of 54 castle sets since 2010 use that brick at all, none \
-           more than eight, and every castle built here had two hundred.
+           A round *tower* in a fill is the trap: an ellipse with a wall \
+           has no room for a long brick in any run once it curves, so a \
+           small one comes out as a staircase of 1x1 bricks — measured \
+           on a castle, 354 of them, four towers' worth. A round tower \
+           is the round pattern, diameter 8 or less; wider than that, \
+           a prism of many sides. But round is a choice: 15 of 54 castle \
+           sets since 2010 use the 4x4 corner round at all, none more \
+           than eight, and every castle built here had two hundred.
            Walls especially. Measured: a curtain wall 40 by 24 studs and \
            twelve courses high is 408 parts out of fill — 1x4 bricks \
            in a running bond, 1x3, 1x2 and 1x1 at the ends, and not one \
@@ -9118,6 +9846,24 @@ plastic (show_technique "rough stone wall", "weathered stone wall").
 it. Set windows in, let a cornice oversail, recess a doorway a plate, \
 stand a buttress out: the shadows are what the eye reads \
 (show_technique "oversail on inverted slopes", "corbelled wall walk").
+  The profile is the design. A tall subject the same width all the way \
+up is a shaft, whatever is on it: taper it, flare its foot, gather it at \
+a waist, facet its edges, and let its top grow out of the body rather \
+than sit on it with spikes stuck on. A prism's "storeys" steps a tower in \
+on ledges in one call; a round's stack takes a smaller diameter; a stack \
+of either, each a little smaller, says a taper in plain calls.
+  Dark is not one colour. A big face of black or dark brown with nothing \
+on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
+black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
+bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
+bluish grey on its ledges: texture in the same colour, a second tone in \
+bands rather than sprinkled (scattered, it reads as noise), depth.
+  Windows have reasons. A few, varied, framed, where something happens \
+inside — never a grid of identical lit squares, which makes a fortress an \
+office block. Their colour comes from the subject: dark slits for a dark \
+tower, a lit lantern for a lighthouse.
+  The base leads the eye up: a plinth, steps, a terrace, ground that \
+rises to the door — composed, not rubble ringed round the foot.
   A focal point. Somewhere the eye goes first — the top of a tower, a \
 gate, a figure on a balcony — gets the most interesting parts in the \
 model.
@@ -9130,6 +9876,66 @@ add_rooms lays the floors and furnishes every room, one call for the lot, \
 from the furniture real sets built (show_technique: bookcase, fireplace, \
 anvil, four-poster bed, wall lantern, and the rest of furniture and \
 interiors).
+
+WHAT THE SUBJECT NEEDS
+An expert reads a subject as shapes, and each shape has its technique. \
+Reach for these by yourself; nobody will ask for them by name:
+  Round in section — a rocket stage, a lighthouse, a silo, a boiler, a \
+fuselage, a funnel, a tree trunk, a column: the round pattern, upright \
+or lying along x or z. Never square bricks stacked into a round: that \
+is the one way a real set never builds it.
+  Tapered or domed — a nose, a spire, a dome, a cone: the round \
+pattern's nose; a fill with layers and a shrink; cones and dishes.
+  A body that is not a box — a car's body, a hull, a fuselage, a \
+creature's body or head: the shape pattern, said as its solids (a loft \
+through sections, a profile extruded, a revolve, ellipsoids), which \
+lays its slopes, curved slopes, wedges and tiles for you.
+  Edges at a slant — a swept wing, a car's shoulder, a bow: wedge \
+plates (show_technique "smooth diagonal"). A curved surface — a \
+bonnet, a hull's bilge, a cab roof: curved slopes, studs-up or on \
+their side on brackets.
+  Smooth — a car's flank, a hull's side, a sign: studs_out, tiles \
+over every stud that shows.
+  At an angle, or moving — a raked mast, a windscreen, a wing, a door, \
+a hatch, a ramp, a jaw, a leg: a section, on a hinge (hinge: true) \
+when it leans. A part that opens or turns is also a play feature, and \
+real sets have them.
+  Mechanical — legs, arms, a crane jib, a frame, struts: Technic beams \
+pinned to Technic bricks (a round's "technic" course pins beams on in \
+one line); grille tiles, round plates, levers and pipes for machinery.
+  Organic — rock, a creature, a tree: the rock pattern; curved slopes \
+and wedges for a body; hinged sections for wings and limbs.
+  Rough or worn — stone, a hull's planking, weathering: two or three \
+close colours mixed (mix_color), masonry, texture parts.
+  A band of detail — rivets down a hull plate, a row of portholes or \
+lights, a smooth panel, vents: studs_out with "dress": "rivets", \
+"round", "lights" (in a transparent face_color) or "tiles"; grille \
+tiles in a row (show_technique "grille band"). Stripes and colour \
+blocks are a band of another colour in the round pattern, an \
+edge_color or mix_color on a fill, or a course in a second colour.
+  Several of anything — boosters on a core, funnels, columns, wheels: \
+one built well and the pattern saying the rest (beside, repeat, \
+mirror, repeat_section).
+
+FINISHING TOUCHES
+A designer adds things nobody asked for, and they are what a person \
+finds and smiles at. Of 2,517 real sets of 300 parts or more since \
+2015, 95% carry a printed or stickered part and 94% a hinge, a \
+turntable, a Technic pin or a ball joint; 1.6% have none of these. \
+Before you call a model finished, give it the expert's touches:
+  A figure, or a small scene: who flies it, keeps it, works it — or one \
+hidden somewhere a person will find it (add_minifig).
+  A printed tile: a gauge, a screen, a map, a logo, a nameplate. \
+search_parts with "print" or "sticker" and the subject's own word — \
+there are printed parts for a great many real things.
+  A nod to the subject's story: a detail only someone who knows it \
+would catch — a mission patch, a launch date, a famous passenger, the \
+ship's cat.
+  A display stand with a nameplate, for a display model: a black base, \
+a plaque on it (a tile or a slope, printed if one fits), the model held \
+up the way it is shown.
+  Something that moves: a hatch that opens, a ramp, a turret that \
+turns, a door — a section on a hinge or a turntable.
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -9329,6 +10135,9 @@ func _find_reference(subject: String) -> Variant:
 	if _finder == null:
 		_finder = ReferenceFinder.new()
 		add_child(_finder)
+	if _finder.swatches.is_empty() and library != null:
+		for code: int in _current_colours(["solid"]):
+			_finder.swatches.append([code, (library.colors[code] as PartLibrary.BrickColor).rgb])
 
 	# Fields, not locals captured by the lambdas below.
 	#
@@ -9374,7 +10183,7 @@ func _find_reference(subject: String) -> Variant:
 			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
 			+ "is the thing you were asked for before you build to it: "
 			+ "Commons carries what is free to use, so a name can bring "
-			+ "back something else that shares it.")}]
+			+ "back something else that shares it." + _colours_seen(pictures))}]
 	for one: Variant in pictures:
 		var picture: Dictionary = one
 		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
@@ -9393,6 +10202,51 @@ func _find_reference(subject: String) -> Variant:
 			},
 		})
 	return blocks
+
+
+## The pictures' colours as LEGO colours, said as numbers to build in.
+##
+## The owner's Falcon Heavy came out in three greys with the photographs
+## in front of the design: a white rocket with black interstages, built
+## from memory of "rocket grey". ReferenceFinder reads each picture into
+## the plastic colours sets are made in, backdrop left out; this says them
+## once, averaged over the pictures, commonest first.
+func _colours_seen(pictures: Array) -> String:
+	var summed: Dictionary = {}
+	var counted: int = 0
+	for one: Variant in pictures:
+		var shares: Dictionary = (one as Dictionary).get("colours", {}) as Dictionary
+		if shares.is_empty():
+			continue
+		counted += 1
+		for code: int in shares:
+			summed[code] = float(summed.get(code, 0.0)) + float(shares[code])
+	if counted == 0:
+		return ""
+	var codes: Array = summed.keys()
+	codes.sort_custom(func(a: int, b: int) -> bool:
+		return float(summed[a]) > float(summed[b]))
+	var said := PackedStringArray()
+	for code: int in codes:
+		var share: float = float(summed[code]) / counted
+		if share < SEEN_AT_LEAST or said.size() >= SEEN_MOST:
+			break
+		said.append("%s (%d) %d%%" % [_colour_name(code), code, roundi(share * 100.0)])
+	if said.is_empty():
+		return ""
+	return ("\n\nIts colours in these pictures, read as the plastic colours sets "
+		+ "are made in, the backdrop left out: " + ", ".join(said) + ". Build in "
+		+ "these numbers, not the colour you remember the thing being: the "
+		+ "commonest is its main colour, a dark one in a band is a stripe or a "
+		+ "section, and a grey just lighter or darker than the main colour is "
+		+ "often the main colour in shadow or in light. Look at the picture to "
+		+ "tell which.")
+
+
+## Colours under this share of the pictures' subject go unsaid, and no
+## more than this many are said.
+const SEEN_AT_LEAST := 0.04
+const SEEN_MOST := 6
 
 
 ## How long to wait for pictures. Four searches and three downloads over
@@ -9427,12 +10281,12 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		return answer
 	var design: Model = _pending
 	_pending = null
-	var report: Dictionary = _check(design)
+	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
 		return "Not applied — it does not hold together yet.\n%s" \
 			% report["feedback"]
 	await _ensure_parts(design)
-	_apply(design)
+	await _apply(design, true, true)
 	if not _busy:
 		_outside_standing = true
 		_outside_assemblies = design.assemblies.duplicate()
@@ -9470,7 +10324,11 @@ corners to see it.
 measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
-replaces the whole model."""
+replaces the whole model.
+  3. The touches nobody asks for and every expert adds, with edit_model \
+and add_minifig: a figure or a small scene, a printed tile, a nod to the \
+subject's story, something that opens or turns, and for a display model \
+a stand with a nameplate."""
 
 
 func _built_from_outside(design: Model, report: Dictionary) -> String:
@@ -9492,6 +10350,7 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
 func review(assembly: String) -> String:
+	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
 		return "The baseplate is bare: there is nothing to review."
@@ -9505,7 +10364,7 @@ func review(assembly: String) -> String:
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
-		var report: Dictionary = _check(_model_from_world())
+		var report: Dictionary = await _checked(_model_from_world())
 		var said := PackedStringArray()
 		said.append("The whole model: %s. %s." % [_texture(everything),
 			report["summary"]])
@@ -9551,6 +10410,7 @@ func review(assembly: String) -> String:
 ## reviewed: so saving hands it the next, as this app's own loop hands each
 ## assembly back in turn.
 func next_review() -> String:
+	# A coroutine because review is: callers await it.
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
 		return ""
@@ -9558,7 +10418,7 @@ func next_review() -> String:
 	return ("Before it is finished: %d of its %d assemblies %s not had a close "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
 		+ "look (%s). This app's own designer details each in turn; the next " % ", ".join(left)
-		+ "is the %s.\n\n%s" % [name, review(name)])
+		+ "is the %s.\n\n%s" % [name, await review(name)])
 
 
 ## The assemblies a session named that have had no close review yet, in
@@ -9615,7 +10475,8 @@ func _tools() -> Array:
 		"type": "object",
 		"properties": {
 			"pattern": {"type": "string",
-				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism"],
+				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
+					"round", "shape"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -9638,7 +10499,23 @@ func _tools() -> Array:
 					+ "shaft in one object — a tower, a pier, a turret of 5 "
 					+ "to 16 sides, each face a bonded wall turned to its "
 					+ "angle about the middle (at is the middle), grooved "
-					+ "where the faces meet."},
+					+ "where the faces meet. round: anything round in "
+					+ "section, in one object — a column, a rocket stage, a "
+					+ "lighthouse, a silo, a boiler, a fuselage, a tree "
+					+ "trunk — of the round parts sets use at each diameter "
+					+ "(round bricks, cylinder halves, corner rounds tied by "
+					+ "round plates), colour bands, cones, Technic struts "
+					+ "and spokes up its stack, ending in a nose; upright "
+					+ "or lying along x or z. shape: a body that is not a "
+					+ "box, said as solids — a loft through cross-sections, "
+					+ "an extruded side profile, a revolve, a box with "
+					+ "rounded or cut corners and edges, an ellipsoid or "
+					+ "dome — less any cuts, laid in the parts a builder "
+					+ "would choose: bricks and plates inside, slopes and "
+					+ "curved slopes fitted to the surface's fall, inverted "
+					+ "slopes under it, wedge plates on a diagonal edge, "
+					+ "tiles on top, one half and its mirror; a car's body, "
+					+ "a hull, a fuselage, an animal's body."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -9648,10 +10525,57 @@ func _tools() -> Array:
 			"about": {"type": "string", "enum": ["x", "z"],
 				"description": "mirror: which way the line runs"},
 			"at": {"description":
-				"mirror: the line to reflect about, in studs. fill: where "
-				+ "the footprint's low corner sits, as {x, y, z}."},
+				"mirror: the line to reflect about, in studs. fill, round: "
+				+ "where the footprint's low corner sits, as {x, y, z} (a "
+				+ "round lying along x or z: the low end of it, on the ground)."},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
 				"description": "fill: which footprint"},
+			"solids": {"type": "array", "items": {"type": "object"}, "description":
+				"shape: what it is made of, each an object naming one kind — "
+				+ "{\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, "
+				+ "{\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — "
+				+ "with its own \"color\" if it wants one (the last that holds a stud "
+				+ "gives it its colour). Studs across and along, plates up, from at."},
+			"cuts": {"type": "array", "items": {"type": "object"}, "description":
+				"shape: solids taken away, said the same way: a wheel arch (a revolve "
+				+ "along z), a cockpit, a doorway."},
+			"loft": {"type": "object", "description":
+				"shape: {\"along\": \"x\" or \"z\", \"centre\": studs across "
+				+ "(half the widest unless said), \"sections\": [{\"at\": studs along, "
+				+ "\"width\": studs, \"height\": plates, \"bottom\": plates, "
+				+ "\"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far "
+				+ "its lower half narrows to a V, \"offset\": studs across}, ...]} — "
+				+ "the section between each two is in between; width 0 at an end is "
+				+ "a point."},
+			"extrude": {"type": "object", "description":
+				"shape: {\"along\": \"x\" or \"z\", \"from\": studs across, "
+				+ "\"width\": studs, \"profile\": [[studs along, plates up], ...] "
+				+ "its top seen from the side, \"under\": the same for its underside "
+				+ "(0 unless said), \"round\": studs its top edges are rounded by}."},
+			"revolve": {"type": "object", "description":
+				"shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], "
+				+ "\"profile\": [[along it (plates up y, studs along x or z), radius "
+				+ "in studs], ...]}."},
+			"box": {"type": "object", "description":
+				"shape: {\"from\": [x, y, z], \"size\": [across, plates up, deep], "
+				+ "\"round\": studs its plan corners are rounded by, \"chamfer\": "
+				+ "studs they are cut by, \"edge\": studs its top edges are rounded "
+				+ "by}."},
+			"ellipsoid": {"type": "object", "description":
+				"shape: {\"centre\": [x, y, z], \"radii\": [studs across, plates up, "
+				+ "studs deep]}."},
+			"dome": {"type": "object", "description":
+				"shape: an ellipsoid's top half, said the same way."},
+			"top": {"type": "string", "enum": ["smooth", "studs"], "description":
+				"shape: tiles over its top (the default) or studs left showing."},
+			"surface": {"type": "string", "enum": ["auto", "curved", "straight"],
+				"description": "shape: curved slopes on its surface or straight ones; "
+					+ "auto (the default) is curved if any solid is rounded."},
+			"bands": {"type": "array", "items": {"type": "object"}, "description":
+				"shape: [{\"from\": plates, \"to\": plates, \"color\"}] — a waterline, "
+				+ "a stripe, a belly, by height."},
+			"top_color": {"type": "integer", "description":
+				"shape: the colour of its top tiles and slopes, if not its own."},
 			"across": {"type": "number", "description": "fill, rock: studs in x"},
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":
@@ -9673,8 +10597,22 @@ func _tools() -> Array:
 				+ "with piers, any number opens the core's whole back and the "
 				+ "backs of the piers there"},
 			"windows": {"type": "boolean", "description":
-				"prism: narrow lit windows up its faces, every eight courses; "
-				+ "true unless said"},
+				"prism: a few narrow windows up every other face, a storey "
+				+ "apart, dark slits unless window_color says; none unless said"},
+			"window_color": {"type": "integer", "description":
+				"prism: the windows' colour (40, Trans-Brown, a dark slit, "
+				+ "unless said)"},
+			"storeys": {"type": "object", "description":
+				"prism: {\"count\": 2 to 8, \"in\": studs} — the courses "
+				+ "split into storeys, each in studs smaller than the one "
+				+ "below (its piers drawn in with it) and standing on a ledge two "
+				+ "plates thick in the second tone, only the top storey's "
+				+ "piers rising into horns: a tower that steps in as it "
+				+ "rises, not a shaft. The reply says the top's radius "
+				+ "(for add_rooms) and its summit's y.",
+				"properties": {
+					"count": {"type": "integer"},
+					"in": {"type": "integer"}}},
 			"door": {"type": "boolean", "description":
 				"prism: an arched door at the foot of the face looking +z, two "
 				+ "studs wide and six courses tall, for a stair to lead up to; "
@@ -9710,6 +10648,12 @@ func _tools() -> Array:
 				"description": "studs_out: which way the face looks"},
 			"face_color": {"type": "integer", "description":
 				"studs_out: the colour of what is laid on the side studs"},
+			"dress": {"type": "string", "enum": ["mixed", "tiles", "rivets", "round",
+				"lights"], "description":
+				"studs_out: what every side stud carries — a mix (the default), "
+				+ "flat tiles for a smooth panel, round plates as rivets, round "
+				+ "tiles as portholes, or lights (round tiles in a transparent "
+				+ "face_color): a band of detail along a hull, a boiler, a wall"},
 			"seed": {"type": "integer", "description":
 				"rock: which rock — each number leans and wanders its own way"},
 			"wall": {"type": "number", "description":
@@ -9734,6 +10678,11 @@ func _tools() -> Array:
 				+ "chosen by where they are, the same every time — a "
 				+ "weathered wall. Real castle walls are 9-19% their "
 				+ "second grey."},
+			"band_color": {"type": "integer", "description":
+				"fill with rise 3, prism: a course in this colour every "
+				+ "eight, a string course where a storey's ledge is. A "
+				+ "black wall gets dark bluish grey bands unless "
+				+ "mix_color or this says otherwise."},
 			"mix": {"type": "number", "description":
 				"fill: the share in mix_color, up to 0.5; 0.15 if not "
 				+ "said."},
@@ -9750,6 +10699,32 @@ func _tools() -> Array:
 			"bricks": {"type": "array", "items": brick, "description":
 				"repeat: what to repeat. mirror: what to reflect, if not "
 				+ "everything so far."},
+			"diameter": {"type": "integer", "enum": [1, 2, 4, 6, 8],
+				"description": "round: studs across — the sizes round parts "
+					+ "come in (at is the low corner of its square)"},
+			"axis": {"type": "string", "enum": ["y", "x", "z"], "description":
+				"round: y stands it up (the default); x or z lays it along "
+				+ "that axis on the ground — a boiler, a fuselage, a hull, a log"},
+			"stack": {"type": "array", "description":
+				"round: what goes up the axis, bottom first, each square on "
+				+ "the last. {\"plates\": N} a length of body (\"color\" a "
+				+ "band of another colour, \"diameter\" wider or narrower, "
+				+ "\"spokes\": 4 or 2 its top plate reaching a stud out with a "
+				+ "\"tile\" on each reach — grid fins, gallery brackets, yard "
+				+ "stubs); {\"cones\": 9 or 1} cones under a round plate "
+				+ "(\"cone_color\") — nozzles, engine bells, lamps; "
+				+ "{\"technic\": true, \"struts\": 0-4} a course with a pin "
+				+ "hole out of each side and a Technic beam pinned on that "
+				+ "many sides (\"strut_color\", \"strut_length\" in holes) — "
+				+ "legs, stays; {\"nose\": cone, ogive, dome, point or flat} "
+				+ "its top, and the end of the stack.",
+				"items": {"type": "object"}},
+			"beside": {"type": "object", "description":
+				"round: more rounds standing round this one, touching it, "
+				+ "pinned where their Technic courses meet (start both stacks "
+				+ "the same, each with a technic course at one height): "
+				+ "{\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. "
+				+ "Boosters on a core, twin funnels, a cluster of silos."},
 		},
 		"required": ["pattern"],
 		"additionalProperties": false,
@@ -10292,4 +11267,4 @@ func _tools() -> Array:
 				"additionalProperties": false,
 			},
 		},
-	] + [FigureTool.schema()]
+	] + [FigureTool.schema(), PartTool.schema()]

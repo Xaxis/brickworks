@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check -->
 
 ## Sub-features
 
@@ -27,12 +27,21 @@ plan with Claude as the client.
   `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
   lagged `vercel promote` by up to a minute, twice, and checks run on "done"
   measured the previous build.
-- `POST /api/mcp` — the Claude connector relay: someone on a Claude plan turns
-  on Connect Claude in the app, adds the tab's private address
-  (`/api/mcp?t=<token>`) to Claude as a custom connector (claude.ai, the Claude
-  app, or `claude mcp add --transport http`), and asks Claude to build. Claude
+- `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
+  Brickworks to Claude as a connector (claude.ai and the Claude apps, or
+  `claude mcp add --transport http`), and asks Claude to build. **Two ways
+  in** (2026-10-11): `https://brickworks.diy/api/mcp`, one address for
+  everybody, which Claude signs in to with OAuth (`api/oauth.js`, see
+  [account](account.md)) — each call then goes to that account's open tab on
+  any device (`accountTabs`: answering before paused, the tab the connection
+  last built in, then in view, then latest heard; the handshake and tool list
+  from that tab, else the account's last, else the fullest recent one, so
+  Claude can add it before the app is opened) — and one browser's private
+  address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
+  everyone who added one (`oneTab`). With no `t` and no good token: 401 and a
+  `WWW-Authenticate` naming the protected resource metadata. Claude
   is the client, on the person's own plan; Brickworks never sees a login, a
-  token or a key, and never calls a model — Anthropic's terms allow exactly
+  Claude token or a key, and never calls a model — Anthropic's terms allow exactly
   this (a product may not offer Claude.ai login or route plan credentials;
   an end user using Anthropic's own apps is ordinary use). The function only
   carries JSON-RPC between Claude and the tab through `supabase/relay.sql`
@@ -63,7 +72,11 @@ plan with Claude as the client.
   `sendBeacon`; a call taken and not answered is handed out again on the next
   ask; the newest page load to switch on (`&i=`) takes over and an older one
   gets 409. The address is kept on the device (`ClaudeConnector.where`) and the
-  connector resumes on load, so it is added to Claude once.
+  connector resumes on load, so it is added to Claude once. The relay is the
+  page's own site on the web, and on the desktop `Deployment.api_base()` — the
+  live site or `BRICKWORKS_API`, the deployment the account signs in to (it was
+  always the live site, so a desktop signed in to another deployment said
+  hello to the live one with a session it could not know).
   **A connector belongs to an account** (2026-10-11): `op=hello` carries the
   session's access token (`ClaudeConnector._hello`, from `Account.access_token`)
   and is verified with `api/_auth.js` (Supabase's ES256 JWKS); without it, 401,
@@ -74,9 +87,8 @@ plan with Claude as the client.
   owner (401, and the tab says hello again), and a tab with no owner counts as
   closed to Claude, so rows from before the change read as switched off until
   a signed-in page switches them on. The tab resumes the connector only once
-  somebody is signed in, and Sign out switches it off. That is the foundation
-  for connectors that follow a person rather than a browser; the admin page
-  already lists connectors per account. Prove it: `node
+  somebody is signed in, and Sign out switches it off. The owner is what a
+  call signed in to an account is routed by. Prove it: `node
   tools/web/relay_server.mjs 8790` (the real handlers, real queue, needs
   `.env`; it serves every route in `api/`) and `godot --headless --path .
   --script src/dev/connector_probe.gd -- 8790`: refused signed out (by the app
@@ -85,13 +97,18 @@ plan with Claude as the client.
   recorded, handshake, takeover, another account's hello 403, out of view and
   alive (answers), busy past the relay's patience with its page alive (not
   called closed — the owner's bug), a page frozen out of view (told paused, in
-  under a minute), dropped and re-taken, closed, and off after Sign out. claude.ai's help centre says custom connectors accept authless
-  servers (support.claude.com/en/articles/11503834); OAuth can follow if that
-  changes. Real Claude Code has been through it: `claude -p` with
+  under a minute), dropped and re-taken, closed, and off after Sign out; then the same through
+  the account's address — Claude signed in with OAuth as the probe's account
+  (registration, a code approved with the session, PKCE, tokens), its calls
+  answered by the app's own tab with no address of the tab's ever given to
+  Claude, a call told no tab is open once the tab is off, and refused after
+  Disconnect. `tools/web/oauth_probe.mjs` covers the OAuth endpoints
+  ([account](account.md)). Real Claude Code went through the private address
+  first (2026-10-09): `claude -p` with
   `--mcp-config` naming the address (type http), `--strict-mcp-config` and
   `--tools ""`, asked for a 2x4 brick's part number, initialized, listed,
   called `search_parts` in the tab and answered 3001. On a deployment,
-  `tools/web/connector_flow.mjs` does it as a person and as Claude: the switch
+  `tools/web/connector_flow.mjs` does it for the private address, as a person and as Claude: Private address, its switch
   and Copy in a real browser, the address off the clipboard, then initialize,
   tools/list and real calls through the deployed relay; then the page out of
   view with its frames stopped (a browser driven from a test never hides a
@@ -137,6 +154,65 @@ plan with Claude as the client.
   drawers were cut off down their right edge.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
+- `freeze check`: `tools/web/freeze_check.mjs` makes the design that froze the
+  owner's computer — their 4,242-part Falcon Heavy, `src/dev/fixtures/
+  falcon_heavy.json` — in a real browser, playing Claude over the connector
+  (check it, submit it, read it back, look at it, recolour a brick, review
+  it), and times the page through each call and the build animation after:
+  the app's own slowest frame (`Main._watch_own_frames`, published as
+  `brickworksState.slow`, from a frame's start to its drawing), long tasks,
+  the longest gap between frames, a mouse move's wait, bricks, batches,
+  triangles and the WebAssembly heap. Each slow frame carries what the app
+  was doing (the tool called, the assistant's last step), and the longest of
+  each call is printed with it. With `--dir=build/web` it serves the
+  export itself through `tools/web/relay_server.mjs --static`, the deployment's
+  real functions; with `--url=` it drives a preview (`BW_BYPASS`). `--calls=`
+  replays a run's own calls. Fails when a frame of the app's own work is over
+  `--budget` (500 ms: the browser here is niced on a shared box and runs the
+  scripts four to eight times slower than the desktop app, whose freeze_probe
+  holds 200 ms on a GPU) or a call goes unanswered; a build from before the app
+  timed its own frames is judged by its longest task (`--task-budget`, 10 s).
+  Long tasks are otherwise printed beside the idle page's and not judged:
+  drawn in software (SwiftShader), an idle page's every frame is a task of a
+  second here. So is the wait for a picture to be read back
+  (`ModelShot.gpu_wait_us`), printed apart: in software it waits on every
+  frame queued before it, tens of seconds. Leaves `console.log` (what the app
+  printed, as it came) and `freeze.json`.
+- `arrival check`: `tools/web/arrival_check.mjs` times what the owner meant by
+  "the rendering after Claude reports being done is EXTREMELY SLOW": from
+  submit_design's answer to the last brick drawn. It plays Claude over the
+  connector in a fresh page per case, for the Falcon's lowest 300 and 2,000
+  parts and all 4,242. Each case runs twice: with the tab in view (`shown`),
+  and with the tab out of view from before the check until 5 s after the
+  answer (`hidden`), as when designing from claude.ai. `--flow=submit`
+  submits onto the bare baseplate with no check first, so every brick is new.
+  It times every engine frame in the page by wrapping requestAnimationFrame,
+  and takes the time spent inside WebGL calls off each one. In software
+  (SwiftShader) the page waits a second or more a frame on the rasteriser,
+  inside those calls. It counts the instances each frame asks WebGL to draw.
+  - `drawn`: the first frame in view from which every frame draws what the
+    last does, to within 1%.
+  - `idle`: the last frame in view with over 100 ms of the engine's own work.
+
+  It also prints the slowest own frame, long task and evaluate round trip in
+  view, and how many frames ran between the answer and the tab being shown.
+  It hides a tab the way `connector_flow.mjs` does: `document.hidden`, plus
+  a gate on the browser's frames. A browser driven from here never hides a
+  page itself, not even behind another tab (tried 2026-10-11). It reads the
+  same way on a build that does not time itself, so the old build is judged
+  by the same numbers. Fails when a case is not drawn within three frames of
+  being in view, or took more than `--budget` ms (2,000) of the engine's own
+  work to get there. It is judged in frames because in software a frame of a
+  4,000-part model is 2 to 3 s of rasterising, which a graphics card does in
+  milliseconds. Three frames because the ground is laid wider under a design
+  that outgrew it, a frame after it is built. If a case's tab never answers
+  the connector, the case is tried again on a fresh page, up to three pages
+  in all. The test account is shared by every check on the machine, and a
+  page can come up saying "Sign in to Brickworks again to connect Claude".
+  A case that still never answers fails as that, not as a slow model. Leaves
+  `<size>_<mode>.png`, `.frames.json` (every frame: start, length, own work,
+  instances, draws, slowest WebGL call; and each instanced draw's count
+  whenever they changed) and `arrival.json`.
 - The desktop downloads page (`web/download.html`, `download.js`,
   `releases.json`) ships with every deploy like the rest of `web/`; what it
   does and how it is checked is in [release](release.md). The landing page
@@ -172,6 +248,9 @@ python3 tools/web/serve.py build/web 8099    # locally, with the isolation heade
 # ...and standing in for the deployment on a slow network: /api/account names
 # its own /parts/, served from the directory after a delay (see parts.md previews)
 python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 2500
+# the export and the deployment's functions together, for the connector
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 --static=build/web
+node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze   # a big design, timed
 ```
 
 ## How to check it
@@ -206,6 +285,19 @@ at <url>`, then four `ok` lines for the view controls it drives in the browser �
 turn (right-drag), zoom (wheel), slide (shift-scroll), turn (middle-drag) — ending
 `check ok: <url>`. The PNG shows the baseplate with the model on it, not the
 loading colour and not a blank canvas. Measured against production 2026-10-02.
+
+And a big design, made the way the owner's froze their computer:
+
+```sh
+set -a; . ./.env; set +a
+node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze
+```
+
+Proves it when: it exits 0 and ends `the page stayed alive: the app's longest
+frame was N ms (budget 500)`, every call answered. Against the build before
+2026-10-11 it fails: a check_design was one 31 s task, a submit 43 s, and the
+look that followed came back "The Brickworks tab did not answer in time" while
+the build animation weighed the model once a step.
 
 ## Gotchas
 

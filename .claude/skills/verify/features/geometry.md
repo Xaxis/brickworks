@@ -163,6 +163,20 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   else on the same machine: the old check cost **84x** what building the model
   cost, the new one a tenth. `stability_probe` asserts under 3x, and the old code
   fails it.
+- **A tall model made the check slow where a wide one never did.** Whether it
+  leans or is top-heavy is asked at every course, of everything above and below
+  it, and `_check_levels` summed every brick at every cut: on the owner's Falcon
+  Heavy (4,242 parts, 332 plates, about seven hundred cuts) that was 3.3 s of a
+  3.5 s check, and the app ran it after every change and, while the build
+  animation played, about once a frame. The 800-brick wall above is forty
+  courses and never showed it. Now the load above each cut is summed once from
+  the top and the footprint below grown once from the bottom: 0.25 s, the same
+  risks to four decimals on all eleven shipped models, the square Orthanc, run
+  18's 8,506-part tower and run 1's Falcon. `stability_probe` holds the Falcon
+  under three times the cost of building it; the old code was twelve times.
+  Still slow: on run 18's Orthanc the contact graph itself is 10 s, all of it
+  `BrickLattice.shared_cells` between turned parts, whose covers are many small
+  boxes.
 - **The lattice stores boxes, and anything that asks it per *cell* is a bug.**
   It used to be a Dictionary with one entry per 2 LDU cell — 9,600 for a single
   2x4 brick — plus `_columns` holding the same volume again. Eight thousand

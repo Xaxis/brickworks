@@ -97,7 +97,24 @@
                 "type": "number"
               },
               "at": {
-                "description": "mirror: the line to reflect about, in studs. fill: where the footprint's low corner sits, as {x, y, z}."
+                "description": "mirror: the line to reflect about, in studs. fill, round: where the footprint's low corner sits, as {x, y, z} (a round lying along x or z: the low end of it, on the ground)."
+              },
+              "axis": {
+                "description": "round: y stands it up (the default); x or z lays it along that axis on the ground \u2014 a boiler, a fuselage, a hull, a log",
+                "enum": [
+                  "y",
+                  "x",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "band_color": {
+                "description": "fill with rise 3, prism: a course in this colour every eight, a string course where a storey's ledge is. A black wall gets dark bluish grey bands unless mix_color or this says otherwise.",
+                "type": "integer"
+              },
+              "beside": {
+                "description": "round: more rounds standing round this one, touching it, pinned where their Technic courses meet (start both stacks the same, each with a technic course at one height): {\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. Boosters on a core, twin funnels, a cluster of silos.",
+                "type": "object"
               },
               "bricks": {
                 "description": "repeat: what to repeat. mirror: what to reflect, if not everything so far.",
@@ -169,9 +186,31 @@
                 "description": "fill, rock: studs in z",
                 "type": "number"
               },
+              "diameter": {
+                "description": "round: studs across \u2014 the sizes round parts come in (at is the low corner of its square)",
+                "enum": [
+                  1,
+                  2,
+                  4,
+                  6,
+                  8
+                ],
+                "type": "integer"
+              },
               "door": {
                 "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
                 "type": "boolean"
+              },
+              "dress": {
+                "description": "studs_out: what every side stud carries \u2014 a mix (the default), flat tiles for a smooth panel, round plates as rivets, round tiles as portholes, or lights (round tiles in a transparent face_color): a band of detail along a hull, a boiler, a wall",
+                "enum": [
+                  "mixed",
+                  "tiles",
+                  "rivets",
+                  "round",
+                  "lights"
+                ],
+                "type": "string"
               },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
@@ -220,14 +259,15 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z.",
                 "enum": [
                   "repeat",
                   "mirror",
                   "fill",
                   "rock",
                   "studs_out",
-                  "prism"
+                  "prism",
+                  "round"
                 ],
                 "type": "string"
               },
@@ -294,6 +334,13 @@
                 "description": "fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
               },
+              "stack": {
+                "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach \u2014 grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") \u2014 nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) \u2014 legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "step": {
                 "additionalProperties": false,
                 "description": "repeat: how far each copy moves, in studs and plates",
@@ -310,6 +357,18 @@
                 },
                 "type": "object"
               },
+              "storeys": {
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} \u2014 the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "in": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
@@ -322,8 +381,12 @@
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
               },
+              "window_color": {
+                "description": "prism: the windows' colour (40, Trans-Brown, a dark slit, unless said)",
+                "type": "integer"
+              },
               "windows": {
-                "description": "prism: narrow lit windows up its faces, every eight courses; true unless said",
+                "description": "prism: a few narrow windows up every other face, a storey apart, dark slits unless window_color says; none unless said",
                 "type": "boolean"
               }
             },
@@ -397,7 +460,7 @@
     "name": "check_design"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for \u2014 basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for \u2014 basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; display and touches: display stand with a nameplate. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1110,7 +1173,24 @@
                 "type": "number"
               },
               "at": {
-                "description": "mirror: the line to reflect about, in studs. fill: where the footprint's low corner sits, as {x, y, z}."
+                "description": "mirror: the line to reflect about, in studs. fill, round: where the footprint's low corner sits, as {x, y, z} (a round lying along x or z: the low end of it, on the ground)."
+              },
+              "axis": {
+                "description": "round: y stands it up (the default); x or z lays it along that axis on the ground \u2014 a boiler, a fuselage, a hull, a log",
+                "enum": [
+                  "y",
+                  "x",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "band_color": {
+                "description": "fill with rise 3, prism: a course in this colour every eight, a string course where a storey's ledge is. A black wall gets dark bluish grey bands unless mix_color or this says otherwise.",
+                "type": "integer"
+              },
+              "beside": {
+                "description": "round: more rounds standing round this one, touching it, pinned where their Technic courses meet (start both stacks the same, each with a technic course at one height): {\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. Boosters on a core, twin funnels, a cluster of silos.",
+                "type": "object"
               },
               "bricks": {
                 "description": "repeat: what to repeat. mirror: what to reflect, if not everything so far.",
@@ -1182,9 +1262,31 @@
                 "description": "fill, rock: studs in z",
                 "type": "number"
               },
+              "diameter": {
+                "description": "round: studs across \u2014 the sizes round parts come in (at is the low corner of its square)",
+                "enum": [
+                  1,
+                  2,
+                  4,
+                  6,
+                  8
+                ],
+                "type": "integer"
+              },
               "door": {
                 "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
                 "type": "boolean"
+              },
+              "dress": {
+                "description": "studs_out: what every side stud carries \u2014 a mix (the default), flat tiles for a smooth panel, round plates as rivets, round tiles as portholes, or lights (round tiles in a transparent face_color): a band of detail along a hull, a boiler, a wall",
+                "enum": [
+                  "mixed",
+                  "tiles",
+                  "rivets",
+                  "round",
+                  "lights"
+                ],
+                "type": "string"
               },
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
@@ -1233,14 +1335,15 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z.",
                 "enum": [
                   "repeat",
                   "mirror",
                   "fill",
                   "rock",
                   "studs_out",
-                  "prism"
+                  "prism",
+                  "round"
                 ],
                 "type": "string"
               },
@@ -1307,6 +1410,13 @@
                 "description": "fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
               },
+              "stack": {
+                "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach \u2014 grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") \u2014 nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) \u2014 legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "step": {
                 "additionalProperties": false,
                 "description": "repeat: how far each copy moves, in studs and plates",
@@ -1323,6 +1433,18 @@
                 },
                 "type": "object"
               },
+              "storeys": {
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} \u2014 the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "in": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
@@ -1335,8 +1457,12 @@
                 "description": "fill: leave the middle out, this many studs in from every side. An ellipse with wall 1 is a round tube; a rectangle with wall 1 is a room's walls.",
                 "type": "number"
               },
+              "window_color": {
+                "description": "prism: the windows' colour (40, Trans-Brown, a dark slit, unless said)",
+                "type": "integer"
+              },
               "windows": {
-                "description": "prism: narrow lit windows up its faces, every eight courses; true unless said",
+                "description": "prism: a few narrow windows up every other face, a storey apart, dark slits unless window_color says; none unless said",
                 "type": "boolean"
               }
             },
@@ -1569,6 +1695,119 @@
       "type": "object"
     },
     "name": "add_minifig"
+  },
+  {
+    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size \u2014 a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides \u2014 or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "across": {
+          "description": "studs along X: a brick's length; a slope's, bracket's or curved slope's width along its face or upright; a Technic brick's length. With from: the new length.",
+          "type": "integer"
+        },
+        "angle": {
+          "description": "slope, inverted: one of LEGO's named angles, which sets run and plates as the real part has them",
+          "enum": [
+            33,
+            45,
+            65,
+            75
+          ],
+          "type": "integer"
+        },
+        "cut": {
+          "additionalProperties": false,
+          "description": "with from: a box to cut out of the part \u2014 a corner, a notch, a step \u2014 in studs from its low x and low z (its left and back) and plates up from its bottom; the cut faces are closed and a wall put back where it opens the part's hollow underside.",
+          "properties": {
+            "plates_from": {
+              "type": "integer"
+            },
+            "plates_to": {
+              "type": "integer"
+            },
+            "x_from": {
+              "type": "integer"
+            },
+            "x_to": {
+              "type": "integer"
+            },
+            "z_from": {
+              "type": "integer"
+            },
+            "z_to": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "x_from",
+            "x_to",
+            "z_from",
+            "z_to",
+            "plates_from",
+            "plates_to"
+          ],
+          "type": "object"
+        },
+        "deep": {
+          "description": "studs along Z: a brick's width; a slope's depth from back to foot; a bracket's plate depth. With from: the new width.",
+          "type": "integer"
+        },
+        "diameter": {
+          "description": "round: studs across",
+          "type": "integer"
+        },
+        "family": {
+          "description": "for a new part: brick (also plates and tiles: plates 1, studs false), slope, curved (a curved slope), inverted (slope), round, bracket (a plate with an upright whose studs face forward), technic (a 1 x N brick with a hole between every two studs)",
+          "enum": [
+            "brick",
+            "slope",
+            "inverted",
+            "round",
+            "curved",
+            "bracket",
+            "technic"
+          ],
+          "type": "string"
+        },
+        "from": {
+          "description": "instead of a family: a real part's number to change, keeping everything not changed as LEGO made it. Longer, wider and taller repeat a slice of it; a part with no slice that repeats (a 1 x 1, a round brick across) is refused.",
+          "type": "string"
+        },
+        "name": {
+          "description": "what to call it; left out, it is named as LDraw names its parts",
+          "type": "string"
+        },
+        "plates": {
+          "description": "height in plates, 3 to a brick (a bracket is 1, a Technic brick 3). With from: the new height.",
+          "type": "integer"
+        },
+        "rise": {
+          "description": "bracket: the upright's height in studs",
+          "type": "integer"
+        },
+        "run": {
+          "description": "slope, inverted, curved: the rows the face falls over, from the front; the rest are flat with studs",
+          "type": "integer"
+        },
+        "sides": {
+          "description": "brick: the sides with studs on them, letters of fblr: f is the +z face (the front), b -z, l -x, r +x; studs 10 LDU under the top and every stud down. Needs 3 plates or more.",
+          "type": "string"
+        },
+        "studs": {
+          "description": "a new part: true for studs on top (the default), false for a tile. With from: \"keep\", \"none\" to take them off, \"fill\" to put them on wherever the top is flat."
+        },
+        "way": {
+          "description": "bracket: whether the upright hangs down from the plate's front edge or stands up from it",
+          "enum": [
+            "down",
+            "up"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "make_part"
   },
   {
     "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind \u2014 shapes, colours, the one-off pieces, how coarse \u2014 and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of. Call it after submit_design, then once per assembly, detailing each with edit_model before the next.",

@@ -24,6 +24,14 @@
   "launch": [],
   "features": [
     {
+      "id": "api:Claude's sign-in (OAuth)",
+      "kind": "api",
+      "entry": "api/oauth.js",
+      "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:GET /api/account",
       "kind": "api",
       "entry": "api/account.js",
@@ -64,6 +72,14 @@
       "tests": []
     },
     {
+      "id": "cli:arrival check",
+      "kind": "cli",
+      "entry": "tools/web/arrival_check.mjs",
+      "reach": "node tools/web/arrival_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",
@@ -101,6 +117,14 @@
       "entry": ".github/workflows/release.yml",
       "reach": "gh workflow run release.yml -f tag=v0.1.0",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:connect Claude browser flow",
+      "kind": "cli",
+      "entry": "tools/web/oauth_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
+      "area": "account",
       "tests": []
     },
     {
@@ -170,6 +194,22 @@
       "tests": []
     },
     {
+      "id": "cli:figure prints and moulds in a browser",
+      "kind": "cli",
+      "entry": "tools/web/print_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
+      "id": "cli:freeze check",
+      "kind": "cli",
+      "entry": "tools/web/freeze_check.mjs",
+      "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -204,11 +244,27 @@
       "tests": []
     },
     {
+      "id": "cli:oauth probe",
+      "kind": "cli",
+      "entry": "tools/web/oauth_probe.mjs",
+      "reach": "node tools/web/oauth_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
       "reach": "tools/web_pack.py --list",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:prints and stickers in a browser",
+      "kind": "cli",
+      "entry": "tools/web/studio_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
+      "area": "prints",
       "tests": []
     },
     {
@@ -268,6 +324,14 @@
       "tests": []
     },
     {
+      "id": "lib:a big check on a worker",
+      "kind": "lib",
+      "entry": "src/ai/assistant.gd",
+      "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:account session",
       "kind": "lib",
       "entry": "src/account/account.gd",
@@ -300,11 +364,35 @@
       "tests": []
     },
     {
+      "id": "lib:change a part",
+      "kind": "lib",
+      "entry": "src/parts/part_editor.gd",
+      "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
+      "area": "elements",
+      "tests": []
+    },
+    {
       "id": "lib:command socket",
       "kind": "lib",
       "entry": "src/net/command_socket.gd",
       "reach": "godot --path . -- --mcp   (then 127.0.0.1:8787, one JSON object per line)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "lib:custom moulds",
+      "kind": "lib",
+      "entry": "src/minifig/mould.gd",
+      "reach": "godot --headless --path . --script src/dev/mould_probe.gd",
+      "area": "minifig",
+      "tests": []
+    },
+    {
+      "id": "lib:custom prints",
+      "kind": "lib",
+      "entry": "src/prints/part_prints.gd",
+      "reach": "godot --headless --path . --script src/dev/print_probe.gd",
+      "area": "prints",
       "tests": []
     },
     {
@@ -454,11 +542,35 @@
       "tests": []
     },
     {
+      "id": "lib:sticker sheet",
+      "kind": "lib",
+      "entry": "src/prints/sticker_sheet.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd   (writes shots/print_stickers.pdf)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "lib:stickers",
+      "kind": "lib",
+      "entry": "src/prints/stickers.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd",
+      "area": "prints",
+      "tests": []
+    },
+    {
       "id": "lib:studs written on the render",
       "kind": "lib",
       "entry": "src/ai/shot_ruler.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:the assistant makes a part",
+      "kind": "lib",
+      "entry": "src/parts/part_tool.gd",
+      "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
+      "area": "elements",
       "tests": []
     },
     {
@@ -510,6 +622,14 @@
       "tests": []
     },
     {
+      "id": "ui:build animation",
+      "kind": "ui",
+      "entry": "src/render/build_playback.gd",
+      "reach": "godot --headless --path . --script src/dev/playback_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:build steps",
       "kind": "ui",
       "entry": "src/ui/steps_bar.gd",
@@ -523,6 +643,14 @@
       "entry": "src/camera/cad_camera.gd",
       "reach": "godot --headless --path . --script src/dev/camera_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:connect Claude sign-in page",
+      "kind": "ui",
+      "entry": "web/authorize.html",
+      "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
+      "area": "account",
       "tests": []
     },
     {
@@ -622,6 +750,14 @@
       "tests": []
     },
     {
+      "id": "ui:mould maker",
+      "kind": "ui",
+      "entry": "src/minifig/mould_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd   (by hand: M, a Headgear or hand slot, Make a mould\u2026)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "ui:move and turn a selection",
       "kind": "ui",
       "entry": "src/ui/edit_verbs.gd",
@@ -699,6 +835,22 @@
       "entry": "src/ui/cursors.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:print designer",
+      "kind": "ui",
+      "entry": "src/prints/print_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: hold a part, Parts bin > Print\u2026; or in the figure builder, Draw a print\u2026)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "ui:prints and stickers in the parts bin",
+      "kind": "ui",
+      "entry": "src/prints/print_studio.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print\u2026 / Stickers\u2026)",
+      "area": "prints",
       "tests": []
     },
     {
@@ -803,6 +955,14 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:the booklet",
+      "kind": "ui",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  (the toolbar's Instructions, or -- --booklet=OUT.html --model=M)",
+      "area": "view",
       "tests": []
     },
     {

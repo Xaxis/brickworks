@@ -1429,6 +1429,11 @@ func _rotated_bounds(part: Lbm.PartMesh, basis: Basis) -> AABB:
 ## box they came from.
 ## Turned covers already worked out, by part and angle.
 var _turned_cache: Dictionary = {}
+## The same for a check running on a worker thread (Assistant._checked),
+## kept apart so neither thread writes a Dictionary the other is reading,
+## and locked because the design loop and a connector could both check.
+var _turned_off_main: Dictionary = {}
+var _turned_lock := Mutex.new()
 
 
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
@@ -1457,11 +1462,21 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	# in a section shares one angle, so a section of two hundred costs
 	# one.
 	var key: String = "%d|%s" % [part.get_instance_id(), at.basis]
-	var shape: PackedInt32Array = _turned_cache.get(key, PackedInt32Array())
-	if shape.is_empty():
-		shape = BrickLattice.boxes_for_turned(
-			part.boxes, Vector3i.ZERO, at.basis)
-		_turned_cache[key] = shape
+	var shape: PackedInt32Array
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		shape = _turned_cache.get(key, PackedInt32Array())
+		if shape.is_empty():
+			shape = BrickLattice.boxes_for_turned(
+				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_cache[key] = shape
+	else:
+		_turned_lock.lock()
+		shape = _turned_off_main.get(key, PackedInt32Array())
+		if shape.is_empty():
+			shape = BrickLattice.boxes_for_turned(
+				part.boxes, Vector3i.ZERO, at.basis)
+			_turned_off_main[key] = shape
+		_turned_lock.unlock()
 	var out := PackedInt32Array()
 	out.resize(shape.size())
 	var n: int = 0
@@ -1645,6 +1660,34 @@ func put_figure(parts: Array, called: String, at: Transform3D) -> PackedInt64Arr
 	return ids
 
 
+## Put a part exactly somewhere a click on the grid could not put it — a
+## sticker laid on a face — as one step that undo takes back. Returns the
+## brick, or 0.
+func put_part(part_id: String, color_code: int, at: Transform3D) -> int:
+	var brick_id: int = world.add_brick(part_id, color_code, at)
+	if brick_id == 0:
+		return 0
+	lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(part_id), at))
+	_history.append({"undo": "remove", "brick": brick_id})
+	_redo.clear()
+	placed.emit(brick_id, part_id)
+	return brick_id
+
+
+## Take a brick off as one step that undo puts back: a sticker peeled off.
+func take_off(brick_id: int) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return false
+	var step: Dictionary = _apply({"undo": "remove", "brick": brick_id})
+	_history.append(step)
+	_redo.clear()
+	if selection.erase(brick_id):
+		selection_changed.emit(selection.size())
+	removed.emit(brick_id)
+	return true
+
+
 ## A group name no part of the model carries yet: a second Guard is
 ## "Guard 2", so the two stay two figures in the file and in a selection.
 func unused_group(wanted: String) -> String:
@@ -1708,6 +1751,7 @@ func _lift_figure(brick_id: int) -> bool:
 	var home: Transform3D = frame
 	var parts: Array = []
 	var steps: Array = []
+	var unpicked: bool = false
 	for brick: BrickWorld.Brick in bricks:
 		parts.append({"part": brick.part_id, "color": brick.color_code,
 			"at": home.affine_inverse() * brick.transform})
@@ -1716,8 +1760,10 @@ func _lift_figure(brick_id: int) -> bool:
 			"group": brick.group, "was": brick.id})
 		lattice.release(brick.id)
 		world.remove_brick(brick.id)
-		selection.erase(brick.id)
+		unpicked = selection.erase(brick.id) or unpicked
 		removed.emit(brick.id)
+	if unpicked:
+		selection_changed.emit(selection.size())
 	_history.append({"undo": "group", "steps": steps})
 	_redo.clear()
 	hold_figure(parts, (bricks[0] as BrickWorld.Brick).group)

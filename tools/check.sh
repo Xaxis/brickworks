@@ -115,7 +115,8 @@ if python3 -c 'import pytest' 2>/dev/null; then
   suite=(python3 -m pytest tests/ -q)
 else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
-    tests/test_release.py tests/test_minifig.py tests/test_elements.py)
+    tests/test_release.py tests/test_minifig.py tests/test_elements.py \
+    tests/test_merge_featuremap.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -136,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element dimensions snap stability history restore store instructions search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print sticker mould; do
   probe "$name"
 done
 
@@ -190,6 +191,16 @@ run "highlights" "${screen[@]}" godot --path . --resolution 1200x800 \
 # would never once exercise the path the app actually takes.
 run "model shot" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/shot_probe.gd
+# The booklet: every picture drawn, framed on the model, a parts box with
+# a picture of each part, callouts with arrows, the turn sign, the
+# timeline's numbers. Leaves shots/booklet/*.html to open and look at.
+run "booklet" "${screen[@]}" godot --path . --resolution 1200x800 \
+  --script src/dev/booklet_probe.gd
+# The design that froze the owner's computer: their 4,242-part Falcon Heavy,
+# made through the connector's own answer_rpc in the real scene, every frame
+# timed, then twice over and turned round.
+run "a big design" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/freeze_probe.gd
 run "axis gizmo" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/gizmo_probe.gd
 # Also a window: what a dragged box catches depends on where each brick
@@ -228,6 +239,20 @@ run "placeholders" "${screen[@]}" godot --path . --resolution 1400x900 \
 # shots/element_beside.png are worth a look.
 run "make a part" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/element_shot_probe.gd
+# Prints drawn in the figure builder with the mouse: a face, a jacket,
+# trousers and a tile, saved, worn and placed. The canvas's live preview
+# and the figure are drawn, so a window; shots/print_*.png are the proof.
+run "draw a print" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/print_ui_probe.gd
+# Prints and stickers on any part, from the parts bin: a photograph on a
+# tile, a logo on a slope, a sticker across two tiles, saved and opened
+# again. shots/studio_*.png are the proof.
+run "prints and stickers" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/studio_ui_probe.gd
+# A hairstyle and a club sculpted in the figure builder with the mouse,
+# worn, held and placed; shots/mould_*.png are the proof.
+run "make a mould" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/mould_ui_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

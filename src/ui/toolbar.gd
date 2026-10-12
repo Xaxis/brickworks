@@ -329,4 +329,7 @@ func controls_by_name() -> Dictionary:
 	for name: String in _buttons:
 		var key: String = name if name in ["new", "open", "save"] else "tool_" + name
 		out[key] = _buttons[name]
+	# The booklet's own flow presses "instructions" (tools/web).
+	if _buttons.has("instructions"):
+		out["instructions"] = _buttons["instructions"]
 	return out

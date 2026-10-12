@@ -7,6 +7,11 @@
 ## out switches off this tab's Claude connector, because the connector
 ## belongs to the account.
 ##
+## And whether Claude is connected to the account (2026-10-11): which of
+## its apps, since when and when last used, with Disconnect Claude, which
+## ends every connection at once — Claude's tokens stop working that
+## moment, on every device. Or, not connected, a way to connect it.
+##
 ## The owner's account (MASTER_EMAIL) also gets a link to the admin page,
 ## on the web, where the page is.
 class_name AccountPanel
@@ -14,7 +19,7 @@ extends PanelContainer
 
 ## How big it would like to be, before the window has its say.
 const WIDE := 420.0
-const TALL := 290.0
+const TALL := 430.0
 
 var account: Account
 
@@ -23,6 +28,11 @@ var _state: Label
 var _admin: LinkButton
 var _sign_out: Button
 var _done: Button
+var _claude_box: VBoxContainer
+var _claude_state: Label
+var _claude_connect: LinkButton
+var _claude_disconnect: Button
+var connector: ClaudeConnector
 
 ## The person asked to sign out; the app switches the connector off and
 ## the sign-in screen comes back.
@@ -62,8 +72,38 @@ func setup(with_account: Account) -> void:
 
 	column.add_child(_line("Your account is your email address. Your models "
 		+ "are saved on this device, not with it — export one as LDraw to "
-		+ "take it elsewhere. A Claude connector you switch on belongs to "
-		+ "this account.", 12, 0.7))
+		+ "take it elsewhere.", 12, 0.7))
+
+	# Claude, connected to this account: shown once a connector is given.
+	_claude_box = VBoxContainer.new()
+	_claude_box.add_theme_constant_override("separation", 6)
+	_claude_box.visible = false
+	column.add_child(_claude_box)
+	_claude_box.add_child(HSeparator.new())
+	var claude_title := Label.new()
+	claude_title.text = "Claude"
+	claude_title.add_theme_font_size_override("font_size", 14)
+	_claude_box.add_child(claude_title)
+	_claude_state = _line("", 12, 0.8)
+	_claude_box.add_child(_claude_state)
+	_claude_connect = Look.link("Connect Claude", 12)
+	_claude_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
+	_claude_connect.pressed.connect(func() -> void:
+		connector.connect_claude()
+		_claude_state.text = ("claude.ai has opened with Brickworks filled in: "
+			+ "press Add, then Connect, and Allow when Brickworks asks."))
+	_claude_box.add_child(_claude_connect)
+	_claude_disconnect = Button.new()
+	_claude_disconnect.text = "Disconnect Claude"
+	_claude_disconnect.focus_mode = Control.FOCUS_NONE
+	_claude_disconnect.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_claude_disconnect.tooltip_text = ("Claude can no longer reach your "
+		+ "Brickworks, from any of its apps, until you connect it again.")
+	_claude_disconnect.pressed.connect(func() -> void:
+		var ended: int = await connector.disconnect_claude()
+		if ended < 0:
+			_claude_state.text = "Could not reach Brickworks to disconnect. Try again.")
+	_claude_box.add_child(_claude_disconnect)
 
 	_admin = Look.link("Accounts and connectors (admin)", 12)
 	_admin.uri = "/admin.html"
@@ -82,7 +122,8 @@ func setup(with_account: Account) -> void:
 	_sign_out.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sign_out.focus_mode = Control.FOCUS_NONE
 	_sign_out.tooltip_text = ("Sign out of Brickworks on this device. Your "
-		+ "models stay here; Claude's connector in this tab switches off.")
+		+ "models stay here. Claude stops building in this tab, and stays "
+		+ "connected to your account until you disconnect it.")
 	_sign_out.pressed.connect(func() -> void:
 		visible = false
 		sign_out_wanted.emit())
@@ -102,11 +143,67 @@ func setup(with_account: Account) -> void:
 func open() -> void:
 	_follow()
 	visible = not visible
+	if visible and connector != null and account.signed_in():
+		connector.refresh_connections()
 
 
 ## Its controls, for the page to find.
 func controls_by_name() -> Dictionary:
-	return {"sign_out": _sign_out, "account_done": _done} if visible else {}
+	if not visible:
+		return {}
+	var named: Dictionary = {"sign_out": _sign_out, "account_done": _done}
+	if _claude_disconnect.is_visible_in_tree():
+		named["account_disconnect_claude"] = _claude_disconnect
+	if _claude_connect.is_visible_in_tree():
+		named["account_connect_claude"] = _claude_connect
+	return named
+
+
+## Claude's half: the connector whose connections this shows.
+func use_connector(with: ClaudeConnector) -> void:
+	connector = with
+	_claude_box.visible = true
+	connector.connections_changed.connect(func(_now: Array) -> void: _show_claude())
+	_show_claude()
+
+
+## Which of Claude's apps are connected to this account, since when and
+## when last used; or that none is.
+func _show_claude() -> void:
+	if connector == null:
+		return
+	var lines := PackedStringArray()
+	for one: Variant in connector.connections:
+		var it: Dictionary = one
+		var line: String = "%s, connected %s" % [str(it.get("client", "Claude")),
+			when(str(it.get("since", "")))]
+		if it.get("last_used") != null:
+			line += ", last used %s" % when(str(it.get("last_used", "")))
+		lines.append(line)
+	if lines.is_empty():
+		_claude_state.text = ("Not connected. Connect Claude once and it can "
+			+ "build in any Brickworks tab you have open, on your Claude plan."
+			if connector.connections_known else "Checking…")
+	else:
+		_claude_state.text = "Connected — Claude can build in your open Brickworks tabs.\n" \
+			+ "\n".join(lines)
+	_claude_connect.visible = lines.is_empty()
+	_claude_disconnect.visible = not lines.is_empty()
+
+
+## An ISO time from the deployment, in words: "today at 14:05", or "11 Oct".
+static func when(iso: String) -> String:
+	if iso.length() < 19:
+		return "just now"
+	var utc: int = Time.get_unix_time_from_datetime_string(iso.substr(0, 19))
+	var local: int = utc + int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+	var then: Dictionary = Time.get_datetime_dict_from_unix_time(local)
+	var now: Dictionary = Time.get_datetime_dict_from_system()
+	if then.year == now.year and then.month == now.month and then.day == now.day:
+		return "today at %02d:%02d" % [then.hour, then.minute]
+	var months: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+	return "%d %s" % [then.day, months[int(then.month) - 1]]
 
 
 func _line(text: String, size: int, alpha: float) -> Label:

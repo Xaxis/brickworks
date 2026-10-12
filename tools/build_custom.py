@@ -103,6 +103,25 @@ def embedded_parts(text: str) -> dict[str, str]:
     return parts
 
 
+def data_names(text: str) -> set[str]:
+    """The files a multi-part document carries as `0 !DATA <name>` (MPD
+    spec rev. 2): a print's pictures. Lower case."""
+    return {" ".join(line.split()[2:]).strip().lower() for line in text.splitlines()
+            if line.split()[:2] == ["0", "!DATA"]}
+
+
+def texmap_pictures(text: str) -> list[str]:
+    """The pictures a part's `0 !TEXMAP START|NEXT ... <png>` lines name."""
+    found: list[str] = []
+    for line in text.splitlines():
+        words = line.split()
+        if words[:2] == ["0", "!TEXMAP"] and len(words) > 3 and words[2] in ("START", "NEXT"):
+            name = words[-1]
+            if name not in found:
+                found.append(name)
+    return found
+
+
 def build(files: list[Path]) -> list[tuple[str, bytes, dict, str]]:
     """Each part through build_meshes' own conversion.
 
@@ -138,11 +157,17 @@ def check(paths: list[Path]) -> int:
         with tempfile.TemporaryDirectory() as scratch:
             files = parts_in([path], Path(scratch))
             library = Library(LDRAW, extra=[scratch])
+            carried = data_names(text)
             for part in files:
                 mesh = flatten(library, part.name)
-                state = "complete" if not mesh.missing else \
-                    "MISSING " + ", ".join(sorted(mesh.missing))
-                failed += bool(mesh.missing)
+                missing = sorted(mesh.missing)
+                # A print's pictures are carried as !DATA sections.
+                pictures = texmap_pictures(part.read_text(encoding="latin-1"))
+                missing += [p for p in pictures if p.lower() not in carried]
+                state = "complete" if not missing else "MISSING " + ", ".join(missing)
+                if pictures and not missing:
+                    state += f", {len(pictures)} picture{'s' if len(pictures) != 1 else ''} carried"
+                failed += bool(missing)
                 print(f"  {part.name:20} {len(mesh.triangles):6} triangles  {state}")
         print(f"{path.name}: {lines} lines, {len(files)} parts, "
               + ("all complete" if not failed else f"{failed} incomplete"))

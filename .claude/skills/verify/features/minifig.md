@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser -->
 
 ## Sub-features
 
@@ -159,6 +159,62 @@ the model, and the design assistant doing the same with `add_minifig`.
   part count it publishes (`window.brickworksBricks`). It also chooses a cape —
   a part the pack does not ship, fetched over the wire — and places the caped
   figure.
+- `prints on a figure` (the print designer and its files are in
+  [prints](prints.md)): "Draw a print…" beside the search in the Head, Torso, Hips
+  and Legs slots (`MinifigDialog.PRINTED`; the hips are drawn with the legs) opens
+  the print designer over the builder on the slot's part — its plain mould; a
+  printed part LEGO made is started from, one made here loaded to change. A
+  right leg is printed with its hips and left leg as one front. Save print puts
+  the parts on the figure; a part for no slot (a tile typed into "or print on")
+  goes to the parts bin and the builder says so. On a figure (`Minifig`): a part
+  made here stands where the part it was made from stands (`PartPrints.bases`;
+  `assemble` and `torso_local` work with a stand-in and swap the made parts back,
+  a printed pair's left leg for the plain left leg, `made_with`); choosing
+  printed legs brings the hips printed with them and plain legs give plain hips
+  back (`_fit_hips`); made parts are offered first in their slot, in a group "My
+  prints and moulds" (`MADE_HERE`), in their original's colours (`colours_of`);
+  the slot index is rebuilt when the library has made parts it did not.
+- `custom moulds` (`src/minifig/mould.gd`, `Mould`): a part's shape sculpted
+  into another with its connection exactly where it was. `of_part` welds the
+  part's built mesh into one surface (positions on a 1/1000 LDU key, LDraw's
+  winding), keeps its connectors and its creases; `dome` (a cap turned from a
+  profile round the classic head with a hollow stud's socket, standing for 3901)
+  and `club` (a 4 LDU bar and a ball, standing for 3847, the bar on 3847's
+  grip) start from nothing. Each corner has a lock, 0 to 1 (`lock_at`): inside
+  what a connector needs — a stud 7 LDU round and 4.5 out, a socket 7 round and
+  4.5 in along its axis, a shaft or bore of radius 6 or less with 1.5 to spare,
+  a pin or clip 5.5 round 6 either way, the grip a hand closes on (the part's
+  `MinifigData.GRIPS` bar, 5.5 round, 9 either way) — and, on anything worn on
+  the head, the inside turned to the head and within an LDU of it
+  (`head_depth`, 3626c's cylinder, rounded top and stud; `head_outward`); fading
+  to 0 over 2 LDU (`FADE`). Brushes (`dab`): pull and push along the brush's
+  facing, inflate along each corner's own, smooth to the neighbours, pinch to the
+  middle, flatten to the plane, each weighted by a smoothstep falloff and the
+  corner's freedom; with symmetry the same dab mirrored in X. `grab` and `drag`
+  move what is under the brush with the pointer; the lattice (`lattice_begin`,
+  `lattice_move`) is 27 handles round the part bending it by quadratic Bernstein
+  weights, the mirrored handle moved with symmetry. After every change nothing
+  free is nearer the head than `HEAD_MARGIN` (1 LDU) or than it began
+  (`_keep_off_head`). `refine` splits every edge longer than 3.2 LDU (1.6 with
+  Finer) not locked at both ends through its middle, the shape unchanged, up to
+  `MOST_TRIANGLES` (9000). `walls` measures each corner's thickness straight in
+  (`Rays.Grid`) and the share under 1 mm. Picking is `Rays.nearest`. The file
+  (`text`) is the triangles on the mesh's 64ths of an LDU, the original's
+  connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases, and `0 // Moulded
+  by Brickworks: from=<part>`; named `bw-<part>-m<tag>` from an MD5 of its
+  corners, built by `PartForge` (`CustomParts.add`), filed under Custom. On a
+  figure it stands where its original stands (`PartPrints.bases`).
+- `mould maker` (`src/minifig/mould_editor.gd`, `MouldEditor`): "Make a mould…"
+  beside the search in the Headgear, Headgear extra, Neck, Back, In right hand and
+  In left hand slots (`MinifigDialog.MOULDED`), opened on the slot's part (3901
+  or 3847 when it is empty, a dome when neither). Start from a part number,
+  Dome or Club; tools Pull, Push, Inflate, Smooth, Pinch, Flatten, Grab; Size
+  (LDU) and Strength; Symmetry (on); Lattice (handles drawn over the part, a
+  handle dragged in the view's plane); Check walls (red under 1 mm, the thinnest
+  said); Finer; Undo and Redo (Ctrl+Z). Drag on the part to sculpt, off it or
+  with the right button to turn it, the wheel to come closer; a ring shows the
+  brush; locked corners are tinted blue and a faint head shows the fit. Save mould
+  builds it ("Building the mould…" said first) and puts it on the figure.
 
 ## How to reach it
 
@@ -172,6 +228,9 @@ tools/minifig.py data              # rewrite src/minifig/minifig_data.gd (~2 min
 On the web the builder's parts come over the wire like any other; the default
 figure's are in the pack (`tools/web_pack.py` ESSENTIAL).
 
+Prints: M, a Head, Torso, Hips or Legs slot, **Draw a print…**. Moulds: M, a
+Headgear, Neck, Back or hand slot, **Make a mould…**.
+
 ## How to check it
 
 ```sh
@@ -179,6 +238,10 @@ godot --headless --path . --script src/dev/minifig_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   # needs a display: see tools/check.sh for xvfb-run
 python3 tools/minitest.py tests/test_minifig.py
 node tools/web/minifig_flow.mjs --url=<a build>/app --out=shots/minifig_web
+godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd     # needs a display
+godot --headless --path . --script src/dev/mould_probe.gd
+godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd     # needs a display
+BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web    # .env sourced
 ```
 
 Proves it when:
@@ -252,7 +315,65 @@ Proves it when:
   --delay 300`, which answers `/api/account` with its own `/parts/`; the flow's
   `--url` is `http://127.0.0.1:PORT/index.html`.
 
+- `print_ui_probe` ends `a face, a jacket and trousers were drawn by hand, worn and
+  placed`, every mark an input event: the face drawn on a clean sheet (the editor
+  first opened on 3626cp01's grin), hair round the back, a jacket front with a
+  collar, pockets, a zip and a badge with "BW", "CREW" on the back, trousers with a
+  belt and patches, a sign on a 3068b tile; saved, worn, the figure placed (10
+  parts, 5 printed here) and the tile put down beside it. **Look at**
+  `shots/print_face_editor.png`, `print_torso_editor.png`, `print_legs_editor.png`,
+  `print_tile_editor.png`, `print_builder.png`, `print_figure_front.png` (face the
+  right way up, badge on his left breast, belt over the hips),
+  `print_figure_back.png` ("CREW" reads from behind) and `print_with_tile.png`.
+
+- `mould_probe` ends `a mould sculpted here keeps its connection exactly, and
+  stands, saves and travels`: 3901 welded (695 triangles), its inside resting on
+  the head locked and its outside free, every corner round the head's stud
+  locked, none of it in the head by more than a drawing's 0.3 LDU; made finer
+  with every corner where it was; pulled (corners moved up to several LDU), the
+  other side coming too with symmetry; every brush at full strength, the lattice
+  and a grab leaving not one locked corner moved by any amount and nothing free
+  pushed nearer the head than an LDU; its walls measured; undo and redo. Made
+  into `bw-3901-m…`: its connectors 3901's to the float, its file under 700 kB,
+  built with a cover, offered as headgear. A dome (clear of the head, its socket
+  locked) with a topknot pulled up, and a club (its bar locked, a 4 LDU round,
+  the 3.18 mm a hand holds) with a swollen head, both made. A figure wearing the
+  hair and holding the club stands exactly as one with 3901 and 3847, is placed
+  on a 1 x 2 plate and stands; the file carries both into a library that never
+  saw them, the same to the cell.
+- `mould_ui_probe` ends `a hairstyle and a club were sculpted by hand, worn, held
+  and placed`: in the Headgear slot, "Make a mould…" opens on 3901 made finer;
+  turned with the right button; the fringe grabbed and swept up and forward from
+  the side, the back drawn down, the sides inflated, the crown smoothed, the
+  lattice's top handle lifted — every stroke a press, a drag and a release on the
+  view — not one locked corner moved; Check walls says how thin it is; saved as
+  "Quiff" and worn, first in the grid; a club from Club, its ball inflated and
+  pulled into spikes, saved into the right hand; the figure placed. **Look at**
+  `shots/mould_hair_start.png`, `mould_hair_sculpted.png`, `mould_hair_walls.png`,
+  `mould_club.png`, `mould_builder.png`, `mould_figure_front.png`,
+  `mould_figure_corner.png`, `mould_figure_side.png`: the hair on the head, not
+  through it, its fringe a quiff; the club in the hand where a sword would be.
+- `print_flow.mjs` (`figure prints and moulds in a browser`: WebGL 2, IndexedDB
+  and GDScript in WebAssembly, which no desktop probe vouches for) ends `print
+  flow: drawn, sculpted, worn, placed and kept in the browser`: M, the Head
+  slot's Draw a print…, a face drawn with the mouse and saved; the Torso slot's,
+  a badge; the Headgear slot's Make a mould…, the hair's top pulled up and saved;
+  each save one more part made here (`window.brickworksState.custom`); the figure
+  placed with them (`window.brickworksBricks`); the page reloaded and all three
+  still made here, the model back with the figure. **Look at**
+  `shots/print_web/1_face.png` … `6_reloaded.png`.
+
 ## Gotchas
+
+- **A hair piece is thin.** 3901's outside is within 3 LDU of the head almost
+  everywhere, so a lock by distance alone locked nearly all of it. The lock is
+  by facing too: only corners turned towards the head (`head_outward`, a dot
+  under 0.35) and within an LDU of it are its inside; the outside a millimetre
+  away is free, and kept off the head by `_keep_off_head` instead.
+- **A hair's inside rests on the head's top as well as its sides.** Measured as
+  radial depth only, 3901's ceiling at y 0 read as 3.9 LDU inside the head;
+  `head_depth` takes the nearer of the radial and the vertical surface of each
+  of the head's three pieces (cylinder, rounded top, stud).
 
 - **Measured, not looked up**: three conventions are in real sets' files. The
   library's (76382), Mad_Marc's (hands 0.5 LDU off, sets 10176-10184) and an older

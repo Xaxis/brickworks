@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
 
 ## Sub-features
 
@@ -65,16 +65,30 @@ fixing what it got wrong.
   Code is installed the composer stays without a key, because "My Claude" sits
   in it: `chat_probe` builds that panel too and checks Build waits for the tick.
 - `design on your Claude plan`: `ConnectorForm` in the panel, under "Or with
-  your Claude plan", is a switch for a `ClaudeConnector` on this tab. Off, it
-  says what it is for; on, it shows a coloured state line — waiting (amber),
-  connected with the time Claude reached it (green), building with a count and
-  a clock, trouble (red), or taken over by another tab — and the address and
-  steps until Claude has used the address once, then folds them away. It says
-  to keep the tab in view. The address is kept on this device and the switch
-  comes back on by itself; "Make a new address" forgets it. An address added
-  to Claude before — another browser, cleared storage — can be pasted ("Added
-  Brickworks to Claude before? Use that address", `ClaudeConnector.adopt`),
-  so nothing changes in Claude. Claude's calls go
+  your Claude plan" (2026-10-11). Not connected, it says what it is for and
+  offers **Connect Claude** (`ClaudeConnector.connect_claude`): this tab
+  starts listening, the shared address (`/api/mcp`) goes on the clipboard, and
+  claude.ai's documented install link opens — `https://claude.ai/customize/
+  connectors?modal=add-custom-connector&connectorName=Brickworks&connectorUrl=…`
+  — with a three-step guide (Add then Connect; sign in as <the account's
+  address> and Allow; come back) and the address to paste if no tab opened.
+  Links beside it open, one at a time, **Claude Code** (the `claude mcp add
+  --transport http brickworks …/api/mcp` command, then `/mcp` and
+  Authenticate), **Claude app** (it shows claude.ai's connectors; or Customize,
+  Connectors, Add custom connector, and the address) and **Private address**
+  (this browser's own `?t=` address, the way before, with its switch, Copy,
+  "Make a new address" and a field to paste one added before —
+  `ClaudeConnector.adopt`). The state line: waiting for Claude (amber),
+  "Connected to Claude [and Claude Code] — it builds in this tab" (green),
+  building with a count and a clock, switched off in this tab (grey), trouble
+  (red), taken over by another tab. The account's connections come from
+  `/api/oauth?op=connections`: on sign-in (`resume`), when the section is
+  shown, every 5 s for ten minutes after Connect Claude, and at once when the
+  relay says `brickworks/connected`. Once Claude is connected the switch
+  ("Let Claude build in this tab") is on by itself in every tab the person
+  signs in to, unless they switched it off there (`off_here`, kept on the
+  device), and **Disconnect Claude** ends every connection. `window.
+  brickworksClaude` tells the page `{on, connected, status}`. Claude's calls go
   into the conversation as a run card ("Claude is building"), every step kept
   with what came of it ("— refused: …" when a tool said no), and the card says
   Done with Build steps and Parts list once Claude has been quiet 90 s, or
@@ -85,12 +99,16 @@ fixing what it got wrong.
   your Claude plan"; until Claude's first call there is no empty conversation
   above it, so the steps sit under the title (they were at the panel's foot
   under a blank two-thirds of it). The panel's secondary actions — that one,
-  "Use that address", "Make a new address", "Change key", "Add a picture of
-  it" — are links (`Look.link`: blue, underlined, as wide as their words), not
+  Claude Code, Claude app, Private address, "Make a new address", "Disconnect
+  Claude", "Change key", "Add a picture of it" — are links (`Look.link`: blue, underlined, as wide as their words), not
   flat buttons in body text, which the owner could not tell were pressable.
   The switch and every tick box are drawn by `Look.apply`, outlined so an
   unticked one shows on a dark panel. `chat_probe` covers all of it on a
-  closed port and its own file; `connector_probe` the protocol (see `web.md`).
+  closed port and its own file — Connect Claude's link and guide, connected,
+  the Claude Code command, switched off here and kept off next visit, both apps
+  named, the account panel's Claude section, the private address — and
+  `connector_probe` the protocol (see `web.md`); `tools/web/oauth_flow.mjs`
+  the whole of it in a browser on a deployment ([account](account.md)).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and
@@ -106,6 +124,43 @@ fixing what it got wrong.
   and brings a photograph of the subject into the conversation, credited. The loop
   calls it first, before any brick: a design asked for a lighthouse and working
   from memory gets the proportions wrong in a way no later critique recovers.
+- `a big check on a worker`: `Assistant._checked`, which every tool path
+  (check_design, submit_design, edit_model, add_rooms, review_model, and the
+  app's own loop) waits on a frame at a time. From `CHECK_OFF_THREAD_FROM`
+  (300) placements the check runs on a `WorkerThreadPool` task while the app
+  goes on drawing and answering; below it, in place. On the web the page has
+  one thread, and the owner's 4,242-part Falcon Heavy was a 31 s task per
+  check in a browser (3.4 s on the desktop). What the worker reads is made
+  still first: every part is loaded (`_ensure_parts`; a worker never loads,
+  `PartLibrary.mesh_for`), the library holds parts that arrive meanwhile aside, and a part made meanwhile waits for the worker
+  (`begin_reading`, `end_reading`), the bricks already standing are copies
+  (`_others_standing`), turned covers have their own locked cache
+  (`Builder._turned_off_main`), and the tables filled on first use — the style
+  norms, the minifigure name patterns — are filled before it starts. One
+  worker at a time; a second check meanwhile runs in place. The probes call
+  `_check` itself, as before. `responsive_probe` holds the same answer either
+  way, frames throughout, and a brick placed and a part loaded during it.
+  And a design is put down a slice a frame (`_apply(model, finished, true)`;
+  `FramePace`: 12 ms a slice at sixty frames a second, up to half a frame
+  where frames are slow — in software a browser frame is over a second, and
+  12 ms slices made putting the Falcon down take a minute, past the relay's
+  four) with `BrickWorld.hold_drawing` until it is whole, so the
+  build animation is the first anyone sees of it; Stop in the middle puts the
+  model back and places no more. The probes call `_apply` as before, all at
+  once.
+  Each picture is also read into the plastic colours sets are made in
+  (`ReferenceFinder.colours_in`: CIELAB nearest of the current solid colours,
+  the frame's own colours taken as backdrop unless the picture is a cut-out on
+  a transparent ground, the middle weighted), and the answer says them once
+  as numbers to build in (`Assistant._colours_seen`): "White (15) 76%, Light
+  Bluish Grey (71) 10%, ..." for Commons' Falcon Heavy pictures. Found by the
+  owner's Falcon Heavy, built in three greys with a white rocket in the
+  pictures. `reference_probe` (offline): a white rocket with a black band on a
+  sky reads White with Black and no sky; a cut-out drawing running to its
+  frame reads White (it read Black before the cut-out rule); the answer names
+  both numbers. Photographs of launches, with towers, smoke and ground, read
+  muddier, and the answer tells the design to look at the picture to tell a
+  shade of the main colour from a colour of its own.
 - `measured, not just photographed`: every look — `check_design`, `view_model`,
   `edit_model` and the critique — carries the model's size in studs, its massing
   banded by height, and each named section measured as it is carried. "Is this the
@@ -134,6 +189,32 @@ fixing what it got wrong.
   `style_probe`: hand-made cases, the square Orthanc fixture
   (`src/dev/fixtures/orthanc_square.ldr`) told all three, the shipped castle
   not called over-symmetric (54% here, 55% in the tool).
+  The calls it names follow what the subject is (`Style.traits_of`: round,
+  vehicle, living, machine, by whole words in the brief and the model's name;
+  `Style.calls_for`): a rocket is told of the round pattern, a car of wedge
+  plates and a hinged section, an owl of curves and hinged wings, a machine of
+  pinned Technic; restyle_model and the prism only where the subject is a
+  building, a tower or unknown. A model whose curve share is past the 90th
+  percentile is not told it is square for having nothing on its side. Found
+  by the owner's Falcon Heavy, whose description named its launch tower: it
+  was told "a prism with piers, for a tower like this one" and restyle_model,
+  which put polka dots on a rocket. `style_probe` ("the advice knows what the
+  subject is"): the square fixture said to be a rocket by its tower, a car and
+  an owl; a steam locomotive is round and a vehicle; no car in "carriage".
+- `the touches nobody asks for`: `Assistant._touches`, in every check's advice
+  from 300 parts: a model with no printed or stickered part (`_decorated`:
+  "Sticker", "Pattern" or an LDraw pattern suffix on the number) or nothing
+  that moves (a style `a` part, a pin or ball connector, a hinged section) is
+  told so, with a figure, a story detail and a display stand with a
+  nameplate. Measured over Rebrickable's inventories of the 2,517 sets of 300
+  parts or more since 2015: 95% carry a printed or stickered part, 94% a
+  hinge, turntable, Technic pin or ball joint, 1.6% none of these — each
+  missing is a one-in-twenty tail, as every advice here keeps. The guidance
+  says them under FINISHING TOUCHES and maps shapes to calls under WHAT THE
+  SUBJECT NEEDS; the critique names both, and `FROM_OUTSIDE_NEXT` ends on the
+  touches. `style_probe` ("the touches nobody asks for"): a plain 320-part
+  model is told of both and of a figure; with a printed tile, only of what
+  moves; with a hinge too, of nothing.
 - `a face built sideways`: `Assistant._studs_out`, the `studs_out` pattern (in
   the assistant, not `patterns.gd`, because it needs the parts' connectors).
   Courses of 87087 turned so the side stud faces `facing` (the turn found from
@@ -144,7 +225,11 @@ fixing what it got wrong.
   hangs the other way there. Found by three Orthancs at 0% sideways against
   fantasy sets' 19%, the check saying so every time. `patterns_probe` builds it
   facing each way and checks it holds and has one sideways part per side stud;
-  a band measures 43% sideways in `tools/style.py`.
+  a band measures 43% sideways in `tools/style.py`. `dress` makes it a band of
+  one kind of detail (`Assistant.DRESSES`: tiles, rivets, round, lights; a mix
+  by default) — rivets down a hull plate, portholes, a row of lights in a
+  transparent `face_color`; `patterns_probe` checks each band's every stud
+  carries its kind and holds.
 - `a many-sided shaft`: dressed by default (masonry 0.25, sideways 0.15; 0 for a
   plain face): the thirteenth Orthanc stood a prism of plain faces, 61% plain,
   that the finishing pass cannot reach. The `prism` pattern (`Assistant._prism`, in the
@@ -165,18 +250,48 @@ fixing what it got wrong.
   solid shells and variety (shapes, colours) never moved. Found by run 5, octagonal
   piers by hand from ~150 sections (26% angled) at the cost of the rest of the
   run. Each face is laid as a cluster's core face is (`_cluster_face`), its outer
-  row run on into the corner groove where there is room. Narrow lit windows go
-  up its faces by default (`"windows": false` for none): a Trans-Yellow 3005 in
-  the outside row at the widest run's middle stud, two courses tall, every
-  `WINDOW_EVERY` (8) courses from the fourth, alternate faces half a storey
-  apart (`_lay_face`, `_lay_row_around`); on a cluster, the core's faces and the
-  piers' faces that look away from the core, not the horns. The inside row stays
-  whole, so a window is lit and never seen through, and `restyle_model` leaves
-  transparent bricks alone. Run 16 had none, and with its dressing black on
-  black the tower would read as one black mass. `patterns_probe`: 78 window
-  studs on the guidance's cluster, every one paired two courses tall, none with
-  `"windows": false`, and the finishing pass leaves all 78. `patterns_probe`: an
-  octagon and a hexagon hold, each face its own angle.
+  row run on into the corner groove where there is room. Windows only when
+  asked (`"windows": true`): a 3005 in `window_color` (`WINDOW_COLOUR`, 40
+  Trans-Brown, a dark slit, unless said) in the outside row at the widest
+  run's middle stud, two courses tall, every `WINDOW_EVERY` (16) courses, on
+  every other face (`_lay_face`, `_lay_row_around`); on a cluster, the core's
+  faces and the piers' faces that look away from the core, not the horns. The
+  inside row stays whole, so a window is never seen through, and
+  `restyle_model` leaves transparent bricks alone. They were lit yellow every
+  eight courses up every face by default, and the homepage's Orthanc (run 18)
+  read as an office block, 228 lit 1 x 1s in rows — the owner's worst verdict
+  yet. A black face takes dark bluish grey unless told (`SECOND_TONE`, as
+  10237's 66% black and 13% grey) as a band: one course of it every
+  `BAND_EVERY` (8), a string course where 10237 has its ledges, never
+  sprinkled — scattered through the bricks (Orthanc rk1) it read as noise.
+  `band_color` sets another; a `mix_color` said means a scatter instead. A
+  black `fill` wall with `rise` 3 does the same (`Patterns.BAND_EVERY`). As
+  many 1 x 2s again as its masonry are laid as grille bricks (2877, faced
+  out), which catch light where masonry in black does not. `patterns_probe`:
+  asked for, 16 window studs on the guidance's cluster, each paired two
+  courses tall, Trans-Brown, no office block said; none unless asked; a black
+  cluster with no mix_color has hundreds of grey, every one in a band course,
+  and some grille; a black wall's grey is one course at y 21 with no black in
+  it; the finishing pass leaves the windows.
+  `patterns_probe`: an octagon and a hexagon hold, each face its own angle.
+- `the faults of a picture`: three checks in every check's advice, each a
+  fault the homepage's Orthanc had and any subject can: `_window_grid` (12 or
+  more of one lit window — a warm transparent colour — 70% of them in rows:
+  "reads as an office block"; glass is not counted, because Big Ben's facade
+  is 380 trans-brown 1 x 1s in rows), `_dark_and_plain` (40% of a model of 200
+  parts plain bricks and plates in one dark colour: "reads as a hole", with
+  10237's texture parts named) and `_straight_shaft` (taller than twice its
+  width and the same width within 12% from a tenth of its height to nine
+  tenths, said with taper, flare and a crown; not of a round or a vehicle).
+  All three fire on run 18 and on none of the eleven shipped models, the runs
+  of 2026-10-11, or eight real sets from LDraw's repository (Big Ben, Tower
+  Bridge, Hogwarts Astronomy Tower and Great Hall, two castles, the Bookshop,
+  Minecraft's Mountain Cave); the critique, the assembly critique and the
+  guidance name them with the fourth, a base that is an afterthought.
+  `style_probe` ("the faults of the homepage's Orthanc"): a black 4 x 4 shaft is
+  told hole and no profile, light grey not a hole, a rocket not a shaft, a
+  stepped tower has a profile, lit windows in rows are an office block and the
+  same in dark glass are not, and none is said of any shipped model.
 - `an open tower is not see-through`: a post up the inside of each corner where
   two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of
   3062b — or 3941 where the channel's mouth is wider than one covers (radius 9
@@ -313,6 +428,36 @@ fixing what it got wrong.
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
   it at x -2 and passes the check.
+- `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
+  (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
+  here rose the same width from foot to horns, and the owner's verdict named it.
+  The courses split into `count` storeys (the remainder to the lowest), each
+  the prism again with its core `in` whole studs smaller than the one below and
+  its piers the same size drawn in with it (`out` recomputed) — piers shrunk
+  with the core reached the least radius, and an octagonal core of 7 with piers
+  of 4.5 overlaps itself in six pieces, with or without storeys (a fault of the
+  cluster at that size, not fixed here). Each storey's sections are named for
+  it (`prism N storey S face J`), since a face's section turns from its own foot.
+  Every storey but the top is capped with a ledge (`_ledge`): two plates in the
+  second tone (`band_color`, else `SECOND_TONE`, else the prism's colour) over
+  its outline less the studs wholly inside `r - in - thickness - 1.5` — a ring,
+  so the rooms are not floored over, reaching under the next storey's wall and
+  the posts behind its corners. `_summit` keeps every piece of a ledge over
+  `LEDGE_CRUMBS` (6) plates: a ring crossing a cleft on the diagonal comes in
+  pieces, and keeping only the largest left a whole pier of the storey above
+  on nothing. Only the top storey's piers rise into horns; its summit is in the
+  second tone too, and the faces take no bands (the ledges are the bands). The
+  reply says the top's radius (for add_rooms) and its summit's y. A top storey
+  with faces under two studs is refused with the radius that would do.
+  `patterns_probe`: a 45-course octagon of radius 7 is told it is a straight
+  shaft and in three storeys is not, passes the check in one piece, grey only
+  on its two ledges (y 45 and 92, two plates each), its outsides 8, 7 and 6;
+  five storeys at that radius are refused; the guidance's cluster in storeys
+  passes in one piece with four horn points and add_rooms at the top radius
+  furnishes four floors, taking out at most one column (its plate and tile; the
+  top storey's corner posts stand on its ledge inside the rooms — the same
+  cluster without storeys loses none). Looked at: `shots/runs/rk_storeys_corner.png` steps in
+  on grey ledges as 10237 does.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty
@@ -401,6 +546,10 @@ fixing what it got wrong.
   `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
   model without its figures' bodies, as real sets' inventories are counted, and
   `_tag_assemblies` leaves a figure in its own group.
+- `parts it needs`: `make_part` makes a part LEGO has not made — a family at
+  any size, or a real part changed — when no real part will do, as a person
+  does in Make a part; declared and passed through here, made in
+  `src/parts/part_tool.gd`. See [elements](elements.md).
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,
@@ -409,6 +558,80 @@ fixing what it got wrong.
   guidance's stone-wall recipe at 0.15, because designs copy the recipes: the
   fourth Orthanc had `studs_out` and used none of it. `patterns_probe`: a stone
   wall with `sideways` 0.3 holds and every turned brick is dressed.
+- `a body of revolution`: the `round` pattern (`src/ai/rounds.gd`, class
+  `Rounds`, dispatched from `Patterns.expand`). Anything round in section —
+  a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree
+  trunk — said as a diameter (1, 2, 4, 6, 8: the sizes round parts come in)
+  and a `stack` up its axis: `{"plates": N}` lengths of body (a `color` band,
+  a new `diameter`, `"spokes"` reaching a stud out with a `tile` on each),
+  `{"cones": 9|1}` cones under a round plate, `{"technic": true, "struts": n}`
+  a course with a 3700 pin hole out of each side and a Technic beam pinned on,
+  and a `nose` (cone, ogive, dome, point, flat). Laid in the round parts real
+  sets use at each diameter: 3062b, 3941; 87081 or 85941/24593 cylinder halves
+  back to back; four 5152 or 48092 (30562 panels) corner rounds tied by a round
+  plate every `TIE_EVERY` courses. `axis` x or z lays the same stack on its
+  side (each part's transform turned about the axis's foot and named again,
+  `_on_its_side`); `beside` stands 2 or 4 more round it, touching, a 2780
+  across each joint where the Technic courses meet. A rocket's words
+  (engines, legs, grid_fins, boosters) are taken as the general ones
+  (`Rounds.SAID`). The corner-round and half turns are constants
+  (`QUARTER_TURNS`, `HALF_TURNS`) because a browser lays a pattern before it
+  fetches the parts; covers fall back to catalogue bounds for the same reason.
+  Found by the owner's Falcon Heavy (4,252 parts of square columns, 67% plain,
+  9% curved). `patterns_probe` ("a body of revolution"): every diameter holds
+  in one piece of round parts only; four 48092 or 5152 round a ring are a
+  ring at eight rim points (the old `wide round tower` example's turns built a
+  bow tie, and fail this); the written turns match the parts; a Falcon Heavy
+  in one call holds in one piece with 27 cones, 8 struts, 10 pins, spokes
+  none into a body beside, no seam or slab advice, and is three pieces
+  without its two joint pins; lying along x and z it holds, every part on its
+  side, on the ground. The seam advice (`_unbonded_seam`) and the
+  structure-not-detail advice (`_mostly_big_plates`) leave round parts
+  (style kind `c`) out: a rocket was told to stagger its cylinder halves.
+- `a body said as its solids`: the `shape` pattern (`src/ai/shapes.gd`, class
+  `Shapes`, dispatched from `Patterns.expand`). A body that is not a box — a
+  car's, a hull, a fuselage, a creature's — said as `solids` (`loft` through
+  `sections` {at, width, height, bottom, round 0 box..1 ellipse, keel, offset};
+  `extrude` of a side `profile`/`under` with top edges `round`ed; `revolve` of
+  a profile about x, y or z; `box` with plan corners `round`ed or `chamfer`ed
+  and top `edge`s rounded; `ellipsoid`; `dome`), each with its own `color`,
+  less `cuts`, coloured by height with `bands`. Sampled at every stud and
+  plate (`Plan`), a plate with nothing above, below or beside it dropped, then:
+  the surface fitted (`surface`, `_fit`) — from the top of every fall down, the
+  slope whose own profile is nearest the studs' heights (`SLOPES`: curved 4, 3
+  and 2 long or 18/33/45 degrees, cheese for one stud; `INVERTED` under an
+  overhang), standing on the shape's plates (never on a thin bridge's place),
+  its high end flush with the stud above or up to two plates under, the plates
+  it stands in carved out; each slope's own surface becomes the next one's top,
+  so a ramp is a run of slopes; which end of each part is high read off its
+  mesh (`Shapes.part`). Then the core plate by plate: bricks (`CORE_BRICKS`, up
+  to 2 x 8) where a course is whole in one colour, wedge bricks and wedge
+  plates where a plan edge runs on the diagonal (the cut side a fifth to four
+  fifths inside the shape, sampled, so none stands out from a flat side as a
+  fin), plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
+  on top unless `"top": "studs"` (`TOPS`). A shape that is its own mirror
+  (`mirror_of`) is laid as one half, its reflection, and a strip across the
+  plane two and four (or three and one) studs wide by turns so every layer is
+  tied across it; surface picks pair into two-wide parts and are laid with
+  their mirror or not at all; wedges find their twin by their plan at half a
+  stud, not their studs (a 2 x 3 wing's other hand turned round has the same
+  studs). Only parts joined to the foot by studs are kept (`prune`), and a
+  piece standing apart is joined by laying two side-by-side parts again as
+  one that reaches across (`stitch`, mirrored). The check's lopsided advice
+  now samples only where a part is (`_lopsided`): a pair of wings, each the
+  other's reflection, was called lopsided for the empty half of each box.
+  Inverted 1 x 2 slopes (3665) run into the plate over them and are not used.
+  Found by the held-out car, told every check to use wedge plates and curved
+  slopes and using none. `shapes_probe`: each surface part's fall is read off
+  its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without
+  trouble, pass the check in one piece, carry sloped, curved and tiled
+  surfaces and are mirrors of themselves; a ramp falling a plate a stud takes
+  18 degree slopes (curved 4 x 2s said curved); a box's top is tiled, not with
+  `"top": "studs"`; a band colours by height; a loft without sections is
+  refused saying what it wants. Measured against real vehicles
+  (`tools/style.py`): curved 5-14% (median 14%), plain 63-69% (median 33%) —
+  the solid core is plates and bricks; looked at on the GPU:
+  `shots/runs/shapes/shape_*_corner.png`.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
@@ -477,10 +700,20 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  61 constructions with real part numbers and real coordinates, each in a group
-  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, angles,
-  roofs and spires, windows and doors, rock and ground, plants, furniture and
-  interiors, lights). An entry may carry `sections` and its bricks a `section`,
+  77 constructions with real part numbers and real coordinates, each in a group
+  (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round
+  bodies, machines and joints, angles, roofs and spires, windows and doors,
+  rock and ground, plants, furniture and interiors, lights, display and
+  touches). The round bodies, machines and display groups came with the round
+  pattern: what it lays, named for the technique and not the subject (a round
+  body, one lying down, a dome and cone cap, a ring of cones under a round
+  plate, spokes with tiles, struts pinned to a Technic course, two rounds
+  pinned side by side, a display stand with a nameplate), and six as LEGO
+  built them in 21309 Saturn V (a curved skin panel, a studs-out core, a grille
+  band, a cone bell on round plates, a round tip, a fin root on a Technic pin).
+  `wide round tower` had two of its four 48092 turned the wrong way — a bow
+  tie that stacked and checked — and is a ring now, tied by a 74611 round
+  plate; `techniques_probe` checks each quarter curves out of the ring. An entry may carry `sections` and its bricks a `section`,
   as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
   entrance steps, taken off their 2x2 turntable and put back on at the set's 45
   degrees by a section turned about the turntable's middle, and `leaning on a
@@ -581,6 +814,16 @@ the environment or `.env`, and without one a run ends at once with
 server**: every request goes from the app straight to Anthropic.
 
 ## How to check it
+
+The big design that froze the web app, made and timed (see web.md for the
+same in a browser):
+
+```sh
+godot --headless --path . --script src/dev/responsive_probe.gd   # a big check on a worker, frames throughout
+~/.claude/claude-core/bin/gpu godot --path . --resolution 1400x900 --script src/dev/freeze_probe.gd
+#   the Falcon made through the connector's answer_rpc, every frame timed, then
+#   8,484 parts turned round; add -- calls.json to replay a run's own calls
+```
 
 Static: nothing static covers the loop. `pyright` covers `tools/design.py`.
 

@@ -43,15 +43,71 @@ static func make(library: PartLibrary, spec: ElementMaker.Spec,
 	return add(library, text, id, keep)
 
 
+## Make a part by changing one that exists (see [PartEditor]), add it to
+## the library and keep it. The part's geometry has to be to hand
+## ([method PartLibrary.mesh_for]); on the web that can mean fetching it
+## first. Returns {"id", "problem"}, as [method make] does.
+static func make_modified(library: PartLibrary, edit: PartEditor.Edit,
+		keep: bool = true) -> Dictionary:
+	var result: Dictionary = modified_text(library, edit)
+	if not str(result["problem"]).is_empty():
+		return {"id": "", "problem": result["problem"]}
+	return add(library, result["text"], result["id"], keep)
+
+
+## The part file an edit makes, under an id no other part has unless it is
+## this very part: {"text", "id", "problem"}.
+static func modified_text(library: PartLibrary, edit: PartEditor.Edit) -> Dictionary:
+	var info: PartLibrary.PartInfo = library.parts.get(edit.from)
+	if info == null:
+		return {"text": "", "id": "", "problem": "there is no part %s" % edit.from}
+	var mesh: Lbm.PartMesh = library.mesh_for(edit.from)
+	var category: String = info.ldraw_category if info.custom else info.category
+	var base: String = PartEditor.id_for(edit)
+	var id: String = base
+	var made: Dictionary = PartEditor.make_dat(edit, mesh, info.name, category, id)
+	var n: int = 1
+	while made["problem"] == "" and library.parts.has(id) \
+			and library.custom_source(id) != str(made["text"]):
+		n += 1
+		id = "%s-%d" % [base, n]
+		made = PartEditor.make_dat(edit, mesh, info.name, category, id)
+	return {"text": made["text"], "id": id, "problem": made["problem"]}
+
+
 ## Add a part from its LDraw text: built, registered and, with [param
 ## keep], written to [member dir]. [param others] are files it may draw on
 ## from the same model file.
 static func add(library: PartLibrary, text: String, id: String, keep: bool = true,
 		others: Dictionary = {}) -> Dictionary:
-	var built: PartForge.Result = PartForge.build(text, id, others)
+	# A print drawn here carries pictures (PartPrints): from the model file
+	# it came in, or kept beside it.
+	var pictures: Dictionary = {}
+	var sources: Dictionary = {}
+	for name: String in others:
+		if others[name] is PackedByteArray:
+			pictures[name.to_lower()] = others[name]
+		else:
+			sources[name] = others[name]
+	var built: PartForge.Result
+	if PartPrints.has_pictures(text):
+		for name: String in PartPrints.pictures_named(text):
+			if not pictures.has(name.to_lower()) and FileAccess.file_exists(dir + name):
+				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
+			if pictures.has(name.to_lower()):
+				pictures[name] = pictures[name.to_lower()]
+		built = PartPrints.build(text, id, pictures)
+	else:
+		built = PartForge.build(text, id, sources)
 	if not built.problem.is_empty():
 		return {"id": id, "problem": built.problem}
-	library.add_custom(info_for(built), built.mesh, text)
+	var base: String = PartPrints.base_in(text)
+	if not base.is_empty():
+		PartPrints.bases[id] = base
+	var info: PartLibrary.PartInfo = info_for(built)
+	# Prints and stickers in bins of their own, as the bin shows them.
+	info.category = PartPrints.bin_for(text)
+	library.add_custom(info, built.mesh, text)
 	if keep:
 		DirAccess.make_dir_recursive_absolute(dir)
 		var file: FileAccess = FileAccess.open(dir + id + ".dat", FileAccess.WRITE)
@@ -60,6 +116,11 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 				% FileAccess.get_open_error()}
 		file.store_string(text)
 		file.close()
+		for name: String in built.mesh.print_files:
+			var picture: FileAccess = FileAccess.open(dir + name, FileAccess.WRITE)
+			if picture != null:
+				picture.store_buffer(built.mesh.print_files[name])
+				picture.close()
 	return {"id": id, "problem": ""}
 
 
@@ -121,8 +182,10 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 			continue
 		if info != null and library.custom_source(id) == text:
 			continue
+		var carried: Dictionary = model.embedded_parts.duplicate()
+		carried.merge(model.embedded_data)
 		var result: Dictionary = add(library, text, id,
-			not FileAccess.file_exists(dir + id + ".dat"), model.embedded_parts)
+			not FileAccess.file_exists(dir + id + ".dat"), carried)
 		if str(result["problem"]).is_empty():
 			added.append(id)
 		else:
@@ -131,11 +194,17 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 
 
 ## The sources of the custom parts among [param part_ids], by file name,
-## for writing into a model file.
+## for writing into a model file: each part's text, and each print's
+## pictures as PNG bytes.
 static func sources_for(library: PartLibrary, part_ids: Array) -> Dictionary:
 	var out: Dictionary = {}
 	for part_id: Variant in part_ids:
 		var text: String = library.custom_source(str(part_id))
 		if not text.is_empty():
 			out[str(part_id) + ".dat"] = text
+			# And a print's pictures, which go in as !DATA sections.
+			var mesh: Lbm.PartMesh = library.mesh_for(str(part_id))
+			if mesh != null:
+				for name: String in mesh.print_files:
+					out[name] = mesh.print_files[name]
 	return out

@@ -19,6 +19,24 @@
 ##   saved, and opened again into a library that has never seen it: the
 ##   model file carries the part, and the part comes back with it
 ##
+## And the families that came after, made the same way: a 1 x 4 brick with
+## studs on its side, a bracket, a 3 x 3 curved slope and a 1 x 2 Technic
+## brick. The curved slope and the Technic brick are stacked and checked as
+## the first three are. Then each is used the way only it can be, and the
+## checker is asked about it: a 1 x 4 plate on the brick's side studs, a
+## 1 x 2 plate on the bracket's upright, a Technic pin through the hole —
+## each held, and each refused one stud away (or, for the pin, turned
+## across the hole).
+##
+## And a part that exists, changed rather than redrawn: 98283, the 1 x 2
+## brick with embossed bricks, made four long through the same dialog. It
+## has 15533's studs and tubes — the 1 x 4 LEGO made — is stacked and
+## checked as the others are, and travels in the saved file with the
+## connectors it states for itself. 3062b made three long is refused, and
+## the dialog says why. And 3003, a plain 2 x 2 brick, changed as itself
+## with "Change it" and a corner cut out of it: three studs, a corner brick,
+## stacked and carried like the rest.
+##
 ## Made parts go to user://custom_parts_probe/, never the person's own.
 extends SceneTree
 
@@ -75,8 +93,34 @@ func _initialize() -> void:
 		_finish()
 		return
 
+	print("\nthe families after the first four, the same way")
+	var sided: String = await _make(dialog, "brick",
+		{"across": 4, "deep": 1, "plates": 3, "sides": "f"}, "Brick  1 x  4 with Studs on 1 Side")
+	var bracket: String = await _make(dialog, "bracket",
+		{"across": 2, "deep": 1, "rise": 1, "way": "down"}, "Bracket  1 x  2 -  1 x  2 Down")
+	var curved: String = await _make(dialog, "curved",
+		{"across": 3, "deep": 3, "plates": 3, "run": 2}, "Slope Brick Curved  3 x  3")
+	var technic: String = await _make(dialog, "technic", {"across": 2},
+		"Technic Brick  1 x  2 with Hole")
+	var later: Array = [sided, bracket, curved, technic]
+	if later.has(""):
+		_finish()
+		return
+
+	print("\na part that exists, changed from its own geometry")
+	var changed: String = await _change(dialog)
+	if changed.is_empty():
+		_finish()
+		return
+	later.append(changed)
+	var corner: String = await _cut_corner(dialog)
+	if corner.is_empty():
+		_finish()
+		return
+	later.append(corner)
+
 	print("\nin the library and the parts bin")
-	_in_the_bin([brick, plate, slope])
+	_in_the_bin([brick, plate, slope] + later)
 
 	_base = _lay_baseplate()
 	print("\nthe 2 x 7 brick, on a 2 x 4 on the baseplate, under a 2 x 4")
@@ -86,15 +130,29 @@ func _initialize() -> void:
 	print("\nthe 3 x 3 x 2/3 slope")
 	_stack(slope, Vector3(-200, 0, 0))
 	_slope_face(slope)
+	print("\nthe 1 x 4 brick with studs on its side")
+	_stack(sided, Vector3(200, 0, 160))
+	print("\nthe 3 x 3 curved slope")
+	_stack(curved, Vector3(-200, 0, 160))
+	_curve_face(curved)
+	print("\nthe 1 x 2 Technic brick")
+	_stack(technic, Vector3(0, 0, 160))
+	print("\n98283 made four long")
+	_stack(changed, Vector3(0, 0, -160))
+	print("\n3003 with a corner cut out")
+	_stack(corner, Vector3(200, 0, -160))
 
 	print("\nwhat the assistant's checker makes of all of it")
 	_checker()
 
+	print("\neach family used the way only it can be")
+	_used(sided, bracket, technic)
+
 	print("\nin the parts list")
-	_parts_list([brick, plate, slope])
+	_parts_list([brick, plate, slope, sided, curved, technic, changed, corner])
 
 	print("\nsaved, and opened where the parts were never made")
-	await _round_trip([brick, plate, slope])
+	await _round_trip([brick, plate, slope, sided, curved, technic, changed, corner])
 	_finish()
 
 
@@ -160,8 +218,12 @@ func _resized(dialog: ElementDialog) -> void:
 	var source: String = _library.custom_source(id)
 	_ok(source.contains("0 // Resized from 3001.dat"),
 		"resized to 7 long it is %s, and says it came from 3001" % id)
-	_ok(not dialog.start_from("3001p01"),
-		"a printed part is not offered for resizing")
+	# A printed part is not one of the families: it is not redrawn as a
+	# plain brick, which would lose its print, but changed as itself.
+	_ok(dialog.start_from("3001p01") and dialog.edit() != null
+			and dialog.edit().from == "3001p01",
+		"a printed part is not redrawn as a plain one: it is changed as itself, print and all")
+	dialog.set_field("family", "brick")
 
 
 func _in_the_bin(ids: Array) -> void:
@@ -226,14 +288,15 @@ func _stack(part_id: String, near: Vector3) -> void:
 	_exact(it, mesh)
 
 
-## Where a placed brick's studs are, on average, in the world.
+## Where a placed brick's studs are, on average, in the world: those on
+## its top, not on its sides.
 func _studs_middle(brick_id: int) -> Vector3:
 	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 	var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
 	var sum := Vector3.ZERO
 	var count: int = 0
 	for c: Lbm.Connector in mesh.connectors:
-		if c.kind == "stud":
+		if c.kind == "stud" and c.axis.y > 0.99:
 			sum += brick.transform * c.position
 			count += 1
 	return Vector3(sum.x / count, 0.0, sum.z / count) if count > 0 else brick.transform.origin
@@ -291,7 +354,13 @@ func _on_sockets(lower: BrickWorld.Brick, upper: BrickWorld.Brick,
 
 ## Touching on every side is allowed; a cell closer is not.
 func _exact(it: BrickWorld.Brick, mesh: Lbm.PartMesh) -> void:
-	var box: AABB = mesh.bounds
+	# The plastic's extent, which is its cover's: the bounds also hold
+	# studs on a side, and a plate may stand against the face between
+	# them, as it may on the top.
+	var box := AABB()
+	for cells: AABB in mesh.boxes:
+		var ldu := AABB(cells.position * mesh.cell_ldu, cells.size * mesh.cell_ldu)
+		box = ldu if box.size == Vector3.ZERO else box.merge(ldu)
 	# A 1 x 1 plate, so it stands level with the part's bottom and clear of
 	# the 2 x 4s above and below, which overhang a part narrower than they
 	# are.
@@ -361,13 +430,195 @@ func _checker() -> void:
 	for complaint: String in ["floating", "nothing holding", "overlap", "no stud anywhere",
 			"no stud can reach", "collide"]:
 		_ok(not said.to_lower().contains(complaint), "it says nothing about \"%s\"" % complaint)
-	# Three stacks on the baseplate, and the checker finds three pieces:
+	# Eight stacks on the baseplate, and the checker finds eight pieces:
 	# each made part is joined to the 2 x 4 under it and the one over it,
 	# or a stack would come apart into more.
-	_ok(said.contains("in 3 pieces"),
-		"it finds three pieces, one per stack: each made part joins both its 2 x 4s")
+	_ok(said.contains("in 8 pieces"),
+		"it finds eight pieces, one per stack: each made part joins both its 2 x 4s")
 	if not said.is_empty():
 		print("        (it said: %s)" % said.left(400).replace("\n", " / "))
+
+
+## 98283 changed through the dialog: started from by number, made four
+## long, added. Returns its id, or "" if it was not made.
+func _change(dialog: ElementDialog) -> String:
+	dialog.open()
+	_ok(dialog.start_from("98283") and dialog.edit() != null,
+		"98283, not one of the families, is started from as itself: \"%s\""
+			% _library.parts["98283"].name)
+	dialog.set_field("across", 4)
+	var built: PartForge.Result = dialog.built()
+	var said: String = dialog.get("_about").text
+	_ok(built != null and built.problem.is_empty() and said.contains("is 98283's own"),
+		"made four long, the preview built: %s" % said)
+	var made: Array = []
+	dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
+	dialog.press_add()
+	await process_frame
+	var id: String = made[0] if not made.is_empty() else ""
+	var info: PartLibrary.PartInfo = _library.parts.get(id)
+	_ok(info != null and info.name == "Brick  1 x  2 with Embossed Bricks (4 Long)",
+		"Add made %s, \"%s\"" % [id, info.name if info != null else "nothing"])
+	_ok(FileAccess.file_exists(PROBE_DIR + id + ".dat")
+		and _library.custom_source(id).contains("0 !BRICKWORKS CONNECTOR"),
+		"and kept it, its connectors stated in the file")
+	if info == null:
+		return ""
+	# The 1 x 4 LEGO made, 15533: the same studs and tubes in the same places.
+	var ours: PackedStringArray = _plan(_library.mesh_for(id))
+	var theirs: PackedStringArray = _plan(_library.mesh_for("15533"))
+	_ok(not theirs.is_empty() and ours == theirs,
+		"it has 15533's %d studs and tubes, each where 15533 has it" % theirs.size())
+	# And what cannot be done is said, not made.
+	dialog.open()
+	dialog.start_from("3062b")
+	dialog.set_field("across", 3)
+	var refusal: String = dialog.get("_about").text
+	var add: Button = dialog.get("_add")
+	_ok(dialog.built() == null and add.disabled and refusal.contains("no 20 LDU slice"),
+		"3062b made three long is refused, and says why: %s" % refusal)
+	dialog.set_field("family", "brick")
+	return id
+
+
+## 3003 changed as itself and a corner cut out of it, through the dialog.
+func _cut_corner(dialog: ElementDialog) -> String:
+	dialog.open()
+	_ok(dialog.change_part("3003") and dialog.edit() != null,
+		"3003, a plain brick, is changed as itself with Change it, not redrawn")
+	# The corner on the right at the back: across 1 to 2, deep 0 to 1, all
+	# three plates — where LEGO's corner brick, 2357, has no stud.
+	dialog.set_field("cut", [1, 0, 2, 1, 0, 3])
+	var built: PartForge.Result = dialog.built()
+	var studs: int = 0
+	if built != null:
+		for c: Array in built.connectors:
+			if c[0] == "stud":
+				studs += 1
+	_ok(built != null and built.problem.is_empty() and studs == 3,
+		"a corner cut out of it, the preview has 3 studs: %s" % dialog.get("_about").text)
+	var made: Array = []
+	dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
+	dialog.press_add()
+	await process_frame
+	var id: String = made[0] if not made.is_empty() else ""
+	var info: PartLibrary.PartInfo = _library.parts.get(id)
+	_ok(info != null and info.name == "Brick  2 x  2 (with Cut-Out)",
+		"Add made %s, \"%s\"" % [id, info.name if info != null else "nothing"])
+	dialog.set_field("family", "brick")
+	return id if info != null else ""
+
+
+## A part's studs and tubes as words: kind and where, to a tenth.
+static func _plan(mesh: Lbm.PartMesh) -> PackedStringArray:
+	var out := PackedStringArray()
+	if mesh == null:
+		return out
+	for c: Lbm.Connector in mesh.connectors:
+		if c.kind == "stud" or c.kind == "tube":
+			out.append("%s (%.1f, %.1f, %.1f)" % [c.kind, c.position.x, c.position.y,
+				c.position.z])
+	out.sort()
+	return out
+
+
+## A curved slope's collision is the curve: over the face is free, under
+## it is the part, all the way down it.
+func _curve_face(curved: String) -> void:
+	var it: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == curved:
+			it = brick
+	if it == null:
+		return
+	var spec: ElementMaker.Spec = ElementMaker.parse_spec(_library.custom_source(curved))
+	var front: float = -spec.deep * 10.0
+	var edge: float = front + spec.run * 20.0
+	var free_over: int = 0
+	var solid_under: int = 0
+	var tried: int = 0
+	for step: int in 6:
+		var z: float = front + 4.0 + step * (edge - front - 6.0) / 5.0
+		var face_y: float = ElementMaker.curve_at(spec, z)
+		tried += 1
+		for offset: float in [-3.0, 3.0]:
+			var ldraw := Vector3(5.0, face_y + offset, z)
+			var app: Vector3 = it.transform * Vector3(ldraw.x, -ldraw.y, -ldraw.z)
+			var owner: int = _builder.lattice.brick_at(BrickLattice.to_cell(app))
+			if offset < 0.0 and owner != it.id:
+				free_over += 1
+			if offset > 0.0 and owner == it.id:
+				solid_under += 1
+	_ok(free_over == tried and solid_under == tried,
+		"3 LDU over the curve is free (%d of %d) and 3 under it is the slope (%d of %d)"
+		% [free_over, tried, solid_under, tried])
+
+
+## The checker on a design of parts in studs and plates, the way the
+## assistant writes one, alone on the baseplate.
+func _judge(what: String, want_ok: bool, bricks: Array) -> void:
+	var model := Assistant.Model.new()
+	for raw: Variant in bricks:
+		model.placements.append(Assistant.Placement.from_dict(raw))
+	var verdict: Dictionary = _assistant._check(model, true)
+	var got: bool = bool(verdict["ok"])
+	_ok(got == want_ok, "%s — %s%s" % [what, verdict["summary"], "" if got == want_ok
+		else ": " + str(verdict["feedback"]).left(300).replace("\n", " / ")])
+
+
+## A plate on the side studs, a plate on the upright, a pin in the hole —
+## held where they should be and not a stud away.
+func _used(sided: String, bracket: String, technic: String) -> void:
+	# The brick on a 2 x 4, its studs on the side facing +Z in the app
+	# (LDraw's -Z), and a 1 x 4 plate laid on them, studs out: from the
+	# row 10 LDU under the brick's top, so 3.5 plates up.
+	_judge("a 1 x 4 plate on the side studs of %s is held" % sided, true, [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": sided, "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "3710", "color": 15, "x": 0, "y": 3.5, "z": 1, "face": "+z", "rot": 0},
+	])
+	_judge("...and the same plate a stud further out is not", false, [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": sided, "color": 4, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "3710", "color": 15, "x": 0, "y": 3.5, "z": 2, "face": "+z", "rot": 0},
+	])
+	# The bracket's plate on the front row of a 2 x 4, its upright
+	# hanging in front of the 2 x 4's face to 1.5 plates up; a 1 x 2
+	# plate on the upright's studs, 4 LDU (0.2 studs) out from the 2 x 4.
+	_judge("a 1 x 2 plate on the upright of %s is held" % bracket, true, [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": bracket, "color": 4, "x": 0, "y": 1.5, "z": 1, "rot": 0},
+		{"part": "3023", "color": 15, "x": 0, "y": 1.5, "z": 2.2, "face": "+z", "rot": 0},
+	])
+	_judge("...and the same plate a stud further out is not", false, [
+		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": bracket, "color": 4, "x": 0, "y": 1.5, "z": 1, "rot": 0},
+		{"part": "3023", "color": 15, "x": 0, "y": 1.5, "z": 3.2, "face": "+z", "rot": 0},
+	])
+	# Where technic_probe puts a pin through 3700's hole: the made brick
+	# has 3700's outside and its hole in the same place.
+	_judge("a Technic pin through the hole of %s is held and fits" % technic, true, [
+		{"part": technic, "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3673", "color": 0, "x": 0.6, "y": 0.75, "z": -0.5, "face": "up", "rot": 1},
+	])
+	_judge("...and the same pin turned across the hole is not", false, [
+		{"part": technic, "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3673", "color": 0, "x": 0.6, "y": 0.75, "z": -0.5, "face": "up", "rot": 0},
+	])
+	var mesh: Lbm.PartMesh = _library.mesh_for(technic)
+	var open: int = 0
+	var holes: int = 0
+	if mesh != null:
+		var cells: Dictionary = {}
+		for cell: Vector3i in _builder._cells_for(mesh, Transform3D.IDENTITY):
+			cells[cell] = true
+		for c: Lbm.Connector in mesh.connectors:
+			if c.kind == "pin_hole":
+				holes += 1
+				if not cells.has(BrickLattice.to_cell(c.position)):
+					open += 1
+	_ok(holes == 1 and open == 1, "its hole is a hole: %d of %d left open in its cover"
+		% [open, holes])
 
 
 func _parts_list(ids: Array) -> void:

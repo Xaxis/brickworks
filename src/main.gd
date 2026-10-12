@@ -21,6 +21,12 @@ var _stability: Stability
 var _stability_text: String = ""
 var _counts_base: String = ""
 var _stability_at: int = 0
+## The world's revision the stability line was worked out for.
+var _stability_revision: int = -1
+## Whether a worker is weighing the model now.
+var _weighing: bool = false
+## Bricks from which the model is weighed on a worker.
+const WEIGH_OFF_THREAD_FROM := 600
 var _counts: Label
 var _bin_dock: SideDock
 var _chat_dock: SideDock
@@ -58,6 +64,8 @@ var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
 ## The element maker: a part that is not in the library, made.
 var _elements: ElementDialog
+## Prints and stickers for any part (src/prints/print_studio.gd).
+var _studio: PrintStudio
 var _controls: ControlsDialog
 var _figures: MinifigDialog
 ## Whether --ask finished with a design rather than an apology. Read by
@@ -188,6 +196,8 @@ func _tell_page() -> void:
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
+	if _studio != null:
+		named.merge(_studio.controls_by_name())
 	if _account_panel != null:
 		named.merge(_account_panel.controls_by_name())
 	if _shell != null:
@@ -235,6 +245,15 @@ func _tell_page() -> void:
 		"mode": _verbs.mode if _verbs != null else "",
 		"selected": _builder.selection.size(),
 		"carrying": _builder.is_carrying(),
+		# What the renderer is drawing it with, and the frames this app's own
+		# work made slow, for tools/web/freeze_check.mjs: a browser's long
+		# tasks include drawing, which in software is most of a second a
+		# frame and says nothing about this code.
+		"batches": _drawn[0],
+		"triangles": _drawn[1],
+		"now": Time.get_ticks_msec(),
+		"slow": _slow_frames,
+		"playing": _playback != null and _playback.is_playing(),
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -245,6 +264,18 @@ func _tell_page() -> void:
 			"email": _account.email,
 			"offline": _account.offline,
 			"gated": _gated(),
+		}), true)
+	# And where Claude stands: listening here, which of its apps are
+	# connected to the account, and the panel's line about it — what a
+	# person reads, which a test cannot read off the canvas.
+	if _connector != null:
+		var clients: Array = []
+		for one: Variant in _connector.connections:
+			clients.append(str((one as Dictionary).get("client", "")))
+		JavaScriptBridge.eval("window.brickworksClaude = %s" % JSON.stringify({
+			"on": _connector.is_on(),
+			"connected": clients,
+			"status": _chat.connector_status(),
 		}), true)
 
 
@@ -772,6 +803,8 @@ func _on_account_changed() -> void:
 		_connector_resumed = false
 		if _connector.is_on():
 			_connector.stop()
+		# Whose connections they were is nobody's business here now.
+		_connector.refresh_connections()
 
 
 ## The panels either side of the viewport: the parts bin on the left, the
@@ -982,7 +1015,7 @@ func _build_ui() -> void:
 			_verbs.apply_hidden()
 		else:
 			_world.show_only(ids))
-	_steps.export_wanted.connect(_export_booklet)
+	_steps.export_wanted.connect(_booklet_wanted)
 	middle.add_child(_steps)
 
 	# Room for two lines. The strip wraps rather than truncating when the
@@ -1110,6 +1143,8 @@ func _build_ui() -> void:
 		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
 	_bar.timeline_wanted.connect(_toggle_steps)
+	# The booklet is Build, Instructions and the toolbar's Instructions
+	# button (Shell._instructions, which calls _booklet_wanted).
 
 	# Over the model rather than beside it, like the parts list: making
 	# a figure wants the room, and is done before going back to build.
@@ -1179,6 +1214,24 @@ func _build_ui() -> void:
 		_bar.say("made %s — it is in the parts bin under Custom" % (
 			Inventory._tidy(info.name) if info != null else part_id)))
 
+	# Prints and stickers for any part of the model (src/prints).
+	_studio = PrintStudio.new()
+	_studio.library = _library
+	_studio.world = _world
+	_studio.builder = _builder
+	_studio.camera = _camera
+	add_child(_studio)
+	_studio.setup($HUD)
+	_bin.print_wanted.connect(func() -> void: _studio.print_part(_builder.held_part))
+	_bin.stickers_wanted.connect(_studio.open_sheet)
+	_studio.said.connect(func(words: String) -> void: _bar.say(words))
+	_studio.made.connect(func(part_id: String) -> void:
+		_bin.populate()
+		if not Stickers.is_sticker(_library, part_id):
+			_bin.show_category(PartPrints.MY_PRINTS)
+			_bin.show_held(part_id, _builder.held_color)
+			_on_part_chosen(part_id))
+
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its
 	# design width would leave about fifty pixels of viewport, so it
@@ -1203,6 +1256,8 @@ func _build_ui() -> void:
 	_playback.world = _world
 	_playback.library = _library
 	add_child(_playback)
+	_watch_own_frames()
+	_world.rebuilds_in_slices = true
 
 	# What the camera turns around. Without this it orbits the middle of
 	# whatever was last framed, so grabbing a chimney and dragging swings
@@ -1323,13 +1378,18 @@ func _build_ui() -> void:
 		_ground_for_the_model.call_deferred()
 		_on_model_changed()
 		# Not when nobody is watching. Every edit emits this, and the
-		# assembly plans build steps for the whole model and then shows it
-		# a step at a time, each step walking every brick: on a 3,000-part
-		# Orthanc driven over MCP a frame took 13 s while it played, so a
-		# look took two to three minutes, add_rooms nearly three and a
-		# restyle four, waiting on an animation in a window nobody could
-		# see. Without it a look is 0.3 s and each of those 12 s.
-		if not _driven and _playback.play(_store.scenery):
+		# assembly planned build steps for the whole model and then showed
+		# it a step at a time, each step walking every brick: on a
+		# 3,000-part Orthanc driven over MCP a frame took 13 s while it
+		# played, so a look took two to three minutes, add_rooms nearly
+		# three and a restyle four, waiting on an animation in a window
+		# nobody could see. Without it a look is 0.3 s and each of those
+		# 12 s. And only what the change put down: what was standing
+		# already does not vanish to be built again.
+		# Nor when nobody can see it: a design made from claude.ai with the
+		# tab out of view is there, whole, when the tab is looked at.
+		_watch_view()
+		if not _driven and not _out_of_view and _playback.play_new(_assistant.fresh_ids):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
 	# it would be an assembly that never finishes.
@@ -1342,6 +1402,8 @@ func _build_ui() -> void:
 	# Who is signed in, and the way out: from Account on the bar.
 	_account_panel = AccountPanel.new()
 	_account_panel.setup(_account)
+	if _connector != null:
+		_account_panel.use_connector(_connector)
 	$HUD.add_child(_account_panel)
 	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
 	get_viewport().size_changed.connect(func() -> void:
@@ -1412,123 +1474,58 @@ func _turn_model(quarter_turns: int) -> void:
 	_on_model_changed()
 
 
-## Write the booklet out as one printable file.
+## The booklet: drawn off screen by BookletMaker, then handed over.
 ##
-## Every step is photographed from the same place. A booklet whose camera
-## moves between steps is unreadable — the whole way you see what a step
-## added is that everything else stayed where it was — so the framing is
-## taken once, from the finished model, and held.
+## [param to] writes it to a file and says so, which is how the command
+## line and the checks ask for one. Otherwise it goes where people are: on
+## the web into the tab [method _booklet_wanted] opened as the button was
+## pressed (a browser only lets a page open a tab in answer to a click,
+## and the pictures take longer than that), and on the desktop into the
+## Downloads folder and open in the browser, ready to print.
 func _export_booklet(to: String = "") -> String:
-	var steps: Array[Instructions.Step] = Instructions.plan(
-		_world, _library, _store.scenery)
-	if steps.is_empty():
+	_bar.say("planning the booklet…")
+	var maker := BookletMaker.new()
+	maker.library = _library
+	add_child(maker)
+	maker.progress.connect(func(said: String) -> void: _bar.say(said))
+	var title: String = _bar.model_name()
+	var html: String = await maker.make(_world, _store.scenery, title)
+	var steps: int = maker.document.steps if maker.document != null else 0
+	if not to.is_empty():
+		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:
+			return "%s %.1f s" % [lap[0], float(lap[1]) / 1000.0])))
+	maker.queue_free()
+	if html.is_empty():
 		_bar.say("nothing to write instructions for")
 		return "nothing to write instructions for"
-
-	var stock: Inventory = Inventory.of(_world, _library, _store.scenery)
-	var title: String = _bar.model_name()
-	_bar.say("drawing %d steps…" % steps.size())
-	await get_tree().process_frame
-
-	# The UI is not part of the picture, and the camera has to come back
-	# to where the person left it.
-	var was_playing: bool = _steps.is_playing_back()
-	if was_playing:
-		_steps.stop()
-	var had_hud: bool = $HUD.visible
-	var camera_was: Transform3D = _camera.global_transform
-	$HUD.visible = false
-	# Framed on the model, not on what it is standing on. A 32 x 32
-	# baseplate is four times the width of most things built on it, so
-	# framing the lot leaves the subject a thumbnail in the middle of a
-	# green field.
-	# A margin above 1 leaves air around the subject; below 1 crops into
-	# it. 0.78 cropped, so the finished model ran off the bottom of the
-	# last few pictures — the steps where it is tallest and matters most.
-	_camera.frame(_built_bounds(), 1.12)
-	for _n: int in 8:
-		await get_tree().process_frame
-		RenderingServer.force_draw(false)
-
-	# A model built a part at a time is photographed a part at a time:
-	# framed on the part being built, and framed the same way every time
-	# the build comes back to it. Eight new bricks in a picture of a
-	# 1,895-part castle are a few pixels; the camera holding still is
-	# still what shows what a step added, so it holds within a part.
-	var section_bounds: Dictionary = {}
-	for step: Instructions.Step in steps:
-		if step.section.is_empty():
-			continue
-		for brick_id: int in step.brick_ids:
-			var box: AABB = _box_of(brick_id)
-			section_bounds[step.section] = (box
-				if not section_bounds.has(step.section)
-				else (section_bounds[step.section] as AABB).merge(box))
-	var framed: String = ""
-
-	var pages: Array[Booklet.Page] = []
-	var showing: Dictionary = _store.scenery.duplicate()
-	for step: Instructions.Step in steps:
-		for brick_id: int in step.brick_ids:
-			showing[brick_id] = true
-		_world.show_only(showing)
-		if not step.section.is_empty() and step.section != framed:
-			framed = step.section
-			_camera.frame(section_bounds[step.section], 1.12)
-			for _n: int in 8:
-				await get_tree().process_frame
-				RenderingServer.force_draw(false)
-
-		# Forced, not awaited. A process frame is not a drawn frame, and
-		# an unattended window stops being asked to redraw — which is how
-		# every picture ends up being of the step before.
-		for _n: int in 4:
-			await get_tree().process_frame
-			RenderingServer.force_draw(false)
-
-		var page := Booklet.Page.new()
-		page.index = step.index
-		page.awkward = step.unsupported
-		page.section = step.section
-		page.image = _snapshot()
-		page.adds = _step_parts(step)
-		pages.append(page)
-
-	_world.show_only({})
-	$HUD.visible = had_hud
-	_camera.global_transform = camera_was
-	# Back where you were. Saving the instructions from inside the
-	# booklet stopped the playback to take its pictures and then never
-	# started it again, so asking for a copy of what you were reading
-	# closed what you were reading. The flag was recorded and never
-	# looked at.
-	if was_playing:
-		_steps.start(_world, _library, _store.scenery)
-
 	var file_name: String = title.to_snake_case() + "_instructions.html"
-	var html: String = Booklet.html(title, pages, stock)
 	var note: String
-	if to.is_empty():
-		note = Download.give(html, file_name, "text/html")
-	else:
+	if not to.is_empty():
 		var file: FileAccess = FileAccess.open(to, FileAccess.WRITE)
 		if file == null:
 			note = "could not write %s" % to
 		else:
 			file.store_string(html)
 			file.close()
-			note = "wrote %s, %d steps" % [to, pages.size()]
+			note = "wrote %s, %d steps" % [to, steps]
+	elif OS.has_feature("web") and BookletMaker.fill_tab(html):
+		note = "the booklet is open in a new tab, %d steps" % steps
+	else:
+		note = Download.give(html, file_name, "text/html")
+		if note.begins_with("wrote ") and BookletMaker.open_when_written:
+			OS.shell_open("file://" + note.trim_prefix("wrote "))
 	_bar.say(note)
 	return note
 
 
-## Where one brick is, as a box in the world.
-func _box_of(brick_id: int) -> AABB:
-	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-	if part == null:
-		return AABB(brick.transform.origin, Vector3.ZERO)
-	return brick.transform * part.bounds
+## The Instructions button, on the toolbar and on the timeline.
+func _booklet_wanted() -> void:
+	if BookletMaker.busy:
+		_bar.say("already drawing the booklet…")
+		return
+	if OS.has_feature("web"):
+		BookletMaker.open_tab()
+	await _export_booklet()
 
 
 ## What was built, without the baseplate it was built on. Falls back to
@@ -1550,56 +1547,6 @@ func _built_bounds() -> AABB:
 	# a box round nothing frames nothing, and the baseplate is at least
 	# somewhere to stand. Not _built_bounds(), which is this function.
 	return _world.model_bounds() if first else bounds
-
-
-## The viewport as a data: URI.
-##
-## JPEG, not PNG. Thirty steps of a lossless 1600-wide render comes to
-## tens of megabytes inside a single file, and the subject is smooth
-## plastic against a flat background — the one thing JPEG does well.
-func _snapshot() -> String:
-	var image: Image = get_viewport().get_texture().get_image()
-	# Halved first: the page is 860 wide and a 1600-wide picture in it is
-	# three times the bytes for no more detail on paper.
-	var wide: int = 900
-	if image.get_width() > wide:
-		var tall: int = int(round(float(image.get_height())
-			* float(wide) / float(image.get_width())))
-		image.resize(wide, tall, Image.INTERPOLATE_LANCZOS)
-	var bytes: PackedByteArray = image.save_jpg_to_buffer(0.84)
-	return "data:image/jpeg;base64," + Marshalls.raw_to_base64(bytes)
-
-
-## What a step adds, with the colours it adds them in.
-func _step_parts(step: Instructions.Step) -> Array:
-	var tally: Dictionary = {}
-	for brick_id: int in step.brick_ids:
-		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-		if brick == null:
-			continue
-		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
-		if tally.has(key):
-			tally[key]["count"] = int(tally[key]["count"]) + 1
-			continue
-		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
-		var color: PartLibrary.BrickColor = _library.color(brick.color_code)
-		var name: String = info.name.strip_edges() if info != null else brick.part_id
-		while name.contains("  "):
-			name = name.replace("  ", " ")
-		tally[key] = {
-			"count": 1,
-			"part": brick.part_id,
-			"name": name,
-			"colour": color.name if color != null else "",
-			"rgb": "#%02x%02x%02x" % [
-				int(color.rgb.r * 255.0), int(color.rgb.g * 255.0),
-				int(color.rgb.b * 255.0)] if color != null else "#888888",
-		}
-
-	var adds: Array = tally.values()
-	adds.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a["count"]) > int(b["count"]))
-	return adds
 
 
 ## Lay the chosen picture out in plates.
@@ -2048,7 +1995,12 @@ func _placeable_parts() -> int:
 	return _placeable
 
 
+## The batches and triangles the world was last drawn with.
+var _drawn: Array[int] = [0, 0]
+
+
 func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> void:
+	_drawn = [batch_count, triangle_count]
 	if _counts == null:
 		return
 	# The count of parts you can place, which is not the size of the
@@ -2075,25 +2027,71 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 		_counts_base = "Nothing built yet: pick a part, then click the baseplate"
 	else:
 		_counts_base = "%s brick%s" % [_comma(own), "" if own == 1 else "s"]
-	# Stability is cheap but not free, and a rebuild can fire several
-	# times while a model is being dropped in. Once a second is plenty
-	# for something a person reads.
-	var now: int = Time.get_ticks_msec()
-	if _stability != null and now - _stability_at > 900:
-		_stability_at = now
-		var report: Stability.Report = _stability.check(_world)
-		for id: int in scenery:
-			var plate: BrickWorld.Brick = _world.get_brick(id)
-			var info: PartLibrary.PartInfo = \
-				_library.parts.get(plate.part_id) if plate != null else null
-			if info != null:
-				report.total_grams -= Stability.grams(info)
-		_stability_text = report.summary()
+	_weigh()
 	# Nothing to stand up, whenever the last check was; and the first
 	# brick placed is weighed at once rather than up to a second later.
 	if own == 0 and not _stats_shown:
 		_stability_text = ""
 		_stability_at = 0
+
+
+## Whether the model stands, for the counts line.
+##
+## Stability is cheap but not free, and a rebuild can fire several times
+## while a model is being dropped in. Once a second is plenty for something
+## a person reads — and the last change of a burst is weighed too, from
+## _process, rather than left out because it came inside the second. Only
+## when the model changed, not when what is drawn of it did: the build
+## animation rebuilt every frame and this ran each time, 4.4 s on the
+## Falcon Heavy's 4,242 parts.
+##
+## And on a worker for a big model: a quarter of a second on the desktop for
+## the 4,242-part Falcon, several times that in a browser, after every
+## change. The worker reads copies of the world and the lattice, made here
+## in a few milliseconds, and the library holds new parts aside meanwhile.
+func _weigh() -> void:
+	if _stability == null or _world == null or _counts == null or _weighing \
+			or _world.revision == _stability_revision or _world.is_drawing_held():
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _stability_at <= 900:
+		return
+	_stability_at = now
+	_stability_revision = _world.revision
+	var scenery: Dictionary = _store.scenery if _store != null else {}
+	if _world.brick_count() <= scenery.size() and not _stats_shown:
+		_stability_text = ""
+		return
+	var report: Stability.Report
+	if _world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
+		report = _stability.check(_world)
+	else:
+		_weighing = true
+		var judge := Stability.new()
+		judge.library = _library
+		judge.lattice = _builder.lattice.copy_for_reading()
+		var still: BrickWorld = _world.copy_for_reading()
+		var weighed: Array = [null]
+		_library.begin_reading()
+		var task: int = WorkerThreadPool.add_task(func() -> void:
+			weighed[0] = judge.check(still), false, "weigh the model")
+		_library.reading_in(task)
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerThreadPool.wait_for_task_completion(task)
+		_library.end_reading(task)
+		still.free()
+		_weighing = false
+		report = weighed[0]
+		if report == null:
+			return
+	for id: int in scenery:
+		var plate: BrickWorld.Brick = _world.get_brick(id)
+		var info: PartLibrary.PartInfo = \
+			_library.parts.get(plate.part_id) if plate != null else null
+		if info != null:
+			report.total_grams -= Stability.grams(info)
+	_stability_text = report.summary()
 
 
 ## Which way a key zooms: 1 in, -1 out, 0 when it is not a zoom key.
@@ -2153,7 +2151,77 @@ func _steer_from_keys(delta: float) -> void:
 		(arrows if sliding else Vector2.ZERO) + wasd)
 
 
+## Frames whose own work — scripts, coroutines, deferred calls, not drawing —
+## took over SLOW_FRAME_MS, as [when in ticks, ms of work, ms waiting for a
+## picture to be read back, what the app was doing: the tool Claude called
+## and the assistant's last step], the latest SLOW_FRAMES of them. Kept on the web
+## only, where the page reads them. Timed from the tree's process_frame,
+## which begins a frame's work, to the renderer's frame_pre_draw, which ends
+## it; the wait for a picture (ModelShot.gpu_wait_us) is the graphics card's
+## time, not this app's, and is said apart.
+var _slow_frames: Array = []
+var _frame_began: int = 0
+var _doing: String = ""
+const SLOW_FRAME_MS := 50.0
+const SLOW_FRAMES := 200
+
+
+func _watch_own_frames() -> void:
+	if not OS.has_feature("web"):
+		return
+	_assistant.progress.connect(func(note: String) -> void:
+		_doing = note)
+	if _connector != null and _connector.rpc != null:
+		_connector.rpc.asked.connect(func(tool: String) -> void:
+			_doing = tool)
+	get_tree().process_frame.connect(func() -> void:
+		_frame_began = Time.get_ticks_usec())
+	RenderingServer.frame_pre_draw.connect(func() -> void:
+		if _frame_began == 0:
+			return
+		var spent: float = (Time.get_ticks_usec() - _frame_began) / 1000.0
+		var waited: float = ModelShot.gpu_wait_us / 1000.0
+		ModelShot.gpu_wait_us = 0
+		_frame_began = 0
+		if spent > SLOW_FRAME_MS:
+			_slow_frames.append([Time.get_ticks_msec(),
+				roundi(maxf(spent - waited, 0.0)), roundi(waited), _doing])
+			if _slow_frames.size() > SLOW_FRAMES:
+				_slow_frames = _slow_frames.slice(-SLOW_FRAMES))
+
+
+## Whether nobody can see the model: the browser tab out of view, or the
+## window minimised.
+##
+## Claude designs from claude.ai with the Brickworks tab out of view, and the
+## connector keeps the app running there (ClaudeConnector._watch_the_page).
+## It went on drawing the model every frame for nobody, and went on to play
+## the build animation for nobody, so when the person looked the model was
+## still going up (2026-10-11). Out of view now nothing 3D is drawn, and a
+## design arrives whole.
+var _out_of_view: bool = false
+
+
+func _watch_view() -> void:
+	var away: bool = _nobody_looking()
+	if away == _out_of_view:
+		return
+	_out_of_view = away
+	get_viewport().disable_3d = away
+	FramePace.unwatched = away
+	if away and _playback != null and _playback.is_playing():
+		_playback.stop()
+
+
+static func _nobody_looking() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("document.hidden", true))
+	return DisplayServer.get_name() != "headless" \
+		and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED
+
+
 func _process(_delta: float) -> void:
+	_watch_view()
 	_steer_from_keys(_delta)
 	if _cursors != null:
 		_cursors.show_state(_cursor_state())
@@ -2186,6 +2254,7 @@ func _process(_delta: float) -> void:
 			_drop_dragged(get_viewport().get_mouse_position())
 	if _store != null:
 		_store.tick()
+	_weigh()
 	_tell_page()
 	if _counts == null:
 		return

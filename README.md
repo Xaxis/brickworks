@@ -97,8 +97,13 @@ have to stay one.
   rather than the order things were placed: every brick rests on
   something already there, and a step stays in one part of the model.
   A big model is built a part at a time, as a set is — the gatehouse,
-  then a tower — with each part pictured on its own. Out as a single
-  printable page with a picture per step.
+  then a tower. A minifigure, or a window the file builds once and places
+  four times, is built on the side in a callout, "4x", and put on with an
+  arrow. The **Instructions** button lays it out as a set's booklet: a
+  cover, steps with a big number and a box of the parts each adds, every
+  part outlined in ink, the model turned round when the work is behind it,
+  and every part by colour with its element number at the end. One file
+  that prints on A4 or Letter; on the web it opens in a new tab.
 - **A mosaic** — a photograph matched to the forty-four colours a
   1×1 plate is really moulded in, perceptually rather than
   arithmetically, and dithered because against a palette that small flat
@@ -117,7 +122,7 @@ browser or computer until you sign out (Account, on the toolbar), and
 the desktop app keeps working offline once you have signed in.
 
 What an account holds: the address, when you last signed in, and which
-Claude connector is yours. Your models are not in it — they are saved in
+of Claude's apps you connected to it. Your models are not in it — they are saved in
 your browser or on your computer, and leave as LDraw files. Asking for a
 code is rate limited per address and per network address (kept a day),
 so the form cannot be used to bury somebody's inbox.
@@ -126,17 +131,39 @@ The design assistant spends money on every request, and the money is
 yours, spent one of two ways. Paste an Anthropic API key into the
 panel: it goes from your machine straight to api.anthropic.com, never to
 us, and Anthropic bills you for what each design uses. Or design on the
-Claude plan you already have, with Claude as the client — the next two
+Claude plan you already have, with Claude as the client — the next three
 sections. Your Brickworks account pays for nothing and is billed nothing.
 
 The server is small. `GET /api/account` tells the app where the part
 geometry its build did not ship is served from and where to sign in;
 `POST /api/otp` emails a code; `POST /api/mcp` is the connector relay,
 which only lets a signed-in tab switch a connector on and records whose
-it is; `GET /api/admin` is the owner's list of accounts. Accounts live
-in Supabase (`supabase/schema.sql`, `supabase/relay.sql`). There were
+it is; `api/oauth.js` is how Claude signs in to it (OAuth 2.1 as MCP's
+authorization spec has it: `/.well-known/oauth-*`, `/oauth/register`,
+`/oauth/authorize`, `/oauth/token`, `/oauth/revoke`); `GET /api/admin`
+is the owner's list of accounts. Accounts live in Supabase
+(`supabase/schema.sql`, `supabase/relay.sql`, `supabase/oauth.sql`). There were
 accounts once before, until 2026-10-09, so that one of them could design
 on the project's own key; that proxy has not come back.
+
+## Connect Claude to your account
+
+On a Claude plan, press **Connect Claude** in the design panel. claude.ai
+opens on *Add custom connector* with Brickworks filled in; press Add, then
+Connect, and Allow when Brickworks asks (it is the same email sign-in).
+That connects Claude to your Brickworks account once: the Claude desktop
+and mobile apps have it too, and whenever Brickworks is open and signed
+in, on any device, Claude can build in it. Ask Claude to "build a small
+red house in Brickworks" and watch it go up. In Claude Code:
+
+```sh
+claude mcp add --transport http brickworks https://brickworks.diy/api/mcp
+```
+
+then `/mcp` and Authenticate. Brickworks never sees your Claude login:
+Claude holds a Brickworks token, and Disconnect Claude (under Account)
+ends it everywhere. `docs/CONNECTING.md` has how it works, with Anthropic's
+documentation for each step.
 
 ## Or design on the Claude you already pay for
 
