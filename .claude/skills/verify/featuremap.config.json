@@ -1036,6 +1036,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "render open check",
+      "entry": "tools/web/render_open_check.mjs",
+      "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=… --url=<a preview>/app: the Render dialog's first open, every frame timed)",
+      "area": "view"
+    },
+    {
       "kind": "api",
       "label": "GET/POST /api/share",
       "entry": "api/share.js",
