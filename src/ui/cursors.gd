@@ -59,10 +59,6 @@ const HOTSPOTS := {
 	"paint": Vector2(4.5, 27.5),
 }
 
-## States that belong to a drag in progress. They keep the pointer for
-## the whole drag, panels included: see [member _shield].
-const GESTURES := ["orbit", "slide", "box"]
-
 ## What is true at this moment, as far as the pointer is concerned.
 ## Filled in by whoever owns the scene; [method choose] is the only
 ## thing that reads it.
@@ -95,6 +91,12 @@ class Situation extends RefCounted:
 	var can_place: bool = false
 	## The part being held has not arrived yet.
 	var loading: bool = false
+
+	## A drag is going on: a button turns or slides the view, or draws a
+	## box. Only then does the pointer keep its shape over the panels
+	## (see [member Cursors._shield]).
+	func dragging() -> bool:
+		return turning or sliding or boxing
 
 
 ## The one state the pointer should be in.
@@ -205,12 +207,28 @@ func shielding() -> bool:
 
 
 ## Put the pointer in a state.
-func show_state(state: String) -> void:
-	if state == _shown or not SHAPES.has(state):
+## The pointer for what is true now: its state, and the sheet over the
+## panels while a drag goes on.
+func show_for(now: Situation) -> void:
+	show_state(choose(now), now.dragging())
+
+
+## Put the pointer in a state, and over the panels as well while
+## [param dragging].
+##
+## Only while a drag is held, never for what a state is called. The
+## Orbit and Pan tools' pointers are a turn's and a slide's, and the sheet
+## went up for them whenever the tool was on: it covered every panel, and
+## a click on any button turned the view instead (2026-10-12).
+func show_state(state: String, dragging: bool = false) -> void:
+	if not SHAPES.has(state):
+		return
+	var shield: bool = dragging and not TouchTools.wanted()
+	if state == _shown and shield == shielding():
 		return
 	_shown = state
 	var shape: int = SHAPES[state]
-	if state in GESTURES and not TouchTools.wanted():
+	if shield:
 		# Up first and then shaped, so the shape takes at once: setting
 		# a control's shape redraws the pointer only if the control is
 		# there to be found under it.

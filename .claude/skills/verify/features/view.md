@@ -185,6 +185,13 @@ picture the assistant is shown.
   cursor shape; custom pictures are hung on shapes the interface never uses
   (`Cursors.SHAPES`). During a drag a full-window `MOUSE_FILTER_PASS` sheet
   (`_shield`) carries the drag's shape so a turn across a panel stays a turn.
+  Only while a button holds the drag (`Cursors.Situation.dragging()`), never
+  for what a state is called. It went up for the pointer's name, and the Orbit
+  and Pan tools, Space and Alt show a turn's and a slide's: with any of them on
+  it covered every panel, and a click on a button turned the view instead
+  (brickworks.diy, 2026-10-12). `cursor_probe` presses Paint and a part in the
+  bin with each view tool on and with Space and Alt held; 10 of its checks fail
+  on 91ae209.
   Pictures are `assets/ui/cursors/*.svg`, drawn by `Icons` at 1x, 1.5x or 2x by
   screen DPI on Windows and X11, 1x on a Mac (NSCursor takes pixels as points),
   and in a browser as CSS `image-set()` with 1x and 2x so a 2x screen is sharp.

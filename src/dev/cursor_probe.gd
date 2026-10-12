@@ -120,6 +120,9 @@ func _run() -> void:
 	print("  the way back")
 	await _the_way_back()
 	print("")
+	print("  buttons pressed with the view tools on and the keys held")
+	await _buttons_while_the_view_is_lent()
+	print("")
 	print("  the controls list")
 	await _the_list()
 	_finish()
@@ -690,6 +693,65 @@ func _the_way_back() -> void:
 			DisplayServer.CURSOR_POINTING_HAND)
 	await _move_to(_middle)
 	await _expect("back to placing", "place")
+
+
+## A view tool on, or a key held that lends the left button to the view,
+## and a click on the toolbar or a panel still presses what it is on.
+##
+## The sheet that keeps a drag's pointer over the panels went up for a
+## state's name, not for a drag: the Orbit and Pan tools' pointers are a
+## turn's and a slide's, so with either on it covered the window for as
+## long as the tool was, and every click on a button turned the view
+## instead (brickworks.diy, 2026-10-12). Space and Alt held did the same.
+func _buttons_while_the_view_is_lent() -> void:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var shell: Shell = _main.get("_shell")
+	var bin: PartsBin = _main.get("_bin")
+	var paint: Control = shell.toolbar.controls_by_name().get("tool_mode_paint")
+	var part: Control = bin.controls_by_name().get("first part")
+	_check("there is Paint on the toolbar and a part in the bin to press",
+		paint != null and part != null)
+	if paint == null or part == null:
+		return
+	await _key_tap(KEY_ESCAPE)
+	for tool: String in ["orbit", "pan", "zoom"]:
+		verbs.set_mode("select")
+		verbs.view_tool(tool)
+		await _move_to(_middle)
+		await _frames(3)
+		_check("%s on, no button down: nothing over the panels (%s)"
+			% [tool.capitalize(), _cursors.shown()], not _cursors.shielding())
+		await _click(_centre(paint))
+		_check("...and a click on Paint on the toolbar presses it (%s)" % verbs.mode,
+			verbs.mode == "paint")
+		verbs.view_tool(tool)
+		await _move_to(_middle)
+		await _frames(3)
+		await _click(_centre(part))
+		_check("...and a click on a part in the parts bin takes it (%s)" % verbs.mode,
+			verbs.mode == "place")
+		await _key_tap(KEY_ESCAPE)
+	for held: Array in [[KEY_SPACE, "Space"], [KEY_ALT, "Alt"]]:
+		verbs.set_mode("select")
+		await _move_to(_middle)
+		await _key_down(held[0], true)
+		await _frames(3)
+		_check("%s held: nothing over the panels (%s)" % [held[1], _cursors.shown()],
+			not _cursors.shielding())
+		await _click(_centre(paint))
+		_check("...and a click on Paint presses it (%s)" % verbs.mode, verbs.mode == "paint")
+		await _key_down(held[0], false)
+	verbs.set_mode("place")
+	await _frames(3)
+
+
+## Down and up where it is, as a click.
+func _click(at: Vector2) -> void:
+	await _move_to(at)
+	_press(MOUSE_BUTTON_LEFT, at, true)
+	await _frames(2)
+	_press(MOUSE_BUTTON_LEFT, at, false)
+	await _frames(4)
 
 
 func _the_list() -> void:
