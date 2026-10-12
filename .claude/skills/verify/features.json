@@ -348,6 +348,14 @@
       "tests": []
     },
     {
+      "id": "cli:render open check",
+      "kind": "cli",
+      "entry": "tools/web/render_open_check.mjs",
+      "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app: the Render dialog's first open, every frame timed)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:say which build this is",
       "kind": "cli",
       "entry": "src/main.gd",

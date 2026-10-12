@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
 
 ## Sub-features
 
@@ -593,6 +593,19 @@ picture the assistant is shown.
   `<model>_animation.webp`; the desktop writes the frames, the WebP and, with
   ffmpeg, an MP4 to Downloads. `window.brickworksPose` says the joints with
   each slider's ends on the page, the keys, and the render's progress and file.
+  (`RenderOutput.add_frame`, at most three waiting). Under Compatibility
+  every 3D draw of the set first draws, alone and one a frame, each thing in
+  it that view has not drawn in that set-up (`_warm`: a batch per shader and
+  mesh format, the sweep, the contact shadow; on a layer of its own that the
+  lights are put on too), the card left to finish each (`GpuFence`) before
+  the next; and every picture is read back only once the card has finished
+  it (`_read`), so a read-back no longer holds the page while it rasterises.
+- `render open check` (`tools/web/render_open_check.mjs`): the Render
+  dialog's first open in a fresh browser, from the toolbar, every frame from
+  the press to the first draft timed in the page (the engine's frame
+  callback, WebGL included, with the programs it linked counted apart), then
+  a second open beside it. Fails past `--budget` ms (250) for a frame of the
+  first open, on no draft, or on a script error.
 
 ## How to reach it
 
@@ -682,6 +695,12 @@ node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out
 # back; three keys whose frames, read off the renderer's own copy, turn each
 # joint through its keys; Render animation's frames, WebP and MP4
 MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd
+# The first open of Render in a fresh browser, every frame timed (the engine's
+# frame callback, WebGL calls in it, the programs it linked): fails past
+# --budget ms (250) for any frame from the press to the draft; prints a
+# second open beside it. --programs lists each program linked, by its
+# #defines, and the frame it was linked in. A local export, served by it:
+node tools/web/render_open_check.mjs --dir=build/web --out=shots/render_open
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
@@ -739,11 +758,32 @@ take, which is what made a design run give up on looking at itself.
   window stopped drawing its model behind the panel. What was made new for
   every picture cost the same way and is kept now (above). Measured with
   `render_flow.mjs`, which prints each render's longest frame and what it
-  was doing; the first draft of a session still pays for building the
-  viewports (and compiling their shaders) once. On the preview of a3fc635
-  (2026-10-12, SwiftShader): the app turning its view 3.2 s; every draft and
-  render after the first open at most 1.7 s; the first open 9.0 s; a 1080p
-  Quick 3 s, a 720p Good 5 s, a 24-frame 720p turntable 29 s.
+  was doing. On the preview of a3fc635 (2026-10-12, SwiftShader): the app
+  turning its view 3.2 s; every draft and render after the first open at
+  most 1.7 s; the first open 9.0 s; a 1080p Quick 3 s, a 720p Good 5 s, a
+  24-frame 720p turntable 29 s.
+- **The first open built eighteen shader programs in four frames.** Under
+  Compatibility a shader is built for each way it is drawn, in the frame
+  that first draws it so, and the set draws the bricks' shaders in ways the
+  window never does (the key's orthogonal shadow pass, no light at all for
+  the contact shadow's silhouettes) and has two shaders of its own (sweep,
+  contact shadow). In SwiftShader each program is 10-100 ms of the page
+  waiting, and every read-back in those frames waited for the card to
+  compile and draw too: one frame held 11 programs and a read-back, about
+  1 s (`render_open_check.mjs` on a local export; 9 s on a preview). Now
+  `StudioRender._warm` draws each new thing alone, a frame each, before
+  the draw that needs it, and `_read` waits on a fence before reading back:
+  the longest frame of the first open 950-1,120 ms before, 115-237 ms after
+  (2026-10-12, at loads of 14 to 60 on this box), the same 18 programs, at
+  most 6 in a frame (the sweep: a new shader is built for all four of its
+  draws at once, plus the ways it is drawn), and a second open's longest
+  frame 220-300 ms before, 40-60 ms after. The first draft comes about 1.5 s
+  later (5.5 s against 3.8 s), the dialog answering throughout. Two
+  surprises on the way: a camera sees only the lights on layers it draws,
+  so a thing drawn alone on a layer of its own was built for a set with no
+  lights until the lights were put on that layer too; and a light's shadow
+  takes in everything on its own cull mask whatever the camera sees, so the
+  lights light and shadow the one thing while it is warmed.
 - **A render's steps must make the engine draw.** The app may draw only
   what changed (IdleDraw's low-processor mode), and each step waits for the
   frame count to move; setting a viewport to `UPDATE_ONCE` is a change, a

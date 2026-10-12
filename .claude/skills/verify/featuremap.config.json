@@ -1118,6 +1118,13 @@
       "entry": "src/assembly/pose_animation.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "render open check",
+      "entry": "tools/web/render_open_check.mjs",
+      "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=… --url=<a preview>/app: the Render dialog's first open, every frame timed)",
+      "area": "view"
     }
   ]
 }

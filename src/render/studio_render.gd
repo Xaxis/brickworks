@@ -509,17 +509,18 @@ func _build() -> void:
 	_fence.size = Vector2i(2, 2)
 	add_child(_fence)
 	await _draw([_fence])
-	# A frame each, read back each: the first draw of each is its shaders
-	# being built, which in a browser drawing in software is seconds, and
-	# all of them in one frame held the page for twelve.
+	# A frame each, and the card left to finish each before the next: the
+	# first draw of each is its shaders being built, which in a browser
+	# drawing in software is seconds, and all of them in one frame held the
+	# page for twelve. Read back instead, each still held it for as long.
 	_size_all(Vector2i(8, 8))
 	for view: SubViewport in [_scene, _base, _out]:
 		await _draw([view])
 		_doing("setting up the viewports")
-		view.get_texture().get_image()
+		await GpuFence.finished()
 	await _draw([_sums[0]])
 	_doing("setting up the viewports")
-	var probe: Image = _sums[0].get_texture().get_image()
+	var probe: Image = await _read(_sums[0])
 	_floats = probe != null and probe.get_format() in [Image.FORMAT_RGBAF, Image.FORMAT_RGBAH,
 		Image.FORMAT_RGBF, Image.FORMAT_RGBH]
 	for n: int in 2:
@@ -556,8 +557,153 @@ func _size_all(size: Vector2i) -> void:
 
 ## Draw these viewports once, and wait until they have been. Waited by
 ## frames drawn rather than on frame_post_draw so a cancel is noticed
-## while a window that is not being drawn holds the picture up.
+## while a window that is not being drawn holds the picture up. What in
+## them is new to the way they are set up is drawn first, a thing a frame
+## (see [method _warm]).
 func _draw(views: Array) -> bool:
+	for view: SubViewport in views:
+		if (view == _scene or view == _floor_view) and not await _warm(view):
+			return false
+	return await _draw_now(views)
+
+
+## A view's picture, read back once the card has drawn it. Reading back
+## waits for everything asked of the card before it, which in a browser
+## drawing in software is the page held for as long as the picture takes
+## to rasterise: the card is waited for first, a frame at a time, with the
+## page answering (GpuFence).
+func _read(view: SubViewport) -> Image:
+	await GpuFence.finished()
+	return view.get_texture().get_image()
+
+
+## The layer a thing is put on to be drawn alone: nothing else is on it.
+const WARM_LAYER := 1 << 19
+
+## What has been drawn in which set-up: [method _warm]'s keys.
+var _warmed: Dictionary = {}
+
+
+## Before a 3D view of the set is drawn: each thing in it the view has not
+## drawn in this set-up before, drawn first on its own, a thing a frame,
+## and the card left to finish each before the next.
+##
+## Under Compatibility (every browser) a shader is built for each way it is
+## drawn, in the frame that first draws it that way, and the set draws the
+## model's shaders in ways the window never does: under a key light's
+## shadow of its own, and in no light for the contact shadow; and the sweep
+## and the contact shadow's own besides. Drawn together, the first open of
+## File, Render… built eighteen programs in four frames, and in a browser
+## drawing in software held the page for up to 9 s (a preview, 2026-10-12;
+## about a second here, tools/web/render_open_check.mjs). A thing is a
+## batch of the model for each shader and kind of mesh in it, the sweep, or
+## the contact shadow: at most six programs a frame. Forward+ builds its
+## pipelines away from the frame and needs none of this.
+func _warm(view: SubViewport) -> bool:
+	if full_renderer():
+		return true
+	var camera: Camera3D = _floor_camera if view == _floor_view else _camera
+	var setup: String = _setup(view, camera)
+	# Asked again for every frame of a render: a model's batches are
+	# looked through only when what is staged or shown has changed.
+	var asked: String = "%s %d %s %d %d" % [setup, camera.cull_mask, str(_staged),
+		int(_backdrop.visible), int(_contact.visible and _contact.mesh != null)]
+	if _warmed.has(asked):
+		return true
+	var due: Array[GeometryInstance3D] = []
+	for thing: GeometryInstance3D in _things(camera.cull_mask):
+		if not _warmed.has(setup + _kind(thing)):
+			due.append(thing)
+	if due.is_empty():
+		_warmed[asked] = true
+		return true
+	var mask: int = camera.cull_mask
+	var lights: Array[DirectionalLight3D] = _lights.duplicate()
+	lights.append(_sky_light)
+	var seen: Array[int] = []
+	var lighting: Array[int] = []
+	for light: DirectionalLight3D in lights:
+		# A camera sees only the lights on the layers it draws: left off
+		# them, what was built was for a set with no lights at all.
+		seen.append(light.layers)
+		light.layers = light.layers | WARM_LAYER
+		# And they light and shadow the one thing: a shadow takes in all
+		# its light's layers whatever the camera sees, and the whole
+		# model's, drawn in software, was most of a frame's wait.
+		lighting.append(light.light_cull_mask)
+		light.light_cull_mask = WARM_LAYER
+	camera.cull_mask = WARM_LAYER
+	var done: bool = true
+	for thing: GeometryInstance3D in due:
+		var layers: int = thing.layers
+		thing.layers = WARM_LAYER
+		_doing("building the shaders of %s" % thing.name)
+		done = await _draw_now([view])
+		thing.layers = layers
+		if not done:
+			break
+		await GpuFence.finished()
+		_warmed[setup + _kind(thing)] = true
+	for n: int in lights.size():
+		lights[n].layers = seen[n]
+		lights[n].light_cull_mask = lighting[n]
+	camera.cull_mask = mask
+	if done:
+		_warmed[asked] = true
+	return done
+
+
+## What decides how a view draws a thing, besides the thing: its samples,
+## the light it is in, which lights there are and which cast shadows.
+func _setup(view: SubViewport, camera: Camera3D) -> String:
+	var lights := PackedStringArray()
+	for light: DirectionalLight3D in _lights + [_sky_light]:
+		lights.append("%d%d" % [int(light.visible), int(light.shadow_enabled)])
+	var environment: Environment = camera.environment
+	return "%s %d %d %s|" % [view.name, view.msaa_3d,
+		environment.get_instance_id() if environment != null else 0, "".join(lights)]
+
+
+## Everything in the set the camera's [param mask] takes in that will be
+## drawn: one of each kind (see [method _kind]).
+func _things(mask: int) -> Array[GeometryInstance3D]:
+	var kinds: Dictionary = {}
+	var all: Array[GeometryInstance3D] = [_backdrop, _contact]
+	for child: Node in _stage.get_children():
+		if child is MultiMeshInstance3D:
+			all.append(child as GeometryInstance3D)
+	for thing: GeometryInstance3D in all:
+		if not thing.is_visible_in_tree() or (thing.layers & mask) == 0:
+			continue
+		var batch := thing as MultiMeshInstance3D
+		if batch != null and (batch.multimesh == null or batch.multimesh.mesh == null
+				or batch.multimesh.instance_count == 0 or batch.multimesh.visible_instance_count == 0):
+			continue
+		var plain := thing as MeshInstance3D
+		if plain != null and plain.mesh == null:
+			continue
+		var kind: String = _kind(thing)
+		if not kinds.has(kind):
+			kinds[kind] = thing
+	var out: Array[GeometryInstance3D] = []
+	out.assign(kinds.values())
+	return out
+
+
+## What a shader is built for: the shader, instanced or not, and the
+## format of the mesh's vertices.
+static func _kind(thing: GeometryInstance3D) -> String:
+	var material: Material = thing.material_override
+	var shader: Shader = (material as ShaderMaterial).shader if material is ShaderMaterial else null
+	var mesh: Mesh = (thing as MultiMeshInstance3D).multimesh.mesh if thing is MultiMeshInstance3D \
+		else (thing as MeshInstance3D).mesh
+	var format: int = (mesh as ArrayMesh).surface_get_format(0) \
+		if mesh is ArrayMesh and mesh.get_surface_count() > 0 else 0
+	return "%d %d %s %d" % [shader.get_rid().get_id() if shader != null else 0,
+		int(thing is MultiMeshInstance3D), mesh.get_class() if mesh != null else "", format]
+
+
+func _draw_now(views: Array) -> bool:
 	var names := PackedStringArray()
 	for view: SubViewport in views:
 		names.append(str(view.name))
@@ -731,10 +877,10 @@ func _meter_floor(shot: Shot, picture: Vector2i) -> float:
 		if not masked:
 			return -1.0
 		_doing("reading the floor's mask")
-		_floor_mask = _scene.get_texture().get_image()
+		_floor_mask = await _read(_scene)
 	if not await _draw([_scene]):
 		return -1.0
-	var image: Image = _scene.get_texture().get_image()
+	var image: Image = await _read(_scene)
 	if image == null:
 		return 0.0
 	var levels := PackedFloat32Array()
@@ -765,7 +911,7 @@ func _meter(shot: Shot, picture: Vector2i) -> float:
 	environment.background_mode = background as Environment.BGMode
 	if not drawn:
 		return -1.0
-	var image: Image = _scene.get_texture().get_image()
+	var image: Image = await _read(_scene)
 	if image == null:
 		return 0.0
 	var sum: float = 0.0
@@ -1165,7 +1311,7 @@ func _contact_shadow() -> bool:
 				lights[k].visible = lit[k]
 			return false
 		_doing("reading a silhouette")
-		var silhouette: Image = _floor_view.get_texture().get_image()
+		var silhouette: Image = await _read(_floor_view)
 		var texel: float = span / float(_floor_view.size.x)
 		var across: int = clampi(roundi(float(_floor_view.size.x) * texel / float(BLURS[n])), 4,
 			_floor_view.size.x)
@@ -1246,13 +1392,11 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 					said = "piece %d of %d, %s" % [tiles.find(tile) + 1, tiles.size(), said]
 				progress.emit(lerpf(from, to, float(step) / float(steps)), said)
 		_doing("reading the picture back")
-		var drawn: Image = _out.get_texture().get_image()
+		var drawn: Image = await _read(_out)
 		if drawn == null:
 			return null
-		# Reading back waits for the graphics card to finish everything
-		# queued, which in a browser drawing in software is most of a
-		# second: the copying and converting after it go in a frame of
-		# their own.
+		# The copying and converting go in a frame of their own, after the
+		# one that read the piece back.
 		await get_tree().process_frame
 		_doing("putting the piece in")
 		if drawn.get_format() != Image.FORMAT_RGBA8:
