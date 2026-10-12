@@ -137,6 +137,11 @@ func is_sliding() -> bool:
 	return _doing == Doing.SLIDE
 
 
+## A button is holding the view: turning, sliding or zooming it.
+func is_dragging() -> bool:
+	return _doing != Doing.NOTHING
+
+
 ## The right button is down and has not moved far enough to be a turn,
 ## so letting go now is a click and takes a brick off.
 func right_pending() -> bool:

@@ -210,7 +210,7 @@ static func for_keyboard() -> Array[Binding]:
 ## verbs come from the same place the camera gets them.
 static func _view_bindings() -> Array:
 	var cursor_of := func(verb: String) -> String:
-		return {"turn": "orbit", "slide": "slide", "zoom": "zoom_in"}.get(verb, "")
+		return Cursors.VERBS.get(verb, "")
 	var right: String = ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT)
 	var middle: String = ViewPrefs.drag_verb(MOUSE_BUTTON_MIDDLE)
 	var out: Array = []
@@ -219,10 +219,10 @@ static func _view_bindings() -> Array:
 	# With the left button alone: a drag turns, and these change what it
 	# does, in any tool and with a part in hand.
 	out.append_array([
-		Binding.new(["shift-drag"], "slide", "slide"),
-		Binding.new(["space-drag"], "slide, whatever is under the pointer", "slide"),
+		Binding.new(["shift-drag"], "slide", "hand"),
+		Binding.new(["space-drag"], "slide, whatever is under the pointer", "hand"),
 		Binding.new(["alt-drag"], "turn, whatever is under the pointer", "orbit"),
-		Binding.new(["alt-shift-drag"], "slide", "slide"),
+		Binding.new(["alt-shift-drag"], "slide", "hand"),
 		Binding.new(["%s-alt-drag" % _hold()], "zoom", "zoom_in"),
 		Binding.new(["O", "H", "Z"], "the Orbit, Pan and Zoom tools: a drag only moves the view"),
 	])
@@ -236,10 +236,10 @@ static func _view_bindings() -> Array:
 		cursor_of.call(ViewPrefs.drag_verb(MOUSE_BUTTON_MIDDLE, true))))
 	out.append_array([
 		Binding.new(["middle double-click"], "turn about that point"),
-		Binding.new(["shift-2 fingers"], "slide", "slide"),
+		Binding.new(["shift-2 fingers"], "slide", "hand"),
 		Binding.new(["scroll", "pinch", "+", "-"], "zoom to the pointer", "zoom_in"),
-		Binding.new(["shift-scroll"], "slide", "slide"),
-		Binding.new(["shift-arrows"], "slide the view", "slide"),
+		Binding.new(["shift-scroll"], "slide", "hand"),
+		Binding.new(["shift-arrows"], "slide the view", "hand"),
 		Binding.new(["shift-Q", "shift-E"], "turn the model"),
 		Binding.new(["F"], "frame the selection, or everything"),
 		Binding.new(["U"], "measure between two points"),

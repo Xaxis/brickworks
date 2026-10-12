@@ -171,7 +171,7 @@
       "kind": "ui",
       "label": "pointer cursors",
       "entry": "src/ui/cursors.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd   (in a browser: node tools/web/cursor_check.mjs --url=<a preview>/app)",
       "area": "view"
     },
     {

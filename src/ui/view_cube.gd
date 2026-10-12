@@ -68,6 +68,9 @@ func _ready() -> void:
 	custom_minimum_size = size_for()
 	size = size_for()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Pressed, not read: the pointing hand, as its arrows have. It is not a
+	# button, so Cursors._point_at passes it by.
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	tooltip_text = "Click a face, an edge or a corner to look from there; drag to turn the view"
 	_font = ThemeDB.fallback_font
 	var cube: float = cube_size()
