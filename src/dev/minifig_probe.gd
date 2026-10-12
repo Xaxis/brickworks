@@ -1062,16 +1062,23 @@ const NO_SOCKET: Dictionary = {"57588": "a Barraki's claw", "92754": "Dug's arm"
 const WHOLE: Array[String] = ["hat_extra", "cape", "arms", "hands", "legs",
 	"accessory", "accessory_left"]
 
-## Figures still in pieces, and why, which the checker is right about: the
-## builder slides a sword as long as a figure is tall through the hand like
-## a spear, so the hand is round its flat blade; a string or a suitcase's
-## long handle is held by a thread too thin for the grip to find; the bent
-## spring stands off its hips when the figure is turned a quarter.
-const STILL_APART: Dictionary = {"59": "a greatsword held by its blade",
-	"66964": "a greatsword held by its blade", "2674a": "an elvish sword held by its blade",
-	"2674b": "an elvish sword held by its blade", "56823": "a thread",
-	"71149": "a braided string", "37178-f2": "a suitcase by its long handle",
+## Figures still in pieces, and why. A string has no bar: the builder
+## holds it at its origin, the middle of it, crosswise in the grip, and
+## slides it along the grip off the hand to keep its far end out of the
+## floor. Held anywhere, the checker could not see it: the thread 56823,
+## 1.5 LDU across, fills no cell of the lattice at all, and 71149's braid
+## none either, its cover being its two end studs, 16 LDU across, which
+## no hand closes on. The bent spring's top is never read in its hips'
+## hole, and turned a quarter its foot's cells miss the middle of the
+## legs' hole it is in.
+const STILL_APART: Dictionary = {"56823": "a thread", "71149": "a braided string",
 	"43741-f2": "the bent spring, turned a quarter"}
+
+## Held by the bar of a hilt or a handle, which the builder used to slide
+## through the hand like a spear's shaft until the hand was round the
+## flat of the blade, or off the handle: four swords as long as a figure
+## and a suitcase with its long handle out.
+const BY_THE_HILT: Array[String] = ["59", "66964", "2674a", "2674b", "37178-f2"]
 
 
 ## A hand goes into its arm by a peg, and the design checker has to see the
@@ -1185,6 +1192,38 @@ func _one_piece() -> void:
 			said.is_empty() and int(figures.get(slot, 0)) >= 8)
 	print("    still in pieces, as they are: %s" % ", ".join(PackedStringArray(
 		still.keys().map(func(id: String) -> String: return "%s (%s)" % [id, STILL_APART[id]]))))
+
+	# Each held by its hilt's or handle's bar (MinifigData.GRIPS, read off
+	# the part's own cylinders): the hand's grip on that bar, between its
+	# ends, and the figure one piece at the origin and a quarter turn on
+	# Orthanc.
+	var by_hilt: Array[String] = []
+	for id: String in BY_THE_HILT:
+		var figure := Minifig.new()
+		figure.choose(library, "accessory", id)
+		var parts: Array[Dictionary] = figure.assemble(library)
+		var hand: Transform3D = (parts.filter(func(p: Dictionary) -> bool:
+			return p["slot"] == "hands")[0] as Dictionary)["at"]
+		var held: Transform3D = (parts.filter(func(p: Dictionary) -> bool:
+			return p["slot"] == "accessory")[0] as Dictionary)["at"]
+		var bar: Array = MinifigData.GRIPS.get(id, [])
+		var flip := Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, -1))
+		var grip: Vector3 = held.affine_inverse() * (hand * (flip * Minifig.GRIP))
+		var on: Vector3 = flip * Vector3(bar[0], bar[1], bar[2])
+		var way: Vector3 = flip * Vector3(bar[3], bar[4], bar[5])
+		var along: float = (grip - on).dot(way)
+		var off: float = (grip - on - way * along).length()
+		var in_one: Array[int] = []
+		for n: int in [0, 3]:
+			world.clear()
+			builder.lattice.clear()
+			in_one.append(pieces.call(Array(builder.put_figure(parts, "Probe", stands[n]))))
+		if bar.size() < 8 or off > 0.5 or along < float(bar[6]) - 0.5 \
+				or along > float(bar[7]) + 0.5 or in_one != [1, 1]:
+			by_hilt.append("%s (%.1f LDU off its bar, %.1f along it, pieces %s)" % [id, off, along, in_one])
+	_check("%d swords as long as a figure and a suitcase are held by the bar of the hilt or the handle, each figure one piece at the origin and turned on Orthanc%s"
+		% [BY_THE_HILT.size(), "" if by_hilt.is_empty() else ": not %s" % ", ".join(PackedStringArray(by_hilt))],
+		by_hilt.is_empty())
 
 	# Saruman as run 5's Orthanc stands him, turned a quarter, his staff
 	# raised in his right hand: cut out of models/orthanc.ldr as it was.

@@ -94,6 +94,11 @@ GRIP = (0.0, -0.8229, -9.8948)
 GRIP_AXIS = (0.0, 0.968148, 0.25038)
 # A bar a hand holds: 3.2 mm across, 0.4 mm to the LDU.
 BAR_RADIUS = 4.0
+# How far apart two lengths of one bar may be and still be one bar to a
+# hand, in LDU. A ribbed hilt is rings of that bar with narrower waists
+# between them, 1.3 to 1.5 LDU long (2674b, 66964), and a hand 11 LDU
+# long closes over several at once.
+RIB = 2.0
 
 
 # -- matrices --------------------------------------------------------------
@@ -371,7 +376,7 @@ CYLINDER = re.compile(r"^(?:48/|8/)?(\d+)-(\d+)cyl[a-z0-9]*\.dat$")
 def bars(library: Library, pid: str) -> list[tuple[tuple, tuple, float]]:
     """The bars a hand could hold in a part: (centre, unit axis, length)
     of every cylinder 4 LDU in radius in it, joined where pieces of one
-    bar meet end to end."""
+    bar meet end to end, or are a rib apart (see [RIB])."""
     found: list[tuple[tuple, tuple]] = []      # (start, end)
     _bars(library, pid + ".dat", IDENTITY, found, 0)
     joined: list[list] = []
@@ -384,6 +389,24 @@ def bars(library: Library, pid: str) -> list[tuple[tuple, tuple, float]]:
                 break
         else:
             joined.append([0.0, math.dist(start, end), start, axis])
+    # Pieces met out of order leave two bars a rib apart: join those too.
+    merged = True
+    while merged:
+        merged = False
+        for one in joined:
+            for other in joined:
+                if other is one:
+                    continue
+                ends = [tuple(o + a * t for o, a in zip(other[2], other[3]))
+                        for t in (other[0], other[1])]
+                if _collinear(one, ends[0], ends[1], other[3]):
+                    one[0] = min(one[0], _along(one, ends[0]), _along(one, ends[1]))
+                    one[1] = max(one[1], _along(one, ends[0]), _along(one, ends[1]))
+                    joined.remove(other)
+                    merged = True
+                    break
+            if merged:
+                break
     out = []
     for low, high, origin, axis in joined:
         if high - low < 2.0:
@@ -439,7 +462,7 @@ def _collinear(bar: list, start: tuple, end: tuple, axis: tuple) -> bool:
         if math.dist(foot, p) > 0.05:
             return False
     lo, hi = sorted((_along(bar, start), _along(bar, end)))
-    return lo <= bar[1] + 0.5 and hi >= bar[0] - 0.5
+    return lo <= bar[1] + RIB and hi >= bar[0] - RIB
 
 
 def grip_of(library: Library, pid: str) -> tuple:
@@ -450,9 +473,10 @@ def grip_of(library: Library, pid: str) -> tuple:
     can, its grip at the origin. So a bar along Y through the origin is
     held there; failing that the longest bar along Y is held at its
     middle, then any bar through the origin, then the longest bar. A
-    part with no bar at all is held at its origin along Y, which is
-    where real figures hold the bow, the one common accessory without
-    one."""
+    part with no bar at all is held at its origin along Y. The bow
+    (4499) is held at its origin too, by real figures and here: its
+    handle is ribbed, a bar to a hand ([RIB]), and the origin is on it
+    an LDU and a bit short of its end."""
     found = bars(library, pid)
     upright = [b for b in found if abs(b[1][1]) > 0.99]
     for group in (upright, found):
@@ -461,12 +485,27 @@ def grip_of(library: Library, pid: str) -> tuple:
             foot = tuple(c + a * t for c, a in zip(centre, axis))
             # Inside it, not at an end: a sword's origin is at its
             # guard, where the handle starts, and the hand is lower down.
-            if math.dist(foot, (0, 0, 0)) <= 1.0 and abs(t) <= length / 2 - 2.0:
+            if math.dist(foot, (0, 0, 0)) <= 1.0 and abs(t) <= length / 2 - 1.0:
                 return (foot, _pointing(library, pid, foot, axis))
         if group:
             centre, axis, _length = max(group, key=lambda b: b[2])
             return (centre, _pointing(library, pid, centre, axis))
     return ((0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+
+
+def along_bar(library: Library, pid: str, at: tuple, axis: tuple) -> tuple | None:
+    """How far a hand holding a part at [at] can slide along [axis] and
+    still be on the bar it holds there: (from, to) in LDU along [axis],
+    from the grip, or None where the grip is on no bar at all."""
+    for centre, way, length in bars(library, pid):
+        if abs(abs(sum(a * b for a, b in zip(way, axis))) - 1.0) > 1e-3 \
+                or _off_line(at, centre, way) > 0.05:
+            continue
+        ends = sorted(sum((c + w * t - a) * d for c, w, a, d in zip(centre, way, at, axis))
+                      for t in (-length / 2, length / 2))
+        if ends[0] <= 0.05 and ends[1] >= -0.05:
+            return (min(ends[0], 0.0), max(ends[1], 0.0))
+    return None
 
 
 def _pointing(library: Library, pid: str, at: tuple, axis: tuple) -> tuple:
@@ -1121,8 +1160,12 @@ def data() -> int:
                 or "Shortcut" in entry["kind"]:
             continue
         found = grip_of(library, entry["id"])
+        # And how far along its bar the hand can go, where it is on one:
+        # a spear's shaft slides through the hand to the ground, a
+        # sword's hilt stops at the guard and the pommel.
+        span = along_bar(library, entry["id"], *found)
         # Rounded, and without negative zeros, so a rerun diffs clean.
-        grip = [round(v, 3) + 0.0 for v in (*found[0], *found[1])]
+        grip = [round(v, 3) + 0.0 for v in (*found[0], *found[1], *(span or ()))]
         # What a part with no entry gets: held at its origin along Y.
         if grip != [0.0, 0.0, 0.0, 0.0, 1.0, 0.0]:
             held[entry["id"]] = grip
@@ -1184,7 +1227,9 @@ def data() -> int:
         "",
         "## Accessory -> [grip x, y, z, axis x, y, z] in the part's LDraw frame: the",
         "## middle of the bar a hand closes on, and the bar's direction, pointing",
-        "## from the business end towards the end of the handle.",
+        "## from the business end towards the end of the handle; then, where the",
+        "## grip is on a round bar, [from, to]: how far the bar runs each way of",
+        "## the grip along that direction, which is as far as a hand slides on it.",
         "const GRIPS := {",
     ]
     lines += [f'\t"{k}": {json.dumps(v)},' for k, v in sorted(held.items())]
