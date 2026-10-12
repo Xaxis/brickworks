@@ -795,7 +795,10 @@ What a person building by hand misses, most first:
     `Joints` already finds the joints for the assistant.
 13. **Technic pins and axles into holes, clips onto bars**: placing by
     connection rather than by box. The pipeline records no bar connector
-    yet (lever 4 above).
+    yet (lever 4 above). Done 2026-10-11 (`JointSnap`): a part in hand goes
+    onto the pin hole, axle hole, pin, axle, bar or clip it is aimed at, R
+    turns it about the joint and T takes the next way on, with check_design's
+    rule for room. Bars and clips are read off the shafts and bores.
 14. **Save a picture**: a large render to a PNG, the background clear.
     Only the command line's `--shot` does it today.
 15. **Parts lists for shops**: a BrickLink wanted list (XML, which needs

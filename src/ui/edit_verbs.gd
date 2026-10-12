@@ -707,8 +707,14 @@ var mode: String = "select"
 signal mode_changed(mode: String)
 
 ## How far R and the Rotate tool turn a selection, in degrees. The part in
-## hand always turns a quarter: it is put down on the studs.
-var turn_step: float = 90.0
+## hand turns a quarter on the studs; on a round joint (a pin in a hole, a
+## clip on a bar) it turns by this when it is finer than an eighth, so the
+## builder is told too.
+var turn_step: float = 90.0:
+	set(degrees):
+		turn_step = degrees
+		if builder != null:
+			builder.turn_step = degrees
 
 ## The grid a part is put down and nudged on: across, and up for Shift and
 ## the arrows, in LDU. Named as the toolbar names them.
@@ -849,8 +855,13 @@ func hint() -> String:
 		"place":
 			var info: PartLibrary.PartInfo = library.parts.get(builder.held_part) \
 				if library != null else null
+			var named: String = Inventory._tidy(info.name) if info != null else builder.held_part
+			# On a joint, what it is on and what R and T do there instead.
+			if builder.is_on_joint():
+				return "Placing %s on %s: click puts it there · R turns it about the joint · T the other way on · Esc lets go" % [
+					named, builder.joint_words()]
 			return "Placing %s: click puts one down · %s, the part stays in hand · Esc lets go" % [
-				Inventory._tidy(info.name) if info != null else builder.held_part, look]
+				named, look]
 		"move":
 			return "Move: click a part to pick it up (the selection with it), click again to put it down · %s" % look
 		"rotate":
