@@ -1002,7 +1002,7 @@ func _display_proportions() -> void:
 		return Vector2(bounds.size.y / wide, wide / Assistant.STUD)
 	# The guidance's own tower, as it is written there: no courses.
 	var guidance := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
-		"radius": 7, "color": 0, "open": 3, "piers": {"count": 4},
+		"radius": 7, "color": 0, "piers": {"count": 4},
 		"storeys": {"count": 3, "in": 1}, "plinth": {"steps": 2, "out": 2}}
 	var model: Assistant.Model = assistant._read_model({"name": "Orthanc",
 		"patterns": [guidance]})
@@ -1063,6 +1063,7 @@ func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -
 	var good: Dictionary = {"side": 0, "wedged": 0, "anchored": 0, "tall": 0, "out": 0,
 		"back": 0, "point": 0, "whole": 0, "deep": 0}
 	var said: Array = []
+	var pale: int = 0
 	for name: Variant in blades:
 		var boxes: Array = []
 		var is_wedge: Array[bool] = []
@@ -1075,6 +1076,7 @@ func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -
 				continue
 			on_side = on_side and placement.face == "+x"
 			wedged += 1 if wedges.has(placement.part) else 0
+			pale += 1 if placement.part in Assistant.BLADE_SHUNNED else 0
 			is_wedge.append(wedges.has(placement.part))
 			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
 			boxes.append(assistant._square_transform(placement, mesh) * mesh.bounds)
@@ -1154,6 +1156,8 @@ func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -
 		% good["whole"], good["whole"] == 4)
 	_check("...and two studs deep, solid seen edge on (%d of 4)" % good["deep"],
 		good["deep"] == 4)
+	_check("...none of them cut by the wedge that draws its cut face pale (%d are)" % pale,
+		pale == 0)
 
 
 ## The fifteenth Orthanc's own cluster, "open": 2: an octagonal core of

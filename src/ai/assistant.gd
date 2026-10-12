@@ -5520,16 +5520,12 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		var tall: int = size.y
 		var flare: float = float(piers.get("flare", round(wide * BLADE_FLARE)))
 		for k: int in count:
-			# Its face to the front, sweeping out to its own side, as 10237
-			# turns its horns to the one looking at it: turned along the
-			# pier's line, the two blades on a diagonal were edge on from the
-			# corner, one sheet standing up behind the summit. On the line
-			# from front to back, along it.
-			var aside: float = (_towards(angles[k]) * out).x
-			var facing: float = angles[k] if absf(aside) < 0.5 \
-				else (90.0 if aside > 0.0 else 270.0)
+			# In the plane through the tower's middle and its pier, sweeping
+			# out from the crown. Turned to face the front instead, the four
+			# were two straight sticks from the side and cut-off plates from
+			# the corner.
 			made.append_array(_horn_blade(model, "prism %s horn %d" % [tag, k],
-				middle + _towards(angles[k]) * out, facing, base,
+				middle + _towards(angles[k]) * out, angles[k], base,
 				floor(p_radius - 1.0), wide, tall, clampf(flare, 0.0, float(wide)),
 				spec["colour"]))
 		_pattern_advice.append(("Each pier rises past the summit as a blade %d studs wide "
@@ -5614,6 +5610,11 @@ const BLADE_LAYERS := 4
 ## Bricks with studs on one side, longest first, that a blade's foot is
 ## pressed onto: the anchor every blade in a real set hangs from.
 const BLADE_ANCHORS: Array = [[4, "30414"], [2, "11211"], [1, "87087"]]
+## Wedge plates a blade is not cut with: the 2 x 4 right hand (its left hand's
+## body mirrored) draws its cut face nearly white on its side, and every blade
+## had a pale flag half way up its inner edge. Black in every other turn tried,
+## and so are the rest.
+const BLADE_SHUNNED: Array[String] = ["41769a", "41769b"]
 
 
 ## A blade's width at its foot and its height, in studs, over a pier of
@@ -5918,6 +5919,8 @@ func _blade_side() -> Dictionary:
 			continue
 		var studs: int = int(columns.keys()[0])
 		var said: PackedStringArray = named.split(" ")
+		if said[0] in BLADE_SHUNNED:
+			continue
 		var mesh: Lbm.PartMesh = library.mesh_for(said[0])
 		if mesh == null:
 			continue
@@ -10287,14 +10290,15 @@ alongside the bricks you write by hand:
 
            And a tower that is not square is one object too: \
            {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, \
-           "sides": 8, "radius": 7, "color": 0, "open": 3, "piers": \
+           "sides": 8, "radius": 7, "color": 0, "piers": \
            {"count": 4}, "storeys": {"count": 3, "in": 1}, "plinth": \
            {"steps": 2, "out": 2}} is \
            an eight-sided core with four faceted piers clustered round \
            it and deep clefts between them, in three storeys, each a \
            stud in from the one below on a ledge of dark bluish grey, \
-           the top one's piers rising past its summit into horns, its \
-           back open on the rooms, standing on a plinth of two terraces \
+           the top one's piers rising past its summit into horns, closed \
+           all round, one mass of black stone from any side, standing on \
+           a plinth of two terraces \
            with a stair up the front to its door — Orthanc, a keep with \
            corner towers, anything clustered. With no "courses" it is \
            laid at a display model's proportions, 3.3 times as tall as \
@@ -10326,7 +10330,11 @@ alongside the bricks you write by hand:
            "flat" caps a turret; "flare" is how far a blade sweeps out. \
            A blade is any spiked crown's: a throne's back, a gate's \
            fangs, a dark tower's points. With \
-           piers, any "open" opens the core's whole back, and an arched \
+           piers, any "open" opens the core's whole back, its rooms on \
+           show from behind as 10237's are; but from the corner the sky \
+           then shows up the clefts beside the back piers and the shaft \
+           reads as four thin columns, so open it when the rooms are the \
+           point. An arched \
            door stands at the foot of the core's front (+z), at y, for a \
            stair to lead up to ("door": false for none). Without "piers" \
            a prism is one shaft with a groove up each corner, and \
