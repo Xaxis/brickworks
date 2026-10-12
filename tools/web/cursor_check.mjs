@@ -34,7 +34,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -554,6 +554,8 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
   for (const [what, keys] of [["over the parts bin", ["parts list"]],
     ["over the assistant panel", ["brief", "key_field"]], ["over the toolbar", ["save"]]]) {
     let point = null;
+    // On a laptop the columns take turns: open this one's first.
+    await openColumnFor(page, keys[0]);
     for (const key of keys) {
       point = await page.evaluate((k) => (window.brickworksControls || {})[k], key);
       if (point) break;
