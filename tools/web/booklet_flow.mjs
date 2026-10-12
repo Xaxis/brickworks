@@ -41,7 +41,11 @@ const errors = [];
 const listen = (p, who) => {
   p.on("pageerror", (e) => errors.push(`${who}: ${String(e).slice(0, 200)}`));
   p.on("console", (m) => {
-    if (/SCRIPT ERROR|Parse Error|ERROR:/.test(m.text())) errors.push(`${who}: ${m.text().slice(0, 200)}`);
+    // A refusal by the security policy too: the booklet's tab is under the
+    // app's, and its Print once did nothing for that.
+    if (/SCRIPT ERROR|Parse Error|ERROR:|Content Security Policy/.test(m.text())) {
+      errors.push(`${who}: ${m.text().slice(0, 200)}`);
+    }
   });
 };
 listen(page, "app");
@@ -104,6 +108,12 @@ try {
         facts.pictures > 0 && facts.broken === 0);
       check(`parts boxes with pictures (${facts.boxes} boxes, ${facts.partPictures} parts)`,
         facts.boxes > 0 && facts.partPictures > facts.boxes);
+      // Print, pressed as a person does; print itself counted, not shown.
+      await tab.evaluate(() => { window.printed = 0; window.print = () => { window.printed += 1; }; });
+      await tab.click(".bar button");
+      await tab.waitForTimeout(500);
+      const printed = await tab.evaluate(() => window.printed);
+      check(`Print prints (${printed})`, printed === 1);
       await tab.setViewportSize({ width: 1060, height: 800 });
       await tab.addStyleTag({ content: ".bar { display: none !important; }" });
       for (const n of [1, 2, 3, pages]) {
