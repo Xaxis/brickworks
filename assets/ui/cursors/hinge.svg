@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Hinge: a click swings the part under the tip about its hinge. Hotspot 2.5,2.5. -->
+  <path d="M2.5 2.5 L2.5 21 L7.2 16.6 L10.6 24.2 L13.8 22.8 L10.5 15.4 L16.8 15.4 Z"
+        fill="#ffffff" stroke="#16181d" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="23" cy="23" r="7.6" fill="#16181d"/>
+  <circle cx="23" cy="23" r="6.5" fill="#ffffff"/>
+  <circle cx="23" cy="23" r="5.3" fill="#d97706"/>
+  <path d="M19.6 25.6 H27 M19.6 25.6 L24.6 19.6" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="19.8" cy="25.4" r="1.7" fill="#ffffff"/>
+</svg>

@@ -47,6 +47,7 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_library = _main.get("_library")
 	_store = _main.get("_store")
+	await _one_column_at_a_time()
 	_main.call("clear_model")
 	# A clipboard from nobody: a probe must not paste whatever the person
 	# at this machine last copied. What was on the system clipboard is put
@@ -607,6 +608,16 @@ func _the_shell() -> void:
 	await _shot("grid")
 	shell.run("grid")
 	_check("...and takes them away", not shell.grid.visible)
+	# The properties are under the parts bin, in the left-hand column.
+	var column: SideDock = _main.get("_bin_dock")
+	_check("the properties are in the column beside the model, under the parts bin (%s in %s)"
+		% [str(inspector.get_global_rect()), str(column.get_global_rect())],
+		not column.is_open() or column.get_global_rect().encloses(inspector.get_global_rect()))
+	if not column.is_open():
+		shell.run("panel_properties")
+		await _frames(30)
+		_check("View, Properties opens the column they are in, with them open",
+			column.is_open() and inspector.is_open() and inspector.is_visible_in_tree())
 	shell.run("panel_properties")
 	_check("View, Properties folds the properties away", not inspector.is_open())
 	shell.run("panel_properties")
@@ -712,6 +723,7 @@ func _text_fields_give_keys_back() -> void:
 	# The part search, and the properties' numbers.
 	var bin: PartsBin = _main.get("_bin")
 	var search: LineEdit = bin.get("_search")
+	await _show_column("_bin_dock")
 	await _click(search.get_global_rect().get_center())
 	await _type("plate")
 	await _key(KEY_ESCAPE)
@@ -722,6 +734,7 @@ func _text_fields_give_keys_back() -> void:
 	if not any.is_empty():
 		_select_only([(any[0] as BrickWorld.Brick).id])
 		await _frames(20)
+		await _show_column("_bin_dock")
 		var x_field: LineEdit = shell.inspector._x.get_line_edit()
 		var was_x: float = (any[0] as BrickWorld.Brick).transform.origin.x
 		await _click(x_field.get_global_rect().get_center())
@@ -853,6 +866,7 @@ func _the_parts_shelf() -> void:
 	PartShelf.keeps = true
 	PartShelf.clear()
 	var bin: PartsBin = _main.get("_bin")
+	await _show_column("_bin_dock")
 	bin.show_category("All")
 	await _frames(4)
 	var cell: Button = bin._grid.get_child(2)
@@ -1216,6 +1230,18 @@ func _a_small_laptop() -> void:
 	var scale: float = root.get_final_transform().get_scale().y
 	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
 	var shell: Shell = _main.get("_shell")
+	# One column beside the model, docked: nothing over the model, and the
+	# model keeps most of the width. The model tree and the properties lay
+	# over its top corners, beside both columns, and it had 53%.
+	var cover: Dictionary = _main.call("model_cover")
+	var across: float = root.get_visible_rect().size.x
+	var model: Rect2 = cover["view"]
+	_check("at this size nothing but the view cube is over the model (%d of %d points covered)"
+		% [(cover["covered"] as Array).size(), int(cover["samples"])],
+		(cover["covered"] as Array).is_empty())
+	if DisplayServer.window_get_size() == Vector2i(1280, 720):
+		_check("...and the model keeps %.0f%% of the width (columns %s)" % [
+			100.0 * model.size.x / across, _main.get("_columns")], model.size.x >= across * 0.6)
 	await _shot("laptop_1280x720")
 	await _key(KEY_COMMA)
 	var controls: ControlsDialog = _main.get("_controls")
@@ -1432,6 +1458,49 @@ func _long_axis_of_new(part: String) -> Vector3:
 
 func _screen(point: Vector3) -> Vector2:
 	return _camera.unproject_position(point)
+
+
+## A laptop's window has room beside the model for one column. A first
+## visit shows the assistant, the parts bin folded to its rail: designing
+## with Claude is what the landing page sends people in for. A part put in
+## hand brings the bin out, and a click on a rail switches.
+func _one_column_at_a_time() -> void:
+	var bin: SideDock = _main.get("_bin_dock")
+	var chat: SideDock = _main.get("_chat_dock")
+	if str(_main.get("_columns")) != "turns":
+		print("    (this window has room for both columns, so they do not take turns here)")
+		return
+	print("  one column at a time beside the model")
+	_check("a first visit shows the assistant, the parts bin folded to its rail",
+		chat.is_open() and not bin.is_open())
+	var verbs: EditVerbs = _main.get("_verbs")
+	await _key(KEY_Q)
+	await _frames(30)
+	_check("Q puts the last part in hand and brings the parts bin out (%s)" % verbs.mode,
+		verbs.mode == "place" and bin.is_open() and bin.content.is_visible_in_tree())
+	_check("...and the assistant folds to its rail to make room", not chat.is_open())
+	await _key(KEY_ESCAPE)
+	await _click(chat.rail().get_global_rect().get_center())
+	await _frames(30)
+	_check("one click on the assistant's rail switches back",
+		chat.is_open() and not bin.is_open())
+	await _click(bin.rail().get_global_rect().get_center())
+	await _frames(30)
+	_check("...and one on the parts rail switches again", bin.is_open() and not chat.is_open())
+	_check("...and is kept as this person's choice (%s)" % ShellPrefs.value("narrow_side"),
+		str(ShellPrefs.value("narrow_side")) == "parts")
+
+
+## Open a side column by its rail, as a person does, if it is folded: a
+## window with room for one column beside the model shows one at a time.
+func _show_column(dock_name: String) -> void:
+	var dock: SideDock = _main.get(dock_name)
+	if dock.is_open():
+		return
+	await _click(dock.rail().get_global_rect().get_center())
+	await _frames(30)
+	_check("its rail opens the %s" % ("parts bin, the model tree and the properties"
+		if dock_name == "_bin_dock" else "assistant"), dock.is_open())
 
 
 func _frames(count: int) -> void:

@@ -23,7 +23,7 @@
 // Driven by position, as assistant_flow.mjs is: the app publishes where its
 // controls are (window.brickworksControls) and what is going on
 // (window.brickworksState: bricks, the part in hand, the parts made here).
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -66,6 +66,8 @@ async function shot(name) {
 async function until(test, seconds, what) {
   for (let n = 0; n < seconds * 2; n++) {
     if (await test()) return true;
+    // In a laptop's window the parts bin starts folded to its rail.
+    if (n % 10 === 9) await openColumnFor(page, what);
     await page.waitForTimeout(500);
   }
   await page.screenshot({ path: `${out}/never_${what.replace(/\W+/g, "_")}.png` }).catch(() => {});

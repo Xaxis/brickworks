@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Delete: the eraser takes off the part its edge is on. Hotspot 8.5,23.5. -->
+  <g transform="translate(17.5 14.5) rotate(45)" stroke="#16181d" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="-5" y="-12" width="10" height="15.5" rx="1.6" fill="#ffffff"/>
+    <path d="M-5 3.5 H5 V11 Q5 12.5 3.5 12.5 H-3.5 Q-5 12.5 -5 11 Z" fill="#e5484d"/>
+  </g>
+</svg>

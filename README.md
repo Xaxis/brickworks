@@ -141,8 +141,10 @@ which only lets a signed-in tab switch a connector on and records whose
 it is; `api/oauth.js` is how Claude signs in to it (OAuth 2.1 as MCP's
 authorization spec has it: `/.well-known/oauth-*`, `/oauth/register`,
 `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`); `GET /api/admin`
-is the owner's list of accounts. Accounts live in Supabase
-(`supabase/schema.sql`, `supabase/relay.sql`, `supabase/oauth.sql`). There were
+is the owner's list of accounts; `/api/collection` keeps what each person
+owns (My collection: imports from Rebrickable and BrickLink, parsed there). Accounts live in Supabase
+(`supabase/schema.sql`, `supabase/relay.sql`, `supabase/oauth.sql`,
+`supabase/collection.sql`). There were
 accounts once before, until 2026-10-09, so that one of them could design
 on the project's own key; that proxy has not come back.
 

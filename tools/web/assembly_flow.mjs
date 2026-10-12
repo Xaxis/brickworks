@@ -8,7 +8,7 @@
 // Every step is a click or a key on what the page says is where
 // (window.brickworksControls), and every result is read back off the app
 // (window.brickworksState.tree: each sub-assembly's path and its parts).
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -36,6 +36,8 @@ async function controlAt(name, seconds = 400) {
   for (let n = 0; n < seconds * 2; n++) {
     const where = await controls();
     if (where[name]) return where[name];
+    // In a laptop's window the parts bin starts folded to its rail.
+    if (n % 10 === 9) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   throw new Error(`the app never showed "${name}"`);

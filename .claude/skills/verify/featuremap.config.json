@@ -171,7 +171,7 @@
       "kind": "ui",
       "label": "pointer cursors",
       "entry": "src/ui/cursors.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd   (in a browser: node tools/web/cursor_check.mjs --url=<a preview>/app)",
       "area": "view"
     },
     {
@@ -689,7 +689,7 @@
       "kind": "ui",
       "label": "model tree",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (the panel at the model's top left; View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
       "area": "building"
     },
     {
@@ -710,7 +710,7 @@
       "kind": "ui",
       "label": "properties panel",
       "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; the panel over the model's top right)",
+      "reach": "godot --path .  (select a part; the foot of the left-hand column, under the model tree)",
       "area": "building"
     },
     {
@@ -752,7 +752,7 @@
       "kind": "ui",
       "label": "remembered layout",
       "entry": "src/ui/shell_prefs.gd",
-      "reach": "godot --path .  (fold a panel, change the snap, quit and start again)",
+      "reach": "godot --path .  (fold a panel, drag the bar between two, change the snap, quit and start again)",
       "area": "building"
     },
     {
@@ -880,6 +880,104 @@
       "entry": "tools/web/studio_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
       "area": "prints"
+    },
+    {
+      "kind": "ui",
+      "label": "docked panels",
+      "entry": "src/ui/panel_stack.gd",
+      "reach": "godot --path .  (the left-hand column: parts bin, model tree, properties; fold a header, drag the bar between two; under 1600 units across one column shows beside the model) and node tools/web/fit_check.mjs",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "brickify a 3d model",
+      "entry": "src/ui/brickify_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd  (or I in the app; node tools/web/brickify_flow.mjs --url=<a preview>/app in a browser)",
+      "area": "brickify"
+    },
+    {
+      "kind": "lib",
+      "label": "brickify",
+      "entry": "src/assembly/brickify.gd",
+      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "area": "brickify"
+    },
+    {
+      "kind": "lib",
+      "label": "3d model files",
+      "entry": "src/parts/mesh_file.gd",
+      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "area": "brickify"
+    },
+    {
+      "kind": "ui",
+      "label": "my collection",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection… / What do I need?… / What can I build?…; or P, then What do I need?)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "collection sums",
+      "entry": "src/collection/collection.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "collection kept with the account",
+      "entry": "src/collection/collection_store.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (the copy on this device; the account's through collection_probe.mjs)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "a rebrickable account",
+      "entry": "src/collection/rebrickable_account.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (against tests/fixtures/collection/fake_rebrickable.py)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "official models' parts lists",
+      "entry": "src/dev/collection_models.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_models.gd   (needs vendor/omr)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "collection api probe",
+      "entry": "tools/web/collection_probe.mjs",
+      "reach": "node tools/web/collection_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "collection browser flow",
+      "entry": "tools/web/collection_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_flow.mjs --url=<deployment>/app --out=shots/collection_web   (with .env sourced)",
+      "area": "collection"
+    },
+    {
+      "kind": "api",
+      "label": "/api/collection",
+      "entry": "api/collection.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an import, PUT, DELETE with a session)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "set inventories",
+      "entry": "tools/collection_data.py",
+      "reach": "python3 tools/collection_data.py   (--check writes nothing; needs vendor/rebrickable)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "apply sql to the live project",
+      "entry": "tools/apply_sql.mjs",
+      "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs --look   (.env sourced; a supabase/*.sql file to apply one)",
+      "area": "collection"
     }
   ]
 }

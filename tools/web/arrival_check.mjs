@@ -37,7 +37,7 @@
 // Passes when every case is drawn within three frames of being in view, on
 // no more than --budget ms (2,000) of the engine's own work. Costs nothing:
 // no model is called.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -182,6 +182,8 @@ async function runCase(size, mode) {
     for (let tries = 0; tries < minutes * 120; tries++) {
       const shown = await controls();
       for (const name of names) if (shown[name]) return [name, shown[name]];
+      // In a laptop's window the assistant's column starts folded.
+      if (tries === 6) await openColumnFor(page, names[0]);
       await page.waitForTimeout(500);
     }
     await page.screenshot({ path: `${out}/${tag}_never_showed.png` }).catch(() => {});

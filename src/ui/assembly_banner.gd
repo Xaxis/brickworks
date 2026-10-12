@@ -1,13 +1,12 @@
-## Over the top of the model while a sub-assembly is being edited: which
+## Along the top of the model while a sub-assembly is being edited: which
 ## one, that what is put down goes into it and that its copies follow, and
-## the way out.
+## the way out. In the strip above the model (Main's notices), not over
+## it: it sat over the model's top middle, where a click on a part landed
+## on the banner.
 class_name AssemblyBanner
 extends PanelContainer
 
 var assemblies: Assemblies
-## The model tree, at the model's top left: the banner keeps to its right
-## when a narrow window would put the two over each other.
-var avoid: Control
 
 var _words: Label
 var _done: Button
@@ -25,9 +24,7 @@ func _ready() -> void:
 	backing.content_margin_top = 5
 	backing.content_margin_bottom = 5
 	add_theme_stylebox_override("panel", backing)
-	set_anchors_preset(Control.PRESET_CENTER_TOP)
-	grow_horizontal = Control.GROW_DIRECTION_BOTH
-	offset_top = 10.0
+	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	add_child(row)
@@ -60,31 +57,6 @@ func _show(path: String) -> void:
 	_words.tooltip_text = ("What you put down goes into it, and a click takes one part of it. "
 		+ "Every other copy is changed with it, mirrored where it is mirrored. "
 		+ "Esc or Done when finished.")
-	reset_size()
-	_place()
-
-
-## Room kept at the model's top right for the view gizmo.
-const GIZMO_ROOM := 120.0
-
-
-## In the middle of the top of the model, kept between the model tree on
-## the left and the view gizmo on the right.
-func _place() -> void:
-	var width: float = get_combined_minimum_size().x
-	var room: float = get_parent_area_size().x
-	var low: float = 10.0
-	if avoid != null and avoid.is_visible_in_tree():
-		low = avoid.get_rect().end.x + 10.0
-	var left: float = clampf((room - width) * 0.5, low, maxf(low, room - GIZMO_ROOM - width))
-	# Anchored at the top middle, so offsets are from the middle.
-	offset_left = left - room * 0.5
-	offset_right = offset_left + width
-
-
-func _process(_delta: float) -> void:
-	if visible:
-		_place()
 
 
 func controls_by_name() -> Dictionary:

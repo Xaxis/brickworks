@@ -20,7 +20,7 @@
 // was fetched (then nothing waited and the pictures prove nothing), or if no
 // fetch was answered. Whether the waiting looks right is for a person: look at
 // the pictures.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 
@@ -77,6 +77,8 @@ await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
 const until = Date.now() + 300000;
 while (!(await page.evaluate(() => Boolean((window.brickworksControls || {})["make part"])))) {
   if (Date.now() > until) throw new Error("the app never came up");
+  // In a laptop's window the parts bin starts folded to its rail.
+  await openColumnFor(page, "make part");
   await page.waitForTimeout(1000);
 }
 await page.waitForTimeout(Number(args.load || 20000));

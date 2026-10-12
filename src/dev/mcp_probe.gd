@@ -221,8 +221,9 @@ func _run() -> void:
 	_check("...and an assembly it never named is answered with the ones it did",
 		nothing.begins_with("No assembly called moat") and nothing.contains("east wall"))
 	# The finishing pass: plain one-wide bricks with an open face, laid
-	# again on their side and dressed, or as masonry, in place. On a wall
-	# one stud thick, in 1x4s bonded, as a design writes one by hand.
+	# again in place as one structure. On a black wall one stud thick, in
+	# 1x4s bonded, as a design writes one by hand: panels of grille between
+	# ribs of bricks turned out on their side, unasked.
 	var thin: Array = []
 	for course: int in 8:
 		for n: int in 6:
@@ -233,16 +234,16 @@ func _run() -> void:
 	var before_restyle: int = _world.brick_count()
 	var restyled: String = _text_of(await _ask("restyle_model", {"sideways": 0.3, "masonry": 0.3}))
 	var sideways: int = 0
-	var stone: int = 0
+	var grille: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
 		if brick.part_id == "87087":
 			sideways += 1
-		elif brick.part_id == "15533":
-			stone += 1
-	_check("restyle_model turns plain faces out and dresses them, and lays masonry: %s"
+		elif brick.part_id == "2877":
+			grille += 1
+	_check("restyle_model lays a black wall in panels of grille between ribs: %s"
 			% restyled.get_slice("\n", 0),
-		restyled.begins_with("Restyled") and sideways > 10 and stone > 3
-			and _world.brick_count() > before_restyle)
+		restyled.begins_with("Restyled") and restyled.contains("in panels") and sideways > 10
+			and grille > 10 and _world.brick_count() > before_restyle)
 
 	# A design that cannot stand must come back as a refusal, not as a
 	# silent success — this is the whole reason the app holds the lattice.

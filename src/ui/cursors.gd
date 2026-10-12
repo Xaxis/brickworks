@@ -1,17 +1,21 @@
 ## The pointer, saying what the mouse will do and what it is doing.
 ##
 ## Asked for by the owner: "the app's cursor should change based on which
-## function is being performed." It was the system arrow everywhere, so
-## nothing on screen said whether a click would put a brick down, whether
-## the right button was about to take one off or turn the view, or that
-## the part just picked was still on its way and a click would do nothing.
+## function is being performed", and again once the tools came in: "we're
+## not seeing the cursor change based on the mode and context, as you
+## obviously need to do." The first answer covered placing and the drags
+## of the view; every tool but Paint and Delete then showed the same
+## pointing hand as Select, the model's empty background the arrow though
+## a drag there turns the view, and the Orbit, Pan and Zoom tools, Space
+## and Alt nothing at all.
 ##
 ## One state at a time, worked out afresh every frame by [method choose]
-## from what is true now, and shown through Godot's default cursor shape:
-## the shape the window uses wherever no control is under the pointer,
-## which is exactly the model. Panels, text fields and buttons keep their
-## own (an I-beam, a pointing hand), because the control under the
-## pointer always wins over the default.
+## from what is true now — the tool, the keys held, what is under the
+## pointer — and shown through Godot's default cursor shape: the shape the
+## window uses wherever no control is under the pointer, which is exactly
+## the model. Panels, text fields and buttons keep their own (an I-beam, a
+## pointing hand), because the control under the pointer always wins over
+## the default.
 ##
 ## Polled, not switched by events, because every stale cursor is an
 ## ending that never arrived: a drag let go outside the window, a dialog
@@ -23,114 +27,161 @@
 class_name Cursors
 extends CanvasLayer
 
-## Which system shape each state is shown as.
-##
-## Godot hangs a custom picture on a shape rather than offering cursors
-## of its own, so the states with a picture borrow shapes this interface
-## never shows: nothing in it drags and drops, resizes or asks for help.
-## The borrowed shape is also the fallback if the picture cannot be
-## drawn, so each is the nearest system one to what it stands for.
-const SHAPES := {
+## The states the system draws, and the shape each is shown as.
+const SYSTEM := {
 	"arrow": Input.CURSOR_ARROW,
-	"place": Input.CURSOR_CAN_DROP,
+	"select": Input.CURSOR_POINTING_HAND,
 	"blocked": Input.CURSOR_FORBIDDEN,
 	"busy": Input.CURSOR_BUSY,
-	"select": Input.CURSOR_POINTING_HAND,
-	"remove": Input.CURSOR_WAIT,
-	"orbit": Input.CURSOR_DRAG,
-	"slide": Input.CURSOR_MOVE,
-	"zoom_in": Input.CURSOR_VSIZE,
-	"zoom_out": Input.CURSOR_HSIZE,
-	"box": Input.CURSOR_CROSS,
-	"paint": Input.CURSOR_HELP,
+	"move": Input.CURSOR_MOVE,
 }
 
 ## The states drawn from assets/ui/cursors, and the point of each that
-## is the pointer, in the SVG's own 32-unit grid. The rest are the
-## system's own and are drawn by the system.
+## is the pointer, in the SVG's own 32-unit grid. No system has a cursor
+## for turning a view, a paint bucket, an eraser or a hinge, and Godot
+## offers no open or closed hand, magnifier or copy arrow on a desktop,
+## so these are pictures everywhere and look the same everywhere.
 const HOTSPOTS := {
-	"place": Vector2(2.5, 2.5),
-	"remove": Vector2(2.5, 2.5),
+	"place": Vector2(16, 16),
 	"orbit": Vector2(16, 16),
-	"slide": Vector2(16, 16),
+	"hand": Vector2(16, 17),
+	"grabbing": Vector2(16, 17),
 	"zoom_in": Vector2(13, 13),
 	"zoom_out": Vector2(13, 13),
 	"box": Vector2(16, 16),
-	"paint": Vector2(4.5, 27.5),
+	"paint": Vector2(22, 27.5),
+	"delete": Vector2(8.5, 23.5),
+	"hide": Vector2(2.5, 2.5),
+	"copy": Vector2(2.5, 2.5),
+	"rotate": Vector2(2.5, 2.5),
+	"hinge": Vector2(2.5, 2.5),
 }
+
+## The shapes the pictures are hung on.
+##
+## Godot hangs a custom picture on one of its seventeen system shapes
+## rather than offering cursors of its own, and there are more pictures
+## than shapes the app can spare: the interface shows the arrow, the
+## I-beam, the pointing hand and a splitter's arrows; the print studio's
+## picker the crosshair; a dialog's edges the four resize arrows; a row
+## dragged in the outliner the drop and no-drop signs. A picture hung on
+## any of those turned up there as well — a zoom glass on a dialog's
+## edge. Only one cursor is on screen at a time, so three shapes nothing
+## else asks for take turns: a picture is hung on one when it is wanted,
+## and never on the one showing, so the cursor on screen never changes
+## under the pointer by itself.
+const SLOTS: Array[int] = [Input.CURSOR_HELP, Input.CURSOR_WAIT, Input.CURSOR_DRAG]
+
+## What a click on a part does with each tool, as a pointer.
+const TOOLS := {"paint": "paint", "delete": "delete", "hide": "hide", "clone": "copy",
+	"rotate": "rotate", "hinge": "hinge", "move": "move"}
+
+## A drag's verb ("turn", "slide", "zoom", "box") as the pointer that
+## says it.
+const VERBS := {"turn": "orbit", "slide": "hand", "zoom": "zoom_in", "box": "box"}
 
 ## What is true at this moment, as far as the pointer is concerned.
 ## Filled in by whoever owns the scene; [method choose] is the only
 ## thing that reads it.
 class Situation extends RefCounted:
-	## The view is being turned or slid by a button held down.
-	var turning: bool = false
-	var sliding: bool = false
+	## A button is holding the view (turning, sliding or zooming it), or a
+	## part a drag picked up.
+	var holding_view: bool = false
+	var holding_part: bool = false
 	## A box is being drawn.
 	var boxing: bool = false
-	## The right button is down over a brick and has not moved far
-	## enough to be a turn: letting go takes that brick off.
-	var removing: bool = false
-	## C is held, which paints what is under the pointer.
-	var painting: bool = false
 	## What a left drag will do to the view whatever is under the pointer:
-	## a view tool is on, or Space or Alt is held. "orbit", "slide",
-	## "zoom_in" or "".
+	## a view tool is on, or Space or Alt is held. "orbit", "hand",
+	## "zoom_in", "zoom_out" or "".
 	var tool: String = ""
 	## The view moved a moment ago without a button: the wheel, a
-	## trackpad, a pinch, a key. "orbit", "slide", "zoom_in", "zoom_out"
+	## trackpad, a pinch, a key. "orbit", "hand", "zoom_in", "zoom_out"
 	## or "".
 	var moment: String = ""
 	## The build is animating, and a click stops it rather than placing.
 	var playing: bool = false
-	## Shift is held over a brick, so a click picks it out.
-	var selecting: bool = false
+	## C is held, which paints what is under the pointer.
+	var painting: bool = false
+	## The tool in use (EditVerbs.mode).
+	var mode: String = "select"
+	## Something in hand — a part, a carried selection, a figure — that a
+	## click puts down.
+	var in_hand: bool = false
 	## There is a ghost under the pointer, and whether a click would put
 	## the part down there.
 	var aimed: bool = false
 	var can_place: bool = false
-	## The part being held has not arrived yet.
+	## The part in hand has not arrived yet.
 	var loading: bool = false
+	## A part under the pointer.
+	var over_part: bool = false
+	## Shift, and Ctrl (Cmd on a Mac), held.
+	var shift: bool = false
+	var ctrl: bool = false
+	## The pointer for what a left drag that starts on nothing does, by
+	## the navigation preset and Shift (ViewPrefs.drag_verb).
+	var left_drag: String = "orbit"
 
-	## A drag is going on: a button turns or slides the view, or draws a
+	## A drag is going on: a button holds the view or a part, or draws a
 	## box. Only then does the pointer keep its shape over the panels
 	## (see [member Cursors._shield]).
 	func dragging() -> bool:
-		return turning or sliding or boxing
+		return holding_view or holding_part or boxing
 
 
 ## The one state the pointer should be in.
 ##
-## A drag in progress first, because it is what the hand is doing; then
-## the right button about to take a brick off; then a key held; then
-## what the view did a moment ago; and last what a click would do here.
+## Something held first, because it is what the hand is doing; then a
+## key or a view tool that lends the left button to the view; then what
+## the view did a moment ago; and last what a click or a drag would do
+## here, by the tool and what is under the pointer.
 static func choose(now: Situation) -> String:
-	if now.turning:
-		return "orbit"
-	if now.sliding:
-		return "slide"
+	if now.holding_part or now.holding_view:
+		return "grabbing"
 	if now.boxing:
 		return "box"
-	if now.removing:
-		return "remove"
-	if now.painting:
-		return "paint"
 	if not now.tool.is_empty():
 		return now.tool
 	if not now.moment.is_empty():
 		return now.moment
 	if now.playing:
 		return "arrow"
-	if now.selecting:
-		return "select"
-	if now.aimed:
-		return "place" if now.can_place else "blocked"
-	if now.loading:
-		return "busy"
-	return "arrow"
+	if now.painting:
+		return "paint"
+	if now.in_hand:
+		# Shift with something in hand: a click picks out the part under
+		# the pointer rather than putting this down, and a drag slides.
+		if now.shift:
+			return now.left_drag
+		if now.aimed:
+			return "place" if now.can_place else "blocked"
+		if now.loading:
+			return "busy"
+		return now.left_drag
+	if TOOLS.has(now.mode):
+		return TOOLS[now.mode]
+	# Select: a press on a part takes it (Ctrl: a copy of it); anywhere
+	# else a drag moves the view (Ctrl: draws a box); Shift makes any drag
+	# slide.
+	if now.shift:
+		return now.left_drag
+	if now.ctrl:
+		return "copy" if now.over_part else "box"
+	return "select" if now.over_part else now.left_drag
 
 
 var _shown: String = "arrow"
+var _shown_shape: int = Input.CURSOR_ARROW
+
+## The pictures, drawn once for this screen, and their hotspots in its
+## pixels. See [method _draw_pictures].
+var _pictures: Dictionary = {}
+var _hotspots: Dictionary = {}
+
+## Which picture hangs on each of [constant SLOTS] now, and the slot the
+## next new one goes on.
+var _hung: Dictionary = {}
+var _next_slot: int = 0
 
 ## A sheet over everything, there only while a drag is going on.
 ##
@@ -145,10 +196,10 @@ var _shield: Control
 ## The scale the cursor pictures were drawn at.
 var _scale: float = 1.0
 
-## On the web: the style that shows each borrowed shape crisply at any
-## device ratio, by system shape. See [method _crisp_on_the_web].
+## On the web: the style that shows each picture crisply at any device
+## ratio, by state. See [method _crisp_on_the_web].
 var _css: Dictionary = {}
-var _css_shape: int = -1
+var _css_key: String = ""
 var _css_checked_at: int = 0
 
 ## Set when something may have changed what is under a pointer that has
@@ -195,6 +246,22 @@ func shown() -> String:
 	return _shown
 
 
+## The system shape a state is shown as now: its own, or the slot its
+## picture hangs on (-1 if it hangs on none yet).
+func shape_of(state: String) -> int:
+	if SYSTEM.has(state):
+		return SYSTEM[state]
+	for shape: int in _hung:
+		if _hung[shape] == state:
+			return shape
+	return -1
+
+
+## The picture a state is drawn as here, or null for the system's own.
+func picture_of(state: String) -> Image:
+	return _pictures.get(state)
+
+
 ## Whether this is the drag sheet, which covers the window during a drag
 ## and so is under the pointer without being anything the pointer is over.
 func is_shield(control: Control) -> bool:
@@ -206,7 +273,6 @@ func shielding() -> bool:
 	return _shield.mouse_filter != Control.MOUSE_FILTER_IGNORE
 
 
-## Put the pointer in a state.
 ## The pointer for what is true now: its state, and the sheet over the
 ## panels while a drag goes on.
 func show_for(now: Situation) -> void:
@@ -221,13 +287,15 @@ func show_for(now: Situation) -> void:
 ## went up for them whenever the tool was on: it covered every panel, and
 ## a click on any button turned the view instead (2026-10-12).
 func show_state(state: String, dragging: bool = false) -> void:
-	if not SHAPES.has(state):
-		return
+	if not SYSTEM.has(state) and not _pictures.has(state):
+		state = "arrow"
 	var shield: bool = dragging and not TouchTools.wanted()
 	if state == _shown and shield == shielding():
 		return
+	# The same picture with only the sheet changed stays on its shape.
+	var shape: int = _shown_shape if state == _shown else _hang(state)
 	_shown = state
-	var shape: int = SHAPES[state]
+	_shown_shape = shape
 	if shield:
 		# Up first and then shaped, so the shape takes at once: setting
 		# a control's shape redraws the pointer only if the control is
@@ -250,6 +318,22 @@ func show_state(state: String, dragging: bool = false) -> void:
 	# so a browser test can tell which state a picture belongs to.
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.brickworksCursor = %s" % JSON.stringify(state), true)
+
+
+## The shape to show a state as, its picture hung on a slot first if it
+## is not on one: the next slot round that is not the one on screen.
+func _hang(state: String) -> int:
+	var shape: int = shape_of(state)
+	if shape != -1:
+		return shape
+	shape = SLOTS[_next_slot]
+	if shape == _shown_shape:
+		_next_slot = (_next_slot + 1) % SLOTS.size()
+		shape = SLOTS[_next_slot]
+	_next_slot = (_next_slot + 1) % SLOTS.size()
+	Input.set_custom_mouse_cursor(_pictures[state], shape as Input.CursorShape, _hotspots[state])
+	_hung[shape] = state
+	return shape
 
 
 func _input(event: InputEvent) -> void:
@@ -308,12 +392,13 @@ func _process(_delta: float) -> void:
 ## builder's probe, whose clicks are events and never move the system's
 ## pointer, lost every click to it. A press on the model has no control
 ## to lose it, so the pointer there still changes while the button is
-## held (the minus of a right button about to take a brick off).
+## held.
 func _holding_a_control() -> bool:
 	return _pressed_on_interface and Input.get_mouse_button_mask() != 0
 
 
-## The cursor pictures, drawn for this screen and handed to the system.
+## The cursor pictures, drawn for this screen. They are handed to the
+## system one at a time, as they are wanted (see [method _hang]).
 func _draw_pictures() -> void:
 	_scale = _cursor_scale()
 	var web: bool = OS.has_feature("web")
@@ -323,13 +408,12 @@ func _draw_pictures() -> void:
 		if picture == null:
 			push_warning("cursors: could not draw %s" % path)
 			continue
-		var hotspot: Vector2 = (HOTSPOTS[state] * _scale).floor()
-		Input.set_custom_mouse_cursor(picture, SHAPES[state], hotspot)
+		_pictures[state] = picture
+		_hotspots[state] = (HOTSPOTS[state] * _scale).floor()
 		if web:
 			var sharp: Image = Icons.image(path, 2.0)
 			if sharp != null:
-				_css[SHAPES[state]] = _image_set(picture, sharp,
-					(HOTSPOTS[state] as Vector2).floor())
+				_css[state] = _image_set(picture, sharp, (HOTSPOTS[state] as Vector2).floor())
 
 
 ## How big to draw the cursor pictures for this screen.
@@ -364,8 +448,8 @@ static func _cursor_scale() -> float:
 # 32-pixel picture on a screen with two device pixels to each CSS pixel
 # is blown up to 64 and is visibly soft beside the system's own. CSS can
 # say "this one at 1x, that one at 2x" with image-set(), and Godot does
-# not, so whenever the canvas is showing one of the borrowed shapes its
-# style is replaced with one that does.
+# not, so whenever the canvas is showing one of the pictures its style is
+# replaced with one that does.
 #
 # Godot rewrites the style only when the shape changes, and this follows
 # the shape every frame, so the soft version is on screen for at most a
@@ -383,7 +467,7 @@ func _image_set(normal: Image, sharp: Image, hotspot: Vector2) -> String:
 		int(hotspot.x), int(hotspot.y)]
 
 
-## Put the sharp style on the canvas if it is showing a borrowed shape.
+## Put the sharp style on the canvas if it is showing a picture.
 ##
 ## The page picks the syntax, by trying it: image-set() where the browser
 ## has it, the prefixed one where only that exists, and where neither,
@@ -395,12 +479,14 @@ func _image_set(normal: Image, sharp: Image, hotspot: Vector2) -> String:
 ## disagree with the browser using it.
 func _crisp_on_the_web() -> void:
 	var shape: int = DisplayServer.cursor_get_shape()
+	var state: String = str(_hung.get(shape, ""))
+	var key: String = "%d %s" % [shape, state]
 	var now: int = Time.get_ticks_msec()
-	if shape == _css_shape and now < _css_checked_at:
+	if key == _css_key and now < _css_checked_at:
 		return
-	_css_shape = shape
+	_css_key = key
 	_css_checked_at = now + 250
-	if not _css.has(shape):
+	if not _css.has(state):
 		return
 	JavaScriptBridge.eval("""
 		(function (sets) {
@@ -415,7 +501,7 @@ func _crisp_on_the_web() -> void:
 					return;
 				}
 			}
-		})(%s)""" % JSON.stringify(_css[shape]), true)
+		})(%s)""" % JSON.stringify(_css[state]), true)
 
 
 # -- buttons ---------------------------------------------------------------

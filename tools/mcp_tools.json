@@ -289,7 +289,7 @@
                 "type": "integer"
               },
               "open": {
-                "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back and the backs of the piers there",
+                "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back, the piers there left closed",
                 "type": "integer"
               },
               "panels": {
@@ -355,10 +355,13 @@
                 "type": "object"
               },
               "plinth": {
-                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level. The reply says the tower's foot (and add_rooms' y).",
+                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level, and crags in its dark tones rising against it at their corners and sides (rock: false for none). The reply says the tower's foot (and add_rooms' y).",
                 "properties": {
                   "out": {
                     "type": "integer"
+                  },
+                  "rock": {
+                    "type": "boolean"
                   },
                   "stair": {
                     "type": "boolean"
@@ -1464,7 +1467,7 @@
                 "type": "integer"
               },
               "open": {
-                "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back and the backs of the piers there",
+                "description": "prism: faces left out at the back, so the rooms inside show; with piers, any number opens the core's whole back, the piers there left closed",
                 "type": "integer"
               },
               "panels": {
@@ -1530,10 +1533,13 @@
                 "type": "object"
               },
               "plinth": {
-                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level. The reply says the tower's foot (and add_rooms' y).",
+                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level, and crags in its dark tones rising against it at their corners and sides (rock: false for none). The reply says the tower's foot (and add_rooms' y).",
                 "properties": {
                   "out": {
                     "type": "integer"
+                  },
+                  "rock": {
+                    "type": "boolean"
                   },
                   "stair": {
                     "type": "boolean"

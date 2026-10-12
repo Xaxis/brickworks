@@ -1118,6 +1118,110 @@ with five rock piles, which also makes it 1.9 times as tall as wide where its
 tower alone is 3.3. Not for the homepage. Pictures:
 `shots/runs/orthanc_new_{corner,front,back,right,close}.png` in this worktree.
 
+Each of those four is now a rule of any model, laid by the patterns and named
+by the check. **Speckle**: a dark face's texture goes in columns — a rib of
+round plates up the middle of each face, grille bricks either side of it every
+other outside row (2.7% of a black tower, 10237 3.6%), its second tone on the
+ribs — and `restyle_model`
+and a dark fill's sideways bricks keep to columns; the check calls dressing or
+a second tone scattered over a dark wall speckle. **Sky through a slit**: a
+pier at the back of an opened core stays closed where the core's corner was
+taken out (the open guidance tower had 6 sightlines from each corner, now
+none), and the check calls a slit of sky that runs up the model from any of
+the eight views. **The mast**: blades turn 20 degrees off their piers' diagonals, so none
+is edge on from the corner. **The yard**: a plinth carries crags in its dark
+tones at its corners and sides, within its own width, and the check says when
+a tall model's base is 1.6 times as wide as its body. Pictures of the guidance
+tower: `shots/runs/blades_*.png` in this worktree.
+
+The brief run once more on those rules (`orthanc_r3`, 530 s): 9,151 parts, 84
+shapes, 20 colours, sideways 10%, angled 41%, curve 12%, plain 66%, symmetry
+36%; 36 studs across and 304 plates tall, 3.4 times as tall as wide with its
+base (10237 is about 3.5). It took the guidance's call at radius 8 on a plinth
+of two terraces with its crags, opened the back on ten furnished floors, and
+added braziers, a nameplate and four figures. By eye it is clearly better than
+run 18 — blades round the summit, a black shaft on grey string courses that
+reads as one mass from the front and the side, rooms through the back, a
+compact base — and still flawed: from the corner a stud-wide slit of sky runs
+the full height beside the front-left pier; its faces are plainer than run 2's
+(66% plain, the scatter gone and only ribs and a little grille in its place);
+and the crags are small grey spikes at the plinth's corners, not a mass of
+dark rock. Better than the homepage, not a display set. Pictures:
+`shots/runs/orthanc_r3v_{corner,front,back,right,close}.png` in this worktree.
+
+The slit was a gap in a rule, now closed: a core of radius 8 took two faces of
+each pier down to 0.9 of a stud, too little for a brick, and nothing was laid
+there, so the sky passed straight through every pier. Piers not told their
+`out` now stand at the nearest half stud to the core's wall at which no face is
+left such a hole (`_pier_out`, here a stud deeper): the run's own call had a
+slit from each corner at all nine heights and has none up the shaft
+(`shots/runs/orthanc_r3_pattern_fixed_*`).
+The check had told the run only of slivers between its crags and its tower, at
+one height, which it chased with posts; it now counts slits up to a stud and a
+half wide that run up the model, at two of its nine heights or more.
+
+Run once more on that (`orthanc_r4`, 136 s): 9,415 parts, 71 shapes, 23
+colours, plain 68%, three figures (Saruman, Gandalf, an Uruk-hai at the door),
+seven furnished floors behind; the guidance's radius 7, opened one face. No
+sky shows from the corner, front, back or close views: off the parts' own
+boxes nothing up the shaft is wider than 0.07 of a stud, and at the plinth only
+the gaps between its crags and the tower, at one height. Its form is r3's,
+the corner view without the slit; its finishing is thinner (no nameplate or
+braziers, seven floors to ten, 71 shapes to 84). Offered for the homepage.
+Pictures: `shots/runs/orthanc_r4v_{corner,front,back,right,close}.png`.
+
+**Dark walls dressed as one structure (2026-10-12).** On the landing page, run
+4 was told by the app's own check that it was 58% plain black, a hole, and that
+559 of its 593 pieces of dressing were scattered one by one; the status bar
+said "1 weak joint (overloaded)". Three causes, each any subject's:
+
+- *The check read the file wrong.* An `.ldr` keeps where each brick is and not
+  the section it was laid in, so read back, a prism's turned faces sat at the
+  nearest square turn (232 pieces, sky through slits no picture shows) and the
+  whole tower was one wall: the rib up each storey's face was counted against
+  every course of the tower. A file's turned bricks are now read into sections
+  of their own, and speckle is measured a wall at a time — one plane of one
+  face, a rib or band three marks long. Read so, run 4 has 99 of 1,078 marks
+  scattered, one piece, no sky, and is not called speckle.
+- *The finishing pass dressed part by part.* On a dark wall `restyle_model`
+  turned out only the bricks that happened to start on a column, each with its
+  own tile: broken columns over plain black. It now lays each wall as one
+  structure in its own colour, `"style"` ribs, bands, panels, grid or recessed
+  courses, and a dark wall gets panels unasked: grille between ribs of round
+  plates, framed by whole courses at its ledges, which also tie a two-thick
+  face to its back row. Side studs in no rib are regrouped. An `edit_model`
+  that lays dressing a part at a time over a dark wall is refused, told the
+  call. Run 5 took it up by name in its first minute.
+- *The weak joint* is the prism's: the foot of the core's face in each cleft
+  between the piers hangs over a hole in the plinth, touching a ledge tile at
+  one edge cell, and 88 g of face rested on a tile corner that holds 80.
+  `src/dev/redress.gd` underpins such a brick with a column of 1 x 1 bricks and
+  plates down to what is below; `src/dev/candidate_probe.gd` refuses a homepage
+  model that does not stand up, is not one piece, or has a picture fault the
+  page's model has not.
+
+| model | parts | plain black | marks scattered | weak joints | pieces |
+|---|---|---|---|---|---|
+| run 4, the page's, as read before | 9,415 | 58% | 559 of 593 | 1 | 232 |
+| run 4, read as it stands | 9,415 | 58% | 99 of 1,078 | 1 | 1 |
+| run 4 dressed again (`orthanc_redress`) | 10,038 | 46% | 90 of 1,020 | 0 | 1 |
+| run 5, fresh, made sound (`orthanc_r5_sound`) | 9,428 | 48% | 10 of 725 | 0 | 1 |
+| *10237 Tower of Orthanc (Rebrickable)* | *2,337* | *23%* | | | |
+
+By eye run 5 is the best of the three: every face a panel of grille between
+the string courses, which reads as 10237's worked black where run 4 read as
+brick; run 4 dressed again is between, its old masonry and grille strips mixed
+into the panels. Both still read as a dark mass from across the room, and the
+check still calls both a hole: what is left plain black is the inside of a
+two-thick hollow shaft, open at the back, the blades and the summit, which a
+dressing of outer faces cannot reach — 10237 is 23% plain black. Held out, the
+pirate ship: unasked, its black lower hull took faint grille panels and its
+reddish brown walls (not dark) kept the old scatter, which also sprinkled its
+sails and split one brick off; told `"texture": "log"`, the hull reads as
+planked. The default suits a fortress, not a ship; the subject should choose.
+Pictures: `shots/runs/{orthanc_redress,orthanc_r5,orthanc_r5_sound}_{corner,front,back,right,close}.png`,
+`shots/runs/pirate_{before,redress,redress_log}_corner.png` in this worktree.
+
 **What is left, by what it would move:**
 
 1. **A shaped body for vehicles, in one call** — the car's and the hull's
@@ -1137,7 +1241,14 @@ tower alone is 3.3. Not for the homepage. Pictures:
    base of ribbed, flaring buttresses (10237's 36 curved 10 x 1 slopes on their
    side) — horns as blades and a plinth with steps to the door are calls now,
    but nothing yet lays the claws or the ribs.
-7. Two prism faults found on the way, neither from storeys: a twelve-sided
+7. **The prism's foot in its clefts**: lay the plinth under each cleft between
+   piers so the core's face stands on it, rather than underpinning it after;
+   and **a dark tower's hidden half**: a two-thick shaft is as many plain
+   bricks inside as out, so a black tower dressed on every face is still 46%
+   plain black where 10237 is 23% — thinner walls on a frame, or SNOT panels
+   on a core, as real sets build a tall dark body. And the light-wall scatter
+   `restyle_model` keeps, which sprinkled a ship's sails.
+8. Two prism faults found on the way, neither from storeys: a twelve-sided
    prism of radius 8 overlaps itself (14 problems, 36 pieces), and
    an octagonal core of radius 7 with piers of 4.5 (the least radius) overlaps
    and comes apart in six pieces. A run that asks for either is told so by the

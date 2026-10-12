@@ -59,9 +59,12 @@ fi
 # --force does not apply to them until the files are a day old.  That
 # is a condition of the licence, not a courtesy, which is why it is
 # here and not in docs/ATTRIBUTION.md.
+# inventory_minifigs and inventory_sets are what a set holds besides its own
+# parts list — its minifigures, and any set packed inside it — which My
+# collection counts when it expands a set (tools/collection_data.py).
 mkdir -p vendor/rebrickable
 for table in colors parts elements themes \
-             inventories inventory_parts sets; do
+             inventories inventory_parts sets inventory_minifigs inventory_sets; do
   out="vendor/rebrickable/$table.csv.gz"
   if [ -e "$out" ] && [ -z "$(find "$out" -mtime +0 2>/dev/null)" ]; then
     echo "have  Rebrickable $table (fetched today)"

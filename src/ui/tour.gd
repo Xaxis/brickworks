@@ -32,20 +32,39 @@ func _stops() -> Array:
 			func() -> Control: return shell.toolbar],
 		["The parts bin",
 			"Every part, by category, or found by name or number. Pick one, pick a colour under it, and click the model to put it down — and again for the next. Escape or a right click lets go of it.",
-			func() -> Control: return shell.app.get("_bin_dock")],
+			func() -> Control: return _opened("_bin_dock")],
 		["The model",
 			"Right-drag turns the view, the middle button (or Shift and a right drag) slides it, the wheel zooms to the pointer — as in BrickLink Studio, or set it to work like Blender or Mecabricks in Settings. The numbers 1 to 7 look from the front, back, sides, above, below and a corner; F frames what is selected.",
 			func() -> Control: return shell.app.get("_marquee").get_parent()],
 		["Properties",
 			"What is selected: the part and its numbers, its colour by every name it has, where it stands and what it is joined to. Type a number to move it exactly.",
-			func() -> Control: return shell.inspector],
+			func() -> Control:
+				_opened("_bin_dock")
+				shell.inspector.set_open(true)
+				return shell.inspector],
 		["The status bar",
 			"What just happened, or what the tool in use does; how many parts, whether it would stand up, what is selected, the snap and the turn step.",
 			func() -> Control: return shell.status],
 		["The assistant",
 			"Describe a model and Claude designs and builds it here, part by part — or connect your own Claude to build in this window.",
-			func() -> Control: return shell.app.get("_chat_dock")],
+			func() -> Control: return _opened("_chat_dock")],
 	]
+
+
+## A side column, opened at once if it was folded, so its card has the
+## panel to point at: a window with room for one column beside the model
+## shows one at a time.
+func _opened(dock_name: String) -> SideDock:
+	var dock: SideDock = shell.app.get(dock_name)
+	if not dock.is_open():
+		dock.set_open(true, false)
+		# Lit again once the window has laid itself out round it, and the
+		# other column has folded away.
+		var at: int = _at
+		get_tree().create_timer(SideDock.SLIDE_SECONDS + 0.05).timeout.connect(func() -> void:
+			if visible and _at == at:
+				_show(at))
+	return dock
 
 
 func _ready() -> void:

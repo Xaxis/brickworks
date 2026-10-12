@@ -1,4 +1,5 @@
-## The properties of what is selected, beside the model.
+## The properties of what is selected, in the left-hand column beside
+## the model (PanelStack), under the parts bin and the model tree.
 ##
 ## One part: what it is, by LDraw's number and BrickLink's; its colour, by
 ## LDraw's name and LEGO's and the shops' numbers; where it stands and
@@ -22,6 +23,8 @@ var _header: Button
 var _arrow: Arrow
 var _count: Label
 var _body: VBoxContainer
+## The body scrolls when the column gives it less room than it needs.
+var _scroll: ScrollContainer
 var _title: Label
 var _ids: Label
 var _colour_row: HBoxContainer
@@ -56,25 +59,7 @@ signal toggled(open: bool)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	var backing := StyleBoxFlat.new()
-	backing.bg_color = Color(0.11, 0.12, 0.14, 0.93)
-	backing.border_color = Color(1, 1, 1, 0.1)
-	backing.set_border_width_all(1)
-	backing.set_corner_radius_all(8)
-	backing.content_margin_left = 10
-	backing.content_margin_right = 10
-	backing.content_margin_top = 6
-	backing.content_margin_bottom = 8
-	add_theme_stylebox_override("panel", backing)
-	anchor_left = 1.0
-	anchor_right = 1.0
-	anchor_top = 0.0
-	anchor_bottom = 0.0
-	var top: float = ViewCube.size_for().y + 14.0 + 10.0
-	offset_left = -14.0 - WIDE
-	offset_right = -14.0
-	offset_top = top
-	grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	add_theme_stylebox_override("panel", PanelStack.section_style())
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
@@ -105,9 +90,14 @@ func _ready() -> void:
 	_arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_arrow)
 
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(_scroll)
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 6)
-	column.add_child(_body)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_body)
 
 	_title = _text(14, 0.95)
 	_ids = _text(12, 0.7)
@@ -253,12 +243,9 @@ func is_open() -> bool:
 func set_open(open: bool) -> void:
 	_open = open
 	if _body != null:
-		_body.visible = open
+		_scroll.visible = open
 		_arrow.down = open
 		_arrow.queue_redraw()
-		reset_size()
-		offset_left = -14.0 - WIDE
-		offset_right = -14.0
 	ShellPrefs.put("inspector_open", open)
 	toggled.emit(open)
 	_refresh(true)
@@ -303,9 +290,6 @@ func _refresh(_now: bool) -> void:
 		_show_one(bricks[0])
 	else:
 		_show_many(bricks)
-	reset_size()
-	offset_left = -14.0 - WIDE
-	offset_right = -14.0
 
 
 func _state_of(bricks: Array[BrickWorld.Brick]) -> String:
@@ -329,6 +313,11 @@ func _show_nothing() -> void:
 	_ids.text = ""
 	for control: Control in [_title, _ids, _colour_row, _place, _facts, _actions]:
 		control.visible = false
+	# Docked, it has its room whether or not anything is selected: what it
+	# will show, rather than nothing.
+	_facts.text = ("Click a part to see what it is, its colour by every name it has, "
+		+ "where it stands and what it is joined to. Type a number here to move it exactly.")
+	_facts.visible = true
 
 
 func _show_one(brick: BrickWorld.Brick) -> void:

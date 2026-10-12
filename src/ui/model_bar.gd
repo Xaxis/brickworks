@@ -43,6 +43,8 @@ signal model_named(name: String)
 signal parts_wanted()
 ## Someone wants to turn a picture into bricks.
 signal mosaic_wanted()
+## Someone wants to turn a 3D model into bricks (BrickifyDialog).
+signal brickify_wanted()
 ## The timeline: the build from empty to finished and back.
 signal timeline_wanted()
 ## Someone wants to make a minifigure.
@@ -212,6 +214,9 @@ func bind(to: ModelStore) -> void:
 		_name.text = name
 		model_named.emit(name)
 		_say("opened %s — %d bricks" % [name, bricks]))
+	store.begun.connect(func(name: String) -> void:
+		_name.text = name
+		model_named.emit(name))
 
 
 ## The bar's own controls, for the page to find (Main._tell_page).
@@ -400,12 +405,8 @@ func _start_new() -> void:
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
-	_name.text = ModelStore.UNTITLED
 	if store != null:
-		store.title = ModelStore.UNTITLED
-		# Nothing in it is missing, so the autosave may keep it.
-		store.adopt()
-	model_named.emit(ModelStore.UNTITLED)
+		store.begin(ModelStore.UNTITLED)
 	started_new.emit()
 	_say("new model")
 

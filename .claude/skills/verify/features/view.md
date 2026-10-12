@@ -41,7 +41,10 @@ picture the assistant is shown.
   left button, the wheel, a pinch and keys and checks that no brick was put
   down; it fails on brickworks.diy as of 2026-10-11.
 - `view cube`: the cube at the model's top right (`ViewCube`, replacing the
-  axis dots) turns with the view; a click on a face looks from that side, on
+  axis dots), the one thing over the model: the model tree and the properties
+  are docked in the left-hand column ([building](building.md)'s `docked
+  panels`), and `Main.model_cover()` leaves out the points under the cube and
+  nothing else. It turns with the view; a click on a face looks from that side, on
   an edge or corner from between two or three (`CadCamera.look_from`); a drag
   on it turns the view. Its four arrows turn a step a click (held, they keep
   turning; dragged, they follow), and under it a pad slides (click an arrow
@@ -49,7 +52,15 @@ picture the assistant is shown.
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. Nothing that begins
+  is what everything frames against, baseplate excluded. The view is centred
+  on the window, not on the model's part of it: with one column open the
+  model sits a little to that side (168 units at 1280 x 720). Both ways of
+  moving it tried 2026-10-12 were worse: sliding the camera across
+  (`h_offset`) looked at the model 10° from the side, so a front view showed a
+  side and the handbuild ruler's top view read 0.3 plates up; shifting the
+  lens (`PROJECTION_FRUSTUM`, `frustum_offset`) is exact on screen, but
+  Godot's `project_ray_origin` and `project_ray_normal` ignore a frustum's
+  offset, and every click in `assembly_probe` missed its part. Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
   or a right or middle press over any panel, dialog, popup or the toolbar is
   dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:
@@ -143,7 +154,8 @@ picture the assistant is shown.
   least-needed groups away (`Toolbar._fit`): as one row the old bar set the
   width of the whole window, and on a phone the assistant's rail was off the
   page. `tools/web/fit_check.mjs` asks for New, Save and both rails on both
-  phones.
+  phones, and samples the model's part of the window at every size: nothing
+  but the view cube over it, and in a laptop's window 60% of the width.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit
@@ -171,33 +183,61 @@ picture the assistant is shown.
   controls with corresponding icons"). `cursor_probe` checks the panel draws
   pictures and caps and that its middle row follows the setting, and saves
   `shots/cursors/help_dialog.png` and `strip.png` to look at.
-- `pointer cursors`: `src/ui/cursors.gd`. The pointer over the model says what a
-  click does and what a drag is doing: place (arrow with a blue plus), blocked
-  (forbidden), busy (the held part still fetching), select (shift over a brick:
-  pointing hand), remove (right button down over a brick, not yet moved: arrow
-  with a red minus), orbit, slide, zoom in/out (for 350 ms after a wheel notch,
-  swipe, pinch or key), box (crosshair with a dashed box), paint (C held: a
-  brush). Text fields keep the I-beam; every `BaseButton` and `Slider` gets a
-  pointing hand (`Cursors._point_at`, on `node_added`). `Cursors.choose()` picks
-  the state from a `Situation` that `Main._cursor_state()` fills from live state
-  every frame — polled, so a drag ended outside the window, a dialog closed by a
-  key and Escape cannot leave a stale cursor. It is shown as Godot's default
-  cursor shape; custom pictures are hung on shapes the interface never uses
-  (`Cursors.SHAPES`). During a drag a full-window `MOUSE_FILTER_PASS` sheet
-  (`_shield`) carries the drag's shape so a turn across a panel stays a turn.
+- `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
+  do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
+  and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
+  cursor change based on the mode and context". The browser drew what the app
+  chose; the app chose too little: Hide, Clone, Rotate, Hinge and Move showed
+  Select's pointing hand, the background the arrow though a drag there turns the
+  view, and the Orbit, Pan and Zoom tools, Space and Alt nothing.
+
+  | Situation | State | Shown as |
+  |---|---|---|
+  | Select, over a part | `select` | system pointing hand |
+  | Select, over nothing (a drag turns the view) | `orbit` | picture |
+  | Select, Shift held (a drag slides) | `hand` | picture, open hand |
+  | Select, Ctrl/Cmd: over a part (copies) / over nothing (box) | `copy` / `box` | pictures |
+  | a part dragged, or the view held by any button | `grabbing` | picture, closed hand |
+  | a part in hand: it fits / refused / still fetching | `place` / `blocked` / `busy` | crosshair with a plus / system forbidden / system progress |
+  | a part in hand, over nothing to put it on | `orbit` | picture |
+  | Paint, Delete, Hide, Clone, Rotate, Hinge, Move | `paint` `delete` `hide` `copy` `rotate` `hinge` `move` | bucket, eraser, arrow with a slashed eye / plus / turn / hinge badge, system move |
+  | the Orbit, Pan, Zoom tools (Shift: the other verb, Zoom out) | `orbit` `hand` `zoom_in` | pictures |
+  | Space held / Alt held (Alt-Shift slides, Ctrl-Alt zooms) | `hand` / `orbit` | pictures |
+  | a wheel notch, swipe, pinch or key, for 350 ms | `zoom_in` `zoom_out` `hand` `orbit` | pictures |
+  | C held | `paint` | bucket |
+  | buttons, sliders, the view cube / text fields / a splitter | (the control's) | pointing hand / I-beam / Godot's split arrows |
+
+  The tools' pointers show over parts and over nothing alike, as the three
+  programs do; a drag over nothing still turns the view and says so by
+  grabbing. `Main._cursor_state()` fills a `Cursors.Situation` from live state
+  every frame and `Cursors.choose()` picks — polled, so a drag ended outside
+  the window, a dialog closed by a key and Escape cannot leave a stale cursor.
+  It is shown as Godot's default cursor shape (where no control is under the
+  pointer, which is exactly the model). Every `BaseButton` and `Slider` gets a
+  pointing hand (`Cursors._point_at`, on `node_added`), the view cube sets its
+  own. There are thirteen pictures and Godot only hangs a picture on one of its
+  seventeen system shapes, most of which the interface, the print studio's
+  picker, a dialog's resize edges or a row dragged in the outliner show, so
+  three shapes nothing else asks for (`Cursors.SLOTS`: help, wait, drag) take
+  turns: a picture is hung when wanted (`Cursors._hang`), never on the slot on
+  screen. The old table hung the zoom glass on the resize arrows and "place" on
+  the drop sign. During a drag a full-window `MOUSE_FILTER_PASS` sheet
+  (`_shield`) carries the grabbing hand so a turn across a panel stays one.
   Only while a button holds the drag (`Cursors.Situation.dragging()`), never
-  for what a state is called. It went up for the pointer's name, and the Orbit
-  and Pan tools, Space and Alt show a turn's and a slide's: with any of them on
-  it covered every panel, and a click on a button turned the view instead
-  (brickworks.diy, 2026-10-12). `cursor_probe` presses Paint and a part in the
-  bin with each view tool on and with Space and Alt held; 10 of its checks fail
-  on 91ae209.
+  for what a state is called: it went up for the Orbit and Pan tools', Space's
+  and Alt's pointers too, covered every panel, and a click on a button turned
+  the view instead (brickworks.diy, 2026-10-12). `cursor_probe` presses Paint
+  and a part in the bin with each view tool on and with Space and Alt held.
   Pictures are `assets/ui/cursors/*.svg`, drawn by `Icons` at 1x, 1.5x or 2x by
   screen DPI on Windows and X11, 1x on a Mac (NSCursor takes pixels as points),
-  and in a browser as CSS `image-set()` with 1x and 2x so a 2x screen is sharp.
-  Escape now also throws away a box being drawn (its release is not a click) and
-  closes the controls panel. Asked for by the owner ("the app's cursor should
-  change based on which function is being performed").
+  and in a browser as CSS `image-set()` of a 32 and a 64 px PNG data URL, put
+  on the canvas over Godot's own 1x `url(blob:)` style
+  (`Cursors._crisp_on_the_web`), so a 2x screen is sharp. The page is told the
+  state (`window.brickworksCursor`). `tools/web/cursor_check.mjs` reaches every
+  row with the mouse and keys at 1x and 2x, identifies the picture the CSS
+  carries by its pixels against the SVGs, and fails on brickworks.diy as of
+  2026-10-11. Escape also throws away a box being drawn (its release is not a
+  click) and closes the controls panel.
 - `renders for the critique`: the image handed to the assistant so it can see what
   it built, drawn by a SubViewport. Two opposite corners, so every side has been
   seen; a close look at one part of a model too big to judge whole; and, after an
@@ -429,11 +469,15 @@ Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
 leave an image — look at it; that is the point of them. So does `cursor`:
 `shots/cursors/cursor_sheet.png` (every cursor at 1x and 2x on dark and light,
 hotspot in red), `help_dialog.png` and `strip.png`. In a browser,
-`node tools/web/cursor_check.mjs --url=http://127.0.0.1:PORT/` (a web export
-served by `tools/web/serve.py`) reads the canvas's computed CSS cursor in each
-state, checks the picture's 1x and 2x decode to 32 and 64 px, and leaves
-`shots/cursors/web_<state>.png` with the computed cursor drawn where the pointer
-is (Playwright's screenshots do not draw the pointer). So do `finish`
+`node tools/web/cursor_check.mjs --url=<preview>/app` (`.env` sourced; a
+`*.vercel.app` URL takes `VERCEL_BYPASS`; `--scales=1,2` by default,
+`--no-wheel` skips the slow wheel-over-panels half) reaches every row of the
+`pointer cursors` table with the mouse and keys, reads the canvas's computed
+CSS cursor, names the picture by its pixels against the SVGs, checks its 1x and
+2x decode to 32 and 64 px, and leaves `shots/cursors/web_<context>_<n>x.png`
+with the computed cursor drawn where the pointer is (Playwright's screenshots
+do not draw the pointer), `web_pictures_<n>x.png` (the pictures as the browser
+decoded them from the CSS) and `cursors_<n>x.json`. So do `finish`
 (`shots/finishes_<renderer>.png`, a row of one real colour per finish, and
 `finishes_shot_<renderer>.png`, the same in the critique render) and
 `true colour` (`shots/true_colour_<renderer>.png`, with the sampled boxes drawn). `shot` also times a

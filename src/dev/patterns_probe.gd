@@ -214,6 +214,7 @@ func _run() -> void:
 	await _clustered()
 	await _in_storeys()
 	await _display_proportions()
+	await _display_faults()
 	await _cluster_opened()
 	await _no_daylight()
 	_round_bodies()
@@ -743,7 +744,8 @@ func _clustered() -> void:
 	# and all. The fifteenth Orthanc called it over its shaft and was told
 	# "Restyled 4 bricks": every face was in a section.
 	var counts := func() -> Dictionary:
-		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0, "grey": 0, "black": 0}
+		var found := {"turned": 0, "stone": 0, "grille": 0, "two": 0, "inward": 0, "grey": 0,
+			"black": 0}
 		for placement: Assistant.Placement in assistant._model_from_world().placements:
 			# The faces, not the horns: a blade is built on its side whole.
 			if placement.section.is_empty() or placement.section.contains(" horn "):
@@ -754,6 +756,8 @@ func _clustered() -> void:
 				found["turned"] += 1
 			elif placement.part in ["98283", "15533"]:
 				found["stone"] += 1
+			elif placement.part == "2877":
+				found["grille"] += 1
 			elif Assistant.TWO_WIDE.has(placement.part):
 				found["two"] += 1
 			elif placement.face != "up" and placement.face != "+z":
@@ -768,15 +772,19 @@ func _clustered() -> void:
 	var after: Dictionary = counts.call()
 	var grey: int = int(after["grey"]) - int(before["grey"])
 	var black: int = int(after["black"]) - int(before["black"])
-	# A seventh of the walls are grey bricks (mix_color 72), dressed in their own
-	# grey; the rest take grey only as an accent, a fifth.
-	_check("dressing asked in grey on a black tower is mostly black: %d black, %d grey"
-		% [black, grey], black > grey and grey > 0)
-	_check("restyle_model reaches the faces in their sections: %s" % restyled.get_slice("\n", 0),
-		restyled.begins_with("Restyled") and int(after["turned"]) > int(before["turned"]) + 100
-			and int(after["stone"]) > int(before["stone"]) + 50)
+	# The grey goes on every fifth new rib and on bands, never on the faces'
+	# dressing at large: the tower's own ribs stand already, so it adds none.
+	_check("dressing asked in grey on a black tower adds no grey to its faces: %d black, %d grey"
+		% [black, grey], grey <= 0)
+	# On a black wall, panels of grille between its ribs, the faces in their
+	# sections: the old pass turned out only the bricks that started on a
+	# column, each carrying a tile, broken columns over plain black.
+	_check("restyle_model lays the faces in their sections in panels of grille: %s, %d grille "
+		% [restyled.get_slice("\n", 0), int(after["grille"]) - int(before["grille"])]
+		+ "bricks more", restyled.begins_with("Restyled") and restyled.contains("in panels")
+			and int(after["grille"]) > int(before["grille"]) + 300)
 	_check("...two-wide bricks too, as two rows: %d in the faces, %d before"
-		% [after["two"], before["two"]], int(after["two"]) < int(before["two"]) - 50)
+		% [after["two"], before["two"]], int(after["two"]) < int(before["two"]))
 	_check("...dressing only the faces' outsides, none looking into a shaft or a groove (%d do)"
 		% int(after["inward"]), int(after["inward"]) == 0)
 	_check("...and leaving the windows as they were, %d"
@@ -784,6 +792,8 @@ func _clustered() -> void:
 		lights.call(assistant._model_from_world().placements).size() == windows.size())
 	whole = assistant._check(assistant._model_from_world(), true)
 	_check("...and it still passes the check: %s" % whole["summary"], bool(whole["ok"]))
+	_check("...and is not called speckle",
+		not "\n".join(PackedStringArray(whole.get("advice", []))).contains("speckle"))
 
 	# Piers asked too small for their sides keep their sides. The fifteenth
 	# and sixteenth Orthancs both asked for piers of radius 4 at eight sides,
@@ -937,7 +947,7 @@ func _in_storeys() -> void:
 	# plinth was a ring, its hollow open through its top round the tower and
 	# its stair a piece of its own.
 	var raised: Dictionary = tower.duplicate(true)
-	raised["plinth"] = {"steps": 2, "out": 2}
+	raised["plinth"] = {"steps": 2, "out": 2, "rock": false}
 	var on_plinth: Assistant.Model = assistant._read_model({"name": "Orthanc", "patterns": [raised]})
 	var plinth_check: Dictionary = assistant._check(on_plinth)
 	var foot: float = INF
@@ -1037,6 +1047,148 @@ func _display_proportions() -> void:
 	_check("...and the reply says it is far from a display model's, and how many would do: %s"
 		% said.get_slice("This tower", 1).substr(0, 120),
 		said.contains("This tower stands 1.") and said.contains("Taller, about"))
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+## The four faults the run after the blades showed, each a rule of any model:
+## dressing scattered over a dark wall (speckle), sky through a slit, a horn
+## edge on from the corner, and a wide flat yard for a base.
+func _display_faults() -> void:
+	print("")
+	print("  a display model's faults, each a rule")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var advice := func(verdict: Dictionary) -> String:
+		return "\n".join(PackedStringArray(verdict.get("advice", [])))
+	var guidance := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 7, "color": 0, "piers": {"count": 4},
+		"storeys": {"count": 3, "in": 1}, "plinth": {"steps": 2, "out": 2}}
+	var model: Assistant.Model = assistant._read_model({"name": "Orthanc", "patterns": [guidance]})
+	var verdict: Dictionary = assistant._check(model)
+	var said: String = advice.call(verdict)
+	var ribs: int = 0
+	var crag: int = 0
+	var turned: int = 0
+	var blades: Dictionary = {}
+	for placement: Assistant.Placement in model.placements:
+		if placement.part == Assistant.RIB_PART and placement.face != "up" \
+				and placement.section.contains(" face "):
+			ribs += 1
+		if placement.section.is_empty() and placement.y >= 12.0 and placement.color in [0, 72]:
+			crag += 1
+		if placement.section.contains(" horn ") and not blades.has(placement.section):
+			blades[placement.section] = true
+			var heading: float = model.sections[placement.section].degrees
+			if absf(fposmod(heading, 90.0) - 45.0) > 5.0:
+				turned += 1
+	_check("the guidance's tower passes in one piece: %s, %d" % [verdict["summary"],
+		int(verdict.get("pieces", 0))], bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	# Speckle: a dark face's dressing up it in ribs, never scattered.
+	_check("...its dark faces dressed in ribs, %d round plates up them, and not called speckle"
+		% ribs, ribs >= 40 and not said.contains("speckle"))
+	# The horns: none on a corner view's line, edge on.
+	_check("...none of its %d blades on its pier's diagonal, edge on from a corner (%d turned off it)"
+		% [blades.size(), turned], blades.size() == 4 and turned == 4)
+	# The base: rock rising against it on its terraces, no wider for it.
+	_check("...rock rising against it from its terraces, %d parts in its dark tones, and no yard"
+		% crag, crag >= 40 and not said.contains("Its base is"))
+	_check("...and no sky through it", not said.contains("Sky shows through"))
+	# Opened at the back for its rooms, the back piers stand closed where the
+	# core's corner was taken out: the sky came up the clefts beside them.
+	var opened: Dictionary = guidance.duplicate(true)
+	opened["open"] = 3
+	model = assistant._read_model({"patterns": [opened]})
+	verdict = assistant._check(model)
+	var daylight: GDScript = preload("res://src/dev/daylight_probe.gd")
+	var parts: Array = []
+	for placement: Assistant.Placement in model.placements:
+		var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+		if mesh != null:
+			parts.append([assistant._transform(placement, mesh, model.section_for(placement)),
+				mesh.bounds])
+	var prints: Array = daylight.footprints(parts)
+	var slits: Dictionary = {}
+	for heading: float in [0.0, 45.0, 135.0, 180.0, 225.0, 315.0]:
+		for n: int in daylight.LEVELS:
+			for gap: Array in daylight.gaps(prints, 14.0 + 216.0 * (n + 1) / (daylight.LEVELS + 1),
+					heading):
+				var wide: float = float(gap[1]) - float(gap[0])
+				if wide >= Assistant.DAYLIGHT_SLIT.x and wide < Assistant.DAYLIGHT_SLIT.y:
+					slits[int(heading)] = int(slits.get(int(heading), 0)) + 1
+	_check("opened at the back, it passes in one piece (%s) with no slit of sky from the "
+		% verdict["summary"] + "front, behind or a corner: %s" % str(slits),
+		bool(verdict["ok"]) and slits.is_empty()
+			and not str(advice.call(verdict)).contains("Sky shows through"))
+	# A core of radius 8, as the run after these rules asked for: each pier's
+	# two faces towards the core were too short for a two-thick wall and left
+	# out, and from every corner the sky showed a stud wide straight through
+	# the piers, full height.
+	var wider := {"pattern": "prism", "at": {"x": 30, "y": 0, "z": 30}, "sides": 8,
+		"radius": 8, "color": 0, "courses": 40, "piers": {"count": 4}}
+	model = assistant._read_model({"patterns": [wider]})
+	verdict = assistant._check(model)
+	parts.clear()
+	for placement: Assistant.Placement in model.placements:
+		var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+		if mesh != null:
+			parts.append([assistant._transform(placement, mesh, model.section_for(placement)),
+				mesh.bounds])
+	prints = daylight.footprints(parts)
+	slits.clear()
+	for heading: float in [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]:
+		for n: int in daylight.LEVELS:
+			for gap: Array in daylight.gaps(prints, 120.0 * (n + 1) / (daylight.LEVELS + 1),
+					heading):
+				if float(gap[1]) - float(gap[0]) >= Assistant.DAYLIGHT_SLIT.x:
+					slits[int(heading)] = int(slits.get(int(heading), 0)) + 1
+	_check("a core of radius 8 among its piers is closed from every way round: %s, %s"
+		% [str(slits), verdict["summary"]], bool(verdict["ok"]) and slits.is_empty()
+			and not str(advice.call(verdict)).contains("Sky shows through"))
+	# And each fault is called when it is there. Speckle: a black wall with a
+	# grey brick here and there.
+	var sprinkled: Array = []
+	for x: int in 12:
+		for c: int in 10:
+			sprinkled.append({"part": "3005", "color": 72 if posmod(x * 7 + c * 3, 10) < 3 else 0,
+				"x": x, "y": 3 * c, "z": 0, "section": "wall"})
+	verdict = assistant._check(assistant._read_model({"sections": [{"name": "wall",
+		"x": 4, "y": 0, "z": 4, "axis": "y", "degrees": 0}], "bricks": sprinkled}))
+	_check("a black wall sprinkled with grey is called speckle",
+		str(advice.call(verdict)).contains("speckle"))
+	# Daylight: two walls half a stud apart with nothing behind.
+	var apart: Array = []
+	for c: int in 30:
+		for x: int in 4:
+			apart.append({"part": "3005", "color": 0, "x": x, "y": 3 * c, "z": 0, "section": "a"})
+			apart.append({"part": "3005", "color": 0, "x": x + 4.5, "y": 3 * c, "z": 0,
+				"section": "a"})
+	verdict = assistant._check(assistant._read_model({"sections": [{"name": "a",
+		"x": 4, "y": 0, "z": 4, "axis": "y", "degrees": 0}], "bricks": apart}))
+	_check("a slit of sky half a stud wide is called: %s"
+		% str(advice.call(verdict)).get_slice("Sky shows through", 1).substr(0, 80),
+		str(advice.call(verdict)).contains("Sky shows through"))
+	# A yard: the guidance's tower on a flat plate 60 studs across.
+	var raised: Dictionary = guidance.duplicate(true)
+	raised["at"] = {"x": 30, "y": 1, "z": 30}
+	verdict = assistant._check(assistant._read_model({"patterns": [raised,
+		{"pattern": "fill", "shape": "rectangle", "at": {"x": 0, "y": 0, "z": 0},
+			"across": 60, "deep": 60, "color": 19}]}))
+	_check("the same tower on a flat yard 60 studs across is told its base is too wide: %s"
+		% str(advice.call(verdict)).get_slice("Its base is", 1).substr(0, 60),
+		str(advice.call(verdict)).contains("Its base is"))
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
@@ -1195,29 +1347,42 @@ func _cluster_opened() -> void:
 				back_faces[snappedf(heading, 0.1)] = true
 	_check("no face of the core looks backwards (%s do)" % str(back_faces.keys()),
 		back_faces.is_empty())
-	assistant._apply(model)
+	# Its back piers, set as deep into the core as these, meet across its back
+	# now they are closed where the core's corner was taken out, which keeps the
+	# sky from coming up the clefts beside them. The guidance's tower, opened,
+	# shows its inside from behind between them: across the core's inside, a
+	# column a stud apart at mid height of its lowest storey, from well behind
+	# to its middle, through nothing. Its closed back piers stand in front of
+	# the inside's outer columns, so what shows is the slot between them, the
+	# middle four studs: opened as well, they let the sky up the clefts.
+	var opened := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 7, "color": 0, "open": 3, "piers": {"count": 4},
+		"storeys": {"count": 3, "in": 1}, "plinth": {"steps": 2, "out": 2}}
+	assistant._apply(assistant._read_model({"name": "Orthanc", "patterns": [opened]}))
 	await process_frame
-	# Across the core's inside, a column a stud apart, at mid height: from
-	# well behind the tower to its middle, through nothing.
-	var y: float = 3.0 * 12 / 2.0 + 0.5
+	var y: float = 12.0 + 36.0
 	var inside: float = 7.0 - 2.0
 	var clear: int = 0
 	var columns: int = 0
-	var x: float = 20.0 - inside + 0.5
-	while x < 20.0 + inside:
+	var open_at: Array = []
+	var x: float = 24.0 - inside + 0.5
+	while x < 24.0 + inside:
 		columns += 1
 		var through: bool = true
-		var z: float = 20.0 - 20.0
-		while z <= 20.0 and through:
+		var z: float = 0.0
+		while z <= 24.0 and through:
 			var cell: Vector3i = BrickLattice.to_cell(Vector3(x * Assistant.STUD,
 				y * Assistant.PLATE, z * Assistant.STUD))
 			through = builder.lattice.brick_at(cell) == 0
 			z += 0.25
 		if through:
 			clear += 1
+			open_at.append(x)
 		x += 1.0
-	_check("seen from behind, %d of the %d columns across the core's inside are open to its middle"
-		% [clear, columns], clear == columns)
+	var middle_open: bool = open_at.has(23.5) and open_at.has(24.5)
+	_check("the guidance's tower opened, seen from behind: %d of the %d columns across its "
+		% [clear, columns] + "core's inside are open to its middle, the middle two among them %s"
+		% str(open_at), clear >= 4 and middle_open)
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()

@@ -31,6 +31,8 @@ var outliner: Outliner
 var banner: AssemblyBanner
 var grid: StudGrid
 var tour: Tour
+## My collection: src/ui/collection_dialog.gd.
+var collection: CollectionDialog
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -76,9 +78,10 @@ const MENUS: Array = [
 		"ortho", "grid", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
-	["Build", ["timeline", "instructions", "parts_list", "-", "make_submodel",
+	["Build", ["timeline", "instructions", "parts_list", "-", "collection", "collection_need",
+		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "minifig", "mosaic",
-		"part_maker",
+		"brickify", "part_maker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
@@ -90,7 +93,7 @@ const MENUS: Array = [
 const SUBMENU_ID := 10000
 
 const SUBMENUS: Dictionary = {
-	"import": ["import_ldraw", "import_io", "import_lxf"],
+	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_picture", "export_bricklink", "export_rebrickable"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
@@ -98,9 +101,11 @@ const SUBMENUS: Dictionary = {
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
-## the status bar at the foot of ``column``, the properties over the model
-## in ``over_model``.
-func build(column: Control, over_model: Control) -> void:
+## the status bar at the foot of ``column``, the model tree and the
+## properties in the left-hand column ``stack``, under the parts bin, and
+## the banner for a sub-assembly being edited in ``notices``, the strip
+## along the top of the model. Nothing of it is laid over the model.
+func build(column: Control, stack: PanelStack, notices: Control) -> void:
 	bar = app.get("_bar")
 	builder = app.get("_builder")
 	verbs = app.get("_verbs")
@@ -140,19 +145,21 @@ func build(column: Control, over_model: Control) -> void:
 	# here, where every other program says it.
 	bar.use_status(status.message)
 
-	inspector = Inspector.new()
-	inspector.shell = self
-	over_model.add_child(inspector)
-
+	# Under the parts bin, the model tree over the properties: everything
+	# for building by hand in one column, as Studio keeps its palettes down
+	# the left and Blender stacks its outliner over its properties.
 	outliner = Outliner.new()
 	outliner.shell = self
 	outliner.assemblies = assemblies
-	over_model.add_child(outliner)
+	stack.add_section(outliner, "tree_height")
+
+	inspector = Inspector.new()
+	inspector.shell = self
+	stack.add_section(inspector, "properties_height")
 
 	banner = AssemblyBanner.new()
 	banner.assemblies = assemblies
-	banner.avoid = outliner
-	over_model.add_child(banner)
+	notices.add_child(banner)
 
 	grid = StudGrid.new()
 	grid.world = world
@@ -163,6 +170,15 @@ func build(column: Control, over_model: Control) -> void:
 	tour = Tour.new()
 	tour.shell = self
 	app.get_node("HUD").add_child(tour)
+
+	# What the person owns, what this model needs of it, what they could
+	# build: src/ui/collection_dialog.gd. The parts list leads there too.
+	collection = CollectionDialog.new()
+	collection.said.connect(func(text: String) -> void: bar.say(text))
+	collection.attach(app)
+	var parts_list: Variant = app.get("_inventory")
+	if parts_list is InventoryPanel:
+		(parts_list as InventoryPanel).need_wanted.connect(func() -> void: collection.open("need"))
 
 	# Every text field gives the keys back: src/ui/focus_guard.gd.
 	add_child(FocusGuard.new())
@@ -188,26 +204,30 @@ func build(column: Control, over_model: Control) -> void:
 	_about.title = "About Brickworks"
 	add_child(_about)
 
-	# The layout as it was left, on a screen with room for it.
+	# The layout as it was left. Which columns show is the window's to
+	# say as well as the person's: Main._fit_panels.
 	verbs.set_snap(str(ShellPrefs.value("snap")), false)
 	verbs.turn_step = float(ShellPrefs.value("turn_step"))
 	set_key_strip(bool(ShellPrefs.value("key_strip")))
 	grid.visible = bool(ShellPrefs.value("grid"))
 	inspector.set_open(bool(ShellPrefs.value("inspector_open")))
-	# Folded on a narrow screen, where it would cover the model.
-	outliner.set_open(bool(ShellPrefs.value("outliner_open"))
-		and app.get_viewport().get_visible_rect().size.x >= 1100.0)
-	var parts_dock: SideDock = app.get("_bin_dock")
-	var chat_dock: SideDock = app.get("_chat_dock")
-	parts_dock.toggled.connect(func(open: bool) -> void:
-		if not bool(app.get("_folded_for_room")):
-			ShellPrefs.put("parts_open", open))
-	chat_dock.toggled.connect(func(open: bool) -> void:
-		if not bool(app.get("_folded_for_room")):
-			ShellPrefs.put("assistant_open", open))
-	if not bool(app.get("_folded_for_room")):
-		parts_dock.set_open(bool(ShellPrefs.value("parts_open")), false)
-		chat_dock.set_open(bool(ShellPrefs.value("assistant_open")), false)
+	outliner.set_open(bool(ShellPrefs.value("outliner_open")))
+
+
+## A section of the left-hand column, from the View menu or the toolbar:
+## with its column folded, the column opens with it open (a narrow window
+## folds the assistant to make room); else it folds or opens.
+func _toggle_section(section: Control) -> void:
+	var dock: SideDock = app.get("_bin_dock")
+	if not dock.is_open():
+		section.call("set_open", true)
+		dock.set_open(true)
+		return
+	section.call("set_open", not bool(section.call("is_open")))
+
+
+func _section_shown(section: Control) -> bool:
+	return (app.get("_bin_dock") as SideDock).is_open() and bool(section.call("is_open"))
 
 
 ## Define one command.
@@ -277,6 +297,9 @@ func _define() -> void:
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
 	_add("import_lxf", "LEGO Digital Designer model (.lxf) — not yet", 0,
 		func() -> void: pass, func() -> bool: return false)
+	_add("import_mesh", "3D model to brickify (.obj, .stl, .gltf, .glb)…", 0,
+		func() -> void: bar.brickify_wanted.emit(), Callable(),
+		"A sculpt, a scan or any 3D model, laid in bricks")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
@@ -382,10 +405,10 @@ func _define() -> void:
 		(app.get("_chat_dock") as SideDock).toggle())
 	_ticked("panel_assistant", func() -> bool:
 		return (app.get("_chat_dock") as SideDock).is_open())
-	_add("panel_properties", "Properties", 0, func() -> void:
-		inspector.set_open(not inspector.is_open()), Callable(),
+	_add("panel_properties", "Properties", 0, func() -> void: _toggle_section(inspector),
+		Callable(),
 		"What is selected: its part, colour, where it stands and what it is joined to")
-	_ticked("panel_properties", func() -> bool: return inspector.is_open())
+	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
@@ -399,6 +422,12 @@ func _define() -> void:
 		return (app.get("_steps") as StepsBar).is_playing_back())
 	_add("parts_list", "Parts list", KEY_P, func() -> void: bar.parts_wanted.emit(), something,
 		"Every part this model needs, by colour and count")
+	_add("collection", "My collection…", 0, func() -> void: collection.open("own"), Callable(),
+		"The sets and parts you own: from Rebrickable, BrickLink, or typed in")
+	_add("collection_need", "What do I need?…", 0, func() -> void: collection.open("need"),
+		something, "What this model uses that you do not own, and what could stand in")
+	_add("collection_build", "What can I build?…", 0, func() -> void: collection.open("build"),
+		Callable(), "Models ranked by how much of each you already own")
 	var assembly: Callable = func() -> bool:
 		return not assemblies.selected_assembly().is_empty()
 	_add("make_submodel", "Make a sub-assembly…", CTRL | KEY_G,
@@ -420,15 +449,17 @@ func _define() -> void:
 			var path: String = assemblies.selected_assembly()
 			return not path.is_empty() and not assemblies.copies_of(path).is_empty(),
 		"Cut this copy loose, so editing it changes no other")
-	_add("panel_outliner", "Model tree", 0, func() -> void:
-		outliner.set_open(not outliner.is_open()), Callable(),
-		"The model's sub-assemblies by name, inside one another")
-	_ticked("panel_outliner", func() -> bool: return outliner.is_open())
+	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
+		Callable(), "The model's sub-assemblies by name, inside one another")
+	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
 	_add("minifig", "Minifigure builder…", KEY_M, func() -> void: bar.minifig_wanted.emit(),
 		Callable(), "Make a minifigure from real parts and stand it in the model")
 	_add("mosaic", "Mosaic from a picture…", 0,
 		func() -> void: bar.mosaic_wanted.emit(), Callable(),
 		"Turn a picture into a wall of plates")
+	_add("brickify", "Brickify a 3D model…", KEY_I,
+		func() -> void: bar.brickify_wanted.emit(), Callable(),
+		"Bring in an OBJ, STL or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
 	_add("part_maker", "Part maker…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
@@ -741,6 +772,11 @@ func controls_by_name() -> Dictionary:
 		out.merge(outliner.controls_by_name())
 	if banner != null:
 		out.merge(banner.controls_by_name())
+	if collection != null:
+		out.merge(collection.controls_by_name())
+	var parts_list: Variant = app.get("_inventory") if app != null else null
+	if parts_list is InventoryPanel:
+		out.merge((parts_list as InventoryPanel).controls_by_name())
 	return out
 
 

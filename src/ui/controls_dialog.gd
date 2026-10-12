@@ -156,7 +156,7 @@ func _row(binding: ControlsHint.Binding, density: float) -> Control:
 	if not binding.cursor.is_empty() and Cursors.HOTSPOTS.has(binding.cursor):
 		var picture: TextureRect = Icons.picture(
 			Icons.CURSORS + binding.cursor + ".svg", POINTER_TALL, density)
-		picture.tooltip_text = "the pointer while it happens"
+		picture.tooltip_text = "the pointer that says so"
 		picture.mouse_filter = Control.MOUSE_FILTER_PASS
 		pointer.add_child(picture)
 	row.add_child(pointer)
