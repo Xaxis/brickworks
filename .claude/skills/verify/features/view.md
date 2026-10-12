@@ -657,6 +657,7 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows
 # the tab it opens, checks the booklet in it and prints it to booklet.pdf
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
+BW_BYPASS=$VERCEL_BYPASS node tools/web/booklet_flow.mjs --url=<preview>/app --out=shots/booklet_web   # the app's security policy: only a deployment sends it
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
 godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking a colour recolours something
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd

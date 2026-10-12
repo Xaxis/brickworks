@@ -629,6 +629,11 @@ static func _data_uri(image: Image, on: Color = Color(0, 0, 0, 0)) -> String:
 	return "data:image/png;base64," + Marshalls.raw_to_base64(image.save_png_to_buffer())
 
 
+## The booklet's Print button's own handler, which only a file opened on
+## its own may run (Booklet's header).
+const PRINT_INLINE := " onclick=\"print()\""
+
+
 ## In a browser: open the tab the booklet will be shown in, now, while
 ## the click that asked for it still counts as a click. A page may only
 ## open a window in answer to one, and the pictures take seconds.
@@ -661,8 +666,19 @@ static func fill_tab(html: String) -> bool:
 	if document == null:
 		return false
 	document.open()
-	document.write(html)
+	# The tab was opened from the app, so it is under the app's security
+	# policy, which runs no inline handler: Print did nothing in a browser
+	# (share_flow, 2026-10-12). The app gives the button its click instead;
+	# the file the desktop writes keeps its own.
+	document.write(html.replace(PRINT_INLINE, ""))
 	document.close()
+	JavaScriptBridge.eval("""
+		(() => {
+			const tab = window.brickworksBooklet;
+			const button = tab && tab.document.querySelector('.bar button');
+			if (button) button.addEventListener('click', () => tab.print());
+		})();
+	""", true)
 	window.brickworksBooklet = null
 	return true
 
