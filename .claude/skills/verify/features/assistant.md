@@ -895,7 +895,14 @@ fixing what it got wrong.
   (`tools/style.py`): curved 5-14% (median 14%), plain 58-67% (median 33%),
   sideways up to 5% (median 23%) — the solid core is plates and bricks, and
   round bodies have few straight sides; looked at on the GPU:
-  `shots/runs/shapes/shape_*_corner.png`.
+  `shots/runs/shapes/shape_*_corner.png`. Known gap (held-out round,
+  2026-10-12, docs/ROADMAP.md): a round or 45-degree chamfered plan gets no
+  wing plates at all — a revolve about y of radius 5 and a box with
+  `"chamfer": 3` are both staircases — and a curved flank gets no side
+  panels; two of four runs that used the call threw it away for that. To see
+  it, lay `{"pattern": "shape", "solids": [{"revolve": {"axis": "y",
+  "centre": [6, 0, 6], "profile": [[0, 5], [6, 5]]}}]}` and count 24299,
+  24307, 41769a and 41770a: none.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
