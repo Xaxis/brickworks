@@ -90,6 +90,34 @@ func _ready() -> void:
 	visible = false
 	settings.view = "current"
 	_build()
+	_add_scrim.call_deferred()
+
+
+## A dark veil over the window behind the panel, which stops clicks reaching
+## the model and lets the window stop drawing it (see [method open]).
+var _scrim: ColorRect
+
+
+func _add_scrim() -> void:
+	var parent: Node = get_parent()
+	if parent == null:
+		return
+	_scrim = ColorRect.new()
+	_scrim.color = Color(0.0, 0.0, 0.0, 0.6)
+	_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_scrim.visible = visible
+	parent.add_child(_scrim)
+	parent.move_child(_scrim, get_index())
+
+
+## Whether nobody can see the window, as Main decides it (Main._watch_view):
+## its 3D drawing is left off when the panel closes then.
+static func _nobody_looking() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("document.hidden", true))
+	return DisplayServer.get_name() != "headless" \
+		and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED
 
 
 func open() -> void:
@@ -109,6 +137,13 @@ func open() -> void:
 		_focal.set_value_no_signal(settings.focal_mm)
 	_describe()
 	visible = true
+	if _scrim != null:
+		_scrim.visible = true
+	# The window's own model is behind the veil: not drawing it while the
+	# panel is up gives the render the whole graphics card. In a browser
+	# drawing in software a frame of the window is seconds, and every
+	# picture read back waited for it.
+	get_viewport().disable_3d = true
 	_loop.clear()
 	_status.text = "Choose how it should look; the picture is a quick draft of it."
 	_progress.value = 0.0
@@ -121,6 +156,9 @@ func close() -> void:
 	if renderer != null and renderer.is_busy():
 		renderer.cancel()
 	visible = false
+	if _scrim != null:
+		_scrim.visible = false
+	get_viewport().disable_3d = _nobody_looking()
 	_loop.clear()
 	closed.emit()
 
@@ -151,6 +189,10 @@ func _unhandled_key_input(_event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	# Main turns the window's drawing back on when the tab comes back into
+	# view, which it does not know is behind the panel.
+	if not get_viewport().disable_3d:
+		get_viewport().disable_3d = true
 	if _preview_due >= 0 and Time.get_ticks_msec() >= _preview_due and _working.is_empty():
 		_preview_due = -1
 		_draft()
@@ -265,6 +307,9 @@ func _build() -> void:
 			_describe()
 			_ask_preview())
 	_quality_note = _note(right)
+	# Two lines whatever it says, so the rows under it stay put as the
+	# grade changes: a browser check clicked where "24" had just been.
+	_quality_note.custom_minimum_size.y = 30
 
 	_heading(right, "Size")
 	var size_names: Array = []
@@ -472,6 +517,15 @@ func _slider(into: Control, words: String, low: float, high: float, value: float
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slider.focus_mode = Control.FOCUS_NONE
+	# The whole track, not only the part left of the handle: on this dark
+	# panel the rest was invisible, and a slider at its middle read as one
+	# at its end.
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(1, 1, 1, 0.16)
+	track.set_corner_radius_all(2)
+	track.content_margin_top = 2
+	track.content_margin_bottom = 2
+	slider.add_theme_stylebox_override("slider", track)
 	slider.value_changed.connect(moved)
 	row.add_child(slider)
 	return slider
@@ -642,6 +696,7 @@ func _start(kind: String) -> void:
 				_show_scaled(image)
 				looped.append(_preview.texture as ImageTexture)
 				await output.add_frame(n, image))
+		await output.settle()
 		if done == chosen.frames:
 			_status.text = "Putting the frames together…"
 			lines.append_array(await output.finish_turntable())
@@ -766,6 +821,9 @@ func _tell_page() -> void:
 	var state: Dictionary = {"open": visible, "working": _working,
 		"fraction": snappedf(_fraction, 0.01), "words": _words,
 		"status": _status.text}
+	if renderer != null:
+		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
+		state["worst_step"] = renderer.worst_step
 	for key: String in ["kind", "width", "height", "bytes", "name", "frames"]:
 		if _last.has(key):
 			state[key] = _last[key]

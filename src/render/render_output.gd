@@ -96,21 +96,56 @@ func begin_turntable(model: String, settings: RenderSettings) -> void:
 
 
 ## One frame of it: into the WebP, and on the desktop a PNG in the folder.
+## Encoded on a worker while the next frame is drawn: waited for, a 720p
+## WebP encode in a browser was most of each frame's time, and a turntable
+## of 36 took minutes. At most a few wait, so a long one holds few frames.
 func add_frame(n: int, image: Image) -> void:
 	_frame_size = Vector2i(image.get_width(), image.get_height())
 	var encoded: Array = [PackedByteArray(), PackedByteArray()]
 	var desktop: bool = not _frames_dir.is_empty()
-	await off_thread(func() -> void:
+	var work := func() -> void:
 		encoded[0] = image.save_webp_to_buffer(true, 0.9)
 		if desktop:
-			encoded[1] = image.save_png_to_buffer())
+			encoded[1] = image.save_png_to_buffer()
+	if OS.has_feature("nothreads"):
+		work.call()
+		_keep_frame(n, encoded)
+		return
+	_pending.append([WorkerThreadPool.add_task(work, false, "encode a turntable frame"),
+		encoded, n])
+	await _drain(MOST_PENDING)
+
+
+const MOST_PENDING := 3
+## [task, encoded, frame number], oldest first.
+var _pending: Array = []
+
+
+func _drain(keep: int) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	while _pending.size() > keep:
+		var oldest: Array = _pending[0]
+		while not WorkerThreadPool.is_task_completed(int(oldest[0])):
+			await tree.process_frame
+		WorkerThreadPool.wait_for_task_completion(int(oldest[0]))
+		_pending.pop_front()
+		_keep_frame(int(oldest[2]), oldest[1])
+
+
+func _keep_frame(n: int, encoded: Array) -> void:
 	_webp.add_encoded(encoded[0], _frame_size)
-	if desktop:
+	if not _frames_dir.is_empty():
 		var path: String = _frames_dir.path_join("frame_%04d.png" % (n + 1))
 		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 		if file != null:
 			file.store_buffer(encoded[1])
 			file.close()
+
+
+## Wait for every frame still being encoded; a cancelled turntable must
+## not leave work behind.
+func settle() -> void:
+	await _drain(0)
 
 
 func frames_added() -> int:
@@ -120,6 +155,7 @@ func frames_added() -> int:
 ## The WebP, and on the desktop the MP4 if ffmpeg is here. Returns the
 ## lines to show.
 func finish_turntable() -> PackedStringArray:
+	await _drain(0)
 	var lines := PackedStringArray()
 	if _webp == null or _webp.frame_count() == 0:
 		return lines

@@ -385,7 +385,10 @@ picture the assistant is shown.
   desktop also its frames as PNGs and, where `ffmpeg` is found
   (`RenderOutput.ffmpeg`, PATH and the Homebrew and usual places), an MP4.
   Cancel or Escape stops it. The page publishes `window.brickworksRender`
-  (state, progress, what was downloaded) for a browser check.
+  (state, progress, what was downloaded, and the render's longest frame and
+  what it was doing then, `StudioRender.worst_step`) for a browser check.
+  While it is open a veil covers the window and the window's own model is
+  not drawn (`disable_3d`, put back as Main would have it on Close).
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`).
   The set: a sweep (`studio_backdrop.gdshader`, a floor curving into a wall,
@@ -417,6 +420,11 @@ picture the assistant is shown.
   it needs where SSAO looks past the edge. HDRIs: `studio_panorama.gd`
   finds the brightest light (the key), its share, the average colour and a
   table for picking directions by their light (Best's sky samples).
+  Kept between pictures: the staged copy (until the model changes), the
+  contact shadow (drawn once per model, in no light), one environment per
+  way of lighting, the sweep's mesh and the shadow atlas's size. A
+  turntable's frames are encoded on workers while the next is drawn
+  (`RenderOutput.add_frame`, at most three waiting).
 
 ## How to reach it
 
@@ -525,6 +533,16 @@ take, which is what made a design run give up on looking at itself.
   and its reflection laid a grey veil over every face once the exposure was
   metered up. In a browser an HDRI gives the light its direction, colour and
   shadows; the window's own sky stays what the plastic reflects.
+- **In a browser drawing in software, every picture read back waited for the
+  window's own frame.** SwiftShader in Chromium finishes everything queued
+  before it hands a picture back, the window's model included, and a frame of
+  that is seconds there (turning the view alone held the page 2.7-4.6 s). The
+  render's slowest frames were each draft's first read-back, 8-13 s, until the
+  window stopped drawing its model behind the panel. What was made new for
+  every picture cost the same way and is kept now (above). Measured with
+  `render_flow.mjs`, which prints each render's longest frame and what it
+  was doing; the first draft of a session still pays for building the
+  viewports (and compiling their shaders) once.
 - **A render's steps must make the engine draw.** The app may draw only
   what changed (IdleDraw's low-processor mode), and each step waits for the
   frame count to move; setting a viewport to `UPDATE_ONCE` is a change, a

@@ -443,8 +443,10 @@ func _dialog(method: String) -> void:
 			opened.close()
 		_say("dialog: and an MP4 made by ffmpeg (%d bytes)" % length, length > 1000)
 	print("    status: %s" % (dialog.get("_status") as Label).text)
+	_say("dialog: the window's own model is not drawn behind it", dialog.get_viewport().disable_3d)
 	dialog.close()
-	_say("dialog: Close closes it", not dialog.visible)
+	_say("dialog: Close closes it, and the window draws its model again",
+		not dialog.visible and not dialog.get_viewport().disable_3d)
 
 
 func _until_done(dialog: RenderDialog) -> void:

@@ -133,6 +133,7 @@ var _contact_material: ShaderMaterial
 var _lights: Array[DirectionalLight3D] = []
 var _sky_light: DirectionalLight3D
 var _floor_view: SubViewport
+var _fence: SubViewport
 var _floor_camera: Camera3D
 
 var _staged: Array = []
@@ -140,11 +141,40 @@ var _bounds := AABB()
 ## HDRI key -> StudioPanorama.
 var _panoramas: Dictionary = {}
 
+## The longest a frame took while rendering, and what the render was doing
+## in it: a browser check reads it to say where a page stalled.
+var worst_frame_ms: float = 0.0
+var worst_step: String = ""
+var _step: String = ""
+var _frame_began_us: int = 0
+
+
+func _process(_delta: float) -> void:
+	if not _busy:
+		_frame_began_us = 0
+		return
+	var now: int = Time.get_ticks_usec()
+	if _frame_began_us > 0:
+		var took: float = float(now - _frame_began_us) / 1000.0
+		if took > worst_frame_ms:
+			worst_frame_ms = took
+			worst_step = _step
+	_frame_began_us = now
+	_step = ""
+
+
+## Say what this frame is doing, for [member worst_step].
+func _doing(what: String) -> void:
+	_step = what if _step.is_empty() else _step + ", " + what
+
+
 ## What the last render was drawn with: a probe reads it.
 var last_exposure: float = 1.0
 var last_level: float = 1.0
 ## Where the model is in the sweep's metering picture.
 var _floor_mask: Image
+## The staging the contact shadow was drawn for.
+var _contact_for: Array = []
 var last_shot: Shot
 var last_samples: int = 0
 var last_tiles: int = 0
@@ -218,7 +248,9 @@ static func plan_for(settings: RenderSettings) -> Plan:
 				# desktop.
 				plan.samples = 8
 				plan.msaa = Viewport.MSAA_DISABLED
-				plan.key_spread = KEY_SPREAD
+				# Half the area: eight copies of a shadow across the whole
+				# of it showed as steps at its edge.
+				plan.key_spread = KEY_SPREAD * 0.5
 		RenderSettings.Quality.BEST:
 			plan.samples = settings.samples_here()
 			plan.msaa = Viewport.MSAA_DISABLED
@@ -252,6 +284,8 @@ func render(world: BrickWorld, settings: RenderSettings) -> Image:
 		return null
 	_busy = true
 	_cancelled = false
+	worst_frame_ms = 0.0
+	worst_step = ""
 	_quicken()
 	var image: Image = null
 	if await _prepare(world, settings, false):
@@ -268,6 +302,8 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 		return 0
 	_busy = true
 	_cancelled = false
+	worst_frame_ms = 0.0
+	worst_step = ""
 	_quicken()
 	var done: int = 0
 	if await _prepare(world, settings, true):
@@ -279,6 +315,8 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 				"frame %d of %d" % [n + 1, frames])
 			if image == null:
 				break
+			await get_tree().process_frame
+			_doing("keeping frame %d" % (n + 1))
 			await each.call(n, image)
 			done += 1
 			if _cancelled:
@@ -289,6 +327,7 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 
 
 func _finish() -> void:
+	print("render: the longest frame %.0f ms (%s)" % [worst_frame_ms, worst_step])
 	_settle()
 	if _cancelled:
 		progress.emit(0.0, "cancelled")
@@ -306,18 +345,22 @@ func _build() -> void:
 	var world := World3D.new()
 
 	_out = _view(true, false)
+	_out.name = "Out"
 	add_child(_out)
 	_resolve_material = _canvas(_out, RESOLVE)
 	for n: int in 2:
 		var sums: SubViewport = _view(true, true)
+		sums.name = "Sum%d" % n
 		_sums.append(sums)
 		_sum_materials.append(_canvas(sums, SUM))
 	_out.add_child(_sums[1])
 	_sums[1].add_child(_sums[0])
 	_base = _view(true, false)
+	_base.name = "Base"
 	_sums[0].add_child(_base)
 	var copy_material: ShaderMaterial = _canvas(_base, COPY)
 	_scene = _view(true, false)
+	_scene.name = "Scene"
 	_scene.world_3d = world
 	_base.add_child(_scene)
 
@@ -372,6 +415,7 @@ func _build() -> void:
 	# The model seen from under the floor, for its contact shadow: only the
 	# bricks (layer 1), in a light of nothing, on nothing.
 	_floor_view = SubViewport.new()
+	_floor_view.name = "Floor"
 	_floor_view.size = Vector2i(512, 512)
 	_floor_view.transparent_bg = true
 	_floor_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -391,8 +435,23 @@ func _build() -> void:
 
 	# Whether the sums can hold more than 8 bits here: a browser without
 	# float render targets gets 8-bit ones whatever is asked for.
+	# Two pixels to read back, which makes a browser finish what it has
+	# queued (see _picture).
+	_fence = _view(false, false)
+	_fence.name = "Fence"
+	_fence.size = Vector2i(2, 2)
+	add_child(_fence)
+	await _draw([_fence])
+	# A frame each, read back each: the first draw of each is its shaders
+	# being built, which in a browser drawing in software is seconds, and
+	# all of them in one frame held the page for twelve.
 	_size_all(Vector2i(8, 8))
+	for view: SubViewport in [_scene, _base, _out]:
+		await _draw([view])
+		_doing("setting up the viewports")
+		view.get_texture().get_image()
 	await _draw([_sums[0]])
+	_doing("setting up the viewports")
 	var probe: Image = _sums[0].get_texture().get_image()
 	_floats = probe != null and probe.get_format() in [Image.FORMAT_RGBAF, Image.FORMAT_RGBAH,
 		Image.FORMAT_RGBF, Image.FORMAT_RGBH]
@@ -432,6 +491,10 @@ func _size_all(size: Vector2i) -> void:
 ## frames drawn rather than on frame_post_draw so a cancel is noticed
 ## while a window that is not being drawn holds the picture up.
 func _draw(views: Array) -> bool:
+	var names := PackedStringArray()
+	for view: SubViewport in views:
+		names.append(str(view.name))
+	_doing("drawing %s at %s" % [",".join(names), str((views[0] as SubViewport).size)])
 	for view: SubViewport in views:
 		view.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var drawn: int = Engine.get_frames_drawn()
@@ -469,6 +532,8 @@ func _stage_model(world: BrickWorld) -> bool:
 				return await _stage_model(world)
 		if scenery.has(brick.id) or brick.hidden:
 			continue
+		if _step.is_empty():
+			_doing("staging")
 		_stage.add_brick(brick.part_id, brick.color_code, brick.transform)
 	_stage.release_drawing()
 	# The batches are written on the frame after.
@@ -595,6 +660,7 @@ func _meter_floor(shot: Shot, picture: Vector2i) -> float:
 		environment.background_mode = background as Environment.BGMode
 		if not masked:
 			return -1.0
+		_doing("reading the floor's mask")
 		_floor_mask = _scene.get_texture().get_image()
 	if not await _draw([_scene]):
 		return -1.0
@@ -750,36 +816,28 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	var radius: float = _bounds.size.length() * 0.5
 	var reach: float = (shot.origin - _bounds.get_center()).length() + radius * 2.5
 
-	var environment: Environment = look.duplicate() if look != null else Environment.new()
-	environment.glow_enabled = false
-	environment.ssao_enabled = plan.occlusion
-	environment.ssil_enabled = false
-	environment.ssr_enabled = false
-	environment.sdfgi_enabled = false
-	environment.volumetric_fog_enabled = false
-	environment.fog_enabled = false
-	if settings.transparent:
-		environment.background_mode = Environment.BG_CLEAR_COLOR
-	else:
-		environment.background_mode = Environment.BG_COLOR
-		environment.background_color = settings.backdrop
 	var panorama: StudioPanorama = _panorama(settings.lighting)
-	var ambient_forward: float = (look.ambient_light_energy if look != null else 0.24) \
-		/ BrickWorld.light_energy(1.0)
-	if look == null:
-		environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		environment.ambient_light_color = Color(0.86, 0.86, 0.87)
-		environment.ambient_light_energy = BrickWorld.light_energy(0.4)
-		environment.tonemap_mode = Environment.TONE_MAPPER_ACES
-		environment.tonemap_white = 6.0
-		environment.tonemap_exposure = 1.05
-		ambient_forward = 0.4
-	var key_energy_forward: float = 0.9
-	if panorama != null:
-		ambient_forward = HDRI_AMBIENT * (1.0 - 0.5 * panorama.key_share)
-		environment.ambient_light_energy = BrickWorld.light_energy(ambient_forward)
-		key_energy_forward = HDRI_KEY * panorama.key_share
-		if full:
+	# One environment for each way of lighting, kept and changed rather than
+	# made again: in a browser each new one drawn for the first time held the
+	# page for seconds, at the start of every draft.
+	var key: String = "%s %s %s %s" % [settings.lighting, plan.gi, plan.occlusion,
+		plan.sky_samples]
+	var environment: Environment = _environments.get(key)
+	if environment == null:
+		environment = look.duplicate() if look != null else Environment.new()
+		environment.glow_enabled = false
+		environment.ssil_enabled = false
+		environment.ssr_enabled = false
+		environment.volumetric_fog_enabled = false
+		environment.fog_enabled = false
+		environment.ssao_enabled = plan.occlusion
+		environment.sdfgi_enabled = plan.gi
+		if look == null:
+			environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			environment.ambient_light_color = Color(0.86, 0.86, 0.87)
+			environment.tonemap_mode = Environment.TONE_MAPPER_ACES
+			environment.tonemap_white = 6.0
+		if panorama != null and full:
 			var sky := Sky.new()
 			var material := PanoramaSkyMaterial.new()
 			material.panorama = panorama.texture
@@ -788,11 +846,10 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			material.energy_multiplier = HDRI_LEVEL / maxf(panorama.average, 0.0001)
 			sky.sky_material = material
 			environment.sky = sky
-			environment.sky_rotation = Vector3(0.0, turn, 0.0)
 			environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 			environment.ambient_light_sky_contribution = 1.0
 			environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-		else:
+		elif panorama != null:
 			# Compatibility lights a sky in sRGB and both of its uses came
 			# out wrong there: its ambient's tint several times too strong
 			# (the window's warm room turned a grey plate orange), and its
@@ -803,18 +860,36 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			# what the plastic reflects.
 			environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 			environment.ambient_light_color = panorama.tint.lerp(Color(1, 1, 1), 0.5)
+		if plan.gi:
+			environment.sdfgi_use_occlusion = true
+			environment.sdfgi_read_sky_light = true
+			environment.sdfgi_cascades = 4
+			environment.sdfgi_bounce_feedback = 0.5
+			environment.sdfgi_y_scale = Environment.SDFGI_Y_SCALE_100_PERCENT
+			# Weak: at full strength the white sweep under the model lit it
+			# like a second sun, and the probe measured the model half as
+			# light again as the window draws it, its reds gone to pink.
+			environment.sdfgi_energy = GI_ENERGY if panorama == null else 1.0
+		_environments[key] = environment
+	# What changes from picture to picture.
+	environment.tonemap_exposure = look.tonemap_exposure if look != null else 1.05
+	if settings.transparent:
+		environment.background_mode = Environment.BG_CLEAR_COLOR
+	else:
+		environment.background_mode = Environment.BG_COLOR
+		environment.background_color = settings.backdrop
+	var ambient_forward: float = (look.ambient_light_energy if look != null else 0.24) \
+		/ BrickWorld.light_energy(1.0)
+	if look == null:
+		ambient_forward = 0.4
+	var key_energy_forward: float = 0.9
+	if panorama != null:
+		ambient_forward = HDRI_AMBIENT * (1.0 - 0.5 * panorama.key_share)
+		key_energy_forward = HDRI_KEY * panorama.key_share
+		environment.sky_rotation = Vector3(0.0, turn, 0.0) if full else Vector3.ZERO
+	environment.ambient_light_energy = BrickWorld.light_energy(ambient_forward)
 	if plan.gi:
-		environment.sdfgi_enabled = true
-		environment.sdfgi_use_occlusion = true
-		environment.sdfgi_read_sky_light = true
-		environment.sdfgi_cascades = 4
 		environment.sdfgi_min_cell_size = clampf(radius / 48.0, 0.5, 64.0)
-		environment.sdfgi_bounce_feedback = 0.5
-		environment.sdfgi_y_scale = Environment.SDFGI_Y_SCALE_100_PERCENT
-		# Weak: at full strength the white sweep under the model lit it
-		# like a second sun, and the probe measured the model half as
-		# light again as the window draws it, its reds gone to pink.
-		environment.sdfgi_energy = GI_ENERGY if panorama == null else 1.0
 	if plan.sky_samples:
 		# Part of the even light moves into lights from the sky that cast
 		# shadows (see _light_sample), which is what darkens under a ledge.
@@ -854,7 +929,10 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		light.set_meta("toward", toward)
 		_aim_light(light, toward)
 		light.light_angular_distance = plan.soft_key if n == 0 else 0.0
-		light.shadow_blur = 1.5 if plan.soft_key > 0.0 or not full else 1.0
+		# Softer where frames are averaged under a key that moves: each
+		# frame's copy of the shadow blends into the next.
+		light.shadow_blur = 2.5 if not full and plan.samples > 1 \
+			else (1.5 if plan.soft_key > 0.0 or not full else 1.0)
 		light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 		light.directional_shadow_max_distance = reach
 		light.directional_shadow_fade_start = 1.0
@@ -881,7 +959,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	_sky_light.light_color = Color(0.9, 0.9, 0.92)
 	_sky_light.light_energy = BrickWorld.light_energy(ambient_forward * SKY_SHARE, true)
 	if full and settings.quality != RenderSettings.Quality.QUICK:
-		RenderingServer.directional_shadow_atlas_set_size(8192, true)
+		_shadow_atlas(8192)
 		# The finest occlusion and soft shadows there are, at full size: the
 		# engine's defaults are made for a game's frame, half-size occlusion
 		# and a few shadow taps, and in a 4K still both showed as a grid of
@@ -891,7 +969,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		RenderingServer.directional_soft_shadow_filter_set_quality(
 			RenderingServer.SHADOW_QUALITY_SOFT_ULTRA)
 	else:
-		RenderingServer.directional_shadow_atlas_set_size(4096, true)
+		_shadow_atlas(_project_atlas())
 
 	# The sweep, its wall behind the model and its floor running out
 	# under the camera, turned to face it.
@@ -899,13 +977,38 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	_backdrop.visible = not settings.transparent and not below
 	if _backdrop.visible:
 		var footprint: float = Vector2(_bounds.size.x, _bounds.size.z).length() * 0.5
-		_backdrop.mesh = _sweep(footprint * 1.25 + 40.0, maxf(radius * 2.0, 160.0),
+		var shape := Vector3(footprint * 1.25 + 40.0, maxf(radius * 2.0, 160.0),
 			radius * 60.0 + reach * 3.0)
+		if shape != _sweep_shape or _backdrop.mesh == null:
+			_sweep_shape = shape
+			_backdrop.mesh = _sweep(shape.x, shape.y, shape.z)
 		var facing: Basis = Basis.looking_at(-shot.toward, Vector3.UP)
 		_backdrop.global_transform = Transform3D(facing,
 			Vector3(_bounds.get_center().x, floor_y, _bounds.get_center().z))
 		_backdrop_material.set_shader_parameter("colour",
 			Vector3(settings.backdrop.r, settings.backdrop.g, settings.backdrop.b))
+
+
+## The shadow map's size, set only when it changes: the atlas is made
+## again whenever it is set, and in a browser that was seconds a render.
+func _shadow_atlas(size: int) -> void:
+	if _atlas_size < 0:
+		_atlas_size = _project_atlas()
+	if size == _atlas_size:
+		return
+	_atlas_size = size
+	RenderingServer.directional_shadow_atlas_set_size(size, true)
+
+
+static func _project_atlas() -> int:
+	return int(ProjectSettings.get_setting(
+		"rendering/lights_and_shadows/directional_shadow/size", 4096))
+
+
+var _atlas_size: int = -1
+var _sweep_shape := Vector3.ZERO
+## Environments by the way of lighting they are for: see _dress.
+var _environments: Dictionary = {}
 
 
 ## How bright a panorama is made: its average luminance brought to this,
@@ -924,15 +1027,18 @@ static func _aim_light(light: DirectionalLight3D, toward: Vector3) -> void:
 ## where it starts curving, [param bend] the curve's radius, [param far]
 ## how far floor and wall run, so their edges are never in the picture.
 static func _sweep(behind: float, bend: float, far: float) -> ArrayMesh:
-	var profile: Array[Vector3] = []   # (z, y, unused)
+	# (z, y, the angle the curve has turned through): the normal at each
+	# point is the curve's own, so the light goes round the bend smoothly.
+	# A normal a segment, the bend was drawn as bands across the wall.
+	var profile: Array[Vector3] = []
 	profile.append(Vector3(far, 0.0, 0.0))
 	profile.append(Vector3(0.0, 0.0, 0.0))
 	profile.append(Vector3(-behind, 0.0, 0.0))
-	const STEPS := 24
+	const STEPS := 48
 	for n: int in range(1, STEPS + 1):
 		var angle: float = PI * 0.5 * float(n) / float(STEPS)
-		profile.append(Vector3(-behind - sin(angle) * bend, bend - cos(angle) * bend, 0.0))
-	profile.append(Vector3(-behind - bend, far, 0.0))
+		profile.append(Vector3(-behind - sin(angle) * bend, bend - cos(angle) * bend, angle))
+	profile.append(Vector3(-behind - bend, far, PI * 0.5))
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var half: float = far
@@ -941,14 +1047,16 @@ static func _sweep(behind: float, bend: float, far: float) -> ArrayMesh:
 		var b: Vector3 = profile[n + 1]
 		# Square to the profile and into the sweep: up off the floor, out
 		# of the wall towards the camera.
-		var normal := Vector3(0.0, a.x - b.x, b.y - a.y).normalized()
+		var normals: Array[Vector3] = [Vector3(0.0, cos(a.z), sin(a.z)),
+			Vector3(0.0, cos(a.z), sin(a.z)), Vector3(0.0, cos(b.z), sin(b.z)),
+			Vector3(0.0, cos(b.z), sin(b.z))]
 		var corners: Array[Vector3] = [Vector3(-half, a.y, a.x), Vector3(half, a.y, a.x),
 			Vector3(half, b.y, b.x), Vector3(-half, b.y, b.x)]
 		# Clockwise seen from inside the sweep, which is Godot's front:
 		# drawn the other way, the floor showed its back, the engine turned
 		# its normal down, and no light fell on it.
 		for index: int in [0, 2, 1, 0, 3, 2]:
-			tool.set_normal(normal)
+			tool.set_normal(normals[index])
 			tool.add_vertex(corners[index])
 	return tool.commit()
 
@@ -956,6 +1064,11 @@ static func _sweep(behind: float, bend: float, far: float) -> ArrayMesh:
 ## Three silhouettes of the model seen from under the floor, blurred, for
 ## studio_contact: within a plate of the floor, a brick, and a few.
 func _contact_shadow() -> bool:
+	# The same model makes the same shadow: drawn once per model, not per
+	# picture. In a browser drawing in software its three silhouettes were
+	# the slowest frames of every draft.
+	if _contact_for == _staged and _contact.mesh != null:
+		return true
 	var floor_y: float = _bounds.position.y
 	var centre: Vector3 = _bounds.get_center()
 	const HEIGHTS: Array = [6.0, 30.0, 110.0]
@@ -966,17 +1079,31 @@ func _contact_shadow() -> bool:
 		Basis(Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, -1, 0)),
 		Vector3(centre.x, floor_y - 2.0, centre.z))
 	_floor_camera.near = 1.5
+	# In no light: only where the bricks are counts, and every light that
+	# casts a shadow is a shadow map drawn again for this camera.
+	var lit: Array[bool] = []
+	var lights: Array[DirectionalLight3D] = _lights.duplicate()
+	lights.append(_sky_light)
+	for light: DirectionalLight3D in lights:
+		lit.append(light.visible)
+		light.visible = false
 	var textures: Array[ImageTexture] = []
 	for n: int in HEIGHTS.size():
 		_floor_camera.far = 2.0 + float(HEIGHTS[n])
 		if not await _draw([_floor_view]):
+			for k: int in lights.size():
+				lights[k].visible = lit[k]
 			return false
+		_doing("reading a silhouette")
 		var silhouette: Image = _floor_view.get_texture().get_image()
 		var texel: float = span / float(_floor_view.size.x)
 		var across: int = clampi(roundi(float(_floor_view.size.x) * texel / float(BLURS[n])), 4,
 			_floor_view.size.x)
 		silhouette.resize(across, across, Image.INTERPOLATE_LANCZOS)
 		textures.append(ImageTexture.create_from_image(silhouette))
+	for k: int in lights.size():
+		lights[k].visible = lit[k]
+	_contact_for = _staged
 	_contact_material.set_shader_parameter("near_tex", textures[0])
 	_contact_material.set_shader_parameter("mid_tex", textures[1])
 	_contact_material.set_shader_parameter("far_tex", textures[2])
@@ -1034,6 +1161,13 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 				views.append(_out)
 			if not await _draw(views):
 				return null
+			if OS.has_feature("web") and samples > 1 and sample < samples - 1:
+				# Wait for this frame here, not for all of them at the end: a
+				# browser queues the drawing and hands back control, and the
+				# read-back at the end waited for eight frames of Good in one
+				# go (5 s in software) and for a cancelled Best's thirty-two.
+				_doing("waiting for the frame")
+				_fence.get_texture().get_image()
 			step += 1
 			if step % 4 == 0 or step == steps:
 				var said: String = words if not words.is_empty() else (
@@ -1041,9 +1175,16 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 				if tiles.size() > 1 and words.is_empty():
 					said = "piece %d of %d, %s" % [tiles.find(tile) + 1, tiles.size(), said]
 				progress.emit(lerpf(from, to, float(step) / float(steps)), said)
+		_doing("reading the picture back")
 		var drawn: Image = _out.get_texture().get_image()
 		if drawn == null:
 			return null
+		# Reading back waits for the graphics card to finish everything
+		# queued, which in a browser drawing in software is most of a
+		# second: the copying and converting after it go in a frame of
+		# their own.
+		await get_tree().process_frame
+		_doing("putting the piece in")
 		if drawn.get_format() != Image.FORMAT_RGBA8:
 			drawn.convert(Image.FORMAT_RGBA8)
 		var inside: Rect2i = tile.intersection(Rect2i(Vector2i.ZERO, picture))
@@ -1051,6 +1192,8 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 		piece_done.emit(drawn.get_region(Rect2i(Vector2i(margin, margin), inside.size)),
 			inside.position)
 	if not settings.transparent:
+		await get_tree().process_frame
+		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
 
@@ -1207,9 +1350,7 @@ func _quicken() -> void:
 
 
 func _settle() -> void:
-	RenderingServer.directional_shadow_atlas_set_size(
-		int(ProjectSettings.get_setting("rendering/lights_and_shadows/directional_shadow/size",
-			4096)), true)
+	_shadow_atlas(_project_atlas())
 	OS.low_processor_usage_mode = _was_low_processor
 	if full_renderer():
 		RenderingServer.environment_set_ssao_quality(
