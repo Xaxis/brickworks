@@ -24,6 +24,14 @@
   "launch": [],
   "features": [
     {
+      "id": "api:/api/collection",
+      "kind": "api",
+      "entry": "api/collection.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an import, PUT, DELETE with a session)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "api:Claude's sign-in (OAuth)",
       "kind": "api",
       "entry": "api/oauth.js",
@@ -72,6 +80,14 @@
       "tests": []
     },
     {
+      "id": "cli:apply sql to the live project",
+      "kind": "cli",
+      "entry": "tools/apply_sql.mjs",
+      "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs --look   (.env sourced; a supabase/*.sql file to apply one)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:arrival check",
       "kind": "cli",
       "entry": "tools/web/arrival_check.mjs",
@@ -117,6 +133,22 @@
       "entry": ".github/workflows/release.yml",
       "reach": "gh workflow run release.yml -f tag=v0.1.0",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:collection api probe",
+      "kind": "cli",
+      "entry": "tools/web/collection_probe.mjs",
+      "reach": "node tools/web/collection_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:collection browser flow",
+      "kind": "cli",
+      "entry": "tools/web/collection_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_flow.mjs --url=<deployment>/app --out=shots/collection_web   (with .env sourced)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -252,6 +284,14 @@
       "tests": []
     },
     {
+      "id": "cli:official models' parts lists",
+      "kind": "cli",
+      "entry": "src/dev/collection_models.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_models.gd   (needs vendor/omr)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:pack the web parts",
       "kind": "cli",
       "entry": "tools/web_pack.py",
@@ -297,6 +337,14 @@
       "entry": "src/main.gd",
       "reach": "godot --headless --path . -- --about",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:set inventories",
+      "kind": "cli",
+      "entry": "tools/collection_data.py",
+      "reach": "python3 tools/collection_data.py   (--check writes nothing; needs vendor/rebrickable)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -348,6 +396,14 @@
       "tests": []
     },
     {
+      "id": "lib:a rebrickable account",
+      "kind": "lib",
+      "entry": "src/collection/rebrickable_account.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (against tests/fixtures/collection/fake_rebrickable.py)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "lib:account session",
       "kind": "lib",
       "entry": "src/account/account.gd",
@@ -393,6 +449,22 @@
       "entry": "src/parts/part_editor.gd",
       "reach": "godot --headless --path . --script src/dev/modify_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:collection kept with the account",
+      "kind": "lib",
+      "entry": "src/collection/collection_store.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (the copy on this device; the account's through collection_probe.mjs)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "lib:collection sums",
+      "kind": "lib",
+      "entry": "src/collection/collection.gd",
+      "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
+      "area": "collection",
       "tests": []
     },
     {
@@ -747,7 +819,9 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select, L locks, Shift-L unlocks everything)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py"
+      ]
     },
     {
       "id": "ui:make a part",
@@ -822,6 +896,14 @@
       "tests": []
     },
     {
+      "id": "ui:my collection",
+      "kind": "ui",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection\u2026 / What do I need?\u2026 / What can I build?\u2026; or P, then What do I need?)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "ui:navigation presets",
       "kind": "ui",
       "entry": "src/camera/view_prefs.gd",
@@ -883,7 +965,9 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py"
+      ]
     },
     {
       "id": "ui:pointer cursors",
@@ -939,7 +1023,9 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select, hold another part, Edit, Replace with the part in hand)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py"
+      ]
     },
     {
       "id": "ui:seat an old model",
@@ -963,7 +1049,9 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (shift-click, then C paint / arrows nudge / Delete)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py"
+      ]
     },
     {
       "id": "ui:sign-in screen",
@@ -1019,7 +1107,9 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py"
+      ]
     },
     {
       "id": "ui:the booklet",
@@ -1051,7 +1141,9 @@
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (Cmd-Z, Cmd-Shift-Z)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py"
+      ]
     },
     {
       "id": "ui:undo history",

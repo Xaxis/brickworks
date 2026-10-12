@@ -92,7 +92,10 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # Claude connector's relay, needs SUPABASE_URL and SUPABASE_SECRET_KEY for
 # its queue; without them it says the connector is not configured.
 # /api/oauth is how Claude signs in to it (the same keys); the paths OAuth
-# clients look for are mapped onto it in the routes below.
+# clients look for are mapped onto it in the routes below. /api/collection
+# keeps what a person owns (the same keys, supabase/collection.sql), and
+# reads the Rebrickable and BrickLink joins it maps imports through from
+# the index tools/collection_data.py writes, put beside it here.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)
@@ -104,6 +107,12 @@ for handler in api/*.js; do
   for shared in api/_*.js; do
     [ -f "$shared" ] && cp "$shared" "$fn/"
   done
+  if [ "$route" = collection ]; then
+    if [ ! -f assets/generated/sets/index.json ]; then
+      echo "deploy FAILED: no assets/generated/sets/index.json for /api/collection (tools/collection_data.py)"; exit 1
+    fi
+    cp assets/generated/sets/index.json "$fn/_collection_index.json"
+  fi
   # The handler is .mjs and so is unambiguously a module; the shared
   # files it imports are .js, which Node classifies by the nearest
   # package.json — and a function bundle has none. Node 22 does detect
@@ -122,6 +131,18 @@ for handler in api/*.js; do
 JSON
   echo "deploy: packaged /api/$route"
 done
+
+# What is in every set, and the official models' parts lists, for My
+# collection (tools/collection_data.py, src/dev/collection_models.gd). Not in
+# the pack, which everybody waits for: 26 MB in 258 files, and the app
+# fetches the one shard a typed set is in (SetInventories). Same origin, so
+# the content security policy needs nothing new for it.
+if [ ! -f assets/generated/sets/index.json ] || [ ! -f assets/generated/sets/models.json ]; then
+  echo "deploy FAILED: no set inventories in assets/generated/sets (tools/collection_data.py, src/dev/collection_models.gd)"; exit 1
+fi
+mkdir -p .vercel/output/static/sets
+cp assets/generated/sets/*.json .vercel/output/static/sets/
+echo "deploy: $(ls -1 .vercel/output/static/sets | wc -l | tr -d ' ') set inventory files at /sets/"
 
 # Geometry the app fetches when someone picks a part the build does not
 # carry. Served from /parts/ at the deployment root rather than under
@@ -160,9 +181,10 @@ fi
 #
 # The app holds a person's Anthropic key in the browser. The best defence
 # for that is a short list of places the page can talk to at all: itself,
-# Anthropic, Wikimedia (reference pictures), the parts store and the
-# sign-in service — so even a script that should never have run has
-# nowhere to send a key. The page's one inline script is allowed by its
+# Anthropic, Wikimedia (reference pictures), Rebrickable (a person's own
+# sets and parts lists, read with their own Rebrickable key: My collection),
+# the parts store and the sign-in service — so even a script that should
+# never have run has nowhere to send a key. The page's one inline script is allowed by its
 # hash, not by allowing inline scripts; 'unsafe-eval' stays because
 # Godot's JavaScript bridge evaluates what the app asks of the browser
 # (its size, its address, the clipboard).
@@ -187,7 +209,7 @@ signin_origin=""
 [ -n "${SUPABASE_URL:-}" ] && signin_origin="$(origin_of "$SUPABASE_URL")"
 # Once each, even when they are the same place, as they are today.
 connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
 # And none of the cross-origin isolation headers: the app's threaded build
@@ -211,6 +233,8 @@ cat > .vercel/output/config.json <<EOF
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "Cache-Control": "no-store" } },
+    { "src": "/sets/(.*[.]json)", "headers": {
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" } },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
@@ -230,6 +254,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/b/([^/]+)/?$", "dest": "/b/\$1/index.html" },
     { "handle": "filesystem" },
     { "src": "/parts/(.*)", "status": 404,
+      "headers": { "Content-Type": "text/plain" } },
+    { "src": "/sets/(.*)", "status": 404,
       "headers": { "Content-Type": "text/plain" } },
     { "src": "/(.*)", "status": 308, "headers": { "Location": "/" } }
   ]

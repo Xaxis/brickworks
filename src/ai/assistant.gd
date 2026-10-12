@@ -185,6 +185,10 @@ var _turn_cap: int = MAX_TURNS
 ## What was asked for, so a pass can say what real sets of that kind are
 ## built from.
 var _brief: String = ""
+## What the person owns ("part/colour" -> how many, CollectionStore.on_hand),
+## for a brief that asks to be built from their collection
+## (Collection.wanted_in). Empty when nothing is known.
+var owned: Dictionary = {}
 var _shot: ModelShot
 ## Tokens this design has spent, as the API reports them. Reset per
 ## instruction, because "what did that cost" is a question about the
@@ -591,6 +595,8 @@ func opening_for(text: String) -> Array:
 			+ "the main masses, and where they sit against each other "
 			+ "— before you choose any part."})
 	opening.append({"type": "text", "text": text})
+	if not owned.is_empty() and Collection.wanted_in(text):
+		opening.append({"type": "text", "text": Collection.brief_note(owned, library)})
 	# And what real sets of this kind are built from, unasked.
 	#
 	# This project has measured twice what happens to a capability the
@@ -3465,6 +3471,10 @@ func _search(query: String, limit: int) -> String:
 
 	if usable.is_empty():
 		return "No parts match '%s'. Try fewer or plainer words." % query
+	# Built from their own collection: what they own first, and how much.
+	var from_collection: bool = not owned.is_empty() and Collection.wanted_in(_brief)
+	if from_collection:
+		usable = Collection.owned_first(usable, owned)
 
 	# The parts a design is about to name, fetched while it is still being
 	# thought about, so check_design is not the first to ask for them. Only
@@ -3476,7 +3486,8 @@ func _search(query: String, limit: int) -> String:
 
 	var lines: PackedStringArray = PackedStringArray()
 	for info: PartLibrary.PartInfo in usable:
-		lines.append(_describe(info))
+		lines.append(_describe(info)
+			+ (Collection.owned_note(info.id, owned, library) if from_collection else ""))
 	return "\n".join(lines)
 
 
