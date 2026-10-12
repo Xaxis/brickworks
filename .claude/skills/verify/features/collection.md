@@ -149,6 +149,15 @@ Proves it when:
 - `collection_flow.mjs` ends `imported, short, exported, ranked and opened in a
   browser`; look at `1_need_empty.png` to `5_opened.png`.
 
+Last proven 2026-10-12 on the preview of `133ed75`
+(brickworks-4ox4aq5lj-xaxis-projects.vercel.app): `collection_probe.mjs` 44 of
+44 against the deployed function, and `collection_flow.mjs` end to end — the
+example car 61 pieces, 19 owned after the import and the typed 6020, 42 short
+in 26 lots; the BrickLink list carried 32 pieces in 21 lots and said 5 lots
+were left off, because `ShopLists.BRICKLINK_COLOUR` has no number for the
+car's Light Grey, Trans Very Light Blue and similar older colours. That table
+is the gap, not this panel.
+
 ## Gotchas
 
 - **Godot exits 0 on a parse error**: read the probe for `SCRIPT ERROR`.
