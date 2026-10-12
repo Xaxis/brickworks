@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
 
 ## Sub-features
 
@@ -11,14 +11,43 @@ picture the assistant is shown.
   view is driven as BrickLink Studio drives it by default — right-drag turns
   about the point under the pointer, middle-drag and shift with a right drag
   slide, the wheel zooms to the pointer, F frames the selection or everything,
-  1–7 and the keypad give the views, O and ` square on and back. Blender's
-  turns with the middle button; Mecabricks' turns with a left drag on empty
-  space, slides with the right and zooms with the middle. The left button acts
-  on the model in all three (`ViewPrefs.drag_verb`, read by the camera, the
-  controls list and the strip alike). Researched from each program's own help
+  1–7 and the keypad give the views, ` squares on and back. Blender's turns
+  with the middle button; Mecabricks' slides with the right and zooms with the
+  middle. In all three a left drag that does not start on a part with Select
+  turns the view (Shift slides) and never places — with a part in hand too
+  (`ViewPrefs.drag_verb`, read by the camera, the controls list and the strip
+  alike); see `left-button navigation`. Researched from each program's own help
   pages, 2026-10-11 (Studio's help centre, Mecabricks' manual, LDCad's key
   list, Onshape's, Fusion's and Blender's manuals). `feel_probe`,
   `camera_probe` and `cursor_probe` drive each preset.
+- `left-button navigation`: the owner, 2026-10-11: "there should be a way to use
+  the mouse to move and navigate the view and pan and not placing bricks." A
+  trackpad has no middle button. A left press waits (`Main._pending_left`): if
+  it comes up within 5 px it is a click (place, select, the tool's click);
+  past that it is a drag, which turns the view (Shift: slides), puts nothing
+  down, and leaves whatever is in hand in hand. `Ctrl`-drag (`Cmd` on a Mac)
+  draws the selection box; a drag starting on a part with Select still moves
+  it. Held keys lend the left button to the view in any mode, mid-placement
+  too: Space slides, Alt turns, Alt-Shift slides, Ctrl/Cmd-Alt zooms; an
+  Alt-click still takes the part into hand. The View group on the toolbar:
+  Orbit (`O`), Pan (`H`), Zoom (`Z`) and Fit (`F`) — with one on, the left
+  button only does that, the pointer says so, and `Esc` or `V` is Select
+  again. Hiding moved to `Ctrl-H`. Two fingers on a trackpad turn (Shift
+  slides) and a pinch zooms to the pointer (`WheelKind`); on a Mac, Ctrl-click
+  is a right click. The status bar's left line says what the mouse will do
+  now (`EditVerbs.hint`: tool, keys held, part under the pointer). Mecabricks
+  publishes no trackpad convention we could find, so two-finger turning
+  follows SketchUp for Web's. `tools/web/nav_flow.mjs` does all of it with the
+  left button, the wheel, a pinch and keys and checks that no brick was put
+  down; it fails on brickworks.diy as of 2026-10-11.
+- `view cube`: the cube at the model's top right (`ViewCube`, replacing the
+  axis dots) turns with the view; a click on a face looks from that side, on
+  an edge or corner from between two or three (`CadCamera.look_from`); a drag
+  on it turns the view. Its four arrows turn a step a click (held, they keep
+  turning; dragged, they follow), and under it a pad slides (click an arrow
+  of it, or drag), − and + zoom, and the last fits. Each is published to the
+  page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
+  `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,

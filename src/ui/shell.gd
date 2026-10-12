@@ -71,7 +71,8 @@ const MENUS: Array = [
 		"-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
 		"rename_assembly", "make_unique"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
-		"view_top", "view_bottom", "view_iso", "-", "fit_model", "fit_selection",
+		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
+		"fit", "fit_model", "fit_selection",
 		"ortho", "grid", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
@@ -323,7 +324,7 @@ func _define() -> void:
 		selected)
 	_add("select_inverse", "The opposite", 0, func() -> void: verbs.select_by("inverse"),
 		something)
-	_add("hide", "Hide", KEY_H, func() -> void: verbs.hide_selection(), selected,
+	_add("hide", "Hide", CTRL | KEY_H, func() -> void: verbs.hide_selection(), selected,
 		"Hide the selection, to reach what is behind it")
 	_add("isolate", "Show only the selection", SHIFT | KEY_H, func() -> void: verbs.isolate(),
 		selected, "Hide everything else, to work on just this")
@@ -355,9 +356,15 @@ func _define() -> void:
 	_add("fit_model", "Fit the model", SHIFT | KEY_F,
 		func() -> void: camera.frame(app.call("_built_bounds")), Callable(),
 		"Zoom to show the whole model")
-	_add("fit_selection", "Fit the selection", KEY_F,
+	_add("fit_selection", "Fit the selection", 0,
 		func() -> void: camera.frame(app.call("_selection_bounds")), selected)
-	_add("ortho", "Orthographic", KEY_O, func() -> void:
+	# F: the selection if there is one, else everything, as every tool with
+	# both has it.
+	_add("fit", "Fit", KEY_F, func() -> void:
+		camera.frame(app.call("_selection_bounds") if not builder.selection.is_empty()
+			else app.call("_built_bounds")), Callable(),
+		"Zoom to show the selection, or the whole model")
+	_add("ortho", "Orthographic", KEY_QUOTELEFT, func() -> void:
 		camera.square_on(not camera.is_square_on()), Callable(),
 		"Square on, with no perspective: how a CAD drawing is read")
 	_ticked("ortho", camera.is_square_on)
@@ -435,11 +442,13 @@ func _define() -> void:
 	for tool: Array in [["select", "Select", KEY_V], ["place", "Place the part in hand", KEY_Q],
 			["move", "Move", 0], ["rotate", "Rotate", 0], ["hinge", "Hinge", 0],
 			["clone", "Clone", 0], ["paint", "Paint", 0], ["hide", "Hide", 0],
-			["delete", "Delete", 0]]:
+			["delete", "Delete", 0], ["orbit", "Orbit", KEY_O], ["pan", "Pan", KEY_H],
+			["zoom", "Zoom", KEY_Z]]:
 		var which: String = tool[0]
 		var made: Command = _add("mode_" + which,
 			str(tool[1]) + ("" if which == "place" else " tool"), tool[2],
 			(func() -> void: verbs.take_last_part()) if which == "place"
+				else (func() -> void: verbs.view_tool(which)) if EditVerbs.VIEW_TOOLS.has(which)
 				else func() -> void: verbs.set_mode(which))
 		made.ticked = func() -> bool: return verbs.mode == which
 		made.radio = true

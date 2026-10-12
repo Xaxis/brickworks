@@ -86,7 +86,7 @@ var _picker: PickImage
 var _mosaic_source: Image
 var _playback: BuildPlayback
 var _outline: SelectionOutline
-var _gizmo: AxisGizmo
+var _gizmo: ViewCube
 var _turning: PivotMark
 var _tools: TouchTools
 var _marquee: Marquee
@@ -227,6 +227,9 @@ func _tell_page() -> void:
 	# ratio of two, where the panels take more of the page.
 	if _marquee != null:
 		named["view"] = _marquee.get_parent()
+	# The view cube's arrows and buttons, and below its visible faces.
+	if _gizmo != null:
+		named.merge(_gizmo.controls_by_name())
 	# And the two rails, which on a phone are the only way to either panel:
 	# the toolbar once ran wider than a phone and took the assistant's off
 	# the page.
@@ -243,6 +246,11 @@ func _tell_page() -> void:
 			continue
 		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
+	if _gizmo != null and _gizmo.is_visible_in_tree() and not _gated():
+		var faces: Dictionary = _gizmo.face_points()
+		for face: String in faces:
+			var at: Vector2 = to_window * (faces[face] as Vector2) / per_css
+			where[face] = {"x": roundi(at.x), "y": roundi(at.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
 	if not _page_title.is_empty():
 		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
@@ -278,6 +286,15 @@ func _tell_page() -> void:
 		# ...and where on the page each one's own parts are, since opening
 		# a model frames the view on it afresh.
 		"places": _assembly_places(to_window, per_css),
+		# Where the view is: how far it has turned in all (not wrapped),
+		# its tilt, its distance and what it looks at, for
+		# tools/web/nav_flow.mjs to see a drag turn it all the way round.
+		"view": {"yaw": _camera.yaw_turned(), "pitch": _camera.pitch_now(),
+			"distance": _camera.distance_now(),
+			"focus": [_camera.focus_now().x, _camera.focus_now().y, _camera.focus_now().z],
+			"tool": _verbs.mode if _verbs != null else ""},
+		# The status bar's line: what the mouse will do now.
+		"hint": _verbs.hint() if _verbs != null else "",
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1015,14 +1032,19 @@ func _build_ui() -> void:
 	# assistant panel and swallowed clicks meant for the buttons
 	# underneath, and on a tall screen it sat on top of the key strip.
 	# Anchoring it inside this column makes both impossible rather than
-	# unlikely.
-	_gizmo = AxisGizmo.new()
+	# unlikely. A view cube now, with arrows to turn, slide and zoom the
+	# view by clicking (ViewCube): navigating with a left button alone.
+	_gizmo = ViewCube.new()
 	_gizmo.camera = _camera
+	_gizmo.fit = func() -> void:
+		_camera.frame(_selection_bounds() if not _builder.selection.is_empty()
+			else _built_bounds())
+	var cube: Vector2 = ViewCube.size_for()
 	_gizmo.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_gizmo.offset_left = -AxisGizmo.size_for() - 14.0
+	_gizmo.offset_left = -cube.x - 14.0
 	_gizmo.offset_top = 14.0
 	_gizmo.offset_right = -14.0
-	_gizmo.offset_bottom = AxisGizmo.size_for() + 14.0
+	_gizmo.offset_bottom = cube.y + 14.0
 	spacer.add_child(_gizmo)
 
 	# The hint is wide, and a container asks its children how narrow they
@@ -2270,12 +2292,13 @@ func _process(_delta: float) -> void:
 			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_finish_box(Input.is_key_pressed(KEY_SHIFT))
 	# And a dragged part whose release went somewhere this never heard.
-	if (_dragging_part or _press_brick != 0 or _left_turning) \
+	if (_dragging_part or _press_brick != 0 or not _left_nav.is_empty() or _pending_left) \
 			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
 			and not DisplayServer.is_touchscreen_available():
 		_press_brick = 0
-		if _left_turning:
-			_left_turning = false
+		_pending_left = false
+		if not _left_nav.is_empty():
+			_left_nav = ""
 			_camera.end_drag(MOUSE_BUTTON_LEFT)
 		if _dragging_part:
 			_drop_dragged(get_viewport().get_mouse_position())
@@ -2328,8 +2351,20 @@ var _press_at: Vector2 = Vector2.ZERO
 var _press_copies: bool = false
 ## A part (with its selection) picked up by a drag and following it.
 var _dragging_part: bool = false
-## A left drag turning the view, in the Mecabricks preset.
-var _left_turning: bool = false
+## A left press that is not yet a click or a drag. A drag from it moves the
+## view ("turn", "slide", "zoom") or draws a box ("box"); "" for a finger,
+## whose drags are the camera's. Nothing is placed or selected until it
+## comes up without having moved. Alt: a click takes the part into hand.
+## Right: Ctrl-click on a Mac, which is a right click.
+var _pending_left: bool = false
+var _pending_verb: String = ""
+var _pending_alt: bool = false
+var _pending_right: bool = false
+## A finger's press that moved: the camera turned the view, and the
+## release is nobody's click.
+var _left_spent: bool = false
+## A left drag lent to the view, while it lasts: its verb.
+var _left_nav: String = ""
 ## How far a press may move and still be a click, in interface units.
 const DRAG_SLOP := 5.0
 
@@ -2341,6 +2376,64 @@ func _brick_under_pointer() -> int:
 	if _verbs == null or _over_interface(at):
 		return 0
 	return _verbs.brick_at(at)
+
+
+## What a left drag from this press does, by the tool and the keys held:
+##
+##   a view tool (O, H, Z)     its own: turn, slide or zoom
+##   Space held                slide, as a hand tool does everywhere
+##   Alt                       turn; Alt-Shift slides, Alt-Ctrl (Cmd) zooms
+##   Ctrl (Cmd on a Mac)       a box, which selects what it catches
+##   anything else             turn, and with Shift slide (ViewPrefs)
+##
+## "" for a finger: its drags belong to the camera, which turns the view
+## with them already.
+func _left_drag_verb(button: InputEventMouseButton) -> String:
+	if button.device == InputEvent.DEVICE_ID_EMULATION:
+		return ""
+	var held: bool = button.meta_pressed if EditVerbs.on_mac() \
+		else (button.ctrl_pressed or button.meta_pressed)
+	if _verbs != null and _verbs.is_view_tool():
+		var own: String = _verbs.view_verb()
+		if button.shift_pressed and own != "zoom":
+			return "slide" if own == "turn" else "turn"
+		return own
+	if Input.is_key_pressed(KEY_SPACE):
+		return "slide"
+	if button.alt_pressed:
+		if held:
+			return "zoom"
+		return "slide" if button.shift_pressed else "turn"
+	if held:
+		return "box"
+	return ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT, button.shift_pressed)
+
+
+## The left button lent to the view until it comes up.
+func _start_left_nav(verb: String, at: Vector2) -> void:
+	_pending_left = false
+	_left_nav = verb
+	_builder.hide_preview()
+	_camera.begin_drag(MOUSE_BUTTON_LEFT, at, verb)
+
+
+## Ctrl and the left button on a Mac, which every Mac program reads as the
+## right button — a trackpad's one button needs it.
+func _mac_right_click(button: InputEventMouseButton) -> bool:
+	return EditVerbs.on_mac() and button.ctrl_pressed and not button.meta_pressed \
+		and not button.alt_pressed
+
+
+## A right click: lets go of what is in hand and goes back to Select, as
+## Studio's does. It takes nothing off the model (Delete does, or the Delete
+## tool) — the right button is for looking.
+func _right_click() -> void:
+	if _verbs != null:
+		if _builder.is_carrying():
+			_verbs.put_away()
+		_builder.drop_figure()
+		_verbs.set_mode("select")
+	_refresh_preview()
 
 
 ## The end of a drag that carried a part: down where the pointer is, if it
@@ -2421,10 +2514,28 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _dragging_part:
 			_refresh_preview(moved.position)
 			return
-		# Drawing a box, which is not aiming the ghost. Any left drag,
-		# with or without shift — shift only decides whether what it
-		# catches is added to the selection or replaces it.
-		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 and not _box_dropped:
+		# A left press that moves is a drag, never a placement: past a few
+		# pixels it turns or slides the view (the camera follows the
+		# pointer from here), or with Ctrl draws a box. Whatever is in hand
+		# stays in hand, out of sight until the button comes up.
+		if _pending_left and (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 \
+				and moved.position.distance_to(_press_at) > DRAG_SLOP:
+			_pending_left = false
+			match _pending_verb:
+				"":
+					_left_spent = true
+				"box":
+					_marquee.begin(_press_at)
+					_box_began = true
+				_:
+					_start_left_nav(_pending_verb, _press_at)
+		if not _left_nav.is_empty():
+			_builder.hide_preview()
+			return
+		# Drawing a box, which is not aiming the ghost. Shift decides
+		# whether what it catches is added to the selection or replaces it.
+		if (moved.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 and not _box_dropped \
+				and _box_began:
 			if _marquee.drag_to(moved.position):
 				_builder.hide_preview()
 				return
@@ -2437,13 +2548,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
 	var button: InputEventMouseButton = event
-	# Alt and a click takes the part under the pointer into hand, in its
-	# colour: Studio's eyedropper. Any other Alt button is the system's.
-	if button.alt_pressed:
-		if button.button_index == MOUSE_BUTTON_LEFT and button.pressed \
-				and not _over_panel_at(button.position) and _verbs != null:
-			if _verbs.pick_at(button.position):
-				_refresh_preview(button.position)
+	# Alt with any button but the left is the system's. (Alt with the left:
+	# a click takes the part into hand, a drag turns the view — below.)
+	if button.alt_pressed and button.button_index != MOUSE_BUTTON_LEFT:
 		return
 	# A press that lands on a panel belongs to the panel. A release does
 	# not always: if a box is being drawn, that drag started out here
@@ -2482,28 +2589,22 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _camera.turned_rather_than_clicked():
 			return
-		# The right button is for looking. A right click lets go of what
-		# is in hand and goes back to Select, as Studio's does; it takes
-		# nothing off the model (Delete does, or the Delete tool).
-		if _verbs != null:
-			if _builder.is_carrying():
-				_verbs.put_away()
-			_builder.drop_figure()
-			_verbs.set_mode("select")
-		_refresh_preview()
+		_right_click()
 		return
 
 	if button.button_index != MOUSE_BUTTON_LEFT:
 		return
 
-	# A left drag lent to the view (the Mecabricks preset), let go; one
-	# that never moved was a click on nothing, which lets go of the
-	# selection.
-	if _left_turning and not button.pressed:
-		_left_turning = false
+	# A left drag lent to the view, let go: nothing is placed, picked or
+	# selected by it, and whatever is in hand is still in hand. The Zoom
+	# tool's click without a drag is a step in (Shift: out) at the pointer.
+	if not _left_nav.is_empty() and not button.pressed:
+		_left_nav = ""
 		_camera.end_drag(MOUSE_BUTTON_LEFT)
-		if button.position.distance_to(_press_at) <= DRAG_SLOP:
-			_verbs.click(button.position, false)
+		if _verbs != null and _verbs.mode == "zoom" \
+				and button.position.distance_to(_press_at) <= DRAG_SLOP:
+			_camera.zoom_by_drag(-40.0 if not button.shift_pressed else 40.0, button.position)
+		_refresh_preview(button.position)
 		return
 	# A part being dragged, let go of where the drag ends: put down there
 	# if it fits, and back where it was if not.
@@ -2518,37 +2619,44 @@ func _unhandled_input(event: InputEvent) -> void:
 				or button.meta_pressed)
 		return
 
-	# Shift picks bricks out instead of placing them, on the press —
-	# where a double click is reported. Placing is the verb this app is
-	# mostly about, so it keeps the plain click.
-	# Every left press might become a box.
-	#
-	# Which it is depends on whether the pointer moves, so nothing is
-	# decided here. A drag draws a box; a click without one places, or
-	# picks a brick out when shift is held.
+	# Every other left press is decided by whether the pointer moves before
+	# it comes up. A drag moves the view (or with Ctrl draws a box) and
+	# places nothing; a click places, selects, or does what the tool does.
 	if button.pressed:
 		_box_dropped = false
+		_box_began = false
+		_left_spent = false
+		_press_at = button.position
+		var verb: String = _left_drag_verb(button)
+		# A view tool, or Space held: the press is the view's at once.
+		if not verb.is_empty() and verb != "box" and _verbs != null \
+				and (_verbs.is_view_tool() or Input.is_key_pressed(KEY_SPACE)):
+			_start_left_nav(verb, button.position)
+			return
+		# Ctrl-click on a Mac is a right click: a click lets go of what
+		# is in hand, a drag turns the view, as the right button's do.
+		if _mac_right_click(button):
+			_pending_left = true
+			_pending_verb = "turn"
+			_pending_alt = false
+			_pending_right = true
+			return
 		# With the Select tool a press on a part is the start of a click
-		# that selects it or a drag that moves it — not of a box.
-		# (Not while anything is in hand — a carried group or a minifigure
-		# — whose click puts it down.)
+		# that selects it or a drag that moves it. (Not while anything is
+		# in hand — a carried group or a minifigure — whose click puts it
+		# down.)
 		if _verbs != null and _verbs.mode == "select" and not _verbs.shows_ghost() \
-				and not button.shift_pressed and not button.double_click:
+				and not button.shift_pressed and not button.double_click \
+				and not button.alt_pressed:
 			var under: int = _verbs.brick_at(button.position)
 			if under != 0:
 				_press_brick = under
-				_press_at = button.position
 				_press_copies = button.ctrl_pressed or button.meta_pressed
 				return
-			# Empty space, in the Mecabricks preset: the left button turns
-			# the view there.
-			if ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT) == "turn":
-				_left_turning = true
-				_press_at = button.position
-				_camera.begin_drag(MOUSE_BUTTON_LEFT, button.position, "turn")
-				return
-		_marquee.begin(button.position)
-		_box_began = true
+		_pending_left = true
+		_pending_verb = verb
+		_pending_alt = button.alt_pressed
+		_pending_right = false
 		if button.shift_pressed and button.double_click:
 			_aim_at(button.position)
 			_builder.select_alike()
@@ -2562,21 +2670,35 @@ func _unhandled_input(event: InputEvent) -> void:
 				_bar.say("editing %s — Esc when done" % Assemblies.label(str(unit)))
 		return
 
-	# A drag is a box, not a placement.
+	# A drag is never a placement.
 	#
 	# This is the gesture everyone tries first, because it is how every
-	# other 3D viewport turns the model — and here it used to place a
-	# brick wherever the pointer happened to stop. Somebody reaching for
-	# the obvious thing was building with it, one brick per attempt,
-	# with nothing to say why. Dragging selects now, which is what the
-	# left button is for: select, place, box-select, and nothing else.
+	# other 3D viewport turns the model — and here it once placed a brick
+	# wherever the pointer happened to stop, and then drew a box. A drag
+	# turns the view now (with Ctrl, draws a box); only a click acts.
 	if _marquee.is_drawing():
 		_finish_box(button.shift_pressed)
 		return
 	_marquee.finish()
+	_box_began = false
 	if _box_dropped:
 		# The end of a box Escape already threw away, not a click.
 		_box_dropped = false
+		return
+	if _left_spent:
+		# A finger that moved: the camera turned the view with it.
+		_left_spent = false
+		return
+	var was_pending: bool = _pending_left
+	_pending_left = false
+	if was_pending and _pending_right:
+		_right_click()
+		return
+	# Alt and a click takes the part under the pointer into hand, in its
+	# colour: Studio's eyedropper.
+	if was_pending and _pending_alt:
+		if _verbs != null and _verbs.pick_at(button.position):
+			_refresh_preview(button.position)
 		return
 
 	# A tool other than Build: the click is the tool's (EditVerbs.click).
@@ -2785,8 +2907,7 @@ func _finish_box(add: bool) -> void:
 	var took: int = _builder.select_in(_marquee.box(),
 		_brick_on_screen, _marquee.takes_touching(), add)
 	_marquee.finish()
-	_bar.say("took %d" % took if took > 0
-		else "nothing in there — right-drag turns the view")
+	_bar.say("took %d" % took if took > 0 else "nothing in there")
 
 
 ## Whether a point is over the interface, by the interface's own
@@ -2897,6 +3018,14 @@ func _cursor_state() -> String:
 	now.playing = _playback != null and _playback.is_playing()
 	now.selecting = over_brick and Input.is_key_pressed(KEY_SHIFT)
 	now.loading = _library.is_on_its_way(_builder.held_part)
+	# The view's: a view tool on, or a key held that lends it the left
+	# button (Space slides, Alt turns).
+	if _verbs != null and _verbs.is_view_tool():
+		now.tool = {"turn": "orbit", "slide": "slide", "zoom": "zoom_in"}[_verbs.view_verb()]
+	elif not typing and Input.is_key_pressed(KEY_SPACE):
+		now.tool = "slide"
+	elif not typing and Input.is_key_pressed(KEY_ALT):
+		now.tool = "orbit"
 	# A tool other than Build: what a click on the part under the pointer
 	# would do to it.
 	if _verbs != null and not _verbs.shows_ghost():
@@ -3000,12 +3129,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_camera.set_view("bottom")
 		KEY_7:
 			_camera.set_view("isometric")
-		KEY_O:
-			# Straight-on and back. A CAD drawing is read square on;
-			# a model on a table is seen in perspective.
-			_camera.square_on(not _camera.is_square_on())
-			_bar.say("square on" if _camera.is_square_on()
-				else "in perspective")
 		KEY_1, KEY_KP_1: _camera.set_view("front")
 		KEY_2, KEY_KP_2: _camera.set_view("back")
 		KEY_3, KEY_KP_3: _camera.set_view("left")
@@ -3018,9 +3141,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Blender's and Mecabricks' key for the selection, framed.
 			_camera.frame(_selection_bounds())
 		KEY_QUOTELEFT:
-			# Studio's: back into perspective.
-			_camera.square_on(false)
-			_bar.say("in perspective")
+			# Straight-on and back (O is the Orbit tool now). A CAD drawing
+			# is read square on; a model on a table is seen in perspective.
+			_camera.square_on(not _camera.is_square_on())
+			_bar.say("square on" if _camera.is_square_on() else "in perspective")
 		KEY_R:
 			_builder.rotate_held(-1 if key.shift_pressed else 1)
 			_refresh_preview()

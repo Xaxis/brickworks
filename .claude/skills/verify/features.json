@@ -625,7 +625,7 @@
       "id": "ui:box select",
       "kind": "ui",
       "entry": "src/ui/marquee.gd",
-      "reach": "godot --path .  (drag on the baseplate)",
+      "reach": "godot --path .  (Ctrl-drag on the baseplate)",
       "area": "building",
       "tests": []
     },
@@ -699,6 +699,14 @@
       "entry": "src/ui/edit_verbs.gd",
       "reach": "godot --path .  (select, H hides, Shift-H shows only it, Alt-H or H with nothing selected shows all)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:left-button navigation",
+      "kind": "ui",
+      "entry": "src/main.gd",
+      "reach": "node tools/web/nav_flow.mjs --url=<a preview>/app --bypass=\u2026   (or godot --path .: drag on nothing, Space/Alt-drag, O H Z F)",
+      "area": "view",
       "tests": []
     },
     {
@@ -1011,6 +1019,14 @@
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (History on the toolbar, or Edit, History)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:view cube",
+      "kind": "ui",
+      "entry": "src/ui/view_cube.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
+      "area": "view",
       "tests": []
     }
   ]

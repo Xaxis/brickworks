@@ -312,11 +312,17 @@ func _dragging() -> void:
 	await _drag_and_look(MOUSE_BUTTON_MIDDLE, true, "...and with shift", "slide")
 	ViewPrefs.use("studio")
 
-	# A box, with the left button.
+	# A left drag turns the view, with a part in hand too, and places
+	# nothing; with Ctrl it draws a box.
 	_builder.clear_selection()
 	var placed: int = _world.brick_count()
-	await _drag_and_look(MOUSE_BUTTON_LEFT, false, "a left drag", "box")
+	await _drag_and_look(MOUSE_BUTTON_LEFT, false, "a left drag", "orbit")
 	_check("...which placed nothing", _world.brick_count() == placed)
+	await _drag_and_look(MOUSE_BUTTON_LEFT, true, "shift and a left drag", "slide")
+	_ctrl = true
+	await _drag_and_look(MOUSE_BUTTON_LEFT, false, "Ctrl and a left drag", "box")
+	_ctrl = false
+	_check("...which placed nothing either", _world.brick_count() == placed)
 	_builder.clear_selection()
 
 
@@ -617,6 +623,7 @@ func _the_way_back() -> void:
 	# release would have selected something.
 	await _settle()
 	_builder.clear_selection()
+	_ctrl = true
 	var from: Vector2 = _middle + Vector2(90.0, 50.0)
 	await _move_to(from)
 	_press(MOUSE_BUTTON_LEFT, from, true)
@@ -645,6 +652,7 @@ func _the_way_back() -> void:
 	await _frames(4)
 	_check("...where the same box let go of selects %d" % _builder.selection.size(),
 		not _builder.selection.is_empty())
+	_ctrl = false
 	_builder.clear_selection()
 	await _move_to(_middle)
 	await _expect("...and the pointer is placing again", "place")
@@ -840,11 +848,16 @@ func _settle() -> void:
 ## Through Input, not the viewport: the camera asks the Input singleton
 ## whether a button is still down, and push_input leaves it untouched.
 ## See feel_probe.
+## Ctrl held for the presses that follow: a left drag with it draws a box.
+var _ctrl: bool = false
+
+
 func _press(which: int, at: Vector2, down: bool, shift: bool = false) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = which
 	event.pressed = down
 	event.shift_pressed = shift
+	event.ctrl_pressed = _ctrl
 	event.position = _as_event(at)
 	event.global_position = event.position
 	_pointer = event.position
