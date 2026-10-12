@@ -263,6 +263,12 @@ Proves it when:
   0 only (official prints read better at 96 pixels without their detail), so
   every cell under My prints was a red frame round a hole until the bin asked
   for those with their print.
+- **A browser flow listens for file pickers from the start.** Playwright only
+  catches a picker while something listens for one; a `waitForEvent` added
+  just before the click, on a page whose frames took most of a second, was
+  sometimes switched on after the app had asked (`input.click()` with the click
+  still live), and the picker was never seen. `studio_flow.mjs` keeps one
+  `filechooser` listener on each page and takes pickers from it.
 - **A brick leaving the selection has to say so.** `take_off` erased the plain
   tile from the selection without `selection_changed`, and the world's rebuild
   redraws the outline only while something is selected, so after a print in
