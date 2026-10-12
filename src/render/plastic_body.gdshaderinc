@@ -92,6 +92,15 @@ varying vec3 local_position;
 uniform sampler2D print_texture : filter_linear_mipmap, repeat_disable;
 #endif
 
+#ifdef PLASTIC_CUT
+// The section plane of a cut-away (SeeInside), in the world: whatever is
+// past it, where dot(xyz, p) > w, is not drawn, so the inside of a model
+// can be seen and worked in. Set per batch by BrickWorld.set_cut; only the
+// _cut variants of these shaders read it, so a model with no cut draws
+// with no discard and keeps its early depth test.
+uniform vec4 cut_plane = vec4(0.0, 1.0, 0.0, 1.0e9);
+#endif
+
 // FINISHES. Numbered as PartLibrary.BrickColor.Finish numbers them.
 const int FINISH_PLASTIC = 0;
 const int FINISH_CHROME = 1;
@@ -223,6 +232,12 @@ vec3 studio(vec3 r, float blur) {
 }
 
 void fragment() {
+#ifdef PLASTIC_CUT
+	vec3 world_at = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	if (dot(cut_plane.xyz, world_at) > cut_plane.w) {
+		discard;
+	}
+#endif
 	int finish = int(floor(instance_finish.w + 0.001));
 	float fraction = clamp(instance_finish.w - float(finish), 0.0, 1.0);
 	vec3 fleck_color = instance_finish.rgb;
@@ -406,5 +421,26 @@ void fragment() {
 	ALPHA = alpha;
 	ROUGHNESS = glass_roughness;
 	BACKLIGHT = glass_backlight;
+#endif
+
+#ifdef PLASTIC_CAP
+	// Where the plane cuts through plastic. A part's surfaces are closed,
+	// so an eye looking past the plane meets a back face exactly where the
+	// plane is inside the plastic, and a front face where it is in air:
+	// the back faces are the cut. Drawn as a flat face square to the
+	// plane, in the part's own colour, hatched the way a section is drawn
+	// on paper, so a wall cut through reads as a wall and not as a hole
+	// into the back of the brick.
+	if (!FRONT_FACING) {
+		float band = step(0.55, fract((FRAGCOORD.x + FRAGCOORD.y) / 9.0));
+		vec3 line = luminance_in < 0.04 ? mix(body, vec3(1.0), 0.3) : body * 0.5;
+		ALBEDO = mix(body * 0.9, line, band);
+		METALLIC = 0.0;
+		ROUGHNESS = 1.0;
+		SPECULAR = 0.0;
+		BACKLIGHT = vec3(0.0);
+		EMISSION = vec3(0.0);
+		NORMAL = normalize((VIEW_MATRIX * vec4(cut_plane.xyz, 0.0)).xyz);
+	}
 #endif
 }

@@ -69,6 +69,12 @@ class Batch extends RefCounted:
 	var shown: int = 0
 	var ranks: PackedInt64Array = PackedInt64Array()
 	var revealed: int = 0
+	## While x-ray is on (see [method set_xray]): the batch's ghosted
+	## bricks, drawn by a MultiMesh of their own under the batch's.
+	var xray: MultiMeshInstance3D = null
+	## While a cut leaves ghosts (see [method set_cut]): the same MultiMesh
+	## again, drawn faintly past the plane.
+	var beyond: MultiMeshInstance3D = null
 
 
 var library: PartLibrary
@@ -377,6 +383,8 @@ func clear() -> void:
 	_brick_batches.clear()
 	_dirty.clear()
 	_ghosts.clear()
+	# Numbers start again, so x-ray's would name the next model's bricks.
+	_xray.clear()
 	_next_id = 1
 	_note({"op": "clear"})
 	_generation += 1
@@ -550,6 +558,8 @@ func _create_batch(
 	batch.instance.material_override = material
 	add_child(batch.instance)
 	batch.triangles = _triangles_of(batch.multimesh.mesh)
+	if _cut_on:
+		_cut_batch(batch)
 	return batch
 
 
@@ -638,6 +648,7 @@ func _rebuild(batch: Batch, key: String) -> void:
 	_fresh_slots(batch, count)
 	if count == 0:
 		batch.multimesh.visible_instance_count = 0
+		_write_xray(batch, [], Lbm.COLOR_INHERIT)
 		return
 
 	var surface_index: int = key.split(":")[1].to_int()
@@ -646,14 +657,20 @@ func _rebuild(batch: Batch, key: String) -> void:
 	var surface_color: int = _surface_colour(batch, surface_index)
 	# Hidden bricks are packed off the end rather than left as gaps: a
 	# MultiMesh draws its first visible_instance_count slots, so the ones
-	# to draw have to be the ones at the front.
+	# to draw have to be the ones at the front. X-ray's ghosts go to a
+	# MultiMesh of their own, drawn see-through.
 	var slot: int = 0
+	var ghosts: Array = []
 	for brick_id: int in batch.brick_ids:
 		var brick: Brick = _bricks[brick_id]
 		if brick.hidden:
 			continue
+		if _xray.has(brick_id):
+			ghosts.append(brick)
+			continue
 		_write_instance(batch, slot, brick, surface_color)
 		slot += 1
+	_write_xray(batch, ghosts, surface_color)
 
 	# Kept in step with instance_count explicitly: raising one does not
 	# raise the other, and a batch that grows would otherwise keep
@@ -681,7 +698,7 @@ func _rebuild(batch: Batch, key: String) -> void:
 			first = false
 		else:
 			bounds = bounds.merge(box)
-	batch.instance.custom_aabb = bounds
+	_set_bounds(batch, bounds)
 
 
 ## A batch's slots let go and taken again, even at the same count, so what
@@ -855,6 +872,11 @@ func _stop_reveal() -> void:
 		batch.ranks = PackedInt64Array()
 		batch.shown = 0
 		batch.revealed = 0
+	# Written whole for the reveal, x-ray's ghosts and all: split again.
+	if not _xray.is_empty():
+		for key: String in _batches:
+			if _revealing.has(_batches[key]):
+				_mark_dirty(key)
 	for brick_id: int in _reveal_rank:
 		var brick: Brick = _bricks.get(brick_id)
 		if brick != null:
@@ -871,6 +893,9 @@ func _write_in_order(batch: Batch, key: String) -> void:
 	var count: int = batch.brick_ids.size()
 	_fresh_slots(batch, count)
 	var surface_color: int = _surface_colour(batch, key.split(":")[1].to_int())
+	# The build going up is the model whole: x-ray's ghosts are drawn solid
+	# until it ends (_stop_reveal splits them off again).
+	_write_xray(batch, [], surface_color)
 	var bounds := AABB()
 	for slot: int in count:
 		var brick: Brick = _bricks[batch.brick_ids[slot]]
@@ -880,7 +905,7 @@ func _write_in_order(batch: Batch, key: String) -> void:
 	batch.multimesh.visible_instance_count = batch.shown
 	# Bounds for all of them, shown or to come, so the batch is not culled
 	# as it grows.
-	batch.instance.custom_aabb = bounds
+	_set_bounds(batch, bounds)
 
 
 ## Turn the whole model a quarter turn about its own centre.
@@ -947,3 +972,238 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			_mark_dirty(key)
 	return moved
+
+
+# -- seeing inside: the cut-away and x-ray -------------------------------------
+#
+# Both change the picture and nothing else, as hiding does: the bricks, the
+# history and whatever is worked out from them are untouched. A world made to
+# be photographed — the booklet's, the assistant's — never has either, which
+# is how the booklet ignores them. SeeInside (src/ui/see_inside.gd) drives
+# them, and keeps the pointer's lattice in step.
+#
+# Both are made to be quick on a set-sized model (Orthanc, 8,785 parts). The
+# cut is a plane handed to every batch's material and the plastic not drawn
+# past it, so dragging it writes no brick: only turning it on or off changes
+# which shader each batch is drawn with. X-ray writes each batch once when it
+# is turned on, its ghosts into a MultiMesh of their own beside the batch's.
+
+
+const SEE_THROUGH := preload("res://src/render/see_through.gdshader")
+
+## The cut variant of each plastic shader, by the one it replaces, and back.
+static var _to_cut: Dictionary = {}
+static var _to_plain: Dictionary = {}
+
+var _cut_on: bool = false
+var _cut_plane: Plane = Plane()
+var _cut_ghosts: bool = false
+## Bricks x-ray draws see-through, by id.
+var _xray: Dictionary = {}
+var _xray_material: ShaderMaterial = null
+var _beyond_material: ShaderMaterial = null
+
+
+static func _cut_variants() -> void:
+	if not _to_cut.is_empty():
+		return
+	_to_cut = {
+		SHADERS["opaque"]: preload("res://src/render/plastic_cut.gdshader"),
+		SHADERS["opaque_two_sided"]: preload("res://src/render/plastic_two_sided_cut.gdshader"),
+		SHADERS["trans"]: preload("res://src/render/plastic_trans_cut.gdshader"),
+		SHADERS["trans_two_sided"]:
+			preload("res://src/render/plastic_trans_two_sided_cut.gdshader"),
+		PartPrints.PRINT_SHADERS[false]: preload("res://src/render/plastic_print_cut.gdshader"),
+		PartPrints.PRINT_SHADERS[true]:
+			preload("res://src/render/plastic_print_two_sided_cut.gdshader"),
+	}
+	for plain: Shader in _to_cut:
+		_to_plain[_to_cut[plain]] = plain
+
+
+## Cut the picture at [param plane]: the plastic on the side its normal
+## points to is not drawn, and the faces the plane cuts through are drawn as
+## faces. With [param ghosts], what is cut away is left as a faint ghost of
+## itself. Off with [param on] false.
+func set_cut(on: bool, plane: Plane = Plane(), ghosts: bool = false) -> void:
+	_cut_on = on
+	_cut_plane = plane
+	_cut_ghosts = on and ghosts
+	for key: String in _batches:
+		_cut_batch(_batches[key])
+	_see_through_follows()
+
+
+func is_cut() -> bool:
+	return _cut_on
+
+
+## The plane the picture is cut at; meaningless while [method is_cut] is false.
+func cut_plane() -> Plane:
+	return _cut_plane
+
+
+## Whether what the cut takes away is left as a ghost.
+func cut_leaves_ghosts() -> bool:
+	return _cut_ghosts
+
+
+## One batch as the cut has it, by where its bricks are: wholly on the near
+## side, drawn as if there were no cut, with the plain shader that keeps
+## its early depth test; wholly past the plane, not drawn at all (unless it
+## leaves a ghost); only a batch the plane goes through is drawn with the
+## shader that cuts. A cut through the middle of a set-sized model leaves
+## most batches on one side or the other, and the frame is the cheaper for
+## it. Asked again whenever a batch is written, since its bricks move.
+func _cut_batch(batch: Batch) -> void:
+	var material: ShaderMaterial = batch.instance.material_override as ShaderMaterial
+	if material == null:
+		return
+	_cut_variants()
+	var side: int = _side_of(batch.instance.custom_aabb) if _cut_on else -1
+	var through: bool = side == 0 or (side > 0 and _cut_ghosts)
+	if through != _to_plain.has(material.shader):
+		_swap_shader(batch, through)
+	batch.instance.visible = side <= 0 or _cut_ghosts
+	if through:
+		material.set_shader_parameter("cut_plane", _plane_vector())
+	if _cut_ghosts and batch.beyond == null:
+		batch.beyond = MultiMeshInstance3D.new()
+		batch.beyond.multimesh = batch.multimesh
+		batch.beyond.material_override = _see_through(true)
+		batch.beyond.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		batch.beyond.custom_aabb = batch.instance.custom_aabb
+		batch.instance.add_child(batch.beyond)
+	elif not _cut_ghosts and batch.beyond != null:
+		batch.beyond.queue_free()
+		batch.beyond = null
+
+
+## Which side of the cut a box is: -1 wholly on the near side, 1 wholly
+## past the plane, 0 across it.
+func _side_of(box: AABB) -> int:
+	var middle: Vector3 = box.get_center()
+	var reach: float = (box.size * 0.5).dot(_cut_plane.normal.abs())
+	var past: float = _cut_plane.distance_to(middle)
+	if past - reach > 0.0:
+		return 1
+	if past + reach <= 0.0:
+		return -1
+	return 0
+
+
+func _swap_shader(batch: Batch, cut: bool) -> void:
+	var material: ShaderMaterial = batch.instance.material_override as ShaderMaterial
+	if material == null:
+		return
+	var other: Shader = (_to_cut if cut else _to_plain).get(material.shader)
+	if other != null:
+		material.shader = other
+
+
+func _plane_vector() -> Vector4:
+	return Vector4(_cut_plane.normal.x, _cut_plane.normal.y, _cut_plane.normal.z,
+		_cut_plane.d)
+
+
+## Draw these bricks see-through and every other as it is, so what they
+## hide can be seen; an empty set is x-ray off. Each batch with a brick
+## changing sides is written again, once, at the end of the frame.
+func set_xray(see_through: Dictionary) -> void:
+	var changed: Dictionary = {}
+	for brick_id: int in _xray:
+		if not see_through.has(brick_id):
+			changed[brick_id] = true
+	for brick_id: int in see_through:
+		if not _xray.has(brick_id):
+			changed[brick_id] = true
+	_xray = see_through.duplicate()
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+	_see_through_follows()
+
+
+## The bricks x-ray draws see-through.
+func xray_ids() -> Dictionary:
+	return _xray
+
+
+## A batch's x-ray ghosts written into their own MultiMesh, or the MultiMesh
+## let go when it has none.
+func _write_xray(batch: Batch, ghosts: Array, surface_color: int) -> void:
+	if ghosts.is_empty():
+		if batch.xray != null:
+			batch.xray.queue_free()
+			batch.xray = null
+		return
+	if batch.xray == null:
+		var made := MultiMesh.new()
+		made.transform_format = MultiMesh.TRANSFORM_3D
+		made.use_colors = true
+		made.mesh = batch.multimesh.mesh
+		batch.xray = MultiMeshInstance3D.new()
+		batch.xray.multimesh = made
+		batch.xray.material_override = _see_through(false)
+		batch.xray.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		batch.instance.add_child(batch.xray)
+	var multimesh: MultiMesh = batch.xray.multimesh
+	# Fresh slots, for the reason _fresh_slots gives.
+	multimesh.instance_count = 0
+	multimesh.instance_count = ghosts.size()
+	var bounds := AABB()
+	for slot: int in ghosts.size():
+		var brick: Brick = ghosts[slot]
+		multimesh.set_instance_transform(slot, brick.transform)
+		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT \
+			else surface_color
+		multimesh.set_instance_color(slot, library.color(code).shown)
+		var box: AABB = brick.transform * multimesh.mesh.get_aabb()
+		bounds = box if slot == 0 else bounds.merge(box)
+	batch.xray.custom_aabb = bounds
+
+
+## The see-through material, for x-ray's ghosts or for what the cut leaves
+## as ghosts ([param beyond]); one of each per world.
+func _see_through(beyond: bool) -> ShaderMaterial:
+	var existing: ShaderMaterial = _beyond_material if beyond else _xray_material
+	if existing != null:
+		return existing
+	var material := ShaderMaterial.new()
+	material.shader = SEE_THROUGH
+	material.set_shader_parameter("linearise", _linearise_colors())
+	material.set_shader_parameter("beyond", beyond)
+	# After the transparent plastic, which is behind or inside them.
+	material.render_priority = 2
+	if beyond:
+		_beyond_material = material
+	else:
+		_xray_material = material
+	_see_through_follows()
+	return material
+
+
+## The ghosts cut as the plastic is: x-ray's on the near side of the plane
+## unless the cut leaves ghosts anyway, and the cut's own past it.
+func _see_through_follows() -> void:
+	if _xray_material != null:
+		_xray_material.set_shader_parameter("cut_on", _cut_on and not _cut_ghosts)
+		_xray_material.set_shader_parameter("cut_plane", _plane_vector())
+	if _beyond_material != null:
+		_beyond_material.set_shader_parameter("cut_on", true)
+		_beyond_material.set_shader_parameter("cut_plane", _plane_vector())
+
+
+## A batch's bounds, and so which side of a cut it is on.
+func _set_bounds(batch: Batch, bounds: AABB) -> void:
+	batch.instance.custom_aabb = bounds
+	if batch.beyond != null:
+		batch.beyond.custom_aabb = bounds
+	if _cut_on:
+		_cut_batch(batch)

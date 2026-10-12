@@ -871,6 +871,14 @@ Found on the way, and fixed or owed below:
   published password around an LDraw file), in a browser too. LDD's `.lxf`
   needs LDD's part and colour numbers mapped and is refused with a sentence
   saying Studio converts it.
+- 18, 2026-10-12: `K` cuts the model along X, Y or Z, the plane dragged
+  through it by a slider in a strip over the model (View → Cut away, or the
+  toolbar); the faces it cuts through are drawn as faces, hatched, and what
+  is cut away can stay as a ghost. `I` is x-ray: everything but the
+  selection, or the sub-assembly being edited, see-through. A click goes
+  where the eye does, past the cut and through the ghosts; the timeline
+  keeps both, the booklet sees neither. On Orthanc a drag of the cut costs
+  0.4 ms and x-ray 90 ms, once (`src/ui/see_inside.gd`, `see_inside_probe`).
 - Task 55: a model with parts off their studs offers, once, to seat them.
 - Task 51: no window that keeps its panels is drawn below 0.92 (1280 x 720
   was 0.8); the smallest text is eleven units; the top bar's buttons have
@@ -911,8 +919,8 @@ Studio, Mecabricks and LDCad lay one out (`src/ui/shell.gd`):
   counts a person's first tasks on the old build and the new.
 
 Left, in order: Technic pins and axles and clips on bars placed by connection
-(13); LDD's .lxf (16); cut-away beyond hiding (18); x-ray, edge lines and
-studs-off views, which are the renderer's (BrickWorld); panels that can be
+(13); LDD's .lxf (16); edge lines and studs-off views, which are the
+renderer's (BrickWorld); panels that can be
 moved to another edge, not only folded. And: a part's tooltip still counts side
 studs into its footprint; on the web a moved brick is not redrawn until
 something else is (BrickWorld's, being fixed there).

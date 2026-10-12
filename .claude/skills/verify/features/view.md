@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray -->
 
 ## Sub-features
 
@@ -151,6 +151,41 @@ picture the assistant is shown.
   as one row it set the width of the whole window, and on a phone Clear and
   the assistant's rail were off the page. `tools/web/fit_check.mjs` requires
   both on both phones.
+- `cut-away` (`src/ui/see_inside.gd` drives it, `BrickWorld.set_cut` draws it):
+  `K`, View → Cut away, or the toolbar's cut button puts a plane across the
+  model along Y (the axis last used), through its middle, taking away the side
+  the eye is on; a strip at the foot of the model (above the key strip and the
+  timeline) has X, Y and Z, a slider that drags it
+  through the model (the wheel moves it too), where it is in bricks up or studs
+  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. Each batch
+  is sorted by its bounds (`BrickWorld._cut_batch`): wholly on the near side,
+  drawn as ever; wholly past the plane, not drawn; across it, its material
+  swaps to a `_cut` variant of its shader (`plastic_cut.gdshader` and five
+  others) and is handed the plane. A drag writes no brick: 0.4 ms a move on
+  Orthanc. On the GPU a frame of Orthanc cut costs what one whole does (26 ms
+  against 29); in software, about 1.3 to 2 times (1.65 s against 1.35 s). The variants discard what is past the plane and draw the back
+  faces as the cut face (`PLASTIC_CAP` in `plastic_body.gdshaderinc`: flat,
+  square to the plane, hatched in the part's colour) — LDraw's surfaces are
+  closed, so a back face seen past the plane is exactly where the plane is
+  inside plastic. The pointer goes where the eye does: `BrickLattice.cut`
+  skips cells past the plane, so a click reaches the floor of a room whose roof
+  is cut away. The baseplate is cut too. A model replaced (opened, cleared,
+  designed afresh) ends it. The booklet and the assistant's pictures are drawn
+  from worlds of their own and never see it; Export's picture is the world on
+  screen and does.
+- `x-ray` (`src/ui/see_inside.gd`, `BrickWorld.set_xray`): `I`, View → X-ray, or
+  the toolbar: everything but the selection — or, editing inside a
+  sub-assembly, everything but it — is drawn see-through
+  (`see_through.gdshader`: a few percent of fill and an edge, unlit, no shadow,
+  no depth), from a MultiMesh of each batch's own beside the batch's, written
+  once (60 to 100 ms of work for Orthanc's 8,785 parts, spread over frames). The
+  pointer passes through the ghosts (`BrickLattice.see_through`, apart from
+  `unseen`, which is hiding by hand) to what is solid. With nothing selected
+  and nothing entered it says what to do and stays off; leaving the
+  sub-assembly it was showing ends it. The baseplate stays solid, as somewhere
+  to put a part. The timeline hides what is to come from both the solid and the
+  see-through; the build animation draws the model whole and splits it again
+  when it ends.
 - `controls panel and hint`: the on-screen list of what the keys do, opened with
   `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
   line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
@@ -411,6 +446,12 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 node tools/web/booklet_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/booklet_web
 godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd  # the corner says which way you face
 godot --path . --resolution 1400x900 --script src/dev/colour_probe.gd # picking a colour recolours something
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd
+#   the cut-away and x-ray: a closed room with a red brick inside, K and the
+#   strip's slider dragged, X, Flip, Ghost; I with the brick selected and
+#   inside a sub-assembly; clicks reaching it through both; the timeline with
+#   both on; the booklet made with both on = made with both off; Orthanc timed.
+#   Leaves shots/see_inside/*.png — look at the cut faces and the ghosts
 godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd # every finish drawn as itself
 godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd # black is black, greys are grey
 godot --path . --resolution 1200x800 --script src/dev/highlight_probe.gd   # a glossy slope does not go white

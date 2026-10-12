@@ -226,6 +226,12 @@ run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
 # In a window: it clicks clear of the model tree and properties panels.
 run "sub-assemblies" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/assembly_probe.gd
+# Seeing inside: a room cut open with K and the strip's slider, x-ray of a
+# part inside it and of a sub-assembly, a click reaching it through both,
+# the timeline with both on, the booklet made with both on the same as with
+# both off, and Orthanc timed. Pictures in shots/see_inside/.
+run "see inside" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/see_inside_probe.gd
 # The minifigure builder, used by clicking: slots, parts, colours, a
 # name, Place in model, a click on a stud. Its live figure and its
 # thumbnails are drawn, so it needs a window; it leaves pictures of the

@@ -678,6 +678,14 @@
       "tests": []
     },
     {
+      "id": "ui:cut-away",
+      "kind": "ui",
+      "entry": "src/ui/see_inside.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: K, or View, Cut away; drag the strip's slider; X, Y, Z, Flip, Ghost)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:design on your own subscription",
       "kind": "ui",
       "entry": "src/ai/claude_code.gd",
@@ -1034,6 +1042,14 @@
       "kind": "ui",
       "entry": "src/ui/view_cube.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:x-ray",
+      "kind": "ui",
+      "entry": "src/ui/see_inside.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: select a part, or edit inside a sub-assembly, then I, or View, X-ray)",
       "area": "view",
       "tests": []
     }

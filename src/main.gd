@@ -321,6 +321,13 @@ func _tell_page() -> void:
 			"tool": _verbs.mode if _verbs != null else ""},
 		# The status bar's line: what the mouse will do now.
 		"hint": _verbs.hint() if _verbs != null else "",
+		# The cut-away and x-ray (SeeInside), for tools/web/see_inside_flow.mjs:
+		# where the plane is, and how many parts are drawn see-through.
+		"cut": {"on": _world.is_cut(), "axis": _shell.see_inside.axis,
+			"at": _shell.see_inside.at} if _shell != null else {},
+		"xray": _world.xray_ids().size(),
+		# What the status bar says just now (it clears after a few seconds).
+		"said": _shell.status.message.text if _shell != null else "",
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1411,7 +1418,7 @@ func _build_ui() -> void:
 	_exports.picture.world = _world
 	_exports.picture.camera = _camera
 	_exports.picture.scenery = _store.scenery
-	_exports.picture.aside = [_builder, _outline, _turning]
+	_exports.picture.aside = [_builder, _outline, _turning, _shell.see_inside.frame]
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)

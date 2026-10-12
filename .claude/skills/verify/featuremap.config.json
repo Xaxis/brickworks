@@ -666,6 +666,20 @@
     },
     {
       "kind": "ui",
+      "label": "cut-away",
+      "entry": "src/ui/see_inside.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: K, or View, Cut away; drag the strip's slider; X, Y, Z, Flip, Ghost)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "x-ray",
+      "entry": "src/ui/see_inside.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: select a part, or edit inside a sub-assembly, then I, or View, X-ray)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "snap onto a joint",
       "entry": "src/assembly/joint_snap.gd",
       "reach": "godot --headless --path . --script src/dev/technic_hand_probe.gd  (a pin, axle, beam, clip or bar in hand, aimed at a hole, pin, axle or bar; R turns it about the joint, T the other way on)",
