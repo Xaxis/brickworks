@@ -686,6 +686,14 @@
       "tests": []
     },
     {
+      "id": "ui:docked panels",
+      "kind": "ui",
+      "entry": "src/ui/panel_stack.gd",
+      "reach": "godot --path .  (the left-hand column: parts bin, model tree, properties; fold a header, drag the bar between two; under 1600 units across one column shows beside the model) and node tools/web/fit_check.mjs",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:download page",
       "kind": "ui",
       "entry": "web/download.html",
@@ -761,7 +769,7 @@
       "id": "ui:model tree",
       "kind": "ui",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (the panel at the model's top left; View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
       "area": "building",
       "tests": []
     },
@@ -881,7 +889,7 @@
       "id": "ui:properties panel",
       "kind": "ui",
       "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; the panel over the model's top right)",
+      "reach": "godot --path .  (select a part; the foot of the left-hand column, under the model tree)",
       "area": "building",
       "tests": []
     },
@@ -897,7 +905,7 @@
       "id": "ui:remembered layout",
       "kind": "ui",
       "entry": "src/ui/shell_prefs.gd",
-      "reach": "godot --path .  (fold a panel, change the snap, quit and start again)",
+      "reach": "godot --path .  (fold a panel, drag the bar between two, change the snap, quit and start again)",
       "area": "building",
       "tests": []
     },

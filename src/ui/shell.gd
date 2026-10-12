@@ -98,9 +98,11 @@ const SUBMENUS: Dictionary = {
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
-## the status bar at the foot of ``column``, the properties over the model
-## in ``over_model``.
-func build(column: Control, over_model: Control) -> void:
+## the status bar at the foot of ``column``, the model tree and the
+## properties in the left-hand column ``stack``, under the parts bin, and
+## the banner for a sub-assembly being edited in ``notices``, the strip
+## along the top of the model. Nothing of it is laid over the model.
+func build(column: Control, stack: PanelStack, notices: Control) -> void:
 	bar = app.get("_bar")
 	builder = app.get("_builder")
 	verbs = app.get("_verbs")
@@ -140,19 +142,21 @@ func build(column: Control, over_model: Control) -> void:
 	# here, where every other program says it.
 	bar.use_status(status.message)
 
-	inspector = Inspector.new()
-	inspector.shell = self
-	over_model.add_child(inspector)
-
+	# Under the parts bin, the model tree over the properties: everything
+	# for building by hand in one column, as Studio keeps its palettes down
+	# the left and Blender stacks its outliner over its properties.
 	outliner = Outliner.new()
 	outliner.shell = self
 	outliner.assemblies = assemblies
-	over_model.add_child(outliner)
+	stack.add_section(outliner, "tree_height")
+
+	inspector = Inspector.new()
+	inspector.shell = self
+	stack.add_section(inspector, "properties_height")
 
 	banner = AssemblyBanner.new()
 	banner.assemblies = assemblies
-	banner.avoid = outliner
-	over_model.add_child(banner)
+	notices.add_child(banner)
 
 	grid = StudGrid.new()
 	grid.world = world
@@ -188,26 +192,30 @@ func build(column: Control, over_model: Control) -> void:
 	_about.title = "About Brickworks"
 	add_child(_about)
 
-	# The layout as it was left, on a screen with room for it.
+	# The layout as it was left. Which columns show is the window's to
+	# say as well as the person's: Main._fit_panels.
 	verbs.set_snap(str(ShellPrefs.value("snap")), false)
 	verbs.turn_step = float(ShellPrefs.value("turn_step"))
 	set_key_strip(bool(ShellPrefs.value("key_strip")))
 	grid.visible = bool(ShellPrefs.value("grid"))
 	inspector.set_open(bool(ShellPrefs.value("inspector_open")))
-	# Folded on a narrow screen, where it would cover the model.
-	outliner.set_open(bool(ShellPrefs.value("outliner_open"))
-		and app.get_viewport().get_visible_rect().size.x >= 1100.0)
-	var parts_dock: SideDock = app.get("_bin_dock")
-	var chat_dock: SideDock = app.get("_chat_dock")
-	parts_dock.toggled.connect(func(open: bool) -> void:
-		if not bool(app.get("_folded_for_room")):
-			ShellPrefs.put("parts_open", open))
-	chat_dock.toggled.connect(func(open: bool) -> void:
-		if not bool(app.get("_folded_for_room")):
-			ShellPrefs.put("assistant_open", open))
-	if not bool(app.get("_folded_for_room")):
-		parts_dock.set_open(bool(ShellPrefs.value("parts_open")), false)
-		chat_dock.set_open(bool(ShellPrefs.value("assistant_open")), false)
+	outliner.set_open(bool(ShellPrefs.value("outliner_open")))
+
+
+## A section of the left-hand column, from the View menu or the toolbar:
+## with its column folded, the column opens with it open (a narrow window
+## folds the assistant to make room); else it folds or opens.
+func _toggle_section(section: Control) -> void:
+	var dock: SideDock = app.get("_bin_dock")
+	if not dock.is_open():
+		section.call("set_open", true)
+		dock.set_open(true)
+		return
+	section.call("set_open", not bool(section.call("is_open")))
+
+
+func _section_shown(section: Control) -> bool:
+	return (app.get("_bin_dock") as SideDock).is_open() and bool(section.call("is_open"))
 
 
 ## Define one command.
@@ -382,10 +390,10 @@ func _define() -> void:
 		(app.get("_chat_dock") as SideDock).toggle())
 	_ticked("panel_assistant", func() -> bool:
 		return (app.get("_chat_dock") as SideDock).is_open())
-	_add("panel_properties", "Properties", 0, func() -> void:
-		inspector.set_open(not inspector.is_open()), Callable(),
+	_add("panel_properties", "Properties", 0, func() -> void: _toggle_section(inspector),
+		Callable(),
 		"What is selected: its part, colour, where it stands and what it is joined to")
-	_ticked("panel_properties", func() -> bool: return inspector.is_open())
+	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
@@ -420,10 +428,9 @@ func _define() -> void:
 			var path: String = assemblies.selected_assembly()
 			return not path.is_empty() and not assemblies.copies_of(path).is_empty(),
 		"Cut this copy loose, so editing it changes no other")
-	_add("panel_outliner", "Model tree", 0, func() -> void:
-		outliner.set_open(not outliner.is_open()), Callable(),
-		"The model's sub-assemblies by name, inside one another")
-	_ticked("panel_outliner", func() -> bool: return outliner.is_open())
+	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
+		Callable(), "The model's sub-assemblies by name, inside one another")
+	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
 	_add("minifig", "Minifigure builder…", KEY_M, func() -> void: bar.minifig_wanted.emit(),
 		Callable(), "Make a minifigure from real parts and stand it in the model")
 	_add("mosaic", "Mosaic from a picture…", 0,

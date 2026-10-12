@@ -21,6 +21,10 @@ const SLIDE_SECONDS := 0.22
 
 var edge: int = Edge.LEFT
 var content: Control
+## What the panel is, written down the rail while it is folded: in a
+## window that shows one column at a time the other is only its rail, and
+## a pair of chevrons did not say what was behind it.
+var title: String = ""
 
 var _rail: Button
 var _arrow: Chevron
@@ -30,6 +34,9 @@ var _full_width: float = 0.0
 var _tween: Tween
 
 signal toggled(open: bool)
+## Before an open begins, so the other column can make room for this one
+## in a window with room for only one (Main._fit_panels).
+signal opening
 
 
 ## How wide the panel is when open. Changing it while open resizes it,
@@ -127,15 +134,23 @@ func toggle() -> void:
 func set_open(open: bool, animate: bool = true) -> void:
 	if open == _open:
 		return
+	if open:
+		opening.emit()
 	_open = open
 	_update_rail()
+	# Shown from the start of an open, hidden at the end of a fold. A
+	# folded panel was only clipped to nothing: its fields could still
+	# take the keys, and the page was told its buttons were there, off
+	# the window's edge, for a browser test to click at.
+	if open:
+		content.visible = true
 
 	var target: float = _full_width if open else 0.0
 	if _tween and _tween.is_running():
 		_tween.kill()
 	if not animate:
 		_holder.custom_minimum_size.x = target
-		toggled.emit(_open)
+		_settled()
 		return
 
 	_tween = create_tween()
@@ -143,7 +158,12 @@ func set_open(open: bool, animate: bool = true) -> void:
 	_tween.set_trans(Tween.TRANS_CUBIC)
 	_tween.tween_property(
 		_holder, "custom_minimum_size:x", target, SLIDE_SECONDS)
-	_tween.finished.connect(func() -> void: toggled.emit(_open))
+	_tween.finished.connect(_settled)
+
+
+func _settled() -> void:
+	content.visible = _open
+	toggled.emit(_open)
 
 
 func _update_rail() -> void:
@@ -153,8 +173,10 @@ func _update_rail() -> void:
 	# to read as a thing to click rather than as a stray mark.
 	_arrow.points_left = (edge == Edge.LEFT) == _open
 	_arrow.doubled = not _open
+	_arrow.words = "" if _open else title
 	_arrow.queue_redraw()
-	_rail.tooltip_text = ("Hide this panel" if _open else "Show this panel")
+	var what: String = title if not title.is_empty() else "this panel"
+	_rail.tooltip_text = ("Hide " if _open else "Show ") + what
 
 
 ## The chevron, drawn rather than typeset.
@@ -166,6 +188,8 @@ func _update_rail() -> void:
 class Chevron extends Control:
 	var points_left: bool = true
 	var doubled: bool = false
+	## Written down the rail under the chevrons, top to bottom.
+	var words: String = ""
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -179,6 +203,16 @@ class Chevron extends Control:
 			_chevron(middle + Vector2(0, 5), tint)
 		else:
 			_chevron(middle, tint)
+		if not words.is_empty():
+			const SIZE := 12
+			var font: Font = get_theme_default_font()
+			# Turned a quarter: the line runs down the rail, and the
+			# letters stand to the right of it, so it is moved left by
+			# half their height to sit in the middle.
+			draw_set_transform(Vector2(middle.x - SIZE * 0.36, middle.y + 20.0), PI * 0.5)
+			draw_string(font, Vector2.ZERO, words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE,
+				Color(1, 1, 1, 0.66))
+			draw_set_transform(Vector2.ZERO, 0.0)
 
 	func _chevron(at: Vector2, tint: Color) -> void:
 		const REACH := 3.5

@@ -22,6 +22,7 @@ var assemblies: Assemblies
 var _open: bool = true
 var _header: Button
 var _count: Label
+var _arrow: Inspector.Arrow
 var _tree: Tree
 var _shown: String = ""
 var _looked_at: int = 0
@@ -35,23 +36,7 @@ signal toggled(open: bool)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	var backing := StyleBoxFlat.new()
-	backing.bg_color = Color(0.11, 0.12, 0.14, 0.93)
-	backing.border_color = Color(1, 1, 1, 0.1)
-	backing.set_border_width_all(1)
-	backing.set_corner_radius_all(8)
-	backing.content_margin_left = 8
-	backing.content_margin_right = 8
-	backing.content_margin_top = 6
-	backing.content_margin_bottom = 8
-	add_theme_stylebox_override("panel", backing)
-	anchor_left = 0.0
-	anchor_right = 0.0
-	anchor_top = 0.0
-	anchor_bottom = 0.0
-	offset_left = 14.0
-	offset_right = 14.0 + WIDE
-	offset_top = 14.0
+	add_theme_stylebox_override("panel", PanelStack.section_style())
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
@@ -73,6 +58,12 @@ func _ready() -> void:
 	_count.add_theme_font_size_override("font_size", 12)
 	_count.modulate = Color(1, 1, 1, 0.6)
 	head.add_child(_count)
+	# Which way it is folded, as the properties under it say theirs.
+	_arrow = Inspector.Arrow.new()
+	_arrow.custom_minimum_size = Vector2(14, 14)
+	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_arrow)
 
 	_tree = Tree.new()
 	_tree.hide_root = false
@@ -83,7 +74,10 @@ func _ready() -> void:
 	_tree.select_mode = Tree.SELECT_ROW
 	_tree.allow_rmb_select = true
 	_tree.focus_mode = Control.FOCUS_CLICK
-	_tree.custom_minimum_size = Vector2(WIDE - 16.0, 120)
+	# As tall as the column gives it (PanelStack), and never less than
+	# a few rows.
+	_tree.custom_minimum_size = Vector2(WIDE - 16.0, 60)
+	_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tree.add_theme_font_size_override("font_size", 12)
 	_tree.add_theme_constant_override("button_margin", 2)
 	_tree.drop_mode_flags = Tree.DROP_MODE_ON_ITEM
@@ -125,8 +119,8 @@ func set_open(open: bool) -> void:
 		for child: Node in _tree.get_parent().get_children():
 			if child is Label:
 				(child as Label).visible = open
-		reset_size()
-		offset_right = offset_left + WIDE
+		_arrow.down = open
+		_arrow.queue_redraw()
 	ShellPrefs.put("outliner_open", open)
 	toggled.emit(open)
 
@@ -157,11 +151,6 @@ func _refresh(now: bool) -> void:
 	var top: TreeItem = _tree.create_item()
 	_fill(top, root, folded)
 	_mark_selected()
-	var rows: int = _rows(root)
-	_tree.custom_minimum_size.y = clampf(rows * 27.0 + 10.0, 60.0,
-		get_viewport().get_visible_rect().size.y * 0.4)
-	reset_size()
-	offset_right = offset_left + WIDE
 
 
 func _state_of(node: Assemblies.Item) -> String:
@@ -170,13 +159,6 @@ func _state_of(node: Assemblies.Item) -> String:
 	for child: Assemblies.Item in node.children:
 		parts.append(_state_of(child))
 	return ",".join(parts)
-
-
-func _rows(node: Assemblies.Item) -> int:
-	var count: int = 1
-	for child: Assemblies.Item in node.children:
-		count += _rows(child)
-	return count
 
 
 func _collect_folded(item: TreeItem, into: Dictionary) -> void:

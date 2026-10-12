@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-assemblies, ui:model tree, ui:measure -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:docked panels, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-assemblies, ui:model tree, ui:measure -->
 
 ## Sub-features
 
@@ -82,15 +82,47 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   in Tools. Only Place shows the ghost; a part carried by a drag, Move or Clone
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
-- `properties panel` (`src/ui/inspector.gd`): over the model's top right, under
-  the axes. One part: its name, LDraw and BrickLink numbers, its colour by
+- `properties panel` (`src/ui/inspector.gd`): at the foot of the left-hand
+  column, under the parts bin and the model tree (`docked panels`); View,
+  Properties with the column folded opens it with them. Nothing selected, it
+  says what it will show. One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to,
   which way its studs face, its sub-model, its step in the instructions (models
   of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
-  corner to type over. Folds to its header; nothing selected is just the header.
+  corner to type over. Folds to its header; scrolls when the column gives it
+  less room than it needs.
+- `docked panels` (`src/ui/panel_stack.gd`, `Main._fit_panels`): the left
+  column holds everything for building by hand, the parts bin with the model
+  tree and the properties under it (`PanelStack`), as Studio keeps its
+  palettes down the left and Blender stacks its outliner over its
+  properties; the right column is the assistant's alone. (Stacked over the
+  assistant they would not fit: waiting for a key it asks for 783 units of a
+  laptop column's 666 to 883.) The tree and the properties fold to their
+  headers (the tree starts folded) and the bar between two drags the height
+  of the one that is not the bin; the bin has the rest. The model's part of
+  the window is what is left, with nothing over it but the view cube: the
+  tree and the properties floated over its top corners, where clicks meant
+  for a part landed on them, and at 1100 x 700 they left no room to build.
+  The sub-assembly banner and the offer to seat old parts are in a strip above
+  the model (`Main._notices`), not over it. Below 1600 units across (every
+  laptop: 1100 x 700, 1280 x 720, 1440 x 900 at any density) the columns take
+  turns: opening one folds the other (`Main._column_opening`), the model keeps
+  over 60% of the width, and a first visit shows the left column. On a phone
+  they are drawers, as before. A folded column's rail says what is behind it,
+  and its content is hidden, not clipped: its fields cannot take the keys and
+  the page is not told its buttons are there. The 3D view is still
+  centred on the window ([view](view.md)'s `camera controls` says why).
+  `Main.model_cover()` samples a 12 x 8 grid over the model and says
+  what a click at each point would reach instead (the app's own list of
+  panels, and any control on any canvas layer that takes the mouse);
+  `assembly_probe` and `handbuild_probe` call it, and
+  `tools/web/fit_check.mjs` reads it on the page (`window.brickworksLayout`,
+  asked for with `brickworksAskLayout`). From a build that publishes only
+  centres it works the model's rectangle out from the rails and the toolbar,
+  so it fails on a build with floating panels.
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
@@ -109,10 +141,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `tour` (`src/ui/tour.gd`): Help, Take the tour: eight cards, each lighting a
   part of the window (menus, toolbar, parts bin, the model, properties, status
   bar, assistant) with the rest dimmed; Next/Back or the arrows, Esc leaves.
-- `remembered layout` (`src/ui/shell_prefs.gd`): the panels open or folded, the
-  properties, the key strip, the grid, the snap and the turn step are kept in
-  `user://shell.cfg` and come back next time; a narrow window still folds the
-  panels without forgetting how they were. Not read or written under
+- `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
+  (`parts_open`, `assistant_open` for a wide window; `narrow_side`, "parts" or
+  "assistant", for which one a narrow window shows), the model tree and the
+  properties folded and their heights in the column (`tree_height`,
+  `properties_height`), the key
+  strip, the grid, the snap and the turn step are kept in `user://shell.cfg`
+  and come back next time; a narrow window shows one column without
+  forgetting how a wide one had them. Not read or written under
   `--script`, so a probe neither sees nor changes anyone's layout.
 - `replace part`: Edit, Replace with the part in hand swaps every selected part for the part in hand, each
   in its own colour, centred on the stud grid for its own footprint and standing
@@ -148,12 +184,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`LdrModel.write_tree`); read back, a mirrored reference is put in the other
   hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
-- `model tree`: the panel at the model's top left (View, Model tree) lists the
+- `model tree`: under the parts bin in the left-hand column (View, Model
+  tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
-  another nests it there (onto Model, back to the top). Folded on a screen
-  under 1100 points wide; remembered (`outliner_open`). Probe: `assembly_probe`.
+  another nests it there (onto Model, back to the top). Folded or open as it
+  was left (`outliner_open`). Probe: `assembly_probe`.
 - `swing on a hinge`: `J` / `Shift-J` (or the Hinge tool) turns the
   selection 15° about the joint it hangs from — a hinge's pin, a clip on a
   bar, a turntable's disc: a shaft of a selected part in a bore of an
@@ -194,9 +231,16 @@ godot --headless --path . --script src/dev/select_probe.gd
 # building by hand as a person does: copy, paste, duplicate, cut, move, turn,
 # select by, hide, the menus, the toolbar and its tools, the properties, the
 # status bar, the tour, replace, history, the parts shelf, the seat offer and
-# a 1280 x 720 window — every step a key or a click, with pictures
-# in shots/handbuild/
+# a 1280 x 720 window with nothing over the model — every step a key or a
+# click (a column opened by its rail where the window shows one at a time),
+# with pictures in shots/handbuild/
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
+# sub-assemblies and the model tree, at any window size: nothing over the
+# model, and the tree opened by its header
+godot --path . --resolution 1100x700 --script src/dev/assembly_probe.gd
+# the model clear at every size and density, in a browser (fails on a build
+# whose panels float over the model)
+node tools/web/fit_check.mjs --url=<preview>/app --bypass=…
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
 # where a brick lands when you point at a stud
@@ -210,7 +254,9 @@ Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `edit_menu.png`, `tools_menu.png`, `select_tool.png`, `properties.png`,
 `grid.png`, `tour.png`, the Select by and History menus, the seat offer and
 the 1280 x 720 window. In a browser, the deploy's `fit_check.mjs` finds New
-and Save on the toolbar at every size.
+and Save on the toolbar at every size, and nothing over the model: each case
+prints "nothing over the model (model [x,y,w,h], 96 points, columns turns, N%
+of the width)", and the pictures in its `--out` show the columns.
 
 For the scene itself, launch it and read the brick count in the status bar: with
 `--model=models/car.ldr` it is 61 parts, which is what

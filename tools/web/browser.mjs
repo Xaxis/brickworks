@@ -55,3 +55,26 @@ export async function launch(options = {}) {
   browser.testAccount = canSignIn() ? TEST_EMAIL : null;
   return browser;
 }
+
+// The assistant's controls, which live in the right-hand column.
+const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
+
+/// Open the column a control lives in, if it is folded, by its rail — as a
+/// person does. A window under the design width (1600 units across: every
+/// laptop) shows one column beside the model at a time, and a first visit
+/// shows the parts bin, so the assistant's controls are not on the page
+/// until its rail is clicked. A flow's wait for a control calls this when
+/// the control has not shown. Does nothing on a build that does not say
+/// which columns are open (brickworksState.columns, from 2026-10-12), or
+/// when the control's column is open already. True when it clicked.
+export async function openColumnFor(page, name) {
+  const state = await page.evaluate(() => (window.brickworksState || {}).columns || null);
+  if (!state) return false;
+  const column = ASSISTANT.test(name) ? "assistant" : "parts";
+  if (state[column] !== false) return false;
+  const rail = await page.evaluate((n) => (window.brickworksControls || {})[n], `${column}_rail`);
+  if (!rail) return false;
+  await page.mouse.click(rail.x, rail.y);
+  await page.waitForTimeout(1500);
+  return true;
+}

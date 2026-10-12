@@ -441,6 +441,14 @@ func _wheel_over_the_interface() -> void:
 	list.scroll_vertical = 0
 	var colours: ScrollContainer = bin.get("_palette_scroll")
 	await _unmoved_by_scrolling("the colours", _centre(colours))
+	# A window under 1600 units across shows one column beside the model at
+	# a time, the parts bin first: the assistant's is opened for this, and
+	# the bin's again after.
+	var chat_dock: SideDock = _main.get("_chat_dock")
+	var bin_dock: SideDock = _main.get("_bin_dock")
+	if not chat_dock.is_open():
+		chat_dock.set_open(true, false)
+		await _frames(5)
 	await _unmoved_by_scrolling("the assistant panel", _centre(_main.get("_chat")))
 	await _unmoved_by_scrolling("the toolbar", _centre(_main.get("_bar")))
 
@@ -460,6 +468,9 @@ func _wheel_over_the_interface() -> void:
 		await _frames(2)
 	else:
 		_check("there is a menu in the assistant panel to open", false)
+	if not bin_dock.is_open():
+		bin_dock.set_open(true, false)
+		await _frames(5)
 
 	# The dialogs, each open over the model.
 	var controls: ControlsDialog = _main.get("_controls")
