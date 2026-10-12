@@ -117,7 +117,7 @@ async function renderAndKeep(button, label, minutes) {
     await got.saveAs(file);
   }
   const stall = await worstStall();
-  await page.screenshot({ path: path.join(out, `${label}.png`) });
+  await page.screenshot({ path: path.join(out, `${label}.png`), timeout: 120000 });
   console.log(`      (${label}: ${seconds} s, ${seen && seen.status}, the page's longest wait so far ${stall} ms;`
     + ` the render's longest frame ${seen && seen.worst_frame_ms} ms, ${seen && seen.worst_step})`);
   facts[label] = { seconds, stall, status: seen && seen.status, file };
@@ -170,7 +170,7 @@ try {
   facts.app_stall = await worstStall();
   console.log(`      (the app alone, turning the view: the page's longest wait ${facts.app_stall} ms)`);
   await resetStall();
-  await page.screenshot({ path: path.join(out, "0_app.png") });
+  await page.screenshot({ path: path.join(out, "0_app.png"), timeout: 120000 });
 
   await press("tool_render");
   const picture = await where("render_picture", 30);
@@ -182,7 +182,7 @@ try {
     drafted = seen.open && seen.working === "" && /draft|Render draws/.test(seen.status || "");
     if (!drafted) await page.waitForTimeout(500);
   }
-  await page.screenshot({ path: path.join(out, "1_dialog.png") });
+  await page.screenshot({ path: path.join(out, "1_dialog.png"), timeout: 120000 });
   check("it draws a draft of the render", drafted);
   facts.draft_stall = await worstStall();
   // From here every wait counts: the drafts each choice draws as well as

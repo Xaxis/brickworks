@@ -542,7 +542,10 @@ take, which is what made a design run give up on looking at itself.
   every picture cost the same way and is kept now (above). Measured with
   `render_flow.mjs`, which prints each render's longest frame and what it
   was doing; the first draft of a session still pays for building the
-  viewports (and compiling their shaders) once.
+  viewports (and compiling their shaders) once. On the preview of a3fc635
+  (2026-10-12, SwiftShader): the app turning its view 3.2 s; every draft and
+  render after the first open at most 1.7 s; the first open 9.0 s; a 1080p
+  Quick 3 s, a 720p Good 5 s, a 24-frame 720p turntable 29 s.
 - **A render's steps must make the engine draw.** The app may draw only
   what changed (IdleDraw's low-processor mode), and each step waits for the
   frame count to move; setting a viewport to `UPDATE_ONCE` is a change, a
