@@ -93,6 +93,27 @@ tools/export.sh linux                 # one of them
   `storage_parts.py` to upload; `refresh_catalogue.py` afterwards changed no
   part.
 
+- **A pale face on a black right-hand wedge is the sun, not the mirror.** A
+  design stopped using 41769a (Wing 2 x 4 Right) for a "near-white cut face".
+  Its body is 41770a's subpart under `-1 0 0 / 0 1 0 / 0 0 1`, so the
+  reflection was suspected, and measured (2026-10-12): every one of its 521
+  triangles has a twin in 41770a's mesh mirrored, facing the mirrored way,
+  normals within 3°; the same for 41769b, 43722a and 3935. Across the
+  catalogue, the 10,375 parts that reach a part or subpart through a mirror
+  have normals against their winding no more often than the 18,051 that do
+  not (8.9% of parts and 0.018% of triangles against 8.3% and 0.037%; those
+  are slivers, not mirrors), and none is inside out: the 58 with a negative
+  signed volume are formed stickers and open panels, whose volume means
+  nothing, as are the plain 57. In black, turned all four ways, the two hands
+  are drawn within 0.006 L of each other in all seven of the assistant's
+  views on both renderers, with no pixel past L 0.80. What does go pale is a
+  flat black top at the mirror angle to the main view's sun: 30% of a part
+  past L 0.6 (to 0.81) from yaw 245, 35 up. Swapping the two rows of parts
+  moved that 30% from the right hand to the left: it follows where a part
+  stands, and a symmetric model stands its wings on opposite sides. Nothing
+  was rebuilt. `test_a_mirrored_twin_is_drawn_as_its_twins_reflection` is
+  the only test that fails if `geometry.flatten` stops counting a mirror.
+
 - **`merge_subbuild.py` dropped a field it did not know refresh added.** It
   carries over a fixed list of refresh-only fields, and `in_sets` was missing,
   so the merge above first took it off 1,239 parts, which search and the bin
@@ -105,14 +126,17 @@ Static:
 ```sh
 pyright                                            # 0 errors, 3 warnings (numpy/scipy absent)
 python3 -m pytest tests/ -q                        # or:
-python3 tools/minitest.py tests/test_ldraw.py      # 45 passed, 25 skipped
+python3 tools/minitest.py tests/test_ldraw.py      # 65 passed, 38 skipped (103 passed with numpy)
 ```
 
 `tests/test_ldraw.py` is the real check on this area: it measures the shipped
 geometry rather than quoting a wiki. Stud pitch 8 mm, brick 9.6 mm, plate a third
 of a brick, −Y up, studs pointing up, tubes pointing down and sitting between
 studs, no degenerate triangles, the official colours, a redirect still rendering
-its target.
+its target, and a right-hand wing built from its left twin's body reflected
+(41769a, 41769b, 43722a, 3935) coming out of `meshfile` as that twin's exact
+reflection: the same signed volume, its x moment negated, every normal on the
+side its triangle faces.
 
 Runtime, without spending 45 minutes:
 

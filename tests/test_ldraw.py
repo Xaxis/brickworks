@@ -174,6 +174,80 @@ def test_flat_faces_keep_a_hard_crease(library: Library) -> None:
     assert checked > 100, "expected many flat faces on a 2x4 brick"
 
 
+def _volume_and_moment(part: object) -> tuple[float, float]:
+    """Signed volume, and its first moment along x, from the winding alone.
+
+    Each triangle and the origin make a tetrahedron; summed, they give the
+    enclosed volume, positive when every face is wound to face out. A part
+    drawn inside out comes out negative, and one with some faces flipped
+    comes out short, which is what a check of normals against winding
+    cannot see: there the normals and the winding agree, and both point
+    in.
+    """
+    volume = moment = 0.0
+    for surface in part.surfaces:  # type: ignore[attr-defined]
+        p = surface.positions
+        for i in range(0, len(surface.indices), 3):
+            a, b, c = (p[k * 3:k * 3 + 3] for k in surface.indices[i:i + 3])
+            # Stored in the engine's winding, the reverse of LDraw's.
+            v = -(a[0] * (b[1] * c[2] - b[2] * c[1])
+                  - a[1] * (b[0] * c[2] - b[2] * c[0])
+                  + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6.0
+            volume += v
+            moment += v * (a[0] + b[0] + c[0]) / 4.0
+    return volume, moment
+
+
+@pytest.mark.parametrize("right,left", [
+    ("41769a", "41770a"),   # Wing 2 x 4: the right's body is the left's, x -1
+    ("41769b", "41770b"),   # ...with its chamfer
+    ("43722a", "43723a"),   # Wing 2 x 3
+    ("3935", "3936"),       # Wing 4 x 4
+])
+def test_a_mirrored_twin_is_drawn_as_its_twins_reflection(
+    library: Library, right: str, left: str
+) -> None:
+    """A handed part built from its twin's body reflected comes out as the
+    reflection: the same solid, facing out, its x moment the twin's negated.
+
+    41769a was reported drawing a near-white cut face, and it is made by
+    referencing 41770a's subpart through a matrix of determinant -1. The
+    mesh was right; the pale face was the sun's glint, and it followed
+    where a part stood rather than which hand it was. Nothing else holds
+    the determinant term of geometry.flatten's XOR: without it, 41769a's
+    body is inside out, its volume negative, and only this fails.
+
+    Through meshfile, written and read back, because the bytes are what is
+    drawn: the axis change, the reversal on the way out, the quantising.
+    """
+    from ldraw import meshfile
+
+    def built(name: str) -> object:
+        part = meshfile.build(flatten(library, f"{name}.dat"))
+        return meshfile.read(meshfile.write(part))
+
+    r_volume, r_moment = _volume_and_moment(built(right))
+    l_volume, l_moment = _volume_and_moment(built(left))
+    assert l_volume > 0, f"{left} is drawn inside out"
+    assert r_volume == pytest.approx(l_volume, rel=1e-3), \
+        f"{right} encloses {r_volume:.0f} LDU^3 where {left} encloses {l_volume:.0f}"
+    assert r_moment == pytest.approx(-l_moment, rel=1e-3, abs=1.0)
+
+    # And every stored normal on the side its triangle faces.
+    part = built(right)
+    for surface in part.surfaces:  # type: ignore[attr-defined]
+        p, n = surface.positions, surface.normals
+        for i in range(0, len(surface.indices), 3):
+            ids = surface.indices[i:i + 3]
+            a, b, c = (Vec3(*p[k * 3:k * 3 + 3]) for k in ids)
+            face = (c - a).cross(b - a)
+            if face.length() < 1e-6:
+                continue
+            for k in ids:
+                assert Vec3(*n[k * 3:k * 3 + 3]).dot(face) > 0, \
+                    f"{right}: a normal faces away from its triangle at {a}"
+
+
 def test_curved_surfaces_are_smoothed(library: Library) -> None:
     """A round part must have corner normals that differ from face ones."""
     mesh = flatten(library, "4-4cyli.dat")
