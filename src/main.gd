@@ -45,6 +45,10 @@ var _chat: ChatPanel
 ## it used to be built into the car, so a first-time visitor asking for a
 ## house got a house around a car they never asked for.
 var _sample_untouched: bool = false
+## What the model was named for the work going down on it (see
+## [method _make_room]), until somebody saves it or opens another: the
+## design's own title, when it stands, is a better name than its brief.
+var _named_for_work: String = ""
 ## Driven from the command line, off-screen: nobody is watching the window.
 ## Set by [method _unthrottle_if_nobody_is_watching].
 var _driven: bool = false
@@ -968,12 +972,16 @@ func claude_code() -> ClaudeCode:
 	return _claude_code
 
 
-## Empty the baseplate, as starting a design does.
+## Empty the baseplate, as starting a design does, and begin a new model.
 ##
 ## Public for the command socket. A session driving from outside has no
 ## moment of its own where the board is cleared — asked for a lighthouse
 ## it would build one into whatever was standing — and the design loop
 ## clears the board itself, so it never needed this.
+##
+## Untitled, because what goes down next is something new: it kept the
+## name of what was taken off, and Save would have written the lighthouse
+## over the model it replaced. The design names it when it stands.
 func clear_model() -> void:
 	_world.clear()
 	_builder.lattice.clear()
@@ -981,6 +989,26 @@ func clear_model() -> void:
 	_builder.forget_history()
 	_assistant.forget_built()
 	_lay_baseplate()
+	_sample_untouched = false
+	_store.begin(ModelStore.UNTITLED)
+
+
+## Work is about to go down on the baseplate, and [param name] is what it is.
+##
+## The example car of a first visit, untouched, comes off first, and the
+## model is a new one named after the work: it kept the example's name, so
+## the tower built in its place was "Example Car for Demonstration of LDRAW
+## Library" and Save saved it as that. A bare baseplate nobody has named is named the
+## same way. Anything else is somebody's model, and keeps its name.
+func _make_room(name: String) -> void:
+	if _sample_untouched:
+		clear_model()
+		if _chat != null:
+			_chat.note("Took the example car off the baseplate to make room.")
+	elif _world.brick_count() > _store.scenery.size() or _store.title != ModelStore.UNTITLED:
+		return
+	_store.begin(name)
+	_named_for_work = _store.title
 
 
 ## Write what is on the baseplate to a file. Returns false if it could not.
@@ -1166,6 +1194,10 @@ func _build_ui() -> void:
 	# bricks of the new model — so clearing removes the first few bricks
 	# of whatever was just opened.
 	_bar.cleared.connect(func() -> void:
+		# Clear keeps a model's name, but an example's is not the person's
+		# to keep: what they build next is not the example.
+		if _store.example:
+			_store.begin(ModelStore.UNTITLED)
 		_sample_untouched = false
 		_assistant.forget_built()
 		_lay_baseplate()
@@ -1377,12 +1409,18 @@ func _build_ui() -> void:
 	_on_account_changed()
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
-	_chat.designing.connect(func(_brief: String) -> void:
-		if not _sample_untouched:
-			return
-		_sample_untouched = false
-		clear_model()
-		_chat.note("Took the example car off the baseplate to make room."))
+	_chat.designing.connect(func(brief: String) -> void:
+		_make_room(ModelStore.name_for(brief)))
+	# The design's own name, once it stands, over the one its brief gave the
+	# model, or over none; never over a name somebody gave it.
+	_assistant.titled.connect(func(name: String) -> void:
+		if name != _store.title and _store.title in [ModelStore.UNTITLED, _named_for_work]:
+			_store.begin(name)
+			_named_for_work = _store.title)
+	# Saved, opened or begun again, it is not named for that work any more.
+	_store.saved.connect(func(_name: String) -> void: _named_for_work = "")
+	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _named_for_work = "")
+	_store.begun.connect(func(_name: String) -> void: _named_for_work = "")
 	_builder.placed.connect(func(_id: int, _part: String) -> void:
 		_sample_untouched = false)
 	_builder.removed.connect(func(_id: int) -> void:
@@ -1486,15 +1524,10 @@ func _build_ui() -> void:
 	# Straight from the press into the file chooser, as the mosaic's.
 	_bar.brickify_wanted.connect(_brickify.ask)
 	_brickify.said.connect(func(text: String) -> void: _bar.say(text))
-	_brickify.placing.connect(func() -> void:
+	_brickify.placing.connect(func(name: String) -> void:
 		if _shell != null:
 			_brickify.assemblies = _shell.assemblies
-		if not _sample_untouched:
-			return
-		_sample_untouched = false
-		clear_model()
-		if _chat != null:
-			_chat.note("Took the example car off the baseplate to make room."))
+		_make_room(name))
 	_brickify.brickified.connect(func(_ids: PackedInt64Array, summary: String) -> void:
 		_ground_for_the_model()
 		_camera.frame(_selection_bounds(), 1.4)

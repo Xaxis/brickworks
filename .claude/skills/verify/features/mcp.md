@@ -34,6 +34,10 @@ Nine tools reach a session: the assistant's seven (`search_parts`, `check_design
 plus two the design loop never needs — `clear_model`, because a loop clears the
 board itself when a design begins and a session has no such moment, and
 `save_model`, because the person normally saves from the window.
+`clear_model` (`Main.clear_model`) begins a new model, Untitled, as well as
+emptying the board: it kept the name of what it took off, so Save would write
+the session's lighthouse over the person's saved house. The design's
+`submit_design` name then names it (`Assistant.titled`). `example_name_probe`.
 (The list has grown since; among the later ones is `make_part`, with which a
 session makes a part LEGO has not made and builds with it — see
 [elements](elements.md).)

@@ -44,7 +44,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   its own cut to at most N). Brickify works on a worker (the web's page keeps
   drawing), and the result goes down beside what is built — in the middle of an
   empty baseplate — as one sub-assembly named after the file, one undo, and
-  selected. The example car, untouched, is taken off first.
+  selected. The example car, untouched, is taken off first, and the model is
+  then a new one called after the file ("bunny"), as it is on a bare, Untitled
+  baseplate; it kept the car's name. `example_name_probe` (headless) brickifies
+  the bunny over the car and reads the name.
 
 ## How to reach it
 

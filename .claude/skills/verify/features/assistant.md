@@ -36,7 +36,13 @@ fixing what it got wrong.
 - `a clear baseplate for a first design`: the example car of a first visit is
   taken off when a design starts on it untouched (`main._sample_untouched`,
   `ChatPanel.designing`), with a line saying so; anything placed, opened or
-  cleared first leaves the baseplate alone.
+  cleared first leaves the baseplate alone. The model is then a new one named
+  for the brief (`ModelStore.name_for`: "Build the Tower of Orthanc from Lord
+  of the Rings, about 40 cm tall" is "Tower of Orthanc"), and the design's own
+  `submit_design` name replaces that when it stands (`Assistant.titled`), never
+  a name somebody typed or saved. It kept the car's name, and Save saved the
+  tower as "Example Car for Demonstration of LDRAW Library". A design started
+  on a bare, Untitled baseplate is named the same way. `example_name_probe`.
 - `errors in plain words`: `Assistant._what_went_wrong` leads, with Anthropic's
   own words after it only where they add something; they used to replace it, so
   a mistyped key read "invalid x-api-key". A refused key (`KEY_REFUSED`) is

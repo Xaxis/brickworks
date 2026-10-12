@@ -219,6 +219,8 @@ signal said(text: String)
 signal progress(note: String)
 signal finished(ok: bool, summary: String)
 signal built(brick_count: int)
+## The design standing calls itself this: the name submit_design gave it.
+signal titled(name: String)
 ## A model the assistant is still working on, put on screen so the wait
 ## is not a spinner. Not the same as [signal built] — nothing about a
 ## sketch is finished, and whoever is watching should not be shown an
@@ -10005,6 +10007,9 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false) -> voi
 			", ".join(PackedStringArray(names.slice(0, 6)))])
 
 	if finished:
+		var named: String = model.name.strip_edges()
+		if not named.is_empty() and named != "Model":
+			titled.emit(named)
 		built.emit(_placed_ids.size())
 	else:
 		sketched.emit(_placed_ids.size())
