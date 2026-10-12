@@ -284,6 +284,12 @@ func _run() -> void:
 		_check("in seconds: %.1f s (measured %d ms, laid %d ms, checked %d ms)" % [total / 1000.0,
 			ms["measure"], ms["lay"], ms["check"]], total < 20000)
 
+	# A model with nothing in it: the check's report then has no count of
+	# pieces, and mending read it unguarded and stopped the script.
+	var mended: Dictionary = Brickify.mend(Assistant.Model.new(), _checker)
+	_check("mending a model with nothing in it comes back, not a crash (%d out)"
+		% int(mended.get("mended", -1)), mended.has("mended"))
+
 	_checker.free()
 	print("")
 	if _failures == 0:

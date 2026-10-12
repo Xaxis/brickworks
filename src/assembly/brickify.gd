@@ -765,7 +765,8 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 	var report: Dictionary = checker._check(model, true)
 	var taken_out: int = 0
 	for _round: int in 8:
-		if bool(report["ok"]) and int(report["pieces"]) <= 1:
+		# A model with nothing in it comes back without a count of pieces.
+		if bool(report.get("ok", false)) and int(report.get("pieces", 0)) <= 1:
 			break
 		var drop: Dictionary = {}
 		for index: Variant in report.get("floating", []):
@@ -773,7 +774,7 @@ static func mend(model: Assistant.Model, checker: Assistant) -> Dictionary:
 		var kinds: Array = report.get("kinds", [])
 		if kinds.has("overlap") or kinds.has("unknown part") or kinds.has("not loaded"):
 			drop.merge(_overlapping(model, checker))
-		if drop.is_empty() and int(report["pieces"]) > 1:
+		if drop.is_empty() and int(report.get("pieces", 0)) > 1:
 			drop = _apart(model, checker)
 		if drop.is_empty():
 			break
