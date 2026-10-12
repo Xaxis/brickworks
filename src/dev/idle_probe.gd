@@ -1,11 +1,15 @@
 ## Does the app stop drawing when nothing changes, and still draw what does?
 ##
 ##   MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
-##     godot --path . --resolution 1400x900 --script src/dev/idle_probe.gd
+##     godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd
 ##   # on the graphics card, for its time a frame:
 ##   ~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a \
-##     --server-args="-screen 0 1400x900x24" godot --path . --resolution 1400x900 \
+##     --server-args="-screen 0 1400x900x24" godot --path . --resolution 1280x860 \
 ##     --script src/dev/idle_probe.gd
+##
+## At the browser checks' window size: at 1400 x 900 the parts bin's first
+## shimmering row out of sight fell off the window, and at 1280 x 860 it sat
+## inside it and had every frame drawn (ThumbTile.in_sight).
 ##
 ## The app drew every frame with nothing moving: about 5.5 ms of a desktop
 ## graphics card a frame, sixty a second, and more of a laptop's, while
@@ -233,6 +237,10 @@ func _animates() -> void:
 ## is drawn, and a pointer standing still draws nothing.
 func _hovers() -> void:
 	_builder.held_part = "3005"
+	# In hand, as Q or the bin puts it: Select is where the app rests, and
+	# shows no ghost.
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("place")
 	await _frames(2)
 	await _quiet(1.0, 5.0)
 	var middle: Vector2 = root.get_visible_rect().size * 0.5
@@ -251,6 +259,7 @@ func _hovers() -> void:
 	_check("the ghost under the pointer: %d moves of it, each drawn (%d not)" % [moved, missed],
 		moved >= 3 and missed == 0 and _builder.has_preview())
 	_check("...and a still pointer draws nothing", await _quiet(2.0))
+	verbs.set_mode("select")
 	_builder.hide_preview()
 	_builder.held_part = ""
 	await _frames(2)
@@ -258,9 +267,12 @@ func _hovers() -> void:
 
 ## A button under the pointer lights up, and that is drawn.
 func _lights_a_button() -> void:
-	var bar: Object = _main.get("_bar")
+	# On the CAD shell's toolbar since 2026-10-11; the model bar before.
 	var button: BaseButton = null
-	if bar != null and bar.has_method("controls_by_name"):
+	for holder: String in ["_shell", "_bar"]:
+		var bar: Object = _main.get(holder)
+		if button != null or bar == null or not bar.has_method("controls_by_name"):
+			continue
 		for name: String in ["save", "open", "new", "export"]:
 			var one: Control = (bar.call("controls_by_name") as Dictionary).get(name)
 			if one is BaseButton and one.is_visible_in_tree():

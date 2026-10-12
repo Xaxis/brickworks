@@ -409,7 +409,9 @@ godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet co
 godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
 # nothing drawn standing still, every change drawn (on Xvfb: it moves the pointer)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
-  godot --path . --resolution 1400x900 --script src/dev/idle_probe.gd
+  godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd
+#   at the browser checks' size: at 1400x900 the bin's clipped-off shimmer was
+#   off the window and drew nothing, at 1280x860 it drew every frame
 #   on the GPU, for the card's time a frame: ~/.claude/claude-core/bin/gpu before it;
 #   `-- --every-frame` runs it drawing every frame, as the app did
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
@@ -594,7 +596,11 @@ take, which is what made a design run give up on looking at itself.
   every frame "to be safe" is a frame drawn every frame, and
   `RenderingServer.frame_post_draw` awaited with nothing changing waits until
   something does. Set what changed, when it changed. `idle_probe` names the
-  node whose processing draws frames for nothing.
+  node whose processing draws frames for nothing. Nor may a shader reading
+  `TIME` sit anywhere on the window: Godot culls a canvas item only once it
+  is off the window, not when a scrolled parent clips it, and the bin's
+  waiting tiles below its fold drew every frame at 1280 x 860
+  (`ThumbTile.in_sight`, 2026-10-11).
 - **A window nobody is looking at runs at one frame a second.** Measured on this
   machine: 989 ms a frame with vsync as shipped, 20 ms with it off. Everything in
   these probes is counted in frames, so the 150-frame wait for the catalogue was

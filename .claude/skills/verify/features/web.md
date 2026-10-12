@@ -256,7 +256,14 @@ plan with Claude as the client.
   one a second while drawing every frame it had). Measured 2026-10-11 on
   local exports: the build before drew 12 of 12 frames, its main thread
   106% busy and Chromium 587% of a core (the GPU process 498%); now 0 of
-  904 drawn and no WebGL call, the main thread 4%. It waits 20 s after
+  904 drawn and no WebGL call, the main thread 4%. On the CAD shell it drew
+  every frame again (16 of 16, Chromium 820%, the GPU process 720%): the
+  bin's shimmering tiles below its fold were inside the window (see
+  [parts](parts.md) gotchas); with only tiles in sight shimmering, 0 of 657
+  drawn and the GPU process 1% (2026-10-12). The main thread is still about
+  100% busy in the engine's own frames, which drew nothing: the shell's
+  scripts every frame, about 2.5 ms of a desktop frame, not yet cut down. The
+  part in hand is taken with Q, as Select is where the app rests. It waits 20 s after
   settling (`--after`) before it measures: in software the GPU process
   rasterises seconds behind the page, and straight after settling it was
   still at 160% on frames drawn before. Not the app's drawing, and in both

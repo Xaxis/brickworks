@@ -266,12 +266,17 @@ row.key = await drawnBy("the - key", async () => {
 });
 const held = (await page.evaluate(() => window.brickworksState || {})).held;
 if (held) {
+  // Into hand as a person puts it there, Q for the last part: Select is
+  // where the app rests (2026-10-11), and shows no ghost.
+  await page.mouse.move(view.x, view.y);
+  await page.keyboard.press("q");
   row.hover = await drawnBy(`the pointer over the model with ${held} in hand`, async () => {
     for (let n = 1; n <= 8; n++) {
       await page.mouse.move(view.x + n * 14, view.y + n * 6);
       await page.waitForTimeout(120);
     }
   });
+  await page.keyboard.press("Escape");
 } else {
   console.log("     (nothing in hand, so no ghost to follow the pointer)");
 }

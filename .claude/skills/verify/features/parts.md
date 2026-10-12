@@ -17,7 +17,10 @@ geometry in front of them.
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
   a `ThumbTile`. Until its picture is drawn it is a placeholder the picture's
   size with a band of light crossing it (`src/ui/shimmer.gdshader`, one shared
-  material driven by `TIME`: no script runs per waiting tile), the part number
+  material driven by `TIME`: no script runs per waiting tile; only on a tile
+  in sight, `ThumbTile.in_sight`, set by `ThumbTile.Sight`, because a shader
+  reading `TIME` anywhere on the window has every frame drawn — see the
+  gotcha below), the part number
   under it; the picture fades in over it (0.2 s); a part that cannot be drawn
   (no geometry, a failed fetch) shows a brick outline and "no preview", and is
   tried again after 30 s if it comes back into sight. The bin tells
@@ -188,6 +191,16 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
   1 px line can fall between two rows of pixels and cover neither: the "no
   preview" brick lost its top edge that way. Draw thin strokes antialiased, or
   as filled rects at least 1.5 wide.
+
+- **A tile clipped out of the bin is still on the window.** Godot culls a
+  canvas item only once it is off the window, not when a scrolled parent clips
+  it, and the shimmer reads `TIME`, so a waiting tile anywhere on the window
+  has every frame drawn. In a 1280 x 860 browser the bin's first row out of
+  sight sat under the colours, and the page drew every frame standing still,
+  a second of software rasterising each (idle_check: 16 of 16; on the desktop
+  at 1280 x 860, idle_probe 62 of 62). Only tiles in sight shimmer now
+  (2026-10-11); `placeholder_probe` still finds every tile in sight shimmering
+  while it waits.
 
 - **A grid rebuilt with the same number of cells is a different grid.** A new
   colour rebuilds every cell in the same places; `ThumbTile.Sight` compares the
