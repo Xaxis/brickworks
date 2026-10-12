@@ -212,6 +212,7 @@ func _run() -> void:
 		_trouble([{"pattern": "mirror", "about": "x"}]).contains("at"))
 
 	await _clustered()
+	await _in_storeys()
 	await _cluster_opened()
 	await _no_daylight()
 	_round_bodies()
@@ -768,6 +769,117 @@ func _clustered() -> void:
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
+
+
+## A prism in storeys steps in as it rises, each storey on a ledge of the
+## second tone. The owner's verdict on the homepage's Orthanc was a straight
+## shaft with its top stuck on; LEGO's 10237 steps in at every storey on a
+## ledge of grey, and every Orthanc built here rose the same width throughout.
+func _in_storeys() -> void:
+	print("")
+	print("  a prism in storeys")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	assistant._brief = "a tall stone tower"
+	var shaft := {"pattern": "prism", "at": {"x": 16, "y": 0, "z": 16}, "sides": 8,
+		"radius": 7, "courses": 45, "color": 0}
+	var plain: Dictionary = assistant._check(assistant._read_model({"patterns": [shaft]}), true)
+	_check("a plain shaft is told it is one",
+		"\n".join(plain.get("advice", [])).contains("straight shaft"))
+	var stepped: Dictionary = shaft.duplicate(true)
+	stepped["storeys"] = {"count": 3, "in": 1}
+	var model: Assistant.Model = assistant._read_model({"patterns": [stepped]})
+	var verdict: Dictionary = assistant._check(model, true)
+	var advice: String = "\n".join(verdict.get("advice", []))
+	_check("in three storeys it is laid without trouble and passes the check, in one piece: %s, %d"
+		% [verdict["summary"], int(verdict["pieces"])], assistant._pattern_trouble.is_empty()
+			and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	_check("...and is not called a shaft", not advice.contains("straight shaft"))
+	_check("...and the reply says the top storey's radius, for add_rooms",
+		advice.contains("the top one is radius 5"))
+	# Storeys of 15 courses: ledges at 45 and 92, two plates each, and the
+	# faces black between them.
+	var ledges: Dictionary = {}
+	var grey_faces: int = 0
+	var radii: Dictionary = {}
+	for placement: Assistant.Placement in model.placements:
+		if placement.color == 72:
+			if placement.section.is_empty():
+				ledges[int(placement.y)] = true
+			else:
+				grey_faces += 1
+		var section: Assistant.Section = model.section_for(placement)
+		if section != null and placement.part != "87087":
+			# In a face's own frame z is out from the middle.
+			var storey: int = int(section.name.get_slice(" ", 3))
+			radii[storey] = maxf(float(radii.get(storey, 0.0)), placement.z + 1.0)
+	var heights: Array = ledges.keys()
+	heights.sort()
+	_check("...on a ledge of dark bluish grey round the top of each storey but the last: %s"
+		% str(heights), heights == [45, 46, 92, 93])
+	_check("...its faces black between them, %d grey" % grey_faces, grey_faces == 0)
+	_check("...each storey a stud in from the one below: outsides at %s" % str(radii),
+		radii.size() == 3 and float(radii[0]) - float(radii[1]) >= 0.9
+			and float(radii[1]) - float(radii[2]) >= 0.9)
+	_check("too many storeys for the radius is refused, saying what would do",
+		_assistant_trouble(assistant, {"pattern": "prism", "at": {"x": 16, "y": 0, "z": 16},
+			"sides": 8, "radius": 7, "courses": 45, "storeys": {"count": 5}}).contains("radius of"))
+
+	# The guidance's cluster, in storeys: horns on the top one only, rooms
+	# in all of them from the top one's radius. Its ledges, crossing the
+	# clefts on the diagonal, come in pieces; keeping only the largest left
+	# a whole pier of the storey above standing on nothing.
+	var tower := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 10, "courses": 36, "color": 0, "open": 3,
+		"piers": {"count": 4, "courses": 44}, "storeys": {"count": 3, "in": 2}}
+	model = assistant._read_model({"name": "Orthanc", "patterns": [tower]})
+	verdict = assistant._check(model)
+	_check("a cluster in storeys passes the check, in one piece: %s, %d"
+		% [verdict["summary"], int(verdict["pieces"])], assistant._pattern_trouble.is_empty()
+			and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	var bars: int = 0
+	for placement: Assistant.Placement in model.placements:
+		if placement.part == "30374":
+			bars += 1
+	_check("...four horns, on the top storey only: %d points" % bars, bars == 4)
+	assistant._brief = "The Tower of Orthanc"
+	assistant._apply(model)
+	await process_frame
+	var said: String = _text(await assistant.use_tool("add_rooms", {
+		"prism": {"at": tower["at"], "sides": 8, "radius": 6},
+		"floors": [{"room": "dungeon"}, {"room": "forge", "stair": true},
+			{"room": "library"}, {"room": "study"}],
+		"seed": 3}))
+	_check("add_rooms at the top storey's radius furnishes every storey: %s"
+		% said.get_slice("\n", 0), said.begins_with("Laid 4 floors"))
+	# Not nothing: the top storey's corner posts stand on its ledge inside
+	# where the rooms go, and one column, its plate and its tile come back
+	# out. The same cluster without storeys loses none.
+	_check("...with at most one column the check had to take out (%d items)"
+		% int(assistant._last_rooms.get("dropped", -1)),
+		int(assistant._last_rooms.get("dropped", -1)) >= 0
+			and int(assistant._last_rooms.get("dropped", -1)) <= 3)
+	var whole: Dictionary = assistant._check(assistant._model_from_world(), true)
+	_check("and the whole of it passes the check: %s" % whole["summary"], bool(whole["ok"]))
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
+func _assistant_trouble(assistant: Assistant, pattern: Dictionary) -> String:
+	assistant._read_model({"patterns": [pattern]})
+	return str(assistant._pattern_trouble)
 
 
 ## The fifteenth Orthanc's own cluster, "open": 2: an octagonal core of

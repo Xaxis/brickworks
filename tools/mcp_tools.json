@@ -357,6 +357,18 @@
                 },
                 "type": "object"
               },
+              "storeys": {
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} \u2014 the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "in": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
@@ -1417,6 +1429,18 @@
                   },
                   "z": {
                     "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "storeys": {
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} \u2014 the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "in": {
+                    "type": "integer"
                   }
                 },
                 "type": "object"

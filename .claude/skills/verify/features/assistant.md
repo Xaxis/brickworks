@@ -428,6 +428,36 @@ fixing what it got wrong.
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
   it at x -2 and passes the check.
+- `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
+  (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
+  here rose the same width from foot to horns, and the owner's verdict named it.
+  The courses split into `count` storeys (the remainder to the lowest), each
+  the prism again with its core `in` whole studs smaller than the one below and
+  its piers the same size drawn in with it (`out` recomputed) — piers shrunk
+  with the core reached the least radius, and an octagonal core of 7 with piers
+  of 4.5 overlaps itself in six pieces, with or without storeys (a fault of the
+  cluster at that size, not fixed here). Each storey's sections are named for
+  it (`prism N storey S face J`), since a face's section turns from its own foot.
+  Every storey but the top is capped with a ledge (`_ledge`): two plates in the
+  second tone (`band_color`, else `SECOND_TONE`, else the prism's colour) over
+  its outline less the studs wholly inside `r - in - thickness - 1.5` — a ring,
+  so the rooms are not floored over, reaching under the next storey's wall and
+  the posts behind its corners. `_summit` keeps every piece of a ledge over
+  `LEDGE_CRUMBS` (6) plates: a ring crossing a cleft on the diagonal comes in
+  pieces, and keeping only the largest left a whole pier of the storey above
+  on nothing. Only the top storey's piers rise into horns; its summit is in the
+  second tone too, and the faces take no bands (the ledges are the bands). The
+  reply says the top's radius (for add_rooms) and its summit's y. A top storey
+  with faces under two studs is refused with the radius that would do.
+  `patterns_probe`: a 45-course octagon of radius 7 is told it is a straight
+  shaft and in three storeys is not, passes the check in one piece, grey only
+  on its two ledges (y 45 and 92, two plates each), its outsides 8, 7 and 6;
+  five storeys at that radius are refused; the guidance's cluster in storeys
+  passes in one piece with four horn points and add_rooms at the top radius
+  furnishes four floors, taking out at most one column (its plate and tile; the
+  top storey's corner posts stand on its ledge inside the rooms — the same
+  cluster without storeys loses none). Looked at: `shots/runs/rk_storeys_corner.png` steps in
+  on grey ledges as 10237 does.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty
@@ -558,6 +588,50 @@ fixing what it got wrong.
   side, on the ground. The seam advice (`_unbonded_seam`) and the
   structure-not-detail advice (`_mostly_big_plates`) leave round parts
   (style kind `c`) out: a rocket was told to stagger its cylinder halves.
+- `a body said as its solids`: the `shape` pattern (`src/ai/shapes.gd`, class
+  `Shapes`, dispatched from `Patterns.expand`). A body that is not a box — a
+  car's, a hull, a fuselage, a creature's — said as `solids` (`loft` through
+  `sections` {at, width, height, bottom, round 0 box..1 ellipse, keel, offset};
+  `extrude` of a side `profile`/`under` with top edges `round`ed; `revolve` of
+  a profile about x, y or z; `box` with plan corners `round`ed or `chamfer`ed
+  and top `edge`s rounded; `ellipsoid`; `dome`), each with its own `color`,
+  less `cuts`, coloured by height with `bands`. Sampled at every stud and
+  plate (`Plan`), a plate with nothing above, below or beside it dropped, then:
+  the surface fitted (`surface`, `_fit`) — from the top of every fall down, the
+  slope whose own profile is nearest the studs' heights (`SLOPES`: curved 4, 3
+  and 2 long or 18/33/45 degrees, cheese for one stud; `INVERTED` under an
+  overhang), standing on the shape's plates (never on a thin bridge's place),
+  its high end flush with the stud above or up to two plates under, the plates
+  it stands in carved out; each slope's own surface becomes the next one's top,
+  so a ramp is a run of slopes; which end of each part is high read off its
+  mesh (`Shapes.part`). Then the core plate by plate: bricks (`CORE_BRICKS`, up
+  to 2 x 8) where a course is whole in one colour, wedge bricks and wedge
+  plates where a plan edge runs on the diagonal (the cut side a fifth to four
+  fifths inside the shape, sampled, so none stands out from a flat side as a
+  fin), plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
+  on top unless `"top": "studs"` (`TOPS`). A shape that is its own mirror
+  (`mirror_of`) is laid as one half, its reflection, and a strip across the
+  plane two and four (or three and one) studs wide by turns so every layer is
+  tied across it; surface picks pair into two-wide parts and are laid with
+  their mirror or not at all; wedges find their twin by their plan at half a
+  stud, not their studs (a 2 x 3 wing's other hand turned round has the same
+  studs). Only parts joined to the foot by studs are kept (`prune`), and a
+  piece standing apart is joined by laying two side-by-side parts again as
+  one that reaches across (`stitch`, mirrored). The check's lopsided advice
+  now samples only where a part is (`_lopsided`): a pair of wings, each the
+  other's reflection, was called lopsided for the empty half of each box.
+  Inverted 1 x 2 slopes (3665) run into the plate over them and are not used.
+  Found by the held-out car, told every check to use wedge plates and curved
+  slopes and using none. `shapes_probe`: each surface part's fall is read off
+  its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without
+  trouble, pass the check in one piece, carry sloped, curved and tiled
+  surfaces and are mirrors of themselves; a ramp falling a plate a stud takes
+  18 degree slopes (curved 4 x 2s said curved); a box's top is tiled, not with
+  `"top": "studs"`; a band colours by height; a loft without sections is
+  refused saying what it wants. Measured against real vehicles
+  (`tools/style.py`): curved 5-14% (median 14%), plain 63-69% (median 33%) —
+  the solid core is plates and bricks; looked at on the GPU:
+  `shots/runs/shapes/shape_*_corner.png`.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
