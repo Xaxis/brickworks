@@ -176,8 +176,13 @@ plan with Claude as the client.
   Long tasks are otherwise printed beside the idle page's and not judged:
   drawn in software (SwiftShader), an idle page's every frame is a task of a
   second here. So is the wait for a picture to be read back
-  (`ModelShot.gpu_wait_us`), printed apart: in software it waits on every
-  frame queued before it, tens of seconds. Leaves `console.log` (what the app
+  (`ModelShot.gpu_wait_us`), printed apart: in software it waited on every
+  frame queued before it, tens of seconds, until the read waited for a fence
+  with the drawing held (`GpuFence`, 2026-10-11); now milliseconds. Still
+  over budget then: frames of 650 to 890 ms while check_design's design goes
+  down (between the check and the picture), and one of about 590 ms after
+  edit_model's picture (measuring the model and answering), against 221 ms
+  for the build before drawing only what changed; not yet attributed. Leaves `console.log` (what the app
   printed, as it came) and `freeze.json`.
 - `redraw check`: `tools/web/redraw_check.mjs --url=…` puts one red brick on an
   empty baseplate in a browser, turns it (`R`), mirrors it (`Shift-M`), nudges

@@ -207,7 +207,15 @@ picture the assistant is shown.
   waits for everything queued to be drawn, and on the owner's 4,242-part Falcon
   Heavy in a browser drawing in software that read was 45 s. The PNG and its
   base64 are made on a worker. `ModelShot.gpu_wait_us` sums the read-back wait,
-  which `Main._watch_own_frames` reports apart from the app's own work.
+  which `Main._watch_own_frames` reports apart from the app's own work. On
+  the web the read waits for a WebGL fence first (`GpuFence`, put in a frame
+  after the picture is drawn), asked once a frame without waiting, with the
+  drawing held meanwhile (`RenderingServer.render_loop_enabled`): every frame
+  drawn while it waited was the whole model again ahead of the read. On the
+  Falcon in Chromium on SwiftShader (`freeze_check`, 2026-10-11) each read
+  waited 16 to 33 s on the page's thread; now 8 to 25 ms, the longest task
+  went from 17-33 s to 2-3.6 s and the slowest input from 17-33 s to 3.6 s,
+  with the page running at 60 frames a second while the card drew it.
 - `seams between bricks`: `src/render/plastic_body.gdshaderinc`. A real brick
   is 0.2 mm short of its pitch, so two that meet show a seam; the meshes carry no
   edge lines, and without one a wall of forty bricks and a wall of four drew as
