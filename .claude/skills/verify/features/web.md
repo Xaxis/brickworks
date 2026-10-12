@@ -133,7 +133,10 @@ plan with Claude as the client.
   only (every line one of the six line types and well formed, no control
   characters, at least one part, no sub-model inside itself), at most 2 MB
   (413), a PNG picture of at most 600 KB, a name; the part count is the
-  server's own, through sub-models (`.dat` sections are parts). Refusals 415
+  server's own, through sub-models (`.dat` sections are parts, and so is a
+  sub-model of nothing but one flexible part's segments, `FLEX_PIECES`, as the
+  parts list counts it; `inventory_probe` runs `checkModel` on a file the app
+  wrote). Refusals 415
   with the line that failed, 403 for another account's link, 404 for none, 401
   signed out, 429 past 20 publishes an hour or 60 a day for one account
   (`may_publish`, counted in Postgres). `POST ?op=unpublish&id=` (the owner):
