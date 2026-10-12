@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, api:GET/POST /api/share, cli:share probe -->
 
 ## Sub-features
 
@@ -124,6 +124,38 @@ plan with Claude as the client.
   and at once back in view; then a reload, after which the same address
   answers with nothing pressed. Against the build before the fix it fails all
   four out-of-view checks.
+- `GET/POST /api/share` (`api/share.js`, `supabase/shared_models.sql`, applied
+  to the live project 2026-10-12): a model shared by link (2026-10-12). POST
+  with a session publishes `{name, author?, model, image?, id?}` and answers
+  `{id, url: <origin>/m/<id>, image, viewer, embed, parts}` (201; 200 and the
+  same id when `id` is the caller's own, which also republishes a link taken
+  down). Checked at the edge before anything is counted or stored: LDraw text
+  only (every line one of the six line types and well formed, no control
+  characters, at least one part, no sub-model inside itself), at most 2 MB
+  (413), a PNG picture of at most 600 KB, a name; the part count is the
+  server's own, through sub-models (`.dat` sections are parts). Refusals 415
+  with the line that failed, 403 for another account's link, 404 for none, 401
+  signed out, 429 past 20 publishes an hour or 60 a day for one account
+  (`may_publish`, counted in Postgres). `POST ?op=unpublish&id=` (the owner):
+  the row stays, unpublished, and both files are deleted. `GET ?id=` is the
+  viewer's one request (name, author, parts and the `.mpd`, `no-store`); 410
+  `unpublished: true` once taken down, 404 for a link that never was. `GET
+  ?op=mine` (session): the account's links. `/m/<id>` (`op=page`) is the
+  link's page: og/twitter tags (title, the part count and author, the picture),
+  the picture and the way in, and `web/share-page.js` sends a person straight
+  on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
+  (`op=image`): the picture the app rendered, `Cross-Origin-Resource-Policy:
+  cross-origin`. `/m/<id>/embed` (`op=embed`): a card for an iframe
+  (`frame-ancestors *`) that opens the link in a tab — the threaded engine
+  cannot run in somebody else's page, which cannot be cross-origin isolated.
+  **Who can do what:** a visitor's read goes through the publishable key, so
+  row security (`shared_models_read_published`, select only, `published`) is
+  what says a row is public, and the key's roles are granted every column but
+  `owner`; the bucket `shared-models` is private with no policies, and the
+  function reads a file with the secret key only after that read; every write
+  is the function's, after the session is verified and the row found to be the
+  caller's. Rows (and the publish log) go with the account; unpublish first or
+  the files stay.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -288,6 +320,35 @@ Proves it when: the GET is `200` with `enabled: true`, a `url` and publishable
 the POST is `405`; and a hello with no sign-in is `401`. The deployment before
 2026-10-11's accounts answered `enabled: false` with no `url`, and took any
 hello.
+
+A model shared by link, every endpoint and every refusal, against the real
+functions, database and bucket (two throwaway accounts, deleted at the end with
+their rows; every model it publishes is taken down first, so no file is left;
+about 40 s locally):
+
+```sh
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 &
+node tools/web/share_probe.mjs --url=http://127.0.0.1:8790
+BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<deployment>
+```
+
+Proves it when it ends "a model can be shared by link, and nothing else can be
+done with one" (69 checks): publish refused signed out and with a made-up
+session; published with an id and a link; the part count 9 for a sub-model
+placed twice, two bricks and a made part (a `!DATA` picture not counted); read
+signed out byte for byte with name, author and count and no owner; the page's
+og:title and og:image, its way on to the viewer, not frameable; the picture and
+its CORP; the card, frameable; refused at the edge — over 2 MB 413, JSON, a
+binary file, HTML, a part line cut short, no parts and a sub-model inside
+itself 415, a picture that is not a PNG 415, no name 400; republished in place
+(10 parts, new name, author gone, picture gone and the page falling back to the
+site's); another account updating or unpublishing 403, signed out 401, an
+unknown id 404, none of it changing anything; the owner's list and nobody
+else's; with the publishable key straight at Supabase: the row readable, its
+`owner` not, no insert, no update, the publish log closed, the file not in a
+public bucket; unpublished — the model 410, the page and the card 410 saying
+so and no longer naming it, no picture, the row unreadable; a link that never
+was 404; republished, the same link back; twenty publishes an hour, then 429.
 
 And the deploy, which is the only proof that counts for the web build:
 

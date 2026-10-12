@@ -14,7 +14,8 @@
 // And the paths the deployment maps onto functions and pages (deploy.sh's
 // routes), so Claude's sign-in is found here where it is found there: the
 // OAuth metadata under /.well-known/, /oauth/register, /oauth/token and
-// /oauth/revoke, and /oauth/authorize, which is the page web/authorize.html.
+// /oauth/revoke, and /oauth/authorize, which is the page web/authorize.html;
+// and a shared model's /m/<id>, /m/<id>.png and /m/<id>/embed (api/share.js).
 // Other files in web/ are served as they are.
 //
 // No client address is passed on, so api/otp.js's per-address limit has
@@ -42,6 +43,10 @@ const MAPPED = [
   [/^\/oauth\/register\/?$/, "oauth", "register"],
   [/^\/oauth\/token\/?$/, "oauth", "token"],
   [/^\/oauth\/revoke\/?$/, "oauth", "revoke"],
+  // A shared model's link, its picture and its card, as /m/<id>.
+  [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", "page"],
+  [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
+  [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
 ];
 const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"]];
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", svg: "image/svg+xml",
@@ -97,6 +102,14 @@ http.createServer(async (incoming, outgoing) => {
   if (mapped) {
     handler = await route(mapped[1]);
     query.op = mapped[2];
+    const captured = mapped[0].exec(url.pathname);
+    if (captured[1] && mapped[1] === "share") query.id = captured[1];
+  }
+  // The app is at /app, which the deployment sends on to the build with
+  // its query (?view=<id>, ?copy=<id>) intact.
+  if (site && /^\/app\/?$/.test(url.pathname)) {
+    outgoing.writeHead(302, { location: `/${url.search}` });
+    return outgoing.end();
   }
   if (!handler && !found && !mapped && serveFile(url.pathname, outgoing)) return;
   if (!handler) {

@@ -553,6 +553,20 @@
       "area": "account"
     },
     {
+      "kind": "api",
+      "label": "GET/POST /api/share",
+      "entry": "api/share.js",
+      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share probe",
+      "entry": "tools/web/share_probe.mjs",
+      "reach": "node tools/web/share_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "oauth probe",
       "entry": "tools/web/oauth_probe.mjs",

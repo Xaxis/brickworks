@@ -48,6 +48,14 @@
       "tests": []
     },
     {
+      "id": "api:GET/POST /api/share",
+      "kind": "api",
+      "entry": "api/share.js",
+      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "api:POST /api/mcp",
       "kind": "api",
       "entry": "api/mcp.js",
@@ -297,6 +305,14 @@
       "entry": "src/main.gd",
       "reach": "godot --headless --path . -- --about",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:share probe",
+      "kind": "cli",
+      "entry": "tools/web/share_probe.mjs",
+      "reach": "node tools/web/share_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "web",
       "tests": []
     },
     {
