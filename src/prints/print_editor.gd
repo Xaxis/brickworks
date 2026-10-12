@@ -687,8 +687,8 @@ func _build_side() -> Control:
 		if _paper() != null:
 			_paper().add_layer()
 			_fill_layers(), "A new layer above this one")
-	_button(layer_row, "↑", func() -> void: _move_layer(1), "Move this layer up")
-	_button(layer_row, "↓", func() -> void: _move_layer(-1), "Move this layer down")
+	_button(layer_row, "Up", func() -> void: _move_layer(1), "Move this layer up")
+	_button(layer_row, "Down", func() -> void: _move_layer(-1), "Move this layer down")
 	_button(layer_row, "×", func() -> void:
 		if _paper() != null and _paper().remove_layer(_paper().active):
 			_canvas.refresh()

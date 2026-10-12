@@ -296,8 +296,13 @@ func _run() -> void:
 	# Opened as a person opens a file: Open…, "From a file on this
 	# computer…", the file chosen in the dialog that comes up. The menu's
 	# first line once opened the first model listed under it instead.
+	# Open… is the toolbar's now, with the bar's choices behind it: found
+	# where the page finds it, in the shell's controls, then the bar's.
 	var bar: Node = _main.get("_bar")
-	await _click_control(bar.controls_by_name()["open"])
+	var shell: Node = _main.get("_shell")
+	var named: Dictionary = shell.controls_by_name() if shell != null else {}
+	named.merge(bar.controls_by_name())
+	await _click_control(named["open"])
 	await _frames(10)
 	var menu: PopupMenu = bar.get("_saves")
 	await _click_at(Vector2(menu.position) + Vector2(60, 14))
