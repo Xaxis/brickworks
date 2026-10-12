@@ -86,8 +86,13 @@ godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 
 In a browser: `tools/web/brickify_flow.mjs` presses I, answers the page's file
 chooser with the bunny, types 30 into the size, presses Brickify, and reads
-`window.brickworksState.tree` for `bunny#1` holding every part placed, and
-`selected`. Pictures in its `--out`.
+`window.brickworksState.tree` for `bunny#1` holding every part on the baseplate
+(a first visit's example car is taken off to make room), `selected`, and
+`brickified`, the status line's sentence: buildable in one piece, no part
+missing. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
+SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
+the bunny down about two minutes after Brickify is pressed, 1,057 parts as on
+the desktop.
 
 ## Gotchas
 
@@ -106,7 +111,12 @@ chooser with the bunny, types 30 into the size, presses Brickify, and reads
 - **A worker never loads a part.** Every part Shapes may lay
   (`Brickify.parts_needed()`, 80) is loaded — fetched, on the web — before the
   worker starts, and the tables filled on first use are filled first
-  (`BrickifyDialog._warm`), as `Assistant._checked` does.
+  (`BrickifyDialog._warm`), as `Assistant._checked` does. A part not here yet
+  is remembered as absent by those tables (`Shapes._parts`, the wedge tables),
+  so `_warm` drops what they remember as absent and fills them again. Waiting
+  thirty seconds for the parts was not enough on a loaded machine: the same
+  bunny came out 1,057 parts in one browser and 1,004 in the next. It waits two
+  minutes, and the status line names any part that never came.
 - **Hollow is less plastic, not fewer parts.** Measured on the 24-stud sphere:
   59% of the plastic in 1,517 parts against 1,524. Cut through a course, the
   hollow's floor and ceiling were plates and it came out a fifth more parts, so

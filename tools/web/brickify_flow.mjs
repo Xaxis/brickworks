@@ -136,12 +136,17 @@ const landed = await until(async () => {
   return s && s.tree && s.tree["bunny#1"] && !(await controls()).brickify_go;
 }, 600, "landed");
 const s = await state();
-const parts = (s?.bricks || 0) - before;
-// The tree lists each sub-assembly's own parts by number, "3001,3004".
+// The tree lists each sub-assembly's own parts by number, "3001,3004". A
+// first visit's example car, untouched, is taken off to make room, so then
+// the bunny is everything on the baseplate.
 const inside = String(s?.tree?.["bunny#1"] || "").split(",").filter(Boolean).length;
-ok(landed && parts > 300 && inside === parts,
-  `it lands as the sub-assembly bunny#1: ${parts} parts placed, ${inside} of them in it, the tree ${Object.keys(s?.tree || {})}`);
-ok(s?.selected === parts, `all of it selected, to move or turn: ${s?.selected}`);
+const all = s?.bricks || 0;
+ok(landed && inside > 300 && (inside === all || all - before === inside),
+  `it lands as the sub-assembly bunny#1: ${inside} parts in it, ${all} on the baseplate (${before} before), the tree ${Object.keys(s?.tree || {})}`);
+ok(s?.selected === inside, `all of it selected, to move or turn: ${s?.selected}`);
+// What the status line said: buildable in one piece, every part it needed here.
+const summary = String(s?.brickified || "");
+ok(/buildable in one piece/.test(summary) && !/never arrived/.test(summary), `it says: "${summary}"`);
 ok(true, `frames while it worked: the longest ${longest} ms of ${frames.length}`);
 await page.waitForTimeout(8000);
 await shot("3_placed_selected.png");

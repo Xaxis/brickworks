@@ -298,6 +298,8 @@ func _tell_page() -> void:
 			"tool": _verbs.mode if _verbs != null else ""},
 		# The status bar's line: what the mouse will do now.
 		"hint": _verbs.hint() if _verbs != null else "",
+		# What the last 3D model brickified came to, for brickify_flow.mjs.
+		"brickified": _brickify.last_summary if _brickify != null else "",
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.

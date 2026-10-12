@@ -63,6 +63,8 @@ var _status: Label
 var _go: Button
 var _cancel: Button
 var _syncing: bool = false
+## What the last one came to, as the status line said it.
+var last_summary: String = ""
 
 
 func _ready() -> void:
@@ -466,7 +468,7 @@ func brickify() -> void:
 	var choice: Brickify.Options = options()
 	var began: int = Time.get_ticks_msec()
 	_status.text = "getting the parts ready…"
-	await _ensure_parts()
+	var missing: PackedStringArray = await _ensure_parts()
 	if _checker == null:
 		_checker = Assistant.new()
 	_checker.library = library
@@ -508,7 +510,8 @@ func brickify() -> void:
 	_busy = false
 	_set_enabled(true)
 	visible = false
-	brickified.emit(ids, _summary(result, mesh.name, Time.get_ticks_msec() - began))
+	last_summary = _summary(result, mesh.name, Time.get_ticks_msec() - began, missing)
+	brickified.emit(ids, last_summary)
 
 
 func _set_enabled(on: bool) -> void:
@@ -522,8 +525,13 @@ func _set_enabled(on: bool) -> void:
 
 
 ## Every part Brickify may lay, here before the worker starts: on the web
-## most are fetched rather than shipped, and a worker cannot fetch.
-func _ensure_parts() -> void:
+## most are fetched rather than shipped, and a worker cannot fetch. The ones
+## that never came, which it then lays without.
+##
+## Thirty seconds was not enough on a loaded machine drawing in software:
+## the same bunny at the same size came out 1,057 parts in one browser and
+## 1,004 in the next, its slopes and tiles still on their way.
+func _ensure_parts() -> PackedStringArray:
 	var waiting: Dictionary = {}
 	for id: String in Brickify.parts_needed():
 		if not library.is_resident(id):
@@ -531,17 +539,31 @@ func _ensure_parts() -> void:
 		if not library.is_resident(id) and library.parts.has(id):
 			library.request_mesh(id)
 			waiting[id] = true
-	var deadline: int = Time.get_ticks_msec() + 30000
+	var deadline: int = Time.get_ticks_msec() + 120000
 	while not waiting.is_empty() and Time.get_ticks_msec() < deadline:
 		_status.text = "fetching %d parts…" % waiting.size()
 		await get_tree().process_frame
 		for id: String in waiting.keys():
 			if library.is_resident(id):
 				waiting.erase(id)
+	return PackedStringArray(waiting.keys())
 
 
 ## The tables filled on first use, filled here rather than by the worker.
+## A part that had not arrived when one was filled is not in it, and would
+## never be laid: those are filled again now it may be here.
 func _warm() -> void:
+	for key: Variant in Shapes._parts.keys():
+		if (Shapes._parts[key] as Dictionary).is_empty():
+			Shapes._parts.erase(key)
+	for key: Variant in Shapes._plans.keys():
+		if str(Shapes._plans[key]).is_empty():
+			Shapes._plans.erase(key)
+	if Patterns._wedge_shapes.size() < 4 * Patterns.WEDGES.size():
+		Patterns._wedge_shapes.clear()
+		Patterns._wedge_prints.clear()
+	if Shapes._brick_wedges.size() < 4 * Shapes.BRICK_WEDGES.size():
+		Shapes._brick_wedges.clear()
 	Style.norms()
 	Patterns.wedge_shapes(library)
 	Shapes.brick_wedges(library)
@@ -618,7 +640,8 @@ func _clear_spot(grid: Brickify.Grid) -> Vector2i:
 		roundi(built.get_center().z / BrickLattice.STUD) - grid.deep / 2)
 
 
-func _summary(result: Dictionary, name: String, ms: int) -> String:
+func _summary(result: Dictionary, name: String, ms: int,
+		missing: PackedStringArray = PackedStringArray()) -> String:
 	var model: Assistant.Model = result["model"]
 	var report: Dictionary = result["report"]
 	var colours: Dictionary = {}
@@ -631,4 +654,6 @@ func _summary(result: Dictionary, name: String, ms: int) -> String:
 		words += ", buildable in one piece"
 	else:
 		words += " — %s" % str(report["summary"])
+	if not missing.is_empty():
+		words += " — laid without %s, which never arrived" % ", ".join(missing)
 	return "%s, in %.1f s" % [words, ms / 1000.0]
