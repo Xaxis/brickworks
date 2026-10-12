@@ -3928,6 +3928,13 @@ func _read_model(args: Dictionary) -> Model:
 				one.erase("dress")
 				if not dressing.is_empty():
 					model.placements.append(Placement.from_dict(dressing))
+			if one.has("panel"):
+				# A shape's brick with studs on its side: turned so they face
+				# out, and a tile laid on them flat against the side.
+				var tile: Dictionary = _panel(one, str(one["panel"]))
+				one.erase("panel")
+				if not tile.is_empty():
+					model.placements.append(Placement.from_dict(tile))
 			model.placements.append(Placement.from_dict(one))
 		for raw: Variant in sideways:
 			for brick: Dictionary in _studs_out(raw, trouble):
@@ -4837,19 +4844,24 @@ static func _least_radius(sides: int, thick: int) -> float:
 ## radius 8 had a tenth and ran into itself at faces 1 and 2; at 8.5 it
 ## holds. A face square to the grid is laid exactly, so an octagon, whose
 ## turned faces each meet a square one, is laid as asked.
-static func _clear_radius(sides: int, radius: float, thick: int) -> float:
-	var both_turned: bool = false
+##
+## A pair with one face turned needs less, a twentieth: the piers of radius
+## 4.5 an octagonal core of 7 was given had a twenty-eighth, and their horns'
+## faces ran into each other all the way up. [param turn] is the first face's
+## angle, as a pier's is its own.
+static func _clear_radius(sides: int, radius: float, thick: int, turn: float = 0.0) -> float:
+	var need: float = 0.0
 	for k: int in sides:
-		if not _square_to_grid(360.0 * k / sides) \
-				and not _square_to_grid(360.0 * (k + 1) / sides):
-			both_turned = true
-	if not both_turned:
+		var turned: int = (0 if _square_to_grid(turn + 360.0 * k / sides) else 1) \
+			+ (0 if _square_to_grid(turn + 360.0 * (k + 1) / sides) else 1)
+		need = maxf(need, [0.0, 0.05, 0.2][turned])
+	if need <= 0.0:
 		return radius
 	var r: float = radius
 	for _step: int in 4:
 		var half: float = (r - thick) * tan(PI / sides)
 		var face: float = floor(2.0 * half + 0.001) / 2.0
-		if half - face >= 0.2:
+		if half - face >= need:
 			return r
 		r += 0.5
 	return radius
@@ -5079,6 +5091,15 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		_pattern_advice.append("Piers of radius %s would have faces narrower than two "
 			% Placement._num(float(piers["radius"])) + "studs at %d sides, so they are " % p_sides
 			+ "laid at radius %s, the least that keeps %d sides." % [Placement._num(least), p_sides])
+	# And far enough out that their own faces clear each other where they
+	# meet, as a prism's are.
+	var spaced: float = _clear_radius(p_sides, p_radius, thick,
+		float(piers.get("turn", 180.0 / maxi(int(piers.get("count", 4)), 1))))
+	if spaced != p_radius:
+		_pattern_advice.append(("Piers of radius %s have faces whose bricks meet with "
+			+ "too little between them, so they are laid at radius %s.")
+			% [Placement._num(p_radius), Placement._num(spaced)])
+		p_radius = spaced
 	# Past the core's summit into horns unless said: Orthanc's four rise above
 	# its top, and so do a castle's corner turrets.
 	var p_courses: int = int(round(float(piers.get("courses",
@@ -5857,6 +5878,95 @@ func _studs_out(pattern: Dictionary, trouble: Array) -> Array:
 					n2 += int(pair[0])
 					break
 	return made
+
+
+## The tile a row of side studs carries, by how many: two studs tall, so
+## that laid on a course of them it covers the course over it too.
+const PANELS: Dictionary = {4: "87079", 2: "3068b", 1: "3069b"}
+
+## A brick with studs on one side, turned so they point [param facing],
+## and a tile two studs tall laid on them flat against the side — its lower
+## row on the studs, its upper over the course above. The brick's rot is
+## set; the tile comes back as a placement, {} where none fits.
+##
+## A side of a shape laid in plain bricks is a face of studs-down plastic
+## nobody sees; real vehicles turn a fifth of their parts on their side, and
+## a car's flank is tiles on bricks like these.
+func _panel(brick: Dictionary, facing: String) -> Dictionary:
+	if not facing in ["+x", "-x", "+z", "-z"]:
+		return {}
+	var part: String = str(brick["part"])
+	var mesh: Lbm.PartMesh = library.mesh_for(part)
+	if mesh == null:
+		return {}
+	var outward: Vector3 = FACES[facing]
+	var studs: Array[Vector3] = []
+	for rot: int in 4:
+		var trial: Dictionary = brick.duplicate()
+		trial["rot"] = rot
+		var placed: Transform3D = _transform(Placement.from_dict(trial), mesh)
+		var found: Array[Vector3] = []
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind == "stud" and connector.gender == "male" \
+					and (placed.basis * connector.axis).normalized().dot(outward) > 0.9:
+				found.append(placed * connector.position)
+		if not found.is_empty():
+			brick["rot"] = rot
+			studs = found
+			break
+	if studs.is_empty() or not PANELS.has(studs.size()):
+		return {}
+	var id: String = PANELS[studs.size()]
+	var tile: Lbm.PartMesh = library.mesh_for(id)
+	var info: PartLibrary.PartInfo = library.parts.get(id)
+	if tile == null or info == null:
+		return {}
+	# Where each stud of the tile's footprint is on its underside, in its own
+	# coordinates: the side studs go into these.
+	var foot: Vector2i = info.footprint_studs()
+	var b: AABB = tile.bounds
+	var under: Array[Vector3] = []
+	for i: int in foot.x:
+		for k: int in foot.y:
+			under.append(Vector3(b.position.x + 10.0 + 20.0 * i, b.position.y,
+				b.position.z + 10.0 + 20.0 * k))
+	var lowest: float = INF
+	for point: Vector3 in studs:
+		lowest = minf(lowest, point.y)
+	for rot: int in 4:
+		var basis: Basis = BrickLattice.basis_for(facing, rot)
+		var turned: Array[Vector3] = []
+		for point: Vector3 in under:
+			turned.append(basis * point)
+		for first: Vector3 in turned:
+			var origin: Vector3 = studs[0] - first
+			var all_on: bool = true
+			for point: Vector3 in studs:
+				var on: bool = false
+				for other: Vector3 in turned:
+					if (origin + other - point).length() < 1.0:
+						on = true
+						break
+				if not on:
+					all_on = false
+					break
+			if not all_on:
+				continue
+			# Upwards from the studs, over the course above, never below them.
+			var up: bool = false
+			var down: bool = false
+			for other: Vector3 in turned:
+				var y: float = (origin + other).y
+				up = up or y > lowest + 10.0
+				down = down or y < lowest - 10.0
+			if not up or down:
+				continue
+			var corner: Vector3 = origin + BrickLattice.to_ldu(_corner_cell(tile, id, basis))
+			return {"part": id, "color": int(brick.get("panel_color", brick.get("color", DEFAULT_COLOUR))),
+				"x": snappedf(corner.x / STUD, 0.1), "y": snappedf(corner.y / PLATE, 0.25),
+				"z": snappedf(corner.z / STUD, 0.1), "face": facing, "rot": rot,
+				"dressing": true}
+	return {}
 
 
 ## The parts a studs_out band's studs carry, by the kind of band asked.
@@ -9596,7 +9706,8 @@ alongside the bricks you write by hand:
            surface, wherever it falls from one stud to the next, the \
            slope or curved slope whose fall is nearest; inverted slopes \
            under an overhang; wedge plates where an edge runs on the \
-           diagonal; tiles on top; one half and its mirror, tied across \
+           diagonal; tiles on top; its straight sides tiles laid flat on \
+           bricks with side studs; one half and its mirror, tied across \
            the middle. A hull is a loft with "keel" narrowing its lower \
            half and a box cut off its top for the deck; a fuselage a \
            revolve along x; a bird's or a beast's body ellipsoids and a \
@@ -10608,6 +10719,9 @@ func _tools() -> Array:
 				+ "a stripe, a belly, by height."},
 			"top_color": {"type": "integer", "description":
 				"shape: the colour of its top tiles and slopes, if not its own."},
+			"panels": {"type": "boolean", "description":
+				"shape: its straight sides as tiles on bricks with side studs every "
+				+ "other course (true, the default), or plain bricks (false)."},
 			"across": {"type": "number", "description": "fill, rock: studs in x"},
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":

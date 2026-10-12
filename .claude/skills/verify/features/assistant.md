@@ -355,7 +355,12 @@ fixing what it got wrong.
   sides (`_least_radius`; asked smaller, it is laid at that and the check's
   advice says so — refused, runs 15 and 16 both asked radius 4 at eight sides,
   were told "or their sides fewer" and took six, which leave the sky beside
-  every cleft; a core too small is told the radius that would do), centred
+  every cleft; a core too small is told the radius that would do), and far
+  enough out that where two of their faces meet the bricks clear
+  (`_clear_radius`, the same rule a prism's own faces are laid by: a fifth of
+  a stud where both faces are turned off the grid, a twentieth where one is —
+  piers of 4.5 on a core of 7 had a twenty-eighth and their horns ran into
+  themselves; a twelve-sided prism of radius 8 had a tenth), centred
   `out` (radius + pier radius - thickness)
   along `turn` + 360k/count (180/count, so a cleft is front and back). The core
   is whole; each pier is built against it, its faces stopping `CLUSTER_CLEAR`
@@ -454,9 +459,9 @@ fixing what it got wrong.
   on its two ledges (y 45 and 92, two plates each), its outsides 8, 7 and 6;
   five storeys at that radius are refused; the guidance's cluster in storeys
   passes in one piece with four horn points and add_rooms at the top radius
-  furnishes four floors, taking out at most one column (its plate and tile; the
-  top storey's corner posts stand on its ledge inside the rooms — the same
-  cluster without storeys loses none). Looked at: `shots/runs/rk_storeys_corner.png` steps in
+  furnishes four floors with nothing taken out (a column of the floor above
+  stood on a piece of floor `Rooms._hold` took out as held by nothing; it is
+  now laid again from whatever is under it). Looked at: `shots/runs/rk_storeys_corner.png` steps in
   on grey ledges as 10237 does.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
@@ -523,8 +528,10 @@ fixing what it got wrong.
   over them a layer along x — tiles (boards, flags or a checker, by kind) where
   it is walked on, plates where something stands, joints a stud off the
   strips', a 1 x 2 stitched across any joint left untied — held up on two or
-  three columns in the corners of the room below (never on its furniture).
-  Furniture stands on top, only where plates are. `stair: true` is a straight
+  three columns in the corners of the room below (never on its furniture); a
+  piece of floor held by nothing is taken out with what is on it, and a column
+  of the floor above that stood on it is laid again from whatever is under it
+  now (`_hold`). Furniture stands on top, only where plates are. `stair: true` is a straight
   flight of 2 x 2 bricks where it fits, else a ladder (4175 every six plates) up
   a 1 x 2 pillar. Each room gets its kind's furniture, signature first: the
   worked examples (`Techniques`) and a few of castle parts (`Rooms.FURNITURE`),
@@ -609,7 +616,12 @@ fixing what it got wrong.
   plates where a plan edge runs on the diagonal (the cut side a fifth to four
   fifths inside the shape, sampled, so none stands out from a flat side as a
   fin), plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
-  on top unless `"top": "studs"` (`TOPS`). A shape that is its own mirror
+  on top unless `"top": "studs"` (`TOPS`), and every other course the outside
+  row of a straight side (clear for two courses, its stud above part of the
+  side) as bricks with side studs, 30414/11211/87087 in runs, marked `panel`
+  so `Assistant._panel` turns each to face out and lays a tile two studs tall
+  (87079/3068b/3069b) flat on its studs over the course above (`"panels":
+  false` for plain sides). A shape that is its own mirror
   (`mirror_of`) is laid as one half, its reflection, and a strip across the
   plane two and four (or three and one) studs wide by turns so every layer is
   tied across it; surface picks pair into two-wide parts and are laid with
@@ -628,9 +640,12 @@ fixing what it got wrong.
   surfaces and are mirrors of themselves; a ramp falling a plate a stud takes
   18 degree slopes (curved 4 x 2s said curved); a box's top is tiled, not with
   `"top": "studs"`; a band colours by height; a loft without sections is
-  refused saying what it wants. Measured against real vehicles
-  (`tools/style.py`): curved 5-14% (median 14%), plain 63-69% (median 33%) —
-  the solid core is plates and bricks; looked at on the GPU:
+  refused saying what it wants; a box's straight sides carry eight side-stud
+  bricks each with its tile, in one piece, and none with `"panels": false`.
+  Measured against real vehicles
+  (`tools/style.py`): curved 5-14% (median 14%), plain 58-67% (median 33%),
+  sideways up to 5% (median 23%) — the solid core is plates and bricks, and
+  round bodies have few straight sides; looked at on the GPU:
   `shots/runs/shapes/shape_*_corner.png`.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off

@@ -297,6 +297,11 @@ func _holds_up() -> void:
 		["a twelve-sided turret of radius 8", {"pattern": "prism",
 			"at": {"x": 12, "y": 0, "z": 12}, "sides": 12, "radius": 8, "courses": 4,
 			"color": 15}],
+		# Piers of radius 4.5 (the least an octagon allows) had faces a
+		# twenty-eighth of a stud apart, and their horns ran into themselves.
+		["a small core with small piers rising into horns", {"pattern": "prism",
+			"at": {"x": 24, "y": 0, "z": 24}, "sides": 8, "radius": 7, "courses": 10,
+			"color": 0, "open": 3, "piers": {"count": 4, "radius": 4.5, "courses": 18}}],
 		["a crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
 			"across": 16, "deep": 12, "height": 15, "seed": 1}],
 		["another crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
@@ -344,7 +349,7 @@ func _holds_up() -> void:
 					dressed += 1
 			_check("...with %d bricks turned out and %d parts dressed on their sides"
 				% [turned, dressed], turned > 10 and dressed == turned)
-		if str((one[1] as Dictionary)["pattern"]) == "prism":
+		if str((one[1] as Dictionary)["pattern"]) == "prism" and not (one[1] as Dictionary).has("piers"):
 			var sides: int = int((one[1] as Dictionary)["sides"])
 			var turned: Dictionary = {}
 			for placement: Assistant.Placement in model.placements:
@@ -870,13 +875,11 @@ func _in_storeys() -> void:
 		"seed": 3}))
 	_check("add_rooms at the top storey's radius furnishes every storey: %s"
 		% said.get_slice("\n", 0), said.begins_with("Laid 4 floors"))
-	# Not nothing: the top storey's corner posts stand on its ledge inside
-	# where the rooms go, and one column, its plate and its tile come back
-	# out. The same cluster without storeys loses none.
-	_check("...with at most one column the check had to take out (%d items)"
+	# A column of the floor above stood on a piece of floor taken out for
+	# being held by nothing, and it, its plate and its tile came back out.
+	_check("...with nothing the check had to take out (%d)"
 		% int(assistant._last_rooms.get("dropped", -1)),
-		int(assistant._last_rooms.get("dropped", -1)) >= 0
-			and int(assistant._last_rooms.get("dropped", -1)) <= 3)
+		int(assistant._last_rooms.get("dropped", -1)) == 0)
 	var whole: Dictionary = assistant._check(assistant._model_from_world(), true)
 	_check("and the whole of it passes the check: %s" % whole["summary"], bool(whole["ok"]))
 	assistant.queue_free()
