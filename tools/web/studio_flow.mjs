@@ -55,8 +55,16 @@ const ok = (passed, line) => {
 
 async function page_for(name) {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
+  // File pickers are caught by a listener that is there from the start.
+  // Playwright only intercepts a picker while something listens for one,
+  // and a waitForEvent added just before the click it waits on was, on a
+  // page busy drawing, sometimes switched on after the app had asked: the
+  // picker was asked for, with the click still live, and never seen.
+  page.choosers = [];
+  page.on("filechooser", (chooser) => page.choosers.push(chooser));
   page.on("pageerror", (e) => errors.push(`${name}: ${String(e).slice(0, 200)}`));
   page.on("console", (m) => {
+    if (/user activation/i.test(m.text())) console.log(`  --    ${name}: ${m.text().slice(0, 160)}`);
     if (/SCRIPT ERROR|USER ERROR|Parse Error|shader compil/i.test(m.text())) {
       errors.push(`${name}: ${m.text().slice(0, 300)}`);
     }
@@ -99,18 +107,40 @@ function tools(page) {
   // is tried again rather than taken for a failure.
   async function picked(press, file, what) {
     for (let n = 0; n < 3; n++) {
-      const waiting = page.waitForEvent("filechooser", { timeout: 30000 }).catch(() => null);
+      page.choosers.length = 0;
       await press(n);
-      const picker = await waiting;
+      for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
+        await page.waitForTimeout(500);
+      }
+      const picker = page.choosers.shift();
       if (picker) {
         await picker.setFiles(file);
         return;
       }
       await shot(`no_picker_${what}_${n}.png`);
-      await page.keyboard.press("Escape");
+      console.log(`  --    no picker for ${what}; frames take ${await frameTimes()} ms`);
+      // A menu left open is closed before the next try; a dialog is not,
+      // since Escape closes the print designer too.
+      if (what === "open") await page.keyboard.press("Escape");
       await page.waitForTimeout(3000);
     }
     throw new Error(`no file picker came up for ${what}`);
+  }
+  // How long the app's frames take now. A browser opens a file picker
+  // only within a few seconds of the click that asked for it, and the app
+  // reads a click at its next frame.
+  async function frameTimes() {
+    return page.evaluate(() => new Promise((done) => {
+      const times = [];
+      let last = performance.now();
+      const tick = (now) => {
+        times.push(Math.round(now - last));
+        last = now;
+        if (times.length < 4) requestAnimationFrame(tick);
+        else done(times.join(", "));
+      };
+      requestAnimationFrame(tick);
+    }));
   }
   async function choose(name, file) {
     const at = await where(name);

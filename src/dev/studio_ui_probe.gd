@@ -206,6 +206,9 @@ func _run() -> void:
 		(there[0] as BrickWorld.Brick).part_id if there.size() == 1 else str(there.size())),
 		there.size() == 1 and (there[0] as BrickWorld.Brick).part_id.begins_with("bw-3068b-p")
 		and (there[0] as BrickWorld.Brick).color_code == 15)
+	var dial_name: String = PartPrints.given_name(_library.parts[(there[0] as BrickWorld.Brick).part_id].name) \
+		if there.size() == 1 else ""
+	_check("named for its starter: \"%s\"" % dial_name, dial_name == "Dial")
 	# The plain tile went out of the selection as it went out of the model;
 	# its yellow outline once stayed round the print that took its place.
 	var outline: SelectionOutline = _main.get("_outline")

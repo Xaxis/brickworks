@@ -879,6 +879,10 @@ func _start_from(index: int) -> void:
 		var drawn: Image = Starters.draw(id.substr(8), area.size.x, area.size.y, library)
 		(_papers[area.key] as PrintPaint).load_image(drawn, id.substr(8).capitalize())
 		_status.text = "Started from a %s." % id.substr(8)
+		# Named for what it was started as, until someone names it: three
+		# dials saved unnamed were three "My Print"s side by side.
+		if _name.text.strip_edges().is_empty():
+			_name.text = id.substr(8).capitalize()
 		_canvas.refresh()
 		_fill_layers()
 	elif id.is_empty():
