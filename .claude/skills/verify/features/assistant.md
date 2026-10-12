@@ -264,14 +264,26 @@ fixing what it got wrong.
   10237's 66% black and 13% grey) as a band: one course of it every
   `BAND_EVERY` (8), a string course where 10237 has its ledges, never
   sprinkled — scattered through the bricks (Orthanc rk1) it read as noise.
-  `band_color` sets another; a `mix_color` said means a scatter instead. A
-  black `fill` wall with `rise` 3 does the same (`Patterns.BAND_EVERY`). As
-  many 1 x 2s again as its masonry are laid as grille bricks (2877, faced
-  out), which catch light where masonry in black does not, and `GRILLE_SHARE`
-  (0.5) of its outside row's 1 x 3s and 1 x 4s that lie wholly on the face
-  (`_grille_until`; one run on into the groove split, and hung there) as two
-  grille bricks (2877, with a 3005 after a 1 x 3): 10237 is 86 grille bricks in
-  2,359 parts, 3.6%, and the Orthanc after the bands was 0.2%. `patterns_probe`:
+  `band_color` sets another; a `mix_color` said means a scatter instead on a
+  light face, and on a dark one goes onto its ribs. A
+  black `fill` wall with `rise` 3 does the same (`Patterns.BAND_EVERY`). A dark
+  face's texture is organised, never scattered (the run after the blades
+  sprinkled round tiles, cheese slopes and grey over its black and read as
+  noise): its outside row is turned out only in ribs (`_ribs`, `_lay_row`), a
+  87087 at the face's middle and every `RIB_EVERY` (4) either side, with a stud
+  before and two after (split with one after, a face's run-on into its corner
+  groove was left a column of 1 x 1s held by nothing), each carrying a round
+  plate (`RIB_PART` 4073) in the wall's colour or its `mix_color`; and every
+  `GRILLE_EVERY` (2) outside rows the bricks either side of each rib are grille
+  bricks (2877, 3005 for an odd stud), a strip flanking the rib, each starting
+  over the face (`_grille_until`; one wholly in the corner groove hangs): 10237
+  is 86 grille bricks in 2,359 parts, 3.6%, the Orthanc after the bands was
+  0.2%, and a band round every other row only 0.7%. Masonry, relief
+  in the wall's own colour, is still scattered. `restyle_model` on a dark wall
+  turns out only bricks of one or two studs starting on a column every
+  `RIB_EVERY`, the same round plate up each, and gives a `face_color` to whole
+  columns; a dark `fill`'s `sideways` bricks stand in columns
+  (`Patterns.SIDEWAYS_EVERY`). `patterns_probe`:
   asked for, 16 window studs on the guidance's cluster, each paired two
   courses tall, Trans-Brown, no office block said; none unless asked; a black
   cluster with no mix_color has hundreds of grey, every one in a band course,
@@ -295,7 +307,27 @@ fixing what it got wrong.
   `style_probe` ("the faults of the homepage's Orthanc"): a black 4 x 4 shaft is
   told hole and no profile, light grey not a hole, a rocket not a shaft, a
   stepped tower has a profile, lit windows in rows are an office block and the
-  same in dark glass are not, and none is said of any shipped model.
+  same in dark glass are not, and none is said of any shipped model. Three
+  more since the run after the blades, each any subject's: `_speckle`
+  (`SPECKLE_FROM` 24 or more pieces of dressing, or in a section's wall a
+  second tone, on a dark wall, 40% of them scattered: neither in a column
+  holding `SPECKLE_COVER` (60%) of the courses its wall is marked in, a rib, nor
+  in a course holding 60% of its columns, a band; a second tone in the main
+  body is not counted, so mottled rock is not speckle), `_daylight` (slits of
+  sky between `DAYLIGHT_SLIT` 0.1 and 1.5 studs wide right through a model
+  of 200 parts or more, from any of the eight views at nine heights, measured
+  off each part's own box laid flat as `daylight_probe` measures it, counted
+  from a view where it shows at `DAYLIGHT_RUNS` (2) heights or more: up to 0.9,
+  the run after these rules was told of slivers between its crags and its
+  tower, seen at one height, and not of a stud-wide channel through its piers
+  at all nine) and
+  `_wide_yard` (a model more than twice as tall as it is wide half way up, on a
+  base `YARD_WIDER` (1.6) times as wide: the run stood its tower on a 66-stud
+  yard, 1.9 tall to wide where the tower alone was 3.3). `patterns_probe`
+  (`_display_faults`): a black wall sprinkled with grey is called speckle, two
+  walls half a stud apart with nothing behind are called sky, the guidance's
+  tower on a 66-stud yard is told its base is too wide, and the guidance's
+  tower itself, closed or opened at the back, is called none of them.
 - `an open tower is not see-through`: a post up the inside of each corner where
   two laid faces meet (`Assistant._corner_posts`, `_corner_post`), a column of
   3062b — or 3941 where the channel's mouth is wider than one covers (radius 9
@@ -386,8 +418,27 @@ fixing what it got wrong.
   right-hand corner into the groove (`_cluster_face`, as far as the outline's
   corner): without it a two-thick pier face three studs wide had a groove
   nearly as wide at each corner and the piers read as bundles of sticks.
-  With `open`, the piers at the back drop every face looking back or across
-  the opening, and any `open` at all opens the core's whole back, every face
+  With `open`, a pier at the back keeps every face and gives way only to the
+  core's faces that stand (`standing`, each face's wall slab) and to the
+  core's inside, so it stands closed in the corner the opening took out and is
+  posted as a closed pier: left a frame, open behind and to the opening, the
+  sky came up the seam where it met the core's last face and up its own front
+  grooves, from the corner a picture is taken from (the guidance's tower
+  opened: 6 sightlines from 45 and 225, now none from any corner, and from the
+  sides a 1.4 LDU hairline); given way to the standing faces alone, it closed
+  the core's inside off from behind too, and the rooms could not be seen.
+  Closed, the back piers stand in front of the inside's outer columns, so
+  from straight behind the rooms show through the slot between them, the
+  middle four of the guidance tower's ten (`_cluster_opened`). Piers not
+  told their `out` are set into the core by its wall's thickness, or the
+  nearest half stud to that, deeper first, at which no pier face is left a
+  hole by the core, part of it standing clear but too little for a brick (`_pier_out`,
+  `PIER_HOLE` 0.3): a core of radius 8 (the run after these rules) took two
+  faces of each pier down to 0.9 of a stud and laid nothing there, and the
+  sky showed a stud wide straight through every pier, full height, from every
+  corner; `patterns_probe` (`_display_faults`): that cluster, no slit of a
+  tenth of a stud or more from any of the eight views (18 a corner before).
+  Any `open` at all opens the core's whole back, every face
   looking within `OPEN_REACH` (67.5 degrees) of straight back (3 of an octagon
   or a decagon, 5 of a twelve-sided core), one more where the count would sit
   off centre: run 15 asked for 2 and got one face and one pier, the rooms
@@ -440,9 +491,16 @@ fixing what it got wrong.
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
   it at x -2 and passes the check.
-- `a tower on a plinth`: `"plinth": {"steps", "out", "stair"}` on `prism`
-  (`Assistant._on_plinth`, `_foot`), the base as a call: every Orthanc built
-  here stood on rubble and the owner named it. Square terraces `steps` (1-4)
+- `a tower on a plinth`: `"plinth": {"steps", "out", "stair", "rock"}` on `prism`
+  (`Assistant._on_plinth`, `_foot`, `_plinth_crags`), the base as a call: every
+  Orthanc built here stood on rubble and the owner named it. With `rock` (the
+  default), crags (`Patterns._rock`, in the plinth's colour with its ledge
+  tone) rise against the tower on the top terrace at each corner and the
+  middle of each side but the front, each the largest square of three studs or
+  more at the terrace's edge clear of the foot by a fifth of a stud, twice its width
+  tall (4 to 10 courses), on studs left for it: within the plinth, so the base
+  is no wider (the run after the blades stood on a pale 66-stud yard with five
+  rock piles). Square terraces `steps` (1-4)
   of two courses each, stepping out `out` studs, the top one two studs clear
   of the tower's farthest corner (`_foot`: the core's and the lowest storey's
   piers' outlines), laid by the shape pattern as boxes, so every edge is
@@ -468,10 +526,12 @@ fixing what it got wrong.
   were square spires that read from the corner as turrets with roofs. A pier
   taller than the core stops at the summit, and over it stands a blade in a
   section of its own (`prism N horn K`) turned about the upright into the plane
-  through the tower's middle and its pier, so it sweeps out from the crown
-  (turned to face the front instead, the four were two straight sticks from
-  the side and cut-off plates from the corner; radial, the two on the corner
-  view's line are seen edge on, as 10237's front horn is). Four layers of plates laid on their side (face +x,
+  through the tower's middle and its pier, so it sweeps out from the crown,
+  then `BLADE_TURN` (20 degrees) off it towards the side (a pier on the line
+  from front to back stays on its line): turned to face the front instead,
+  the four were two straight sticks from the side and cut-off plates from the
+  corner; on their piers' diagonals exactly, the two on the corner view's line
+  were edge on, a mast behind the summit. Four layers of plates laid on their side (face +x,
   `Patterns._tile`, each turned across the joints of the one under it), tiles
   over the last (`Shapes.TOPS`): two studs deep, centred on its pier's line
   (two layers and tiles were 24 LDU, and the blades seen edge on read as one
@@ -523,8 +583,8 @@ fixing what it got wrong.
   towers on wide bases. The guidance's tower leaves `courses` out (radius 7,
   storeys of 1, a plinth of 2 by 2) and is closed all round: opened at the back,
   from the corner the sky showed up the clefts beside the back piers and the
-  shaft read as four thin columns, where 10237's reads as one mass of rock; the
-  guidance says so, and to open it when the rooms are the point. `patterns_probe` (`_display_proportions`):
+  shaft read as four thin columns, where 10237's reads as one mass of rock,
+  until the back piers stayed closed. `patterns_probe` (`_display_proportions`):
   that tower, measured by its parts' boxes, stands 3.3 times its 34 studs in one
   piece and the reply gives its 73 courses; a lone cluster of radius 9 the same;
   the old guidance's 36 courses on a core of 10 are laid as given (1.65) and the

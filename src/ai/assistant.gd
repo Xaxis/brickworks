@@ -4157,7 +4157,9 @@ func _read_model(args: Dictionary) -> Model:
 			if one.has("dress"):
 				# A fill's 1x1 with a side stud, marked with the way out:
 				# turned so the stud faces it, and dressed.
-				var dressing: Dictionary = _dress(one, str(one["dress"]))
+				# On a dark wall the same part all the way up its column.
+				var dressing: Dictionary = _dress(one, str(one["dress"]), -1,
+					[RIB_PART] if _is_dark(int(one.get("color", DEFAULT_COLOUR))) else [])
 				one.erase("dress")
 				if not dressing.is_empty():
 					model.placements.append(Placement.from_dict(dressing))
@@ -4214,6 +4216,8 @@ func _restyle(args: Dictionary) -> Dictionary:
 	var added: Array = []
 	var turned: int = 0
 	var stoned: int = 0
+	## A dark wall's columns as met, numbered: every fifth takes the accent.
+	var accents: Dictionary = {}
 	var middle := Vector3.ZERO
 	var standing: Array[BrickWorld.Brick] = _bricks_inside({})
 	for brick: BrickWorld.Brick in standing:
@@ -4275,7 +4279,15 @@ func _restyle(args: Dictionary) -> Dictionary:
 		if facing.is_empty():
 			continue
 		var pick: float = Patterns._scatter(seen.x / STUD, seen.y / PLATE, seen.z / STUD, 41)
-		if pick < sideways and _each_stud_held(outer, long, along_x, frame):
+		# On a dark wall in columns, never scattered: a brick is turned out
+		# where it starts on one of the wall's columns and is short enough to
+		# keep it narrow, and everything on a column is the same part, in the
+		# same tone. The run that scattered them came out speckled with grey.
+		var dark: bool = _is_dark(placement.color)
+		var along: int = int(round(outer.x if along_x else outer.z))
+		var column: bool = posmod(along, RIB_EVERY) == 0 and long <= 2
+		var turn_out: bool = column if dark else pick < sideways
+		if turn_out and sideways > 0.0 and _each_stud_held(outer, long, along_x, frame):
 			removed.append(placement.id)
 			if not inner.is_empty():
 				added.append(inner)
@@ -4284,12 +4296,21 @@ func _restyle(args: Dictionary) -> Dictionary:
 					"x": outer.x + (step if along_x else 0), "y": outer.y,
 					"z": outer.z + (0 if along_x else step), "rot": 0}
 				# The wall's own colour, and the colour asked for only as an
-				# accent through a share of it.
+				# accent through a share of it: on a dark wall, a share of its
+				# columns, each the whole way up.
 				var tone: int = -1
-				if face_colour >= 0 and Patterns._scatter(seen.x / STUD + step,
-						seen.y / PLATE, seen.z / STUD, 31) < FACE_ACCENT:
+				var accent: float = Patterns._scatter(seen.x / STUD + step,
+						seen.y / PLATE, seen.z / STUD, 31)
+				if dark:
+					var key: String = "%s|%d|%s" % [placement.section, along, facing]
+					if not accents.has(key):
+						accents[key] = accents.size()
+					accent = 0.0 if posmod(int(accents[key]), roundi(1.0 / FACE_ACCENT)) == 0 \
+						else 1.0
+				if face_colour >= 0 and accent < FACE_ACCENT:
 					tone = face_colour
-				var dressing: Dictionary = _dress(one, facing, tone)
+				var dressing: Dictionary = _dress(one, facing, tone,
+					[RIB_PART] if dark else [])
 				if not placement.section.is_empty():
 					one["section"] = placement.section
 					if not dressing.is_empty():
@@ -4745,6 +4766,18 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 					reached = reached or Geometry2D.is_point_in_polygon(point, outline)
 			if reached:
 				under.append([x, z])
+	# Rock rising against the tower from the top terrace's corners, in the
+	# plinth's dark tones, unless told not to: the run after the blades stood
+	# its tower on a flat pale yard 66 studs wide with five rock piles round
+	# it, a base as an afterthought. Each crag as big as the corner holds clear
+	# of the foot, so the base is no wider for it, on studs left for it.
+	var crags: Array = []
+	if bool(asked.get("rock", true)):
+		crags = _plinth_crags(foot, half)
+		for crag: Array in crags:
+			for x: int in range(int(crag[0]), int(crag[0]) + int(crag[2])):
+				for z: int in range(int(crag[1]), int(crag[1]) + int(crag[2])):
+					under.append([x, z])
 	# Two courses a terrace: one course stood as a ring round the foot, and
 	# read from across the room as a kerb.
 	var rise: int = 6
@@ -4785,10 +4818,40 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
 	raised["_raised"] = true
 	var tower: Array = _prism(raised, model, index, trouble)
-	_pattern_advice.append(("The tower stands on a plinth of %d terraces, %d plates tall: "
+	for n: int in crags.size():
+		var crag: Array = crags[n]
+		made.append_array(Patterns._rock({"at": {"x": cx + float(crag[0]), "y": y0 + tall_,
+			"z": cz + float(crag[1])}, "across": crag[2], "deep": crag[2],
+			"height": 3 * clampi(int(round(float(crag[2]) * 2.0)), 4, 10), "color": colour,
+			"mix_color": ledge, "seed": index * 4 + n + 1}, trouble))
+	_pattern_advice.append(("The tower stands on a plinth of %d terraces, %d plates tall%s: "
 		+ "its foot, and add_rooms' y, is at y %s.") % [steps, tall_,
+		(", %d crags of rock rising against it" % crags.size()) if not crags.is_empty() else "",
 		Placement._num(y0 + tall_)])
 	return made + tower
+
+
+## The crags a plinth's top terrace holds, each [x, z, studs across] from its
+## middle: at each corner, and against the middle of each side but the front
+## (where the stair is), the largest square of three studs or more at the
+## terrace's edge that keeps a fifth of a stud clear of every outline of the foot.
+static func _plinth_crags(foot: Array, half: int) -> Array:
+	var out: Array = []
+	for at: Vector2i in [Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1),
+			Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+		for size: int in range(mini(8, half), 2, -1):
+			var x0: int = (half - size if at.x > 0 else -half) if at.x != 0 else -size / 2
+			var z0: int = (half - size if at.y > 0 else -half) if at.y != 0 else -size / 2
+			var square := PackedVector2Array([Vector2(x0 - 0.2, z0 - 0.2),
+				Vector2(x0 + size + 0.2, z0 - 0.2), Vector2(x0 + size + 0.2, z0 + size + 0.2),
+				Vector2(x0 - 0.2, z0 + size + 0.2)])
+			var clear: bool = true
+			for outline: PackedVector2Array in foot:
+				clear = clear and not _convex_meet(square, outline)
+			if clear:
+				out.append([x0, z0, size])
+				break
+	return out
 
 
 ## How many times as tall as it is wide a tower stands as a display model, its
@@ -5115,8 +5178,33 @@ func _lay_row(made: Array, section: String, lengths: Array, left: float,
 	var x: float = left
 	var end: float = left + width
 	var first: bool = true
+	# On a dark face, what is turned out goes up it in ribs, never scattered.
+	var dark: bool = _is_dark(colour)
+	var ribs: Array[float] = []
+	if dark and sideways > 0.0:
+		ribs = _ribs(left, width)
 	while x < end - 0.01:
+		var rib: float = NAN
+		for at: float in ribs:
+			if at > x - 0.05:
+				rib = at
+				break
+		if not is_nan(rib) and absf(rib - x) < 0.05 \
+				and (not clear.is_valid() or bool(clear.call(x, 1))):
+			var stud := {"part": "87087", "color": colour, "x": x, "y": y, "z": z,
+				"rot": 0, "section": section}
+			var on_it: Dictionary = _dress(stud, "+z", mix_colour if mix_colour >= 0 else colour,
+				[RIB_PART])
+			made.append(stud)
+			if not on_it.is_empty():
+				on_it["section"] = section
+				made.append(on_it)
+			x += 1.0
+			first = false
+			continue
 		var room: int = int(round(end - x))
+		if not is_nan(rib):
+			room = mini(room, maxi(1, int(round(rib - x))))
 		var chosen: Array = []
 		for pair: Array in lengths:
 			var long: int = int(pair[0])
@@ -5135,7 +5223,8 @@ func _lay_row(made: Array, section: String, lengths: Array, left: float,
 			x += 1.0
 			continue
 		var long: int = int(chosen[0])
-		if sideways > 0.0 and Patterns._scatter(x, y, z + float(section.hash() % 97), 53) < sideways \
+		if sideways > 0.0 and not dark \
+				and Patterns._scatter(x, y, z + float(section.hash() % 97), 53) < sideways \
 				and (not clear.is_valid() or bool(clear.call(x, long))):
 			for step: int in long:
 				var one := {"part": "87087", "color": colour, "x": x + step, "y": y,
@@ -5145,15 +5234,25 @@ func _lay_row(made: Array, section: String, lengths: Array, left: float,
 				if not dressing.is_empty():
 					dressing["section"] = section
 					made.append(dressing)
-		elif masonry > 0.0 and long >= 3 and _is_dark(colour) and x + long <= _grille_until + 0.01 \
-				and Patterns._scatter(x, y, z + float(section.hash() % 97), 61) < GRILLE_SHARE:
-			# A dark face's long brick as grille bricks, faced out: 10237 is 3.6%
-			# grille brick, and the Orthanc after it was 0.2%, its black faces
-			# long bricks the grille could never reach.
-			made.append(_with_section({"part": "2877", "color": colour, "x": x, "y": y,
-				"z": z, "rot": 0}, section))
-			made.append(_with_section({"part": "2877" if long == 4 else "3005",
-				"color": colour, "x": x + 2.0, "y": y, "z": z, "rot": 0}, section))
+		elif masonry > 0.0 and long >= 2 and dark \
+				and x + long - (2 if long % 2 == 0 else 1) < _grille_until - 0.01 \
+				and posmod(course, GRILLE_EVERY) == GRILLE_EVERY / 2 \
+				and ((not is_nan(rib) and absf(x + long - rib) < 0.05)
+					or ribs.any(func(at: float) -> bool: return absf(at + 1.0 - x) < 0.05)):
+			# A dark face's bricks either side of each rib as grille bricks,
+			# every GRILLE_EVERY of its rows, a textured strip up the face
+			# flanking the rib: 10237 is 3.6% grille brick, and the Orthanc
+			# after it was 0.2%, its black faces long bricks the grille could
+			# never reach. Scattered, they read as speckle; in a band round
+			# every other row, they were 0.7%, two studs a face. Each grille
+			# brick starts over the face: one wholly in the groove past it
+			# would hang there on nothing.
+			var along: int = 0
+			while along < long:
+				var pair: bool = long - along >= 2
+				made.append(_with_section({"part": "2877" if pair else "3005",
+					"color": colour, "x": x + along, "y": y, "z": z, "rot": 0}, section))
+				along += 2 if pair else 1
 		else:
 			made.append(_prism_brick(section, str(chosen[1]), colour, x, y, z, 0,
 				mix_colour, mix, masonry))
@@ -5174,20 +5273,18 @@ func _with_section(one: Dictionary, section: String) -> Dictionary:
 func _prism_brick(section: String, part: String, colour: int, x: float, y: float,
 		z: float, rot: int, mix_colour: int, mix: float, masonry: float) -> Dictionary:
 	var tone: int = colour
-	if mix_colour >= 0 and Patterns._scatter(x, y, z + float(section.hash() % 97), 43) < mix:
+	# A second tone scattered through a dark face reads as speckle: there it
+	# goes on the face's ribs (_lay_row), and here only on a light one.
+	if mix_colour >= 0 and not _is_dark(colour) \
+			and Patterns._scatter(x, y, z + float(section.hash() % 97), 43) < mix:
 		tone = mix_colour
 	var one := {"part": part, "color": tone, "x": x, "y": y, "z": z, "rot": rot,
 		"section": section}
-	# Stonework on the outside, which in a face's own frame is +z.
+	# Stonework on the outside, which in a face's own frame is +z: relief in
+	# the wall's own colour, which does not speckle.
 	if Patterns.MASONRY.has(part) and rot == 0 \
 			and Patterns._scatter(x, y, z + float(section.hash() % 97), 47) < masonry:
 		one["part"] = Patterns.MASONRY[part]
-	# And on a dark wall, as many again as grille: 10237 breaks its black
-	# with 86 grille bricks, which catch light where masonry's shallow relief
-	# in black does not. Its grille faces out the way masonry's does.
-	elif part == "3004" and rot == 0 and _is_dark(colour) \
-			and Patterns._scatter(x, y, z + float(section.hash() % 97), 59) < masonry:
-		one["part"] = "2877"
 	return one
 
 
@@ -5204,9 +5301,40 @@ func _is_dark(code: int) -> bool:
 ## face, and lit an Orthanc up as an office block.
 const WINDOW_COLOUR := 40
 const WINDOW_EVERY := 16
-## The share of a dark face's long outside bricks laid as grille bricks
-## instead. 10237 is 86 grille bricks in 2,359 parts.
-const GRILLE_SHARE := 0.5
+## A dark face's outside rows from one course of grille bricks beside its
+## ribs to the next. 10237 is 86 grille bricks in 2,359 parts, in panels.
+const GRILLE_EVERY := 2
+## What a dark face's ribs carry on their side studs, and how far apart they
+## are on a face wide enough for more than one: a column of round plates up
+## the middle of every face reads as a rib, as 10237's columns of round
+## plates and grille do; scattered over it, tiles, round tiles and cheese
+## slopes read as speckle, and the run that had them was called noise.
+const RIB_PART := "4073"
+const RIB_EVERY := 4
+
+
+## The cells of a run of a face, from [param left] [param width] studs along,
+## that its ribs stand in: the one at the face's middle (nought in its own
+## frame, or left of it where that leaves too little after) and every RIB_EVERY either side of it, as
+## many as fall in the run with a stud of it before and two after. Split at a
+## rib with one stud after, a face's outside row left the stud it runs on into
+## its corner groove a column of 1 x 1s on its own, held by nothing.
+static func _ribs(left: float, width: int) -> Array[float]:
+	var out: Array[float] = []
+	# The middle stud, or the one left of it where the middle leaves too little
+	# after it: a rib left of the middle had a 1 x 3 after it every row, run on
+	# into the groove, which is neither masonry nor grille.
+	var middle: int = -1
+	for at: int in [int(round(-left - 0.5)), int(floor(-left - 0.5 + 0.001))]:
+		if at >= 1 and at <= width - 3:
+			middle = at
+			break
+	if middle < 0:
+		return out
+	for i: int in range(1, width - 2):
+		if posmod(i - middle, RIB_EVERY) == 0:
+			out.append(left + i)
+	return out
 
 ## Courses from one band of a black face's second tone to the next.
 const BAND_EVERY: int = Patterns.BAND_EVERY
@@ -5315,6 +5443,39 @@ func _corner_posts(made: Array, model: Model, name_of: Callable, origin: Vector2
 			made.append({"part": at[2], "color": spec["colour"], "x": at[0],
 				"y": 3.0 * course, "z": at[1], "rot": 0, "section": section})
 	return posts
+
+
+## How far out from the core's middle to set piers that were not told: set
+## into it by the thickness of its wall, or the nearest half stud to that at
+## which no pier's face is left a hole by the core — part of it standing
+## clear, but too little for a brick — deeper before further out, so the
+## shaft stays one mass. A core of radius 8 with piers of 5 took two of each
+## pier's faces down to 0.9 of a stud and laid nothing there, and the sky
+## showed a stud wide straight through every pier, full height, from every
+## corner (the run after the rules for clefts); a stud deeper, none.
+static func _pier_out(middle: Vector2, sides: int, radius: float, p_sides: int,
+		p_radius: float, thick: int, angles: Array[float], set_in: float) -> float:
+	var core: PackedVector2Array = _outline(middle, sides, radius + CLUSTER_CLEAR, 0.0)
+	for out: float in [set_in, set_in - 0.5, set_in - 1.0, set_in + 0.5, set_in + 1.0]:
+		var holed: bool = false
+		for angle: float in angles:
+			var centre: Vector2 = middle + _towards(angle) * out
+			for face: int in p_sides:
+				var degrees: float = angle + 360.0 * face / p_sides
+				var free: float = 0.0
+				for one: Array in _free(centre, degrees, p_radius, thick, p_sides, [core]):
+					free += float(one[1]) - float(one[0])
+				if free > PIER_HOLE and _runs(centre, degrees, p_radius, thick, p_sides,
+						[core]).is_empty():
+					holed = true
+		if not holed:
+			return out
+	return set_in
+
+
+## A stretch of a pier's face left standing by the core, in studs, past which
+## laying nothing there leaves a hole into the pier.
+const PIER_HOLE := 0.3
 
 
 ## The least radius, in half studs, at which a prism of [param sides] faces
@@ -5615,6 +5776,8 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	# Set into the core by the thickness of its wall, so each pier stands out
 	# of it by most of its width and the clefts between them are deep.
 	var out: float = float(piers.get("out", radius + p_radius - thick))
+	if not piers.has("out"):
+		out = _pier_out(middle, sides, radius, p_sides, p_radius, thick, angles, out)
 	var shafts: Array[PackedVector2Array] = []
 	for angle: float in angles:
 		shafts.append(_outline(middle + _towards(angle) * out, p_sides, p_radius, angle))
@@ -5630,8 +5793,8 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 				% Placement._num(out) + "(out more than %s)" % Placement._num(radius - p_radius + 1.0))
 			return []
 
-	# The back, which the core's open faces look through: a pier there is a
-	# frame for the opening, not a wall across it.
+	# The back, which the core's open faces look through, and the piers that
+	# stand on it.
 	var left_out: Dictionary = spec["left_out"]
 	var back := Vector2.ZERO
 	for face: Variant in left_out:
@@ -5641,14 +5804,6 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	for angle: float in angles:
 		behind.append(not left_out.is_empty() and back.length() > 0.001
 			and rad_to_deg(absf(_towards(angle).angle_to(back))) <= reach + 0.01)
-	back = back.normalized()
-	# Which way is in, for a pier at the back: towards the line the opening
-	# is centred on. Its faces that look that way stand across the view of
-	# the rooms, edge on or not.
-	var inward: Array[Vector2] = []
-	for angle: float in angles:
-		var across: Vector2 = _towards(angle) - back * _towards(angle).dot(back)
-		inward.append(-across.normalized() if across.length() > 0.001 else Vector2.ZERO)
 
 	var made: Array = []
 	var tag: String = spec["tag"]
@@ -5690,40 +5845,51 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		middle, sides, radius, spec, laid, [], courses)
 	# The piers, short of the core's outside.
 	var whole: PackedVector2Array = _outline(middle, sides, radius + clear, 0.0)
+	# The core's faces that stand, each as the slab of its wall: what a pier at
+	# the back gives way to where the core's back is open.
+	var standing: Array = []
+	var reach_out: float = (radius + clear) * tan(PI / sides) + clear
+	for face: int in sides:
+		if not left_out.has(face):
+			standing.append(_face_slab(middle, 360.0 * face / sides, -reach_out, reach_out,
+				radius - thick - clear, radius + clear))
+	# And the core's inside, which the rooms are seen through from behind.
+	# Piers set as deep into the core as the fifteenth Orthanc's meet across its
+	# back and close it; kept clear of a way straight in instead, they let the
+	# sky up the clefts again (13 sightlines from the corner).
+	standing.append(_outline(middle, sides, radius - thick - clear, 0.0))
 	for k: int in count:
 		var centre: Vector2 = middle + _towards(angles[k]) * out
 		# Welded where two piers meet, each giving way to the next one round,
 		# as they all give way to the core: "four mighty piers of many-sided
-		# stone were welded into one".
-		var against: Array = [whole, grown[(k + 1) % count]]
-		var dressed: Array = [whole]
+		# stone were welded into one". A pier at the back of a core opened
+		# behind gives way only to the core's faces that stand, and keeps
+		# every face of its own: closed, it stands where the core's corner
+		# was taken out. Left a frame, open behind and to the opening, the sky
+		# showed through the seam where it met the core's last face and up its
+		# own front grooves, from the corner a picture is taken from.
+		var core_of: Array = standing if behind[k] else [whole]
+		var against: Array = core_of + [grown[(k + 1) % count]]
+		var dressed: Array = core_of.duplicate()
 		for other: int in count:
 			if other != k:
 				dressed.append(grown[other])
 		var pier_laid: Dictionary = {}
 		for face: int in p_sides:
 			var degrees: float = angles[k] + 360.0 * face / p_sides
-			if behind[k] and (_towards(degrees).dot(back) > 0.05
-					or _towards(degrees).dot(inward[k]) > 0.5):
-				continue
 			var runs: Array = _cluster_face(made, model, name_of.call(k, face), centre,
 				degrees, p_radius, p_sides, spec, against, dressed, 0.0, courses,
 				_towards(degrees).dot(_towards(angles[k])) > 0.3)
 			if not runs.is_empty():
 				pier_laid[face] = runs
-		# A pier at the back is a frame of its outward faces, open behind, so
-		# a groove between two of them looks straight through it: the
-		# guidance's own open cluster showed the sky up its right cleft from
-		# the front-right corner, the view a picture of it is taken from.
-		# Any other pier is closed behind by the core, but where its outside
-		# rows cannot run on into its corner grooves, two of them line up:
-		# the eighteenth Orthanc's ten-sided piers of radius 6, faces two
-		# studs wide, showed the sky up both front clefts from the corner.
-		# Posted as a closed prism is.
+		# Every pier is closed, the back ones too, but where its outside rows
+		# cannot run on into its corner grooves, two of them line up: the
+		# eighteenth Orthanc's ten-sided piers of radius 6, faces two studs
+		# wide, showed the sky up both front clefts from the corner. Posted
+		# as a closed prism is.
 		var pier: int = k
 		var as_closed: Dictionary = spec.duplicate()
-		if not behind[k]:
-			as_closed["open"] = 0
+		as_closed["open"] = 0
 		_corner_posts(made, model, func(face: int) -> String: return name_of.call(pier, face),
 			centre, p_sides, p_radius, as_closed, pier_laid, dressed, courses, angles[k], true)
 
@@ -5754,11 +5920,19 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		var flare: float = float(piers.get("flare", round(wide * BLADE_FLARE)))
 		for k: int in count:
 			# In the plane through the tower's middle and its pier, sweeping
-			# out from the crown. Turned to face the front instead, the four
-			# were two straight sticks from the side and cut-off plates from
-			# the corner.
+			# out from the crown, and turned BLADE_TURN off it towards the side,
+			# so from the front every face shows and from the corner none
+			# stands edge on. Turned to face the front, the four were two
+			# straight sticks from the side and cut-off plates from the corner;
+			# on their piers' lines exactly, the two on the corner view's line
+			# were edge on, a mast behind the summit.
+			var facing: float = angles[k]
+			var aside: float = sin(deg_to_rad(angles[k]))
+			if absf(aside) > 0.01:
+				facing += clampf(rad_to_deg(angle_difference(deg_to_rad(angles[k]),
+					deg_to_rad(90.0 if aside > 0.0 else 270.0))), -BLADE_TURN, BLADE_TURN)
 			made.append_array(_horn_blade(model, "prism %s horn %d" % [tag, k],
-				middle + _towards(angles[k]) * out, angles[k], base,
+				middle + _towards(angles[k]) * out, facing, base,
 				floor(p_radius - 1.0), wide, tall, clampf(flare, 0.0, float(wide)),
 				spec["colour"]))
 		_pattern_advice.append(("Each pier rises past the summit as a blade %d studs wide "
@@ -5835,6 +6009,8 @@ const BLADE_LEAST := 4
 const BLADE_MOST := 10
 const BLADE_TALL := 2.6
 const BLADE_FLARE := 0.5
+## Degrees a blade is turned off its pier's line towards the side.
+const BLADE_TURN := 20.0
 ## Layers of plates on their side a blade is laid in, each tied across the
 ## joints of the one under it; with its tiles, two studs deep. Two layers and
 ## tiles were 24 LDU, and the two blades seen edge on from the corner read as
@@ -7696,7 +7872,8 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# piece of shit I've ever seen", each a fault of any subject: windows
 	# in a grid, a dark face of plain bricks, a tall thing with no profile.
 	for said: String in [_window_grid(model), _dark_and_plain(model),
-			_straight_shaft(model, box_of)]:
+			_straight_shaft(model, box_of), _speckle(model), _daylight(model),
+			_wide_yard(model, box_of)]:
 		if not said.is_empty():
 			advice.append(said)
 
@@ -8262,6 +8439,225 @@ func _window_grid(model: Model) -> String:
 			+ "from the subject: a dark fortress has dark slits, a lighthouse one "
 			+ "lit lantern. Take most of these out and make the rest count.")
 	return ""
+
+
+## Dressing (parts on side studs) and a second tone scattered over a dark
+## wall, where a real set textures one in ribs and grids. The Orthanc after the
+## blades scattered round tiles, cheese slopes and grey across its black faces
+## and read as noise. A wall is a section (a face of a prism, in its own frame:
+## x along it, y up) or the main body, its colour the commonest of its plain
+## parts. A mark is organised when its column holds most of the courses its
+## wall is marked in (a rib) or its course most of the columns (a band); a
+## second tone counts on a section's wall only, so mottled rock is not
+## speckle.
+const SPECKLE_FROM := 24
+const SPECKLE_COVER := 0.6
+## What lies on a side stud as dressing.
+const SPECKS: Array[String] = ["3070b", "98138", "4073", "54200", "3024", "6141"]
+
+
+func _speckle(model: Model) -> String:
+	if library == null:
+		return ""
+	var counts: Dictionary = {}    ## section -> {colour: plain parts}
+	for placement: Placement in model.placements:
+		if placement.face != "up" or not Style.kinds_of(placement.part).contains("p"):
+			continue
+		if not counts.has(placement.section):
+			counts[placement.section] = {}
+		var of: Dictionary = counts[placement.section]
+		of[placement.color] = int(of.get(placement.color, 0)) + 1
+	var wall_of: Dictionary = {}
+	for key: Variant in counts:
+		var best: int = -1
+		var most: int = 0
+		for code: Variant in counts[key]:
+			if int(counts[key][code]) > most:
+				most = int(counts[key][code])
+				best = int(code)
+		wall_of[key] = best
+	var marks: Array = []
+	var wall_rows: Dictionary = {}    ## section -> {course: true}
+	var wall_columns: Dictionary = {}    ## section -> {column: true}
+	var column_rows: Dictionary = {}    ## column -> {course: true}
+	var row_columns: Dictionary = {}    ## course -> {column: true}
+	var shown: int = -1
+	for placement: Placement in model.placements:
+		var wall: int = int(wall_of.get(placement.section, -1))
+		if wall < 0 or not _is_dark(wall):
+			continue
+		var tint: PartLibrary.BrickColor = library.color(placement.color)
+		if tint == null or tint.is_transparent():
+			continue
+		var dressing: bool = placement.dressing \
+			or (placement.face != "up" and placement.part in SPECKS)
+		var accent: bool = not placement.section.is_empty() and placement.color != wall \
+			and not _is_dark(placement.color) and Style.kinds_of(placement.part).contains("p")
+		if not dressing and not accent:
+			continue
+		shown = wall
+		var column: String = "%s|%s" % [placement.section, snappedf(placement.x, 0.5)] \
+			if not placement.section.is_empty() \
+			else "|%s|%s" % [roundi(placement.x), roundi(placement.z)]
+		var course: String = "%s|%s" % [placement.section, snappedf(placement.y, 0.5)]
+		for pair: Array in [[wall_rows, placement.section, course],
+				[wall_columns, placement.section, column], [column_rows, column, course],
+				[row_columns, course, column]]:
+			var into: Dictionary = pair[0]
+			if not into.has(pair[1]):
+				into[pair[1]] = {}
+			(into[pair[1]] as Dictionary)[pair[2]] = true
+		marks.append([placement.section, column, course])
+	var scattered: int = 0
+	for mark: Array in marks:
+		var rib: float = float((column_rows[mark[1]] as Dictionary).size()) \
+			/ (wall_rows[mark[0]] as Dictionary).size()
+		var band: float = float((row_columns[mark[2]] as Dictionary).size()) \
+			/ (wall_columns[mark[0]] as Dictionary).size()
+		if rib < SPECKLE_COVER and band < SPECKLE_COVER:
+			scattered += 1
+	if scattered < SPECKLE_FROM or scattered < 0.4 * marks.size():
+		return ""
+	return ("%d of the %d parts dressing the %s walls, or in a second tone on them, "
+		% [scattered, marks.size(), _colour_name(shown)]
+		+ "are scattered one by one: over a dark wall that reads as speckle, as "
+		+ "noise, the way a grid of windows reads as an office block. A real set "
+		+ "textures a dark wall in ribs and grids — a column of round plates or "
+		+ "grille up the middle of each face, grille bricks in a band, panels "
+		+ "between pilasters — and puts its second tone on ledges and string "
+		+ "courses. Put them in columns and bands, never sprinkled: the prism and "
+		+ "restyle_model lay them so on a dark wall.")
+
+
+## Slits of sky through the model up to a stud and a half wide, seen from any
+## of the eight ways round it a picture is taken from: a seam or a groove with
+## nothing behind it. The run after the blades opened its tower's back for its
+## rooms, and from the corner a slit of sky ran up a cleft, a crack through
+## the tower; the run after that had one a stud wide straight through its
+## piers, and was told only of the narrower ones. Measured as patterns_probe's
+## daylight check measures it, off each part's own box laid flat in plan; a
+## slit under DAYLIGHT_SLIT.x is under a pixel at a display model's size, and
+## past DAYLIGHT_SLIT.y is a space between two things. A crack runs up the
+## model, so a slit counts from a way round where it is seen at DAYLIGHT_RUNS
+## of the nine heights or more: at one height only it is the sky between a
+## rock and the tower it stands against, at the foot of the guidance's tower.
+const DAYLIGHT_SLIT := Vector2(0.1, 1.5)
+const DAYLIGHT_RUNS := 2
+const DAYLIGHT_FROM := 200
+
+
+func _daylight(model: Model) -> String:
+	if library == null or model.placements.size() < DAYLIGHT_FROM:
+		return ""
+	var prints: Array = []
+	var low: float = INF
+	var high: float = -INF
+	for placement: Placement in model.placements:
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var at: Transform3D = _transform(placement, mesh, model.section_for(placement))
+		var corners := PackedVector2Array()
+		var lo: float = INF
+		var hi: float = -INF
+		for k: int in 8:
+			var point: Vector3 = at * mesh.bounds.get_endpoint(k)
+			corners.append(Vector2(point.x / STUD, point.z / STUD))
+			lo = minf(lo, point.y / PLATE)
+			hi = maxf(hi, point.y / PLATE)
+		prints.append([corners, lo, hi])
+		low = minf(low, lo)
+		high = maxf(high, hi)
+	var seen: Dictionary = {}    ## heading -> heights a slit is at
+	for heading: float in [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]:
+		var across := Vector2(cos(deg_to_rad(heading)), -sin(deg_to_rad(heading)))
+		# Each part's span across the view once, sorted, then filtered by height.
+		var all: Array = []
+		for one: Array in prints:
+			var lo: float = INF
+			var hi: float = -INF
+			for corner: Vector2 in one[0]:
+				lo = minf(lo, corner.dot(across))
+				hi = maxf(hi, corner.dot(across))
+			all.append([lo, hi, float(one[1]), float(one[2])])
+		all.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		for n: int in 9:
+			var y: float = low + (high - low) * (n + 1) / 10.0
+			var spans: Array = []
+			for one: Array in all:
+				if y > float(one[2]) + 0.01 and y < float(one[3]) - 0.01:
+					spans.append(Vector2(float(one[0]), float(one[1])))
+			var reach: float = INF if spans.is_empty() else (spans[0] as Vector2).y
+			for span: Vector2 in spans:
+				var gap: float = span.x - reach
+				if gap > DAYLIGHT_SLIT.x and gap < DAYLIGHT_SLIT.y:
+					if not seen.has(heading):
+						seen[heading] = []
+					(seen[heading] as Array).append(roundi(y))
+					break
+				reach = maxf(reach, span.y)
+	for heading: Variant in seen.keys():
+		if (seen[heading] as Array).size() < DAYLIGHT_RUNS:
+			seen.erase(heading)
+	if seen.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for heading: Variant in seen:
+		said.append("from %d degrees at y %s" % [int(heading),
+			", ".join(PackedStringArray((seen[heading] as Array).map(
+				func(h: int) -> String: return str(h))))])
+	return ("Sky shows through it in slits up to a stud and a half wide, %s (0 is the front, 90 "
+		% "; ".join(said) + "the right): a seam or a groove with nothing behind it, "
+		+ "which a picture shows as a crack through the model. A tower opened at the "
+		+ "back for its rooms shows the sky up its clefts. Close each behind — a "
+		+ "post or a wall behind the seam, the face carried on round its corner — "
+		+ "or leave the back closed.")
+
+
+## A base much wider than the body standing on it, under a tall display model:
+## the Orthanc after the blades stood its tower on a flat 66-stud yard with rock
+## piles, 1.9 times as tall as wide where its tower alone was 3.3. 10237's base
+## is 21 cm across under a tower 16 cm wide.
+const YARD_WIDER := 1.6
+
+
+func _wide_yard(model: Model, box_of: Dictionary) -> String:
+	if box_of.size() < DAYLIGHT_FROM:
+		return ""
+	var low: int = 1 << 30
+	var high: int = -(1 << 30)
+	for index: int in box_of:
+		low = mini(low, (box_of[index][0] as Vector3i).y)
+		high = maxi(high, (box_of[index][1] as Vector3i).y)
+	var middle: int = (low + high) / 2
+	var foot: int = low + 6 * BrickLattice.CELLS_PER_PLATE
+	var body := Rect2i()
+	var base := Rect2i()
+	var have_body: bool = false
+	var have_base: bool = false
+	for index: int in box_of:
+		var lo: Vector3i = box_of[index][0]
+		var hi: Vector3i = box_of[index][1]
+		var plan := Rect2i(lo.x, lo.z, hi.x - lo.x, hi.z - lo.z)
+		if lo.y <= middle and hi.y >= middle:
+			body = plan if not have_body else body.merge(plan)
+			have_body = true
+		if lo.y < foot:
+			base = plan if not have_base else base.merge(plan)
+			have_base = true
+	if not have_body or not have_base:
+		return ""
+	var body_wide: float = float(maxi(body.size.x, body.size.y)) / BrickLattice.CELLS_PER_STUD
+	var base_wide: float = float(maxi(base.size.x, base.size.y)) / BrickLattice.CELLS_PER_STUD
+	var tall: float = float(high - low) / BrickLattice.CELLS_PER_STUD
+	if body_wide <= 0.0 or tall < 2.0 * body_wide or base_wide < YARD_WIDER * body_wide:
+		return ""
+	return ("Its base is %d studs across under a body %d wide, half way up: a tall "
+		% [roundi(base_wide), roundi(body_wide)] + "display model stands on a base "
+		+ "that hugs it — 10237's is 21 cm under a tower 16 cm wide. A wide flat yard "
+		+ "round it, pale above all, is not a display base and makes the whole squat. "
+		+ "Make the base close to its foot: a plinth of terraces, and rock rising "
+		+ "against it in dark tones (a prism's \"plinth\": {\"rock\": true}).")
 
 
 ## A model mostly plain bricks in one dark colour. In a picture a dark face
@@ -10541,7 +10937,14 @@ alongside the bricks you write by hand:
            from that. "plinth" is the base: \
            every Orthanc built without it stood on a ring of rubble, a \
            base as an afterthought; the reply says where the tower's \
-           foot then is. Each \
+           foot then is. Its terraces carry crags rising against the \
+           tower at their corners and sides, in its dark tones \
+           ("rock": false for none): that is the rocky base, close to \
+           the foot. A wide flat yard round a tall model, pale above \
+           all, is no display base and makes the whole squat. A dark \
+           face is textured in ribs and bands, never sprinkled: the \
+           prism lays a column of round plates up the middle of each \
+           face and grille bricks in bands. Each \
            face is a bonded wall in a section of its own, turned to its \
            angle. One run built octagonal piers by hand from 150 turned \
            sections, reached the real-set share of parts at an angle and \
@@ -10563,10 +10966,8 @@ alongside the bricks you write by hand:
            A blade is any spiked crown's: a throne's back, a gate's \
            fangs, a dark tower's points. With \
            piers, any "open" opens the core's whole back, its rooms on \
-           show from behind as 10237's are; but from the corner the sky \
-           then shows up the clefts beside the back piers and the shaft \
-           reads as four thin columns, so open it when the rooms are the \
-           point. An arched \
+           show from behind between the back piers, which stay closed so \
+           no sky shows up the clefts beside them. An arched \
            door stands at the foot of the core's front (+z), at y, for a \
            stair to lead up to ("door": false for none). Without "piers" \
            a prism is one shaft with a groove up each corner, and \
@@ -11640,8 +12041,8 @@ func _tools() -> Array:
 				"prism: 2 (the default) closes the inside; 1 leaves slits at the corners"},
 			"open": {"type": "integer", "description":
 				"prism: faces left out at the back, so the rooms inside show; "
-				+ "with piers, any number opens the core's whole back and the "
-				+ "backs of the piers there"},
+				+ "with piers, any number opens the core's whole back, the "
+				+ "piers there left closed"},
 			"windows": {"type": "boolean", "description":
 				"prism: a few narrow windows up every other face, a storey "
 				+ "apart, dark slits unless window_color says; none unless said"},
@@ -11649,15 +12050,17 @@ func _tools() -> Array:
 				"prism: the windows' colour (40, Trans-Brown, a dark slit, "
 				+ "unless said)"},
 			"plinth": {"type": "object", "description":
-				"prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} — "
+				"prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} — "
 				+ "the tower raised on square terraces stepping down from its foot, two "
 				+ "courses each, their tops tiled in the second tone up to its faces, "
-				+ "with a stair cut into the front (+z) up to its door's level. The reply "
-				+ "says the tower's foot (and add_rooms' y).",
+				+ "with a stair cut into the front (+z) up to its door's level, and crags "
+				+ "in its dark tones rising against it at their corners and sides (rock: "
+				+ "false for none). The reply says the tower's foot (and add_rooms' y).",
 				"properties": {
 					"steps": {"type": "integer"},
 					"out": {"type": "integer"},
-					"stair": {"type": "boolean"}}},
+					"stair": {"type": "boolean"},
+					"rock": {"type": "boolean"}}},
 			"storeys": {"type": "object", "description":
 				"prism: {\"count\": 2 to 8, \"in\": studs} — the courses "
 				+ "split into storeys, each in studs smaller than the one "
