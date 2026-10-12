@@ -467,12 +467,17 @@ fixing what it got wrong.
   homepage tower was "the ugliest piece of shit I've ever seen", and its horns
   were square spires that read from the corner as turrets with roofs. A pier
   taller than the core stops at the summit, and over it stands a blade in a
-  section of its own (`prism N horn K`) turned about the upright to the pier's
-  angle: two layers of plates laid on their side (face +x, `Patterns._tile`,
-  the second turned across the first's joints), tiles over the last
-  (`Shapes.TOPS`), its foot row pressed onto bricks with side studs (30414,
-  11211, 87087) standing on the summit, where `_blade_side` measures their
-  studs off the parts. Its outline (`_blade_edges`): a centre line sweeping
+  section of its own (`prism N horn K`) turned about the upright so its face
+  looks to the front (+z) and it sweeps out to its pier's side, as 10237 turns
+  its horns to whoever looks at it (along the pier's line only for a pier on
+  the line from front to back): turned along the pier's line, the two blades on
+  a diagonal were edge on from the corner, read as one sheet standing out of
+  the middle of the summit. Four layers of plates laid on their side (face +x,
+  `Patterns._tile`, each turned across the joints of the one under it), tiles
+  over the last (`Shapes.TOPS`): two studs deep, centred on its pier's line
+  (two layers and tiles were 24 LDU, a sheet edge on). Its foot row is pressed
+  onto bricks with side studs (30414, 11211, 87087) standing on the summit,
+  where `_blade_side` measures their studs off the parts. Its outline (`_blade_edges`): a centre line sweeping
   out by `flare` (half its width) a little over half way up and part of the
   way back, a width narrowing to nothing, each edge moving a stud at a time and
   at most every other row; past its height the edges close until they meet, so
@@ -496,11 +501,28 @@ fixing what it got wrong.
   a turret's cap; any other kind is refused naming the three. `patterns_probe`
   (`_check_blades`): the guidance's cluster has four blades, every part on its
   side, wedges in both layers, each anchored, 18 studs tall from a 6-wide foot,
-  sweeping 3 out past it and back in, to a point two studs across; the probe's
+  sweeping 3 out past it and back in, to a point two studs across, two studs
+  deep (24 LDU before); the probe's
   restyle and open-back counts leave the horn sections out, as built whole on
   their side, and without the seating by body the slit check fails (0 of 4).
-  Looked at: `shots/runs/blades_{corner,front,close}.png` in its worktree, the
-  guidance's cluster in storeys on a plinth.
+  Looked at: `shots/runs/blades_{corner,front,right,close}.png` in its
+  worktree, the guidance's tower: four horns round an open summit from the
+  corner, crescents from the front, two solid edges from the side.
+- `display proportions`: a prism with piers (`Assistant._at_display_proportions`,
+  `_display_width`, `_display_height`, `DISPLAY_TALL`), once at the top of the
+  call (not for its plinth's tower, `_raised`, or a storey). Not given
+  `courses`, it is laid in as many as make it 3.3 times as tall as its widest
+  (its plinth's width, else its foot's), plinth, summits and horns included —
+  LEGO's 10237 is 21 cm across and 73 cm tall — and the reply says how many.
+  Given courses more than a fifth off that, they are laid as given and the reply
+  says the ratio and the courses that would do. The homepage's Orthanc stood
+  2.1 times its 49-stud base and the next 2.6 on a 41-stud plate of rubble: thin
+  towers on wide bases. The guidance's tower leaves `courses` out (radius 7,
+  storeys of 1, a plinth of 2 by 2). `patterns_probe` (`_display_proportions`):
+  that tower, measured by its parts' boxes, stands 3.3 times its 34 studs in one
+  piece and the reply gives its 73 courses; a lone cluster of radius 9 the same;
+  the old guidance's 36 courses on a core of 10 are laid as given (1.65) and the
+  reply says to go taller.
 - `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
   (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
   here rose the same width from foot to horns, and the owner's verdict named it.

@@ -1060,16 +1060,31 @@ beams edge one, a cone tips each; seen along its plane one is a narrow edge,
 across it a curved fin. Every generated horn before was a square spire
 stepping in to a cone and a bar. A pier's horns are now `"horns": "blade"` by
 default (`"spire"` and `"flat"` on asking): over each pier's summit a blade in
-a section of its own, two layers of plates on their side and tiles, its foot
-pressed onto bricks with side studs, sweeping out by half its width and back in
-to a point, each edge a stud at a time with a wedge plate at every step. It is
+a section of its own, four layers of plates on their side and tiles, two studs
+deep, its foot pressed onto bricks with side studs, its face to the front and
+sweeping out to its own side by half its width and back in to a point, each
+edge a stud at a time with a wedge plate at every step. It is
 a technique, not a subject: any crown of spikes, a throne's back, a gate's
 fangs. Three faults found by looking: wedges matched by their studs stood the
 wrong way out of the edge like a saw's teeth (their cut is now read off their
 body); a wedge on its side placed by its collision cover stood two LDU off its
 neighbour, a slit of sky up every blade (seated by its body now); and a blade
 that stopped at its height was flat-topped and read as a slab (its edges now
-close to a point). Every storey also laid its own door; only the lowest does.
+close to a point). Then by eye at the integrator: blades turned along their
+piers' diagonals were edge on from the corner, and at 24 LDU the two there
+read as one sheet standing out of the middle of the summit; they face the
+front now, as 10237's do, and are two studs deep. Every storey also laid its
+own door; only the lowest does.
+
+**Display proportions.** 10237 is 21 cm across and 73 cm tall (its box says
+so), 1 : 3.4 with its base. The homepage's Orthanc stood 2.1 times its 49-stud
+base and `orthanc_rk2` 2.6 on a 41-stud plate of rubble, thin towers on wide
+bases; the guidance's own example stood 1.65. A prism with piers given no
+courses is now laid at 3.3 times its widest, plinth and horns included, and the
+reply says how many; courses given more than a fifth off are laid as given and
+the reply says what would do. The guidance's example leaves them out: radius 7
+on a plinth comes to 73 courses, 5,595 parts, one piece. Pictures:
+`shots/runs/blades_{corner,front,right,close}.png` in this worktree.
 
 **What is left, by what it would move:**
 
