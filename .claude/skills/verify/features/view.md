@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser -->
 
 ## Sub-features
 
@@ -452,6 +452,11 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 #   inside a sub-assembly; clicks reaching it through both; the timeline with
 #   both on; the booklet made with both on = made with both off; Orthanc timed.
 #   Leaves shots/see_inside/*.png — look at the cut faces and the ghosts
+# In a browser, on a preview (with .env sourced): an .lxf through Open > From
+# a file, Orthanc cut from the toolbar and its slider dragged down to just over
+# Saruman's head, a double-click on him through the cut, I, K off, and a click
+# on him through the ghosts. Pictures in shots/see_inside_web/.
+node tools/web/see_inside_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS
 godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd # every finish drawn as itself
 godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd # black is black, greys are grey
 godot --path . --resolution 1200x800 --script src/dev/highlight_probe.gd   # a glossy slope does not go white

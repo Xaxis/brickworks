@@ -686,6 +686,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "see inside in a browser",
+      "entry": "tools/web/see_inside_flow.mjs",
+      "reach": "node tools/web/see_inside_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/see_inside_web   (with .env sourced: opens an .lxf, cuts Orthanc down to Saruman's room, x-rays him)",
+      "area": "view"
+    },
+    {
       "kind": "ui",
       "label": "snap onto a joint",
       "entry": "src/assembly/joint_snap.gd",

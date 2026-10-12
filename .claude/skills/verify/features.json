@@ -300,6 +300,14 @@
       "tests": []
     },
     {
+      "id": "cli:see inside in a browser",
+      "kind": "cli",
+      "entry": "tools/web/see_inside_flow.mjs",
+      "reach": "node tools/web/see_inside_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/see_inside_web   (with .env sourced: opens an .lxf, cuts Orthanc down to Saruman's room, x-rays him)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:sign a machine in",
       "kind": "cli",
       "entry": "src/dev/sign_in.gd",

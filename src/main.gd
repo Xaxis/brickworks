@@ -185,6 +185,19 @@ func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 	return out
 
 
+## Each sub-assembly's own parts, how high: path -> [lowest, highest], the
+## heights of their origins in LDU.
+func _assembly_heights() -> Dictionary:
+	var out: Dictionary = {}
+	if _shell == null:
+		return out
+	var boxes: Dictionary = _shell.assemblies.own_bounds()
+	for path: String in boxes:
+		var box: AABB = boxes[path]
+		out[path] = [box.position.y, box.end.y]
+	return out
+
+
 ## Where on the page each connector a part could be put onto is: a hole's
 ## middle, the middle of what a pin or an axle has free, a bar's or a
 ## clip's middle (JointSnap.End.middle). At most 160, in front of the view.
@@ -306,6 +319,9 @@ func _tell_page() -> void:
 		# ...and where on the page each one's own parts are, since opening
 		# a model frames the view on it afresh.
 		"places": _assembly_places(to_window, per_css),
+		# ...and how high, lowest and highest part, in LDU: where to put a
+		# cut that opens the room one stands in (see_inside_flow.mjs).
+		"heights": _assembly_heights(),
 		# Where the connectors a part can be put onto are on the page, and
 		# whether the ghost is on one and may go down there, for
 		# tools/web/technic_flow.mjs to aim a pin at a hole as a person does.
