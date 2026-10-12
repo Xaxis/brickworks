@@ -492,11 +492,10 @@ fixing what it got wrong.
   a saw's teeth). A wedge is seated by its body (`_by_its_body`): on its side
   its cover is pulled in a cell at the cut end, and the 2 x 2's body is two LDU
   short of two studs, so placed by either the blades had a slit of sky up their
-  inner edge, one a wedge. The 2 x 4 right hand (41769a/b, `BLADE_SHUNNED`)
-  is not used: on its side it drew its cut face nearly white, a pale flag half
-  way up every blade (seen at full size; at a whole tower's size the others'
-  cut faces still alias to a grey speck or two from the side, dark up close).
-  Its foot is the pier's radius by `BLADE_WIDE` (1.2,
+  inner edge, one a wedge. The 2 x 4 right hand (41769a/b) draws its cut face
+  nearly white on its side, a pale flag up a blade: its body is its left
+  twin's subpart mirrored, and the renderer is being fixed at the root for
+  that, so the blades use it as LEGO would. Its foot is the pier's radius by `BLADE_WIDE` (1.2,
   4 to 10 studs); it rises `BLADE_TALL` (2.6) times that, or the piers'
   courses past the core's if more; one whose studs would look away from the
   front is built the other way round (turned half a turn, its edges taken from

@@ -1074,9 +1074,10 @@ close to a point). Then by eye at the integrator: at 24 LDU the two blades
 seen edge on from the corner read as one sheet standing out of the middle of
 the summit (two studs deep now); turned to face the front they were sticks
 from the side and cut-off plates from the corner (radial again); and the 2 x 4
-right-hand wedge drew its cut face nearly white on its side, a pale flag up
-every blade (not used now). Every storey also laid its own door; only the
-lowest does.
+right-hand wedge (41769a) draws its cut face nearly white on its side, a pale
+flag up a blade, a rendering fault of mirrored subparts being fixed at the
+root (the blades still use the part). Every storey also laid its own door;
+only the lowest does.
 
 **Display proportions.** 10237 is 21 cm across and 73 cm tall (its box says
 so), 1 : 3.4 with its base. The homepage's Orthanc stood 2.1 times its 49-stud

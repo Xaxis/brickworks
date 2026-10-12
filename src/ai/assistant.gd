@@ -5610,12 +5610,6 @@ const BLADE_LAYERS := 4
 ## Bricks with studs on one side, longest first, that a blade's foot is
 ## pressed onto: the anchor every blade in a real set hangs from.
 const BLADE_ANCHORS: Array = [[4, "30414"], [2, "11211"], [1, "87087"]]
-## Wedge plates a blade is not cut with: the 2 x 4 right hand (its left hand's
-## body mirrored) draws its cut face nearly white on its side, and every blade
-## had a pale flag half way up its inner edge. Black in every other turn tried,
-## and so are the rest.
-const BLADE_SHUNNED: Array[String] = ["41769a", "41769b"]
-
 
 ## A blade's width at its foot and its height, in studs, over a pier of
 ## [param p_radius] whose courses rise [param above] past the core's.
@@ -5919,8 +5913,6 @@ func _blade_side() -> Dictionary:
 			continue
 		var studs: int = int(columns.keys()[0])
 		var said: PackedStringArray = named.split(" ")
-		if said[0] in BLADE_SHUNNED:
-			continue
 		var mesh: Lbm.PartMesh = library.mesh_for(said[0])
 		if mesh == null:
 			continue
