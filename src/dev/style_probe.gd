@@ -224,18 +224,17 @@ func _three_faults(library: PartLibrary) -> void:
 		"...the same in dark glass are not")
 	var quiet := PackedStringArray()
 	# A shipped model the check is right to fault goes here with the fault.
-	# Run 18's Orthanc was an office block; run 4, on the landing page since
-	# 2026-10-12, has no lit windows but is still 58% plain black. (It was also
-	# called speckled, which was the check reading its file's turned faces at
-	# the nearest square turn.) The check is right about the black, so it is
-	# the true case here until a run fixes it.
+	# Run 18's Orthanc was an office block. Run 5, on the landing page since
+	# 2026-10-12, has its faces panelled in grille but is still 48% plain
+	# black (10237 is about 23%), most of it the inside of its hollow shaft.
+	# The check is right about the black, so it is the true case here until a
+	# run fixes it.
 	var faulty: Dictionary = {"orthanc.ldr": "reads as a hole"}
 	# And every shipped model stands up as the app's status bar says it, the
-	# landing page's above all: run 4 reads "1 weak joint (overloaded)", the
-	# foot of its core's faces hanging a plate over the plinth in the clefts.
-	# Known until a candidate that stands replaces it; src/dev/candidate_probe.gd
-	# is what one passes first.
-	var weak_known: Dictionary = {"orthanc.ldr": true}
+	# landing page's above all. Run 4 read "1 weak joint (overloaded)"; run 5,
+	# which replaced it, stands (src/dev/candidate_probe.gd is what a
+	# candidate passes first). None known now.
+	var weak_known: Dictionary = {}
 	var weak := PackedStringArray()
 	var named := PackedStringArray()
 	var here: DirAccess = DirAccess.open("res://models")
