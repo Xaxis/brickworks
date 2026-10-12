@@ -65,11 +65,16 @@ picture the assistant is shown.
   change a slice a frame (`BrickWorld.rebuilds_in_slices`, set by `Main`;
   ModelShot's copy rebuilds whole, because its picture must be). The whole
   assembly takes at most `LONGEST_MS` (2.5 s), several steps to a frame on a
-  big model. A click or a key ends it, with the model whole. Nothing plays
+  big model, by the clock on the wall: the engine's frame time is smoothed
+  towards the display's rate, and timed by it the Falcon's 2.5 s took 16 s in
+  a browser drawing in software. A click or a key ends it, with the model whole. Nothing plays
   where nobody can see it (`Main._watch_view`): a browser tab out of view
   (`document.hidden`) or a minimised window. A tab that goes out of view
   while it plays ends it. Out of view, `Main` also turns off the window's 3D
-  drawing (`disable_3d`). ModelShot's pictures have their own viewport, so
+  drawing (`disable_3d`). A design that arrives out of view, checked or
+  submitted, has the camera framed on it (`_ground_for_the_model`'s
+  `and_frame`), so whoever looks finds it in view, not wherever the camera
+  was left. ModelShot's pictures have their own viewport, so
   they still draw. `FramePace` slices are then 200 ms rather than half a
   frame, so a design goes down at full speed while Claude waits.
   `tools/web/arrival_check.mjs` times the model's arrival in a browser,

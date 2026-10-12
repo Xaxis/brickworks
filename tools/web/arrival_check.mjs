@@ -187,9 +187,15 @@ async function runCase(size, mode) {
     await page.screenshot({ path: `${out}/${tag}_never_showed.png` }).catch(() => {});
     throw new Error(`the app never showed ${names.join(" or ")}`);
   }
-  // Connected the way this build offers: one button, or the private address.
-  const [way, at] = await control(["connect_claude", "connector_private"]);
-  await page.mouse.click(at.x, at.y);
+  // Connected by a private address, which this script can call as Claude
+  // would. A build since one-click connect (2026-10-11) folds it away under
+  // "Private address", beside a Connect Claude whose address wants Claude's
+  // sign-in; a build before it has only the one button, and that address is
+  // the private one.
+  await control(["connect_claude", "connector_private"]);
+  const offered = await controls();
+  const way = offered.connector_private ? "connector_private" : "connect_claude";
+  await page.mouse.click(offered[way].x, offered[way].y);
   await page.waitForTimeout(3000);
   if (way === "connector_private") {
     const [, here] = await control(["claude_here"]);
@@ -258,7 +264,7 @@ async function runCase(size, mode) {
   // comes back from the relay as "not open" in no time at all.
   for (let tries = 0; ; tries++) {
     const cleared = said(await claude("tools/call", { name: "clear_model", arguments: {} }));
-    if (!/is not open|switched off/.test(cleared)) break;
+    if (/baseplate/i.test(cleared)) break;
     if (tries >= 24) throw new Error(`the tab never answered: ${cleared.slice(0, 60)}`);
     await page.waitForTimeout(5000);
   }
@@ -365,9 +371,12 @@ for (const size of sizes) {
       console.log(`FAIL ${String(size).padStart(4)} ${mode.padEnd(6)} ${row.error}`);
       continue;
     }
-    // Within three frames of being in view (the ground laid wider under a
-    // design that outgrew it is the second), on the app's own work.
-    const over = !row.settled || row.drawnFrame === null || row.drawnFrame > 3
+    // Built, all of it: a submit the tab never saw passed once, in no time,
+    // with the old model still standing.
+    // Then within three frames of being in view (the ground laid wider
+    // under a design that outgrew it is the second), on the app's own work.
+    const built = /^Built/.test(row.submitSaid) && row.bricks === size;
+    const over = !built || !row.settled || row.drawnFrame === null || row.drawnFrame > 3
       || row.ownToDrawn > budget;
     if (over) failures += 1;
     const s = (ms) => (ms === null ? "never" : `${(ms / 1000).toFixed(1)} s`);

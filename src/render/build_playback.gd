@@ -75,6 +75,8 @@ var _step_ends := PackedInt64Array()
 var _at: int = 0
 var _per_step: float = 100.0
 var _clock: float = 0.0
+## When it began, by the clock on the wall (Time.get_ticks_msec).
+var _started_ms: int = 0
 var _running: bool = false
 
 signal finished
@@ -113,6 +115,7 @@ func _begin() -> bool:
 		return false
 	_at = 0
 	_clock = 0.0
+	_started_ms = Time.get_ticks_msec()
 	_running = true
 	_per_step = clampf(TARGET_MS / float(_step_ends.size()), FASTEST_MS, SLOWEST_MS)
 	_per_step = minf(_per_step, LONGEST_MS / float(_step_ends.size()))
@@ -172,7 +175,12 @@ func stop() -> void:
 func _process(delta: float) -> void:
 	if not _running:
 		return
-	_clock += delta * 1000.0
+	# By the frames' time, and never behind the clock on the wall. The engine
+	# smooths the time it says a frame took towards the display's rate, so
+	# where frames are slow the animation ran in frames rather than seconds:
+	# in a browser drawing in software, the Falcon's 2.5 s took 19 frames of
+	# a second each, and the model was held back 16 s (2026-10-11).
+	_clock = maxf(_clock + delta * 1000.0, float(Time.get_ticks_msec() - _started_ms))
 	# However many steps are due, shown in one go: a slow frame costs the
 	# animation its place in time, not its place in the model, and not
 	# another slow frame either.

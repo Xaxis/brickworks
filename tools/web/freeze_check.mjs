@@ -143,9 +143,22 @@ async function control(name, minutes = 5) {
 }
 const click = async (name) => { const at = await control(name); await page.mouse.click(at.x, at.y); };
 
-await click("connect_claude");
-await page.waitForTimeout(3000);
-await click("connector_copy");
+// The private address, which this script can call as Claude would: folded
+// away under "Private address" since one-click connect (2026-10-11), whose
+// own address wants Claude's sign-in. A build before that has only the one
+// button, and its address is the private one.
+await control("view");
+if ((await page.evaluate(() => window.brickworksControls || {})).connector_private) {
+  await click("connector_private");
+  await page.waitForTimeout(1500);
+  await click("claude_here");
+  await page.waitForTimeout(3000);
+  await click("connector_private_copy");
+} else {
+  await click("connect_claude");
+  await page.waitForTimeout(3000);
+  await click("connector_copy");
+}
 await page.waitForTimeout(1500);
 const address = await page.evaluate(() => navigator.clipboard.readText());
 if (!address.includes("/api/mcp")) {

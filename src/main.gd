@@ -1386,7 +1386,11 @@ func _build_ui() -> void:
 		# the lattice. Doing that while the apply is still walking its
 		# own placements is how a run reaches the last critique and
 		# then simply stops, with no error and nothing written.
-		_ground_for_the_model.call_deferred()
+		#
+		# And framed, when nobody can see it: whoever comes back to the tab
+		# finds the model in view rather than wherever the camera was left.
+		_watch_view()
+		_ground_for_the_model.call_deferred(_out_of_view)
 		_on_model_changed()
 		# Not when nobody is watching. Every edit emits this, and the
 		# assembly planned build steps for the whole model and then showed
@@ -1399,7 +1403,6 @@ func _build_ui() -> void:
 		# already does not vanish to be built again.
 		# Nor when nobody can see it: a design made from claude.ai with the
 		# tab out of view is there, whole, when the tab is looked at.
-		_watch_view()
 		if not _driven and not _out_of_view and _playback.play_new(_assistant.fresh_ids):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
@@ -1408,6 +1411,10 @@ func _build_ui() -> void:
 		if _playback.is_playing():
 			_playback.stop()
 		_on_model_changed()
+		# A check puts the design down too: framed the same, out of view.
+		_watch_view()
+		if _out_of_view:
+			_camera.frame(_built_bounds())
 		_bar.say("working — %d bricks so far" % count))
 
 	# Who is signed in, and the way out: from Account on the bar.
@@ -1892,10 +1899,12 @@ func _build_stress(target: int) -> int:
 ##
 ## Only when it has: re-laying on every change would rebuild the plates
 ## each time a brick is put down by hand, for nothing.
-func _ground_for_the_model() -> void:
+func _ground_for_the_model(and_frame: bool = false) -> void:
 	var box: AABB = _built_bounds()
 	if box.size.length_squared() <= 0.0:
 		return
+	if and_frame:
+		_camera.frame(box)
 	if _ground.size.length_squared() > 0.0 \
 			and _ground.encloses(AABB(
 				Vector3(box.position.x, 0.0, box.position.z),

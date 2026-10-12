@@ -195,6 +195,18 @@ func _falcon(world: BrickWorld, library: PartLibrary, builder: Builder,
 		and worst < 30.0)
 	_check("...and ends with the whole Falcon shown",
 		_hidden(world).is_empty() and _drawn(world) == 4242)
+
+	# And by the clock on the wall, however slow the frames: a browser
+	# drawing it in software said each second-long frame took 33 ms, and the
+	# 2.5 s animation took 16 s. Here one frame comes after it should have
+	# ended, and says it took 16 ms.
+	var again: bool = playback.play({})
+	playback._started_ms -= int(BuildPlayback.LONGEST_MS) + 1
+	playback._process(1000.0 / 60.0 / 1000.0)
+	world._flush()
+	_check("a frame that comes after its time ends it, whatever the frame says it took",
+		again and not playback.is_playing() and _hidden(world).is_empty()
+		and _drawn(world) == 4242)
 	await process_frame
 
 
