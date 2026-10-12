@@ -76,8 +76,10 @@ func _run() -> void:
 	for entry: Array in Shapes.Plan.INVERTED:
 		for id: Variant in [entry[3], entry[4]]:
 			_sloped[str(id)] = true
-	for id: Variant in Patterns.WEDGES + Shapes.BRICK_WEDGES:
+	for id: Variant in Patterns.WEDGES + Shapes.EDGE_PLATES + Shapes.EDGE_BRICKS:
 		_sloped[str(id)] = true
+	for id: Variant in Shapes.ROUND_PLATES + Shapes.ROUND_BRICKS:
+		_curved[str(id)] = true
 	for entry: Array in Shapes.TOPS:
 		_tiles[str(entry[2])] = true
 	for id: Variant in Assistant.PANELS.values():

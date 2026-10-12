@@ -158,6 +158,57 @@ func _run() -> void:
 			builder.lattice.clear()
 
 	print("")
+	print("  a round or cut plan is laid in round parts and wedges, not a staircase")
+	# Each of these came out a staircase of plain plates and bricks with no
+	# wedge in it: the wedge's cut side had to lie outside every stud of the
+	# plan, and on a round plan the studs the edge cuts are the plan's own.
+	var round_parts: Array = Shapes.ROUND_PLATES + Shapes.ROUND_BRICKS
+	var edge_parts: Array = Shapes.EDGE_PLATES + Shapes.EDGE_BRICKS + Patterns.WEDGES
+	for one: Array in [
+			["a cylinder of radius 5", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 84, "solids": [{"revolve": {"axis": "y", "centre": [6, 0, 6],
+					"profile": [[0, 5], [6, 5]]}}]}, 8, 4],
+			["a box with 45 degree corners", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+				"color": 4, "box": {"from": [0, 0, 0], "size": [10, 6, 10], "chamfer": 3}}, 0, 8],
+			["an egg", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
+				"solids": [{"ellipsoid": {"centre": [6, 16, 6], "radii": [5, 16, 5]}},
+					{"ellipsoid": {"centre": [6, 15, 8], "radii": [3.8, 14, 3.5], "color": 15}}]},
+				8, 8]]:
+		assistant._brief = str(one[0])
+		var model: Assistant.Model = assistant._read_model({"patterns": [one[1]]})
+		var verdict: Dictionary = assistant._check(model, true)
+		var rounds: int = 0
+		var cut: int = 0
+		var curved: int = 0
+		var sideways: int = 0
+		for placement: Assistant.Placement in model.placements:
+			if placement.part in round_parts:
+				rounds += 1
+			elif placement.part in edge_parts:
+				cut += 1
+			if Style.kinds_of(placement.part).contains("c"):
+				curved += 1
+			if placement.face != "up":
+				sideways += 1
+		var total: int = maxi(1, model.placements.size())
+		var share: float = float(curved + sideways) / float(total)
+		_check("%s: %d round parts, %d wedges and cut corners, %d%% curved or sideways, %s, %d pieces"
+			% [one[0], rounds, cut, roundi(100.0 * share), verdict["summary"], int(verdict["pieces"])],
+			rounds >= int(one[2]) and cut >= int(one[3]) and bool(verdict["ok"])
+				and int(verdict["pieces"]) == 1)
+		if str(one[0]) == "an egg":
+			# Was 4%: two wedges in 409 parts, and the side panels of its flanks.
+			_check("...the egg curved or sideways in a tenth of its parts or more",
+				share >= 0.10)
+	# A straight edge a stud's middle crosses is the studs' own: a ramp's
+	# falls each cross a stud half way, and wedges laid there sawed teeth.
+	var straight: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
+		"color": 15, "surface": "straight", "extrude": {"along": "x", "width": 4,
+			"profile": [[0, 2], [12, 14]]}})
+	_check("a ramp's straight edges take no wedge: %d" % _count(straight, edge_parts + round_parts),
+		_count(straight, edge_parts + round_parts) == 0)
+
+	print("")
 	print("  what each surface is laid in")
 	# A ramp falling a plate a stud: an 18 degree slope or a curved 4 x 1 fits
 	# that fall; a chamfer falling three plates a stud, a 45.

@@ -29,7 +29,11 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   curve. Then laid by the assistant's own brickifier (`Shapes.lay`, solid kind
   `grid`): big bricks inside, slopes and curved slopes fitted where it falls
   away (straight on a facet, curved on a curve: surface `mixed`), inverted ones
-  under an overhang, wedges on a diagonal edge, tiles on top, studs-sideways
+  under an overhang, corner rounds and wedges where an edge runs off the square
+  (the same edge parts as a design's shape; an edge part at a joint between
+  pieces is laid again in plain parts so the stitch can join them — at 20
+  studs the bunny's feet otherwise stood apart from its body and the prune
+  kept the feet), tiles on top, studs-sideways
   panels on a flat side. Then `Assistant._check` as check_design runs it, and
   mended (`Brickify.mend`): a part overlapping, one nothing holds, a piece
   apart, each taken out and checked again, until it passes in one piece.
@@ -79,6 +83,9 @@ godot --headless --path . --script src/dev/brickify_probe.gd
 #   a tile; two colours, one colour; and a forty-stud bunny in under 20 s.
 #   Baseline 2026-10-12 at a load of 50: 41 ok, sphere 1,524 parts in 1.9 s,
 #   forty-stud bunny 1,963 parts in 4.5 s (measure 0.7, lay 1.7, check 2.1).
+#   With edge parts measured against the shape (same day, load 50-70): 42 ok,
+#   sphere 1,496 parts in 3.5 s, forty-stud bunny 2,011 in 7.5 s (lay 6.0):
+#   the edge search is most of the lay now.
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
 #   clicked: one sub-assembly "bunny" holding every part, all selected, the

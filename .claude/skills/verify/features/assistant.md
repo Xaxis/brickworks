@@ -861,10 +861,19 @@ fixing what it got wrong.
   it stands in carved out; each slope's own surface becomes the next one's top,
   so a ramp is a run of slopes; which end of each part is high read off its
   mesh (`Shapes.part`). Then the core plate by plate: bricks (`CORE_BRICKS`, up
-  to 2 x 8) where a course is whole in one colour, wedge bricks and wedge
-  plates where a plan edge runs on the diagonal (the cut side a fifth to four
-  fifths inside the shape, sampled, so none stands out from a flat side as a
-  fin), plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
+  to 2 x 8) where a course is whole in one colour; where a plan edge runs off
+  the square, edge parts (`Plan._wedged`): corner rounds first (30565, 30357,
+  79491; bricks 2577, 5152, 3063b), then plates and bricks without a corner
+  (2450, 26601, 30505), wing plates and wedge bricks — each placed where it
+  brings the layer's outline nearest the shape, measured on a 4 x 4 grid in
+  every stud of its box (`_gain`, `Shapes.edge_parts` read off each part's
+  collision boxes, which are in lattice cells, not LDU), its cut side on a
+  stud the edge cuts inside the plan or out of it, never across a stud whose
+  edge runs square (`Shapes.square`: a ramp's falls cross studs half way),
+  never cutting a column of studs through the middle (`_may_cut`); a brick
+  course's rim studs a plate's edge part would follow better are left to the
+  plates; an edge part where two pieces meet is laid again in plain parts so
+  they can be stitched (`_unedge`); then plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
   on top unless `"top": "studs"` (`TOPS`), and every other course the outside
   row of a straight side (clear for two courses, its stud above part of the
   side) as bricks with side studs, 30414/11211/87087 in runs, marked `panel`
@@ -895,14 +904,16 @@ fixing what it got wrong.
   (`tools/style.py`): curved 5-14% (median 14%), plain 58-67% (median 33%),
   sideways up to 5% (median 23%) — the solid core is plates and bricks, and
   round bodies have few straight sides; looked at on the GPU:
-  `shots/runs/shapes/shape_*_corner.png`. Known gap (held-out round,
-  2026-10-12, docs/ROADMAP.md): a round or 45-degree chamfered plan gets no
-  wing plates at all — a revolve about y of radius 5 and a box with
-  `"chamfer": 3` are both staircases — and a curved flank gets no side
-  panels; two of four runs that used the call threw it away for that. To see
-  it, lay `{"pattern": "shape", "solids": [{"revolve": {"axis": "y",
-  "centre": [6, 0, 6], "profile": [[0, 5], [6, 5]]}}]}` and count 24299,
-  24307, 41769a and 41770a: none.
+  `shots/runs/shapes/shape_*_corner.png`. `shapes_probe` ("a round or cut
+  plan is laid in round parts and wedges"): a revolve about y of radius 5
+  takes 8 corner rounds and 4 cut-corner bricks, a box with `"chamfer": 3`
+  12 plates and bricks without a corner, an egg (ellipsoid 5 x 16 x 5 with a
+  white front) 26 corner rounds and 24 wedges, 13% curved or sideways; each
+  in one piece; a ramp's straight edges take none. Before (held-out round,
+  2026-10-12, docs/ROADMAP.md) all three were staircases: 0, 0 and 2 wedges,
+  the egg 4% — the wedge's cut side had to lie outside every stud of the
+  plan, and on a round plan the studs the edge cuts are the plan's own. A
+  curved flank still gets no side panels.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps

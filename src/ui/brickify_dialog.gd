@@ -577,11 +577,11 @@ func _warm() -> void:
 	if Patterns._wedge_shapes.size() < 4 * Patterns.WEDGES.size():
 		Patterns._wedge_shapes.clear()
 		Patterns._wedge_prints.clear()
-	if Shapes._brick_wedges.size() < 4 * Shapes.BRICK_WEDGES.size():
-		Shapes._brick_wedges.clear()
+	Shapes._edge_parts.clear()
 	Style.norms()
 	Patterns.wedge_shapes(library)
-	Shapes.brick_wedges(library)
+	Shapes.edge_parts(library, 1)
+	Shapes.edge_parts(library, 3)
 	for table: Array in [Shapes.Plan.SLOPES, Shapes.Plan.INVERTED]:
 		for entry: Array in table:
 			for id: Variant in [entry[3], entry[4]]:
