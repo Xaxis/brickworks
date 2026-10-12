@@ -4444,8 +4444,8 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 const LEDGE_CRUMBS := 6
 
 
-## A tower on a plinth: terraces stepping down from its foot, a course each,
-## and a stair from the ground up the front (+z) to its door; the tower
+## A tower on a plinth: terraces stepping down from its foot, two courses
+## each, and a stair from the ground up the front (+z) to its door; the tower
 ## stands on the top terrace. Every Orthanc built here stood on a ring of
 ## rubble, and the owner named it: a base as an afterthought. LEGO's 10237
 ## stands on a stepped black base with stairs up to its door.
@@ -10867,8 +10867,8 @@ func _tools() -> Array:
 				+ "unless said)"},
 			"plinth": {"type": "object", "description":
 				"prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} — "
-				+ "the tower raised on terraces stepping down from its foot, a course "
-				+ "each, their edges sloped and tops tiled in the second tone, with a "
+				+ "the tower raised on terraces stepping down from its foot, two "
+				+ "courses each, their edges sloped and tops tiled in the second tone, with a "
 				+ "stair up the front (+z) to its door. The reply says the tower's foot "
 				+ "(and add_rooms' y).",
 				"properties": {
