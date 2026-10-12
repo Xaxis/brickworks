@@ -465,8 +465,8 @@ func _show_colours(codes: Array[int]) -> void:
 		lego = "LEGO %s%s" % [first.lego_name.replace("_", " "),
 			(" %d" % first.lego_ids[0]) if not first.lego_ids.is_empty() else ""]
 	var shops := PackedStringArray()
-	if ShopLists.BRICKLINK_COLOUR.has(plain):
-		shops.append("BrickLink %d" % int(ShopLists.BRICKLINK_COLOUR[plain]))
+	if library.bricklink_colour(plain) >= 0:
+		shops.append("BrickLink %d" % library.bricklink_colour(plain))
 	if first.rebrickable_id >= 0:
 		shops.append("Rebrickable %d" % first.rebrickable_id)
 	_colour.text = words + ("\n" + lego if not lego.is_empty() else "") \

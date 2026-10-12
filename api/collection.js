@@ -27,9 +27,10 @@
 // Rebrickable part numbers that are not LDraw's are renamed through it too;
 // both come from tools/collection_data.py's index, which deploy.sh puts
 // beside this file. A BrickLink colour becomes an LDraw code through the
-// table the app exports wanted lists with (ShopLists.BRICKLINK_COLOUR),
-// read into the same index. A colour neither knows is left out and said
-// so, never guessed: a guessed colour is the wrong plastic.
+// numbers the app exports wanted lists with (colors.json's bricklink, from
+// tools/bricklink_colours.py), read into the same index. A colour neither
+// knows is left out and said so, never guessed: a guessed colour is the
+// wrong plastic.
 //
 // Refused, with words: no sign-in (401), naming another account's
 // collection (403 — a collection is only ever its owner's, and there is no

@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_shortfall(library)
 	_combinations(library)
 	_wanted_list(library)
+	await _example_car(library)
 	await _official_models(library)
 	await _local_copy(library)
 	await _rebrickable()
@@ -219,6 +220,57 @@ func _wanted_list(library: PartLibrary) -> void:
 		"the Rebrickable CSV says the same")
 	_ok(Collection.bricklink_page("3001", 4, library).ends_with("?P=3001&idColor=5"),
 		"a part's BrickLink page names BrickLink's red (%s)" % Collection.bricklink_page("3001", 4, library))
+	world.queue_free()
+
+
+## The example car, owned as collection_flow.mjs owns it on the live site:
+## the fixture's eleven lots and the Magic Shop. Its BrickLink wanted list
+## carried 21 of the 26 short lots, because the hand-made colour table had
+## no number for the car's Light Grey, Dark Grey and Trans Light Blue.
+func _example_car(library: PartLibrary) -> void:
+	print("\nthe example car's wanted list")
+	var world := BrickWorld.new()
+	world.library = library
+	root.add_child(world)
+	for piece: LdrModel.Placement in LdrModel.load_file("res://models/car.ldr").flatten(library.parts):
+		var id: String = piece.part_id.to_lower().trim_suffix(".dat")
+		if library.mesh_for(id) != null:
+			world.add_brick(id, piece.color_code, piece.transform)
+	var stock: Inventory = Inventory.of(world, library)
+	var mine := Collection.new()
+	# tests/fixtures/collection/rebrickable_parts.csv, less its [No Color]
+	# row. Rebrickable's 0, 4 and 15 are LDraw's.
+	for row: Array in [["3023", 4, 4], ["3623", 4, 2], ["3641", 0, 4], ["3004", 4, 2],
+			["3005", 4, 1], ["3020", 0, 1], ["3021", 4, 1], ["3710", 0, 1], ["3788", 4, 2],
+			["3001", 15, 6], ["3010", 4, 3]]:
+		mine.parts.append({"part": row[0], "colour": row[1], "qty": row[2]})
+	mine.sets = [{"set": "6020-1", "qty": 1, "spares": false}]
+	var inventories := SetInventories.new()
+	root.add_child(inventories)
+	var found: Dictionary = await inventories.lookup(mine.set_numbers())
+	var plan: Array = Collection.plan(Collection.needs_of(stock, library),
+		mine.pool(found, library), library)
+	var short: Inventory = Collection.shortfall_stock(stock, plan, library)
+	_ok(stock.pieces == 61 and short.lots.size() == 26,
+		"the car is 61 pieces and 26 lots are short (%d, %d)" % [stock.pieces, short.lots.size()])
+	var made: Dictionary = ShopLists.bricklink_xml(short, library)
+	_ok(int(made["lots"]) == short.lots.size() and int(made["left_out"]) == 0,
+		"the BrickLink wanted list carries all %d short lots (%d, %d left off: %s)"
+		% [short.lots.size(), int(made["lots"]), int(made["left_out"]),
+			", ".join(made.get("colours_left", PackedStringArray()))])
+	var whole: Dictionary = ShopLists.bricklink_xml(stock, library)
+	_ok(int(whole["left_out"]) == 0,
+		"and so does the whole car's, all %d lots (%d left off)"
+		% [stock.lots.size(), int(whole["left_out"])])
+	# Pearl Red, LDraw 176, is held back (tools/bricklink_colours.py): it is
+	# left off and named, never given a guessed number.
+	world.add_brick("3001", 176, Transform3D(Basis.IDENTITY, Vector3(400, 0, 0)))
+	var held: Dictionary = ShopLists.bricklink_xml(Inventory.of(world, library), library)
+	var said: String = ShopLists.why_left_off(held, "bricklink")
+	_ok(int(held["left_out"]) == 1 and said == "BrickLink has no number for Pearl Red",
+		"a colour with no BrickLink number is left off and named (%d: %s)"
+		% [int(held["left_out"]), said])
+	inventories.queue_free()
 	world.queue_free()
 
 

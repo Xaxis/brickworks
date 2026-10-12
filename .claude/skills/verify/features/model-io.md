@@ -97,9 +97,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list): BrickLink's wanted-list XML (item, its
   colour number, quantity) and Rebrickable's `Part,Color,Quantity` CSV. The
-  BrickLink colour numbers are a sourced table of 55 colours
-  (`ShopLists.BRICKLINK_COLOUR`, from the SetDB colour guide); a lot in any other
-  colour, or a made part, is left off and the status bar says how many.
+  BrickLink colour numbers are colors.json's `bricklink`, 198 colours from
+  `tools/bricklink_colours.py` (see [parts](parts.md)); a lot in any other
+  colour, or a made part, is left off and the status bar says how many and names
+  the colours ("BrickLink has no number for Pearl Red").
 
 ## How to reach it
 

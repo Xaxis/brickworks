@@ -53,9 +53,8 @@ func shop_list(shop: String) -> String:
 		mime = "text/csv"
 	var line: String = _give(str(made["text"]), file_name, mime, folder)
 	if int(made["left_out"]) > 0:
-		line += " — %d of %d lots left off: colours %s has no number for here, or made parts" % [
-			int(made["left_out"]), stock.lots.size(),
-			"BrickLink" if shop == "bricklink" else "Rebrickable"]
+		line += " — %d of %d lots left off: %s" % [int(made["left_out"]), stock.lots.size(),
+			ShopLists.why_left_off(made, shop)]
 	say.call(line)
 	return line
 
