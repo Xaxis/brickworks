@@ -112,8 +112,19 @@
                 "description": "fill with rise 3, prism: a course in this colour every eight, a string course where a storey's ledge is. A black wall gets dark bluish grey bands unless mix_color or this says otherwise.",
                 "type": "integer"
               },
+              "bands": {
+                "description": "shape: [{\"from\": plates, \"to\": plates, \"color\"}] \u2014 a waterline, a stripe, a belly, by height.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "beside": {
                 "description": "round: more rounds standing round this one, touching it, pinned where their Technic courses meet (start both stacks the same, each with a technic course at one height): {\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. Boosters on a core, twin funnels, a cluster of silos.",
+                "type": "object"
+              },
+              "box": {
+                "description": "shape: {\"from\": [x, y, z], \"size\": [across, plates up, deep], \"round\": studs its plan corners are rounded by, \"chamfer\": studs they are cut by, \"edge\": studs its top edges are rounded by}.",
                 "type": "object"
               },
               "bricks": {
@@ -182,6 +193,13 @@
                 "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each",
                 "type": "number"
               },
+              "cuts": {
+                "description": "shape: solids taken away, said the same way: a wheel arch (a revolve along z), a cockpit, a doorway.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "deep": {
                 "description": "fill, rock: studs in z",
                 "type": "number"
@@ -196,6 +214,10 @@
                   8
                 ],
                 "type": "integer"
+              },
+              "dome": {
+                "description": "shape: an ellipsoid's top half, said the same way.",
+                "type": "object"
               },
               "door": {
                 "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
@@ -215,6 +237,14 @@
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
+              },
+              "ellipsoid": {
+                "description": "shape: {\"centre\": [x, y, z], \"radii\": [studs across, plates up, studs deep]}.",
+                "type": "object"
+              },
+              "extrude": {
+                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by}.",
+                "type": "object"
               },
               "face_color": {
                 "description": "studs_out: the colour of what is laid on the side studs",
@@ -242,6 +272,10 @@
                 "description": "studs_out: studs along the face",
                 "type": "number"
               },
+              "loft": {
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} \u2014 the section between each two is in between; width 0 at an end is a point.",
+                "type": "object"
+              },
               "masonry": {
                 "description": "fill: the share of its 1x2 and 1x4 bricks laid as masonry bricks (98283, 15533), stonework facing away from the middle, 0 to 1. For a wall one stud thick.",
                 "type": "number"
@@ -259,7 +293,7 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids \u2014 a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome \u2014 less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -267,7 +301,8 @@
                   "rock",
                   "studs_out",
                   "prism",
-                  "round"
+                  "round",
+                  "shape"
                 ],
                 "type": "string"
               },
@@ -306,6 +341,10 @@
                 "description": "prism: studs from the middle to the outside of a face",
                 "type": "number"
               },
+              "revolve": {
+                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}.",
+                "type": "object"
+              },
               "rise": {
                 "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
                 "type": "number"
@@ -333,6 +372,13 @@
               "sideways": {
                 "description": "fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
+              },
+              "solids": {
+                "description": "shape: what it is made of, each an object naming one kind \u2014 {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} \u2014 with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
               },
               "stack": {
                 "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach \u2014 grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") \u2014 nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) \u2014 legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
@@ -369,12 +415,33 @@
                 },
                 "type": "object"
               },
+              "surface": {
+                "description": "shape: curved slopes on its surface or straight ones; auto (the default) is curved if any solid is rounded.",
+                "enum": [
+                  "auto",
+                  "curved",
+                  "straight"
+                ],
+                "type": "string"
+              },
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
               },
               "times": {
                 "description": "repeat: how many",
+                "type": "integer"
+              },
+              "top": {
+                "description": "shape: tiles over its top (the default) or studs left showing.",
+                "enum": [
+                  "smooth",
+                  "studs"
+                ],
+                "type": "string"
+              },
+              "top_color": {
+                "description": "shape: the colour of its top tiles and slopes, if not its own.",
                 "type": "integer"
               },
               "wall": {
@@ -1188,8 +1255,19 @@
                 "description": "fill with rise 3, prism: a course in this colour every eight, a string course where a storey's ledge is. A black wall gets dark bluish grey bands unless mix_color or this says otherwise.",
                 "type": "integer"
               },
+              "bands": {
+                "description": "shape: [{\"from\": plates, \"to\": plates, \"color\"}] \u2014 a waterline, a stripe, a belly, by height.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "beside": {
                 "description": "round: more rounds standing round this one, touching it, pinned where their Technic courses meet (start both stacks the same, each with a technic course at one height): {\"count\": 2 or 4, \"diameter\", \"color\", \"stack\"}. Boosters on a core, twin funnels, a cluster of silos.",
+                "type": "object"
+              },
+              "box": {
+                "description": "shape: {\"from\": [x, y, z], \"size\": [across, plates up, deep], \"round\": studs its plan corners are rounded by, \"chamfer\": studs they are cut by, \"edge\": studs its top edges are rounded by}.",
                 "type": "object"
               },
               "bricks": {
@@ -1258,6 +1336,13 @@
                 "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each",
                 "type": "number"
               },
+              "cuts": {
+                "description": "shape: solids taken away, said the same way: a wheel arch (a revolve along z), a cockpit, a doorway.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "deep": {
                 "description": "fill, rock: studs in z",
                 "type": "number"
@@ -1272,6 +1357,10 @@
                   8
                 ],
                 "type": "integer"
+              },
+              "dome": {
+                "description": "shape: an ellipsoid's top half, said the same way.",
+                "type": "object"
               },
               "door": {
                 "description": "prism: an arched door at the foot of the face looking +z, two studs wide and six courses tall, for a stair to lead up to; true unless said with piers, false unless said without",
@@ -1291,6 +1380,14 @@
               "edge_color": {
                 "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
                 "type": "integer"
+              },
+              "ellipsoid": {
+                "description": "shape: {\"centre\": [x, y, z], \"radii\": [studs across, plates up, studs deep]}.",
+                "type": "object"
+              },
+              "extrude": {
+                "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by}.",
+                "type": "object"
               },
               "face_color": {
                 "description": "studs_out: the colour of what is laid on the side studs",
@@ -1318,6 +1415,10 @@
                 "description": "studs_out: studs along the face",
                 "type": "number"
               },
+              "loft": {
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} \u2014 the section between each two is in between; width 0 at an end is a point.",
+                "type": "object"
+              },
               "masonry": {
                 "description": "fill: the share of its 1x2 and 1x4 bricks laid as masonry bricks (98283, 15533), stonework facing away from the middle, 0 to 1. For a wall one stud thick.",
                 "type": "number"
@@ -1335,7 +1436,7 @@
                 "type": "integer"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids \u2014 a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome \u2014 less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -1343,7 +1444,8 @@
                   "rock",
                   "studs_out",
                   "prism",
-                  "round"
+                  "round",
+                  "shape"
                 ],
                 "type": "string"
               },
@@ -1382,6 +1484,10 @@
                 "description": "prism: studs from the middle to the outside of a face",
                 "type": "number"
               },
+              "revolve": {
+                "description": "shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], \"profile\": [[along it (plates up y, studs along x or z), radius in studs], ...]}.",
+                "type": "object"
+              },
               "rise": {
                 "description": "fill: plates between layers. 1 for plates, which is the default; 3 for courses of bricks.",
                 "type": "number"
@@ -1409,6 +1515,13 @@
               "sideways": {
                 "description": "fill, prism: the share of its 1x2 bricks laid as two 1x1 bricks with a stud on the side, turned out and dressed with a tile, round tile, round plate or cheese slope on that stud, 0 to 0.5. For a wall one stud thick: a face built partly on its side, as real sets build them.",
                 "type": "number"
+              },
+              "solids": {
+                "description": "shape: what it is made of, each an object naming one kind \u2014 {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} \u2014 with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
               },
               "stack": {
                 "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach \u2014 grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") \u2014 nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) \u2014 legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
@@ -1445,12 +1558,33 @@
                 },
                 "type": "object"
               },
+              "surface": {
+                "description": "shape: curved slopes on its surface or straight ones; auto (the default) is curved if any solid is rounded.",
+                "enum": [
+                  "auto",
+                  "curved",
+                  "straight"
+                ],
+                "type": "string"
+              },
               "thickness": {
                 "description": "prism: 2 (the default) closes the inside; 1 leaves slits at the corners",
                 "type": "integer"
               },
               "times": {
                 "description": "repeat: how many",
+                "type": "integer"
+              },
+              "top": {
+                "description": "shape: tiles over its top (the default) or studs left showing.",
+                "enum": [
+                  "smooth",
+                  "studs"
+                ],
+                "type": "string"
+              },
+              "top_color": {
+                "description": "shape: the colour of its top tiles and slopes, if not its own.",
                 "type": "integer"
               },
               "wall": {

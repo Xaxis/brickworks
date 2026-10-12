@@ -4242,6 +4242,13 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 		return []
 	if pattern.has("storeys") and not pattern.has("_storey"):
 		return _storeys(pattern, model, index, trouble)
+	var clear: float = _clear_radius(sides, radius, thick)
+	if clear != radius:
+		_pattern_advice.append(("A prism of %d sides at radius %s has two faces turned off "
+			+ "the grid meeting with less than a fifth of a stud between their bricks, "
+			+ "so it is laid at radius %s.") % [sides, Placement._num(radius),
+			Placement._num(clear)])
+		radius = clear
 	var width: int = int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001))
 	if width < 2:
 		trouble.append("a prism of radius %s has faces narrower than two studs; "
@@ -4809,6 +4816,31 @@ static func _least_radius(sides: int, thick: int) -> float:
 	var radius: float = ceil((thick + 1.0 / tan(PI / sides)) * 2.0) / 2.0
 	while int(floor(2.0 * (radius - thick) * tan(PI / sides) + 0.001)) < 2:
 		radius += 0.5
+	return radius
+
+
+## The radius to lay a prism of [param sides] faces at, from the one asked:
+## where two faces both turned off the grid meet, the bricks at their inside
+## corners have to be a fifth of a stud apart, because each turned part's
+## cover reaches about a seventh of a stud past it. A twelve-sided prism of
+## radius 8 had a tenth and ran into itself at faces 1 and 2; at 8.5 it
+## holds. A face square to the grid is laid exactly, so an octagon, whose
+## turned faces each meet a square one, is laid as asked.
+static func _clear_radius(sides: int, radius: float, thick: int) -> float:
+	var both_turned: bool = false
+	for k: int in sides:
+		if not _square_to_grid(360.0 * k / sides) \
+				and not _square_to_grid(360.0 * (k + 1) / sides):
+			both_turned = true
+	if not both_turned:
+		return radius
+	var r: float = radius
+	for _step: int in 4:
+		var half: float = (r - thick) * tan(PI / sides)
+		var face: float = floor(2.0 * half + 0.001) / 2.0
+		if half - face >= 0.2:
+			return r
+		r += 0.5
 	return radius
 
 

@@ -292,6 +292,11 @@ func _holds_up() -> void:
 		["a hexagonal tower one stud thick, in masonry", {"pattern": "prism",
 			"at": {"x": 10, "y": 0, "z": 10}, "sides": 6, "radius": 6, "courses": 8,
 			"thickness": 1, "color": 71, "masonry": 0.5}],
+		# Faces 1 and 2 both turned off the grid met a tenth of a stud apart at
+		# radius 8 and ran into each other; laid at 8.5.
+		["a twelve-sided turret of radius 8", {"pattern": "prism",
+			"at": {"x": 12, "y": 0, "z": 12}, "sides": 12, "radius": 8, "courses": 4,
+			"color": 15}],
 		["a crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
 			"across": 16, "deep": 12, "height": 15, "seed": 1}],
 		["another crag", {"pattern": "rock", "at": {"x": 0, "y": 0, "z": 0},
@@ -344,7 +349,9 @@ func _holds_up() -> void:
 			var turned: Dictionary = {}
 			for placement: Assistant.Placement in model.placements:
 				var section: Assistant.Section = model.section_for(placement)
-				if section != null:
+				# The faces' own: a post at a corner two turned faces meet is
+				# turned to the half-way angle in a section of its own.
+				if section != null and placement.section.contains(" face "):
 					turned[snappedf(section.degrees, 0.1)] = true
 			var left: int = int((one[1] as Dictionary).get("open", 0))
 			_check("...its %d faces each turned to their own angle, %d angles%s"
