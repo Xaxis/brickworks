@@ -52,6 +52,12 @@ func _run() -> void:
 	_tree = _shell.assemblies
 	_main.call("clear_model")
 	Carry.clipboard = []
+	# Under 1200 wide the panels beside and over the model leave it a strip
+	# too narrow to build a plane in by clicking; a person would fold them.
+	# Said rather than failed for the wrong reason thirty times over.
+	var room: Vector2 = root.get_visible_rect().size
+	_check("the window has room to build in by hand (%.0f x %.0f, at least 1200 x 720)"
+		% [room.x, room.y], room.x >= 1199.0 and room.y >= 719.0)
 
 	await _make_and_name()
 	await _copies_follow()
@@ -87,7 +93,7 @@ func _make_and_name() -> void:
 	_put("3004", 4, Vector3(-120, 32, -40))
 	_put(_wedge, 14, Vector3(-120, 16, 40))
 	await _frames(3)
-	_camera.frame(AABB(Vector3(-240, 0, -200), Vector3(480, 80, 360)))
+	_camera.frame(AABB(Vector3(-240, 0, -200), Vector3(480, 80, 360)), 1.6)
 	await _frames(40)
 	var wing: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
 		return b.transform.origin.x < -50.0).map(func(b: BrickWorld.Brick) -> int: return b.id)
@@ -110,8 +116,11 @@ func _make_and_name() -> void:
 	var before: Vector3 = _world.get_brick(wing[0]).transform.origin
 	await _key(KEY_LEFT)
 	var moved: Vector3 = _world.get_brick(wing[0]).transform.origin - before
-	_check("an arrow moves it as one (%s)" % str(moved), moved.length() > 1.0
-		and wing.all(func(b: int) -> bool: return _builder.selection.has(b)))
+	# What was said and what had the keys, so a failure says why.
+	var focused: Control = root.gui_get_focus_owner()
+	_check("an arrow moves it as one (%s; said \"%s\"; keys with %s)" % [str(moved),
+		_shell.status.fields()["message"], focused.get_class() if focused != null else "the model"],
+		moved.length() > 1.0 and wing.all(func(b: int) -> bool: return _builder.selection.has(b)))
 	await _key(KEY_Z, true)
 	await _shot("wing_selected")
 
@@ -122,7 +131,11 @@ func _copies_follow() -> void:
 	_select_only(Array(wing))
 	await _key(KEY_D, true)
 	_check("Ctrl-D holds a copy of the wing", _builder.is_carrying())
-	var spot: Vector2 = _screen(Vector3(120, 0, -40))
+	# On the right if the panels leave it clear, else in front, nearer the
+	# bottom of the window, where nothing covers the model.
+	var spot: Vector2 = _clear_spot([Vector3(120, 0, -40), Vector3(120, 0, 40),
+		Vector3(160, 0, -40), Vector3(120, 0, -120), Vector3(160, 0, 40),
+		Vector3(0, 0, 180), Vector3(-80, 0, 200), Vector3(80, 0, 200), Vector3(0, 0, 260)])
 	await _move(spot)
 	await _move(spot + Vector2(1, 0))
 	await _click(spot + Vector2(1, 0))
@@ -142,7 +155,7 @@ func _copies_follow() -> void:
 	_check("...which lies on the left wing exactly, mirrored", bool(fit["exact"])
 		and bool(fit["mirrored"]))
 	_camera.set_view("default")
-	_camera.frame(AABB(Vector3(-240, 0, -200), Vector3(480, 80, 360)))
+	_camera.frame(AABB(Vector3(-240, 0, -200), Vector3(480, 80, 360)), 1.6)
 	await _frames(40)
 	await _shot("two_wings")
 
@@ -162,7 +175,8 @@ func _copies_follow() -> void:
 	await _click_tool("mode_place")
 	_builder.held_part = "3023"
 	_builder.held_color = 4
-	var on_plate: Vector2 = _screen(Vector3(-60, 8, -40))
+	var on_plate: Vector2 = _clear_spot([Vector3(-60, 8, -40), Vector3(-60, 8, 40),
+		Vector3(-160, 8, -40)])
 	await _move(on_plate)
 	await _move(on_plate + Vector2(1, 0))
 	var count: int = _count()
@@ -421,12 +435,47 @@ func _snapshot() -> Array:
 	return out
 
 
-## Where a brick's top middle is on screen.
+## A point on a brick's top that a person could click: on screen, not under
+## a panel (the model tree, the properties, the toolbar), and where a click
+## would land on that brick and not on one in front of it. The middle of
+## its top first, then points towards its corners.
+##
+## Its top middle alone was where this used to aim, which held while the
+## window was the size it was written at. On a smaller window, or a screen
+## that draws the interface larger, the panels over the model's corners
+## covered the wing, the click went to a panel, and the probe reported a
+## click that selected nothing as if the app had ignored it.
 func _on(brick_id: int) -> Vector2:
 	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 	var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
 	var box: AABB = (brick.transform * mesh.bounds).abs()
-	return _screen(Vector3(box.get_center().x, box.end.y - 4.0, box.get_center().z))
+	var top: float = box.end.y - 4.0
+	for share: Vector2 in [Vector2.ZERO, Vector2(0.3, 0.3), Vector2(-0.3, 0.3),
+			Vector2(0.3, -0.3), Vector2(-0.3, -0.3), Vector2(0.4, 0), Vector2(-0.4, 0),
+			Vector2(0, 0.4), Vector2(0, -0.4)]:
+		var at: Vector2 = _screen(Vector3(box.get_center().x + box.size.x * share.x, top,
+			box.get_center().z + box.size.z * share.y))
+		if _clickable(at) and _verbs.brick_at(at) == brick_id:
+			return at
+	print("    (no point of %s is clear of the panels to click)" % brick.part_id)
+	return _screen(Vector3(box.get_center().x, top, box.get_center().z))
+
+
+## Whether a click here would reach the model: inside the window, and not
+## over any panel.
+func _clickable(at: Vector2) -> bool:
+	return root.get_visible_rect().grow(-4.0).has_point(at) and not _main.call("_over_panel_at", at)
+
+
+## The first of these places on the ground whose spot on screen is clear of
+## the panels, for putting something down.
+func _clear_spot(places: Array) -> Vector2:
+	for place: Vector3 in places:
+		var at: Vector2 = _screen(place)
+		if _clickable(at):
+			return at
+	print("    (none of %s is clear of the panels)" % str(places))
+	return _screen(places[0])
 
 
 func _click_tool(name: String) -> void:
