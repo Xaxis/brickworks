@@ -531,8 +531,10 @@ that tells a 1 x N's post from a 2 x N's tube before it can refuse anything.
 Closed 2026-10-11: a part half a stud off is asked where the studs under it
 went (`_underside`), and refused when they stand against its walls; on a
 jumper it passes. Posts count, since they fit a hollow stud and a jumper's is
-hollow. Over the 328 fetched sets it refuses 59 of 2,828 half-stud seats,
-none on a jumper (`src/dev/half_studs_in_sets.gd`).
+hollow. Over the 328 fetched sets it refuses 31 of 2,828 half-stud seats,
+none on a jumper, and in every one the set file has the part's own plastic
+inside a stud — a sub-assembly or a part typed half a stud out
+(`src/dev/half_studs_in_sets.gd` checks each against the part's mesh).
 
 Run 15's three levers, 2026-10-11. **Horns that end square**: each horn of a
 cluster is capped two plates thick over its own outline at y + 3 x the piers'

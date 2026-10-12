@@ -3772,7 +3772,8 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 	var reaching: PackedVector2Array = under_it[0]
 	var sockets: PackedVector2Array = under_it[1]
 	var half: bool = _on_the_grid(across) and _on_the_grid(along)
-	if half and _none_off(reaching, under_it[2]):
+	if half and (not _underside_known(placement.part)
+			or _none_off(reaching, sockets, under_it[2])):
 		return
 	# A horn on its side or a pane has no stud facing up or down, so no
 	# grid of its own to be off; its corner is its cover's.
@@ -3829,10 +3830,15 @@ func _underside(model: Model, index: int, studs: Array) -> Array:
 	var frame: Transform3D = Transform3D.IDENTITY if section == null \
 		else section.placed().affine_inverse()
 	var down: Vector3 = (at.basis * Vector3.DOWN).normalized()
+	# Only a stud that stands where the part's underside does goes into it.
+	# One standing lower touches it with its tip at most, which is a stud
+	# under it and not in it (an inverted slope's, 4 LDU down, in 10197).
+	var bottom: float = (at * part.bounds.position).dot(-down) \
+		if absf(down.y) > 0.99 else -INF
 	for stud: Array in studs:
 		var way: Vector3 = (frame.basis * (stud[1] as Vector3)).normalized()
-		if way.dot(down) < -0.99:
-			var where: Vector3 = frame * (stud[0] as Vector3)
+		var where: Vector3 = frame * (stud[0] as Vector3)
+		if way.dot(down) < -0.99 and where.dot(-down) > bottom - 1.0:
 			reaching.append(Vector2(where.x, where.z) / STUD)
 	var local: Array = _underside_of(part)
 	for one: Vector2 in local[0]:
@@ -3900,11 +3906,11 @@ static func _underside_of(part: Lbm.PartMesh) -> Array:
 		blocked[Vector2i(tube.round())] = true
 	var takes: Array[Vector2] = tubes + holes
 	# A tube grips the four studs round it, which is what a 2 x N's is for,
-	# and a part whose foot is narrower than a stud sits there too: a plant
-	# (6255) or a pot (98374) between four studs of a round brick. The foot
-	# is narrow where the sockets came out off the tube's grid, or there
-	# are none (a train's buffer beam, 4022). Not a 1 x 1 round plate's,
-	# whose socket is its tube and which is a stud across.
+	# and a part whose foot is narrower than a stud sits there too: a pot
+	# (98374) between four studs, six times in 75969. The foot is narrow
+	# where the sockets came out off the tube's grid, or there are none.
+	# Not a 1 x 1 round plate's, whose socket is its tube and which is a
+	# stud across.
 	var narrow: bool = part.sockets.is_empty() \
 		or (grid == tubes and absf(shift.x) > 1.0 and absf(shift.y) > 1.0)
 	for tube: Vector2 in tubes if narrow else []:
@@ -3940,16 +3946,52 @@ const IN_A_SOCKET := 0.35
 const HALF_OFF := 0.8
 
 
-## Whether none of [param studs] is half a stud off everywhere in
-## [param takes]: each is in one, or under a stretch nothing says of.
-static func _none_off(studs: PackedVector2Array, takes: PackedVector2Array) -> bool:
+## Whether none of [param studs] stands against the part's plastic: each
+## is in a socket or anywhere else it [param takes] one, or under a stretch
+## nothing says of. One half a stud along from where it is taken is
+## against a wall, a tube's side or a post. One half a stud both ways is
+## where a 2 x N's tube is, or would be: a part that a stud grips by a
+## socket is seated, and that stud is in its cavity — under the cut end
+## of an angled tile (22385, five times in 10251 and 10277). Seated on
+## nothing, it is a plain part half a stud both ways off plain studs, its
+## edges on them.
+static func _none_off(studs: PackedVector2Array, sockets: PackedVector2Array,
+		takes: PackedVector2Array) -> bool:
+	var seated: bool = false
+	var across: bool = false
 	for stud: Vector2 in studs:
 		var nearest: float = INF
 		for take: Vector2 in takes:
 			nearest = minf(nearest, stud.distance_to(take))
-		if nearest > IN_A_SOCKET and nearest < HALF_OFF:
+		if nearest <= IN_A_SOCKET:
+			for socket: Vector2 in sockets:
+				seated = seated or stud.distance_to(socket) <= IN_A_SOCKET
+		elif nearest < 0.6:
 			return false
-	return true
+		elif nearest < HALF_OFF:
+			across = true
+	return seated or not across
+
+
+## Whether the half-stud rule can judge a part: one whose underside is the
+## grid of sockets, tubes and posts the catalogue describes. Plates,
+## bricks, tiles, slopes and their like are; an animal, a windscreen, a
+## train base or a plant is hollow underneath in ways it does not record,
+## and over the fetched real sets those were the parts it refused that
+## stood on nothing but air (a pig in 75980, a roll cage in 10197, a 6 x 28
+## base in 10233, flower stems between four studs in 2150, 4554, 6597).
+func _underside_known(part_id: String) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part_id))
+	return info != null and PLAIN_UNDERSIDES.has(info.family_category())
+
+
+const PLAIN_UNDERSIDES: Dictionary = {
+	"Brick": true, "Plate": true, "Tile": true, "Slope": true, "Wedge": true,
+	"Bracket": true, "Hinge": true, "Arch": true, "Cone": true, "Cylinder": true,
+	"Dish": true, "Panel": true, "Window": true, "Door": true, "Fence": true,
+	"Container": true, "Bar": true, "Support": true, "Turntable": true,
+	"Staircase": true, "Baseplate": true,
+}
 
 
 ## The least move, across and along in studs, that puts one of
