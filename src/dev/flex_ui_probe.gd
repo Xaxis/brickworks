@@ -86,7 +86,7 @@ func _a_hose() -> void:
 	await _frames(3)
 	_check("it opens the tool and its panel, asking for the first end (%s)" % _flex._told.text,
 		_flex.active and _flex.panel.visible and _flex.stage == "start")
-	_choose(_flex._kind_picker, "pneumatic_tube")
+	await _click((_flex._kind_buttons["pneumatic_tube"] as Button).get_global_rect().get_center())
 	var nine: int = -1
 	var lengths: Array = Flex.lengths_of(_library, "pneumatic_tube")
 	for n: int in lengths.size():
@@ -172,7 +172,7 @@ func _a_chain() -> void:
 	print("  a chain round two gears")
 	_shell.run("flex")
 	await _frames(3)
-	_choose(_flex._kind_picker, "chain")
+	await _click((_flex._kind_buttons["chain"] as Button).get_global_rect().get_center())
 	_check("for a chain it asks for sprockets (%s)" % _flex._told.text, _flex.stage == "sprockets")
 	var gears: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
 		return b.part_id == "3648b")
@@ -270,13 +270,6 @@ func _holes() -> Array:
 			out.append(anchor)
 	out.sort_custom(func(a: Flex.Anchor, b: Flex.Anchor) -> bool: return a.at.x < b.at.x)
 	return out
-
-
-func _choose(picker: OptionButton, key: String) -> void:
-	for n: int in picker.item_count:
-		if str(picker.get_item_metadata(n)) == key:
-			picker.select(n)
-			picker.item_selected.emit(n)
 
 
 func _shape(path: String) -> Array:

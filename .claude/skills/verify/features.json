@@ -250,6 +250,14 @@
       "tests": []
     },
     {
+      "id": "cli:hoses and chains by hand in a browser",
+      "kind": "cli",
+      "entry": "tools/web/flex_pose_flow.mjs",
+      "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, poses a crane and downloads its animation; the posing half needs the pose panel merged)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:idle check",
       "kind": "cli",
       "entry": "tools/web/idle_check.mjs",

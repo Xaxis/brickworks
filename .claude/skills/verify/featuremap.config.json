@@ -1125,6 +1125,13 @@
       "entry": "tools/web/render_open_check.mjs",
       "reach": "node tools/web/render_open_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=… --url=<a preview>/app: the Render dialog's first open, every frame timed)",
       "area": "view"
+    },
+    {
+      "label": "hoses and chains by hand in a browser",
+      "entry": "tools/web/flex_pose_flow.mjs",
+      "reach": "node tools/web/flex_pose_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/flex_pose_web   (with .env sourced: opens a small model, lays a tube between two pin holes and a chain round two gears, poses a crane and downloads its animation; the posing half needs the pose panel merged)",
+      "kind": "cli",
+      "area": "building"
     }
   ]
 }
