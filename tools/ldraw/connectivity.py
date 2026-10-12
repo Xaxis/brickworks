@@ -231,6 +231,9 @@ class Connection:
     # runs and how wide it is. Zero for every other kind.
     length: float = 0.0
     radius: float = 0.0
+    # How much of a circle a shaft or bore goes round, to at most 1. A
+    # curved top's underside is half a bore; a hole is all of one.
+    arc: float = 0.0
 
     def key(self) -> tuple:
         """A rounded identity, for de-duplicating coincident connectors."""
@@ -741,10 +744,11 @@ def _merge_rounds(pieces: list[_Piece]) -> list[Connection]:
                 continue
             found.append([kind, sum(m[2].radius for m in cluster) / len(cluster),
                           way, foot, low, high,
-                          all(m[2].continues for m in cluster), cluster[0][2].source])
+                          all(m[2].continues for m in cluster), cluster[0][2].source,
+                          min(arc, 1.0)])
 
     out: list[Connection] = []
-    for kind, radius, way, foot, low, high, continues, source in found:
+    for kind, radius, way, foot, low, high, continues, source, arc in found:
         # A tube's or a stud's bore is kept where it carries on one of the
         # part's own, at whatever radius: 3062b's bore is 4 under its stud
         # and 6 through the tube below it.
@@ -765,6 +769,7 @@ def _merge_rounds(pieces: list[_Piece]) -> list[Connection]:
             source=source,
             length=high - low,
             radius=radius,
+            arc=arc,
         ))
     return out
 

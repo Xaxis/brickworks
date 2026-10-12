@@ -47,6 +47,7 @@ func _initialize() -> void:
 	_check_the_parts_know(library)
 	_check_the_holes_are_open(library, builder)
 	_check_a_pin_holds(assistant)
+	await _check_a_round_brick_takes_a_pin(assistant)
 	_check_the_tool_says_where(assistant)
 
 	print("")
@@ -167,6 +168,54 @@ func _check_a_pin_holds(assistant: Assistant) -> void:
 	var said: String = str(assistant._check(model, true).get("feedback", ""))
 	_ok(said.contains("overlap"),
 		"a third brick in the same space is still an overlap")
+
+
+## A round brick with holes in its side: 6222 is 4x4 and 18897 6x6, and
+## each has a Technic pin hole at the middle of every side, a plate and a
+## quarter under the top. Their covers were their bounding boxes, solid
+## right through the holes, so a pin pushed into one was refused as an
+## overlap with the brick it was pinned to.
+##
+## Where the pin goes is read off the brick, not guessed: each brick sits
+## at the origin, its middle half its width in, and the hole on its +x
+## side runs along x at 14 LDU up, its mouth on the brick's face. A 3673
+## laid along x (rot 0) is 40 long and 16 across its collar, so its
+## corner cell is 20 back from the mouth and 8 under and beside the axis.
+func _check_a_round_brick_takes_a_pin(assistant: Assistant) -> void:
+	print("\na pin in the side of a round brick")
+	for brick: Array in [["6222", 80.0], ["18897", 120.0]]:
+		var width: float = brick[1]
+		var pin_at := Vector3(width - 20.0, 14.0 - 8.0, width * 0.5 - 8.0)
+		var said: String = await _check_design(assistant, brick[0], pin_at)
+		_ok(said.contains("buildable") and not said.contains("overlap"),
+			"a pin in a side hole of %s is buildable: %s" % [brick[0], said])
+
+		# The same pin a stud along the face, where there is wall and no
+		# hole: forgiving the joint must not forgive this.
+		said = await _check_design(assistant, brick[0], pin_at + Vector3(0, 0, 20))
+		_ok(said.contains("overlap"),
+			"...and the same pin a stud beside the hole, in %s's wall, overlaps: %s"
+				% [brick[0], said])
+
+
+## What check_design, the tool a design is checked with, says of a brick
+## at the origin and a 3673 along x with its corner cell at [param pin_at]
+## LDU, on one line.
+func _check_design(assistant: Assistant, brick: String, pin_at: Vector3) -> String:
+	var bricks: Array = [
+		{"part": brick, "color": 4, "x": 0, "y": 0, "z": 0},
+		{"part": "3673", "color": 0, "x": pin_at.x / 20.0, "y": pin_at.y / 8.0,
+			"z": pin_at.z / 20.0, "face": "up", "rot": 0},
+	]
+	var answer: Variant = await assistant.use_tool("check_design", {"bricks": bricks})
+	var text: String = ""
+	if answer is Array:
+		for block: Variant in answer:
+			if block is Dictionary and (block as Dictionary).get("type", "") == "text":
+				text += str((block as Dictionary)["text"])
+	else:
+		text = str(answer)
+	return text.replace("\n", " / ").left(240)
 
 
 ## Whether this pair stands up: no overlap, nothing floating.

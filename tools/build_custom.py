@@ -210,7 +210,7 @@ def summary(part_id: str, blob: bytes) -> dict:
         "bounds_max": [_r(v) for v in part.bounds_max],
         "triangles": part.triangle_count,
         "connectors": connectors,
-        "boxes": sorted([int(v) for v in box] for box in occ.to_boxes(solid)),
+        "boxes": sorted([int(v) for v in box] for box in occ.to_boxes(solid, connections)),
         "sockets": sorted([_r(x), _r(z)] for x, z in occ.bottom_sockets(solid)),
         "cells": solid.cell_count,
         "lbm_sha256": hashlib.sha256(blob).hexdigest(),

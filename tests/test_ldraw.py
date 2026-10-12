@@ -637,6 +637,122 @@ def test_collision_is_exact_on_the_lattice(library: Library) -> None:
     assert occ.collides(brick, brick, (0, 0, 0))
 
 
+def _built_cover(part: str) -> tuple[set, list]:
+    """A part's cover and connectors as the mesh build writes them: its
+    cells, from the boxes in the .lbm, and its connectors read back."""
+    import build_meshes
+    from ldraw import meshfile
+
+    if build_meshes._LIBRARY is None:
+        build_meshes._init(str(LDRAW_ROOT))
+    _id, blob, record = build_meshes._convert(part)
+    assert blob is not None, record
+    built = meshfile.read(blob)
+    cells = set()
+    for x0, y0, z0, w, h, d in built.boxes:
+        cells.update((x, y, z) for x in range(x0, x0 + w)
+                     for y in range(y0, y0 + h) for z in range(z0, z0 + d))
+    return cells, built.connectors
+
+
+def _in_shaft(cells: set, at: tuple, way: tuple, depth: float,
+              radius: float) -> list:
+    """The cover cells whose middles lie inside a shaft of ``radius``
+    running ``depth`` from ``at`` along ``way``, in the app's axes."""
+    found = []
+    lo = [min(at[n], at[n] + way[n] * depth) - radius for n in range(3)]
+    hi = [max(at[n], at[n] + way[n] * depth) + radius for n in range(3)]
+    span = [range(int(lo[n] // occ.CELL) - 1, int(hi[n] // occ.CELL) + 2) for n in range(3)]
+    for x in span[0]:
+        for y in span[1]:
+            for z in span[2]:
+                middle = [(v + 0.5) * occ.CELL for v in (x, y, z)]
+                gap = [middle[n] - at[n] for n in range(3)]
+                along = sum(gap[n] * way[n] for n in range(3))
+                if not 0.0 < along < depth:
+                    continue
+                off = sum((gap[n] - along * way[n]) ** 2 for n in range(3))
+                if off < radius * radius and (x, y, z) in cells:
+                    found.append((x, y, z))
+    return found
+
+
+# Round bricks with a Technic pin hole in the middle of each side, read off
+# the part files: 16 LDU of bore, 12 across, its middle 10 under the top
+# and 30 (6222) or 50 (18897) out from the centre, running in from the face.
+# They are drawn from plain cylinders, with no peghole primitive anywhere.
+ROUND_BRICK_HOLES = {"6222.dat": 30.0, "18897.dat": 50.0}
+
+
+@needs_numpy
+@pytest.mark.parametrize("part", sorted(ROUND_BRICK_HOLES))
+def test_a_round_brick_cover_leaves_its_side_holes_open(part: str) -> None:
+    """A Technic pin's shaft, 12 LDU across, pushed into each side hole of
+    a round brick with holes lies in none of the brick's cover. Both were
+    their bounding boxes, solid through all four holes, so every pin put
+    in one was refused as an overlap with the brick it was pinned to."""
+    cells, _connectors = _built_cover(part)
+    middle = ROUND_BRICK_HOLES[part]
+    for way in ((1.0, 0.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, -1.0)):
+        mouth = tuple(-(middle + 8.0) * w for w in way)
+        inward = way
+        at = (mouth[0], -10.0, mouth[2])
+        blocked = _in_shaft(cells, at, inward, 16.0, 6.0)
+        assert blocked == [], (part, way, len(blocked))
+        # And the cover is not hollowed: the wall a plate beside the hole
+        # is still there.
+        beside = (at[0] + 6.0 * inward[0] + 10.0 * abs(inward[2]),
+                  -10.0,
+                  at[2] + 6.0 * inward[2] + 10.0 * abs(inward[0]))
+        assert tuple(int(v // occ.CELL) for v in beside) in cells, (part, way)
+
+
+# A sample of the parts whose covers had a hole filled solid, from a scan of
+# every built part (.claude/skills/verify/features/geometry.md): holes drawn
+# by hand, and holes a Technic primitive declares in parts that were past
+# the box limit — long beams and bricks, a baseplate of 237, holes at an
+# angle, a wheel's axle hole.
+HOLED_PARTS = [
+    "6222.dat",      # Brick 4 x 4 Round with Holes
+    "18897.dat",     # Brick 6 x 6 Round with Holes
+    "30361a.dat",    # Cylinder 2 x 2 x 2 Robot Body
+    "7246.dat",      # Brick Round 2 x 2 x 2 Half Cylinder Extended Robot Body
+    "2791a.dat",     # Technic Steering Gear Holder
+    "32524.dat",     # Technic Beam 7
+    "32278.dat",     # Technic Beam 15
+    "3702.dat",      # Technic Brick 1 x 8 with Holes
+    "39369.dat",     # Technic Beam 19 x 11 Baseplate
+    "10288.dat",     # Technic Angle Connector (3 x 120 degree)
+    "100942.dat",    # Wheel 37 x 45 Hard-Plastic with 6 Curved Spokes
+]
+
+
+@needs_numpy
+@pytest.mark.parametrize("part", HOLED_PARTS)
+def test_a_pin_in_any_hole_misses_the_cover(part: str) -> None:
+    """Every pin and axle hole the part declares, and every hole drawn by
+    hand that a pin fits, takes a pin's shaft without it touching the
+    cover: 4 LDU either side of a declared hole's middle, which is all a
+    connector says of where the hole is, and the whole length of a drawn
+    one."""
+    cells, connectors = _built_cover(part)
+    checked = 0
+    for c in connectors:
+        if c.kind in ("pin_hole", "axle_hole"):
+            way = c.axis
+            at = tuple(c.pos[n] - 4.0 * way[n] for n in range(3))
+            depth = 8.0
+        elif c.kind == "bore" and abs(c.radius - 6.0) <= 0.5 and abs(c.axis[1]) < 0.01:
+            way, at, depth = c.axis, c.pos, c.length
+        else:
+            continue
+        checked += 1
+        # A pin's core, 4 LDU out from its axis: an axle's cross is 6 at
+        # its arms and 4 between them.
+        assert _in_shaft(cells, at, way, depth, 4.0) == [], (part, c.kind, c.pos)
+    assert checked > 0
+
+
 # -- things the library does not tell you plainly -----------------------
 
 

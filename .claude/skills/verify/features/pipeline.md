@@ -81,6 +81,18 @@ tools/export.sh linux                 # one of them
   (then `refresh_catalogue.py`, then `storage_parts.py` for the web, which has
   every changed mesh under a new name to upload).
 
+- **A change to which holes a cover opens moves only parts with holes.**
+  The covers fixed on 2026-10-11 (`geometry.md`: holes past the box limit,
+  holes drawn without a peghole) were rebuilt without a full build. The
+  candidates were read off the built `.lbm` files: every part whose cover
+  was one box and has a `pin_hole`, `axle_hole` or a sideways bore of radius
+  6, and every part with such a bore — 3,619 — plus 300 random controls.
+  Built with `--only` in 396 s on 8 jobs, 2,571 changed (only `mesh` and
+  `box_count`), and the other 1,348 came out identical before
+  `merge_subbuild.py` took them. 2,376 new meshes, 196 MB, are for
+  `storage_parts.py` to upload; `refresh_catalogue.py` afterwards changed no
+  part.
+
 - **`merge_subbuild.py` dropped a field it did not know refresh added.** It
   carries over a fixed list of refresh-only fields, and `in_sets` was missing,
   so the merge above first took it off 1,239 parts, which search and the bin
