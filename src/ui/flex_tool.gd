@@ -655,13 +655,7 @@ func _recover(pieces: Array) -> void:
 			matched = {"brick": 0, "kind": "free", "at": port.tip, "axis": port.out,
 				"reach": 0.0, "free": "yes", "lead": port.lead}
 		_ends.append(matched)
-	var real: float = Flex.item_length(kind, pieces)
-	var nearest: float = INF
-	for one: Dictionary in Flex.lengths_of(library, kind):
-		var off: float = absf(float(one["length"]) - real)
-		if off < nearest:
-			nearest = off
-			_real_id = str(one["id"])
+	_real_id = Flex.real_part(library, kind, pieces)
 	# The bend: where it lies now, if laying it afresh would not put it
 	# there. One point halfway along it, else two at the thirds, else
 	# three: the fewest that lay it where it lies.

@@ -39,6 +39,9 @@ var document: Booklet.Document
 
 var _studio: BookletStudio
 var _world: BrickWorld
+## The parts list the booklet ends with, which its steps' parts boxes agree
+## with.
+var _stock: Inventory
 var _main: BookletStudio.Stage
 
 
@@ -93,6 +96,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	document = Booklet.Document.new()
 	document.title = title
 	var stock: Inventory = Inventory.of(world, library, scenery)
+	_stock = stock
 	document.pieces = stock.pieces
 	document.credits = ("Part geometry from the LDraw™ Parts Library, © the LDraw community, "
 		+ "CC BY 4.0. Catalogue data: Rebrickable. LEGO® is a trademark of the LEGO Group, "
@@ -175,6 +179,19 @@ func _box(brick_id: int) -> AABB:
 ## A picture of every part in every colour the model has it in, at one
 ## scale, the way a parts box draws them. key -> Booklet.Lot (sized).
 func _part_pictures(stock: Inventory) -> Dictionary:
+	# A hose laid along a bend is listed as the straight hose, which the
+	# model never drew: on the web it may not be here yet.
+	var waiting: Dictionary = {}
+	for lot: Inventory.Lot in stock.lots:
+		if stock.items.values().has(lot) and library.mesh_for(lot.part_id) == null \
+				and library.request_mesh(lot.part_id, true):
+			waiting[lot.part_id] = true
+	var until: int = Time.get_ticks_msec() + 30000
+	while not waiting.is_empty() and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+		for id: String in waiting.keys():
+			if library.is_resident(id):
+				waiting.erase(id)
 	var lots: Dictionary = {}
 	var count: int = 0
 	for lot: Inventory.Lot in stock.lots:
@@ -251,7 +268,10 @@ func _lots_of(ids: PackedInt64Array, lots: Dictionary, times: int = 1) -> Array[
 	var order: Array[String] = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
+		# A hose laid along a bend is the one hose, not its rings.
+		var key: String = _stock.key_of(brick)
+		if key.is_empty():
+			continue
 		if not counts.has(key):
 			order.append(key)
 		counts[key] = int(counts.get(key, 0)) + times

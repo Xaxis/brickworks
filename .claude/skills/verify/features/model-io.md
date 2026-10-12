@@ -116,7 +116,27 @@ Whether what you built is still there tomorrow, and still means the same thing.
   BrickLink colour numbers are colors.json's `bricklink`, 197 colours from
   `tools/bricklink_colours.py` (see [parts](parts.md)); a lot in any other
   colour, or a made part, is left off and the status bar says how many and names
-  the colours ("BrickLink has no number for Pearl Red").
+  the colours ("BrickLink has no number for Pearl Red"). Parts go out under each
+  shop's own number where LDraw's `!KEYWORDS` record one
+  (`PartLibrary.shop_part`, `Inventory.Lot.bricklink_id` / `rebrickable_id`:
+  3069b is BrickLink's 3069, 3711 Rebrickable's 3711a), else LDraw's, less a
+  formed shape's `-f1`.
+- `flexible parts counted as sold` (`Inventory.of`): a sub-model whose bricks
+  are all one swept kind's segments (`Flex.items_in` — as the flex tool lays
+  one and as Studio and LDCad write one) is one lot of the kind's straight part
+  nearest its length (`Flex.real_part`): a 9L ribbed hose of 29 pieces is one
+  71917 (BrickLink and Rebrickable 78c09), a 9L pneumatic tube one 21826-f1
+  (BrickLink 21826, Rebrickable 5102c09.375), the flexible axle one 72892
+  (BrickLink x334c01), the 41L string one 71149 (x127c40pb01, 14226c41). A
+  chain or a tread stays its links. A segment loose in the model is itself.
+  The counts line (`Inventory.pieces_in`, `Main._on_rebuilt`, counted once a
+  change: 15 ms over Orthanc's 9,429 parts, and the build animation redraws
+  every frame), the booklet's
+  piece count and its parts boxes (`Inventory.key_of`: the item's first piece
+  stands for it) and the shared link's count (`api/share.js`, `FLEX_PIECES`)
+  say the same number. `inventory_probe` ("flexible parts, counted as they are
+  sold") lays each kind and a chain, checks the list, both shop lists, a file
+  round trip, and runs the server's own `checkModel` on the written file.
 
 ## How to reach it
 

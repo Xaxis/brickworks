@@ -255,7 +255,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   at, length the nearest real one's, the fewest bend points that lay it within
   a few LDU of where it lies. `window.brickworksFlex` says the stage, the item,
   and where on screen each connector, sprocket and bend point is. Probe:
-  `flex_ui_probe` (windowed).
+  `flex_ui_probe` (windowed). The parts list, the shop lists, the counts line,
+  the booklet and a shared link count a laid hose, tube, flexible axle or
+  string as the one part sold (`Flex.items_in`, `Flex.real_part`, see
+  [model-io](model-io.md)); a chain or a tread as its links.
 
 ## How to reach it
 
