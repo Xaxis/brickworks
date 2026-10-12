@@ -239,6 +239,13 @@
     },
     {
       "kind": "cli",
+      "label": "arrival check",
+      "entry": "tools/web/arrival_check.mjs",
+      "reach": "node tools/web/arrival_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "build the meshes",
       "entry": "tools/build_meshes.py",
       "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",

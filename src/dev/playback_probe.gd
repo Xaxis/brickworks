@@ -161,7 +161,7 @@ func _falcon(world: BrickWorld, library: PartLibrary, builder: Builder,
 	var start_ms: float = (Time.get_ticks_usec() - started) / 1000.0
 	_check("starting it takes %.0f ms (main planned it in 15,500)" % start_ms,
 		played and start_ms < 400.0)
-	_check("it lays the Falcon out in %d steps, at most %.0f s"
+	_check("it lays the Falcon out in %d steps, at most %.1f s"
 		% [playback._step_ends.size(), BuildPlayback.LONGEST_MS / 1000.0],
 		playback._step_ends.size() > 100
 		and playback._per_step * playback._step_ends.size() <= BuildPlayback.LONGEST_MS + 1.0)

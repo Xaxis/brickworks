@@ -64,8 +64,16 @@ picture the assistant is shown.
   also rebuilt first. Outside a reveal the world on screen rebuilds a big
   change a slice a frame (`BrickWorld.rebuilds_in_slices`, set by `Main`;
   ModelShot's copy rebuilds whole, because its picture must be). The whole
-  assembly takes at most `LONGEST_MS` (8 s), several steps to a frame on a big
-  model. `playback_probe` checks the order and the prefix on a small model, that
+  assembly takes at most `LONGEST_MS` (2.5 s), several steps to a frame on a
+  big model. A click or a key ends it, with the model whole. Nothing plays
+  where nobody can see it (`Main._watch_view`): a browser tab out of view
+  (`document.hidden`) or a minimised window. A tab that goes out of view
+  while it plays ends it. Out of view, `Main` also turns off the window's 3D
+  drawing (`disable_3d`). ModelShot's pictures have their own viewport, so
+  they still draw. `FramePace` slices are then 200 ms rather than half a
+  frame, so a design goes down at full speed while Claude waits.
+  `tools/web/arrival_check.mjs` times the model's arrival in a browser,
+  shown and hidden. `playback_probe` checks the order and the prefix on a small model, that
   only new bricks are hidden, and on the owner's Falcon Heavy
   (`src/dev/fixtures/falcon_heavy.json`, 4,242 parts) that starting takes
   milliseconds and no frame of it more than 30.
@@ -275,6 +283,19 @@ take, which is what made a design run give up on looking at itself.
   line is worked out only when `BrickWorld.revision` moved, and
   `Stability._check_levels` is one pass up and one down (3.3 s to 0.1 s on that
   model). `tools/web/freeze_check.mjs` times the same design in a browser.
+- **The model came up long after Claude said it was done.** The owner designs
+  from claude.ai with the Brickworks tab out of view. The connector keeps the
+  app running there, and it went on drawing every frame for nobody, then
+  played the whole build animation for nobody. Measured on the build before
+  2026-10-11 (`arrival_check.mjs`, SwiftShader):
+  - 300 parts: drawn 26 s after being looked at, 20 to 23 frames in;
+  - 2,000 parts: not drawn after 10 minutes, at 7 to 10 s of the app's own
+    work a frame;
+  - 4,242 parts: not drawn after 10 minutes, at up to 60 s a frame, and the
+    submit itself went unanswered.
+
+  Now every one of them is drawn in the first frame in view, in view or
+  out, on under 30 ms of the app's own work.
 
 - **The two renderers do not light in the same colour space.** Forward+ lights
   linear values and converts on output; Compatibility (the web build's) lights
