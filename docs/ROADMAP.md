@@ -768,6 +768,41 @@ design: round bricks are curved, not turned.
   plate. The roadmap's rule holds a sixth time: words move nothing, one call
   shaped like the work does. A rocket has that call now; a car does not.
 
+**Orthanc, held out against 10237.** The owner called the homepage's Orthanc
+(run 18) "the ugliest piece of shit I've ever seen". Its faults are any
+subject's: lit yellow windows in rows (an office block), black on black with
+nothing on it (a void), one straight shaft with a top stuck on (no
+silhouette), and rubble ringed round its foot (a base as an afterthought).
+LEGO's 10237 is 66% black and 13% dark bluish grey, the grey on its ledges and
+setbacks, and breaks its black with 86 grille bricks, 63 headlight bricks and
+58 bricks with a handle; it steps in at each storey and its horns are blades.
+(Commons has no picture of 10237, so `find_reference` cannot fetch one; it was
+judged against LEGO's own product photo.) Each fault is now a check by name in
+every check's advice, in the critique and the guidance; the prism's windows
+are off unless asked and dark slits when they are; a black wall's second tone
+is a course of grey every eight, never sprinkled (`orthanc_rk1` took a
+scattered grey and read as speckle); and a prism takes `"storeys"`, stepping
+in on grey ledges in one call.
+
+| run | parts | shapes | colours | black | grey 72 | sideways | angled | curved | plain |
+|---|---|---|---|---|---|---|---|---|---|
+| run 18, the homepage's | 8,717 | 61 | 13 | 78% | 11% | 12% | 61% | 16% | 56% |
+| `orthanc_rk1` (faults named, grey scattered) | 4,412 | 57 | 15 | 77% | 17% | 19% | 38% | 14% | 50% |
+| `orthanc_rk2` (grey in bands, storeys) | 7,222 | 61 | 18 | 83% | 11% | 17% | 33% | 11% | 55% |
+| *real fantasy sets, median* | | *109* | *23* | | | *19%* | *27%* | *20%* | *28%* |
+
+`orthanc_rk2` used every new call: `"storeys": {"count": 3, "in": 1}`,
+`band_color` 72, `windows` in Trans-Brown, rooms from the top storey's radius
+(Saruman by the palantír, Gandalf on the summit, a dungeon), a nameplate and
+braziers. By eye it is better than run 18 on each named fault — no window
+grid, no speckle, a tower that narrows storey by storey on grey ledges — and it
+is still not a display set: it chose a core of radius 7 with 4.5 piers, so it
+is tall and thin; its horns are the generated thin spikes, not 10237's blades;
+its base is two rock piles on a grey plate; and in software rendering its
+faces read as one black mass (12 grille bricks against 10237's 86). Not for
+the homepage. Pictures: `shots/runs/orthanc_rk{1,2}_{corner,front,back}.png`
+in this worktree; the homepage's are `web/orthanc-{corner,back}.webp`.
+
 **What is left, by what it would move:**
 
 1. **A shaped body for vehicles, in one call** — the car's and the hull's
@@ -783,6 +818,16 @@ design: round bricks are curved, not turned.
    parts for bricks.
 5. A round's Technic course in the body's own round section, not a square one;
    and a 6-wide round tied without rows of notches.
+6. **Orthanc's crown and base as calls**: horns as blades that flare out from
+   the summit, claws round the upper storeys, and a composed plinth (ribbed,
+   flaring buttresses, steps to the door) instead of rock piles — the faults
+   are named in every check, but nothing yet lays them, and words have not
+   moved a design once.
+7. Two prism faults found on the way, neither from storeys: a twelve-sided
+   prism of radius 8 overlaps itself (14 problems, 36 pieces), and
+   an octagonal core of radius 7 with piers of 4.5 (the least radius) overlaps
+   and comes apart in six pieces. A run that asks for either is told so by the
+   check, but the pattern should not lay them.
 
 ## Long term: custom elements
 
