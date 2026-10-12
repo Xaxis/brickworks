@@ -31,6 +31,8 @@ var outliner: Outliner
 var banner: AssemblyBanner
 var grid: StudGrid
 var tour: Tour
+## My collection: src/ui/collection_dialog.gd.
+var collection: CollectionDialog
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -76,7 +78,8 @@ const MENUS: Array = [
 		"ortho", "grid", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
-	["Build", ["timeline", "instructions", "parts_list", "-", "make_submodel",
+	["Build", ["timeline", "instructions", "parts_list", "-", "collection", "collection_need",
+		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "minifig", "mosaic",
 		"brickify", "part_maker",
 		"-", "rotate_held", "tip_held"]],
@@ -167,6 +170,15 @@ func build(column: Control, stack: PanelStack, notices: Control) -> void:
 	tour = Tour.new()
 	tour.shell = self
 	app.get_node("HUD").add_child(tour)
+
+	# What the person owns, what this model needs of it, what they could
+	# build: src/ui/collection_dialog.gd. The parts list leads there too.
+	collection = CollectionDialog.new()
+	collection.said.connect(func(text: String) -> void: bar.say(text))
+	collection.attach(app)
+	var parts_list: Variant = app.get("_inventory")
+	if parts_list is InventoryPanel:
+		(parts_list as InventoryPanel).need_wanted.connect(func() -> void: collection.open("need"))
 
 	# Every text field gives the keys back: src/ui/focus_guard.gd.
 	add_child(FocusGuard.new())
@@ -410,6 +422,12 @@ func _define() -> void:
 		return (app.get("_steps") as StepsBar).is_playing_back())
 	_add("parts_list", "Parts list", KEY_P, func() -> void: bar.parts_wanted.emit(), something,
 		"Every part this model needs, by colour and count")
+	_add("collection", "My collection…", 0, func() -> void: collection.open("own"), Callable(),
+		"The sets and parts you own: from Rebrickable, BrickLink, or typed in")
+	_add("collection_need", "What do I need?…", 0, func() -> void: collection.open("need"),
+		something, "What this model uses that you do not own, and what could stand in")
+	_add("collection_build", "What can I build?…", 0, func() -> void: collection.open("build"),
+		Callable(), "Models ranked by how much of each you already own")
 	var assembly: Callable = func() -> bool:
 		return not assemblies.selected_assembly().is_empty()
 	_add("make_submodel", "Make a sub-assembly…", CTRL | KEY_G,
@@ -754,6 +772,11 @@ func controls_by_name() -> Dictionary:
 		out.merge(outliner.controls_by_name())
 	if banner != null:
 		out.merge(banner.controls_by_name())
+	if collection != null:
+		out.merge(collection.controls_by_name())
+	var parts_list: Variant = app.get("_inventory") if app != null else null
+	if parts_list is InventoryPanel:
+		out.merge((parts_list as InventoryPanel).controls_by_name())
 	return out
 
 

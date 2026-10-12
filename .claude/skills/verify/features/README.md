@@ -10,7 +10,7 @@ files here hold the recipes. Each declares the ids it covers in a
 `<!-- covers: -->` line, and `featuremap check` fails when an id has no recipe or
 a recipe covers an id that no longer exists.
 
-A hundred and twenty-eight features in sixteen areas. The analyser sees Python, the API routes and
+A hundred and forty features in seventeen areas. The analyser sees Python, the API routes and
 the main scene; **everything inside the Godot app is declared by hand** in
 `../featuremap.config.json`, because `featuremap` has no GDScript or `.tscn`
 reader. If you add a scene, a panel or a probe-worth-of-behaviour, add it there —
@@ -86,6 +86,10 @@ Never driven from here:
 - [prints](prints.md): printed parts and stickers of one's own on any face —
   drawn, or brought in from a picture — LDraw TEXMAP files with their pictures
   in the model, and the sticker sheet printed at true size.
+- [collection](collection.md): what a person owns, kept with their account —
+  imported from Rebrickable or BrickLink or typed in — what the open model needs
+  that they do not have and what could stand in, the shortfall as a wanted
+  list, and the models they could build.
 
 ## Entry contract
 

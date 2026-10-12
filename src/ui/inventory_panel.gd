@@ -17,8 +17,11 @@ var _rows: VBoxContainer
 var _heading: Label
 var _stock: Inventory
 var _title: String = "Model"
+var _need: Button
 
 signal closed
+## The parts against the person's collection: CollectionDialog.
+signal need_wanted
 
 
 func _ready() -> void:
@@ -51,6 +54,15 @@ func _build() -> void:
 	_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_heading)
 
+	_need = Button.new()
+	_need.text = "What do I need?"
+	_need.tooltip_text = "These parts against your collection: what is short, and what could stand in"
+	_need.add_theme_font_size_override("font_size", 11)
+	_need.pressed.connect(func() -> void:
+		hide_list()
+		need_wanted.emit())
+	header.add_child(_need)
+
 	var csv := Button.new()
 	csv.text = "Save as CSV"
 	csv.tooltip_text = "A spreadsheet, or a shop's bulk-add box"
@@ -78,6 +90,11 @@ func _build() -> void:
 
 func is_showing() -> bool:
 	return visible
+
+
+## Where its buttons are, for a browser test to press them as a person does.
+func controls_by_name() -> Dictionary:
+	return {"parts_need": _need} if visible and _need != null else {}
 
 
 ## Take stock and show it.

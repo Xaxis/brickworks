@@ -201,6 +201,43 @@ on what claude.ai documents (`docs/CONNECTING.md`, every claim sourced):
   would make Brickworks findable inside Claude with a permanent Connect
   page. Not needed for any of the above.
 
+## My collection (2026-10-12)
+
+What a person owns, kept with their account; what the open model needs
+that they do not have; what they could build. Build, My collection… (and
+the parts list's What do I need?). Recipe and proofs:
+`.claude/skills/verify/features/collection.md`.
+
+- **Imports**, all parsed and mapped into LDraw's numbers by
+  `api/collection.js`: a Rebrickable CSV export (sets or parts), a BrickLink
+  XML (wanted list or inventory), set numbers typed in, and a person's own
+  Rebrickable account (their key and user token; the app calls
+  rebrickable.com itself, the key goes nowhere else and is not kept, and the
+  deploy's content security policy now names rebrickable.com).
+- **Sets expand** through Rebrickable's downloaded inventories
+  (`tools/collection_data.py`, 21,173 sets with their minifigures, sharded
+  under `assets/generated/sets/`, served to the web at `/sets/`).
+  `tools/fetch_data.sh` now also keeps `inventory_minifigs` and
+  `inventory_sets` (fetched once, 2026-10-12, under the once-a-day rule).
+- **The assistant**: a brief with "my collection" (or "parts I own" …) is
+  told what is owned, and `search_parts` puts owned parts first with how
+  many of each colour (`Assistant.owned`; four lines in `_search` and
+  `opening_for`).
+- **Database, applied to the live project 2026-10-12, additive only**
+  (`supabase/collection.sql`, through `tools/apply_sql.mjs` on the IPv4
+  pooler, one transaction): table `public.collections` (`owner uuid` primary
+  key references `auth.users(id)` on delete cascade, `sets jsonb`, `parts
+  jsonb`, `updated_at timestamptz`; checks that both are arrays, at most
+  5,000 sets and 20,000 lots), row security on, policies
+  `collections_read_own`, `collections_insert_own`, `collections_update_own`,
+  `collections_delete_own` (all `to authenticated`, `auth.uid() = owner`),
+  grants `authenticated`: SELECT, INSERT, UPDATE, DELETE and nothing for
+  `anon`. The project has no Supabase CLI migration table, so it is recorded
+  here. Nothing existing was changed.
+- **Not yet proven:** a real Rebrickable account (none here has a key); the
+  client is proven against a stand-in answering in Rebrickable's documented
+  shape. The web flow runs on a preview, not production.
+
 ## What the work found
 
 - **The levers that moved runs**, each measured: detailing per assembly;
@@ -346,6 +383,7 @@ says whether everything agrees with it.
 | Signing in, proven in a browser | `tools/web/account_flow.mjs` (and every flow starts signed in: `tools/web/browser.mjs`) |
 | Desktop releases: version, build, smoke, publish | `tools/release.py`, the cycle in `docs/RELEASING.md` |
 | The download page | `web/download.html`, fed by `web/releases.json` |
+| My collection | `src/collection/`, `src/ui/collection_dialog.gd`, `api/collection.js`, `supabase/collection.sql`, `tools/collection_data.py` |
 
 ## Cleanup state
 
