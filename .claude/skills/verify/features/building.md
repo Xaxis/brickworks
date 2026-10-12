@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-assemblies, ui:model tree, ui:measure -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:sub-assemblies, ui:model tree, ui:measure -->
 
 ## Sub-features
 
@@ -100,7 +100,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with Shift, up (20/8, 10/8, 10/4, 2/2 LDU). Turn (90°, 45°, 15°, 5°) is how far
   `R` and the Rotate tool turn a selection (`Builder.turn_selection_by`; off a
   right angle the parts stand off the grid as turned covers). The part in hand
-  always turns a quarter.
+  turns a quarter on the studs; on a round joint 45°, or the turn step if
+  finer (`snap onto a joint`).
 - `lock parts`: `L` (Edit, Lock the selection) locks it: no click, box,
   select-by, tool, paint or removal touches it until `Shift-L` unlocks
   everything (`Builder.locked`). Not saved with the model; Open forgets it.
@@ -160,6 +161,30 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   unselected one (`Joints.rounds`). It may press only on the part it is joined
   to; anything else refuses it. The parts stand off the grid afterwards, held
   as turned covers (`Builder.swing_selection`).
+- `snap onto a joint` (`src/assembly/joint_snap.gd`, `Builder._onto_a_joint`):
+  as BrickLink Studio does it. With a part in hand that has a Technic or a
+  bar end, aimed at a connector it fits, the ghost goes onto it: a pin into a
+  pin hole (collar at the near mouth), an axle into an axle hole or a round
+  one (through it, its tip at the far mouth), a beam's or a gear's hole onto
+  a pin (against the collar) or an axle's tip (flush), a clip onto a bar
+  where the pointer is along it (half-plate steps) and a bar into a clip or
+  a hollow stud. The connector aimed at is the one nearest the pointer's
+  line, within 12 LDU, and not behind what the line met. `R` turns the part
+  about the joint — a cross in a cross by quarters, anything round by 45°
+  or the toolbar's turn step if finer — and `T` takes the next way onto it
+  (in from the other face, the other way up, the next hole of a beam,
+  the other end of a bar). Until either is pressed, the way with room that
+  joins the most parts is found (a beam aimed at one of two pins goes on
+  both). Whether it has room is `Builder.room_for`, check_design's own rule
+  (`Assistant._joints_out`): nothing in its way but a part it is pinned to
+  (`Joints.both_ways`), a frame it nests in, or something round it fits
+  where the two meet inside the round — and, on a joint, not below the
+  ground. The same rule now decides the ordinary ghost too. The status
+  bar says what it is on ("Placing Technic Pin on the pin hole of Technic
+  Brick 1 x 2 with Hole") and what R and T do there. Probe:
+  `technic_hand_probe`. In a browser: `tools/web/technic_flow.mjs`, which
+  aims each part at the connector where the page says it is
+  (`brickworksState.joints`, with `on_joint` and `can_place`).
 - `place under a part and on side studs`: aimed at a part's underside, the part
   in hand hangs under it, the top of its body against it (never below the
   ground). A part tipped with `T` so its underside faces a wall with studs on it
@@ -201,16 +226,33 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/history_probe.gd
 # where a brick lands when you point at a stud
 godot --headless --path . --script src/dev/snap_probe.gd
+# Technic by hand: a pin into a hole, an axle through a beam with a gear on
+# it, a beam onto two pins, a clip on a bar and a bar in a clip, each aimed
+# at, clicked, joined, and passed by check_design; the same pin a stud off
+# and the same clip or bar 2 LDU off the line refused by both
+godot --headless --path . --script src/dev/technic_hand_probe.gd
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `snap` says "hand placement lands where the assistant would put it",
+`technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
 `handbuild` says "by hand: ... all work as a person uses them". Look at
 `shots/handbuild/*.png` too: the ghosts in their colours, `shell.png`,
 `edit_menu.png`, `tools_menu.png`, `select_tool.png`, `properties.png`,
 `grid.png`, `tour.png`, the Select by and History menus, the seat offer and
 the 1280 x 720 window. In a browser, the deploy's `fit_check.mjs` finds New
-and Save on the toolbar at every size.
+and Save on the toolbar at every size, and on a preview
+
+```sh
+node tools/web/technic_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS   # .env sourced
+```
+
+builds two beams joined by pins, an axle through the upper one with a gear
+on its top, and a bar in a hollow stud with a clip on it, every part aimed
+at its connector and clicked, and ends "technic flow (1x): two beams joined
+by pins, an axle with a gear and a clip on a bar, built by hand" with
+pictures in `shots/technic_web/` (2026-10-12: 33 checks, nine parts,
+"stands up").
 
 For the scene itself, launch it and read the brick count in the status bar: with
 `--model=models/car.ldr` it is 61 parts, which is what
@@ -235,5 +277,21 @@ For the scene itself, launch it and read the brick count in the status bar: with
 - **The system clipboard is the person's.** `handbuild_probe` copies, which writes
   LDraw to it; it keeps what was there and puts it back at the end. On a real
   desktop session a probe run still briefly replaces it.
+- **A connector is aimed at by the pointer's line, not by the lattice.** A
+  hole is empty in the cover, so a line looking down it meets nothing, or
+  the baseplate behind; the hole is found by its distance from the line
+  (`JointSnap.aimed_at`), limited to a little past whatever the line did
+  meet. Hidden parts' connectors are skipped as their cells are.
+- **Connector conventions differ by kind, so the pose reads the part.** A
+  pin's connector is at its collar, an axle's at each tip (3705) but an
+  axle pin's at its collar (3749), a pin hole's at its middle, 6632's axle
+  hole at its face. `JointSnap.ends_of` takes a hole's depth from its own
+  bores (a pin hole is a bore 6 across with an 8 counterbore at each mouth)
+  or the part's thickness through it, and whether a male end is a collar or
+  a tip from how far the part goes on past it.
+- **A plate with a handle (2540) takes no clip, by hand or by check_design.**
+  Its cover fills the loop of the handle, as `fill_cavities` fills any hole
+  running upright, so a clip round that bar overlaps it outside the round.
+  A free bar (30374 in a 3062b's hollow stud, or in a clip) takes one.
 - **New `class_name` files need `godot --headless --path . --import --quit`** before
   a probe can name them; a checkout's class cache is only refreshed by an import.

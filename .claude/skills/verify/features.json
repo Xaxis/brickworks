@@ -950,6 +950,14 @@
       "tests": []
     },
     {
+      "id": "ui:snap onto a joint",
+      "kind": "ui",
+      "entry": "src/assembly/joint_snap.gd",
+      "reach": "godot --headless --path . --script src/dev/technic_hand_probe.gd  (a pin, axle, beam, clip or bar in hand, aimed at a hole, pin, axle or bar; R turns it about the joint, T the other way on)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:status bar",
       "kind": "ui",
       "entry": "src/ui/status_bar.gd",

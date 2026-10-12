@@ -185,6 +185,26 @@ func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 	return out
 
 
+## Where on the page each connector a part could be put onto is: a hole's
+## middle, the middle of what a pin or an axle has free, a bar's or a
+## clip's middle (JointSnap.End.middle). At most 160, in front of the view.
+func _joint_places(to_window: Transform2D, per_css: float) -> Array:
+	var out: Array = []
+	if _builder == null or _camera == null:
+		return out
+	for site: JointSnap.End in _builder.joint_sites():
+		if out.size() >= 160:
+			break
+		var point: Vector3 = site.middle()
+		if _camera.is_position_behind(point):
+			continue
+		var brick: BrickWorld.Brick = _world.get_brick(site.brick)
+		var at: Vector2 = to_window * _camera.unproject_position(point) / per_css
+		out.append({"brick": site.brick, "part": brick.part_id if brick != null else "",
+			"kind": site.kind, "x": roundi(at.x), "y": roundi(at.y)})
+	return out
+
+
 ## Where the assistant's controls are on screen, put where the page can
 ## read it: window.brickworksControls, centres in CSS pixels, visible ones
 ## only. Web builds only, twice a second.
@@ -286,6 +306,12 @@ func _tell_page() -> void:
 		# ...and where on the page each one's own parts are, since opening
 		# a model frames the view on it afresh.
 		"places": _assembly_places(to_window, per_css),
+		# Where the connectors a part can be put onto are on the page, and
+		# whether the ghost is on one and may go down there, for
+		# tools/web/technic_flow.mjs to aim a pin at a hole as a person does.
+		"joints": _joint_places(to_window, per_css),
+		"on_joint": _builder.is_on_joint(),
+		"can_place": _builder.can_place(),
 		# Where the view is: how far it has turned in all (not wrapped),
 		# its tilt, its distance and what it looks at, for
 		# tools/web/nav_flow.mjs to see a drag turn it all the way round.

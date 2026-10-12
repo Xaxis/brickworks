@@ -1325,6 +1325,7 @@ func _put_carried() -> int:
 
 ## Work out where the held part would go, given a ray from the camera.
 func update_preview(origin: Vector3, direction: Vector3) -> void:
+	_joint_site = null
 	if is_carrying():
 		_ghost.visible = false
 		_ghost_valid = false
@@ -1344,6 +1345,9 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	_hovered = hit.brick_id
+	if _onto_a_joint(part, origin, direction.normalized(), hit):
+		_show_ghost(part)
+		return
 
 	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
 	var target: Vector3
@@ -1366,8 +1370,11 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_ghost_transform = onto if onto != null else _settle(part, basis, target, hit)
 	_seated_on = hit.brick_id if onto != null else 0
 	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
-		if _seated_on != 0 else not lattice.collides_boxes(boxes_for(part, _ghost_transform))
+		if _seated_on != 0 else room_for(held_part, _ghost_transform)
+	_show_ghost(part)
 
+
+func _show_ghost(part: Lbm.PartMesh) -> void:
 	_ghost.mesh = part.surfaces[0]
 	_ghost.transform = _ghost_transform
 	_ghost.visible = true
@@ -1375,6 +1382,236 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	_ghost_material.set_shader_parameter("tint", tint)
 	_ghost_material.set_shader_parameter("valid", _ghost_valid)
 	preview_changed.emit(held_part, _ghost_valid)
+
+
+# -- onto a joint: a pin into a hole, a beam onto pins, a clip on a bar --
+
+
+## How far the Turn setting on the toolbar turns a selection, in degrees.
+## A part on a round joint turns by it when it is finer than
+## JointSnap.ROUND_STEP; a cross in a cross always turns by quarters.
+var turn_step: float = 90.0
+
+## The end of a part down that the ghost is on, or null when it is not on
+## one: what R turns about and T flips over, instead of the part's own up.
+var _joint_site: JointSnap.End = null
+var _joint_words: String = ""
+## Which of the ways onto the joint (JointSnap.choices) and how many steps
+## turned about it, as R and T leave them.
+var _joint_way: int = 0
+var _joint_roll: int = 0
+## Whether R or T has been pressed on this joint. Until one has, the way
+## that has room and joins the most is found for the person; after, what
+## they chose is shown, red where it does not fit.
+var _joint_chosen: bool = false
+var _joint_key: String = ""
+var _joint_part: String = ""
+## The last pose worked out, by what it was worked out from, so a pointer
+## moving over one joint does not search again at every motion.
+var _joint_last: String = ""
+var _joint_last_at: Transform3D = Transform3D.IDENTITY
+var _joint_last_fits: bool = false
+## Every end of every part down, and the world's revision it was read at.
+var _sites: Array = []
+var _sites_at: int = -1
+var _sites_world: BrickWorld = null
+
+
+## Whether the ghost is on a joint, where R turns the part about it.
+func is_on_joint() -> bool:
+	return _joint_site != null
+
+
+## What the ghost is on, in words, or "": "the pin hole of Technic Brick
+## 1 x 2 with Hole".
+func joint_words() -> String:
+	return _joint_words if _joint_site != null else ""
+
+
+## Every connector of every part down that a part could be put onto, read
+## again only when the model has changed.
+func joint_sites() -> Array:
+	if world != null and (_sites_at != world.revision or _sites_world != world):
+		_sites = JointSnap.sites_in(world, library)
+		_sites_at = world.revision
+		_sites_world = world
+	return _sites
+
+
+## Put the ghost on the joint the pointer is aimed at, if the part in hand
+## has an end for one there. False, leaving the ghost to the studs, when
+## it is not aimed at one or the part has no ends.
+func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
+		hit: BrickLattice.Hit) -> bool:
+	_joint_site = null
+	var held: Array = JointSnap.ends_of(part)
+	if held.is_empty() or world == null:
+		return false
+	joint_sites()
+	# A little past what the line met: a hole's middle is inside the part
+	# whose face was struck.
+	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
+	var site: JointSnap.End = JointSnap.aimed_at(_sites, held, origin, direction, before,
+		lattice.unseen)
+	if site == null:
+		return false
+	var options: Array = JointSnap.choices(held, site, origin, direction)
+	if options.is_empty():
+		return false
+	var key: String = "%d|%s|%s|%s" % [site.brick, site.kind, site.at, site.axis]
+	if held_part != _joint_part:
+		_joint_part = held_part
+		_joint_way = 0
+		_joint_roll = 0
+		_joint_chosen = false
+	if key != _joint_key:
+		_joint_key = key
+		_joint_chosen = false
+	var basis: Basis = BrickLattice.basis_for(held_face, held_rotation)
+	if _joint_asked(key, basis, options) != _joint_last:
+		_joint_last_at = _joint_pose(options, posmod(_joint_way, options.size()),
+			_joint_roll, site, basis)
+		_joint_last_fits = room_for(held_part, _joint_last_at, true)
+		if not _joint_chosen:
+			_best_on_joint(options, site, basis)
+		_joint_last = _joint_asked(key, basis, options)
+	_joint_site = site
+	var struck: BrickWorld.Brick = world.get_brick(site.brick)
+	var info: PartLibrary.PartInfo = library.parts.get(struck.part_id) \
+		if struck != null else null
+	_joint_words = JointSnap.describe(site,
+		Inventory._tidy(info.name) if info != null else "a part")
+	_hovered = site.brick
+	_seated_on = 0
+	_ghost_transform = _joint_last_at
+	_ghost_valid = _joint_last_fits
+	return true
+
+
+## Everything the pose on a joint is worked out from, in one string: the
+## joint, the model as it stands, the part and how it is held, what R and
+## T have chosen, the turn step, and the first way on (which says which
+## face is near and where along a bar the pointer is).
+func _joint_asked(key: String, basis: Basis, options: Array) -> String:
+	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
+		_joint_way, _joint_roll, _joint_chosen, turn_step, options[0][1], options[0][2]]
+
+
+## The pose for one of the ways onto a joint, turned so many steps.
+func _joint_pose(options: Array, way: int, roll: int, site: JointSnap.End,
+		basis: Basis) -> Transform3D:
+	var option: Array = options[way]
+	var step: float = JointSnap.step_of(option[0], site, turn_step)
+	return JointSnap.pose(option[0], site, int(option[1]), float(option[2]),
+		roll * step, basis)
+
+
+## Of the ways onto the joint at each quarter turn, the one with room that
+## joins the most parts, first found on a tie, leaving R and T on it.
+## Bounded, since a long beam has a way for each hole: a quarter turn of
+## each of a dozen of them.
+const _JOINT_TRIES := 48
+
+
+func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
+	var best_joins: int = -1
+	if _joint_last_fits:
+		best_joins = _joins_made(_joint_last_at)
+	var tries: int = 0
+	for n: int in options.size():
+		var way: int = posmod(_joint_way + n, options.size())
+		var step: float = JointSnap.step_of(options[way][0], site, turn_step)
+		var quarter: int = maxi(roundi(90.0 / step), 1)
+		for q: int in 4:
+			if n == 0 and q == 0:
+				continue
+			tries += 1
+			if tries > _JOINT_TRIES:
+				return
+			var roll: int = _joint_roll + q * quarter
+			var at: Transform3D = _joint_pose(options, way, roll, site, basis)
+			if not room_for(held_part, at, true):
+				continue
+			var joins: int = _joins_made(at)
+			if joins > best_joins:
+				best_joins = joins
+				_joint_way = way
+				_joint_roll = roll
+				_joint_last_at = at
+				_joint_last_fits = true
+
+
+## How many parts down the part in hand would be joined to at a pose, by a
+## pin, an axle or something round in something round.
+func _joins_made(at: Transform3D) -> int:
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	var box: AABB = (at * part.bounds).abs().grow(BrickLattice.CELL * 2.0)
+	var reach := PackedInt32Array([floori(box.position.x / BrickLattice.CELL),
+		floori(box.position.y / BrickLattice.CELL), floori(box.position.z / BrickLattice.CELL),
+		ceili(box.end.x / BrickLattice.CELL), ceili(box.end.y / BrickLattice.CELL),
+		ceili(box.end.z / BrickLattice.CELL)])
+	var entries: Array = [[0, at, part]]
+	for other: int in lattice.near_bounds(reach):
+		var brick: BrickWorld.Brick = world.get_brick(other)
+		if brick != null:
+			entries.append([other, brick.transform, library.mesh_for(brick.part_id)])
+	var joined: Dictionary = (Joints.both_ways(entries).get(0, {}) as Dictionary).duplicate()
+	joined.merge(Joints.rounds(entries).get(0, {}))
+	return joined.size()
+
+
+## Whether a part has room at a place: nothing in its way but parts it is
+## joined to the way real parts are joined, by the rule check_design uses
+## (Assistant._joints_out) and no more — a pin in the hole it lines up
+## with, an axle in its axle hole, a pane in its frame, and something
+## round in something round that fits it where the two meet inside the
+## round. [param grounded] refuses it below the ground as well, which a
+## part on a joint can be and one on the studs never is.
+func room_for(part_id: String, at: Transform3D, grounded: bool = false) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return false
+	var packed: PackedInt32Array = boxes_for(part, at)
+	if grounded:
+		var n: int = 1
+		while n < packed.size():
+			if packed[n] < GROUND_CELL:
+				return false
+			n += 6
+	var blockers: PackedInt64Array = lattice.blockers_boxes(packed)
+	if blockers.is_empty():
+		return true
+	var entries: Array = [[0, at, part]]
+	for other: int in blockers:
+		var brick: BrickWorld.Brick = world.get_brick(other) if world != null else null
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			return false
+		entries.append([other, brick.transform, mesh, brick.part_id])
+	var pinned: Dictionary = Joints.both_ways(entries).get(0, {})
+	var turning: Dictionary = Joints.rounds(entries).get(0, {})
+	var mine: String = library.resolve(part_id)
+	for n: int in range(1, entries.size()):
+		var other: int = entries[n][0]
+		var there: Transform3D = entries[n][1]
+		if pinned.has(other):
+			continue
+		var theirs: String = library.resolve(str(entries[n][3]))
+		if Assistant._seated_in(mine, at, theirs, there) \
+				or Assistant._seated_in(theirs, there, mine, at):
+			continue
+		if turning.has(other):
+			var square: bool = BrickLattice.is_square_to_grid(at.basis) \
+				and BrickLattice.is_square_to_grid(there.basis)
+			var own: Array = [] if square else [
+				[at, boxes_for(part, Transform3D.IDENTITY)],
+				[there, boxes_for(entries[n][2], Transform3D.IDENTITY)]]
+			if Joints.overlap_within(packed, lattice.boxes_of(other), turning[other],
+					Transform3D.IDENTITY,
+					Joints.ROUND_SLACK if square else Joints.ROUND_SLACK_TURNED, own):
+				continue
+		return false
+	return true
 
 
 ## How far apart the places a part can be put down are, across the
@@ -1668,16 +1905,27 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 	return BrickLattice.cells_for_turned(boxes, cell, at.basis)
 
 
+## Turn the part in hand: a quarter about its own up, or, on a joint, a
+## step about the joint's axis (JointSnap.step_of).
 func rotate_held(quarter_turns: int) -> void:
 	if is_carrying():
 		carrying.turn(quarter_turns)
+		return
+	if _joint_site != null:
+		_joint_roll += quarter_turns
+		_joint_chosen = true
 		return
 	held_rotation = posmod(held_rotation + quarter_turns, 4)
 
 
 ## Roll the held part onto its next face: up, forward, down, back, and
-## then over onto each side.
+## then over onto each side. On a joint, the next way onto it instead: in
+## from the other face, the other way up, the next hole of a beam.
 func tip_held(steps: int = 1) -> void:
+	if _joint_site != null:
+		_joint_way += steps
+		_joint_chosen = true
+		return
 	var faces: Array[String] = BrickLattice.FACES
 	var at: int = maxi(faces.find(held_face), 0)
 	held_face = faces[posmod(at + steps, faces.size())]
@@ -1711,6 +1959,7 @@ func can_place() -> bool:
 func hide_preview() -> void:
 	_ghost.visible = false
 	_ghost_valid = false
+	_joint_site = null
 	_hide_figure_ghosts()
 	if carrying != null:
 		carrying.hide_ghost()

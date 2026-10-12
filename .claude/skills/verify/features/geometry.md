@@ -76,7 +76,15 @@ can occupy the same millimetre.
   studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
   pin is not a collision), and the two connectors have to be *matched*
   (`Joints.both_ways` over `Assistant._mating_entries`, so the pinned part is
-  not floating).
+  not floating). By hand the same rule decides whether a part has room
+  (`Builder.room_for`): with a pin, axle, beam, clip or bar in hand the ghost
+  goes onto the connector aimed at (`JointSnap`, see `building.md`, "snap
+  onto a joint"), and `technic_hand_probe` asks check_design about every
+  model it builds that way, and about the same parts a stud or 2 LDU off.
+  Since the covers keep holes open, a pin square in a hole shares no cell
+  with it; a pin turned 45° about it (a turned cover) shares 184 with 3700,
+  and a bar in a hollow stud 192 with 3062b — both forgiven, the same parts
+  off the line not.
 - `round joints`: something round turning in something round that fits it —
   a clip on a bar, a bar in a hollow stud, a hinge's pin in its eye, a 2x2
   turntable's top on its base, at any angle about their shared axis. The
@@ -133,6 +141,7 @@ godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
+godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle

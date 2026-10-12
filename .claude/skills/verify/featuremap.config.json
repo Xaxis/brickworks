@@ -666,6 +666,13 @@
     },
     {
       "kind": "ui",
+      "label": "snap onto a joint",
+      "entry": "src/assembly/joint_snap.gd",
+      "reach": "godot --headless --path . --script src/dev/technic_hand_probe.gd  (a pin, axle, beam, clip or bar in hand, aimed at a hole, pin, axle or bar; R turns it about the joint, T the other way on)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "swing on a hinge",
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
