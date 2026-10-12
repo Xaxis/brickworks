@@ -332,6 +332,14 @@
       "tests": []
     },
     {
+      "id": "lib:3d model files",
+      "kind": "lib",
+      "entry": "src/parts/mesh_file.gd",
+      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "area": "brickify",
+      "tests": []
+    },
+    {
       "id": "lib:a big check on a worker",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",
@@ -361,6 +369,14 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:brickify",
+      "kind": "lib",
+      "entry": "src/assembly/brickify.gd",
+      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "area": "brickify",
       "tests": []
     },
     {
@@ -627,6 +643,14 @@
       "entry": "src/ui/marquee.gd",
       "reach": "godot --path .  (Ctrl-drag on the baseplate)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:brickify a 3d model",
+      "kind": "ui",
+      "entry": "src/ui/brickify_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd  (or I in the app; node tools/web/brickify_flow.mjs --url=<a preview>/app in a browser)",
+      "area": "brickify",
       "tests": []
     },
     {

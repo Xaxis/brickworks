@@ -137,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print sticker mould; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print sticker mould brickify; do
   probe "$name"
 done
 
@@ -259,6 +259,10 @@ run "prints and stickers" "${screen[@]}" godot --path . --resolution 1400x900 \
 # worn, held and placed; shots/mould_*.png are the proof.
 run "make a mould" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/mould_ui_probe.gd
+# A 3D model brought in and laid in bricks, by pressing I and clicking:
+# its panel's picture of the model is drawn, so a window. shots/brickify_*.png.
+run "brickify" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/brickify_ui_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

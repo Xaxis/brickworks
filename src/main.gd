@@ -68,6 +68,7 @@ var gate_for_probe: bool = false
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
+var _brickify: BrickifyDialog
 ## The element maker: a part that is not in the library, made.
 var _elements: ElementDialog
 ## Prints and stickers for any part (src/prints/print_studio.gd).
@@ -247,6 +248,8 @@ func _tell_page() -> void:
 		named.merge(_shell.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
+	if _brickify != null:
+		named.merge(_brickify.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -340,6 +343,8 @@ func _tell_page() -> void:
 		# tools/web/browser.mjs).
 		"columns": {"parts": _bin_dock.is_open(), "assistant": _chat_dock.is_open(),
 			"share": _columns},
+		# What the last 3D model brickified came to, for brickify_flow.mjs.
+		"brickified": _brickify.last_summary if _brickify != null else "",
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1410,6 +1415,7 @@ func _build_ui() -> void:
 		_inset(_inventory, 860.0, 600.0)
 		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 		_inset(_mosaic, 380.0, 460.0)
+		_inset(_brickify, 400.0, 690.0)
 		_inset(_figures, 1040.0, 660.0)
 		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
@@ -1468,6 +1474,32 @@ func _build_ui() -> void:
 		_mosaic_source = image
 		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
+
+	# A 3D model laid in bricks, as a sub-assembly beside what is built.
+	_brickify = BrickifyDialog.new()
+	_brickify.library = _library
+	_brickify.world = _world
+	_brickify.builder = _builder
+	_brickify.scenery = _store.scenery
+	$HUD.add_child(_brickify)
+	_inset(_brickify, 400.0, 690.0)
+	# Straight from the press into the file chooser, as the mosaic's.
+	_bar.brickify_wanted.connect(_brickify.ask)
+	_brickify.said.connect(func(text: String) -> void: _bar.say(text))
+	_brickify.placing.connect(func() -> void:
+		if _shell != null:
+			_brickify.assemblies = _shell.assemblies
+		if not _sample_untouched:
+			return
+		_sample_untouched = false
+		clear_model()
+		if _chat != null:
+			_chat.note("Took the example car off the baseplate to make room."))
+	_brickify.brickified.connect(func(_ids: PackedInt64Array, summary: String) -> void:
+		_ground_for_the_model()
+		_camera.frame(_selection_bounds(), 1.4)
+		_on_model_edited()
+		_bar.say(summary))
 
 	_elements = ElementDialog.new()
 	_elements.library = _library
@@ -3264,6 +3296,8 @@ func _over_panel_at(point: Vector2) -> bool:
 		return true
 	if _mosaic != null and _mosaic.visible:
 		return true
+	if _brickify != null and _brickify.visible:
+		return true
 	if _figures != null and _figures.visible:
 		return true
 	if _elements != null and _elements.visible:
@@ -3391,6 +3425,7 @@ func _escape_closes_something() -> bool:
 	return (_marquee != null and _marquee.is_drawing()) \
 		or (_controls != null and _controls.visible) \
 		or (_mosaic != null and _mosaic.visible) \
+		or (_brickify != null and _brickify.visible) \
 		or (_figures != null and _figures.visible) \
 		or _builder.is_holding_figure() or _builder.is_carrying() \
 		or (_measure != null and _measure.active) \
@@ -3527,6 +3562,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_parts()
 		KEY_M:
 			_open_figures()
+		KEY_I:
+			# A key is a press a browser lets open its file chooser.
+			if _brickify != null:
+				_brickify.ask()
 		KEY_C:
 			# Paint the selection if there is one, or what is under the
 			# cursor if there is not.
@@ -3662,6 +3701,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				return
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
+				return
+			if _brickify != null and _brickify.visible:
+				_brickify.close()
 				return
 			if _figures != null and _figures.visible:
 				_figures.close()

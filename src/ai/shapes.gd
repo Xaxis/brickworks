@@ -50,6 +50,12 @@ extends RefCounted
 ## The kinds of solid a shape is made of.
 const KINDS: Array[String] = ["loft", "extrude", "revolve", "box", "ellipsoid", "dome"]
 
+## A solid given as a function instead of in numbers: a sculpt or a scan,
+## voxelised by Brickify. {"grid": {"from", "size", "colour_at"}}, where
+## colour_at(Vector3 studs, plates, studs) is the colour there or -1 outside.
+## Not one of KINDS: a design says its solids, it has no function to give.
+const GRID := "grid"
+
 ## Studs to plates: a stud is 20 LDU across, a plate 8 high.
 const PLATES_PER_STUD := 2.5
 
@@ -136,7 +142,9 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	var y0: int = floori(box.position.y)
 	var y1: int = ceili(box.end.y)
 	var tall: int = y1 - y0
-	if (x1 - x0) * (z1 - z0) * tall > MOST_CELLS or tall < 1:
+	# A grid solid says how many cells it has, having been sized to them.
+	var most: int = maxi(MOST_CELLS, int(pattern.get("most_cells", 0)))
+	if (x1 - x0) * (z1 - z0) * tall > most or tall < 1:
 		trouble.append("that shape is %d by %d studs and %d plates, which is a "
 			% [x1 - x0, z1 - z0, tall] + "mistake in the numbers rather than a model")
 		return []
@@ -180,6 +188,10 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 
 	var plan := Plan.new(columns, tall, smooth, library)
 	plan.sides_smooth = bool(pattern.get("panels", true))
+	plan.wedges = bool(pattern.get("wedges", true))
+	plan.near_edges = bool(pattern.get("near_edges", false))
+	if pattern.get("prefer") is Callable:
+		plan.prefer = pattern["prefer"]
 	plan.sample = func(x: float, j: float, z: float) -> bool:
 		return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands) >= 0
 	# Studs left showing on the studs named, [x, z] from at, for something to
@@ -206,6 +218,11 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	if surface != "none":
 		plan.surface(surface)
 	plan.lay()
+	# A model standing on legs is pieces at its foot that meet the body above
+	# only side by side: pruned first from the foot, a bunny on its feet kept
+	# its feet and lost the rest. Joined first, then pruned.
+	if bool(pattern.get("stitch_first", false)):
+		plan.stitch()
 	plan.prune()
 	plan.stitch()
 	last["pieces"] = plan.pieces().size()
@@ -243,6 +260,7 @@ static func _read(pattern: Dictionary, key: String, trouble: Array,
 			if pattern.get(kind) is Dictionary:
 				raw.append({kind: pattern[kind]})
 	var out: Array = []
+	var named: Array = KINDS + [GRID]
 	for entry: Variant in raw:
 		if not entry is Dictionary:
 			trouble.append("each of a shape's %s is an object naming one kind: " % key
@@ -251,14 +269,14 @@ static func _read(pattern: Dictionary, key: String, trouble: Array,
 		var given: Dictionary = entry
 		var kind: String = str(given.get("kind", ""))
 		var spec: Dictionary = given
-		for one: String in KINDS:
+		for one: String in named:
 			if given.get(one) is Dictionary:
 				kind = one
 				spec = (given[one] as Dictionary).duplicate()
 				if given.has("color") and not spec.has("color"):
 					spec["color"] = given["color"]
 				break
-		if not kind in KINDS:
+		if not kind in named:
 			trouble.append("a shape's %s are %s" % [key, ", ".join(PackedStringArray(KINDS))])
 			continue
 		var solid: Dictionary = _solid(kind, spec, trouble)
@@ -273,6 +291,15 @@ static func _solid(kind: String, spec: Dictionary, trouble: Array) -> Dictionary
 	var solid := {"kind": kind, "spec": spec, "round": false,
 		"color": int(spec.get("color", spec.get("colour", -1)))}
 	match kind:
+		GRID:
+			var from: Vector3 = _vec(spec.get("from", [0, 0, 0]))
+			var size: Vector3 = _vec(spec.get("size", [0, 0, 0]))
+			if size.x <= 0.0 or size.y <= 0.0 or size.z <= 0.0 \
+					or not spec.get("colour_at") is Callable:
+				trouble.append("a grid wants a size and a colour_at function")
+				return {}
+			solid["box"] = AABB(from, size)
+			solid["round"] = bool(spec.get("round", true))
 		"box":
 			var from: Vector3 = _vec(spec.get("from", [0, 0, 0]))
 			var size: Vector3 = _vec(spec.get("size", [0, 0, 0]))
@@ -427,6 +454,13 @@ static func _colour_at(solids: Array, cuts: Array, p: Vector3, colour: int,
 		bands: Array) -> int:
 	var found: int = -2
 	for solid: Dictionary in solids:
+		if solid["kind"] == GRID:
+			# Its own colour at every point, asked once.
+			if (solid["box"] as AABB).grow(0.001).has_point(p):
+				var here: int = int(((solid["spec"] as Dictionary)["colour_at"] as Callable).call(p))
+				if here >= 0:
+					found = here
+			continue
 		if (solid["box"] as AABB).grow(0.001).has_point(p) and _inside(solid, p):
 			found = int(solid["color"]) if int(solid["color"]) >= 0 else colour
 	if found == -2:
@@ -444,6 +478,8 @@ static func _colour_at(solids: Array, cuts: Array, p: Vector3, colour: int,
 static func _inside(solid: Dictionary, p: Vector3) -> bool:
 	var spec: Dictionary = solid["spec"]
 	match str(solid["kind"]):
+		GRID:
+			return int((spec["colour_at"] as Callable).call(p)) >= 0
 		"box":
 			var from: Vector3 = _vec(spec.get("from", [0, 0, 0]))
 			var size: Vector3 = _vec(spec.get("size", [0, 0, 0]))
@@ -719,6 +755,18 @@ class Plan extends RefCounted:
 	## [member sum] the coordinate a cell and its mirror add up to.
 	var axis: String = ""
 	var sum: int = 0
+	## Wedge plates and bricks on a diagonal plan edge. Off, the plan's edges
+	## are left in plain plates and bricks.
+	var wedges: bool = true
+	## Look for wedges only beside a stud the edge cuts across, not at every
+	## corner of the plan: a forty-stud sculpt spent six of its eight seconds
+	## trying each of seventy-two wedges at every one of sixteen hundred
+	## corners of every plate.
+	var near_edges: bool = false
+	## For a "mixed" surface, which kind of slope suits a stud, cell ->
+	## "curved" or "straight": a sculpt says where it is round and where
+	## it is a flat facet, and a chamfered cube is not a sphere.
+	var prefer: Callable = Callable()
 
 	func _init(given: Dictionary, height: int, tiles: bool, parts: PartLibrary) -> void:
 		columns = given
@@ -960,7 +1008,7 @@ class Plan extends RefCounted:
 			return a.x < b.x or a.x == b.x and a.y < b.y)
 		var table: Array = []
 		for entry: Array in (INVERTED if under else SLOPES):
-			if under or entry[0] == "cheese" or entry[0] == kind:
+			if under or entry[0] == "cheese" or entry[0] == kind or kind == "mixed":
 				table.append(entry)
 		for key: Variant in cells:
 			var cell: Vector2i = key
@@ -1019,6 +1067,12 @@ class Plan extends RefCounted:
 						# The longest slope whose fall is within a plate of the
 						# shape's.
 						var score: float = error - 0.2 * length
+						# Mixed: the kind the surface is here, curved on a round
+						# part and straight on a flat facet, unless the other
+						# fits it by more than half a plate.
+						if kind == "mixed" and not under and prefer.is_valid() \
+								and entry[0] != "cheese" and str(prefer.call(cell)) != entry[0]:
+							score += 0.5
 						if error <= 1.0 and (best.is_empty() or score < float(best["score"])):
 							var colour: int = at(inner, (top if under else top - 1))
 							if colour < 0:
@@ -1519,7 +1573,7 @@ class Plan extends RefCounted:
 	## Wedge plates where a plate layer's plan edge is the shape of one, each
 	## laid with its mirror; the studs they cover come out of [param cells].
 	func _wedged(cells: Dictionary, j: int, height: int = 1) -> Array:
-		if cells.size() < 4 or library == null:
+		if cells.size() < 4 or library == null or not wedges:
 			return []
 		var shapes: Dictionary = Patterns.wedge_shapes(library) if height == 1 \
 			else Shapes.brick_wedges(library)
@@ -1547,6 +1601,8 @@ class Plan extends RefCounted:
 			var where: Vector3i = key
 			if where.y >= j and where.y < j + height:
 				solid[Vector2i(where.x, where.z)] = true
+		var near: bool = near_edges and sample.is_valid()
+		var cut: Dictionary = _cut_studs(solid, j, height) if near else {}
 		var taken_here: Dictionary = {}
 		for c: Variant in by_colour:
 			var whole: Dictionary = by_colour[c]
@@ -1564,8 +1620,9 @@ class Plan extends RefCounted:
 				return one > two if one != two else a < b)
 			for named: String in order:
 				var shape: Array = shapes[named]
-				for cx: int in range(low.x - int(shape[0]) + 1, high.x + 1):
-					for cz: int in range(low.y - int(shape[1]) + 1, high.y + 1):
+				var rows: Dictionary = _corners_by_cut(shape, cut, low, high) if near else {}
+				for cx: int in (rows.keys() if near else range(low.x - int(shape[0]) + 1, high.x + 1)):
+					for cz: int in (rows[cx] if near else range(low.y - int(shape[1]) + 1, high.y + 1)):
 						var corner := Vector2i(cx, cz)
 						if not Patterns._wedge_fits(shape, corner, solid, wanted, taken_here) \
 								or not _diagonal(shape, corner, solid, j, height):
@@ -1597,6 +1654,59 @@ class Plan extends RefCounted:
 							one["_base"] = studs
 							one["_slope"] = true
 							out.append(one)
+		return out
+
+	## The studs the edge of plate [param j] cuts across: round [param solid],
+	## each a fifth to four fifths inside the shape as [method _diagonal]
+	## counts it. A wedge's cut side lies on nothing else.
+	func _cut_studs(solid: Dictionary, j: int, height: int) -> Dictionary:
+		var out: Dictionary = {}
+		var seen: Dictionary = {}
+		for key: Variant in solid:
+			for dx: int in range(-1, 2):
+				for dz: int in range(-1, 2):
+					var at_: Vector2i = (key as Vector2i) + Vector2i(dx, dz)
+					if solid.has(at_) or seen.has(at_):
+						continue
+					seen[at_] = true
+					var inside: int = 0
+					for u: int in 3:
+						for v: int in 3:
+							if sample.call(at_.x + (u + 0.5) / 3.0, j + height / 2.0,
+									at_.y + (v + 0.5) / 3.0):
+								inside += 1
+					if inside >= 2 and inside <= 7:
+						out[at_] = true
+		return out
+
+	## The corners a wedge can have when its cut side lies on [param cut]:
+	## the first stud it leaves uncovered is one of those. cx -> [cz, ...],
+	## both rising and inside the plan's box, as the full search tries them.
+	func _corners_by_cut(shape: Array, cut: Dictionary, low: Vector2i,
+			high: Vector2i) -> Dictionary:
+		var cells: Dictionary = shape[2]
+		var first := Vector2i(-1, -1)
+		for i: int in int(shape[0]):
+			for k: int in int(shape[1]):
+				if first.x < 0 and not cells.has(Vector2i(i, k)):
+					first = Vector2i(i, k)
+		var rows: Dictionary = {}
+		if first.x < 0:
+			return rows
+		for key: Variant in cut:
+			var corner: Vector2i = (key as Vector2i) - first
+			if corner.x < low.x - int(shape[0]) + 1 or corner.x > high.x \
+					or corner.y < low.y - int(shape[1]) + 1 or corner.y > high.y:
+				continue
+			if not rows.has(corner.x):
+				rows[corner.x] = []
+			(rows[corner.x] as Array).append(corner.y)
+		var xs: Array = rows.keys()
+		xs.sort()
+		var out: Dictionary = {}
+		for cx: Variant in xs:
+			(rows[cx] as Array).sort()
+			out[cx] = rows[cx]
 		return out
 
 	## Whether a wedge's cut side follows the shape's own edge: every stud of
