@@ -355,7 +355,12 @@ fixing what it got wrong.
   sides (`_least_radius`; asked smaller, it is laid at that and the check's
   advice says so — refused, runs 15 and 16 both asked radius 4 at eight sides,
   were told "or their sides fewer" and took six, which leave the sky beside
-  every cleft; a core too small is told the radius that would do), centred
+  every cleft; a core too small is told the radius that would do), and far
+  enough out that where two of their faces meet the bricks clear
+  (`_clear_radius`, the same rule a prism's own faces are laid by: a fifth of
+  a stud where both faces are turned off the grid, a twentieth where one is —
+  piers of 4.5 on a core of 7 had a twenty-eighth and their horns ran into
+  themselves; a twelve-sided prism of radius 8 had a tenth), centred
   `out` (radius + pier radius - thickness)
   along `turn` + 360k/count (180/count, so a cleft is front and back). The core
   is whole; each pier is built against it, its faces stopping `CLUSTER_CLEAR`

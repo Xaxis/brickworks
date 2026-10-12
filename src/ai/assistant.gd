@@ -4833,19 +4833,24 @@ static func _least_radius(sides: int, thick: int) -> float:
 ## radius 8 had a tenth and ran into itself at faces 1 and 2; at 8.5 it
 ## holds. A face square to the grid is laid exactly, so an octagon, whose
 ## turned faces each meet a square one, is laid as asked.
-static func _clear_radius(sides: int, radius: float, thick: int) -> float:
-	var both_turned: bool = false
+##
+## A pair with one face turned needs less, a twentieth: the piers of radius
+## 4.5 an octagonal core of 7 was given had a twenty-eighth, and their horns'
+## faces ran into each other all the way up. [param turn] is the first face's
+## angle, as a pier's is its own.
+static func _clear_radius(sides: int, radius: float, thick: int, turn: float = 0.0) -> float:
+	var need: float = 0.0
 	for k: int in sides:
-		if not _square_to_grid(360.0 * k / sides) \
-				and not _square_to_grid(360.0 * (k + 1) / sides):
-			both_turned = true
-	if not both_turned:
+		var turned: int = (0 if _square_to_grid(turn + 360.0 * k / sides) else 1) \
+			+ (0 if _square_to_grid(turn + 360.0 * (k + 1) / sides) else 1)
+		need = maxf(need, [0.0, 0.05, 0.2][turned])
+	if need <= 0.0:
 		return radius
 	var r: float = radius
 	for _step: int in 4:
 		var half: float = (r - thick) * tan(PI / sides)
 		var face: float = floor(2.0 * half + 0.001) / 2.0
-		if half - face >= 0.2:
+		if half - face >= need:
 			return r
 		r += 0.5
 	return radius
@@ -5075,6 +5080,15 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 		_pattern_advice.append("Piers of radius %s would have faces narrower than two "
 			% Placement._num(float(piers["radius"])) + "studs at %d sides, so they are " % p_sides
 			+ "laid at radius %s, the least that keeps %d sides." % [Placement._num(least), p_sides])
+	# And far enough out that their own faces clear each other where they
+	# meet, as a prism's are.
+	var spaced: float = _clear_radius(p_sides, p_radius, thick,
+		float(piers.get("turn", 180.0 / maxi(int(piers.get("count", 4)), 1))))
+	if spaced != p_radius:
+		_pattern_advice.append(("Piers of radius %s have faces whose bricks meet with "
+			+ "too little between them, so they are laid at radius %s.")
+			% [Placement._num(p_radius), Placement._num(spaced)])
+		p_radius = spaced
 	# Past the core's summit into horns unless said: Orthanc's four rise above
 	# its top, and so do a castle's corner turrets.
 	var p_courses: int = int(round(float(piers.get("courses",
