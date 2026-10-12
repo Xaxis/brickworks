@@ -36,7 +36,7 @@ const GROUPS: Array = [
 		["mode_rotate", "rotate"], ["mode_hinge", "swing"], ["mode_clone", "clone"],
 		["mode_paint", "paint"], ["mode_hide", "hide"], ["mode_delete", "delete"]]],
 	[3, [["copy", "copy"], ["paste", "paste"], ["mirror", "mirror"], ["select", "select"],
-		["show_all", "show_all"]]],
+		["show_all", "show_all"], ["make_submodel", "submodel"]]],
 	[5, [["snap", "snap"], ["turn", "angle"]]],
 	[2, [["grid", "grid"], ["ortho", "ortho"], ["fit_model", "fit"], ["view_iso", "view_iso"],
 		["view_front", "view_front"], ["view_top", "view_top"]]],

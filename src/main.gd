@@ -168,6 +168,23 @@ func _match_screen_density() -> void:
 		get_window().content_scale_factor = factor
 
 
+## Each sub-assembly's own parts, where they are on the page: path ->
+## {x, y} in CSS pixels, the top middle of their bounds.
+func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
+	var out: Dictionary = {}
+	if _shell == null or _camera == null:
+		return out
+	var boxes: Dictionary = _shell.assemblies.own_bounds()
+	for path: String in boxes:
+		var box: AABB = boxes[path]
+		var top := Vector3(box.get_center().x, box.end.y, box.get_center().z)
+		if _camera.is_position_behind(top):
+			continue
+		var at: Vector2 = to_window * _camera.unproject_position(top) / per_css
+		out[path] = {"x": roundi(at.x), "y": roundi(at.y)}
+	return out
+
+
 ## Where the assistant's controls are on screen, put where the page can
 ## read it: window.brickworksControls, centres in CSS pixels, visible ones
 ## only. Web builds only, twice a second.
@@ -254,6 +271,13 @@ func _tell_page() -> void:
 		"now": Time.get_ticks_msec(),
 		"slow": _slow_frames,
 		"playing": _playback != null and _playback.is_playing(),
+		# The sub-assemblies, path -> their own parts, and the one being
+		# edited: what tools/web/assembly_flow.mjs reads the tree by.
+		"tree": _shell.assemblies.parts_by_path() if _shell != null else {},
+		"editing": _shell.assemblies.entered if _shell != null else "",
+		# ...and where on the page each one's own parts are, since opening
+		# a model frames the view on it afresh.
+		"places": _assembly_places(to_window, per_css),
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1681,6 +1705,9 @@ func _on_model_edited() -> void:
 	if _store != null:
 		_store.adopt()
 		_store.touch()
+	# Every other copy of a sub-assembly just edited follows it.
+	if _verbs != null and _verbs.assemblies != null:
+		_verbs.assemblies.after_edit()
 
 
 func _open_figures() -> void:
@@ -2525,6 +2552,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if button.shift_pressed and button.double_click:
 			_aim_at(button.position)
 			_builder.select_alike()
+		# A double-click with the Select tool edits inside the sub-assembly
+		# under the pointer; the click that ends it picks a part inside.
+		elif button.double_click and _verbs != null and _verbs.mode == "select" \
+				and _verbs.assemblies != null:
+			var unit: Variant = _verbs.assemblies.unit_path_of(_verbs.brick_at(button.position))
+			if unit != null and not str(unit).is_empty():
+				_verbs.assemblies.enter(str(unit))
+				_bar.say("editing %s — Esc when done" % Assemblies.label(str(unit)))
 		return
 
 	# A drag is a box, not a placement.
@@ -2908,7 +2943,8 @@ func _escape_closes_something() -> bool:
 		or not _builder.selection.is_empty() \
 		or (_inventory != null and _inventory.is_showing()) \
 		or (_steps != null and _steps.is_playing_back()) \
-		or (_verbs != null and _verbs.mode != "select")
+		or (_verbs != null and _verbs.mode != "select") \
+		or (_verbs != null and _verbs.assemblies != null and not _verbs.assemblies.entered.is_empty())
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -3191,11 +3227,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			# Back to Select with nothing in hand, from placing or any
 			# other tool — and on down the ladder in the same press, so
 			# one Escape is always enough to be back at rest.
-			if _verbs != null and _verbs.mode != "select":
+			var resting: bool = _verbs == null or _verbs.mode == "select"
+			if not resting:
 				_verbs.set_mode("select")
 				_refresh_preview()
 			if not _builder.selection.is_empty():
 				_builder.clear_selection()
+				return
+			# Out of the sub-assembly being edited, a level at a time — but
+			# not on the press that put a tool down: a part put away while
+			# working inside one is not being done with it.
+			if resting and _verbs != null and _verbs.assemblies != null \
+					and not _verbs.assemblies.entered.is_empty():
+				_verbs.leave_assembly()
 				return
 			if _inventory.is_showing():
 				_inventory.hide_list()

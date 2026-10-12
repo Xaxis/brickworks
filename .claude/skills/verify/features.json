@@ -750,6 +750,14 @@
       "tests": []
     },
     {
+      "id": "ui:model tree",
+      "kind": "ui",
+      "entry": "src/ui/outliner.gd",
+      "reach": "godot --path .  (the panel at the model's top left; View, Model tree)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",
@@ -950,10 +958,10 @@
       "tests": []
     },
     {
-      "id": "ui:sub-models by hand",
+      "id": "ui:sub-assemblies",
       "kind": "ui",
-      "entry": "src/ui/edit_verbs.gd",
-      "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
+      "entry": "src/assembly/assemblies.gd",
+      "reach": "godot --path .  (select, Ctrl-G, name it; a click takes it whole, a double-click edits inside, Esc leaves; Ctrl-D copies follow it)",
       "area": "building",
       "tests": []
     },

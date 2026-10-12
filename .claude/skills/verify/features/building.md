@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-models by hand, ui:measure -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:swing on a hinge, ui:sub-assemblies, ui:model tree, ui:measure -->
 
 ## Sub-features
 
@@ -129,11 +129,29 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   snap to half a stud across and a cell up. While it is out a click places
   nothing; the right and middle buttons still turn the view; `U` or `Esc` puts
   it away.
-- `sub-models by hand`: `Ctrl-G` (or Build, Make a sub-model) asks for a name and makes
-  the selection a sub-model of its own — the group an `.mpd` is written by and
-  the booklet builds one at a time; `Ctrl-Shift-G` takes it out; Select → Same
-  sub-model takes all of one from any brick of it. One step to undo
-  (`Builder.name_group`, a `regroup` history step).
+- `sub-assemblies`: `Ctrl-G` (Edit or Build, Make a sub-assembly) asks for a
+  name and makes the selection a sub-assembly inside the one being edited; a
+  click with Select then takes all of it, and every move, turn, hinge, copy,
+  mirror, hide and lock takes it whole. A double-click (or `Enter`) edits inside
+  it — a banner over the model says which, a click takes one part, a part put
+  down goes into it — and `Esc` steps out a level. `Ctrl-D`/`Ctrl-C` of one is
+  another copy of the same definition (`Wing#2`), and after any edit the other
+  copies are built again from the edited one, mirrored where they were
+  mirrored, in the same undo step (`Assemblies.after_edit`, matched by
+  `best_match`). Make unique cuts a copy loose; `F2` renames a definition in
+  every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
+  each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
+  so undo, save and the timeline carry it. Saved, it is a nested `.mpd`: each
+  definition once, each copy a `1` line, a mirrored copy by a reflecting matrix
+  (`LdrModel.write_tree`); read back, a mirrored reference is put in the other
+  hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which also
+  opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
+- `model tree`: the panel at the model's top left (View, Model tree) lists the
+  model and its sub-assemblies inside one another with their part counts. A
+  row selects its parts, a double-click edits inside it, `F2` renames it in
+  place, its eye and lock hide and lock it whole, and dragging a row onto
+  another nests it there (onto Model, back to the top). Folded on a screen
+  under 1100 points wide; remembered (`outliner_open`). Probe: `assembly_probe`.
 - `swing on a hinge`: `J` / `Shift-J` (or the Hinge tool) turns the
   selection 15° about the joint it hangs from — a hinge's pin, a clip on a
   bar, a turntable's disc: a shaft of a selected part in a bore of an

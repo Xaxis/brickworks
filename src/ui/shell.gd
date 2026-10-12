@@ -26,6 +26,9 @@ var store: ModelStore
 var toolbar: Toolbar
 var status: StatusBar
 var inspector: Inspector
+var assemblies: Assemblies
+var outliner: Outliner
+var banner: AssemblyBanner
 var grid: StudGrid
 var tour: Tour
 
@@ -65,13 +68,16 @@ const MENUS: Array = [
 	["Edit", ["undo", "redo", ">history", "-", "cut", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
-		"make_submodel"]],
+		"-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
+		"rename_assembly", "make_unique"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "fit_model", "fit_selection",
 		"ortho", "grid", "-", "turn_left", "turn_right", "-", "panel_parts",
-		"panel_assistant", "panel_properties", "panel_keys", "-", "full_screen"]],
+		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
+		"full_screen"]],
 	["Build", ["timeline", "instructions", "parts_list", "-", "make_submodel",
-		"leave_submodel", "select_submodel", "-", "minifig", "mosaic", "part_maker",
+		"leave_submodel", "enter_assembly", "select_submodel", "-", "minifig", "mosaic",
+		"part_maker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
@@ -101,6 +107,19 @@ func build(column: Control, over_model: Control) -> void:
 	world = app.get("_world")
 	library = app.get("_library")
 	store = app.get("_store")
+	# The model's sub-assemblies, read off its bricks: src/assembly/assemblies.gd.
+	assemblies = Assemblies.new()
+	assemblies.world = world
+	assemblies.builder = builder
+	assemblies.library = library
+	assemblies.scenery = store.scenery
+	verbs.assemblies = assemblies
+	builder.unit_of = assemblies.unit_of
+	builder.copy_group = assemblies.group_for_copy
+	# Whatever replaces the model leaves no assembly being edited.
+	bar.started_new.connect(func() -> void: assemblies.enter(""))
+	bar.cleared.connect(func() -> void: assemblies.enter(""))
+	bar.opened.connect(func(_n: int) -> void: assemblies.enter(""))
 	_define()
 
 	for menu: Array in MENUS:
@@ -123,6 +142,16 @@ func build(column: Control, over_model: Control) -> void:
 	inspector = Inspector.new()
 	inspector.shell = self
 	over_model.add_child(inspector)
+
+	outliner = Outliner.new()
+	outliner.shell = self
+	outliner.assemblies = assemblies
+	over_model.add_child(outliner)
+
+	banner = AssemblyBanner.new()
+	banner.assemblies = assemblies
+	banner.avoid = outliner
+	over_model.add_child(banner)
 
 	grid = StudGrid.new()
 	grid.world = world
@@ -164,6 +193,9 @@ func build(column: Control, over_model: Control) -> void:
 	set_key_strip(bool(ShellPrefs.value("key_strip")))
 	grid.visible = bool(ShellPrefs.value("grid"))
 	inspector.set_open(bool(ShellPrefs.value("inspector_open")))
+	# Folded on a narrow screen, where it would cover the model.
+	outliner.set_open(bool(ShellPrefs.value("outliner_open"))
+		and app.get_viewport().get_visible_rect().size.x >= 1100.0)
 	var parts_dock: SideDock = app.get("_bin_dock")
 	var chat_dock: SideDock = app.get("_chat_dock")
 	parts_dock.toggled.connect(func(open: bool) -> void:
@@ -360,11 +392,31 @@ func _define() -> void:
 		return (app.get("_steps") as StepsBar).is_playing_back())
 	_add("parts_list", "Parts list", KEY_P, func() -> void: bar.parts_wanted.emit(), something,
 		"Every part this model needs, by colour and count")
-	_add("make_submodel", "Make a sub-model…", CTRL | KEY_G,
+	var assembly: Callable = func() -> bool:
+		return not assemblies.selected_assembly().is_empty()
+	_add("make_submodel", "Make a sub-assembly…", CTRL | KEY_G,
 		func() -> void: verbs.make_submodel(), selected,
-		"Name the selection as a sub-model of its own")
-	_add("leave_submodel", "Take out of its sub-model", CTRL | SHIFT | KEY_G,
-		func() -> void: verbs.leave_submodel(), selected)
+		"Name the selection as a sub-assembly: it moves as one, saves as a sub-model, and its copies follow it")
+	_add("leave_submodel", "Ungroup", CTRL | SHIFT | KEY_G,
+		func() -> void: verbs.leave_submodel(), selected,
+		"Take the selected sub-assembly apart one level")
+	_add("enter_assembly", "Edit inside the sub-assembly", KEY_ENTER,
+		func() -> void: verbs.enter_assembly(), assembly,
+		"Work on its parts one by one; what you put down goes into it (double-click does this too)")
+	_add("leave_assembly", "Done editing the sub-assembly", 0,
+		func() -> void: verbs.leave_assembly(),
+		func() -> bool: return not assemblies.entered.is_empty())
+	_add("rename_assembly", "Rename the sub-assembly…", KEY_F2,
+		func() -> void: verbs.rename_assembly(), assembly)
+	_add("make_unique", "Make this copy unique", 0, func() -> void: verbs.make_unique(),
+		func() -> bool:
+			var path: String = assemblies.selected_assembly()
+			return not path.is_empty() and not assemblies.copies_of(path).is_empty(),
+		"Cut this copy loose, so editing it changes no other")
+	_add("panel_outliner", "Model tree", 0, func() -> void:
+		outliner.set_open(not outliner.is_open()), Callable(),
+		"The model's sub-assemblies by name, inside one another")
+	_ticked("panel_outliner", func() -> bool: return outliner.is_open())
 	_add("minifig", "Minifigure builder…", KEY_M, func() -> void: bar.minifig_wanted.emit(),
 		Callable(), "Make a minifigure from real parts and stand it in the model")
 	_add("mosaic", "Mosaic from a picture…", 0,
@@ -647,12 +699,20 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_F1:
 			run("keys")
 			return true
+		KEY_F2:
+			if can("rename_assembly"):
+				run("rename_assembly")
+				return true
+		KEY_ENTER, KEY_KP_ENTER:
+			if can("enter_assembly") and not held:
+				run("enter_assembly")
+				return true
 	return false
 
 
 ## Whether a point is over the shell's own panels rather than the model.
 func covers(point: Vector2) -> bool:
-	for panel: Control in [toolbar, inspector, status]:
+	for panel: Control in [toolbar, inspector, status, outliner, banner]:
 		if panel != null and panel.is_visible_in_tree() \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -668,6 +728,10 @@ func controls_by_name() -> Dictionary:
 		out.merge(toolbar.controls_by_name())
 	if inspector != null:
 		out.merge(inspector.controls_by_name())
+	if outliner != null:
+		out.merge(outliner.controls_by_name())
+	if banner != null:
+		out.merge(banner.controls_by_name())
 	return out
 
 

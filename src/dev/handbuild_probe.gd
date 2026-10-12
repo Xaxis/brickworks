@@ -1063,9 +1063,9 @@ func _a_submodel() -> void:
 	await _key(KEY_G, true)
 	var verbs: EditVerbs = _main.get("_verbs")
 	var dialog: ConfirmationDialog = verbs._naming
-	_check("Ctrl-G asks what the sub-model is called (%s)" % (
+	_check("Ctrl-G asks what the sub-assembly is called (%s)" % (
 		verbs._name_field.text if dialog != null else "no dialog"),
-		dialog != null and dialog.visible and verbs._name_field.text == "Sub-model")
+		dialog != null and dialog.visible and verbs._name_field.text == "Sub-assembly")
 	if dialog == null:
 		return
 	verbs._name_field.text = "Tower"

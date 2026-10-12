@@ -654,6 +654,11 @@ class Swatch extends Button:
 ## Where a browser test finds the bin's own button.
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"parts list": _scroll}
+	# The search and the first part it found: how a browser check takes a
+	# part by its number, as a person does (tools/web/assembly_flow.mjs).
+	named["part search"] = _search
+	if _grid.get_child_count() > 0:
+		named["first part"] = _grid.get_child(0)
 	if _make_button != null:
 		named["make part"] = _make_button
 	if _print_button != null:

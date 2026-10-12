@@ -35,12 +35,21 @@ class Placement extends RefCounted:
 	## The sub-model of the document it was placed in at the top level,
 	## by that sub-model's title: which assembly of the model it is.
 	var group: String = ""
-	## Which copy of which sub-model it came in, two levels deep: a part
-	## of the third window in the house is "House#1/Window#3". A document
-	## that builds its window once and places it four times is saying
-	## what a booklet says with a "4x" callout, and flattening it into
-	## the wall threw that away. Empty for a part the model places itself.
+	## Which copy of which sub-model it came in, at every depth: a part of
+	## the third window in the house is "House#1/Window#3". A document that
+	## builds its window once and places it four times is saying what a
+	## booklet says with a "4x" callout, and flattening it into the wall
+	## threw that away. Empty for a part the model places itself. The
+	## sub-assemblies by hand (Assemblies) are this same path.
 	var unit: String = ""
+	## Placed by a mirrored reference (a matrix that turns space inside
+	## out, as LDraw allows): no part can be that, so whoever places it puts
+	## the part's other hand where its reflection is (Assemblies.unmirror) —
+	## ``frame`` with x reflected is the reference, ``local`` the part's own
+	## place in its sub-model.
+	var mirrored: bool = false
+	var local: Transform3D = Transform3D.IDENTITY
+	var frame: Transform3D = Transform3D.IDENTITY
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -361,9 +370,40 @@ static func from_transform(at: Transform3D) -> PackedFloat64Array:
 ## malformed and would otherwise hang the loader.
 func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
+	_names = _assembly_names()
 	if main != null:
 		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
 			{})
+	return out
+
+
+## Reflection across x, which with a turn and a shift is every mirrored
+## reference.
+const REFLECT_X := Transform3D(Basis(Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)),
+	Vector3.ZERO)
+
+## Sub-model key -> the name its assembly goes by.
+var _names: Dictionary = {}
+
+
+## What each sub-model's assembly is called: its title, or its file name
+## where it has none — and the file name too where two share a title, so
+## two different sub-models are never taken for copies of one. Never with
+## a "/" or a "#", which the path uses.
+func _assembly_names() -> Dictionary:
+	var by_title: Dictionary = {}
+	for key: String in submodels:
+		var sub: SubModel = submodels[key]
+		var title: String = (sub.title if not sub.title.is_empty() else key) \
+			.replace("/", "-").replace("#", "").strip_edges()
+		if not by_title.has(title):
+			by_title[title] = []
+		(by_title[title] as Array).append(key)
+	var out: Dictionary = {}
+	for title: String in by_title:
+		var keys: Array = by_title[title]
+		for key: String in keys:
+			out[key] = title if keys.size() == 1 else "%s (%s)" % [title, key]
 	return out
 
 
@@ -394,16 +434,14 @@ func _inline(
 			# assemblies; what that sub-model nests stays part of it.
 			var named: String = group
 			var inside: String = unit
-			var kind: String = (nested.title if not nested.title.is_empty()
-				else _key(nested.name))
+			var kind: String = _names.get(_key(nested.name), _key(nested.name))
 			if depth == 0:
 				named = kind
-			if depth <= 1:
-				# Each copy its own unit: the four windows are four
-				# assemblies of one kind, not one assembly of sixteen parts.
-				copies[kind] = int(copies.get(kind, 0)) + 1
-				var copy: String = "%s#%d" % [kind, int(copies[kind])]
-				inside = copy if depth == 0 else "%s/%s" % [unit, copy]
+			# Each copy its own unit, at every depth: the four windows are
+			# four assemblies of one kind, not one assembly of sixteen parts.
+			copies[kind] = int(copies.get(kind, 0)) + 1
+			var copy: String = "%s#%d" % [kind, int(copies[kind])]
+			inside = copy if unit.is_empty() else "%s/%s" % [unit, copy]
 			_inline(
 				nested,
 				at * placement.transform,
@@ -419,6 +457,10 @@ func _inline(
 			placement.part_id, resolved, at * placement.transform, placement.step)
 		placed.group = group
 		placed.unit = unit
+		if at.basis.determinant() < 0.0:
+			placed.mirrored = true
+			placed.local = placement.transform
+			placed.frame = at * REFLECT_X
 		out.append(placed)
 
 	visiting.erase(sub.name.to_lower())
@@ -489,6 +531,87 @@ static func write_ldr(
 			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
 	# And the files the parts need that are not LDraw: a print's pictures,
 	# as the MPD spec carries them, base64 in lines of 76 characters.
+	for data_name: Variant in names:
+		if not (embedded[data_name] is PackedByteArray):
+			continue
+		var encoded: String = Marshalls.raw_to_base64(embedded[data_name])
+		text += "0 !DATA " + str(data_name) + "\n"
+		for at: int in range(0, encoded.length(), 76):
+			text += "0 !: " + encoded.substr(at, 76) + "\n"
+	return text
+
+
+## The model as a tree of sub-models, one file section per definition:
+## [param instances] is every assembly's path -> {"frame": Transform3D,
+## "def": its definition's name}, from Assemblies.file_frames. A
+## definition is written once, from its first copy, in that copy's frame;
+## every copy, that one included, is a reference placed by its own frame —
+## a mirrored copy by a matrix that reflects, as LDraw allows. Parts
+## directly in an assembly are in its section; assemblies inside it are
+## references there. A part's place is its unit (Placement.unit).
+static func write_tree(
+	placements: Array, title: String, author_name: String,
+	instances: Dictionary, embedded: Dictionary = {}
+) -> String:
+	var ordered: Array = instances.keys()
+	ordered.sort_custom(func(a: String, b: String) -> bool:
+		var depth_a: int = a.count("/")
+		var depth_b: int = b.count("/")
+		if depth_a != depth_b:
+			return depth_a < depth_b
+		return a.naturalnocasecmp_to(b) < 0)
+	var masters: Dictionary = {}     ## def -> path
+	var defs: Array[String] = []
+	for path: String in ordered:
+		var def: String = str((instances[path] as Dictionary)["def"])
+		if not masters.has(def):
+			masters[def] = path
+			defs.append(def)
+	var main_file: String = title.to_snake_case() + ".ldr"
+	var file_of: Dictionary = {}
+	for def: String in defs:
+		var file: String = def.to_snake_case() + ".ldr"
+		while file == main_file or file_of.values().has(file):
+			file = file.get_basename() + "_.ldr"
+		file_of[def] = file
+	var children: Dictionary = {}    ## parent path -> Array of paths
+	for path: String in ordered:
+		var at: int = path.rfind("/")
+		var parent: String = "" if at < 0 else path.substr(0, at)
+		if not children.has(parent):
+			children[parent] = []
+		(children[parent] as Array).append(path)
+	var refs := func(parent: String, inverse: Transform3D) -> Array[String]:
+		var out: Array[String] = []
+		for child: String in children.get(parent, []):
+			var entry: Dictionary = instances[child]
+			out.append("1 16 %s %s" % [_line_numbers(inverse * (entry["frame"] as Transform3D)),
+				str(file_of[str(entry["def"])])])
+		return out
+	var loose: Array = placements.filter(func(p: Placement) -> bool: return p.unit.is_empty())
+	var text: String = "0 FILE " + main_file + "\n" \
+		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY)) \
+		+ "0 NOFILE\n"
+	for def: String in defs:
+		var master: String = masters[def]
+		var inverse: Transform3D = ((instances[master] as Dictionary)["frame"] as Transform3D) \
+			.affine_inverse()
+		var own: Array = placements.filter(func(p: Placement) -> bool:
+			return p.unit == master).map(func(p: Placement) -> Placement:
+				var local := Placement.new(p.part_id, p.color_code, inverse * p.transform, p.step)
+				local.group = p.group
+				local.unit = p.unit
+				return local)
+		text += "0 FILE " + str(file_of[def]) + "\n" \
+			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def])) \
+			+ "0 NOFILE\n"
+	var names: Array = embedded.keys()
+	names.sort()
+	for part_name: Variant in names:
+		if embedded[part_name] is PackedByteArray:
+			continue
+		text += "0 FILE " + str(part_name) + "\n" \
+			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
 	for data_name: Variant in names:
 		if not (embedded[data_name] is PackedByteArray):
 			continue
