@@ -80,7 +80,7 @@ const MENUS: Array = [
 		"ortho", "grid", "-", "cut", ">cut_away", "xray", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
-	["Build", ["timeline", "instructions", "parts_list", "-", "collection", "collection_need",
+	["Build", ["timeline", "pose", "instructions", "parts_list", "-", "collection", "collection_need",
 		"collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "minifig", "mosaic",
 		"brickify", "part_maker",
@@ -330,6 +330,9 @@ func _define() -> void:
 		func() -> void: bar._on_export_chosen(3), something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
+	# src/ui/pose_panel.gd.
+	_add("pose", "Pose and animate…", 0, func() -> void: app.call("open_pose"), something,
+		"A slider for every part on a hinge or a turntable, and keys made an animation")
 	_add("instructions", "Instructions…", 0, _instructions, something,
 		"Building instructions for this model, step by step")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,

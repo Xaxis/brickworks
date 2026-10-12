@@ -548,6 +548,14 @@
       "tests": []
     },
     {
+      "id": "lib:keyframed animation",
+      "kind": "lib",
+      "entry": "src/assembly/pose_animation.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:ldr read and write",
       "kind": "lib",
       "entry": "src/parts/ldr_model.gd",
@@ -603,6 +611,14 @@
       "entry": "src/parts/part_library.gd",
       "reach": "godot --headless --path . --script src/dev/vocab_probe.gd",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "lib:posing joints",
+      "kind": "lib",
+      "entry": "src/assembly/pose.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
+      "area": "view",
       "tests": []
     },
     {
@@ -1038,6 +1054,14 @@
       "kind": "ui",
       "entry": "src/ui/cursors.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd   (in a browser: node tools/web/cursor_check.mjs --url=<a preview>/app)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:pose and animate",
+      "kind": "ui",
+      "entry": "src/ui/pose_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd   (by hand: Build, Pose and animate\u2026; a sub-assembly on a hinge or a turntable gets a slider)",
       "area": "view",
       "tests": []
     },

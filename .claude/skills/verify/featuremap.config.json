@@ -1041,6 +1041,27 @@
       "entry": "src/render/studio_render.gd",
       "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (and -- --model=M --quality=best for one model)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "pose and animate",
+      "entry": "src/ui/pose_panel.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd   (by hand: Build, Pose and animate…; a sub-assembly on a hinge or a turntable gets a slider)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "posing joints",
+      "entry": "src/assembly/pose.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "keyframed animation",
+      "entry": "src/assembly/pose_animation.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
+      "area": "view"
     }
   ]
 }

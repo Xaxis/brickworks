@@ -326,6 +326,73 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 	return done
 
 
+## Draw an animation of [param frames] frames, the same way: before each,
+## [param pose_at] (frame -> brick id in the world -> Transform3D) says
+## where the parts that move stand, and [param turn_at] (frame -> turns, 0
+## to 1) how far round the model has turned. [param reach] is the box they
+## sweep through, for the framing. The model itself is not touched; its
+## copy on the stage is moved, and copied again for the next render.
+## [param each] gets each frame as it is finished. Returns how many were
+## drawn, all of them unless cancelled.
+func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: Callable,
+		turn_at: Callable, reach: AABB, each: Callable) -> int:
+	if _busy or not possible() or world == null:
+		return 0
+	_busy = true
+	_cancelled = false
+	worst_frame_ms = 0.0
+	worst_step = ""
+	_quicken()
+	var done: int = 0
+	_reach = reach
+	var turning: bool = false
+	for n: int in frames:
+		if not is_zero_approx(float(turn_at.call(n))):
+			turning = true
+			break
+	if await _prepare(world, settings, turning):
+		for n: int in maxi(frames, 1):
+			var poses: Dictionary = pose_at.call(n)
+			for brick_id: Variant in poses:
+				var staged: int = int(_staged_ids.get(int(brick_id), 0))
+				if staged != 0:
+					_stage.move_brick(staged, poses[brick_id])
+			_stage._flush()
+			_pivot.rotation = Vector3(0.0, TAU * float(turn_at.call(n)), 0.0)
+			var from: float = 0.1 + 0.9 * float(n) / float(frames)
+			var image: Image = await _picture(settings, from, from + 0.9 / float(frames),
+				"frame %d of %d" % [n + 1, frames])
+			if image == null:
+				break
+			await get_tree().process_frame
+			_doing("keeping frame %d" % (n + 1))
+			await each.call(n, image)
+			done += 1
+			if _cancelled:
+				break
+	_pivot.rotation = Vector3.ZERO
+	_reach = AABB()
+	# The copy on the stage stands as the last frame did, not as the model
+	# does: copied again next time.
+	_staged = []
+	_finish()
+	return done
+
+
+## The box an animation's moving parts sweep, framed with the model.
+var _reach := AABB()
+## Brick id in the world -> its copy's on the stage.
+var _staged_ids: Dictionary = {}
+
+
+## Where a part of the world is on the stage, for a probe: its copy's
+## transform, or the identity when it was not staged.
+func staged_transform(brick_id: int) -> Transform3D:
+	var staged: BrickWorld.Brick = _stage.get_brick(int(_staged_ids.get(brick_id, 0))) \
+		if _stage != null else null
+	return staged.transform if staged != null else Transform3D.IDENTITY
+
+
 func _finish() -> void:
 	print("render: the longest frame %.0f ms (%s)" % [worst_frame_ms, worst_step])
 	_settle()
@@ -513,6 +580,7 @@ func _stage_model(world: BrickWorld) -> bool:
 	if wanted == _staged:
 		return true
 	_staged = []
+	_staged_ids.clear()
 	_stage.clear()
 	_stage.hold_drawing()
 	var pace := FramePace.new()
@@ -534,7 +602,7 @@ func _stage_model(world: BrickWorld) -> bool:
 			continue
 		if _step.is_empty():
 			_doing("staging")
-		_stage.add_brick(brick.part_id, brick.color_code, brick.transform)
+		_staged_ids[brick.id] = _stage.add_brick(brick.part_id, brick.color_code, brick.transform)
 	_stage.release_drawing()
 	# The batches are written on the frame after.
 	await get_tree().process_frame
@@ -563,6 +631,8 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		return false
 	if _bounds.size.length() <= 0.0:
 		return false
+	if _reach.size.length() > 0.0:
+		_bounds = _bounds.merge(_reach)
 	var plan: Plan = plan_for(settings)
 	var shot: Shot = aim(settings, _bounds, turning)
 	last_shot = shot

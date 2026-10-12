@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation -->
 
 ## Sub-features
 
@@ -566,7 +566,33 @@ picture the assistant is shown.
   contact shadow (drawn once per model, in no light), one environment per
   way of lighting, the sweep's mesh and the shadow atlas's size. A
   turntable's frames are encoded on workers while the next is drawn
-  (`RenderOutput.add_frame`, at most three waiting).
+  (`RenderOutput.add_frame`, at most three waiting). `StudioRender.animate`
+  draws an animation the same way: before each frame it moves the staged
+  copies of what moves (`_staged_ids`, world id -> stage id) and turns the
+  pivot, frames the box they all sweep (`_reach`), and leaves the stage to be
+  copied again next time — the model itself is never touched.
+- `pose and animate` (Build, Pose and animate…; `src/ui/pose_panel.gd`, a
+  panel over the model's left edge so the pose is seen as it is set): a
+  slider per joint — every sub-assembly with a shaft of one of its parts in a
+  bore of a part outside it (`Builder._joint_of`, as J finds one), a hinge or a
+  turntable — from -180° to 180° about where it stood when posing began.
+  Dragging moves it live (`Poser.stand`, nothing to undo); letting go, or a
+  click on the track, keeps it as one step ("posed Arm at 45°"), as far as it
+  has room, pressing only on what it is joined to (`Poser.settle`, a bisection
+  between where it was and where it was asked; the panel says where it
+  stopped). A joint inside another turns about its rest axis first and the
+  outer carries it (`Poser.transforms_for`). After an undo the angles are read
+  back off the parts (`Poser.read_back`), or found afresh if the model changed.
+  At rest sets every joint to 0. Key at / Add key keeps every angle at a time;
+  `PoseAnimation` runs each joint through its keys as a monotone cubic
+  (Fritsch–Carlson): exact at each key, eased at the ends, never past a key.
+  Play runs it in the window; Turn the model round once adds a turntable;
+  Render animation draws it Quick at 480 × 300 or 720p, 12 or 24 a second,
+  without a contact shadow (drawn once, it would be the rest pose's), with the
+  frame drawn last shown in the panel. A browser downloads
+  `<model>_animation.webp`; the desktop writes the frames, the WebP and, with
+  ffmpeg, an MP4 to Downloads. `window.brickworksPose` says the joints with
+  each slider's ends on the page, the keys, and the render's progress and file.
 
 ## How to reach it
 
@@ -651,6 +677,11 @@ MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --
 # turntable downloaded and decoded, Best cancelled, and the page never waiting
 # more than --stall seconds
 node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=shots/render_web
+# Build, Pose and animate…: a crane's turret and arm on their sliders, a
+# click on the track, refused past what it has room for, undone and read
+# back; three keys whose frames, read off the renderer's own copy, turn each
+# joint through its keys; Render animation's frames, WebP and MP4
+MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
