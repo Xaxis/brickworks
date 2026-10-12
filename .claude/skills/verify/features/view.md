@@ -395,8 +395,10 @@ picture the assistant is shown.
   Sun, Fill and Rim turned with the camera, so a render from the starting
   view is lit exactly as the window is. Quick is one frame of that. Good on
   Forward+ adds SDFGI (energy 0.15, the key x1.4, 64 frames to settle), SSAO
-  and a PCSS key; in a browser it is 8 frames averaged under a key moved
-  across its area. Best averages 64 frames on the desktop and 32 in a
+  and a PCSS key, six frames averaged with the key moved a little, at the
+  engine's finest occlusion and soft-shadow filters for the render (one frame
+  of a soft shadow is noise, and at 4K it was a grid of dots on every face);
+  in a browser it is 8 frames averaged under a key moved across its area. Best averages 64 frames on the desktop and 32 in a
   browser: each jittered under the pixel (R2 sequence, a Gaussian 0.42 px
   wide), the key moved across a 7 degree area, the lens across its aperture
   (a real f-number on a real-sized model: an LDU is 0.4 mm) with the focus
@@ -480,7 +482,7 @@ MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --
 # toolbar's Render, a draft, Quick 1080p and Good 720p downloaded, a 24-frame
 # turntable downloaded and decoded, Best cancelled, and the page never waiting
 # more than --stall seconds
-node tools/web/render_flow.mjs --url=<preview>/app --out=shots/render_web
+node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=shots/render_web
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also

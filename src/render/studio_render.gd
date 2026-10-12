@@ -204,6 +204,13 @@ static func plan_for(settings: RenderSettings) -> Plan:
 				plan.occlusion = true
 				plan.soft_key = 2.5
 				plan.warm_up = WARM_UP
+				# A few frames averaged, the key moved a little across its
+				# area: one frame of a soft shadow is a soft shadow made of
+				# noise, and at 4K that noise, and the acne of a light
+				# skimming a brick's top, showed as hatching on every grey.
+				plan.samples = 6
+				plan.msaa = Viewport.MSAA_2X
+				plan.key_spread = KEY_SPREAD * 0.35
 			else:
 				# No global illumination or occlusion in a browser: a few
 				# frames averaged under a soft key instead, which smooths
@@ -852,7 +859,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		light.directional_shadow_max_distance = reach
 		light.directional_shadow_fade_start = 1.0
 		light.shadow_bias = 0.02
-		light.shadow_normal_bias = 1.0
+		light.shadow_normal_bias = 1.5
 	_sky_light.visible = plan.sky_samples
 	_sky_light.shadow_enabled = not settings.no_shadows
 	_sky_light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
@@ -875,6 +882,14 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	_sky_light.light_energy = BrickWorld.light_energy(ambient_forward * SKY_SHARE, true)
 	if full and settings.quality != RenderSettings.Quality.QUICK:
 		RenderingServer.directional_shadow_atlas_set_size(8192, true)
+		# The finest occlusion and soft shadows there are, at full size: the
+		# engine's defaults are made for a game's frame, half-size occlusion
+		# and a few shadow taps, and in a 4K still both showed as a grid of
+		# dots over every face.
+		RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_ULTRA,
+			false, 0.5, 4, 50.0, 300.0)
+		RenderingServer.directional_soft_shadow_filter_set_quality(
+			RenderingServer.SHADOW_QUALITY_SOFT_ULTRA)
 	else:
 		RenderingServer.directional_shadow_atlas_set_size(4096, true)
 
@@ -1196,6 +1211,19 @@ func _settle() -> void:
 		int(ProjectSettings.get_setting("rendering/lights_and_shadows/directional_shadow/size",
 			4096)), true)
 	OS.low_processor_usage_mode = _was_low_processor
+	if full_renderer():
+		RenderingServer.environment_set_ssao_quality(
+			int(ProjectSettings.get_setting("rendering/environment/ssao/quality", 2))
+				as RenderingServer.EnvironmentSSAOQuality,
+			bool(ProjectSettings.get_setting("rendering/environment/ssao/half_size", true)),
+			float(ProjectSettings.get_setting("rendering/environment/ssao/adaptive_target", 0.5)),
+			int(ProjectSettings.get_setting("rendering/environment/ssao/blur_passes", 2)),
+			float(ProjectSettings.get_setting("rendering/environment/ssao/fadeout_from", 50.0)),
+			float(ProjectSettings.get_setting("rendering/environment/ssao/fadeout_to", 300.0)))
+		RenderingServer.directional_soft_shadow_filter_set_quality(
+			int(ProjectSettings.get_setting(
+				"rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", 2))
+				as RenderingServer.ShadowQuality)
 	if not _quickened:
 		return
 	_quickened = false

@@ -2,7 +2,7 @@
 // turntable, each downloaded, with the page answering throughout.
 //
 //   set -a; . ./.env; set +a
-//   node tools/web/render_flow.mjs --url=https://<preview>.vercel.app/app --out=shots/render_web
+//   node tools/web/render_flow.mjs --url=https://<preview>.vercel.app/app --bypass=$VERCEL_BYPASS --out=shots/render_web
 //   node tools/web/render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=…   (a local export)
 //
 // The web build draws with the Compatibility renderer, in a browser that
@@ -31,6 +31,10 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const url = args.url || "https://brickworks.diy/app";
 const out = args.out || "shots/render_web";
 const stallLimit = Number(args.stall || 2) * 1000;
+// A preview is behind Vercel's protection: the bypass, once, as a cookie.
+const first = args.bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 mkdirSync(out, { recursive: true });
 
 const browser = await launch();
@@ -135,7 +139,7 @@ function webpFrames(file) {
 }
 
 try {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
   const until = Date.now() + 300000;
   while (!(await page.evaluate(() => Boolean((window.brickworksControls || {}).tool_render)))) {
     if (Date.now() > until) throw new Error("the toolbar's Render never appeared");
