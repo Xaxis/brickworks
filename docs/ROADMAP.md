@@ -1150,6 +1150,16 @@ The check had told the run only of slivers between its crags and its tower, at
 one height, which it chased with posts; it now counts slits up to a stud and a
 half wide that run up the model, at two of its nine heights or more.
 
+Run once more on that (`orthanc_r4`, 136 s): 9,415 parts, 71 shapes, 23
+colours, plain 68%, three figures (Saruman, Gandalf, an Uruk-hai at the door),
+seven furnished floors behind; the guidance's radius 7, opened one face. No
+sky shows from the corner, front, back or close views: off the parts' own
+boxes nothing up the shaft is wider than 0.07 of a stud, and at the plinth only
+the gaps between its crags and the tower, at one height. Its form is r3's,
+the corner view without the slit; its finishing is thinner (no nameplate or
+braziers, seven floors to ten, 71 shapes to 84). Offered for the homepage.
+Pictures: `shots/runs/orthanc_r4v_{corner,front,back,right,close}.png`.
+
 **What is left, by what it would move:**
 
 1. **A shaped body for vehicles, in one call** — the car's and the hull's
