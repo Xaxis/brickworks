@@ -1265,6 +1265,71 @@ Pictures: `shots/runs/{orthanc_redress,orthanc_r5,orthanc_r5_sound}_{corner,fron
    and comes apart in six pieces. A run that asks for either is told so by the
    check, but the pattern should not lay them.
 
+**The held-out set again, with `shape` and the rest in (2026-10-12).** The
+brief "A ___ as a detailed LEGO display model" on the owner's plan over MCP
+(`env -u ANTHROPIC_API_KEY`, the app in software under `heavy`), pictures on
+the GPU; measured by `tools/style.py` against space sets for the rocket,
+vehicle sets for the car, ship and locomotive, and `other` for the owl. Beside
+the last round's "after" runs (table above):
+
+| run | parts | shapes | colours | sideways | angled | curved | plain | mirrored | s |
+|---|---|---|---|---|---|---|---|---|---|
+| Falcon Heavy (`falcon_h1`) | 281 | 29 | 5 | 2.2% | 0% | 55% | 15% | 92% | 341 |
+| *last round (`falcon_2`)* | *311* | *31* | *6* | *2.7%* | *0%* | *54%* | *26%* | *88%* | |
+| sports car (`car_h1`) | 223 | 50 | 7 | 1.8% | 4.6% | 10% | 58% | 83% | 1,166 |
+| *last round* | *240* | *45* | *8* | *7.2%* | *0%* | *10%* | *40%* | *80%* | |
+| pirate ship (`pirate_h1`) | 1,850 | 67 | 10 | 1.8% | 12% | 14% | 72% | 92% | 951 |
+| *last round* | *1,695* | *55* | *6* | *20%* | *2.4%* | *16%* | *56%* | *43%* | |
+| steam locomotive (`loco_h1`) | 667 | 59 | 11 | 7.7% | 0% | 7.8% | 62% | 92% | 984 |
+| *last round* | *825* | *59* | *9* | *22%* | *0%* | *19%* | *51%* | *64%* | |
+| barn owl (`owl_h1`, new) | 738 | 46 | 14 | 4.3% | 0% | 6.8% | 74% | 94% | 331 |
+| *real vehicle sets, median* | | *119* | *15* | *23%* | *16%* | *14%* | *33%* | *87%* | |
+| *real `other` sets, median* | | *126* | *16* | *61%* | *15%* | *12%* | *31%* | *65%* | |
+
+By eye: the **Falcon Heavy** reads as one — three smooth white cores of round
+parts, black interstage and grid fins, ogive fairing, Technic legs, a stand
+with Starman and a red roadster — and is bare: 29 shapes, no panel lines. The
+**car** is a yellow supercar with mudguard arches, a wing, a driver with a
+cup and a plinth, built by hand after its `shape` body "came out blocky and
+in pieces" (234 floating, three pieces once the wheel arches were cut); its
+roof is a flat slab. The **ship** is a three-master with cannons, a stern
+gallery, crew and a bowsprit on a `shape` loft hull whose bow is a
+staircase of brick columns, and its six sails are walls of white bricks
+again. The **locomotive** is a crimson Pacific on track with a round boiler
+— its `shape` revolve boiler came out "too boxy" and it switched to the round
+pattern — and a tender, cab and smokebox of plain studded bricks. The
+**owl**, two `shape` calls of ellipsoids, is a lump of stepped plain bricks
+with a flat white face. Every run met the touches (figures, plaques, a stand)
+and none is detailed: shapes are under the tenth percentile in four.
+
+**The weakness they share is the `shape` call's surface.** Four of the five
+said a body as solids, and wherever it curves it comes back as a staircase of
+studs-up bricks: two runs threw it away, two kept it. Laid on its own, the
+call puts no wedge plate on a 45-degree edge and nothing on its side on a
+curved flank: a cylinder of radius 5 and a box chamfered 3 studs are both
+staircases with no wedges at all (`lay_disc`); an egg like the owl's body is
+4% sideways and 75% plain with two wedges in 409 parts; the probe's hull 2%
+sideways, the run's hull 4 side-stud bricks in 1,301 parts. Side panels need a
+straight side two courses tall, which a round body barely has, and the brick
+courses' wedges come at 34 degrees and shallower.
+
+Tried and not kept, each measured on that egg and the probe's bodies: side
+panels on every exposed flank with a curved slope rolling back from each
+step (egg 4 to 6% sideways: half a round body's outline is in plate layers,
+and corner columns came apart, the probe car in five pieces); ellipsoids laid
+as rounded boxes (no clearer); diagonal brick edges handed to the plates for
+wing plates (none fitted). Dressing a staircase's outline does not make it
+round. **Next**, in order: (1) find why `Plan._wedged` fits no wing plate on
+a round or chamfered plan, with `lay_disc` as the failing probe; (2) a body
+round in section laid in round parts (a revolve's diameters, 1 to 8); (3) a
+round body's sides laid outward on their side, a shell of plates and curved
+slopes on a core with studs out on four sides, as the Saturn V and BB-8 are
+built; (4) sails and flags as cloth parts hung from yards, which the check
+does not yet count as held. Pictures, logs and saves:
+`shots/runs/{falcon,car,pirate,loco,owl}_h1_{corner,front,close}.png`,
+`.log`, `saves/`, and `lay_{egg,hull,boiler,owl,disc}_*.png` in this
+worktree.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
