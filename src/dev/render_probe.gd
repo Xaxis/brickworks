@@ -395,6 +395,12 @@ func _dialog(method: String) -> void:
 	var dialog: RenderDialog = _main.get("_render")
 	var files: String = ProjectSettings.globalize_path(OUT + "files_%s" % method)
 	DirAccess.make_dir_recursive_absolute(files)
+	# A run before this one, and Godot's importer (the folder is inside the
+	# project, so an --import writes a .import beside each frame), leave
+	# files in the turntable's folder as well as beside it.
+	for folder: String in DirAccess.get_directories_at(files):
+		for name: String in DirAccess.get_files_at(files.path_join(folder)):
+			DirAccess.remove_absolute(files.path_join(folder).path_join(name))
 	for name: String in DirAccess.get_files_at(files):
 		DirAccess.remove_absolute(files.path_join(name))
 	dialog.folder = files
@@ -425,8 +431,9 @@ func _dialog(method: String) -> void:
 	(controls["render_turntable"] as Button).pressed.emit()
 	await _until_done(dialog)
 	var base: String = RenderOutput.file_name(str(dialog.named.call()), "_turntable", "x").get_basename()
-	var frames: PackedStringArray = DirAccess.get_files_at(files.path_join(base)) \
-		if DirAccess.dir_exists_absolute(files.path_join(base)) else PackedStringArray()
+	var frames: Array = Array(DirAccess.get_files_at(files.path_join(base)) \
+		if DirAccess.dir_exists_absolute(files.path_join(base)) else PackedStringArray()) \
+		.filter(func(name: String) -> bool: return name.begins_with("frame_") and name.ends_with(".png"))
 	_say("dialog: the turntable's 24 frames are in a folder (%d)" % frames.size(),
 		frames.size() == 24)
 	var webp: PackedByteArray = FileAccess.get_file_as_bytes(files.path_join(base + ".webp"))
