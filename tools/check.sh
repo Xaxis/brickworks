@@ -221,6 +221,11 @@ run "feel" "${screen[@]}" godot --path . --resolution 1400x900 \
 # shots/handbuild/.
 run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/handbuild_probe.gd
+# Sub-assemblies as a kit is built: made, taken whole, copied and mirrored
+# with the copies following an edit inside, nested, saved and read back.
+# In a window: it clicks clear of the model tree and properties panels.
+run "sub-assemblies" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/assembly_probe.gd
 # The minifigure builder, used by clicking: slots, parts, colours, a
 # name, Place in model, a click on a stud. Its live figure and its
 # thumbnails are drawn, so it needs a window; it leaves pictures of the
