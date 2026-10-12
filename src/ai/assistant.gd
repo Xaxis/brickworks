@@ -111,6 +111,10 @@ var references: Array = []
 var _section_of: Dictionary = {}
 var _local_of: Dictionary = {}
 var _sections: Dictionary = {}
+## Sections found for bricks that came without one (see [method _adopted]),
+## by what they share, and the world generation they were found in.
+var _adoptions: Dictionary = {}
+var _adoptions_of: int = -1
 
 
 ## Keep a picture of what is wanted. Returns false if it cannot be used.
@@ -2051,8 +2055,12 @@ func _run_tool(block: Dictionary) -> Variant:
 			if change.is_empty():
 				return ("Nothing to restyle: no plain brick one or two studs "
 					+ "wide with an open face in that box.")
+			if not change.has("edit"):
+				return str(change["summary"])
+			_laying_whole = true
 			var said: Variant = await _run_tool({"name": "edit_model",
 				"input": change["edit"]})
+			_laying_whole = false
 			if said is Array:
 				return [{"type": "text", "text": change["summary"]}] + (said as Array)
 			return "%s\n%s" % [change["summary"], str(said)]
@@ -2067,8 +2075,10 @@ func _run_tool(block: Dictionary) -> Variant:
 			_look_after_edit = {"from": rooms["view"], "only": rooms["box"],
 				"ask": "That is what it looks like now, from the side the rooms "
 					+ "open to. Does each read as the room it is?"}
+			_laying_whole = true
 			var laid: Variant = await _run_tool({"name": "edit_model",
 				"input": {"add": rooms["bricks"]}})
+			_laying_whole = false
 			_look_after_edit = {}
 			if laid is Array:
 				return [{"type": "text", "text": rooms["summary"]}] + (laid as Array)
@@ -2109,6 +2119,10 @@ func _run_tool(block: Dictionary) -> Variant:
 			if edited.placements.is_empty():
 				return ("That would leave the baseplate empty. "
 					+ "If clearing it is what you meant, say so instead.")
+			var sprinkled: String = "" if _laying_whole else _sprinkled(edited)
+			if not sprinkled.is_empty():
+				progress.emit("tried to sprinkle dressing over a dark wall")
+				return "Not applied — " + sprinkled
 			await _ensure_parts(edited)
 			var running: bool = _busy
 			var verdict: Dictionary = await _checked(edited, true)
@@ -2176,11 +2190,29 @@ func _model_from_world() -> Model:
 	var mine: Dictionary = {}
 	for brick_id: int in _placed_ids + _sketched_ids:
 		mine[brick_id] = true
+	var adopted: Dictionary = _adopted()
+	for section: Section in _adoptions.values():
+		model.sections[section.name] = section
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
+			continue
+		if adopted.has(brick.id):
+			var read: Array = adopted[brick.id]
+			var kept_in := Placement.new()
+			kept_in.part = brick.part_id
+			kept_in.color = brick.color_code
+			kept_in.section = str(read[0])
+			kept_in.x = float(read[1])
+			kept_in.y = float(read[2])
+			kept_in.z = float(read[3])
+			kept_in.face = str(read[4])
+			kept_in.rot = int(read[5])
+			kept_in.id = brick.id
+			kept_in.mine = mine.has(brick.id)
+			model.placements.append(kept_in)
 			continue
 		var at: Vector3 = _to_studs(brick, info)
 		var placement := Placement.new()
@@ -2209,6 +2241,103 @@ func _model_from_world() -> Model:
 		placement.mine = mine.has(brick.id)
 		model.placements.append(placement)
 	return model
+
+
+## The sections of the bricks that came without one, as [section name, x, y,
+## z, face, rot] by brick id: a model opened from a file keeps where each
+## brick is and not the section it was laid in. Read back at the nearest
+## square turn and the nearest cell, a prism's faces were checked and dressed
+## where they are not — the shipped Orthanc was told of sky through slits no
+## picture of it shows, and of 559 pieces of speckle on ribs that run straight
+## up its faces. Bricks turned the same way about the upright whose origins
+## fall on one 2 LDU lattice were laid in one frame, so they are one section:
+## turned by that much, its origin the point of that lattice nearest the
+## middle of what stands, where a side looking away from it is out, as a
+## prism's faces are read. Square bricks off the world's lattice are one too;
+## a minifigure's parts are left as they were.
+## The sections are kept until the world is cleared, so a brick an edit adds
+## to one is where the next reading says it is.
+func _adopted() -> Dictionary:
+	var out: Dictionary = {}
+	if world == null or library == null:
+		return out
+	if world.generation() != _adoptions_of:
+		_adoptions.clear()
+		_adoptions_of = world.generation()
+	var middle := Vector3.INF
+	for brick: BrickWorld.Brick in world.bricks():
+		# A figure stands on no stud grid, and its parts nest in each other.
+		if scenery.has(brick.id) or _section_of.has(brick.id) or _figure_part(brick.part_id):
+			continue
+		var turn: float = _turn_about_up(brick.transform.basis)
+		if is_nan(turn):
+			continue
+		var unturn := Basis(Vector3.UP, -deg_to_rad(turn))
+		var local: Vector3 = unturn * brick.transform.origin
+		var rest := Vector3(_on_lattice(local.x), _on_lattice(local.y), _on_lattice(local.z))
+		if turn == 0.0 and rest == Vector3.ZERO:
+			continue
+		var key: String = "%.2f %.1f %.1f %.1f" % [turn, rest.x, rest.y, rest.z]
+		var section: Section = _adoptions.get(key)
+		if section == null:
+			if middle == Vector3.INF:
+				middle = Vector3.ZERO
+				for one: BrickWorld.Brick in world.bricks():
+					middle += one.transform.origin
+				middle /= maxf(1.0, float(world.brick_count()))
+			var near: Vector3 = unturn * middle
+			var origin: Vector3 = Basis(Vector3.UP, deg_to_rad(turn)) * Vector3(
+				rest.x + BrickLattice.CELL * round((near.x - rest.x) / BrickLattice.CELL), rest.y,
+				rest.z + BrickLattice.CELL * round((near.z - rest.z) / BrickLattice.CELL))
+			var name: String = "turned %s" % Placement._num(turn) if turn > 0.0 else "offset"
+			var named: String = name
+			var n: int = 1
+			while _sections.has(named) or _adoptions.values().any(
+					func(other: Section) -> bool: return other.name == named):
+				n += 1
+				named = "%s %d" % [name, n]
+			section = Section.from_dict({"name": named, "x": origin.x / STUD,
+				"y": origin.y / PLATE, "z": origin.z / STUD, "axis": "y", "degrees": turn})
+			_adoptions[key] = section
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var square: Transform3D = section.placed().affine_inverse() * brick.transform
+		var face: String = BrickLattice.face_of(square.basis)
+		var rot: int = BrickLattice.turns_about(square.basis, face)
+		var cell := Vector3i(roundi(square.origin.x / BrickLattice.CELL),
+			roundi(square.origin.y / BrickLattice.CELL), roundi(square.origin.z / BrickLattice.CELL))
+		var at: Vector3 = BrickLattice.to_ldu(cell
+			+ _corner_cell(mesh, brick.part_id, BrickLattice.basis_for(face, rot)))
+		out[brick.id] = [section.name, at.x / STUD, at.y / PLATE, at.z / STUD, face, rot]
+	return out
+
+
+## How far a brick is turned about the upright off the square, in degrees
+## from 0 up to 90, or NAN when it is tipped some other way as well.
+static func _turn_about_up(basis: Basis) -> float:
+	var turned: Basis = basis.orthonormalized()
+	for n: int in 3:
+		var column: Vector3 = turned[n]
+		if absf(column.y) > 0.001:
+			continue
+		var turn: float = snappedf(fposmod(rad_to_deg(atan2(-column.z, column.x)), 90.0), 0.01)
+		if turn >= 90.0 - 0.01:
+			turn = 0.0
+		var square: Basis = Basis(Vector3.UP, -deg_to_rad(turn)) * turned
+		var snapped: Basis = BrickLattice.snap_basis(square)
+		for k: int in 3:
+			if square[k].dot(snapped[k]) < 0.9999:
+				return NAN
+		return turn
+	return NAN
+
+
+## Where a coordinate falls on the 2 LDU lattice, to a tenth of an LDU:
+## 0 when on it.
+static func _on_lattice(value: float) -> float:
+	var rest: float = snappedf(fposmod(value, BrickLattice.CELL), 0.1)
+	return 0.0 if rest >= BrickLattice.CELL - 0.05 else rest
 
 
 ## Apply a patch to what is built, and say what it came to.
@@ -4189,23 +4318,30 @@ func _read_model(args: Dictionary) -> Model:
 	return model
 
 
-## Lay a share of the plain one-wide bricks with an open long face again,
-## in place, as dressed side-stud bricks or as masonry, facing out.
+## A finishing pass over what stands: the plain one-wide bricks with an open
+## long face, and the outer rows of two-wide ones, laid again in place. Returns
+## {} when nothing qualifies, {"summary"} alone when it was asked for something
+## it has not got, or {"edit": edit_model's input, "summary": what it will do}.
 ##
 ## The designs built here write their walls brick by brick and then edit
-## them; the sixth Orthanc was 978 plain 1x2 bricks and nothing on its
-## side, though every check said real fantasy sets are a fifth sideways
-## and a pattern for it was there to be used. What it does reliably is
-## edit what stands, so this is an edit: the finishing pass a builder
-## gives a plain wall, worked out from what is actually open to the air.
-## Returns {} when nothing qualifies, or {"edit": edit_model's input,
-## "summary": what it will do}.
+## them; the sixth Orthanc was 978 plain 1x2 bricks and nothing on its side,
+## though every check said real fantasy sets are a fifth sideways and a pattern
+## for it was there to be used. What it does reliably is edit what stands, so
+## this is an edit, worked out from what is actually open to the air.
 ##
-## Dressed in the wall's own colour, as a set dresses a black tower in black:
-## a [code]face_color[/code] goes through [constant FACE_ACCENT] of the
-## dressing as an accent. The sixteenth Orthanc asked for dark grey on its
-## black faces — the guidance's own studs_out example said so — and all 149
-## round tiles came out grey, which read as polka dots.
+## Each wall — one face's outer row, in its section's frame or the main body's
+## — is laid again as one structure in its own colour ([constant
+## DRESS_STYLES]), never a part at a time: a dark one in panels unless told,
+## since a dark face with nothing on it reads as a hole and one sprinkled with
+## dressing as speckle. Run 4 of the Orthanc, on the landing page, was 58%
+## plain black after this pass had turned out only the bricks that started on
+## a column, each carrying its own tile: broken columns, which are regrouped
+## now. A light wall told no style keeps the old scatter: a
+## [code]sideways[/code] share turned out and dressed, a [code]masonry[/code]
+## share as masonry. A [code]face_color[/code] is the second tone: on every
+## fifth rib, on bands, or through a fifth of the scatter. The sixteenth
+## Orthanc asked for dark grey on its black faces and all 149 round tiles came
+## out grey, which read as polka dots.
 func _restyle(args: Dictionary) -> Dictionary:
 	if world == null or builder == null or builder.lattice == null:
 		return {}
@@ -4213,13 +4349,14 @@ func _restyle(args: Dictionary) -> Dictionary:
 	var sideways: float = clampf(float(args.get("sideways", 0.15)), 0.0, 0.5)
 	var masonry: float = clampf(float(args.get("masonry", 0.25)), 0.0, 1.0)
 	var face_colour: int = int(args.get("face_color", args.get("face_colour", -1)))
-	var long_of: Dictionary = Patterns.ONE_WIDE
-	var removed: Array = []
-	var added: Array = []
-	var turned: int = 0
-	var stoned: int = 0
-	## A dark wall's columns as met, numbered: every fifth takes the accent.
-	var accents: Dictionary = {}
+	var style: String = str(args.get("style", "")).to_lower()
+	if not style.is_empty() and not DRESS_STYLES.has(style):
+		return {"summary": "No style called %s: %s." % [style,
+			", ".join(PackedStringArray(DRESS_STYLES.keys()))]}
+	var texture: String = str(args.get("texture", "")).to_lower()
+	if not texture.is_empty() and not DRESS_TEXTURES.has(texture):
+		return {"summary": "No texture called %s: %s." % [texture,
+			", ".join(PackedStringArray(DRESS_TEXTURES.keys()))]}
 	var middle := Vector3.ZERO
 	var standing: Array[BrickWorld.Brick] = _bricks_inside({})
 	for brick: BrickWorld.Brick in standing:
@@ -4227,8 +4364,10 @@ func _restyle(args: Dictionary) -> Dictionary:
 	if not standing.is_empty():
 		middle /= float(standing.size())
 	var model: Model = _model_from_world()
+	# Every brick with an open face, by the wall it is in.
+	var walls: Dictionary = {}
 	for placement: Placement in model.placements:
-		var long: int = int(long_of.get(placement.part, TWO_WIDE.get(placement.part, 0)))
+		var long: int = int(Patterns.ONE_WIDE.get(placement.part, TWO_WIDE.get(placement.part, 0)))
 		if long == 0 or placement.face != "up":
 			continue
 		# A window is not a wall to finish.
@@ -4252,92 +4391,556 @@ func _restyle(args: Dictionary) -> Dictionary:
 		if not _inside(Vector3(seen.x / STUD, seen.y / PLATE, seen.z / STUD), where):
 			continue
 		var along_x: bool = placement.rot % 2 == 0
+		if not TWO_WIDE.has(placement.part):
+			var facing: String = _open_side(placement, long, along_x, middle, frame)
+			if not facing.is_empty():
+				_wall_of(walls, facing, frame, {"placement": placement, "outer": placement,
+					"inner": {}, "long": long, "seen": seen})
+			continue
 		# A two-wide brick with a long face open is laid again as two rows:
 		# the inner one plain, the outer one finished as a one-wide brick
-		# would be. A two-thick prism face is a course of them every other
-		# course, and a solid fill's rim is nothing else; restyling one-wide
-		# bricks only, the fifteenth Orthanc's shaft and plinth stayed 64%
-		# plain with the pass reaching every section.
-		var outer: Placement = placement
-		var inner: Dictionary = {}
-		if TWO_WIDE.has(placement.part):
-			outer = null
-			for half: int in 2:
-				var row := Placement.from_dict({"part": ONE_WIDE_OF[long],
-					"color": placement.color, "x": placement.x + (0 if along_x else half),
-					"y": placement.y, "z": placement.z + (half if along_x else 0),
-					"rot": placement.rot, "section": placement.section})
-				if not _open_side(row, long, along_x, middle, frame).is_empty():
-					outer = row
-					inner = {"part": ONE_WIDE_OF[long], "color": placement.color,
-						"x": placement.x + (0 if along_x else 1 - half), "y": placement.y,
-						"z": placement.z + (1 - half if along_x else 0), "rot": placement.rot}
-					if not placement.section.is_empty():
-						inner["section"] = placement.section
-					break
-			if outer == null:
-				continue
-		var facing: String = _open_side(outer, long, along_x, middle, frame)
-		if facing.is_empty():
-			continue
-		var pick: float = Patterns._scatter(seen.x / STUD, seen.y / PLATE, seen.z / STUD, 41)
-		# On a dark wall in columns, never scattered: a brick is turned out
-		# where it starts on one of the wall's columns and is short enough to
-		# keep it narrow, and everything on a column is the same part, in the
-		# same tone. The run that scattered them came out speckled with grey.
-		var dark: bool = _is_dark(placement.color)
-		var along: int = int(round(outer.x if along_x else outer.z))
-		var column: bool = posmod(along, RIB_EVERY) == 0 and long <= 2
-		var turn_out: bool = column if dark else pick < sideways
-		if turn_out and sideways > 0.0 and _each_stud_held(outer, long, along_x, frame):
-			removed.append(placement.id)
-			if not inner.is_empty():
-				added.append(inner)
-			for step: int in long:
-				var one := {"part": "87087", "color": placement.color,
-					"x": outer.x + (step if along_x else 0), "y": outer.y,
-					"z": outer.z + (0 if along_x else step), "rot": 0}
-				# The wall's own colour, and the colour asked for only as an
-				# accent through a share of it: on a dark wall, a share of its
-				# columns, each the whole way up.
-				var tone: int = -1
-				var accent: float = Patterns._scatter(seen.x / STUD + step,
-						seen.y / PLATE, seen.z / STUD, 31)
-				if dark:
-					var key: String = "%s|%d|%s" % [placement.section, along, facing]
-					if not accents.has(key):
-						accents[key] = accents.size()
-					accent = 0.0 if posmod(int(accents[key]), roundi(1.0 / FACE_ACCENT)) == 0 \
-						else 1.0
-				if face_colour >= 0 and accent < FACE_ACCENT:
-					tone = face_colour
-				var dressing: Dictionary = _dress(one, facing, tone,
-					[RIB_PART] if dark else [])
-				if not placement.section.is_empty():
-					one["section"] = placement.section
-					if not dressing.is_empty():
-						dressing["section"] = placement.section
-				added.append(one)
-				if not dressing.is_empty():
-					added.append(dressing)
-			turned += 1
-		elif pick < sideways + masonry and Patterns.MASONRY.has(outer.part):
-			removed.append(placement.id)
-			if not inner.is_empty():
-				added.append(inner)
-			var stone := {"part": Patterns.MASONRY[outer.part],
-				"color": placement.color, "x": outer.x, "y": outer.y,
-				"z": outer.z,
-				"rot": ["+z", "+x", "-z", "-x"].find(facing)}
+		# would be; with both open, a wall standing on its own, each row is
+		# its own face's. A two-thick prism face is a course of them every
+		# other course, and a solid fill's rim is nothing else; restyling
+		# one-wide bricks only, the fifteenth Orthanc's shaft and plinth
+		# stayed 64% plain with the pass reaching every section.
+		var rows: Array = []
+		for half: int in 2:
+			var row := {"part": ONE_WIDE_OF[long], "color": placement.color,
+				"x": placement.x + (0 if along_x else half), "y": placement.y,
+				"z": placement.z + (half if along_x else 0), "rot": placement.rot}
 			if not placement.section.is_empty():
-				stone["section"] = placement.section
-			added.append(stone)
-			stoned += 1
+				row["section"] = placement.section
+			var facing: String = _open_side(Placement.from_dict(row), long, along_x, middle,
+				frame)
+			rows.append([row, facing])
+		var open: Array = rows.filter(func(one: Array) -> bool: return not str(one[1]).is_empty())
+		if open.is_empty():
+			continue
+		var made: Array = []
+		for one: Array in open:
+			var other: Dictionary = rows[1 - rows.find(one)][0]
+			made.append(_wall_of(walls, one[1], frame, {"placement": placement,
+				"outer": Placement.from_dict(one[0]), "long": long, "seen": seen,
+				"inner": other if open.size() == 1 else {}}))
+		if made.size() == 2:
+			(made[0] as Dictionary)["pair"] = made[1]
+			(made[1] as Dictionary)["pair"] = made[0]
+	# The bricks with a stud on the side a wall has already, each with what is
+	# on its stud: kept where they stand in ribs, regrouped where they do not.
+	var facing_of: Dictionary = {}
+	for facing: String in ["+x", "-x", "+z", "-z"]:
+		var side: Array = _side_stud(facing)
+		if not side.is_empty():
+			facing_of[int(side[0])] = facing
+	var on_studs: Dictionary = {}    ## section|face -> [dressing placements]
+	for placement: Placement in model.placements:
+		if placement.face != "up" and (placement.dressing or placement.part in SPECKS):
+			var key: String = "%s|%s" % [placement.section, placement.face]
+			if not on_studs.has(key):
+				on_studs[key] = []
+			(on_studs[key] as Array).append(placement)
+	for placement: Placement in model.placements:
+		if placement.part != "87087" or placement.face != "up" \
+				or not facing_of.has(placement.rot):
+			continue
+		var facing: String = facing_of[placement.rot]
+		var along_x: bool = facing in ["+z", "-z"]
+		var key: String = "%s|%s|%s" % [placement.section, facing,
+			snappedf((placement.z if along_x else placement.x)
+				+ (0.2 if facing.begins_with("-") else 0.0), 0.5)]
+		if not walls.has(key):
+			# A row that is all side studs and texture already, nothing plain
+			# left in it: its studs are a wall to regroup all the same. The
+			# run 4 Orthanc had rows like that the old pass had turned out.
+			var frame := Transform3D.IDENTITY
+			if not placement.section.is_empty():
+				var section: Section = model.section_for(placement)
+				if section == null or section.axis != "y":
+					continue
+				frame = section.placed()
+			var seen: Vector3 = frame * Vector3(placement.x * STUD, placement.y * PLATE,
+				placement.z * STUD)
+			if not _inside(Vector3(seen.x / STUD, seen.y / PLATE, seen.z / STUD), where):
+				continue
+			walls[key] = {"section": placement.section, "facing": facing, "along_x": along_x,
+				"depth": (placement.z if along_x else placement.x)
+					+ (0.2 if facing.begins_with("-") else 0.0),
+				"frame": frame, "bricks": [], "studs": [], "colours": {placement.color: 1}}
+		var along: float = placement.x if along_x else placement.z
+		var depth: float = placement.z if along_x else placement.x
+		# Its stud stands a fifth of a stud out of its row.
+		if facing.begins_with("-"):
+			depth += 0.2
+		var carried: Array = []
+		for on: Placement in on_studs.get("%s|%s" % [placement.section, facing], []):
+			var on_along: float = on.x if along_x else on.z
+			var on_depth: float = on.z if along_x else on.x
+			if absf(on_along - along) < 0.5 and absf(on.y - placement.y - 1.0) < 1.6 \
+					and absf(on_depth - depth) < 1.5:
+				carried.append(on.id)
+		(walls[key]["studs"] as Array).append({"placement": placement, "carried": carried})
+	var out := {"removed": {}, "added": [], "said": {}, "styled": {}, "accents": {}}
+	var affected: Array = []
+	for key: String in walls:
+		var wall: Dictionary = walls[key]
+		var colours: Dictionary = wall["colours"]
+		var colour: int = -1
+		for code: int in colours:
+			if colour < 0 or int(colours[code]) > int(colours[colour]):
+				colour = code
+		wall["colour"] = colour
+		var chosen: String = style
+		if chosen.is_empty() and _is_dark(colour):
+			chosen = "panels"
+		if chosen.is_empty():
+			for one: Dictionary in wall["bricks"]:
+				_scatter_one(one, wall, sideways, masonry, face_colour, out)
+			continue
+		if _dress_wall(wall, chosen, texture, face_colour, out, affected):
+			out["styled"][chosen] = int(out["styled"].get(chosen, 0)) + 1
+	# The rest of each brick taken out: its inner row, or the other face's
+	# row when only one of them was laid again.
+	for one: Dictionary in affected:
+		if not (one["inner"] as Dictionary).is_empty():
+			(out["added"] as Array).append(one["inner"])
+		if one.has("pair") and not bool((one["pair"] as Dictionary).get("affected", false)):
+			var other: Placement = (one["pair"] as Dictionary)["outer"]
+			(out["added"] as Array).append({"part": other.part, "color": other.color,
+				"x": other.x, "y": other.y, "z": other.z, "rot": other.rot,
+				"section": other.section})
+	var removed: Dictionary = out["removed"]
 	if removed.is_empty():
 		return {}
-	return {"edit": {"remove": removed, "add": added},
-		"summary": "Restyled %d brick%s: %d turned out and dressed on their side, %d laid as masonry."
-			% [turned + stoned, "" if turned + stoned == 1 else "s", turned, stoned]}
+	var parts := PackedStringArray()
+	for what: String in out["said"]:
+		parts.append("%d %s" % [int(out["said"][what]), what])
+	var how := PackedStringArray()
+	for chosen: String in out["styled"]:
+		var many: int = int(out["styled"][chosen])
+		how.append("%d wall%s in %s" % [many, "" if many == 1 else "s", chosen])
+	return {"edit": {"remove": removed.keys(), "add": out["added"]},
+		"summary": "Restyled %d brick%s%s: %s." % [removed.size(),
+			"" if removed.size() == 1 else "s",
+			"" if how.is_empty() else " (" + ", ".join(how) + ")", ", ".join(parts)]}
+
+
+## Put a brick with an open face into the wall it is part of, keyed by its
+## section, the way it looks and its depth; returns the brick's entry.
+static func _wall_of(walls: Dictionary, facing: String, frame: Transform3D,
+		one: Dictionary) -> Dictionary:
+	var outer: Placement = one["outer"]
+	var along_x: bool = outer.rot % 2 == 0
+	var depth: float = outer.z if along_x else outer.x
+	var key: String = "%s|%s|%s" % [outer.section, facing, snappedf(depth, 0.5)]
+	if not walls.has(key):
+		walls[key] = {"section": outer.section, "facing": facing, "along_x": along_x,
+			"depth": depth, "frame": frame, "bricks": [], "studs": [], "colours": {}}
+	var wall: Dictionary = walls[key]
+	one["at"] = outer.x if along_x else outer.z
+	(wall["bricks"] as Array).append(one)
+	var colours: Dictionary = wall["colours"]
+	colours[outer.color] = int(colours.get(outer.color, 0)) + int(one["long"])
+	return one
+
+
+## How a wall is dressed as one structure: ribs (a column of round plates on
+## bricks with a stud on the side, up the wall every RIB_EVERY studs from its
+## middle, or where its ribs are already), bands (a course of texture every
+## BAND_STEP courses, in the second tone if one is given), panels (texture over
+## the wall between its ribs, framed by a plain stud at each end and a plain
+## course against each ledge and string course — 10237's black faces are
+## panels of grille between ribs), grid (ribs and bands) and courses (a course
+## of round bricks every RECESS_EVERY, a shadow line).
+const DRESS_STYLES: Dictionary = {
+	"ribs": "a column of round plates up each face every few studs",
+	"bands": "a course of texture every few courses, in the second tone if given",
+	"panels": "texture between the ribs, framed by a plain stud at each end and "
+		+ "a plain course against each ledge",
+	"grid": "ribs and bands",
+	"courses": "a course of round bricks every few courses, a recessed line",
+}
+## What a run of texture is laid in, two studs and one: grille (10237 breaks
+## its black with 86 of 2877, and with 63 headlight bricks, 4070), masonry,
+## logs (planking, a round brick for a single stud), round bricks (a fluted
+## panel) or headlight bricks.
+const DRESS_TEXTURES: Dictionary = {
+	"grille": ["2877", "4070"],
+	"masonry": ["98283", "4070"],
+	"log": ["30136", "3062b"],
+	"round": ["", "3062b"],
+	"headlight": ["", "4070"],
+}
+## Which way each texture part's face looks at rot 0, in this app's axes.
+## Masonry and grille face LDraw's -Z, which is +Z here; a headlight brick's
+## opening LDraw's +Z.
+const TEXTURE_FACES: Dictionary = {"2877": "+z", "98283": "+z", "15533": "+z",
+	"4070": "-z", "3062b": "+z", "30136": "+z"}
+const BAND_STEP := 4
+const RECESS_EVERY := 4
+## A column of side studs that holds this share of its wall's courses is a
+## rib already, and is kept; less, and it is regrouped.
+const RIB_KEEP := 0.5
+## How wide a wall is before its panels stand a plain stud in from each end.
+const PANEL_MARGIN_FROM := 8.0
+## A dark wall's dressing told how, wherever a check or an edit sends it.
+const DRESS_HOW := ("Lay them as one structure, never part by part: restyle_model "
+	+ "with \"style\": \"ribs\" (a column of round plates up each face), \"bands\" "
+	+ "(a course of grille round it, in the second tone if given), \"panels\" "
+	+ "(grille between the ribs, framed plain), \"grid\" (ribs and bands) or "
+	+ "\"courses\" (round bricks, a recessed line), over the box it is for "
+	+ "(where); on a dark wall it lays panels unasked.")
+
+
+## One wall laid again in [param style]: each brick a stud of it touches is
+## taken out and laid as plain pieces, texture, ribs or round bricks, stud by
+## stud as the style says; runs of texture are laid across the joints they
+## came from, a course at a time, each the same. A side stud already there that is
+## not in a rib is regrouped the same way, with what it carried. A brick is
+## split only where every stud of it is held from above or below, as the
+## scatter splits one. Returns whether anything changed; what was taken out
+## goes on [param affected].
+func _dress_wall(wall: Dictionary, style: String, texture: String, face_colour: int,
+		out: Dictionary, affected: Array) -> bool:
+	var colour: int = wall["colour"]
+	var bricks: Array = wall["bricks"]
+	var studs: Array = wall["studs"]
+	var along_x: bool = wall["along_x"]
+	var facing: String = wall["facing"]
+	var frame: Transform3D = wall["frame"]
+	var section: String = wall["section"]
+	var low: float = INF
+	var high: float = -INF
+	var bottom: float = INF
+	for one: Dictionary in bricks:
+		low = minf(low, float(one["at"]))
+		high = maxf(high, float(one["at"]) + int(one["long"]))
+		bottom = minf(bottom, (one["outer"] as Placement).y)
+	for one: Dictionary in studs:
+		var placement: Placement = one["placement"]
+		var at: float = placement.x if along_x else placement.z
+		low = minf(low, at)
+		high = maxf(high, at + 1.0)
+		bottom = minf(bottom, placement.y)
+	if high - low < 3.0 and studs.is_empty():
+		return false
+	# Its courses from the lowest: those in another colour (its ledges), and
+	# those of two-wide bricks, which tie a face two studs thick to its back
+	# row. A rib of bricks with a stud on the side cuts the face's outer row
+	# into strips, and panels split its two-wide bricks in two; held to the
+	# back by nothing, a strip is a piece of its own, and the first wall laid
+	# in panels came apart in thirteen. So a rib stands only in the courses of
+	# one-wide bricks, and one course of two-wide bricks next to each ledge —
+	# or with no ledges, every fourth such course, and the first and last —
+	# stays whole: a plain course across the wall that every strip hangs from.
+	var bands: Dictionary = {}
+	var courses: Dictionary = {}
+	var ties: Dictionary = {}
+	var top: int = 0
+	for one: Dictionary in bricks:
+		var placement: Placement = one["outer"]
+		var course: int = roundi((placement.y - bottom) / 3.0)
+		top = maxi(top, course)
+		courses[course] = true
+		if placement.color != colour:
+			bands[course] = true
+		if TWO_WIDE.has((one["placement"] as Placement).part):
+			ties[course] = true
+	for one: Dictionary in studs:
+		var course: int = roundi(((one["placement"] as Placement).y - bottom) / 3.0)
+		top = maxi(top, course)
+		courses[course] = true
+	var frames: Dictionary = {0: true, top: true}
+	if bands.is_empty():
+		var tied: Array = ties.keys()
+		tied.sort()
+		for n: int in tied.size():
+			if n % 4 == 2:
+				frames[tied[n]] = true
+	else:
+		for band: int in bands:
+			for next: int in [band - 1, band + 1]:
+				if ties.has(next):
+					frames[next] = true
+	# Its ribs: the columns of side studs it has that stand in half its
+	# courses of one-wide bricks or more, or every RIB_EVERY from its middle.
+	var one_wide: int = 0
+	for course: int in courses:
+		if not ties.has(course):
+			one_wide += 1
+	var held: Dictionary = {}    ## column -> {course: true}
+	for one: Dictionary in studs:
+		var placement: Placement = one["placement"]
+		var at: float = snappedf(placement.x if along_x else placement.z, 0.5)
+		if not held.has(at):
+			held[at] = {}
+		(held[at] as Dictionary)[roundi((placement.y - bottom) / 3.0)] = true
+	var ribs: Dictionary = {}
+	for at: float in held:
+		if (held[at] as Dictionary).size() >= RIB_KEEP * maxi(1, one_wide):
+			ribs[at] = true
+	if ribs.is_empty() and style in ["ribs", "panels", "grid"] and high - low >= 5.0:
+		# Moved off the middle a stud or two where that puts each rib inside
+		# the two-wide bricks of every course it skips: a rib on their joint
+		# cut the wall through from top to bottom, and the first wall laid in
+		# ribs came apart in four.
+		var spans: Dictionary = {}    ## course -> [Vector2(from, to)] of its two-wide bricks
+		for one: Dictionary in bricks:
+			if TWO_WIDE.has((one["placement"] as Placement).part):
+				var course: int = roundi(((one["outer"] as Placement).y - bottom) / 3.0)
+				if not spans.has(course):
+					spans[course] = []
+				(spans[course] as Array).append(Vector2(float(one["at"]),
+					float(one["at"]) + int(one["long"])))
+		var best: Dictionary = {}
+		var fewest: int = 1 << 30
+		for shift: int in [0, 1, -1, 2, -2]:
+			var at: float = low + floorf((high - low) / 2.0) + shift
+			while at - RIB_EVERY >= low + 1.0:
+				at -= RIB_EVERY
+			var trial: Dictionary = {}
+			var cut: int = 0
+			while at <= high - 2.0:
+				trial[snappedf(at, 0.5)] = true
+				for course: int in spans:
+					# Some two-wide brick of this course runs on past the rib
+					# on both sides.
+					var crossed: bool = false
+					for span: Vector2 in spans[course]:
+						if span.x < at - 0.05 and span.y > at + 1.05:
+							crossed = true
+							break
+					if not crossed:
+						cut += 1
+				at += RIB_EVERY
+			if cut < fewest and not trial.is_empty():
+				fewest = cut
+				best = trial
+		ribs = best
+	# A wide wall's panels stand a plain stud in from each end; a narrow
+	# face's corners frame it already.
+	var margin: float = 1.0 if high - low >= PANEL_MARGIN_FROM else 0.0
+	var role_of := func(at: float, course: int, two: bool) -> String:
+		var on_rib: bool = ribs.has(snappedf(at, 0.5)) and not two
+		match style:
+			"ribs":
+				return "rib" if on_rib else ""
+			"panels":
+				if frames.has(course) or bands.has(course):
+					return ""
+				if on_rib:
+					return "rib"
+				if at >= low + margin and at < high - margin:
+					return "texture"
+			"bands":
+				return "band" if posmod(course, BAND_STEP) == BAND_STEP - 1 else ""
+			"grid":
+				if on_rib:
+					return "rib"
+				if posmod(course, BAND_STEP) == BAND_STEP - 1:
+					return "band"
+			"courses":
+				return "round" if posmod(course, RECESS_EVERY) == RECESS_EVERY / 2 else ""
+		return ""
+	# What each stud of each brick becomes: "" (left plain), "texture",
+	# "band", "rib" or "round". A brick to be split must have every stud held.
+	var roles: Array = []
+	for one: Dictionary in bricks:
+		var outer: Placement = one["outer"]
+		var course: int = roundi((outer.y - bottom) / 3.0)
+		var two: bool = TWO_WIDE.has((one["placement"] as Placement).part)
+		var row := PackedStringArray()
+		for step: int in int(one["long"]):
+			row.append(role_of.call(float(one["at"]) + step, course, two)
+				if outer.color == colour else "")
+		if not Array(row).all(func(role: String) -> bool: return role.is_empty()) \
+				and not _each_stud_held(outer, int(one["long"]), along_x, frame):
+			row = PackedStringArray()
+			row.resize(int(one["long"]))
+		roles.append(row)
+	var removed: Dictionary = out["removed"]
+	var added: Array = out["added"]
+	var said: Dictionary = out["said"]
+	var accents: Dictionary = out["accents"]
+	var by_course: Dictionary = {}    ## course -> [[at, role, colour, y]]
+	var changed: bool = false
+	var pieces := func(role: String, at: float, run: int, tint: int, y: float,
+			course: int, from: String) -> void:
+		match role:
+			"":
+				added.append(_dress_piece(ONE_WIDE_OF[run], tint, at, y, wall, from))
+				said["plain"] = int(said.get("plain", 0)) + 1
+			"rib":
+				for k: int in run:
+					var stud: Dictionary = _dress_piece("87087", tint, at + k, y, wall, "")
+					stud["rot"] = 0
+					var key: String = "%s|%s|%s" % [section, facing, at + k]
+					if not accents.has(key):
+						accents[key] = accents.size()
+					var tone: int = face_colour if face_colour >= 0 and posmod(
+						int(accents[key]), roundi(1.0 / FACE_ACCENT)) == 0 else tint
+					var plate: Dictionary = _dress(stud, facing, tone, [RIB_PART])
+					added.append(stud)
+					if not plate.is_empty():
+						if not section.is_empty():
+							plate["section"] = section
+						added.append(plate)
+					said["rib studs"] = int(said.get("rib studs", 0)) + 1
+			"round":
+				for k: int in run:
+					added.append(_dress_piece("3062b", tint, at + k, y, wall, "-"))
+				said["round bricks"] = int(said.get("round bricks", 0)) + run
+			_:
+				if not by_course.has(course):
+					by_course[course] = []
+				for k: int in run:
+					(by_course[course] as Array).append([at + k, role, tint, y])
+	for n: int in bricks.size():
+		var row: PackedStringArray = roles[n]
+		if Array(row).all(func(role: String) -> bool: return role.is_empty()):
+			continue
+		changed = true
+		var one: Dictionary = bricks[n]
+		var placement: Placement = one["placement"]
+		var outer: Placement = one["outer"]
+		if not removed.has(placement.id):
+			removed[placement.id] = true
+		one["affected"] = true
+		affected.append(one)
+		var course: int = roundi((outer.y - bottom) / 3.0)
+		var step: int = 0
+		while step < row.size():
+			var run: int = 1
+			while step + run < row.size() and row[step + run] == row[step]:
+				run += 1
+			pieces.call(row[step], float(one["at"]) + step, run, outer.color, outer.y, course,
+				str(outer.rot))
+			step += run
+	# Side studs out of a rib, and what they carry, regrouped into the wall.
+	for one: Dictionary in studs:
+		var placement: Placement = one["placement"]
+		var at: float = placement.x if along_x else placement.z
+		if ribs.has(snappedf(at, 0.5)) or placement.color != colour:
+			continue
+		changed = true
+		removed[placement.id] = true
+		for id: int in one["carried"]:
+			removed[id] = true
+		var course: int = roundi((placement.y - bottom) / 3.0)
+		var role: String = role_of.call(at, course, false)
+		pieces.call("" if role == "rib" else role, at, 1, placement.color, placement.y,
+			course, "0")
+		said["side studs regrouped"] = int(said.get("side studs regrouped", 0)) + 1
+	var parts: Array = DRESS_TEXTURES.get(texture if not texture.is_empty() else "grille")
+	for course: int in by_course:
+		var row: Array = by_course[course]
+		row.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		var n: int = 0
+		while n < row.size():
+			var run: int = 1
+			while n + run < row.size() \
+					and absf(float(row[n + run][0]) - float(row[n][0]) - run) < 0.05 \
+					and row[n + run][1] == row[n][1] and row[n + run][2] == row[n][2]:
+				run += 1
+			var first: Array = row[n]
+			var role: String = first[1]
+			var tone: int = face_colour if role == "band" and face_colour >= 0 else int(first[2])
+			var pair: String = str(parts[0])
+			var single: String = str(parts[1])
+			var at: float = float(first[0])
+			var left: int = run
+			# Pairs from the left and a single at the right end, the same
+			# every course: a panel of vertical stripes. Bonded, the single
+			# moved from end to end course by course, and the grille, which
+			# catches the light where black does not, zigzagged up the face.
+			# The panel hangs from the whole courses that frame it.
+			while left > 0:
+				var two: bool = left >= 2 and not pair.is_empty()
+				added.append(_dress_piece(pair if two else single, tone, at, float(first[3]),
+					wall, "-"))
+				at += 2.0 if two else 1.0
+				left -= 2 if two else 1
+			var what: String = "studs of %s %s" % [texture if not texture.is_empty() else "grille",
+				"in bands" if role == "band" else "in panels"]
+			said[what] = int(said.get(what, 0)) + run
+			n += run
+	return changed
+
+
+## One piece of a wall laid again: [param part] [param at] studs along it, in
+## its row and at height [param y]. [param turn] is the turn as a number, or
+## "-" to turn a texture part's face out of the wall.
+func _dress_piece(part: String, colour: int, at: float, y: float, wall: Dictionary,
+		turn: String) -> Dictionary:
+	var along_x: bool = wall["along_x"]
+	var rot: int = int(turn) if turn.is_valid_int() else (0 if along_x else 1)
+	if turn == "-":
+		var order: Array = ["+z", "+x", "-z", "-x"]
+		rot = posmod(order.find(str(wall["facing"]))
+			- order.find(str(TEXTURE_FACES.get(part, "+z"))), 4)
+	var depth: float = wall["depth"]
+	var one := {"part": part, "color": colour, "x": at if along_x else depth, "y": y,
+		"z": depth if along_x else at, "rot": rot}
+	if not str(wall["section"]).is_empty():
+		one["section"] = wall["section"]
+	return one
+
+
+## The old pass, for a light wall told no style: a share turned out and
+## dressed, a share as masonry, chosen by where each brick is.
+func _scatter_one(one: Dictionary, wall: Dictionary, sideways: float, masonry: float,
+		face_colour: int, out: Dictionary) -> void:
+	var placement: Placement = one["placement"]
+	var outer: Placement = one["outer"]
+	var inner: Dictionary = one["inner"]
+	var long: int = one["long"]
+	var seen: Vector3 = one["seen"]
+	var along_x: bool = wall["along_x"]
+	var facing: String = wall["facing"]
+	var frame: Transform3D = wall["frame"]
+	var removed: Dictionary = out["removed"]
+	var added: Array = out["added"]
+	var said: Dictionary = out["said"]
+	if removed.has(placement.id):
+		return
+	if one.has("pair"):
+		# Both faces open: this one finished, the other row laid plain.
+		var other: Placement = (one["pair"] as Dictionary)["outer"]
+		inner = {"part": other.part, "color": other.color, "x": other.x, "y": other.y,
+			"z": other.z, "rot": other.rot, "section": other.section}
+	var pick: float = Patterns._scatter(seen.x / STUD, seen.y / PLATE, seen.z / STUD, 41)
+	if pick < sideways and _each_stud_held(outer, long, along_x, frame):
+		removed[placement.id] = true
+		if not inner.is_empty():
+			added.append(inner)
+		for step: int in long:
+			var stud := {"part": "87087", "color": placement.color,
+				"x": outer.x + (step if along_x else 0), "y": outer.y,
+				"z": outer.z + (0 if along_x else step), "rot": 0}
+			var tone: int = -1
+			if face_colour >= 0 and Patterns._scatter(seen.x / STUD + step,
+					seen.y / PLATE, seen.z / STUD, 31) < FACE_ACCENT:
+				tone = face_colour
+			var dressing: Dictionary = _dress(stud, facing, tone)
+			if not placement.section.is_empty():
+				stud["section"] = placement.section
+				if not dressing.is_empty():
+					dressing["section"] = placement.section
+			added.append(stud)
+			if not dressing.is_empty():
+				added.append(dressing)
+		said["turned out and dressed"] = int(said.get("turned out and dressed", 0)) + 1
+	elif pick < sideways + masonry and Patterns.MASONRY.has(outer.part):
+		removed[placement.id] = true
+		if not inner.is_empty():
+			added.append(inner)
+		var stone := {"part": Patterns.MASONRY[outer.part],
+			"color": placement.color, "x": outer.x, "y": outer.y, "z": outer.z,
+			"rot": ["+z", "+x", "-z", "-x"].find(facing)}
+		if not placement.section.is_empty():
+			stone["section"] = placement.section
+		added.append(stone)
+		said["laid as masonry"] = int(said.get("laid as masonry", 0)) + 1
 
 
 ## The share of a finishing pass's dressing in the colour asked for; the
@@ -4437,6 +5040,13 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 		middle: Vector3, frame: Transform3D = Transform3D.IDENTITY) -> String:
 	var sides: Array = ["+z", "-z"] if along_x else ["+x", "-x"]
 	var in_section: bool = frame != Transform3D.IDENTITY
+	# A section found for a model opened from a file has its origin at the
+	# middle of what stands, not at its own prism's: a pier's faces that look
+	# across a cleft are sixty degrees and more off straight out from there,
+	# and were never dressed. There a side counts that does not look back
+	# towards the middle, and is open far enough out that it is not a groove.
+	var adopted: bool = in_section and _adoptions.values().any(
+		func(one: Section) -> bool: return one.name == placement.section)
 	var centre := Vector3((placement.x + 0.5) * STUD, 0, (placement.z + 0.5) * STUD)
 	var open: Array = []
 	for side: String in sides:
@@ -4444,7 +5054,12 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 		# Within sixty degrees of straight out from the origin: the end of a
 		# face's course is open sideways onto the groove at its corner, and a
 		# tile laid there looks into the groove, not out of the tower.
-		if in_section and out.dot(Vector3(centre.x, 0.0, centre.z).normalized()) < 0.5:
+		if adopted:
+			var seen: Vector3 = frame * centre
+			var away := Vector3(seen.x - middle.x, 0.0, seen.z - middle.z)
+			if (frame.basis * out).dot(away.normalized()) < -0.1:
+				continue
+		elif in_section and out.dot(Vector3(centre.x, 0.0, centre.z).normalized()) < 0.5:
 			continue
 		var clear: bool = true
 		for step: int in long:
@@ -4455,7 +5070,7 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 				var z: float = placement.z + (0.5 if along_x else step + 0.5)
 				var at := Vector3(x * STUD, (placement.y + up) * PLATE, z * STUD)
 				at += out * (STUD * 0.5)
-				for reach: float in [2.0, 7.0]:
+				for reach: float in ([2.0, 7.0, 24.0] if adopted else [2.0, 7.0]):
 					var cell: Vector3i = BrickLattice.to_cell(frame * (at + out * reach))
 					if builder.lattice.brick_at(cell) != 0:
 						clear = false
@@ -4465,6 +5080,8 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 		return str(open[0])
 	if open.size() == 2:
 		var away: Vector3 = centre - middle
+		if adopted:
+			away = frame.basis.inverse() * (frame * centre - middle)
 		if along_x:
 			return "+z" if away.z >= 0.0 else "-z"
 		return "+x" if away.x >= 0.0 else "-x"
@@ -8446,21 +9063,32 @@ func _window_grid(model: Model) -> String:
 ## Dressing (parts on side studs) and a second tone scattered over a dark
 ## wall, where a real set textures one in ribs and grids. The Orthanc after the
 ## blades scattered round tiles, cheese slopes and grey across its black faces
-## and read as noise. A wall is a section (a face of a prism, in its own frame:
-## x along it, y up) or the main body, its colour the commonest of its plain
-## parts. A mark is organised when its column holds most of the courses its
-## wall is marked in (a rib) or its course most of the columns (a band); a
-## second tone counts on a section's wall only, so mottled rock is not
+## and read as noise. A wall is one plane of one face: dressing that looks the
+## same way from the same depth, in a section's frame or the main body's, and a
+## second tone in one row of bricks. Each storey that steps in is a wall of its
+## own. It was the section, or the whole main body: a tower read back from a
+## file, every face in one, had the rib up each storey's face counted against
+## every course of the model, and was told 559 of its 593 pieces of dressing
+## were scattered when 67 were. A wall's colour is the commonest of its
+## section's plain parts. A mark is organised when its column holds most of
+## the courses its wall is marked in (a rib) or its course most of the columns
+## (a band), and at least SPECKLE_LINE of them: one round plate on its own is
+## not a rib. A second tone counts in a section only, so mottled rock is not
 ## speckle.
 const SPECKLE_FROM := 24
 const SPECKLE_COVER := 0.6
+const SPECKLE_LINE := 3
 ## What lies on a side stud as dressing.
-const SPECKS: Array[String] = ["3070b", "98138", "4073", "54200", "3024", "6141"]
+const SPECKS: Array[String] = ["3070b", "98138", "4073", "6141", "54200", "3024"]
 
 
-func _speckle(model: Model) -> String:
+## The marks over dark walls, each [placement, wall, its columns, course], their
+## wall's colour, and which of them are scattered: {"marks", "colour",
+## "scattered"} (a bool for each mark).
+func _speckle_marks(model: Model) -> Dictionary:
+	var found := {"marks": [], "colour": -1, "scattered": []}
 	if library == null:
-		return ""
+		return found
 	var counts: Dictionary = {}    ## section -> {colour: plain parts}
 	for placement: Placement in model.placements:
 		if placement.face != "up" or not Style.kinds_of(placement.part).contains("p"):
@@ -8479,56 +9107,134 @@ func _speckle(model: Model) -> String:
 				best = int(code)
 		wall_of[key] = best
 	var marks: Array = []
-	var wall_rows: Dictionary = {}    ## section -> {course: true}
-	var wall_columns: Dictionary = {}    ## section -> {column: true}
+	var wall_rows: Dictionary = {}    ## wall -> {course: true}
+	var wall_columns: Dictionary = {}    ## wall -> {column: true}
 	var column_rows: Dictionary = {}    ## column -> {course: true}
 	var row_columns: Dictionary = {}    ## course -> {column: true}
-	var shown: int = -1
 	for placement: Placement in model.placements:
-		var wall: int = int(wall_of.get(placement.section, -1))
-		if wall < 0 or not _is_dark(wall):
+		var wall_colour: int = int(wall_of.get(placement.section, -1))
+		if wall_colour < 0 or not _is_dark(wall_colour):
 			continue
 		var tint: PartLibrary.BrickColor = library.color(placement.color)
 		if tint == null or tint.is_transparent():
 			continue
 		var dressing: bool = placement.dressing \
 			or (placement.face != "up" and placement.part in SPECKS)
-		var accent: bool = not placement.section.is_empty() and placement.color != wall \
+		var accent: bool = not placement.section.is_empty() and placement.color != wall_colour \
 			and not _is_dark(placement.color) and Style.kinds_of(placement.part).contains("p")
 		if not dressing and not accent:
 			continue
-		shown = wall
-		var column: String = "%s|%s" % [placement.section, snappedf(placement.x, 0.5)] \
-			if not placement.section.is_empty() \
-			else "|%s|%s" % [roundi(placement.x), roundi(placement.z)]
-		var course: String = "%s|%s" % [placement.section, snappedf(placement.y, 0.5)]
-		for pair: Array in [[wall_rows, placement.section, course],
-				[wall_columns, placement.section, column], [column_rows, column, course],
-				[row_columns, course, column]]:
-			var into: Dictionary = pair[0]
-			if not into.has(pair[1]):
-				into[pair[1]] = {}
-			(into[pair[1]] as Dictionary)[pair[2]] = true
-		marks.append([placement.section, column, course])
-	var scattered: int = 0
+		var wall: String
+		var along: float
+		var long: int = 1
+		if dressing:
+			# The plane it lies on: the face it looks out of, at the depth of
+			# the side it is pressed against.
+			var deep: float = placement.z
+			along = placement.x
+			if placement.face in ["+x", "-x"]:
+				deep = placement.x
+				along = placement.z
+			elif not placement.face in ["+z", "-z"]:
+				deep = placement.y
+			if placement.face.begins_with("-"):
+				var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+				deep += info.size.y / STUD if info != null else 0.0
+			wall = "%s|%s|%d" % [placement.section, placement.face, roundi(deep)]
+		else:
+			# One row of bricks, along x or along z by its turn, each of its
+			# studs a column: a course of grey laid in bricks of any length is
+			# a band whatever its joints.
+			var across: float = placement.z if placement.rot % 2 == 0 else placement.x
+			along = placement.x if placement.rot % 2 == 0 else placement.z
+			wall = "%s|row %d|%d" % [placement.section, placement.rot % 2, floori(across + 0.01)]
+			var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+			if info != null:
+				long = maxi(1, roundi(info.size.x / STUD))
+		var columns := PackedStringArray()
+		for step: int in long:
+			columns.append("%s|%s" % [wall, snappedf(along + step, 0.5)])
+		var course: String = "%s|%s" % [wall, snappedf(placement.y, 0.5)]
+		if not wall_rows.has(wall):
+			wall_rows[wall] = {}
+			wall_columns[wall] = {}
+		if not row_columns.has(course):
+			row_columns[course] = {}
+		(wall_rows[wall] as Dictionary)[course] = true
+		for column: String in columns:
+			(wall_columns[wall] as Dictionary)[column] = true
+			(row_columns[course] as Dictionary)[column] = true
+			if not column_rows.has(column):
+				column_rows[column] = {}
+			(column_rows[column] as Dictionary)[course] = true
+		marks.append([placement, wall, columns, course])
+		found["colour"] = wall_colour
+	var scattered: Array = []
 	for mark: Array in marks:
-		var rib: float = float((column_rows[mark[1]] as Dictionary).size()) \
-			/ (wall_rows[mark[0]] as Dictionary).size()
-		var band: float = float((row_columns[mark[2]] as Dictionary).size()) \
-			/ (wall_columns[mark[0]] as Dictionary).size()
-		if rib < SPECKLE_COVER and band < SPECKLE_COVER:
-			scattered += 1
+		var courses: int = (wall_rows[mark[1]] as Dictionary).size()
+		var rib: bool = false
+		for column: String in mark[2]:
+			var up: int = (column_rows[column] as Dictionary).size()
+			if up >= SPECKLE_LINE and float(up) / courses >= SPECKLE_COVER:
+				rib = true
+		var across: int = (row_columns[mark[3]] as Dictionary).size()
+		var band: bool = across >= SPECKLE_LINE \
+			and float(across) / (wall_columns[mark[1]] as Dictionary).size() >= SPECKLE_COVER
+		scattered.append(not rib and not band)
+	found["marks"] = marks
+	found["scattered"] = scattered
+	return found
+
+
+## Dressing an edit lays a part at a time over a dark wall, refused before it
+## is built: SPRINKLED_FROM pieces or more of it scattered, or any of it when
+## the whole would then be speckle. The detail pass of run 4 of the Orthanc
+## placed its dressing tile by tile, and words against speckle never stopped
+## a run doing it; a refusal that names the call that does it whole does.
+const SPRINKLED_FROM := 6
+## Set while a call that lays a whole structure (restyle_model, add_rooms)
+## makes its edit: what it lays is a wall's ribs or a room's furniture, not
+## dressing placed a part at a time.
+var _laying_whole: bool = false
+
+
+func _sprinkled(model: Model) -> String:
+	var found: Dictionary = _speckle_marks(model)
+	var marks: Array = found["marks"]
+	var scattered: Array = found["scattered"]
+	var laid: int = 0
+	var alone: int = 0
+	for n: int in marks.size():
+		var placement: Placement = marks[n][0]
+		if placement.id != 0 and not placement.moved:
+			continue
+		laid += 1
+		if bool(scattered[n]):
+			alone += 1
+	var whole: int = scattered.count(true)
+	var speckled: bool = whole >= SPECKLE_FROM and whole >= 0.4 * marks.size()
+	if alone == 0 or (not speckled and (alone < SPRINKLED_FROM or alone < 0.4 * laid)):
+		return ""
+	return ("%d of the %d parts this edit lays dressing the %s walls, or in a "
+		% [alone, laid, _colour_name(int(found["colour"]))]
+		+ "second tone on them, stand one by one, in no column and no course: "
+		+ "over a dark wall that reads as speckle. " + DRESS_HOW)
+
+
+func _speckle(model: Model) -> String:
+	var found: Dictionary = _speckle_marks(model)
+	var marks: Array = found["marks"]
+	var scattered: int = (found["scattered"] as Array).count(true)
 	if scattered < SPECKLE_FROM or scattered < 0.4 * marks.size():
 		return ""
 	return ("%d of the %d parts dressing the %s walls, or in a second tone on them, "
-		% [scattered, marks.size(), _colour_name(shown)]
+		% [scattered, marks.size(), _colour_name(int(found["colour"]))]
 		+ "are scattered one by one: over a dark wall that reads as speckle, as "
 		+ "noise, the way a grid of windows reads as an office block. A real set "
 		+ "textures a dark wall in ribs and grids — a column of round plates or "
 		+ "grille up the middle of each face, grille bricks in a band, panels "
 		+ "between pilasters — and puts its second tone on ledges and string "
-		+ "courses. Put them in columns and bands, never sprinkled: the prism and "
-		+ "restyle_model lay them so on a dark wall.")
+		+ "courses. " + DRESS_HOW)
 
 
 ## Slits of sky through the model up to a stud and a half wide, seen from any
@@ -8691,7 +9397,10 @@ func _dark_and_plain(model: Model) -> String:
 			+ "courses are (dark bluish grey on black: band_color), never "
 			+ "sprinkled through the bricks, which reads as noise; and depth — "
 			+ "an inset or outset course, a pilaster, a rib — so light and "
-			+ "shadow draw the form.")
+			+ "shadow draw the form. One call lays it on what stands: "
+			+ "restyle_model, which on a dark wall lays panels of grille between "
+			+ "ribs of round plates, framed plain, unasked (\"style\" for ribs, "
+			+ "bands, a grid or recessed courses).")
 	return ""
 
 
@@ -11305,7 +12014,11 @@ on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
 black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
 bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
 bluish grey on its ledges: texture in the same colour, a second tone in \
-bands rather than sprinkled (scattered, it reads as noise), depth.
+bands rather than sprinkled (scattered, it reads as noise), depth. \
+restyle_model lays it on what stands, wall by wall, in one call: on a dark \
+wall panels of grille between ribs of round plates unasked, or the \
+"style" said (ribs, bands, grid, recessed courses). Dressing placed a \
+part at a time over a dark wall is refused.
   Windows have reasons. A few, varied, framed, where something happens \
 inside — never a grid of identical lit squares, which makes a fortress an \
 office block. Their colour comes from the subject: dark slits for a dark \
@@ -12447,17 +13160,21 @@ func _tools() -> Array:
 		},
 		{
 			"name": "restyle_model",
-			"description": ("A finishing pass over what is already built: "
-				+ "plain bricks one stud wide (1x1 to 1x4) whose long face "
-				+ "is open to the air are laid again, in place, as bricks "
-				+ "with a stud on the side carrying a tile, round tile, round "
-				+ "plate or cheese slope facing out (sideways), or as masonry "
-				+ "bricks with their stonework out (masonry); one two studs wide "
-				+ "(2x2 to 2x4) as two rows, the outer one finished so; the "
-				+ "faces of a prism or a cluster too, in their own sections. What a builder "
-				+ "does to a plain wall, and how real sets come to have a "
-				+ "fifth of their parts on their side — done for you, in one "
-				+ "call, checked like any edit."),
+			"description": ("A finishing pass over what is already built, "
+				+ "wall by wall: plain bricks one stud wide (1x1 to 1x4) whose "
+				+ "long face is open to the air, and the outer row of two-wide "
+				+ "ones, are laid again in place as one structure per wall — "
+				+ "ribs (a column of round plates on bricks with a stud on the "
+				+ "side, every few studs), bands (a course of grille), panels "
+				+ "(grille between the ribs, framed by a plain stud at each end "
+				+ "and a plain course at each ledge, as 10237 Orthanc textures "
+				+ "its black), grid (ribs and bands) or courses (round bricks, "
+				+ "a recessed line) — in the wall's own colour, never a part at "
+				+ "a time. A dark wall gets panels unasked; a light wall not "
+				+ "given a style gets a scatter of dressed bricks (sideways) and "
+				+ "masonry. The faces of a prism or a cluster too, in their own "
+				+ "sections, and a model opened from a file. Done for you, in "
+				+ "one call, checked like any edit."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -12470,13 +13187,22 @@ func _tools() -> Array:
 							"z_from": {"type": "number"}, "z_to": {"type": "number"},
 						},
 						"additionalProperties": false},
+					"style": {"type": "string", "enum": DRESS_STYLES.keys(),
+						"description": "how each wall is dressed, as one structure: "
+						+ "panels on a dark wall if not said"},
+					"texture": {"type": "string", "enum": DRESS_TEXTURES.keys(),
+						"description": "what panels and bands are laid in: grille "
+						+ "(the default), masonry, logs (planking), round bricks "
+						+ "(fluted) or headlight bricks"},
 					"sideways": {"type": "number", "description":
-						"share of those bricks turned out and dressed, 0 to 0.5; 0.15 if not said"},
+						"a light wall given no style: share of its bricks turned "
+						+ "out and dressed, 0 to 0.5; 0.15 if not said"},
 					"masonry": {"type": "number", "description":
-						"share laid as masonry, 0 to 1; 0.25 if not said"},
+						"a light wall given no style: share laid as masonry, 0 to "
+						+ "1; 0.25 if not said"},
 					"face_color": {"type": "integer", "description":
-						"an accent through a fifth of what is laid on the side studs; "
-						+ "the rest is the brick's own colour, as a set dresses a "
+						"the second tone: on every fifth rib and on bands; the "
+						+ "rest is the wall's own colour, as a set dresses a "
 						+ "black wall in black"},
 				},
 				"additionalProperties": false,

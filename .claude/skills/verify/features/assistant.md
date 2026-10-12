@@ -318,8 +318,15 @@ fixing what it got wrong.
   (`SPECKLE_FROM` 24 or more pieces of dressing, or in a section's wall a
   second tone, on a dark wall, 40% of them scattered: neither in a column
   holding `SPECKLE_COVER` (60%) of the courses its wall is marked in, a rib, nor
-  in a course holding 60% of its columns, a band; a second tone in the main
-  body is not counted, so mottled rock is not speckle), `_daylight` (slits of
+  in a course holding 60% of its columns, a band, and either at least
+  `SPECKLE_LINE` (3) long; a second tone in the main body is not counted, so
+  mottled rock is not speckle. A wall is one plane (`_speckle_marks`):
+  dressing looking the same way from the same depth, in its section's frame
+  or the main body's, and a second tone in one row of bricks, so each storey
+  that steps in is its own. It was the section or the whole main body, and
+  the landing page's Orthanc read back from its file was told 559 of its 593
+  pieces were scattered — the rib up each storey's face counted against every
+  course of the tower — where per plane 99 of 1,078 are), `_daylight` (slits of
   sky between `DAYLIGHT_SLIT` 0.1 and 1.5 studs wide right through a model
   of 200 parts or more, from any of the eight views at nine heights, measured
   off each part's own box laid flat as `daylight_probe` measures it, counted
@@ -629,35 +636,104 @@ fixing what it got wrong.
   on grey ledges as 10237 does.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
-  studs up, not in a section) whose long face is open — the live lattice empty
-  2 and 7 LDU out along the whole face at two heights (`_open_side`; both open
-  means the side away from the model's middle) — are laid again in place: a
-  `sideways` share (0.15) as 87087s dressed by `_dress`, only where every stud
-  is held from below or above (`_each_stud_held`: a bonded course's end brick
-  overhangs, and split it floated), and a `masonry` share (0.25) as 98283/15533
-  facing out. Found by the sixth Orthanc: 978 plain 1x2s, 0% sideways, though
-  every pattern for it was offered; restyled it went 0% to 10% sideways and 83%
-  to 59% plain. Style advice names it. `mcp_probe` restyles a bonded 1x4 wall
-  and checks bricks are turned, dressed and stoned, and the edit applied.
-  The dressing is the wall brick's own colour; a `face_color` goes through a
-  fifth of it as an accent (`FACE_ACCENT`). Run 16 asked dark grey on its black
-  faces, copying the guidance's studs_out example (which no longer gives one),
-  and all 149 round tiles came out grey: polka dots, where 10237 dresses black
-  in black. `patterns_probe`: asked grey on the guidance's black cluster, its
-  dressing is mostly black (374 to 204, the grey including the wall's own grey
-  bricks; 0 to 578 before).
-  It reaches bricks in sections turned about y, in the section's own
-  coordinates (`_open_side`/`_each_stud_held` take the section's frame; only
-  a side within 60 degrees of straight out from the section's origin counts,
-  so a face's inner row, open onto the hollow shaft, and a course's end, open
-  onto the corner groove, are left), and lays a two-wide brick (2x2-2x4,
-  `TWO_WIDE`) with an open long face again as two rows, the inner plain and
-  the outer finished. Run 15 called it over its cluster's shaft and was told
-  "Restyled 4 bricks"; its own calls replayed now give 172, and the whole
-  model 2.5% to 9.1% sideways and 69% to 60% plain. `patterns_probe`: on the
-  guidance's cluster it turns out 100+ and stones 50+ in sections, splits
-  50+ two-wide bricks, dresses nothing facing anywhere but out, and the whole
-  still passes.
+  studs up) whose long face is open — the live lattice empty 2 and 7 LDU out
+  along the whole face at two heights (`_open_side`; both open means the side
+  away from the model's middle) — and the outer rows of two-wide ones (2x2-2x4,
+  `TWO_WIDE`; both rows when both faces are open, a wall standing on its own)
+  are gathered into walls (`_wall_of`: one face's outer row, by section, the way
+  it looks and its depth), and each wall is laid again as one structure in its
+  own colour (`_dress_wall`), never a part at a time. `style` is one of
+  `DRESS_STYLES`: `ribs` (a 87087 carrying a `RIB_PART` round plate in each
+  course of one-wide bricks of each rib column — the wall's own columns of side
+  studs that stand in `RIB_KEEP` (half) of those courses, or every `RIB_EVERY`
+  from its middle, moved a stud or two where that puts each rib inside the
+  two-wide bricks of every course it skips: on their joints the first wall in
+  ribs came apart in four), `bands` (a course of texture every `BAND_STEP` (4),
+  in `face_color` if given), `panels` (ribs, and texture over the rest but its
+  first and last course, its ledges in another colour, the course of two-wide
+  bricks beside each ledge or, with none, every fourth such course — whole
+  courses the panel's strips hang from, which tie a two-thick face to its back
+  row: with every one split the first wall laid in panels came apart in
+  thirteen — and a plain stud at each end of a wall `PANEL_MARGIN_FROM` (8)
+  studs wide), `grid` (ribs and bands) and `courses` (a course of 1 x 1 round
+  bricks every `RECESS_EVERY` (4), a shadow line). A rib stands only in courses
+  of one-wide bricks, never splitting a two-wide one. Texture
+  (`DRESS_TEXTURES`): grille 2877 by default with headlight bricks 4070 for an
+  odd stud, or masonry, logs (planking), round bricks or headlight bricks; laid
+  across the joints of the bricks it replaces, pairs from the left and a single
+  at the right every course alike, faced out by `TEXTURE_FACES`: bonded, the
+  single moved end to end and the grille, which catches the light where black
+  does not, zigzagged up the face. A brick is split only where every stud is
+  held (`_each_stud_held`). A side stud already in the wall that stands in no
+  rib is regrouped with what it carries, as its column and course say; a row
+  of nothing but side studs and texture is a wall for that too. A dark wall
+  told no style gets panels; a light one keeps the old scatter
+  (`_scatter_one`): a `sideways` share (0.15) as 87087s dressed by `_dress`,
+  and a `masonry` share (0.25) as 98283/15533 facing out (this path still splits
+  a free two-wide brick into rows untied, and on the pirate ship below left one
+  masonry brick and the brick on it a piece of their own). Found by the sixth
+  Orthanc: 978 plain 1x2s, 0% sideways; restyled it went 0% to 10% sideways.
+  Run 4 of the Orthanc, the landing page's, took the old dark-wall pass with a
+  grey accent and came out 58% plain black: it turned out only the bricks that
+  happened to start on a column, each carrying its own tile, broken columns over
+  plain black. Run 5 called `restyle_model {"style": "panels", "face_color": 72}`
+  by name: 31 walls, 3,284 studs of grille. It reaches bricks in sections
+  turned about y, in the section's own coordinates (`_open_side` and
+  `_each_stud_held` take the section's frame; only a side within 60 degrees of
+  straight out from the section's origin counts, so a face's inner row, open
+  onto the hollow shaft, and a course's end, open onto the corner groove, are
+  left; in a section found for a file (below) the origin is the middle of what
+  stands, so there a side counts that does not look back towards it and is open
+  24 LDU out, past a groove). `mcp_probe` lays a bonded black 1x4 wall in
+  panels of grille between ribs. `patterns_probe`: on the guidance's cluster
+  300+ more grille bricks in panels, 50+ two-wide bricks split, nothing dressed
+  facing anywhere but out, the windows left, the whole still passing, not
+  speckle, and the grey asked for adds no grey to the faces (the tower's own
+  ribs stand). `dress_probe` (below).
+- `dressing laid as one structure`: `src/dev/dress_probe.gd`. A black wall
+  restyled unasked is panels, over half its face grille, a rib in every course
+  of one-wide bricks between its whole courses, a round plate on each rib stud,
+  one piece, not called a hole or speckle; ribs, bands, grid and courses each
+  hold in one piece and are not speckle; a style it has not got is said so;
+  28 grey tiles laid one at a time over a black wall by `edit_model` are
+  refused, told the call (`_sprinkled`: `SPRINKLED_FROM` (6) of an edit's own
+  marks scattered, 40% of them, or any once the whole would be speckle; not
+  for `restyle_model` or `add_rooms`, which lay whole structures,
+  `_laying_whole`), and the same tiles in two columns are laid; the guidance's
+  tower written to a file and opened again reads its turned faces in sections,
+  holds in one piece and is told of no speckle or sky; and the landing page's
+  Orthanc, read from its file, has 99 of 1,078 marks scattered, dressed again
+  58% to 46% plain black with fewer scattered, one piece, and its weak joint
+  underpinned stands up. On the code before (`HEAD` of the merged integrator
+  branch) 18 of its checks fail, among them the opened Orthanc at 232 pieces.
+  `src/dev/redress.gd -- IN.ldr OUT.ldr ['{...}']` does the same to any saved
+  model (or a design's JSON), says before and after, underpins (below) and
+  writes the result.
+- `a file's turned faces`: `Assistant._adopted`, from `_model_from_world`. A
+  model opened from a file keeps where each brick is, not the section it was
+  laid in; read back at the nearest square turn and cell, a prism's faces were
+  checked and dressed where they are not. Bricks turned the same way about the
+  upright whose origins share one 2 LDU lattice are one section ("turned 45"),
+  and square bricks off the world's lattice one too ("offset"), its origin the
+  lattice point nearest the middle of what stands; minifigure parts are left
+  (they nest and stand on no grid). Kept in `_adoptions` until the world is
+  cleared. The landing page's Orthanc opened: no sky through slits it was told
+  of before, one piece where the old reading made 232.
+- `standing up, for the landing page`: `src/dev/candidate_probe.gd -- MODEL.ldr
+  [ON_THE_PAGE.ldr]`. A candidate opens whole, is buildable in one piece,
+  stands up as the status bar reckons it (`Stability`), and the check says none
+  of a picture's faults of it (hole, speckle, office block, straight shaft, sky,
+  yard) that the model on the page (`models/orthanc.ldr` unless said) does not
+  have; exits 1 otherwise. Run 4 on the page fails it: "1 weak joint
+  (overloaded)", the foot of its core's face in each cleft between the piers
+  hanging over a hole in the plinth, touching a ledge tile at one edge cell, so
+  88 g of face rested on a tile corner that holds 80. `redress.gd`'s `underpin`
+  gives each brick a weak joint carries, over a void, a column of 1 x 1 bricks
+  and plates in every stud it covers down to what is below; run 4 re-dressed
+  and run 5 so made pass. `style_probe` holds every shipped model to standing
+  up but those known not to (`weak_known`: `orthanc.ldr`, run 4) and fails when
+  either list changes, so a weak homepage model is caught and a sound one
+  replacing it must clear the list.
 - `a resubmit keeps its numbers`: `_apply` matches each placement to a brick
   already standing from the last submit or sketch by part, colour and transform
   (`_same_key`, to a hundredth of an LDU) and keeps it under its number; only
@@ -1027,6 +1103,9 @@ godot --headless --path . --script src/dev/brain_probe.gd       # the request ca
 godot --headless --path . --script src/dev/reference_probe.gd   # a picture gets in
 godot --headless --path . --script src/dev/reference_lookup_probe.gd  # and one can be found
 godot --headless --path . --script src/dev/patterns_probe.gd    # a shape said rather than counted out; a clustered tower stands and takes rooms
+godot --headless --path . --script src/dev/dress_probe.gd       # dark walls dressed as one structure, a file read as it stands
+godot --headless --path . --script src/dev/candidate_probe.gd -- MODEL.ldr  # may it go on the landing page: whole, one piece, stands up, no new fault
+godot --headless --path . --script src/dev/redress.gd -- IN.ldr OUT.ldr ['{"style": "panels"}']  # dress a saved model again, underpin it, write it
 godot --headless --path . --script src/dev/rooms_probe.gd       # floors and furnished rooms in what stands
 godot --headless --path . --script src/dev/daylight_probe.gd -- MODEL.ldr X0 X1 Z0 Z1 Y0 Y1 [HEADING]  # sightlines through a saved model
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd  # ...and pictures: shots/rooms/

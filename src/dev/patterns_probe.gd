@@ -744,7 +744,8 @@ func _clustered() -> void:
 	# and all. The fifteenth Orthanc called it over its shaft and was told
 	# "Restyled 4 bricks": every face was in a section.
 	var counts := func() -> Dictionary:
-		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0, "grey": 0, "black": 0}
+		var found := {"turned": 0, "stone": 0, "grille": 0, "two": 0, "inward": 0, "grey": 0,
+			"black": 0}
 		for placement: Assistant.Placement in assistant._model_from_world().placements:
 			# The faces, not the horns: a blade is built on its side whole.
 			if placement.section.is_empty() or placement.section.contains(" horn "):
@@ -755,6 +756,8 @@ func _clustered() -> void:
 				found["turned"] += 1
 			elif placement.part in ["98283", "15533"]:
 				found["stone"] += 1
+			elif placement.part == "2877":
+				found["grille"] += 1
 			elif Assistant.TWO_WIDE.has(placement.part):
 				found["two"] += 1
 			elif placement.face != "up" and placement.face != "+z":
@@ -769,16 +772,17 @@ func _clustered() -> void:
 	var after: Dictionary = counts.call()
 	var grey: int = int(after["grey"]) - int(before["grey"])
 	var black: int = int(after["black"]) - int(before["black"])
-	# A seventh of the walls are grey bricks (mix_color 72), dressed in their own
-	# grey; the rest take grey only as an accent, a fifth.
-	_check("dressing asked in grey on a black tower is mostly black: %d black, %d grey"
-		% [black, grey], black > grey and grey > 0)
-	# On a black wall it turns out only bricks on a column, every RIB_EVERY
-	# studs: scattered, the run that asked for it came out speckled.
-	_check("restyle_model reaches the faces in their sections, a black wall's in columns: %s"
-		% restyled.get_slice("\n", 0), restyled.begins_with("Restyled")
-			and int(after["turned"]) > int(before["turned"]) + 20
-			and int(after["stone"]) > int(before["stone"]) + 50)
+	# The grey goes on every fifth new rib and on bands, never on the faces'
+	# dressing at large: the tower's own ribs stand already, so it adds none.
+	_check("dressing asked in grey on a black tower adds no grey to its faces: %d black, %d grey"
+		% [black, grey], grey <= 0)
+	# On a black wall, panels of grille between its ribs, the faces in their
+	# sections: the old pass turned out only the bricks that started on a
+	# column, each carrying a tile, broken columns over plain black.
+	_check("restyle_model lays the faces in their sections in panels of grille: %s, %d grille "
+		% [restyled.get_slice("\n", 0), int(after["grille"]) - int(before["grille"])]
+		+ "bricks more", restyled.begins_with("Restyled") and restyled.contains("in panels")
+			and int(after["grille"]) > int(before["grille"]) + 300)
 	_check("...two-wide bricks too, as two rows: %d in the faces, %d before"
 		% [after["two"], before["two"]], int(after["two"]) < int(before["two"]))
 	_check("...dressing only the faces' outsides, none looking into a shaft or a groove (%d do)"
@@ -788,7 +792,7 @@ func _clustered() -> void:
 		lights.call(assistant._model_from_world().placements).size() == windows.size())
 	whole = assistant._check(assistant._model_from_world(), true)
 	_check("...and it still passes the check: %s" % whole["summary"], bool(whole["ok"]))
-	_check("...and is not called speckle, its grey on whole columns",
+	_check("...and is not called speckle",
 		not "\n".join(PackedStringArray(whole.get("advice", []))).contains("speckle"))
 
 	# Piers asked too small for their sides keep their sides. The fifteenth
