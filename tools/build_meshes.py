@@ -141,7 +141,7 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         # Unpacked rather than mapped, so a box that is not six numbers
         # fails here instead of being written out short.
         part.boxes = [(int(x0), int(y0), int(z0), int(x1), int(y1), int(z1))
-                      for x0, y0, z0, x1, y1, z1 in occ.to_boxes(solid)]
+                      for x0, y0, z0, x1, y1, z1 in occ.to_boxes(solid, connections)]
         part.sockets = [(float(x), float(z)) for x, z in occ.bottom_sockets(solid)]
         part.cell_ldu = occ.CELL
 

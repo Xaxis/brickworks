@@ -277,6 +277,8 @@ def fill_cavities(
     filename, and why holes are counted against the parts whose names
     state how many they have.  The bore is also clamped to the part's own
     cells, so a hole on a surface cannot reach beyond the plastic.
+
+    A hole drawn without a peghole is cleared too: see [holes].
     """
     if occupancy.cell_count == 0:
         return occupancy
@@ -288,65 +290,144 @@ def fill_cavities(
         if filled is not None:
             grid[:, y, :] = filled
 
-    holes = [
-        c for c in (connections or [])
-        if c.kind in (ConnectorKind.PIN_HOLE, ConnectorKind.AXLE_HOLE)
-    ]
-    if holes:
-        ox, oy, oz = occupancy.origin
-        shape = occupancy.shape
-        centres = [
-            (np.arange(shape[n]) + (ox, oy, oz)[n] + 0.5) * CELL for n in range(3)
-        ]
-        bore = np.zeros(shape, dtype=bool)
-        for hole in holes:
-            # extract() reports in LDraw's axes, where -Y is up, and the
-            # grid is in the application's; remove_studs flips the same way.
-            point = np.array([hole.position.x, -hole.position.y, -hole.position.z])
-            axis = np.array([hole.axis.x, -hole.axis.y, -hole.axis.z])
-            length = float(np.linalg.norm(axis))
-            if length < 1e-9:
-                continue
-            axis = axis / length
-
-            # Only the slab the hole can possibly touch, which for an
-            # axis-aligned hole is a few cells across.  Testing the whole
-            # grid per hole made the 19x11 Technic baseplate — 209 holes
-            # over a 110x12x190 grid — take 0.87s to fill where it took
-            # 0.01s before, and it is the same answer either way.
-            # A hole at an angle to the grid has no thin slab: its channel
-            # runs diagonally, so the whole grid is the honest window.
-            # Rare — a handful of parts in the library — and correctness
-            # there is worth more than the speed, which is what the whole
-            # fast path is guarding.
-            square = max(abs(axis[0]), abs(axis[1]), abs(axis[2])) > 0.99
-            window = []
-            for n in range(3):
-                if not square or abs(axis[n]) > 0.99:
-                    window.append(slice(0, shape[n]))
-                    continue
-                middle = point[n] / CELL - (ox, oy, oz)[n]
-                reach = (HOLE_RADIUS / CELL) + 1.0
-                window.append(slice(
-                    max(0, int(np.floor(middle - reach))),
-                    min(shape[n], int(np.ceil(middle + reach)) + 1)))
-            if any(w.start >= w.stop for w in window):
-                continue
-
-            local = [centres[n][window[n]] for n in range(3)]
-            gx, gy, gz = np.meshgrid(*local, indexing="ij")
-            dx, dy, dz = gx - point[0], gy - point[1], gz - point[2]
-            along = dx * axis[0] + dy * axis[1] + dz * axis[2]
-            # Perpendicular distance to the hole's infinite axis line.
-            px = dx - along * axis[0]
-            py = dy - along * axis[1]
-            pz = dz - along * axis[2]
-            inside = (px * px + py * py + pz * pz) <= HOLE_RADIUS * HOLE_RADIUS
-            bore[window[0], window[1], window[2]] |= inside
-        grid = grid & ~bore
+    found = holes(connections or [])
+    if found:
+        grid = grid & ~_bore(occupancy, found, whole_line=False)
 
     return Occupancy(
         origin=occupancy.origin, shape=occupancy.shape, bits=grid.reshape(-1))
+
+
+## How far a drawn hole's radius may be from a pin's, in LDU. 6222's and
+## 18897's holes are 6 exactly; a clip's eye, which a bar goes in, is 4.
+DRAWN_HOLE_FIT = 0.5
+
+
+@dataclass(slots=True)
+class Hole:
+    """A hole a pin or an axle goes into, in the application's axes."""
+
+    point: np.ndarray
+    axis: np.ndarray                 # unit
+    # Where along the axis from point the hole runs, or None for the whole
+    # line through the part (a peghole primitive says where its mouth is,
+    # not how deep it goes).
+    span: tuple[float, float] | None
+
+
+def holes(connections: list[Connection]) -> list[Hole]:
+    """Every hole a pin or an axle goes into, however it was drawn.
+
+    Most are drawn from Technic primitives, and a connector says so. Some
+    are not: the four side holes of 6222, a 4x4 round brick, and of
+    18897, a 6x6 one, are plain cylinders turned inside out, with nothing
+    named peghole anywhere in the file. So their bores were never
+    cleared, and where 6222's meets the tube inside the brick the
+    voxeliser and the fill closed the inner 6 LDU of it: 48 of the 128
+    cells within 5 LDU of its axis were solid.
+
+    connectivity.rounds already finds such a hole as a bore, and the rule
+    for one being a hole a pin goes into is its shape:
+
+    - a pin's radius, within DRAWN_HOLE_FIT;
+    - all the way round, where the underside of a curved top is half a
+      bore of the same radius and is not a hole into anything;
+    - not along the stud axis, because a round hole there is a tube or
+      an anti-stud, which is where a *stud* goes, and a stud is held by
+      finding plastic just past its tip. Clearing those would leave every
+      round 1x1 brick floating on the stud it sits on;
+    - and not filled by the part's own pin, as the eye of a hinge that
+      comes complete with its pin is.
+
+    It is cleared along its own length only, unlike a peghole's whole
+    line: 6222's opposite holes share an axis, and the line between them
+    crosses the tube in the middle of the brick.
+    """
+    out: list[Hole] = []
+    shafts = [c for c in connections if c.kind is ConnectorKind.SHAFT]
+    for c in connections:
+        if c.kind in (ConnectorKind.PIN_HOLE, ConnectorKind.AXLE_HOLE):
+            span = None
+        elif (c.kind is ConnectorKind.BORE
+              and abs(c.radius - HOLE_RADIUS) <= DRAWN_HOLE_FIT
+              and c.arc >= 1.0 - 1e-6 and abs(c.axis.y) < 0.99
+              and not any(_fills(s, c) for s in shafts)):
+            span = (0.0, c.length)
+        else:
+            continue
+        # extract() reports in LDraw's axes, where -Y is up, and the grid
+        # is in the application's; remove_studs flips the same way.
+        axis = np.array([c.axis.x, -c.axis.y, -c.axis.z])
+        length = float(np.linalg.norm(axis))
+        if length < 1e-9:
+            continue
+        out.append(Hole(
+            point=np.array([c.position.x, -c.position.y, -c.position.z]),
+            axis=axis / length, span=span))
+    return out
+
+
+def _fills(shaft: Connection, bore: Connection) -> bool:
+    """Whether a part's own shaft stands inside one of its bores."""
+    if shaft.radius < bore.radius - 1.0 or shaft.radius > bore.radius + DRAWN_HOLE_FIT:
+        return False
+    if abs(shaft.axis.dot(bore.axis)) < 0.999:
+        return False
+    gap = shaft.position - bore.position
+    if (gap - bore.axis * gap.dot(bore.axis)).length() > 1.0:
+        return False
+    a = gap.dot(bore.axis)
+    b = a + shaft.length * shaft.axis.dot(bore.axis)
+    return min(max(a, b), bore.length) - max(min(a, b), 0.0) > 1.0
+
+
+def _bore(occupancy: Occupancy, found: list[Hole], *, whole_line: bool) -> np.ndarray:
+    """The cells within a hole's radius of its axis, as a mask of the grid."""
+    ox, oy, oz = occupancy.origin
+    shape = occupancy.shape
+    centres = [
+        (np.arange(shape[n]) + (ox, oy, oz)[n] + 0.5) * CELL for n in range(3)
+    ]
+    bore = np.zeros(shape, dtype=bool)
+    for hole in found:
+        point, axis = hole.point, hole.axis
+        # Only the slab the hole can possibly touch, which for an
+        # axis-aligned hole is a few cells across.  Testing the whole
+        # grid per hole made the 19x11 Technic baseplate — 209 holes
+        # over a 110x12x190 grid — take 0.87s to fill where it took
+        # 0.01s before, and it is the same answer either way.
+        # A hole at an angle to the grid has no thin slab: its channel
+        # runs diagonally, so the whole grid is the honest window.
+        # Rare — a handful of parts in the library — and correctness
+        # there is worth more than the speed, which is what the whole
+        # fast path is guarding.
+        square = max(abs(axis[0]), abs(axis[1]), abs(axis[2])) > 0.99
+        window = []
+        for n in range(3):
+            if not square or abs(axis[n]) > 0.99:
+                window.append(slice(0, shape[n]))
+                continue
+            middle = point[n] / CELL - (ox, oy, oz)[n]
+            reach = (HOLE_RADIUS / CELL) + 1.0
+            window.append(slice(
+                max(0, int(np.floor(middle - reach))),
+                min(shape[n], int(np.ceil(middle + reach)) + 1)))
+        if any(w.start >= w.stop for w in window):
+            continue
+
+        local = [centres[n][window[n]] for n in range(3)]
+        gx, gy, gz = np.meshgrid(*local, indexing="ij")
+        dx, dy, dz = gx - point[0], gy - point[1], gz - point[2]
+        along = dx * axis[0] + dy * axis[1] + dz * axis[2]
+        # Perpendicular distance to the hole's axis line.
+        px = dx - along * axis[0]
+        py = dy - along * axis[1]
+        pz = dz - along * axis[2]
+        inside = (px * px + py * py + pz * pz) <= HOLE_RADIUS * HOLE_RADIUS
+        if hole.span is not None and not whole_line:
+            inside &= (along >= hole.span[0]) & (along <= hole.span[1])
+        bore[window[0], window[1], window[2]] |= inside
+    return bore
 
 
 def remove_studs(
@@ -520,7 +601,10 @@ def collides(a: Occupancy, b: Occupancy, offset: tuple[int, int, int]) -> bool:
     return bool(np.any(slice_a & slice_b))
 
 
-def to_boxes(occupancy: Occupancy, *, limit: int = 64) -> list[tuple[int, ...]]:
+def to_boxes(
+    occupancy: Occupancy, connections: list[Connection] | None = None,
+    *, limit: int = 64,
+) -> list[tuple[int, ...]]:
     """Cover the occupied cells with a few axis-aligned boxes.
 
     The grid itself is the honest answer to "does this overlap that", but
@@ -539,24 +623,72 @@ def to_boxes(occupancy: Occupancy, *, limit: int = 64) -> list[tuple[int, ...]]:
     coordinates. Parts that will not reduce to ``limit`` boxes fall back
     to their bounding box, which over-reports rather than under-reports:
     it can refuse a legal placement but never allows an illegal one.
+
+    Except in a hole. A refused placement there is not a rare one, it is
+    the one the hole exists for. Of the 2,790 parts built before this with
+    a pin or axle hole a Technic primitive declares, 2,104 had one filled
+    solid this way, and none any other way: a beam takes about ten boxes a
+    hole (beam 5 is 54, beam 7 72), so every Technic beam from 7 up and
+    every Technic brick from 1 x 8 up was a solid bar, and 6222 and 18897,
+    round bricks whose sides are four Technic holes, were solid drums.
+
+    So a hole brings its own boxes: a part may take HOLE_BOXES more for
+    each hole it has ([holes], from ``connections``). That keeps the
+    cover exact for Technic beams 7 to 15 (72 to 144 boxes), Technic
+    bricks 1 x 8 to 1 x 16 and 6222 (118). Past it the cover is the
+    bounding box everywhere but on a hole's line, where it is the part's
+    own cells: the hole, and the air a pin comes in through. 18897 is 330
+    boxes exact and 42 so.
     """
     if occupancy.cell_count == 0:
         return []
 
     grid = occupancy.to_grid()
-    ox, oy, oz = occupancy.origin
+    found = holes(connections or [])
+    allowed = min(limit + HOLE_BOXES * len(found), CARVED_LIMIT)
+    boxes = _greedy(grid, occupancy.origin, allowed)
+    if boxes is not None:
+        return boxes
+
+    xs, ys, zs = np.nonzero(grid)
+    bounds = np.zeros(grid.shape, dtype=bool)
+    bounds[xs.min():xs.max() + 1, ys.min():ys.max() + 1, zs.min():zs.max() + 1] = True
+    whole = _greedy(bounds, occupancy.origin, 1)
+    if not found:
+        return whole or []
+    bounds &= ~(_bore(occupancy, found, whole_line=True) & ~grid)
+    return _greedy(bounds, occupancy.origin, CARVED_LIMIT) or whole or []
+
+
+## The boxes a hole is allowed on top of the limit. Opening a hole costs
+## a few — 54754, a train motor, went from 63 to 70 for its four — and
+## without them a part a few over the limit lost its exact cover for
+## having its holes opened. A Technic beam is about ten a hole.
+HOLE_BOXES = 16
+
+
+## The most boxes a bounding box with its holes carved may take. A hole
+## square to the grid costs about four (median 4, 90th percentile 9, over
+## all 2,427 parts that were bounding boxes, carved); a hole at an angle
+## runs a staircase through the whole box. Past this, four parts — two palm
+## trees and a dragon that come assembled, and a Y-branch of car track —
+## keep their bounding box, holes and all, rather than carry 2,500 to
+## 3,100 boxes into every collision test they are part of. The most any
+## other part takes is 1,444.
+CARVED_LIMIT = 2048
+
+
+def _greedy(
+    grid: np.ndarray, origin: tuple[int, int, int], limit: int | None,
+) -> list[tuple[int, ...]] | None:
+    """Boxes over a grid's cells, or None past ``limit`` of them."""
+    ox, oy, oz = origin
     remaining = grid.copy()
     boxes: list[tuple[int, ...]] = []
 
     while remaining.any():
-        if len(boxes) >= limit:
-            xs, ys, zs = np.nonzero(grid)
-            return [(
-                ox + int(xs.min()), oy + int(ys.min()), oz + int(zs.min()),
-                int(xs.max() - xs.min()) + 1,
-                int(ys.max() - ys.min()) + 1,
-                int(zs.max() - zs.min()) + 1,
-            )]
+        if limit is not None and len(boxes) >= limit:
+            return None
 
         start = np.argwhere(remaining)[0]
         x0, y0, z0 = (int(v) for v in start)

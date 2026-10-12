@@ -106,7 +106,7 @@ Runtime:
 godot --headless --path . --script src/dev/dimensions_probe.gd   # in millimetres
 godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
-godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes
+godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
@@ -274,6 +274,43 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   plastic. Plain bricks are untouched: a 2x4 is still 9,600 cells and one box.
   The cost is box count on Technic parts only — beam 3 went 25 to 36, beam 5
   37 to 54.
+
+- **Past 64 boxes a cover was its bounding box, holes and all.** `to_boxes`
+  falls back to the bounding box when a cover will not reduce to 64 boxes,
+  which over-reports and was thought safe. In a hole it refuses the one
+  placement the hole is for: of 2,790 parts with a pin or axle hole a primitive
+  declares, 2,104 had one filled solid that way, and none any other way —
+  every Technic beam from 7 up (beam 5 is 54 boxes), every Technic brick from
+  1 x 8, and 6222 and 18897, the 4x4 and 6x6 round bricks with holes (118 and
+  330 boxes). The checker hid most of it, because a pin is forgiven against
+  the part its `pin_hole` names (`Joints.pairs`), but 6222 has no such
+  connector and was refused. Now a hole brings its own boxes
+  (`occupancy.to_boxes(solid, connections)`, `HOLE_BOXES` 16 a hole), which
+  keeps beams 7 to 15 (72 to 144 boxes), bricks 1 x 8 to 1 x 16 and 6222
+  exact; past that the cover is the bounding box except on each hole's line,
+  where it is the part's own cells (18897: 42 boxes). That carving stops at
+  `CARVED_LIMIT` 2,048 boxes, past which four assembled parts (2518c01,
+  2536c01, 42941, 52258p01c01) keep their plain bounding box. The largest
+  cover in the library went from 64 boxes to 1,444 (42938, a curved car
+  track); every geometry probe below still passes.
+
+- **Some Technic holes are drawn without a peghole.** 6222's and 18897's side
+  holes are plain cylinders turned inside out, so no `pin_hole` connector
+  exists and `fill_cavities` never cleared them; where 6222's meets the tube
+  inside the brick the voxeliser closed 48 of the 128 cells down its middle.
+  `connectivity.rounds` finds them as bores, and `occupancy.holes` takes a bore
+  as a hole when it is a pin's radius (6, within 0.5), all the way round
+  (`Connection.arc`: a curved top's underside is half a bore), not along the
+  stud axis, and not filled by the part's own shaft (a hinge complete with its
+  pin). Along the stud axis a round hole is a tube or an anti-stud, where a
+  *stud* goes, and `_studs_reaching_in` finds what a stud holds by plastic past
+  its tip — cleared, a stud pushed into one would hold nothing. So 87081's
+  centre pin hole, which is vertical, stays solid as a tube does. A drawn hole
+  is cleared along its own length only,
+  since 6222's opposite holes share a line through the tube in the middle.
+  `tests/test_ldraw.py` (`test_a_round_brick_cover_leaves_its_side_holes_open`,
+  `test_a_pin_in_any_hole_misses_the_cover`) holds both rules to the `.lbm` the
+  build writes.
 
 - **A pin cannot be found the way a stud is found.** `_studs_reaching_in` samples
   just past a stud's tip and asks who owns that lattice cell, which works because
