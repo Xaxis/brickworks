@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
 
 ## Sub-features
 
@@ -507,8 +507,40 @@ picture the assistant is shown.
   2,438 pieces, 364 pages, 2 min and 72 MB; Orthanc 8,603 pieces, 1,298 pages,
   6 min, 137 MB and a 105 MB PDF (LEGO's own PDFs run about 0.5 MB a page). In
   Chromium on SwiftShader the web build makes the example car's in 89 s.
-- `mosaic`: a picture turned into a plate of tiles that still looks like the
-  picture.
+- `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
+  a picture built two ways. **LEGO Art**, the default, as a modern Art set
+  builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
+  matched in Oklab with damped Floyd–Steinberg (`Mosaic`, unchanged). The
+  dialog has the mode, panels across and down (down follows the picture's
+  proportions until moved), Depth 0–6 plates (0 is flat), the element styles
+  (Round texture, Contour quarters, Smooth tiles, Accent stars, Blend colours)
+  and, live, the result drawn element by element (`MosaicArt.picture_of`) and
+  what it comes to by element. Build it replaces the model, each panel its own
+  sub-assembly ("Panel 1"…, the plates under them "Frame"), so the booklet
+  builds a panel at a time and P lists the parts.
+- `LEGO Art layout` (`src/assembly/mosaic_art.gd`): `analyse` reads a picture
+  into a `Plan` — per stud a style, a relief and an accent flag — and `lay`
+  turns any plan into parts, which is the entry point for the assistant
+  composing one itself. Flat areas: square tiles merged up to 2 × 4; texture:
+  98138 round tiles; diagonal contours: 25269 quarter circles turned so the
+  curve faces across the edge (only where what the cut corner shows is the far
+  side's colour); stars: round tiles in trans-clear, glow or metallic a plate
+  proud (round plates, stud proud, when flat); what stands out from the
+  border's colour raised on merged plates with 54200 cheese slopes on the way
+  down. Each element's colour only from colours that part is made in
+  (`never_made_in`), matched with hue weighed 1.5 times lightness
+  (`MosaicArt.gap`) after the picture's shadows are taken to LEGO Black
+  (`black_point`): without them a night sky came out half Dark Brown and a
+  star's halo Reddish Brown. 16 × 16 plates (91405) joined underneath by 2 × 4s across
+  every seam and one under each outside edge, so the checker calls it one
+  buildable piece. `mosaic_probe` proves it on a synthetic galaxy (stars as
+  accent round tiles a plate proud, the core raised to the depth, quarter
+  circles on the arms' edges, one piece, nine pieces without the frame, the
+  parts list part for part, the booklet nine panels) and a flat red picture
+  (2 × 4 tiles, under a third the classic count), the switches (depth 0 flat,
+  styles off unused), the turn tables against the meshes, and that the classic
+  mosaic lays the probe's gradient exactly as it did. Renders of the galaxy:
+  `shots/art/`.
 - `photo-real render` (File, Render…, and the toolbar's camera;
   `src/ui/render_dialog.gd`): a picture or a turntable of the model worth
   keeping, Studio's Eyesight and Mecabricks' Workshop being the bar. The panel's
@@ -644,7 +676,8 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
 #   off the window and drew nothing, at 1280x860 it drew every frame
 #   on the GPU, for the card's time a frame: ~/.claude/claude-core/bin/gpu before it;
 #   `-- --every-frame` runs it drawing every frame, as the app did
-godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
+godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture, classic and Art
+#   -- --ldr=shots/art/galaxy.ldr writes the galaxy, to render corner, front and close
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 #   every step pictured and framed on the model, new parts in frame, a parts box

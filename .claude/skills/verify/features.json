@@ -452,6 +452,14 @@
       "tests": []
     },
     {
+      "id": "lib:LEGO Art layout",
+      "kind": "lib",
+      "entry": "src/assembly/mosaic_art.gd",
+      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:a big check on a worker",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",

@@ -1806,7 +1806,7 @@ func _build_ui() -> void:
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
 		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
-		_inset(_mosaic, 380.0, 460.0)
+		_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
 		_inset(_brickify, 400.0, 690.0)
 		_inset(_figures, 1040.0, 660.0)
 		_inset(_elements, 440.0, 760.0))
@@ -1838,8 +1838,9 @@ func _build_ui() -> void:
 	_picker = PickImage.new()
 	add_child(_picker)
 	_mosaic = MosaicDialog.new()
+	_mosaic.library = _library
 	$HUD.add_child(_mosaic)
-	_inset(_mosaic, 380.0, 460.0)
+	_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
 
 	# Straight from the button press into the file dialog, with nothing
 	# awaited between. A browser only opens a file picker while it is
@@ -1866,6 +1867,7 @@ func _build_ui() -> void:
 		_mosaic_source = image
 		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
+	_mosaic.art_wanted.connect(_build_art)
 
 	# A 3D model laid in bricks, as a sub-assembly beside what is built.
 	_brickify = BrickifyDialog.new()
@@ -2362,6 +2364,45 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	_camera.set_view("top")
 	_on_model_changed()
 	_bar.say("%d plates — press P for what to buy" % pixels.size())
+
+
+## The picture dialog's size: room for the Art mode's picture, its
+## switches and what it comes to.
+const MOSAIC_WIDE := 440.0
+const MOSAIC_TALL := 720.0
+
+
+## Lay the chosen picture out as a LEGO Art set lays one (MosaicArt): its
+## panels joined underneath, its elements chosen region by region. Like the
+## classic mosaic it replaces what was there, through the ordinary placement
+## path, each panel its own sub-assembly so the booklet builds a panel at a
+## time.
+func _build_art(options: MosaicArt.Options) -> void:
+	if _mosaic_source == null:
+		return
+	_bar.say("laying it out…")
+	await get_tree().process_frame
+	var art: MosaicArt.Art = MosaicArt.make(_mosaic_source, options, _library)
+	if art.placements.is_empty():
+		_bar.say("nothing to lay out")
+		return
+	# On the web most of these parts are fetched rather than shipped.
+	await _assistant._ensure_parts(art.model())
+
+	_world.clear()
+	_builder.lattice.clear()
+	_builder.forget_history()
+	_assistant.forget_built()
+	_store.scenery.clear()
+	var ids: PackedInt64Array = MosaicArt.put_down(art, _world, _builder, _assistant)
+	if _shell != null:
+		_shell.assemblies.changed.emit()
+
+	_camera.frame(_built_bounds(), 1.1)
+	_camera.set_view("isometric" if options.depth > 0 else "top")
+	_on_model_changed()
+	_bar.say("%s parts on %d × %d panels — press P for what to buy" % [
+		MosaicDialog._comma(ids.size()), art.panels.x, art.panels.y])
 
 
 ## Width below which the two panels cannot both sit beside the model.
