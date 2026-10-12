@@ -289,9 +289,15 @@ func _read_back() -> void:
 	DirAccess.remove_absolute(path)
 
 
-## The Orthanc on the landing page, dressed again through the call.
+## The Orthanc on the landing page, read from its file and dressed again
+## through the call. Run 4 was there when this was written: 99 of its 1,078
+## marks scattered read as it stands, 559 as read before; dressed again, 58% to
+## 46% plain black, and its weak joint underpinned. Run 5 replaced it, dressed
+## in panels by its own run and made to stand: dressed again it is left as it
+## is. Either way, read right it is not speckle, and dressing it again never
+## makes it plainer, more scattered, more pieces, or weaker.
 func _orthanc() -> void:
-	print("  the shipped Orthanc, dressed again")
+	print("  the landing page's Orthanc, dressed again")
 	var store := ModelStore.new()
 	store.world = _world
 	store.builder = _builder
@@ -305,7 +311,6 @@ func _orthanc() -> void:
 	var said: String = _text(await _assistant.use_tool("restyle_model", {}))
 	var after: Dictionary = _measure()
 	var redress: GDScript = preload("res://src/dev/redress.gd")
-	var weak: String = redress.stands(_assistant)
 	var underpinned: String = await redress.underpin(_assistant)
 	var stands: String = redress.stands(_assistant)
 	print("    %s" % said.get_slice("\n", 0))
@@ -313,19 +318,17 @@ func _orthanc() -> void:
 	print("    after  %s" % str(after))
 	_check("read from its file, its ribs are ribs: %d of %d marks scattered"
 		% [before["scattered"], before["marks"]],
-		int(before["scattered"]) * 5 < int(before["marks"]))
-	_check("dressed again, plain black well below its %d%%: %d%%" % [before["plain"], after["plain"]],
-		int(after["plain"]) <= int(before["plain"]) - 10)
-	# What is left scattered is a pair of round plates here and there on rock
-	# and ledges, under a tenth of the marks, not called speckle.
-	_check("...its dressing organised: %d of %d marks scattered, %d before"
+		int(before["marks"]) > 100 and int(before["scattered"]) * 5 < int(before["marks"]))
+	_check("dressed again, no plainer: %d%% plain black, %d%% before" % [after["plain"],
+		before["plain"]], int(after["plain"]) <= int(before["plain"]))
+	_check("...no more scattered: %d of %d marks, %d before"
 		% [after["scattered"], after["marks"], before["scattered"]],
-		int(after["scattered"]) < int(before["scattered"])
+		int(after["scattered"]) <= int(before["scattered"])
 			and int(after["scattered"]) * 10 < int(after["marks"]))
-	_check("...and it holds in one piece: %s, %d" % [after["summary"], after["pieces"]],
-		bool(after["ok"]) and int(after["pieces"]) <= int(before["pieces"]))
-	_check("its weak joint, %s, underpinned (%s): %s" % [weak.get_slice(";", 0),
-		underpinned, stands], weak.contains("weak joint") and stands.begins_with("stands up"))
+	_check("...in no more pieces: %s, %d, %d before" % [after["summary"], after["pieces"],
+		before["pieces"]], bool(after["ok"]) and int(after["pieces"]) <= int(before["pieces"]))
+	_check("...and it stands up, underpinned where it would not (%s): %s"
+		% [underpinned.get_slice(":", 0), stands], stands.begins_with("stands up"))
 
 
 func _measure() -> Dictionary:

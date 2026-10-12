@@ -2259,8 +2259,11 @@ func _model_from_world() -> Model:
 ## fall on one 2 LDU lattice were laid in one frame, so they are one section:
 ## turned by that much, its origin the point of that lattice nearest the
 ## middle of what stands, where a side looking away from it is out, as a
-## prism's faces are read. Square bricks off the world's lattice are one too;
-## a minifigure's parts are left as they were.
+## prism's faces are read. A square brick stays in the main body, and a
+## minifigure's parts are left as they were. Inside a section the joint rules
+## hold as they do anywhere — a pane in its frame, a turntable's top on its
+## base — for a reader that keeps the section; one that copies a placement
+## without it has the turn wrong, as it had before at the nearest square one.
 ## The sections are kept until the world is cleared, so a brick an edit adds
 ## to one is where the next reading says it is.
 func _adopted() -> Dictionary:
@@ -2280,9 +2283,15 @@ func _adopted() -> Dictionary:
 			continue
 		var unturn := Basis(Vector3.UP, -deg_to_rad(turn))
 		var local: Vector3 = unturn * brick.transform.origin
-		var rest := Vector3(_on_lattice(local.x), _on_lattice(local.y), _on_lattice(local.z))
-		if turn == 0.0 and rest == Vector3.ZERO:
+		# A square brick is read where it is, as it always was: the cell it
+		# rounds to is at most an LDU off, which every joint rule allows. Put
+		# in a section of its own when its origin was off the lattice, a pane
+		# seated half a stud into its frame came back in that section's
+		# coordinates, and a reader that copied it without its section stood
+		# it across the frame (joints_probe).
+		if turn == 0.0:
 			continue
+		var rest := Vector3(_on_lattice(local.x), _on_lattice(local.y), _on_lattice(local.z))
 		var key: String = "%.2f %.1f %.1f %.1f" % [turn, rest.x, rest.y, rest.z]
 		var section: Section = _adoptions.get(key)
 		if section == null:
@@ -2295,7 +2304,7 @@ func _adopted() -> Dictionary:
 			var origin: Vector3 = Basis(Vector3.UP, deg_to_rad(turn)) * Vector3(
 				rest.x + BrickLattice.CELL * round((near.x - rest.x) / BrickLattice.CELL), rest.y,
 				rest.z + BrickLattice.CELL * round((near.z - rest.z) / BrickLattice.CELL))
-			var name: String = "turned %s" % Placement._num(turn) if turn > 0.0 else "offset"
+			var name: String = "turned %s" % Placement._num(turn)
 			var named: String = name
 			var n: int = 1
 			while _sections.has(named) or _adoptions.values().any(

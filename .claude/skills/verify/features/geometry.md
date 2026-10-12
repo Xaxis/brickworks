@@ -156,7 +156,11 @@ python3 tools/minitest.py tests/test_ldraw.py                    # or pytest, if
 do not": each family where real sets put it, and wrong — a bar through a brick
 with no hole, a Technic axle in a clip, a hinge's top half a stud into its base
 or 2 LDU off its pivot or swung into its base, a turntable's top 2 LDU or a stud
-off its base, or turned 45 degrees about the wrong point. On a catalogue built
+off its base, or turned 45 degrees about the wrong point. And parts turned 30
+degrees about the upright read from a file, in the sections the assistant finds
+for them (`Assistant._adopted`, see [assistant](assistant.md)): a frame and its
+pane, a turntable's top on its base, each passing, and the pane not turned into
+its groove refused. On a catalogue built
 before the rounds its first five lines fail, and every case that should pass
 fails with them.
 
