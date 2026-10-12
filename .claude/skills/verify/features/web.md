@@ -26,7 +26,12 @@ plan with Claude as the client.
   under `/b/<sha>/`, points `/` at it and then proves it in a browser. With
   `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
   lagged `vercel promote` by up to a minute, twice, and checks run on "done"
-  measured the previous build.
+  measured the previous build. It first runs `tools/storage_parts.py`, which
+  uploads any part mesh the catalogue names that object storage lacks, and
+  fails the deploy if it cannot: the web build fetches meshes from there, and
+  a catalogue of 2,376 rebuilt meshes once went live before they were up, so
+  every long Technic beam failed to load. Proves it: the deploy log's "part
+  meshes in object storage" line ends "to upload : 0".
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways

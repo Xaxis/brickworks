@@ -34,6 +34,18 @@ done
 
 [ -f .env ] && set -a && . ./.env && set +a
 if [ -z "${VERCEL_TOKEN:-}" ]; then echo "deploy FAILED: no VERCEL_TOKEN (.env or environment)"; exit 1; fi
+
+# Every part the catalogue names must be in object storage before a build
+# that names it ships: the web build fetches meshes from there, not from the
+# deploy. On 2026-10-11 a catalogue with 2,376 rebuilt meshes went out
+# before they were uploaded, and every Technic beam from 7 up failed to load
+# on the live site until they were. Uploads only what is missing.
+echo "deploy: part meshes in object storage"
+if ! python3 tools/storage_parts.py >/tmp/deploy_storage_$$.log 2>&1; then
+  tail -5 /tmp/deploy_storage_$$.log
+  echo "deploy FAILED: could not put the part meshes in object storage"; rm -f /tmp/deploy_storage_$$.log; exit 1
+fi
+tail -2 /tmp/deploy_storage_$$.log | sed 's/^/  /'; rm -f /tmp/deploy_storage_$$.log
 # Project and org come from .vercel/project.json, written by `vercel link`.
 
 if [ "$do_export" = 1 ]; then
