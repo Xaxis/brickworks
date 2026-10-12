@@ -25,6 +25,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "https://brickworks.diy/app";
+// A preview is behind Vercel's protection: the bypass, and a cookie for
+// what the page fetches after.
+const bypass = args.bypass || process.env.BW_BYPASS || "";
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = args.out || "shots/booklet_web";
 mkdirSync(out, { recursive: true });
 
@@ -46,7 +52,7 @@ const check = (what, ok) => {
 };
 
 try {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
   const until = Date.now() + 300000;
   let at = null;
   while (!(at = await page.evaluate(() => (window.brickworksControls || {}).instructions))) {

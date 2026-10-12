@@ -31,6 +31,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "http://localhost:8147/";
+// A preview is behind Vercel's protection: the bypass, and a cookie for
+// what the page fetches after.
+const bypass = args.bypass || process.env.BW_BYPASS || "";
+const first = bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = args.out || "shots/element_web";
 mkdirSync(out, { recursive: true });
 
@@ -84,7 +90,7 @@ async function click(name) {
   await page.mouse.click(where.x, where.y);
 }
 
-await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 const up = await until(() => showing("make part"), 400, "make part");
 ok(up, "the app came up with a Make a part… button");
 await page.waitForTimeout(8000);   // the opening model assembling itself

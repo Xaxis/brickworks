@@ -56,6 +56,14 @@ func find() -> int:
 		var ids: PackedInt64Array = assemblies.ids_under(path)
 		if ids.is_empty():
 			continue
+		# A laid hose, tube, string or chain is one of these too, and its end
+		# pin in a hole reads as a hinge; swung about it, the tube tore off
+		# its other hole (flex_pose_flow on a preview, 2026-10-12).
+		var parts: Array = []
+		for brick_id: int in ids:
+			parts.append(world.get_brick(brick_id).part_id)
+		if not Flex.kind_of(parts).is_empty():
+			continue
 		var found: Dictionary = builder._joint_of(ids)
 		if found.is_empty():
 			continue

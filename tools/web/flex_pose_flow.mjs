@@ -295,8 +295,11 @@ try {
   // The browser decodes it: the first and the middle frame drawn on a page.
   if (file) {
     const data = readFileSync(file).toString("base64");
+    // From its bytes, not fetch(data:): the app's security policy lets the
+    // page fetch from its own site only.
     const decoded = await page.evaluate(async (b64) => {
-      const blob = await (await fetch(`data:image/webp;base64,${b64}`)).blob();
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "image/webp" });
       const bitmap = await createImageBitmap(blob);
       return [bitmap.width, bitmap.height];
     }, data);

@@ -306,8 +306,9 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # stud off and the same clip or bar 2 LDU off the line refused by both
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 # a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
-# refused past its bend, undone; a chain round two gears by two clicks; saved,
-# reopened and reshaped from its pieces. Pictures in shots/flex/
+# refused past its bend, undone; Pose offering the laid tube no slider; a chain
+# round two gears by two clicks; saved, reopened and reshaped from its pieces.
+# Pictures in shots/flex/
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
 ```
 

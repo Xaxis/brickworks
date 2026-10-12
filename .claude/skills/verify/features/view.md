@@ -575,7 +575,9 @@ picture the assistant is shown.
   panel over the model's left edge so the pose is seen as it is set): a
   slider per joint — every sub-assembly with a shaft of one of its parts in a
   bore of a part outside it (`Builder._joint_of`, as J finds one), a hinge or a
-  turntable — from -180° to 180° about where it stood when posing began.
+  turntable — from -180° to 180° about where it stood when posing began. A
+  laid hose, tube, string or chain is never one (`Flex.kind_of`): its end pin
+  in a hole read as a hinge, and swung, the tube tore off its other hole.
   Dragging moves it live (`Poser.stand`, nothing to undo); letting go, or a
   click on the track, keeps it as one step ("posed Arm at 45°"), as far as it
   has room, pressing only on what it is joined to (`Poser.settle`, a bisection
