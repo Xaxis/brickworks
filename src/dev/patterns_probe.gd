@@ -875,13 +875,11 @@ func _in_storeys() -> void:
 		"seed": 3}))
 	_check("add_rooms at the top storey's radius furnishes every storey: %s"
 		% said.get_slice("\n", 0), said.begins_with("Laid 4 floors"))
-	# Not nothing: the top storey's corner posts stand on its ledge inside
-	# where the rooms go, and one column, its plate and its tile come back
-	# out. The same cluster without storeys loses none.
-	_check("...with at most one column the check had to take out (%d items)"
+	# A column of the floor above stood on a piece of floor taken out for
+	# being held by nothing, and it, its plate and its tile came back out.
+	_check("...with nothing the check had to take out (%d)"
 		% int(assistant._last_rooms.get("dropped", -1)),
-		int(assistant._last_rooms.get("dropped", -1)) >= 0
-			and int(assistant._last_rooms.get("dropped", -1)) <= 3)
+		int(assistant._last_rooms.get("dropped", -1)) == 0)
 	var whole: Dictionary = assistant._check(assistant._model_from_world(), true)
 	_check("and the whole of it passes the check: %s" % whole["summary"], bool(whole["ok"]))
 	assistant.queue_free()

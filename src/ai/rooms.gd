@@ -1339,6 +1339,22 @@ func _hold(k: int) -> void:
 					if item["role"] == "furniture":
 						level["missed"].append(item["name"])
 					break
+		# And a column of the floor above that stood on it: laid again from
+		# whatever is under it now. Left standing, a tower in storeys lost the
+		# column, the plate on it and the tile on that to the check.
+		if k + 1 < _floors.size():
+			var over: Dictionary = _floors[k + 1]
+			for n: int in _items.size():
+				var item: Dictionary = _items[n]
+				if int(item["floor"]) != k + 1 or item.has("gone") or item["role"] != "column":
+					continue
+				var at: Vector2i = (item["cells"] as Array)[0]
+				if not gone.has(at):
+					continue
+				_take_out(n)
+				(over["columns"] as Array).erase(at)
+				if _column(k + 1, at):
+					(over["columns"] as Array).append(at)
 
 
 ## Floor k's plates in the pieces that hold together: {"groups": root ->

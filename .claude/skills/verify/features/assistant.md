@@ -459,9 +459,9 @@ fixing what it got wrong.
   on its two ledges (y 45 and 92, two plates each), its outsides 8, 7 and 6;
   five storeys at that radius are refused; the guidance's cluster in storeys
   passes in one piece with four horn points and add_rooms at the top radius
-  furnishes four floors, taking out at most one column (its plate and tile; the
-  top storey's corner posts stand on its ledge inside the rooms — the same
-  cluster without storeys loses none). Looked at: `shots/runs/rk_storeys_corner.png` steps in
+  furnishes four floors with nothing taken out (a column of the floor above
+  stood on a piece of floor `Rooms._hold` took out as held by nothing; it is
+  now laid again from whatever is under it). Looked at: `shots/runs/rk_storeys_corner.png` steps in
   on grey ledges as 10237 does.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
@@ -528,8 +528,10 @@ fixing what it got wrong.
   over them a layer along x — tiles (boards, flags or a checker, by kind) where
   it is walked on, plates where something stands, joints a stud off the
   strips', a 1 x 2 stitched across any joint left untied — held up on two or
-  three columns in the corners of the room below (never on its furniture).
-  Furniture stands on top, only where plates are. `stair: true` is a straight
+  three columns in the corners of the room below (never on its furniture); a
+  piece of floor held by nothing is taken out with what is on it, and a column
+  of the floor above that stood on it is laid again from whatever is under it
+  now (`_hold`). Furniture stands on top, only where plates are. `stair: true` is a straight
   flight of 2 x 2 bricks where it fits, else a ladder (4175 every six plates) up
   a 1 x 2 pillar. Each room gets its kind's furniture, signature first: the
   worked examples (`Techniques`) and a few of castle parts (`Rooms.FURNITURE`),
