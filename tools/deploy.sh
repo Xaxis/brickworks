@@ -100,7 +100,10 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # one for a visitor's read): /m/<id>, its picture and its card are mapped
 # onto it. The viewer is /app?view=<id>: Vercel carries a query across the
 # /app 308 by itself (measured 2026-10-12, /app?foo=x to /b/<sha>/?foo=x),
-# so it needs no route of its own. Its pages send their own security policy; the app's below
+# so it needs no route of its own. Vercel's cron calls /api/share/sweep at
+# 04:17 UTC every day, with CRON_SECRET (set on the project, and in .env
+# for share_probe): it takes away the files of models whose row went with
+# a deleted account. Its pages send their own security policy; the app's below
 # does not change, since the viewer talks only to its own site.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
@@ -226,7 +229,9 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
+  "crons": [ { "path": "/api/share/sweep", "schedule": "17 4 * * *" } ],
   "routes": [
+    { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
     { "src": "/[.]well-known/oauth-authorization-server(/.*)?", "dest": "/api/oauth?op=metadata" },

@@ -14,10 +14,14 @@
 // asked directly with the key every page has: no owner column, no
 // unpublished row, no write, no file.
 //
-// Two throwaway accounts at Resend test addresses (no email is sent: the
+// And the daily sweep (CRON_SECRET from .env): a third account publishes
+// and is deleted with its model still up, as the dashboard deletes one,
+// and the sweep takes its files away and leaves a published model's.
+//
+// Throwaway accounts at Resend test addresses (no email is sent: the
 // sessions are minted here), deleted at the end with every row of theirs.
-// Every model this publishes is unpublished before that, so no file is
-// left in the bucket.
+// Every model this publishes is unpublished or swept before that, so no
+// file is left in the bucket.
 import { randomBytes } from "node:crypto";
 import { deleteAccount, mintSession } from "./session.mjs";
 
@@ -104,6 +108,18 @@ const PICTURE = PIXEL;
 const rand = randomBytes(4).toString("hex");
 const emailA = `delivered+bw-share-a-${rand}@resend.dev`;
 const emailB = `delivered+bw-share-b-${rand}@resend.dev`;
+const emailC = `delivered+bw-share-c-${rand}@resend.dev`;
+const ID = /^[A-Za-z0-9]{10}$/;
+const SECRET = process.env.SUPABASE_SECRET_KEY || "";
+const CRON = process.env.CRON_SECRET || "";
+
+/// A file in the bucket, asked for with the secret key: its status.
+async function fileStatus(name) {
+  const answer = await fetch(`${SUPABASE}/storage/v1/object/shared-models/${name}`, {
+    headers: { apikey: SECRET, authorization: `Bearer ${SECRET}` },
+  });
+  return answer.status;
+}
 const published = new Set();
 
 async function anonRest(path, { method = "GET", body } = {}) {
@@ -275,6 +291,35 @@ async function main() {
   check(r.status === 200 && r.json?.id === id, `republishing a link that was taken down brings back the same link (${r.status})`);
   r = await call(`/api/share?id=${id}`);
   check(r.status === 200 && r.json?.model === MODEL, "the link works again");
+
+  // --- The sweep: what a deleted account leaves in the bucket
+  console.log("the sweep");
+  r = await call("/api/share/sweep");
+  check(r.status === 401, `the sweep with no secret: 401 (${r.status}) "${r.json?.error}"`);
+  r = await call("/api/share/sweep", { token: "not-the-cron" });
+  check(r.status === 401, `with the wrong one: 401 (${r.status})`);
+  const c = await mintSession(emailC);
+  r = await call("/api/share", { method: "POST", token: c.access_token,
+    body: { name: "Left Behind", model: MODEL, image: PICTURE } });
+  const idC = r.json?.id || "";
+  check(r.status === 201 && ID.test(idC), `a third account publishes (${r.status} ${idC})`);
+  check(await deleteAccount(emailC), "and is deleted with its model still up, as the dashboard deletes one");
+  r = await call(`/api/share?id=${idC}`);
+  check(r.status === 404, `its row went with it (${r.status})`);
+  const before = [await fileStatus(`${idC}.mpd`), await fileStatus(`${idC}.png`)];
+  check(before.every((s) => s === 200), `but its files are still in the bucket (${before.join(", ")})`);
+  r = await call(`/api/share/sweep?only=${id},${idC}`, { token: CRON });
+  const removed = (r.json?.removed || []).slice().sort().join(", ");
+  check(r.status === 200 && removed === `${idC}.mpd, ${idC}.png`,
+    `the sweep takes those two and nothing of the published one (${r.status}: ${removed || r.json?.error})`);
+  const after = [await fileStatus(`${idC}.mpd`), await fileStatus(`${idC}.png`)];
+  check(after.every((s) => s === 400 || s === 404), `they are gone from the bucket (${after.join(", ")})`);
+  r = await call(`/api/share?id=${id}`);
+  check(r.status === 200 && r.json?.model === MODEL, "the published model is as it was");
+  r = await call("/api/share/sweep", { token: CRON });
+  check(r.status === 200 && Number.isInteger(r.json?.looked_at) && !(r.json?.removed || []).some((n) => n.startsWith(id)),
+    `the whole bucket swept: ${r.json?.looked_at} files an hour old or more, ${r.json?.removed?.length} removed, none of a published model's`);
+
   r = await call(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: tokenA });
   check(r.status === 200, "taken down again");
 
@@ -308,6 +353,7 @@ async function cleanUp() {
       if (s) await call(`/api/share?op=unpublish&id=${id}`, { method: "POST", token: s.access_token }).catch(() => {});
     }
   }
+  await deleteAccount(emailC).catch(() => false);
   const goneA = await deleteAccount(emailA);
   const goneB = await deleteAccount(emailB);
   check(goneA && goneB, "both throwaway accounts deleted, and their rows with them");

@@ -47,6 +47,8 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
+  // The daily cron's clean-up of files no published row owns.
+  [/^\/api\/share\/sweep$/, "share", "sweep"],
 ];
 const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"]];
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", svg: "image/svg+xml",
