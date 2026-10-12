@@ -223,11 +223,12 @@ func _three_faults(library: PartLibrary) -> void:
 	_check(not _advice_of(assistant, "a house", smoked).contains("office block"),
 		"...the same in dark glass are not")
 	var quiet := PackedStringArray()
-	# Run 18's Orthanc ships for the landing page, and the owner called it
-	# the ugliest thing they had seen: rows of lit yellow windows on a black
-	# shaft. The check is right about it, so it is the true case here, and
-	# goes when a better tower replaces it.
-	var faulty: Dictionary = {"orthanc.ldr": "office block"}
+	# A shipped model the check is right to fault goes here with the fault.
+	# Run 18's Orthanc was an office block; run 4, on the landing page since
+	# 2026-10-12, has no lit windows but is still 58% plain black, and its
+	# detail pass scattered its dressing one part at a time. The check is
+	# right about both, so it is the true case here until a run fixes them.
+	var faulty: Dictionary = {"orthanc.ldr": "reads as a hole"}
 	var named := PackedStringArray()
 	var here: DirAccess = DirAccess.open("res://models")
 	for file: String in here.get_files():
@@ -253,8 +254,8 @@ func _three_faults(library: PartLibrary) -> void:
 	_check(quiet.is_empty(), "...and none of the three is said of any other model this app ships%s"
 		% ("" if quiet.is_empty() else ": " + ", ".join(quiet)))
 	_check(named.size() == faulty.size(),
-		"...but run 18's Orthanc is called an office block, as the owner saw it: %s"
-		% (", ".join(named) if not named.is_empty() else "not said"))
+		"...and each model known to have one is called it: %s"
+		% (", ".join(named) if not named.is_empty() else "none known"))
 	assistant.queue_free()
 	builder.queue_free()
 	world.queue_free()
