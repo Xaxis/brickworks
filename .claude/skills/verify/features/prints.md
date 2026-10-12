@@ -200,7 +200,8 @@ Proves it when:
   differs from the plain picture of it where the photograph is — and clicked
   down; the Brickworks logo (web/icon.svg) on 3037's slope, its background
   cleared, in LEGO inks; a plain 2 x 2 tile in the model picked out with
-  Shift-click, Print… on it, a dial starter saved, and the printed tile standing
+  Shift-click, Print… on it, a dial starter saved (named "Dial" for it), and the
+  printed tile standing
   where the plain one stood in its white, nothing left picked out and no outline
   drawn; Stickers…, New sticker…, a click on one of two 1 x 4 tiles, a street sign
   drawn with the fill, box and text tools, saved and stuck across both; the sheet;
