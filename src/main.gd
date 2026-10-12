@@ -1180,7 +1180,9 @@ func _build_ui() -> void:
 	_stack = PanelStack.new()
 	_stack.add_section(_bin)
 	_bin_dock = SideDock.new()
-	_bin_dock.title = "Parts · Model tree · Properties"
+	_bin_dock.title = "Parts"
+	_bin_dock.icon = "parts"
+	_bin_dock.holds = "the parts bin, the model tree and the properties"
 	_bin_dock.setup(_stack, SideDock.Edge.LEFT, 336.0)
 	layout.add_child(_bin_dock)
 
@@ -1318,6 +1320,8 @@ func _build_ui() -> void:
 	_chat.claude_code_here = not ClaudeCode.found().is_empty()
 	_chat_dock = SideDock.new()
 	_chat_dock.title = "Assistant"
+	_chat_dock.icon = "assistant"
+	_chat_dock.holds = "the assistant"
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
@@ -1535,6 +1539,12 @@ func _build_ui() -> void:
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
 	add_child(_verbs)
+	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
+	# if it was folded: a laptop's window starts with the assistant
+	# showing, and the part in hand and its colours are in the bin.
+	_verbs.mode_changed.connect(func(mode: String) -> void:
+		if mode == "place":
+			_bring_out_bin())
 	# The menus, the toolbar, the properties and the status bar:
 	# src/ui/shell.gd. The parts count is the status bar's.
 	_shell = Shell.new()
@@ -1944,6 +1954,14 @@ func _column_toggled() -> void:
 		"turns":
 			ShellPrefs.put("narrow_side", "parts" if _bin_dock.is_open()
 				else ("assistant" if _chat_dock.is_open() else ""))
+
+
+## The parts bin out, if it is folded, for a part just put in hand. Not
+## on a phone, where it would be a drawer over the model the part is for.
+func _bring_out_bin() -> void:
+	if _bin_dock == null or _bin_dock.is_open() or _columns == "drawers":
+		return
+	_bin_dock.set_open(true)
 
 
 ## Tab: both columns away, for looking at the model, and back as they were.

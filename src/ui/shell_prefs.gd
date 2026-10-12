@@ -26,8 +26,10 @@ const DEFAULTS: Dictionary = {
 	"properties_height": 230.0,
 	# In a window with room for one column beside the model, the one
 	# showing: "parts" (the bin, the tree and the properties), "assistant",
-	# or "" for neither (Main._fit_panels).
-	"narrow_side": "parts",
+	# or "" for neither (Main._fit_panels). A first visit gets the
+	# assistant: designing with Claude is what the landing page sends
+	# people in to do, and folded to a rail a newcomer may never find it.
+	"narrow_side": "assistant",
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",

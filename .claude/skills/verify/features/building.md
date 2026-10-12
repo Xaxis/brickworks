@@ -109,11 +109,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   The sub-assembly banner and the offer to seat old parts are in a strip above
   the model (`Main._notices`), not over it. Below 1600 units across (every
   laptop: 1100 x 700, 1280 x 720, 1440 x 900 at any density) the columns take
-  turns: opening one folds the other (`Main._column_opening`), the model keeps
-  over 60% of the width, and a first visit shows the left column. On a phone
-  they are drawers, as before. A folded column's rail says what is behind it,
-  and its content is hidden, not clipped: its fields cannot take the keys and
-  the page is not told its buttons are there. The 3D view is still
+  turns: opening one folds the other (`Main._column_opening`) and the model
+  keeps over 60% of the width. A first visit shows the assistant, the parts
+  bin folded to its rail (`narrow_side` "assistant": designing with Claude is
+  what the landing page sends people in for); a person who switches keeps
+  their choice, and a part put in hand (Q, the bin, the eyedropper) brings
+  the bin out (`Main._bring_out_bin`). On a phone they are drawers, as
+  before, and nothing brings one out over the model. Each rail carries its
+  icon and its name ("Parts", "Assistant"), tinted with the accent down its
+  edge while folded, and switching is one click on it. A folded column's
+  content is hidden, not clipped: its fields cannot take the keys and the
+  page is not told its buttons are there. The 3D view is still
   centred on the window ([view](view.md)'s `camera controls` says why).
   `Main.model_cover()` samples a 12 x 8 grid over the model and says
   what a click at each point would reach instead (the app's own list of
@@ -231,9 +237,9 @@ godot --headless --path . --script src/dev/select_probe.gd
 # building by hand as a person does: copy, paste, duplicate, cut, move, turn,
 # select by, hide, the menus, the toolbar and its tools, the properties, the
 # status bar, the tour, replace, history, the parts shelf, the seat offer and
-# a 1280 x 720 window with nothing over the model — every step a key or a
-# click (a column opened by its rail where the window shows one at a time),
-# with pictures in shots/handbuild/
+# a 1280 x 720 window with nothing over the model, and the columns taking
+# turns (the assistant first, Q bringing the parts bin out, a rail's click
+# switching) — every step a key or a click, with pictures in shots/handbuild/
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 # sub-assemblies and the model tree, at any window size: nothing over the
 # model, and the tree opened by its header

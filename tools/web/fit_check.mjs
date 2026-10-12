@@ -44,14 +44,16 @@ mkdirSync(out, { recursive: true });
 // the least share of the page's width the model keeps (0: not asked).
 //
 // A window under the design width (1600 units across) has room beside the
-// model for one column, and a first visit shows the parts bin: the
-// assistant's key field is asked for only where both columns show, and
-// both rails everywhere else. On a phone the panels are drawers and start
-// closed. Phones were asked only for New and Save while the toolbar, a
-// thousand units in one row, pushed Clear and the assistant's rail off
-// the side of every phone: there the assistant could not be opened at all.
+// model for one column, and a first visit shows the assistant's, with the
+// parts bin folded to its rail: the key field is asked for at every
+// desktop size, and both rails where one column shows. On a phone the
+// panels are drawers and start closed. Phones were asked only for New and
+// Save while the toolbar, a thousand units in one row, pushed Clear and
+// the assistant's rail off the side of every phone: there the assistant
+// could not be opened at all.
 const BOTH = ["model_name", "new", "save", "clear", "key_field", "use_key"];
-const ONE = ["model_name", "new", "save", "clear", "parts_rail", "assistant_rail"];
+const ONE = ["model_name", "new", "save", "clear", "key_field", "use_key", "parts_rail",
+  "assistant_rail"];
 const PHONE = ["new", "save", "clear", "parts_rail", "assistant_rail"];
 const ALL = [
   [1600, 900, 1, BOTH, 0],

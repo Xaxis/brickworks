@@ -47,6 +47,7 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_library = _main.get("_library")
 	_store = _main.get("_store")
+	await _one_column_at_a_time()
 	_main.call("clear_model")
 	# A clipboard from nobody: a probe must not paste whatever the person
 	# at this machine last copied. What was on the system clipboard is put
@@ -1457,6 +1458,37 @@ func _long_axis_of_new(part: String) -> Vector3:
 
 func _screen(point: Vector3) -> Vector2:
 	return _camera.unproject_position(point)
+
+
+## A laptop's window has room beside the model for one column. A first
+## visit shows the assistant, the parts bin folded to its rail: designing
+## with Claude is what the landing page sends people in for. A part put in
+## hand brings the bin out, and a click on a rail switches.
+func _one_column_at_a_time() -> void:
+	var bin: SideDock = _main.get("_bin_dock")
+	var chat: SideDock = _main.get("_chat_dock")
+	if str(_main.get("_columns")) != "turns":
+		print("    (this window has room for both columns, so they do not take turns here)")
+		return
+	print("  one column at a time beside the model")
+	_check("a first visit shows the assistant, the parts bin folded to its rail",
+		chat.is_open() and not bin.is_open())
+	var verbs: EditVerbs = _main.get("_verbs")
+	await _key(KEY_Q)
+	await _frames(30)
+	_check("Q puts the last part in hand and brings the parts bin out (%s)" % verbs.mode,
+		verbs.mode == "place" and bin.is_open() and bin.content.is_visible_in_tree())
+	_check("...and the assistant folds to its rail to make room", not chat.is_open())
+	await _key(KEY_ESCAPE)
+	await _click(chat.rail().get_global_rect().get_center())
+	await _frames(30)
+	_check("one click on the assistant's rail switches back",
+		chat.is_open() and not bin.is_open())
+	await _click(bin.rail().get_global_rect().get_center())
+	await _frames(30)
+	_check("...and one on the parts rail switches again", bin.is_open() and not chat.is_open())
+	_check("...and is kept as this person's choice (%s)" % ShellPrefs.value("narrow_side"),
+		str(ShellPrefs.value("narrow_side")) == "parts")
 
 
 ## Open a side column by its rail, as a person does, if it is folded: a

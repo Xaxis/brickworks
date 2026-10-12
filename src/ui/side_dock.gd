@@ -21,13 +21,22 @@ const SLIDE_SECONDS := 0.22
 
 var edge: int = Edge.LEFT
 var content: Control
-## What the panel is, written down the rail while it is folded: in a
-## window that shows one column at a time the other is only its rail, and
-## a pair of chevrons did not say what was behind it.
+## What the panel is, written down the rail under its icon: in a window
+## that shows one column at a time the other is only its rail, and a pair
+## of chevrons did not say what was behind it.
 var title: String = ""
+## Its icon at the top of the rail, drawn: "parts" (a brick) or
+## "assistant" (a spark).
+var icon: String = ""
+## What showing or hiding it does, for the rail's tooltip: "the parts bin".
+var holds: String = ""
 
 var _rail: Button
 var _arrow: Chevron
+var _open_idle: StyleBoxFlat
+var _open_hover: StyleBoxFlat
+var _folded_idle: StyleBoxFlat
+var _folded_hover: StyleBoxFlat
 var _holder: Control
 var _open: bool = true
 var _full_width: float = 0.0
@@ -109,6 +118,20 @@ func _style_rail() -> void:
 	hover.bg_color = Color(0.27, 0.30, 0.36, 0.98)
 	hover.border_color = Color(1, 1, 1, 0.3)
 
+	# Folded, it is all there is of the panel, and has to be seen at a
+	# glance: tinted, with the accent down its inner edge.
+	_folded_idle = idle.duplicate()
+	_folded_idle.bg_color = Color(0.17, 0.21, 0.29, 0.97)
+	_folded_idle.border_color = Color(0.56, 0.74, 1.0, 0.75)
+	if edge == Edge.LEFT:
+		_folded_idle.border_width_right = 2
+	else:
+		_folded_idle.border_width_left = 2
+	_folded_hover = _folded_idle.duplicate()
+	_folded_hover.bg_color = Color(0.24, 0.30, 0.40, 1.0)
+	_open_idle = idle
+	_open_hover = hover
+
 	for state: String in ["normal", "pressed", "focus"]:
 		_rail.add_theme_stylebox_override(state, idle)
 	_rail.add_theme_stylebox_override("hover", hover)
@@ -173,9 +196,15 @@ func _update_rail() -> void:
 	# to read as a thing to click rather than as a stray mark.
 	_arrow.points_left = (edge == Edge.LEFT) == _open
 	_arrow.doubled = not _open
-	_arrow.words = "" if _open else title
+	_arrow.words = title
+	_arrow.icon = icon
+	_arrow.lit = not _open
 	_arrow.queue_redraw()
-	var what: String = title if not title.is_empty() else "this panel"
+	if _folded_idle != null:
+		for state: String in ["normal", "pressed", "focus"]:
+			_rail.add_theme_stylebox_override(state, _open_idle if _open else _folded_idle)
+		_rail.add_theme_stylebox_override("hover", _open_hover if _open else _folded_hover)
+	var what: String = holds if not holds.is_empty() else "this panel"
 	_rail.tooltip_text = ("Hide " if _open else "Show ") + what
 
 
@@ -188,8 +217,14 @@ func _update_rail() -> void:
 class Chevron extends Control:
 	var points_left: bool = true
 	var doubled: bool = false
-	## Written down the rail under the chevrons, top to bottom.
+	## Written down the rail under the icon, top to bottom.
 	var words: String = ""
+	## "parts" or "assistant": which icon tops the rail.
+	var icon: String = ""
+	## Brighter, and the icon in the accent colour: the panel is folded.
+	var lit: bool = false
+
+	const ACCENT := Color(0.56, 0.74, 1.0)
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -203,16 +238,39 @@ class Chevron extends Control:
 			_chevron(middle + Vector2(0, 5), tint)
 		else:
 			_chevron(middle, tint)
+		var top := Vector2(middle.x, 24.0)
+		var ink: Color = ACCENT if lit else Color(1, 1, 1, 0.6)
+		match icon:
+			"parts":
+				_brick(top, ink)
+			"assistant":
+				_spark(top, ink)
 		if not words.is_empty():
-			const SIZE := 12
+			const SIZE := 13
 			var font: Font = get_theme_default_font()
 			# Turned a quarter: the line runs down the rail, and the
 			# letters stand to the right of it, so it is moved left by
 			# half their height to sit in the middle.
-			draw_set_transform(Vector2(middle.x - SIZE * 0.36, middle.y + 20.0), PI * 0.5)
+			draw_set_transform(Vector2(middle.x - SIZE * 0.36, top.y + 20.0), PI * 0.5)
 			draw_string(font, Vector2.ZERO, words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE,
-				Color(1, 1, 1, 0.66))
+				Color(1, 1, 1, 0.92 if lit else 0.6))
 			draw_set_transform(Vector2.ZERO, 0.0)
+
+	## A 1 x 2 brick, side on: the parts bin.
+	func _brick(at: Vector2, ink: Color) -> void:
+		draw_rect(Rect2(at + Vector2(-7, -2), Vector2(14, 8)), ink)
+		draw_rect(Rect2(at + Vector2(-5.5, -5), Vector2(4, 3)), ink)
+		draw_rect(Rect2(at + Vector2(1.5, -5), Vector2(4, 3)), ink)
+
+	## A four-pointed spark, and a small one by it: the assistant.
+	func _spark(at: Vector2, ink: Color) -> void:
+		for one: Array in [[at + Vector2(-1, 1), 7.5], [at + Vector2(5, -5), 3.2]]:
+			var c: Vector2 = one[0]
+			var r: float = one[1]
+			var w: float = r * 0.28
+			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -r), c + Vector2(w, -w),
+				c + Vector2(r, 0), c + Vector2(w, w), c + Vector2(0, r), c + Vector2(-w, w),
+				c + Vector2(-r, 0), c + Vector2(-w, -w)]), ink)
 
 	func _chevron(at: Vector2, tint: Color) -> void:
 		const REACH := 3.5

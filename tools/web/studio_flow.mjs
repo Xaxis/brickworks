@@ -19,7 +19,7 @@
 // (window.brickworksState.custom), the sticker is not stuck on, the sheet is
 // not true to size within 0.1 mm, the model does not come back with all its
 // printed parts, or a script error reaches the console.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -85,6 +85,8 @@ function tools(page) {
   async function until(test, seconds, what) {
     for (let n = 0; n < seconds * 2; n++) {
       if (await test()) return true;
+      // In a laptop's window the parts bin starts folded to its rail.
+      if (n % 10 === 9) await openColumnFor(page, what);
       await page.waitForTimeout(500);
     }
     await shot(`never_${what.replace(/\W+/g, "_")}.png`);
