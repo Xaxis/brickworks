@@ -91,7 +91,7 @@ chooser with the bunny, types 30 into the size, presses Brickify, and reads
 `brickified`, the status line's sentence: buildable in one piece, no part
 missing. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
 SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
-the bunny down about two minutes after Brickify is pressed, 1,057 parts as on
+the bunny down a minute and a half after Brickify is pressed, 1,057 parts as on
 the desktop.
 
 ## Gotchas
@@ -113,10 +113,12 @@ the desktop.
   worker starts, and the tables filled on first use are filled first
   (`BrickifyDialog._warm`), as `Assistant._checked` does. A part not here yet
   is remembered as absent by those tables (`Shapes._parts`, the wedge tables),
-  so `_warm` drops what they remember as absent and fills them again. Waiting
-  thirty seconds for the parts was not enough on a loaded machine: the same
-  bunny came out 1,057 parts in one browser and 1,004 in the next. It waits two
-  minutes, and the status line names any part that never came.
+  so `_warm` drops what they remember as absent and fills them again. The same
+  bunny came out 1,057 parts in one browser and 1,004 in the next: 22 of its
+  parts were queued behind the thumbnails the parts bin asks for, still there
+  two minutes on. They are asked for as urgent (ahead of the queue) as soon as
+  the panel opens, waited for up to two minutes, and the status line names any
+  part that never came — which the flow fails on.
 - **Hollow is less plastic, not fewer parts.** Measured on the 24-stud sphere:
   59% of the plastic in 1,517 parts against 1,524. Cut through a course, the
   hollow's floor and ceiling were plates and it came out a fifth more parts, so
