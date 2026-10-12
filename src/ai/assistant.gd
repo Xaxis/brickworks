@@ -7433,6 +7433,11 @@ func _lopsided(model: Model, box_of: Dictionary,
 			var filled: int = 0
 			var asked: int = 0
 			for point: Vector3i in _probe_points(near, far):
+				# Only where the part is: a wedge plate fills half its box, and
+				# a mirror pair of 2 x 3 wings, each the other's reflection,
+				# was called lopsided for the empty half of each box.
+				if lattice.brick_at(point) != index + 1:
+					continue
 				var mirror: Vector3i = point
 				mirror[axis] = lo[axis] + hi[axis] - point[axis]
 				asked += 1
@@ -9530,6 +9535,33 @@ alongside the bricks you write by hand:
            true}, {"room": "library"}, {"room": "study"}] lays a floor at \
            each storey and furnishes each room, in one call.
 
+           A body that is not a box is one object too, said as the \
+           solids it is: {"pattern": "shape", "at": {"x": 0, "y": 0, \
+           "z": 0}, "color": 4, "solids": [{"extrude": {"along": "x", \
+           "width": 10, "round": 1.5, "profile": [[0, 5], [2, 7], [9, 8], \
+           [24, 8], [26, 7]]}}, {"loft": {"along": "x", "centre": 5, \
+           "sections": [{"at": 8, "width": 9, "height": 1, "bottom": 7}, \
+           {"at": 12, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
+           {"at": 18, "width": 8, "height": 7, "bottom": 7, "round": 0.4}, \
+           {"at": 23, "width": 9, "height": 1, "bottom": 7}]}}], "cuts": \
+           [{"revolve": {"axis": "z", "centre": [5, 1.5, -1], "profile": \
+           [[0, 2], [12, 2]]}}, {"revolve": {"axis": "z", "centre": [20, \
+           1.5, -1], "profile": [[0, 2], [12, 2]]}}]} is a car's body: \
+           its side profile pulled across ten studs with its shoulders \
+           rounded, a cabin lofted on it, two wheel arches cut out. It is \
+           laid as a builder lays one: bricks and plates inside; on the \
+           surface, wherever it falls from one stud to the next, the \
+           slope or curved slope whose fall is nearest; inverted slopes \
+           under an overhang; wedge plates where an edge runs on the \
+           diagonal; tiles on top; one half and its mirror, tied across \
+           the middle. A hull is a loft with "keel" narrowing its lower \
+           half and a box cut off its top for the deck; a fuselage a \
+           revolve along x; a bird's or a beast's body ellipsoids and a \
+           loft for its tail; "bands" colour it by height (a waterline, a \
+           belly), and a solid's own "color" a part of it (a canopy). The \
+           car that was told every check to use wedge plates and curved \
+           slopes and used none of them would have had both from this.
+
            Anything round in section is one object too, upright or \
            lying down: {"pattern": "round", "at": {"x": 10, "y": 0, \
            "z": 10}, "diameter": 4, "color": 15, "stack": [{"cones": 9, \
@@ -9843,6 +9875,10 @@ or lying along x or z. Never square bricks stacked into a round: that \
 is the one way a real set never builds it.
   Tapered or domed — a nose, a spire, a dome, a cone: the round \
 pattern's nose; a fill with layers and a shrink; cones and dishes.
+  A body that is not a box — a car's body, a hull, a fuselage, a \
+creature's body or head: the shape pattern, said as its solids (a loft \
+through sections, a profile extruded, a revolve, ellipsoids), which \
+lays its slopes, curved slopes, wedges and tiles for you.
   Edges at a slant — a swept wing, a car's shoulder, a bow: wedge \
 plates (show_technique "smooth diagonal"). A curved surface — a \
 bonnet, a hull's bilge, a cab roof: curved slopes, studs-up or on \
@@ -10429,7 +10465,7 @@ func _tools() -> Array:
 		"properties": {
 			"pattern": {"type": "string",
 				"enum": ["repeat", "mirror", "fill", "rock", "studs_out", "prism",
-					"round"],
+					"round", "shape"],
 				"description":
 					"repeat: the bricks again, stepped each time. "
 					+ "mirror: everything so far, reflected about a line "
@@ -10459,7 +10495,16 @@ func _tools() -> Array:
 					+ "(round bricks, cylinder halves, corner rounds tied by "
 					+ "round plates), colour bands, cones, Technic struts "
 					+ "and spokes up its stack, ending in a nose; upright "
-					+ "or lying along x or z."},
+					+ "or lying along x or z. shape: a body that is not a "
+					+ "box, said as solids — a loft through cross-sections, "
+					+ "an extruded side profile, a revolve, a box with "
+					+ "rounded or cut corners and edges, an ellipsoid or "
+					+ "dome — less any cuts, laid in the parts a builder "
+					+ "would choose: bricks and plates inside, slopes and "
+					+ "curved slopes fitted to the surface's fall, inverted "
+					+ "slopes under it, wedge plates on a diagonal edge, "
+					+ "tiles on top, one half and its mirror; a car's body, "
+					+ "a hull, a fuselage, an animal's body."},
 			"times": {"type": "integer", "description": "repeat: how many"},
 			"step": {"type": "object", "description":
 				"repeat: how far each copy moves, in studs and plates",
@@ -10474,6 +10519,52 @@ func _tools() -> Array:
 				+ "round lying along x or z: the low end of it, on the ground)."},
 			"shape": {"type": "string", "enum": ["rectangle", "ellipse"],
 				"description": "fill: which footprint"},
+			"solids": {"type": "array", "items": {"type": "object"}, "description":
+				"shape: what it is made of, each an object naming one kind — "
+				+ "{\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, "
+				+ "{\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — "
+				+ "with its own \"color\" if it wants one (the last that holds a stud "
+				+ "gives it its colour). Studs across and along, plates up, from at."},
+			"cuts": {"type": "array", "items": {"type": "object"}, "description":
+				"shape: solids taken away, said the same way: a wheel arch (a revolve "
+				+ "along z), a cockpit, a doorway."},
+			"loft": {"type": "object", "description":
+				"shape: {\"along\": \"x\" or \"z\", \"centre\": studs across "
+				+ "(half the widest unless said), \"sections\": [{\"at\": studs along, "
+				+ "\"width\": studs, \"height\": plates, \"bottom\": plates, "
+				+ "\"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far "
+				+ "its lower half narrows to a V, \"offset\": studs across}, ...]} — "
+				+ "the section between each two is in between; width 0 at an end is "
+				+ "a point."},
+			"extrude": {"type": "object", "description":
+				"shape: {\"along\": \"x\" or \"z\", \"from\": studs across, "
+				+ "\"width\": studs, \"profile\": [[studs along, plates up], ...] "
+				+ "its top seen from the side, \"under\": the same for its underside "
+				+ "(0 unless said), \"round\": studs its top edges are rounded by}."},
+			"revolve": {"type": "object", "description":
+				"shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], "
+				+ "\"profile\": [[along it (plates up y, studs along x or z), radius "
+				+ "in studs], ...]}."},
+			"box": {"type": "object", "description":
+				"shape: {\"from\": [x, y, z], \"size\": [across, plates up, deep], "
+				+ "\"round\": studs its plan corners are rounded by, \"chamfer\": "
+				+ "studs they are cut by, \"edge\": studs its top edges are rounded "
+				+ "by}."},
+			"ellipsoid": {"type": "object", "description":
+				"shape: {\"centre\": [x, y, z], \"radii\": [studs across, plates up, "
+				+ "studs deep]}."},
+			"dome": {"type": "object", "description":
+				"shape: an ellipsoid's top half, said the same way."},
+			"top": {"type": "string", "enum": ["smooth", "studs"], "description":
+				"shape: tiles over its top (the default) or studs left showing."},
+			"surface": {"type": "string", "enum": ["auto", "curved", "straight"],
+				"description": "shape: curved slopes on its surface or straight ones; "
+					+ "auto (the default) is curved if any solid is rounded."},
+			"bands": {"type": "array", "items": {"type": "object"}, "description":
+				"shape: [{\"from\": plates, \"to\": plates, \"color\"}] — a waterline, "
+				+ "a stripe, a belly, by height."},
+			"top_color": {"type": "integer", "description":
+				"shape: the colour of its top tiles and slopes, if not its own."},
 			"across": {"type": "number", "description": "fill, rock: studs in x"},
 			"deep": {"type": "number", "description": "fill, rock: studs in z"},
 			"color": {"type": "integer", "description":

@@ -377,12 +377,19 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 			+ "along x; a round of square bricks is the commonest way a model "
 			+ "here has looked like a pile of them")
 	if traits.has("vehicle"):
+		calls.append("the shape pattern, for a body that is not a box — a car's, a "
+			+ "hull, a fuselage — said as its solids (a side profile extruded, a "
+			+ "loft through sections, a revolve), which lays its slopes, curved "
+			+ "slopes, wedge plates and tiles for you")
 		calls.append("for a vehicle: wedge plates where an edge runs at a slant "
 			+ "(show_technique \"smooth diagonal\"), curved slopes over a bonnet, a "
 			+ "hull or a cab roof, studs_out for a smooth side panel, and a section "
 			+ "on a hinge (hinge: true) for a windscreen, a ramp or a hatch that "
 			+ "opens")
 	if traits.has("living"):
+		calls.append("the shape pattern, for a creature's body and head — "
+			+ "ellipsoids and a loft for a tail or a neck, laid with curved slopes "
+			+ "and wedges fitted to its surface")
 		calls.append("for a living thing: curved slopes and wedges for a body, "
 			+ "sections on hinges for wings, ears and limbs, the rock pattern for "
 			+ "anything rough, and nothing square that is not")

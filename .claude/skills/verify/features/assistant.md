@@ -588,6 +588,50 @@ fixing what it got wrong.
   side, on the ground. The seam advice (`_unbonded_seam`) and the
   structure-not-detail advice (`_mostly_big_plates`) leave round parts
   (style kind `c`) out: a rocket was told to stagger its cylinder halves.
+- `a body said as its solids`: the `shape` pattern (`src/ai/shapes.gd`, class
+  `Shapes`, dispatched from `Patterns.expand`). A body that is not a box — a
+  car's, a hull, a fuselage, a creature's — said as `solids` (`loft` through
+  `sections` {at, width, height, bottom, round 0 box..1 ellipse, keel, offset};
+  `extrude` of a side `profile`/`under` with top edges `round`ed; `revolve` of
+  a profile about x, y or z; `box` with plan corners `round`ed or `chamfer`ed
+  and top `edge`s rounded; `ellipsoid`; `dome`), each with its own `color`,
+  less `cuts`, coloured by height with `bands`. Sampled at every stud and
+  plate (`Plan`), a plate with nothing above, below or beside it dropped, then:
+  the surface fitted (`surface`, `_fit`) — from the top of every fall down, the
+  slope whose own profile is nearest the studs' heights (`SLOPES`: curved 4, 3
+  and 2 long or 18/33/45 degrees, cheese for one stud; `INVERTED` under an
+  overhang), standing on the shape's plates (never on a thin bridge's place),
+  its high end flush with the stud above or up to two plates under, the plates
+  it stands in carved out; each slope's own surface becomes the next one's top,
+  so a ramp is a run of slopes; which end of each part is high read off its
+  mesh (`Shapes.part`). Then the core plate by plate: bricks (`CORE_BRICKS`, up
+  to 2 x 8) where a course is whole in one colour, wedge bricks and wedge
+  plates where a plan edge runs on the diagonal (the cut side a fifth to four
+  fifths inside the shape, sampled, so none stands out from a flat side as a
+  fin), plates (`CORE_PLATES`) laid stud by stud from the most hemmed-in, tiles
+  on top unless `"top": "studs"` (`TOPS`). A shape that is its own mirror
+  (`mirror_of`) is laid as one half, its reflection, and a strip across the
+  plane two and four (or three and one) studs wide by turns so every layer is
+  tied across it; surface picks pair into two-wide parts and are laid with
+  their mirror or not at all; wedges find their twin by their plan at half a
+  stud, not their studs (a 2 x 3 wing's other hand turned round has the same
+  studs). Only parts joined to the foot by studs are kept (`prune`), and a
+  piece standing apart is joined by laying two side-by-side parts again as
+  one that reaches across (`stitch`, mirrored). The check's lopsided advice
+  now samples only where a part is (`_lopsided`): a pair of wings, each the
+  other's reflection, was called lopsided for the empty half of each box.
+  Inverted 1 x 2 slopes (3665) run into the plate over them and are not used.
+  Found by the held-out car, told every check to use wedge plates and curved
+  slopes and using none. `shapes_probe`: each surface part's fall is read off
+  its mesh; a car, a hull, a bird and a fuselage (`BODIES`) each lay without
+  trouble, pass the check in one piece, carry sloped, curved and tiled
+  surfaces and are mirrors of themselves; a ramp falling a plate a stud takes
+  18 degree slopes (curved 4 x 2s said curved); a box's top is tiled, not with
+  `"top": "studs"`; a band colours by height; a loft without sections is
+  refused saying what it wants. Measured against real vehicles
+  (`tools/style.py`): curved 5-14% (median 14%), plain 63-69% (median 33%) —
+  the solid core is plates and bricks; looked at on the GPU:
+  `shots/runs/shapes/shape_*_corner.png`.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
