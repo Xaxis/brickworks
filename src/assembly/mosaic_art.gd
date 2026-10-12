@@ -105,6 +105,8 @@ const EDGE := 0.1
 const DIAGONAL := 0.4
 const STAR_RISE := 0.22
 const SPECK_RISE := 0.1
+## How far toward a star's colour a neighbour may be and still be its halo.
+const HALO_SHARE := 0.6
 const SHOWS_NEAR := 0.14
 ## How near the background's colour a stud is to count as background: never
 ## raised, never sloped.
@@ -344,6 +346,8 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 		plan.base_colour = base_for(plan, library)
 	var base_lab: Vector3 = _lab_of(library, plan.base_colour)
 
+	var star: PackedByteArray = _stars(plan, lab, hole)
+	_calm(plan, lab, hole, star)
 	var ground: Vector3 = _ground(plan, lab, hole)
 	_relief(plan, lab, hole, clampi(options.depth, 0, MOST_DEPTH), ground)
 	# The ground the slopes are read off, before any star is lifted: a star
@@ -369,7 +373,8 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 					if (dx == 0 and dz == 0) or not plan.inside(x + dx, z + dz):
 						continue
 					var j: int = plan.at(x + dx, z + dz)
-					if hole[j] == 1:
+					# A star is a point on the sky, not a sign the sky is busy.
+					if hole[j] == 1 or star[j] == 1:
 						continue
 					steps += lab[i].distance_to(lab[j])
 					mean += lab[j].x
@@ -399,13 +404,12 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 							plan.turn[i] = int(QUARTER_TURN[facing])
 							plan.across_edge[i] = plan.want[other]
 
-			if count >= 3 and light >= lightest:
-				var rise: float = light - mean
-				if rise > STAR_RISE and light > 0.6:
-					style = Style.STAR
-					plan.accent[i] = 1 if options.accents else 0
-				elif rise > SPECK_RISE and options.round_texture:
-					style = Style.SPECK
+			if star[i] == 1:
+				style = Style.STAR
+				plan.accent[i] = 1 if options.accents else 0
+			elif count >= 3 and light >= lightest and light - mean > SPECK_RISE \
+					and options.round_texture:
+				style = Style.SPECK
 
 			if style != Style.STAR and options.depth > 0 \
 					and lab[i].distance_to(ground) >= BACKGROUND:
@@ -428,6 +432,71 @@ static func read(plan: Plan, options: Options, library: PartLibrary) -> void:
 		for i: int in n:
 			if plan.style[i] == Style.STAR:
 				plan.relief[i] = mini(plan.relief[i] + 1, MOST_DEPTH + 1)
+
+
+## The stars: studs lighter than every neighbour, by STAR_RISE over their
+## mean, and light. 1 each.
+static func _stars(plan: Plan, lab: PackedVector3Array, hole: PackedByteArray) -> PackedByteArray:
+	var star := PackedByteArray()
+	star.resize(plan.cells())
+	for z: int in plan.down:
+		for x: int in plan.across:
+			var i: int = plan.at(x, z)
+			if hole[i] == 1 or lab[i].x <= 0.6:
+				continue
+			var lightest: float = -INF
+			var mean: float = 0.0
+			var count: int = 0
+			for dz: int in range(-1, 2):
+				for dx: int in range(-1, 2):
+					if (dx == 0 and dz == 0) or not plan.inside(x + dx, z + dz):
+						continue
+					var j: int = plan.at(x + dx, z + dz)
+					if hole[j] == 0:
+						lightest = maxf(lightest, lab[j].x)
+						mean += lab[j].x
+						count += 1
+			if count >= 3 and lab[i].x >= lightest and lab[i].x - mean / count > STAR_RISE:
+				star[i] = 1
+	return star
+
+
+## The glow round each star taken back to the sky it is on. A photograph's
+## star is a point and a soft halo; dithered, the halo became a cross of
+## grey round tiles round every star, which read as a fault. A set has one
+## bright element on a calm ground, so a neighbour lit by the star — lighter
+## than the sky two studs out, and nearer it than the star is — takes that
+## sky's colour.
+static func _calm(plan: Plan, lab: PackedVector3Array, hole: PackedByteArray,
+		star: PackedByteArray) -> void:
+	for z: int in plan.down:
+		for x: int in plan.across:
+			var i: int = plan.at(x, z)
+			if star[i] == 0:
+				continue
+			# The sky: the ring two studs out, its middle by lightness.
+			var ring: Array[int] = []
+			for dz: int in range(-2, 3):
+				for dx: int in range(-2, 3):
+					if maxi(absi(dx), absi(dz)) == 2 and plan.inside(x + dx, z + dz):
+						var j: int = plan.at(x + dx, z + dz)
+						if hole[j] == 0 and star[j] == 0:
+							ring.append(j)
+			if ring.size() < 4:
+				continue
+			ring.sort_custom(func(a: int, b: int) -> bool: return lab[a].x < lab[b].x)
+			var sky: int = ring[ring.size() / 2]
+			var reach: float = lab[i].distance_to(lab[sky]) * HALO_SHARE
+			for dz: int in range(-1, 2):
+				for dx: int in range(-1, 2):
+					if (dx == 0 and dz == 0) or not plan.inside(x + dx, z + dz):
+						continue
+					var j: int = plan.at(x + dx, z + dz)
+					if hole[j] == 1 or star[j] == 1:
+						continue
+					if lab[j].x > lab[sky].x and lab[j].distance_to(lab[sky]) < reach:
+						plan.want[j] = plan.want[sky]
+						lab[j] = lab[sky]
 
 
 ## Which way a quarter circle on a contour faces: across the edge, away from
@@ -731,9 +800,12 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 			if plan.style[i] == Style.SQUARE and plan.relief[i] == level and colour[i] >= 0:
 				codes[i] = colour[i]
 				any = true
-		if any:
-			_cover(art, plan, codes, TILES if options.smooth_tiles else [], SQUARE,
-				SURFACE + level, library, true)
+		if not any:
+			continue
+		if options.smooth_tiles:
+			_courses(art, plan, codes, SURFACE + level, library)
+		else:
+			_cover(art, plan, codes, [], SQUARE, SURFACE + level, library, true)
 
 	for z: int in plan.down:
 		for x: int in plan.across:
@@ -773,6 +845,91 @@ static func _frame(art: Art, library: PartLibrary) -> void:
 				_add(art, JOINER, tone, x0 + 6, 0, z0, 1, -1)
 			if row == art.panels.y - 1:
 				_add(art, JOINER, tone, x0 + 6, 0, z0 + PANEL - 4, 1, -1)
+
+
+## The tiles a row of a course is laid in, longest first, all along x.
+const ROW_TILES: Array = [["2431", 4], ["63864", 3], ["3069b", 2], [SQUARE, 1]]
+## Two rows of a course at once.
+const COURSE_TILE := "87079"
+
+
+## Flat areas laid in courses, as a set lays a large flat area: 2 x 4 tiles
+## all running across, two rows to a course, each course's joints two studs
+## along from the last, like brickwork. Where a course is not two rows of
+## one colour the same joints are kept row by row, in 1 x 4 down to 1 x 1.
+## A greedy fit of the largest tile each run would take came first: its mix
+## of 1 x 1, 1 x 2, 2 x 2 and 2 x 4 every which way read as noise across a
+## whole sky.
+static func _courses(art: Art, plan: Plan, codes: PackedInt32Array, y: int,
+		library: PartLibrary) -> void:
+	var taken := PackedByteArray()
+	taken.resize(codes.size())
+	var wide: PartLibrary.PartInfo = library.parts.get(COURSE_TILE)
+	for row: int in art.panels.y:
+		for column: int in art.panels.x:
+			var x0: int = column * PANEL
+			var z0: int = row * PANEL
+			var right: int = mini(x0 + PANEL, plan.across)
+			var bottom: int = mini(z0 + PANEL, plan.down)
+			var panel: int = column + row * art.panels.x
+			for course: int in range((bottom - z0 + 1) / 2):
+				var za: int = z0 + course * 2
+				var zb: int = za + 1
+				var start: int = x0 - 2 if course % 2 == 1 else x0
+				for slot: int in range(start, right, 4):
+					var lo: int = maxi(slot, x0)
+					var hi: int = mini(slot + 4, right)
+					var code: int = codes[plan.at(lo, za)]
+					if hi - lo == 4 and zb < bottom and code >= 0 and wide != null \
+							and not wide.never_made_in(code) \
+							and _run_of(plan, codes, taken, lo, hi, za, code) \
+							and _run_of(plan, codes, taken, lo, hi, zb, code):
+						for z: int in [za, zb]:
+							for x: int in range(lo, hi):
+								taken[plan.at(x, z)] = 1
+						_add(art, COURSE_TILE, code, lo, y, za, 0, panel)
+						continue
+					for z: int in [za, zb]:
+						if z < bottom:
+							_row(art, plan, codes, taken, lo, hi, z, y, library, panel)
+
+
+## Whether studs [param lo] to [param hi] of row [param z] are all
+## [param code] and free.
+static func _run_of(plan: Plan, codes: PackedInt32Array, taken: PackedByteArray,
+		lo: int, hi: int, z: int, code: int) -> bool:
+	for x: int in range(lo, hi):
+		var i: int = plan.at(x, z)
+		if codes[i] != code or taken[i] == 1:
+			return false
+	return true
+
+
+## One row of one slot of a course: each run of a colour in the longest tiles
+## it takes, along x.
+static func _row(art: Art, plan: Plan, codes: PackedInt32Array, taken: PackedByteArray,
+		lo: int, hi: int, z: int, y: int, library: PartLibrary, panel: int) -> void:
+	var x: int = lo
+	while x < hi:
+		var i: int = plan.at(x, z)
+		var code: int = codes[i]
+		if code < 0 or taken[i] == 1:
+			x += 1
+			continue
+		var end: int = x
+		while end < hi and codes[plan.at(end, z)] == code and taken[plan.at(end, z)] == 0:
+			end += 1
+		while x < end:
+			for tile: Array in ROW_TILES:
+				var length: int = int(tile[1])
+				var info: PartLibrary.PartInfo = library.parts.get(str(tile[0]))
+				if length > end - x or (length > 1 and (info == null or info.never_made_in(code))):
+					continue
+				for k: int in length:
+					taken[plan.at(x + k, z)] = 1
+				_add(art, str(tile[0]), code, x, y, z, 0, panel)
+				x += length
+				break
 
 
 ## Cover the studs given a colour in [param codes] (-1 for none) with the

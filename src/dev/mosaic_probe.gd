@@ -259,6 +259,33 @@ func _galaxy_case() -> void:
 	_check("%d of %d stars are round tiles in an accent finish set a plate proud (%s)"
 		% [at_star, stars.size(), ", ".join(PackedStringArray(finishes.keys()))],
 		at_star >= stars.size() * 3 / 4)
+	# On a calm sky: no cross of grey rounds round each, the glow dithered.
+	var calm: int = 0
+	for star: Vector2i in stars:
+		var quiet: bool = true
+		for dz: int in range(-1, 2):
+			for dx: int in range(-1, 2):
+				var top: Assistant.Placement = tops.get(star + Vector2i(dx, dz))
+				if (dx != 0 or dz != 0) and (top == null or top.color != art.base_colour
+						or top.part == MosaicArt.ROUND or top.part == MosaicArt.SPECK):
+					quiet = false
+		if quiet:
+			calm += 1
+	_check("%d of %d stars sit alone on plain black tiles, no halo round them"
+		% [calm, stars.size()], calm >= stars.size() * 9 / 10)
+	# The sky's tiles in courses: all running one way.
+	var across: int = 0
+	var other_way: int = 0
+	for placement: Assistant.Placement in art.placements:
+		if placement.y >= MosaicArt.SURFACE and (placement.part == "87079"
+				or placement.part == "2431" or placement.part == "63864"
+				or placement.part == "3069b"):
+			if placement.rot == 0:
+				across += 1
+			else:
+				other_way += 1
+	_check("its flat tiles all run one way: %d across, %d the other" % [across, other_way],
+		across > 50 and other_way == 0)
 
 	# The core raised, the sky not.
 	var middle: int = plan.relief[plan.at(24, 24)]
@@ -369,7 +396,19 @@ func _flat_case() -> void:
 	var counts: Dictionary = art.counts()
 	print("  %d parts — %s" % [art.placements.size(), _words(art)])
 	_check("1,024 studs in %d tiles, %d of them 2 x 4" % [top, int(counts.get("87079", 0))],
-		top <= 1024 / 6 and int(counts.get("87079", 0)) >= 100)
+		top <= 1024 / 5 and int(counts.get("87079", 0)) >= 100)
+	# Laid in courses like brickwork: every 2 x 4 across, and each course's
+	# joints two studs along from the one before.
+	var bonded: bool = true
+	for placement: Assistant.Placement in art.placements:
+		if placement.part != "87079":
+			continue
+		var course: int = (int(placement.z) % MosaicArt.PANEL) / 2
+		var joint: int = (int(placement.x) % MosaicArt.PANEL) % 4
+		if placement.rot != 0 or joint != (2 if course % 2 == 1 else 0):
+			bonded = false
+	_check("in courses: every 2 x 4 running across, joints staggered course to course",
+		bonded)
 	_check("fewer parts all told than the classic mosaic's 1,024 plates: %d"
 		% art.placements.size(), art.placements.size() < 1024 / 3)
 	_check("all red, flat, and no quarter circles", red and raised == 0
@@ -440,15 +479,19 @@ func _dialog_case() -> void:
 	dialog.queue_free()
 
 
+## What is on top of each stud: stud -> the highest placement covering it.
 func _tops(art: MosaicArt.Art) -> Dictionary:
 	var out: Dictionary = {}
 	for placement: Assistant.Placement in art.placements:
 		if placement.y < MosaicArt.SURFACE:
 			continue
-		var key := Vector2i(int(placement.x), int(placement.z))
-		var was: Assistant.Placement = out.get(key)
-		if was == null or placement.y > was.y:
-			out[key] = placement
+		var size: Vector2i = MosaicArt.footprint(placement.part, placement.rot)
+		for dz: int in size.y:
+			for dx: int in size.x:
+				var key := Vector2i(int(placement.x) + dx, int(placement.z) + dz)
+				var was: Assistant.Placement = out.get(key)
+				if was == null or placement.y > was.y:
+					out[key] = placement
 	return out
 
 

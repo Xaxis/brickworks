@@ -521,11 +521,16 @@ picture the assistant is shown.
 - `LEGO Art layout` (`src/assembly/mosaic_art.gd`): `analyse` reads a picture
   into a `Plan` — per stud a style, a relief and an accent flag — and `lay`
   turns any plan into parts, which is the entry point for the assistant
-  composing one itself. Flat areas: square tiles merged up to 2 × 4; texture:
+  composing one itself. Flat areas: in courses like brickwork, 2 × 4 tiles all
+  running across, two rows a course, joints two studs along course to course,
+  1 × 4 down to 1 × 1 by row where a course breaks (`_courses`; a greedy mix of
+  sizes read as noise across a sky); texture:
   98138 round tiles; diagonal contours: 25269 quarter circles turned so the
   curve faces across the edge (only where what the cut corner shows is the far
   side's colour); stars: round tiles in trans-clear, glow or metallic a plate
-  proud (round plates, stud proud, when flat); what stands out from the
+  proud (round plates, stud proud, when flat), each alone on a calm sky: the
+  glow round it is taken back to the sky's colour (`_calm`) rather than
+  dithered into a cross of grey rounds; what stands out from the
   border's colour raised on merged plates with 54200 cheese slopes on the way
   down. Each element's colour only from colours that part is made in
   (`never_made_in`), matched with hue weighed 1.5 times lightness
@@ -534,10 +539,11 @@ picture the assistant is shown.
   star's halo Reddish Brown. 16 × 16 plates (91405) joined underneath by 2 × 4s across
   every seam and one under each outside edge, so the checker calls it one
   buildable piece. `mosaic_probe` proves it on a synthetic galaxy (stars as
-  accent round tiles a plate proud, the core raised to the depth, quarter
+  accent round tiles a plate proud with no halo, the sky's tiles all one way,
+  the core raised to the depth, quarter
   circles on the arms' edges, one piece, nine pieces without the frame, the
   parts list part for part, the booklet nine panels) and a flat red picture
-  (2 × 4 tiles, under a third the classic count), the switches (depth 0 flat,
+  (2 × 4 tiles in staggered courses, under a third the classic count), the switches (depth 0 flat,
   styles off unused), the turn tables against the meshes, and that the classic
   mosaic lays the probe's gradient exactly as it did. Renders of the galaxy:
   `shots/art/`.
