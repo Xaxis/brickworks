@@ -528,6 +528,11 @@ half a stud off on a plain plate, with no jumper under it, is passed. A check
 by sockets found it, and also 72 plain parts in 65 real sets that do grip — a
 1 x 2 crossing a jumper's one stud among them — so it needs a socket model
 that tells a 1 x N's post from a 2 x N's tube before it can refuse anything.
+Closed 2026-10-11: a part half a stud off is asked where the studs under it
+went (`_underside`), and refused when they stand against its walls; on a
+jumper it passes. Posts count, since they fit a hollow stud and a jumper's is
+hollow. Over the 328 fetched sets it refuses 59 of 2,828 half-stud seats,
+none on a jumper (`src/dev/half_studs_in_sets.gd`).
 
 Run 15's three levers, 2026-10-11. **Horns that end square**: each horn of a
 cluster is capped two plates thick over its own outline at y + 3 x the piers'

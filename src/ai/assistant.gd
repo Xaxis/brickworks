@@ -3718,8 +3718,18 @@ const GRID_SLACK := 0.02
 ## between two parts that have studs is an offset between their studs.
 ## Over the 61 worked examples, which are real sets' own, it fired only
 ## on two horns, which have no stud facing up or down to be off by.
+##
+## Half a stud off is a third case, and the grid cannot answer it: a
+## jumper's stud stands on the half-shifted grid, so a part half off its
+## neighbour is right on a jumper and wrong on a plain plate, and the two
+## look the same by their numbers. So the studs that reach into the part
+## ([param studs], [where, way] each) are asked where they went
+## ([method _underside]). On a jumper, a centre stud or something carried
+## by one, each is in a socket or a tube; on plain studs half a stud off,
+## they stand against its walls and tubes, and it grips nothing. Until
+## 2026-10-11 every half was passed.
 func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
-		reached: bool, issues: Dictionary = {}) -> void:
+		reached: bool, issues: Dictionary = {}, studs: Array = []) -> void:
 	var placement: Placement = model.placements[index]
 	var below: Placement = model.placements[under]
 
@@ -3756,14 +3766,41 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 		return
 	var across: float = absf(placement.x - below.x)
 	var along: float = absf(placement.z - below.z)
-	if _on_the_grid(across) and _on_the_grid(along):
+	if _on_the_grid(across, 1.0) and _on_the_grid(along, 1.0):
+		return
+	var under_it: Array = _underside(model, index, studs)
+	var reaching: PackedVector2Array = under_it[0]
+	var sockets: PackedVector2Array = under_it[1]
+	var half: bool = _on_the_grid(across) and _on_the_grid(along)
+	if half and _none_off(reaching, under_it[2]):
 		return
 	# A horn on its side or a pane has no stud facing up or down, so no
 	# grid of its own to be off; its corner is its cover's.
 	if not _has_a_grid(placement) or not _has_a_grid(below):
 		return
+	# Where it grips: moved the least that puts one of the studs reaching
+	# into it in one of its sockets. Snapped to the grid of the part below,
+	# this said x=0.5 for a part 0.3 off a plain plate, which is half a
+	# stud off it and grips no better.
 	var x: float = below.x + snappedf(placement.x - below.x, STUD_GRID)
 	var z: float = below.z + snappedf(placement.z - below.z, STUD_GRID)
+	var move: Variant = _nearest_move(reaching, sockets)
+	if move != null:
+		x = snappedf(placement.x + (move as Vector2).x, 0.01)
+		z = snappedf(placement.z + (move as Vector2).y, 0.01)
+	if half:
+		_note(issues, "off its studs",
+			"brick %d (%s at %s) sits %s studs across and %s along from "
+			% [index, placement.part, placement.where(),
+				Placement._num(across), Placement._num(along)]
+			+ "brick %d, half a stud off, and the studs under it stand " % under
+			+ "against its walls and tubes, not in its sockets. Half a "
+			+ "stud grips only on a stud that stands on "
+			+ "the half — a jumper plate's (3794b, 15573; 87580 for a "
+			+ "2 x 2) or one on a part a jumper carries. Put a jumper under "
+			+ "it, or at x=%s, z=%s it sits on them."
+			% [Placement._num(x), Placement._num(z)])
+		return
 	_note(issues, "off its studs",
 		"brick %d (%s at %s) sits %s studs across and %s along from "
 		% [index, placement.part, placement.where(),
@@ -3772,6 +3809,160 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 		% under + "studs grip; so does a half, on a jumper. Nothing in "
 		+ "between does: at x=%s, z=%s it sits on them."
 		% [Placement._num(x), Placement._num(z)])
+
+
+## What is under a part, as [studs, sockets, takes], each a list of points
+## across and along in studs in the frame its placement is written in: the
+## studs reaching up into it from below, its sockets, and everywhere it
+## takes a stud ([method _underside_of]). [param studs] are [where, way] in
+## the world, from [method _studs_reaching_in].
+func _underside(model: Model, index: int, studs: Array) -> Array:
+	var reaching := PackedVector2Array()
+	var sockets := PackedVector2Array()
+	var takes := PackedVector2Array()
+	var placement: Placement = model.placements[index]
+	var part: Lbm.PartMesh = library.mesh_for(placement.part)
+	if part == null:
+		return [reaching, sockets, takes]
+	var at: Transform3D = _square_transform(placement, part)
+	var section: Section = model.section_for(placement)
+	var frame: Transform3D = Transform3D.IDENTITY if section == null \
+		else section.placed().affine_inverse()
+	var down: Vector3 = (at.basis * Vector3.DOWN).normalized()
+	for stud: Array in studs:
+		var way: Vector3 = (frame.basis * (stud[1] as Vector3)).normalized()
+		if way.dot(down) < -0.99:
+			var where: Vector3 = frame * (stud[0] as Vector3)
+			reaching.append(Vector2(where.x, where.z) / STUD)
+	var local: Array = _underside_of(part)
+	for one: Vector2 in local[0]:
+		var where: Vector3 = at * Vector3(one.x, 0.0, one.y)
+		sockets.append(Vector2(where.x, where.z) / STUD)
+	for one: Vector2 in local[1]:
+		var where: Vector3 = at * Vector3(one.x, 0.0, one.y)
+		takes.append(Vector2(where.x, where.z) / STUD)
+	return [reaching, sockets, sockets + takes]
+
+
+## Where a part takes a stud from underneath, in its own LDU across and
+## along: [sockets, everything else that takes one].
+##
+## The sockets are measured from the part's own edge, and an edge that is
+## not on its stud grid puts them off it: 3957a's at 2, 2 rather than its
+## middle, a tree's 4 LDU from where the trunk's tube says (3470), a hinge
+## plate's 2 along (2430). So they are moved onto the grid its studs, or
+## its tubes, stand on — the only grids a socket can be on are those, or
+## those shifted half a stud, which is a jumper's. And where they leave
+## gaps (4488 records two of four), the studs on top say where the rest
+## are: a stud is over a socket, a jumper's over its post or its tube.
+##
+## Besides those, every tube, and the point between two sockets of a part
+## one stud wide. A 1 x N's post fits inside a hollow stud, and a jumper's
+## is hollow: 10218 sets a 1 x 2 by its post on a 2 x 2 jumper, 10276 a
+## 1 x 3 by both posts on a 35480's open studs. Where it has no post a
+## stud there is gripped by its walls, which is what 15573 is for. The
+## catalogue cannot tell a hollow stud from a solid one (87580's is stud2
+## and records no bore), so a post on a solid stud passes as well. Between
+## two sockets of a 2 x N there is a tube half a stud away, and a stud
+## there is against it.
+static func _underside_of(part: Lbm.PartMesh) -> Array:
+	var tops: Array[Vector2] = []
+	var tubes: Array[Vector2] = []
+	var holes: Array[Vector2] = []
+	for connector: Lbm.Connector in part.connectors:
+		var p := Vector2(connector.position.x, connector.position.z)
+		if connector.kind == "stud" and connector.axis.y > 0.99:
+			tops.append(p)
+		elif connector.kind == "tube" and connector.axis.y < -0.99:
+			tubes.append(p)
+		elif absf(connector.axis.y) > 0.99 and (connector.kind == "pin_hole"
+				or connector.kind == "axle_hole"
+				or (connector.kind == "bore" and connector.radius >= 5.5)):
+			holes.append(p)
+	var half: float = STUD / 2.0
+	var shift := Vector2.ZERO
+	var grid: Array[Vector2] = tops if not tops.is_empty() else tubes
+	if not grid.is_empty() and not part.sockets.is_empty():
+		for axis: int in 2:
+			var off: float = fposmod(part.sockets[0][axis] - grid[0][axis], half)
+			shift[axis] = -off if off < half / 2.0 else half - off
+	var sockets: Array[Vector2] = []
+	var seen: Dictionary = {}
+	for socket: Vector2 in part.sockets:
+		sockets.append(socket + shift)
+		seen[Vector2i((socket + shift).round())] = true
+	for top: Vector2 in tops:
+		if not seen.has(Vector2i(top.round())):
+			sockets.append(top)
+			seen[Vector2i(top.round())] = true
+	var blocked: Dictionary = {}
+	for tube: Vector2 in tubes:
+		blocked[Vector2i(tube.round())] = true
+	var takes: Array[Vector2] = tubes + holes
+	# A tube grips the four studs round it, which is what a 2 x N's is for,
+	# and a part whose foot is narrower than a stud sits there too: a plant
+	# (6255) or a pot (98374) between four studs of a round brick. The foot
+	# is narrow where the sockets came out off the tube's grid, or there
+	# are none (a train's buffer beam, 4022). Not a 1 x 1 round plate's,
+	# whose socket is its tube and which is a stud across.
+	var narrow: bool = part.sockets.is_empty() \
+		or (grid == tubes and absf(shift.x) > 1.0 and absf(shift.y) > 1.0)
+	for tube: Vector2 in tubes if narrow else []:
+		var at := Vector2i(tube.round())
+		var gap: int = roundi(half)
+		if seen.has(at + Vector2i(gap, 0)) or seen.has(at - Vector2i(gap, 0)) \
+				or seen.has(at + Vector2i(0, gap)) or seen.has(at - Vector2i(0, gap)):
+			continue
+		for corner: Vector2 in [Vector2(half, half), Vector2(half, -half),
+				Vector2(-half, half), Vector2(-half, -half)]:
+			takes.append(tube + corner)
+	var step: int = roundi(STUD)
+	for key: Variant in seen:
+		var from: Vector2i = key
+		for along: Vector2i in [Vector2i(step, 0), Vector2i(0, step)]:
+			if not seen.has(from + along):
+				continue
+			var middle: Vector2i = from + along / 2
+			var side := Vector2i(along.y, along.x) / 2
+			if not blocked.has(middle + side) and not blocked.has(middle - side):
+				takes.append(Vector2(middle))
+	return [sockets, takes]
+
+
+## How close a stud has to be to where a part takes one to be in it, and
+## how far it can be and still be said to be half a stud off it, in studs.
+## In: seven LDU; a train buffer beam's studs (4022c01) are six off the
+## plates sets put on them. Off: half a stud is 0.5, or 0.71 half a stud
+## both ways. A stud further than that from everywhere the part takes one
+## is under a stretch the catalogue does not describe — a train base's
+## sockets are a few of its hundreds — and is not judged.
+const IN_A_SOCKET := 0.35
+const HALF_OFF := 0.8
+
+
+## Whether none of [param studs] is half a stud off everywhere in
+## [param takes]: each is in one, or under a stretch nothing says of.
+static func _none_off(studs: PackedVector2Array, takes: PackedVector2Array) -> bool:
+	for stud: Vector2 in studs:
+		var nearest: float = INF
+		for take: Vector2 in takes:
+			nearest = minf(nearest, stud.distance_to(take))
+		if nearest > IN_A_SOCKET and nearest < HALF_OFF:
+			return false
+	return true
+
+
+## The least move, across and along in studs, that puts one of
+## [param studs] in one of [param sockets]; null if either is empty.
+static func _nearest_move(studs: PackedVector2Array,
+		sockets: PackedVector2Array) -> Variant:
+	var best: Variant = null
+	for stud: Vector2 in studs:
+		for socket: Vector2 in sockets:
+			var move: Vector2 = stud - socket
+			if best == null or move.length() < (best as Vector2).length() - 0.001:
+				best = move
+	return best
 
 
 ## Whether a placement has a stud or a tube facing up or down, which is
@@ -3788,9 +3979,9 @@ func _has_a_grid(placement: Placement) -> bool:
 	return false
 
 
-static func _on_the_grid(offset: float) -> bool:
-	var over: float = fposmod(offset, STUD_GRID)
-	return over <= GRID_SLACK or over >= STUD_GRID - GRID_SLACK
+static func _on_the_grid(offset: float, per: float = STUD_GRID) -> bool:
+	var over: float = fposmod(offset, per)
+	return over <= GRID_SLACK or over >= per - GRID_SLACK
 
 
 ## Where a part's studs are, not merely how many there are.
@@ -7806,7 +7997,9 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 
 
 ## Every stud that reaches into another part, as [whose stud, which part
-## it reaches into]. Both are held by it: see [method _check_support].
+## it reaches into, where the stud stands, which way it points]. Both
+## parts are held by it: see [method _check_support]. Where it stands is
+## what says whether it went into a socket ([method _underside]).
 ##
 ## A stud stands 4 LDU proud of the surface it rises from, so the cell
 ## it reaches into is the one just beyond its tip. Whoever owns that
@@ -7840,7 +8033,8 @@ func _studs_reaching_in(model: Model, cells_of: Dictionary,
 			var reached: int = lattice.brick_at(BrickLattice.to_cell(tip))
 			# brick_at returns index + 1, since zero means empty.
 			if reached != 0 and reached - 1 != index:
-				held.append([index, reached - 1])
+				held.append([index, reached - 1, at * connector.position,
+					(at.basis * connector.axis).normalized()])
 	return held
 
 
@@ -8311,6 +8505,7 @@ func _check_support(
 	# about the ground let a stack hanging in mid-air hold itself up.
 	var gives: Dictionary = {}       ## index -> indices it holds up
 	var clutched: Dictionary = {}    ## index -> true, held by some stud
+	var studs_in: Dictionary = {}    ## index -> [where, way] of studs in it
 	for pair: Array in _studs_reaching_in(model, cells_of, lattice):
 		var owner: int = pair[0]
 		var into: int = pair[1]
@@ -8320,6 +8515,9 @@ func _check_support(
 		_gives(gives, into, owner)
 		clutched[owner] = true
 		clutched[into] = true
+		if not studs_in.has(into):
+			studs_in[into] = []
+		(studs_in[into] as Array).append(pair.slice(2))
 	for index: int in joined:
 		for mate: Variant in (joined[index] as Dictionary):
 			_gives(gives, int(mate), index)
@@ -8436,7 +8634,7 @@ func _check_support(
 		# because the primitives do not say where every socket is.
 		if sitting_on > 0 and sitting_on - 1 < model.placements.size():
 			_note_loose(loose, model, index, sitting_on - 1,
-				clutched.has(index), issues)
+				clutched.has(index), issues, studs_in.get(index, []))
 
 
 static func _gives(gives: Dictionary, holder: int, held: int) -> void:

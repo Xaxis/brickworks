@@ -11,6 +11,10 @@
 ##   a brick standing on a tile, which grips nothing and falls off the
 ##   moment the model is lifted
 ##
+## And a third that was passed until 2026-10-11: a plate half a stud
+## along a plain plate. Half a stud grips only on a jumper's stud, so it
+## is asked of the studs under the part, not of the grid.
+##
 ## Both are advice rather than faults. A real design does stand parts on
 ## smooth faces and trap them between walls, and the tube side of a
 ## connection is not fully modelled in the library — so the thing this
@@ -42,6 +46,7 @@ func _initialize() -> void:
 	await process_frame
 
 	_check_offsets(assistant)
+	_check_halves(assistant)
 	_check_smooth(assistant)
 	_check_the_known_good(assistant, library)
 
@@ -85,7 +90,7 @@ func _stack(assistant: Assistant, lower: String, upper: String,
 
 func _check_offsets(assistant: Assistant) -> void:
 	print("\nstacking a 2x4 on a 2x4, shifted sideways")
-	for across: float in [0.0, 0.5, 1.0, 2.0]:
+	for across: float in [0.0, 1.0, 2.0]:
 		var verdict: Dictionary = _stack(assistant, "3001", "3001", across, 3.0)
 		_ok(not verdict["off_grid"],
 			"%s studs across is a real position and is not questioned" % across)
@@ -103,6 +108,70 @@ func _check_offsets(assistant: Assistant) -> void:
 	# the worked fireplace's horns (53451) sit in a brick's studs sideways.
 	var horn: Dictionary = _stack(assistant, "3001", "53451", 0.3, 3.0)
 	_ok(not horn["off_grid"], "a horn, with no stud grid of its own, is not judged by one")
+	# Snapped to the grid of the part below, the place offered for 0.3 off
+	# was 0.5 off: half a stud, on plain studs, which grips no better.
+	var near_half: Dictionary = _stack(assistant, "3001", "3001", 0.3, 3.0)
+	_ok(str(near_half["said"]).contains("at x=0, z=0 it sits on them"),
+		"0.3 studs across is offered the whole stud nearest, not the half")
+
+
+## Half a stud off is right on a jumper and wrong on a plain plate, and the
+## numbers alone cannot tell the two apart: a jumper's one stud stands on
+## the half. The checker asks the studs under the part where they landed.
+func _check_halves(assistant: Assistant) -> void:
+	print("\nhalf a stud off: on a jumper, and on plain studs")
+	var plain: Dictionary = _build(assistant, [
+		["3020", 0, 0, 0, 0], ["3022", 0.5, 1, 0, 0]])
+	_ok(not plain["ok"] and str(plain["said"]).contains("half a stud off"),
+		"a 2x2 plate half a stud along a 2x4 plate is refused")
+	_ok(str(plain["said"]).contains("jumper")
+			and (str(plain["said"]).contains("at x=0, z=0 it sits on them")
+				or str(plain["said"]).contains("at x=1, z=0 it sits on them")),
+		"...and told of a jumper, and the whole stud either side")
+	var brick: Dictionary = _build(assistant, [
+		["3001", 0, 0, 0, 0], ["3001", 0.5, 3, 0, 0]])
+	_ok(not brick["ok"] and str(brick["said"]).contains("half a stud off"),
+		"so is a 2x4 brick half a stud along a 2x4 brick")
+	# Its middle stud is in its tube, and the eight round the edge are
+	# against its walls.
+	var diagonal: Dictionary = _build(assistant, [
+		["3020", 0, 0, 0, 0], ["3022", 0.5, 1, 0.5, 0]])
+	_ok(not diagonal["ok"] and str(diagonal["said"]).contains("half a stud off"),
+		"and a 2x2 plate half a stud both ways on a 2x4, one stud in its tube")
+
+	# A 1x2 jumper turned along z puts its stud at 1.5, 1: the 2x2's tube.
+	var jumped: Dictionary = _build(assistant, [
+		["3020", 0, 0, 0, 0], ["3794b", 1, 1, 0, 1], ["3022", 0.5, 2, 0, 0]])
+	_ok(jumped["ok"] and not str(jumped["said"]).contains("off its studs"),
+		"the same 2x2, half a stud along, by its tube on a jumper (3794b) builds")
+	var centre: Dictionary = _build(assistant, [
+		["3020", 0, 0, 0, 0], ["87580", 0, 1, 0, 0], ["3023", 0.5, 2, 0.5, 0]])
+	_ok(centre["ok"] and not str(centre["said"]).contains("off its studs"),
+		"a 1x2 half a stud both ways on a 2x2 jumper (87580), by a socket, builds")
+	var carried: Dictionary = _build(assistant, [
+		["3020", 0, 0, 0, 0], ["3794b", 1, 1, 0, 1], ["3022", 0.5, 2, 0, 0],
+		["3023", 0.5, 3, 0, 0]])
+	_ok(carried["ok"] and not str(carried["said"]).contains("off its studs"),
+		"a 1x2 on that jumper-offset 2x2's studs builds")
+	# Back on the base plate's grid, it is half a stud off the 2x2 it
+	# stands on: that 2x2's stud is on the 1x2's post.
+	var back: Dictionary = _build(assistant, [
+		["3020", 0, 0, 0, 0], ["3794b", 1, 1, 0, 1], ["3022", 0.5, 2, 0, 0],
+		["3023", 1, 3, 0, 0]])
+	_ok(not back["ok"] and str(back["said"]).contains("brick 3 (3023"),
+		"the 1x2 put back on the base plate's grid, on that 2x2, is refused")
+
+
+## What the checker says about a few placements, each [part, x, y, z, rot].
+func _build(assistant: Assistant, bricks: Array) -> Dictionary:
+	var model := Assistant.Model.new()
+	for brick: Array in bricks:
+		model.placements.append(Assistant.Placement.from_dict({
+			"part": brick[0], "color": 71, "x": brick[1], "y": brick[2],
+			"z": brick[3], "rot": brick[4]}))
+	var report: Dictionary = assistant._check(model, true)
+	return {"ok": bool(report.get("ok", false)),
+		"said": str(report.get("feedback", ""))}
 
 
 func _check_smooth(assistant: Assistant) -> void:

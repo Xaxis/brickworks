@@ -52,18 +52,18 @@ func _initialize() -> void:
 ##
 ## Walking the lattice cell by cell is the authoritative count and the
 ## reason the whole thing was slow, so it is used here on small models
-## only, as the thing to agree with. The lighthouse is the one model it
-## cannot settle: `brick_at` names one owner per cell, so where two
-## parts are registered over the same cells — a tyre around a hub — the
-## walk sees one relationship and the boxes see both. 58 is the rule as
-## stated; 56 is what an index with one owner per cell can report. The
-## house is one such too since its plant leaves were seated on their
+## only, as the thing to agree with. It cannot settle a model where two
+## parts are registered over the same cells: `brick_at` names one owner
+## per cell, so the walk sees one relationship and the boxes see both.
+## The house is one such since its plant leaves were seated on their
 ## studs (src/dev/reseat.gd): four LDU over, the leaves reach across the
-## 2 x 2 tile beside them, over cells the tile owns.
+## 2 x 2 tile beside them, over cells the tile owns. The lighthouse was
+## one, by 2, until its slopes were seated on their studs (2026-10-11):
+## half a stud off them, two of the eight reached into the brick beside.
 func _contacts_are_what_the_lattice_says(library: PartLibrary) -> void:
 	print("\nthe contact graph against a cell-by-cell walk of the lattice:")
 	for pair: Array in [["kart.ldr", 0], ["car.ldr", 0],
-			["bench.ldr", 0], ["house.ldr", 1], ["lighthouse.ldr", 2]]:
+			["bench.ldr", 0], ["house.ldr", 1], ["lighthouse.ldr", 0]]:
 		var name: String = pair[0]
 		var allowed: int = pair[1]
 		var ldr: LdrModel = LdrModel.load_file("res://models/" + name)
