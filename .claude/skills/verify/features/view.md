@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer -->
 
 ## Sub-features
 
@@ -509,6 +509,64 @@ picture the assistant is shown.
   Chromium on SwiftShader the web build makes the example car's in 89 s.
 - `mosaic`: a picture turned into a plate of tiles that still looks like the
   picture.
+- `photo-real render` (File, Render…, and the toolbar's camera;
+  `src/ui/render_dialog.gd`): a picture or a turntable of the model worth
+  keeping, Studio's Eyesight and Mecabricks' Workshop being the bar. The panel's
+  picture is a Quick draft drawn again a moment after any choice changes, so
+  the framing, backdrop, light and lens are seen before Render is pressed.
+  Choices: Quick, Good or Best; 720p, 1080p, 4K, a square or a custom size;
+  a white, grey, black or coloured sweep, or none (transparent, the contact
+  shadow kept as a shadow on nothing); the window's three lights or one of
+  three Poly Haven HDRIs (`assets/hdri/`, CC0, docs/ATTRIBUTION.md), turned
+  round by "Light from"; the contact shadow; the view looked at or six
+  presets; a full-frame focal length; f-stop and focus (Best); Best's frames;
+  a turntable's 24-72 frames. Done, a picture downloads (browser) or is
+  written to Downloads (desktop, "Show in folder"); a turntable is an
+  animated WebP (`src/render/animated_webp.gd`, stills from
+  `save_webp_to_buffer` put in the animated container by hand), and on the
+  desktop also its frames as PNGs and, where `ffmpeg` is found
+  (`RenderOutput.ffmpeg`, PATH and the Homebrew and usual places), an MP4.
+  Cancel or Escape stops it. The page publishes `window.brickworksRender`
+  (state, progress, what was downloaded, and the render's longest frame and
+  what it was doing then, `StudioRender.worst_step`) for a browser check.
+  While it is open a veil covers the window and the window's own model is
+  not drawn (`disable_3d`, put back as Main would have it on Close).
+- `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
+  viewports with a copy of the model staged a slice a frame (`FramePace`).
+  The set: a sweep (`studio_backdrop.gdshader`, a floor curving into a wall,
+  turned to face the camera), the contact shadow (`studio_contact.gdshader`:
+  three silhouettes of the model seen from under the floor, within 6, 30 and
+  110 LDU of it, blurred in proportion and stacked), and the window's own
+  Sun, Fill and Rim turned with the camera, so a render from the starting
+  view is lit exactly as the window is. Quick is one frame of that. Good on
+  Forward+ adds SDFGI (energy 0.15, the key x1.4, 64 frames to settle), SSAO
+  and a PCSS key, six frames averaged with the key moved a little, at the
+  engine's finest occlusion and soft-shadow filters for the render (one frame
+  of a soft shadow is noise, and at 4K it was a grid of dots on every face);
+  in a browser it is 8 frames averaged under a key moved across its area. Best averages 64 frames on the desktop and 32 in a
+  browser: each jittered under the pixel (R2 sequence, a Gaussian 0.42 px
+  wide), the key moved across a 7 degree area, the lens across its aperture
+  (a real f-number on a real-sized model: an LDU is 0.4 mm) with the focus
+  plane held, and in a browser 60% of the ambient moved into a shadowed light
+  from another point of the sky each frame, which is what puts occlusion
+  under a ledge where there is no SSAO (`_light_sample`). The frames are
+  summed in two float buffers taking turns (`studio_sum.gdshader`) as
+  differences from the first (`studio_copy`), then dithered back to 8 bits
+  (`studio_resolve`); the viewports are nested so the engine draws them in
+  order. Exposure is metered (`_meter`): the model's mean lightness in a
+  120-pixel picture of the bricks alone, against the same shot in the window's
+  light, so every light and grade comes out as light as the window draws the
+  model; and the sweep is metered to its colour (`_meter_floor`, `level`).
+  A picture bigger than one draw (1920 x 1088 in a browser, 4096 a side on
+  the desktop) is drawn in pieces with a frustum offset each, and wider than
+  it needs where SSAO looks past the edge. HDRIs: `studio_panorama.gd`
+  finds the brightest light (the key), its share, the average colour and a
+  table for picking directions by their light (Best's sky samples).
+  Kept between pictures: the staged copy (until the model changes), the
+  contact shadow (drawn once per model, in no light), one environment per
+  way of lighting, the sweep's mesh and the shadow atlas's size. A
+  turntable's frames are encoded on workers while the next is drawn
+  (`RenderOutput.add_frame`, at most three waiting).
 
 ## How to reach it
 
@@ -576,6 +634,23 @@ godot --path . --resolution 1400x900 --script src/dev/true_colour_probe.gd # bla
 godot --path . --resolution 1200x800 --script src/dev/highlight_probe.gd   # a glossy slope does not go white
 # the same three on Forward+ and the GPU (the plain godot is Compatibility, in software):
 ~/.claude/claude-core/bin/gpu godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd
+# File, Render…: every grade the size asked, the model in it, the sweep white,
+# a soft key shadow (measured by drawing it again without), the model as light
+# and coloured as Quick, each HDRI as light as the three lights, transparent
+# keeps the contact shadow, a 6-frame turntable as an animated WebP, Cancel,
+# and the dialog through the menu writing a PNG, 24 frames, a WebP and an MP4.
+# Both renderers: Good and Best are made differently on each.
+godot --path . --resolution 1280x800 --script src/dev/render_probe.gd
+MESA_VK_WSI_DEBUG=sw ~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/render_probe.gd
+# one model at one setting, for looking at:
+~/.claude/claude-core/bin/gpu xvfb-run -a godot --path . --resolution 1280x800 \
+    --script src/dev/render_probe.gd -- --model=models/castle.ldr --quality=best \
+    --size=1920x1080 --view=hero --lighting=studio --picture=shots/render/castle_best.png
+# In a browser (SwiftShader), on a preview deploy, with .env sourced: the
+# toolbar's Render, a draft, Quick 1080p and Good 720p downloaded, a 24-frame
+# turntable downloaded and decoded, Best cancelled, and the page never waiting
+# more than --stall seconds
+node tools/web/render_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=shots/render_web
 ```
 
 Proves it when: each exits 0 with no `FAIL`. `shot`, `gizmo` and `colour` also
@@ -601,6 +676,55 @@ picture: under two seconds with vsync on, against the six seconds it used to
 take, which is what made a design run give up on looking at itself.
 
 ## Gotchas
+
+- **A viewport is cleared every time it is drawn, whatever its clear mode.**
+  Best's frames were to be added into one viewport set to `CLEAR_MODE_NEVER`;
+  after 64 frames it held the last frame's 1/64th, on both renderers. So two
+  buffers take turns, each adding the frame to what the other holds, nested so
+  the engine draws the scene, the copy and the sums in that order (a viewport
+  inside another is drawn first).
+- **Forward+'s float 2D buffers are half floats.** 64 sixty-fourths of a
+  grey added up came out 0.502 where 0.51 was right, two steps of an 8-bit
+  picture. The sums hold each frame's difference from the first, which is
+  mostly nothing and adds up exactly; Compatibility's are 32-bit.
+- **The sweep showed its back.** Drawn counter-clockwise from above, the
+  floor was a back face; with culling off the engine turned its normal down
+  and no light fell on it, so no shadow did either, and the probe's shadow
+  check passed on the model's own shadows. Godot's front is clockwise.
+- **Under Compatibility a light whose shadow-casters are all out of the
+  picture is not drawn.** The sweep metered on its own came out without the
+  key, a grey the metering "corrected" to a clipped white, and the key's
+  shadow vanished from every render. The model is drawn and masked out.
+- **Compatibility lights a sky in sRGB.** An HDRI's ambient tint came out
+  several times too strong (a grey plate orange under the window's warm room)
+  and its reflection laid a grey veil over every face once the exposure was
+  metered up. In a browser an HDRI gives the light its direction, colour and
+  shadows; the window's own sky stays what the plastic reflects.
+- **In a browser drawing in software, every picture read back waited for the
+  window's own frame.** SwiftShader in Chromium finishes everything queued
+  before it hands a picture back, the window's model included, and a frame of
+  that is seconds there (turning the view alone held the page 2.7-4.6 s). The
+  render's slowest frames were each draft's first read-back, 8-13 s, until the
+  window stopped drawing its model behind the panel. What was made new for
+  every picture cost the same way and is kept now (above). Measured with
+  `render_flow.mjs`, which prints each render's longest frame and what it
+  was doing; the first draft of a session still pays for building the
+  viewports (and compiling their shaders) once. On the preview of a3fc635
+  (2026-10-12, SwiftShader): the app turning its view 3.2 s; every draft and
+  render after the first open at most 1.7 s; the first open 9.0 s; a 1080p
+  Quick 3 s, a 720p Good 5 s, a 24-frame 720p turntable 29 s.
+- **A render's steps must make the engine draw.** The app may draw only
+  what changed (IdleDraw's low-processor mode), and each step waits for the
+  frame count to move; setting a viewport to `UPDATE_ONCE` is a change, a
+  step that changes nothing would wait for ever. `StudioRender._quicken`
+  turns low-processor mode off for the render and puts back what was there.
+  On the web an assistant picture's read-back (`GpuFence`) stops drawing
+  outright for up to 120 s, and a render overlapping one pauses until then.
+- **Global illumination off a white sweep lights the model like a second
+  sun.** At full strength the model came out half as light again as the
+  window draws it, its reds pink; the key's floor shadow filled in. Hence the
+  metering and `GI_ENERGY`/`GI_KEY`, and the probe's lightness and colour
+  checks against Quick.
 
 - **Under Compatibility a dark value written by a shader does not come back.**
   What the booklet's code pass writes is stored in eight bits of linear light

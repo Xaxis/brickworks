@@ -137,6 +137,23 @@ from https://github.com/sttng/LDD (`assets/49311_test.lxf`), saved by LDD
 > CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+## HDR panoramas for File, Render…
+
+The three photographed places a render can be lit by (`assets/hdri/`,
+`src/render/studio_render.gd`, `StudioRender.HDRIS`) are Poly Haven's,
+downloaded at 1K on 2026-10-12 and imported at 512 x 256. Poly Haven
+publishes every asset under **CC0 1.0** (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/): no attribution is
+required, and it is given anyway.
+
+- `studio_small_09.hdr`, "Studio Small 09", by Sergej Majboroda —
+  https://polyhaven.com/a/studio_small_09 ("Softbox studio").
+- `photo_studio_loft_hall.hdr`, "Photo Studio Loft Hall", by Sergej
+  Majboroda — https://polyhaven.com/a/photo_studio_loft_hall
+  ("Window light").
+- `kloofendal_48d_partly_cloudy_puresky.hdr`, "Kloofendal 48d Partly Cloudy
+  (Pure Sky)", by Greg Zaal (original) and Jarod Guest (sky edits) —
+  https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky ("Daylight").
 
 ## LEGO trademarks
 
