@@ -9849,9 +9849,29 @@ func _mating_entries(model: Model) -> Array:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		entries.append([index, _transform(placement, part,
-			model.section_for(placement)), part])
+		entries.append([index, _joined_at(placement, part, model), part])
 	return entries
+
+
+## Where a placement's joints are: where the part is, for one read off the
+## world on no grid at all and not moved since.
+##
+## A minifigure's parts stand on no stud grid and are read back at the
+## nearest square turn ([method _adopted] leaves them as they were). A
+## hand is turned 45 degrees in its arm, so read back square its peg and
+## the arm's socket were never on one axis, and nothing joined a hand to
+## its arm, nor an arm to its torso. Whether the figure was one piece was
+## left to which cells the squared parts happened to share, which moves
+## with where the figure stands: Saruman alone was one piece, and on
+## top of Orthanc his raised right hand was a piece of its own. A brick in
+## a section is left to its section, which an edit may have moved.
+func _joined_at(placement: Placement, part: Lbm.PartMesh, model: Model) -> Transform3D:
+	if placement.id != 0 and not placement.moved and placement.section.is_empty() \
+			and world != null:
+		var brick: BrickWorld.Brick = world.get_brick(placement.id)
+		if brick != null and brick.part_id == placement.part:
+			return brick.transform
+	return _transform(placement, part, model.section_for(placement))
 
 
 ## Where a brick stops, in the units the placement was written in.

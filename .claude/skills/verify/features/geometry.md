@@ -99,7 +99,15 @@ can occupy the same millimetre.
   meeting anywhere else still collide. A round joint holds both ways for
   support and pieces, as a pin does. Pins, panes and rounds are forgiven inside
   a section too, which nothing was before. Needs a catalogue built with the
-  rounds; see `pipeline.md`.
+  rounds; see `pipeline.md`. Joints are matched where a part is: one read off
+  the world on no grid, outside any section and not moved by the edit (a
+  minifigure's part, read back at the nearest square turn), has its joints
+  read off its own transform (`Assistant._joined_at`). Read square, a hand
+  turned 45 degrees in its arm had its peg nowhere near the arm's socket, so
+  no hand was joined to its arm and whether a figure was one piece depended
+  on which cells the squared parts shared: run 5's Orthanc had Saruman's
+  raised right hand as a piece of its own. `minifig_probe`'s "one piece, as
+  the design checker reads it" holds it.
 - `leaning on a joint`: a section turned about x or z must turn on a joint whose
   pin lies along its axis — a hinge brick, finger hinge plates, a clip on a bar,
   a ball — with one half outside the section and the other in it, or it is

@@ -76,6 +76,9 @@ func _initialize() -> void:
 	print("  every family put together")
 	_every_family()
 	print("")
+	print("  one piece, as the design checker reads it")
+	_one_piece()
+	print("")
 	print("  on a stud")
 	await _on_a_stud()
 	print("")
@@ -1043,6 +1046,129 @@ func _every_family() -> void:
 		refused.is_empty() and stood >= 150)
 	world.clear()
 	builder.lattice.clear()
+
+
+## Arms the checker finds no socket in for the hand the builder puts on
+## them. Three have none: a Bionicle Barraki's arm ends in a claw of its own,
+## Dug's arm is what he walks on, and a mutant dog's is a leg, so nothing
+## holds a hand there and the builder should not hang one. The stump's peg is
+## in the catalogue but the hole in the prosthetic hand that goes on it (5059)
+## is not, which is the connector pipeline's to find.
+const NO_SOCKET: Dictionary = {"57588": "a Barraki's claw", "92754": "Dug's arm",
+	"12613": "a mutant dog's leg", "6828": "the stump, 5059's hole unread"}
+
+
+## A hand goes into its arm by a peg, and the design checker has to see the
+## two as joined. It read a figure's parts at the nearest square turn,
+## where a hand turned 45 degrees in its arm is nowhere near the arm's
+## socket, so whether a figure was one piece came down to which cells the
+## squared parts happened to share: on top of Orthanc, Saruman's raised
+## right hand was a piece nothing joins. So every hand on every family of
+## every slot is asked about with its arm alone, wherever a figure stands:
+## at the origin, where run 4's Orthanc stood Saruman, half a stud over and a
+## plate up, and turned a quarter where run 5's stands him. And the figures
+## of every kind of hand whole, Saruman where Orthanc stands him, and a hand
+## two studs from its arm, which is still a piece of its own.
+func _one_piece() -> void:
+	var assistant := Assistant.new()
+	assistant.library = library
+	assistant.world = world
+	assistant.builder = builder
+	root.add_child(assistant)
+	var stands: Array[Transform3D] = [Transform3D.IDENTITY,
+		Transform3D(Basis.IDENTITY, Vector3(460, 2008, 490)),
+		Transform3D(Basis.IDENTITY, Vector3(10, 8, 10)),
+		Transform3D(Basis(Vector3.UP, -PI / 2), Vector3(430, 2008, 420))]
+	var pieces := func(ids: Array) -> int:
+		var model: Assistant.Model = assistant._model_from_world()
+		model.placements = model.placements.filter(
+			func(p: Assistant.Placement) -> bool: return ids.has(p.id))
+		return int(assistant._check(model, true).get("pieces", 0))
+	var pairs: int = 0
+	var no_socket: Dictionary = {}
+	var apart: Array[String] = []
+	var whole: int = 0
+	var broken: Array[String] = []
+	for slot: String in Minifig.SLOTS:
+		var seen: Dictionary = {}
+		for info: PartLibrary.PartInfo in Minifig.choices(library, slot):
+			var family: String = Minifig._family(info.id)
+			if seen.has(family):
+				continue
+			seen[family] = true
+			var figure := Minifig.new()
+			figure.choose(library, slot, info.id)
+			var parts: Array[Dictionary] = figure.assemble(library)
+			for n: int in stands.size():
+				world.clear()
+				builder.lattice.clear()
+				var ids: PackedInt64Array = builder.put_figure(parts, "Probe", stands[n])
+				if ids.size() != parts.size():
+					apart.append("%s %s: %d of %d parts went in" % [slot, info.id,
+						ids.size(), parts.size()])
+					continue
+				# Each hand, and the arm it is on: the arm comes just before.
+				var arm: int = 0
+				var unheld: bool = false
+				for k: int in parts.size():
+					if str(parts[k]["slot"]) == "arms":
+						arm = ids[k]
+					elif str(parts[k]["slot"]) == "hands" and arm != 0:
+						var on: String = Minifig._family(world.get_brick(arm).part_id)
+						if NO_SOCKET.has(on):
+							no_socket[on] = true
+							unheld = true
+							continue
+						pairs += 1
+						if pieces.call([arm, ids[k]]) != 1:
+							apart.append("%s %s at stand %d: %s off %s" % [slot, info.id, n,
+								parts[k]["part"], world.get_brick(arm).part_id])
+				if slot == "hands" and not unheld:
+					whole += 1
+					if pieces.call(Array(ids)) != 1:
+						broken.append("%s at stand %d" % [info.id, n])
+	for line: String in apart.slice(0, 10):
+		print("    apart: %s" % line)
+	_check("each of %d hands on a figure of every family of every slot, at four places, is one piece with its arm%s (not asked: on %s, no socket seen)"
+		% [pairs, "" if apart.is_empty() else ": %d are not" % apart.size(),
+			", ".join(PackedStringArray(no_socket.keys()))],
+		apart.is_empty() and pairs >= 4000)
+	for line: String in broken.slice(0, 10):
+		print("    in pieces: %s" % line)
+	_check("and %d figures of every kind of hand, at the same four, are each one piece%s"
+		% [whole, "" if broken.is_empty() else ": %d are not" % broken.size()],
+		broken.is_empty() and whole >= 20)
+
+	# Saruman as run 5's Orthanc stands him, turned a quarter, his staff
+	# raised in his right hand: cut out of models/orthanc.ldr as it was.
+	world.clear()
+	builder.lattice.clear()
+	store.open("res://src/dev/fixtures/saruman_on_orthanc.ldr")
+	var his: Array = []
+	var held: bool = false
+	for brick: BrickWorld.Brick in world.bricks():
+		his.append(brick.id)
+		held = held or brick.part_id == "51643"
+	var whole_him: int = pieces.call(his)
+	_check("Saruman where Orthanc stands him, %d parts with his staff, is one piece (%d)"
+		% [his.size(), whole_him], his.size() == 12 and held and whole_him == 1)
+
+	# And a hand that is not in an arm is not joined to it.
+	world.clear()
+	builder.lattice.clear()
+	var plain: Array[Dictionary] = Minifig.new().assemble(library)
+	var moved: bool = false
+	for item: Dictionary in plain:
+		if str(item["slot"]) == "hands" and not moved:
+			item["at"] = (item["at"] as Transform3D).translated(Vector3(-40, 0, 0))
+			moved = true
+	var loose: PackedInt64Array = builder.put_figure(plain, "Probe", Transform3D.IDENTITY)
+	var count: int = pieces.call(Array(loose))
+	_check("a hand two studs out from its arm is a piece of its own (%d pieces)" % count,
+		moved and count == 2)
+	world.clear()
+	builder.lattice.clear()
+	assistant.queue_free()
 
 
 # -- standing in a model ------------------------------------------------------
