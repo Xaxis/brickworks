@@ -1067,16 +1067,53 @@ beams edge one, a cone tips each; seen along its plane one is a narrow edge,
 across it a curved fin. Every generated horn before was a square spire
 stepping in to a cone and a bar. A pier's horns are now `"horns": "blade"` by
 default (`"spire"` and `"flat"` on asking): over each pier's summit a blade in
-a section of its own, two layers of plates on their side and tiles, its foot
-pressed onto bricks with side studs, sweeping out by half its width and back in
-to a point, each edge a stud at a time with a wedge plate at every step. It is
+a section of its own, four layers of plates on their side and tiles, two studs
+deep, its foot pressed onto bricks with side studs, in the plane through the
+tower's middle and its pier, sweeping out by half its width and back in to a
+point, each edge a stud at a time with a wedge plate at every step. It is
 a technique, not a subject: any crown of spikes, a throne's back, a gate's
 fangs. Three faults found by looking: wedges matched by their studs stood the
 wrong way out of the edge like a saw's teeth (their cut is now read off their
 body); a wedge on its side placed by its collision cover stood two LDU off its
 neighbour, a slit of sky up every blade (seated by its body now); and a blade
 that stopped at its height was flat-topped and read as a slab (its edges now
-close to a point). Every storey also laid its own door; only the lowest does.
+close to a point). Then by eye at the integrator: at 24 LDU the two blades
+seen edge on from the corner read as one sheet standing out of the middle of
+the summit (two studs deep now); turned to face the front they were sticks
+from the side and cut-off plates from the corner (radial again); and the 2 x 4
+right-hand wedge (41769a) draws its cut face nearly white on its side, a pale
+flag up a blade, a rendering fault of mirrored subparts being fixed at the
+root (the blades still use the part). Every storey also laid its own door;
+only the lowest does.
+
+**Display proportions.** 10237 is 21 cm across and 73 cm tall (its box says
+so), 1 : 3.4 with its base. The homepage's Orthanc stood 2.1 times its 49-stud
+base and `orthanc_rk2` 2.6 on a 41-stud plate of rubble, thin towers on wide
+bases; the guidance's own example stood 1.65. A prism with piers given no
+courses is now laid at 3.3 times its widest, plinth and horns included, and the
+reply says how many; courses given more than a fifth off are laid as given and
+the reply says what would do. The guidance's example leaves them out: radius 7
+on a plinth comes to 73 courses, 7,052 parts, one piece. It is closed all round
+now: opened at the back, the sky showed up the clefts beside the back piers from
+the corner and the shaft read as four thin straws, where 10237's is one mass of
+rock. Pictures:
+`shots/runs/blades_{corner,front,right,close}.png` in this worktree.
+
+The brief run on the owner's plan over MCP with blades and display proportions
+(`orthanc_new`, 416 s; `orthanc_run1` was the same with a ban on one wedge,
+since lifted): 11,866 parts, 79 shapes, 23 colours (run 18: 61 and 13),
+sideways 19%, angled 34%, curve 15%, plain 52%, symmetry 34%. It took the
+call as the guidance has it, rebuilt it wider for its rooms, opened the back on
+ten furnished floors, and stood Saruman, Gandalf, Gríma and an Uruk-hai about
+it with a nameplate. By eye it is clearly better than run 18 — crescent horns
+round an open summit, three storeys on grey ledges, no lit windows, a stair to
+a door — and still not a LEGO display set: its faces are speckled with grey
+dressing where 10237's are ribbed and gridded; from the corner the sky shows up
+the right cleft into the open back; the back horn, edge on from the corner,
+stands like a mast behind the summit; and its base is a flat 66-stud courtyard
+with five rock piles, which also makes it 1.9 times as tall as wide where its
+tower alone is 3.3. Not for the homepage. Pictures:
+`shots/runs/orthanc_new_{corner,front,back,right,close}.png` in this worktree.
 
 **What is left, by what it would move:**
 

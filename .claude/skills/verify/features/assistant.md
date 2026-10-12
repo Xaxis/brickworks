@@ -467,12 +467,17 @@ fixing what it got wrong.
   homepage tower was "the ugliest piece of shit I've ever seen", and its horns
   were square spires that read from the corner as turrets with roofs. A pier
   taller than the core stops at the summit, and over it stands a blade in a
-  section of its own (`prism N horn K`) turned about the upright to the pier's
-  angle: two layers of plates laid on their side (face +x, `Patterns._tile`,
-  the second turned across the first's joints), tiles over the last
-  (`Shapes.TOPS`), its foot row pressed onto bricks with side studs (30414,
-  11211, 87087) standing on the summit, where `_blade_side` measures their
-  studs off the parts. Its outline (`_blade_edges`): a centre line sweeping
+  section of its own (`prism N horn K`) turned about the upright into the plane
+  through the tower's middle and its pier, so it sweeps out from the crown
+  (turned to face the front instead, the four were two straight sticks from
+  the side and cut-off plates from the corner; radial, the two on the corner
+  view's line are seen edge on, as 10237's front horn is). Four layers of plates laid on their side (face +x,
+  `Patterns._tile`, each turned across the joints of the one under it), tiles
+  over the last (`Shapes.TOPS`): two studs deep, centred on its pier's line
+  (two layers and tiles were 24 LDU, and the blades seen edge on read as one
+  sheet standing out of the middle of the summit). Its foot row is pressed
+  onto bricks with side studs (30414, 11211, 87087) standing on the summit,
+  where `_blade_side` measures their studs off the parts. Its outline (`_blade_edges`): a centre line sweeping
   out by `flare` (half its width) a little over half way up and part of the
   way back, a width narrowing to nothing, each edge moving a stud at a time and
   at most every other row; past its height the edges close until they meet, so
@@ -487,7 +492,10 @@ fixing what it got wrong.
   a saw's teeth). A wedge is seated by its body (`_by_its_body`): on its side
   its cover is pulled in a cell at the cut end, and the 2 x 2's body is two LDU
   short of two studs, so placed by either the blades had a slit of sky up their
-  inner edge, one a wedge. Its foot is the pier's radius by `BLADE_WIDE` (1.2,
+  inner edge, one a wedge. The 2 x 4 right hand (41769a/b) draws its cut face
+  nearly white on its side, a pale flag up a blade: its body is its left
+  twin's subpart mirrored, and the renderer is being fixed at the root for
+  that, so the blades use it as LEGO would. Its foot is the pier's radius by `BLADE_WIDE` (1.2,
   4 to 10 studs); it rises `BLADE_TALL` (2.6) times that, or the piers'
   courses past the core's if more; one whose studs would look away from the
   front is built the other way round (turned half a turn, its edges taken from
@@ -496,11 +504,31 @@ fixing what it got wrong.
   a turret's cap; any other kind is refused naming the three. `patterns_probe`
   (`_check_blades`): the guidance's cluster has four blades, every part on its
   side, wedges in both layers, each anchored, 18 studs tall from a 6-wide foot,
-  sweeping 3 out past it and back in, to a point two studs across; the probe's
+  sweeping 3 out past it and back in, to a point two studs across, two studs
+  deep (24 LDU before); the probe's
   restyle and open-back counts leave the horn sections out, as built whole on
   their side, and without the seating by body the slit check fails (0 of 4).
-  Looked at: `shots/runs/blades_{corner,front,close}.png` in its worktree, the
-  guidance's cluster in storeys on a plinth.
+  Looked at: `shots/runs/blades_{corner,front,right,close}.png` in its
+  worktree, the guidance's tower: crescents from the front and the side, and
+  from the corner two crescents and two solid edges round an open summit.
+- `display proportions`: a prism with piers (`Assistant._at_display_proportions`,
+  `_display_width`, `_display_height`, `DISPLAY_TALL`), once at the top of the
+  call (not for its plinth's tower, `_raised`, or a storey). Not given
+  `courses`, it is laid in as many as make it 3.3 times as tall as its widest
+  (its plinth's width, else its foot's), plinth, summits and horns included —
+  LEGO's 10237 is 21 cm across and 73 cm tall — and the reply says how many.
+  Given courses more than a fifth off that, they are laid as given and the reply
+  says the ratio and the courses that would do. The homepage's Orthanc stood
+  2.1 times its 49-stud base and the next 2.6 on a 41-stud plate of rubble: thin
+  towers on wide bases. The guidance's tower leaves `courses` out (radius 7,
+  storeys of 1, a plinth of 2 by 2) and is closed all round: opened at the back,
+  from the corner the sky showed up the clefts beside the back piers and the
+  shaft read as four thin columns, where 10237's reads as one mass of rock; the
+  guidance says so, and to open it when the rooms are the point. `patterns_probe` (`_display_proportions`):
+  that tower, measured by its parts' boxes, stands 3.3 times its 34 studs in one
+  piece and the reply gives its 73 courses; a lone cluster of radius 9 the same;
+  the old guidance's 36 courses on a core of 10 are laid as given (1.65) and the
+  reply says to go taller.
 - `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
   (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
   here rose the same width from foot to horns, and the owner's verdict named it.

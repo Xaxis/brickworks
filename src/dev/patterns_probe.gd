@@ -213,6 +213,7 @@ func _run() -> void:
 
 	await _clustered()
 	await _in_storeys()
+	await _display_proportions()
 	await _cluster_opened()
 	await _no_daylight()
 	_round_bodies()
@@ -966,6 +967,81 @@ func _in_storeys() -> void:
 	world.queue_free()
 
 
+## A tower of piers stands at a display model's proportions unless told
+## otherwise: 3.3 times as tall as its base is wide, horns and all, as LEGO's
+## 10237 does (21 cm by 73). The homepage's Orthanc stood 2.1, and the next 2.6:
+## thin towers on bases twice their width.
+func _display_proportions() -> void:
+	print("")
+	print("  a tower at a display model's proportions")
+	var world := BrickWorld.new()
+	world.library = _library
+	get_root().add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = _library
+	get_root().add_child(builder)
+	var assistant := Assistant.new()
+	assistant.library = _library
+	assistant.world = world
+	assistant.builder = builder
+	get_root().add_child(assistant)
+	await process_frame
+	var ratio := func(model: Assistant.Model) -> Vector2:
+		var bounds := AABB()
+		var first: bool = true
+		for placement: Assistant.Placement in model.placements:
+			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+			if mesh == null:
+				continue
+			var box: AABB = assistant._transform(placement, mesh,
+				model.section_for(placement)) * mesh.bounds
+			bounds = box if first else bounds.merge(box)
+			first = false
+		var wide: float = maxf(bounds.size.x, bounds.size.z)
+		return Vector2(bounds.size.y / wide, wide / Assistant.STUD)
+	# The guidance's own tower, as it is written there: no courses.
+	var guidance := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 7, "color": 0, "piers": {"count": 4},
+		"storeys": {"count": 3, "in": 1}, "plinth": {"steps": 2, "out": 2}}
+	var model: Assistant.Model = assistant._read_model({"name": "Orthanc",
+		"patterns": [guidance]})
+	var said: String = "\n".join(PackedStringArray(assistant._pattern_advice))
+	var verdict: Dictionary = assistant._check(model)
+	var shape: Vector2 = ratio.call(model)
+	_check(("the guidance's tower, its courses not said, stands %.2f times as tall as it is "
+		+ "wide (%d studs), base and horns and all") % [shape.x, int(shape.y)],
+		absf(shape.x - Assistant.DISPLAY_TALL) <= 0.25)
+	_check("...passes the check in one piece: %s, %d" % [verdict["summary"],
+		int(verdict.get("pieces", 0))], bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	_check("...and the reply says how many courses it was laid in: %s"
+		% said.get_slice("No courses", 1).get_slice(":", 0),
+		said.contains("No courses were said, so the tower is laid in"))
+	# Without a plinth or storeys, wider: the same.
+	var plain := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 9, "color": 0, "piers": {"count": 4}}
+	shape = ratio.call(assistant._read_model({"patterns": [plain]}))
+	_check("a cluster of radius 9 alone, its courses not said, stands %.2f times its %d studs"
+		% [shape.x, int(shape.y)], absf(shape.x - Assistant.DISPLAY_TALL) <= 0.25)
+	# Courses given are laid as given, and far from it, said: the guidance's
+	# tower as it was written before, 36 courses on a core of 10, stood 1.65.
+	var squat := {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, "sides": 8,
+		"radius": 10, "courses": 36, "color": 0, "open": 3,
+		"piers": {"count": 4, "courses": 44}, "storeys": {"count": 3, "in": 2},
+		"plinth": {"steps": 2, "out": 2}}
+	model = assistant._read_model({"patterns": [squat]})
+	said = "\n".join(PackedStringArray(assistant._pattern_advice))
+	shape = ratio.call(model)
+	_check("courses given are laid as given: %.2f times as tall as wide" % shape.x,
+		shape.x < 2.0)
+	_check("...and the reply says it is far from a display model's, and how many would do: %s"
+		% said.get_slice("This tower", 1).substr(0, 120),
+		said.contains("This tower stands 1.") and said.contains("Taller, about"))
+	assistant.queue_free()
+	builder.queue_free()
+	world.queue_free()
+
+
 func _assistant_trouble(assistant: Assistant, pattern: Dictionary) -> String:
 	assistant._read_model({"patterns": [pattern]})
 	return str(assistant._pattern_trouble)
@@ -985,7 +1061,7 @@ func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -
 	for kind: Variant in (assistant._blade_side()["wedges"] as Dictionary).values():
 		wedges[str(kind).get_slice(" ", 0)] = true
 	var good: Dictionary = {"side": 0, "wedged": 0, "anchored": 0, "tall": 0, "out": 0,
-		"back": 0, "point": 0, "whole": 0}
+		"back": 0, "point": 0, "whole": 0, "deep": 0}
 	var said: Array = []
 	for name: Variant in blades:
 		var boxes: Array = []
@@ -1043,6 +1119,12 @@ func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -
 				reach = maxf(reach, span.y)
 			row += Assistant.STUD
 		good["whole"] += 1 if slits == 0 else 0
+		# Solid edge on: two layers and tiles, 24 LDU, read from the corner as
+		# a sheet standing out of the middle of the summit.
+		var across := Vector2(INF, -INF)
+		for box: AABB in boxes:
+			across = Vector2(minf(across.x, box.position.x), maxf(across.y, box.end.x))
+		good["deep"] += 1 if across.y - across.x >= 2.0 * Assistant.STUD - 1.0 else 0
 		good["side"] += 1 if on_side else 0
 		good["wedged"] += 1 if wedged >= 2 * 4 else 0
 		good["anchored"] += 1 if anchored >= 1 else 0
@@ -1070,6 +1152,8 @@ func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -
 		good["point"] == 4)
 	_check("...with no slit of sky between two of its parts, row by row (%d of 4)"
 		% good["whole"], good["whole"] == 4)
+	_check("...and two studs deep, solid seen edge on (%d of 4)" % good["deep"],
+		good["deep"] == 4)
 
 
 ## The fifteenth Orthanc's own cluster, "open": 2: an octagonal core of

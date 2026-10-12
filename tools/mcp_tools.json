@@ -190,7 +190,7 @@
                 "type": "integer"
               },
               "courses": {
-                "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each",
+                "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each (with piers, left out for a display model's proportions, 3.3 times as tall as wide)",
                 "type": "number"
               },
               "cuts": {
@@ -1365,7 +1365,7 @@
                 "type": "integer"
               },
               "courses": {
-                "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each",
+                "description": "studs_out: how many rows, each four plates tall; prism: how many courses of bricks, three plates each (with piers, left out for a display model's proportions, 3.3 times as tall as wide)",
                 "type": "number"
               },
               "cuts": {

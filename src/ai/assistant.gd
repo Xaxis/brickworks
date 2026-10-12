@@ -4464,6 +4464,11 @@ func _open_side(placement: Placement, long: int, along_x: bool,
 ##   {"pattern": "prism", "at": {"x": 16, "y": 0, "z": 16}, "sides": 8,
 ##    "radius": 7, "courses": 10, "thickness": 2, "color": 0}
 func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Array:
+	# A tower of piers at display proportions: its courses worked out when not
+	# said, and said when the ones given are far from them. Once, at the top:
+	# not again for its plinth's tower or each of its storeys.
+	if pattern.has("piers") and not pattern.has("_storey") and not pattern.has("_raised"):
+		pattern = _at_display_proportions(pattern)
 	var at: Dictionary = pattern.get("at", {}) as Dictionary
 	var cx: float = float(at.get("x", 0.0))
 	var y0: float = float(at.get("y", 0.0))
@@ -4778,11 +4783,110 @@ func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -
 	var raised: Dictionary = pattern.duplicate(true)
 	raised.erase("plinth")
 	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
+	raised["_raised"] = true
 	var tower: Array = _prism(raised, model, index, trouble)
 	_pattern_advice.append(("The tower stands on a plinth of %d terraces, %d plates tall: "
 		+ "its foot, and add_rooms' y, is at y %s.") % [steps, tall_,
 		Placement._num(y0 + tall_)])
 	return made + tower
+
+
+## How many times as tall as it is wide a tower stands as a display model, its
+## base and horns included. LEGO's 10237 is 21 cm across and 73 cm tall, as its
+## box says: 1 : 3.4. The homepage's Orthanc (run 18) stood 2.1 times its
+## 49-stud base, and the next, on a 41-stud plate of rubble, 2.6: thin towers
+## on wide bases, where a display tower stands on a base that hugs it.
+const DISPLAY_TALL := 3.3
+## How far from it the courses given may be before the reply says so.
+const DISPLAY_SLACK := 0.2
+
+
+## A prism with piers at display proportions. Not given its courses, it is
+## laid in as many as make it [constant DISPLAY_TALL] times as tall as it is
+## wide; given courses far from that, it is laid as asked and the reply says
+## how many would do. The returned pattern is a copy when anything was added.
+func _at_display_proportions(pattern: Dictionary) -> Dictionary:
+	var wide: float = _display_width(pattern)
+	var best: int = 3
+	var off: float = INF
+	var least: int = 3 * _storey_count(pattern)
+	for courses: int in range(maxi(least, 3), 201):
+		var miss: float = absf(_display_height(pattern, courses) * PLATE
+			- DISPLAY_TALL * wide * STUD)
+		if miss < off:
+			off = miss
+			best = courses
+	if not pattern.has("courses"):
+		var laid: Dictionary = pattern.duplicate(true)
+		laid["courses"] = best
+		_pattern_advice.append(("No courses were said, so the tower is laid in %d: %s times "
+			+ "as tall as its base is wide (%s studs), as a display model stands — LEGO's "
+			+ "10237 is 21 cm across and 73 cm tall.") % [best, "%.1f" % DISPLAY_TALL,
+			roundi(wide)])
+		return laid
+	var courses: int = int(round(float(pattern["courses"])))
+	var ratio: float = _display_height(pattern, courses) * PLATE / maxf(wide * STUD, 1.0)
+	if absf(ratio - DISPLAY_TALL) > DISPLAY_TALL * DISPLAY_SLACK:
+		_pattern_advice.append(("This tower stands %.1f times as tall as its base is wide "
+			+ "(%s studs); a display model stands about %s — LEGO's 10237 is 21 cm across "
+			+ "and 73 cm tall. %s, about %d courses, or leave courses out and they are "
+			+ "worked out.") % [ratio, roundi(wide), "%.1f" % DISPLAY_TALL,
+			"Taller" if ratio < DISPLAY_TALL else "Lower, or a wider radius", best])
+	return pattern
+
+
+## How wide a prism stands, its plinth included, in studs across the widest way.
+func _display_width(pattern: Dictionary) -> float:
+	var far: float = 0.0
+	for outline: PackedVector2Array in _foot(pattern):
+		for point: Vector2 in outline:
+			far = maxf(far, maxf(absf(point.x), absf(point.y)))
+	if not pattern.has("plinth"):
+		return 2.0 * far
+	var asked: Dictionary = pattern["plinth"] if pattern["plinth"] is Dictionary else {}
+	var steps: int = clampi(int(asked.get("steps", 2)), 1, 4)
+	var out: int = clampi(int(asked.get("out", 2)), 1, 4)
+	return 2.0 * (ceil(far - 0.001) + 2.0 + out * (steps - 1))
+
+
+## How many storeys a prism is laid in.
+static func _storey_count(pattern: Dictionary) -> int:
+	if not pattern.has("storeys"):
+		return 1
+	var raw: Variant = pattern["storeys"]
+	return int((raw as Dictionary).get("count", 3)) if raw is Dictionary else int(raw)
+
+
+## How tall a prism stands in [param courses], in plates: its plinth, its
+## storeys and their summits, and its horns.
+func _display_height(pattern: Dictionary, courses: int) -> float:
+	var tall: float = 3.0 * courses + SUMMIT * _storey_count(pattern)
+	if pattern.has("plinth"):
+		var asked: Dictionary = pattern["plinth"] if pattern["plinth"] is Dictionary else {}
+		tall += 6.0 * clampi(int(asked.get("steps", 2)), 1, 4)
+	var given: Variant = pattern.get("piers")
+	var piers: Dictionary = given if given is Dictionary else {}
+	var above: int = int(round(float(piers.get("courses", courses + maxi(2, courses / 5))))) \
+		- courses
+	if above <= 0:
+		return tall
+	match str(piers.get("horns", "blade")).to_lower():
+		"blade":
+			var sides: int = int(pattern.get("sides", 8))
+			var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
+			var radius: float = _clear_radius(sides, float(pattern.get("radius", 6)), thick)
+			var p_sides: int = int(piers.get("sides", sides))
+			var asked_radius: float = maxf(_least_radius(p_sides, thick),
+				float(piers.get("radius", round(radius * 2.0 / 3.0))))
+			var p_radius: float = _clear_radius(p_sides, asked_radius, thick,
+				float(piers.get("turn", 180.0 / maxi(int(piers.get("count", 4)), 1))))
+			tall += _blade_lift() + Shapes.PLATES_PER_STUD * _blade_size(p_radius, above).y
+		"spire":
+			# The crown and its point, about two courses a ring and a stud's bar.
+			tall += 3.0 * above + SUMMIT + 20.0
+		_:
+			tall += 3.0 * above + SUMMIT
+	return tall
 
 
 ## What a prism stands on at its foot, in plan about its middle: its core's
@@ -5644,11 +5748,15 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	# summit over its pier, sweeping out and back in to a point (_horn_blade).
 	if p_courses > courses and horns == "blade":
 		var base: float = float(spec["y"]) + top + SUMMIT
-		var wide: int = clampi(int(round(p_radius * BLADE_WIDE)), BLADE_LEAST, BLADE_MOST)
-		var tall: int = maxi(int(ceil(3.0 * (p_courses - courses) / Shapes.PLATES_PER_STUD)),
-			int(round(wide * BLADE_TALL)))
+		var size: Vector2i = _blade_size(p_radius, p_courses - courses)
+		var wide: int = size.x
+		var tall: int = size.y
 		var flare: float = float(piers.get("flare", round(wide * BLADE_FLARE)))
 		for k: int in count:
+			# In the plane through the tower's middle and its pier, sweeping
+			# out from the crown. Turned to face the front instead, the four
+			# were two straight sticks from the side and cut-off plates from
+			# the corner.
 			made.append_array(_horn_blade(model, "prism %s horn %d" % [tag, k],
 				middle + _towards(angles[k]) * out, angles[k], base,
 				floor(p_radius - 1.0), wide, tall, clampf(flare, 0.0, float(wide)),
@@ -5727,12 +5835,21 @@ const BLADE_LEAST := 4
 const BLADE_MOST := 10
 const BLADE_TALL := 2.6
 const BLADE_FLARE := 0.5
-## Layers of plates on their side a blade is laid in. One was a blade held
-## together by nothing but its anchors; two tie each other across their joints.
-const BLADE_LAYERS := 2
+## Layers of plates on their side a blade is laid in, each tied across the
+## joints of the one under it; with its tiles, two studs deep. Two layers and
+## tiles were 24 LDU, and the two blades seen edge on from the corner read as
+## one sheet standing up out of the middle of the summit.
+const BLADE_LAYERS := 4
 ## Bricks with studs on one side, longest first, that a blade's foot is
 ## pressed onto: the anchor every blade in a real set hangs from.
 const BLADE_ANCHORS: Array = [[4, "30414"], [2, "11211"], [1, "87087"]]
+
+## A blade's width at its foot and its height, in studs, over a pier of
+## [param p_radius] whose courses rise [param above] past the core's.
+static func _blade_size(p_radius: float, above: int) -> Vector2i:
+	var wide: int = clampi(int(round(p_radius * BLADE_WIDE)), BLADE_LEAST, BLADE_MOST)
+	return Vector2i(wide, maxi(int(ceil(3.0 * above / Shapes.PLATES_PER_STUD)),
+		int(round(wide * BLADE_TALL))))
 
 
 ## A horn as a blade, in a section [param name] turned about the upright to
@@ -5781,20 +5898,24 @@ func _horn_blade(model: Model, name: String, centre: Vector2, degrees: float,
 		for u: int in range(inner[v], outer[v]):
 			cells[Vector2i(u, v)] = true
 	var wedges: Array = _blade_wedges(inner, outer, cells, colour)
+	# Centred on its pier's line: the anchors stand back by half the blade's
+	# depth, which starts at their side studs.
+	var anchor_x: float = snappedf(-0.2 * (BLADE_LAYERS + 1) - (float(side["face"]) + 1.0), 0.1)
+	var face: float = anchor_x + float(side["face"]) + 1.0
 	var made: Array = []
 	var below: Dictionary = {}
 	for layer: int in BLADE_LAYERS:
 		var wanted: Dictionary = cells.duplicate()
 		var laid: Dictionary = {}
 		for wedge: Dictionary in wedges:
-			made.append(_by_its_body(_on_its_side(wedge, side, side["face"] + 0.4 * layer,
-				name), int(wedge["_side"])))
+			made.append(_by_its_body(_on_its_side(wedge, side, face + 0.4 * layer, name),
+				int(wedge["_side"])))
 			for cell: Vector2i in wedge["_studs"]:
 				wanted.erase(cell)
 				laid[cell] = true
 		for one: Dictionary in Patterns._tile(wanted, float(layer), colour, Patterns.TILES,
 				below, laid, layer):
-			made.append(_on_its_side(one, side, side["face"] + 0.4 * layer, name))
+			made.append(_on_its_side(one, side, face + 0.4 * layer, name))
 		below = laid
 	# Its face smooth, as a set's blades are: tiles on every plate of the last
 	# layer, the wedges' studs left showing along its edges.
@@ -5803,7 +5924,7 @@ func _horn_blade(model: Model, name: String, centre: Vector2, degrees: float,
 		for cell: Vector2i in wedge["_studs"]:
 			faced.erase(cell)
 	for one: Dictionary in Patterns._tile(faced, 0.0, colour, Shapes.TOPS, {}, {}):
-		made.append(_on_its_side(one, side, side["face"] + 0.4 * BLADE_LAYERS, name))
+		made.append(_on_its_side(one, side, face + 0.4 * BLADE_LAYERS, name))
 	# The anchors, under the foot's row of plates.
 	var at: int = inner[0]
 	while at < outer[0]:
@@ -5812,7 +5933,7 @@ func _horn_blade(model: Model, name: String, centre: Vector2, degrees: float,
 			var turned: int = int((side["rot"] as Dictionary).get(anchor[1], -1))
 			if at + long > outer[0] or turned < 0:
 				continue
-			made.append({"part": anchor[1], "color": colour, "x": -1.0, "y": 0.0,
+			made.append({"part": anchor[1], "color": colour, "x": anchor_x, "y": 0.0,
 				"z": float(at), "rot": turned, "section": name})
 			at += long
 			break
@@ -10401,16 +10522,23 @@ alongside the bricks you write by hand:
 
            And a tower that is not square is one object too: \
            {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, \
-           "sides": 8, "radius": 10, "courses": 36, "color": 0, \
-           "open": 3, "piers": {"count": 4, "courses": 44}, "storeys": \
-           {"count": 3, "in": 2}, "plinth": {"steps": 2, "out": 2}} is \
+           "sides": 8, "radius": 7, "color": 0, "piers": \
+           {"count": 4}, "storeys": {"count": 3, "in": 1}, "plinth": \
+           {"steps": 2, "out": 2}} is \
            an eight-sided core with four faceted piers clustered round \
-           it and deep clefts between them, in three storeys, each two \
-           studs in from the one below on a ledge of dark bluish grey, \
-           the top one's piers rising past its summit into horns, its \
-           back open on the rooms, standing on a plinth of two terraces \
+           it and deep clefts between them, in three storeys, each a \
+           stud in from the one below on a ledge of dark bluish grey, \
+           the top one's piers rising past its summit into horns, closed \
+           all round, one mass of black stone from any side, standing on \
+           a plinth of two terraces \
            with a stair up the front to its door — Orthanc, a keep with \
-           corner towers, anything clustered. "plinth" is the base: \
+           corner towers, anything clustered. With no "courses" it is \
+           laid at a display model's proportions, 3.3 times as tall as \
+           its base is wide, horns and all (LEGO's 10237 is 21 cm \
+           across and 73 cm tall), and the reply says how many; a run \
+           that chose its own stood a thin tower on a base twice its \
+           width, and its check says when the courses given are far \
+           from that. "plinth" is the base: \
            every Orthanc built without it stood on a ring of rubble, a \
            base as an afterthought; the reply says where the tower's \
            foot then is. Each \
@@ -10434,7 +10562,11 @@ alongside the bricks you write by hand:
            "flat" caps a turret; "flare" is how far a blade sweeps out. \
            A blade is any spiked crown's: a throne's back, a gate's \
            fangs, a dark tower's points. With \
-           piers, any "open" opens the core's whole back, and an arched \
+           piers, any "open" opens the core's whole back, its rooms on \
+           show from behind as 10237's are; but from the corner the sky \
+           then shows up the clefts beside the back piers and the shaft \
+           reads as four thin columns, so open it when the rooms are the \
+           point. An arched \
            door stands at the foot of the core's front (+z), at y, for a \
            stair to lead up to ("door": false for none). Without "piers" \
            a prism is one shaft with a groove up each corner, and \
@@ -11499,7 +11631,8 @@ func _tools() -> Array:
 				"studs_out: studs along the face"},
 			"courses": {"type": "number", "description":
 				"studs_out: how many rows, each four plates tall; prism: "
-				+ "how many courses of bricks, three plates each"},
+				+ "how many courses of bricks, three plates each (with piers, left "
+				+ "out for a display model's proportions, 3.3 times as tall as wide)"},
 			"sides": {"type": "integer", "description": "prism: how many faces, 5-16"},
 			"radius": {"type": "number", "description":
 				"prism: studs from the middle to the outside of a face"},
