@@ -32,8 +32,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the named autosave are in the browser's storage, reloads, reads the tab,
   presses New). On the web the engine titles the page itself as it starts, after
   the restored model was named, so `_tell_page` puts the title back when it has
-  drifted. A save on the web is in IndexedDB only once the engine's sync has run:
-  25 to 52 s at a load of thirty to eighty drawing in software. So the page
+  drifted. New work begins a new model (`ModelStore.begin`) named for itself:
+  the example car taken off for a design (named for its brief, then its own
+  title) or a brickified model (its file's name), a design or Brickify on a
+  bare Untitled baseplate, and `clear_model` from a session (Untitled). A name
+  a saved model has gets a number ("Tower 2"), so new work never saves over it.
+  The example kept its name through all of these, and Save saved a tower as the
+  example. Clear keeps a person's own name, but not an example's
+  (`ModelStore.example`, set by opening one from `res://models/`). New goes
+  through `begin` too. `example_name_probe` takes the car off every way there is
+  and checks the bar, the store, the window title and the file Save writes.
+  A save on the web is in IndexedDB only once the engine's sync has run: 25 to
+  52 s at a load of thirty to eighty drawing in software. So the page
   watches for it: the store reports each write (`_tell_page_wrote`), the shell
   polls IndexedDB until that path holds that many bytes written since
   (`brickworksWrote`, `brickworksStored`, `brickworksUnstored`), the bar says
@@ -112,6 +122,7 @@ godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
 #   also: the build order is written as 0 STEP, and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given
+godot --headless --path . --script src/dev/example_name_probe.gd  # new work, its own name
 godot --headless --path . --script src/dev/restore_probe.gd  # a failed design changes nothing
 godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still mean something
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes

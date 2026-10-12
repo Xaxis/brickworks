@@ -26,8 +26,9 @@ var assemblies: Assemblies
 ## The baseplate's bricks: never in the way, never counted as the model.
 var scenery: Dictionary = {}
 
-## Just before the bricks go down, for the example car to be taken away.
-signal placing()
+## Just before the bricks go down, for the example car to be taken away
+## and the model named after the file they came from.
+signal placing(name: String)
 ## Down, selected, with what to say about it.
 signal brickified(ids: PackedInt64Array, summary: String)
 ## Something for the status line: a file that could not be read.
@@ -594,7 +595,7 @@ func _warm() -> void:
 ## step to undo, and selected. A slice at a time, so a few thousand parts do
 ## not hold the page.
 func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
-	placing.emit()
+	placing.emit(name)
 	var model: Assistant.Model = result["model"]
 	var grid: Brickify.Grid = result["grid"]
 	var path: String = (assemblies.unused_name(name) if assemblies != null else name) + "#1"
