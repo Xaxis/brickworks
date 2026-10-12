@@ -407,6 +407,162 @@ static func _in_a_zone(point: Vector3, zones: Array, slack: float) -> bool:
 	return false
 
 
+## The widest hole or peg [method pushed_in] reads, in LDU: a Technic pin
+## hole's bore. A hand's grip and a clip's eye are 4, an arm's shoulder 5;
+## anything wider is a turntable, a round brick's inside or a dish, whose
+## middle is where other parts stand without being held by it.
+const PUSHED_WIDEST := 6.0
+## How far a part's origin may be off a post's axis and still be worn on
+## it, in LDU. As [constant ROUND_OFF_AXIS].
+const WORN_OFF_AXIS := 1.0
+
+
+## What is pushed into what, by the plastic of one part being where
+## another part's hole or peg is: key -> {other key -> true}, both ways.
+##
+## A joint the connectors cannot pair. A hand closes on whatever is held
+## in it, and most of what a figure holds has no bar the hand's grip fits:
+## a carrot, a loaf, a cup, a staff whose handle is not round, a sword
+## slid through the hand past its hilt. All of them pass through the
+## grip, which is empty except where they are. And a peg pushed into a
+## hole the connectors never read (the stump's into 5059, a spring into
+## its hips) has its middle inside the part it went into. So a bore of a
+## part whose middle another part's cover fills holds that part, and a
+## peg whose middle is inside another part's cover is held by it. Read at
+## the middle, not the ends: a bore's mouth and a peg's root are where the
+## parts beside them stand without being joined.
+##
+## And a part drawn about a post, its origin on the post's axis: a cloth
+## cape is worn round a torso's neck and has no hole the connectors can
+## read, being cloth. LDraw draws what is worn there about the neck,
+## and the cape's origin is on the post.
+##
+## And a visor on its helmet's pivots ([method _pivots]).
+##
+## [param entries] are as [method pairs] takes them, with the part's id
+## fourth where the caller has it (for the pivots); [param filled] is
+## asked (a cell's box, the key asking) for the keys of the other entries
+## whose covers fill that cell, each where its entry's transform puts it.
+static func pushed_in(entries: Array, filled: Callable) -> Dictionary:
+	var held: Dictionary = {}
+	var posts: Dictionary = {}   ## bucket -> Array of [key, start, way, length]
+	for entry: Array in entries:
+		var part: Lbm.PartMesh = entry[2]
+		if part == null:
+			continue
+		var at: Transform3D = entry[1]
+		for connector: Lbm.Connector in part.connectors:
+			if connector.kind != "shaft" and connector.kind != "bore":
+				continue
+			if connector.radius > PUSHED_WIDEST or connector.length < ROUND_DEPTH:
+				continue
+			var start: Vector3 = at * connector.position
+			var way: Vector3 = at.basis * connector.axis
+			var middle: Vector3 = start + way * (connector.length * 0.5)
+			# A hole is filled by anything inside it, a thin handle off its
+			# axis as much as a bar on it: the cells of a cube inside the
+			# bore round its middle. A peg is inside what holds it at its
+			# middle.
+			var reach: float = 0.0 if connector.kind == "shaft" \
+				else maxf(connector.radius - 1.0, 0.0) * 0.7
+			var low: Vector3i = BrickLattice.to_cell(middle - Vector3.ONE * reach)
+			var high: Vector3i = BrickLattice.to_cell(middle + Vector3.ONE * reach)
+			var box := PackedInt32Array([low.x, low.y, low.z,
+				high.x + 1, high.y + 1, high.z + 1])
+			for found: Variant in filled.call(box, entry[0]):
+				_add(held, entry[0], found)
+				_add(held, found, entry[0])
+			if connector.kind == "shaft":
+				# And a peg in a hole the cover leaves open, as the cover of
+				# 5059 leaves the hole the stump's peg goes into: the part
+				# round the peg's middle on every side of it.
+				for found: Variant in _round_about(middle, way.normalized(),
+						connector.radius + 1.5, entry[0], filled):
+					_add(held, entry[0], found)
+					_add(held, found, entry[0])
+				var row: Array = [entry[0], start, way.normalized(), connector.length]
+				for bucket: Vector3i in _buckets_along([entry[0], start, way.normalized(),
+						connector.length, 0.0]):
+					if not posts.has(bucket):
+						posts[bucket] = []
+					(posts[bucket] as Array).append(row)
+	_pivots(entries, held)
+	if posts.is_empty():
+		return held
+	for entry: Array in entries:
+		var origin: Vector3 = (entry[1] as Transform3D).origin
+		for post: Array in posts.get(_bucket(origin), []):
+			if post[0] == entry[0]:
+				continue
+			var gap: Vector3 = origin - (post[1] as Vector3)
+			var along: float = gap.dot(post[2])
+			if along < -ROUND_DEPTH or along > float(post[3]) + ROUND_DEPTH:
+				continue
+			if (gap - (post[2] as Vector3) * along).length() <= WORN_OFF_AXIS:
+				_add(held, entry[0], post[0])
+				_add(held, post[0], entry[0])
+	return held
+
+
+## The parts that are on every side of a peg, [param out] from its axis at
+## [param middle]: six points round it, each a cell, all in one other part.
+static func _round_about(middle: Vector3, way: Vector3, out: float, key: Variant,
+		filled: Callable) -> Array:
+	var across: Vector3 = way.cross(Vector3.UP if absf(way.y) < 0.9 else Vector3.RIGHT).normalized()
+	var other: Vector3 = way.cross(across).normalized()
+	var common: Dictionary = {}
+	for n: int in 6:
+		var turn: float = TAU * float(n) / 6.0
+		var point: Vector3 = middle + (across * cos(turn) + other * sin(turn)) * out
+		var cell: Vector3i = BrickLattice.to_cell(point)
+		var here: Dictionary = {}
+		for found: Variant in filled.call(PackedInt32Array([cell.x, cell.y, cell.z,
+				cell.x + 1, cell.y + 1, cell.z + 1]), key):
+			if n == 0 or common.has(found):
+				here[found] = true
+		common = here
+		if common.is_empty():
+			return []
+	return common.keys()
+
+
+## A visor turns on its helmet: the pins at its sides in the helmet's
+## dimples, which LDraw draws as small primitives along X and which the
+## connectors read only now and then (2447b and 3842b have none, 61190f's
+## pins stop at the mouth of 61189's dimples). Where each part's are is
+## read off those primitives ([constant MinifigData.PIVOTS],
+## tools/minifig.py pivot_of), and two parts whose pivots are one point on
+## one axis are joined there, as the figure builder puts them.
+static func _pivots(entries: Array, held: Dictionary) -> void:
+	var seen: Dictionary = {}   ## bucket -> Array of [key, point, axis]
+	for entry: Array in entries:
+		var part_id: String = str(entry[3]) if entry.size() > 3 else ""
+		var pivot: Array = MinifigData.PIVOTS.get(Minifig._family(part_id),
+			MinifigData.PIVOTS.get(part_id, []))
+		if pivot.size() != 2:
+			continue
+		var at: Transform3D = entry[1]
+		# [y, z] in the part's LDraw frame; the app's is turned half about X.
+		var point: Vector3 = at * Vector3(0.0, -float(pivot[0]), -float(pivot[1]))
+		var axis: Vector3 = at.basis.x.normalized()
+		var box: Vector3i = _bucket(point)
+		for dx: int in [-1, 0, 1]:
+			for dy: int in [-1, 0, 1]:
+				for dz: int in [-1, 0, 1]:
+					for other: Array in seen.get(box + Vector3i(dx, dy, dz), []):
+						if other[0] == entry[0]:
+							continue
+						if absf(axis.dot(other[2])) < 0.99:
+							continue
+						if point.distance_to(other[1]) > ROUND_OFF_AXIS:
+							continue
+						_add(held, entry[0], other[0])
+						_add(held, other[0], entry[0])
+		if not seen.has(box):
+			seen[box] = []
+		(seen[box] as Array).append([entry[0], point, axis])
+
+
 ## Which stud-sized box a point falls in.
 static func _bucket(at: Vector3) -> Vector3i:
 	return Vector3i(floori(at.x / BUCKET), floori(at.y / BUCKET),

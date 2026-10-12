@@ -9747,6 +9747,17 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 			if joined.has(index) and joined.has(other):
 				joined[index].append(other)
 				joined[other].append(index)
+	# And what is pushed into what without a connector to pair: a carrot
+	# in a hand's grip, a spring in its hips, a cape round a neck. A whole
+	# minifigure is one piece, as it is in the hand. See
+	# [method Joints.pushed_in].
+	var pushed: Dictionary = Joints.pushed_in(_mating_entries(model).filter(
+		func(entry: Array) -> bool: return cells_of.has(entry[0])),
+		_filled_by(model, cells_of, lattice))
+	for index: Variant in pushed:
+		for other: Variant in pushed[index]:
+			if joined.has(index) and joined.has(other):
+				joined[index].append(other)
 	# What sits directly on each brick, asked as a slab across its top
 	# rather than cell by cell. A brick is nine thousand six hundred
 	# cells and each was a question for the lattice: free while a cell
@@ -9800,6 +9811,38 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 					seen[next] = true
 					stack.append(next)
 	return pieces
+
+
+## What fills a cell, for [method Joints.pushed_in]: the placements whose
+## covers are in it, each where its joints are ([method _joined_at]).
+##
+## The checker's lattice has a figure's parts at the nearest square turn,
+## where a hand's grip and the sword in it are not where each other are,
+## so those few are covered again where they really stand and asked
+## there instead. Everything else is asked of the lattice as it is.
+func _filled_by(model: Model, cells_of: Dictionary, lattice: BrickLattice) -> Callable:
+	var real := BrickLattice.new()
+	real.keeps_columns = false
+	var moved: Dictionary = {}   ## lattice key -> true
+	for index: int in cells_of:
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _joined_at(placement, part, model)
+		if at.is_equal_approx(_transform(placement, part, model.section_for(placement))):
+			continue
+		moved[index + 1] = true
+		real.occupy_boxes(index + 1, builder.boxes_for(part, at))
+	return func(box: PackedInt32Array, key: Variant) -> Array:
+		var out: Array = []
+		for found: int in lattice.blockers_boxes(box, int(key) + 1, moved):
+			if found > 0 and cells_of.has(found - 1):
+				out.append(found - 1)
+		if not moved.is_empty():
+			for found: int in real.blockers_boxes(box, int(key) + 1):
+				out.append(found - 1)
+		return out
 
 
 ## Every stud that reaches into another part, as [whose stud, which part
@@ -9858,7 +9901,7 @@ func _mating_entries(model: Model) -> Array:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		entries.append([index, _joined_at(placement, part, model), part])
+		entries.append([index, _joined_at(placement, part, model), part, placement.part])
 	return entries
 
 

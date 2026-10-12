@@ -107,7 +107,17 @@ can occupy the same millimetre.
   no hand was joined to its arm and whether a figure was one piece depended
   on which cells the squared parts shared: run 5's Orthanc had Saruman's
   raised right hand as a piece of its own. `minifig_probe`'s "one piece, as
-  the design checker reads it" holds it.
+  the design checker reads it" holds it. For pieces only (not support, not
+  overlaps), `Joints.pushed_in` also joins what is pushed into what without
+  two connectors to pair: a bore no wider than a pin hole (6 LDU) whose middle
+  another part's cover fills (anything in a hand's grip, a clip's eye, an
+  arm's socket), a peg whose middle is inside another part or that has one
+  other part on every side of it (a peg in a hole the cover leaves open: the
+  stump 6828's in 5059), a part whose origin is on a post's axis (a cloth
+  cape round a torso's neck, drawn about it), and a visor and a helmet whose
+  side pivots are one point on one axis (`MinifigData.PIVOTS`). The covers
+  asked are where the parts really are (`Assistant._filled_by`), not the
+  square turn the checker's lattice has them at.
 - `leaning on a joint`: a section turned about x or z must turn on a joint whose
   pin lies along its axis — a hinge brick, finger hinge plates, a clip on a bar,
   a ball — with one half outside the section and the other in it, or it is
