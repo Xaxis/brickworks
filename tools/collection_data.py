@@ -52,7 +52,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import rebrickable as rb  # noqa: E402
-from bricklink_colours import DISPUTED  # noqa: E402
 
 GENERATED = ROOT / "assets" / "generated"
 OUT = GENERATED / "sets"
@@ -74,10 +73,9 @@ def bricklink_colours(colours: list[dict]) -> dict[int, int]:
     """BrickLink colour number -> LDraw code, from colors.json's bricklink
     numbers, which the app exports wanted lists with, so the import and the
     export cannot come to disagree. Where two LDraw codes share a BrickLink
-    number the lower code, the plain one, wins, unless its pair is one
-    tools/bricklink_colours.py names as disputed."""
+    number the lower code, the plain one, wins."""
     out: dict[int, int] = {}
-    for entry in sorted(colours, key=lambda e: (e["code"] in DISPUTED, e["code"])):
+    for entry in sorted(colours, key=lambda e: e["code"]):
         if "bricklink" in entry:
             out.setdefault(int(entry["bricklink"]), int(entry["code"]))
     return out

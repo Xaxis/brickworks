@@ -103,13 +103,14 @@ def test_a_bricklink_colour_reads_back_as_the_ldraw_one_exported() -> None:
     assert index["bricklink_colours"]["5"] == 4
     assert index["bricklink_colours"]["86"] == 71
     assert index["bricklink_colours"]["11"] == 0
-    # Colours the hand-made table had no number for, and numbers several
-    # codes share: Pearl Dark Grey's over Titanium's, and the plastic a
-    # disputed pair (tools/bricklink_colours.py DISPUTED) shares one with.
+    # Colours the hand-made table had no number for; Pearl Dark Grey's
+    # number, which Titanium shares; and the two it had wrong: Trans-Light
+    # Blue is LDraw 43, not 41, and Flat Silver is 315, not 179.
     assert index["bricklink_colours"]["9"] == 7
     assert index["bricklink_colours"]["10"] == 8
     assert index["bricklink_colours"]["77"] == 148
     assert index["bricklink_colours"]["15"] == 43
+    assert index["bricklink_colours"]["74"] == 41
     assert index["bricklink_colours"]["95"] == 315
 
 
@@ -156,3 +157,10 @@ def test_colors_json_carries_the_table_and_nothing_else() -> None:
     assert all(colours[code]["group"] not in ("internal common material", "obsolete")
                for code in written)
     assert not set(HELD_BACK) & set(written)
+    # The owner's call on the two old pairs the sources contradicted:
+    # Trans Medium Blue is BrickLink's Trans-Medium Blue, and Pearl Silver
+    # has no number, since 95 Flat Silver is LDraw 315.
+    assert written[41] == 74
+    assert written[43] == 15
+    assert 179 not in written and 179 in HELD_BACK
+    assert written[315] == 95

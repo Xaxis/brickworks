@@ -87,7 +87,7 @@ NUMBERS: dict[int, int] = {
     38: 18,       # Trans Neon Orange: Trans-Neon Orange
     39: 113,      # Trans Very Light Blue: Trans-Aqua
     40: 13,       # Trans Brown: Trans-Brown
-    41: 15,       # Trans Medium Blue: Trans-Light Blue (disputed)
+    41: 74,       # Trans Medium Blue: Trans-Medium Blue
     42: 16,       # Trans Neon Green: Trans-Neon Green
     43: 15,       # Trans Light Blue: Trans-Light Blue
     45: 107,      # Trans Pink: Trans-Pink
@@ -141,7 +141,6 @@ NUMBERS: dict[int, int] = {
     148: 77,      # Pearl Dark Grey: Pearl Dark Gray
     150: 119,     # Pearl Very Light Grey: Pearl Very Light Gray
     151: 99,      # Very Light Bluish Grey: Very Light Bluish Gray
-    179: 95,      # Pearl Silver: Flat Silver (disputed)
     180: 161,     # Dark Yellow
     183: 83,      # Pearl White
     184: 252,     # Metallic Bright Red: Pearl Red
@@ -249,19 +248,12 @@ NUMBERS: dict[int, int] = {
     30091: 219,   # Modulex Foil Orange: Mx Foil Orange
 }
 
-# The two of the 61 pairs the app's own table held (ShopLists, from SetDB,
-# read 2026-10-11) that the sources above do not bear out. Kept as they
-# were until the owner decides, and passed over when a BrickLink number is
-# read back if another code has it (tools/collection_data.py).
-DISPUTED: dict[int, str] = {
-    41: "Trans Medium Blue is LEGO 143 Transparent Fluorescent Blue (LDConfig), "
-        "which Rebrickable and SetDB both give BrickLink as 74 Trans-Medium Blue. "
-        "15 Trans-Light Blue is LEGO 42, LDraw 43. SetDB's row for 15 says LDraw "
-        "43 but names it Trans_Medium_Blue, which is 41.",
-    179: "Pearl Silver is LEGO 179 Silver Flip-flop (LDConfig). Rebrickable and SetDB "
-         "give 95 Flat Silver as LDraw 179, Rebrickable's old numbering; Flat Silver "
-         "is LEGO 315, LDraw 315, which has 95 here as well.",
-}
+# Two of the 61 pairs the app's own table held (ShopLists, from SetDB, read
+# 2026-10-11) were wrong, and the owner settled them on 2026-10-12. It had
+# 41 as 15 Trans-Light Blue, which is LEGO 42 and LDraw 43: SetDB's row for
+# 15 says LDraw 43 but names it Trans_Medium_Blue, which is 41, LEGO 143,
+# BrickLink's 74. And it had 179 as 95 Flat Silver, which is LEGO 315 and
+# LDraw 315; 179 is Pearl_Silver, held back below.
 
 # What some source pairs with a BrickLink number and the rule above does
 # not keep, and why.
@@ -272,6 +264,9 @@ HELD_BACK: dict[int, str] = {
     125: "Spud Orange, LEGO 125; Rebrickable's 32 Light Orange is LEGO 121",
     176: "Pearl Red, LEGO 176; Rebrickable's 252 Pearl Red is LEGO 184",
     178: "Pearl Yellow, LEGO 178; Rebrickable's 81 Flat Dark Gold is LEGO 147",
+    179: "Pearl Silver, LEGO 179 Silver Flip-flop; Rebrickable's 95 Flat Silver is LEGO 315, "
+         "LDraw 315. Only the LEGO number leads elsewhere, to 239 Bionicle Silver "
+         "(Rebrickable's Two-tone Silver), and no source pairs it with LDraw 179",
     351: "Medium Dark Pink, LEGO 16; Rebrickable's 94 Medium Dark Pink is LEGO 22",
     30054: "Modulex Dark Brown; only the join says 131 Mx Tile Brown, and the names differ",
     30089: "Modulex Foil Dark Red; only the join says 217 Mx Foil Red, and the names differ",

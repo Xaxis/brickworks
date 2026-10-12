@@ -62,16 +62,17 @@ geometry in front of them.
   `rebrickable_also` where Rebrickable keeps two entries for one colour),
   `rebrickable_name`, `years`, `sets`, `current` (in a set within two years of
   the newest in the tables: 77 colours) and `matched_by`, the evidence.
-  `bricklink`, BrickLink's colour number, for the 198 codes
+  `bricklink`, BrickLink's colour number, for the 197 codes
   `tools/bricklink_colours.py` has one for (`PartLibrary.bricklink_colour`, which
   asks for the plain colour of a rubber one). That table was built once, on
   2026-10-12, from Rebrickable's colours page (the Internet Archive's copy: the
   live page is behind Cloudflare), the SetDB guide, BrickLink's own colour guide
   and LDConfig's LEGO numbers; its docstring says which evidence a pair needs.
-  `HELD_BACK` names 11 colours a source pairs that the evidence does not bear
-  out, and `DISPUTED` the two old pairs it contradicts (41 and 179), kept until
-  the owner decides. Any other colour has no number and a guessed one orders the
-  wrong colour. `colour_matches()` is the join; see the gotcha below.
+  `HELD_BACK` names 12 colours a source pairs that the evidence does not bear
+  out. Two of the hand-made table's 61 were wrong and were settled by the owner
+  (2026-10-12): 41 Trans Medium Blue is 74, not 15 (Trans-Light Blue, LDraw 43),
+  and 179 Pearl Silver has none, since 95 Flat Silver is LDraw 315. Any other
+  colour has no number and a guessed one orders the wrong colour. `colour_matches()` is the join; see the gotcha below.
 - `how often a part is really used`: `rebrickable.usage()` counts the distinct
   catalogued sets each part appears in and writes `in_sets` onto every part that
   joins. `PartLibrary.staples(n)` gives the most used, `PartsBin._usage_score`

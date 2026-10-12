@@ -69,7 +69,7 @@ which models they could build from what they have. Added 2026-10-12.
   colour join, the few Rebrickable part numbers that are not LDraw's through
   its part join (146 renamed), BrickLink colours from colors.json's `bricklink`,
   the numbers the wanted list is written in (where two codes share one, the lower
-  wins unless its pair is disputed: BrickLink 15 reads as 43, 95 as 315). 21,173 sets, 256 shards, 26 MB, under
+  wins: BrickLink 77 reads as 148, not 316). 21,173 sets, 256 shards, 26 MB, under
   `assets/generated/sets/`; the shard rule is the same sum in the Python and in
   `SetInventories.shard_of`.
 - `official models' parts lists` (`src/dev/collection_models.gd`): the 328
@@ -125,7 +125,7 @@ Proves it when:
 - `test_collection` passes: 6020-1, 10237-1 and 3931-1 come out of the shards
   exactly as a straight count of the raw CSVs (their own parts, their
   minifigures' parts, spares apart) says, and BrickLink 5, 86 and 11 read back
-  as LDraw 4, 71 and 0 (and 9, 10, 77, 15, 95 as 7, 8, 148, 43, 315); every
+  as LDraw 4, 71 and 0 (and 9, 10, 77, 15, 74, 95 as 7, 8, 148, 43, 41, 315); every
   colour the shipped models use and the 30 commonest in the set inventories has a
   BrickLink number; colors.json carries `tools/bricklink_colours.py` exactly.
 - `collection_probe` ends `every sum came out as it should`: the example car,

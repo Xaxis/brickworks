@@ -15,7 +15,7 @@ The Python side: LDraw in, mesh cache and catalogue out.
   the same function, and the two copies there were before had drifted to the
   point where neither filled the cross-references. It prints a `colour join:`
   line (210 LDraw colours with a Rebrickable colour, 77 current, 185 with a LEGO
-  number, 198 a BrickLink number). `--colours` writes `colors.json` alone,
+  number, 197 a BrickLink number). `--colours` writes `colors.json` alone,
   without reading or rewriting the catalogue. See [parts](parts.md) for what each
   colour carries.
 - `pack the web parts`: chooses which parts the WebAssembly build carries, smallest
