@@ -40,7 +40,7 @@ const bypass = process.env.BW_BYPASS || "";
 // can be the one Claude's calls go to.
 const email = `delivered+bwoauthflow${Date.now().toString(36)}@resend.dev`;
 process.env.BW_TEST_EMAIL = email;
-const { launch } = await import("./browser.mjs");
+const { launch, openColumnFor } = await import("./browser.mjs");
 const { mintCode } = await import("./session.mjs");
 
 const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
@@ -157,6 +157,8 @@ async function where(name, tries = 600) {
   for (let n = 0; n < tries; n++) {
     const at = await page.evaluate((key) => (window.brickworksControls || {})[key], name);
     if (at) return at;
+    // In a laptop's window the assistant's column starts folded.
+    if (n === 6) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   return null;

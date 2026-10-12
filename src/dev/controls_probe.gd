@@ -152,14 +152,17 @@ func _run() -> void:
 
 	var bin_dock: SideDock = _main.get("_bin_dock")
 	var chat_dock: SideDock = _main.get("_chat_dock")
-	var was_open: bool = bin_dock.is_open()
+	# From a column showing: a window too narrow for both shows one, and
+	# one too narrow for either starts with neither.
+	bin_dock.set_open(true, false)
+	var columns_were: Array = [bin_dock.is_open(), chat_dock.is_open()]
 	_press(KEY_TAB)
 	await process_frame
-	_assert("Tab folds both panels away",
-		bin_dock.is_open() != was_open and chat_dock.is_open() != was_open)
+	_assert("Tab folds both panels away", not bin_dock.is_open() and not chat_dock.is_open())
 	_press(KEY_TAB)
 	await process_frame
-	_assert("Tab brings them back", bin_dock.is_open() == was_open)
+	_assert("Tab brings them back as they were (%s)" % str(columns_were),
+		[bin_dock.is_open(), chat_dock.is_open()] == columns_were)
 
 	# The search box has to end up with the caret in it, or "/" is a key
 	# that appears to do nothing at all.

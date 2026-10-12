@@ -17,7 +17,7 @@
 // preview's relay sits behind Vercel's login, so with BW_BYPASS the bypass
 // goes on the requests made from here as a header, and to the page as a
 // cookie for its own domain.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -58,6 +58,8 @@ async function click(name) {
   for (let tries = 0; tries < 600; tries++) {  // five minutes: at a load of 46 the panel came up later than two
     const where = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
     if (where) return page.mouse.click(where.x, where.y);
+    // In a laptop's window the assistant's column starts folded.
+    if (tries === 6) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   // What the page was showing instead, for whoever reads the failure.

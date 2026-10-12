@@ -37,7 +37,7 @@
 // is a long task of half a second or more, so long tasks and input delay are
 // printed, against the idle page's, and judged by eye. Costs nothing: no
 // model is called.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -148,6 +148,8 @@ const click = async (name) => { const at = await control(name); await page.mouse
 // own address wants Claude's sign-in. A build before that has only the one
 // button, and its address is the private one.
 await control("view");
+// In a laptop's window the assistant's column starts folded.
+await openColumnFor(page, "connector_private");
 if ((await page.evaluate(() => window.brickworksControls || {})).connector_private) {
   await click("connector_private");
   await page.waitForTimeout(1500);

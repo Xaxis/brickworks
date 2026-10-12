@@ -3,7 +3,11 @@
 ## the copies following, nested, saved as LDraw sub-models and read back,
 ## and the model tree.
 ##
-##   godot --path . --resolution 1400x900 --script src/dev/assembly_probe.gd
+##   godot --path . --resolution 1100x700 --script src/dev/assembly_probe.gd
+##
+## At any size a laptop's window has: nothing but the view cube is over the
+## model (Main.model_cover), so every click it aims at a part is one a
+## person could make there.
 ##
 ## Every gesture is a key or a click sent as an input event against the
 ## real scene. Pictures go to shots/assemblies/.
@@ -52,12 +56,20 @@ func _run() -> void:
 	_tree = _shell.assemblies
 	_main.call("clear_model")
 	Carry.clipboard = []
-	# Under 1200 wide the panels beside and over the model leave it a strip
-	# too narrow to build a plane in by clicking; a person would fold them.
-	# Said rather than failed for the wrong reason thirty times over.
+	# The model tree and the properties floated over the model's top
+	# corners, and under 1200 x 720 this probe could not build a plane by
+	# clicking: they covered it. Docked in a column, nothing but the view
+	# cube is over the model at any size, and a window with room for one
+	# column beside it shows one.
+	var cover: Dictionary = _main.call("model_cover")
+	var over: Array = (cover["covered"] as Array).map(func(one: Dictionary) -> String:
+		return "%s at %s" % [one["by"], str((one["at"] as Vector2).round())])
 	var room: Vector2 = root.get_visible_rect().size
-	_check("the window has room to build in by hand (%.0f x %.0f, at least 1200 x 720)"
-		% [room.x, room.y], room.x >= 1199.0 and room.y >= 719.0)
+	var view: Rect2 = cover["view"]
+	_check("nothing but the view cube is over the model (%d of %d points covered%s; window %s, "
+		% [over.size(), int(cover["samples"]), (": " + ", ".join(over.slice(0, 4))) if not over.is_empty() else "",
+		str(DisplayServer.window_get_size())] + "the model %.0f of %.0f across, columns %s)"
+		% [view.size.x, room.x, _main.get("_columns")], over.is_empty())
 
 	await _make_and_name()
 	await _copies_follow()
@@ -326,7 +338,24 @@ func _saved_and_read_back() -> void:
 func _the_model_tree() -> void:
 	print("  the model tree")
 	var outliner: Outliner = _shell.outliner
-	_check("the model tree is on screen", outliner.is_visible_in_tree())
+	# Under the parts bin in the left-hand column, folded to its header
+	# until it is wanted: opened as a person opens it, by its rail if the
+	# column is folded and then by its name.
+	var column: SideDock = _main.get("_bin_dock")
+	if not column.is_open():
+		await _click(column.rail().get_global_rect().get_center())
+		await _frames(30)
+	if not outliner.is_open():
+		await _frames(5)
+		await _click(outliner._header.get_global_rect().get_center())
+		await _frames(10)
+	_check("the model tree is open in the column beside the model (%s in %s)"
+		% [str(outliner.get_global_rect()), str(column.get_global_rect())],
+		outliner.is_open() and outliner._tree.is_visible_in_tree()
+		and column.get_global_rect().encloses(outliner.get_global_rect()))
+	var still: Dictionary = _main.call("model_cover")
+	_check("...with nothing over the model (%d points covered)" % (still["covered"] as Array).size(),
+		(still["covered"] as Array).is_empty())
 	outliner._refresh(true)
 	var rows: Array = []
 	_rows_of(outliner._tree.get_root(), rows)

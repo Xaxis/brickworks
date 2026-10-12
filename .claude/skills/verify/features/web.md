@@ -156,7 +156,15 @@ plan with Claude as the client.
   Save while the one-row toolbar pushed Clear and the assistant's rail off
   every phone. A drawer is sized in the interface's units, not points: in
   points a phone is 390 across where it shows about 720 units, and both
-  drawers were cut off down their right edge.
+  drawers were cut off down their right edge. It also samples the model's part
+  of the window at each size (`window.brickworksLayout`, building's `docked
+  panels`): nothing over it but the view cube, and at 1100 x 700, 1280 x 720,
+  1400 x 900 and 1440 x 900 at 2x and 3x the model keeps 60% of the width,
+  with the assistant's key field and both rails on the page (a first visit
+  there shows the assistant). The deploy's `--quick` set is 1400 x 900 at 2x,
+  1100 x 700 and the phone. A browser flow after a control in the folded
+  column calls `openColumnFor(page, name)` (`tools/web/browser.mjs`), which
+  clicks that column's rail as a person would, by `brickworksState.columns`.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
 - `freeze check`: `tools/web/freeze_check.mjs` makes the design that froze the

@@ -41,7 +41,10 @@ picture the assistant is shown.
   left button, the wheel, a pinch and keys and checks that no brick was put
   down; it fails on brickworks.diy as of 2026-10-11.
 - `view cube`: the cube at the model's top right (`ViewCube`, replacing the
-  axis dots) turns with the view; a click on a face looks from that side, on
+  axis dots), the one thing over the model: the model tree and the properties
+  are docked in the left-hand column ([building](building.md)'s `docked
+  panels`), and `Main.model_cover()` leaves out the points under the cube and
+  nothing else. It turns with the view; a click on a face looks from that side, on
   an edge or corner from between two or three (`CadCamera.look_from`); a drag
   on it turns the view. Its four arrows turn a step a click (held, they keep
   turning; dragged, they follow), and under it a pad slides (click an arrow
@@ -49,7 +52,15 @@ picture the assistant is shown.
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. Nothing that begins
+  is what everything frames against, baseplate excluded. The view is centred
+  on the window, not on the model's part of it: with one column open the
+  model sits a little to that side (168 units at 1280 x 720). Both ways of
+  moving it tried 2026-10-12 were worse: sliding the camera across
+  (`h_offset`) looked at the model 10° from the side, so a front view showed a
+  side and the handbuild ruler's top view read 0.3 plates up; shifting the
+  lens (`PROJECTION_FRUSTUM`, `frustum_offset`) is exact on screen, but
+  Godot's `project_ray_origin` and `project_ray_normal` ignore a frustum's
+  offset, and every click in `assembly_probe` missed its part. Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
   or a right or middle press over any panel, dialog, popup or the toolbar is
   dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:
@@ -143,7 +154,8 @@ picture the assistant is shown.
   least-needed groups away (`Toolbar._fit`): as one row the old bar set the
   width of the whole window, and on a phone the assistant's rail was off the
   page. `tools/web/fit_check.mjs` asks for New, Save and both rails on both
-  phones.
+  phones, and samples the model's part of the window at every size: nothing
+  but the view cube over it, and in a laptop's window 60% of the width.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit

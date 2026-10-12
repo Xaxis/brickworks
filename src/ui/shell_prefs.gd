@@ -1,5 +1,7 @@
-## How the window was laid out last time: which panels were open, whether
-## the key strip and the grid were showing, the snap and the turn step.
+## How the window was laid out last time: which panels were open, how
+## tall the model tree and the properties were in their column, which
+## column a narrow window showed, whether the key strip and the grid were
+## showing, the snap and the turn step.
 ##
 ## Kept on this machine, like ViewPrefs, and for the same reason: a layout
 ## is a fact about the screen in front of you. A probe neither reads nor
@@ -15,7 +17,19 @@ const DEFAULTS: Dictionary = {
 	"parts_open": true,
 	"assistant_open": true,
 	"inspector_open": true,
-	"outliner_open": true,
+	# Folded to its header under the parts bin: a model with no
+	# sub-assemblies has one row in it, and the properties use the room.
+	"outliner_open": false,
+	# The model tree's and the properties' heights in the left-hand
+	# column (PanelStack); the parts bin has what is left.
+	"tree_height": 170.0,
+	"properties_height": 230.0,
+	# In a window with room for one column beside the model, the one
+	# showing: "parts" (the bin, the tree and the properties), "assistant",
+	# or "" for neither (Main._fit_panels). A first visit gets the
+	# assistant: designing with Claude is what the landing page sends
+	# people in to do, and folded to a rail a newcomer may never find it.
+	"narrow_side": "assistant",
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",

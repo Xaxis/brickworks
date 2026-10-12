@@ -689,7 +689,7 @@
       "kind": "ui",
       "label": "model tree",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (the panel at the model's top left; View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
       "area": "building"
     },
     {
@@ -710,7 +710,7 @@
       "kind": "ui",
       "label": "properties panel",
       "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; the panel over the model's top right)",
+      "reach": "godot --path .  (select a part; the foot of the left-hand column, under the model tree)",
       "area": "building"
     },
     {
@@ -752,7 +752,7 @@
       "kind": "ui",
       "label": "remembered layout",
       "entry": "src/ui/shell_prefs.gd",
-      "reach": "godot --path .  (fold a panel, change the snap, quit and start again)",
+      "reach": "godot --path .  (fold a panel, drag the bar between two, change the snap, quit and start again)",
       "area": "building"
     },
     {
@@ -880,6 +880,13 @@
       "entry": "tools/web/studio_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
       "area": "prints"
+    },
+    {
+      "kind": "ui",
+      "label": "docked panels",
+      "entry": "src/ui/panel_stack.gd",
+      "reach": "godot --path .  (the left-hand column: parts bin, model tree, properties; fold a header, drag the bar between two; under 1600 units across one column shows beside the model) and node tools/web/fit_check.mjs",
+      "area": "building"
     }
   ]
 }
