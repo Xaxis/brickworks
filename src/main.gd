@@ -72,6 +72,24 @@ var _connector_resumed: bool = false
 ## A probe about the sign-in screen puts it up for itself (set before the
 ## scene enters the tree). The session it signs in with is never kept.
 var gate_for_probe: bool = false
+## A model shared by link (api/share.js). [member _viewing] is the link's id
+## when this run is its read-only viewer (/app?view=<id>, as --view=<id>):
+## no sign-in, nothing that edits, nothing written (_enter_view).
+## [member _copying] is one to copy into this person's own models once
+## they are signed in (/app?copy=<id>, Open in Brickworks). A probe sets
+## either before the scene enters the tree.
+var _viewing: String = ""
+var _copying: String = ""
+var _copy_started: bool = false
+var _first_open_done: bool = false
+var _shared: SharedModels
+var _share_panel: SharePanel
+var _share_view: ShareView
+## The part under the pointer in the viewer, outlined and named.
+var _hover_outline: SelectionOutline
+var _hovered: int = 0
+var _hovered_from: Vector2 = Vector2(-1, -1)
+var _view_pointer: Vector2 = Vector2(-1, -1)
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
@@ -274,6 +292,16 @@ func _tell_page() -> void:
 		named.merge(_seat_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
+	# Sharing: the owner's panel, the viewer's bar, and the two things the
+	# viewer opens — the timeline and the parts list.
+	if _share_panel != null:
+		named.merge(_share_panel.controls_by_name())
+	if _share_view != null:
+		named.merge(_share_view.controls_by_name())
+	if _inventory != null:
+		named.merge(_inventory.controls_by_name())
+	if _steps != null:
+		named.merge(_steps.controls_by_name())
 	# And the model's own part of the window, the column the box select
 	# is laid over (the box itself is hidden until one is drawn): a
 	# browser test aiming at the model found a panel there at a device
@@ -379,6 +407,20 @@ func _tell_page() -> void:
 		"xray": _world.xray_ids().size(),
 		# What the status bar says just now (it clears after a few seconds).
 		"said": _shell.status.message.text if _shell != null else "",
+	}), true)
+	# And a model shared by link: the owner's panel, what the viewer is
+	# showing, how far along its timeline, and whether this run can write
+	# anything at all (tools/web/share_flow.mjs).
+	JavaScriptBridge.eval("window.brickworksShare = %s" % JSON.stringify({
+		"viewing": _viewing,
+		"copying": _copying,
+		"read_only": _store.read_only,
+		"keeps": _store.keeps,
+		"panel": _share_panel.page_state() if _share_panel != null else {},
+		"view": _share_view.page_state() if _share_view != null else {},
+		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
+		"parts_open": _inventory.is_showing(),
+		"title": _store.title,
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -618,7 +660,29 @@ func _ready() -> void:
 	_world.rebuilt.connect(_on_rebuilt)
 	_builder.world = _world
 	_builder.library = _library
+	# A link's id from the page's address, checked here at the edge: a
+	# shared model to look at, or one to copy.
+	if _viewing.is_empty() and SharedModels.is_id(_argument("--view")):
+		_viewing = _argument("--view")
+	if _copying.is_empty() and SharedModels.is_id(_argument("--copy")):
+		_copying = _argument("--copy")
+	if not _viewing.is_empty():
+		# Before anything reads or writes the visitor's own layout, or a
+		# part the model carries is kept for next time.
+		ShellPrefs.frozen = true
+		CustomParts.keeps = false
 	_build_ui()
+
+	if not _viewing.is_empty():
+		_enter_view()
+		_lay_baseplate()
+		await get_tree().process_frame
+		_camera.frame(_built_bounds())
+		_unthrottle_if_nobody_is_watching()
+		# Nothing below is for a viewer: no autosave to restore, no port,
+		# no design, nothing written out.
+		await _view_shared()
+		return
 
 	var stress: String = _argument("--stress")
 	var wanted: String = _argument("--model")
@@ -654,6 +718,10 @@ func _ready() -> void:
 	# by their footprint.
 	if _seat_offer != null:
 		_seat_offer.check()
+	# Open in Brickworks, from a shared model's viewer: once whatever was
+	# here is back, and once somebody is signed in (_on_account_changed).
+	_first_open_done = true
+	_maybe_copy()
 
 	_unthrottle_if_nobody_is_watching()
 
@@ -1096,8 +1164,10 @@ func _gated() -> bool:
 func _on_account_changed() -> void:
 	if _bar != null:
 		_bar.show_account(_account.email if _account.signed_in() else "")
-	if _connector == null:
+	# A viewer is nobody's session: no connector, ever.
+	if _connector == null or not _viewing.is_empty():
 		return
+	_maybe_copy()
 	if _account.signed_in() and not _connector_resumed:
 		_connector_resumed = true
 		_connector.resume()
@@ -1107,6 +1177,235 @@ func _on_account_changed() -> void:
 			_connector.stop()
 		# Whose connections they were is nobody's business here now.
 		_connector.refresh_connections()
+
+
+## File › Share…: the panel that publishes this model as the signed-in
+## account and hands back its link.
+func _share_wanted() -> void:
+	if _viewing.is_empty() and _share_panel != null:
+		_share_panel.open()
+
+
+## Turn this run into a shared model's viewer (/app?view=<id>).
+##
+## The builder's bars, panels and tools go out of sight, the viewer's own
+## bar takes their place. What keeps it read-only is not what is hidden but
+## what refuses: Shell.can runs only the commands in Shell.LOOKING, from a
+## menu, a button or a key; the mouse and the keys go to _view_input and
+## _looking_key, which only look; the store writes nothing
+## (ModelStore.read_only, the autosave and every save); parts the model
+## carries are built for this visit only (CustomParts.keeps); the layout
+## is neither read nor written (ShellPrefs.frozen); the account is never
+## read, renewed or written (Account.keeps), and the connector never starts.
+func _enter_view() -> void:
+	_shell.read_only = true
+	var column: Control = _bar.get_parent()
+	# The status bar too: what it holds is the builder's (the tool's hint,
+	# the snap, the selection), and the viewer says its own things.
+	for hidden: Control in [_bar, _shell.toolbar, _shell.inspector, _shell.outliner,
+			_shell.banner, _shell.status, _bin_dock, _chat_dock, _tools, _seat_offer]:
+		if hidden != null:
+			hidden.visible = false
+	# The strip of editing keys, and the room kept for it.
+	if _hint != null:
+		(_hint.get_parent() as Control).visible = false
+	_share_view = ShareView.new()
+	$HUD.add_child(_share_view)
+	_share_view.put_bar_in(column)
+	_share_view.steps_wanted.connect(_toggle_steps)
+	_share_view.booklet_wanted.connect(_booklet_wanted)
+	_share_view.parts_wanted.connect(_toggle_parts)
+	_share_view.copy_wanted.connect(_open_copy)
+	_share_view.loading()
+	_hover_outline = SelectionOutline.new()
+	_hover_outline.world = _world
+	_hover_outline.library = _library
+	add_child(_hover_outline)
+	(_hover_outline.material_override as StandardMaterial3D).albedo_color = Color(0.45, 0.80, 1.0)
+	# A step scrubbed shows and hides parts under a pointer that has not moved.
+	_steps.reveal.connect(func(_ids: Dictionary) -> void:
+		_hovered_from = Vector2(-1, -1))
+
+
+## Fetch the shared model and open it, read-only.
+func _view_shared() -> void:
+	_share_view.loading()
+	var answer: Dictionary = await _shared.fetch(_viewing)
+	var code: int = int(answer["code"])
+	if code == 410 or code == 404:
+		var title: String = ("This model is no longer shared" if code == 410
+			else "There is no model at this link")
+		_share_view.gone(title, ("Whoever shared it has taken it down. If they share "
+			+ "it again, this link will work again.") if code == 410
+			else "The link may be mistyped, or cut short.")
+		_show_name(title)
+		_set_address("/m/" + _viewing)
+		return
+	if code != 200 or not answer["body"] is Dictionary:
+		_share_view.failed(SharedModels.trouble(answer,
+			"Brickworks did not answer as it should. Try again in a minute."), _view_shared)
+		return
+	var shared: Dictionary = answer["body"]
+	var name: String = str(shared.get("name", "A shared model"))
+	var author: String = str(shared["author"]) if shared.get("author") is String else ""
+	var result: Dictionary = _store.open_text(str(shared.get("model", "")), name)
+	if not str(result["error"]).is_empty():
+		_share_view.failed("It could not be opened here: %s." % result["error"], _view_shared)
+		return
+	_store.title = name
+	_store.share_id = ""
+	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")))
+	_show_name(name)
+	_set_address("/m/" + _viewing)
+	_lay_baseplate()
+	_shell.assemblies.enter("")
+	await get_tree().process_frame
+	_camera.frame(_built_bounds())
+	# On the web most parts are fetched as they are wanted; the steps are
+	# worked out from all of them, so they wait for the last.
+	var since: int = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+		_share_view.arriving(_store.awaited.size())
+		await get_tree().create_timer(0.3).timeout
+	_lay_baseplate()
+	await get_tree().process_frame
+	_camera.frame(_built_bounds())
+	_share_view.ready_to_look()
+	# The finished model, on a timeline to drag back through.
+	if _steps.start(_world, _library, _store.scenery):
+		_steps.to_end()
+
+
+## Open in Brickworks, from the viewer: the app as everybody else gets
+## it, which signs the visitor in and then copies the model (_maybe_copy).
+func _open_copy() -> void:
+	var address: String = "/app?copy=" + _viewing
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
+	else:
+		OS.shell_open(Deployment.api_base() + address)
+
+
+## The page's address, put right without a reload: the link itself while
+## its model is being looked at, and the app's own address once a copy is
+## made, so a reload does not make another. Empty is this page with no query.
+func _set_address(path: String) -> void:
+	if not OS.has_feature("web"):
+		return
+	var to: String = JSON.stringify(path) if not path.is_empty() else "location.pathname"
+	JavaScriptBridge.eval("history.replaceState(null, '', %s)" % to, true)
+
+
+## Copy a shared model into this person's own models (/app?copy=<id>): once
+## they are signed in and whatever was on the baseplate is back. That is
+## kept first if it was not saved, so following a link never loses work.
+## The copy is saved under its own name, never over one of theirs, and has
+## no link: it is theirs to change and to share as their own.
+func _maybe_copy() -> void:
+	if _copying.is_empty() or _copy_started or not _first_open_done \
+			or _account == null or not _account.lets_in():
+		return
+	_copy_started = true
+	_bar.say("copying the shared model…")
+	var answer: Dictionary = await _shared.fetch(_copying)
+	_set_address("")
+	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+		_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
+		return
+	var shared: Dictionary = answer["body"]
+	var name: String = str(shared.get("name", "Shared model"))
+	if not _sample_untouched and _store.has_unsaved_work():
+		_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
+			else "Untitled"))
+	var result: Dictionary = _store.open_text(str(shared.get("model", "")), name)
+	if not str(result["error"]).is_empty():
+		_bar.say("could not open that model: %s" % result["error"])
+		return
+	_store.share_id = ""
+	_bar.opened.emit(int(result["placed"]))
+	var since: int = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+		_bar.say("copying “%s” — %d parts on their way…" % [name, _store.awaited.size()])
+		await get_tree().create_timer(0.3).timeout
+	if not _store.awaited.is_empty():
+		_bar.say("“%s” is open, but %d parts did not arrive: save it once they have" % [
+			name, _store.awaited.size()])
+		return
+	var kept: String = _store.unused_name(name)
+	_store.save_as(kept)
+	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was" % kept)
+
+
+## The mouse in the viewer: a left drag turns the view (Shift slides it),
+## and nothing else. The right and middle buttons and the wheel are the
+## camera's own (CadCamera), as they are in the builder.
+func _view_input(event: InputEvent) -> void:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if button.pressed:
+		if _over_panel_at(button.position):
+			return
+		_press_at = button.position
+		_start_left_nav("slide" if button.shift_pressed else "turn", button.position)
+	elif not _left_nav.is_empty():
+		_left_nav = ""
+		_camera.end_drag(MOUSE_BUTTON_LEFT)
+
+
+## The keys a viewer answers to. True for one the builder's own handling
+## may go on to — it only looks: fit, the named views, the timeline's keys
+## and the arrows, which turn the view with nothing selected. B and P open
+## the steps and the parts list here; everything else does nothing.
+func _looking_key(key: InputEventKey) -> bool:
+	if key.ctrl_pressed or key.meta_pressed:
+		return false
+	match key.keycode:
+		KEY_B:
+			_toggle_steps()
+			return false
+		KEY_P:
+			_toggle_parts()
+			return false
+		KEY_ESCAPE:
+			if _inventory.is_showing():
+				_inventory.hide_list()
+			return false
+		KEY_F, KEY_HOME, KEY_END, KEY_SPACE, KEY_LEFT, KEY_RIGHT, \
+				KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, \
+				KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, \
+				KEY_KP_6, KEY_KP_7:
+			return true
+	return false
+
+
+## The part under the pointer in the viewer: outlined, and named beside it.
+func _view_hover() -> void:
+	if _share_view == null or _share_view.state != "ready":
+		return
+	var at: Vector2 = _view_pointer
+	if at == _hovered_from:
+		return
+	_hovered_from = at
+	var under: int = 0
+	var over_panel: bool = _over_panel_at(at) or _share_view.covers(at) \
+		or (_steps.is_visible_in_tree() and _steps.get_global_rect().has_point(at))
+	if not over_panel and Input.get_mouse_button_mask() == 0:
+		under = _verbs.brick_at(at)
+		var brick: BrickWorld.Brick = _world.get_brick(under) if under != 0 else null
+		if brick == null or brick.hidden:
+			under = 0
+	if under != _hovered:
+		_hovered = under
+		_hover_outline.show_selection({under: true} if under != 0 else {})
+	if under == 0:
+		_share_view.hover("", at)
+		return
+	var shown: BrickWorld.Brick = _world.get_brick(under)
+	var info: PartLibrary.PartInfo = _library.parts.get(shown.part_id)
+	var colour: PartLibrary.BrickColor = _library.color(shown.color_code)
+	_share_view.hover("%s · %s" % [Inventory._tidy(info.name) if info != null else shown.part_id,
+		colour.name if colour != null else "colour %d" % shown.color_code], at)
 
 
 ## The panels either side of the viewport: the parts bin on the left, the
@@ -1137,6 +1436,11 @@ func _build_ui() -> void:
 	# A probe about the autosave turns it on for itself.
 	if OS.get_cmdline_args().has("--script"):
 		_store.keeps = false
+	# Nor somebody else's model, shared by link and opened to look at:
+	# nothing about it is written anywhere, Save included.
+	if not _viewing.is_empty():
+		_store.keeps = false
+		_store.read_only = true
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
@@ -1184,9 +1488,17 @@ func _build_ui() -> void:
 	_account = Account.new()
 	_account.deployment = _deployment
 	# A probe or a command-line run starts signed out and leaves the
-	# person's kept session alone.
-	_account.keeps = _gate_wanted() and not gate_for_probe
+	# person's kept session alone. So does a shared model's viewer: it
+	# needs nobody signed in, and a session renewed here and in the
+	# visitor's own tab at once would end it.
+	_account.keeps = _gate_wanted() and not gate_for_probe and _viewing.is_empty()
 	add_child(_account)
+
+	# Models shared by link: publishing this one, and opening somebody's.
+	# A probe hands in its own, which answers without a network.
+	if _shared == null:
+		_shared = SharedModels.new()
+	add_child(_shared)
 
 	_assistant = Assistant.new()
 	_assistant.library = _library
@@ -1814,9 +2126,27 @@ func _build_ui() -> void:
 		_connector.stop()
 		_account.sign_out())
 
+	# Share this model: File › Share… and the toolbar's Share.
+	_share_panel = SharePanel.new()
+	_share_panel.account = _account
+	_share_panel.store = _store
+	_share_panel.shared = _shared
+	_share_panel.picture = _exports.picture
+	_share_panel.named = _bar.model_name
+	_share_panel.setup()
+	$HUD.add_child(_share_panel)
+	_inset(_share_panel, SharePanel.WIDE, SharePanel.TALL)
+	get_viewport().size_changed.connect(func() -> void:
+		_inset(_share_panel, SharePanel.WIDE, SharePanel.TALL))
+
+	# The parts list's own BrickLink and Rebrickable buttons.
+	_inventory.shop_wanted.connect(func(shop: String) -> void:
+		_inventory.tell(_exports.shop_list(shop)))
+
 	# Over everything else, so it is added last: nothing in the builder can
-	# be used until someone is signed in.
-	if _gate_wanted():
+	# be used until someone is signed in. Not over a shared model's viewer,
+	# which is for anybody with the link.
+	if _gate_wanted() and _viewing.is_empty():
 		_gate = SignInGate.new()
 		_gate.setup(_account)
 		$HUD.add_child(_gate)
@@ -2019,7 +2349,7 @@ var _tabbed: Array = []
 
 ## Fit the panels to the window, and decide how it shares them out.
 func _fit_panels() -> void:
-	if _bin_dock == null or _chat_dock == null:
+	if _bin_dock == null or _chat_dock == null or not _viewing.is_empty():
 		return
 	# The real window, in points, not the viewport and not in pixels.
 	#
@@ -2716,6 +3046,8 @@ static func _nobody_looking() -> bool:
 func _process(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
+	if not _viewing.is_empty():
+		_view_hover()
 	if _cursors != null:
 		_cursors.show_for(_cursor_state())
 	# A box whose ending went somewhere else.
@@ -2894,6 +3226,11 @@ func _drop_dragged(at: Vector2) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# A shared model's viewer only looks: none of what follows — placing,
+	# picking up, a finger held down to take a part off — is reachable.
+	if not _viewing.is_empty():
+		_view_input(event)
+		return
 	# The ruler, while it is out, has the left button and the pointer.
 	if _measure != null and _measure.takes(event):
 		_builder.hide_preview()
@@ -3444,6 +3781,16 @@ func _hover_again() -> void:
 ## What the pointer should say over the model, from what is true this
 ## frame. Cursors.choose decides; this only gathers.
 func _cursor_state() -> Cursors.Situation:
+	# A shared model's viewer: what a left drag does there (turn, Shift
+	# slides; _view_input), and grabbing while it does. Never a tool's
+	# state: the Orbit tool's once kept the cursor's sheet over the whole
+	# window, and the viewer's buttons stopped answering clicks under it.
+	if not _viewing.is_empty():
+		var looking := Cursors.Situation.new()
+		looking.holding_view = _camera.is_dragging()
+		looking.shift = Input.is_key_pressed(KEY_SHIFT)
+		looking.left_drag = Cursors.VERBS["slide" if looking.shift else "turn"]
+		return looking
 	var now := Cursors.Situation.new()
 	now.holding_view = _camera.is_dragging()
 	now.holding_part = _dragging_part
@@ -3495,6 +3842,10 @@ func _cursor_state() -> Cursors.Situation:
 ## interface; a menu or a dialog that is open still gets it first, being
 ## a window of its own.
 func _input(event: InputEvent) -> void:
+	# Where the pointer is, for the viewer's hover: every move, over the
+	# model or not, so moving onto the bar lets go of the part.
+	if event is InputEventMouseMotion and not _viewing.is_empty():
+		_view_pointer = (event as InputEventMouseMotion).position
 	var key: InputEventKey = event as InputEventKey
 	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
 		return
@@ -3549,9 +3900,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if not key.echo and not key.ctrl_pressed and not key.meta_pressed:
 			_camera.key_zoom(zoom)
 		return
-	if _verbs != null and _verbs.handle_key(key):
+	# A shared model's viewer: only the keys that look get past here, and
+	# never to the editing verbs or the shell's shortcuts.
+	if not _viewing.is_empty():
+		if not _looking_key(key):
+			return
+	elif _verbs != null and _verbs.handle_key(key):
 		return
-	if _shell != null and _shell.handle_key(key):
+	elif _shell != null and _shell.handle_key(key):
 		return
 	match key.keycode:
 		KEY_F:

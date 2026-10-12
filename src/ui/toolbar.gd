@@ -30,7 +30,7 @@ const FACES := {
 ## its items as [command, icon]. "snap" and "turn" are the two choosers;
 ## "history" and "select" open menus.
 const GROUPS: Array = [
-	[9, [["new", "new"], ["open", "open"], ["save", "save"]]],
+	[9, [["new", "new"], ["open", "open"], ["save", "save"], ["share", "share"]]],
 	[7, [["undo", "undo"], ["redo", "redo"], ["history", "history"]]],
 	[10, [["mode_select", "pointer"], ["mode_place", "build"], ["mode_move", "move"],
 		["mode_rotate", "rotate"], ["mode_hinge", "swing"], ["mode_clone", "clone"],

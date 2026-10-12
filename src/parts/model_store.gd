@@ -43,6 +43,19 @@ const AUTOSAVE_DELAY_MS := 2500
 ## two runs at once raced each other for the one file.
 var keeps: bool = true
 
+## Whether this run may write a model anywhere at all. False only for a
+## model shared by link and opened to look at (/app?view=<id>): somebody
+## else's model, in a browser that may hold the visitor's own. The
+## autosave, Save and Save as all go through _write, which refuses.
+var read_only: bool = false
+
+## The link this model is shared at (api/share.js), or empty. Carried in
+## the working model and its saves as a meta line LDraw readers ignore,
+## so publishing it again updates the same link. Never in what is
+## published or exported: that is to_text, which leaves it out.
+var share_id: String = ""
+const SHARE_META := "0 !BRICKWORKS SHARE "
+
 
 class Entry extends RefCounted:
 	var name: String
@@ -164,6 +177,9 @@ func begin(name: String) -> void:
 	# Nothing in it is missing, so the autosave may keep it.
 	whole = true
 	example = false
+	# New work is not the model that was shared: publishing it must not
+	# replace that one at its link.
+	share_id = ""
 	begun.emit(title)
 
 
@@ -276,6 +292,9 @@ func list_examples() -> Array[Entry]:
 
 
 func delete(path: String) -> bool:
+	# Nor take anything away, for a model shared by link and looked at.
+	if read_only:
+		return false
 	return DirAccess.remove_absolute(path) == OK
 
 
@@ -410,6 +429,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	_missing_at_open = missing.size()
 	whole = missing.is_empty() and awaited.is_empty()
 	title = _title_of(model, name)
+	share_id = share_in(text)
 	example = false
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
@@ -604,15 +624,46 @@ func export_to(path: String, title: String = "Model") -> bool:
 
 
 func _write(path: String, title: String, with_steps: bool = false) -> bool:
+	if read_only:
+		return false
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	var text: String = to_text(title, with_steps)
+	var text: String = with_share(to_text(title, with_steps), share_id)
 	file.store_string(text)
 	file.close()
 	_tell_page_wrote(path, text.to_utf8_buffer().size())
 	return true
+
+
+## [param text] with the link it is shared at, on the line after its
+## first (inside the model itself, for an .mpd); as it is for none.
+static func with_share(text: String, id: String) -> String:
+	if id.is_empty():
+		return text
+	var cut: int = text.find("\n")
+	if cut < 0:
+		return text + "\n" + SHARE_META + id + "\n"
+	return text.substr(0, cut + 1) + SHARE_META + id + "\n" + text.substr(cut + 1)
+
+
+## The link a model's text says it is shared at, or empty.
+static func share_in(text: String) -> String:
+	var found: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS SHARE ([A-Za-z0-9]{10})\\s*$").search(text)
+	return found.get_string(1) if found != null else ""
+
+
+## [param name], or the first of "name (copy)", "name (copy 2)"… that no
+## saved model has yet: so a copy never writes over one of the person's own.
+func unused_name(name: String) -> String:
+	var tried: String = name
+	var n: int = 1
+	while FileAccess.file_exists(SAVE_DIR + _safe_name(tried) + ".ldr"):
+		tried = "%s (copy)" % name if n == 1 else "%s (copy %d)" % [name, n]
+		n += 1
+	return tried
 
 
 ## On the web, tell the page a file was written, so it can watch for it

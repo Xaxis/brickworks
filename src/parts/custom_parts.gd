@@ -21,6 +21,11 @@ extends RefCounted
 ## never adds parts to the person's own bin.
 static var dir: String = "user://custom_parts/"
 
+## Whether a part a model file carries is kept for next time. Off for a
+## model shared by link and opened to look at: somebody else's parts
+## are built for this visit only, and nothing is written.
+static var keeps: bool = true
+
 
 ## Make a part from a spec, add it to the library and keep it. Returns
 ## {"id": the part's id, "problem": why not, or ""}.
@@ -185,7 +190,7 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 		var carried: Dictionary = model.embedded_parts.duplicate()
 		carried.merge(model.embedded_data)
 		var result: Dictionary = add(library, text, id,
-			not FileAccess.file_exists(dir + id + ".dat"), carried)
+			keeps and not FileAccess.file_exists(dir + id + ".dat"), carried)
 		if str(result["problem"]).is_empty():
 			added.append(id)
 		else:

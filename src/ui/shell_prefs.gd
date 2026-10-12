@@ -40,9 +40,14 @@ static var _values: Dictionary = {}
 static var _loaded: bool = false
 
 
+## Set for a model shared by link and opened to look at: the viewer's
+## layout is its own, and the visitor's is neither read nor written.
+static var frozen: bool = false
+
+
 ## False under --script, so a probe changes nothing on disk.
 static func keeps() -> bool:
-	return not OS.get_cmdline_args().has("--script")
+	return not frozen and not OS.get_cmdline_args().has("--script")
 
 
 static func value(name: String) -> Variant:

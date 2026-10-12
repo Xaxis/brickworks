@@ -421,5 +421,9 @@ func _on_clear() -> void:
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
+	# Whatever is built next is not the model that was shared, and
+	# publishing it must not replace that one at its link.
+	if store != null:
+		store.share_id = ""
 	cleared.emit()
 	_say("cleared")

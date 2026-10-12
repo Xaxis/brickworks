@@ -84,7 +84,7 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # path, so a route importing a shared ./_*.js finds nothing unless the
 # file is sitting beside it.
 #
-# Five routes. /api/account says where the parts are (PARTS_URL) and
+# Six routes. /api/account says where the parts are (PARTS_URL) and
 # where to sign in (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); without those
 # the app asks nobody to sign in. /api/otp emails a sign-in code
 # (SUPABASE_SECRET_KEY, RESEND_API_KEY, EMAIL_FROM, EMAIL_FROM_FALLBACK).
@@ -96,6 +96,12 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # keeps what a person owns (the same keys, supabase/collection.sql), and
 # reads the Rebrickable and BrickLink joins it maps imports through from
 # the index tools/collection_data.py writes, put beside it here.
+# /api/share is a model shared by link (the same keys, and the publishable
+# one for a visitor's read): /m/<id>, its picture and its card are mapped
+# onto it. The viewer is /app?view=<id>: Vercel carries a query across the
+# /app 308 by itself (measured 2026-10-12, /app?foo=x to /b/<sha>/?foo=x),
+# so it needs no route of its own. Its pages send their own security policy; the app's below
+# does not change, since the viewer talks only to its own site.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)
@@ -235,6 +241,9 @@ cat > .vercel/output/config.json <<EOF
         "Cache-Control": "no-store" } },
     { "src": "/sets/(.*[.]json)", "headers": {
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" } },
+    { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },

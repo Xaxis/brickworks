@@ -1034,6 +1034,55 @@
       "entry": "src/render/studio_render.gd",
       "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (and -- --model=M --quality=best for one model)",
       "area": "view"
+    },
+    {
+      "kind": "api",
+      "label": "GET/POST /api/share",
+      "entry": "api/share.js",
+      "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "shared model viewer",
+      "entry": "src/ui/share_view.gd",
+      "reach": "https://brickworks.diy/m/<id>  (or /app?view=<id>; godot --path . -- --view=<id> with BRICKWORKS_API set)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "shared model page and card",
+      "entry": "web/share-page.js",
+      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed   (served by api/share.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "share panel",
+      "entry": "src/ui/share_panel.gd",
+      "reach": "godot --path .  (File › Share…, or Share on the toolbar, signed in)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "share view probe",
+      "entry": "src/dev/share_view_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share browser flow",
+      "entry": "tools/web/share_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web   (with .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "share probe",
+      "entry": "tools/web/share_probe.mjs",
+      "reach": "node tools/web/share_probe.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview)",
+      "area": "web"
     }
   ]
 }

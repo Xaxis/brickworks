@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, cli:idle check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow -->
 
 ## Sub-features
 
@@ -124,6 +124,83 @@ plan with Claude as the client.
   and at once back in view; then a reload, after which the same address
   answers with nothing pressed. Against the build before the fix it fails all
   four out-of-view checks.
+- `GET/POST /api/share` (`api/share.js`, `supabase/shared_models.sql`, applied
+  to the live project 2026-10-12): a model shared by link (2026-10-12). POST
+  with a session publishes `{name, author?, model, image?, id?}` and answers
+  `{id, url: <origin>/m/<id>, image, viewer, embed, parts}` (201; 200 and the
+  same id when `id` is the caller's own, which also republishes a link taken
+  down). Checked at the edge before anything is counted or stored: LDraw text
+  only (every line one of the six line types and well formed, no control
+  characters, at least one part, no sub-model inside itself), at most 2 MB
+  (413), a PNG picture of at most 600 KB, a name; the part count is the
+  server's own, through sub-models (`.dat` sections are parts). Refusals 415
+  with the line that failed, 403 for another account's link, 404 for none, 401
+  signed out, 429 past 20 publishes an hour or 60 a day for one account
+  (`may_publish`, counted in Postgres). `POST ?op=unpublish&id=` (the owner):
+  the row stays, unpublished, and both files are deleted. `GET ?id=` is the
+  viewer's one request (name, author, parts and the `.mpd`, `no-store`); 410
+  `unpublished: true` once taken down, 404 for a link that never was. `GET
+  ?op=mine` (session): the account's links. `/m/<id>` (`op=page`) is the
+  link's page: og/twitter tags (title, the part count and author, the picture),
+  the picture and the way in, and `web/share-page.js` sends a person straight
+  on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
+  (`op=image`): the picture the app rendered, `Cross-Origin-Resource-Policy:
+  cross-origin`. Every answer here is `no-cache` or `no-store`: the picture was
+  `public, max-age=60` until the probe on a preview found Vercel's CDN still
+  serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
+  (`frame-ancestors *`) that opens the link in a tab — the threaded engine
+  cannot run in somebody else's page, which cannot be cross-origin isolated.
+  **Who can do what:** a visitor's read goes through the publishable key, so
+  row security (`shared_models_read_published`, select only, `published`) is
+  what says a row is public, and the key's roles are granted every column but
+  `owner`; the bucket `shared-models` is private with no policies, and the
+  function reads a file with the secret key only after that read; every write
+  is the function's, after the session is verified and the row found to be the
+  caller's. Rows (and the publish log) go with the account; unpublish first or
+  the files stay.
+- `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
+  `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
+  app's isolation headers and CSP are not put on them; `web/share-page.js` is the
+  page's one script (`location.replace` to the viewer, so Back leaves the link).
+  A link taken down answers 410 "This model is no longer shared" and names
+  nothing; one that never was, 404. The card is a picture and a View in 3D that
+  opens the link in a tab.
+- `shared model viewer` (`src/ui/share_view.gd`, `main._enter_view`,
+  `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>`, which
+  `deploy.sh` 308s to `/b/<sha>/?view=<id>` (Vercel keeps a query across that
+  redirect by itself; `?copy=` likewise), and which the shell hands the app as `--view=<id>`
+  (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
+  read-only, no second renderer: one GET of `/api/share?id=` (asked again, up
+  to three times, when nothing at all comes back: on a preview a viewer said
+  "Could not reach Brickworks" once in four runs, and the same link opened at
+  the next try), the model opened
+  through `ModelStore.open_text` (made parts and prints built from the file),
+  the parts fetched, then the timeline (`StepsBar`) at the finished model; a bar
+  along the top with the name, part count and author, Steps, Booklet, Parts list
+  and Open in Brickworks; the part under the pointer outlined in blue and named
+  beside it (`_view_hover`, the lattice ray, skipping parts the timeline hides);
+  the address put back to `/m/<id>`. **No sign-in** (no gate) and **no write
+  path**: `Shell.can` runs only `Shell.LOOKING` (views, fit, timeline, parts
+  list, instructions, full screen, website, about), the mouse goes to
+  `_view_input` (a left drag turns the view, Shift slides it; nothing else) and
+  the keys to `_looking_key` (F, Home, End, Space, arrows, 0–7, B, P, Esc),
+  `ModelStore.read_only` makes its one writer refuse (autosave, Save, Save as),
+  `CustomParts.keeps` off builds carried parts for the visit only,
+  `ShellPrefs.frozen` neither reads nor writes the visitor's layout,
+  `Account.keeps` off never reads, renews or writes their session, and the
+  connector never starts; the builder's bars, panels, toolbar, status bar and
+  key strip are hidden. The parts list (`InventoryPanel`) now has BrickLink and
+  Rebrickable buttons of its own (`shop_wanted`, also in the builder), since a
+  viewer has no File menu. Open in Brickworks goes to `/app?copy=<id>` — see
+  [account](account.md). A link taken down or wrong: a card saying so with Go
+  to Brickworks. Published to the page as `window.brickworksShare` (`viewing`,
+  `read_only`, `keeps`, `view` {state, name, author, parts, title, says,
+  hover}, `steps` [shown, total], `parts_open`, `panel`, `title`), with the
+  bar's, the timeline's (`steps_*`) and the parts list's (`parts_*`) controls
+  in `brickworksControls`. **Not interactive inside somebody else's page**:
+  the threaded engine needs cross-origin isolation, which an iframe in a page
+  that did not ask for it cannot have — so the embed is the card, and the 3D
+  opens in a tab.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -355,6 +432,75 @@ Proves it when: the GET is `200` with `enabled: true`, a `url` and publishable
 the POST is `405`; and a hello with no sign-in is `401`. The deployment before
 2026-10-11's accounts answered `enabled: false` with no `url`, and took any
 hello.
+
+A model shared by link, every endpoint and every refusal, against the real
+functions, database and bucket (two throwaway accounts, deleted at the end with
+their rows; every model it publishes is taken down first, so no file is left;
+about 40 s locally):
+
+```sh
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 &
+node tools/web/share_probe.mjs --url=http://127.0.0.1:8790
+BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<deployment>
+```
+
+Proves it when it ends "a model can be shared by link, and nothing else can be
+done with one" (69 checks): publish refused signed out and with a made-up
+session; published with an id and a link; the part count 9 for a sub-model
+placed twice, two bricks and a made part (a `!DATA` picture not counted); read
+signed out byte for byte with name, author and count and no owner; the page's
+og:title and og:image, its way on to the viewer, not frameable; the picture and
+its CORP; the card, frameable; refused at the edge — over 2 MB 413, JSON, a
+binary file, HTML, a part line cut short, no parts and a sub-model inside
+itself 415, a picture that is not a PNG 415, no name 400; republished in place
+(10 parts, new name, author gone, picture gone and the page falling back to the
+site's); another account updating or unpublishing 403, signed out 401, an
+unknown id 404, none of it changing anything; the owner's list and nobody
+else's; with the publishable key straight at Supabase: the row readable, its
+`owner` not, no insert, no update, the publish log closed, the file not in a
+public bucket; unpublished — the model 410, the page and the card 410 saying
+so and no longer naming it, no picture, the row unreadable; a link that never
+was 404; republished, the same link back; twenty publishes an hour, then 429.
+
+The viewer and the Share panel in the real scene, with no network
+(`FakeShared` plays the endpoint; a window, so on Xvfb in a session with no
+screen; about three minutes, most of it two catalogue loads):
+
+```sh
+godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd
+```
+
+Proves it when it ends "a shared model opens to look at and nothing else, and
+the panel shares one" with no `FAIL`: a model made in a library of its own
+(the house, a part made in the element maker and a printed tile, so both reach
+the viewer only inside the file) opens with no sign-in screen; account, store,
+layout and made parts all set to write nothing; every part standing, the made
+part and print built and not kept; the builder's bars and panels gone; the
+timeline at the end, and its own Start, Next and End pressed with the mouse
+scrub it; twenty editing commands refused and the looking ones allowed; Save
+and the store's writer refused with nothing on disk; a click, a drag (which
+turns the view) and Delete, R, X, C, Q, M, lift and Ctrl Z/V/D/A/S changing no
+part; the part under the pointer outlined and named beside it; Parts list
+pressed on the bar, and its BrickLink and Rebrickable lists written; the
+booklet; a link taken down saying so on a card in the middle. Then the panel,
+signed in: Share opens it with the name, Show who made it offers one, Publish
+sends the LDraw with the made part and print and no link line, the author, and
+a 1200 x 630 PNG; the link kept with the model and sent back on the next
+publish (no author once unticked); Unpublish; another account's link replaced;
+Clear forgets it. Pictures in `shots/share/` (`7_og_image.png` is the link's
+preview picture).
+
+The whole of it in real browsers, on a deployment (two throwaway accounts,
+deleted at the end with the row; no email sent; ten minutes or more on
+SwiftShader):
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web
+```
+
+Proves it when it ends "a model can be shared by link, looked at by anyone,
+and taken down": see the steps in the script's header; pictures
+`1_shared.png` to `11_viewer_unpublished.png` and `og_image.png`.
 
 And the deploy, which is the only proof that counts for the web build:
 
