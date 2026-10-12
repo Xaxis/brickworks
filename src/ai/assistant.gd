@@ -4419,6 +4419,10 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 		var storey: Dictionary = pattern.duplicate(true)
 		storey.erase("storeys")
 		storey["_storey"] = s
+		# The door at the foot of the lowest: each storey laid its own, and the
+		# ones above opened onto nothing half way up the tower.
+		if s > 0:
+			storey["door"] = false
 		storey["_summit_colour"] = ledge
 		storey["band_color"] = -1
 		var high: int = each + (1 if s < courses % count else 0)
@@ -5258,6 +5262,11 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 	if count < 2 or count > 8 or p_sides < 5 or p_sides > 16:
 		trouble.append("piers wants a count of 2 to 8 and 5 to 16 sides each")
 		return []
+	# What the piers rise into past the summit: blades unless said.
+	var horns: String = str(piers.get("horns", "blade")).to_lower()
+	if not horns in HORNS:
+		trouble.append("piers' horns are %s" % ", ".join(PackedStringArray(HORNS)))
+		return []
 	if p_courses > 200:
 		trouble.append("piers wants 200 courses at most")
 		return []
@@ -5398,13 +5407,29 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 				float(spec["y"]) + top, spec["summit_colour"]):
 			made.append(plate)
 
+	# The horns as blades: each a fin of plates on their side rising from the
+	# summit over its pier, sweeping out and back in to a point (_horn_blade).
+	if p_courses > courses and horns == "blade":
+		var base: float = float(spec["y"]) + top + SUMMIT
+		var wide: int = clampi(int(round(p_radius * BLADE_WIDE)), BLADE_LEAST, BLADE_MOST)
+		var tall: int = maxi(int(ceil(3.0 * (p_courses - courses) / Shapes.PLATES_PER_STUD)),
+			int(round(wide * BLADE_TALL)))
+		var flare: float = float(piers.get("flare", round(wide * BLADE_FLARE)))
+		for k: int in count:
+			made.append_array(_horn_blade(model, "prism %s horn %d" % [tag, k],
+				middle + _towards(angles[k]) * out, angles[k], base,
+				floor(p_radius - 1.0), wide, tall, clampf(flare, 0.0, float(wide)),
+				spec["colour"]))
+		_pattern_advice.append(("Each pier rises past the summit as a blade %d studs wide "
+			+ "and %d tall, its tip near y %s.") % [wide, tall,
+			Placement._num(base + _blade_lift() + Shapes.PLATES_PER_STUD * tall)])
 	# The horns: each pier again, whole, standing on the summit, capped
 	# square at its top and carrying a point. Without the cap a horn ends in
 	# faces turned to its angles, which nothing square can sit on: the
 	# fifteenth Orthanc took its four generated horns down to build square
 	# ones by hand ("Pier tops are built at 45°, so grid parts can't clip
 	# on"), eight minutes of a run spent on what the call should have made.
-	if p_courses > courses:
+	elif p_courses > courses:
 		var crown: float = float(spec["y"]) + 3.0 * p_courses + SUMMIT
 		var capped: Dictionary = {}
 		for k: int in count:
@@ -5429,8 +5454,9 @@ func _cluster(pattern: Dictionary, spec: Dictionary, model: Model, index: int,
 					if is_equal_approx(float(plate["y"]), crown + 1.0):
 						on_top[cell] = true
 			made.append_array(cap)
-			made.append_array(_horn_crown(on_top, centre, _towards(angles[k]),
-				crown + SUMMIT, spec["colour"]))
+			if horns == "spire":
+				made.append_array(_horn_crown(on_top, centre, _towards(angles[k]),
+					crown + SUMMIT, spec["colour"]))
 	return made
 
 
@@ -5455,6 +5481,348 @@ static func _studs_within(outlines: Array, low: Vector2i, high: Vector2i) -> Dic
 			if all_in:
 				cells[Vector2i(x, z)] = true
 	return cells
+
+
+## What a pier's horns are: a blade (the default), the stepped spire with a
+## point that came before it, or flat, a turret's square cap and nothing on it.
+const HORNS: Array[String] = ["blade", "spire", "flat"]
+## A blade's width at its foot, as a share of its pier's radius, and the
+## least and most; how many times its width it rises at least; how far its
+## outer edge sweeps out past its foot, as a share of its width.
+const BLADE_WIDE := 1.2
+const BLADE_LEAST := 4
+const BLADE_MOST := 10
+const BLADE_TALL := 2.6
+const BLADE_FLARE := 0.5
+## Layers of plates on their side a blade is laid in. One was a blade held
+## together by nothing but its anchors; two tie each other across their joints.
+const BLADE_LAYERS := 2
+## Bricks with studs on one side, longest first, that a blade's foot is
+## pressed onto: the anchor every blade in a real set hangs from.
+const BLADE_ANCHORS: Array = [[4, "30414"], [2, "11211"], [1, "87087"]]
+
+
+## A horn as a blade, in a section [param name] turned about the upright to
+## [param degrees] over [param centre], its foot at [param y]: a fin of
+## plates laid on their side, [param wide] studs across at the foot, whose
+## outer edge stands at [param reach] studs out from the pier's middle;
+## rising [param high] studs and sweeping out by up to [param flare] and back
+## in to a point, its edges cut on the diagonal by wedge plates; its lowest
+## row of plates pressed onto bricks with studs on their side standing on the
+## summit. The sweep is the section's own: out along its z, up its y, the
+## plates' studs looking along its x.
+##
+## LEGO's 10237 builds its four horns so, as blades of plates and wedge
+## plates on their side, Technic edges and a point; the generated horns
+## before this were square spires stepping in to a cone and a bar, and from
+## the corner they read as four turrets with roofs. "Gaping horns, their
+## pinnacles sharp as the points of spears."
+func _horn_blade(model: Model, name: String, centre: Vector2, degrees: float,
+		y: float, reach: float, wide: int, high: int, flare: float, colour: int) -> Array:
+	var side: Dictionary = _blade_side()
+	if side.is_empty():
+		return []
+	var edges: Array = _blade_edges(int(floor(reach)), wide, high, flare)
+	var inner: PackedInt32Array = edges[0]
+	var outer: PackedInt32Array = edges[1]
+	# Its tiled face to the front: a blade's other face is the undersides of
+	# its plates. One whose studs would look backwards is built the other way
+	# round, turned half a turn with its edges taken from the other side, so
+	# the same blade stands in the same place with its tiles the other way.
+	var backwards: bool = sin(deg_to_rad(degrees)) > 0.001 \
+		or (absf(sin(deg_to_rad(degrees))) <= 0.001 and cos(deg_to_rad(degrees)) < 0.0)
+	if backwards:
+		degrees += 180.0
+		var flipped_in := PackedInt32Array()
+		var flipped_out := PackedInt32Array()
+		for v: int in inner.size():
+			flipped_in.append(-outer[v])
+			flipped_out.append(-inner[v])
+		inner = flipped_in
+		outer = flipped_out
+	if not model.sections.has(name):
+		model.sections[name] = Section.from_dict({"name": name, "x": centre.x, "y": y,
+			"z": centre.y, "axis": "y", "degrees": degrees})
+	var cells: Dictionary = {}
+	for v: int in inner.size():
+		for u: int in range(inner[v], outer[v]):
+			cells[Vector2i(u, v)] = true
+	var wedges: Array = _blade_wedges(inner, outer, cells, colour)
+	var made: Array = []
+	var below: Dictionary = {}
+	for layer: int in BLADE_LAYERS:
+		var wanted: Dictionary = cells.duplicate()
+		var laid: Dictionary = {}
+		for wedge: Dictionary in wedges:
+			made.append(_by_its_body(_on_its_side(wedge, side, side["face"] + 0.4 * layer,
+				name), int(wedge["_side"])))
+			for cell: Vector2i in wedge["_studs"]:
+				wanted.erase(cell)
+				laid[cell] = true
+		for one: Dictionary in Patterns._tile(wanted, float(layer), colour, Patterns.TILES,
+				below, laid, layer):
+			made.append(_on_its_side(one, side, side["face"] + 0.4 * layer, name))
+		below = laid
+	# Its face smooth, as a set's blades are: tiles on every plate of the last
+	# layer, the wedges' studs left showing along its edges.
+	var faced: Dictionary = cells.duplicate()
+	for wedge: Dictionary in wedges:
+		for cell: Vector2i in wedge["_studs"]:
+			faced.erase(cell)
+	for one: Dictionary in Patterns._tile(faced, 0.0, colour, Shapes.TOPS, {}, {}):
+		made.append(_on_its_side(one, side, side["face"] + 0.4 * BLADE_LAYERS, name))
+	# The anchors, under the foot's row of plates.
+	var at: int = inner[0]
+	while at < outer[0]:
+		for anchor: Array in BLADE_ANCHORS:
+			var long: int = anchor[0]
+			var turned: int = int((side["rot"] as Dictionary).get(anchor[1], -1))
+			if at + long > outer[0] or turned < 0:
+				continue
+			made.append({"part": anchor[1], "color": colour, "x": -1.0, "y": 0.0,
+				"z": float(at), "rot": turned, "section": name})
+			at += long
+			break
+	return made
+
+
+## A blade's two edges, row by row up it (a row is a stud): where its inside
+## begins and where its outside ends, in studs out from its pier's middle,
+## until they meet at the tip: the whole sweeping out by [param flare] and
+## part of the way back in to the point as it narrows; each edge moving a stud
+## at a time, at most every other row, the steepest step a wedge plate's cut
+## carries (_blade_wedges).
+## Followed more closely, the first blades had edges that moved two and three
+## studs a row, and their wedges stood out of them like the teeth of a saw.
+static func _blade_edges(reach: int, wide: int, high: int, flare: float) -> Array:
+	var inner := PackedInt32Array()
+	var outer := PackedInt32Array()
+	var middle: float = reach - wide / 2.0
+	var o: int = reach
+	var i: int = reach - wide
+	var since_o: int = 0
+	var since_i: int = 0
+	var v: int = 0
+	# Up to its height following the curves, then on until the edges meet: a
+	# blade that stopped at its height three studs wide had a flat top, and
+	# read as a slab.
+	while v < high or o - i > 1 or mini(since_o, since_i) < 2:
+		var t: float = minf((v + 0.5) / high, 1.0)
+		if v > 0:
+			# Either side of a centre line that sweeps out by the flare a little
+			# over half way up and comes part of the way back, by a width that
+			# narrows to nothing: a horn. Its outer edge bowed out on its own and
+			# its inner held still, both curves, and the blades read as a hare's
+			# ears. Past the height, both close on the tip.
+			var line: float = middle + flare * sin(0.85 * PI * t)
+			var across: float = wide * pow(1.0 - t, 0.8)
+			var want: float = line + across / 2.0
+			if v >= high:
+				want = i + 1
+			if since_o >= 2 and absf(want - o) >= 0.75:
+				o += 1 if want > o else -1
+				since_o = 0
+			want = line - across / 2.0
+			if v >= high:
+				want = o - 1
+			if since_i >= 2 and absf(want - i) >= 0.75 and o - i > 1:
+				i += 1 if want > i else -1
+				since_i = 0
+		if o - i < 1 or v > 3 * high:
+			break
+		inner.append(i)
+		outer.append(o)
+		since_o += 1
+		since_i += 1
+		v += 1
+	return [inner, outer]
+
+
+## The wedge plates a blade's edges are cut by, laid flat (as _on_its_side
+## takes them): at each step an edge makes, one two studs across whose studs
+## stand in the last column inside and whose cut fills the column outside,
+## full where the step is and running out over the rows beside it, so the
+## edge goes on the diagonal from step to step. Which way each one's cut runs
+## is read off its body (_blade_side's "wedges"), not off its studs, which are
+## the same either way up: matched by its studs alone, every other wedge on
+## the first blades stood the wrong way out of the edge.
+func _blade_wedges(inner: PackedInt32Array, outer: PackedInt32Array, cells: Dictionary,
+		colour: int) -> Array:
+	var kinds: Dictionary = _blade_side().get("wedges", {})
+	var rows: int = inner.size()
+	var claimed: Dictionary = {}
+	var made: Array = []
+	for v: int in range(1, rows):
+		# Each step: the column the wedge's studs stand in, the column its cut
+		# fills, the row at the step, which way from it the wedge runs, which
+		# end of the cut is full, and which of its two columns has the studs.
+		var steps: Array = []
+		var d: int = outer[v] - outer[v - 1]
+		if d == -1:
+			steps.append([outer[v] - 1, outer[v], v, 1, "low", 0])
+		elif d == 1:
+			steps.append([outer[v - 1] - 1, outer[v - 1], v - 1, -1, "high", 0])
+		d = inner[v] - inner[v - 1]
+		if d == 1:
+			steps.append([inner[v], inner[v] - 1, v, 1, "low", 1])
+		elif d == -1:
+			steps.append([inner[v - 1], inner[v - 1] - 1, v - 1, -1, "high", 1])
+		for step: Array in steps:
+			var studs: int = step[0]
+			var cut: int = step[1]
+			var from: int = step[2]
+			var way: int = step[3]
+			# As many rows as the edge holds still beside the step, up to four.
+			var long: int = 0
+			while long < 4:
+				var row: int = from + way * long
+				if row < 0 or row >= rows or not cells.has(Vector2i(studs, row)) \
+						or cells.has(Vector2i(cut, row)) or claimed.has(Vector2i(studs, row)) \
+						or claimed.has(Vector2i(cut, row)):
+					break
+				long += 1
+			var named: String = ""
+			while long >= 2 and named.is_empty():
+				named = str(kinds.get("%d %s %d" % [step[5], step[4], long], ""))
+				if named.is_empty():
+					long -= 1
+			if named.is_empty():
+				continue
+			var low: int = from if way > 0 else from - long + 1
+			var taken: Array[Vector2i] = []
+			for n: int in long:
+				claimed[Vector2i(studs, low + n)] = true
+				claimed[Vector2i(cut, low + n)] = true
+				taken.append(Vector2i(studs, low + n))
+			var said: PackedStringArray = named.split(" ")
+			made.append({"part": said[0], "color": colour, "x": mini(studs, cut), "y": 0.0,
+				"z": low, "rot": said[1].to_int(), "_studs": taken, "_side": step[5]})
+	return made
+
+
+## A part laid flat (x along, z deep, a plate's layer up) turned onto its
+## side in a blade: its studs looking along the section's x, the flat x
+## going out along z and the flat z going up, each stud of it 2.5 plates.
+func _on_its_side(flat: Dictionary, side: Dictionary, across: float, name: String) -> Dictionary:
+	return {"part": flat["part"], "color": flat["color"], "face": "+x",
+		"rot": posmod(int(flat["rot"]) + int(side["turn"]), 4), "x": across,
+		"y": side["lift"] + Shapes.PLATES_PER_STUD * float(flat["z"]),
+		"z": float(flat["x"]), "section": name}
+
+
+## A blade's wedge plate moved so the part itself, not its collision cover,
+## stands where it is meant to: its face and foot at the corner it names, and
+## the side its studs are on ([param studs], 0 the low side along the blade, 1
+## the high) flush with that side of its two studs. On its side a wedge's cover
+## is pulled in at its cut end by a lattice cell, and the 2 x 2's body is two
+## LDU short of two studs at its cut; placed by its cover or its low side, the
+## part stood two LDU off the plate beside it, a slit of sky up the inner edge
+## of every blade, one a wedge.
+func _by_its_body(one: Dictionary, studs: int) -> Dictionary:
+	var mesh: Lbm.PartMesh = library.mesh_for(str(one["part"]))
+	if mesh == null:
+		return one
+	var box: AABB = _square_transform(Placement.from_dict(one), mesh) * mesh.bounds
+	var z: float = float(one["z"]) * STUD
+	var off: float = (z - box.position.z) if studs == 0 else (z + 2.0 * STUD - box.end.z)
+	one["x"] = snappedf(float(one["x"]) + (float(one["x"]) * STUD - box.position.x) / STUD, 0.1)
+	one["y"] = snappedf(float(one["y"]) + (float(one["y"]) * PLATE - box.position.y) / PLATE,
+		0.25)
+	one["z"] = snappedf(float(one["z"]) + off / STUD, 0.1)
+	return one
+
+
+## How far up the summit a blade's foot row starts: where the anchors' side
+## studs are, less half a stud.
+func _blade_lift() -> float:
+	var side: Dictionary = _blade_side()
+	return float(side.get("lift", 0.0))
+
+
+## Measured once off the parts, as the side studs a studs_out band hangs its
+## dressing on are: for each anchor, the quarter turn that points its side
+## studs along +x; where a plate pressed onto them starts across ("face") and
+## up ("lift"), for an anchor at x -1 on the summit; and the quarter turn a
+## part laid flat is given on its side ("turn"), the one under which a
+## plate's own across runs out along z and its deep up the blade.
+var _blade_sides: Dictionary = {}
+
+
+func _blade_side() -> Dictionary:
+	if not _blade_sides.is_empty() or library == null:
+		return _blade_sides
+	var turns: Dictionary = {}
+	var face: float = NAN
+	var lift: float = NAN
+	for anchor: Array in BLADE_ANCHORS:
+		var mesh: Lbm.PartMesh = library.mesh_for(str(anchor[1]))
+		if mesh == null:
+			continue
+		for rot: int in 4:
+			var trial := Placement.from_dict({"part": anchor[1], "x": -1, "y": 0, "z": 0,
+				"rot": rot})
+			var placed: Transform3D = _transform(trial, mesh)
+			var lowest: Vector3 = Vector3(INF, INF, INF)
+			for connector: Lbm.Connector in mesh.connectors:
+				if connector.kind == "stud" and connector.gender == "male" \
+						and (placed.basis * connector.axis).normalized().dot(Vector3.RIGHT) > 0.9:
+					var point: Vector3 = placed * connector.position
+					if point.z < lowest.z:
+						lowest = point
+			if lowest.z == INF:
+				continue
+			turns[anchor[1]] = rot
+			if is_nan(face):
+				face = snappedf(lowest.x / STUD, 0.1)
+				lift = snappedf((lowest.y - STUD * 0.5) / PLATE, 0.25)
+			break
+	if is_nan(face):
+		return {}
+	# The wedge plates two studs across with their studs in one column, by
+	# which column, which end of the other their cut fills ("low" nearest
+	# the row they start at) and how many rows deep: "0 low 4" -> "41770a 0".
+	var wedges: Dictionary = {}
+	var shapes: Dictionary = Patterns.wedge_shapes(library)
+	for named: String in shapes:
+		var shape: Array = shapes[named]
+		var columns: Dictionary = {}
+		for cell: Vector2i in (shape[2] as Dictionary):
+			columns[cell.x] = true
+		if int(shape[0]) != 2 or columns.size() != 1 or builder == null:
+			continue
+		var studs: int = int(columns.keys()[0])
+		var said: PackedStringArray = named.split(" ")
+		var mesh: Lbm.PartMesh = library.mesh_for(said[0])
+		if mesh == null:
+			continue
+		var at: Transform3D = _square_transform(Placement.from_dict({"part": said[0],
+			"x": 0, "y": 0, "z": 0, "rot": said[1].to_int()}), mesh)
+		var deep: int = int(shape[1]) * BrickLattice.CELLS_PER_STUD
+		var ends := Vector2i.ZERO
+		for cell: Vector3i in builder._cells_for(mesh, at):
+			if floori(cell.x / float(BrickLattice.CELLS_PER_STUD)) != 1 - studs:
+				continue
+			if cell.z < BrickLattice.CELLS_PER_STUD / 2:
+				ends.x += 1
+			elif cell.z >= deep - BrickLattice.CELLS_PER_STUD / 2:
+				ends.y += 1
+		if ends.x != ends.y:
+			wedges["%d %s %d" % [studs, "low" if ends.x > ends.y else "high",
+				int(shape[1])]] = named
+	# The turn under which a part's own x goes along z, its y along x and
+	# its z up: its studs out of the blade's side.
+	var onto := Basis(Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0))
+	for turn: int in 4:
+		var all: bool = true
+		for rot: int in 4:
+			if not BrickLattice.basis_for("+x", (rot + turn) % 4).is_equal_approx(
+					onto * BrickLattice.basis_for("up", rot)):
+				all = false
+		if all:
+			_blade_sides = {"rot": turns, "face": face, "lift": lift, "turn": turn,
+				"wedges": wedges}
+			break
+	return _blade_sides
 
 
 ## How many courses each ring of a horn's crown is, and the slope its ledges
@@ -9817,9 +10185,15 @@ alongside the bricks you write by hand:
            stuck on. The top is capped with a summit two plates thick, \
            which ties it all together; the reply says at what y (without \
            storeys, y + 3 x courses), so build on it two plates higher. \
-           Each horn is capped square the same way, and rises from its \
-           cap in black bricks stepping in to a point at its outer edge, \
-           so the four open outwards round the platform like claws. With \
+           Each horn is a blade, as LEGO's 10237 builds Orthanc's: \
+           plates on their side pressed onto bricks with side studs on \
+           the summit, edges cut by wedge plates, sweeping out from its \
+           pier and back in to a point, so they open round the platform \
+           like claws; the reply says how tall and where the tips are. \
+           "horns": "spire" steps a square crown in to a point instead, \
+           "flat" caps a turret; "flare" is how far a blade sweeps out. \
+           A blade is any spiked crown's: a throne's back, a gate's \
+           fangs, a dark tower's points. With \
            piers, any "open" opens the core's whole back, and an arched \
            door stands at the foot of the core's front (+z), at y, for a \
            stair to lead up to ("door": false for none). Without "piers" \
@@ -10931,9 +11305,9 @@ func _tools() -> Array:
 				+ "own built against the core, with a cleft between each two "
 				+ "— a tower like Orthanc in one object. The core is capped "
 				+ "with a summit two plates thick at y + 3 x courses, and "
-				+ "piers taller than the core rise past it as horns, each "
-				+ "capped square, two plates at y + 3 x their courses + 2, and "
-				+ "rising from the cap in steps to a point at its outer edge.",
+				+ "piers taller than the core rise past it as horns: blades of "
+				+ "plates on their side, cut by wedge plates, sweeping out and "
+				+ "back in to a point (the reply says where the tips are).",
 				"properties": {
 					"count": {"type": "integer", "description": "how many, 2-8 (4)"},
 					"sides": {"type": "integer", "description":
@@ -10947,10 +11321,18 @@ func _tools() -> Array:
 						+ "the core by its wall's thickness)"},
 					"courses": {"type": "number", "description":
 						"how tall, in courses of three plates; more than the "
-						+ "core's for horns (a fifth more)"},
+						+ "core's for horns (a fifth more; a blade rises at least "
+						+ "two and a half times its width)"},
 					"turn": {"type": "number", "description":
 						"degrees round from +z to the first pier (between two "
 						+ "faces, so there is a cleft front and back)"},
+					"horns": {"type": "string", "enum": ["blade", "spire", "flat"],
+						"description": "what piers taller than the core rise "
+						+ "into: a blade (the default, as LEGO's 10237 builds "
+						+ "Orthanc's), a square spire stepping in to a point, or "
+						+ "flat, a turret's cap"},
+					"flare": {"type": "number", "description":
+						"blade: studs its sweep reaches out (half its width)"},
 				},
 				"additionalProperties": false},
 			"facing": {"type": "string", "enum": ["+x", "-x", "+z", "-z"],

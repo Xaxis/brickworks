@@ -625,6 +625,23 @@ func _clustered() -> void:
 		% [int(round(float(style["angled"]) * 100)), int(round(float(style["snot"]) * 100))],
 		float(style["angled"]) >= 0.27)
 
+	# The horns are blades, as LEGO's 10237 builds them: each a fin of plates
+	# on their side in a section of its own over its pier, pressed onto bricks
+	# with side studs on the summit, its edges cut by wedge plates, rising in
+	# one sweep out and back in to a point. The generated horns before were
+	# square spires stepping in to a cone and a bar, and from the corner read
+	# as four turrets with roofs.
+	_check_blades(assistant, model, "the default horns")
+
+	# Asked for, the spire that came before: each pier rising past the summit,
+	# capped square, and a crown stepping in to a point.
+	var spired: Dictionary = tower.duplicate(true)
+	spired["piers"]["horns"] = "spire"
+	var spire: Assistant.Model = assistant._read_model({"name": "Orthanc", "patterns": [spired]})
+	var spire_check: Dictionary = assistant._check(spire)
+	_check("asked for spires, it passes the check in one piece: %s, %d"
+		% [spire_check["summary"], int(spire_check["pieces"])],
+		bool(spire_check["ok"]) and int(spire_check["pieces"]) == 1)
 	# The horns end square: a cap of plates on the grid over each, and on the
 	# cap's studs a crown of square bricks. The fifteenth Orthanc took its
 	# horns down because their tops were turned to 45 degrees and nothing
@@ -636,7 +653,7 @@ func _clustered() -> void:
 	var turned_caps: int = 0
 	var tips: Array = []
 	var steep: int = 0
-	for placement: Assistant.Placement in model.placements:
+	for placement: Assistant.Placement in spire.placements:
 		var at_cap: bool = is_equal_approx(placement.y, crown) \
 			or is_equal_approx(placement.y, crown + 1.0)
 		if at_cap and not placement.section.is_empty():
@@ -672,6 +689,25 @@ func _clustered() -> void:
 		% [steep, outer] + "the highest %s plates over the cap" % (tallest - crown),
 		on_caps >= 4 * 6 and steep >= 4 * 8 and tips.size() == 4 and outer == 4
 			and tallest - crown >= 3.0 * Assistant.HORN_RING * 3)
+	# Flat: a turret's square cap and nothing on it; anything else is said.
+	var capped: Dictionary = tower.duplicate(true)
+	capped["piers"]["horns"] = "flat"
+	var flat: Assistant.Model = assistant._read_model({"patterns": [capped]})
+	var points: int = 0
+	var blade_parts: int = 0
+	for placement: Assistant.Placement in flat.placements:
+		if placement.part == "30374" or placement.part == Assistant.HORN_SLOPE:
+			points += 1
+		if placement.section.contains(" horn "):
+			blade_parts += 1
+	_check("flat horns are capped and carry nothing: %d points, %d blade parts, %s"
+		% [points, blade_parts, assistant._check(flat)["summary"]],
+		points == 0 and blade_parts == 0 and bool(assistant._check(flat)["ok"]))
+	var odd: Dictionary = tower.duplicate(true)
+	odd["piers"]["horns"] = "antlers"
+	_check("horns of a kind there is not are refused, naming the kinds: %s"
+		% _assistant_trouble(assistant, odd),
+		_assistant_trouble(assistant, odd).contains("blade, spire, flat"))
 
 	assistant._brief = "The Tower of Orthanc"
 	assistant._apply(model)
@@ -708,7 +744,8 @@ func _clustered() -> void:
 	var counts := func() -> Dictionary:
 		var found := {"turned": 0, "stone": 0, "two": 0, "inward": 0, "grey": 0, "black": 0}
 		for placement: Assistant.Placement in assistant._model_from_world().placements:
-			if placement.section.is_empty():
+			# The faces, not the horns: a blade is built on its side whole.
+			if placement.section.is_empty() or placement.section.contains(" horn "):
 				continue
 			if placement.face != "up" and placement.part != "87087":
 				found["grey" if placement.color == 72 else "black"] += 1
@@ -864,11 +901,17 @@ func _in_storeys() -> void:
 	_check("a cluster in storeys passes the check, in one piece: %s, %d"
 		% [verdict["summary"], int(verdict["pieces"])], assistant._pattern_trouble.is_empty()
 			and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
-	var bars: int = 0
+	var blades: Dictionary = {}
 	for placement: Assistant.Placement in model.placements:
-		if placement.part == "30374":
-			bars += 1
-	_check("...four horns, on the top storey only: %d points" % bars, bars == 4)
+		if placement.section.contains(" horn "):
+			blades[placement.section.get_slice(" horn ", 0)] = true
+	_check("...horns on the top storey only: %s" % str(blades.keys()),
+		blades.keys() == ["prism 0 storey 2"])
+	var doors: int = 0
+	for placement: Assistant.Placement in model.placements:
+		if placement.part == Assistant.DOOR_ARCH:
+			doors += 1
+	_check("...and one door, at the foot of the lowest: %d" % doors, doors == 1)
 	assistant._brief = "The Tower of Orthanc"
 	assistant._apply(model)
 	await process_frame
@@ -928,6 +971,107 @@ func _assistant_trouble(assistant: Assistant, pattern: Dictionary) -> String:
 	return str(assistant._pattern_trouble)
 
 
+## A cluster's horns as blades, measured by the geometry of each blade's parts
+## in its own section, where z runs out along the blade (or back along it, for
+## one built the other way round) and y up it.
+func _check_blades(assistant: Assistant, model: Assistant.Model, what: String) -> void:
+	var blades: Dictionary = {}
+	for placement: Assistant.Placement in model.placements:
+		if placement.section.contains(" horn "):
+			if not blades.has(placement.section):
+				blades[placement.section] = []
+			(blades[placement.section] as Array).append(placement)
+	var wedges: Dictionary = {}
+	for kind: Variant in (assistant._blade_side()["wedges"] as Dictionary).values():
+		wedges[str(kind).get_slice(" ", 0)] = true
+	var good: Dictionary = {"side": 0, "wedged": 0, "anchored": 0, "tall": 0, "out": 0,
+		"back": 0, "point": 0, "whole": 0}
+	var said: Array = []
+	for name: Variant in blades:
+		var boxes: Array = []
+		var is_wedge: Array[bool] = []
+		var on_side: bool = true
+		var wedged: int = 0
+		var anchored: int = 0
+		for placement: Assistant.Placement in blades[name]:
+			if placement.part in ["30414", "11211", "87087"]:
+				anchored += 1 if placement.face == "up" and is_zero_approx(placement.y) else 0
+				continue
+			on_side = on_side and placement.face == "+x"
+			wedged += 1 if wedges.has(placement.part) else 0
+			is_wedge.append(wedges.has(placement.part))
+			var mesh: Lbm.PartMesh = _library.mesh_for(placement.part)
+			boxes.append(assistant._square_transform(placement, mesh) * mesh.bounds)
+		var foot := Vector2(INF, -INF)
+		var lowest: float = INF
+		var top: AABB = boxes[0]
+		for box: AABB in boxes:
+			lowest = minf(lowest, box.position.y)
+			if box.end.y > top.end.y:
+				top = box
+		var widest: float = -INF
+		var way: float = 0.0
+		# The foot by its plates: a wedge there is already the edge sweeping out.
+		for n: int in boxes.size():
+			var box: AABB = boxes[n]
+			if box.position.y <= lowest + 1.0 and not is_wedge[n]:
+				foot = Vector2(minf(foot.x, box.position.z), maxf(foot.y, box.end.z))
+			way += box.get_center().z
+		way = signf(way)
+		# Out along the blade, whichever way round it was built.
+		var out := func(box: AABB) -> float:
+			return box.end.z if way > 0.0 else -box.position.z
+		var foot_out: float = foot.y if way > 0.0 else -foot.x
+		for box: AABB in boxes:
+			widest = maxf(widest, out.call(box))
+		var high: float = top.end.y - lowest
+		# Sky through it: at the middle of each row, what its parts cover along
+		# it, merged, with no gap between. Wedges seated by their cover left
+		# two LDU between a wedge and the plate beside it, one a row.
+		var slits: int = 0
+		var row: float = lowest + Assistant.STUD * 0.5
+		while row < top.end.y:
+			var spans: Array = []
+			for box: AABB in boxes:
+				if box.position.y < row and box.end.y > row:
+					spans.append(Vector2(box.position.z, box.end.z))
+			spans.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+			var reach: float = -INF
+			for span: Vector2 in spans:
+				if reach > -INF and span.x > reach + 1.0:
+					slits += 1
+				reach = maxf(reach, span.y)
+			row += Assistant.STUD
+		good["whole"] += 1 if slits == 0 else 0
+		good["side"] += 1 if on_side else 0
+		good["wedged"] += 1 if wedged >= 2 * 4 else 0
+		good["anchored"] += 1 if anchored >= 1 else 0
+		good["tall"] += 1 if high >= 2.5 * (foot.y - foot.x) else 0
+		good["out"] += 1 if widest >= foot_out + Assistant.STUD else 0
+		good["back"] += 1 if out.call(top) <= widest - Assistant.STUD else 0
+		good["point"] += 1 if top.size.z <= 2.0 * Assistant.STUD + 1.0 else 0
+		said.append("%s %d tall from a foot %d wide, out %d past it, tip %d in from the widest"
+			% [str(name).get_slice(" horn ", 1), int(high / Assistant.STUD),
+				int((foot.y - foot.x) / Assistant.STUD), int((widest - foot_out) / Assistant.STUD),
+				int((widest - out.call(top)) / Assistant.STUD)])
+	_check("%s: four blades, each in a section of its own: %d" % [what, blades.size()],
+		blades.size() == 4)
+	_check("...every part of each on its side, studs out of the blade (%d of 4)" % good["side"],
+		good["side"] == 4)
+	_check("...their edges cut by wedge plates, both layers (%d of 4)" % good["wedged"],
+		good["wedged"] == 4)
+	_check("...each pressed onto bricks with side studs standing on the summit (%d of 4)"
+		% good["anchored"], good["anchored"] == 4)
+	_check("...rising at least two and a half times their foot (%d of 4): %s"
+		% [good["tall"], "; ".join(PackedStringArray(said))], good["tall"] == 4)
+	_check("...sweeping out past their foot (%d of 4), then back in (%d of 4)"
+		% [good["out"], good["back"]], good["out"] == 4 and good["back"] == 4)
+	_check("...to a point no more than two studs across (%d of 4)" % good["point"],
+		good["point"] == 4)
+	_check("...with no slit of sky between two of its parts, row by row (%d of 4)"
+		% good["whole"], good["whole"] == 4)
+
+
 ## The fifteenth Orthanc's own cluster, "open": 2: an octagonal core of
 ## radius 7, four six-sided piers turned 45 degrees. It opened one back face
 ## and one pier, and its rooms were behind a slot between two piers. With
@@ -960,7 +1104,8 @@ func _cluster_opened() -> void:
 	var back_faces: Dictionary = {}
 	for placement: Assistant.Placement in model.placements:
 		var section: Assistant.Section = model.section_for(placement)
-		if section != null and not section.name.contains(" pier "):
+		if section != null and not section.name.contains(" pier ") \
+				and not section.name.contains(" horn "):
 			var heading: float = fposmod(section.degrees, 360.0)
 			if heading > 90.5 and heading < 269.5:
 				back_faces[snappedf(heading, 0.1)] = true

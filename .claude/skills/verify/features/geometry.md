@@ -22,7 +22,12 @@ can occupy the same millimetre.
   lean on by them (`section_probe` fails if they are cut back too).
 - `sideways building`: a part can be held by a stud that does not point up —
   `face` (up/down/±x/±z) × `rot` (quarter turns) gives 24 orientations, and the
-  occupied cells are recomputed for each.
+  occupied cells are recomputed for each. A placement names its cover's corner,
+  and a cover is not always the part: on its side a wedge plate's is pulled in
+  a cell at its cut end, and the 2 x 2 wedge (24299/24307) is 38 LDU across, so
+  a wedge laid by its corner stands two LDU off the plate beside it. A blade
+  (`Assistant._by_its_body`) seats its wedges by their mesh's bounds instead;
+  `patterns_probe`'s blades have no slit between parts.
 - `angled sections`: a sub-assembly built square and then carried at an angle.
   `sections: [{name,x,y,z,axis,degrees}]` plus a `section` field on a brick.
   Collision inside a section is checked in the section's own square frame;

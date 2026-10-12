@@ -381,7 +381,8 @@ fixing what it got wrong.
   `patterns_probe`: 532 of that summit's 544 studs, the middle covered, 468
   before), which is what makes it one piece — walls at different
   angles only rest on one another — and piers taller than the core rise from
-  it as whole prisms (horns). A cluster face's outer row runs on past its
+  it into horns: blades by default (`horns as blades`, below), or with
+  `"horns": "spire"` as whole prisms with a crown. A cluster face's outer row runs on past its
   right-hand corner into the groove (`_cluster_face`, as far as the outline's
   corner): without it a two-thick pier face three studs wide had a groove
   nearly as wide at each corner and the piers read as bundles of sticks.
@@ -392,7 +393,7 @@ fixing what it got wrong.
   off centre: run 15 asked for 2 and got one face and one pier, the rooms
   behind a slot between two piers. Counted as every face looking backwards at
   all, run 17's ten-sided core opened five of ten, its sides with them, and its
-  front piers' hollows opened onto the core's inside. Each horn ends square: a cap two plates
+  front piers' hollows opened onto the core's inside. A spire ends square: a cap two plates
   thick over its outline at `y + 3 x piers' courses + 2` (`_studs_within`,
   `_summit`, never a stud claimed by two caps), and on it a crown
   (`_horn_crown`): rings of bricks two courses tall (`HORN_RING`), each two
@@ -413,9 +414,11 @@ fixing what it got wrong.
   the check. Found by run 14: four piers round a core rising into horns, built
   square by hand, 0% at an angle. `patterns_probe`: the guidance's cluster
   passes the check as laid, in one piece, faces at 4 angles off the grid, 40%
-  angled (fantasy median 27%), open at the back, each horn capped square (no
+  angled (fantasy median 27%), open at the back, its blades as below; asked
+  for spires, each horn capped square (no
   cap plate turned) with a crown on it, 129 65-degree slopes looking in and
-  each tip out past its horn's middle, 35 plates over the cap, and add_rooms lays and
+  each tip out past its horn's middle, 35 plates over the cap; flat, caps and
+  nothing on them; any other kind refused naming the three; and add_rooms lays and
   furnishes five floors under the summit, open to -z, nothing taken out;
   restyle_model then reaches the faces (below); piers set clear of the core
   are refused; and run 15's own cluster with `"open": 2` has no core face
@@ -458,6 +461,46 @@ fixing what it got wrong.
   shape pattern's mirror strip takes its parity with `posmod` — a plinth
   centred on its `at` has studs either side of nought, and `-1 % 2` is `-1`,
   which laid a three-wide strip off the plane and overlapped itself.
+- `horns as blades`: `"horns": "blade"` on `prism`'s piers, the default
+  (`Assistant._horn_blade`, `_blade_edges`, `_blade_wedges`, `_blade_side`,
+  `_by_its_body`), as LEGO's 10237 builds Orthanc's: the owner's verdict on the
+  homepage tower was "the ugliest piece of shit I've ever seen", and its horns
+  were square spires that read from the corner as turrets with roofs. A pier
+  taller than the core stops at the summit, and over it stands a blade in a
+  section of its own (`prism N horn K`) turned about the upright to the pier's
+  angle: two layers of plates laid on their side (face +x, `Patterns._tile`,
+  the second turned across the first's joints), tiles over the last
+  (`Shapes.TOPS`), its foot row pressed onto bricks with side studs (30414,
+  11211, 87087) standing on the summit, where `_blade_side` measures their
+  studs off the parts. Its outline (`_blade_edges`): a centre line sweeping
+  out by `flare` (half its width) a little over half way up and part of the
+  way back, a width narrowing to nothing, each edge moving a stud at a time and
+  at most every other row; past its height the edges close until they meet, so
+  it ends in a point (stopped at its height, a blade three studs wide had a flat
+  top and read as a slab; with its outer edge bowing on its own and its inner
+  held still, the blades read as a hare's ears). At each step a two-stud wedge
+  plate (24299/24307, 43722a/43723a, 41769a/41770a, `_blade_wedges`), studs in
+  the last column inside and its cut filling the column outside, full at the
+  step, so the edge runs on the diagonal; which way a wedge's cut runs is read
+  off its body (`Builder._cells_for`), never its studs, which are the same
+  either way up (matched by its studs, the first blades' wedges stood out like
+  a saw's teeth). A wedge is seated by its body (`_by_its_body`): on its side
+  its cover is pulled in a cell at the cut end, and the 2 x 2's body is two LDU
+  short of two studs, so placed by either the blades had a slit of sky up their
+  inner edge, one a wedge. Its foot is the pier's radius by `BLADE_WIDE` (1.2,
+  4 to 10 studs); it rises `BLADE_TALL` (2.6) times that, or the piers'
+  courses past the core's if more; one whose studs would look away from the
+  front is built the other way round (turned half a turn, its edges taken from
+  the other side), so its tiled face is the one seen. The reply says each
+  blade's size and its tip's y. `"horns": "spire"` is the crown below, `"flat"`
+  a turret's cap; any other kind is refused naming the three. `patterns_probe`
+  (`_check_blades`): the guidance's cluster has four blades, every part on its
+  side, wedges in both layers, each anchored, 18 studs tall from a 6-wide foot,
+  sweeping 3 out past it and back in, to a point two studs across; the probe's
+  restyle and open-back counts leave the horn sections out, as built whole on
+  their side, and without the seating by body the slit check fails (0 of 4).
+  Looked at: `shots/runs/blades_{corner,front,close}.png` in its worktree, the
+  guidance's cluster in storeys on a plinth.
 - `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
   (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
   here rose the same width from foot to horns, and the owner's verdict named it.
@@ -483,7 +526,9 @@ fixing what it got wrong.
   shaft and in three storeys is not, passes the check in one piece, grey only
   on its two ledges (y 45 and 92, two plates each), its outsides 8, 7 and 6;
   five storeys at that radius are refused; the guidance's cluster in storeys
-  passes in one piece with four horn points and add_rooms at the top radius
+  passes in one piece with horns on its top storey only and one door, at the
+  foot of the lowest (every storey laid its own, and the ones above opened onto
+  nothing half way up the tower), and add_rooms at the top radius
   furnishes four floors with nothing taken out (a column of the floor above
   stood on a piece of floor `Rooms._hold` took out as held by nothing; it is
   now laid again from whatever is under it). Looked at: `shots/runs/rk_storeys_corner.png` steps in
