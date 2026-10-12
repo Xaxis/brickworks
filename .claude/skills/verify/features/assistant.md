@@ -798,7 +798,12 @@ fixing what it got wrong.
   band, a cone bell on round plates, a round tip, a fin root on a Technic pin).
   `wide round tower` had two of its four 48092 turned the wrong way — a bow
   tie that stacked and checked — and is a ring now, tied by a 74611 round
-  plate; `techniques_probe` checks each quarter curves out of the ring. An entry may carry `sections` and its bricks a `section`,
+  plate; `techniques_probe` checks each quarter curves out of the ring.
+  Sixteen read off real sets stood half a stud off any floor as a whole, which
+  the half-stud check (2026-10-11) refused on `techniques_probe`'s floor; each
+  is moved half a stud back, its parts kept where they are to each other. The
+  taper's 1x1 stands on an 87580's middle stud, and the bedside lamp's tap on
+  its jumper's. An entry may carry `sections` and its bricks a `section`,
   as a design does: `corner on a turntable` is 10182 Cafe Corner's corner
   entrance steps, taken off their 2x2 turntable and put back on at the set's 45
   degrees by a section turned about the turntable's middle, and `leaning on a

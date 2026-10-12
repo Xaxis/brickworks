@@ -45,13 +45,33 @@ can occupy the same millimetre.
 - `clutch`: whether two parts that touch could really hold each other. The
   lattice is 2 LDU and the connection system is 20, so a position can be legal
   on the grid and impossible in plastic — a brick three tenths of a stud across
-  from the one below, or standing on a tile (`Assistant._note_loose`). Standing
-  on a tile is advice. A fraction of a stud off is a fault ("off its studs",
-  with the x and z that grip) between two parts that each have a stud or tube
-  facing up or down (`_has_a_grid`); a horn or a pane has no grid to be off.
-  Half a stud still passes: whether a jumper is under it is not checked (the
-  socket model would need posts told from tubes first — task notes, and
-  `docs/ROADMAP.md`).
+  from the one below, a plate half a stud along a plain plate, or standing on a
+  tile (`Assistant._note_loose`). Standing on a tile is advice. A fraction of a
+  stud off is a fault ("off its studs") between two parts that each have a stud
+  or tube facing up or down (`_has_a_grid`); a horn or a pane has no grid to be
+  off. **Half a stud off is judged by the studs, not the grid**
+  (`_underside`, `_none_off`): every stud standing where the part's underside
+  is (`_studs_reaching_in` gives each one's place and way; one lower, which
+  only touches it, is left out) has to be somewhere the part takes a stud
+  (`_underside_of`) — a socket, a top stud's place, a tube, a vertical pin
+  hole or bore, the point between two sockets of a part one stud wide (a
+  1 x N's post fits a hollow stud, and a jumper's is hollow; 15573 has no
+  post), or, for a foot narrower than a stud, the four studs round its tube.
+  A stud half a stud along from all of those stands against a wall, a post or
+  a tube's side: "half a stud off", naming a jumper and the whole stud that
+  grips. One half a stud both ways is in the cavity where a tube is or would
+  be, which is no fault if another stud seats the part by a socket (an angled
+  tile's open end), and is the edge of a plain part half a stud both ways off
+  plain studs if none does. A jumper's one stud (3794a/b, 15573; 87580 for a
+  2 x 2) stands on the half, so a part on one passes, and so does a part on
+  the studs of a part a jumper carries. Only parts whose underside the
+  catalogue describes are judged (`PLAIN_UNDERSIDES`: bricks, plates, tiles,
+  slopes and the like); an animal, a windscreen, a train base or a plant is
+  hollow underneath in ways it does not record. A stud 0.8 of a stud or more
+  from everywhere the part takes one is not judged either. The x and z
+  offered for either fault are the least move that puts a stud reaching into
+  it in one of its sockets (`_nearest_move`), not the half-stud grid: that
+  offered x=0.5 for a part 0.3 off a plain plate.
 - `technic joints`: pins, axles and ball joints as real attachments, alongside
   studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
   pin is not a collision), and the two connectors have to be *matched*
@@ -131,6 +151,23 @@ off its base, or turned 45 degrees about the wrong point. On a catalogue built
 before the rounds its first five lines fail, and every case that should pass
 fails with them.
 
+`clutch_probe`'s "half a stud off" block holds the half-stud rule both ways: a
+2x2 plate half along a 2x4 plate, a 2x4 brick half along a 2x4 brick, a 2x2
+half both ways (one stud in its tube) and a 1x2 back on the base grid on a
+jumper-offset 2x2 are refused; a 2x2 by its tube on a 3794b, a 1x2 half both
+ways on an 87580 and a 1x2 on the studs of that offset 2x2 build. Against the
+rule before it, six of its lines fail. Real sets, when the rule changes
+(needs `tools/omr.py fetch`; a few minutes, not in the suite):
+
+```sh
+godot --headless --path . --script src/dev/half_studs_in_sets.gd -- vendor/omr/files
+```
+
+Proves it when the last line's two refused counts are equal: every seat it
+refuses has the part's own plastic inside a stud in the set file. A line
+ending "NOTHING IN THE WAY" is a real seat the rule refused, and the rule's to
+fix. 31 of 2,828, all in the way, on 2026-10-11.
+
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at
 32.00 × 9.60 × 16.00 mm, three plates to a brick, 8.00 mm stud pitch. It prints
@@ -155,7 +192,9 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   now. On the lighthouse the boxes find 58 where the walk finds 56, and that is
   the index, not the model: `brick_at` names one owner per cell, so where a tyre
   is registered around a hub the walk sees one relationship and the boxes see
-  both. No risk appeared or disappeared on any of eleven models.
+  both. No risk appeared or disappeared on any of eleven models. (The
+  lighthouse's two were slopes half a stud off the bricks below, reaching into
+  the brick beside; seated on their studs on 2026-10-11, both counts are 53.)
 
   Rejected by measurement: skipping pairs whose boxes overlap, on the theory that
   a part inside another is not resting on it. A stud belongs to the brick below
@@ -245,6 +284,36 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   invents off-grid offsets — six of them, across models that have none. Invert
   `_square_transform`: `to_cell(origin) + _corner_cell(part, id, basis)`, and
   `_corners_in_studs` does.
+
+- **Half a stud is judged by where the studs went, and the socket data lies.**
+  Taken at their word — sockets and 2 x N tubes only — the catalogue refused
+  477 half-stud seats in the 328 fetched real sets. `half_studs_in_sets.gd`
+  settles each against the upper part's own mesh: plastic inside the stud's
+  ring is a file with two solids in one place, none is a real seat the rule
+  refused. Sockets are measured from the part's own edge, so a part narrower
+  than a stud or with an overhang has them off its grid (3957a at 2, 2; a
+  tree 4 LDU; a hinge plate 2): `_underside_of` moves them onto the grid of
+  its top studs or tubes, and adds the top studs' places (4488 records two
+  sockets of four). A 1 x N's post fits a hollow stud (10218, 10276), 15573
+  has no post at all, 60474 takes a jumper in a corner bore, a pot's narrow
+  foot sits between four studs (98374, six times in 75969), an angled tile's
+  open end has a stud in it (22385, five times), an inverted slope's stud 4
+  LDU down only touches the plate on it (10197), and a pig, a roll cage, a
+  train base and flower stems stood on nothing but air. Now 31 of 2,828,
+  none on a jumper, and the mesh puts the part's plastic inside a stud in
+  every one: a sub-assembly seated half a stud off the one under it, all of
+  it agreeing with itself (6542's deck on its boat studs, 7735's
+  platform, 31049's cockpit, 6541's crane on its turntable), or one part
+  typed half a stud out between two that agree (6598's 2x2 plate at z=70
+  between a 6x10 plate and a box at z=60). Each is the probe's own case, a
+  plain plate half a stud off plain studs. Half-shifted data hid too: 16
+  worked examples stood half a stud off any floor as a whole (all shifted
+  back), "taper" put a 1x1 on a plain 2x2's middle (an 87580 now), the
+  bedside lamp's tap sat half off its jumper, and the lighthouse's eight
+  slopes were half off their bricks (seated; its two overlaps were two of
+  them). A stud exactly on a part's edge reaches it only on its low side
+  (cell rounding), so the lamp's fault showed at two of four turns; all 73
+  section-free examples pass at every turn now.
 
 - **The corner is the footprint's, not the cover's.** For a part drawn inside
   its footprint the two differ: a 4 x 4 wing (3935) starts at -38 of a -40 box, a
