@@ -224,8 +224,8 @@ func _run() -> void:
 	await _click_control(_studio.sheet.controls_by_name()["sheet_new"])
 	await _frames(4)
 	var tile_top: Vector2 = _camera.unproject_position(Vector3(80, 8, 0))
-	var seen: Stickers.Face = Stickers.face_at(_world, _library, _camera.project_ray_origin(tile_top),
-		_camera.project_ray_normal(tile_top), true, _camera.global_transform.basis.y)
+	var seen: Stickers.Face = Stickers.face_at(_world, _library, _camera.ray_origin(tile_top),
+		_camera.ray_normal(tile_top), true, _camera.global_transform.basis.y)
 	_check("seen from the corner, the face under the pointer is both tiles, square to them: %s"
 		% (seen.size if seen != null else Vector2.ZERO), seen != null
 		and (seen.size.is_equal_approx(Vector2(80, 40)) or seen.size.is_equal_approx(Vector2(40, 80))))

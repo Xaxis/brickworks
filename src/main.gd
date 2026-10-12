@@ -329,6 +329,9 @@ func _tell_page() -> void:
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
 		"selected": _builder.selection.size(),
+		# ...and which, the first few: tools/web/centre_check.mjs clicks a
+		# part and asks whether that one was taken.
+		"selection": _builder.selection.keys().slice(0, 12),
 		"carrying": _builder.is_carrying(),
 		# What the renderer is drawing it with, and the frames this app's own
 		# work made slow, for tools/web/freeze_check.mjs: a browser's long
@@ -424,8 +427,70 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 		var panel: Control = named[name]
 		if panel != null and panel.is_visible_in_tree():
 			panels[name] = css.call(panel.get_global_rect())
+	# Where the middle of the model is drawn, and parts a click should
+	# find: tools/web/centre_check.mjs checks the first is the middle of
+	# the view and clicks the others.
+	var point := func(at: Vector2) -> Dictionary:
+		var on_page: Vector2 = to_window * at / per_css
+		return {"x": snappedf(on_page.x, 0.1), "y": snappedf(on_page.y, 0.1)}
+	var targets: Array = []
+	for one: Dictionary in _parts_to_click():
+		targets.append((point.call(one["at"]) as Dictionary).merged({"brick": one["brick"]}))
 	return {"view": css.call(cover["view"]), "samples": cover["samples"],
-		"covered": covered, "panels": panels, "columns": _columns}
+		"covered": covered, "panels": panels, "columns": _columns,
+		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
+		"targets": targets}
+
+
+## Up to five parts and a point on each a click would find them at, spread
+## over the model, chosen without asking the screen: a point on a part's
+## top that a straight line from the eye meets before anything else, and
+## where that point is drawn. Only the clicking goes through the screen.
+## For tools/web/centre_check.mjs, through the page.
+func _parts_to_click(most: int = 5) -> Array:
+	var bricks: Array = _world.bricks().filter(func(b: BrickWorld.Brick) -> bool:
+		return not _store.scenery.has(b.id) and not b.hidden)
+	var every: int = maxi(1, bricks.size() / 200)
+	var view: Rect2 = _over_model.get_global_rect().grow(-8.0)
+	var forward: Vector3 = -_camera.global_transform.basis.z
+	var found: Array = []
+	for n: int in range(0, bricks.size(), every):
+		var brick: BrickWorld.Brick = bricks[n]
+		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var box: AABB = (brick.transform * part.bounds).abs()
+		var top := Vector3(box.get_center().x, box.end.y - 4.0, box.get_center().z)
+		var eye: Vector3 = top - forward * 100000.0 if _camera.is_square_on() \
+			else _camera.global_position
+		var hit: BrickLattice.Hit = _builder.lattice.raycast(eye, (top - eye).normalized())
+		if not hit.is_valid() or hit.brick_id != brick.id \
+				or absf(hit.distance - eye.distance_to(top)) > 6.0:
+			continue
+		var at: Vector2 = _camera.unproject_position(top)
+		if view.has_point(at) and not _over_panel_at(at):
+			found.append({"brick": brick.id, "at": at})
+	# Spread out: the one nearest the middle, then each next the farthest
+	# from those already taken.
+	var middle: Vector2 = view.get_center()
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a["at"] as Vector2).distance_to(middle) < (b["at"] as Vector2).distance_to(middle))
+	var chosen: Array = []
+	while chosen.size() < most and not found.is_empty():
+		var best: int = 0
+		var far: float = -1.0
+		for n: int in found.size():
+			if chosen.is_empty():
+				break
+			var nearest: float = INF
+			for taken: Dictionary in chosen:
+				nearest = minf(nearest, (found[n]["at"] as Vector2).distance_to(taken["at"]))
+			if nearest > far:
+				far = nearest
+				best = n
+		chosen.append(found[best])
+		found.remove_at(best)
+	return chosen
 
 
 ## Everything laid out round the model, by name.
@@ -1316,6 +1381,11 @@ func _build_ui() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(spacer)
 	_over_model = spacer
+	# The view is centred on this column and framed to it, rather than to
+	# the window behind the columns (CadCamera.seen): with one column open
+	# the model sat 168 units to the side of the room it had.
+	_camera.seen = _model_rect
+	_camera.lens_moved.connect(_hover_again)
 
 	# In the viewport column, at the top, which is where every other 3D
 	# tool puts a view cube.
@@ -1637,8 +1707,8 @@ func _build_ui() -> void:
 	# whatever was last framed, so grabbing a chimney and dragging swings
 	# the chimney out of shot.
 	_camera.pick = func(at: Vector2) -> Variant:
-		var from: Vector3 = _camera.project_ray_origin(at)
-		var towards: Vector3 = _camera.project_ray_normal(at)
+		var from: Vector3 = _camera.ray_origin(at)
+		var towards: Vector3 = _camera.ray_normal(at)
 		var hit: BrickLattice.Hit = _builder.lattice.raycast(from, towards)
 		if hit.is_valid():
 			return from + towards * hit.distance
@@ -2054,6 +2124,20 @@ func _fit_panels() -> void:
 		return
 	_columns = share
 	_arrange_columns()
+
+
+## The part of the window the model is seen in, for the camera to centre
+## the view on and frame to: the model's column, between the bars, as
+## model_cover samples it. A phone's drawer opens over most of the screen
+## and is put away again to build, so there the column is taken as both
+## drawers folded, and the model does not leap to the sliver beside one.
+func _model_rect() -> Rect2:
+	var rect: Rect2 = _over_model.get_global_rect()
+	if _columns == "drawers":
+		var across: float = get_viewport().get_visible_rect().size.x
+		rect.position.x = SideDock.RAIL_WIDTH
+		rect.size.x = across - SideDock.RAIL_WIDTH * 2.0
+	return rect
 
 
 ## Open and fold the columns as the window's share says, from what the
@@ -2936,8 +3020,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 		_builder.update_preview(
-			_camera.project_ray_origin(touch.position),
-			_camera.project_ray_normal(touch.position))
+			_camera.ray_origin(touch.position),
+			_camera.ray_normal(touch.position))
 		_builder.remove_hovered()
 		_builder.hide_preview()
 		# The hold raises a click too, and it would put back what was
@@ -3225,8 +3309,8 @@ func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 ## doing. A finger raises no motion to do it for us.
 func _aim_at(point: Vector2) -> void:
 	_builder.update_preview(
-		_camera.project_ray_origin(point),
-		_camera.project_ray_normal(point))
+		_camera.ray_origin(point),
+		_camera.ray_normal(point))
 
 
 ## Centre a panel, no larger than it wants and no larger than the room
@@ -3418,8 +3502,8 @@ func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 	if not (mouse.x < INF):
 		mouse = get_viewport().get_mouse_position()
 	_builder.update_preview(
-		_camera.project_ray_origin(mouse),
-		_camera.project_ray_normal(mouse))
+		_camera.ray_origin(mouse),
+		_camera.ray_normal(mouse))
 
 
 ## Aim the ghost where the pointer already is, as a movement there would.

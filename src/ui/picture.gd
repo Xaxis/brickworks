@@ -46,7 +46,12 @@ func take(size: Vector2i = SIZE) -> Image:
 	lens.fov = camera.fov
 	lens.near = camera.near
 	lens.far = camera.far
-	lens.projection = camera.projection
+	# Perspective or straight-on, centred: the view's own lens is shifted
+	# to the middle of the model's column (CadCamera), and this picture is
+	# framed on the model by itself.
+	lens.projection = Camera3D.PROJECTION_ORTHOGONAL \
+		if camera.projection == Camera3D.PROJECTION_ORTHOGONAL \
+		else Camera3D.PROJECTION_PERSPECTIVE
 	var environment: Environment = _clear_environment()
 	if environment != null:
 		lens.environment = environment
