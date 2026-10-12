@@ -241,9 +241,6 @@ async function runCase(size, mode) {
   // them. A case waited past the moment, 90 s after the last call, when the
   // assistant panel closes Claude's card; what was drawn changed a little
   // then, and read as the model arriving.
-  // A frame that draws nothing (draws 0) shows what the last one drew: the
-  // app draws only when something changed (IdleDraw, 2026-10-11), so a page
-  // standing still draws nothing at all, and that is settled too.
   async function settle(from, until) {
     while (Date.now() < until) {
       await page.waitForTimeout(1000);
@@ -253,8 +250,7 @@ async function runCase(size, mode) {
       let recent = f.filter(([t]) => t >= end - quiet);
       if (recent.length < 3) recent = f.slice(-3);
       if (end - from < quiet || recent.length < 3) continue;
-      const drew = recent.filter(([, , , , draws]) => draws > 0);
-      const same = drew.every(([, , , n]) => n === drew[0][3]);
+      const same = recent.every(([, , , n]) => n === recent[0][3]);
       const calm = recent.every(([, , own]) => own <= 100);
       const playing = await page.evaluate(() => !!(window.brickworksState || {}).playing);
       if (same && calm && !playing) return true;
@@ -285,12 +281,9 @@ async function runCase(size, mode) {
   const submitted = await claude("tools/call", { name: "submit_design", arguments: input });
   const submitMs = Date.now() - t;
   const answeredAt = await now();
-  // The moment of showing taken before the tab is shown: the frames it was
-  // holding run as it is, and the first of them is the first in view.
-  if (mode === "hidden") await page.waitForTimeout(wait);
+  if (mode === "hidden") { await page.waitForTimeout(wait); await seeing(false); }
   const shownAt = await now();
   const shownWall = Date.now();
-  if (mode === "hidden") await seeing(false);
 
   // The page asked something every 250 ms: how long the answer takes is how
   // long the page would have ignored a person. Not a pointer moved over the
@@ -313,38 +306,24 @@ async function runCase(size, mode) {
 
   const f = await frames(checkedAt);
   const after = f.filter(([t0]) => t0 >= shownAt);
-  // What is on the screen: what the last frame that drew anything drew. A
-  // frame that draws nothing leaves the last one's picture up, and the app
-  // draws only what changed (IdleDraw), so a tab in view all along may draw
-  // nothing more once shown: what it drew before is what is on the screen.
-  const drew = ([, , , , draws]) => draws > 0;
-  const drawing = after.filter(drew);
-  const before = f.filter(([t0]) => t0 < shownAt).filter(drew);
-  const onScreen = before.length ? before[before.length - 1] : null;
-  const final = drawing.length ? drawing[drawing.length - 1][3] : (onScreen ? onScreen[3] : 0);
-  // Drawn: the first frame in view from which every frame that draws draws
-  // what the last does, to within 1%, at the moment the engine had asked
-  // for it (its start and its own work, not the rasteriser's). Within 1%
-  // because the ground is laid wider under a design that outgrew it once it
-  // is built, which moves a few plates a frame or two later; a step of the
-  // build animation is eight bricks, a hundred instances and more.
+  const final = after.length ? after[after.length - 1][3] : 0;
+  // Drawn: the first frame in view from which every frame draws what the
+  // last does, to within 1%, at the moment the engine had asked for it (its
+  // start and its own work, not the rasteriser's). Within 1% because the
+  // ground is laid wider under a design that outgrew it once it is built,
+  // which moves a few plates a frame or two later; a step of the build
+  // animation is eight bricks, a hundred instances and more.
   const near = (n) => Math.abs(n - final) <= final * 0.01;
   let drawnAt = null;
-  let drawnFrame = null;
-  for (let n = drawing.length - 1; n >= 0 && near(drawing[n][3]); n--) {
-    drawnAt = drawing[n];
-    drawnFrame = n + 1;
-  }
-  // Counted in frames that drew: drawn in software a frame of a big model is
-  // seconds of rasterising that a graphics card does in milliseconds, so the
-  // milliseconds are this machine's; the frames and the work are the app's.
-  // Frame 0 is on the screen already as the tab is shown.
-  const already = onScreen && near(onScreen[3]) && (drawnFrame === 1 || drawing.length === 0);
-  if (already) drawnFrame = 0;
-  const drawnMs = already ? 0 : drawnAt ? Math.round(drawnAt[0] + drawnAt[2] - shownAt) : null;
-  const upTo = already ? 0 : drawnAt ? after.indexOf(drawnAt) + 1 : 0;
-  const ownToDrawn = already || drawnAt
-    ? Math.round(after.slice(0, upTo).reduce((sum, [, , own]) => sum + own, 0)) : null;
+  for (let n = after.length - 1; n >= 0 && near(after[n][3]); n--) drawnAt = after[n];
+  const drawnMs = drawnAt ? Math.round(drawnAt[0] + drawnAt[2] - shownAt) : null;
+  // And in frames, with the engine's own work until then. Drawn in software a
+  // frame of a big model is seconds of rasterising that a graphics card does
+  // in milliseconds, so the milliseconds above are this machine's; the
+  // frames and the work are the app's.
+  const drawnFrame = drawnAt ? after.indexOf(drawnAt) + 1 : null;
+  const ownToDrawn = drawnAt
+    ? Math.round(after.slice(0, drawnFrame).reduce((sum, [, , own]) => sum + own, 0)) : null;
   // Idle: the end of the last frame in view with over 100 ms of own work.
   let idleMs = drawnMs;
   for (const [t0, , own] of after) if (own > 100) idleMs = Math.max(idleMs, Math.round(t0 + own - shownAt));

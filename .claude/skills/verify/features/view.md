@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation, ui:drawing only what changed -->
+<!-- covers: ui:navigation presets, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:finishes, lib:true colour, ui:build animation -->
 
 ## Sub-features
 
@@ -115,38 +115,6 @@ picture the assistant is shown.
   width of the whole window, and on a phone the assistant's rail was off the
   page. `tools/web/fit_check.mjs` asks for New, Save and both rails on both
   phones.
-- `drawing only what changed`: `IdleDraw` (`src/render/idle_draw.gd`). The
-  app drew every frame with nothing moving: 3.9 ms of the RX 6700 XT a
-  frame at 1400x900 (5.5 ms in the owner's bigger window), 58 a second, 23%
-  of the card and 35% of a core, for a model standing still; in Chromium on
-  SwiftShader the page's main thread was 106% busy and Chromium 597% of a
-  core. Now Godot's low-processor mode draws a frame only when something was
-  written to the RenderingServer: the camera moving or easing, an edit, a
-  step of the build animation, the ghost, a button the pointer lights, a
-  part's picture, the loading shimmer (a shader reading TIME is redrawn while
-  it is on screen). Standing still: one frame drawn in 5 s, 0.7 ms of the
-  card a second, 6% of a core; in Chromium 0 of about 900 frames drawn and
-  no WebGL call at all, the main thread 4% busy. Everything still runs each frame (the connector's clock,
-  the command socket, FramePace): on the desktop at 60 a second standing
-  still and 144 for half a second after anything is drawn or a FramePace
-  slice runs; in a browser at the page's own rate (sleep 0, the page's one
-  thread cannot sleep). So nothing may write to the RenderingServer every
-  frame for nothing: a value set again unchanged is a frame drawn. The
-  camera set its pose every frame (`CadCamera._apply` now stops a hundredth
-  of a pixel from its target and sets nothing at rest), the axis gizmo
-  redrew itself (now when the camera turned) and the pivot mark rebuilt its
-  lines (now when they moved). A frame that draws nothing never reaches
-  `frame_pre_draw`, so `OwnFrames` ends one after every node's `_process`
-  for `Main._watch_own_frames`. Probes run with every frame drawn, as
-  before, unless they turn low-processor mode on first (`IdleDraw.for_the_app`):
-  most count on a drawn frame for every frame they wait. `--bench` draws
-  every frame. `idle_probe` counts the frames drawn standing still (fails
-  past one a second; the old code drew every frame, and with the mode on
-  still 7 a second in software for the camera and gizmo), names the node
-  whose processing draws them, and checks each change is drawn and then
-  nothing: a turn easing to rest, a right drag, a brick put down, every step
-  of the build animation, the ghost, a lit button, a part's picture.
-  `tools/web/idle_check.mjs` counts the same in Chromium.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit
@@ -399,11 +367,6 @@ godot --headless --path . --script src/dev/instructions_probe.gd  # a booklet co
 #   windows are one sub-model placed twice (a "2x" callout) and a figure, and
 #   31009 Skaters House from vendor/omr when it is there
 godot --headless --path . --script src/dev/playback_probe.gd      # the build animation: right bricks, in order, cheap
-# nothing drawn standing still, every change drawn (on Xvfb: it moves the pointer)
-MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
-  godot --path . --resolution 1400x900 --script src/dev/idle_probe.gd
-#   on the GPU, for the card's time a frame: ~/.claude/claude-core/bin/gpu before it;
-#   `-- --every-frame` runs it drawing every frame, as the app did
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
@@ -580,13 +543,6 @@ take, which is what made a design run give up on looking at itself.
   for the on-screen checks already; a design run has to be given it by hand. Every
   Voyager benchmark on 2026-10-03 was measured without it, so those picture
   timings are pessimistic.
-- **Only what writes to the RenderingServer is drawn.** In low-processor
-  mode (`IdleDraw`) a change made any other way is not on screen until
-  something else draws: there is none in the app today, but a value written
-  every frame "to be safe" is a frame drawn every frame, and
-  `RenderingServer.frame_post_draw` awaited with nothing changing waits until
-  something does. Set what changed, when it changed. `idle_probe` names the
-  node whose processing draws frames for nothing.
 - **A window nobody is looking at runs at one frame a second.** Measured on this
   machine: 989 ms a frame with vsync as shipped, 20 ms with it off. Everything in
   these probes is counted in frames, so the 150-frame wait for the catalogue was
