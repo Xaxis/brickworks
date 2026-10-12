@@ -437,6 +437,21 @@ fixing what it got wrong.
   over six courses of door, none with `"door": false`, and run 17's own
   cluster (piers pulled in to 10, two studs of the core's front in view) has
   it at x -2 and passes the check.
+- `a tower on a plinth`: `"plinth": {"steps", "out", "stair"}` on `prism`
+  (`Assistant._on_plinth`, `_reach`), the base as a call: every Orthanc built
+  here stood on rubble and the owner named it. Terraces `steps` (1-4) of two
+  courses each, stepping in `out` studs, laid by the shape pattern (a revolve,
+  straight slopes on the edges, tiles in the second tone on top, plain sides,
+  hollow inside the tower's reach less three, its top keeping studs under the
+  tower through `studs_within`), a cut in front (+z) marked `keep` so nothing of
+  the terraces reaches into it, and in it a stair (another shape, `surface`
+  `none`, two plates a step) up to the top terrace; the tower is raised onto
+  it and the reply says its foot. `patterns_probe`: the guidance's cluster on a
+  plinth passes the check with its foot at y 12, ~990 terrace parts and a
+  stair, and the reply says where its foot is. The shape pattern's mirror
+  strip now takes its parity with `posmod` — a plinth centred on its `at` has
+  studs either side of nought, and `-1 % 2` is `-1`, which laid a three-wide
+  strip off the plane and overlapped itself.
 - `a tower in storeys`: `"storeys": {"count", "in"}` on `prism`
   (`Assistant._storeys`), the one call for a silhouette: every Orthanc built
   here rose the same width from foot to horns, and the owner's verdict named it.

@@ -4247,6 +4247,8 @@ func _prism(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Ar
 	if sides < 5 or sides > 16 or courses < 1 or courses > 200:
 		trouble.append("prism wants 5 to 16 sides and 1 to 200 courses")
 		return []
+	if pattern.has("plinth") and not pattern.has("_storey"):
+		return _on_plinth(pattern, model, index, trouble)
 	if pattern.has("storeys") and not pattern.has("_storey"):
 		return _storeys(pattern, model, index, trouble)
 	var clear: float = _clear_radius(sides, radius, thick)
@@ -4440,6 +4442,101 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 ## crumbs where a ring crosses a diagonal were two and four, over air; the
 ## least piece that carried a pier of the storey above was thirty.
 const LEDGE_CRUMBS := 6
+
+
+## A tower on a plinth: terraces stepping down from its foot, a course each,
+## and a stair from the ground up the front (+z) to its door; the tower
+## stands on the top terrace. Every Orthanc built here stood on a ring of
+## rubble, and the owner named it: a base as an afterthought. LEGO's 10237
+## stands on a stepped black base with stairs up to its door.
+##
+## The terraces are a shape (`Shapes`) — a revolve stepping in two courses at
+## a time, hollow under the tower's middle — so their edges are sloped, their
+## tops tiled in the second tone and their sides panelled, as a shape's are;
+## the stair is another, a step two plates high and a stud deep, tiled. Under
+## the tower the top keeps its studs.
+##
+##   "plinth": {"steps": 2, "out": 2}
+func _on_plinth(pattern: Dictionary, model: Model, index: int, trouble: Array) -> Array:
+	var raw: Variant = pattern["plinth"]
+	var asked: Dictionary = raw if raw is Dictionary else {}
+	var steps: int = clampi(int(asked.get("steps", 2)), 1, 4)
+	var out: int = clampi(int(asked.get("out", 2)), 1, 4)
+	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
+	colour = int(asked.get("color", asked.get("colour", colour)))
+	var ledge: int = int(asked.get("ledge_color", SECOND_TONE.get(colour, colour)))
+	var at: Dictionary = pattern.get("at", {}) as Dictionary
+	var cx: float = float(at.get("x", 0.0))
+	var cz: float = float(at.get("z", 0.0))
+	var y0: float = float(at.get("y", 0.0))
+	var reach: float = _reach(pattern)
+	# Two courses a terrace: one course stood as a ring round the foot, and
+	# read from across the room as a kerb.
+	var rise: int = 6
+	var tall_: int = rise * steps
+	var profile: Array = []
+	for k: int in steps:
+		var r: float = reach + out * (steps - k)
+		profile.append([rise * k, r])
+		profile.append([rise * k + rise - 0.01, r])
+	var front: float = reach + out
+	var made: Array = Shapes.lay({"pattern": "shape", "at": {"x": cx, "y": y0, "z": cz},
+		"color": colour, "top_color": ledge, "surface": "straight", "panels": false,
+		"studs_within": {"centre": [0, 0, 0], "radius": reach},
+		"solids": [{"revolve": {"axis": "y", "centre": [0, 0, 0], "profile": profile}}],
+		"cuts": [{"box": {"from": [-2, 0, front - 0.5], "size": [4, tall_ + 1, out * steps + 2],
+				"keep": true}},
+			# Hollow under the tower's middle, which stands on its walls: a
+			# solid plinth a tower wide was a thousand bricks nobody sees.
+			{"revolve": {"axis": "y", "centre": [0, 0, 0],
+				"profile": [[-1, maxf(reach - 3.0, 0.5)], [tall_ + 1, maxf(reach - 3.0, 0.5)]]}}]},
+		trouble, library)
+	if not trouble.is_empty():
+		return []
+	# The stair: a step a plate high and a stud deep from the top terrace's
+	# edge down to the ground, four studs wide, where the terraces are cut.
+	if bool(asked.get("stair", true)):
+		# Two plates a stud, so the flight is half as long as the plinth is
+		# tall.
+		var flight: int = tall_ / 2
+		var steps_down: Array = [[0.0, float(tall_)]]
+		for n: int in flight:
+			steps_down.append([float(n) + 0.999, float(tall_ - 2 * n)])
+			steps_down.append([float(n) + 1.0, float(tall_ - 2 * n - 2)])
+		steps_down.append([float(flight), 0.0])
+		made.append_array(Shapes.lay({"pattern": "shape",
+			"at": {"x": cx - 2, "y": y0, "z": cz + front - 1.0}, "color": ledge,
+			"surface": "none", "panels": false,
+			"extrude": {"along": "z", "from": 0, "width": 4, "profile": steps_down}},
+			trouble, library))
+	var raised: Dictionary = pattern.duplicate(true)
+	raised.erase("plinth")
+	raised["at"] = {"x": cx, "y": y0 + tall_, "z": cz}
+	var tower: Array = _prism(raised, model, index, trouble)
+	_pattern_advice.append(("The tower stands on a plinth of %d terraces, %d plates tall: "
+		+ "its foot, and add_rooms' y, is at y %s.") % [steps, tall_,
+		Placement._num(y0 + tall_)])
+	return made + tower
+
+
+## How far a prism reaches from its middle at its foot, in studs: its corner
+## radius, or with piers the farthest corner of a pier.
+func _reach(pattern: Dictionary) -> float:
+	var sides: int = int(pattern.get("sides", 8))
+	var radius: float = float(pattern.get("radius", 6))
+	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
+	var far: float = radius / cos(PI / sides)
+	if not pattern.has("piers"):
+		return ceil(far)
+	var given: Variant = pattern["piers"]
+	var piers: Dictionary = given if given is Dictionary else {"count": int(given)}
+	var p_sides: int = int(piers.get("sides", sides))
+	var least: float = _least_radius(p_sides, thick)
+	var pr: float = maxf(least, float(piers.get("radius", round(radius * 2.0 / 3.0))))
+	pr = _clear_radius(p_sides, pr, thick, float(piers.get("turn",
+		180.0 / maxi(int(piers.get("count", 4)), 1))))
+	var out: float = float(piers.get("out", radius + pr - thick))
+	return ceil(maxf(far, out + pr / cos(PI / p_sides)))
 
 
 ## A ledge two plates thick round the top of a storey: over the studs inside
@@ -9662,12 +9759,17 @@ alongside the bricks you write by hand:
            {"pattern": "prism", "at": {"x": 24, "y": 0, "z": 24}, \
            "sides": 8, "radius": 10, "courses": 36, "color": 0, \
            "open": 3, "piers": {"count": 4, "courses": 44}, "storeys": \
-           {"count": 3, "in": 2}} is an eight-sided core with four \
-           faceted piers clustered round it and deep clefts between \
-           them, in three storeys, each two studs in from the one below \
-           on a ledge of dark bluish grey, the top one's piers rising \
-           past its summit into horns, its back open on the rooms — \
-           Orthanc, a keep with corner towers, anything clustered. Each \
+           {"count": 3, "in": 2}, "plinth": {"steps": 2, "out": 2}} is \
+           an eight-sided core with four faceted piers clustered round \
+           it and deep clefts between them, in three storeys, each two \
+           studs in from the one below on a ledge of dark bluish grey, \
+           the top one's piers rising past its summit into horns, its \
+           back open on the rooms, standing on a plinth of two terraces \
+           with a stair up the front to its door — Orthanc, a keep with \
+           corner towers, anything clustered. "plinth" is the base: \
+           every Orthanc built without it stood on a ring of rubble, a \
+           base as an afterthought; the reply says where the tower's \
+           foot then is. Each \
            face is a bonded wall in a section of its own, turned to its \
            angle. One run built octagonal piers by hand from 150 turned \
            sections, reached the real-set share of parts at an angle and \
@@ -10763,6 +10865,16 @@ func _tools() -> Array:
 			"window_color": {"type": "integer", "description":
 				"prism: the windows' colour (40, Trans-Brown, a dark slit, "
 				+ "unless said)"},
+			"plinth": {"type": "object", "description":
+				"prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true} — "
+				+ "the tower raised on terraces stepping down from its foot, a course "
+				+ "each, their edges sloped and tops tiled in the second tone, with a "
+				+ "stair up the front (+z) to its door. The reply says the tower's foot "
+				+ "(and add_rooms' y).",
+				"properties": {
+					"steps": {"type": "integer"},
+					"out": {"type": "integer"},
+					"stair": {"type": "boolean"}}},
 			"storeys": {"type": "object", "description":
 				"prism: {\"count\": 2 to 8, \"in\": studs} — the courses "
 				+ "split into storeys, each in studs smaller than the one "

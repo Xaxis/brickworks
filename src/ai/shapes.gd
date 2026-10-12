@@ -182,9 +182,32 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	plan.sides_smooth = bool(pattern.get("panels", true))
 	plan.sample = func(x: float, j: float, z: float) -> bool:
 		return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands) >= 0
+	# Studs left showing over a disc, for something to stand on: a tower on
+	# its plinth stands on bricks, not on tiles.
+	if pattern.get("studs_within") is Dictionary:
+		var within: Dictionary = pattern["studs_within"]
+		var middle: Vector3 = _vec(within.get("centre", within.get("center", [0, 0, 0])))
+		var reach: float = float(within.get("radius", 0.0))
+		for key: Variant in columns:
+			var cell: Vector2i = key
+			if Vector2(cell.x + 0.5 - middle.x, cell.y + 0.5 - middle.z).length() <= reach:
+				plan.studded[cell] = true
+	# A cut marked "keep" is kept clear of everything: a wedge's cut side, a
+	# slope, a panel's tile. A plinth's stair stands in its cut, and the
+	# terraces' wedges reached into it.
+	for cut: Dictionary in cuts:
+		if not bool((cut["spec"] as Dictionary).get("keep", false)):
+			continue
+		var kept: AABB = cut["box"]
+		for x: int in range(floori(kept.position.x), ceili(kept.end.x)):
+			for z: int in range(floori(kept.position.z), ceili(kept.end.z)):
+				for j: int in tall:
+					if _inside(cut, Vector3(x + 0.5, y0 + j + 0.5, z + 0.5)):
+						plan.taken[Vector3i(x, j, z)] = true
 	plan.mirror_of()
 	last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall}
-	plan.surface(surface)
+	if surface != "none":
+		plan.surface(surface)
 	plan.lay()
 	plan.prune()
 	plan.stitch()
@@ -780,7 +803,10 @@ class Plan extends RefCounted:
 	func spine(j: int) -> Vector2i:
 		if axis.is_empty():
 			return Vector2i(1, 0)
-		if sum % 2 == 1:
+		# posmod: a shape centred on its at has studs either side of nought,
+		# and -1 % 2 is -1, which took a plane between studs for one through a
+		# row of them and laid a three-wide strip off the middle of a plinth.
+		if posmod(sum, 2) == 1:
 			var a: int = (sum - 1) / 2
 			return Vector2i(a, a + 1) if j % 2 == 0 else Vector2i(a - 1, a + 2)
 		var m: int = sum / 2
@@ -1327,7 +1353,7 @@ class Plan extends RefCounted:
 	## mirror. A car's nose stood on its own past the wheel arch, joined to
 	## the body by nothing over the arch's thin bridge.
 	func stitch() -> void:
-		for _round: int in 8:
+		for _round: int in 48:
 			var found: Array = pieces()
 			if found.size() <= 1:
 				break
