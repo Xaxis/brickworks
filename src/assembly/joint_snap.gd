@@ -88,6 +88,14 @@ class End extends RefCounted:
 		out.brick = brick_id
 		return out
 
+	## Where this end is to look at: a hole's middle, the middle of what
+	## a pin or an axle has left to go into something, a bar's or a
+	## clip's middle.
+	func middle() -> Vector3:
+		if is_round():
+			return at + axis * (reach * 0.5)
+		return aimed(Vector3.ZERO, Vector3.FORWARD)
+
 	## The point a person points at to mean this end: a hole's middle,
 	## the middle of what a pin or an axle has left to go into something,
 	## or where along a bar the line [param from] → [param way] passes

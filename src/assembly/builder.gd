@@ -1428,6 +1428,16 @@ func joint_words() -> String:
 	return _joint_words if _joint_site != null else ""
 
 
+## Every connector of every part down that a part could be put onto, read
+## again only when the model has changed.
+func joint_sites() -> Array:
+	if world != null and (_sites_at != world.revision or _sites_world != world):
+		_sites = JointSnap.sites_in(world, library)
+		_sites_at = world.revision
+		_sites_world = world
+	return _sites
+
+
 ## Put the ghost on the joint the pointer is aimed at, if the part in hand
 ## has an end for one there. False, leaving the ghost to the studs, when
 ## it is not aimed at one or the part has no ends.
@@ -1437,10 +1447,7 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	var held: Array = JointSnap.ends_of(part)
 	if held.is_empty() or world == null:
 		return false
-	if _sites_at != world.revision or _sites_world != world:
-		_sites = JointSnap.sites_in(world, library)
-		_sites_at = world.revision
-		_sites_world = world
+	joint_sites()
 	# A little past what the line met: a hole's middle is inside the part
 	# whose face was struck.
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
