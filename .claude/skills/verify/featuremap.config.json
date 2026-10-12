@@ -792,6 +792,13 @@
     },
     {
       "kind": "cli",
+      "label": "redraw check",
+      "entry": "tools/web/redraw_check.mjs",
+      "reach": "node tools/web/redraw_check.mjs --url=<a preview>/app --bypass=…   (or a local export served by relay_server.mjs --static)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "arrival check",
       "entry": "tools/web/arrival_check.mjs",
       "reach": "node tools/web/arrival_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check -->
 
 ## Sub-features
 
@@ -178,6 +178,16 @@ plan with Claude as the client.
   (`ModelShot.gpu_wait_us`), printed apart: in software it waits on every
   frame queued before it, tens of seconds. Leaves `console.log` (what the app
   printed, as it came) and `freeze.json`.
+- `redraw check`: `tools/web/redraw_check.mjs --url=…` puts one red brick on an
+  empty baseplate in a browser, turns it (`R`), mirrors it (`Shift-M`), nudges
+  it three studs (arrows) and lets go, finding the red on the canvas after each:
+  it must have moved. In a browser a batch's instance data written over in
+  place was never drawn, so a brick turned or nudged stayed where it had been
+  while its outline moved on (live site and every build to 2026-10-11) — desktop
+  OpenGL drew the same writes. `BrickWorld._fresh_slots` lets a batch's slots go
+  and takes them again on every rebuild, so each one writes a new buffer. Run
+  it against a local export the way `freeze check` does (`relay_server.mjs
+  --static`) or a preview (`--bypass`); pictures in `--out`.
 - `arrival check`: `tools/web/arrival_check.mjs` times what the owner meant by
   "the rendering after Claude reports being done is EXTREMELY SLOW": from
   submit_design's answer to the last brick drawn. It plays Claude over the

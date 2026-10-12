@@ -635,7 +635,7 @@ func _flush() -> void:
 
 func _rebuild(batch: Batch, key: String) -> void:
 	var count: int = batch.brick_ids.size()
-	batch.multimesh.instance_count = count
+	_fresh_slots(batch, count)
 	if count == 0:
 		batch.multimesh.visible_instance_count = 0
 		return
@@ -682,6 +682,20 @@ func _rebuild(batch: Batch, key: String) -> void:
 		else:
 			bounds = bounds.merge(box)
 	batch.instance.custom_aabb = bounds
+
+
+## A batch's slots let go and taken again, even at the same count, so what
+## is written next goes to a new instance buffer.
+##
+## In a browser, instance data written over in place was never drawn: a
+## brick turned, mirrored or nudged stayed on screen where it had been
+## while its outline moved on, until something added or took off a brick
+## of its batch — a new count, and so a new buffer. Desktop OpenGL drew the
+## same writes. A buffer taken fresh is zeroed, not read back, so this
+## costs no wait on the GPU. tools/web/redraw_check.mjs is the check.
+func _fresh_slots(batch: Batch, count: int) -> void:
+	batch.multimesh.instance_count = 0
+	batch.multimesh.instance_count = count
 
 
 ## One brick into one slot of a batch.
@@ -855,7 +869,7 @@ func _stop_reveal() -> void:
 ## all, with only those on show drawn.
 func _write_in_order(batch: Batch, key: String) -> void:
 	var count: int = batch.brick_ids.size()
-	batch.multimesh.instance_count = count
+	_fresh_slots(batch, count)
 	var surface_color: int = _surface_colour(batch, key.split(":")[1].to_int())
 	var bounds := AABB()
 	for slot: int in count:

@@ -276,6 +276,14 @@
       "tests": []
     },
     {
+      "id": "cli:redraw check",
+      "kind": "cli",
+      "entry": "tools/web/redraw_check.mjs",
+      "reach": "node tools/web/redraw_check.mjs --url=<a preview>/app --bypass=\u2026   (or a local export served by relay_server.mjs --static)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:refresh the catalogue",
       "kind": "cli",
       "entry": "tools/refresh_catalogue.py",
