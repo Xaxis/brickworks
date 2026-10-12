@@ -4538,9 +4538,11 @@ func _lay_face(made: Array, name: String, spec: Dictionary, runs: Array,
 			# the course every outside row started short — 1x3s and 1x1s
 			# only, so not one of them could be a masonry brick.
 			var bond: int = course / 2 if thick == 2 else course
+			_grille_until = left + width
 			_lay_row_around(made, name, narrow, left, width + extra, gap, y,
 				radius - 1.0, bond, tone, mix_colour, mix, spec["masonry"],
 				spec["sideways"], clear)
+			_grille_until = -INF
 			if thick == 2:
 				_lay_row(made, name, narrow, left, width, y, radius - 2.0,
 					bond + 1, tone, mix_colour, mix, 0.0, 0.0)
@@ -4680,10 +4682,30 @@ func _lay_row(made: Array, section: String, lengths: Array, left: float,
 				if not dressing.is_empty():
 					dressing["section"] = section
 					made.append(dressing)
+		elif masonry > 0.0 and long >= 3 and _is_dark(colour) and x + long <= _grille_until + 0.01 \
+				and Patterns._scatter(x, y, z + float(section.hash() % 97), 61) < GRILLE_SHARE:
+			# A dark face's long brick as grille bricks, faced out: 10237 is 3.6%
+			# grille brick, and the Orthanc after it was 0.2%, its black faces
+			# long bricks the grille could never reach.
+			made.append(_with_section({"part": "2877", "color": colour, "x": x, "y": y,
+				"z": z, "rot": 0}, section))
+			made.append(_with_section({"part": "2877" if long == 4 else "3005",
+				"color": colour, "x": x + 2.0, "y": y, "z": z, "rot": 0}, section))
 		else:
 			made.append(_prism_brick(section, str(chosen[1]), colour, x, y, z, 0,
 				mix_colour, mix, masonry))
 		x += float(long)
+
+
+## Where the face being laid ends, in its own frame: a long brick run on
+## past it into the groove is held by its part over the face, and laid as two
+## grille bricks its far one hung in the groove on nothing.
+var _grille_until: float = -INF
+
+
+func _with_section(one: Dictionary, section: String) -> Dictionary:
+	one["section"] = section
+	return one
 
 
 func _prism_brick(section: String, part: String, colour: int, x: float, y: float,
@@ -4719,6 +4741,10 @@ func _is_dark(code: int) -> bool:
 ## face, and lit an Orthanc up as an office block.
 const WINDOW_COLOUR := 40
 const WINDOW_EVERY := 16
+## The share of a dark face's long outside bricks laid as grille bricks
+## instead. 10237 is 86 grille bricks in 2,359 parts.
+const GRILLE_SHARE := 0.5
+
 ## Courses from one band of a black face's second tone to the next.
 const BAND_EVERY: int = Patterns.BAND_EVERY
 
