@@ -16,7 +16,7 @@ extends Node3D
 const LDU_MM := 0.4
 
 var lattice: BrickLattice
-var camera: Camera3D
+var camera: CadCamera
 ## Where the words go, over the 3D: a Label the HUD owns.
 var label: Label
 
@@ -135,8 +135,8 @@ static func _num(value: float) -> String:
 ## Where the pointer is on the model, snapped: half a stud across the
 ## ground, a cell up.
 func _point(at: Vector2) -> Variant:
-	var origin: Vector3 = camera.project_ray_origin(at)
-	var direction: Vector3 = camera.project_ray_normal(at)
+	var origin: Vector3 = camera.ray_origin(at)
+	var direction: Vector3 = camera.ray_normal(at)
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	var point: Vector3
 	if hit.is_valid():

@@ -39,6 +39,19 @@
 ## Distances are in LDU, because everything here is. A 2x4 brick is 80
 ## wide and a big model runs to a few thousand, so the sensible viewing
 ## range covers three orders of magnitude and the zoom is geometric.
+##
+## The view is centred on the part of the window the model is seen in
+## ([member seen]: between the columns, under the bars), not on the
+## window, by shifting the lens: the frustum's offset in perspective, the
+## camera slid in its own plane when straight-on, where sliding is the
+## same thing. The window still draws all of it, so nothing moves but the
+## picture. Godot's [method Camera3D.project_ray_normal] and
+## [method Camera3D.project_position] assume a frustum centred on the
+## window and are wrong for this one (0.09 rad out at the 168 units one
+## column moves the middle; camera_probe): a ray from the screen is
+## [method ray_origin] and [method ray_normal], which invert the
+## projection the view is drawn with. [method Camera3D.unproject_position]
+## is exact as it is. tests/test_lens.py keeps the engine's two out of src/.
 class_name CadCamera
 extends Camera3D
 
@@ -120,6 +133,29 @@ var _has_pivot: bool = false
 
 ## Whether to draw a mark on the pivot. True only while turning.
 var pivot_shown: bool = false
+
+## The part of the window the model is seen in, in the viewport's own
+## units (a control's global rect, an event's position). Set by whoever
+## owns the scene; it takes nothing and returns a Rect2. The view is
+## centred on it and framed to fill it. Without it, the whole window.
+var seen: Callable = Callable()
+
+## Where the middle of the lens is on the screen, from the middle of the
+## window, in the viewport's units. It eases to the middle of
+## [method seen_rect], and holds still while a button or a finger is down
+## so a column folding mid-drag cannot pull the model from under the
+## pointer.
+var _shift: Vector2 = Vector2.ZERO
+## Whether the lens has been put on a real seen rect yet: the first one is
+## taken at once rather than eased into, or the model would slide in from
+## the window's middle as the app opened.
+var _shift_known: bool = false
+## The lens as last put on the camera, so a lens at rest sets nothing.
+var _lensed: Array = []
+
+## The lens moved on with nothing held: what is under a still pointer is
+## not what was.
+signal lens_moved
 
 
 ## Where the mark goes.
@@ -640,8 +676,8 @@ func _on_focus_plane(at: Vector2) -> Vector3:
 	if not is_inside_tree():
 		return focus
 	var forward: Vector3 = -global_transform.basis.z
-	var origin: Vector3 = project_ray_origin(at)
-	var towards: Vector3 = project_ray_normal(at)
+	var origin: Vector3 = ray_origin(at)
+	var towards: Vector3 = ray_normal(at)
 	var facing: float = towards.dot(forward)
 	if absf(facing) < 0.0001:
 		return focus
@@ -691,8 +727,8 @@ func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
 	if forward.length_squared() <= 0.0:
 		return
 	forward = forward.normalized()
-	var origin: Vector3 = project_ray_origin(at_screen)
-	var towards: Vector3 = project_ray_normal(at_screen)
+	var origin: Vector3 = ray_origin(at_screen)
+	var towards: Vector3 = ray_normal(at_screen)
 	var facing: float = towards.dot(forward)
 	if absf(facing) < 0.0001:
 		return
@@ -873,29 +909,139 @@ func _apply(weight: float) -> void:
 		distance = _target_distance
 	if focus.distance_to(_target_focus) < hair:
 		focus = _target_focus
+	_ease_lens(weight)
 	var pose: Array = [_yaw, _pitch, distance, focus]
-	if pose == _posed and global_transform == _posed_at:
+	if pose != _posed or global_transform != _posed_at:
+		_posed = pose
+		var offset := Vector3(
+			cos(_pitch) * sin(_yaw),
+			sin(_pitch),
+			cos(_pitch) * cos(_yaw)) * distance
+		global_position = focus + offset
+		look_at(focus, Vector3.UP)
+		_posed_at = global_transform
+
+		# Clip planes that follow the distance.
+		#
+		# A fixed near plane has to be tight enough for the closest anyone
+		# will ever get, and a tight near plane against a far plane sixty
+		# thousand units away spends the whole depth buffer on the first
+		# stud — so a model seen from across the baseplate gets its faces
+		# fighting each other. Scaling both with the distance keeps the
+		# ratio sane at every zoom.
+		near = clampf(distance * 0.02, 0.5, 40.0)
+		far = clampf(distance * 12.0, 2000.0, 80000.0)
+	_put_lens()
+
+
+# -- the lens, centred on the part of the window the model is seen in -------
+
+
+## The window, in the viewport's own units.
+func _room() -> Vector2:
+	if not is_inside_tree():
+		return Vector2(1600.0, 900.0)
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	return Vector2(maxf(room.x, 1.0), maxf(room.y, 1.0))
+
+
+## The part of the window the model is seen in: [member seen]'s answer,
+## inside the window, or the whole window when there is none or it is too
+## small to look at anything through.
+func seen_rect() -> Rect2:
+	var window := Rect2(Vector2.ZERO, _room())
+	if seen.is_valid():
+		var rect: Rect2 = (seen.call() as Rect2).intersection(window)
+		if rect.size.x >= 32.0 and rect.size.y >= 32.0:
+			return rect
+	return window
+
+
+## Whether anything is holding the view still: a drag, a finger, or a
+## button down anywhere — over a panel too, since a part being dragged
+## from the bin is aimed by where the model is under the pointer.
+func _lens_held() -> bool:
+	if _doing != Doing.NOTHING or not _touches.is_empty():
+		return true
+	for button: int in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+		if Input.is_mouse_button_pressed(button):
+			return true
+	return false
+
+
+## Bring the lens towards the middle of the seen rect, as the pose is
+## brought towards its target. A column folding, unfolding or sliding is
+## followed frame by frame, so the model glides to the new middle.
+func _ease_lens(weight: float) -> void:
+	var aim: Vector2 = seen_rect().get_center() - _room() * 0.5
+	if not _shift_known:
+		if not seen.is_valid() or not is_inside_tree():
+			return
+		_shift_known = true
+		_shift = aim
 		return
-	_posed = pose
+	if _shift == aim or _lens_held():
+		return
+	_shift = _shift.lerp(aim, weight)
+	if _shift.distance_to(aim) < 0.01:
+		_shift = aim
+	lens_moved.emit()
 
-	var offset := Vector3(
-		cos(_pitch) * sin(_yaw),
-		sin(_pitch),
-		cos(_pitch) * cos(_yaw)) * distance
-	global_position = focus + offset
-	look_at(focus, Vector3.UP)
-	_posed_at = global_transform
 
-	# Clip planes that follow the distance.
-	#
-	# A fixed near plane has to be tight enough for the closest anyone
-	# will ever get, and a tight near plane against a far plane sixty
-	# thousand units away spends the whole depth buffer on the first
-	# stud — so a model seen from across the baseplate gets its faces
-	# fighting each other. Scaling both with the distance keeps the
-	# ratio sane at every zoom.
-	near = clampf(distance * 0.02, 0.5, 40.0)
-	far = clampf(distance * 12.0, 2000.0, 80000.0)
+## Put the lens on the camera, if it is not on already: a value set again
+## unchanged is a frame drawn (IdleDraw).
+##
+## Perspective is a frustum, so its middle can be off the window's: the
+## same field of view across the window's height as before, at the near
+## plane, offset by the shift. Straight-on, the camera slides in its own
+## plane instead, which for parallel lines is exactly the same picture.
+func _put_lens() -> void:
+	var room: Vector2 = _room()
+	var now: Array = [_shift, room, projection, size, fov, near, far, h_offset, v_offset]
+	if now == _lensed:
+		return
+	if projection == Camera3D.PROJECTION_ORTHOGONAL:
+		var per: float = size / room.y
+		h_offset = -_shift.x * per
+		v_offset = _shift.y * per
+	else:
+		h_offset = 0.0
+		v_offset = 0.0
+		var tall: float = 2.0 * near * tan(deg_to_rad(fov) * 0.5)
+		set_frustum(tall, Vector2(-_shift.x, _shift.y) * tall / room.y, near, far)
+	_lensed = [_shift, room, projection, size, fov, near, far, h_offset, v_offset]
+
+
+## Where a ray through a point on the screen starts: the eye, or straight-on
+## the point on the near plane. In the viewport's units, as an event's
+## position is.
+func ray_origin(at: Vector2) -> Vector3:
+	if not is_inside_tree():
+		return global_position
+	var eye: Transform3D = get_camera_transform()
+	if projection != Camera3D.PROJECTION_ORTHOGONAL:
+		return eye.origin
+	return eye * _through_lens(at)
+
+
+## Which way a ray through a point on the screen goes, through the lens the
+## view is drawn with.
+func ray_normal(at: Vector2) -> Vector3:
+	if not is_inside_tree():
+		return -global_transform.basis.z
+	var eye: Transform3D = get_camera_transform()
+	if projection == Camera3D.PROJECTION_ORTHOGONAL:
+		return -eye.basis.z.normalized()
+	return (eye.basis * _through_lens(at)).normalized()
+
+
+## A point on the screen, on the near plane, in the camera's own space: the
+## projection the view is drawn with, run backwards.
+func _through_lens(at: Vector2) -> Vector3:
+	var room: Vector2 = _room()
+	var clip := Vector4(at.x / room.x * 2.0 - 1.0, 1.0 - at.y / room.y * 2.0, -1.0, 1.0)
+	var back: Vector4 = get_camera_projection().inverse() * clip
+	return Vector3(back.x, back.y, back.z) / back.w
 
 
 ## Perspective or straight-on.
@@ -921,6 +1067,7 @@ func square_on(yes: bool) -> void:
 		_target_distance = clampf(
 			size * 0.5 / tan(deg_to_rad(fov) * 0.5),
 			min_distance, max_distance)
+	_put_lens()
 
 
 func is_square_on() -> bool:
@@ -937,15 +1084,19 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 	# the two fields of view. The vertical one alone is the narrower only
 	# on a window wider than it is tall: a phone held upright framed the
 	# model to its height and cut off both its sides.
-	var half: float = deg_to_rad(fov) * 0.5
-	if is_inside_tree():
-		var room: Vector2 = get_viewport().get_visible_rect().size
-		if room.y > 0.0 and room.x < room.y:
-			half = atan(tan(half) * room.x / room.y)
+	#
+	# Of the part of the window the model is seen in, not of the window:
+	# the field of view spans the window's height, and the seen rect is
+	# less than that across and down. Framed to the window, the ball round
+	# a model took 92% of the room a 1280 x 720 window gives it, where the
+	# margin means it to take 76% (centring_probe).
+	var seen_size: Vector2 = seen_rect().size
+	var share: float = minf(seen_size.x, seen_size.y) / _room().y
+	var half: float = atan(tan(deg_to_rad(fov) * 0.5) * share)
 	_target_distance = clampf(
 		radius / sin(half) * margin, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
-		size = radius * 2.0 * margin
+		size = radius * 2.0 * margin / share
 
 
 ## Point the camera from a named direction, keeping the focus.

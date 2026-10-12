@@ -215,7 +215,7 @@ func replace() -> int:
 
 
 ## The view, to say which way is left and right on the screen.
-var camera: Camera3D
+var camera: CadCamera
 
 
 ## The selection made into its mirror image, left to right as the view
@@ -910,8 +910,8 @@ var looked: int = 0
 func brick_at(at: Vector2) -> int:
 	if camera == null or out_of_view:
 		return 0
-	var origin: Vector3 = camera.project_ray_origin(at)
-	var normal: Vector3 = camera.project_ray_normal(at)
+	var origin: Vector3 = camera.ray_origin(at)
+	var normal: Vector3 = camera.ray_normal(at)
 	var asked: Array = [origin, normal, builder.lattice.revision]
 	if asked == _asked:
 		return _found

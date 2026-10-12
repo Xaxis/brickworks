@@ -23,7 +23,7 @@ var world: BrickWorld
 var builder: Builder
 var library: PartLibrary
 var assemblies: Assemblies
-var camera: Camera3D
+var camera: CadCamera
 ## Where the status line is.
 var say: Callable = func(_words: String) -> void: pass
 
@@ -268,7 +268,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _ray(at: Vector2) -> Array:
-	return [camera.project_ray_origin(at), camera.project_ray_normal(at).normalized()]
+	# Through the lens the view is drawn with: it is shifted to the model's
+	# column, and the engine's own rays would miss by the shift.
+	return [camera.ray_origin(at), camera.ray_normal(at)]
 
 
 func _aim(at: Vector2) -> void:

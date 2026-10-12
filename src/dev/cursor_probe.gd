@@ -102,7 +102,9 @@ func _run() -> void:
 		var at := Transform3D(Basis.IDENTITY, Vector3(n * 40.0, 24.0, 0.0))
 		var brick_id: int = _world.add_brick("3001", 4, at)
 		_builder.register(brick_id, "3001", at)
-	_middle = root.get_visible_rect().size * 0.5
+	# The middle of the model's part of the window, where the view is
+	# centred (CadCamera.seen), not the window's.
+	_middle = ((_main.call("model_cover") as Dictionary)["view"] as Rect2).get_center()
 	_builder.held_part = "3005"
 	var library: PartLibrary = _main.get("_library")
 	for _n: int in 2400:
@@ -1150,6 +1152,7 @@ func _frames(how_many: int) -> void:
 
 ## The model framed, the pointer over it and a brick under it.
 func _settle() -> void:
+	await _follow_the_view()
 	_camera.frame(_world.model_bounds())
 	for _n: int in 40:
 		_camera._apply(0.5)
@@ -1283,3 +1286,18 @@ func _shot(path: String) -> void:
 	var image: Image = root.get_texture().get_image()
 	image.save_png(path)
 	print("  wrote %s" % path)
+
+
+## Wait for a column sliding in or out, and aim at the middle of the model's
+## part of the window as it then is: the view is centred there
+## (CadCamera.seen), and a column opening or folding moves it.
+func _follow_the_view() -> void:
+	var room: Vector2 = root.get_visible_rect().size
+	for _n: int in 600:
+		await process_frame
+		var seen: Rect2 = _camera.seen_rect()
+		var drawn_at: Vector2 = _camera.unproject_position(_camera.focus)
+		if _camera._shift == seen.get_center() - room * 0.5 \
+				and drawn_at.distance_to(seen.get_center()) < 0.5:
+			break
+	_middle = ((_main.call("model_cover") as Dictionary)["view"] as Rect2).get_center()

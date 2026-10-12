@@ -57,15 +57,7 @@ picture the assistant is shown.
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. The view is centred
-  on the window, not on the model's part of it: with one column open the
-  model sits a little to that side (168 units at 1280 x 720). Both ways of
-  moving it tried 2026-10-12 were worse: sliding the camera across
-  (`h_offset`) looked at the model 10° from the side, so a front view showed a
-  side and the handbuild ruler's top view read 0.3 plates up; shifting the
-  lens (`PROJECTION_FRUSTUM`, `frustum_offset`) is exact on screen, but
-  Godot's `project_ray_origin` and `project_ray_normal` ignore a frustum's
-  offset, and every click in `assembly_probe` missed its part. Nothing that begins
+  is what everything frames against, baseplate excluded. Nothing that begins
   over the interface is the camera's: a wheel notch, a trackpad swipe or pinch,
   or a right or middle press over any panel, dialog, popup or the toolbar is
   dropped (`CadCamera._begins_over_interface`, asking `Main._over_interface`:
@@ -78,6 +70,41 @@ picture the assistant is shown.
   panel, the minifigure builder, Make a part, the mosaic, the parts list and the
   timeline and checks the camera did not move; the browser check does the same
   over the bin, the assistant and the controls panel by the view's pixels.
+- `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
+  3D draws across the whole window, behind the columns, and the view is
+  centred on the model's part of it (`model_cover`'s "view": between the
+  columns, under the bars; on a phone, between the rails, since a drawer is
+  put away to build) rather than on the window, where with one column open
+  the model sat 168 units to its side. Done by shifting the lens, not the
+  camera: perspective is `PROJECTION_FRUSTUM` with the same 45° across the
+  window's height and a `frustum_offset`; straight-on, `h_offset`/`v_offset`,
+  which for parallel lines is the same picture. Fit (F, Home, the cube's fit
+  and every framing) fits the ball round the model to the narrower side of
+  that part, not of the window. A column folding or opening glides the model
+  to the new middle (the camera's own easing, following the column's slide)
+  and holds still while any button or finger is down, so a drag never loses
+  what it grabbed; the ghost is re-aimed as it glides (`lens_moved`).
+  Sliding the camera instead (`h_offset` in perspective, tried 2026-10-12)
+  looked at the model 10° from the side. Godot's `project_ray_normal` and
+  `project_position` assume a centred frustum and are 0.09 rad out at 168
+  units, so the first lens shift missed every click in `assembly_probe`: every
+  ray from the screen is `CadCamera.ray_origin`/`ray_normal`, which invert
+  the projection the view is drawn with (`unproject_position` is exact as it
+  is), and `tests/test_lens.py` fails on the engine's two anywhere in `src/`
+  but the mould editor's own camera and `camera_probe`, which calls them to
+  show they miss. `camera_probe` checks the shifted view
+  against a camera of its own the size of the seen rect (same picture to
+  0.000 px, same framing), every ray back through what is drawn, that
+  Godot's would miss, the hold mid-drag and the glide. `centring_probe`
+  (Xvfb, `--resolution 1280x720`, and `--resolution 2560x1440 -- --ratio=2`
+  for two pixels to the unit) folds each column in turn, presses F and
+  checks the model's middle is within 2% of the middle of its part, all of
+  it inside, then picks five parts from the world (a straight line from the
+  eye reaches each first), checks hiding each changes the pixel at its point
+  and a click there selects exactly it; on the code before this, the middle
+  is 168 units out. `tools/web/centre_check.mjs --url=…` does the centring
+  and the five clicks in Chromium at 1x and 2x (`brickworksLayout.centre`
+  and `.targets`, `brickworksState.selection`).
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
   and Down; `Main._zoom_key`) zoom a wheel notch a tap; arrows turn the view
   and shift-arrows slide it, unless a selection (nudged) or the booklet (stepped)

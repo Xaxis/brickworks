@@ -116,7 +116,7 @@ if python3 -c 'import pytest' 2>/dev/null; then
 else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
     tests/test_release.py tests/test_minifig.py tests/test_elements.py \
-    tests/test_merge_featuremap.py)
+    tests/test_merge_featuremap.py tests/test_lens.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -207,6 +207,17 @@ run "axis gizmo" "${screen[@]}" godot --path . --resolution 1200x800 \
 # lands on screen, which needs a camera with a viewport to project into.
 run "box select" "${screen[@]}" godot --path . --resolution 1200x800 \
   --script src/dev/marquee_probe.gd
+# The view centred on the model's part of the window rather than on the
+# window behind the columns, and every click still finding the part drawn
+# under it, with either column folded: once in a laptop's window, and once
+# at two pixels to the unit, which needs a screen bigger than most desktops.
+run "centred on the model" "${screen[@]}" godot --path . --resolution 1280x720 \
+  --script src/dev/centring_probe.gd
+if command -v xvfb-run >/dev/null 2>&1; then
+  run "centred, at 2x" env MESA_VK_WSI_DEBUG=sw xvfb-run -a \
+    --server-args="-screen 0 2600x1500x24" godot --path . --resolution 2560x1440 \
+    --script src/dev/centring_probe.gd -- --ratio=2
+fi
 # And the one that asks whether the controls feel right rather than
 # whether they are wired: it drives the real scene with the gestures a
 # person reaches for by habit. It found left-drag placing a brick,

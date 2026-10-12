@@ -73,7 +73,10 @@ func _run() -> void:
 		var at := Transform3D(Basis.IDENTITY, Vector3(n * 40.0, 24.0, 0.0))
 		var brick_id: int = _world.add_brick("3001", 4, at)
 		_builder.register(brick_id, "3001", at)
-	_middle = root.get_visible_rect().size * 0.5
+	# The middle of the model's part of the window, which is where the view
+	# is centred and so where a framed model is (CadCamera.seen) — not the
+	# window's, which is 168 units to the side with one column open.
+	_middle = ((main.call("model_cover") as Dictionary)["view"] as Rect2).get_center()
 	_builder.held_part = "3005"
 
 	# Wait for the parts, not for a number of frames.
@@ -185,6 +188,9 @@ func _mouse() -> void:
 	# the next click another, as Studio does.
 	await _key(KEY_Q)
 	_check("Q puts the last part in hand", verbs.mode == "place")
+	# ...which brings the parts bin out, and in a window with room for one
+	# column the view moves over to the middle of what is left.
+	await _follow_the_view()
 	await _click(MOUSE_BUTTON_LEFT, _middle)
 	_check("with a part in hand, a plain click places", _world.brick_count() > before)
 	await _click(MOUSE_BUTTON_LEFT, _middle)
@@ -240,8 +246,8 @@ func _mouse() -> void:
 	# A drag on a part moves it, and Ctrl and a drag copies it.
 	await _settle()
 	_builder.clear_selection()
-	var moving: int = _builder.lattice.raycast(_camera.project_ray_origin(_middle),
-		_camera.project_ray_normal(_middle)).brick_id
+	var moving: int = _builder.lattice.raycast(_camera.ray_origin(_middle),
+		_camera.ray_normal(_middle)).brick_id
 	var was: Vector3 = _world.get_brick(moving).transform.origin if moving != 0 else Vector3.ZERO
 	before = _world.brick_count()
 	await _drag(MOUSE_BUTTON_LEFT, _middle, _middle + Vector2(0.0, 110.0))
@@ -314,6 +320,7 @@ func _keyboard() -> void:
 	# they did not mean to use.
 	var before: int = _world.brick_count()
 	await _key(KEY_Q)
+	await _follow_the_view()
 	await _click(MOUSE_BUTTON_LEFT, _middle)
 	var placed: int = _world.brick_count()
 	_check("a click placed something to undo", placed > before)
@@ -411,8 +418,8 @@ func _can_pick() -> bool:
 		# in the viewport's own space, so converting here aims it
 		# somewhere else entirely.
 		_builder.update_preview(
-			_camera.project_ray_origin(_middle),
-			_camera.project_ray_normal(_middle))
+			_camera.ray_origin(_middle),
+			_camera.ray_normal(_middle))
 		await process_frame
 		if _builder.hovered_brick() != 0:
 			return true
@@ -422,6 +429,7 @@ func _can_pick() -> bool:
 ## The model framed and the camera settled there, so that the centre of
 ## the screen is over it.
 func _settle() -> void:
+	await _follow_the_view()
 	_camera.frame(_world.model_bounds())
 	for _n: int in 40:
 		_camera._apply(0.5)
@@ -785,3 +793,18 @@ func _drag(which: int, from: Vector2, to: Vector2, command: bool = false,
 	_press(which, to, false, command, shift)
 	for _n: int in 6:
 		await process_frame
+
+
+## Wait for a column sliding in or out, and aim at the middle of the model's
+## part of the window as it then is: the view is centred there
+## (CadCamera.seen), and a column opening moves it.
+func _follow_the_view() -> void:
+	var room: Vector2 = root.get_visible_rect().size
+	for _n: int in 600:
+		await process_frame
+		var seen: Rect2 = _camera.seen_rect()
+		var drawn_at: Vector2 = _camera.unproject_position(_camera.focus)
+		if _camera._shift == seen.get_center() - room * 0.5 \
+				and drawn_at.distance_to(seen.get_center()) < 0.5:
+			break
+	_middle = ((_main.call("model_cover") as Dictionary)["view"] as Rect2).get_center()

@@ -150,6 +150,9 @@ func _run() -> void:
 	_towards_the_pointer(camera)
 
 	print("")
+	await _centred_on_what_is_seen(camera)
+
+	print("")
 	if _failures == 0:
 		print("the view can be turned, slid and zoomed")
 	else:
@@ -242,8 +245,8 @@ func _towards_the_pointer(camera: CadCamera) -> void:
 ## in — the same plane the zoom works against.
 func _aim(camera: CadCamera, at: Vector2) -> Vector3:
 	var forward: Vector3 = (camera.focus - camera.global_position).normalized()
-	var origin: Vector3 = camera.project_ray_origin(at)
-	var towards: Vector3 = camera.project_ray_normal(at)
+	var origin: Vector3 = camera.ray_origin(at)
+	var towards: Vector3 = camera.ray_normal(at)
 	return origin + towards * (
 		(camera.focus - origin).dot(forward) / towards.dot(forward))
 
@@ -426,3 +429,129 @@ func _turns_around_what_you_grabbed(camera: CadCamera) -> void:
 		print("  ok    and the mark goes when you let go")
 	camera.pick = Callable()
 	ViewPrefs.use("studio")
+
+
+## Is the view centred on the part of the window the model is seen in, and
+## does a ray from the screen still go through what is drawn there?
+##
+## The view was centred on the window, so with one column open the model
+## sat 168 units to its side. The lens is shifted instead (CadCamera.seen):
+## the window draws the same picture a camera of its own, the size of the
+## seen rect, would draw there — no turn to the side, no parallax. That is
+## checked against just such a camera, framing included. And every ray from
+## the screen through the shifted lens goes back through the point drawn
+## there; Godot's own project_ray_normal does not (the first try at this
+## missed every click in assembly_probe), which is checked too, so that the
+## check is known to be able to fail.
+func _centred_on_what_is_seen(camera: CadCamera) -> void:
+	print("  centred on the model's part of the window")
+	var room: Vector2 = camera.get_viewport().get_visible_rect().size
+	# A laptop's window with the parts bin open: a column down the left, a
+	# rail on the right, the bars along the top and the bottom.
+	var seen := Rect2(Vector2(362.0, 64.0), room - Vector2(362.0 + 26.0, 64.0 + 80.0))
+	# In an array, which the lambda holds by reference: a plain local is
+	# copied into it, and a rect changed later would never reach it.
+	var showing: Array[Rect2] = [seen]
+	camera.seen = func() -> Rect2: return showing[0]
+	var box := AABB(Vector3(-120.0, 0.0, -60.0), Vector3(240.0, 96.0, 120.0))
+	var points: Array[Vector3] = []
+	for n: int in 27:
+		points.append(box.position + box.size * Vector3(
+			0.5 * (n % 3), 0.5 * ((n / 3) % 3), 0.5 * (n / 9)))
+	points.append(Vector3(400.0, -50.0, 300.0))
+
+	# A camera of its own the size of the seen rect, looking the same way:
+	# what the window shows inside the seen rect must be its picture.
+	var own := SubViewport.new()
+	own.size = Vector2i(seen.size)
+	own.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	get_root().add_child(own)
+	var alone := CadCamera.new()
+	own.add_child(alone)
+	await process_frame
+	# The angle the seen rect's height takes of the window's field of view.
+	alone.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(camera.fov) * 0.5) * seen.size.y / room.y))
+
+	for square: bool in [false, true]:
+		var kind: String = "straight-on" if square else "in perspective"
+		for one: CadCamera in [camera, alone]:
+			one.square_on(square)
+			one._yaw = -0.6
+			one._target_yaw = -0.6
+			one._pitch = 0.45
+			one._target_pitch = 0.45
+			one.frame(box)
+			for _n: int in 3:
+				one._apply(1.0)
+
+		var middle: Vector2 = camera.unproject_position(box.get_center())
+		var off: Vector2 = middle - seen.get_center()
+		_check_that("%s, the middle of the model is the middle of the seen rect (%.2f, %.2f px off)"
+			% [kind, off.x, off.y], off.length() < 0.5)
+
+		var framed: bool = absf(camera._target_distance - alone._target_distance) < 0.01 \
+			and (not square or absf(camera.size * seen.size.y / room.y - alone.size) < 0.01)
+		_check_that("...framed to fill the seen rect, not the window (%.1f LDU back; alone %.1f)"
+			% [camera._target_distance, alone._target_distance], framed)
+
+		var worst: float = 0.0
+		for point: Vector3 in points:
+			var here: Vector2 = camera.unproject_position(point) - seen.position
+			worst = maxf(worst, here.distance_to(alone.unproject_position(point)))
+		_check_that("...and draws there what a view of its own that size would (%.3f px at worst)"
+			% worst, worst < 0.05)
+
+		var astray: float = 0.0
+		var engine: float = 0.0
+		for point: Vector3 in points:
+			var at: Vector2 = camera.unproject_position(point)
+			var origin: Vector3 = camera.ray_origin(at)
+			var normal: Vector3 = camera.ray_normal(at)
+			var along: float = (point - origin).dot(normal)
+			astray = maxf(astray, (origin + normal * along).distance_to(point))
+			engine = maxf(engine, camera.project_ray_normal(at).angle_to(
+				point - camera.project_ray_origin(at)))
+		_check_that("...a ray from the screen goes through what is drawn there (%.4f LDU astray)"
+			% astray, astray < 0.05)
+		if not square:
+			_check_that("...where Godot's own ray would miss it by %.3f rad" % engine,
+				engine > 0.02)
+
+	camera.square_on(false)
+
+	# A column folding mid-drag must not pull the model from under the
+	# pointer: the lens holds while a button is down, then eases over.
+	var wider := Rect2(Vector2(26.0, 64.0), room - Vector2(52.0, 64.0 + 80.0))
+	var grabbed: Vector3 = box.get_center()
+	var was: Vector2 = camera.unproject_position(grabbed)
+	_press(camera, MOUSE_BUTTON_MIDDLE, true)
+	showing[0] = wider
+	for _n: int in 20:
+		camera._apply(0.3)
+	var held: float = camera.unproject_position(grabbed).distance_to(was)
+	_press(camera, MOUSE_BUTTON_MIDDLE, false)
+	_check_that("a column folding mid-drag leaves the model under the pointer (%.2f px)" % held,
+		held < 0.01)
+	var path: Array[float] = []
+	for _n: int in 40:
+		camera._apply(0.3)
+		path.append(camera.unproject_position(grabbed).x)
+	var travel: float = path[-1] - was.x
+	var biggest: float = 0.0
+	for n: int in range(1, path.size()):
+		biggest = maxf(biggest, absf(path[n] - path[n - 1]))
+	var landed: Vector2 = camera.unproject_position(grabbed) - wider.get_center()
+	_check_that("...then glides to the new middle (%.0f px in steps of %.0f at most, %.2f px off)"
+		% [travel, biggest, landed.length()],
+		landed.length() < 0.5 and biggest < absf(travel) * 0.5)
+
+	camera.seen = Callable()
+	for _n: int in 40:
+		camera._apply(1.0)
+	own.queue_free()
+
+
+func _check_that(what: String, ok: bool) -> void:
+	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1

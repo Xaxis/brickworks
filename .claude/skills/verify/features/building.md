@@ -119,8 +119,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   icon and its name ("Parts", "Assistant"), tinted with the accent down its
   edge while folded, and switching is one click on it. A folded column's
   content is hidden, not clipped: its fields cannot take the keys and the
-  page is not told its buttons are there. The 3D view is still
-  centred on the window ([view](view.md)'s `camera controls` says why).
+  page is not told its buttons are there. The 3D view is centred on the
+  model's part of the window, and glides over as a column folds or opens
+  ([view](view.md)'s `centred on the model's column`).
   `Main.model_cover()` samples a 12 x 8 grid over the model and says
   what a click at each point would reach instead (the app's own list of
   panels, and any control on any canvas layer that takes the mouse);

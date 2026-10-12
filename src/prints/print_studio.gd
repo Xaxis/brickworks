@@ -21,7 +21,7 @@ signal said(words: String)
 var library: PartLibrary
 var world: BrickWorld
 var builder: Builder
-var camera: Camera3D
+var camera: CadCamera
 ## Where the panels go.
 var overlay: Node
 
@@ -128,8 +128,8 @@ func _input(event: InputEvent) -> void:
 ## control's global position is), handed to whoever asked.
 func face_at_point(at: Vector2, span: bool = true) -> Stickers.Face:
 	_picking.visible = false
-	var face: Stickers.Face = Stickers.face_at(world, library, camera.project_ray_origin(at),
-		camera.project_ray_normal(at), span, camera.global_transform.basis.y)
+	var face: Stickers.Face = Stickers.face_at(world, library, camera.ray_origin(at),
+		camera.ray_normal(at), span, camera.global_transform.basis.y)
 	if face == null:
 		said.emit("There is no flat face there to put a sticker on")
 		return null

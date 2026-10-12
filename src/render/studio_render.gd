@@ -939,7 +939,9 @@ func aim(settings: RenderSettings, bounds: AABB, turning: bool = false) -> Shot:
 		frame = AABB(Vector3(centre.x - reach, bounds.position.y, centre.z - reach),
 			Vector3(reach * 2.0, bounds.size.y, reach * 2.0))
 	var view: String = settings.view if VIEWS.has(settings.view) else "hero"
-	if view == "current" and eye != null and eye.projection == Camera3D.PROJECTION_PERSPECTIVE:
+	# Perspective is a frustum shifted to the model's column (CadCamera);
+	# the picture is centred on what the view looks at either way.
+	if view == "current" and eye != null and eye.projection != Camera3D.PROJECTION_ORTHOGONAL:
 		var from: Transform3D = eye.global_transform
 		var forward: Vector3 = -from.basis.z.normalized()
 		var focus: Vector3 = eye.call("focus_now") if eye.has_method("focus_now") \
