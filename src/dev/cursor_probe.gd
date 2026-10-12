@@ -60,6 +60,16 @@ func _run() -> void:
 	Engine.max_fps = 0
 	_out = ProjectSettings.globalize_path("res://shots/cursors")
 	DirAccess.make_dir_recursive_absolute(_out)
+	# Headless, every shape read back is the arrow, and that was 107
+	# failures that looked like a broken merge (2026-10-12). One says why.
+	if DisplayServer.get_name() == "headless":
+		print("  a headless display server has no cursor: it answers \"arrow\" to")
+		print("  everything. Run this in a window, on Xvfb as tools/check.sh does:")
+		print("    xvfb-run -a --server-args=\"-screen 0 1400x900x24\" \\")
+		print("      godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd")
+		_check("there is a window to read the pointer back from", false)
+		_finish()
+		return
 	if not _virtual:
 		print("  not on Xvfb, so the system pointer is left where it is;")
 		print("  the checks that replay a motion where it stands will fail")
@@ -450,9 +460,9 @@ func _wheel_over_the_interface() -> void:
 	list.scroll_vertical = 0
 	var colours: ScrollContainer = bin.get("_palette_scroll")
 	await _unmoved_by_scrolling("the colours", _centre(colours))
-	# A window under 1600 units across shows one column beside the model at
-	# a time, the parts bin first: the assistant's is opened for this, and
-	# the bin's again after.
+	# A window with room for one column beside the model shows one at a
+	# time, the assistant's on a first visit: each is opened for its own
+	# checks, the assistant's here and the bin's again after.
 	var chat_dock: SideDock = _main.get("_chat_dock")
 	var bin_dock: SideDock = _main.get("_bin_dock")
 	if not chat_dock.is_open():
@@ -776,6 +786,14 @@ func _tools_and_contexts() -> void:
 	await _expect("Space held: a drag slides the view", "hand")
 	await _left_drag_held("...dragging", "grabbing")
 	await _expect("...and let go of the button", "hand")
+	# The slide moved the model under the pointer, by however far the
+	# pointer the probe warps and the events it sends added up to: on a
+	# loaded machine the middle was left on a part's edge, and missed it.
+	# Back over a part, wherever the slide left them, Space still held.
+	for _n: int in 40:
+		_camera._apply(0.5)
+		await process_frame
+	await _move_to(_part_point())
 	await _key_down(KEY_SPACE, false)
 	await _expect("...and of Space", "select")
 	await _key_down(KEY_ALT, true)
@@ -876,6 +894,21 @@ func _nothing_point() -> Vector2:
 			return at
 	_check("there is somewhere over the model with no part under it", false)
 	return _middle + Vector2(0, 220)
+
+
+## The point nearest the middle with a part under it, off the panels.
+func _part_point() -> Vector2:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var size: Vector2 = root.get_visible_rect().size
+	for ring: int in range(0, 12):
+		for step: int in range(maxi(ring * 8, 1)):
+			var turn: float = TAU * step / maxf(ring * 8, 1)
+			var at: Vector2 = _middle + Vector2(cos(turn), sin(turn)) * ring * 20.0
+			if Rect2(Vector2.ZERO, size).has_point(at) and verbs.brick_at(at) != 0 \
+					and not _main._over_panel_at(at):
+				return at
+	_check("there is somewhere over the model with a part under it", false)
+	return _middle
 
 
 ## A point where the part in hand has nowhere to go, walking up from the

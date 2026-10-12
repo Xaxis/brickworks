@@ -581,7 +581,16 @@ take, which is what made a design run give up on looking at itself.
   `cursor_probe` runs in a window like the ones below. It asserts both the app's
   state (`Cursors.shown()`) and `DisplayServer.cursor_get_shape()`, because the
   default shape only shows where no control is under the pointer, and a state the
-  window never showed is the bug.
+  window never showed is the bug. Run headless it stops at once with one
+  failure that says so: before that it ran on and failed 107 checks, which an
+  integrator read as a broken merge (2026-10-12). The suite's way is Xvfb at
+  1400 x 900 (`tools/check.sh`), 215 checks.
+- **A slide moves the model under a still pointer by however far the warped
+  system pointer and the probe's events add up to**, which varies with the
+  machine's load. After Space-drag the probe once expected "select" at the
+  middle and found the middle on a part's edge, two failures in three runs on a
+  loaded box. It now goes back over a part (`_part_point`) before letting go
+  of Space.
 - **Godot picks the cursor shape when the pointer moves.** Anything that changes
   what is under a still pointer — a dialog closing on Escape or Done, Tab folding
   a panel — left the old shape (the Done button's hand) until the mouse was
