@@ -59,11 +59,23 @@ var unseen: Dictionary = {}
 ## Bricks the pointer passes through because the eye does: x-ray's ghosts
 ## (SeeInside). Kept apart from unseen, which everything else reads as
 ## hidden by hand.
-var see_through: Dictionary = {}
+## Set whole, as SeeInside does, so the revision moves with it.
+var see_through: Dictionary = {}:
+	set(value):
+		see_through = value
+		revision += 1
 ## The cut-away (SeeInside): a ray passes through every cell on the side of
 ## this plane its normal points to, as the eye does. Off while the normal is
 ## zero.
-var cut: Plane = Plane()
+var cut: Plane = Plane():
+	set(value):
+		cut = value
+		revision += 1
+## Goes up with every brick put in or taken out, and when x-ray or the cut
+## changes what a ray passes through, so an answer kept from before can
+## tell it still holds (EditVerbs.brick_at). Hiding by hand clears that
+## answer itself (EditVerbs.apply_hidden).
+var revision: int = 0
 
 
 static func _bound_of(packed: PackedInt32Array) -> PackedInt32Array:
@@ -707,6 +719,7 @@ var keeps_columns: bool = true
 
 ## Put a brick in, as boxes.
 func occupy_boxes(brick_id: int, packed: PackedInt32Array) -> void:
+	revision += 1
 	_boxes[brick_id] = packed
 	_bounds[brick_id] = _bound_of(packed)
 	var seen: Dictionary = {}
@@ -827,6 +840,7 @@ func occupy(brick_id: int, cells: Array[Vector3i]) -> void:
 
 
 func release(brick_id: int) -> void:
+	revision += 1
 	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
 	if packed.is_empty():
 		_boxes.erase(brick_id)
@@ -901,6 +915,7 @@ func occupied_cells() -> int:
 
 
 func clear() -> void:
+	revision += 1
 	_boxes.clear()
 	_bucket.clear()
 	_column_bucket.clear()

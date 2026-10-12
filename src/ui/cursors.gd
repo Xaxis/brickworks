@@ -72,10 +72,6 @@ const HOTSPOTS := {
 ## under the pointer by itself.
 const SLOTS: Array[int] = [Input.CURSOR_HELP, Input.CURSOR_WAIT, Input.CURSOR_DRAG]
 
-## States that belong to a drag in progress. They keep the pointer for
-## the whole drag, panels included: see [member _shield].
-const GESTURES := ["grabbing", "box"]
-
 ## What a click on a part does with each tool, as a pointer.
 const TOOLS := {"paint": "paint", "delete": "delete", "hide": "hide", "clone": "copy",
 	"rotate": "rotate", "hinge": "hinge", "move": "move"}
@@ -125,6 +121,12 @@ class Situation extends RefCounted:
 	## The pointer for what a left drag that starts on nothing does, by
 	## the navigation preset and Shift (ViewPrefs.drag_verb).
 	var left_drag: String = "orbit"
+
+	## A drag is going on: a button holds the view or a part, or draws a
+	## box. Only then does the pointer keep its shape over the panels
+	## (see [member Cursors._shield]).
+	func dragging() -> bool:
+		return holding_view or holding_part or boxing
 
 
 ## The one state the pointer should be in.
@@ -271,16 +273,29 @@ func shielding() -> bool:
 	return _shield.mouse_filter != Control.MOUSE_FILTER_IGNORE
 
 
-## Put the pointer in a state.
-func show_state(state: String) -> void:
+## The pointer for what is true now: its state, and the sheet over the
+## panels while a drag goes on.
+func show_for(now: Situation) -> void:
+	show_state(choose(now), now.dragging())
+
+
+## Put the pointer in a state, and over the panels as well while
+## [param dragging].
+##
+## Only while a drag is held, never for what a state is called. A view
+## tool's turn, or Ctrl's box with no button down, put the sheet over
+## every panel for as long as the tool was on or the key held, and every
+## click on a button turned the view instead (2026-10-12).
+func show_state(state: String, dragging: bool = false) -> void:
 	if not SYSTEM.has(state) and not _pictures.has(state):
 		state = "arrow"
-	if state == _shown:
+	var shield: bool = dragging and not TouchTools.wanted()
+	if state == _shown and shield == shielding():
 		return
-	var shape: int = _hang(state)
+	var shape: int = _hang(state) if state != _shown else _shown_shape
 	_shown = state
 	_shown_shape = shape
-	if state in GESTURES and not TouchTools.wanted():
+	if shield:
 		# Up first and then shaped, so the shape takes at once: setting
 		# a control's shape redraws the pointer only if the control is
 		# there to be found under it.

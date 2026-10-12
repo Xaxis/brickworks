@@ -588,6 +588,7 @@ func _ready() -> void:
 		return
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
+	IdleDraw.for_the_app()
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -881,8 +882,10 @@ func _given_any(flags: Array[String]) -> bool:
 func _benchmark(frames: int) -> void:
 	# Without this the number is the monitor's refresh rate, not the
 	# renderer's: a 120 Hz panel reports 120 fps however little work it is.
+	# And every frame drawn, or it measures frames that drew nothing.
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	IdleDraw.end()
 
 	# Discard the first second: shader compilation, the shadow atlas and
 	# the camera easing all land in it and none of them recur.
@@ -2622,12 +2625,10 @@ func _steer_from_keys(delta: float) -> void:
 ## took over SLOW_FRAME_MS, as [when in ticks, ms of work, ms waiting for a
 ## picture to be read back, what the app was doing: the tool Claude called
 ## and the assistant's last step], the latest SLOW_FRAMES of them. Kept on the web
-## only, where the page reads them. Timed from the tree's process_frame,
-## which begins a frame's work, to the renderer's frame_pre_draw, which ends
-## it; the wait for a picture (ModelShot.gpu_wait_us) is the graphics card's
-## time, not this app's, and is said apart.
+## only, where the page reads them. Timed by OwnFrames, drawn or not; the
+## wait for a picture (ModelShot.gpu_wait_us) is the graphics card's time,
+## not this app's, and is said apart.
 var _slow_frames: Array = []
-var _frame_began: int = 0
 var _doing: String = ""
 const SLOW_FRAME_MS := 50.0
 const SLOW_FRAMES := 200
@@ -2641,15 +2642,12 @@ func _watch_own_frames() -> void:
 	if _connector != null and _connector.rpc != null:
 		_connector.rpc.asked.connect(func(tool: String) -> void:
 			_doing = tool)
-	get_tree().process_frame.connect(func() -> void:
-		_frame_began = Time.get_ticks_usec())
-	RenderingServer.frame_pre_draw.connect(func() -> void:
-		if _frame_began == 0:
-			return
-		var spent: float = (Time.get_ticks_usec() - _frame_began) / 1000.0
+	var frames := OwnFrames.new()
+	add_child(frames)
+	frames.timed.connect(func(spent_us: int) -> void:
+		var spent: float = spent_us / 1000.0
 		var waited: float = ModelShot.gpu_wait_us / 1000.0
 		ModelShot.gpu_wait_us = 0
-		_frame_began = 0
 		if spent > SLOW_FRAME_MS:
 			_slow_frames.append([Time.get_ticks_msec(),
 				roundi(maxf(spent - waited, 0.0)), roundi(waited), _doing])
@@ -2676,6 +2674,8 @@ func _watch_view() -> void:
 	_out_of_view = away
 	get_viewport().disable_3d = away
 	FramePace.unwatched = away
+	if _verbs != null:
+		_verbs.out_of_view = away
 	if away and _playback != null and _playback.is_playing():
 		_playback.stop()
 
@@ -2691,7 +2691,7 @@ func _process(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
 	if _cursors != null:
-		_cursors.show_state(_cursor_state())
+		_cursors.show_for(_cursor_state())
 	# A box whose ending went somewhere else.
 	#
 	# Letting go over a button hands the release to that button, which
@@ -3415,7 +3415,7 @@ func _hover_again() -> void:
 
 ## What the pointer should say over the model, from what is true this
 ## frame. Cursors.choose decides; this only gathers.
-func _cursor_state() -> String:
+func _cursor_state() -> Cursors.Situation:
 	var now := Cursors.Situation.new()
 	now.holding_view = _camera.is_dragging()
 	now.holding_part = _dragging_part
@@ -3455,7 +3455,7 @@ func _cursor_state() -> String:
 	now.loading = _library.is_on_its_way(_builder.held_part)
 	if not now.in_hand:
 		now.over_part = _brick_under_pointer() != 0
-	return Cursors.choose(now)
+	return now
 
 
 ## Escape, before the interface sees it.

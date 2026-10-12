@@ -242,6 +242,14 @@
       "tests": []
     },
     {
+      "id": "cli:idle check",
+      "kind": "cli",
+      "entry": "tools/web/idle_check.mjs",
+      "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -811,6 +819,14 @@
       "entry": "web/download.html",
       "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "ui:drawing only what changed",
+      "kind": "ui",
+      "entry": "src/render/idle_draw.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
+      "area": "view",
       "tests": []
     },
     {

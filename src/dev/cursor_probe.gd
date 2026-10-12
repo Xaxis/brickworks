@@ -60,6 +60,16 @@ func _run() -> void:
 	Engine.max_fps = 0
 	_out = ProjectSettings.globalize_path("res://shots/cursors")
 	DirAccess.make_dir_recursive_absolute(_out)
+	# Headless, every shape read back is the arrow, and that was 107
+	# failures that looked like a broken merge (2026-10-12). One says why.
+	if DisplayServer.get_name() == "headless":
+		print("  a headless display server has no cursor: it answers \"arrow\" to")
+		print("  everything. Run this in a window, on Xvfb as tools/check.sh does:")
+		print("    xvfb-run -a --server-args=\"-screen 0 1400x900x24\" \\")
+		print("      godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd")
+		_check("there is a window to read the pointer back from", false)
+		_finish()
+		return
 	if not _virtual:
 		print("  not on Xvfb, so the system pointer is left where it is;")
 		print("  the checks that replay a motion where it stands will fail")
@@ -122,6 +132,9 @@ func _run() -> void:
 	print("")
 	print("  the tools, the keys held, and what is under the pointer")
 	await _tools_and_contexts()
+	print("")
+	print("  buttons pressed with the view tools on and the keys held")
+	await _buttons_while_the_view_is_lent()
 	print("")
 	print("  the controls list")
 	await _the_list()
@@ -450,9 +463,9 @@ func _wheel_over_the_interface() -> void:
 	list.scroll_vertical = 0
 	var colours: ScrollContainer = bin.get("_palette_scroll")
 	await _unmoved_by_scrolling("the colours", _centre(colours))
-	# A window under 1600 units across shows one column beside the model at
-	# a time, the parts bin first: the assistant's is opened for this, and
-	# the bin's again after.
+	# A window with room for one column beside the model shows one at a
+	# time, the assistant's on a first visit: each is opened for its own
+	# checks, the assistant's here and the bin's again after.
 	var chat_dock: SideDock = _main.get("_chat_dock")
 	var bin_dock: SideDock = _main.get("_bin_dock")
 	if not chat_dock.is_open():
@@ -776,6 +789,14 @@ func _tools_and_contexts() -> void:
 	await _expect("Space held: a drag slides the view", "hand")
 	await _left_drag_held("...dragging", "grabbing")
 	await _expect("...and let go of the button", "hand")
+	# The slide moved the model under the pointer, by however far the
+	# pointer the probe warps and the events it sends added up to: on a
+	# loaded machine the middle was left on a part's edge, and missed it.
+	# Back over a part, wherever the slide left them, Space still held.
+	for _n: int in 40:
+		_camera._apply(0.5)
+		await process_frame
+	await _move_to(_part_point())
 	await _key_down(KEY_SPACE, false)
 	await _expect("...and of Space", "select")
 	await _key_down(KEY_ALT, true)
@@ -864,6 +885,67 @@ func _left_drag_held(what: String, state: String) -> void:
 	await _move_to(_middle)
 
 
+## A view tool on, or a key held that lends the left button to the view,
+## and a click on the toolbar or a panel still presses what it is on.
+##
+## The sheet that keeps a drag's pointer over the panels went up for a
+## state's name, not for a drag: with Orbit on it covered the window for
+## as long as the tool was, and every click on a button turned the view
+## instead (brickworks.diy, 2026-10-12). Held Ctrl did the same in Select.
+func _buttons_while_the_view_is_lent() -> void:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var shell: Shell = _main.get("_shell")
+	var bin: PartsBin = _main.get("_bin")
+	var paint: Control = shell.toolbar.controls_by_name().get("tool_mode_paint")
+	var part: Control = bin.controls_by_name().get("first part")
+	_check("there is Paint on the toolbar and a part in the bin to press",
+		paint != null and part != null)
+	if paint == null or part == null:
+		return
+	var nothing: Vector2 = _nothing_point()
+	for tool: String in ["orbit", "pan", "zoom"]:
+		verbs.set_mode("select")
+		verbs.view_tool(tool)
+		await _move_to(nothing)
+		await _frames(3)
+		_check("%s on, no button down: nothing over the panels (%s)"
+			% [tool.capitalize(), _cursors.shown()], not _cursors.shielding())
+		await _click(_centre(paint))
+		_check("...and a click on Paint on the toolbar presses it (%s)" % verbs.mode,
+			verbs.mode == "paint")
+		verbs.view_tool(tool)
+		await _move_to(nothing)
+		await _frames(3)
+		await _click(_centre(part))
+		_check("...and a click on a part in the parts bin takes it (%s)" % verbs.mode,
+			verbs.mode == "place")
+		await _key_tap(KEY_ESCAPE)
+	verbs.set_mode("select")
+	for held: Array in [[KEY_CTRL, "Ctrl"], [KEY_SPACE, "Space"], [KEY_ALT, "Alt"]]:
+		verbs.set_mode("select")
+		await _move_to(nothing)
+		_ctrl = held[0] == KEY_CTRL
+		await _key_down(held[0], true)
+		await _frames(3)
+		_check("%s held over nothing: nothing over the panels (%s)"
+			% [held[1], _cursors.shown()], not _cursors.shielding())
+		await _click(_centre(paint))
+		_check("...and a click on Paint presses it (%s)" % verbs.mode, verbs.mode == "paint")
+		await _key_down(held[0], false)
+		_ctrl = false
+	verbs.set_mode("select")
+	await _frames(3)
+
+
+## Down and up where it is, as a click.
+func _click(at: Vector2) -> void:
+	await _move_to(at)
+	_press(MOUSE_BUTTON_LEFT, at, true)
+	await _frames(2)
+	_press(MOUSE_BUTTON_LEFT, at, false)
+	await _frames(4)
+
+
 ## A point over the model's part of the window with no part under it.
 func _nothing_point() -> Vector2:
 	var verbs: EditVerbs = _main.get("_verbs")
@@ -876,6 +958,21 @@ func _nothing_point() -> Vector2:
 			return at
 	_check("there is somewhere over the model with no part under it", false)
 	return _middle + Vector2(0, 220)
+
+
+## The point nearest the middle with a part under it, off the panels.
+func _part_point() -> Vector2:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var size: Vector2 = root.get_visible_rect().size
+	for ring: int in range(0, 12):
+		for step: int in range(maxi(ring * 8, 1)):
+			var turn: float = TAU * step / maxf(ring * 8, 1)
+			var at: Vector2 = _middle + Vector2(cos(turn), sin(turn)) * ring * 20.0
+			if Rect2(Vector2.ZERO, size).has_point(at) and verbs.brick_at(at) != 0 \
+					and not _main._over_panel_at(at):
+				return at
+	_check("there is somewhere over the model with a part under it", false)
+	return _middle
 
 
 ## A point where the part in hand has nowhere to go, walking up from the

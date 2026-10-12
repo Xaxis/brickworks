@@ -575,7 +575,7 @@ func _create_batch(
 		material = PartPrints.material_for(material, part.prints[surface_index], two_sided)
 	batch.instance.material_override = material
 	add_child(batch.instance)
-	batch.triangles = _triangles_of(batch.multimesh.mesh)
+	batch.triangles = _triangles_of(part.surfaces[surface_index])
 	return batch
 
 
@@ -764,25 +764,19 @@ func _surface_colour(batch: Batch, surface_index: int) -> int:
 	return part.surface_colors[surface_index] if part != null else Lbm.COLOR_INHERIT
 
 
-## Triangles in a mesh, by its instance, worked out once.
+## Triangles in a part's surface, from the index count the mesh keeps.
 ##
-## Asking the mesh reads its arrays back off the graphics card: on the web
-## that is a synchronous getBufferSubData, which waits for the GPU to finish
-## everything queued. It was asked of every batch on every rebuild, and a
-## rebuild comes once a frame while a model is changing.
-static var _triangles_by_mesh: Dictionary = {}
-
-
-static func _triangles_of(mesh: Mesh) -> int:
+## Not from its arrays: those are read back off the graphics card, on the
+## web a synchronous getBufferSubData that waits for the card to finish
+## everything queued. Drawn in software that is the frame before, and it
+## came once for every new batch: a design of twenty shapes going down
+## held the page 650 to 1,750 ms a frame, frame after frame, while Claude's
+## check_design ran (tools/web/freeze_check.mjs, 2026-10-11). Cached per
+## mesh it still cost that the first time each part was put down.
+static func _triangles_of(mesh: ArrayMesh) -> int:
 	if mesh == null or mesh.get_surface_count() == 0:
 		return 0
-	var known: Variant = _triangles_by_mesh.get(mesh.get_instance_id())
-	if known != null:
-		return int(known)
-	var arrays: Array = mesh.surface_get_arrays(0)
-	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	_triangles_by_mesh[mesh.get_instance_id()] = indices.size() / 3
-	return indices.size() / 3
+	return mesh.surface_get_array_index_len(0) / 3
 
 
 # -- the build animation ---------------------------------------------------
