@@ -477,7 +477,10 @@ async function read(request, response) {
     response.setHeader("Content-Type", "image/png");
     // A link preview on any site may show it.
     response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-    response.setHeader("Cache-Control", "public, max-age=60");
+    // Asked again every time, like the pages. It was public for a minute,
+    // and Vercel's CDN went on serving the picture of a model already taken
+    // down or republished without one (share_probe on a preview, 2026-10-12).
+    response.setHeader("Cache-Control", "no-cache");
     return response.status(200).end(picture);
   }
 

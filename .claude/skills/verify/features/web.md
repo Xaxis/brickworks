@@ -145,7 +145,9 @@ plan with Claude as the client.
   the picture and the way in, and `web/share-page.js` sends a person straight
   on to `/app?view=<id>`; its own CSP, not frameable. `/m/<id>.png`
   (`op=image`): the picture the app rendered, `Cross-Origin-Resource-Policy:
-  cross-origin`. `/m/<id>/embed` (`op=embed`): a card for an iframe
+  cross-origin`. Every answer here is `no-cache` or `no-store`: the picture was
+  `public, max-age=60` until the probe on a preview found Vercel's CDN still
+  serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) that opens the link in a tab — the threaded engine
   cannot run in somebody else's page, which cannot be cross-origin isolated.
   **Who can do what:** a visitor's read goes through the publishable key, so
@@ -165,8 +167,8 @@ plan with Claude as the client.
   opens the link in a tab.
 - `shared model viewer` (`src/ui/share_view.gd`, `main._enter_view`,
   `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>`, which
-  `deploy.sh` 308s to `/b/<sha>/?view=<id>` keeping the query (a `has` route;
-  `?copy=` likewise), and which the shell hands the app as `--view=<id>`
+  `deploy.sh` 308s to `/b/<sha>/?view=<id>` (Vercel keeps a query across that
+  redirect by itself; `?copy=` likewise), and which the shell hands the app as `--view=<id>`
   (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
   read-only, no second renderer: one GET of `/api/share?id=`, the model opened
   through `ModelStore.open_text` (made parts and prints built from the file),

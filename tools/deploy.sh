@@ -94,10 +94,11 @@ printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:
 # /api/oauth is how Claude signs in to it (the same keys); the paths OAuth
 # clients look for are mapped onto it in the routes below. /api/share is a
 # model shared by link (the same keys, and the publishable one for a
-# visitor's read): /m/<id>, its picture and its card are mapped onto it, and
-# /app?view=<id> (the viewer) and ?copy=<id> keep their query on the way to
-# the build. Its pages send their own security policy; the app's below does
-# not change, since the viewer talks only to its own site.
+# visitor's read): /m/<id>, its picture and its card are mapped onto it. The
+# viewer is /app?view=<id>: Vercel carries a query across the /app 308 by
+# itself (measured 2026-10-12, /app?foo=x to /b/<sha>/?foo=x), so it needs no
+# route of its own. Its pages send their own security policy; the app's below
+# does not change, since the viewer talks only to its own site.
 for handler in api/*.js; do
   [ -f "$handler" ] || continue
   route=$(basename "$handler" .js)
@@ -221,10 +222,6 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
-    { "src": "/app/?", "has": [{ "type": "query", "key": "view", "value": "(?<view>[A-Za-z0-9]{10})" }],
-      "status": 308, "headers": { "Location": "/b/$sha/?view=\$view" } },
-    { "src": "/app/?", "has": [{ "type": "query", "key": "copy", "value": "(?<copy>[A-Za-z0-9]{10})" }],
-      "status": 308, "headers": { "Location": "/b/$sha/?copy=\$copy" } },
     { "src": "/app/?", "status": 308, "headers": { "Location": "/b/$sha/" } },
     { "src": "/(.*)",
       "headers": {

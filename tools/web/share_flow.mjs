@@ -368,6 +368,11 @@ try {
   }, "unpublishing", 120);
   check(`unpublished: ${down.status}`, down.state === "unpublished");
   await shot(ownerPage, "10a_unpublished_panel.png");
+  // Every other page drawn in software was still running: at a load of 66
+  // a fresh viewer did not boot in five minutes beside them, and alone it
+  // takes about fifteen seconds.
+  await visitorContext.close();
+  await ownerContext.close();
   const late = await context();
   const lateComer = await late.newPage();
   listen(lateComer, "late");
