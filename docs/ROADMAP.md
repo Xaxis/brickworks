@@ -1054,6 +1054,23 @@ faces read as one black mass (12 grille bricks against 10237's 86). Not for
 the homepage. Pictures: `shots/runs/orthanc_rk{1,2}_{corner,front,back}.png`
 in this worktree; the homepage's are `web/orthanc-{corner,back}.webp`.
 
+**Horns as blades.** 10237's horns, in LEGO's own photographs, are blades of
+plates on their side: wedge plates cut their edges, tiles face them, Technic
+beams edge one, a cone tips each; seen along its plane one is a narrow edge,
+across it a curved fin. Every generated horn before was a square spire
+stepping in to a cone and a bar. A pier's horns are now `"horns": "blade"` by
+default (`"spire"` and `"flat"` on asking): over each pier's summit a blade in
+a section of its own, two layers of plates on their side and tiles, its foot
+pressed onto bricks with side studs, sweeping out by half its width and back in
+to a point, each edge a stud at a time with a wedge plate at every step. It is
+a technique, not a subject: any crown of spikes, a throne's back, a gate's
+fangs. Three faults found by looking: wedges matched by their studs stood the
+wrong way out of the edge like a saw's teeth (their cut is now read off their
+body); a wedge on its side placed by its collision cover stood two LDU off its
+neighbour, a slit of sky up every blade (seated by its body now); and a blade
+that stopped at its height was flat-topped and read as a slab (its edges now
+close to a point). Every storey also laid its own door; only the lowest does.
+
 **What is left, by what it would move:**
 
 1. **A shaped body for vehicles, in one call** — the car's and the hull's
@@ -1069,11 +1086,10 @@ in this worktree; the homepage's are `web/orthanc-{corner,back}.webp`.
    parts for bricks.
 5. A round's Technic course in the body's own round section, not a square one;
    and a 6-wide round tied without rows of notches.
-6. **Orthanc's crown and base as calls**: horns as blades that flare out from
-   the summit, claws round the upper storeys, and a composed plinth (ribbed,
-   flaring buttresses, steps to the door) instead of rock piles — the faults
-   are named in every check, but nothing yet lays them, and words have not
-   moved a design once.
+6. **Orthanc's crown and base as calls**: claws round the upper storeys, and a
+   base of ribbed, flaring buttresses (10237's 36 curved 10 x 1 slopes on their
+   side) — horns as blades and a plinth with steps to the door are calls now,
+   but nothing yet lays the claws or the ribs.
 7. Two prism faults found on the way, neither from storeys: a twelve-sided
    prism of radius 8 overlaps itself (14 problems, 36 pieces), and
    an octagonal core of radius 7 with piers of 4.5 (the least radius) overlaps

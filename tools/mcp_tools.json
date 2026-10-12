@@ -312,15 +312,28 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, and rising from the cap in steps to a point at its outer edge.",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns: blades of plates on their side, cut by wedge plates, sweeping out and back in to a point (the reply says where the tips are).",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
                     "type": "integer"
                   },
                   "courses": {
-                    "description": "how tall, in courses of three plates; more than the core's for horns (a fifth more)",
+                    "description": "how tall, in courses of three plates; more than the core's for horns (a fifth more; a blade rises at least two and a half times its width)",
                     "type": "number"
+                  },
+                  "flare": {
+                    "description": "blade: studs its sweep reaches out (half its width)",
+                    "type": "number"
+                  },
+                  "horns": {
+                    "description": "what piers taller than the core rise into: a blade (the default, as LEGO's 10237 builds Orthanc's), a square spire stepping in to a point, or flat, a turret's cap",
+                    "enum": [
+                      "blade",
+                      "spire",
+                      "flat"
+                    ],
+                    "type": "string"
                   },
                   "out": {
                     "description": "studs from the core's middle to each pier's (set into the core by its wall's thickness)",
@@ -1474,15 +1487,28 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns, each capped square, two plates at y + 3 x their courses + 2, and rising from the cap in steps to a point at its outer edge.",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns: blades of plates on their side, cut by wedge plates, sweeping out and back in to a point (the reply says where the tips are).",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
                     "type": "integer"
                   },
                   "courses": {
-                    "description": "how tall, in courses of three plates; more than the core's for horns (a fifth more)",
+                    "description": "how tall, in courses of three plates; more than the core's for horns (a fifth more; a blade rises at least two and a half times its width)",
                     "type": "number"
+                  },
+                  "flare": {
+                    "description": "blade: studs its sweep reaches out (half its width)",
+                    "type": "number"
+                  },
+                  "horns": {
+                    "description": "what piers taller than the core rise into: a blade (the default, as LEGO's 10237 builds Orthanc's), a square spire stepping in to a point, or flat, a turret's cap",
+                    "enum": [
+                      "blade",
+                      "spire",
+                      "flat"
+                    ],
+                    "type": "string"
                   },
                   "out": {
                     "description": "studs from the core's middle to each pier's (set into the core by its wall's thickness)",
