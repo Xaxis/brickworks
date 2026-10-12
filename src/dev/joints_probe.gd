@@ -198,6 +198,23 @@ func _initialize() -> void:
 1 47 34 -68 5 1 0 0 0 1 0 0 0 1 3854.dat
 """)
 
+	print("\nturned about the upright and read from a file, in a section of its own")
+	# A file keeps where a part is, not the section it was laid in, so a part
+	# turned off the square comes back in a section found for it
+	# (Assistant._adopted). The joints hold there as anywhere, for a reader
+	# that keeps the section.
+	await _passes("the frame and its pane turned 30 degrees together",
+		_turned_text(30.0, [["6556", 15, Vector3(0, -72, 0), Basis.IDENTITY],
+			["3854", 47, Vector3(34, -68, 5), Basis(Vector3(0, 0, 1), Vector3(0, 1, 0),
+				Vector3(-1, 0, 0)).transposed()]]), true)
+	await _refused("...and the pane not turned into its groove",
+		_turned_text(30.0, [["6556", 15, Vector3(0, -72, 0), Basis.IDENTITY],
+			["3854", 47, Vector3(34, -68, 5), Basis.IDENTITY]]), true)
+	await _passes("a turntable's top turned 30 degrees on its base, a brick on it",
+		"1 7 0 -8 0 1 0 0 0 1 0 0 0 1 3680.dat\n" + _turned_text(30.0, [
+			["3679", 4, Vector3(0, -8, 0), Basis.IDENTITY],
+			["3003", 1, Vector3(0, -32, 0), Basis.IDENTITY]]), true)
+
 	print("")
 	if _failures == 0:
 		print("the joints real sets use pass, and the same parts apart do not")
@@ -264,7 +281,9 @@ func _has(library: PartLibrary, part_id: String, kind: String, radius: float) ->
 
 ## LDraw lines, opened as a model and read back as the placements a design
 ## would write, then checked as a design on an empty baseplate.
-func _design(ldraw: String) -> Assistant.Model:
+## The parts read back as new placements. [param sections]: with the sections
+## a file's turned parts were read into; without, as a square design is.
+func _design(ldraw: String, sections: bool = false) -> Assistant.Model:
 	var file := FileAccess.open(PATH, FileAccess.WRITE)
 	file.store_string("0 joints probe\n" + ldraw.strip_edges() + "\n")
 	file.close()
@@ -275,22 +294,44 @@ func _design(ldraw: String) -> Assistant.Model:
 	var read: Assistant.Model = _assistant._model_from_world()
 	_clear()
 	var fresh := Assistant.Model.new()
+	if sections:
+		fresh.sections = read.sections.duplicate()
 	for put: Assistant.Placement in read.placements:
 		fresh.placements.append(Assistant.Placement.from_dict({"part": put.part,
 			"color": put.color, "x": put.x, "y": put.y, "z": put.z,
-			"face": put.face, "rot": put.rot}))
+			"face": put.face, "rot": put.rot,
+			"section": put.section if sections else ""}))
 	return fresh
 
 
-func _passes(said: String, ldraw: String) -> void:
-	var model: Assistant.Model = await _design(ldraw)
+## LDraw lines for parts, each [part, colour, position, basis] in LDU, all
+## turned [param degrees] about the upright through the origin.
+static func _turned_text(degrees: float, parts: Array) -> String:
+	# LDraw's y points down, so a turn about it is the same matrix.
+	var turn := Basis(Vector3.UP, deg_to_rad(degrees))
+	var lines := PackedStringArray()
+	for one: Array in parts:
+		var at: Vector3 = turn * (one[2] as Vector3)
+		var basis: Basis = turn * (one[3] as Basis)
+		# LDraw's matrix is by rows: a b c / d e f / g h i.
+		var rows: Array = []
+		for r: int in 3:
+			for c: int in 3:
+				rows.append("%.6f" % basis[c][r])
+		lines.append("1 %d %.4f %.4f %.4f %s %s.dat" % [int(one[1]), at.x, at.y, at.z,
+			" ".join(PackedStringArray(rows)), str(one[0])])
+	return "\n".join(lines)
+
+
+func _passes(said: String, ldraw: String, sections: bool = false) -> void:
+	var model: Assistant.Model = await _design(ldraw, sections)
 	var verdict: Dictionary = _assistant._check(model, true)
 	_ok(bool(verdict["ok"]) and model.placements.size() >= 2,
 		"%s (%s)" % [said, verdict["summary"]])
 
 
-func _refused(said: String, ldraw: String) -> void:
-	var model: Assistant.Model = await _design(ldraw)
+func _refused(said: String, ldraw: String, sections: bool = false) -> void:
+	var model: Assistant.Model = await _design(ldraw, sections)
 	var verdict: Dictionary = _assistant._check(model, true)
 	_ok(not bool(verdict["ok"]) and str(verdict["summary"]).contains("overlap"),
 		"%s: refused (%s)" % [said, verdict["summary"]])

@@ -702,10 +702,12 @@ fixing what it got wrong.
   `_laying_whole`), and the same tiles in two columns are laid; the guidance's
   tower written to a file and opened again reads its turned faces in sections,
   holds in one piece and is told of no speckle or sky; and the landing page's
-  Orthanc, read from its file, has 99 of 1,078 marks scattered, dressed again
-  58% to 46% plain black with fewer scattered, one piece, and its weak joint
-  underpinned stands up. On the code before (`HEAD` of the merged integrator
-  branch) 18 of its checks fail, among them the opened Orthanc at 232 pieces.
+  Orthanc, read from its file, is not speckle, and dressed again is no
+  plainer, no more scattered, in no more pieces, and stands up (underpinned
+  where it would not). With run 4 on the page that was 99 of 1,078 marks
+  scattered, 58% to 46% plain black and its weak joint underpinned; run 5,
+  dressed by its own run, is left as it is. On the code before this, 18 of its
+  checks failed, among them run 4 opened at 232 pieces.
   `src/dev/redress.gd -- IN.ldr OUT.ldr ['{...}']` does the same to any saved
   model (or a design's JSON), says before and after, underpins (below) and
   writes the result.
@@ -714,11 +716,18 @@ fixing what it got wrong.
   laid in; read back at the nearest square turn and cell, a prism's faces were
   checked and dressed where they are not. Bricks turned the same way about the
   upright whose origins share one 2 LDU lattice are one section ("turned 45"),
-  and square bricks off the world's lattice one too ("offset"), its origin the
-  lattice point nearest the middle of what stands; minifigure parts are left
-  (they nest and stand on no grid). Kept in `_adoptions` until the world is
-  cleared. The landing page's Orthanc opened: no sky through slits it was told
-  of before, one piece where the old reading made 232.
+  its origin the lattice point nearest the middle of what stands. A square
+  brick stays in the main body, read at the cell it rounds to, at most an LDU
+  off: given a section of its own when it sat off the lattice, a pane seated
+  half a stud into its frame came back in that section's coordinates and
+  `joints_probe`, which copies placements without their sections, stood it
+  across the frame. Minifigure parts are left (they nest and stand on no
+  grid). Kept in `_adoptions` until the world is cleared. The joint rules hold
+  inside such a section: `joints_probe` reads a frame and its pane turned 30
+  degrees, and a turntable's top turned 30 on its base, from a file with their
+  sections kept, and passes them (and refuses the pane not turned into its
+  groove). The landing page's Orthanc opened: no sky through slits it was
+  told of before, one piece where the old reading made 232.
 - `standing up, for the landing page`: `src/dev/candidate_probe.gd -- MODEL.ldr
   [ON_THE_PAGE.ldr]`. A candidate opens whole, is buildable in one piece,
   stands up as the status bar reckons it (`Stability`), and the check says none
