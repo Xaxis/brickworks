@@ -84,6 +84,7 @@ static func gather(world: BrickWorld, from: PartLibrary,
 			"color": brick.color_code,
 			"at": Transform3D(brick.transform.basis, brick.transform.origin - pivot),
 			"group": brick.group,
+			"unit": brick.unit,
 			"pivot": pivot,
 		})
 	return out

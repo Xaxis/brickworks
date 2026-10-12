@@ -15,6 +15,7 @@ const DEFAULTS: Dictionary = {
 	"parts_open": true,
 	"assistant_open": true,
 	"inspector_open": true,
+	"outliner_open": true,
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",

@@ -261,58 +261,154 @@ func swing(degrees: float) -> int:
 	return count
 
 
-## Asking what a new sub-model is called.
+## Asking what a new sub-assembly is called.
 var _naming: ConfirmationDialog
 var _name_field: LineEdit
+## The model's sub-assemblies (Assemblies): what a click takes, which one
+## is being edited, and the copies that follow.
+var assemblies: Assemblies
+## What the naming dialog is for: "make" or "rename".
+var _naming_for: String = "make"
 
 
-## Make the selection a sub-model, asking for its name first.
+## Make the selection a sub-assembly, asking for its name first.
 func make_submodel() -> void:
 	if builder.selection.is_empty():
-		say.call("select the parts that make up the sub-model first")
+		say.call("select the parts that make up the sub-assembly first")
 		return
+	_ask_name("make", "Make a sub-assembly", "Make it",
+		"What is it called? It moves as one, saves as a sub-model of its own,\n"
+		+ "and the instructions build it on its own. Copies of it follow it.",
+		assemblies.unused_name("Sub-assembly") if assemblies != null
+			else builder.unused_group("Sub-model"))
+
+
+## Call the selected sub-assembly something else, in every copy of it.
+func rename_assembly() -> void:
+	var path: String = assemblies.selected_assembly() if assemblies != null else ""
+	if path.is_empty():
+		say.call("select a sub-assembly first")
+		return
+	_ask_name("rename", "Rename the sub-assembly", "Rename",
+		"What is it called? Every copy of it is renamed.",
+		Assemblies.definition(Assemblies.leaf(path)))
+
+
+func _ask_name(purpose: String, title: String, button: String, words_said: String,
+		offered: String) -> void:
 	if _naming == null:
 		_naming = ConfirmationDialog.new()
-		_naming.title = "Make a sub-model"
-		_naming.ok_button_text = "Make it"
 		var column := VBoxContainer.new()
 		var words := Label.new()
-		words.text = "What is it called? It saves as a sub-model of its own,\n" \
-			+ "and the instructions build it on its own."
+		words.name = "Words"
 		column.add_child(words)
 		_name_field = LineEdit.new()
 		_name_field.custom_minimum_size = Vector2(300, 0)
 		_name_field.text_submitted.connect(func(_text: String) -> void:
 			_naming.hide()
-			name_submodel(_name_field.text))
+			_named(_name_field.text))
 		column.add_child(_name_field)
 		_naming.add_child(column)
-		_naming.confirmed.connect(func() -> void: name_submodel(_name_field.text))
+		_naming.confirmed.connect(func() -> void: _named(_name_field.text))
 		add_child(_naming)
-	_name_field.text = builder.unused_group("Sub-model")
+	_naming_for = purpose
+	_naming.title = title
+	_naming.ok_button_text = button
+	(_naming.find_child("Words", true, false) as Label).text = words_said
+	_name_field.text = offered
 	_naming.popup_centered()
 	_name_field.grab_focus()
 	_name_field.select_all()
 
 
+func _named(text: String) -> void:
+	if _naming_for == "rename":
+		var path: String = assemblies.selected_assembly()
+		if path.is_empty():
+			return
+		var name: String = assemblies.rename(path, text)
+		edited.call()
+		say.call("called it %s, in every copy" % name)
+		return
+	name_submodel(text)
+
+
 func name_submodel(name: String) -> int:
 	var called: String = name.strip_edges()
-	if called.is_empty():
-		called = builder.unused_group("Sub-model")
-	var count: int = builder.name_group(called)
-	if count > 0:
-		edited.call()
-		say.call("“%s” is a sub-model of %s — Same sub-model, under Select, takes it all" % [
-			called, _parts(count)])
-	return count
+	if assemblies == null:
+		if called.is_empty():
+			called = builder.unused_group("Sub-model")
+		var count: int = builder.name_group(called)
+		if count > 0:
+			edited.call()
+		return count
+	var path: String = assemblies.make(called if not called.is_empty() else "Sub-assembly")
+	if path.is_empty():
+		return 0
+	var made: int = assemblies.ids_under(path).size()
+	edited.call()
+	say.call("“%s” is a sub-assembly of %s — a click takes it whole, a double-click edits inside it"
+		% [Assemblies.label(path), _parts(made)])
+	return made
 
 
+## Take the selected sub-assembly apart one level, or take the selected
+## parts out of the one they are in.
 func leave_submodel() -> int:
-	var count: int = builder.name_group("")
-	if count > 0:
+	if assemblies != null:
+		var path: String = assemblies.selected_assembly()
+		if not path.is_empty():
+			var count: int = assemblies.ungroup(path)
+			if count > 0:
+				edited.call()
+				say.call("took %s apart" % Assemblies.label(path))
+			return count
+		var changes: Dictionary = {}
+		for brick_id: int in builder.selection:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null:
+				changes[brick_id] = Assemblies.parent_of(Assemblies.path_of(brick))
+		var moved: int = builder.regroup(changes, "took %s out of its sub-assembly"
+			% _parts(changes.size()))
+		if moved > 0:
+			edited.call()
+			say.call("took %s out of its sub-assembly" % _parts(moved))
+		return moved
+	var gone: int = builder.name_group("")
+	if gone > 0:
 		edited.call()
-		say.call("took %s out of its sub-model" % _parts(count))
-	return count
+	return gone
+
+
+## Edit inside the selected sub-assembly.
+func enter_assembly() -> void:
+	var path: String = assemblies.selected_assembly() if assemblies != null else ""
+	if path.is_empty():
+		say.call("select a sub-assembly first, or double-click one with the Select tool")
+		return
+	assemblies.enter(path)
+	aim_again.call()
+	say.call("editing %s — Esc when done" % Assemblies.label(path))
+
+
+func leave_assembly() -> void:
+	if assemblies == null or assemblies.entered.is_empty():
+		return
+	var was: String = assemblies.entered
+	assemblies.leave()
+	aim_again.call()
+	say.call("done editing %s" % Assemblies.label(was))
+
+
+## Cut the selected copy loose from the others.
+func make_unique() -> void:
+	var path: String = assemblies.selected_assembly() if assemblies != null else ""
+	if path.is_empty():
+		return
+	var fresh: String = assemblies.make_unique(path)
+	edited.call()
+	say.call("%s is a sub-assembly of its own now: editing it changes no other"
+		% Assemblies.label(fresh))
 
 
 ## Back through the history to before the step ``count`` steps ago.

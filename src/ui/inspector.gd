@@ -144,11 +144,11 @@ func _ready() -> void:
 	_actions.add_theme_constant_override("separation", 4)
 	_body.add_child(_actions)
 	_joined_button = _action("Joined", "Select it and everything joined to it",
-		func() -> void: shell.verbs.select_by("connected"))
+		func() -> void: _act(0))
 	_lock_button = _action("Lock", "Keep it from being picked out, moved, painted or taken off",
-		func() -> void: shell.verbs.lock(true))
+		func() -> void: _act(1))
 	_hide_button = _action("Hide", "Hide it, to reach what is behind it   H",
-		func() -> void: shell.verbs.hide_selection())
+		func() -> void: _act(2))
 
 	shell.builder.selection_changed.connect(func(_n: int) -> void: _refresh(true))
 	shell.world.rebuilt.connect(func(_b: int, _c: int, _t: int) -> void: _refresh(true))
@@ -212,6 +212,40 @@ func _action(words: String, says: String, does: Callable) -> Button:
 	return button
 
 
+## What the three buttons do: for parts, Joined, Lock and Hide; for a
+## sub-assembly, Edit inside, Ungroup and Make unique.
+var _for_assembly: bool = false
+
+
+func _act(which: int) -> void:
+	var verbs: EditVerbs = shell.verbs
+	if _for_assembly:
+		match which:
+			0: verbs.enter_assembly()
+			1: verbs.leave_submodel()
+			2: verbs.make_unique()
+		return
+	match which:
+		0: verbs.select_by("connected")
+		1: verbs.lock(true)
+		2: verbs.hide_selection()
+
+
+func _buttons_for(assembly: bool) -> void:
+	_for_assembly = assembly
+	var faces: Array = [["Edit inside", "Work on its parts one by one   Enter, or double-click"],
+		["Ungroup", "Take it apart one level   Ctrl+Shift+G"],
+		["Make unique", "Cut this copy loose, so editing it changes no other"]] if assembly \
+		else [["Joined", "Select it and everything joined to it"],
+		["Lock", "Keep it from being picked out, moved, painted or taken off"],
+		["Hide", "Hide it, to reach what is behind it   H"]]
+	for n: int in 3:
+		var button: Button = [_joined_button, _lock_button, _hide_button][n]
+		button.text = faces[n][0]
+		button.tooltip_text = faces[n][1]
+		button.disabled = false
+
+
 func is_open() -> bool:
 	return _open
 
@@ -257,8 +291,14 @@ func _refresh(_now: bool) -> void:
 	if state == _shown:
 		return
 	_shown = state
+	var assembly: String = shell.assemblies.selected_assembly() \
+		if shell.assemblies != null and not bricks.is_empty() else ""
+	_buttons_for(not assembly.is_empty())
 	if bricks.is_empty():
 		_show_nothing()
+	elif not assembly.is_empty():
+		_show_many(bricks)
+		_show_assembly(assembly, bricks.size())
 	elif bricks.size() == 1:
 		_show_one(bricks[0])
 	else:
@@ -276,6 +316,9 @@ func _state_of(bricks: Array[BrickWorld.Brick]) -> String:
 		parts.append("%d %s %d %s %s %s" % [brick.id, brick.part_id, brick.color_code,
 			brick.transform, brick.group, shell.builder.is_locked(brick.id)])
 	parts.append("%s %s" % [shell.verbs.snap, shell.verbs.turn_step])
+	if shell.assemblies != null:
+		parts.append(shell.assemblies.selected_assembly())
+		parts.append(shell.assemblies.entered)
 	return "|".join(parts)
 
 
@@ -309,7 +352,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 		"1 other part" if joined == 1 else "%d other parts, directly or through others" % joined)))
 	lines.append("Faces: studs %s" % _face_of(brick.transform.basis))
 	if not brick.group.is_empty():
-		lines.append("In the sub-model “%s”" % brick.group)
+		lines.append("In %s" % _chain(Assemblies.path_of(brick)))
 	var step: String = _step_words(brick.id)
 	if not step.is_empty():
 		lines.append(step)
@@ -359,15 +402,60 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	var facts := PackedStringArray()
 	facts.append("%s × %s studs, %s tall" % [_studs(box.size.x), _studs(box.size.z),
 		_plates(box.size.y)])
-	var groups: Dictionary = {}
-	for brick: BrickWorld.Brick in bricks:
-		groups[brick.group] = true
-	if groups.size() == 1 and not str(groups.keys()[0]).is_empty():
-		facts.append("The sub-model “%s”" % str(groups.keys()[0]))
+	# The sub-assembly they are all in, when they are; a sub-assembly
+	# selected whole says so itself (_show_assembly).
+	var shared: String = _shared_path(bricks)
+	if not shared.is_empty() and (shell.assemblies == null
+			or shell.assemblies.selected_assembly() != shared):
+		facts.append("In %s" % _chain(shared))
 	facts.append("Turn: by the turn step, %d° a time" % roundi(shell.verbs.turn_step))
 	_facts.text = "\n".join(facts)
 	_facts.visible = true
 	_lock_button.disabled = false
+
+
+## "Wing (copy 2), in Plane": a place in the tree, innermost first.
+static func _chain(path: String) -> String:
+	var words := PackedStringArray()
+	var at: String = path
+	while not at.is_empty():
+		words.append(Assemblies.label(at))
+		at = Assemblies.parent_of(at)
+	return ", in ".join(words)
+
+
+## The innermost sub-assembly every one of the bricks is in: "" if none.
+static func _shared_path(bricks: Array) -> String:
+	if bricks.is_empty():
+		return ""
+	var shared: PackedStringArray = Assemblies.segments(Assemblies.path_of(bricks[0]))
+	for brick: BrickWorld.Brick in bricks:
+		var own: PackedStringArray = Assemblies.segments(Assemblies.path_of(brick))
+		var same: int = 0
+		while same < mini(shared.size(), own.size()) and shared[same] == own[same]:
+			same += 1
+		shared = shared.slice(0, same)
+	return "/".join(shared)
+
+
+## A sub-assembly selected whole: its name, its copies, what is in it.
+func _show_assembly(path: String, count: int) -> void:
+	var tree: Assemblies = shell.assemblies
+	_title.text = Assemblies.label(path)
+	var copies: int = tree.copies_of(path).size()
+	var inside: int = 0
+	for other: String in tree.paths():
+		if Assemblies.parent_of(other) == path:
+			inside += 1
+	var lines := PackedStringArray(["Sub-assembly of %d parts%s" % [count,
+		"" if inside == 0 else ", %d inside it" % inside]])
+	if copies > 0:
+		lines.append("%d other cop%s of %s follow%s it" % [copies, "y" if copies == 1 else "ies",
+			Assemblies.definition(Assemblies.leaf(path)), "s" if copies == 1 else ""])
+	if not Assemblies.parent_of(path).is_empty():
+		lines.append("In %s" % Assemblies.label(Assemblies.parent_of(path)))
+	_ids.text = "\n".join(lines) + "\n" + _ids.text
+	_hide_button.disabled = copies == 0
 
 
 func _show_colours(codes: Array[int]) -> void:

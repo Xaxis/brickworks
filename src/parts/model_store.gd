@@ -265,6 +265,12 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		push_warning("could not build a part the file carries: " + problem)
 
 	var flattened: Array = model.flatten(library.parts)
+	# A mirrored copy's parts: each put where its reflection is, in its
+	# other hand where it has one.
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if placement.mirrored:
+			Assemblies.unmirror(placement, library)
 	if flattened.is_empty():
 		return {"placed": 0, "missing": 0, "waiting": 0,
 			"error": "there are no parts in that file"}
@@ -442,6 +448,7 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 			brick.part_id, brick.color_code, brick.transform,
 			int(step_of.get(brick.id, 0)))
 		placement.group = brick.group
+		placement.unit = Assemblies.path_of(brick)
 		placements.append(placement)
 	# In build order where there is one, and bottom to top otherwise, so
 	# the file reads the way it would be built. Sorting by height alone
@@ -471,8 +478,18 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 	var used: Dictionary = {}
 	for item: Variant in placements:
 		used[(item as LdrModel.Placement).part_id] = true
-	return LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(),
-		CustomParts.sources_for(library, used.keys()))
+	var embedded: Dictionary = CustomParts.sources_for(library, used.keys())
+	# Sub-assemblies, nested or copied, go out as a tree of sub-models: each
+	# definition once, every copy a reference to it (LdrModel.write_tree).
+	var tree := Assemblies.new()
+	tree.world = world
+	tree.builder = builder
+	tree.library = library
+	tree.scenery = scenery
+	var instances: Dictionary = tree.file_frames(figure_frames())
+	if not instances.is_empty():
+		return LdrModel.write_tree(placements, title, "Brickworks", instances, embedded)
+	return LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
 
 
 ## Each minifigure in the model, by its group, and the frame it stands

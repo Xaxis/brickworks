@@ -673,9 +673,16 @@
     },
     {
       "kind": "ui",
-      "label": "sub-models by hand",
-      "entry": "src/ui/edit_verbs.gd",
-      "reach": "godot --path .  (select, Ctrl-G, name it; Ctrl-Shift-G takes it out)",
+      "label": "sub-assemblies",
+      "entry": "src/assembly/assemblies.gd",
+      "reach": "godot --path .  (select, Ctrl-G, name it; a click takes it whole, a double-click edits inside, Esc leaves; Ctrl-D copies follow it)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "model tree",
+      "entry": "src/ui/outliner.gd",
+      "reach": "godot --path .  (the panel at the model's top left; View, Model tree)",
       "area": "building"
     },
     {
@@ -788,6 +795,13 @@
       "label": "freeze check",
       "entry": "tools/web/freeze_check.mjs",
       "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "redraw check",
+      "entry": "tools/web/redraw_check.mjs",
+      "reach": "node tools/web/redraw_check.mjs --url=<a preview>/app --bypass=…   (or a local export served by relay_server.mjs --static)",
       "area": "web"
     },
     {
