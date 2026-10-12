@@ -288,7 +288,22 @@ Proves it when:
   kinds the feet are on its top and its sole on the plate (the snowshoes had
   the feet 2 LDU up, the hinged ski 9; flippers and skis stood 1 LDU above the
   plate), and the lattice takes a flipper on a plate, its origin 3 LDU up,
-  but not 1 LDU into it.
+  but not 1 LDU into it. One piece, as the design checker reads it: each of
+  15424 hands on a figure of every family of every slot, stood at four places
+  (the origin, where run 4's Orthanc stood Saruman, half a stud over and a
+  plate up, a quarter turn where run 5's stands him), is one piece with its
+  arm alone; the figures of every kind of hand are each one piece; Saruman cut
+  out of run 5's Orthanc with his staff raised
+  (`src/dev/fixtures/saruman_on_orthanc.ldr`) is one piece; a hand two studs
+  out from its arm is a piece of its own. Read at the nearest square turn, as
+  the checker read a figure's parts before `Assistant._joined_at`, some 3700 of
+  the hands came apart and Saruman was 3 pieces (run 5's whole Orthanc too:
+  `candidate_probe` said 3 pieces, and says 1 now). Not asked (`NO_SOCKET`): hands
+  the builder hangs on arms with no socket for one (57588, 92754, 12613), and
+  5059 on the stump 6828, whose hole the connectors lack. Whole figures of the
+  other slots are not all one piece yet: visors and goggles, cloth capes,
+  mechanical and droid arms, spring legs and many held things have no joint
+  the checker reads.
 - `minifig_ui_probe` ends `a figure was made by clicking, named, placed on a stud
   and photographed`, and leaves `shots/minifig_builder.png`,
   `minifig_builder_surprise.png`, `minifig_figures_front.png`,
