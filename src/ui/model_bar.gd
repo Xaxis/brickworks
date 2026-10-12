@@ -112,8 +112,8 @@ func _build() -> void:
 				else ModelStore.UNTITLED
 			store.touch()
 		model_named.emit(model_name()))
-	# Named and entered, the keys go back to the model.
-	_name.text_submitted.connect(func(_text: String) -> void: _name.release_focus())
+	# Escape puts back the name it had (FocusGuard).
+	_name.set_meta("revert_on_escape", true)
 	row.add_child(_name)
 
 	var push := Control.new()

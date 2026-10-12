@@ -36,6 +36,16 @@ picture the assistant is shown.
   dialog once and ended a design run 46 minutes in. Ctrl+Q (Cmd+Q) quits on the
   desktop. `controls_probe` presses Escape with nothing open and fails, from
   `_finalize`, if the app quit under it.
+- `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
+  Escape or a press anywhere outside a text field ends the typing, in every
+  field — the model's name, the part search, the brief, the properties'
+  numbers, a minifigure's name — and every key acts on the model at once.
+  Escape also puts the model's name back. Owner: "When the user names a build
+  (renames it), the text input never loses focus and can't control the CAD
+  controls." `handbuild_probe` ends a field each way and presses a view key;
+  `tools/web/focus_check.mjs --url=…` does the same in a browser and reads the
+  picture, so it fails on a build from before (9 failures on 2026-10-11's
+  live site) and passes after.
 - `status line`: bricks, whether it stands and what it weighs, of the model and
   not the baseplate under it (`Main._on_rebuilt` takes `ModelStore.scenery` off
   the count and the weight): it said 62 bricks and 149 g over the 61-brick

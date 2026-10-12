@@ -184,10 +184,6 @@ func _number(words: String, says: String) -> SpinBox:
 	spin.select_all_on_focus = true
 	spin.add_theme_font_size_override("font_size", 12)
 	spin.get_line_edit().add_theme_font_size_override("font_size", 12)
-	# Typed and entered, the keys go back to the model: a field that kept
-	# them would leave every shortcut dead until something else was clicked.
-	spin.get_line_edit().text_submitted.connect(func(_text: String) -> void:
-		spin.get_line_edit().release_focus())
 	_place.add_child(spin)
 	return spin
 

@@ -134,6 +134,9 @@ func build(column: Control, over_model: Control) -> void:
 	tour.shell = self
 	app.get_node("HUD").add_child(tour)
 
+	# Every text field gives the keys back: src/ui/focus_guard.gd.
+	add_child(FocusGuard.new())
+
 	_save_as = ConfirmationDialog.new()
 	_save_as.title = "Save as"
 	_save_as.ok_button_text = "Save"

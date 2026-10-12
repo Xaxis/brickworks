@@ -77,6 +77,7 @@ func _run() -> void:
 	await _select_by()
 	await _hide_and_isolate()
 	await _the_shell()
+	await _text_fields_give_keys_back()
 	await _seat_an_old_model()
 	await _replace_and_history()
 	await _the_parts_shelf()
@@ -653,6 +654,90 @@ func _shift_click(at: Vector2) -> void:
 		Input.parse_input_event(event)
 		await _frames(2)
 	await _frames(2)
+
+
+## The owner: "When the user names a build (renames it), the text input
+## never loses focus and can't control the CAD controls." Each way out of
+## a field, and then a view key that must act at once.
+func _text_fields_give_keys_back() -> void:
+	print("  text fields give the keys back")
+	var bar: ModelBar = _main.get("_bar")
+	var shell: Shell = _main.get("_shell")
+	var field: LineEdit = bar._name
+	_builder.clear_selection()
+	await _key(KEY_0)
+	await _click(field.get_global_rect().get_center())
+	_check("a click on the model's name puts the caret in it", field.has_focus())
+	await _type("Renamed")
+	await _key(KEY_ENTER)
+	_check("Enter ends the typing (%s)" % field.text, not field.has_focus()
+		and field.text.contains("Renamed"))
+	await _key(KEY_1)
+	_check("...and 1 looks from the front at once", is_zero_approx(_camera._target_yaw)
+		and is_zero_approx(_camera._target_pitch))
+	await _key(KEY_0)
+	var named: String = field.text
+	await _click(field.get_global_rect().get_center())
+	await _type(" more")
+	await _click(shell.status.get_global_rect().get_center())
+	_check("a click on a panel ends it", not field.has_focus())
+	await _key(KEY_1)
+	_check("...and 1 acts at once", is_zero_approx(_camera._target_yaw))
+	await _key(KEY_0)
+	named = field.text
+	await _click(field.get_global_rect().get_center())
+	await _type(" thrown away")
+	await _key(KEY_ESCAPE)
+	_check("Escape ends it and puts the name back (%s)" % field.text,
+		not field.has_focus() and field.text == named)
+	await _click(field.get_global_rect().get_center())
+	await _key(KEY_TAB)
+	_check("so does Tab", not field.has_focus())
+	var yaw: float = _camera._target_yaw
+	await _key(KEY_LEFT)
+	_check("...and an arrow turns the view at once", not is_equal_approx(_camera._target_yaw, yaw))
+	# The part search, and the properties' numbers.
+	var bin: PartsBin = _main.get("_bin")
+	var search: LineEdit = bin.get("_search")
+	await _click(search.get_global_rect().get_center())
+	await _type("plate")
+	await _key(KEY_ESCAPE)
+	_check("Escape ends a search", not search.has_focus())
+	search.text = ""
+	search.text_changed.emit("")
+	var any: Array = _model()
+	if not any.is_empty():
+		_select_only([(any[0] as BrickWorld.Brick).id])
+		await _frames(20)
+		var x_field: LineEdit = shell.inspector._x.get_line_edit()
+		var was_x: float = (any[0] as BrickWorld.Brick).transform.origin.x
+		await _click(x_field.get_global_rect().get_center())
+		await _key(KEY_A, true)
+		await _type(str(roundi(was_x + 40.0)))
+		await _key(KEY_ENTER)
+		_check("a number typed and entered in the properties moves the part and lets go (%s)"
+			% str((any[0] as BrickWorld.Brick).transform.origin), not x_field.has_focus()
+			and is_equal_approx((any[0] as BrickWorld.Brick).transform.origin.x, was_x + 40.0))
+		var after: Vector3 = (any[0] as BrickWorld.Brick).transform.origin
+		await _key(KEY_LEFT)
+		_check("...and an arrow nudges it at once",
+			not (any[0] as BrickWorld.Brick).transform.origin.is_equal_approx(after))
+		await _key(KEY_Z, true)
+		await _key(KEY_Z, true)
+	_builder.clear_selection()
+
+
+func _type(text: String) -> void:
+	for n: int in text.length():
+		var c: String = text[n]
+		for down: bool in [true, false]:
+			var event := InputEventKey.new()
+			event.keycode = OS.find_keycode_from_string(c.to_upper()) if c != " " else KEY_SPACE
+			event.unicode = c.unicode_at(0)
+			event.pressed = down
+			Input.parse_input_event(event)
+			await process_frame
+	await _frames(3)
 
 
 func _seat_an_old_model() -> void:

@@ -2335,11 +2335,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	# decided here. A drag draws a box; a click without one places, or
 	# picks a brick out when shift is held.
 	if button.pressed:
-		# A click on the model ends typing: a field that kept the keys
-		# left every shortcut dead until something else was clicked.
-		var typing: Control = get_viewport().gui_get_focus_owner()
-		if typing != null:
-			typing.release_focus()
 		_box_dropped = false
 		_marquee.begin(button.position)
 		_box_began = true
