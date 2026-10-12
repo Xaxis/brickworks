@@ -137,7 +137,13 @@ func _a_hose() -> void:
 	_check("dragged so far it would kink, it is left as it was, and says so (%s)"
 		% _flex._status.text, _same(_shape(item), shape) and _builder.history_depth() == steps
 		and _flex._status.text.contains("left as it was"))
-	await _drag(from, from + Vector2(0, -40))
+	# A little: 16 LDU up the screen, in the plane the handle is dragged in,
+	# wherever that is drawn. It was 40 pixels, which is a length only at
+	# one zoom: framed to the model's column rather than the whole window
+	# the view stands further back, 40 pixels came to 21 LDU, and the tube
+	# was bent round 16 LDU, tighter than it goes, and rightly left alone.
+	var lift: Vector3 = handle + _camera.global_transform.basis.y * 16.0
+	await _drag(from, _screen(lift))
 	await _frames(10)
 	var moved: Array = _shape(item)
 	_check("dragging it up a little reshapes the tube (its highest point %.0f, was %.0f)" % [
