@@ -2633,7 +2633,7 @@ func _process(_delta: float) -> void:
 	_watch_view()
 	_steer_from_keys(_delta)
 	if _cursors != null:
-		_cursors.show_state(_cursor_state())
+		_cursors.show_for(_cursor_state())
 	# A box whose ending went somewhere else.
 	#
 	# Letting go over a button hands the release to that button, which
@@ -3357,7 +3357,7 @@ func _hover_again() -> void:
 
 ## What the pointer should say over the model, from what is true this
 ## frame. Cursors.choose decides; this only gathers.
-func _cursor_state() -> String:
+func _cursor_state() -> Cursors.Situation:
 	var now := Cursors.Situation.new()
 	now.holding_view = _camera.is_dragging()
 	now.holding_part = _dragging_part
@@ -3397,7 +3397,7 @@ func _cursor_state() -> String:
 	now.loading = _library.is_on_its_way(_builder.held_part)
 	if not now.in_hand:
 		now.over_part = _brick_under_pointer() != 0
-	return Cursors.choose(now)
+	return now
 
 
 ## Escape, before the interface sees it.

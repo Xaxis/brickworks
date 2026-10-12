@@ -223,6 +223,12 @@ picture the assistant is shown.
   screen. The old table hung the zoom glass on the resize arrows and "place" on
   the drop sign. During a drag a full-window `MOUSE_FILTER_PASS` sheet
   (`_shield`) carries the grabbing hand so a turn across a panel stays one.
+  Only while a button holds the drag (`Cursors.Situation.dragging()`), never
+  for what a state is called. It went up for the pointer's name: on
+  brickworks.diy with Orbit or Pan on, and here with Ctrl held, it covered every
+  panel, and a click on a button turned the view instead (2026-10-12).
+  `cursor_probe` now presses Paint and a part in the bin with each view tool on
+  and with Ctrl, Space and Alt held.
   Pictures are `assets/ui/cursors/*.svg`, drawn by `Icons` at 1x, 1.5x or 2x by
   screen DPI on Windows and X11, 1x on a Mac (NSCursor takes pixels as points),
   and in a browser as CSS `image-set()` of a 32 and a 64 px PNG data URL, put
@@ -584,7 +590,7 @@ take, which is what made a design run give up on looking at itself.
   window never showed is the bug. Run headless it stops at once with one
   failure that says so: before that it ran on and failed 107 checks, which an
   integrator read as a broken merge (2026-10-12). The suite's way is Xvfb at
-  1400 x 900 (`tools/check.sh`), 215 checks.
+  1400 x 900 (`tools/check.sh`), 231 checks.
 - **A slide moves the model under a still pointer by however far the warped
   system pointer and the probe's events add up to**, which varies with the
   machine's load. After Space-drag the probe once expected "select" at the
