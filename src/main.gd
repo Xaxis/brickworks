@@ -3623,8 +3623,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_M:
 			_open_figures()
 		KEY_I:
-			# A key is a press a browser lets open its file chooser.
-			if _brickify != null:
+			# Ctrl-I, as an import is in most apps: plain I is x-ray
+			# (src/ui/shell.gd). A key is a press a browser lets open its
+			# file chooser.
+			if (key.ctrl_pressed or key.meta_pressed) and _brickify != null:
 				_brickify.ask()
 		KEY_C:
 			# Paint the selection if there is one, or what is under the

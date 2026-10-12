@@ -356,12 +356,13 @@ func _run() -> void:
 		await process_frame
 	_assert("escape with nothing open leaves the app running", true)
 
-	# I asks for a 3D model to brickify: on the desktop, its file dialog.
+	# Ctrl-I asks for a 3D model to brickify: on the desktop, its file
+	# dialog. Plain I is x-ray; the two once shared the key.
 	var brickify: BrickifyDialog = _main.get("_brickify")
-	_press(KEY_I)
+	_press(KEY_I, true)
 	await process_frame
 	var chooser: FileDialog = brickify._picker._dialog if brickify != null else null
-	_assert("I asks for a 3D model to brickify", chooser != null and chooser.visible)
+	_assert("Ctrl-I asks for a 3D model to brickify", chooser != null and chooser.visible)
 	if chooser != null:
 		chooser.hide()
 	await process_frame

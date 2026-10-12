@@ -97,7 +97,7 @@ let chooser = null;
 for (let n = 0; n < 3 && !chooser; n++) {
   page.choosers.length = 0;
   await page.mouse.move(view.x, view.y);
-  await page.keyboard.press("i");
+  await page.keyboard.press("Control+i");
   for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
   chooser = page.choosers.shift() || null;
 }

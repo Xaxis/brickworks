@@ -492,7 +492,7 @@ func _define() -> void:
 	_add("mosaic", "Mosaic from a picture…", 0,
 		func() -> void: bar.mosaic_wanted.emit(), Callable(),
 		"Turn a picture into a wall of plates")
-	_add("brickify", "Brickify a 3D model…", KEY_I,
+	_add("brickify", "Brickify a 3D model…", CTRL | KEY_I,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"Bring in an OBJ, STL or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
 	_add("part_maker", "Part maker…", 0, func() -> void:

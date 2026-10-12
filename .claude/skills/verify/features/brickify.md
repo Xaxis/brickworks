@@ -35,7 +35,7 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL or glTF — laid in LEGO a
   apart, each taken out and checked again, until it passes in one piece.
   `report["coverage"]` says how much of the model the parts fill.
 - `brickify a 3d model` (`src/ui/brickify_dialog.gd`, `src/ui/mesh_file_picker.gd`):
-  I, Build > Brickify a 3D model…, or File > Import > 3D model to brickify. The
+  Ctrl-I (plain I is x-ray), Build > Brickify a 3D model…, or File > Import > 3D model to brickify. The
   file chooser (several files at once in a browser, for an `.mtl` or a `.bin`),
   then a panel: the model turning, its triangles, size in studs along its
   longest side or its scale in mm a unit (each moves the other), which way is
@@ -87,7 +87,7 @@ godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   beside it. shots/brickify_dialog.png and shots/brickify_placed.png.
 ```
 
-In a browser: `tools/web/brickify_flow.mjs` presses I, answers the page's file
+In a browser: `tools/web/brickify_flow.mjs` presses Ctrl-I, answers the page's file
 chooser with the bunny, types 30 into the size, presses Brickify, and reads
 `window.brickworksState.tree` for `bunny#1` holding every part on the baseplate
 (a first visit's example car is taken off to make room), `selected`, and
