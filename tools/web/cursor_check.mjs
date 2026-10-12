@@ -465,8 +465,13 @@ async function run(scale) {
 
   if (wheelToo) await wheelOverTheInterface(page, view, slow, where, overPart, scale);
 
+  writeFileSync(`${out}/cursors_${scale}x.json`, JSON.stringify({ url, scale, seen }, null, 2));
+  // Closed first: at 2x the app's page, drawn in software, kept the
+  // browser too busy to take even this static picture in 30 s.
+  await page.close();
   // The pictures themselves, as the browser decoded them from the CSS, on
-  // dark and on light, 1x then 2x: what a person would see.
+  // dark and on light, 1x then 2x: what a person would see. A picture to
+  // look at, not a gate.
   const sheet = await browser.newPage({ viewport: { width: 760, height: 120 + 90 * Object.keys(pictures).length } });
   await sheet.setContent(`<body style="margin:0;font:12px sans-serif;background:#6b7078;color:#fff">${
     Object.entries(pictures).map(([state, urls]) => `<div style="display:flex;align-items:center;gap:12px;padding:8px">
@@ -474,10 +479,9 @@ async function run(scale) {
       ${["#1a1c21", "#d9dbe0"].map((ground) => urls.map((u, n) => `<div style="background:${ground};padding:6px">
         <img src="${u}" style="width:${32 * (n + 1)}px;height:${32 * (n + 1)}px;image-rendering:pixelated"></div>`).join("")).join("")}
     </div>`).join("")}</body>`);
-  await sheet.screenshot({ path: `${out}/web_pictures_${scale}x.png`, fullPage: true });
+  await sheet.screenshot({ path: `${out}/web_pictures_${scale}x.png`, fullPage: true, timeout: 120000 })
+    .catch(() => console.log("        (no picture of the pictures: the browser would not hold still)"));
   await sheet.close();
-  writeFileSync(`${out}/cursors_${scale}x.json`, JSON.stringify({ url, scale, seen }, null, 2));
-  await page.close();
 }
 
 
