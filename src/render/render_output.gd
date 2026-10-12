@@ -82,10 +82,12 @@ func give(bytes: PackedByteArray, name: String, mime: String) -> String:
 	return line
 
 
-## Begin a turntable for [param model].
-func begin_turntable(model: String, settings: RenderSettings) -> void:
+## Begin a turntable for [param model] — or, called "_animation", any run
+## of frames kept the same way.
+func begin_turntable(model: String, settings: RenderSettings,
+		suffix: String = "_turntable") -> void:
 	_settings = settings
-	_base = file_name(model, "_turntable", "x").get_basename()
+	_base = file_name(model, suffix, "x").get_basename()
 	_webp = AnimatedWebP.new(settings.fps)
 	_webp.with_alpha(settings.transparent)
 	_frame_size = Vector2i.ZERO

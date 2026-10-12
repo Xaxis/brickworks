@@ -274,6 +274,11 @@ run "make a mould" "${screen[@]}" godot --path . --resolution 1400x900 \
 # its panel's picture of the model is drawn, so a window. shots/brickify_*.png.
 run "brickify" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/brickify_ui_probe.gd
+# A crane posed on its sliders and animated: each joint's angle read off
+# the renderer's own copy, frame by frame, against the keys; the frames,
+# the WebP and the MP4 kept. Pictures in shots/pose/.
+run "pose and animate" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/pose_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

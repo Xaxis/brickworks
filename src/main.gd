@@ -102,6 +102,8 @@ var _controls: ControlsDialog
 var _figures: MinifigDialog
 ## File, Render… (src/ui/render_dialog.gd).
 var _render: RenderDialog
+## Build, Pose and animate… (src/ui/pose_panel.gd).
+var _pose: PosePanel
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -281,6 +283,8 @@ func _tell_page() -> void:
 		named.merge(_figures.controls_by_name())
 	if _render != null and _render.visible:
 		named.merge(_render.controls_by_name())
+	if _pose != null:
+		named.merge(_pose.controls_by_name())
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
@@ -2068,6 +2072,23 @@ func _build_ui() -> void:
 	_inset(_render, RenderDialog.WIDE, RenderDialog.TALL)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_render, RenderDialog.WIDE, RenderDialog.TALL))
+	# Build, Pose and animate…: sliders for the joints, keys, and the
+	# animation rendered the same way (src/ui/pose_panel.gd), over the
+	# model's left edge so the pose is seen as it is set.
+	_pose = PosePanel.new()
+	_pose.world = _world
+	_pose.builder = _builder
+	_pose.library = _library
+	_pose.assemblies = _shell.assemblies
+	_pose.scenery = _store.scenery
+	_pose.eye = _camera
+	_pose.look = _render.look
+	_pose.rig_lights = _render.rig_lights
+	_pose.named = _bar.model_name
+	_over_model.add_child(_pose)
+	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_pose.position = Vector2(12, 48)
+	_pose.changed.connect(_on_model_edited)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		if count == 0:
@@ -2541,6 +2562,12 @@ func reshape_flex() -> void:
 
 func can_reshape_flex() -> bool:
 	return _flex != null and not _flex.selected_item().is_empty()
+
+
+## Build, Pose and animate….
+func open_pose() -> void:
+	_builder.hide_preview()
+	_pose.open()
 
 
 func _open_figures() -> void:
