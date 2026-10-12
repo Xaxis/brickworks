@@ -790,11 +790,38 @@ func _process(delta: float) -> void:
 	_apply(1.0 - exp(-smoothing * delta))
 
 
+## The pose last put on the camera, and the transform it came to. A camera
+## at rest sets nothing: a transform set again unchanged is still a frame
+## drawn (IdleDraw), and setting it every frame drew sixty a second of a
+## model nobody moved. Moved by anything else, it is put back as before.
+var _posed: Array = []
+var _posed_at: Transform3D = Transform3D()
+
+## Closer than this to where it is going, it is there: about a hundredth of
+## a pixel, as a share of the distance or in radians. An exponential
+## approach never arrives by itself, and a camera a hair from its target
+## moved, and was drawn, for ever.
+const ARRIVED := 0.00001
+
+
 func _apply(weight: float) -> void:
 	_yaw = lerp_angle(_yaw, _target_yaw, weight)
 	_pitch = lerp_angle(_pitch, _target_pitch, weight)
 	distance = lerpf(distance, _target_distance, weight)
 	focus = focus.lerp(_target_focus, weight)
+	if absf(angle_difference(_yaw, _target_yaw)) < ARRIVED:
+		_yaw = _target_yaw
+	if absf(angle_difference(_pitch, _target_pitch)) < ARRIVED:
+		_pitch = _target_pitch
+	var hair: float = maxf(_target_distance, 1.0) * ARRIVED
+	if absf(distance - _target_distance) < hair:
+		distance = _target_distance
+	if focus.distance_to(_target_focus) < hair:
+		focus = _target_focus
+	var pose: Array = [_yaw, _pitch, distance, focus]
+	if pose == _posed and global_transform == _posed_at:
+		return
+	_posed = pose
 
 	var offset := Vector3(
 		cos(_pitch) * sin(_yaw),
@@ -802,6 +829,7 @@ func _apply(weight: float) -> void:
 		cos(_pitch) * cos(_yaw)) * distance
 	global_position = focus + offset
 	look_at(focus, Vector3.UP)
+	_posed_at = global_transform
 
 	# Clip planes that follow the distance.
 	#

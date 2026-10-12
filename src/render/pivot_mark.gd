@@ -38,6 +38,10 @@ func _ready() -> void:
 	set_process(true)
 
 
+var _drawn_at: Vector3 = Vector3.INF
+var _drawn_reach: float = 0.0
+
+
 func _process(_delta: float) -> void:
 	if camera == null:
 		return
@@ -47,6 +51,11 @@ func _process(_delta: float) -> void:
 
 	var at: Vector3 = camera.pivot()
 	var reach: float = REACH * maxf(camera.distance / 400.0, 0.25)
+	# Built again only when it moved: new lines are a frame drawn (IdleDraw).
+	if visible and at == _drawn_at and reach == _drawn_reach:
+		return
+	_drawn_at = at
+	_drawn_reach = reach
 	_lines.clear_surfaces()
 	_lines.surface_begin(Mesh.PRIMITIVE_LINES)
 	for axis: Array in [
