@@ -478,12 +478,15 @@ func _set_place(at: Vector3, facing: float) -> void:
 	_facing = facing
 	var across: float = float(EditVerbs.SNAPS[shell.verbs.snap][0])
 	var up: float = float(EditVerbs.SNAPS[shell.verbs.snap][1])
+	# A step, not none: with no step a box shows every digit the float
+	# carries, and a part at 1 read "0.999999818". A hundredth of an LDU
+	# shows what is there without snapping a typed number to the studs.
 	for pair: Array in [[_x, at.x, across], [_y, at.y, up], [_z, at.z, across]]:
 		var spin: SpinBox = pair[0]
-		spin.step = 0.0
+		spin.step = 0.01
 		spin.custom_arrow_step = float(pair[2])
 		spin.set_value_no_signal(snappedf(float(pair[1]), 0.01))
-	_yaw.step = 0.0
+	_yaw.step = 0.1
 	_yaw.custom_arrow_step = shell.verbs.turn_step
 	_yaw.set_value_no_signal(snappedf(facing, 0.1))
 

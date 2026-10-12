@@ -567,6 +567,28 @@ func _the_shell() -> void:
 		and is_equal_approx(inspector._z.value, 20.0))
 	_check("...and what it is joined to (%s)" % inspector._facts.text.get_slice("\n", 0),
 		inspector._facts.text.begins_with("Joined to nothing"))
+	# A part at a place a turn or a file leaves a hair off a whole number:
+	# the boxes read "0.999999818" until they had a step.
+	var was_at: Vector3 = inspector._at
+	var was_facing: float = inspector._facing
+	inspector._set_place(Vector3(0.99999982, 8.0000002, -19.9999997), 89.99999)
+	# And as a box is left by an arrow step or a sum, unrounded: each must
+	# show what a person would read, whatever float it holds.
+	var unrounded: Array = [0.9999998211860657, 8.000000189989805, -19.999999701976776, 89.99999]
+	for n: int in 4:
+		([inspector._x, inspector._y, inspector._z, inspector._yaw][n] as SpinBox).set_value_no_signal(unrounded[n])
+	await _frames(2)
+	var shown := PackedStringArray()
+	var clean := RegEx.create_from_string("^-?\\d+(\\.\\d{1,2})?$")
+	var all_clean: bool = true
+	for spin: SpinBox in [inspector._x, inspector._y, inspector._z, inspector._yaw]:
+		var text: String = spin.get_line_edit().text
+		shown.append(text)
+		if clean.search(text) == null:
+			all_clean = false
+	_check("...in plain numbers, no float noise (%s)" % ", ".join(shown), all_clean)
+	inspector._set_place(was_at, was_facing)
+	await _frames(2)
 	await _shot("properties")
 	var field: LineEdit = inspector._x.get_line_edit()
 	field.text = "-100"
