@@ -20,6 +20,8 @@
 //                            own link is updated in place.
 //   POST ?op=unpublish&id=X  the owner takes it down
 //   GET  ?op=mine            the session's own links
+//   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
+//                            CRON_SECRET): files no published row owns
 //
 // Where it is kept and who may touch it is in supabase/shared_models.sql.
 // In short: a visitor's read goes through the publishable key, so row
@@ -32,7 +34,7 @@
 // one part), at most 2 MB, a PNG picture of at most 600 KB, and a name.
 // The part count is the server's own, counted here, not the client's.
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
@@ -273,6 +275,23 @@ async function deleteFiles(names) {
   if (!answer.ok) throw new Error(`storage DELETE: ${answer.status}`);
 }
 
+/// Every file in the bucket, a page at a time: [{name, updated_at}].
+async function listFiles() {
+  const files = [];
+  for (let offset = 0; ; offset += 1000) {
+    const answer = await fetch(`${project()}/storage/v1/object/list/${BUCKET}`, {
+      method: "POST",
+      headers: storageHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!answer.ok) throw new Error(`storage list: ${answer.status}`);
+    const page = await answer.json();
+    files.push(...page.filter((file) => file.id !== null));
+    if (page.length < 1000) return files;
+  }
+}
+
 async function mayPublish(owner) {
   const allowed = await db("rpc/may_publish", { method: "POST", body: { account: owner } });
   return allowed === true;
@@ -459,6 +478,7 @@ async function read(request, response) {
   const origin = originOf(request);
 
   if (op === "mine") return mine(request, response, origin);
+  if (op === "sweep") return sweep(request, response);
 
   const row = await publishedRow(id);
 
@@ -575,6 +595,50 @@ async function unpublish(request, response) {
   // republish from the same model keeps the same link. The files go.
   await deleteFiles([`${id}.mpd`, `${id}.png`]);
   return response.status(200).json({ id, published: false });
+}
+
+// ---------------------------------------------------------------------------
+// The sweep.
+//
+// A row goes with its account (on delete cascade), but the bucket's files
+// are not rows, and Supabase refuses to delete storage objects from SQL,
+// so an account deleted in the dashboard left its models' files behind
+// for good. Once a day this takes away every file that no published row
+// owns. A publish writes its files a moment before its row, so a file
+// younger than an hour is left for the next day's sweep.
+
+const SWEEP_AGE_MS = 60 * 60 * 1000;
+
+/// Vercel's cron sends "Bearer <CRON_SECRET>"; nobody else has it.
+function isCron(request) {
+  const secret = process.env.CRON_SECRET || "";
+  if (!secret) return false;
+  const given = Buffer.from(String(request.headers?.authorization || ""));
+  const want = Buffer.from(`Bearer ${secret}`);
+  return given.length === want.length && timingSafeEqual(given, want);
+}
+
+async function sweep(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!isCron(request)) return response.status(401).json({ error: "the sweep is the cron's" });
+  // ?only=A,B looks at those links alone, whatever their files' age: how
+  // share_probe proves an orphan goes without waiting an hour.
+  const only = String(request.query?.only || "").split(",").filter((id) => ID.test(id));
+  const now = Date.now();
+  const files = (await listFiles()).filter((file) => {
+    const id = file.name.split(".")[0];
+    if (only.length > 0) return only.includes(id);
+    return now - Date.parse(file.updated_at || file.created_at || 0) > SWEEP_AGE_MS;
+  });
+  const ids = [...new Set(files.map((file) => file.name.split(".")[0]).filter((id) => ID.test(id)))];
+  const kept = new Set();
+  for (let at = 0; at < ids.length; at += 100) {
+    const rows = await db(`shared_models?id=in.(${ids.slice(at, at + 100).join(",")})&published=is.true&select=id`);
+    for (const row of rows) kept.add(row.id);
+  }
+  const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0]));
+  for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
+  return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone });
 }
 
 export default async function handler(request, response) {
