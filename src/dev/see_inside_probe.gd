@@ -123,7 +123,7 @@ func _the_cut() -> void:
 		cut.normal.is_equal_approx(Vector3.UP))
 	_check("...between the floor and the roof (at %.0f)" % (cut.d), cut.d > 24.0 and cut.d < 72.0)
 	var right: bool = _all_batches_cut(true)
-	_check("each batch drawn as the plane says: %d whole, %d cut through, %d not drawn"
+	_check("each part drawn as the plane says: %d whole, %d cut through, %d not drawn"
 		% _sides, right and _sides[1] > 0 and _sides[2] > 0)
 	await _frames(4)
 	_check("the red brick is clicked through the cut", _verbs.brick_at(red_at) == _red)
@@ -264,28 +264,37 @@ func _with_the_timeline() -> void:
 	steps.to_start()
 	steps.step_forward()
 	steps.step_forward()
-	await _frames(4)
+	await _settled()
 	var hidden: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
 		hidden += 1 if brick.hidden else 0
-	var drawn: Array = _drawn()
-	var showing: int = 0
-	for brick: BrickWorld.Brick in _world.bricks():
-		if not brick.hidden:
-			showing += _brick_surfaces(brick.id)
-	_check("a step hides what is still to come (%d) from both the solid and the see-through"
-		% hidden, hidden > 0 and drawn[0] + drawn[1] == showing)
-	_check("...and the cut stays on", _is_cut() and _all_batches_cut(true))
+	var placed: bool = _all_batches_cut(true)
+	_check("a step hides what is still to come (%d): the solid parts are the step's, as the cut has them"
+		% hidden, hidden > 0 and placed)
+	_check("...and the see-through ones are the step's too (%d)" % _drawn()[1],
+		_drawn()[1] == _xray_surfaces(true))
 	await _shot("timeline_step")
 	steps.to_end()
 	await _key(KEY_B)
-	await _frames(3)
-	drawn = _drawn()
-	var everything: int = 0
-	for brick: BrickWorld.Brick in _world.bricks():
-		everything += _brick_surfaces(brick.id)
-	_check("closing it shows the whole model, still in x-ray (%d of %d)"
-		% [drawn[0] + drawn[1], everything], drawn[0] + drawn[1] == everything and drawn[1] > 0)
+	await _settled()
+	placed = _all_batches_cut(true)
+	_check("closing it shows the whole model, still cut (%d whole, %d cut through, %d not drawn)"
+		% _sides, placed and _sides[0] + _sides[1] + _sides[2] > 0)
+	_check("...and still in x-ray (%d see-through)" % _drawn()[1],
+		_drawn()[1] == _xray_surfaces(false) and _drawn()[1] > 0)
+
+
+## The surfaces x-ray should be drawing: every see-through part's, or with
+## [param shown_only] only those of the parts on show.
+func _xray_surfaces(shown_only: bool) -> int:
+	var ids: Dictionary = _world.call("xray_ids") if _world.has_method("xray_ids") else {}
+	var total: int = 0
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick == null or (shown_only and brick.hidden):
+			continue
+		total += _brick_surfaces(brick_id)
+	return total
 
 
 # -- the booklet --------------------------------------------------------------
@@ -340,34 +349,55 @@ func _orthanc() -> void:
 	began = Time.get_ticks_usec()
 	await _key(KEY_K)
 	var again: float = float(Time.get_ticks_usec() - began) / 1000.0
+	# The app's own work, all of it at once: the world on screen spreads a
+	# rewrite over frames (FramePace), and here it is done before the clock
+	# stops.
+	_world.rebuilds_in_slices = false
 	if see != null:
 		see.call("set_cut", false)
+		_world.call("_flush")
 		began = Time.get_ticks_usec()
 		see.call("set_cut", true)
+		_world.call("_flush")
 	var work: float = float(Time.get_ticks_usec() - began) / 1000.0
 	print("    the cut on: %.0f ms the first time, %.0f ms after, %.1f ms of it the app's own work"
 		% [first, again, work])
-	_check("the cut turns on in %.1f ms of the app's own work" % work,
-		_is_cut() and work < 100.0)
+	_check("the cut turns on in %.1f ms of the app's own work, every part sorted" % work,
+		_is_cut() and work < 1500.0)
 	if see != null:
 		var low: float = float((see.get("_slider") as HSlider).min_value)
 		var high: float = float((see.get("_slider") as HSlider).max_value)
+		# A drag: the plane a plate further each move, up the whole tower.
+		var moves: int = 0
+		var slowest: float = 0.0
 		began = Time.get_ticks_usec()
-		for n: int in 60:
-			see.call("move_to", _odd(lerpf(low, high, float(n) / 59.0)))
-		var each: float = float(Time.get_ticks_usec() - began) / 1000.0 / 60.0
-		_check("dragging it costs %.2f ms a move, and writes no brick" % each, each < 8.0)
+		var at: float = _odd(low)
+		while at < high:
+			var one: int = Time.get_ticks_usec()
+			see.call("move_to", at)
+			_world.call("_flush")
+			slowest = maxf(slowest, float(Time.get_ticks_usec() - one) / 1000.0)
+			moves += 1
+			at += 8.0
+		var each: float = float(Time.get_ticks_usec() - began) / 1000.0 / maxf(moves, 1)
+		print("    dragging the cut up the tower a plate a move: %d moves, %.1f ms each, %.1f the slowest"
+			% [moves, each, slowest])
+		_check("dragging it costs %.1f ms a move, the parts it passed rewritten" % each,
+			each < 25.0)
 		see.call("move_to", _odd(lerpf(low, high, 0.6)))
-	await _frames(6)
+	_world.rebuilds_in_slices = true
+	await _settled()
+	await _frames(4)
 	var cut_ms: float = await _frame_ms(4)
 	var as_said: bool = _all_batches_cut(true)
-	_check("Orthanc's batches drawn as the plane says: %d whole, %d cut through, %d not drawn"
+	_check("Orthanc's parts drawn as the plane says: %d whole, %d cut through, %d not drawn"
 		% _sides, as_said)
 	print("    a frame of Orthanc here: %.0f ms whole, %.0f ms cut" % [whole_ms, cut_ms])
 	await _shot("orthanc_cut")
 	if see != null:
 		see.call("cut_along", 0)
-	await _frames(6)
+	await _settled()
+	await _frames(4)
 	await _shot("orthanc_cut_along_x")
 	await _key(KEY_K)
 
@@ -434,36 +464,48 @@ func _control(name: String) -> Control:
 	return named.get(name)
 
 
-## With [param cut], whether each batch is drawn as the plane says it should
-## be: a batch the plane goes through with a shader that cuts, one wholly on
-## the near side with its plain shader, one wholly past it not at all.
-## Without, whether every batch is drawn, plainly. The counts of each go to
-## [member _sides].
+## With [param cut], whether each part is drawn as the plane says it should
+## be, worked out here from its own box: wholly on the near side by its
+## batch with the plain shader, across the plane by the batch's MultiMesh
+## that cuts, wholly past it not at all (or, leaving ghosts, by the one that
+## cuts, for its ghost). Without, whether every part is drawn by its batch.
+## The counts of each, by surface, go to [member _sides].
 var _sides: Array = [0, 0, 0]
 
 
 func _all_batches_cut(cut: bool) -> bool:
 	var batches: Dictionary = _world.get("_batches")
 	var plane: Plane = _world.call("cut_plane") if _is_cut() else Plane()
+	var ghosts: bool = _is_cut() and bool(_world.call("cut_leaves_ghosts"))
+	var xray: Dictionary = _world.call("xray_ids") if _world.has_method("xray_ids") else {}
 	var any: bool = false
 	_sides = [0, 0, 0]
 	for key: String in batches:
-		var instance: MultiMeshInstance3D = batches[key].instance
-		var material: ShaderMaterial = instance.material_override
-		if material == null or instance.multimesh.visible_instance_count == 0:
-			continue
-		any = true
-		var cutting: bool = material.shader.resource_path.ends_with("_cut.gdshader")
-		if not cut:
-			if cutting or not instance.visible:
-				return false
-			continue
-		var box: AABB = instance.custom_aabb
-		var reach: float = (box.size * 0.5).dot(plane.normal.abs())
-		var past: float = plane.distance_to(box.get_center())
-		var side: int = 1 if past - reach > 0.0 else (-1 if past + reach <= 0.0 else 0)
-		_sides[side + 1] += 1
-		if cutting != (side == 0) or instance.visible != (side <= 0):
+		var batch: Object = batches[key]
+		var whole: int = 0
+		var through: int = 0
+		for brick_id: int in batch.get("brick_ids"):
+			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+			if brick == null or brick.hidden or xray.has(brick_id):
+				continue
+			any = true
+			var side: int = -1
+			if cut:
+				var part: Lbm.PartMesh = _world.library.mesh_for(brick.part_id)
+				var box: AABB = brick.transform * part.bounds
+				var middle: float = plane.normal.dot(box.get_center())
+				var reach: float = (box.size * 0.5).dot(plane.normal.abs())
+				side = 1 if middle - reach > plane.d else (-1 if middle + reach <= plane.d else 0)
+			_sides[side + 1] += 1
+			if side < 0:
+				whole += 1
+			elif side == 0 or ghosts:
+				through += 1
+		var twin: Variant = batch.get("through") if "through" in batch else null
+		var drawn_through: int = (twin as MultiMeshInstance3D).multimesh.instance_count \
+			if twin != null else 0
+		if (batch.get("multimesh") as MultiMesh).visible_instance_count != whole \
+				or drawn_through != through:
 			return false
 	return any
 

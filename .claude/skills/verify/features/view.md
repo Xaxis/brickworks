@@ -157,13 +157,19 @@ picture the assistant is shown.
   the eye is on; a strip at the foot of the model (above the key strip and the
   timeline) has X, Y and Z, a slider that drags it
   through the model (the wheel moves it too), where it is in bricks up or studs
-  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. Each batch
-  is sorted by its bounds (`BrickWorld._cut_batch`): wholly on the near side,
-  drawn as ever; wholly past the plane, not drawn; across it, its material
-  swaps to a `_cut` variant of its shader (`plastic_cut.gdshader` and five
-  others) and is handed the plane. A drag writes no brick: 0.4 ms a move on
-  Orthanc. On the GPU a frame of Orthanc cut costs what one whole does (26 ms
-  against 29); in software, about 1.3 to 2 times (1.65 s against 1.35 s). The variants discard what is past the plane and draw the back
+  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. Each part
+  is sorted by its box against the plane (`BrickWorld._write_cut`): wholly on
+  the near side, drawn by its batch as ever, with the plain shader and its
+  early depth test; wholly past the plane, not drawn; across it, by the
+  batch's own second MultiMesh (`Batch.through`) with a `_cut` variant of its
+  shader (`plastic_cut.gdshader` and five others) that is handed the plane.
+  The shader that cuts must discard, which loses the early depth test: when
+  every part was drawn with it, a close view of Orthanc cut through the middle
+  took minutes a frame in a software browser. Each batch is written nearest
+  first, so a drag changes counts and writes only the parts it crosses.
+  Measured in software (llvmpipe) on Orthanc: a frame cut at 60% costs less
+  than a whole one (0.4 s against 1.3 s), turning the cut on is 65 ms of the
+  app's own work and dragging it 11 ms a plate. The variants discard what is past the plane and draw the back
   faces as the cut face (`PLASTIC_CAP` in `plastic_body.gdshaderinc`: flat,
   square to the plane, hatched in the part's colour) — LDraw's surfaces are
   closed, so a back face seen past the plane is exactly where the plane is

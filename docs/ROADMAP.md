@@ -880,7 +880,8 @@ Found on the way, and fixed or owed below:
   selection, or the sub-assembly being edited, see-through. A click goes
   where the eye does, past the cut and through the ghosts; the timeline
   keeps both, the booklet sees neither. On Orthanc a drag of the cut costs
-  0.4 ms and x-ray 90 ms, once (`src/ui/see_inside.gd`, `see_inside_probe`).
+  11 ms a plate, x-ray 60 to 90 ms once, and a frame cut through the middle
+  less than a whole one (`src/ui/see_inside.gd`, `see_inside_probe`).
 - Task 55: a model with parts off their studs offers, once, to seat them.
 - Task 51: no window that keeps its panels is drawn below 0.92 (1280 x 720
   was 0.8); the smallest text is eleven units; the top bar's buttons have

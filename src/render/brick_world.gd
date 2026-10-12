@@ -72,8 +72,23 @@ class Batch extends RefCounted:
 	## While x-ray is on (see [method set_xray]): the batch's ghosted
 	## bricks, drawn by a MultiMesh of their own under the batch's.
 	var xray: MultiMeshInstance3D = null
-	## While a cut leaves ghosts (see [method set_cut]): the same MultiMesh
-	## again, drawn faintly past the plane.
+	## While a cut is on (see [method set_cut]): the batch's bricks the plane
+	## goes through, drawn by a MultiMesh of their own with the shader that
+	## cuts, and that shader's material.
+	var through: MultiMeshInstance3D = null
+	## While a cut is on: how far each brick written into the batch's own
+	## MultiMesh reaches along the cut's normal, in the order written, which
+	## is nearest first. The bricks wholly on the near side are then the
+	## first so many, and moving the plane is a count changed.
+	var reaches: PackedFloat32Array = PackedFloat32Array()
+	## ...and how near each comes, the brick in each slot, the most any of
+	## them spans along the normal, and the slots now drawn cut.
+	var nears: PackedFloat32Array = PackedFloat32Array()
+	var order: PackedInt64Array = PackedInt64Array()
+	var extent: float = 0.0
+	var cut_slots: PackedInt32Array = PackedInt32Array()
+	## While a cut leaves ghosts: the same MultiMesh again, drawn faintly
+	## past the plane.
 	var beyond: MultiMeshInstance3D = null
 
 
@@ -306,6 +321,7 @@ func _unplace(brick_id: int) -> void:
 		_mark_dirty(key)
 	_brick_batches.erase(brick_id)
 	_bricks.erase(brick_id)
+	_spans.erase(brick_id)
 
 
 func move_brick(brick_id: int, to: Transform3D) -> bool:
@@ -314,6 +330,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 		return false
 	_touching_brick(brick_id)
 	brick.transform = to
+	_spans.erase(brick_id)
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		_mark_dirty(key)
 	_note({"op": "move", "id": brick_id, "at": to})
@@ -385,6 +402,7 @@ func clear() -> void:
 	_ghosts.clear()
 	# Numbers start again, so x-ray's would name the next model's bricks.
 	_xray.clear()
+	_spans.clear()
 	_next_id = 1
 	_note({"op": "clear"})
 	_generation += 1
@@ -558,8 +576,6 @@ func _create_batch(
 	batch.instance.material_override = material
 	add_child(batch.instance)
 	batch.triangles = _triangles_of(batch.multimesh.mesh)
-	if _cut_on:
-		_cut_batch(batch)
 	return batch
 
 
@@ -649,6 +665,7 @@ func _rebuild(batch: Batch, key: String) -> void:
 	if count == 0:
 		batch.multimesh.visible_instance_count = 0
 		_write_xray(batch, [], Lbm.COLOR_INHERIT)
+		_write_through(batch, [], Lbm.COLOR_INHERIT)
 		return
 
 	var surface_index: int = key.split(":")[1].to_int()
@@ -658,9 +675,12 @@ func _rebuild(batch: Batch, key: String) -> void:
 	# Hidden bricks are packed off the end rather than left as gaps: a
 	# MultiMesh draws its first visible_instance_count slots, so the ones
 	# to draw have to be the ones at the front. X-ray's ghosts go to a
-	# MultiMesh of their own, drawn see-through.
+	# MultiMesh of their own, drawn see-through; under a cut, the bricks
+	# the plane goes through to one drawn with the shader that cuts, and
+	# those wholly past it nowhere (see set_cut).
 	var slot: int = 0
 	var ghosts: Array = []
+	var solid: Array = []
 	for brick_id: int in batch.brick_ids:
 		var brick: Brick = _bricks[brick_id]
 		if brick.hidden:
@@ -668,8 +688,17 @@ func _rebuild(batch: Batch, key: String) -> void:
 		if _xray.has(brick_id):
 			ghosts.append(brick)
 			continue
+		if _cut_on:
+			solid.append(brick)
+			continue
 		_write_instance(batch, slot, brick, surface_color)
 		slot += 1
+	if _cut_on:
+		slot = _write_cut(batch, solid, surface_color)
+	else:
+		batch.reaches = PackedFloat32Array()
+		batch.cut_slots = PackedInt32Array()
+		_write_through(batch, [], surface_color)
 	_write_xray(batch, ghosts, surface_color)
 
 	# Kept in step with instance_count explicitly: raising one does not
@@ -717,14 +746,15 @@ func _fresh_slots(batch: Batch, count: int) -> void:
 
 ## One brick into one slot of a batch.
 func _write_instance(batch: Batch, slot: int, brick: Brick,
-		surface_color: int) -> void:
-	batch.multimesh.set_instance_transform(slot, brick.transform)
+		surface_color: int, into: MultiMesh = null) -> void:
+	var multimesh: MultiMesh = into if into != null else batch.multimesh
+	multimesh.set_instance_transform(slot, brick.transform)
 	# A surface moulded in a fixed colour ignores the brick's colour;
 	# that is what keeps a printed face black on a yellow head.
 	var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
 	var color: PartLibrary.BrickColor = library.color(code)
-	batch.multimesh.set_instance_color(slot, color.shown)
-	batch.multimesh.set_instance_custom_data(slot, color.instance_custom)
+	multimesh.set_instance_color(slot, color.shown)
+	multimesh.set_instance_custom_data(slot, color.instance_custom)
 
 
 func _surface_colour(batch: Batch, surface_index: int) -> int:
@@ -872,8 +902,9 @@ func _stop_reveal() -> void:
 		batch.ranks = PackedInt64Array()
 		batch.shown = 0
 		batch.revealed = 0
-	# Written whole for the reveal, x-ray's ghosts and all: split again.
-	if not _xray.is_empty():
+	# Written whole for the reveal, x-ray's ghosts and all, and the cut not
+	# made: split again.
+	if not _xray.is_empty() or _cut_on:
 		for key: String in _batches:
 			if _revealing.has(_batches[key]):
 				_mark_dirty(key)
@@ -894,8 +925,12 @@ func _write_in_order(batch: Batch, key: String) -> void:
 	_fresh_slots(batch, count)
 	var surface_color: int = _surface_colour(batch, key.split(":")[1].to_int())
 	# The build going up is the model whole: x-ray's ghosts are drawn solid
-	# until it ends (_stop_reveal splits them off again).
+	# and the cut is not made until it ends (_stop_reveal splits them off
+	# again).
 	_write_xray(batch, [], surface_color)
+	_write_through(batch, [], surface_color)
+	batch.reaches = PackedFloat32Array()
+	batch.cut_slots = PackedInt32Array()
 	var bounds := AABB()
 	for slot: int in count:
 		var brick: Brick = _bricks[batch.brick_ids[slot]]
@@ -924,6 +959,7 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		return []
 	_stop_reveal()
 	revision += 1
+	_spans.clear()
 
 	# Turn about the centre of the footprint, snapped to the stud grid so
 	# a model on the lattice stays on it.
@@ -982,22 +1018,35 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 # is how the booklet ignores them. SeeInside (src/ui/see_inside.gd) drives
 # them, and keeps the pointer's lattice in step.
 #
-# Both are made to be quick on a set-sized model (Orthanc, 8,785 parts). The
-# cut is a plane handed to every batch's material and the plastic not drawn
-# past it, so dragging it writes no brick: only turning it on or off changes
-# which shader each batch is drawn with. X-ray writes each batch once when it
-# is turned on, its ghosts into a MultiMesh of their own beside the batch's.
+# Both are made to be quick on a set-sized model (Orthanc, 8,785 parts).
+#
+# The cut sorts every brick by where it is against the plane. A brick wholly
+# on the near side is drawn as if there were no cut, by its batch, with the
+# plain shader and its early depth test. A brick wholly past the plane is not
+# drawn. Only the bricks the plane goes through are drawn with a shader that
+# cuts, from a MultiMesh of each batch's own (Batch.through). The shader that
+# cuts has to discard, which loses the early depth test: given the whole of a
+# tower cut through the middle, a software renderer shaded every floor under
+# the eye before the depth test threw them away, and a close view of Orthanc
+# took minutes a frame. Each batch's bricks are written nearest the near side
+# first, so those wholly on it are the first so many: moving the plane changes
+# a count, and writes again only the few bricks it went through. X-ray writes
+# each batch once when it is turned on, its ghosts into a MultiMesh of their
+# own beside the batch's.
 
 
 const SEE_THROUGH := preload("res://src/render/see_through.gdshader")
 
-## The cut variant of each plastic shader, by the one it replaces, and back.
+## The cut variant of each plastic shader, by the one it replaces.
 static var _to_cut: Dictionary = {}
-static var _to_plain: Dictionary = {}
 
 var _cut_on: bool = false
 var _cut_plane: Plane = Plane()
 var _cut_ghosts: bool = false
+## Each brick's reach along the cut's normal, by id: Vector2(nearest,
+## furthest) of its box, measured as the plane's d is. Worked out when a
+## brick is first sorted, and again after it moves.
+var _spans: Dictionary = {}
 ## Bricks x-ray draws see-through, by id.
 var _xray: Dictionary = {}
 var _xray_material: ShaderMaterial = null
@@ -1017,8 +1066,6 @@ static func _cut_variants() -> void:
 		PartPrints.PRINT_SHADERS[true]:
 			preload("res://src/render/plastic_print_two_sided_cut.gdshader"),
 	}
-	for plain: Shader in _to_cut:
-		_to_plain[_to_cut[plain]] = plain
 
 
 ## Cut the picture at [param plane]: the plastic on the side its normal
@@ -1026,11 +1073,41 @@ static func _cut_variants() -> void:
 ## faces. With [param ghosts], what is cut away is left as a faint ghost of
 ## itself. Off with [param on] false.
 func set_cut(on: bool, plane: Plane = Plane(), ghosts: bool = false) -> void:
+	var was_on: bool = _cut_on
+	var was: Plane = _cut_plane
+	var had_ghosts: bool = _cut_ghosts
 	_cut_on = on
 	_cut_plane = plane
 	_cut_ghosts = on and ghosts
+	if on != was_on or (on and (not plane.normal.is_equal_approx(was.normal)
+			or _cut_ghosts != had_ghosts)):
+		# Every brick sorted afresh.
+		_spans.clear()
+		for key: String in _batches:
+			_touching(_batches[key])
+			_mark_dirty(key)
+	elif on and not is_equal_approx(plane.d, was.d):
+		# Moved along its normal. Each batch is in order of how far its
+		# bricks reach, so those wholly on the near side are the first so
+		# many: a count changed. The bricks it now goes through are found by
+		# two searches, and written again only where they changed. A batch
+		# waiting to be written whole is left to that.
+		_stop_reveal()
+		for key: String in _batches:
+			var batch: Batch = _batches[key]
+			if _dirty.has(key) or batch.reaches.is_empty():
+				continue
+			batch.multimesh.visible_instance_count = batch.reaches.bsearch(plane.d, false)
+			var slots: PackedInt32Array = _cut_slots(batch)
+			if slots != batch.cut_slots:
+				batch.cut_slots = slots
+				_write_cut_slots(batch, _surface_colour(batch, key.split(":")[1].to_int()))
+	var at: Vector4 = _plane_vector()
 	for key: String in _batches:
-		_cut_batch(_batches[key])
+		var batch: Batch = _batches[key]
+		if batch.through != null:
+			(batch.through.material_override as ShaderMaterial).set_shader_parameter(
+				"cut_plane", at)
 	_see_through_follows()
 
 
@@ -1048,57 +1125,137 @@ func cut_leaves_ghosts() -> bool:
 	return _cut_ghosts
 
 
-## One batch as the cut has it, by where its bricks are: wholly on the near
-## side, drawn as if there were no cut, with the plain shader that keeps
-## its early depth test; wholly past the plane, not drawn at all (unless it
-## leaves a ghost); only a batch the plane goes through is drawn with the
-## shader that cuts. A cut through the middle of a set-sized model leaves
-## most batches on one side or the other, and the frame is the cheaper for
-## it. Asked again whenever a batch is written, since its bricks move.
-func _cut_batch(batch: Batch) -> void:
-	var material: ShaderMaterial = batch.instance.material_override as ShaderMaterial
-	if material == null:
-		return
-	_cut_variants()
-	var side: int = _side_of(batch.instance.custom_aabb) if _cut_on else -1
-	var through: bool = side == 0 or (side > 0 and _cut_ghosts)
-	if through != _to_plain.has(material.shader):
-		_swap_shader(batch, through)
-	batch.instance.visible = side <= 0 or _cut_ghosts
-	if through:
-		material.set_shader_parameter("cut_plane", _plane_vector())
-	if _cut_ghosts and batch.beyond == null:
-		batch.beyond = MultiMeshInstance3D.new()
-		batch.beyond.multimesh = batch.multimesh
-		batch.beyond.material_override = _see_through(true)
-		batch.beyond.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		batch.beyond.custom_aabb = batch.instance.custom_aabb
-		batch.instance.add_child(batch.beyond)
-	elif not _cut_ghosts and batch.beyond != null:
-		batch.beyond.queue_free()
-		batch.beyond = null
-
-
-## Which side of the cut a box is: -1 wholly on the near side, 1 wholly
+## Which side of the cut a brick is: -1 wholly on the near side, 1 wholly
 ## past the plane, 0 across it.
-func _side_of(box: AABB) -> int:
-	var middle: Vector3 = box.get_center()
-	var reach: float = (box.size * 0.5).dot(_cut_plane.normal.abs())
-	var past: float = _cut_plane.distance_to(middle)
-	if past - reach > 0.0:
+func _side_of_brick(brick: Brick) -> int:
+	var span: Variant = _spans.get(brick.id)
+	if span == null:
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var box: AABB = brick.transform * (part.bounds if part != null else AABB())
+		var middle: float = _cut_plane.normal.dot(box.get_center())
+		var reach: float = (box.size * 0.5).dot(_cut_plane.normal.abs())
+		span = Vector2(middle - reach, middle + reach)
+		_spans[brick.id] = span
+	if (span as Vector2).x > _cut_plane.d:
 		return 1
-	if past + reach <= 0.0:
+	if (span as Vector2).y <= _cut_plane.d:
 		return -1
 	return 0
 
 
-func _swap_shader(batch: Batch, cut: bool) -> void:
-	var material: ShaderMaterial = batch.instance.material_override as ShaderMaterial
-	if material == null:
+## A batch's solid bricks under a cut: every one into the batch's own
+## MultiMesh, nearest first along the cut's normal, of which only those
+## wholly on the near side are drawn — the first so many, the count
+## returned — and those the plane goes through into the MultiMesh that cuts.
+func _write_cut(batch: Batch, solid: Array, surface_color: int) -> int:
+	# Sorted by a packed key — the reach, to 1/128 LDU, then the brick's
+	# place in the list — which sorts natively: a sort with a callable
+	# took most of the time of turning a cut on.
+	var keys := PackedFloat64Array()
+	keys.resize(solid.size())
+	for n: int in solid.size():
+		_side_of_brick(solid[n])
+		var reach: float = (_spans[(solid[n] as Brick).id] as Vector2).y
+		keys[n] = floorf(reach * 128.0) * 1048576.0 + n
+	keys.sort()
+	var reaches := PackedFloat32Array()
+	var nears := PackedFloat32Array()
+	var order := PackedInt64Array()
+	reaches.resize(solid.size())
+	nears.resize(solid.size())
+	order.resize(solid.size())
+	var extent: float = 0.0
+	for slot: int in keys.size():
+		var brick: Brick = solid[int(fposmod(keys[slot], 1048576.0))]
+		_write_instance(batch, slot, brick, surface_color)
+		var span: Vector2 = _spans[brick.id]
+		reaches[slot] = span.y
+		nears[slot] = span.x
+		order[slot] = brick.id
+		extent = maxf(extent, span.y - span.x)
+	batch.reaches = reaches
+	batch.nears = nears
+	batch.order = order
+	batch.extent = extent
+	batch.cut_slots = _cut_slots(batch)
+	_write_cut_slots(batch, surface_color)
+	return reaches.bsearch(_cut_plane.d, false)
+
+
+## The slots of a batch's bricks the plane goes through (and, leaving ghosts,
+## those past it). In order of how far they reach, those are the ones past
+## the near side's count and no further than the batch's longest brick past
+## the plane, so they are found without looking at the rest.
+func _cut_slots(batch: Batch) -> PackedInt32Array:
+	var at: float = _cut_plane.d
+	var start: int = batch.reaches.bsearch(at, false)
+	var stop: int = batch.reaches.size() if _cut_ghosts \
+		else batch.reaches.bsearch(at + batch.extent + 0.001, false)
+	var out := PackedInt32Array()
+	for slot: int in range(start, stop):
+		if _cut_ghosts or batch.nears[slot] <= at:
+			out.append(slot)
+	return out
+
+
+func _write_cut_slots(batch: Batch, surface_color: int) -> void:
+	var through: Array = []
+	for slot: int in batch.cut_slots:
+		through.append(_bricks[batch.order[slot]])
+	_write_through(batch, through, surface_color)
+
+
+## A batch's bricks the plane goes through, written into their own MultiMesh
+## drawn with the shader that cuts, and the ghost of what the cut takes away
+## from the same MultiMesh; or both let go when there are none.
+func _write_through(batch: Batch, bricks: Array, surface_color: int) -> void:
+	if bricks.is_empty():
+		if batch.through != null:
+			batch.through.queue_free()
+			batch.through = null
+			batch.beyond = null
 		return
-	var other: Shader = (_to_cut if cut else _to_plain).get(material.shader)
-	if other != null:
-		material.shader = other
+	if batch.through == null:
+		_cut_variants()
+		var made := MultiMesh.new()
+		made.transform_format = MultiMesh.TRANSFORM_3D
+		made.use_colors = true
+		made.use_custom_data = true
+		made.mesh = batch.multimesh.mesh
+		batch.through = MultiMeshInstance3D.new()
+		batch.through.multimesh = made
+		# The batch's own material — its part's box, its print — with the
+		# shader that cuts.
+		var material: ShaderMaterial = (batch.instance.material_override as ShaderMaterial) \
+			.duplicate()
+		var cutting: Shader = _to_cut.get(material.shader)
+		if cutting != null:
+			material.shader = cutting
+		material.set_shader_parameter("cut_plane", _plane_vector())
+		batch.through.material_override = material
+		batch.instance.add_child(batch.through)
+	if _cut_ghosts and batch.beyond == null:
+		batch.beyond = MultiMeshInstance3D.new()
+		batch.beyond.multimesh = batch.through.multimesh
+		batch.beyond.material_override = _see_through(true)
+		batch.beyond.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		batch.through.add_child(batch.beyond)
+	elif not _cut_ghosts and batch.beyond != null:
+		batch.beyond.queue_free()
+		batch.beyond = null
+	var multimesh: MultiMesh = batch.through.multimesh
+	# Fresh slots, for the reason _fresh_slots gives.
+	multimesh.instance_count = 0
+	multimesh.instance_count = bricks.size()
+	var bounds := AABB()
+	for slot: int in bricks.size():
+		var brick: Brick = bricks[slot]
+		_write_instance(batch, slot, brick, surface_color, multimesh)
+		var box: AABB = brick.transform * multimesh.mesh.get_aabb()
+		bounds = box if slot == 0 else bounds.merge(box)
+	batch.through.custom_aabb = bounds
+	if batch.beyond != null:
+		batch.beyond.custom_aabb = bounds
 
 
 func _plane_vector() -> Vector4:
@@ -1200,10 +1357,5 @@ func _see_through_follows() -> void:
 		_beyond_material.set_shader_parameter("cut_plane", _plane_vector())
 
 
-## A batch's bounds, and so which side of a cut it is on.
 func _set_bounds(batch: Batch, bounds: AABB) -> void:
 	batch.instance.custom_aabb = bounds
-	if batch.beyond != null:
-		batch.beyond.custom_aabb = bounds
-	if _cut_on:
-		_cut_batch(batch)

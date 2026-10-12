@@ -145,8 +145,9 @@ void vertex() {
 	local_position = VERTEX;
 }
 
-// How much of a seam this fragment is in, from 0 to 1.
-float seam_at(vec3 at) {
+// How much of a seam this fragment is in, from 0 to 1. `per_pixel` is
+// fwidth(at), taken by the caller outside any branch.
+float seam_at(vec3 at, vec3 per_pixel) {
 	vec3 size = part_box_max - part_box_min;
 	if (size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
 		return 0.0;
@@ -157,7 +158,6 @@ float seam_at(vec3 at) {
 	float nearest = min(d.x, min(d.y, d.z));
 	float furthest = max(d.x, max(d.y, d.z));
 	float second = d.x + d.y + d.z - nearest - furthest;
-	vec3 per_pixel = fwidth(at);
 	float width = max(seam_ldu, seam_pixels * max(per_pixel.x, max(per_pixel.y, per_pixel.z)));
 	return 1.0 - smoothstep(width * 0.5, width, second);
 }
@@ -238,6 +238,37 @@ void fragment() {
 		discard;
 	}
 #endif
+	// Derivatives first, outside any branch, where they are defined: how
+	// many LDU one pixel spans here (the seams, and the finishes with detail
+	// finer than that, fade by it), and the print's own sample.
+	vec3 local_width = fwidth(local_position);
+#ifdef PLASTIC_PRINT
+	vec4 ink = texture(print_texture, UV);
+#endif
+#ifdef PLASTIC_CAP
+	// Where the plane cuts through plastic. A part's surfaces are closed,
+	// so an eye looking past the plane meets a back face exactly where the
+	// plane is inside the plastic, and a front face where it is in air:
+	// the back faces are the cut. Drawn as a flat face square to the
+	// plane, in the part's own colour, hatched the way a section is drawn
+	// on paper, so a wall cut through reads as a wall and not as a hole
+	// into the back of the brick. And drawn first and alone: with a discard
+	// in the shader nothing is rejected before it runs, and about half of
+	// what a cut part draws is back faces hidden behind its front ones.
+	if (!FRONT_FACING) {
+		vec3 cap_linear = linearise ? instance_color : srgb_to_linear(instance_color);
+		float cap_dark = dot(cap_linear, vec3(0.2126, 0.7152, 0.0722));
+		float band = step(0.55, fract((FRAGCOORD.x + FRAGCOORD.y) / 9.0));
+		vec3 line = cap_dark < 0.04 ? mix(instance_color, vec3(1.0), 0.3) : instance_color * 0.5;
+		ALBEDO = mix(instance_color * 0.9, line, band);
+		METALLIC = 0.0;
+		ROUGHNESS = 1.0;
+		SPECULAR = 0.0;
+		BACKLIGHT = vec3(0.0);
+		EMISSION = vec3(0.0);
+		NORMAL = normalize((VIEW_MATRIX * vec4(cut_plane.xyz, 0.0)).xyz);
+	} else {
+#endif
 	int finish = int(floor(instance_finish.w + 0.001));
 	float fraction = clamp(instance_finish.w - float(finish), 0.0, 1.0);
 	vec3 fleck_color = instance_finish.rgb;
@@ -249,14 +280,13 @@ void fragment() {
 	// a dark seam it could not show.
 	// Judged in linear light on both renderers, so the same plastics count
 	// as dark under Compatibility, which is handed sRGB.
-	float seam = seam_at(local_position);
+	float seam = seam_at(local_position, local_width);
 	vec3 linear_color = linearise ? instance_color : srgb_to_linear(instance_color);
 	float luminance_in = dot(linear_color, vec3(0.2126, 0.7152, 0.0722));
 	vec3 seam_color = luminance_in < 0.025 ? instance_color + vec3(0.03)
 		: instance_color * (1.0 - seam_depth);
 	vec3 body = mix(instance_color, seam_color, seam);
 #ifdef PLASTIC_PRINT
-	vec4 ink = texture(print_texture, UV);
 	float on_picture = step(0.0, UV.x) * step(UV.x, 1.0) * step(0.0, UV.y) * step(UV.y, 1.0);
 	vec3 ink_color = linearise ? srgb_to_linear(ink.rgb) : ink.rgb;
 	body = mix(body, ink_color, ink.a * on_picture);
@@ -274,10 +304,6 @@ void fragment() {
 	// space here, which is what makes the result mean anything.
 	vec3 normal = normalize(NORMAL);
 	vec3 view = normalize(VIEW);
-	// How many LDU one pixel spans here, for the finishes with detail
-	// finer than that to fade it out. Taken out here, where every
-	// fragment takes it.
-	vec3 local_width = fwidth(local_position);
 	float pixel_ldu = max(local_width.x, max(local_width.y, local_width.z));
 	float faded = 0.0;
 	float facing = clamp(dot(normal, view), 0.0, 1.0);
@@ -424,23 +450,6 @@ void fragment() {
 #endif
 
 #ifdef PLASTIC_CAP
-	// Where the plane cuts through plastic. A part's surfaces are closed,
-	// so an eye looking past the plane meets a back face exactly where the
-	// plane is inside the plastic, and a front face where it is in air:
-	// the back faces are the cut. Drawn as a flat face square to the
-	// plane, in the part's own colour, hatched the way a section is drawn
-	// on paper, so a wall cut through reads as a wall and not as a hole
-	// into the back of the brick.
-	if (!FRONT_FACING) {
-		float band = step(0.55, fract((FRAGCOORD.x + FRAGCOORD.y) / 9.0));
-		vec3 line = luminance_in < 0.04 ? mix(body, vec3(1.0), 0.3) : body * 0.5;
-		ALBEDO = mix(body * 0.9, line, band);
-		METALLIC = 0.0;
-		ROUGHNESS = 1.0;
-		SPECULAR = 0.0;
-		BACKLIGHT = vec3(0.0);
-		EMISSION = vec3(0.0);
-		NORMAL = normalize((VIEW_MATRIX * vec4(cut_plane.xyz, 0.0)).xyz);
 	}
 #endif
 }
