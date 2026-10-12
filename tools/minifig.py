@@ -99,6 +99,12 @@ BAR_RADIUS = 4.0
 # between them, 1.3 to 1.5 LDU long (2674b, 66964), and a hand 11 LDU
 # long closes over several at once.
 RIB = 2.0
+# How long a closed hand is along its grip (3820.dat's bore), in LDU. A
+# length of bar as long as that is a handle of its own, and the rings a
+# rib away from it are something else: a lightsaber hilt's emitter above
+# its grip (64567a, which real figures hold by the grip), a telescope's
+# other tube.
+HAND_LENGTH = 11.0
 
 
 # -- matrices --------------------------------------------------------------
@@ -376,20 +382,15 @@ CYLINDER = re.compile(r"^(?:48/|8/)?(\d+)-(\d+)cyl[a-z0-9]*\.dat$")
 def bars(library: Library, pid: str) -> list[tuple[tuple, tuple, float]]:
     """The bars a hand could hold in a part: (centre, unit axis, length)
     of every cylinder 4 LDU in radius in it, joined where pieces of one
-    bar meet end to end, or are a rib apart (see [RIB])."""
+    bar meet end to end, or are rings a rib apart (see [RIB] and
+    [HAND_LENGTH])."""
     found: list[tuple[tuple, tuple]] = []      # (start, end)
     _bars(library, pid + ".dat", IDENTITY, found, 0)
-    joined: list[list] = []
-    for start, end in found:
-        axis = _unit(tuple(e - s for s, e in zip(start, end)))
-        for bar in joined:
-            if _collinear(bar, start, end, axis):
-                bar[0] = min(bar[0], _along(bar, start), _along(bar, end))
-                bar[1] = max(bar[1], _along(bar, start), _along(bar, end))
-                break
-        else:
-            joined.append([0.0, math.dist(start, end), start, axis])
-    # Pieces met out of order leave two bars a rib apart: join those too.
+    # [low, high, origin, axis, its longest piece]
+    joined: list[list] = [[0.0, math.dist(s, e), s, _unit(tuple(b - a for a, b in zip(s, e))),
+                           math.dist(s, e)] for s, e in found]
+    # Joined until nothing more joins, so the order the pieces are drawn
+    # in does not matter.
     merged = True
     while merged:
         merged = False
@@ -399,16 +400,18 @@ def bars(library: Library, pid: str) -> list[tuple[tuple, tuple, float]]:
                     continue
                 ends = [tuple(o + a * t for o, a in zip(other[2], other[3]))
                         for t in (other[0], other[1])]
-                if _collinear(one, ends[0], ends[1], other[3]):
+                if _collinear(one, ends[0], ends[1], other[3],
+                              max(one[4], other[4]) < HAND_LENGTH):
                     one[0] = min(one[0], _along(one, ends[0]), _along(one, ends[1]))
                     one[1] = max(one[1], _along(one, ends[0]), _along(one, ends[1]))
+                    one[4] = max(one[4], other[4])
                     joined.remove(other)
                     merged = True
                     break
             if merged:
                 break
     out = []
-    for low, high, origin, axis in joined:
+    for low, high, origin, axis, _longest in joined:
         if high - low < 2.0:
             continue
         mid = (low + high) / 2.0
@@ -453,7 +456,9 @@ def _along(bar: list, p: tuple) -> float:
     return sum((a - o) * d for a, o, d in zip(p, bar[2], bar[3]))
 
 
-def _collinear(bar: list, start: tuple, end: tuple, axis: tuple) -> bool:
+def _collinear(bar: list, start: tuple, end: tuple, axis: tuple, ribs: bool) -> bool:
+    """Whether a length of bar is on a bar's line and meets it, end to end
+    or, where both are [ribs], a rib apart."""
     if abs(abs(sum(a * b for a, b in zip(axis, bar[3]))) - 1.0) > 1e-3:
         return False
     for p in (start, end):
@@ -462,7 +467,22 @@ def _collinear(bar: list, start: tuple, end: tuple, axis: tuple) -> bool:
         if math.dist(foot, p) > 0.05:
             return False
     lo, hi = sorted((_along(bar, start), _along(bar, end)))
-    return lo <= bar[1] + RIB and hi >= bar[0] - RIB
+    apart = RIB if ribs else 0.5
+    return lo <= bar[1] + apart and hi >= bar[0] - apart
+
+
+# Where the rule below gets a grip wrong, the grip it found before it
+# joined ribs: the point and the axis, by part.
+KEPT_GRIPS: dict[str, tuple[tuple, tuple]] = {
+    # The hilt is the bar from the pommel at the origin to y -20. The
+    # longest bar along Y is the bar holder on the back of the blade, y
+    # -40 to -62, three lengths of bar end to end.
+    "11107": ((0.0, -10.0, 0.0), (0.0, 1.0, 0.0)),
+    # The origin is 1.67 down the handle from the head, so it is "on the
+    # bar, not at its end" as the bow's is, and held there the mallet is
+    # upside down: its handle in the air and its head in the fist.
+    "4522b": ((0.0, 23.167, 0.0), (0.0, 1.0, 0.0)),
+}
 
 
 def grip_of(library: Library, pid: str) -> tuple:
@@ -476,7 +496,10 @@ def grip_of(library: Library, pid: str) -> tuple:
     part with no bar at all is held at its origin along Y. The bow
     (4499) is held at its origin too, by real figures and here: its
     handle is ribbed, a bar to a hand ([RIB]), and the origin is on it
-    an LDU and a bit short of its end."""
+    an LDU and a bit short of its end. And [KEPT_GRIPS], where that is
+    wrong."""
+    if pid in KEPT_GRIPS:
+        return KEPT_GRIPS[pid]
     found = bars(library, pid)
     upright = [b for b in found if abs(b[1][1]) > 0.99]
     for group in (upright, found):

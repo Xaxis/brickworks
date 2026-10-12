@@ -102,6 +102,16 @@ def test_a_bow_is_held_at_its_origin_on_its_ribbed_handle(library: Library) -> N
 
 
 @needs_ldraw
+def test_a_lightsaber_hilt_is_held_by_its_grip_not_its_emitter(library: Library) -> None:
+    # 64567a's grip is one bar 15.5 LDU long, and the rings of its emitter
+    # are a rib away above it. Joined, the hand went to the middle of all
+    # of it, 4 LDU up the emitter and the hilt upside down; real figures
+    # hold it (as 577b, its old number) at y 19 to 20.5, the emitter up.
+    (at, along) = minifig.grip_of(library, "64567a")
+    assert abs(at[1] - 20.25) < 0.01 and along[1] > 0.99
+
+
+@needs_ldraw
 def test_a_greatsword_slides_no_further_than_its_hilt(library: Library) -> None:
     # 66964's hilt is ribbed too, from 5 to 20.25 LDU above its pommel at
     # the origin: the hand is on the middle of it, and can slide along it
