@@ -113,9 +113,18 @@ func _ready() -> void:
 	set_process(true)
 
 
+## The way the camera faced when this was last drawn.
+var _drawn_facing: Basis = Basis()
+
+
 func _process(_delta: float) -> void:
-	# Redrawn every frame because it follows the camera, which eases.
-	if camera != null:
+	# Redrawn whenever the camera turned, because it follows the camera,
+	# which eases. Not every frame: a redraw is a frame drawn (IdleDraw).
+	if camera == null:
+		return
+	var facing: Basis = camera.global_transform.basis
+	if facing != _drawn_facing:
+		_drawn_facing = facing
 		queue_redraw()
 
 

@@ -558,6 +558,7 @@ func _ready() -> void:
 		return
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
+	IdleDraw.for_the_app()
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -851,8 +852,10 @@ func _given_any(flags: Array[String]) -> bool:
 func _benchmark(frames: int) -> void:
 	# Without this the number is the monitor's refresh rate, not the
 	# renderer's: a 120 Hz panel reports 120 fps however little work it is.
+	# And every frame drawn, or it measures frames that drew nothing.
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	IdleDraw.end()
 
 	# Discard the first second: shader compilation, the shadow atlas and
 	# the camera easing all land in it and none of them recur.
@@ -2562,12 +2565,10 @@ func _steer_from_keys(delta: float) -> void:
 ## took over SLOW_FRAME_MS, as [when in ticks, ms of work, ms waiting for a
 ## picture to be read back, what the app was doing: the tool Claude called
 ## and the assistant's last step], the latest SLOW_FRAMES of them. Kept on the web
-## only, where the page reads them. Timed from the tree's process_frame,
-## which begins a frame's work, to the renderer's frame_pre_draw, which ends
-## it; the wait for a picture (ModelShot.gpu_wait_us) is the graphics card's
-## time, not this app's, and is said apart.
+## only, where the page reads them. Timed by OwnFrames, drawn or not; the
+## wait for a picture (ModelShot.gpu_wait_us) is the graphics card's time,
+## not this app's, and is said apart.
 var _slow_frames: Array = []
-var _frame_began: int = 0
 var _doing: String = ""
 const SLOW_FRAME_MS := 50.0
 const SLOW_FRAMES := 200
@@ -2581,15 +2582,12 @@ func _watch_own_frames() -> void:
 	if _connector != null and _connector.rpc != null:
 		_connector.rpc.asked.connect(func(tool: String) -> void:
 			_doing = tool)
-	get_tree().process_frame.connect(func() -> void:
-		_frame_began = Time.get_ticks_usec())
-	RenderingServer.frame_pre_draw.connect(func() -> void:
-		if _frame_began == 0:
-			return
-		var spent: float = (Time.get_ticks_usec() - _frame_began) / 1000.0
+	var frames := OwnFrames.new()
+	add_child(frames)
+	frames.timed.connect(func(spent_us: int) -> void:
+		var spent: float = spent_us / 1000.0
 		var waited: float = ModelShot.gpu_wait_us / 1000.0
 		ModelShot.gpu_wait_us = 0
-		_frame_began = 0
 		if spent > SLOW_FRAME_MS:
 			_slow_frames.append([Time.get_ticks_msec(),
 				roundi(maxf(spent - waited, 0.0)), roundi(waited), _doing])

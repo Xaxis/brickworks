@@ -321,6 +321,7 @@ func _take(world: BrickWorld, from: String,
 		# graphics card whether it is complete, and in a browser that waits
 		# for everything queued (8 ms in software GL on the desktop, a second
 		# in a browser drawing in software).
+		await GpuFence.finished()
 		var setting_up: int = Time.get_ticks_usec()
 		_build()
 		gpu_wait_us += Time.get_ticks_usec() - setting_up
@@ -422,12 +423,22 @@ func _take(world: BrickWorld, from: String,
 			await _restage(world, skip)
 		_camera.current = true
 		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-		for _n: int in FRAMES_TO_DRAW:
+		# On the web one frame, in which it is drawn, and then the fence
+		# below with the drawing held: every frame more is the whole model
+		# drawn again ahead of the read, seconds each in software. A
+		# picture drawn blank, the first while shaders compile, is tried
+		# again.
+		var drawing: int = 1 if OS.has_feature("web") else FRAMES_TO_DRAW
+		for _n: int in drawing:
 			await get_tree().process_frame
-		frames += FRAMES_TO_DRAW
+		frames += drawing
 		var texture: ViewportTexture = _viewport.get_texture()
 		if texture == null:
 			continue
+		# Read back once the card has drawn it: sooner, the read waits for
+		# it on the page's one thread, 27 to 33 s a picture of the Falcon
+		# in a browser drawing in software (GpuFence).
+		await GpuFence.finished()
 		var asked: int = Time.get_ticks_usec()
 		var image: Image = texture.get_image()
 		gpu_wait_us += Time.get_ticks_usec() - asked

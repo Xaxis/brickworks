@@ -50,6 +50,21 @@ async function controlAt(name, seconds = 400) {
 async function state() {
   return page.evaluate(() => window.brickworksState || {});
 }
+// What the page says once it has said it again since now: the app tells the
+// page every half second, so a read straight after an input can be from
+// before it. Drawing only what changed (IdleDraw), frames come sixty a
+// second rather than one, the half second is all that is left between an
+// input and its read, and a drag "on nothing" read the line from where the
+// pointer was before and started on a part.
+async function fresh() {
+  const was = (await state()).now || 0;
+  for (let n = 0; n < 50; n++) {
+    await page.waitForTimeout(100);
+    const now = await state();
+    if ((now.now || 0) > was) return now;
+  }
+  return state();
+}
 async function view() {
   const s = await state();
   return s.view || { yaw: 0, pitch: 0, distance: 0, focus: [0, 0, 0] };
@@ -83,6 +98,7 @@ async function click(at, options = {}) {
   await page.mouse.click(at.x, at.y, { button: "left" });
   if (options.modifier) await page.keyboard.up(options.modifier);
   await wait(600);
+  await fresh();
 }
 async function drag(from, to, options = {}) {
   inputs += 1;
@@ -97,6 +113,7 @@ async function drag(from, to, options = {}) {
   await page.mouse.up({ button: "left" });
   for (const key of [...(options.hold || [])].reverse()) await page.keyboard.up(key);
   await wait(700);
+  await fresh();
 }
 async function wheel(at, dx, dy, times, options = {}) {
   inputs += 1;
@@ -108,11 +125,13 @@ async function wheel(at, dx, dy, times, options = {}) {
   }
   for (const key of [...(options.hold || [])].reverse()) await page.keyboard.up(key);
   await wait(700);
+  await fresh();
 }
 async function key(name) {
   inputs += 1;
   await page.keyboard.press(name);
   await wait(500);
+  await fresh();
 }
 
 let failed = 0;
@@ -143,7 +162,7 @@ async function nothingAt(candidates) {
   for (const at of candidates) {
     await page.mouse.move(at.x, at.y, { steps: 2 });
     await wait(400);
-    const hint = String((await state()).hint || "");
+    const hint = String((await fresh()).hint || "");
     if (!hint.includes("click selects it")) return at;
   }
   return candidates[0];

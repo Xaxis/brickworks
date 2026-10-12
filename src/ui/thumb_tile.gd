@@ -12,9 +12,15 @@
 ##
 ## Nothing here runs per frame while waiting. The shimmer is one shader
 ## shared by every tile and driven by TIME, so a waiting tile costs a draw
-## and no script, and one scrolled out of sight is culled and costs
-## nothing. Only the fade processes, for a fifth of a second after a
+## and no script. Only the fade processes, for a fifth of a second after a
 ## picture lands, and only on the tile it landed on.
+##
+## And only a tile in sight shimmers ([member in_sight]). A shader reading
+## TIME has the whole window drawn again every frame it is on the window,
+## and Godot culls a tile clipped out of a scrolled grid only once it is
+## off the window too: in a 1280 x 860 browser the bin's first row out of
+## sight sat inside the window, under the colours, and the page drew every
+## frame standing still, a second of software rasterising each (2026-10-11).
 ##
 ## The tile never asks for its own picture. [PartThumbnails] is told which
 ## tiles are in sight (see [ThumbTile.Sight]) and draws those, nearest the
@@ -40,6 +46,17 @@ var state: State = State.LOADING
 var texture: Texture2D
 ## How far the picture has faded in, 0 to 1.
 var _shown: float = 1.0
+
+## Whether the tile can be seen, which a grid's [ThumbTile.Sight] says;
+## a tile outside a grid is taken to be. Waiting out of sight it is the
+## placeholder alone, without the shimmer.
+var in_sight: bool = true:
+	set(value):
+		if value == in_sight:
+			return
+		in_sight = value
+		if state == State.LOADING:
+			material = _shimmer_material() if in_sight else null
 
 
 func _init(part: String = "", colour: int = 0, with_print: bool = false) -> void:
@@ -91,7 +108,7 @@ func _settle(now: State) -> void:
 	state = now
 	_shown = 1.0
 	set_process(false)
-	material = _shimmer_material() if now == State.LOADING else null
+	material = _shimmer_material() if now == State.LOADING and in_sight else null
 	queue_redraw()
 
 
@@ -232,15 +249,19 @@ class Sight extends RefCounted:
 			return out
 		var cell_height: float = (grid.get_child(0) as Control).size.y
 		var seen: Vector2 = _window()
-		# Not laid out yet, or nothing showing. Asked again next frame,
-		# when it will have been.
-		if cell_height <= 0.0 or seen.y <= seen.x:
+		# Not laid out yet. Asked again next frame, when it will have been.
+		if cell_height <= 0.0:
+			return out
+		var columns: int = maxi(grid.columns, 1)
+		# Nothing showing: a bin folded into its dock is still "visible".
+		if seen.y <= seen.x:
+			_mark_in_sight(0, 0, columns)
 			return out
 		var row_height: float = cell_height + grid.get_theme_constant("v_separation")
-		var columns: int = maxi(grid.columns, 1)
 		var rows: int = ceili(float(count) / columns)
 		var top: int = clampi(floori(seen.x / row_height), 0, rows)
 		var bottom: int = clampi(ceili(seen.y / row_height), 0, rows)
+		_mark_in_sight(top, bottom, columns)
 		var screen: int = maxi(bottom - top, 1)
 		var order: Array[int] = []
 		for row: int in range(top, bottom):
@@ -261,6 +282,16 @@ class Sight extends RefCounted:
 				if tile is ThumbTile:
 					out.append(tile)
 		return out
+
+	## Tiles in the rows from [param top] up to [param bottom] are in sight,
+	## and only they shimmer while they wait: see [member ThumbTile.in_sight].
+	func _mark_in_sight(top: int, bottom: int, columns: int) -> void:
+		for index: int in grid.get_child_count():
+			var cell: Node = grid.get_child(index)
+			var tile: Variant = cell.get_meta("tile") if cell.has_meta("tile") else null
+			if tile is ThumbTile:
+				var row: int = index / columns
+				(tile as ThumbTile).in_sight = row >= top and row < bottom
 
 	## The stretch of the grid that can be seen, top and bottom in the
 	## grid's own coordinates, after every clipping parent has had its

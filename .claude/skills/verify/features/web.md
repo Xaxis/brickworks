@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, cli:idle check -->
 
 ## Sub-features
 
@@ -173,7 +173,8 @@ plan with Claude as the client.
   (check it, submit it, read it back, look at it, recolour a brick, review
   it), and times the page through each call and the build animation after:
   the app's own slowest frame (`Main._watch_own_frames`, published as
-  `brickworksState.slow`, from a frame's start to its drawing), long tasks,
+  `brickworksState.slow`, from a frame's start to its drawing, or, for a
+  frame that draws nothing, to the end of its scripts: `OwnFrames`), long tasks,
   the longest gap between frames, a mouse move's wait, bricks, batches,
   triangles and the WebAssembly heap. Each slow frame carries what the app
   was doing (the tool called, the assistant's last step), and the longest of
@@ -188,9 +189,24 @@ plan with Claude as the client.
   Long tasks are otherwise printed beside the idle page's and not judged:
   drawn in software (SwiftShader), an idle page's every frame is a task of a
   second here. So is the wait for a picture to be read back
-  (`ModelShot.gpu_wait_us`), printed apart: in software it waits on every
-  frame queued before it, tens of seconds. Leaves `console.log` (what the app
-  printed, as it came) and `freeze.json`.
+  (`ModelShot.gpu_wait_us`), printed apart: in software it waited on every
+  frame queued before it, tens of seconds, until the read waited for a fence
+  with the drawing held (`GpuFence`, 2026-10-11); now milliseconds. Still
+  over budget then: frames of 670 to 1,750 ms while check_design's design
+  went down, and as much drawing every frame as drawing only what changed
+  (902 and 973 ms in one build; 1,645 ms on integrate with `IdleDraw` taken
+  out). Timed, each was one new batch counting its triangles from its
+  mesh's arrays, which are read back off the card: a synchronous
+  getBufferSubData that waits for the frame before to be rasterised, once
+  for every part new to the page. `BrickWorld._triangles_of` now takes the
+  index count the mesh keeps: side by side, check_design's longest frame
+  went from 1,754 ms to 413 ms. The longest left is the autosave
+  (`ModelStore.tick`, writing the whole model a second after it changed):
+  about 200 ms on a quiet box, 450 to 540 ms on a busy one, so a run on a
+  loaded machine can still go over on submit_design. The 590 ms once seen
+  after edit_model's picture did not come back (edit_model 190 to 350 ms
+  in six runs). Leaves `console.log` (what the app printed, as it came)
+  and `freeze.json`.
 - `redraw check`: `tools/web/redraw_check.mjs --url=…` puts one red brick on an
   empty baseplate in a browser, turns it (`R`), mirrors it (`Shift-M`), nudges
   it three studs (arrows) and lets go, finding the red on the canvas after each:
@@ -213,8 +229,11 @@ plan with Claude as the client.
   and takes the time spent inside WebGL calls off each one. In software
   (SwiftShader) the page waits a second or more a frame on the rasteriser,
   inside those calls. It counts the instances each frame asks WebGL to draw.
-  - `drawn`: the first frame in view from which every frame draws what the
-    last does, to within 1%.
+  - `drawn`: the first frame in view from which every frame that draws
+    draws what the last one did, to within 1%. A frame that draws nothing
+    shows what the last drew: the app draws only what changed (`IdleDraw`,
+    2026-10-11), and a page standing still draws nothing, which `settle`
+    counts as settled too.
   - `idle`: the last frame in view with over 100 ms of the engine's own work.
 
   It also prints the slowest own frame, long task and evaluate round trip in
@@ -224,7 +243,8 @@ plan with Claude as the client.
   page itself, not even behind another tab (tried 2026-10-11). It reads the
   same way on a build that does not time itself, so the old build is judged
   by the same numbers. Fails when a case is not drawn within three frames of
-  being in view, or took more than `--budget` ms (2,000) of the engine's own
+  being in view (frames that drew; 0 when it was on the screen already as
+  the tab was shown), or took more than `--budget` ms (2,000) of the engine's own
   work to get there. It is judged in frames because in software a frame of a
   4,000-part model is 2 to 3 s of rasterising, which a graphics card does in
   milliseconds. Three frames because the ground is laid wider under a design
@@ -245,6 +265,33 @@ plan with Claude as the client.
   only after 9 s. `EditVerbs.brick_at` now keeps its last answer until the ray
   or `BrickLattice.revision` changes, and answers nothing out of view
   (`Main._watch_view`).
+- `idle check`: `tools/web/idle_check.mjs` loads the app in Chromium, lets
+  it settle (the model, its parts and the bin's pictures in, nothing
+  moving), and counts what a page standing still costs for 15 s: the
+  engine's frames, those that asked WebGL to draw, the main thread's busy
+  share (CDP `TaskDuration`), and the CPU of every Chromium process by kind
+  (the page; SwiftShader in the GPU process). Then a wheel notch over the
+  model, the - key and the pointer over the model with a part in hand must
+  each be drawn, and the page go quiet after. Fails past one frame drawn a
+  second standing still or a tenth of the engine's frames (drawn in
+  software a frame of the old build took over a second, so it drew under
+  one a second while drawing every frame it had). Measured 2026-10-11 on
+  local exports: the build before drew 12 of 12 frames, its main thread
+  106% busy and Chromium 587% of a core (the GPU process 498%); now 0 of
+  904 drawn and no WebGL call, the main thread 4%. On the CAD shell it drew
+  every frame again (16 of 16, Chromium 820%, the GPU process 720%): the
+  bin's shimmering tiles below its fold were inside the window (see
+  [parts](parts.md) gotchas); with only tiles in sight shimmering, 0 of 657
+  drawn and the GPU process 1% (2026-10-12). The main thread is still about
+  100% busy in the engine's own frames, which drew nothing: the shell's
+  scripts every frame, about 2.5 ms of a desktop frame, not yet cut down. The
+  part in hand is taken with Q, as Select is where the app rests. It waits 20 s after
+  settling (`--after`) before it measures: in software the GPU process
+  rasterises seconds behind the page, and straight after settling it was
+  still at 160% on frames drawn before. Not the app's drawing, and in both
+  builds: one of the page's workers (a `DedicatedWorker` thread of the
+  renderer) runs at about a core, not yet traced. Leaves `idle.json` and
+  `idle.png`.
 - The desktop downloads page (`web/download.html`, `download.js`,
   `releases.json`) ships with every deploy like the rest of `web/`; what it
   does and how it is checked is in [release](release.md). The landing page
@@ -283,6 +330,7 @@ python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay
 # the export and the deployment's functions together, for the connector
 set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 --static=build/web
 node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze   # a big design, timed
+node tools/web/idle_check.mjs --dir=build/web --out=shots/idle       # nothing drawn standing still
 ```
 
 ## How to check it

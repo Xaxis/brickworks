@@ -908,6 +908,20 @@
       "entry": "src/parts/mesh_file.gd",
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
       "area": "brickify"
+    },
+    {
+      "kind": "cli",
+      "label": "idle check",
+      "entry": "tools/web/idle_check.mjs",
+      "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "drawing only what changed",
+      "entry": "src/render/idle_draw.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
+      "area": "view"
     }
   ]
 }
