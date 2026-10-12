@@ -91,7 +91,7 @@ chooser with the bunny, types 30 into the size, presses Brickify, and reads
 `brickified`, the status line's sentence: buildable in one piece, no part
 missing. Pictures in its `--out`. Baseline 2026-10-12 on a preview, Chromium on
 SwiftShader at a load of 30 to 50: the panel 20 s after the file is chosen,
-the bunny down about two minutes after Brickify is pressed, 1,057 parts as on
+the bunny down a minute and a half after Brickify is pressed, 1,057 parts as on
 the desktop.
 
 ## Gotchas
