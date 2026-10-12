@@ -114,6 +114,23 @@ tools/export.sh linux                 # one of them
   was rebuilt. `test_a_mirrored_twin_is_drawn_as_its_twins_reflection` is
   the only test that fails if `geometry.flatten` stops counting a mirror.
 
+- **A change to the room round bars moves only parts with a sideways bar.**
+  The cover rule of 2026-10-12 (`geometry.md`: a bar in a loop) was rebuilt
+  without a full build. The candidates were the 4,318 parts whose built
+  `.lbm` has a shaft of radius 3 to 5 across the stud axis, each covered both
+  ways from the library (the old way is the new code with `bars` returning
+  nothing): 511 covers changed, 187 for a filled loop and 324 for a bar in a
+  bounding box. Those 511 and 308 controls (150 with such a shaft that did not
+  change, 150 random, and 2432, 3839b, 2921, 3062b, 4085c, 60897, 3941 and
+  30374) built with `--only` in 110 s on 8 jobs; only `mesh` and `box_count`
+  moved, every new cover lies inside the old one, and all 308 controls came
+  out identical before `merge_subbuild.py` took them. 478 new meshes, 34.7
+  MB, are for `storage_parts.py` to upload; `refresh_catalogue.py` afterwards
+  changed no part. The boxes of the 511 went from 6,152 to 26,483, the most
+  360 (80566, a curved roller coaster track, whose rails are bars at an angle
+  carved as staircases); `element_pipeline.sh` writes the same
+  `pipeline.json`.
+
 - **`merge_subbuild.py` dropped a field it did not know refresh added.** It
   carries over a fixed list of refresh-only fields, and `in_sets` was missing,
   so the merge above first took it off 1,239 parts, which search and the bin

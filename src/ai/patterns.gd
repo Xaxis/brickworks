@@ -456,7 +456,7 @@ static func _fill(pattern: Dictionary, trouble: Array,
 			course))
 		# Before the masonry, which would otherwise have every 1x2 first.
 		if sideways > 0.0:
-			_sideways(made, from_here, sideways, middle)
+			_sideways(made, from_here, sideways, middle, dark)
 		if mix > 0.0 or masonry > 0.0:
 			_texture(made, from_here, colour, mix_colour, mix, masonry,
 				middle, dark)
@@ -656,6 +656,9 @@ const BAND_EVERY := 8
 ## axes turn into +Z at rot 0, +X at 1, -Z at 2 and -X at 3.
 const MASONRY: Dictionary = {"3004": "98283", "3010": "15533"}
 
+## Studs between the columns a dark wall's sideways bricks stand in.
+const SIDEWAYS_EVERY := 4
+
 
 ## Give some of a layer's bricks a second colour, and lay some as
 ## masonry facing away from the middle of the fill.
@@ -704,8 +707,12 @@ const ONE_WIDE: Dictionary = {"3005": 1, "3004": 2, "3622": 3, "3010": 4}
 ## them and hang something on each stud. Chosen by where they are, like
 ## the mix. A 1x4 is most of a bonded wall, so it has to be one of them:
 ## offered only the 1x2s, a wall came out with four.
+##
+## On a dark wall ([param dark]) in columns instead, every SIDEWAYS_EVERY
+## studs along it, whatever the share: scattered over black they read as
+## speckle, where a real set ribs its dark walls.
 static func _sideways(made: Array, from: int, share: float,
-		middle: Vector2) -> void:
+		middle: Vector2, dark: bool = false) -> void:
 	var extra: Array = []
 	for n: int in range(from, made.size()):
 		var one: Dictionary = made[n]
@@ -715,9 +722,12 @@ static func _sideways(made: Array, from: int, share: float,
 		var x: float = float(one["x"])
 		var y: float = float(one["y"])
 		var z: float = float(one["z"])
-		if _scatter(x, y, z, 31) >= share:
-			continue
 		var along_x: bool = int(one.get("rot", 0)) % 2 == 0
+		if dark:
+			if long > 2 or posmod(int(round(x if along_x else z)), SIDEWAYS_EVERY) != 0:
+				continue
+		elif _scatter(x, y, z, 31) >= share:
+			continue
 		var facing: String
 		if along_x:
 			facing = "+z" if z + 0.5 >= middle.y else "-z"

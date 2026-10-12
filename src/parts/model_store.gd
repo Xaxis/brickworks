@@ -89,6 +89,8 @@ var _pending: bool = false
 
 signal saved(name: String)
 signal loaded(name: String, bricks: int)
+## A new model, called this: see [method begin].
+signal begun(name: String)
 
 const UNTITLED := "Untitled"
 ## What the model on the baseplate is called: the name it was saved under,
@@ -96,6 +98,10 @@ const UNTITLED := "Untitled"
 ## It wrote "Working model" instead, so the app reopened a model the owner
 ## had saved and named, and called it Untitled.
 var title: String = UNTITLED
+## The model on the baseplate is one that ships with the app, opened from
+## there and not saved since. Its name is not the person's: Clear takes it
+## away with the bricks (Main).
+var example: bool = false
 
 
 func _init() -> void:
@@ -151,9 +157,74 @@ func save_as(name: String) -> bool:
 		title = name
 		# Saved by them is theirs, whatever it opened short of.
 		whole = true
+		example = false
 		saved.emit(name)
 		return true
 	return false
+
+
+## The model on the baseplate is a new one, nothing of it saved, called
+## [param name] for what is going down on it.
+##
+## When the example car of a first visit made room for a design, it went
+## and its name stayed: the tower built in its place was "Example Car for
+## Demonstration of LDRAW Library" in the bar, and Save saved it as that.
+## A name a saved model has already gets a number after it, so Save never
+## writes over somebody's model with new work.
+func begin(name: String) -> void:
+	var wanted: String = name.strip_edges()
+	title = UNTITLED if wanted.is_empty() or wanted == UNTITLED else _free_name(wanted)
+	# Nothing in it is missing, so the autosave may keep it.
+	whole = true
+	example = false
+	# New work is not the model that was shared: publishing it must not
+	# replace that one at its link.
+	share_id = ""
+	begun.emit(title)
+
+
+## [param name], or it with a number after it when a saved model has it.
+static func _free_name(name: String) -> String:
+	var tried: String = name
+	for n: int in range(2, 100):
+		if not FileAccess.file_exists(SAVE_DIR + _safe_name(tried) + ".ldr"):
+			break
+		tried = "%s %d" % [name.left(50), n]
+	return tried
+
+
+## What to call the model a brief asks for: the thing, without the asking
+## or what is said about it. "Build the Tower of Orthanc from Lord of the
+## Rings, about 40 cm tall" is the Tower of Orthanc.
+static func name_for(brief: String) -> String:
+	var text: String = brief.strip_edges()
+	for stop: String in [".", ",", ";", ":", "!", "?", "\n", "(", " - ", " — ", " – "]:
+		var at: int = text.find(stop)
+		if at > 0:
+			text = text.left(at)
+	var words: PackedStringArray = text.split(" ", false)
+	const ASKING := ["please", "can", "could", "would", "will", "you", "i", "i'd",
+		"id", "i'm", "want", "like", "love", "to", "see", "build", "make", "design",
+		"create", "do", "me", "us", "a", "an", "the", "some", "my", "lego", "brick",
+		"model", "version", "of", "let's", "lets", "how", "about"]
+	while not words.is_empty() and words[0].to_lower() in ASKING:
+		words.remove_at(0)
+	# Up to where the brief goes on to say what it should be like.
+	const SAYING := ["with", "that", "which", "from", "for", "in", "on", "at",
+		"about", "using", "made", "where", "who", "like", "inspired", "based",
+		"built", "around", "roughly", "approximately"]
+	var kept := PackedStringArray()
+	for word: String in words:
+		if not kept.is_empty() and word.to_lower() in SAYING:
+			break
+		kept.append(word)
+		if kept.size() == 6:
+			break
+	var named: String = " ".join(kept).lstrip("\"'“‘").rstrip("\"'”’")
+	if named.is_empty():
+		return UNTITLED
+	# Not capitalize(), which makes a double decker bus A Double Decker Bus.
+	return named.left(1).to_upper() + named.substr(1)
 
 
 ## Whether starting a new model would lose anything: bricks that are not
@@ -221,6 +292,9 @@ func list_examples() -> Array[Entry]:
 
 
 func delete(path: String) -> bool:
+	# Nor take anything away, for a model shared by link and looked at.
+	if read_only:
+		return false
 	return DirAccess.remove_absolute(path) == OK
 
 
@@ -241,6 +315,8 @@ func open(path: String) -> int:
 	if text.is_empty():
 		return 0
 	var result: Dictionary = open_text(text, path.get_file())
+	if int(result["placed"]) > 0:
+		example = path.begins_with(EXAMPLE_DIR)
 	return int(result["placed"])
 
 
@@ -354,6 +430,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	whole = missing.is_empty() and awaited.is_empty()
 	title = _title_of(model, name)
 	share_id = share_in(text)
+	example = false
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "error": ""}

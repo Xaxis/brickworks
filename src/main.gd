@@ -30,6 +30,12 @@ const WEIGH_OFF_THREAD_FROM := 600
 var _counts: Label
 var _bin_dock: SideDock
 var _chat_dock: SideDock
+## The left-hand column's sections: the parts bin, the model tree and the
+## properties (src/ui/panel_stack.gd).
+var _stack: PanelStack
+## The strip along the top of the model for what is said about it for a
+## while: the sub-assembly being edited, the offer to seat old parts.
+var _notices: PanelContainer
 var _store: ModelStore
 var _bar: ModelBar
 var _bin: PartsBin
@@ -39,6 +45,10 @@ var _chat: ChatPanel
 ## it used to be built into the car, so a first-time visitor asking for a
 ## house got a house around a car they never asked for.
 var _sample_untouched: bool = false
+## What the model was named for the work going down on it (see
+## [method _make_room]), until somebody saves it or opens another: the
+## design's own title, when it stands, is a better name than its brief.
+var _named_for_work: String = ""
 ## Driven from the command line, off-screen: nobody is watching the window.
 ## Set by [method _unthrottle_if_nobody_is_watching].
 var _driven: bool = false
@@ -80,6 +90,7 @@ var _view_pointer: Vector2 = Vector2(-1, -1)
 var _steps: StepsBar
 var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
+var _brickify: BrickifyDialog
 ## The element maker: a part that is not in the library, made.
 var _elements: ElementDialog
 ## Prints and stickers for any part (src/prints/print_studio.gd).
@@ -259,6 +270,8 @@ func _tell_page() -> void:
 		named.merge(_shell.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
+	if _brickify != null:
+		named.merge(_brickify.controls_by_name())
 	# Sharing: the owner's panel, the viewer's bar, and the two things the
 	# viewer opens — the timeline and the parts list.
 	if _share_panel != null:
@@ -300,6 +313,13 @@ func _tell_page() -> void:
 			var at: Vector2 = to_window * (faces[face] as Vector2) / per_css
 			where[face] = {"x": roundi(at.x), "y": roundi(at.y)}
 	JavaScriptBridge.eval("window.brickworksControls = %s" % JSON.stringify(where), true)
+	# And, when a check asks for it, the model's part of the window and
+	# what covers it (model_cover): a grid of points over it walked
+	# through the interface is too much work to do twice a second.
+	if not _gated() and bool(JavaScriptBridge.eval("window.brickworksAskLayout === true", true)):
+		JavaScriptBridge.eval("window.brickworksAskLayout = false", true)
+		JavaScriptBridge.eval("window.brickworksLayout = %s"
+			% JSON.stringify(_layout_for_page(to_window, per_css)), true)
 	if not _page_title.is_empty():
 		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
 			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
@@ -349,6 +369,14 @@ func _tell_page() -> void:
 			"tool": _verbs.mode if _verbs != null else ""},
 		# The status bar's line: what the mouse will do now.
 		"hint": _verbs.hint() if _verbs != null else "",
+		# Which columns are open, and how the window shares them out: a
+		# narrow window shows one at a time, so a browser flow knows which
+		# rail to click for a control in the other (openColumnFor in
+		# tools/web/browser.mjs).
+		"columns": {"parts": _bin_dock.is_open(), "assistant": _chat_dock.is_open(),
+			"share": _columns},
+		# What the last 3D model brickified came to, for brickify_flow.mjs.
+		"brickified": _brickify.last_summary if _brickify != null else "",
 	}), true)
 	# And a model shared by link: the owner's panel, what the viewer is
 	# showing, how far along its timeline, and whether this run can write
@@ -386,6 +414,156 @@ func _tell_page() -> void:
 			"connected": clients,
 			"status": _chat.connector_status(),
 		}), true)
+
+
+## The model's part of the window and every panel's, in CSS pixels, and
+## the points over the model a click would not reach it at.
+## tools/web/fit_check.mjs samples the model's rectangle by this and fails
+## on anything over it but the view cube.
+func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
+	var css := func(rect: Rect2) -> Array:
+		var on_page: Rect2 = to_window * rect
+		return [roundi(on_page.position.x / per_css), roundi(on_page.position.y / per_css),
+			roundi(on_page.size.x / per_css), roundi(on_page.size.y / per_css)]
+	var cover: Dictionary = model_cover()
+	var covered: Array = []
+	for one: Dictionary in cover["covered"]:
+		var at: Vector2 = to_window * (one["at"] as Vector2) / per_css
+		covered.append({"x": roundi(at.x), "y": roundi(at.y), "by": one["by"]})
+	var panels: Dictionary = {}
+	var named: Dictionary = _panels_by_name()
+	for name: String in named:
+		var panel: Control = named[name]
+		if panel != null and panel.is_visible_in_tree():
+			panels[name] = css.call(panel.get_global_rect())
+	return {"view": css.call(cover["view"]), "samples": cover["samples"],
+		"covered": covered, "panels": panels, "columns": _columns}
+
+
+## Everything laid out round the model, by name.
+func _panels_by_name() -> Dictionary:
+	var out: Dictionary = {"parts": _bin_dock, "right_column": _chat_dock, "assistant": _chat,
+		"menus": _bar, "notices": _notices, "steps": _steps, "keys": _hint, "cube": _gizmo,
+		"touch_tools": _tools}
+	if _shell != null:
+		out.merge({"toolbar": _shell.toolbar, "status": _shell.status,
+			"model_tree": _shell.outliner, "properties": _shell.inspector})
+	return out
+
+
+## The model's part of the window, sampled: the points of a grid over it
+## that a click would not reach the model at, and what it would reach
+## instead. The view cube is the one thing kept over the model, so the
+## points under it are not asked about. Read by tools/web/fit_check.mjs
+## through the page, and by probes directly.
+func model_cover(across: int = 12, down: int = 8) -> Dictionary:
+	var view: Control = _marquee.get_parent()
+	var rect: Rect2 = view.get_global_rect()
+	var covered: Array = []
+	# Where the interface is drawn, found once: every canvas layer, the
+	# topmost first, and any control drawn straight onto the window.
+	var canvases: Array[Node] = []
+	_canvas_roots(get_tree().root, canvases)
+	canvases.sort_custom(func(a: Node, b: Node) -> bool: return _layer_of(a) > _layer_of(b))
+	for i: int in across:
+		for j: int in down:
+			var at: Vector2 = rect.position + Vector2((i + 0.5) / across * rect.size.x,
+				(j + 0.5) / down * rect.size.y)
+			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
+				continue
+			var by: String = _covering(at, canvases)
+			if not by.is_empty():
+				covered.append({"at": at, "by": by})
+	return {"view": rect, "samples": across * down, "covered": covered}
+
+
+## The canvas layers and the controls drawn straight onto the window, under
+## ``node``: not inside another viewport, which finds its own.
+func _canvas_roots(node: Node, into: Array[Node]) -> void:
+	for child: Node in node.get_children():
+		if child is Viewport:
+			continue
+		if child is CanvasLayer or child is Control:
+			into.append(child)
+		elif not child is CanvasItem:
+			_canvas_roots(child, into)
+
+
+static func _layer_of(node: Node) -> int:
+	return (node as CanvasLayer).layer if node is CanvasLayer else 0
+
+
+## What is at a point over the model instead of the model, by name, or
+## nothing. Both ways a click is kept from the model are asked: the list
+## the app keeps of its panels, and any control there that takes the
+## mouse, so a panel added later and laid over the model is found too.
+func _covering(at: Vector2, canvases: Array[Node]) -> String:
+	var control: Control = null
+	for canvas: Node in canvases:
+		if canvas is CanvasLayer and not (canvas as CanvasLayer).visible:
+			continue
+		var found: Control = _control_at(canvas, at) if canvas is CanvasLayer \
+			else _control_in(canvas, at)
+		# The drag sheet is under the pointer during a drag, over everything,
+		# and is not a panel: what is under it is asked about instead.
+		if found != null and not (_cursors != null and _cursors.is_shield(found)):
+			control = found
+			break
+	var cube: bool = control != null and _gizmo != null \
+		and (control == _gizmo or _gizmo.is_ancestor_of(control))
+	if control != null and not cube:
+		return _name_of(control)
+	if _over_panel_at(at):
+		var named: Dictionary = _panels_by_name()
+		for name: String in named:
+			var panel: Control = named[name]
+			if panel != null and panel.is_visible_in_tree() and panel.get_global_rect().has_point(at):
+				return name
+		return "a panel"
+	return ""
+
+
+## The topmost shown control at a point that takes the mouse there, found
+## the way the window finds one: last drawn first, inside whatever clips.
+func _control_at(node: Node, at: Vector2) -> Control:
+	for n: int in range(node.get_child_count() - 1, -1, -1):
+		var found: Control = _control_in(node.get_child(n), at)
+		if found != null:
+			return found
+	return null
+
+
+## The topmost control at a point within ``node`` and its children that
+## takes the mouse there, or null.
+func _control_in(node: Node, at: Vector2) -> Control:
+	# Windows and viewports find their own.
+	if node is Viewport:
+		return null
+	if node is CanvasItem and not (node as CanvasItem).visible:
+		return null
+	var control := node as Control
+	if control != null and control.clip_contents and not control.get_global_rect().has_point(at):
+		return null
+	var inner: Control = _control_at(node, at)
+	if inner != null:
+		return inner
+	if control != null and control.mouse_filter != Control.MOUSE_FILTER_IGNORE \
+			and control.get_global_rect().has_point(at):
+		return control
+	return null
+
+
+## A control by the panel it belongs to: its nearest scripted ancestor's
+## class, and its own.
+static func _name_of(control: Control) -> String:
+	var node: Node = control
+	while node != null:
+		var script: Script = node.get_script()
+		if script != null and not script.get_global_name().is_empty():
+			var found: String = script.get_global_name()
+			return found if node == control else "%s (%s)" % [found, control.get_class()]
+		node = node.get_parent()
+	return control.get_class()
 
 
 ## The model's name where a window shows one: the browser tab, or the
@@ -862,12 +1040,16 @@ func claude_code() -> ClaudeCode:
 	return _claude_code
 
 
-## Empty the baseplate, as starting a design does.
+## Empty the baseplate, as starting a design does, and begin a new model.
 ##
 ## Public for the command socket. A session driving from outside has no
 ## moment of its own where the board is cleared — asked for a lighthouse
 ## it would build one into whatever was standing — and the design loop
 ## clears the board itself, so it never needed this.
+##
+## Untitled, because what goes down next is something new: it kept the
+## name of what was taken off, and Save would have written the lighthouse
+## over the model it replaced. The design names it when it stands.
 func clear_model() -> void:
 	_world.clear()
 	_builder.lattice.clear()
@@ -875,6 +1057,26 @@ func clear_model() -> void:
 	_builder.forget_history()
 	_assistant.forget_built()
 	_lay_baseplate()
+	_sample_untouched = false
+	_store.begin(ModelStore.UNTITLED)
+
+
+## Work is about to go down on the baseplate, and [param name] is what it is.
+##
+## The example car of a first visit, untouched, comes off first, and the
+## model is a new one named after the work: it kept the example's name, so
+## the tower built in its place was "Example Car for Demonstration of LDRAW
+## Library" and Save saved it as that. A bare baseplate nobody has named is named the
+## same way. Anything else is somebody's model, and keeps its name.
+func _make_room(name: String) -> void:
+	if _sample_untouched:
+		clear_model()
+		if _chat != null:
+			_chat.note("Took the example car off the baseplate to make room.")
+	elif _world.brick_count() > _store.scenery.size() or _store.title != ModelStore.UNTITLED:
+		return
+	_store.begin(name)
+	_named_for_work = _store.title
 
 
 ## Write what is on the baseplate to a file. Returns false if it could not.
@@ -1304,6 +1506,10 @@ func _build_ui() -> void:
 	# bricks of the new model — so clearing removes the first few bricks
 	# of whatever was just opened.
 	_bar.cleared.connect(func() -> void:
+		# Clear keeps a model's name, but an example's is not the person's
+		# to keep: what they build next is not the example.
+		if _store.example:
+			_store.begin(ModelStore.UNTITLED)
 		_sample_untouched = false
 		_assistant.forget_built()
 		_lay_baseplate()
@@ -1344,8 +1550,15 @@ func _build_ui() -> void:
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
 
+	# The parts bin at the top of the left-hand column, which takes the
+	# model tree and the properties under it (Shell.build).
+	_stack = PanelStack.new()
+	_stack.add_section(_bin)
 	_bin_dock = SideDock.new()
-	_bin_dock.setup(_bin, SideDock.Edge.LEFT, 336.0)
+	_bin_dock.title = "Parts"
+	_bin_dock.icon = "parts"
+	_bin_dock.holds = "the parts bin, the model tree and the properties"
+	_bin_dock.setup(_stack, SideDock.Edge.LEFT, 336.0)
 	layout.add_child(_bin_dock)
 
 	# The middle column is the viewport. Nothing is drawn into it, but the
@@ -1356,6 +1569,26 @@ func _build_ui() -> void:
 	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_theme_constant_override("separation", 0)
 	layout.add_child(middle)
+
+	# Above the model, not over it: what is said about the model for a
+	# while. The banner for a sub-assembly being edited and the offer to
+	# seat old parts lay over its top middle, where a click meant for a
+	# part landed on them. Shown only while something in it is.
+	_notices = PanelContainer.new()
+	var strip := StyleBoxFlat.new()
+	strip.bg_color = Color(0.11, 0.12, 0.14, 0.94)
+	strip.border_color = Color(1, 1, 1, 0.08)
+	strip.border_width_bottom = 1
+	strip.content_margin_top = 4
+	strip.content_margin_bottom = 4
+	_notices.add_theme_stylebox_override("panel", strip)
+	_notices.visible = false
+	var notes := VBoxContainer.new()
+	notes.add_theme_constant_override("separation", 4)
+	_notices.add_child(notes)
+	notes.child_entered_tree.connect(func(note: Node) -> void:
+		(note as Control).visibility_changed.connect(_show_notices))
+	middle.add_child(_notices)
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1461,6 +1694,9 @@ func _build_ui() -> void:
 	# choice appears in the composer at all.
 	_chat.claude_code_here = not ClaudeCode.found().is_empty()
 	_chat_dock = SideDock.new()
+	_chat_dock.title = "Assistant"
+	_chat_dock.icon = "assistant"
+	_chat_dock.holds = "the assistant"
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
@@ -1485,12 +1721,18 @@ func _build_ui() -> void:
 	_on_account_changed()
 	_chat.steps_wanted.connect(_toggle_steps)
 	_chat.parts_list_wanted.connect(_toggle_parts)
-	_chat.designing.connect(func(_brief: String) -> void:
-		if not _sample_untouched:
-			return
-		_sample_untouched = false
-		clear_model()
-		_chat.note("Took the example car off the baseplate to make room."))
+	_chat.designing.connect(func(brief: String) -> void:
+		_make_room(ModelStore.name_for(brief)))
+	# The design's own name, once it stands, over the one its brief gave the
+	# model, or over none; never over a name somebody gave it.
+	_assistant.titled.connect(func(name: String) -> void:
+		if name != _store.title and _store.title in [ModelStore.UNTITLED, _named_for_work]:
+			_store.begin(name)
+			_named_for_work = _store.title)
+	# Saved, opened or begun again, it is not named for that work any more.
+	_store.saved.connect(func(_name: String) -> void: _named_for_work = "")
+	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _named_for_work = "")
+	_store.begun.connect(func(_name: String) -> void: _named_for_work = "")
 	_builder.placed.connect(func(_id: int, _part: String) -> void:
 		_sample_untouched = false)
 	_builder.removed.connect(func(_id: int) -> void:
@@ -1523,6 +1765,7 @@ func _build_ui() -> void:
 		_inset(_inventory, 860.0, 600.0)
 		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 		_inset(_mosaic, 380.0, 460.0)
+		_inset(_brickify, 400.0, 690.0)
 		_inset(_figures, 1040.0, 660.0)
 		_inset(_elements, 440.0, 760.0))
 	_bar.parts_wanted.connect(_toggle_parts)
@@ -1582,6 +1825,27 @@ func _build_ui() -> void:
 		_mosaic.show_for(image))
 	_mosaic.build_wanted.connect(_build_mosaic)
 
+	# A 3D model laid in bricks, as a sub-assembly beside what is built.
+	_brickify = BrickifyDialog.new()
+	_brickify.library = _library
+	_brickify.world = _world
+	_brickify.builder = _builder
+	_brickify.scenery = _store.scenery
+	$HUD.add_child(_brickify)
+	_inset(_brickify, 400.0, 690.0)
+	# Straight from the press into the file chooser, as the mosaic's.
+	_bar.brickify_wanted.connect(_brickify.ask)
+	_brickify.said.connect(func(text: String) -> void: _bar.say(text))
+	_brickify.placing.connect(func(name: String) -> void:
+		if _shell != null:
+			_brickify.assemblies = _shell.assemblies
+		_make_room(name))
+	_brickify.brickified.connect(func(_ids: PackedInt64Array, summary: String) -> void:
+		_ground_for_the_model()
+		_camera.frame(_selection_bounds(), 1.4)
+		_on_model_edited()
+		_bar.say(summary))
+
 	_elements = ElementDialog.new()
 	_elements.library = _library
 	$HUD.add_child(_elements)
@@ -1623,6 +1887,10 @@ func _build_ui() -> void:
 	# the moment you are not.
 	get_tree().root.size_changed.connect(_match_screen_density)
 	get_tree().root.size_changed.connect(_fit_panels)
+	_bin_dock.opening.connect(_column_opening.bind(_bin_dock))
+	_chat_dock.opening.connect(_column_opening.bind(_chat_dock))
+	_bin_dock.toggled.connect(func(_open: bool) -> void: _column_toggled())
+	_chat_dock.toggled.connect(func(_open: bool) -> void: _column_toggled())
 	_fit_panels()
 
 	_bin.populate()
@@ -1674,12 +1942,18 @@ func _build_ui() -> void:
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
 	add_child(_verbs)
+	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
+	# if it was folded: a laptop's window starts with the assistant
+	# showing, and the part in hand and its colours are in the bin.
+	_verbs.mode_changed.connect(func(mode: String) -> void:
+		if mode == "place":
+			_bring_out_bin())
 	# The menus, the toolbar, the properties and the status bar:
 	# src/ui/shell.gd. The parts count is the status bar's.
 	_shell = Shell.new()
 	_shell.app = self
 	add_child(_shell)
-	_shell.build(column, spacer)
+	_shell.build(column, _stack, _notices.get_child(0) as Control)
 	_counts = _shell.status.counts
 
 	# The ruler, and what it says, under the counts.
@@ -1695,7 +1969,7 @@ func _build_ui() -> void:
 	add_child(_measure)
 	_verbs.measure = _measure
 
-	# Over the top of the model, when a model opened with parts a fraction
+	# Along the top of the model, when a model opened with parts a fraction
 	# of a stud off their studs: src/ui/seat_offer.gd.
 	_seat_offer = SeatOffer.new()
 	_seat_offer.builder = _builder
@@ -1704,10 +1978,8 @@ func _build_ui() -> void:
 	_seat_offer.scenery = _store.scenery
 	_seat_offer.say = _bar.say
 	_seat_offer.edited = _on_model_edited
-	_seat_offer.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_seat_offer.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_seat_offer.offset_top = 10.0
-	spacer.add_child(_seat_offer)
+	_seat_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_seat_offer)
 	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
 	_bar.started_new.connect(_seat_offer.dismiss)
 	_bar.cleared.connect(_seat_offer.dismiss)
@@ -2005,9 +2277,27 @@ func _build_mosaic(across: int, dither: bool) -> void:
 ## Width below which the two panels cannot both sit beside the model.
 ## Their design widths plus something worth looking at between them.
 const ROOMY := 1040.0
+## How much of the window, across, the model keeps between the two
+## columns, in the interface's units, or the columns take turns. It has 872
+## at the design width (1600), both open. A laptop's window is narrower:
+## at 1280 x 720 both left it 53% of the width, less again with the model
+## tree and the properties laid over it, and a click meant for a part
+## landed on a panel. One at a time it keeps 72%.
+const MODEL_ROOM := 860.0
+
+## How the window shares its width out: "wide" (both columns, as they
+## were left), "turns" (one column at a time: opening one folds the
+## other) or "drawers" (a phone: both start folded, and each opens over
+## most of the screen).
+var _columns: String = ""
+## Set while the window, not a person, opens and folds the columns: what
+## it does is not the person's layout to keep.
+var _arranging: bool = false
+## What Tab put away, [parts, model], to bring back.
+var _tabbed: Array = []
 
 
-## Fit the panels to the window, and decide whether they are drawers.
+## Fit the panels to the window, and decide how it shares them out.
 func _fit_panels() -> void:
 	if _bin_dock == null or _chat_dock == null or not _viewing.is_empty():
 		return
@@ -2022,7 +2312,7 @@ func _fit_panels() -> void:
 	# the threshold and kept both panels open across a screen with room
 	# for neither.
 	var across: float = Room.across()
-	var cramped: bool = across < ROOMY
+	var phone: bool = across < ROOMY
 
 	# A drawer leaves the far rail showing, so the way out is visible
 	# from inside it. Measured in the interface's own units, which a
@@ -2031,23 +2321,89 @@ func _fit_panels() -> void:
 	# that need 340, cut off down their right edge.
 	var units: float = get_viewport().get_visible_rect().size.x
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * 2.0 - 16.0, 220.0)
-	_bin_dock.set_open_width(minf(336.0, drawer) if cramped else 336.0)
-	_chat_dock.set_open_width(minf(340.0, drawer) if cramped else 340.0)
+	_bin_dock.set_open_width(minf(336.0, drawer) if phone else 336.0)
+	_chat_dock.set_open_width(minf(340.0, drawer) if phone else 340.0)
 
-	if cramped and not _folded_for_room:
-		# Only once. Folding them on every resize would fight anyone
-		# dragging a window edge with a panel deliberately open.
-		_folded_for_room = true
-		_bin_dock.set_open(false, false)
-		_chat_dock.set_open(false, false)
-	elif not cramped and _folded_for_room:
-		_folded_for_room = false
-		# As they were left, not simply open.
-		_bin_dock.set_open(bool(ShellPrefs.value("parts_open")), false)
-		_chat_dock.set_open(bool(ShellPrefs.value("assistant_open")), false)
+	# Whether both columns at their own widths leave the model its room.
+	var both: float = 336.0 + 340.0 + SideDock.RAIL_WIDTH * 2.0
+	var share: String = "drawers" if phone else (
+		"turns" if units - both < MODEL_ROOM else "wide")
+	# Only when it changes. Arranging them on every resize would fight
+	# anyone dragging a window edge with a panel deliberately open.
+	if share == _columns:
+		return
+	_columns = share
+	_arrange_columns()
 
 
-var _folded_for_room: bool = false
+## Open and fold the columns as the window's share says, from what the
+## person left for a window of this kind.
+func _arrange_columns() -> void:
+	var parts: bool = false
+	var assistant: bool = false
+	match _columns:
+		"wide":
+			parts = bool(ShellPrefs.value("parts_open"))
+			assistant = bool(ShellPrefs.value("assistant_open"))
+		"turns":
+			var side: String = str(ShellPrefs.value("narrow_side"))
+			parts = side == "parts"
+			assistant = side == "assistant"
+	_arranging = true
+	_bin_dock.set_open(parts, false)
+	_chat_dock.set_open(assistant, false)
+	_arranging = false
+
+
+## A column about to open, by a person or a command: where there is room
+## for one, the other folds, so the model keeps its share of the window.
+func _column_opening(dock: SideDock) -> void:
+	if _arranging or _columns == "wide":
+		return
+	(_chat_dock if dock == _bin_dock else _bin_dock).set_open(false)
+
+
+## A column opened or folded: kept as the person's layout for a window of
+## this kind. A phone's drawers are not kept; they start folded.
+func _column_toggled() -> void:
+	if _arranging:
+		return
+	match _columns:
+		"wide":
+			ShellPrefs.put("parts_open", _bin_dock.is_open())
+			ShellPrefs.put("assistant_open", _chat_dock.is_open())
+		"turns":
+			ShellPrefs.put("narrow_side", "parts" if _bin_dock.is_open()
+				else ("assistant" if _chat_dock.is_open() else ""))
+
+
+## The parts bin out, if it is folded, for a part just put in hand. Not
+## on a phone, where it would be a drawer over the model the part is for.
+func _bring_out_bin() -> void:
+	if _bin_dock == null or _bin_dock.is_open() or _columns == "drawers":
+		return
+	_bin_dock.set_open(true)
+
+
+## Tab: both columns away, for looking at the model, and back as they were.
+func _tab_columns() -> void:
+	if _bin_dock.is_open() or _chat_dock.is_open():
+		_tabbed = [_bin_dock.is_open(), _chat_dock.is_open()]
+		_bin_dock.set_open(false)
+		_chat_dock.set_open(false)
+		return
+	var back: Array = _tabbed if not _tabbed.is_empty() else [true, _columns == "wide"]
+	_tabbed = []
+	_bin_dock.set_open(bool(back[0]))
+	_chat_dock.set_open(bool(back[1]))
+
+
+## The strip over the model shows while something in it does.
+func _show_notices() -> void:
+	var any: bool = false
+	for note: Node in _notices.get_child(0).get_children():
+		any = any or (note as Control).visible
+	_notices.visible = any
 
 
 ## Show or hide the parts list. Worked out on opening rather than kept
@@ -3298,7 +3654,7 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _seat_offer]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _notices]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -3309,6 +3665,8 @@ func _over_panel_at(point: Vector2) -> bool:
 	if _inventory != null and _inventory.is_showing():
 		return true
 	if _mosaic != null and _mosaic.visible:
+		return true
+	if _brickify != null and _brickify.visible:
 		return true
 	if _figures != null and _figures.visible:
 		return true
@@ -3368,54 +3726,55 @@ func _hover_again() -> void:
 ## What the pointer should say over the model, from what is true this
 ## frame. Cursors.choose decides; this only gathers.
 func _cursor_state() -> String:
-	# A shared model's viewer: an arrow, and the drag's own shape while
-	# the view is being turned or slid. Not the Orbit tool's: a view tool
-	# keeps the cursor's sheet over the whole window, and the viewer's
-	# buttons stopped answering clicks under it.
+	# A shared model's viewer: what a left drag does there (turn, Shift
+	# slides; _view_input), and grabbing while it does. Never a tool's
+	# state: the Orbit tool's once kept the cursor's sheet over the whole
+	# window, and the viewer's buttons stopped answering clicks under it.
 	if not _viewing.is_empty():
 		var looking := Cursors.Situation.new()
-		looking.turning = _camera.is_turning()
-		looking.sliding = _camera.is_sliding()
+		looking.holding_view = _camera.is_dragging()
+		looking.shift = Input.is_key_pressed(KEY_SHIFT)
+		looking.left_drag = Cursors.VERBS["slide" if looking.shift else "turn"]
 		return Cursors.choose(looking)
 	var now := Cursors.Situation.new()
-	now.turning = _camera.is_turning()
-	now.sliding = _camera.is_sliding()
+	now.holding_view = _camera.is_dragging()
+	now.holding_part = _dragging_part
 	now.boxing = _marquee != null and _marquee.is_drawing()
-	now.aimed = _builder.has_preview()
-	now.can_place = _builder.can_place()
-	# The ghost is only up over the model, so a brick the builder still
-	# remembers from before the pointer went over a panel is not one a
-	# click there would touch.
-	var over_brick: bool = now.aimed and _builder.hovered_brick() != 0
-	# A right click takes nothing off any more; only the Delete tool's
-	# pointer says "remove" (below).
-	now.removing = false
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	var typing: bool = focused is LineEdit or focused is TextEdit
+	# Keys typed into a field are words, not the mouse's modifiers.
+	now.shift = not typing and Input.is_key_pressed(KEY_SHIFT)
+	now.ctrl = not typing and Input.is_key_pressed(
+		KEY_META if EditVerbs.on_mac() else KEY_CTRL)
 	# Held, C paints whatever comes under the pointer: the key repeats,
 	# and each repeat paints what is there.
 	now.painting = not typing and Input.is_key_pressed(KEY_C)
-	now.moment = _camera.moment()
+	var moment: String = _camera.moment()
+	now.moment = "hand" if moment == "slide" else moment
 	now.playing = _playback != null and _playback.is_playing()
-	now.selecting = over_brick and Input.is_key_pressed(KEY_SHIFT)
-	now.loading = _library.is_on_its_way(_builder.held_part)
+	now.left_drag = Cursors.VERBS.get(ViewPrefs.drag_verb(MOUSE_BUTTON_LEFT, now.shift), "orbit")
 	# The view's: a view tool on, or a key held that lends it the left
-	# button (Space slides, Alt turns).
+	# button — what _left_drag_verb will do with the next press.
 	if _verbs != null and _verbs.is_view_tool():
-		now.tool = {"turn": "orbit", "slide": "slide", "zoom": "zoom_in"}[_verbs.view_verb()]
+		var own: String = _verbs.view_verb()
+		if own == "zoom":
+			now.tool = "zoom_out" if now.shift else "zoom_in"
+		elif now.shift:
+			now.tool = "hand" if own == "turn" else "orbit"
+		else:
+			now.tool = Cursors.VERBS[own]
 	elif not typing and Input.is_key_pressed(KEY_SPACE):
-		now.tool = "slide"
+		now.tool = "hand"
 	elif not typing and Input.is_key_pressed(KEY_ALT):
-		now.tool = "orbit"
-	# A tool other than Build: what a click on the part under the pointer
-	# would do to it.
-	if _verbs != null and not _verbs.shows_ghost():
-		var under: int = _verbs.brick_at(get_viewport().get_mouse_position())
-		now.aimed = false
-		now.loading = false
-		now.selecting = under != 0 and not _verbs.mode in ["paint", "delete"]
-		now.painting = now.painting or (under != 0 and _verbs.mode == "paint")
-		now.removing = now.removing or (under != 0 and _verbs.mode == "delete")
+		now.tool = "zoom_in" if now.ctrl else ("hand" if now.shift else "orbit")
+	if _verbs != null:
+		now.mode = _verbs.mode
+		now.in_hand = _verbs.shows_ghost()
+	now.aimed = _builder.has_preview()
+	now.can_place = _builder.can_place()
+	now.loading = _library.is_on_its_way(_builder.held_part)
+	if not now.in_hand:
+		now.over_part = _brick_under_pointer() != 0
 	return Cursors.choose(now)
 
 
@@ -3450,6 +3809,7 @@ func _escape_closes_something() -> bool:
 	return (_marquee != null and _marquee.is_drawing()) \
 		or (_controls != null and _controls.visible) \
 		or (_mosaic != null and _mosaic.visible) \
+		or (_brickify != null and _brickify.visible) \
 		or (_figures != null and _figures.visible) \
 		or _builder.is_holding_figure() or _builder.is_carrying() \
 		or (_measure != null and _measure.active) \
@@ -3591,6 +3951,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_parts()
 		KEY_M:
 			_open_figures()
+		KEY_I:
+			# A key is a press a browser lets open its file chooser.
+			if _brickify != null:
+				_brickify.ask()
 		KEY_C:
 			# Paint the selection if there is one, or what is under the
 			# cursor if there is not.
@@ -3670,10 +4034,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				else:
 					_camera.key_turn(way)
 		KEY_TAB:
-			# Both panels away, for looking at the model.
-			var showing: bool = _bin_dock.is_open() or _chat_dock.is_open()
-			_bin_dock.set_open(not showing)
-			_chat_dock.set_open(not showing)
+			_tab_columns()
 		KEY_Z:
 			if key.ctrl_pressed or key.meta_pressed:
 				if key.shift_pressed:
@@ -3687,6 +4048,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_controls.open()
 		KEY_SLASH:
 			if _bin:
+				# The bin opened first, if it was folded away: the search
+				# box is in it.
+				_bin_dock.set_open(true)
 				_bin.focus_search()
 		KEY_N:
 			# Not on the web, where Ctrl+N is the browser's new window and
@@ -3726,6 +4090,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				return
 			if _mosaic != null and _mosaic.visible:
 				_mosaic.visible = false
+				return
+			if _brickify != null and _brickify.visible:
+				_brickify.close()
 				return
 			if _figures != null and _figures.visible:
 				_figures.close()

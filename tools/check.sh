@@ -137,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig print sticker mould; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
@@ -223,8 +223,9 @@ run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/handbuild_probe.gd
 # Sub-assemblies as a kit is built: made, taken whole, copied and mirrored
 # with the copies following an edit inside, nested, saved and read back.
-# In a window: it clicks clear of the model tree and properties panels.
-run "sub-assemblies" "${screen[@]}" godot --path . --resolution 1400x900 \
+# In a window, the smallest a laptop's is: it builds by clicking, and the
+# model tree and the properties once covered the model there.
+run "sub-assemblies" "${screen[@]}" godot --path . --resolution 1100x700 \
   --script src/dev/assembly_probe.gd
 # The minifigure builder, used by clicking: slots, parts, colours, a
 # name, Place in model, a click on a stud. Its live figure and its
@@ -258,6 +259,10 @@ run "prints and stickers" "${screen[@]}" godot --path . --resolution 1400x900 \
 # worn, held and placed; shots/mould_*.png are the proof.
 run "make a mould" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/mould_ui_probe.gd
+# A 3D model brought in and laid in bricks, by pressing I and clicking:
+# its panel's picture of the model is drawn, so a window. shots/brickify_*.png.
+run "brickify" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/brickify_ui_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

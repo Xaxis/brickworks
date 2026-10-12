@@ -22,7 +22,7 @@
 // clicks there. A preview sits behind Vercel's login: BW_BYPASS goes in
 // the first address only, which sets a cookie for that domain alone, so it is
 // never sent to Anthropic.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -75,6 +75,8 @@ async function click(name) {
       await page.mouse.click(where.x, where.y);
       return;
     }
+    // In a laptop's window the assistant's column starts folded.
+    if (tries === 6) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   // What the page was showing instead, for whoever reads the failure.

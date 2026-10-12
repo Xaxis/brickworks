@@ -180,6 +180,11 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	_ok(not store._write(OUT_DIR + "written.ldr", "x") and not FileAccess.file_exists(
 		OUT_DIR + "written.ldr"), "the store's writer refuses, so the autosave cannot be written")
+	var kept_file: FileAccess = FileAccess.open(OUT_DIR + "kept.ldr", FileAccess.WRITE)
+	kept_file.store_string("0 Kept\n")
+	kept_file.close()
+	_ok(not store.delete(OUT_DIR + "kept.ldr") and FileAccess.file_exists(OUT_DIR + "kept.ldr"),
+		"and it deletes nothing either")
 
 	var before: String = _fingerprint(world)
 	var view_rect: Rect2 = (_main.get("_marquee") as Control).get_parent().get_global_rect()
@@ -252,6 +257,14 @@ func _run() -> void:
 	var booklet: String = FileAccess.get_file_as_string(OUT_DIR + "booklet.html")
 	_ok(said_booklet.begins_with("wrote") and booklet.contains("Probe House"),
 		"the booklet is made from the viewer: %s" % said_booklet)
+
+	# New work's naming (ModelStore.begin) names and writes nothing: the
+	# viewer's files are as they were after it.
+	var files_before: PackedStringArray = DirAccess.get_files_at(ModelStore.SAVE_DIR)
+	store.begin("Probe new work")
+	_ok(store.title == "Probe new work" and DirAccess.get_files_at(ModelStore.SAVE_DIR) == files_before
+		and not FileAccess.file_exists(ModelStore.SAVE_DIR + "Probe new work.ldr"),
+		"new work's naming writes nothing")
 
 	print("\na link taken down")
 	fake.answer = {"code": 410, "body": {"error": "This model is no longer shared.", "unpublished": true}}
@@ -358,6 +371,9 @@ func _the_panel(text: String) -> void:
 	panel.visible = false
 	bar._on_clear()
 	_ok(store.share_id.is_empty(), "Clear forgets the link")
+	store.share_id = "NewL1nk001"
+	store.begin("Probe Tower")
+	_ok(store.share_id.is_empty(), "and so does new work (ModelStore.begin)")
 	_main.queue_free()
 	for _n: int in 10:
 		await process_frame

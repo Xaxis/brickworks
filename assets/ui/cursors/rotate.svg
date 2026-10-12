@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Rotate: a click turns the part under the tip. Hotspot 2.5,2.5. -->
+  <path d="M2.5 2.5 L2.5 21 L7.2 16.6 L10.6 24.2 L13.8 22.8 L10.5 15.4 L16.8 15.4 Z"
+        fill="#ffffff" stroke="#16181d" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="23" cy="23" r="7.6" fill="#16181d"/>
+  <circle cx="23" cy="23" r="6.5" fill="#ffffff"/>
+  <circle cx="23" cy="23" r="5.3" fill="#3b82f6"/>
+  <path d="M19.83 21.52 A3.5 3.5 0 1 1 20.75 25.68" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M19.06 24.27 L19.46 27.21 L22.04 24.15 Z" fill="#ffffff"/>
+</svg>
