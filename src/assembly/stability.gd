@@ -65,6 +65,11 @@ const TIPPING_MARGIN := 0.5
 ## is about what a table getting knocked provides.
 const SLENDERNESS_LIMIT := 6.0
 
+## Boxes on both sides of a joint from which they are compared slice by
+## slice rather than box by box ([method BrickLattice.shared_cells_sliced]).
+## Below it the plain comparison is fewer steps.
+const SLICED_FROM := 8
+
 
 class Risk extends RefCounted:
 	var brick_id: int
@@ -141,15 +146,24 @@ func check(world: BrickWorld) -> Report:
 			continue
 		var lid: PackedInt32Array = BrickLattice.moved_by(
 			mine, Vector3i(0, 1, 0))
-		for over: int in lattice.blockers_boxes(lid, brick.id):
+		# A turned part's many slices sorted once, for every brick it might
+		# carry; and every brick whose bounds meet it counted outright, the
+		# count being the test. Asking the lattice which ones touch first
+		# compared the same boxes twice: on Orthanc that was 3.9 s, and
+		# counting box against box 6.5 s more.
+		var slices: Array = BrickLattice.slices_of(lid) \
+			if lid.size() >= SLICED_FROM * 6 else []
+		for over: int in lattice.near_bounds(lid, brick.id):
 			# Skipping pairs whose boxes already overlap was tried, on
 			# the theory that a part inside another is not resting on
 			# it. It is wrong, and measurably: a stud belongs to the
 			# brick below and reaches into the brick above, so nearly
 			# every real joint overlaps. The kart went from 42 joints to
 			# 14 and the car from 53 to 44.
-			var shared: int = BrickLattice.shared_cells(
-				lid, lattice.boxes_of(over))
+			var theirs: PackedInt32Array = lattice.boxes_of(over)
+			var shared: int = BrickLattice.shared_cells_sliced(lid, slices, theirs) \
+				if not slices.is_empty() and theirs.size() >= SLICED_FROM * 6 \
+				else BrickLattice.shared_cells(lid, theirs)
 			if shared <= 0:
 				continue
 			if not above.has(brick.id):

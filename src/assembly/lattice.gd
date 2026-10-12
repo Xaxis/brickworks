@@ -327,6 +327,68 @@ static func shared_cells(a: PackedInt32Array, b: PackedInt32Array) -> int:
 	return total
 
 
+## The same count, with [param a] sorted into [method slices_of] first.
+##
+## A turned part's cover is a slice a cell deep for every z it spans
+## ([method compress]): forty boxes for a turned 2 x 4, eight hundred for
+## a big turned plate. Compared box against box, two of those are tens of
+## thousands of tests, and on Orthanc (8,785 parts, 5,345 of them turned)
+## the contact graph was 10.4 s of an 11 s weighing (2026-10-11). Sliced,
+## each box of [param b] meets only the slices of [param a] at its own z.
+static func shared_cells_sliced(a: PackedInt32Array, slices: Array,
+		b: PackedInt32Array) -> int:
+	var by_z: Dictionary = slices[0]
+	var deep: PackedInt32Array = slices[1]
+	var total: int = 0
+	var j: int = 0
+	while j < b.size():
+		var lo_z: int = b[j + 2]
+		var hi_z: int = b[j + 5]
+		var across: Array = []
+		if hi_z - lo_z <= by_z.size():
+			for z: int in range(lo_z, hi_z):
+				var here: Variant = by_z.get(z)
+				if here != null:
+					across.append(here)
+		else:
+			for z: int in by_z:
+				if z >= lo_z and z < hi_z:
+					across.append(by_z[z])
+		across.append(deep)
+		for offsets: PackedInt32Array in across:
+			for i: int in offsets:
+				var wide: int = mini(a[i + 3], b[j + 3]) - maxi(a[i], b[j])
+				if wide <= 0:
+					continue
+				var high: int = mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1])
+				if high <= 0:
+					continue
+				var depth: int = mini(a[i + 5], hi_z) - maxi(a[i + 2], lo_z)
+				if depth > 0:
+					total += wide * high * depth
+		j += 6
+	return total
+
+
+## Boxes a cell deep, by the z they are at, and the deeper ones apart:
+## [Dictionary z -> offsets into [param packed], PackedInt32Array of the
+## other offsets]. For [method shared_cells_sliced].
+static func slices_of(packed: PackedInt32Array) -> Array:
+	var by_z: Dictionary = {}
+	var deep := PackedInt32Array()
+	var n: int = 0
+	while n < packed.size():
+		var z: int = packed[n + 2]
+		if packed[n + 5] - z == 1:
+			var at: PackedInt32Array = by_z.get(z, PackedInt32Array())
+			at.append(n)
+			by_z[z] = at
+		else:
+			deep.append(n)
+		n += 6
+	return [by_z, deep]
+
+
 ## The lowest and highest cell a set of boxes covers, as [low, high].
 ##
 ## The same two corners walking every cell would find, in six reads per
@@ -683,6 +745,18 @@ func blockers_boxes(packed: PackedInt32Array, ignore: int = 0,
 		if _overlaps(packed, _boxes.get(other, PackedInt32Array())):
 			found[other] = true
 	return PackedInt64Array(found.keys())
+
+
+## The bricks whose bounds meet the bounds of these boxes: everything
+## that could touch them, to be counted by the caller (Stability, which
+## counts the cells shared and so needs no second, exact test first).
+func near_bounds(packed: PackedInt32Array, ignore: int = 0) -> PackedInt64Array:
+	var found := PackedInt64Array()
+	var mine: PackedInt32Array = _bound_of(packed)
+	for other: int in _near(mine):
+		if other != ignore and _overlaps(mine, _bounds.get(other, PackedInt32Array())):
+			found.append(other)
+	return found
 
 
 func collides_boxes(packed: PackedInt32Array, ignore: int = 0) -> bool:
