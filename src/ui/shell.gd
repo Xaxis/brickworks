@@ -78,7 +78,7 @@ const MENUS: Array = [
 		"full_screen"]],
 	["Build", ["timeline", "instructions", "parts_list", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "select_submodel", "-", "minifig", "mosaic",
-		"part_maker",
+		"brickify", "part_maker",
 		"-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
@@ -90,7 +90,7 @@ const MENUS: Array = [
 const SUBMENU_ID := 10000
 
 const SUBMENUS: Dictionary = {
-	"import": ["import_ldraw", "import_io", "import_lxf"],
+	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_picture", "export_bricklink", "export_rebrickable"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
@@ -277,6 +277,9 @@ func _define() -> void:
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
 	_add("import_lxf", "LEGO Digital Designer model (.lxf) — not yet", 0,
 		func() -> void: pass, func() -> bool: return false)
+	_add("import_mesh", "3D model to brickify (.obj, .stl, .gltf, .glb)…", 0,
+		func() -> void: bar.brickify_wanted.emit(), Callable(),
+		"A sculpt, a scan or any 3D model, laid in bricks")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
@@ -429,6 +432,9 @@ func _define() -> void:
 	_add("mosaic", "Mosaic from a picture…", 0,
 		func() -> void: bar.mosaic_wanted.emit(), Callable(),
 		"Turn a picture into a wall of plates")
+	_add("brickify", "Brickify a 3D model…", KEY_I,
+		func() -> void: bar.brickify_wanted.emit(), Callable(),
+		"Bring in an OBJ, STL or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
 	_add("part_maker", "Part maker…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")

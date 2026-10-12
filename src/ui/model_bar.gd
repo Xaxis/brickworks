@@ -43,6 +43,8 @@ signal model_named(name: String)
 signal parts_wanted()
 ## Someone wants to turn a picture into bricks.
 signal mosaic_wanted()
+## Someone wants to turn a 3D model into bricks (BrickifyDialog).
+signal brickify_wanted()
 ## The timeline: the build from empty to finished and back.
 signal timeline_wanted()
 ## Someone wants to make a minifigure.

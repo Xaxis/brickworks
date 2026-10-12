@@ -190,6 +190,7 @@ static func for_keyboard() -> Array[Binding]:
 	var rest: Array[Binding] = [
 		Binding.new(["P"], "parts"),
 		Binding.new(["M"], "minifigure"),
+		Binding.new(["I"], "brickify a 3D model"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["/"], "search"),
 		Binding.new([",", "F1"], "this list"),

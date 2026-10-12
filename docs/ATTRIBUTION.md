@@ -82,6 +82,14 @@ technique names its set and modeller in its own text, and here:
 - `hanging lamp`: 10246 Detective’s Office, modelled by Willy Tschager, CC BY 2.0.
 - `bedside lamp`: 75948 Hogwarts Clock Tower, modelled by Stefan Frenz, CC BY 2.0.
 
+## Test models for Brickify
+
+The sphere, the chamfered cube and the bunny that `src/dev/brickify_probe.gd`
+and `tools/web/brickify_flow.mjs` brickify are made in code here
+(`src/dev/brickify_samples.gd`), not downloaded, so nothing of anyone
+else's is in them. `tests/fixtures/brickify/bunny.obj` is that bunny written
+out, and is dedicated to the public domain (CC0 1.0).
+
 ## LEGO trademarks
 
 Quoted from the LEGO Group's Fair Play guidelines

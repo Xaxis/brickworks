@@ -873,6 +873,27 @@
       "entry": "tools/web/studio_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
       "area": "prints"
+    },
+    {
+      "kind": "ui",
+      "label": "brickify a 3d model",
+      "entry": "src/ui/brickify_dialog.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd  (or I in the app; node tools/web/brickify_flow.mjs --url=<a preview>/app in a browser)",
+      "area": "brickify"
+    },
+    {
+      "kind": "lib",
+      "label": "brickify",
+      "entry": "src/assembly/brickify.gd",
+      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "area": "brickify"
+    },
+    {
+      "kind": "lib",
+      "label": "3d model files",
+      "entry": "src/parts/mesh_file.gd",
+      "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
+      "area": "brickify"
     }
   ]
 }
