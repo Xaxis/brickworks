@@ -90,6 +90,54 @@ and `tools/web/brickify_flow.mjs` brickify are made in code here
 else's is in them. `tests/fixtures/brickify/bunny.obj` is that bunny written
 out, and is dedicated to the public domain (CC0 1.0).
 
+## LEGO Digital Designer's numbers (ldraw.xml)
+
+Opening an LDD model (`.lxf`, `src/parts/ldd_lxf.gd`) needs LDD's part and
+colour numbers in LDraw's terms, and where each part's origin is in each.
+That table is `ldraw.xml`: first shipped with LDD itself for its LDraw
+export, then kept up by the LDraw community. `assets/ldraw/ldd.json` is
+derived from it by `tools/ldd_map.py` (colours, renamed parts, origins;
+nothing else of it is kept) and ships in every build.
+
+- Source: the version of 2025-08-11 (`LDD 4.3.11 Brick ver 2670`),
+  https://gitlab.com/sylvainls/lxf2ldr/-/raw/master/common/ldraw.xml,
+  byte for byte the copy at http://slswww.free.fr/ldraw.xml that the LDraw
+  wiki names as current (https://wiki.ldraw.org/wiki/LDraw.xml_File).
+- Kept by Sylvain Sauvage, from Mike Gallagher's v4.40 beta, with
+  additions and corrections from shutterfreak, djm, Mattia Zamboni,
+  TotiGonzales and Jarema, as its header says.
+- Licence: none is stated. lxf2ldr's README says the file "never had any
+  explicit license and has been treated as 'free to use and modify'", and
+  LeoCAD and LPub3D ship it whole; we ship a derived table, credited here.
+  `tools/fetch_data.sh` fetches the source into `vendor/`.
+
+The `.lxf` the importer is proven with, `src/dev/fixtures/49311_test.lxf`, is
+from https://github.com/sttng/LDD (`assets/49311_test.lxf`), saved by LDD
+4.3, under the MIT licence:
+
+> MIT License
+>
+> Copyright (c) 2019 sttng
+>
+> Permission is hereby granted, free of charge, to any person obtaining a
+> copy of this software and associated documentation files (the
+> "Software"), to deal in the Software without restriction, including
+> without limitation the rights to use, copy, modify, merge, publish,
+> distribute, sublicense, and/or sell copies of the Software, and to
+> permit persons to whom the Software is furnished to do so, subject to
+> the following conditions:
+>
+> The above copyright notice and this permission notice shall be included
+> in all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+> OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+> MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+> IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+> CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+> TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+> SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 ## LEGO trademarks
 
 Quoted from the LEGO Group's Fair Play guidelines

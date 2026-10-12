@@ -33,6 +33,8 @@ var grid: StudGrid
 var tour: Tour
 ## My collection: src/ui/collection_dialog.gd.
 var collection: CollectionDialog
+## The cut-away and x-ray: src/ui/see_inside.gd.
+var see_inside: SeeInside
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -75,7 +77,7 @@ const MENUS: Array = [
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", "-", "turn_left", "turn_right", "-", "panel_parts",
+		"ortho", "grid", "-", "cut", ">cut_away", "xray", "-", "turn_left", "turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
 	["Build", ["timeline", "instructions", "parts_list", "-", "collection", "collection_need",
@@ -97,6 +99,7 @@ const SUBMENUS: Dictionary = {
 	"export": ["export_ldraw", "export_picture", "export_bricklink", "export_rebrickable"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
+	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 }
 
 
@@ -105,7 +108,7 @@ const SUBMENUS: Dictionary = {
 ## properties in the left-hand column ``stack``, under the parts bin, and
 ## the banner for a sub-assembly being edited in ``notices``, the strip
 ## along the top of the model. Nothing of it is laid over the model.
-func build(column: Control, stack: PanelStack, notices: Control) -> void:
+func build(column: Control, stack: PanelStack, notices: Control, over_model: Control) -> void:
 	bar = app.get("_bar")
 	builder = app.get("_builder")
 	verbs = app.get("_verbs")
@@ -126,6 +129,15 @@ func build(column: Control, stack: PanelStack, notices: Control) -> void:
 	bar.started_new.connect(func() -> void: assemblies.enter(""))
 	bar.cleared.connect(func() -> void: assemblies.enter(""))
 	bar.opened.connect(func(_n: int) -> void: assemblies.enter(""))
+	see_inside = SeeInside.new()
+	see_inside.world = world
+	see_inside.builder = builder
+	see_inside.assemblies = assemblies
+	see_inside.camera = camera
+	see_inside.scenery = store.scenery
+	see_inside.say = bar.say
+	see_inside.bounds_of_model = func() -> AABB: return app.call("_built_bounds")
+	add_child(see_inside)
 	_define()
 
 	for menu: Array in MENUS:
@@ -160,6 +172,11 @@ func build(column: Control, stack: PanelStack, notices: Control) -> void:
 	banner = AssemblyBanner.new()
 	banner.assemblies = assemblies
 	notices.add_child(banner)
+	# The cut-away's strip floats over the model's foot, above the key
+	# strip and the timeline it keeps clear of.
+	over_model.add_child(see_inside.bar)
+	see_inside.below.append(app.get("_hint"))
+	see_inside.below.append(app.get("_steps"))
 
 	grid = StudGrid.new()
 	grid.world = world
@@ -295,8 +312,7 @@ func _define() -> void:
 		"Reopen a saved model, an example, or a file from this computer")
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
-	_add("import_lxf", "LEGO Digital Designer model (.lxf) — not yet", 0,
-		func() -> void: pass, func() -> bool: return false)
+	_add("import_lxf", "LEGO Digital Designer model (.lxf)…", 0, bar._import)
 	_add("import_mesh", "3D model to brickify (.obj, .stl, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
@@ -394,6 +410,25 @@ func _define() -> void:
 	_add("grid", "Stud grid", 0, func() -> void: set_grid(not grid.visible), Callable(),
 		"Lines between the studs of the baseplate, for counting them")
 	_ticked("grid", func() -> bool: return grid.visible)
+	_add("cut", "Cut away", KEY_K, func() -> void: see_inside.set_cut(not see_inside.cutting),
+		something, "A plane through the model, dragged along X, Y or Z, to see and work inside it")
+	_ticked("cut", func() -> bool: return see_inside.cutting)
+	for along: int in 3:
+		var which: int = along
+		_add("cut_" + SeeInside.AXES[along].to_lower(), "Along %s" % SeeInside.AXES[along], 0,
+			func() -> void: see_inside.cut_along(which), something)
+		_ticked("cut_" + SeeInside.AXES[along].to_lower(), func() -> bool:
+			return see_inside.cutting and see_inside.axis == which)
+	_add("cut_flip", "Cut away the other side", SHIFT | KEY_K, func() -> void: see_inside.flip(),
+		func() -> bool: return see_inside.cutting)
+	_add("cut_ghosts", "Leave a ghost of what is cut away", 0,
+		func() -> void: see_inside.set_ghosts(not see_inside.leaves_ghosts), Callable())
+	_ticked("cut_ghosts", func() -> bool: return see_inside.leaves_ghosts)
+	_add("xray", "X-ray", KEY_I, func() -> void: see_inside.set_xray(not see_inside.seeing_through),
+		func() -> bool: return (see_inside.seeing_through or not builder.selection.is_empty()
+			or not assemblies.entered.is_empty()),
+		"Everything but the selection, or the sub-assembly being edited, see-through")
+	_ticked("xray", func() -> bool: return see_inside.seeing_through)
 	_add("turn_left", "Turn the model left", KEY_Q, func() -> void: app.call("_turn_model", -1),
 		something)
 	_add("turn_right", "Turn the model right", KEY_E, func() -> void: app.call("_turn_model", 1),
@@ -549,7 +584,7 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			sub.add_theme_font_size_override("font_size", 13)
 			var words: String = {"recent": "Open recent", "import": "Import",
 				"export": "Export", "history": "History",
-				"select_by": "Select by"}[kind]
+				"select_by": "Select by", "cut_away": "Cut along"}[kind]
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(words, sub, SUBMENU_ID + popup.item_count)
 			if SUBMENUS.has(kind):
@@ -739,6 +774,15 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_F1:
 			run("keys")
 			return true
+		KEY_K:
+			if not held:
+				return run("cut_flip" if key.shift_pressed else "cut")
+		KEY_I:
+			# Straight to it rather than through the command, which is
+			# greyed with nothing selected: the key says what to select.
+			if not held and not key.shift_pressed:
+				see_inside.set_xray(not see_inside.seeing_through)
+				return true
 		KEY_F2:
 			if can("rename_assembly"):
 				run("rename_assembly")
@@ -752,7 +796,7 @@ func handle_key(key: InputEventKey) -> bool:
 
 ## Whether a point is over the shell's own panels rather than the model.
 func covers(point: Vector2) -> bool:
-	for panel: Control in [toolbar, inspector, status, outliner, banner]:
+	for panel: Control in [toolbar, inspector, status, outliner, banner, see_inside.bar]:
 		if panel != null and panel.is_visible_in_tree() \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -777,6 +821,8 @@ func controls_by_name() -> Dictionary:
 	var parts_list: Variant = app.get("_inventory") if app != null else null
 	if parts_list is InventoryPanel:
 		out.merge((parts_list as InventoryPanel).controls_by_name())
+	if see_inside != null:
+		out.merge(see_inside.controls_by_name())
 	return out
 
 

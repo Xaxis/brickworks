@@ -1,4 +1,5 @@
-## Choosing a model file to open: LDraw, or BrickLink Studio's .io.
+## Choosing a model file to open: LDraw, BrickLink Studio's .io, or LEGO
+## Digital Designer's .lxf.
 ##
 ## The file is read as bytes, not as text, because an .io is a zip: read as
 ## text in a browser it came back mangled, and a model made in Studio — the
@@ -12,6 +13,10 @@ const MAX_BYTES := 16 * 1024 * 1024
 
 signal picked(text: String, name: String)
 signal failed(why: String)
+
+## What the last file picked left out, in a sentence (an LDD part with no
+## LDraw match): "" when nothing was.
+var notes: String = ""
 
 var _dialog: FileDialog
 var _on_bytes: JavaScriptObject
@@ -27,7 +32,7 @@ func ask() -> void:
 		_dialog = FileDialog.new()
 		_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 		_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		_dialog.add_filter("*.ldr, *.mpd, *.dat, *.io", "Models (LDraw, Studio)")
+		_dialog.add_filter("*.ldr, *.mpd, *.dat, *.io, *.lxf, *.lxfml", "Models (LDraw, Studio, LDD)")
 		_dialog.title = "Open a model"
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(func(path: String) -> void:
@@ -44,6 +49,7 @@ func take(bytes: PackedByteArray, file_name: String) -> void:
 	if bytes.size() > MAX_BYTES:
 		failed.emit("that file is too large")
 		return
+	notes = ""
 	match file_name.get_extension().to_lower():
 		"io":
 			var read: Dictionary = StudioIo.read(bytes)
@@ -52,8 +58,12 @@ func take(bytes: PackedByteArray, file_name: String) -> void:
 				return
 			picked.emit(str(read["text"]), file_name)
 		"lxf", "lxfml":
-			failed.emit("LDD files cannot be opened here yet — Studio opens them and "
-				+ "saves an .io, which can")
+			var read: Dictionary = LddLxf.read(bytes, file_name.get_basename())
+			if not str(read["error"]).is_empty():
+				failed.emit(str(read["error"]))
+				return
+			notes = str(read["note"])
+			picked.emit(str(read["text"]), file_name)
 		_:
 			picked.emit(bytes.get_string_from_utf8(), file_name)
 
@@ -69,7 +79,7 @@ func _ask_browser() -> void:
 		(function () {
 			var input = document.createElement('input');
 			input.type = 'file';
-			input.accept = '.ldr,.mpd,.dat,.io';
+			input.accept = '.ldr,.mpd,.dat,.io,.lxf,.lxfml';
 			input.style.display = 'none';
 			document.body.appendChild(input);
 			input.addEventListener('change', function () {

@@ -978,6 +978,34 @@
       "entry": "tools/apply_sql.mjs",
       "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs --look   (.env sourced; a supabase/*.sql file to apply one)",
       "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "open an ldd model",
+      "entry": "src/parts/ldd_lxf.gd",
+      "reach": "godot --headless --path . --script src/dev/lxf_probe.gd   (by hand: File, Import, then LEGO Digital Designer model, and choose an .lxf)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "cut-away",
+      "entry": "src/ui/see_inside.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: K, or View, Cut away; drag the strip's slider; X, Y, Z, Flip, Ghost)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "x-ray",
+      "entry": "src/ui/see_inside.gd",
+      "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: select a part, or edit inside a sub-assembly, then I, or View, X-ray)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "see inside in a browser",
+      "entry": "tools/web/see_inside_flow.mjs",
+      "reach": "node tools/web/see_inside_flow.mjs --url=<a preview>/app --bypass=$VERCEL_BYPASS --out=shots/see_inside_web   (with .env sourced: opens an .lxf, cuts Orthanc down to Saruman's room, x-rays him)",
+      "area": "view"
     }
   ]
 }

@@ -36,6 +36,9 @@ var _stack: PanelStack
 ## The strip along the top of the model for what is said about it for a
 ## while: the sub-assembly being edited, the offer to seat old parts.
 var _notices: PanelContainer
+## The part of the middle column the model shows through: what floats over
+## the model (the cut-away's strip) is laid in it.
+var _over_model: Control
 var _store: ModelStore
 var _bar: ModelBar
 var _bin: PartsBin
@@ -196,6 +199,19 @@ func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 	return out
 
 
+## Each sub-assembly's own parts, how high: path -> [lowest, highest], the
+## heights of their origins in LDU.
+func _assembly_heights() -> Dictionary:
+	var out: Dictionary = {}
+	if _shell == null:
+		return out
+	var boxes: Dictionary = _shell.assemblies.own_bounds()
+	for path: String in boxes:
+		var box: AABB = boxes[path]
+		out[path] = [box.position.y, box.end.y]
+	return out
+
+
 ## Where on the page each connector a part could be put onto is: a hole's
 ## middle, the middle of what a pin or an axle has free, a bar's or a
 ## clip's middle (JointSnap.End.middle). At most 160, in front of the view.
@@ -326,6 +342,9 @@ func _tell_page() -> void:
 		# ...and where on the page each one's own parts are, since opening
 		# a model frames the view on it afresh.
 		"places": _assembly_places(to_window, per_css),
+		# ...and how high, lowest and highest part, in LDU: where to put a
+		# cut that opens the room one stands in (see_inside_flow.mjs).
+		"heights": _assembly_heights(),
 		# Where the connectors a part can be put onto are on the page, and
 		# whether the ghost is on one and may go down there, for
 		# tools/web/technic_flow.mjs to aim a pin at a hole as a person does.
@@ -349,6 +368,13 @@ func _tell_page() -> void:
 			"share": _columns},
 		# What the last 3D model brickified came to, for brickify_flow.mjs.
 		"brickified": _brickify.last_summary if _brickify != null else "",
+		# The cut-away and x-ray (SeeInside), for tools/web/see_inside_flow.mjs:
+		# where the plane is, and how many parts are drawn see-through.
+		"cut": {"on": _world.is_cut(), "axis": _shell.see_inside.axis,
+			"at": _shell.see_inside.at} if _shell != null else {},
+		"xray": _world.xray_ids().size(),
+		# What the status bar says just now (it clears after a few seconds).
+		"said": _shell.status.message.text if _shell != null else "",
 	}), true)
 	# And who is signed in, and whether the sign-in screen is up, so a
 	# browser test can wait for the way in rather than guess it.
@@ -1282,6 +1308,7 @@ func _build_ui() -> void:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(spacer)
+	_over_model = spacer
 
 	# In the viewport column, at the top, which is where every other 3D
 	# tool puts a view cube.
@@ -1641,7 +1668,7 @@ func _build_ui() -> void:
 	_shell = Shell.new()
 	_shell.app = self
 	add_child(_shell)
-	_shell.build(column, _stack, _notices.get_child(0) as Control)
+	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
 	_counts = _shell.status.counts
 
 	# The ruler, and what it says, under the counts.
@@ -1683,7 +1710,7 @@ func _build_ui() -> void:
 	_exports.picture.world = _world
 	_exports.picture.camera = _camera
 	_exports.picture.scenery = _store.scenery
-	_exports.picture.aside = [_builder, _outline, _turning]
+	_exports.picture.aside = [_builder, _outline, _turning, _shell.see_inside.frame]
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)

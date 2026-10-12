@@ -137,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project example_name minifig print sticker mould brickify; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import lxf select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
@@ -227,6 +227,12 @@ run "by hand" "${screen[@]}" godot --path . --resolution 1400x900 \
 # model tree and the properties once covered the model there.
 run "sub-assemblies" "${screen[@]}" godot --path . --resolution 1100x700 \
   --script src/dev/assembly_probe.gd
+# Seeing inside: a room cut open with K and the strip's slider, x-ray of a
+# part inside it and of a sub-assembly, a click reaching it through both,
+# the timeline with both on, the booklet made with both on the same as with
+# both off, and Orthanc timed. Pictures in shots/see_inside/.
+run "see inside" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/see_inside_probe.gd
 # The minifigure builder, used by clicking: slots, parts, colours, a
 # name, Place in model, a click on a stud. Its live figure and its
 # thumbnails are drawn, so it needs a window; it leaves pictures of the

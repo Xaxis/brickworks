@@ -45,7 +45,7 @@ const GROUPS: Array = [
 	# menu's now (and the number keys and `), which is what keeps the
 	# toolbar whole on a 1280-wide screen.
 	[8, [["mode_orbit", "orbit"], ["mode_pan", "pan"], ["mode_zoom", "zoom"], ["fit", "fit"],
-		["grid", "grid"]], "View"],
+		["grid", "grid"], ["cut", "cut"], ["xray", "xray"]], "View"],
 	[6, [["measure", "measure"], ["panel_properties", "properties"]]],
 	[4, [["timeline", "timeline"], ["instructions", "booklet"], ["parts_list", "parts_list"]]],
 ]

@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:open an ldd model -->
 
 ## Sub-features
 
@@ -85,10 +85,26 @@ Whether what you built is still there tomorrow, and still means the same thing.
   File, Import (or Open → From a file) reads LDraw or BrickLink Studio's `.io` — a zip with
   Studio's published password around `model2.ldr` (or `model.ldr`), opened by
   hand (PKWARE decryption, then the raw deflate wrapped as gzip, which Godot
-  inflates). The file is read as bytes, in a browser too. LDD's `.lxf` is
-  refused with a sentence saying Studio opens it and saves an `.io`.
+  inflates). The file is read as bytes, in a browser too.
   `tests/fixtures/studio_bay.io` was made by the system's `zip -P`, not by
   this app.
+- `open an ldd model` (`src/parts/ldd_lxf.gd`, `src/ui/model_file_picker.gd`):
+  File, Import → LEGO Digital Designer model, or Open → From a file, reads
+  LDD's `.lxf` (a zip around LXFML; the zip is read by `StudioIo`'s reader) or
+  a bare `.lxfml`, on the desktop and in a browser. Each part's design number,
+  material and bone are turned into an LDraw line by `assets/ldraw/ldd.json`,
+  which `tools/ldd_map.py` derives from the community's `ldraw.xml`
+  (`tools/fetch_data.sh` fetches it; docs/ATTRIBUTION.md): M = R r⁻¹, LDraw's
+  matrix A M A and position 25 A (T − M t), A = diag(1, −1, −1) — the sum
+  lxf2ldr and LeoCAD do. A part the table cannot place is left out, named in
+  a comment in the LDraw text and in what the status bar says ("2 LDD parts
+  with no LDraw match left out (999999 ×2)"); a colour it has no match for
+  is light bluish grey, and said. `src/dev/lxf_probe.gd` opens
+  `src/dev/fixtures/49311_test.lxf`, saved by LDD 4.3 (sttng/LDD, MIT), and
+  checks every part where LDD put it — plate on the ground, courses a brick
+  apart, every brick on the plate's studs, four positions worked by hand —
+  then writes the house and the castle as LDD would and reads them back to
+  the same placements, all 2,438 of the castle's that LDD has numbers for.
 - `picture of the model` (`src/ui/picture.gd`, File, Export → Picture): the model
   alone — no baseplate, ghost or outline — from the view's direction, framed to
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
@@ -126,6 +142,8 @@ godot --headless --path . --script src/dev/example_name_probe.gd  # new work, it
 godot --headless --path . --script src/dev/restore_probe.gd  # a failed design changes nothing
 godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still mean something
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
+godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
+python3 tools/ldd_map.py vendor/ldraw.xml   # after a newer ldraw.xml: assets/ldraw/ldd.json again
 tools/check.sh --network   # adds open_probe: opening the way the browser has to
 ```
 

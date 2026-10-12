@@ -56,6 +56,14 @@ var _bounds: Dictionary = {}
 ## model can be reached with its roof hidden. They still take up their
 ## room — nothing can be put down inside a hidden brick.
 var unseen: Dictionary = {}
+## Bricks the pointer passes through because the eye does: x-ray's ghosts
+## (SeeInside). Kept apart from unseen, which everything else reads as
+## hidden by hand.
+var see_through: Dictionary = {}
+## The cut-away (SeeInside): a ray passes through every cell on the side of
+## this plane its normal points to, as the eye does. Off while the normal is
+## zero.
+var cut: Plane = Plane()
 
 
 static func _bound_of(packed: PackedInt32Array) -> PackedInt32Array:
@@ -898,6 +906,7 @@ func clear() -> void:
 	_column_bucket.clear()
 	_bounds.clear()
 	unseen.clear()
+	see_through.clear()
 
 
 ## A copy to be read on another thread while this one goes on changing.
@@ -1115,6 +1124,13 @@ class Hit extends RefCounted:
 		return cell + normal
 
 
+## Whether a cell is on the far side of the cut, where nothing is drawn.
+func _cut_away(cell: Vector3i) -> bool:
+	if cut.normal == Vector3.ZERO:
+		return false
+	return cut.distance_to((Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * CELL) > 0.0
+
+
 ## March a ray through the lattice and return the first brick it meets.
 ##
 ## This is also how picking works, and it is the reason the lattice earns
@@ -1160,7 +1176,8 @@ func raycast(origin: Vector3, direction: Vector3, max_distance: float = 20000.0)
 	# anything would hang the frame.
 	for _n: int in 20000:
 		var owner: int = brick_at(cell)
-		if owner != 0 and not unseen.has(owner):
+		if owner != 0 and not unseen.has(owner) and not see_through.has(owner) \
+				and not _cut_away(cell):
 			hit.brick_id = owner
 			hit.cell = cell
 			hit.normal = entered
