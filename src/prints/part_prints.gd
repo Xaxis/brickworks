@@ -78,6 +78,9 @@ class Area extends RefCounted:
 	## faces it takes; a cylinder's radius.
 	var normal := Vector3.ZERO
 	var depths: Dictionary = {}     ## part index -> Array of plane depths
+	## Projected straight on over every face turned its way, at any depth:
+	## a dish's dome, a round tile's curved top.
+	var any_depth: bool = false
 	var radius: float = 0.0
 	## Where the part's surface is under the canvas: white where a print
 	## shows, clear where there is nothing to print on.
@@ -125,6 +128,8 @@ class Area extends RefCounted:
 			if out.length() < radius - 2.5:
 				return false
 			return n.dot(out.normalized()) > 0.3
+		if any_depth:
+			return n.dot(normal) >= 0.3
 		if n.dot(normal) < 0.9:
 			return false
 		for depth: float in depths.get(index, []):
@@ -272,19 +277,21 @@ static func _cylinder_areas(part_id: String, shape: PartEditor.Shape) -> Array[A
 ## face turned that way and whatever faces it further out (a leg's foot
 ## below its shin), all projected straight on. Null when no part has a face
 ## turned that way.
-static func _planar(key: String, title: String, normal: Vector3, parts: Array) -> Area:
+static func _planar(key: String, title: String, normal: Vector3, parts: Array,
+		any_depth: bool = false) -> Area:
 	var area := Area.new()
 	area.key = key
 	area.title = title
 	area.method = "PLANAR"
 	area.normal = normal.normalized()
+	area.any_depth = any_depth
 	var shapes: Array = []
 	for index: int in parts.size():
 		var entry: Dictionary = parts[index]
 		var shape: PartEditor.Shape = entry["shape"]
 		var shift: Vector3 = entry["shift"]
-		var depths: Array = _depths(shape, area.normal, shift)
-		if depths.is_empty():
+		var depths: Array = [] if any_depth else _depths(shape, area.normal, shift)
+		if depths.is_empty() and not any_depth:
 			continue
 		area.depths[area.parts.size()] = depths
 		area.parts.append({"part": entry["part"], "shift": shift})
@@ -358,6 +365,8 @@ static func _depths(shape: PartEditor.Shape, normal: Vector3, shift: Vector3) ->
 
 static func _faces(area: Area, index: int, corners: Array[Vector3]) -> bool:
 	var n: Vector3 = (corners[1] - corners[0]).cross(corners[2] - corners[0])
+	if area.any_depth:
+		return n.length() >= 1e-9 and n.normalized().dot(area.normal) >= 0.3
 	if n.length() < 1e-9 or n.normalized().dot(area.normal) < 0.9:
 		return false
 	var depth: float = area.normal.dot((corners[0] + corners[1] + corners[2]) / 3.0)
@@ -381,13 +390,37 @@ static func _largest_faces(part_id: String, shape: PartEditor.Shape) -> Array[Ar
 		# Nothing printed underneath.
 		if n.y > 0.5:
 			continue
-		var key := Vector3(snappedf(n.x, 0.05), snappedf(n.y, 0.05), snappedf(n.z, 0.05))
+		var key := Vector3(snappedf(n.x, 0.05) + 0.0, snappedf(n.y, 0.05) + 0.0,
+			snappedf(n.z, 0.05) + 0.0)
 		directions[key] = float(directions.get(key, 0.0)) + area
 	var keys: Array = directions.keys()
 	keys.sort_custom(func(a: Vector3, b: Vector3) -> bool:
 		return float(directions[a]) > float(directions[b]))
 	var out: Array[Area] = []
 	var used: Dictionary = {}
+	# A top that is not flat — a dish's dome, a round tile's rounded top —
+	# printed from above over all of it.
+	var upward: float = 0.0
+	var all: float = 0.0
+	for key: Vector3 in directions:
+		all += float(directions[key])
+		if key.y <= -0.3:
+			upward += float(directions[key])
+	# Curved, not faceted: no one way up has half of it, and it faces
+	# many ways. A slope's face is one way, and is a face of its own.
+	var largest_up: float = 0.0
+	var ways: int = 0
+	for key: Vector3 in directions:
+		if key.y <= -0.3:
+			largest_up = maxf(largest_up, float(directions[key]))
+			ways += 1
+	# 3960's dish: no way up has 7% of it; 3037's slope face has 53%.
+	if upward > all * 0.15 and largest_up < upward * 0.45 and ways >= 6:
+		var dome: Area = _planar("dome", "Top, curved", Vector3(0, -1, 0),
+			[{"part": part_id, "shape": shape, "shift": Vector3.ZERO}], true)
+		if dome != null:
+			used["dome"] = true
+			out.append(dome)
 	for key: Vector3 in keys:
 		if out.size() >= 4 or float(directions[key]) < float(directions[keys[0]]) * 0.15:
 			break
@@ -692,6 +725,38 @@ static func _write_faces(out: PackedStringArray, shape: PartEditor.Shape, taken:
 ## Whether a part file is a print made here.
 static func is_print(text: String) -> bool:
 	return text.contains(PRINTED_BY) and text.contains("!TEXMAP START")
+
+
+## Whether a part file carries pictures it needs to be built with: a print
+## or a sticker.
+static func has_pictures(text: String) -> bool:
+	return text.contains("0 !TEXMAP START")
+
+
+## The name someone gave a print, a mould or a sticker, read out of its
+## title ("Tile 2 x 2, Custom Print Monument Valley", "Sticker 31.4 x 15.4
+## mm, Brick Street"); empty for any other part.
+static func given_name(title: String) -> String:
+	for mark: String in ["Custom Print ", "Custom Mould "]:
+		if title.contains(mark):
+			return title.get_slice(mark, 1).strip_edges()
+	if title.begins_with("Sticker ") and title.contains(", "):
+		return title.get_slice(", ", 1).strip_edges()
+	return ""
+
+
+## The parts bin's category for a made part: "My prints", "My stickers",
+## or "Custom" for any other.
+static func bin_for(text: String) -> String:
+	if text.contains(Stickers.STICKER_BY):
+		return MY_STICKERS
+	if is_print(text):
+		return MY_PRINTS
+	return "Custom"
+
+
+const MY_PRINTS := "My prints"
+const MY_STICKERS := "My stickers"
 
 
 ## The part a print or a mould was made from, from its header, or "".

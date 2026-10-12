@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom prints, ui:print designer -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser -->
 
 ## Sub-features
 
@@ -159,76 +159,62 @@ the model, and the design assistant doing the same with `add_minifig`.
   part count it publishes (`window.brickworksBricks`). It also chooses a cape —
   a part the pack does not ship, fetched over the wire — and places the caped
   figure.
-- `custom prints` (`src/minifig/part_prints.gd`, `PartPrints`; the pixels in
-  `print_paint.gd`, `PrintPaint`): a print drawn here is an `Area` of a part and a
-  picture for it. `areas_for` finds them from the part's own mesh: a round head's
-  face and the back of it, each half way round its cylinder (CYLINDRICAL, 180
-  degrees, from 3 LDU above where the cylinder starts to 3 below where it ends:
-  3626c's canvas is 408 x 190); a torso's front and back (PLANAR, the largest face
-  turned that way and any as large as a third of it further out, its canvas the
-  face's extent plus half an LDU: 973's front is a trapezoid on a 390 x 330
-  canvas); a right leg with its hips and left leg as one front over all three, the
-  legs 12 under the hips (`LEGS_UNDER_HIPS`, as `Minifig.LEGS` has them); any
-  other part's largest outward faces, named by how they face (a tile's top, a
-  slope's slope). Ten pixels to the LDU, no side over 512. A canvas pixel's place
-  on the part is LDraw's !TEXMAP projection worked out as LDView works it out
-  (`Area.uv`, after TREModel.cpp): PLANAR's first point the picture's top left,
-  second top right, third bottom left; CYLINDRICAL's U `0.5 + angle/a` round from
-  the third point's side, growing to the right seen from outside, V down from the
-  top point. The part file (`part_text`) is the plain part's triangles from its
-  mesh, each area's faces inside its own `0 !TEXMAP START ... <png>` /
-  `0 !TEXMAP END`, its connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases,
-  and `0 // Printed by Brickworks: from=<part> areas=<keys>`; named
-  `bw-<part>-p<tag>`, the tag six hex digits of MD5 over the part, the title and
-  every picture, so the same print twice is the same part. A pair of legs is
-  three files sharing one picture and one tag. `build` is `PartForge.build` with
-  each block's faces handed over in colour `UNDER_PICTURE + n`, so they come out
-  as surfaces of their own, then given texture coordinates by the block's own
-  projection, colour 16 back, and the picture (`Lbm.PartMesh.prints`, by surface;
-  `print_files`, the PNG bytes by name). `BrickWorld` and `PartThumbnails` draw a
-  printed surface with `plastic_print.gdshader` (`#define PLASTIC_PRINT` in
-  `plastic_body`: the picture mixed over the plastic by its alpha, linearised as
-  the plastic's colour is, clear off the picture as LDView's clamp-to-border is).
-  `finished` keeps a picture to the area's mask, grown a pixel, and clears its
-  outermost pixels. `picture_of` reads one of LEGO's prints off its part (every
-  face not in colour 16, on the area) onto a canvas: 3626cp01's grin on 3626c's
-  face; `prints_of` lists a mould's real prints, the most used first.
-  Kept like any made part (`CustomParts.add`: a print's text is built by
-  `PartPrints.build`, its pictures kept beside it in `user://custom_parts/` and
-  found there again at start-up); a model carries each picture as an MPD
-  `0 !DATA <name>.png` section, base64 in `0 !:` lines of 76 characters after the
-  FILE sections (`LdrModel.write_ldr`, `embedded_data` when read), so it opens in
-  a library that never saw it and in LDView. On a figure (`Minifig`): a part made
-  here stands where the part it was made from stands (`PartPrints.bases`;
+- `prints on a figure` (the print designer and its files are in
+  [prints](prints.md)): "Draw a print…" beside the search in the Head, Torso, Hips
+  and Legs slots (`MinifigDialog.PRINTED`; the hips are drawn with the legs) opens
+  the print designer over the builder on the slot's part — its plain mould; a
+  printed part LEGO made is started from, one made here loaded to change. A
+  right leg is printed with its hips and left leg as one front. Save print puts
+  the parts on the figure; a part for no slot (a tile typed into "or print on")
+  goes to the parts bin and the builder says so. On a figure (`Minifig`): a part
+  made here stands where the part it was made from stands (`PartPrints.bases`;
   `assemble` and `torso_local` work with a stand-in and swap the made parts back,
-  a printed pair's left leg for the plain left leg, `made_with`); choosing printed
-  legs brings the hips printed with them and plain legs give plain hips back
-  (`_fit_hips`); made parts are offered first in their slot, in a group "My prints
-  and moulds" (`MADE_HERE`), in their original's colours (`colours_of`); the slot
-  index is rebuilt when the library has made parts it did not.
-- `print designer` (`src/minifig/print_editor.gd`, `PrintEditor`; the canvas
-  `print_canvas.gd`, `PrintCanvas`): "Draw a print…" beside the search in the
-  Head, Torso, Hips and Legs slots of the figure builder (`MinifigDialog.PRINTED`;
-  the hips are drawn with the legs). Opens over the builder on the slot's part
-  (its plain mould; a printed part LEGO made is started from, one made here is
-  loaded to change), a tab per area. Tools: brush and eraser (round, hard-edged),
-  line, box and oval (filled or outlined), fill (a run of one colour on the active
-  layer, on the raw pixels as one int each), text (the font's own glyphs from the
-  text server, so headless too), pick a colour; a size; Mirror, which draws every
-  mark again reflected about the canvas's middle; layers (add, delete, up, down,
-  show); undo and redo (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y; a stroke is one step, 40
-  kept). Colours: LEGO's solid, metallic and pearl colours in sets today, with
-  black and white. The canvas shades what is not on the part and dashes its
-  middle; right button, middle button or Space-drag pans, the wheel zooms. Beside
-  it the part turns wearing the picture as it is drawn (`preview_meshes`: the
-  part's surfaces cut by area, texture coordinates from the same projection, each
-  canvas a texture updated per mark); Start from (a clean sheet, prints made here
-  of the mould, LEGO's prints of it, fetched first in a browser); Add a picture…
-  (`PickImage`, a file dialog or the browser's picker, onto a layer of its own,
-  fitted); "or print on" a part number (3068b, 3039, anything; the slot kept only
-  if the part goes in it). Save print makes the parts and puts them on the figure;
-  a part for no slot goes to the parts bin under Custom and the builder says so.
-  Escape closes it.
+  a printed pair's left leg for the plain left leg, `made_with`); choosing
+  printed legs brings the hips printed with them and plain legs give plain hips
+  back (`_fit_hips`); made parts are offered first in their slot, in a group "My
+  prints and moulds" (`MADE_HERE`), in their original's colours (`colours_of`);
+  the slot index is rebuilt when the library has made parts it did not.
+- `custom moulds` (`src/minifig/mould.gd`, `Mould`): a part's shape sculpted
+  into another with its connection exactly where it was. `of_part` welds the
+  part's built mesh into one surface (positions on a 1/1000 LDU key, LDraw's
+  winding), keeps its connectors and its creases; `dome` (a cap turned from a
+  profile round the classic head with a hollow stud's socket, standing for 3901)
+  and `club` (a 4 LDU bar and a ball, standing for 3847, the bar on 3847's
+  grip) start from nothing. Each corner has a lock, 0 to 1 (`lock_at`): inside
+  what a connector needs — a stud 7 LDU round and 4.5 out, a socket 7 round and
+  4.5 in along its axis, a shaft or bore of radius 6 or less with 1.5 to spare,
+  a pin or clip 5.5 round 6 either way, the grip a hand closes on (the part's
+  `MinifigData.GRIPS` bar, 5.5 round, 9 either way) — and, on anything worn on
+  the head, the inside turned to the head and within an LDU of it
+  (`head_depth`, 3626c's cylinder, rounded top and stud; `head_outward`); fading
+  to 0 over 2 LDU (`FADE`). Brushes (`dab`): pull and push along the brush's
+  facing, inflate along each corner's own, smooth to the neighbours, pinch to the
+  middle, flatten to the plane, each weighted by a smoothstep falloff and the
+  corner's freedom; with symmetry the same dab mirrored in X. `grab` and `drag`
+  move what is under the brush with the pointer; the lattice (`lattice_begin`,
+  `lattice_move`) is 27 handles round the part bending it by quadratic Bernstein
+  weights, the mirrored handle moved with symmetry. After every change nothing
+  free is nearer the head than `HEAD_MARGIN` (1 LDU) or than it began
+  (`_keep_off_head`). `refine` splits every edge longer than 3.2 LDU (1.6 with
+  Finer) not locked at both ends through its middle, the shape unchanged, up to
+  `MOST_TRIANGLES` (9000). `walls` measures each corner's thickness straight in
+  (`Rays.Grid`) and the share under 1 mm. Picking is `Rays.nearest`. The file
+  (`text`) is the triangles on the mesh's 64ths of an LDU, the original's
+  connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases, and `0 // Moulded
+  by Brickworks: from=<part>`; named `bw-<part>-m<tag>` from an MD5 of its
+  corners, built by `PartForge` (`CustomParts.add`), filed under Custom. On a
+  figure it stands where its original stands (`PartPrints.bases`).
+- `mould maker` (`src/minifig/mould_editor.gd`, `MouldEditor`): "Make a mould…"
+  beside the search in the Headgear, Headgear extra, Neck, Back, In right hand and
+  In left hand slots (`MinifigDialog.MOULDED`), opened on the slot's part (3901
+  or 3847 when it is empty, a dome when neither). Start from a part number,
+  Dome or Club; tools Pull, Push, Inflate, Smooth, Pinch, Flatten, Grab; Size
+  (LDU) and Strength; Symmetry (on); Lattice (handles drawn over the part, a
+  handle dragged in the view's plane); Check walls (red under 1 mm, the thinnest
+  said); Finer; Undo and Redo (Ctrl+Z). Drag on the part to sculpt, off it or
+  with the right button to turn it, the wheel to come closer; a ring shows the
+  brush; locked corners are tinted blue and a faint head shows the fit. Save mould
+  builds it ("Building the mould…" said first) and puts it on the figure.
 
 ## How to reach it
 
@@ -242,7 +228,8 @@ tools/minifig.py data              # rewrite src/minifig/minifig_data.gd (~2 min
 On the web the builder's parts come over the wire like any other; the default
 figure's are in the pack (`tools/web_pack.py` ESSENTIAL).
 
-Prints: M, a Head, Torso, Hips or Legs slot, **Draw a print…**.
+Prints: M, a Head, Torso, Hips or Legs slot, **Draw a print…**. Moulds: M, a
+Headgear, Neck, Back or hand slot, **Make a mould…**.
 
 ## How to check it
 
@@ -251,8 +238,10 @@ godot --headless --path . --script src/dev/minifig_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/minifig_ui_probe.gd   # needs a display: see tools/check.sh for xvfb-run
 python3 tools/minitest.py tests/test_minifig.py
 node tools/web/minifig_flow.mjs --url=<a build>/app --out=shots/minifig_web
-godot --headless --path . --script src/dev/print_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd     # needs a display
+godot --headless --path . --script src/dev/mould_probe.gd
+godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd     # needs a display
+BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web    # .env sourced
 ```
 
 Proves it when:
@@ -326,29 +315,6 @@ Proves it when:
   --delay 300`, which answers `/api/account` with its own `/parts/`; the flow's
   `--url` is `http://127.0.0.1:PORT/index.html`.
 
-- `print_probe` ends `a print drawn here is on the part where it was drawn, in the
-  app and the file`: 3626c's face and back (CYLINDRICAL 180), 973's front and back
-  with the front's TEXMAP points top left, top right, bottom left and its mask a
-  trapezoid, one front over 3815b, 3816c and 3817c, 3068b's top 410 x 410, 3039's
-  slope; the paint document's brush, mirror, fill, undo, redo, words and layers;
-  then a face, a torso front and back, a pair of legs and a tile printed, each
-  part its plain part to the triangle, the collision box and the connector, its
-  pictures on surfaces of their own, and every printed corner carrying exactly
-  the coordinates its file's TEXMAP line gives its position (160 on the head);
-  the same print twice is the same part; a figure in the prints stands exactly as
-  the plain one, the printed left leg on the left; the hips come and go with the
-  legs; the print is first in its slot; the model file carries the pictures as
-  !DATA in lines under 80, reads back to the same bytes, and a library that never
-  saw them builds all four parts and keeps the pictures; 3626cp01's grin lands on
-  the middle of the face and nothing on the back; 973p01's stripes on the front.
-  It leaves the figure's file in `shots/print_probe.mpd`, and
-  `tools/build_custom.py shots/print_probe.mpd --check` reads it strictly ("all
-  complete"). Another program draws it too: LDView 4.7 (the release AppImage,
-  `--appimage-extract`, under Xvfb: `AppRun MODEL.mpd -LDrawDir=vendor/ldraw
-  -SaveSnapshot=out.png -SaveWidth=600 -SaveHeight=600 -cg15,0`, and `-cg15,180`
-  from behind) showed a printed face, a badge on the left breast and "CREW" on the
-  back where the app has them, 2026-10-11 (`shots/print_ldview_front.png`,
-  `_back.png`).
 - `print_ui_probe` ends `a face, a jacket and trousers were drawn by hand, worn and
   placed`, every mark an input event: the face drawn on a clean sheet (the editor
   first opened on 3626cp01's grin), hair round the back, a jacket front with a
@@ -360,28 +326,54 @@ Proves it when:
   right way up, badge on his left breast, belt over the hips),
   `print_figure_back.png` ("CREW" reads from behind) and `print_with_tile.png`.
 
+- `mould_probe` ends `a mould sculpted here keeps its connection exactly, and
+  stands, saves and travels`: 3901 welded (695 triangles), its inside resting on
+  the head locked and its outside free, every corner round the head's stud
+  locked, none of it in the head by more than a drawing's 0.3 LDU; made finer
+  with every corner where it was; pulled (corners moved up to several LDU), the
+  other side coming too with symmetry; every brush at full strength, the lattice
+  and a grab leaving not one locked corner moved by any amount and nothing free
+  pushed nearer the head than an LDU; its walls measured; undo and redo. Made
+  into `bw-3901-m…`: its connectors 3901's to the float, its file under 700 kB,
+  built with a cover, offered as headgear. A dome (clear of the head, its socket
+  locked) with a topknot pulled up, and a club (its bar locked, a 4 LDU round,
+  the 3.18 mm a hand holds) with a swollen head, both made. A figure wearing the
+  hair and holding the club stands exactly as one with 3901 and 3847, is placed
+  on a 1 x 2 plate and stands; the file carries both into a library that never
+  saw them, the same to the cell.
+- `mould_ui_probe` ends `a hairstyle and a club were sculpted by hand, worn, held
+  and placed`: in the Headgear slot, "Make a mould…" opens on 3901 made finer;
+  turned with the right button; the fringe grabbed and swept up and forward from
+  the side, the back drawn down, the sides inflated, the crown smoothed, the
+  lattice's top handle lifted — every stroke a press, a drag and a release on the
+  view — not one locked corner moved; Check walls says how thin it is; saved as
+  "Quiff" and worn, first in the grid; a club from Club, its ball inflated and
+  pulled into spikes, saved into the right hand; the figure placed. **Look at**
+  `shots/mould_hair_start.png`, `mould_hair_sculpted.png`, `mould_hair_walls.png`,
+  `mould_club.png`, `mould_builder.png`, `mould_figure_front.png`,
+  `mould_figure_corner.png`, `mould_figure_side.png`: the hair on the head, not
+  through it, its fringe a quiff; the club in the hand where a sword would be.
+- `print_flow.mjs` (`figure prints and moulds in a browser`: WebGL 2, IndexedDB
+  and GDScript in WebAssembly, which no desktop probe vouches for) ends `print
+  flow: drawn, sculpted, worn, placed and kept in the browser`: M, the Head
+  slot's Draw a print…, a face drawn with the mouse and saved; the Torso slot's,
+  a badge; the Headgear slot's Make a mould…, the hair's top pulled up and saved;
+  each save one more part made here (`window.brickworksState.custom`); the figure
+  placed with them (`window.brickworksBricks`); the page reloaded and all three
+  still made here, the model back with the figure. **Look at**
+  `shots/print_web/1_face.png` … `6_reloaded.png`.
+
 ## Gotchas
 
-- **A print is a surface with texture coordinates, and nothing else is.** The
-  .lbm format has no UVs; a printed part's are worked out when it is built, from
-  its file's TEXMAP lines, and live only in memory (`Lbm.PartMesh.prints`). A
-  printed part changed by the element maker (`PartEditor.shape_of`) loses its
-  picture.
-- **LDraw's cylindrical spec contradicts itself** on which way V runs (ldraw.org
-  forum thread 13633). LDView and LDCad measure it down from the top point;
-  `Area.uv` does too, and U as LDView does, per corner rather than per triangle
-  (a print's faces never reach the cylinder's seam, which is behind the area).
-  Off the picture, LDView clamps to a clear border and LDCad (2014) stretched the
-  edge pixels, so every finished picture has a clear outermost pixel.
-- **A packed array read out of an Array or Dictionary is a copy**, as in
-  elements.md: `preview_meshes` collected each piece's corners by appending to
-  `(piece[0] as PackedVector3Array)` and built empty meshes. Corners are gathered
-  in plain Arrays now.
-- **The head is 30% cylinder.** 3626c's faces are 3557 LDU² of which 1055 are on
-  its 13 LDU cylinder; the rest is its top, neck and both their insides. A head
-  counts as round at 20%.
-- **`set_size` is Control's.** A method of that name on a panel is a parse error
-  under this project's warnings-as-errors.
+- **A hair piece is thin.** 3901's outside is within 3 LDU of the head almost
+  everywhere, so a lock by distance alone locked nearly all of it. The lock is
+  by facing too: only corners turned towards the head (`head_outward`, a dot
+  under 0.35) and within an LDU of it are its inside; the outside a millimetre
+  away is free, and kept off the head by `_keep_off_head` instead.
+- **A hair's inside rests on the head's top as well as its sides.** Measured as
+  radial depth only, 3901's ceiling at y 0 read as 3.9 LDU inside the head;
+  `head_depth` takes the nearer of the radial and the vertical surface of each
+  of the head's three pieces (cylinder, rounded top, stud).
 
 - **Measured, not looked up**: three conventions are in real sets' files. The
   library's (76382), Mad_Marc's (hands 0.5 LDU off, sets 10176-10184) and an older

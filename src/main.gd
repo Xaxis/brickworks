@@ -64,6 +64,8 @@ var _inventory: InventoryPanel
 var _mosaic: MosaicDialog
 ## The element maker: a part that is not in the library, made.
 var _elements: ElementDialog
+## Prints and stickers for any part (src/prints/print_studio.gd).
+var _studio: PrintStudio
 var _controls: ControlsDialog
 var _figures: MinifigDialog
 ## Whether --ask finished with a design rather than an apology. Read by
@@ -194,6 +196,8 @@ func _tell_page() -> void:
 	if _elements != null:
 		named.merge(_bin.controls_by_name())
 		named.merge(_elements.controls_by_name())
+	if _studio != null:
+		named.merge(_studio.controls_by_name())
 	if _account_panel != null:
 		named.merge(_account_panel.controls_by_name())
 	if _edit_bar != null:
@@ -1213,6 +1217,24 @@ func _build_ui() -> void:
 		var info: PartLibrary.PartInfo = _library.parts.get(part_id)
 		_bar.say("made %s — it is in the parts bin under Custom" % (
 			Inventory._tidy(info.name) if info != null else part_id)))
+
+	# Prints and stickers for any part of the model (src/prints).
+	_studio = PrintStudio.new()
+	_studio.library = _library
+	_studio.world = _world
+	_studio.builder = _builder
+	_studio.camera = _camera
+	add_child(_studio)
+	_studio.setup($HUD)
+	_bin.print_wanted.connect(func() -> void: _studio.print_part(_builder.held_part))
+	_bin.stickers_wanted.connect(_studio.open_sheet)
+	_studio.said.connect(func(words: String) -> void: _bar.say(words))
+	_studio.made.connect(func(part_id: String) -> void:
+		_bin.populate()
+		if not Stickers.is_sticker(_library, part_id):
+			_bin.show_category(PartPrints.MY_PRINTS)
+			_bin.show_held(part_id, _builder.held_color)
+			_on_part_chosen(part_id))
 
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its

@@ -1,5 +1,18 @@
-## Drawing a print: a face for a head, a design for a torso's front and
-## back, the front of a pair of legs, a sign for a tile or a slope.
+## Drawing a print — a face for a head, a design for a torso's front and
+## back, the front of a pair of legs, a sign for a tile, a logo for a slope,
+## a photograph for any face of any part — or a sticker.
+##
+## Pictures come in from files (PNG, JPEG, WebP, BMP, SVG; PictureFile) as
+## layers of their own (PrintPicture), placed with "Move" and the picture
+## panel: fit to the face or fill it, size, turn, crop, see-through, its
+## background made clear, its colours kept or mapped to LEGO's inks (at
+## most so many: a pad print is a few flat inks). Starters — a dial, a
+## screen, a sign, a number plate, a control panel, a face — are drawn for
+## the canvas they go on.
+##
+## A sticker (open_sticker) is drawn the same way on a canvas the size of
+## the faces it is going on, and saved as a sticker (Stickers) rather than
+## a printed part.
 ##
 ## The canvas is the part's printable area exactly (PartPrints.Area): a
 ## head's face unrolled from its cylinder, a torso's trapezoid, the hips
@@ -56,7 +69,22 @@ var _palette: FlowContainer
 var _ink: ColorRect
 var _ink_name: Label
 var _save: Button
-var _picker: PickImage
+var _files: PictureFile
+## The picture panel, shown while the active layer is a picture.
+var _picture_box: VBoxContainer
+var _picture_scale: HSlider
+var _picture_turn: HSlider
+var _picture_crop: Array[HSlider] = []
+var _picture_opacity: HSlider
+var _picture_lego: CheckBox
+var _picture_inks: SpinBox
+var _picture_clear: CheckBox
+var _picture_flip: CheckBox
+var _picture_quiet: bool = false
+## A sticker being drawn, for the face it goes on; null for a print.
+var sticker_face: Stickers.Face = null
+var _sticker_preview: MeshInstance3D
+var _tab_markers: Dictionary = {}     ## tab index -> a control laid over it
 
 var _viewport: SubViewport
 var _camera: Camera3D
@@ -80,6 +108,8 @@ func _ready() -> void:
 ## (changed). [param with_parts] names what a pair of legs is printed
 ## with: {"hips", "left"}.
 func open(part_id: String, for_slot: String, colour: int, with_parts: Dictionary = {}) -> void:
+	sticker_face = null
+	_save.text = "Save print"
 	slot = for_slot
 	colour_code = colour
 	with = with_parts
@@ -98,6 +128,39 @@ func close() -> void:
 		return
 	visible = false
 	closed.emit()
+
+
+## Draw a sticker for a face of the model: the canvas is the sticker, the
+## face's rectangle less LEGO's 0.1 mm a side and a margin; the preview is
+## the sticker itself. Saving makes it and hands its id back (slot
+## "sticker"), for whoever opened this to stick it on.
+func open_sticker(face: Stickers.Face, title: String = "") -> void:
+	sticker_face = face
+	slot = "sticker"
+	base = ""
+	with = {}
+	colour_code = Stickers.FILM
+	visible = true
+	_name.text = title
+	_save.text = "Save sticker"
+	var size: Vector2 = face.sticker_size()
+	var area := PartPrints.Area.new()
+	area.key = "sticker"
+	area.title = "Sticker %s x %s mm" % [Stickers._mm(size.x), Stickers._mm(size.y)]
+	area.size = Stickers.canvas_for(size)
+	area.mask = Image.create_empty(area.size.x, area.size.y, false, Image.FORMAT_RGBA8)
+	area.mask.fill(Color.WHITE)
+	area.guides = [[Vector2(area.size.x * 0.5, 0), Vector2(area.size.x * 0.5, area.size.y)]]
+	_areas = [area]
+	_papers = {"sticker": PrintPaint.new(area.size.x, area.size.y)}
+	_title.text = "Draw a sticker, %s x %s mm, for %d part%s" % [Stickers._mm(size.x),
+		Stickers._mm(size.y), face.bricks.size(), "" if face.bricks.size() == 1 else "s"]
+	_save.disabled = false
+	_status.text = ""
+	_fill_tabs()
+	_fill_starts()
+	_build_preview()
+	_choose_area(0)
 
 
 ## Print on another part by its number: the slot is kept only if the part
@@ -138,7 +201,7 @@ func _on_fetched(part_id: String) -> void:
 func _begin(part_id: String) -> void:
 	var with_bases: Dictionary = {}
 	for key: String in with:
-		with_bases[key] = PartPrints.base_of(str(with[key]))
+		with_bases[key] = PartPrints.mould_of(library, str(with[key]))
 	_areas = PartPrints.areas_for(library, base, with_bases)
 	_papers.clear()
 	for area: PartPrints.Area in _areas:
@@ -193,7 +256,7 @@ func _build() -> void:
 	_other.placeholder_text = "or print on: 3068b…"
 	_other.custom_minimum_size = Vector2(150, 0)
 	_other.tooltip_text = ("Print on another part instead: a tile (3068b), a slope (3039), "
-		+ "any part by its number. It goes in the parts bin under Custom")
+		+ "any part by its number. It goes in the parts bin under My prints")
 	_other.text_submitted.connect(func(text: String) -> void: _print_on(text))
 	header.add_child(_other)
 	_button(header, "Print on it", func() -> void: _print_on(_other.text),
@@ -232,10 +295,11 @@ func _build() -> void:
 	_canvas.custom_minimum_size = Vector2(420, 300)
 	_canvas.changed.connect(_on_drawn)
 	_canvas.colour_picked.connect(func(found: Color) -> void: _set_ink(found, ""))
+	_canvas.picture_moved.connect(_show_picture)
 	middle.add_child(_canvas)
 	var hint := Label.new()
-	hint.text = ("Left button draws · right button or Space-drag moves it · wheel zooms · "
-		+ "the shaded part is not on the part · the dashed line is its middle")
+	hint.text = ("Left button draws · right button or Space-drag pans · wheel zooms · Move drags a "
+		+ "picture, Ctrl+wheel sizes it · the shaded part is not on the part")
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.modulate = Color(1, 1, 1, 0.55)
 	hint.clip_text = true
@@ -263,23 +327,24 @@ func _build() -> void:
 	middle.add_child(_status)
 
 	body.add_child(_build_side())
-	_picker = PickImage.new()
-	add_child(_picker)
-	_picker.picked.connect(func(picture: Image) -> void:
-		if _paper() != null:
-			_paper().place_image(picture, "Picture")
-			_canvas.refresh()
-			_fill_layers())
-	_picker.failed.connect(func(why: String) -> void: _status.text = why)
+	_files = PictureFile.new()
+	add_child(_files)
+	_files.picked.connect(add_picture)
+	_files.failed.connect(func(why: String) -> void: _status.text = why)
 
 
 func _build_tools() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(176, 0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(150, 0)
+	column.custom_minimum_size = Vector2(160, 0)
 	column.add_theme_constant_override("separation", 4)
+	scroll.add_child(column)
 	var group := ButtonGroup.new()
 	var names: Dictionary = {"brush": "Brush", "eraser": "Eraser", "line": "Line",
-		"box": "Box", "oval": "Oval", "fill": "Fill", "text": "Text", "pick": "Pick a colour"}
+		"box": "Box", "oval": "Oval", "fill": "Fill", "text": "Text", "pick": "Pick a colour",
+		"move": "Move picture"}
 	var tips: Dictionary = {
 		"brush": "Paint, round and hard-edged, as a pad print is",
 		"eraser": "Rub out on this layer",
@@ -289,6 +354,7 @@ func _build_tools() -> Control:
 		"fill": "Fill what is the colour you click, up to its edge",
 		"text": "Words: type them below, click where they start",
 		"pick": "Take the colour under the pointer",
+		"move": "Drag the picture on this layer; it snaps to the face's edges and middle",
 	}
 	for tool: String in PrintCanvas.TOOLS:
 		var button := Button.new()
@@ -351,7 +417,202 @@ func _build_tools() -> Control:
 	column.add_child(undo_row)
 	_button(undo_row, "Undo", _undo, "Take the last change back (Ctrl+Z)")
 	_button(undo_row, "Redo", _redo, "Put it back again (Ctrl+Shift+Z)")
-	return column
+	column.add_child(_build_picture_panel())
+	return scroll
+
+
+## The picture panel: how the active layer's picture is placed and inked.
+func _build_picture_panel() -> Control:
+	_picture_box = VBoxContainer.new()
+	_picture_box.add_theme_constant_override("separation", 3)
+	_picture_box.visible = false
+	_picture_box.add_child(HSeparator.new())
+	var heading := Label.new()
+	heading.text = "Picture"
+	heading.add_theme_font_size_override("font_size", 12)
+	_picture_box.add_child(heading)
+	var fits := HBoxContainer.new()
+	_picture_box.add_child(fits)
+	_button(fits, "Fit it", func() -> void: _fit_picture(false), "The whole picture on the face")
+	_button(fits, "Cover", func() -> void: _fit_picture(true), "The face covered by the picture")
+	_button(fits, "Middle", func() -> void:
+		_change_picture({"centre": _face_box().get_center()}), "Put it in the middle of the face")
+	_picture_scale = _slider(_picture_box, "Size", 5.0, 400.0, 100.0, "As large as it fits, in per cent")
+	_picture_scale.value_changed.connect(func(value: float) -> void:
+		if _picture_quiet or _paper() == null or _paper().layer().picture == null:
+			return
+		var picture: PrintPicture = _paper().layer().picture
+		var fitted: float = minf(_face_box().size.x / picture.cropped_size().x,
+			_face_box().size.y / picture.cropped_size().y)
+		_change_picture({"scale": fitted * value / 100.0}))
+	_picture_turn = _slider(_picture_box, "Turn", -180.0, 180.0, 0.0, "Turned, in degrees")
+	_picture_turn.value_changed.connect(func(value: float) -> void:
+		if not _picture_quiet:
+			_change_picture({"angle": value}))
+	for side: String in ["Crop left", "Crop right", "Crop top", "Crop bottom"]:
+		var crop: HSlider = _slider(_picture_box, side, 0.0, 45.0, 0.0, "How much of that side is cut off, in per cent")
+		crop.value_changed.connect(func(_value: float) -> void:
+			if not _picture_quiet:
+				_change_picture({"crop": _crop_rect()}))
+		_picture_crop.append(crop)
+	_picture_opacity = _slider(_picture_box, "Opacity", 5.0, 100.0, 100.0,
+		"How much the plastic shows through, in per cent")
+	_picture_opacity.value_changed.connect(func(value: float) -> void:
+		if not _picture_quiet:
+			_change_picture({"opacity": value / 100.0}))
+	_picture_lego = CheckBox.new()
+	_picture_lego.text = "LEGO inks"
+	_picture_lego.focus_mode = Control.FOCUS_NONE
+	_picture_lego.tooltip_text = ("Every colour the nearest of LEGO's, flat, as a pad print is; "
+		+ "off, the picture's own colours")
+	_picture_lego.toggled.connect(func(on: bool) -> void:
+		if not _picture_quiet:
+			_change_picture({"lego": on}))
+	_picture_box.add_child(_picture_lego)
+	var inks_row := HBoxContainer.new()
+	_picture_box.add_child(inks_row)
+	var inks_words := Label.new()
+	inks_words.text = "at most"
+	inks_words.add_theme_font_size_override("font_size", 11)
+	inks_row.add_child(inks_words)
+	_picture_inks = SpinBox.new()
+	_picture_inks.min_value = 0
+	_picture_inks.max_value = 16
+	_picture_inks.value = 0
+	_picture_inks.suffix = "inks"
+	_picture_inks.tooltip_text = "0: as many as it needs"
+	_picture_inks.value_changed.connect(func(value: float) -> void:
+		if not _picture_quiet:
+			_change_picture({"inks": int(value)}))
+	inks_row.add_child(_picture_inks)
+	_picture_clear = CheckBox.new()
+	_picture_clear.text = "Clear its background"
+	_picture_clear.focus_mode = Control.FOCUS_NONE
+	_picture_clear.tooltip_text = "Whatever is the colour of its corners made clear: a logo's white"
+	_picture_clear.toggled.connect(func(on: bool) -> void:
+		if not _picture_quiet:
+			_change_picture({"clear_back": on}))
+	_picture_box.add_child(_picture_clear)
+	_picture_flip = CheckBox.new()
+	_picture_flip.text = "Mirror it"
+	_picture_flip.focus_mode = Control.FOCUS_NONE
+	_picture_flip.toggled.connect(func(on: bool) -> void:
+		if not _picture_quiet:
+			_change_picture({"flipped": on}))
+	_picture_box.add_child(_picture_flip)
+	_button(_picture_box, "Make it ink", func() -> void:
+		if _paper() != null:
+			_paper().bake_picture()
+			_show_picture()
+			_fill_layers(), "Make the picture pixels, to draw on")
+	return _picture_box
+
+
+func _slider(column: Container, words: String, low: float, high: float, value: float,
+		tip: String) -> HSlider:
+	var label := Label.new()
+	label.text = words
+	label.add_theme_font_size_override("font_size", 11)
+	column.add_child(label)
+	var slider := HSlider.new()
+	slider.min_value = low
+	slider.max_value = high
+	slider.step = 1.0
+	slider.value = value
+	slider.focus_mode = Control.FOCUS_NONE
+	slider.tooltip_text = tip
+	column.add_child(slider)
+	return slider
+
+
+## The face's extent on the canvas: where the mask is.
+func _face_box() -> Rect2:
+	var paper: PrintPaint = _paper()
+	if paper == null:
+		return Rect2()
+	var area: PartPrints.Area = _areas[_area]
+	if area.mask != null:
+		var used: Rect2i = area.mask.get_used_rect()
+		if used.size.x > 0:
+			return Rect2(used)
+	return Rect2(0, 0, paper.width, paper.height)
+
+
+func _crop_rect() -> Rect2:
+	var left: float = _picture_crop[0].value / 100.0
+	var right: float = _picture_crop[1].value / 100.0
+	var top: float = _picture_crop[2].value / 100.0
+	var bottom: float = _picture_crop[3].value / 100.0
+	return Rect2(left, top, maxf(0.05, 1.0 - left - right), maxf(0.05, 1.0 - top - bottom))
+
+
+func _change_picture(values: Dictionary) -> void:
+	var paper: PrintPaint = _paper()
+	if paper == null or not paper.change_picture(values):
+		return
+	_canvas.refresh()
+	_show_picture()
+
+
+func _fit_picture(cover: bool) -> void:
+	var paper: PrintPaint = _paper()
+	if paper == null or paper.layer().picture == null:
+		return
+	var picture: PrintPicture = paper.layer().picture
+	var size: Vector2 = picture.cropped_size()
+	var box: Rect2 = _face_box()
+	var across: float = box.size.x / size.x
+	var down: float = box.size.y / size.y
+	_change_picture({"scale": maxf(across, down) if cover else minf(across, down),
+		"centre": box.get_center(), "angle": 0.0})
+
+
+## The panel shows the active layer's picture, or hides.
+func _show_picture() -> void:
+	var paper: PrintPaint = _paper()
+	var picture: PrintPicture = paper.layer().picture if paper != null else null
+	_picture_box.visible = picture != null
+	if picture == null:
+		return
+	_picture_quiet = true
+	var fitted: float = minf(_face_box().size.x / picture.cropped_size().x,
+		_face_box().size.y / picture.cropped_size().y)
+	_picture_scale.value = picture.scale / maxf(fitted, 1e-6) * 100.0
+	_picture_turn.value = picture.angle
+	_picture_crop[0].value = picture.crop.position.x * 100.0
+	_picture_crop[1].value = (1.0 - picture.crop.end.x) * 100.0
+	_picture_crop[2].value = picture.crop.position.y * 100.0
+	_picture_crop[3].value = (1.0 - picture.crop.end.y) * 100.0
+	_picture_opacity.value = picture.opacity * 100.0
+	_picture_lego.button_pressed = picture.lego
+	_picture_inks.value = picture.inks
+	_picture_clear.button_pressed = picture.clear_back
+	_picture_flip.button_pressed = picture.flipped
+	_picture_quiet = false
+
+
+## A picture from a file onto the active area, on a layer of its own,
+## fitted to the face, with Move in hand.
+func add_picture(image: Image, called: String = "Picture") -> void:
+	var paper: PrintPaint = _paper()
+	if paper == null:
+		return
+	paper.add_picture(image, _face_box(), _inks(), called.get_basename() if not called.is_empty() else "Picture")
+	_canvas.refresh()
+	_fill_layers()
+	_show_picture()
+	_choose_tool("move")
+	_status.text = "%s is on the face: Move drags it, the panel sizes, turns and inks it." % called
+
+
+## LEGO's inks, as colours, in the palette's order.
+func _inks() -> Array[Color]:
+	var out: Array[Color] = []
+	for swatch: Node in _palette.get_children():
+		var colour: Color = (swatch as PartsBin.Swatch).color.rgb
+		colour.a = 1.0
+		out.append(colour)
+	return out
 
 
 func _build_side() -> Control:
@@ -409,8 +670,9 @@ func _build_side() -> Control:
 	_start.tooltip_text = "A clean sheet, one of LEGO's own prints of this part, or one made before"
 	_start.item_selected.connect(_start_from)
 	column.add_child(_start)
-	_button(column, "Add a picture…", func() -> void: _picker.ask(),
-		"A drawing or photograph of your own, on a layer of its own, to trace or keep")
+	_button(column, "Add a picture…", func() -> void: _files.ask(),
+		"A photograph, a logo or a drawing (PNG, JPEG, WebP, BMP or SVG) on a layer of its own, "
+			+ "to place on the face")
 
 	var layer_row := HBoxContainer.new()
 	layer_row.add_theme_constant_override("separation", 4)
@@ -482,6 +744,7 @@ func _choose_area(index: int) -> void:
 	_fill_layers()
 	_fill_palette()
 	_face_area()
+	_show_picture()
 
 
 func _fill_layers() -> void:
@@ -504,7 +767,7 @@ func _fill_layers() -> void:
 			_canvas.refresh())
 		row.add_child(shown)
 		var pick := Button.new()
-		pick.text = paper.layers[n].name
+		pick.text = paper.layers[n].name + ("  (picture)" if paper.layers[n].picture != null else "")
 		pick.toggle_mode = true
 		pick.button_pressed = n == paper.active
 		pick.focus_mode = Control.FOCUS_NONE
@@ -513,9 +776,11 @@ func _fill_layers() -> void:
 		pick.add_theme_font_size_override("font_size", 12)
 		pick.pressed.connect(func() -> void:
 			paper.active = n
-			_fill_layers())
+			_fill_layers()
+			_canvas.refresh())
 		row.add_child(pick)
 		_layers.add_child(row)
+	_show_picture()
 
 
 func _move_layer(by: int) -> void:
@@ -569,12 +834,14 @@ func _undo() -> void:
 	if _paper() != null and _paper().undo():
 		_canvas.refresh()
 		_fill_layers()
+		_show_picture()
 
 
 func _redo() -> void:
 	if _paper() != null and _paper().redo():
 		_canvas.refresh()
 		_fill_layers()
+		_show_picture()
 
 
 # -- starting points -----------------------------------------------------------
@@ -583,11 +850,14 @@ func _redo() -> void:
 func _fill_starts() -> void:
 	_start.clear()
 	_starts = [["A clean sheet", ""]]
+	for kind: String in Starters.KINDS:
+		_starts.append(["Starter: " + kind, "starter:" + kind])
 	for id: String in PartPrints.bases:
-		if PartPrints.bases[id] == base and library.parts.has(id):
+		if not base.is_empty() and PartPrints.bases[id] == base and library.parts.has(id):
 			_starts.append(["Made here: " + _short(library.parts[id].name), id])
-	for info: PartLibrary.PartInfo in PartPrints.prints_of(library, base, 80):
-		_starts.append(["%s %s" % [info.id, _short(info.name)], info.id])
+	if not base.is_empty():
+		for info: PartLibrary.PartInfo in PartPrints.prints_of(library, base, 80):
+			_starts.append(["%s %s" % [info.id, _short(info.name)], info.id])
 	for entry: Array in _starts:
 		_start.add_item(str(entry[0]))
 	_start.select(0)
@@ -603,7 +873,15 @@ func _start_from(index: int) -> void:
 	if index < 0 or index >= _starts.size():
 		return
 	var id: String = _starts[index][1]
-	if id.is_empty():
+	if id.begins_with("starter:"):
+		# Drawn for this canvas, on the area being drawn on.
+		var area: PartPrints.Area = _areas[_area]
+		var drawn: Image = Starters.draw(id.substr(8), area.size.x, area.size.y, library)
+		(_papers[area.key] as PrintPaint).load_image(drawn, id.substr(8).capitalize())
+		_status.text = "Started from a %s." % id.substr(8)
+		_canvas.refresh()
+		_fill_layers()
+	elif id.is_empty():
 		for area: PartPrints.Area in _areas:
 			(_papers[area.key] as PrintPaint).load_image(
 				Image.create_empty(area.size.x, area.size.y, false, Image.FORMAT_RGBA8))
@@ -622,8 +900,8 @@ func _load_made(id: String) -> void:
 		if pictures.has(area.key):
 			(_papers[area.key] as PrintPaint).load_image(pictures[area.key], "Print")
 	var info: PartLibrary.PartInfo = library.parts.get(id)
-	if info != null and info.name.contains("Custom Print "):
-		_name.text = info.name.get_slice("Custom Print ", 1)
+	if info != null and not PartPrints.given_name(info.name).is_empty():
+		_name.text = PartPrints.given_name(info.name)
 	_canvas.refresh()
 	_fill_layers()
 
@@ -672,7 +950,9 @@ func _build_preview() -> void:
 			(_papers[area.key] as PrintPaint).composite())
 	var box := AABB()
 	var first: bool = true
-	for piece: Dictionary in PartPrints.preview_meshes(library, _areas):
+	var pieces: Array = PartPrints.preview_meshes(library, _areas) if sticker_face == null \
+		else [_sticker_piece()]
+	for piece: Dictionary in pieces:
 		var holder := MeshInstance3D.new()
 		holder.mesh = piece["mesh"]
 		var material: ShaderMaterial = _plain
@@ -693,9 +973,33 @@ func _build_preview() -> void:
 	_aim()
 
 
+## A sticker, for the preview: its film, its top printed, facing +Z.
+func _sticker_piece() -> Dictionary:
+	var size: Vector2 = sticker_face.sticker_size()
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	var w: float = size.x * 0.5
+	var h: float = size.y * 0.5
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(-w, h, 0), Vector3(w, h, 0),
+		Vector3(w, -h, 0), Vector3(-w, h, 0), Vector3(w, -h, 0), Vector3(-w, -h, 0)])
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK,
+		Vector3.BACK, Vector3.BACK, Vector3.BACK])
+	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1),
+		Vector2(0, 0), Vector2(1, 1), Vector2(0, 1)])
+	var film := ArrayMesh.new()
+	film.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return {"mesh": film, "area": "sticker", "part": "", "colour": Lbm.COLOR_INHERIT,
+		"two_sided": true}
+
+
 ## Turn the part to face the area being drawn on.
 func _face_area() -> void:
 	if _areas.is_empty():
+		return
+	if sticker_face != null:
+		_turn = 0.0
+		_tilt = 0.0
+		_aim()
 		return
 	var area: PartPrints.Area = _areas[_area]
 	var facing := Vector3(0, 0, 1)
@@ -749,7 +1053,19 @@ func _save_print() -> void:
 		drawn[area.key] = (_papers[area.key] as PrintPaint).composite()
 	var title: String = _name.text.strip_edges()
 	if title.is_empty():
-		title = "My Print"
+		title = "My Sticker" if sticker_face != null else "My Print"
+	if sticker_face != null:
+		var picture: Image = drawn["sticker"]
+		if picture.is_invisible():
+			_status.text = "Not saved: nothing is drawn on it yet."
+			return
+		var stuck: Dictionary = Stickers.make(library, picture, sticker_face.sticker_size(), title)
+		if not str(stuck["problem"]).is_empty():
+			_status.text = "Not saved: %s." % stuck["problem"]
+			return
+		made.emit([stuck["id"]], "sticker")
+		close()
+		return
 	var result: Dictionary = PartPrints.make(library, base, _areas, drawn, title)
 	if not str(result["problem"]).is_empty():
 		_status.text = "Not saved: %s." % result["problem"]
@@ -846,6 +1162,10 @@ func start_from(id: String) -> void:
 ## are (main._tell_page, through the figure builder).
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"print_canvas": _canvas, "print_name": _name, "print_other": _other,
+		"print_start": _start, "print_add_picture": _find_button("Add a picture…"),
+		"print_fit": _find_button("Fit it"), "print_fill": _find_button("Cover"),
+		"print_lego": _picture_lego, "print_picture_size": _picture_scale,
+		"print_picture_turn": _picture_turn, "print_clear_back": _picture_clear,
 		"print_save": _save, "print_mirror": _mirror, "print_size": _size}
 	for tool: String in _tools:
 		named["print_tool_" + tool] = _tools[tool]
@@ -854,4 +1174,27 @@ func controls_by_name() -> Dictionary:
 			named["print_close"] = button
 	for swatch: Node in _palette.get_children():
 		named["print_ink_%d" % int(swatch.get_meta("code", -1))] = swatch
+	named["print_on_it"] = _find_button("Print on it")
+	# A tab is not a control; a marker laid over each, for the page to say
+	# where it is.
+	for n: int in _tabs.tab_count:
+		if n >= _areas.size():
+			break
+		var marker: Control = _tab_markers.get(n)
+		if marker == null:
+			marker = Control.new()
+			marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_tabs.add_child(marker)
+			_tab_markers[n] = marker
+		var rect: Rect2 = _tabs.get_tab_rect(n)
+		marker.position = rect.position
+		marker.size = rect.size
+		named["print_area_" + _areas[n].key] = marker
 	return named
+
+
+func _find_button(words: String) -> Button:
+	for button: Node in find_children("*", "Button", true, false):
+		if (button as Button).text == words:
+			return button
+	return null

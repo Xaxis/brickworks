@@ -90,7 +90,7 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 		else:
 			sources[name] = others[name]
 	var built: PartForge.Result
-	if PartPrints.is_print(text):
+	if PartPrints.has_pictures(text):
 		for name: String in PartPrints.pictures_named(text):
 			if not pictures.has(name.to_lower()) and FileAccess.file_exists(dir + name):
 				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
@@ -104,7 +104,10 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 	var base: String = PartPrints.base_in(text)
 	if not base.is_empty():
 		PartPrints.bases[id] = base
-	library.add_custom(info_for(built), built.mesh, text)
+	var info: PartLibrary.PartInfo = info_for(built)
+	# Prints and stickers in bins of their own, as the bin shows them.
+	info.category = PartPrints.bin_for(text)
+	library.add_custom(info, built.mesh, text)
 	if keep:
 		DirAccess.make_dir_recursive_absolute(dir)
 		var file: FileAccess = FileAccess.open(dir + id + ".dat", FileAccess.WRITE)

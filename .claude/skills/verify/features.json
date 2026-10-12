@@ -194,6 +194,14 @@
       "tests": []
     },
     {
+      "id": "cli:figure prints and moulds in a browser",
+      "kind": "cli",
+      "entry": "tools/web/print_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:freeze check",
       "kind": "cli",
       "entry": "tools/web/freeze_check.mjs",
@@ -249,6 +257,14 @@
       "entry": "tools/web_pack.py",
       "reach": "tools/web_pack.py --list",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:prints and stickers in a browser",
+      "kind": "cli",
+      "entry": "tools/web/studio_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
+      "area": "prints",
       "tests": []
     },
     {
@@ -364,11 +380,19 @@
       "tests": []
     },
     {
+      "id": "lib:custom moulds",
+      "kind": "lib",
+      "entry": "src/minifig/mould.gd",
+      "reach": "godot --headless --path . --script src/dev/mould_probe.gd",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "lib:custom prints",
       "kind": "lib",
-      "entry": "src/minifig/part_prints.gd",
+      "entry": "src/prints/part_prints.gd",
       "reach": "godot --headless --path . --script src/dev/print_probe.gd",
-      "area": "minifig",
+      "area": "prints",
       "tests": []
     },
     {
@@ -515,6 +539,22 @@
       "entry": "src/assembly/stability.gd",
       "reach": "godot --headless --path . --script src/dev/stability_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:sticker sheet",
+      "kind": "lib",
+      "entry": "src/prints/sticker_sheet.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd   (writes shots/print_stickers.pdf)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "lib:stickers",
+      "kind": "lib",
+      "entry": "src/prints/stickers.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd",
+      "area": "prints",
       "tests": []
     },
     {
@@ -702,6 +742,14 @@
       "tests": []
     },
     {
+      "id": "ui:mould maker",
+      "kind": "ui",
+      "entry": "src/minifig/mould_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd   (by hand: M, a Headgear or hand slot, Make a mould\u2026)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "ui:move and turn a selection",
       "kind": "ui",
       "entry": "src/ui/edit_verbs.gd",
@@ -776,9 +824,17 @@
     {
       "id": "ui:print designer",
       "kind": "ui",
-      "entry": "src/minifig/print_editor.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd   (by hand: M, a Head, Torso, Hips or Legs slot, Draw a print\u2026)",
-      "area": "minifig",
+      "entry": "src/prints/print_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: hold a part, Parts bin > Print\u2026; or in the figure builder, Draw a print\u2026)",
+      "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "ui:prints and stickers in the parts bin",
+      "kind": "ui",
+      "entry": "src/prints/print_studio.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print\u2026 / Stickers\u2026)",
+      "area": "prints",
       "tests": []
     },
     {

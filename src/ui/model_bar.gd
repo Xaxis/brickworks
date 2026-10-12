@@ -20,12 +20,16 @@ var _new: Button
 ## The last thing on the bar, so a check can tell the bar fits the page.
 var _clear: Button
 var _save: Button
+var _open_button: Button
 var _account: Button
 var _entries: Array[ModelStore.Entry] = []
 var _picker: ModelFilePicker
 
 ## An id no index can be, for the menu row that is not a saved model.
-const IMPORT := -2
+# A menu id no saved model's index reaches. Not negative: a PopupMenu
+# reports a negative id as the item's index, so "From a file…", first in
+# the menu, opened whichever model was first after it.
+const IMPORT := 1 << 30
 
 signal cleared()
 ## A new model: an empty baseplate, no name and a fresh conversation.
@@ -112,7 +116,7 @@ func _build() -> void:
 	# keeps the name, the conversation and the autosave of what was there.
 	_new = _button(row, "New", ask_for_new, "Start a new model on an empty baseplate (Ctrl+N)")
 	_save = _button(row, "Save", _on_save, "Keep this model under its name")
-	_button(row, "Open…", _on_open, "Reopen a saved model")
+	_open_button = _button(row, "Open…", _on_open, "Reopen a saved model")
 	_export = _button(row, "Export…", _offer_exports,
 		"An LDraw file any brick tool reads, a picture of the model, or its parts list for BrickLink or Rebrickable")
 	row.add_child(VSeparator.new())
@@ -244,7 +248,7 @@ func bind(to: ModelStore) -> void:
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
 	return {"model_name": _name, "new": _new, "save": _save, "clear": _clear,
-		"account": _account, "export": _export}
+		"account": _account, "open": _open_button, "export": _export}
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has

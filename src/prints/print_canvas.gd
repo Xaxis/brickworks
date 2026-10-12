@@ -7,14 +7,23 @@
 ## where a mirrored mark is reflected.
 ##
 ## Left button draws with the tool in hand; the right or middle button,
-## or Space held, moves the canvas; the wheel zooms where it points.
+## or Space held, moves the canvas; the wheel zooms where it points. With
+## "move" in hand the left button drags the active layer's picture, its
+## edges and middle snapping to the face's edges and middle, and the wheel
+## with Ctrl held scales it.
 class_name PrintCanvas
 extends Control
 
 signal changed()
 signal colour_picked(colour: Color)
+## The active layer's picture was moved or scaled here.
+signal picture_moved()
 
-const TOOLS: Array[String] = ["brush", "eraser", "line", "box", "oval", "fill", "text", "pick"]
+const TOOLS: Array[String] = ["brush", "eraser", "line", "box", "oval", "fill", "text", "pick",
+	"move"]
+## How near, in screen pixels, a picture's edge comes to the face's before
+## it snaps there.
+const SNAP_PIXELS := 8.0
 
 var paint: PrintPaint
 var area: PartPrints.Area
@@ -36,6 +45,10 @@ var _space: bool = false
 var _from := Vector2.ZERO
 var _to := Vector2.ZERO
 var _hover := Vector2(-1, -1)
+var _grab_from := Vector2.ZERO
+var _grab_centre := Vector2.ZERO
+## What a dragged picture snapped to last, for the outline to say.
+var snapped: Array[String] = []
 
 
 func _ready() -> void:
@@ -119,6 +132,17 @@ func _draw() -> void:
 		draw_dashed_line(to_screen(guide[0]), to_screen(guide[1]), Color(0.3, 0.75, 1.0, 0.55),
 			1.0, 6.0)
 	draw_rect(box, Color(1, 1, 1, 0.25), false, 1.0)
+	# The active layer's picture, outlined, with its middle.
+	var picture: PrintPicture = paint.layer().picture
+	if picture != null:
+		var outline := PackedVector2Array()
+		for corner: Vector2 in picture.corners():
+			outline.append(to_screen(corner))
+		outline.append(outline[0])
+		draw_polyline(outline, Color(1.0, 0.75, 0.2, 0.9), 1.5)
+		var middle: Vector2 = to_screen(picture.centre)
+		draw_line(middle - Vector2(6, 0), middle + Vector2(6, 0), Color(1.0, 0.75, 0.2), 1.0)
+		draw_line(middle - Vector2(0, 6), middle + Vector2(0, 6), Color(1.0, 0.75, 0.2), 1.0)
 	# What the tool will do.
 	if _drawing and tool in ["line", "box", "oval"]:
 		var a: Vector2 = to_screen(_from)
@@ -162,7 +186,12 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event
 		if button.button_index == MOUSE_BUTTON_WHEEL_UP or button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			if button.pressed:
+			if button.pressed and button.ctrl_pressed and paint.layer().picture != null:
+				var grow: float = 1.05 if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.05
+				paint.change_picture({"scale": paint.layer().picture.scale * grow})
+				refresh()
+				picture_moved.emit()
+			elif button.pressed:
 				var before: Vector2 = to_canvas(button.position)
 				var by: float = 1.15 if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.15
 				_zoom = clampf(_zoom * by, 0.25, 24.0)
@@ -230,12 +259,24 @@ func _press(at: Vector2) -> void:
 			var found: Color = paint.colour_at(Vector2i(at.floor()))
 			if found.a > 0.0:
 				colour_picked.emit(found)
+		"move":
+			if paint.layer().picture == null:
+				return
+			_drawing = true
+			_grab_from = at
+			_grab_centre = paint.layer().picture.centre
+			paint.change_picture({})
 		_:
 			_drawing = true
 
 
 func _drag(at: Vector2) -> void:
 	_to = at
+	if tool == "move" and paint.layer().picture != null:
+		paint.change_picture({"centre": _snap(_grab_centre + at - _grab_from)}, true)
+		refresh()
+		picture_moved.emit()
+		return
 	if tool in ["brush", "eraser"]:
 		paint.brush_to(at, radius, colour if tool == "brush" else PrintPaint.CLEAR)
 		refresh()
@@ -249,6 +290,8 @@ func _release(at: Vector2) -> void:
 	match tool:
 		"brush", "eraser":
 			paint.end()
+		"move":
+			snapped.clear()
 		"line":
 			paint.line(_from, _to, radius, colour)
 		"box":
@@ -267,3 +310,36 @@ func stroke(points: Array) -> void:
 	for n: int in range(1, points.size()):
 		_drag(points[n])
 	_release(points[points.size() - 1])
+
+
+## Where a dragged picture's middle goes: its edges or its middle snapped to
+## the face's edges or middle when they come within [constant SNAP_PIXELS]
+## on screen. The face is the area's mask's extent; the canvas's own edges
+## and middle too.
+func _snap(centre: Vector2) -> Vector2:
+	snapped.clear()
+	var picture: PrintPicture = paint.layer().picture
+	var reach := Rect2(picture.corners()[0], Vector2.ZERO)
+	for corner: Vector2 in picture.corners():
+		reach = reach.expand(corner)
+	var half: Vector2 = reach.size * 0.5
+	var face := Rect2(0, 0, paint.width, paint.height)
+	if area != null and area.mask != null:
+		var used: Rect2i = area.mask.get_used_rect()
+		if used.size.x > 0:
+			face = Rect2(used)
+	var tolerance: float = SNAP_PIXELS / _zoom
+	var out: Vector2 = centre
+	for axis: int in 2:
+		var targets: Array[float] = [face.position[axis], face.get_center()[axis], face.end[axis],
+			0.0, [paint.width, paint.height][axis] * 0.5]
+		var best: float = tolerance
+		for offset: float in [-half[axis], 0.0, half[axis]]:
+			for target: float in targets:
+				var gap: float = target - (centre[axis] + offset)
+				if absf(gap) < best:
+					best = absf(gap)
+					out[axis] = centre[axis] + gap
+		if best < tolerance:
+			snapped.append("x" if axis == 0 else "y")
+	return out

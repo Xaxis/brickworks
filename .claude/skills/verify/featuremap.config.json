@@ -688,16 +688,16 @@
     {
       "kind": "lib",
       "label": "custom prints",
-      "entry": "src/minifig/part_prints.gd",
+      "entry": "src/prints/part_prints.gd",
       "reach": "godot --headless --path . --script src/dev/print_probe.gd",
-      "area": "minifig"
+      "area": "prints"
     },
     {
       "kind": "ui",
       "label": "print designer",
-      "entry": "src/minifig/print_editor.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/print_ui_probe.gd   (by hand: M, a Head, Torso, Hips or Legs slot, Draw a print…)",
-      "area": "minifig"
+      "entry": "src/prints/print_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: hold a part, Parts bin > Print…; or in the figure builder, Draw a print…)",
+      "area": "prints"
     },
     {
       "kind": "ui",
@@ -733,6 +733,55 @@
       "entry": "tools/web/arrival_check.mjs",
       "reach": "node tools/web/arrival_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "figure prints and moulds in a browser",
+      "entry": "tools/web/print_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",
+      "area": "minifig"
+    },
+    {
+      "kind": "lib",
+      "label": "custom moulds",
+      "entry": "src/minifig/mould.gd",
+      "reach": "godot --headless --path . --script src/dev/mould_probe.gd",
+      "area": "minifig"
+    },
+    {
+      "kind": "ui",
+      "label": "mould maker",
+      "entry": "src/minifig/mould_editor.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd   (by hand: M, a Headgear or hand slot, Make a mould…)",
+      "area": "minifig"
+    },
+    {
+      "kind": "lib",
+      "label": "stickers",
+      "entry": "src/prints/stickers.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd",
+      "area": "prints"
+    },
+    {
+      "kind": "lib",
+      "label": "sticker sheet",
+      "entry": "src/prints/sticker_sheet.gd",
+      "reach": "godot --headless --path . --script src/dev/sticker_probe.gd   (writes shots/print_stickers.pdf)",
+      "area": "prints"
+    },
+    {
+      "kind": "ui",
+      "label": "prints and stickers in the parts bin",
+      "entry": "src/prints/print_studio.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print… / Stickers…)",
+      "area": "prints"
+    },
+    {
+      "kind": "cli",
+      "label": "prints and stickers in a browser",
+      "entry": "tools/web/studio_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
+      "area": "prints"
     }
   ]
 }

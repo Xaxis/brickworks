@@ -1,0 +1,8 @@
+0 Prints and stickers: a 2 x 2 tile, a 2 x 4 slope, two 1 x 4 tiles side by side
+0 Name: prints_scene.ldr
+0 Author: Brickworks
+1 4 0 -8 -10 1 0 0 0 1 0 0 0 1 2431.dat
+1 4 0 -8 10 1 0 0 0 1 0 0 0 1 2431.dat
+1 15 -90 -8 0 1 0 0 0 1 0 0 0 1 3068b.dat
+1 72 90 -24 0 1 0 0 0 1 0 0 0 1 3037.dat
+0
