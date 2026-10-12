@@ -187,7 +187,15 @@ picture the assistant is shown.
   whose processing draws them, and checks each change is drawn and then
   nothing: a turn easing to rest, a right drag, a brick put down, every step
   of the build animation, the ghost, a lit button, a part's picture.
-  `tools/web/idle_check.mjs` counts the same in Chromium.
+  `tools/web/idle_check.mjs` counts the same in Chromium. Frames that draw
+  nothing still run every script, so what a script does every frame must be
+  in proportion to change as well. The status line and the pointer each
+  asked for the part under the pointer every frame. A look that hits nothing
+  marches the whole lattice: 18 to 25 ms on the desktop with the Falcon built,
+  twice a frame. `EditVerbs.brick_at` now looks again only when the ray or
+  `BrickLattice.revision` changed, and not out of view. `idle_probe` counts
+  the looks (`EditVerbs.looked`): at most one in 2 s standing still, one when
+  the pointer moves, none out of view while the model changes.
 - `toolbar`: the file (Save, Open, Export), what to make of it (Parts list,
   Mosaic), Help — and Clear at the far end, which asks first, because it takes
   the undo history with it. It wraps onto a second line where it does not fit

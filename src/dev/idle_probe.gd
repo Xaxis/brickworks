@@ -111,6 +111,7 @@ func _run() -> void:
 		idle["drawn"] <= ceili(idle["seconds"]) and idle["run"] > 20)
 	if idle["drawn"] > ceili(idle["seconds"]) and not every_frame:
 		await _who_draws()
+	await _looks_only_on_change()
 
 	print("")
 	print("  something changes")
@@ -122,6 +123,38 @@ func _run() -> void:
 	await _lights_a_button()
 	await _draws_a_part()
 	_finish()
+
+
+## The part under the pointer, which the status line and the pointer each
+## ask for every frame: looked up again only when the pointer, the view or
+## the model moved, and never out of view. Each asked for it every frame,
+## and a look that hits nothing marches the whole lattice: with the
+## 4,242-part Falcon built that was 18 to 25 ms twice a frame on the
+## desktop, and a big design built in a hidden tab was never seen to settle
+## once shown (arrival_check, 2026-10-12).
+func _looks_only_on_change() -> void:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var still: Dictionary = await _measure(2.0)
+	_check("the part under the pointer looked up %d times in %d frames standing still"
+		% [still["looked"], still["run"]], still["looked"] <= 1 and still["run"] > 10)
+	var was: int = verbs.looked
+	await _move_to(root.get_visible_rect().size * 0.5 + Vector2(30.0, 10.0))
+	await _frames(3)
+	_check("...and again when the pointer moved (%d)" % (verbs.looked - was), verbs.looked > was)
+	# Out of view, as Main._watch_view says for a hidden tab: a design goes
+	# on being built there, and nobody is pointing at anything.
+	verbs.out_of_view = true
+	was = verbs.looked
+	var box: AABB = _world.model_bounds()
+	var at := Transform3D(Basis.IDENTITY, box.end + Vector3(80.0, 0.0, 80.0))
+	var id: int = _world.add_brick("3001", 4, at)
+	_builder.register(id, "3001", at)
+	await _frames(10)
+	_check("...and out of view, with the model changing, never (%d)" % (verbs.looked - was),
+		verbs.looked == was)
+	verbs.out_of_view = false
+	_builder.remove_brick_id(id)
+	await _frames(3)
 
 
 # -- the changes ---------------------------------------------------------------
@@ -339,11 +372,14 @@ func _measure(seconds: float) -> Dictionary:
 	var drawn: int = Engine.get_frames_drawn()
 	var run: int = Engine.get_process_frames()
 	var cpu: int = _cpu_ticks()
+	var verbs: EditVerbs = _main.get("_verbs")
+	var looked: int = verbs.looked
 	var began: int = Time.get_ticks_usec()
 	while Time.get_ticks_usec() - began < int(seconds * 1000000.0):
 		await process_frame
 	var took: float = (Time.get_ticks_usec() - began) / 1000000.0
 	return {
+		"looked": verbs.looked - looked,
 		"seconds": took,
 		"drawn": Engine.get_frames_drawn() - drawn,
 		"run": Engine.get_process_frames() - run,

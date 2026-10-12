@@ -901,6 +901,8 @@ var out_of_view: bool = false
 ## a frame looks again only when the pointer, the view or the model moved.
 var _asked: Array = []
 var _found: int = 0
+## How many times it really looked, for idle_probe to count.
+var looked: int = 0
 
 
 ## The part under a point on the screen, or 0 for none, the baseplate or a
@@ -914,6 +916,7 @@ func brick_at(at: Vector2) -> int:
 	if asked == _asked:
 		return _found
 	_asked = asked
+	looked += 1
 	var hit: BrickLattice.Hit = builder.lattice.raycast(origin, normal)
 	_found = 0 if not hit.is_valid() or scenery.has(hit.brick_id) else hit.brick_id
 	return _found
