@@ -58,10 +58,10 @@ func _run() -> void:
 	var scenery: int = (_main.get("_store") as ModelStore).scenery.size()
 
 	print("  the bunny, from its OBJ")
-	await _key(KEY_I)
+	await _key(KEY_I, "", true)
 	var picker: MeshFilePicker = _dialog._picker
 	var chooser: FileDialog = picker._dialog
-	_check("I brings up a file dialog for 3D models: %s" % (chooser.filters if chooser != null
+	_check("Ctrl-I brings up a file dialog for 3D models: %s" % (chooser.filters if chooser != null
 		else "none"), chooser != null and chooser.visible
 		and str(chooser.filters).contains("*.obj"))
 	if chooser == null:

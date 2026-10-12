@@ -35,8 +35,10 @@ const GROUPS: Array = [
 	[10, [["mode_select", "pointer"], ["mode_place", "build"], ["mode_move", "move"],
 		["mode_rotate", "rotate"], ["mode_hinge", "swing"], ["mode_clone", "clone"],
 		["mode_paint", "paint"], ["mode_hide", "hide"], ["mode_delete", "delete"]]],
-	[3, [["copy", "copy"], ["paste", "paste"], ["mirror", "mirror"], ["select", "select"],
-		["show_all", "show_all"], ["make_submodel", "submodel"]]],
+	# Copy and paste are Ctrl-C and Ctrl-V and in Edit; showing everything is
+	# H and in Edit. Off the bar so it stays whole at 1280 wide once the cut,
+	# x-ray and render came.
+	[3, [["mirror", "mirror"], ["select", "select"], ["make_submodel", "submodel"]]],
 	[5, [["snap", "snap"], ["turn", "angle"]]],
 	# The view's own tools, labelled as such: a left drag with one of these
 	# on only moves the view. Asked for by the owner, for a mouse or a
@@ -44,9 +46,11 @@ const GROUPS: Array = [
 	# The straight-on views and square-on are the view cube's and the View
 	# menu's now (and the number keys and `), which is what keeps the
 	# toolbar whole on a 1280-wide screen.
+	# The stud grid and the properties panel are the View menu's; the panel
+	# folds by its own header.
 	[8, [["mode_orbit", "orbit"], ["mode_pan", "pan"], ["mode_zoom", "zoom"], ["fit", "fit"],
-		["grid", "grid"], ["cut", "cut"], ["xray", "xray"]], "View"],
-	[6, [["measure", "measure"], ["panel_properties", "properties"]]],
+		["cut", "cut"], ["xray", "xray"]], "View"],
+	[6, [["measure", "measure"]]],
 	[4, [["timeline", "timeline"], ["instructions", "booklet"], ["render", "render"],
 		["parts_list", "parts_list"]]],
 ]
