@@ -251,53 +251,144 @@ func _run() -> void:
 	account._access = "probe.signed.in"
 	account._expires_at = Time.get_unix_time_from_system() + 3600.0
 	connector.account = account
+	connector.open_links = false
 	var offer := ConnectorForm.new()
 	get_root().add_child(offer)
 	offer.setup(connector)
-	_check(not offer._turn_on.button_pressed and offer._intro.visible
-			and not offer._on_box.visible,
-		"it starts off, saying what it is for")
-	offer._turn_on.button_pressed = true
+	_check(not connector.is_on() and offer._intro.visible and offer._connect.visible
+			and not offer._here.visible and not offer._guide.visible,
+		"it starts off, saying what it is for, with Connect Claude")
+
+	# The one click: this tab listens, and claude.ai opens on Add custom
+	# connector with Brickworks filled in (its documented install link).
+	offer._connect.pressed.emit()
+	await process_frame
+	_check(connector.last_opened == ("https://claude.ai/customize/connectors"
+			+ "?modal=add-custom-connector&connectorName=Brickworks"
+			+ "&connectorUrl=http%3A%2F%2F127.0.0.1%3A9%2Fapi%2Fmcp"),
+		"Connect Claude opens claude.ai's Add custom connector, filled in: %s"
+			% connector.last_opened)
+	_check(connector.is_on() and offer._guide.visible
+			and offer._shared.text == "http://127.0.0.1:9/api/mcp"
+			and offer._signed_as.text.contains("probe@example.com"),
+		"...switches this tab on, and says what to do there, as whom")
+	_check(offer._status.text.begins_with("Waiting for you to connect in Claude")
+			and offer._connect.text == "Connect Claude again",
+		"...and waits for Claude: %s" % offer._status.text)
+
+	# Claude signed in to the account (the relay tells the tab, and the
+	# deployment lists it).
+	connector._set_connections([{"id": "c1", "client": "Claude",
+		"since": "2026-10-11T09:00:00+00:00", "last_used": null}])
+	# Read at once: this tab's relay is a port nothing listens on, and its
+	# "could not reach" would take the line a moment later.
+	_check(offer._status.text == "Connected to Claude — it builds in this tab."
+			and not offer._connect.visible and not offer._guide.visible
+			and offer._disconnect.visible and offer._here.visible
+			and offer._here.button_pressed,
+		"connected: says so, folds the steps away, offers Disconnect: %s" % offer._status.text)
+	_check(offer.is_on(), "...and counts as the way in use")
+
+	offer._code_link.pressed.emit()
+	_check(offer._code_box.visible and offer._command.text
+			== "claude mcp add --transport http brickworks http://127.0.0.1:9/api/mcp",
+		"Claude Code: the command, ready to copy")
+	offer._desktop_link.pressed.emit()
+	_check(offer._desktop_box.visible and not offer._code_box.visible,
+		"the Claude app: how it gets the same connector, one at a time")
+	offer._desktop_link.pressed.emit()
+
+	# Switched off in this tab by hand: kept off, here only.
+	offer._here.button_pressed = false
+	await process_frame
+	_check(not connector.is_on() and connector.off_here()
+			and offer._status.text == "Claude is connected to your account, but switched off in this tab.",
+		"switched off here: %s" % offer._status.text)
+	var next_visit := ClaudeConnector.new()
+	get_root().add_child(next_visit)
+	_check(next_visit.off_here(), "...and a connection to the account does not switch it back on next visit")
+	next_visit.queue_free()
+	offer._here.button_pressed = true
+	await process_frame
+	_check(connector.is_on() and not connector.off_here(), "switched on again here")
+	connector._set_connections([{"id": "c1", "client": "Claude", "since": "", "last_used": null},
+		{"id": "c2", "client": "Claude Code", "since": "", "last_used": null}])
+	_check(offer._status.text.begins_with("Connected to Claude and Claude Code"),
+		"both of Claude's apps, named: %s" % offer._status.text)
+
+	print("\nthe account panel says whether Claude is connected")
+	var account_panel := AccountPanel.new()
+	get_root().add_child(account_panel)
+	account_panel.setup(account)
+	account_panel.use_connector(connector)
+	_check(account_panel._claude_state.text.contains("Claude, connected")
+			and account_panel._claude_state.text.contains("Claude Code, connected")
+			and account_panel._claude_disconnect.visible
+			and not account_panel._claude_connect.visible,
+		"connected: which apps, and Disconnect Claude")
+	connector._set_connections([])
+	_check(account_panel._claude_state.text.begins_with("Not connected")
+			and account_panel._claude_connect.visible
+			and not account_panel._claude_disconnect.visible
+			and not offer._disconnect.visible and offer._connect.visible,
+		"disconnected: not connected, and Connect Claude, in both places")
+	# As Disconnect Claude leaves it: no connections, and this tab no longer
+	# listening — not "Claude is building", which it said with a count.
+	connector.stop()
+	_check(offer._status.text.begins_with("Disconnected. Claude can no longer reach")
+			and offer._calls == 0,
+		"...and the panel says Disconnected, not that Claude is building: %s" % offer._status.text)
+	var stamp: String = Time.get_datetime_string_from_system(true).substr(0, 19) + "+00:00"
+	_check(AccountPanel.when(stamp).begins_with("today at")
+			and AccountPanel.when("2026-01-05T10:00:00+00:00") == "5 Jan",
+		"times read as people say them: %s" % AccountPanel.when(stamp))
+	account_panel.queue_free()
+
+	# The way before: this browser's own address, added by hand, folded
+	# away under Private address and still working.
+	print("\nthe private address, for everyone who added one")
+	offer._here.button_pressed = false
+	await process_frame
+	connector._off_here = false
+	offer._private_link.pressed.emit()
+	_check(offer._private_box.visible and offer._here.visible,
+		"Private address opens this tab's own address, with the switch")
+	offer._here.button_pressed = true
 	_check(offer._address.text.begins_with("http://127.0.0.1:9/api/mcp?t=")
 			and offer._address.text.length() > 60,
 		"switching it on shows this tab's private address")
-	_check(offer._status.text.begins_with("On. Waiting for Claude")
-			and offer._on_box.visible and offer._in_view.visible,
-		"...says it is waiting for Claude, with the steps, and to keep the tab in view")
 	var first: String = offer._address.text
-	offer._turn_on.button_pressed = false
+	offer._here.button_pressed = false
 	await process_frame
-	_check(offer._address.text == first and offer._status.text.begins_with("Off"),
-		"switching it off keeps the address, and says Claude cannot reach the tab")
-	var next_visit := ClaudeConnector.new()
-	get_root().add_child(next_visit)
-	_check(next_visit.address().get_slice("?t=", 1) == first.get_slice("?t=", 1),
+	_check(offer._address.text == first, "switching it off keeps the address")
+	var later_visit := ClaudeConnector.new()
+	get_root().add_child(later_visit)
+	_check(later_visit.address().get_slice("?t=", 1) == first.get_slice("?t=", 1),
 		"the next visit has the same address, so the connector added to Claude still works")
-	next_visit.queue_free()
+	later_visit.queue_free()
 	offer._new_address.pressed.emit()
-	offer._turn_on.button_pressed = true
+	offer._here.button_pressed = true
 	_check(not offer._address.text.is_empty() and offer._address.text != first,
 		"Make a new address forgets the old one; the next is new")
 
 	# Added to Claude before, from another browser: that address, pasted,
 	# is this tab's, on, with nothing to change in Claude.
 	var elsewhere: String = "https://brickworks.diy/api/mcp?t=" + "Ab3_-x".repeat(8)
-	offer._reuse.pressed.emit()
 	offer._reuse_field.text = "not an address"
 	offer._adopt()
-	_check(offer._status.text.begins_with("That is not") and offer._reuse_box.visible,
+	_check(offer._status.text.begins_with("That is not"),
 		"a pasted address that is not one is refused, in words")
 	offer._reuse_field.text = elsewhere
 	offer._adopt()
 	_check(connector.is_on() and connector.address().ends_with("Ab3_-x".repeat(8))
-			and connector.used() and not offer._on_box.visible
-			and not offer._reuse.visible,
+			and connector.used() and offer._status.text.begins_with("Connected"),
 		"an address already added to Claude, pasted, is this tab's, on and connected")
 	var adopted := ClaudeConnector.new()
 	get_root().add_child(adopted)
 	_check(adopted.address().ends_with("Ab3_-x".repeat(8)),
 		"...and kept for the next visit")
 	adopted.queue_free()
+	offer._private_link.pressed.emit()
 
 	print("\nClaude connects, and builds")
 	panel.use_connector(connector)
@@ -318,9 +409,8 @@ func _run() -> void:
 	connector._used = true
 	connector.called.emit("", {})
 	_check(offer._status.text.begins_with("Connected — Claude reached this tab")
-			and not offer._on_box.visible and offer._steps_toggle.visible,
-		"Claude reaching the tab says Connected, and folds the steps away: %s"
-			% offer._status.text)
+			and not offer._guide.visible,
+		"Claude reaching the tab says Connected: %s" % offer._status.text)
 	connector.called.emit("search_parts", {"query": "brick 2 x 4"})
 	_check(panel._claude_card() and panel._scroll.visible
 			and panel._run_title.text == "Claude is building"
@@ -361,7 +451,7 @@ func _run() -> void:
 		"...and offers the build steps and parts list: %s" % ", ".join(offered))
 	panel.claude_quiet_ms = 90000
 	connector.called.emit("view_model", {"from": "front"})
-	offer._turn_on.button_pressed = false
+	offer._here.button_pressed = false
 	_check(not panel._claude_card() and panel._run_title.text == "Connector off",
 		"switching it off mid-build says so on the card")
 	connector.forget()

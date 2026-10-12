@@ -109,9 +109,8 @@ The recipe and every check are in `.claude/skills/verify/features/account.md`.
   verified against Supabase's keys, and `relay_tabs.owner` records it. An
   address another account owns is refused (403); a tab with no owner gets
   no work and counts as closed. The admin page lists connectors per
-  account. This is the base for connectors that follow a person rather
-  than a browser (one address per account, usable from any signed-in tab)
-  or OAuth on the connector itself, neither built yet.
+  account. Connectors that follow the person, with OAuth on the connector
+  itself, were built the same day: "Connecting Claude", below.
 - **Decisions you may want to change.** (1) The gate is a client gate;
   the server enforces accounts where it serves something (the relay).
   `/api/account`'s `parts_url` stays open because builds already out ask it
@@ -151,6 +150,56 @@ The recipe and every check are in `.claude/skills/verify/features/account.md`.
   "verified", then set the new key as `RESEND_API_KEY` on the Vercel
   project and remove `EMAIL_FROM_FALLBACK`. The admin page shows a warning
   while codes go out under the borrowed sender.
+
+## Connecting Claude: one click, one address, OAuth (2026-10-11)
+
+The owner: "why are you making it so hard to connect the studio to claude?
+… formulate users unique link and it opens up the claude.ai page". Built
+on what claude.ai documents (`docs/CONNECTING.md`, every claim sourced):
+
+- **The one click.** claude.ai has a documented install link that opens
+  *Add custom connector* with the name and address filled in. **Connect
+  Claude** in the assistant panel (and in Account) opens it, puts the
+  address on the clipboard, switches the tab on, and says the three steps
+  (Add then Connect; sign in and Allow; come back). Claude Code gets the
+  command to copy (`claude mcp add --transport http brickworks
+  https://brickworks.diy/api/mcp`, then `/mcp`); the Claude desktop app
+  shows what was added on claude.ai. No link can skip claude.ai's own
+  confirmation, and none exists for Claude Code or the desktop app.
+- **One address for everybody, signed in with OAuth.** Not a per-user
+  link: a per-user secret in a URL is what we had, and what claude.ai's
+  docs advise against. `https://brickworks.diy/api/mcp` answers 401 and
+  names its metadata; Claude identifies itself by its published client
+  document (claude.ai's and Claude Code's are both accepted, so neither
+  registers), sends the person to `/oauth/authorize` — the same email-code
+  sign-in, or just Allow if the app is signed in in that browser — and
+  gets a token for their account. Calls go to that account's open tab on
+  any device. `api/oauth.js`, `supabase/oauth.sql`, `web/authorize.html`.
+- **Real Claude Code** (2.1.296) chose the published-identity path by
+  itself: PKCE S256, a random loopback port, `scope=build offline_access`,
+  the RFC 8707 resource.
+- **Private addresses keep working** (`?t=…`), folded under "Private
+  address".
+- **Database, applied to the live project 2026-10-11, additive only:**
+  `supabase/oauth.sql` — tables `oauth_clients`, `oauth_codes`,
+  `oauth_grants`, `oauth_tokens` (row security on, no policies, public
+  roles revoked), their indexes, and the function `oauth_sweep()`. Nothing
+  existing was changed. Applied through Supabase's IPv4 pooler
+  (`aws-0-us-east-1.pooler.supabase.com:5432`, user `postgres.<ref>`): the
+  direct host is IPv6-only and this machine has no IPv6.
+- **Decisions you may want to change.** (1) Signing out of one device
+  does not disconnect Claude from the account (Claude's connection is not
+  that device's); Disconnect Claude in Account does, everywhere at once.
+  (2) Once Claude is connected, every tab the person signs in to listens
+  by itself unless they switch it off there. (3) Access tokens last an
+  hour, refresh tokens rotate and last 90 days unused; a refresh token
+  replayed outside a 30 s grace ends its connection. (4) Anyone may
+  register a client (that is what dynamic registration is); unused ones
+  are swept after a day.
+- **Yours to do, optionally:** list Brickworks in Anthropic's Connectors
+  Directory (`claude.ai/directory/manage`, needs Anthropic's review) — it
+  would make Brickworks findable inside Claude with a permanent Connect
+  page. Not needed for any of the above.
 
 ## What the work found
 

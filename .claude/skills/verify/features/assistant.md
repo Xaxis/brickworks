@@ -65,16 +65,30 @@ fixing what it got wrong.
   Code is installed the composer stays without a key, because "My Claude" sits
   in it: `chat_probe` builds that panel too and checks Build waits for the tick.
 - `design on your Claude plan`: `ConnectorForm` in the panel, under "Or with
-  your Claude plan", is a switch for a `ClaudeConnector` on this tab. Off, it
-  says what it is for; on, it shows a coloured state line — waiting (amber),
-  connected with the time Claude reached it (green), building with a count and
-  a clock, trouble (red), or taken over by another tab — and the address and
-  steps until Claude has used the address once, then folds them away. It says
-  to keep the tab in view. The address is kept on this device and the switch
-  comes back on by itself; "Make a new address" forgets it. An address added
-  to Claude before — another browser, cleared storage — can be pasted ("Added
-  Brickworks to Claude before? Use that address", `ClaudeConnector.adopt`),
-  so nothing changes in Claude. Claude's calls go
+  your Claude plan" (2026-10-11). Not connected, it says what it is for and
+  offers **Connect Claude** (`ClaudeConnector.connect_claude`): this tab
+  starts listening, the shared address (`/api/mcp`) goes on the clipboard, and
+  claude.ai's documented install link opens — `https://claude.ai/customize/
+  connectors?modal=add-custom-connector&connectorName=Brickworks&connectorUrl=…`
+  — with a three-step guide (Add then Connect; sign in as <the account's
+  address> and Allow; come back) and the address to paste if no tab opened.
+  Links beside it open, one at a time, **Claude Code** (the `claude mcp add
+  --transport http brickworks …/api/mcp` command, then `/mcp` and
+  Authenticate), **Claude app** (it shows claude.ai's connectors; or Customize,
+  Connectors, Add custom connector, and the address) and **Private address**
+  (this browser's own `?t=` address, the way before, with its switch, Copy,
+  "Make a new address" and a field to paste one added before —
+  `ClaudeConnector.adopt`). The state line: waiting for Claude (amber),
+  "Connected to Claude [and Claude Code] — it builds in this tab" (green),
+  building with a count and a clock, switched off in this tab (grey), trouble
+  (red), taken over by another tab. The account's connections come from
+  `/api/oauth?op=connections`: on sign-in (`resume`), when the section is
+  shown, every 5 s for ten minutes after Connect Claude, and at once when the
+  relay says `brickworks/connected`. Once Claude is connected the switch
+  ("Let Claude build in this tab") is on by itself in every tab the person
+  signs in to, unless they switched it off there (`off_here`, kept on the
+  device), and **Disconnect Claude** ends every connection. `window.
+  brickworksClaude` tells the page `{on, connected, status}`. Claude's calls go
   into the conversation as a run card ("Claude is building"), every step kept
   with what came of it ("— refused: …" when a tool said no), and the card says
   Done with Build steps and Parts list once Claude has been quiet 90 s, or
@@ -85,12 +99,16 @@ fixing what it got wrong.
   your Claude plan"; until Claude's first call there is no empty conversation
   above it, so the steps sit under the title (they were at the panel's foot
   under a blank two-thirds of it). The panel's secondary actions — that one,
-  "Use that address", "Make a new address", "Change key", "Add a picture of
-  it" — are links (`Look.link`: blue, underlined, as wide as their words), not
+  Claude Code, Claude app, Private address, "Make a new address", "Disconnect
+  Claude", "Change key", "Add a picture of it" — are links (`Look.link`: blue, underlined, as wide as their words), not
   flat buttons in body text, which the owner could not tell were pressable.
   The switch and every tick box are drawn by `Look.apply`, outlined so an
   unticked one shows on a dark panel. `chat_probe` covers all of it on a
-  closed port and its own file; `connector_probe` the protocol (see `web.md`).
+  closed port and its own file — Connect Claude's link and guide, connected,
+  the Claude Code command, switched off here and kept off next visit, both apps
+  named, the account panel's Claude section, the private address — and
+  `connector_probe` the protocol (see `web.md`); `tools/web/oauth_flow.mjs`
+  the whole of it in a browser on a deployment ([account](account.md)).
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and
@@ -209,8 +227,26 @@ fixing what it got wrong.
   near the mouth as it is `CLUSTER_CLEAR` from both faces (nearer its own, the
   clutch check read a 2 x 2 as standing across that face's studs), and only if it
   meets every sightline through the channel from either face's look and 15
-  degrees past it, found by projecting both faces' bricks every 5 degrees. Only
-  on an open or odd-sided prism, and on a cluster's core. Found by run 16: a
+  degrees past it, found by projecting both faces' bricks every 5 degrees. Where
+  none fits square to either face, it is turned half way between them (or 5 or
+  10 degrees off half way, where half way is square to the grid) in a section
+  of its own, `prism N corner K`, where it stands symmetric to both and nearer
+  the mouth: square to one face it had to clear the other, which on a
+  ten-sided core put every candidate too far behind the mouth (run 17: no post
+  fitted any of its corners). On an open or odd-sided prism, on a cluster's
+  core, and on any corner whose outside row cannot run on into its groove — a
+  decagon's or a twelve-sided prism's, which were open straight through along
+  their corners even closed (54 and 172 sightlines). And on the corners of a
+  pier at the back of an open cluster, which is a frame of its outward faces
+  open behind, so a groove between two of them looked straight through it:
+  the guidance's own cluster showed the sky up its right cleft from the
+  front-right corner. And on any other pier's corners by the closed prism's
+  rule (where its outside row cannot run on, or it has an odd number of
+  sides): run 18's ten-sided piers of radius 6, faces two studs wide, had two
+  grooves of each front pier in line, the sky up both front clefts from the
+  corner. Pier posts go half way between first (`between_first`): a
+  pier's face is narrow, a post square to it stood right behind its inside
+  row, and the check read it as resting on that row, off its studs. Found by run 16: a
   face's floored width leaves its inner corner 2.4 LDU short of its neighbour's,
   narrower than a lattice cell so the check never saw it, and the open back put
   the sky behind it — a white slit up the core's front, seen through at six
@@ -218,13 +254,26 @@ fixing what it got wrong.
   horizontal sightlines at nine heights from eight headings; also runs on a
   saved model). `patterns_probe` ("an open tower is not see-through"): octagons
   of radius 7 and 9 open at the back, no sightline from anywhere (18 and 9 per
-  heading without posts); the guidance's open cluster, none from front or back
-  (9 each without); closed, none. Still open, and printed rather than judged: a
-  cluster has a corridor a clearance wide along the core's outside under each
-  pier (a pier's faces keep `CLUSTER_CLEAR` from the core), seen through only
-  straight along that core face — 9-18 sightlines from the diagonals, open or
-  closed; and a hexagon's or decagon's channel is wider than a post can cover,
-  and so is any one stud thick.
+  heading without posts); the guidance's open cluster, none from the front,
+  back, sides or the 45 and 225 corners (9 each from front and back without
+  the core's posts, 9 of 12 LDU from each corner without the back piers'), its
+  core three faces open; closed, none; ten- and
+  twelve-sided prisms of radius 9, closed and open, none (54, 172 and 176
+  before); run 17's own cluster (a ten-sided core, eight-sided piers turned 45),
+  none from the front, back, sides or the 45/225 diagonals, three of its ten
+  faces open (five before, and 9 sightlines each from 45, 90, 225 and 270, the
+  2.5-stud gap from its front-right corner); run 18's (ten-sided core and
+  piers), none from the front, back, sides or 45/225 (9 each from 45 and 225
+  before its front piers were posted). Still open, and printed rather
+  than judged: a cluster has a corridor a clearance wide along the core's
+  outside under each pier (a pier's faces keep `CLUSTER_CLEAR` from the core),
+  seen through only straight along that core face — 9-18 sightlines from the
+  diagonals, open or closed (on the guidance's open cluster, a 12.5 LDU slit
+  from 135 and 315 between a back pier and the core's open edge, 15 LDU on run
+  18's); a front pier whose outside rows do run on is not posted, and two of
+  its grooves can still line up (run 17's eight-sided piers: a 1.4 LDU slit
+  from 135 and 315); an open hexagon's channel is wider
+  than a post can cover, and so is any one stud thick.
 - `faceted piers clustered round a core`: `"piers"` on `prism`
   (`Assistant._cluster`), the guidance's one line for a tower like Orthanc —
   `{"count": 4, "courses": 38}` on an 8-sided core of radius 9 and 30 courses.
@@ -242,8 +291,13 @@ fixing what it got wrong.
   (`_runs`/`_free` clip each face's wall by outlines in plan; a run ending at
   something is laid flush to it on the 0.1-stud grid). The core is capped at
   `y + 3 x courses` with a two-plate summit over the whole outline
-  (`_summit`: strips along z, strips along x across them, only the largest
-  connected piece), which is what makes it one piece — walls at different
+  (`_summit`: strips along z, strips along x across them laid from the left in
+  the longest plate whose end is not over a joint of the first layer
+  (`_summit_across`), only the largest connected piece kept: with both layers
+  breaking round the same 6 x 6 block, run 18's summit lost its middle, where
+  its figures were to stand, and the run laid a plate over the hole by hand;
+  `patterns_probe`: 532 of that summit's 544 studs, the middle covered, 468
+  before), which is what makes it one piece — walls at different
   angles only rest on one another — and piers taller than the core rise from
   it as whole prisms (horns). A cluster face's outer row runs on past its
   right-hand corner into the groove (`_cluster_face`, as far as the outline's
@@ -251,30 +305,56 @@ fixing what it got wrong.
   nearly as wide at each corner and the piers read as bundles of sticks.
   With `open`, the piers at the back drop every face looking back or across
   the opening, and any `open` at all opens the core's whole back, every face
-  that looks backwards (3 of an octagon), one more where the count would sit
+  looking within `OPEN_REACH` (67.5 degrees) of straight back (3 of an octagon
+  or a decagon, 5 of a twelve-sided core), one more where the count would sit
   off centre: run 15 asked for 2 and got one face and one pier, the rooms
-  behind a slot between two piers. Each horn ends square: a cap two plates
+  behind a slot between two piers. Counted as every face looking backwards at
+  all, run 17's ten-sided core opened five of ten, its sides with them, and its
+  front piers' hollows opened onto the core's inside. Each horn ends square: a cap two plates
   thick over its outline at `y + 3 x piers' courses + 2` (`_studs_within`,
-  `_summit`, never a stud claimed by two caps), and on it a point
-  (`_horn_point`): a 4 x 4 course where the cap has room, stepped in by four
-  3045 corner slopes, two 2 x 2 bricks, a 3688 pyramid, a 59900 cone on its
-  stud and a 30374 bar, the cap's ledge round it sloped up to it with 3045,
-  3040b and 54200 as the rock faces its ledges (`_horn_ledge`); the corner
-  slopes' turn is read off 3045's own stud (`_corner_slope_turn`). Run 15
-  took its generated horns down because their tops were turned 45 degrees
-  and nothing square sat on them. Sideways dressing is laid only where it is clear of the other
+  `_summit`, never a stud claimed by two caps), and on it a crown
+  (`_horn_crown`): rings of bricks two courses tall (`HORN_RING`), each two
+  studs in from the last towards the cap's outermost 2 x 2 (along the horn's
+  way out rounded to an eighth of a turn, and across it where that is an
+  axis), tiled as the rock tiles its courses (`Patterns._tile`) and their
+  ledges faced inwards with 60481a 65-degree slopes, or a cheese slope where
+  a ledge is one stud (`Patterns._face_steps`, the rock's own facing pulled
+  out of `_rock` unchanged); on the tip a 3688 pyramid, a 59900 cone on its
+  stud and a 30374 bar. The four open outwards round the platform, "gaping
+  horns, their pinnacles sharp as the points of spears": run 17's horns were
+  flat caps with a point stood in the middle of each and read from the front
+  as turrets with roofs, and its close pass on "horns and summit" was never
+  made, so the pattern carries what that pass would have. One course a ring
+  was 31 degrees, a roof; two is 65. Run 15 took its generated horns down
+  because their tops were turned 45 degrees and nothing square sat on them. Sideways dressing is laid only where it is clear of the other
   shafts and the faces beside it (`_dressing_clear`), so nothing gives way in
   the check. Found by run 14: four piers round a core rising into horns, built
   square by hand, 0% at an angle. `patterns_probe`: the guidance's cluster
   passes the check as laid, in one piece, faces at 4 angles off the grid, 40%
   angled (fantasy median 27%), open at the back, each horn capped square (no
-  cap plate turned) with a 2 x 4 course and a bar on it, and add_rooms lays and
+  cap plate turned) with a crown on it, 129 65-degree slopes looking in and
+  each tip out past its horn's middle, 35 plates over the cap, and add_rooms lays and
   furnishes five floors under the summit, open to -z, nothing taken out;
   restyle_model then reaches the faces (below); piers set clear of the core
   are refused; and run 15's own cluster with `"open": 2` has no core face
   looking back and every column across the core's inside is open from behind
   to its middle (7 of 10 before). Its core's corners are posted (`an open tower
-  is not see-through`, below the many-sided shaft).
+  is not see-through`, below the many-sided shaft). A great door stands at the
+  foot of the core's front face (the one looking +z), at `y`, unless
+  `"door": false` (`_door_for`, `_lay_door_course`): a 6182 arch in the outside
+  row `DOOR_BELOW` (4) courses up, the two studs under it open, and the inside
+  row behind the opening laid as the door in reddish-brown 30136 log bricks —
+  set back a stud, and never a window onto the open back. It goes in the
+  stretch of the face the piers leave in view, as near its middle as the face's
+  brick grid allows, and the check's advice says so when there is none (fewer
+  than two studs in view, or faces narrower than four). A plain prism takes one
+  only with `"door": true`. Both rows are one-wide through the door's courses
+  and the course over the arch ties them; the windows on that face start a
+  storey over it. Found by run 17, whose stair led to a blank wall.
+  `patterns_probe`: the guidance's cluster has the arch in `face 0` at y 12
+  over six courses of door, none with `"door": false`, and run 17's own
+  cluster (piers pulled in to 10, two studs of the core's front in view) has
+  it at x -2 and passes the check.
 - `a finishing pass`: `restyle_model` (`Assistant._restyle`, run through
   `edit_model` so it is checked like any edit). Plain one-wide bricks (1x1-1x4,
   studs up, not in a section) whose long face is open — the live lattice empty
@@ -363,6 +443,10 @@ fixing what it got wrong.
   `src/minifig/figure_tool.gd`. See [minifig](minifig.md). `_variety` counts a
   model without its figures' bodies, as real sets' inventories are counted, and
   `_tag_assemblies` leaves a figure in its own group.
+- `parts it needs`: `make_part` makes a part LEGO has not made — a family at
+  any size, or a real part changed — when no real part will do, as a person
+  does in Make a part; declared and passed through here, made in
+  `src/parts/part_tool.gd`. See [elements](elements.md).
 - `walls partly on their side`: `fill`'s `sideways` share (`Patterns._sideways`,
   before the masonry, which would otherwise take every 1x2): one-wide bricks of
   a course (1x1 to 1x4) laid as rows of 87087 marked `dress` with the way out,

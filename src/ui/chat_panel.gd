@@ -779,8 +779,18 @@ func use_connector(connector: ClaudeConnector) -> void:
 		_show_for_key(OwnKey.has_key()))
 	connector.called.connect(_on_claude_called)
 	connector.answered.connect(_on_claude_answered)
+	# Claude connected to the account, or disconnected: the plan is, or is
+	# no longer, the way in use.
+	connector.connections_changed.connect(func(_now: Array) -> void:
+		_show_for_key(OwnKey.has_key()))
 	_connector = connector
 	_show_for_key(OwnKey.has_key())
+
+
+## The connector's line about where Claude stands, as the panel shows it.
+func connector_status() -> String:
+	return _connector_form._status.text if _connector_form != null \
+		and _connector_form._state_row.visible else ""
 
 
 ## Claude on the person's plan, building through the connector: its calls
@@ -818,14 +828,14 @@ func _on_claude_called(tool: String, arguments: Dictionary) -> void:
 		_claude_built = false
 		_open_run(true, func() -> void:
 			if _connector != null:
-				_connector.stop())
+				_connector.stop(true))
 		_run_keep = 500
 		_run_title.text = "Claude is building"
 		_run_now.text = ""
 		_run_hint.text = ("Claude, on your plan, is calling Brickworks from "
 			+ "your chat. Each step shows here and the model appears on the "
-			+ "baseplate. Keep this tab in view while it works.")
-		_run_stop.text = "Switch the connector off"
+			+ "baseplate, in view or not.")
+		_run_stop.text = "Stop Claude in this tab"
 		_run_stop.tooltip_text = ("Claude's next call is refused. What it "
 			+ "has built stays.")
 		_show_for_key(OwnKey.has_key())

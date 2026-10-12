@@ -1,12 +1,19 @@
-## Design on your Claude plan: this tab, offered to Claude as a connector.
+## Design on your Claude plan: Claude, connected to your Brickworks account.
 ##
-## The other way in besides an API key. Someone on Claude Pro or Max turns
-## it on, adds the address it shows to Claude — claude.ai or the Claude app
-## as a custom connector, or Claude Code — and asks Claude to build.
-## Claude, signed in its own way on their own plan, calls this app's tools;
-## the model is built here, in the tab, where they watch it. Brickworks
-## never sees a login, a token or a key, and never calls a model: Claude is
-## the client, which is ordinary use of Anthropic's own apps.
+## The other way in besides an API key. Someone on a Claude plan presses
+## Connect Claude: claude.ai opens on "Add custom connector" with Brickworks
+## already filled in (claude.ai's own install link), they press Add and
+## Connect, sign in to Brickworks and allow it, and Claude is connected —
+## to their account, once, for every Brickworks tab they open, on any
+## device. Then they ask Claude to build, and it builds in the tab, where
+## they watch it. The same for Claude Code (a command to paste) and the
+## Claude desktop app (which shows what was added on claude.ai). Brickworks
+## never sees a Claude login, token or key, and never calls a model: Claude
+## is the client, which is ordinary use of Anthropic's own apps.
+##
+## Until 2026-10-11 each browser had a private address to paste into
+## Claude by hand. That still works, folded away under "Private address",
+## for everyone who added one.
 ##
 ## The brief is typed in Claude, not here — the one thing about this mode
 ## that has to be said plainly, because everything else in the panel takes
@@ -17,30 +24,48 @@ extends VBoxContainer
 var connector: ClaudeConnector
 
 var _title: Label
+var _here: CheckButton
 var _intro: Label
-var _turn_on: CheckButton
+var _connect: Button
+var _ways: HBoxContainer
 var _state_row: HBoxContainer
 var _dot: ColorRect
 var _status: Label
-var _steps_toggle: LinkButton
-var _on_box: VBoxContainer
-var _address: LineEdit
-var _copied: Label
+var _guide: VBoxContainer
+var _signed_as: Label
+var _shared: LineEdit
 var _copy: Button
-var _in_view: Label
+var _code_box: VBoxContainer
+var _command: LineEdit
+var _code_copy: Button
+var _desktop_box: VBoxContainer
+var _desktop_copy: Button
+var _private_box: VBoxContainer
+var _address: LineEdit
+var _private_copy: Button
+var _copied: Label
 var _new_address: LinkButton
-var _reuse: LinkButton
 var _reuse_box: HBoxContainer
 var _reuse_field: LineEdit
+var _in_view: Label
+var _disconnect: LinkButton
+var _code_link: LinkButton
+var _desktop_link: LinkButton
+var _private_link: LinkButton
 var _calls: int = 0
 var _since: int = 0
 var _heard: String = ""
 var _clock: Timer
+## Claude was connected, and has been disconnected since: said until it is
+## connected again or the tab is switched on.
+var _parted: bool = false
+var _linked: bool = false
 
 const WAITING := Color(0.95, 0.72, 0.25)
 const CONNECTED := Color(0.35, 0.8, 0.45)
 const TROUBLE := Color(0.95, 0.4, 0.35)
 const OFF := Color(0.55, 0.57, 0.6)
+const ASK := "“Build a small red house in Brickworks.”"
 
 
 func setup(with: ClaudeConnector) -> void:
@@ -48,9 +73,6 @@ func setup(with: ClaudeConnector) -> void:
 	add_theme_constant_override("separation", 8)
 
 	add_child(HSeparator.new())
-	# A switch, because that is what it is: on, Claude can reach this tab;
-	# off, it cannot. It was a button that turned into a list of steps,
-	# and nothing on the panel changed when Claude actually connected.
 	var head := HBoxContainer.new()
 	add_child(head)
 	_title = Label.new()
@@ -58,44 +80,48 @@ func setup(with: ClaudeConnector) -> void:
 	_title.add_theme_font_size_override("font_size", 14)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	_turn_on = CheckButton.new()
-	_turn_on.focus_mode = Control.FOCUS_NONE
-	_turn_on.tooltip_text = "Let Claude build in this tab, or stop it"
-	_turn_on.toggled.connect(func(on: bool) -> void:
+	# Whether Claude may build in this tab. On by itself once Claude is
+	# connected to the account; the person can switch this tab off.
+	_here = CheckButton.new()
+	_here.focus_mode = Control.FOCUS_NONE
+	_here.tooltip_text = "Let Claude build in this tab, or stop it"
+	_here.toggled.connect(func(on: bool) -> void:
 		if on:
 			connector.start()
 		else:
-			connector.stop())
-	head.add_child(_turn_on)
+			connector.stop(true))
+	head.add_child(_here)
 
-	_intro = _line("On Claude Pro or Max, no key needed: connect this tab "
-		+ "to Claude, then ask Claude to build. It builds here, on your "
-		+ "plan's usage.", 11, 0.8)
+	_intro = _line("On Claude Pro or Max, no key needed: connect Claude to "
+		+ "your Brickworks account once, then ask Claude to build. It builds "
+		+ "here, on your plan's usage.", 11, 0.8)
 	add_child(_intro)
 
-	# Added to Claude already, from another browser or before this one's
-	# storage was cleared: paste that address rather than add a new one.
-	# A link, not a flat button: as a flat button in body text the owner
-	# could not tell it was something to press.
-	_reuse = Look.link("Added Brickworks to Claude before? Use that address", 11)
-	_reuse.pressed.connect(func() -> void:
-		_reuse_box.visible = not _reuse_box.visible
-		if _reuse_box.visible:
-			_reuse_field.grab_focus())
-	add_child(_reuse)
-	_reuse_box = HBoxContainer.new()
-	_reuse_box.visible = false
-	add_child(_reuse_box)
-	_reuse_field = LineEdit.new()
-	_reuse_field.placeholder_text = "https://brickworks.diy/api/mcp?t=…"
-	_reuse_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_reuse_field.text_submitted.connect(func(_t: String) -> void: _adopt())
-	_reuse_box.add_child(_reuse_field)
-	var use := Button.new()
-	use.text = "Use it"
-	use.focus_mode = Control.FOCUS_NONE
-	use.pressed.connect(_adopt)
-	_reuse_box.add_child(use)
+	_connect = Button.new()
+	_connect.text = "Connect Claude"
+	_connect.custom_minimum_size = Vector2(0, 34)
+	_connect.focus_mode = Control.FOCUS_NONE
+	_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
+	_connect.pressed.connect(func() -> void:
+		connector.connect_claude()
+		_guide.visible = true
+		_code_box.visible = false
+		_desktop_box.visible = false
+		_settle())
+	add_child(_connect)
+
+	_ways = HBoxContainer.new()
+	_ways.add_theme_constant_override("separation", 12)
+	add_child(_ways)
+	_code_link = Look.link("Claude Code", 11)
+	_code_link.pressed.connect(func() -> void: _open_only(_code_box))
+	_ways.add_child(_code_link)
+	_desktop_link = Look.link("Claude app", 11)
+	_desktop_link.pressed.connect(func() -> void: _open_only(_desktop_box))
+	_ways.add_child(_desktop_link)
+	_private_link = Look.link("Private address", 11)
+	_private_link.pressed.connect(func() -> void: _open_only(_private_box))
+	_ways.add_child(_private_link)
 
 	_state_row = HBoxContainer.new()
 	_state_row.add_theme_constant_override("separation", 8)
@@ -108,57 +134,90 @@ func setup(with: ClaudeConnector) -> void:
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_state_row.add_child(_status)
 
-	_steps_toggle = Look.link("", 11)
-	_steps_toggle.pressed.connect(func() -> void:
-		_on_box.visible = not _on_box.visible
-		_show())
-	add_child(_steps_toggle)
+	# After Connect Claude: what to do in the tab that just opened.
+	_guide = _box()
+	_guide.add_child(_line("claude.ai has opened in a new tab with Brickworks "
+		+ "filled in. There:", 12, 0.85))
+	_guide.add_child(_line("1. Press Add, then Connect.", 12, 0.85))
+	_signed_as = _line("", 12, 0.85)
+	_guide.add_child(_signed_as)
+	_guide.add_child(_line("3. Come back: this says Connected. Then ask Claude: "
+		+ ASK, 12, 0.85))
+	_guide.add_child(_line("No new tab? In Claude, open Customize, Connectors, "
+		+ "Add custom connector, and paste this (it is copied):", 11, 0.7))
+	var shared_row := _row()
+	_guide.add_child(shared_row)
+	_shared = _field(shared_row, "")
+	_copy = _copy_button(shared_row, func() -> String: return connector.shared_address())
 
-	_on_box = VBoxContainer.new()
-	_on_box.add_theme_constant_override("separation", 6)
-	add_child(_on_box)
+	_code_box = _box()
+	_code_box.add_child(_line("Claude Code: run this, then type /mcp in Claude "
+		+ "Code, choose brickworks and Authenticate. Your browser opens here to "
+		+ "sign in.", 12, 0.85))
+	var code_row := _row()
+	_code_box.add_child(code_row)
+	_command = _field(code_row, "")
+	_code_copy = _copy_button(code_row, func() -> String: return connector.claude_code_command())
+	_code_box.add_child(_line("Claude Code signed in with the same Claude account "
+		+ "as claude.ai has the connector from there too.", 11, 0.7))
 
-	_on_box.add_child(_line("1. Copy this tab's private address:", 12, 0.85))
-	var row := HBoxContainer.new()
-	_on_box.add_child(row)
-	_address = LineEdit.new()
-	_address.editable = false
-	_address.secret = false
-	_address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_desktop_box = _box()
+	_desktop_box.add_child(_line("The Claude desktop and mobile apps use the "
+		+ "connectors on your Claude account: Connect Claude above adds it there "
+		+ "too. Or in the app: Customize, Connectors, Add custom connector, name "
+		+ "it Brickworks and paste:", 12, 0.85))
+	var desktop_row := _row()
+	_desktop_box.add_child(desktop_row)
+	_field(desktop_row, "")
+	_desktop_copy = _copy_button(desktop_row, func() -> String: return connector.shared_address())
+
+	# The way before accounts: this browser's own address, added by hand.
+	_private_box = _box()
+	_private_box.add_child(_line("This browser's own address, the way before "
+		+ "Claude could sign in. Ones already added to Claude keep working. "
+		+ "Anyone with it can build in this tab while it is on.", 11, 0.7))
+	var private_row := _row()
+	_private_box.add_child(private_row)
+	_address = _field(private_row, "Switch on to make one")
 	_address.tooltip_text = ("Anyone with this address can build in this "
 		+ "tab while it is on — keep it to yourself.")
-	row.add_child(_address)
-	_copy = Button.new()
-	_copy.text = "Copy"
-	_copy.focus_mode = Control.FOCUS_NONE
-	_copy.pressed.connect(func() -> void:
-		DisplayServer.clipboard_set(_address.text)
-		_copied.visible = true)
-	row.add_child(_copy)
-	_copied = _line("Copied. It stays the same on this browser, so you only "
-		+ "add it once.", 11, 0.7)
-	_copied.visible = false
-	_on_box.add_child(_copied)
-	_on_box.add_child(_line("2. Add it to Claude:", 12, 0.85))
-	_on_box.add_child(_line("• claude.ai or the Claude app: Settings, "
-		+ "Connectors, Add custom connector, and paste it.", 12, 0.8))
-	_on_box.add_child(_line("• Claude Code: claude mcp add --transport http "
-		+ "brickworks \"<the address>\"", 12, 0.8))
-	_on_box.add_child(_line("3. In a chat with the connector on, ask: “Build a "
-		+ "small red house in Brickworks.”", 12, 0.85))
-
-	# The one thing about this way that surprises people, said where they
-	# will be when it matters.
-	_in_view = _line("Keep this tab in view while Claude builds: a browser "
-		+ "pauses a tab it is not showing. Side by side with Claude works "
-		+ "best, and you can watch it build.", 11, 0.7)
-	add_child(_in_view)
-
+	_private_copy = _copy_button(private_row, func() -> String: return connector.address())
 	_new_address = Look.link("Make a new address", 11)
 	_new_address.tooltip_text = ("If the address got out. The old one stops "
 		+ "working, and you will need to add the new one to Claude instead.")
 	_new_address.pressed.connect(func() -> void: connector.forget())
-	add_child(_new_address)
+	_private_box.add_child(_new_address)
+	_reuse_box = _row()
+	_private_box.add_child(_reuse_box)
+	_reuse_field = LineEdit.new()
+	_reuse_field.placeholder_text = "Added one before? Paste it here"
+	_reuse_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_reuse_field.text_submitted.connect(func(_t: String) -> void: _adopt())
+	_reuse_box.add_child(_reuse_field)
+	var use := Button.new()
+	use.text = "Use it"
+	use.focus_mode = Control.FOCUS_NONE
+	use.pressed.connect(_adopt)
+	_reuse_box.add_child(use)
+
+	_copied = _line("Copied.", 11, 0.7)
+	_copied.visible = false
+	add_child(_copied)
+
+	# The one thing about this way that surprises people, said where they
+	# will be when it matters.
+	_in_view = _line("Claude builds in this tab while you talk to it in "
+		+ "Claude, and keeps going when it is out of view. Side by side, you "
+		+ "can watch it build.", 11, 0.7)
+	add_child(_in_view)
+
+	_disconnect = Look.link("Disconnect Claude", 11)
+	_disconnect.tooltip_text = ("Claude can no longer reach your Brickworks "
+		+ "account, from any of its apps, until you connect it again.")
+	_disconnect.pressed.connect(func() -> void:
+		if await connector.disconnect_claude() < 0:
+			_say("Could not reach Brickworks to disconnect. Try again.", TROUBLE))
+	add_child(_disconnect)
 
 	_clock = Timer.new()
 	_clock.wait_time = 1.0
@@ -167,17 +226,34 @@ func setup(with: ClaudeConnector) -> void:
 
 	connector.listening.connect(_on_listening)
 	connector.called.connect(_on_called)
+	connector.connections_changed.connect(func(_now: Array) -> void:
+		if connector.connected():
+			_parted = false
+		elif _linked:
+			# Disconnected, here or anywhere: what Claude did is over.
+			_parted = true
+			_calls = 0
+			_heard = ""
+			_clock.stop()
+		_linked = connector.connected()
+		_settle())
 	connector.trouble.connect(func(why: String) -> void:
 		_say(why, TROUBLE))
 	connector.relay_ok.connect(_settle)
 	connector.replaced.connect(func() -> void:
-		_say("Another Brickworks tab took this connector over. Switch it on "
-			+ "here to take it back.", OFF))
+		_say("Another Brickworks tab took this one's place. Switch it on here "
+			+ "to take it back.", OFF))
+	visibility_changed.connect(func() -> void:
+		if is_visible_in_tree() and connector.account != null \
+				and connector.account.signed_in():
+			connector.refresh_connections())
 	_on_listening(connector.is_on(), connector.address())
 
 
+## Claude can reach this tab, or is connected to the account: the plan is
+## the way in use.
 func is_on() -> bool:
-	return connector != null and connector.is_on()
+	return connector != null and (connector.is_on() or connector.connected())
 
 
 func _adopt() -> void:
@@ -186,7 +262,6 @@ func _adopt() -> void:
 		_say(why, TROUBLE)
 		return
 	_reuse_field.text = ""
-	_reuse_box.visible = false
 
 
 ## Titled as the only way on screen, or as the second of two.
@@ -196,35 +271,60 @@ func alone(only: bool) -> void:
 
 
 func controls_by_name() -> Dictionary:
-	return {"connect_claude": _turn_on, "connector_address": _address,
-		"connector_copy": _copy}
+	return {"connect_claude": _connect, "claude_here": _here,
+		"connector_shared": _shared, "connector_copy": _copy,
+		"connector_code": _code_link, "connector_code_copy": _code_copy,
+		"connector_desktop": _desktop_link, "connector_desktop_copy": _desktop_copy,
+		"connector_private": _private_link, "connector_address": _address,
+		"connector_private_copy": _private_copy, "claude_disconnect": _disconnect}
 
 
 func _on_listening(on: bool, address: String) -> void:
-	_turn_on.set_pressed_no_signal(on)
+	_here.set_pressed_no_signal(on)
 	_address.text = address
 	_copied.visible = false
 	_calls = 0
 	_heard = ""
-	# The steps while Claude has never reached this address; folded away
-	# once it has, because then they are done.
-	_on_box.visible = on and not connector.used()
+	_settle()
+
+
+## Which of the three ways is open, one at a time.
+func _open_only(box: VBoxContainer) -> void:
+	var opening: bool = not box.visible
+	for one: VBoxContainer in [_guide, _code_box, _desktop_box, _private_box]:
+		one.visible = opening and one == box
 	_settle()
 
 
 ## The state line for where things stand, when nothing newer has said it.
 func _settle() -> void:
-	if not connector.is_on():
-		_say("Off. Claude cannot reach this tab." if not connector.address()
-			.is_empty() else "", OFF)
-	elif _calls > 0:
+	var on: bool = connector.is_on()
+	var linked: bool = connector.connected()
+	if linked:
+		_guide.visible = false
+	if on and _calls > 0:
 		_tick()
-	elif not _heard.is_empty():
+	elif linked and on:
+		_say("Connected to %s — %s." % [_clients(), "Claude reached this tab at "
+			+ _heard if not _heard.is_empty() else "it builds in this tab"], CONNECTED)
+	elif linked:
+		_say("%s is connected to your account, but switched off in this tab."
+			% _clients(), OFF)
+	elif _parted and not on:
+		_say("Disconnected. Claude can no longer reach your Brickworks; connect "
+			+ "again any time.", OFF)
+	elif connector.waiting_for_claude():
+		_say("Waiting for you to connect in Claude…", WAITING)
+	elif on and not _heard.is_empty():
 		_say("Connected — Claude reached this tab at %s." % _heard, CONNECTED)
+	elif on and connector.used():
+		_say("Connected through this tab's private address.", CONNECTED)
+	elif on:
+		_say("On. Waiting for Claude — press Connect Claude.", WAITING)
 	elif connector.used():
-		_say("Connected. Waiting for Claude to call.", CONNECTED)
+		_say("Off. Claude cannot reach this tab.", OFF)
 	else:
-		_say("On. Waiting for Claude — add the address below.", WAITING)
+		_say("", OFF)
 	_show()
 
 
@@ -233,11 +333,10 @@ func _settle() -> void:
 func _on_called(tool: String, _arguments: Dictionary) -> void:
 	var now: Dictionary = Time.get_time_dict_from_system()
 	_heard = "%02d:%02d" % [now.hour, now.minute]
-	_on_box.visible = false
+	_guide.visible = false
 	if tool.is_empty():
 		if _calls == 0:
-			_say("Connected — Claude reached this tab at %s." % _heard, CONNECTED)
-		_show()
+			_settle()
 		return
 	_calls += 1
 	if _calls == 1:
@@ -259,6 +358,21 @@ func _tick() -> void:
 		"" if _calls == 1 else "s", seconds / 60, seconds % 60], CONNECTED)
 
 
+## Which of Claude's apps are connected, in words: "Claude", "Claude and
+## Claude Code".
+func _clients() -> String:
+	var names := PackedStringArray()
+	for one: Variant in connector.connections:
+		var name: String = str((one as Dictionary).get("client", "Claude"))
+		if not names.has(name):
+			names.append(name)
+	if names.is_empty():
+		return "Claude"
+	if names.size() == 1:
+		return names[0]
+	return ", ".join(names.slice(0, names.size() - 1)) + " and " + names[names.size() - 1]
+
+
 func _say(text: String, colour: Color) -> void:
 	_status.text = text
 	_dot.color = colour
@@ -268,17 +382,58 @@ func _say(text: String, colour: Color) -> void:
 ## Which parts of the section are on screen, from the state it is in.
 func _show() -> void:
 	var on: bool = connector.is_on()
-	var has_address: bool = not connector.address().is_empty()
-	_intro.visible = not on and not connector.used()
-	# Only until this browser has an address Claude has used.
-	_reuse.visible = not connector.used()
-	if connector.used():
-		_reuse_box.visible = false
+	var linked: bool = connector.connected()
+	var who: String = connector.account.email if connector.account != null else ""
+	_signed_as.text = ("2. Sign in to Brickworks as %s if asked, and press Allow." % who
+		if not who.is_empty() else "2. Sign in to Brickworks if asked, and press Allow.")
+	_shared.text = connector.shared_address()
+	_command.text = connector.claude_code_command()
+	for one: Node in _desktop_box.find_children("*", "LineEdit", true, false):
+		(one as LineEdit).text = connector.shared_address()
+	_intro.visible = not linked and not on and not connector.used()
+	_connect.visible = not linked
+	_connect.text = "Connect Claude again" if connector.waiting_for_claude() else "Connect Claude"
+	_here.visible = linked or on or connector.used() or _private_box.visible
 	_in_view.visible = on
-	_steps_toggle.visible = on and connector.used()
-	_steps_toggle.text = ("Hide how to connect" if _on_box.visible
-		else "How to connect Claude again")
-	_new_address.visible = has_address
+	_disconnect.visible = linked
+	_new_address.visible = not connector.address().is_empty()
+
+
+func _box() -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	box.visible = false
+	add_child(box)
+	return box
+
+
+func _row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	return row
+
+
+func _field(row: HBoxContainer, placeholder: String) -> LineEdit:
+	var field := LineEdit.new()
+	field.editable = false
+	field.placeholder_text = placeholder
+	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(field)
+	return field
+
+
+func _copy_button(row: HBoxContainer, what: Callable) -> Button:
+	var button := Button.new()
+	button.text = "Copy"
+	button.focus_mode = Control.FOCUS_NONE
+	button.pressed.connect(func() -> void:
+		var text: String = what.call()
+		if text.is_empty():
+			return
+		DisplayServer.clipboard_set(text)
+		_copied.visible = true)
+	row.add_child(button)
+	return button
 
 
 ## A tool call as a step on the card: what Claude did, in words, with the

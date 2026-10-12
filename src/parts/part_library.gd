@@ -134,7 +134,15 @@ func element_for(part_id: String, code: int) -> String:
 					var pairs: Variant = (raw as Dictionary).get("pairs", {})
 					if typeof(pairs) == TYPE_DICTIONARY:
 						_elements = pairs
-	return str(_elements.get("%s/%d" % [part_id, plain_code(code)], ""))
+	var found: String = str(_elements.get("%s/%d" % [part_id, plain_code(code)], ""))
+	# LDraw draws cloth twice, flat as it is sold (50231) and as it is
+	# worn (50231c01 "Cape Cloth (Formed)"); Rebrickable lists the element
+	# once, by its flat number. A figure wears the worn drawing.
+	var info: PartInfo = parts.get(part_id)
+	if found.is_empty() and info != null and info.name.contains("(Formed") \
+			and part_id.length() > 3 and part_id[-3] == "c" and part_id.right(2).is_valid_int():
+		return element_for(part_id.left(-3), code)
+	return found
 
 
 ## The colour a part in this code is filed under by LEGO and Rebrickable:

@@ -19,6 +19,10 @@ var _failures: int = 0
 
 
 func _initialize() -> void:
+	# Its own settings, fresh, never this machine's: what the person chose
+	# last is not what these checks are about.
+	Brain.where = "user://brain_probe.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Brain.where))
 	_run()
 
 

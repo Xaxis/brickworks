@@ -316,6 +316,7 @@ colours at the median):
 | 15 | clustered piers on `prism`, in the recipe and the advice | 3,281 | 2.5% | **30%** | 69% | **27%** | 56 | 14 |
 | 16 | horns capped square, any opening the whole back, the finish reaches a cluster, no animation off-screen | 3,539 | **14%** | **50%** | 58% | 31% | 53 | 17 |
 | 17 | posts behind open corners, piers keep their sides, dressing in the wall's colour, each assembly handed back, lit windows | 8,547 | **16%** | **31%** | 58% | **23%** | 65 | 15 |
+| 18 | any core's corners posted and its back three faces, a great door, horns that rise to points | 8,438 | 13% | 60% | 58% | 38% | 61 | 13 |
 
 **Words moved nothing; measurement moved symmetry and plainness a little;
 a technique offered as its own pattern went unused.** What designs take up
@@ -656,6 +657,94 @@ post that fits, or the corner closed another way) and what counts as the back
 on one; the corridor under each pier; a detail pass that happens without being
 asked; a portal the stair leads to; and the ground's own craft.
 
+Run 17's levers, 2026-10-11. **The corners of any core.** Run 17's ten-sided
+core opened five of its ten faces as "the back", every face that looked
+backwards at all, and that opened its front piers' hollows onto the core's
+inside. The back is now the faces within 67.5 degrees of straight back
+(`OPEN_REACH`): an octagon's three, as before, and a decagon's three. No post
+had fitted a decagon's corner either: square to one face, a post had to clear
+the other, which put all 535 clear places too far behind the channel's mouth
+to meet the slanting sightlines. Where none fits square to a face, the post
+now turns half way between the two, in a section of its own. Ten- and
+twelve-sided prisms turned out to be open straight through along their corners
+even when closed (54 and 172 sightlines; their outside rows cannot run on into
+the groove), so those corners are posted too. Looking at the guidance's own
+octagonal cluster from the front-right corner, the view a picture is taken
+from, found one more: a pier at the back is a frame of its outward faces, open
+behind, and a groove between two of them showed the sky up the right cleft.
+Those piers' corners are posted, half way between their faces (square to a
+narrow pier face, a post stood behind its inside row and the check read it as
+resting there off its studs). **A portal**: a clustered tower lays a great
+door at the foot of its core's front unless told not to. It is a 6182 arch
+over two open studs, the door set back a stud in reddish-brown log bricks so
+it is never a window onto the open back, in the stretch the piers leave in
+view (on run 17's cluster, two studs), and the check says so when nothing
+fits. **The detail that happens without being asked**: `save_model` and the
+review it hands back belong to the command socket, and nothing the app does
+after a save is in the file saved, so the default that moves designs is the
+pattern. Every run since 15 called the cluster in its first build, and the
+windows it gained after run 16 were all over run 17. The close pass that
+mattered most to the picture was "horns and summit": run 17's horns were flat
+caps with a point stood in the middle, four turrets with roofs from the front.
+Each horn now rises from its cap in rings two courses tall, two studs in each
+time, towards its outermost 2 x 2, its ledges faced inwards with 65-degree
+slopes as `rock` faces its own, the spike on that tip: four claws opening
+outwards round the platform. (One course a ring was 31 degrees and looked like
+a roof.) **The corridor under each pier** is still open, seen only straight
+along a core face: 9 to 15 LDU from the 135 and 315 diagonals.
+`patterns_probe` judges the rest and prints that.
+
+Run 18, on those: it began with a ten-sided core of radius 7 and piers set 7
+out, and was told no door fitted ("the piers leave less than two studs of it
+in view"). **It resubmitted twice, widening the core to radius 9 and setting
+the piers out to 11 with `"door": true`, until the door was laid**: a default,
+and the check's one line saying it had not been laid, reshaped a run's tower
+for the first time, and its clefts are wider than run 17's. Then `add_rooms`
+(seven floors, a hall to the palantír room, with ladders), one finishing pass,
+one whole review, five figures from eighteen tries, lamp posts either side of
+the door and a brazier at each corner of the plinth, saved: 8,506 parts in
+**1,048 s**. It took the generated horns as they were ("the tops of the horns
+are the tool's standard layouts"), and again **skipped every close pass,
+knowingly**: "None of the four parts of the model has had its close detailing
+pass yet", handed the first of them at its save. Sideways 13%, curve 13% and
+texture 16% in the real range; plain 58% (17: 58%); angled 60%, past the
+fantasy 90th percentile, nearly all of it its own ten-sided core and piers
+(hidden posts are 8% of the parts); symmetry 38% (17: 23%); 61 shapes and 13
+colours, both below runs 13-17. By eye, from the front it has the best
+silhouette of eighteen: slender, the horns rising to spikes at their outer
+edges so the crown gapes, the door at the top of the steps with Saruman, Gríma
+and two Uruk-hai before it, braziers burning, Gandalf on the summit. Two
+things the run could not see cost it: **its summit had a 6 x 6 hole in the
+middle**, where it tried to stand Saruman and Gandalf ("nothing to stand on"),
+which it covered with a grey plate by hand; and **its ten-sided piers of
+radius 6 have faces two studs wide** whose grooves line up through each front
+pier, sky up both front clefts from the corner view (56 sightlines in all by
+`daylight_probe`, 90 in run 17). Thirteen of its eighteen figure calls were
+refused, nine because the furnished rooms left nowhere to stand. Pictures:
+`shots/runs/orthanc_18_*.png` in its worktree, with `orthanc_18.ldr` and the
+log.
+
+After run 18, 2026-10-11. **A summit that keeps its middle**: the summit keeps
+only its largest connected piece, and its two plate layers had broken round
+the same 6 x 6 block, six-long strips both ways. The second layer is now laid
+in the longest plate whose end is not over a joint of the first; that summit
+covers 532 of its 544 studs with the middle whole, where it had 468. **Front
+piers posted** where their outside rows cannot run on, as a closed prism is.
+Run 18's own calls replayed on both (`orthanc_18_replayed.ldr`): Saruman
+stands on the summit at the run's first try and its hand-laid patch is refused
+as an overlap, and 22 sightlines are left (56), none from the front, the back
+or the 45 and 225 corners. **Not homepage-worthy, run or replay.** The form is
+right and the craft is not: plain 56-58% where real sets are 28%, 61 shapes
+against 109, 13 colours against 23 and 78% of it black, the faces a speckled
+brick wall with yellow dots, a flat stepped plinth for Isengard's rock, and no
+run has done a close pass in three. The best picture so far is
+`shots/runs/orthanc_18_replayed_front.png`. The levers left: the faces
+themselves carrying what a close pass would add (the arched lattice windows
+30044/30046 the tower review names, and a second and third tone), since words
+at the save have now failed three times; rooms that leave a figure room to
+stand; post columns of taller bricks, so hidden posts stop being 8% of the
+parts; the corridor under each pier; and the ground.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
@@ -670,10 +759,27 @@ bricks, plates, tiles, slopes, inverted slopes and round parts of any size,
 or resizes a plain library part, as unofficial LDraw parts drawn from the
 library's primitives. The app builds them with a port of the mesh build
 that matches it byte for byte, so they clutch, collide and check like any
-part, and a saved model carries them inside it. Next: the design loop asking
-for a part it lacks (a tool that makes one), families with clips, bars and
-Technic holes (the hole merge is the one piece of the pipeline not yet
-ported), and draft and wall checks for a part a mould designer could take.
+part, and a saved model carries them inside it.
+
+**Second version, 2026-10-11.** The families a modern set is built from:
+bricks with studs on any side, brackets up and down, curved slopes, and
+Technic bricks with holes — each standard size with its library part's
+bounds, studs, holes and tubes (87087, 30414, 99781, 99780, 44728, 3700,
+3701), the hole merge and bore clearing now ported so 3700 and 3701 match
+the pipeline byte for byte. A part that exists can be changed rather than
+redrawn: any part, from its own built mesh (so in a browser too), made
+longer, wider or taller by repeating a slice of it where its cut faces
+match, its studs taken off or put on, a piece cut out with its cut faces
+capped and its hollow walled; 3700 made six long is 3894 to the connector
+and the collision cell, a corner cut out of 3003 has 2357's studs, and a
+part with no slice to repeat is refused in words. And the design loop makes the parts it lacks: `make_part`, in the
+assistant's tools and every MCP session's, makes a family part or changes a
+real one through the same rules a person's part goes through, and the
+design builds with it. Next: families with clips and bars (the checker's
+round joints need the catalogue's rounds), wedge plates, cut-outs that are
+not boxes (a cut through a round part is closed in 2 LDU steps), axle holes
+in the app's build, and draft and wall checks for a part a mould designer
+could take.
 
 ## How progress is judged
 

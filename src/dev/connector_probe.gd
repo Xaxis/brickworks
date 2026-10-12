@@ -18,6 +18,11 @@
 ## addresses, signed in with codes minted on this side (SignInHelper), and
 ## deleted at the end.
 ##
+## And Claude signed in to the account with OAuth (2026-10-11), at the one
+## address for everybody: its calls answered by this tab, which never gave
+## Claude its own address; told no tab is open once it is off; refused
+## after Disconnect.
+##
 ## Not in the suite: it needs the relay running and the project's keys.
 extends SceneTree
 
@@ -124,6 +129,49 @@ func _run() -> void:
 			(found.get("result", {}) as Dictionary).get("isError", true)),
 		"a tool call is run in the tab and answered: %s" % text.substr(0, 60).replace("\n", " "))
 	_check(calls.has("search_parts"), "...and the tab saw which tool it was")
+
+	print("\nClaude signed in to the account, at the one address for everybody")
+	# The way since 2026-10-11: Claude is never given this tab's address. It
+	# signs in with OAuth as claude.ai does — Claude's published identity,
+	# PKCE, the person's yes as the signed-in account — and its calls go to
+	# whichever tab of that account is open: this one.
+	var shared: String = _base + "/api/mcp"
+	var bare: Array = await _claude_as("", "initialize", {})
+	_check(int(bare[0]) == 401, "the shared address asked with no token: 401, sign in first")
+	var signed_token: String = await _oauth_token(account)
+	_check(signed_token.begins_with("bwa_"), "Claude signed in as the account and holds a token")
+	var before: int = calls.size()
+	var greeted: Array = await _claude_as(signed_token, "initialize", {"protocolVersion": "2025-06-18",
+		"capabilities": {}, "clientInfo": {"name": "claude-ai", "version": "0.1.0"}})
+	_check(int(greeted[0]) == 200 and str((((greeted[1] as Dictionary).get("result", {}) as Dictionary)
+			.get("serverInfo", {}) as Dictionary).get("name", "")) == "brickworks",
+		"initialize at %s with the token is answered" % shared)
+	var by_account: Array = await _claude_as(signed_token, "tools/call",
+		{"name": "search_parts", "arguments": {"query": "brick 2 x 2"}})
+	_check(_text_of(by_account[1] as Dictionary).contains("3003"),
+		"a call is run in this account's tab, which never gave Claude its address: %s"
+			% _text_of(by_account[1] as Dictionary).substr(0, 40).replace("\n", " "))
+	_check(calls.size() > before and calls.has("search_parts"), "...and the tab saw it")
+	connector.stop()
+	await create_timer(1.0).timeout
+	var none_open: Array = await _claude_as(signed_token, "tools/call",
+		{"name": "search_parts", "arguments": {"query": "brick"}})
+	_check(_text_of(none_open[1] as Dictionary).contains("No Brickworks tab is open for the account"),
+		"with the tab switched off, Claude is told no tab of the account is open")
+	connector.start()
+	await create_timer(3.0).timeout
+	var back_on: Array = await _claude_as(signed_token, "tools/call",
+		{"name": "search_parts", "arguments": {"query": "brick 1 x 1"}})
+	_check(_text_of(back_on[1] as Dictionary).contains("3005"), "switched on again, it answers again")
+	var listed_for: Dictionary = await _get_with(_base + "/api/oauth?op=connections",
+		await account.access_token())
+	var labels: Array = []
+	for one: Variant in listed_for.get("connections", []) as Array:
+		labels.append(str((one as Dictionary).get("client", "")))
+	_check(labels.has("Claude"), "the account lists its connection: %s" % ", ".join(labels))
+	await _send(_base + "/api/oauth?op=disconnect", "", await account.access_token())
+	var after_disconnect: Array = await _claude_as(signed_token, "tools/list", {})
+	_check(int(after_disconnect[0]) == 401, "after Disconnect, Claude's token is refused: 401")
 
 	print("\nanother page switches the same address on")
 	var replaced: Array = []
@@ -286,6 +334,72 @@ func _send(url: String, body: String, token: String) -> Array:
 	var done: Array = await http.request_completed
 	http.queue_free()
 	return done
+
+
+## Claude's request at the shared address, with a token or none: [status,
+## the parsed body].
+func _claude_as(token: String, method: String, params: Dictionary) -> Array:
+	_sent += 1
+	var http := HTTPRequest.new()
+	http.timeout = 60.0
+	get_root().add_child(http)
+	var headers := PackedStringArray(["content-type: application/json",
+		"accept: application/json, text/event-stream"])
+	if not token.is_empty():
+		headers.append("authorization: Bearer " + token)
+	http.request(_base + "/api/mcp", headers, HTTPClient.METHOD_POST, JSON.stringify(
+		{"jsonrpc": "2.0", "id": _sent, "method": method, "params": params}))
+	var done: Array = await http.request_completed
+	http.queue_free()
+	var parsed: Variant = JSON.parse_string((done[3] as PackedByteArray).get_string_from_utf8())
+	return [int(done[1]), parsed if parsed is Dictionary else {}]
+
+
+## Claude's sign-in, as claude.ai does it: its published identity, a PKCE
+## challenge, the person's yes as [param signed_in] (the call the sign-in
+## page makes), and the code traded for a token. "" if any step failed.
+func _oauth_token(signed_in: Account) -> String:
+	var client: String = "https://claude.ai/oauth/mcp-oauth-client-metadata"
+	var back: String = "https://claude.ai/api/mcp/auth_callback"
+	var verifier: String = ClaudeConnector._new_token()
+	var hashing := HashingContext.new()
+	hashing.start(HashingContext.HASH_SHA256)
+	hashing.update(verifier.to_utf8_buffer())
+	var challenge: String = Marshalls.raw_to_base64(hashing.finish()).replace(
+		"+", "-").replace("/", "_").replace("=", "")
+	var yes: Array = await _send(_base + "/api/oauth?op=approve", JSON.stringify({
+		"response_type": "code", "client_id": client, "redirect_uri": back,
+		"code_challenge": challenge, "code_challenge_method": "S256", "state": "probe",
+		"resource": _base + "/api/mcp"}), await signed_in.access_token())
+	var said: Variant = JSON.parse_string((yes[3] as PackedByteArray).get_string_from_utf8())
+	var redirect: String = str((said as Dictionary).get("redirect", "")) if said is Dictionary else ""
+	if not redirect.contains("code="):
+		print("  (no code: %s)" % str(said))
+		return ""
+	var code: String = redirect.get_slice("code=", 1).get_slice("&", 0)
+	var http := HTTPRequest.new()
+	http.timeout = 30.0
+	get_root().add_child(http)
+	http.request(_base + "/oauth/token", PackedStringArray([
+		"content-type: application/x-www-form-urlencoded"]), HTTPClient.METHOD_POST,
+		"grant_type=authorization_code&code=%s&redirect_uri=%s&client_id=%s&code_verifier=%s&resource=%s"
+		% [code, back.uri_encode(), client.uri_encode(), verifier, (_base + "/api/mcp").uri_encode()])
+	var done: Array = await http.request_completed
+	http.queue_free()
+	var tokens: Variant = JSON.parse_string((done[3] as PackedByteArray).get_string_from_utf8())
+	return str((tokens as Dictionary).get("access_token", "")) if tokens is Dictionary else ""
+
+
+## A GET with a session, parsed.
+func _get_with(url: String, session: String) -> Dictionary:
+	var http := HTTPRequest.new()
+	http.timeout = 30.0
+	get_root().add_child(http)
+	http.request(url, PackedStringArray(["authorization: Bearer " + session]))
+	var done: Array = await http.request_completed
+	http.queue_free()
+	var parsed: Variant = JSON.parse_string((done[3] as PackedByteArray).get_string_from_utf8())
+	return parsed if parsed is Dictionary else {}
 
 
 ## What a tab says when it switches on.

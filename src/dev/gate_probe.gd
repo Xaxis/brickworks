@@ -82,8 +82,14 @@ func _run() -> void:
 	_ok(builder.held_color == colour, "a key changes nothing: still colour %d" % colour)
 
 	print("\nsigned in")
-	# What a sign-in does to the account, without anywhere to sign in.
+	# What a sign-in does to the account, without anywhere to sign in: an
+	# address and a session that needs no renewing. Signing in asks the
+	# deployment (a port nothing listens on, here) for the account's Claude
+	# connections with that session; with none, the account took itself
+	# for signed out again and the screen came back.
 	account.email = "probe@example.com"
+	account._access = "probe.signed.in"
+	account._expires_at = Time.get_unix_time_from_system() + 3600.0
 	account.state = Account.State.SIGNED_IN
 	account.changed.emit()
 	await _settle()

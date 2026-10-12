@@ -152,6 +152,54 @@ static func boxes_for_turned(
 	return compress(cells_for_turned(boxes, origin_cell, basis))
 
 
+## Whether a point is off the lattice: not on a cell corner on some axis,
+## beyond float dust.
+static func is_off_lattice(point: Vector3) -> bool:
+	for axis: int in 3:
+		var past: float = fposmod(point[axis], CELL)
+		if past > 0.01 and past < CELL - 0.01:
+			return true
+	return false
+
+
+## A cover cut back to the part it covers.
+##
+## A part's boxes are counted from the cell its origin is in. On the
+## lattice that is exact; off it — a minifigure's parts, and whatever a
+## figure stands on — it moves the cover down and back by up to a cell
+## from the part: a flipper with its sole on a plate and its origin 3 LDU
+## above it was reckoned from 2 LDU, and read as a cell into the plate,
+## so a figure on flippers had to stand a LDU above it. So a square
+## part's cover off the lattice is kept inside the part's own box, placed
+## where it is and rounded out to whole cells. That only ever takes away
+## cells the part is not in. (A turned part's cover is rounded out all
+## round on purpose — a tipped section finds what it leans on by it —
+## and is left alone.)
+static func within(packed: PackedInt32Array, bounds: AABB, at: Transform3D) -> PackedInt32Array:
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	for n: int in 8:
+		var corner: Vector3 = at * (bounds.position + bounds.size * Vector3(
+			n & 1, (n >> 1) & 1, (n >> 2) & 1))
+		lo = lo.min(corner)
+		hi = hi.max(corner)
+	var from := Vector3i(int(floor((lo.x + 0.01) / CELL)), int(floor((lo.y + 0.01) / CELL)),
+		int(floor((lo.z + 0.01) / CELL)))
+	var to := Vector3i(int(ceil((hi.x - 0.01) / CELL)), int(ceil((hi.y - 0.01) / CELL)),
+		int(ceil((hi.z - 0.01) / CELL)))
+	var out := PackedInt32Array()
+	var n: int = 0
+	while n + 5 < packed.size():
+		var a := Vector3i(maxi(packed[n], from.x), maxi(packed[n + 1], from.y),
+			maxi(packed[n + 2], from.z))
+		var b := Vector3i(mini(packed[n + 3], to.x), mini(packed[n + 4], to.y),
+			mini(packed[n + 5], to.z))
+		if a.x < b.x and a.y < b.y and a.z < b.z:
+			out.append_array([a.x, a.y, a.z, b.x, b.y, b.z])
+		n += 6
+	return out
+
+
 ## Loose cells merged into runs along x.
 static func compress(cells: Array[Vector3i]) -> PackedInt32Array:
 	var out := PackedInt32Array()

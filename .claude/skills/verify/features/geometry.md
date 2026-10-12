@@ -13,7 +13,13 @@ can occupy the same millimetre.
   box; a Technic beam is 36. A stud is 20 LDU
   across (10 cells), a plate 8 LDU tall (4 cells), a brick three plates. A
   placement names its lowest-leftmost-backmost cell, across and deep of the
-  whole studs it stands on.
+  whole studs it stands on. A part's boxes are counted from its origin's cell;
+  for a square part placed off the lattice (a minifigure's) that sits up to a
+  cell below the part, so `Builder.boxes_for` and `Stability` keep such a cover
+  inside the part's own box, rounded out (`BrickLattice.within`) — it only
+  ever drops cells the part is not in (a flipper on a plate read as in it).
+  Turned covers stay rounded out all round: tipped sections find what they
+  lean on by them (`section_probe` fails if they are cut back too).
 - `sideways building`: a part can be held by a stud that does not point up —
   `face` (up/down/±x/±z) × `rot` (quarter turns) gives 24 orientations, and the
   occupied cells are recomputed for each.

@@ -207,6 +207,12 @@ h1 {
 	box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.7);
 }
 .shot img { display: block; width: 100%; height: auto; }
+/* Two pictures of one model side by side, one under the other on a phone. */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 42px; }
+.pair .shot { margin: 0; }
+.pair figcaption { padding: 10px 14px; font-size: 13.5px; color: var(--ink-soft); }
+@media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+.pair + .stats { margin-top: 16px; }
 
 /* -- numbers -------------------------------------------------------- */
 
@@ -431,7 +437,7 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 
 		<div class="shot">
 			<img src="shot-app.png" width="1600" height="900"
-				alt="The Brickworks builder: the parts panel on the left, a grey stone castle Claude designed standing on a green baseplate in the centre, and on the right the panel that starts a design — paste your own API key, or connect Claude on your plan.">
+				alt="The Brickworks builder: the parts panel on the left, the Tower of Orthanc Claude designed — 8,785 bricks, four black spires with lit windows — standing on a green baseplate in the centre, and on the right the panel that starts a design: paste your own API key, or connect Claude on your plan.">
 		</div>
 	</div>
 
@@ -447,10 +453,10 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 				<h3><span class="dot" style="background:var(--blue)"></span>Your Claude plan</h3>
 				<div class="for">Claude Pro or Max · no key, nothing to install</div>
 				<ol class="steps">
-					<li>In the app, signed in, switch on <b>Or with your Claude plan</b> and copy the private address it shows. It stays the same and belongs to your account, so you add it once.</li>
-					<li>Add it to Claude as a custom connector: on claude.ai or in the Claude app under <b>Settings → Connectors</b>, or in Claude Code:
-						<code class="cmd">claude mcp add --transport http brickworks "&lt;the address&gt;"</code></li>
-					<li>Ask Claude to “build a small red house in Brickworks”, with the Brickworks tab in view beside it — a browser pauses a tab it isn’t showing. Every step shows in the app as it builds.</li>
+					<li>In the app, press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account — the Claude desktop and mobile apps have it too.</li>
+					<li>Or in Claude Code, then <b>/mcp</b> and Authenticate:
+						<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
+					<li>With Brickworks open, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
 				</ol>
 				<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
 			</div>
@@ -472,8 +478,44 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		</p>
 	</section>
 
+	<section id="orthanc" class="wrap">
+		<h2>The Tower of Orthanc, designed by Claude</h2>
+		<p class="sub">
+			“The Tower of Orthanc, Saruman’s fortress at Isengard, as a LEGO
+			display model: the tall many-sided tower of black stone rising to
+			four sharp horns around a high platform, standing on a rocky base.
+			Make it as detailed and creative as a set LEGO would release.”
+			Claude built it here, on a Claude plan, checking every brick
+			against the real lattice: a faceted core clustered with four
+			piers, lit windows, a great door up its steps, horns that rise in
+			rings to spikes — and behind an open back, furnished floors from
+			the dungeon to the palantír room, with Saruman at the top.
+		</p>
+		<div class="pair">
+			<figure class="shot">
+				<img src="orthanc-corner.webp" width="1024" height="1024" loading="lazy"
+					alt="The Tower of Orthanc in black LEGO bricks: a tall faceted tower of four clustered piers with narrow lit yellow windows, rising to four horned spires around a platform, on a stepped black plinth ringed by grey crags, with braziers and figures at its door.">
+				<figcaption>From the front corner: the piers, the windows and the horns.</figcaption>
+			</figure>
+			<figure class="shot">
+				<img src="orthanc-back.webp" width="1024" height="1024" loading="lazy"
+					alt="The back of the same tower, open from top to bottom: six furnished floors one above another, from barrels and a dungeon at the foot to a red-carpeted room near the top where Saruman stands in white.">
+				<figcaption>From the back: the floors inside, each furnished as its room.</figcaption>
+			</figure>
+		</div>
+		<div class="stats">
+			<div class="stat"><b>8,785</b><span>parts, and every one holds</span></div>
+			<div class="stat"><b>18 min</b><span>from the paragraph to the model</span></div>
+			<div class="stat"><b>6</b><span>furnished floors behind the open back</span></div>
+			<div class="stat"><b>0</b><span>bricks placed by hand</span></div>
+		</div>
+		<div class="actions">
+			<a class="cta ghost" href="/app?model=res://models/orthanc.ldr">Open it in the builder</a>
+		</div>
+	</section>
+
 	<section id="designed" class="wrap">
-		<h2>Designed from one sentence</h2>
+		<h2>And a castle, from one sentence</h2>
 		<p class="sub">
 			“A medieval castle with a gatehouse, four corner towers and a
 			long curtain wall between them.” The assistant laid it out,
@@ -604,8 +646,8 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 		<h2>What Brickworks keeps, and what it never sees</h2>
 		<p class="sub">
 			Your account is your email address, and that is nearly all there is
-			of you here: the address, when you last signed in, which Claude
-			connector is yours, and for a day the network address a sign-in
+			of you here: the address, when you last signed in, which
+			Claude apps you connected, and for a day the network address a sign-in
 			code was asked from, so the form cannot be used to flood an inbox.
 			What that means for each thing you bring:
 		</p>
@@ -632,20 +674,20 @@ footer p { margin: 0 0 8px; max-width: 76ch; }
 			<div class="card">
 				<h3>Your Claude login</h3>
 				<p>
-					Never asked for. With a connector, Claude is the one calling,
-					signed in its own way. The address is random, made and kept
-					in your browser, and reaches Brickworks only while a tab you
-					are signed in to has the connector switched on. “Make a new
-					address” retires it.
+					Never asked for. Claude signs in to Brickworks — as you, with
+					your email code and your Allow — and holds a Brickworks token,
+					never the other way round. It reaches only your open tabs, and
+					<b>Disconnect Claude</b> under Account ends it on every device
+					at once.
 				</p>
 			</div>
 			<div class="card">
 				<h3>Your conversations</h3>
 				<p>
-					A small relay carries Claude’s tool calls to your tab and the
-					answers back. It knows your tab by a hash of its address,
-					never the address, notes which account switched it on, and
-					deletes each message the moment it is answered.
+					A small relay carries Claude’s tool calls to your open tab and
+					the answers back, and deletes each message the moment it is
+					answered. Claude’s tokens are kept only as hashes, so the
+					database cannot be read back into one.
 				</p>
 			</div>
 			<div class="card">

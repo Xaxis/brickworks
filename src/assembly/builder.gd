@@ -636,7 +636,14 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 		# clearance that keeps two round bricks from touching.
 		return BrickLattice.compress(_cells_for(part, at))
 	if BrickLattice.is_square_to_grid(at.basis):
-		return BrickLattice.boxes_for(part.boxes, cell, at.basis)
+		var square: PackedInt32Array = BrickLattice.boxes_for(part.boxes, cell, at.basis)
+		# Counted from its origin's cell, a cover off the lattice reaches
+		# up to a cell past the part (BrickLattice.within). A turned cover
+		# is rounded out all round on purpose, and left so: what a tipped
+		# section leans on is found by it.
+		if BrickLattice.is_off_lattice(at.origin):
+			return BrickLattice.within(square, part.bounds, at)
+		return square
 
 	# A turned part has no box image, so its cover is worked out cell by
 	# cell and merged back into runs, which is far too slow to repeat per

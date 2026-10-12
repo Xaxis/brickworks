@@ -115,7 +115,8 @@ if python3 -c 'import pytest' 2>/dev/null; then
   suite=(python3 -m pytest tests/ -q)
 else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
-    tests/test_release.py tests/test_minifig.py tests/test_elements.py)
+    tests/test_release.py tests/test_minifig.py tests/test_elements.py \
+    tests/test_merge_featuremap.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -136,7 +137,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints clutch variety repeat usage kinds rules angled section scale edit scanner attach import select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns rooms style turned detail chat project minifig; do
   probe "$name"
 done
 
