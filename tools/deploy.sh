@@ -145,7 +145,8 @@ fi
 # reads the Rebrickable and BrickLink joins it maps imports through from
 # the index tools/collection_data.py writes, put beside it here.
 # /api/share is a model shared by link (the same keys, and the publishable
-# one for a visitor's read): /m/<id>, its picture and its card are mapped
+# one for a visitor's read): /m/<id>, its pictures (.png, and .webp for the
+# gallery's cards) and its card are mapped
 # onto it. The viewer is /app?view=<id>: /app is the app's page itself,
 # query and all, so it needs no route of its own. Vercel's cron calls /api/share/sweep at
 # 04:17 UTC every day, with CRON_SECRET (set on the project, and in .env
@@ -168,6 +169,17 @@ for handler in api/*.js; do
       echo "deploy FAILED: no assets/generated/sets/index.json for /api/collection (tools/collection_data.py)"; exit 1
     fi
     cp assets/generated/sets/index.json "$fn/_collection_index.json"
+  fi
+  # A shared model's page, and what the gallery filters on (api/_directory.js):
+  # the site's header and footer, from the gallery's own page, so /m/<id> is a
+  # page of the site and changes when the site's do; and which parts are
+  # Technic and which make a model move, from the catalogue, counted when a
+  # model is published.
+  if [ "$route" = share ]; then
+    cp web/gallery.html "$fn/_site.html"
+    if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" | sed 's/^/deploy: /'; then
+      echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
+    fi
   fi
   # The handler is .mjs and so is unambiguously a module; the shared
   # files it imports are .js, which Node classifies by the nearest
@@ -320,6 +332,7 @@ cat > .vercel/output/config.json <<EOF
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" } },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/parts/(.*[.]lbm)", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },

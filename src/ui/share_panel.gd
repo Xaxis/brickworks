@@ -19,15 +19,36 @@
 ## published again, it leaves the gallery and keeps its link. A model
 ## copied from somebody's link says so when it is published
 ## (ModelStore.remixed_from), and its page names the one it came from.
+##
+## And what the model's page and the gallery say about it (2026-10-13, the
+## directory): a few lines about it, tags, its kind — guessed from the name
+## and the tags (ModelKinds), for its owner to change — and a licence, CC
+## BY unless they choose otherwise. With the big picture goes a small one
+## for the gallery's cards, so a page of them is quick on a phone.
 class_name SharePanel
 extends PanelContainer
 
-const WIDE := 470.0
-const TALL := 500.0
+const WIDE := 490.0
+const TALL := 780.0
 ## The size social sites show a link's picture at.
 const CARD := Vector2i(1200, 630)
 ## Under the server's 600 KB, with room to spare.
 const MOST_PNG := 560 * 1024
+## The gallery's cards, at twice the size a phone shows one.
+const THUMB := Vector2i(480, 252)
+## Under the server's 64 KB.
+const MOST_THUMB := 60 * 1024
+## As api/share.js keeps them.
+const MOST_ABOUT := 1000
+## [id, name, what it lets others do], as api/_directory.js LICENCES.
+const LICENCES: Array = [
+	["cc-by-4.0", "CC BY 4.0",
+		"Anyone may share it, change it and build on it, crediting you."],
+	["cc-by-sa-4.0", "CC BY-SA 4.0",
+		"As CC BY, and what others make from it is shared the same way."],
+	["all-rights-reserved", "All rights reserved",
+		"Others may look at it and build it for themselves, and ask you before sharing it."],
+]
 
 var account: Account
 var store: ModelStore
@@ -44,6 +65,16 @@ var embed: String = ""
 var _name: LineEdit
 var _credit: CheckBox
 var _author: LineEdit
+var _about: TextEdit
+var _tags: LineEdit
+var _kind: OptionButton
+## Whether the kind is the owner's choice, not the guess: then a new name
+## does not change it.
+var _kind_chosen: bool = false
+## Which model the words are about: its link and its name.
+var _words_for: String = "-"
+var _licence: OptionButton
+var _licence_says: Label
 var _list: CheckBox
 var _status: Label
 var _publish: Button
@@ -81,12 +112,24 @@ func setup() -> void:
 		+ "in 3D, its building steps, the booklet and the parts list. It is a "
 		+ "copy as it is now; publish again to update it.", 12, 0.7))
 
-	column.add_child(_line("Name", 12, 0.85))
+	# What is said about it, in a scroll of its own: on a short window the
+	# buttons below stay where they can be pressed.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(scroll)
+	var form := VBoxContainer.new()
+	form.add_theme_constant_override("separation", 7)
+	form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(form)
+
+	form.add_child(_line("Name", 12, 0.85))
 	_name = LineEdit.new()
 	_name.placeholder_text = "What is it called?"
 	_name.max_length = 80
 	_name.text_submitted.connect(func(_text: String) -> void: publish())
-	column.add_child(_name)
+	_name.text_changed.connect(func(_text: String) -> void: _guess_kind())
+	form.add_child(_name)
 
 	_credit = CheckBox.new()
 	_credit.text = "Show who made it"
@@ -96,12 +139,67 @@ func setup() -> void:
 		_author.visible = on
 		if on and _author.text.is_empty():
 			_author.text = _suggested_author())
-	column.add_child(_credit)
+	form.add_child(_credit)
 	_author = LineEdit.new()
 	_author.placeholder_text = "The name to credit"
 	_author.max_length = 60
 	_author.visible = false
-	column.add_child(_author)
+	form.add_child(_author)
+
+	form.add_child(_line("About it (shown on its page)", 12, 0.85))
+	_about = TextEdit.new()
+	_about.placeholder_text = "What it is, how it goes together, what you would change."
+	_about.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_about.custom_minimum_size = Vector2(0, 66)
+	_about.add_theme_font_size_override("font_size", 13)
+	_about.text_changed.connect(func() -> void:
+		# Kept to what the server keeps, as it is typed.
+		if _about.text.length() > MOST_ABOUT:
+			_about.text = _about.text.left(MOST_ABOUT)
+			_about.set_caret_column(_about.get_line(_about.get_line_count() - 1).length())
+			_about.set_caret_line(_about.get_line_count() - 1)
+		_guess_kind())
+	form.add_child(_about)
+
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", 10)
+	form.add_child(pair)
+	var tag_side := VBoxContainer.new()
+	tag_side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tag_side.size_flags_stretch_ratio = 1.4
+	pair.add_child(tag_side)
+	tag_side.add_child(_line("Tags", 12, 0.85))
+	_tags = LineEdit.new()
+	_tags.placeholder_text = "castle, tower, wizard"
+	_tags.max_length = 200
+	_tags.tooltip_text = "Up to eight, between commas. Anyone can find it by them in the gallery."
+	_tags.text_changed.connect(func(_text: String) -> void: _guess_kind())
+	tag_side.add_child(_tags)
+	var kind_side := VBoxContainer.new()
+	kind_side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pair.add_child(kind_side)
+	kind_side.add_child(_line("Kind", 12, 0.85))
+	_kind = OptionButton.new()
+	_kind.focus_mode = Control.FOCUS_NONE
+	_kind.add_theme_font_size_override("font_size", 12)
+	_kind.add_item("Not said")
+	for kind: Array in ModelKinds.KINDS:
+		_kind.add_item(str(kind[1]))
+	_kind.tooltip_text = "What the gallery files it under. A guess from its name and tags: change it if it is wrong."
+	_kind.item_selected.connect(func(_at: int) -> void: _kind_chosen = true)
+	kind_side.add_child(_kind)
+
+	form.add_child(_line("Licence", 12, 0.85))
+	_licence = OptionButton.new()
+	_licence.focus_mode = Control.FOCUS_NONE
+	_licence.add_theme_font_size_override("font_size", 12)
+	for licence: Array in LICENCES:
+		_licence.add_item(str(licence[1]))
+	_licence.item_selected.connect(func(_at: int) -> void: _say_licence())
+	form.add_child(_licence)
+	_licence_says = _line("", 11, 0.65)
+	form.add_child(_licence_says)
+	_say_licence()
 
 	# Off unless ticked: a link is for whoever it is sent to, and the
 	# gallery is for everybody.
@@ -111,7 +209,7 @@ func setup() -> void:
 		+ "Untick it and publish again to take it out and keep the link."
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
-	column.add_child(_list)
+	form.add_child(_list)
 
 	_publish = Button.new()
 	_publish.text = "Publish"
@@ -153,9 +251,6 @@ func setup() -> void:
 	_unpublish.pressed.connect(unpublish)
 	_link_box.add_child(_unpublish)
 
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(spacer)
 	_done = Button.new()
 	_done.text = "Done"
 	_done.custom_minimum_size = Vector2(0, 32)
@@ -183,6 +278,68 @@ func _small(row: Container, words: String, tip: String) -> Button:
 	return button
 
 
+## The kind the words say, unless the owner chose one.
+func _guess_kind() -> void:
+	if _kind_chosen or _kind == null:
+		return
+	var guessed: String = ModelKinds.guess("%s %s %s" % [_name.text, _tags.text.replace(",", " "), _about.text])
+	_kind.select(ModelKinds.ids().find(guessed) + 1)
+
+
+## The kind chosen: an id of ModelKinds, or "" for none said.
+func _kind_id() -> String:
+	var at: int = _kind.selected - 1
+	var ids: PackedStringArray = ModelKinds.ids()
+	return ids[at] if at >= 0 and at < ids.size() else ""
+
+
+func _set_kind(id: String) -> void:
+	_kind.select(ModelKinds.ids().find(id) + 1)
+
+
+func _licence_id() -> String:
+	return str(LICENCES[clampi(_licence.selected, 0, LICENCES.size() - 1)][0])
+
+
+func _set_licence(id: String) -> void:
+	for at: int in LICENCES.size():
+		if str(LICENCES[at][0]) == id:
+			_licence.select(at)
+	_say_licence()
+
+
+func _say_licence() -> void:
+	if _licence_says != null:
+		_licence_says.text = str(LICENCES[clampi(_licence.selected, 0, LICENCES.size() - 1)][2])
+
+
+## What is said about a model with no link yet: nothing, the kind its name
+## says, and CC BY.
+func _fresh_words() -> void:
+	_about.text = ""
+	_tags.text = ""
+	_kind_chosen = false
+	_set_licence("cc-by-4.0")
+	_guess_kind()
+
+
+## What the link says about it now, from the account's own list.
+func _words_from(row: Dictionary) -> void:
+	_about.text = str(row["description"]) if row.get("description") is String else ""
+	var tags: PackedStringArray = PackedStringArray()
+	if row.get("tags") is Array:
+		for tag: Variant in row["tags"]:
+			tags.append(str(tag))
+	_tags.text = ", ".join(tags)
+	if row.get("kind") is String and not str(row["kind"]).is_empty():
+		_set_kind(str(row["kind"]))
+		_kind_chosen = true
+	else:
+		_kind_chosen = false
+		_guess_kind()
+	_set_licence(str(row["licence"]) if row.get("licence") is String else "cc-by-4.0")
+
+
 ## The part of the account's address before the @, as a first guess at a
 ## name to credit. Only ever shown in the box, never sent unless ticked.
 func _suggested_author() -> String:
@@ -199,6 +356,13 @@ func open() -> void:
 	if state in ["publishing", "unpublishing"]:
 		return
 	_show_link(store.share_id)
+	# What was typed about a model is kept while the panel is closed and
+	# opened again, and starts afresh for another model.
+	var which: String = "%s|%s" % [store.share_id, title]
+	var fresh: bool = which != _words_for
+	if fresh:
+		_words_for = which
+		_fresh_words()
 	if store.share_id.is_empty():
 		state = "idle"
 		_list.button_pressed = false
@@ -206,12 +370,14 @@ func open() -> void:
 		_status.text = "" if account.signed_in() else "Sign in to Brickworks to share a model."
 	else:
 		_status.text = "This model has a link. Publish again to update what it shows."
-		_check_link(store.share_id)
+		_check_link(store.share_id, fresh)
 
 
 ## Whether the model's link is up or was taken down, so the buttons say
-## the right thing. Asked of the account's own list, which is small.
-func _check_link(id: String) -> void:
+## the right thing. Asked of the account's own list, which is small. And,
+## the first time the panel opens on it, what the link says about the
+## model, to change or keep.
+func _check_link(id: String, words: bool = true) -> void:
 	var token: String = await account.access_token()
 	if token.is_empty():
 		return
@@ -225,6 +391,8 @@ func _check_link(id: String) -> void:
 			# The box as the link is, so Update the link does not take a
 			# listed model out of the gallery by surprise.
 			var barred: bool = bool((one as Dictionary).get("barred", false))
+			if words:
+				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
 			_list.disabled = barred
 			_status.text = ("Shared at this link. Publish again to update what it shows."
@@ -266,7 +434,8 @@ func publish() -> void:
 	state = "publishing"
 	_publish.disabled = true
 	_status.text = "Taking its picture…"
-	var png: PackedByteArray = await _picture()
+	var pictures: Dictionary = await _pictures()
+	var png: PackedByteArray = pictures["png"]
 	_status.text = "Publishing…"
 	# A big model's build order a slice at a time, said and counted.
 	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name)
@@ -280,6 +449,14 @@ func publish() -> void:
 		body["author"] = author
 	if not png.is_empty():
 		body["image"] = Marshalls.raw_to_base64(png)
+	if not (pictures["thumb"] as PackedByteArray).is_empty():
+		body["thumb"] = Marshalls.raw_to_base64(pictures["thumb"])
+	# What its page and the gallery say about it: said every time, so a
+	# box emptied empties it there too.
+	body["description"] = _about.text.strip_edges()
+	body["tags"] = _tags.text.strip_edges()
+	body["kind"] = _kind_id()
+	body["licence"] = _licence_id()
 	if not store.share_id.is_empty():
 		body["id"] = store.share_id
 	body["listed"] = _list.button_pressed and not _list.disabled
@@ -301,6 +478,8 @@ func publish() -> void:
 	store.share_id = str(said.get("id", ""))
 	# Kept with the model, so the next Publish updates this link.
 	store.touch()
+	# What was said stays in the boxes, as the link now has it.
+	_words_for = "%s|%s" % [store.share_id, str(named.call())]
 	state = "published"
 	_show_link(store.share_id)
 	url = str(said.get("url", url))
@@ -342,15 +521,18 @@ func _fail(words: String) -> void:
 	_status.text = words
 
 
-## The link's picture: the model from where the view is looking, on a
-## plain ground, as a PNG small enough to send. Empty when there is no
-## picture to be had (a run with nothing to draw with).
-func _picture() -> PackedByteArray:
+## The link's pictures: the model from where the view is looking, on a
+## plain ground — a PNG small enough to send, for link previews and the
+## model's page, and a small WebP of the same for the gallery's cards.
+## {png, thumb}, either empty when there is none to be had (a run with
+## nothing to draw with).
+func _pictures() -> Dictionary:
+	var none := {"png": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
-		return PackedByteArray()
+		return none
 	var shot: Image = await picture.take(CARD)
 	if shot == null or shot.is_empty():
-		return PackedByteArray()
+		return none
 	shot.convert(Image.FORMAT_RGBA8)
 	var card := Image.create(CARD.x, CARD.y, false, Image.FORMAT_RGBA8)
 	# A soft ground, lighter at the top, so the model reads on any site.
@@ -359,11 +541,17 @@ func _picture() -> PackedByteArray:
 		card.fill_rect(Rect2i(0, y, CARD.x, 1), Color(0.93, 0.94, 0.96).lerp(Color(0.80, 0.83, 0.87), t))
 	card.blend_rect(shot, Rect2i(Vector2i.ZERO, shot.get_size()), Vector2i.ZERO)
 	card.convert(Image.FORMAT_RGB8)
+	var small: Image = card.duplicate()
+	small.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
+	var thumb: PackedByteArray = small.save_webp_to_buffer(true, 0.8)
+	if thumb.size() > MOST_THUMB:
+		thumb = small.save_webp_to_buffer(true, 0.55)
 	var png: PackedByteArray = card.save_png_to_buffer()
 	if png.size() > MOST_PNG:
 		card.resize(800, 420, Image.INTERPOLATE_LANCZOS)
 		png = card.save_png_to_buffer()
-	return png if png.size() <= MOST_PNG else PackedByteArray()
+	return {"png": png if png.size() <= MOST_PNG else PackedByteArray(),
+		"thumb": thumb if thumb.size() <= MOST_THUMB else PackedByteArray()}
 
 
 ## Its controls, for the page to find.
@@ -371,7 +559,9 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	var named_controls: Dictionary = {"share_name": _name, "share_credit": _credit,
-		"share_list": _list, "share_publish": _publish, "share_done": _done}
+		"share_about": _about, "share_tags": _tags, "share_kind": _kind,
+		"share_licence": _licence, "share_list": _list, "share_publish": _publish,
+		"share_done": _done}
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
 	if _link_box.is_visible_in_tree():
@@ -388,7 +578,11 @@ func page_state() -> Dictionary:
 	return {"open": visible, "state": state, "id": store.share_id if store != null else "",
 		"url": url, "embed": embed, "status": _status.text if _status != null else "",
 		"listed": _list.button_pressed if _list != null else false,
-		"remixed_from": store.remixed_from if store != null else ""}
+		"remixed_from": store.remixed_from if store != null else "",
+		"about": _about.text if _about != null else "",
+		"tags": _tags.text if _tags != null else "",
+		"kind": _kind_id() if _kind != null else "",
+		"licence": _licence_id() if _licence != null else ""}
 
 
 ## Escape closes it, like the other panels.

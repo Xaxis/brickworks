@@ -318,6 +318,14 @@
       "tests": []
     },
     {
+      "id": "cli:list load test",
+      "kind": "cli",
+      "entry": "tools/web/list_load.mjs",
+      "reach": "node tools/web/list_load.mjs --url=<deployment> [--n=200] [--at-once=10]   (BW_BYPASS for a preview)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -373,6 +381,14 @@
       "entry": "tools/web_pack.py",
       "reach": "tools/web_pack.py --list",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:part facts",
+      "kind": "cli",
+      "entry": "tools/web/part_facts.mjs",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "area": "web",
       "tests": []
     },
     {
@@ -715,6 +731,14 @@
       "tests": []
     },
     {
+      "id": "lib:directory",
+      "kind": "lib",
+      "entry": "api/_directory.js",
+      "reach": "imported by api/share.js: the gallery's question, what an owner says checked, part facts, views counted, the site's header and footer for a model's page; node tools/web/share_probe.mjs drives it",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:element maker",
       "kind": "lib",
       "entry": "src/parts/element_maker.gd",
@@ -802,6 +826,14 @@
       "entry": "src/ai/brain.gd",
       "reach": "godot --headless --path . --script src/dev/brain_probe.gd",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:model kinds",
+      "kind": "lib",
+      "entry": "src/net/model_kinds.gd",
+      "reach": "the Share panel's Kind, guessed from the name and tags; godot --path . --resolution 1400x900 --script src/dev/share_view_probe.gd",
+      "area": "web",
       "tests": []
     },
     {
@@ -1160,7 +1192,7 @@
       "id": "ui:gallery page",
       "kind": "ui",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery   (gallery.js reads /api/share?op=list; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=views   (gallery.js reads /api/share?op=list with the search, filters and sort; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": []
     },
@@ -1488,7 +1520,7 @@
       "id": "ui:shared model page and card",
       "kind": "ui",
       "entry": "web/share-page.js",
-      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed   (served by api/share.js)",
+      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed   (served by api/share.js; web/directory.css, web/share-page.js counts the view)",
       "area": "web",
       "tests": []
     },

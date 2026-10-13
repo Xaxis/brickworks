@@ -115,7 +115,8 @@ def public_text() -> dict[str, str]:
     """Every file a person reads, as the words they read."""
     texts: dict[str, str] = {}
     for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*.js")) + [
-            ROOT / "web/site.webmanifest", ROOT / "api/share.js", ROOT / "src/boot/shell.html",
+            ROOT / "web/site.webmanifest", ROOT / "api/share.js", ROOT / "api/_directory.js",
+            ROOT / "src/boot/shell.html",
             ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "tools/brickworks_mcp.py",
             ROOT / "tools/release.py", ROOT / "tools/site.py"]:
         texts[path.relative_to(ROOT).as_posix()] = plain(path.read_text())
@@ -181,16 +182,26 @@ def test_the_web_app_and_the_readme_carry_the_notice() -> None:
 
 def _function(source: str, name: str) -> str:
     start = source.index(f"function {name}(")
-    end = source.find("\nfunction ", start + 1)
-    return source[start:end]
+    ends = [at for at in (source.find("\nfunction ", start + 1), source.find("\nexport function ", start + 1),
+                          source.find("\nasync function ", start + 1)) if at > 0]
+    return source[start:min(ends) if ends else len(source)]
 
 
 def test_the_share_page_carries_the_notice() -> None:
+    """A shared model's page and the page of a link taken down (api/share.js)
+    end in the site's own footer, read from web/gallery.html, whose footer
+    carries the notice (above); and where that page is not there, in one of
+    their own with it (api/_directory.js siteChrome)."""
+    shared = (ROOT / "api/_directory.js").read_text()
+    said = re.search(r'export const NOTICE = "([^"]+)";', shared)
+    assert said is not None and NOTICE.fullmatch(said.group(1)), "_directory.js has no NOTICE"
+    chrome = _function(shared, "siteChrome")
+    assert "${NOTICE}" in chrome and "gallery.html" in chrome, "siteChrome has no footer of its own with the notice"
     source = (ROOT / "api/share.js").read_text()
-    said = re.search(r'const NOTICE = "([^"]+)";', source)
-    assert said is not None and NOTICE.fullmatch(said.group(1)), "share.js has no NOTICE"
     for page in ["sharePage", "gonePage"]:
-        assert "${NOTICE}" in _function(source, page), f"{page} does not show the notice"
+        body = _function(source, page)
+        assert "${NOTICE}" in body or ("siteChrome()" in body and "${footer}" in body), \
+            f"{page} does not show the notice"
 
 
 def test_the_app_says_it_in_about_and_in_the_booklet() -> None:

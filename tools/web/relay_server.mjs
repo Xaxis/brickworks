@@ -15,7 +15,8 @@
 // routes), so Claude's sign-in is found here where it is found there: the
 // OAuth metadata under /.well-known/, /oauth/register, /oauth/token and
 // /oauth/revoke, and /oauth/authorize, which is the page web/authorize.html;
-// and a shared model's /m/<id>, /m/<id>.png and /m/<id>/embed (api/share.js).
+// and a shared model's /m/<id>, /m/<id>.png, /m/<id>.webp and /m/<id>/embed
+// (api/share.js).
 // Other files in web/ are served as they are.
 //
 // No client address is passed on, so api/otp.js's per-address limit has
@@ -46,6 +47,7 @@ const MAPPED = [
   // A shared model's link, its picture and its card, as /m/<id>.
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
+  [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],

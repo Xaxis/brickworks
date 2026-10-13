@@ -20,7 +20,10 @@
 // that must be shown as the text it is; against a deployment, what it lists.
 // No error in the console (a refused script or fetch is one), and no
 // sideways scroll on a phone or a laptop. --shots gets gallery-phone.png and
-// gallery-laptop.png.
+// gallery-laptop.png. Locally the made-up list answers a search and a kind
+// as the real one does, so the check also types in the search box, picks a
+// kind, finds nothing and clears it, and opens an address asking for a kind
+// there is not: the address says each question, and the page the answer.
 //
 // Each system is a real browser told it is that system the way a browser
 // says so: the user agent, navigator.platform and the client hints, through
@@ -78,7 +81,10 @@ const LISTED = Array.from({ length: 26 }, (_, n) => ({
   author: n % 3 === 0 ? null : `Builder ${n}`,
   parts: 12 + n * 37,
   image: n === 1 ? null : "yes",
+  kind: n % 2 ? "space" : "castle",
+  views: 26 - n,
 }));
+const KINDS = [{ id: "castle", label: "Castles and fantasy" }, { id: "space", label: "Space" }];
 let galleryTarget = "";
 if (!target) {
   const root = resolve("web");
@@ -92,10 +98,20 @@ if (!target) {
       "Cross-Origin-Resource-Policy": "same-origin" };
     if (path === "/api/share" && url.searchParams.get("op") === "list") {
       const page = Number(url.searchParams.get("page") || 1);
-      const models = LISTED.slice((page - 1) * 24, page * 24).map((m) => ({ ...m,
+      const words = (url.searchParams.get("q") || "").toLowerCase();
+      const kind = url.searchParams.get("kind") || "";
+      if (kind && !KINDS.some((k) => k.id === kind)) {
+        response.writeHead(400, { ...headers, "Content-Type": "application/json" });
+        return response.end(JSON.stringify({ error: "kind is one of castle, space" }));
+      }
+      const found = LISTED.filter((m) => (!words || m.name.toLowerCase().includes(words))
+        && (!kind || m.kind === kind));
+      const models = found.slice((page - 1) * 24, page * 24).map((m) => ({ ...m,
         url: `http://x/m/${m.id}`, image: m.image ? `http://x/m/${m.id}.png` : null }));
       response.writeHead(200, { ...headers, "Content-Type": "application/json" });
-      return response.end(JSON.stringify({ page, per_page: 24, more: page * 24 < LISTED.length, models }));
+      return response.end(JSON.stringify({ page, per_page: 24, more: page * 24 < found.length, models,
+        kinds: KINDS, sizes: [{ id: "small", label: "Small, under 200 parts" }],
+        sorts: [{ id: "newest", label: "Newest" }, { id: "views", label: "Most viewed" }] }));
     }
     if (/^\/m\/[A-Za-z0-9]{10}\.png$/.test(path)) {
       response.writeHead(200, { ...headers, "Content-Type": "image/png" });
@@ -274,6 +290,50 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     await page.waitForTimeout(300);
     seen = await look();
     if (seen.cards.length !== 26 || seen.more) fail(`after Show more, ${seen.cards.length} cards, Show more ${seen.more ? "still shown" : "gone"}`);
+
+    // The question: typed, picked, found nothing, cleared; each in the address.
+    // Answered once the address says the question and the list is drawn.
+    const answered = async (where) => {
+      await page.waitForFunction((want) => location.pathname + location.search === want
+        && (document.documentElement.dataset.gallery === "ready"
+          || document.documentElement.dataset.gallery === "broken"), where, { timeout: 10000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      return { ...(await look()), where: await page.evaluate(() => location.pathname + location.search),
+        nothing: await page.evaluate(() => !document.getElementById("nothing").hidden) };
+    };
+    if (label === "phone") await page.click("#filters summary");
+    await page.fill("#q", "model 2");
+    let asked = await answered("/gallery?q=model+2");
+    if (asked.where !== "/gallery?q=model+2" || asked.cards.length !== 8
+        || !asked.cards.every((c) => c.name.includes("model 2"))) {
+      fail(`typing "model 2": ${asked.where}, ${asked.cards.length} cards`);
+    }
+    await page.selectOption("#kind", "space");
+    asked = await answered("/gallery?q=model+2&kind=space");
+    if (asked.where !== "/gallery?q=model+2&kind=space" || asked.cards.length !== 5) {
+      fail(`then Space: ${asked.where}, ${asked.cards.length} cards`);
+    }
+    await page.fill("#q", "no such model");
+    asked = await answered("/gallery?q=no+such+model&kind=space");
+    if (asked.cards.length !== 0 || !asked.nothing || asked.empty) fail("a search that finds nothing does not say so");
+    await page.click("#clear");
+    asked = await answered("/gallery");
+    if (asked.where !== "/gallery" || asked.cards.length !== 24) fail(`cleared: ${asked.where}, ${asked.cards.length} cards`);
+    if (args.shots) await page.screenshot({ path: join(args.shots, `gallery-${label}-cleared.png`) });
+    // The one answer here that is meant to be refused, which the browser
+    // logs as a failed load; anything else said meanwhile still counts.
+    const before = said.length;
+    await page.goto(`${galleryTarget}?kind=nope&q=x`, { waitUntil: "load" });
+    asked = await answered("/gallery");
+    const meanwhile = said.splice(before).filter((line) => !/status of 400/.test(line));
+    said.push(...meanwhile);
+    if (asked.where !== "/gallery" || asked.cards.length !== 24 || asked.state !== "ready") {
+      fail(`an address asking for a kind there is not: ${asked.where}, ${asked.cards.length} cards, ${asked.state}`);
+    }
+    await page.goto(`${galleryTarget}?kind=castle`, { waitUntil: "load" });
+    asked = await answered("/gallery?kind=castle");
+    const picked = await page.evaluate(() => document.getElementById("kind").value);
+    if (picked !== "castle" || asked.cards.length !== 13) fail(`?kind=castle: ${picked}, ${asked.cards.length} cards`);
   } else if (!seen.cards.length && !seen.empty) {
     fail("neither cards nor the empty gallery's words");
   }

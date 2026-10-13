@@ -11,13 +11,17 @@
 // window.brickworksShare):
 //
 //   1. The owner, signed in (a throwaway account), with the example model
-//      on the baseplate, presses Share, names it, ticks Show who made it
-//      and List it in the gallery, and Publish: a link, /m/<id>, and its
-//      card on /gallery, first, in a browser that never signed in.
-//   2. A browser that has never signed in opens the link: the link's page
-//      (og:title, og:image) goes straight on to the viewer, which shows the
-//      model, its name, author and part count, with no sign-in screen and
-//      the address left at the link. The steps scrub (Start, Next, End),
+//      on the baseplate, presses Share, names it, ticks Show who made it,
+//      says a little about it and tags it (its kind guessed from its name,
+//      its licence CC BY unless changed), ticks List it in the gallery, and
+//      Publish: a link, /m/<id>, and its card on /gallery, first, in a
+//      browser that never signed in, and found there by a word of its
+//      description in the search box and by its tag.
+//   2. A browser that has never signed in opens the link: the model's page
+//      (og:title, og:image, its description, tags, licence and counts, the
+//      view counted once), and View in 3D on it opens the viewer, which
+//      shows the model, its name, author and part count, with no sign-in
+//      screen and the address back at the link. The steps scrub (Start, Next, End),
 //      the part under the pointer is named, the parts list opens and gives
 //      BrickLink and Rebrickable lists, the booklet opens in a tab. A click,
 //      a drag and the editing keys change nothing, and nothing is written
@@ -54,6 +58,12 @@ const out = args.out || "shots/share_web";
 const bypass = process.env.BW_BYPASS || "";
 const NAME = "Share Flow Car";
 const AUTHOR = "Flow Builder";
+// A word nobody else's model has, to find it by in the gallery's search.
+const WORD = `flowword${randomBytes(3).toString("hex")}`;
+const ABOUT = `A small red car for the share flow, with a ${WORD} on its bonnet.`;
+// What a person's browser says it is: a headless one says so, and is not
+// counted as somebody looking.
+const PERSON = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
 mkdirSync(out, { recursive: true });
 
 let failed = 0;
@@ -68,7 +78,10 @@ const owner = `delivered+bw-share-owner-${rand}@resend.dev`;
 const copier = `delivered+bw-share-copier-${rand}@resend.dev`;
 
 const browser = await launch({ signedOut: true });
-const headers = bypass ? { "x-vercel-protection-bypass": bypass } : {};
+// And never Vercel's preview toolbar, which it puts in a page for a browser
+// that says it is a person's (the visitor here does) and which the site's
+// own policy rightly refuses; it is never on the real site.
+const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 
 async function context({ as = null } = {}) {
   const made = await browser.newContext({ viewport: { width: 1400, height: 900 },
@@ -153,12 +166,13 @@ async function fetchText(url) {
 }
 
 /// The gallery as a stranger sees it, in a browser: the cards it draws.
-async function galleryCards(name) {
+async function galleryCards(name, query = "") {
   const made = await context();
   const page = await made.newPage();
   listen(page, "gallery");
-  await page.goto(`${site}/gallery`, { waitUntil: "load", timeout: 120000 });
-  await until(page, () => document.documentElement.dataset.gallery, "the gallery's list", 60);
+  await page.goto(`${site}/gallery${query}`, { waitUntil: "load", timeout: 120000 });
+  await until(page, () => document.documentElement.dataset.gallery === "ready"
+    || document.documentElement.dataset.gallery === "broken", "the gallery's list", 60);
   await page.evaluate(async () => {
     await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
   });
@@ -194,6 +208,19 @@ try {
   await type(ownerPage, "share_name", NAME);
   await press(ownerPage, "share_credit");
   await type(ownerPage, "share_author", AUTHOR);
+  // One box at a time, each read back before the next: keys typed into a
+  // canvas drawn in software arrive at the app later than they are sent,
+  // and the tags' went nowhere while the description's were still landing.
+  const shown = (field, want) => until(ownerPage, ([name, text]) => {
+    const p = (window.brickworksShare || {}).panel || {};
+    return p[name] === text ? p : null;
+  }, `the ${field} typed`, 45, [field, want]).catch(() => ({}));
+  await type(ownerPage, "share_tags", "car, flow test");
+  await shown("tags", "car, flow test");
+  await type(ownerPage, "share_about", ABOUT);
+  const words = await shown("about", ABOUT);
+  check(`a description and tags typed; its kind guessed from its name (${words.kind}), CC BY unless changed (${words.licence})`,
+    words.tags === "car, flow test" && words.kind === "vehicle" && words.licence === "cc-by-4.0");
   check("List it in the gallery is there, and not ticked", !(await state(ownerPage)).panel.listed
     && Boolean((await controls(ownerPage)).share_list));
   await press(ownerPage, "share_list");
@@ -219,6 +246,10 @@ try {
     && html.includes(`<meta property="og:title" content="${NAME} — a Brickworks model">`)
     && html.includes(`<meta property="og:image" content="${link}.png">`));
   check(`...crediting ${AUTHOR} with the part count`, html.includes(`by ${AUTHOR}`) && /\d+ parts/.test(html));
+  check("...what was said about it, its tags and its licence",
+    html.includes(`<p class="description">${ABOUT}</p>`) && html.includes('href="/gallery?tag=car"')
+    && html.includes('href="/gallery?tag=flow%20test"') && html.includes("<b>CC BY 4.0.</b>")
+    && html.includes('href="/gallery?kind=vehicle"'));
   const picture = await fetchText(`${link}.png`);
   check(`its picture: ${picture.status} ${picture.type}, ${Math.round(picture.bytes.length / 1024)} KB`,
     picture.status === 200 && picture.type === "image/png" && picture.bytes.length > 1000);
@@ -231,13 +262,32 @@ try {
     cards[0] && cards[0].id === id && listedCard.name === NAME && listedCard.href === `/m/${id}`
     && listedCard.about === `${bricks.toLocaleString("en-US")} part${bricks === 1 ? "" : "s"}, by ${AUTHOR}`
     && listedCard.picture > 0);
+  const found = await galleryCards("1c_gallery_search.png", `?q=${WORD}`);
+  check(`found by a word of its description in the search box: ${found.length} card, ${found[0] && found[0].name}`,
+    found.length === 1 && found[0].id === id);
+  const tagged = await galleryCards("1d_gallery_tag.png", "?tag=flow%20test&sort=views");
+  check(`and by its tag, most viewed first: ${tagged.map((c) => c.name).join(", ")}`,
+    tagged.some((c) => c.id === id));
 
   // --- 2. Somebody with no account opens it
   console.log("a browser that never signed in opens the link");
-  const visitorContext = await context();
+  const visitorContext = await browser.newContext({ viewport: { width: 1400, height: 900 },
+    acceptDownloads: true, extraHTTPHeaders: headers, userAgent: PERSON });
   const visitor = await visitorContext.newPage();
   listen(visitor, "visitor");
-  await visitor.goto(link, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await visitor.goto(link, { waitUntil: "load", timeout: 120000 });
+  const onPage = await until(visitor, () => {
+    const h1 = document.querySelector("main h1");
+    const go = document.querySelector('.actions a.cta[href^="/app?view="]');
+    return h1 && go ? { name: h1.textContent, go: go.getAttribute("href"), url: location.href } : null;
+  }, "the model's page", 60);
+  check(`the link is the model's page: "${onPage.name}", and View in 3D (${onPage.go})`,
+    onPage.name === NAME && onPage.go === `/app?view=${id}` && onPage.url === link);
+  await visitor.waitForTimeout(1500);
+  await shot(visitor, "2a_model_page.png");
+  const counted = (await fetchText(link)).bytes.toString("utf8");
+  check("the visit counted once: 1 view", counted.includes('<span data-count="views">1 view</span>'));
+  await visitor.click('.actions a.cta[href^="/app?view="]');
   const viewing = await until(visitor, () => {
     const v = (window.brickworksShare || {}).view || {};
     return v.state === "ready" || v.state === "gone" || v.state === "failed" ? v : null;
@@ -438,6 +488,10 @@ try {
   const remixPage = (await fetchText(`${site}/m/${remixId}`)).bytes.toString("utf8");
   check("its page says remixed from, with a link to the owner's",
     remixPage.includes(`Remixed from <a href="/m/${id}">${NAME}</a>`));
+  const ownerPageNow = (await fetchText(link)).bytes.toString("utf8");
+  check("and the owner's page counts the remix, shared by link and so not named",
+    ownerPageNow.includes(">1 remix<") && ownerPageNow.includes("shared by link, not in the gallery")
+    && !ownerPageNow.includes(`/m/${remixId}"`));
   await shot(visitor, "9b_remix_shared.png");
 
   // --- 4. Out of the gallery, then unpublished
