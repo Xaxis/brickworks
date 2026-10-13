@@ -60,6 +60,7 @@ func _run() -> void:
 	var bin: PartsBin = _main.get("_bin")
 
 	print("  the parts bin")
+	await _open_bin(bin)
 	await _bin_fills_in(bin)
 	print("")
 	await _in_sight_first(bin)
@@ -77,6 +78,24 @@ func _run() -> void:
 	else:
 		print("placeholder probe: %d FAILED" % _failures)
 	quit(1 if _failures else 0)
+
+
+## The parts bin opened by its rail, as a person opens it.
+##
+## A window under the design width (1600 units; this one is about 1520)
+## shows one column beside the model at a time, and a first visit shows
+## the assistant, so the bin starts folded. A folded bin has no tile in
+## sight and draws none, which is right; this probe read it as no tiles
+## in sight and none drawn until it opened the bin first.
+func _open_bin(bin: PartsBin) -> void:
+	var dock: SideDock = _main.get("_bin_dock")
+	if not dock.is_open():
+		await _click(dock.rail().get_global_rect().get_center())
+		await create_timer(SideDock.SLIDE_SECONDS * 2.0).timeout
+		await _frames(10)
+	var scroll: Control = bin.get("_scroll")
+	_check("the parts bin is open beside the model (%s wide)" % scroll.size.x,
+		dock.is_open() and scroll.is_visible_in_tree() and scroll.size.x > 100.0)
 
 
 ## A fresh grid: placeholders first, pictures after, nothing moving.
@@ -305,6 +324,25 @@ func _builder_fills_in(figures: MinifigDialog) -> void:
 func _frames(count: int) -> void:
 	for _n: int in count:
 		await process_frame
+
+
+## A click where a person would make it, in window pixels.
+func _click(at: Vector2) -> void:
+	var window := Vector2(DisplayServer.window_get_size())
+	var point: Vector2 = at * (window / root.get_visible_rect().size)
+	var move := InputEventMouseMotion.new()
+	move.position = point
+	move.global_position = point
+	Input.parse_input_event(move)
+	await _frames(3)
+	for down: bool in [true, false]:
+		var press := InputEventMouseButton.new()
+		press.button_index = MOUSE_BUTTON_LEFT
+		press.pressed = down
+		press.position = point
+		press.global_position = point
+		Input.parse_input_event(press)
+		await _frames(3)
 
 
 ## Every picture forgotten, so the next grid has to wait for all of them.
