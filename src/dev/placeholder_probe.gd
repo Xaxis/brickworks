@@ -357,7 +357,7 @@ func _forget_pictures() -> void:
 func _tiles_of(grid: GridContainer) -> Array[ThumbTile]:
 	var out: Array[ThumbTile] = []
 	for cell: Node in grid.get_children():
-		var tile: Variant = cell.get_meta("tile", null)
+		var tile: Variant = cell.get_meta("tile") if cell.has_meta("tile") else null
 		if tile is ThumbTile:
 			out.append(tile)
 	return out
