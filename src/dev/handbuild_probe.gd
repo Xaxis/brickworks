@@ -47,6 +47,17 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_library = _main.get("_library")
 	_store = _main.get("_store")
+	# `-- only=<section>` runs one section of this probe on its own, after
+	# the same start: `-- only=first_timer`.
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("only="):
+			_main.call("clear_model")
+			await call("_" + arg.substr(5))
+			print("")
+			print("by hand, %s only: %s" % [arg.substr(5),
+				"every check passed" if _failures == 0 else "%d FAILED" % _failures])
+			quit(1 if _failures > 0 else 0)
+			return
 	await _one_column_at_a_time()
 	_main.call("clear_model")
 	# A clipboard from nobody: a probe must not paste whatever the person
@@ -92,6 +103,7 @@ func _run() -> void:
 	await _a_submodel()
 	await _the_ruler()
 	await _a_small_laptop()
+	await _first_timer()
 
 	print("")
 	if _failures == 0:
@@ -1436,6 +1448,52 @@ func _seated_near(mesh: Lbm.PartMesh, near: Vector3) -> Variant:
 			if Seating.off_the_studs(mesh, at) <= 0.01:
 				return at
 	return null
+
+
+## What a first-time builder hit on brickworks.diy, the second round
+## (2026-10-12): each check here failed there.
+func _first_timer() -> void:
+	print("  what a first-time builder hit, round two")
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	_put("3001", 1, Vector3(60, 24, 20))
+	_put("3003", 14, Vector3(0, 24, -100))
+	await _frames(3)
+	_camera.frame(AABB(Vector3(-200, 0, -200), Vector3(400, 80, 400)))
+	await _frames(20)
+
+	await _edit_cut()
+
+
+## Edit, Cut takes the selection off the model. Two commands shared the
+## name "cut" and the cut-away's replaced it, so Edit, Cut sliced the model
+## open with a plane instead.
+func _edit_cut() -> void:
+	var shell: Shell = _main.get("_shell")
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	_select_only([red])
+	await _frames(2)
+	var edit: MenuButton = shell.menu("Edit")
+	await _click(edit.get_global_rect().get_center())
+	var popup: PopupMenu = edit.get_popup()
+	var cut_at: int = -1
+	for index: int in popup.item_count:
+		if popup.get_item_text(index) == "Cut":
+			cut_at = index
+	_check("Edit has Cut, by Ctrl+X (%s)" % (OS.get_keycode_string(
+		popup.get_item_accelerator(cut_at)) if cut_at >= 0 else "none"), cut_at >= 0
+		and popup.get_item_accelerator(cut_at) == (KEY_MASK_CMD_OR_CTRL | KEY_X))
+	Carry.clipboard = []
+	if cut_at >= 0:
+		popup.id_pressed.emit(popup.get_item_id(cut_at))
+	popup.hide()
+	await _frames(4)
+	_check("Edit, Cut takes the selection off the model (%d parts)" % _count(), _count() == 2)
+	_check("...onto the clipboard (%d)" % Carry.clipboard.size(), Carry.clipboard.size() == 1)
+	_check("...and does not cut the model away", not _world.is_cut())
+	if _world.is_cut():
+		shell.see_inside.set_cut(false)
+	await _key(KEY_Z, true)
 
 
 # -- helpers ------------------------------------------------------------------

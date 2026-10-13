@@ -69,7 +69,7 @@ const ALT := KEY_MASK_ALT
 const MENUS: Array = [
 	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "-",
 		"share", ">export", "render", "instructions", "-", "clear", "account", "quit"]],
-	["Edit", ["undo", "redo", ">history", "-", "cut", "copy", "paste", "duplicate",
+	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
 		"-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
@@ -250,6 +250,10 @@ func _section_shown(section: Control) -> bool:
 ## Define one command.
 func _add(name: String, words: String, accel: int, run: Callable,
 		can: Callable = Callable(), tip: String = "") -> Command:
+	# Two commands of one name: the second replaced the first, and its
+	# menu item ran the other one (Edit, Cut ran the cut-away).
+	if _commands.has(name):
+		push_error("two commands are named %s" % name)
 	var command := Command.new()
 	command.name = name
 	command.words = words
@@ -364,7 +368,11 @@ func _define() -> void:
 		func() -> bool: return builder.history_depth() > 0, "Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: verbs.press("redo"),
 		func() -> bool: return not builder._redo.is_empty(), "Put it back")
-	_add("cut", "Cut", CTRL | KEY_X, func() -> void: verbs.cut(), selected)
+	# Not "cut": that is the cut-away (K), defined under View, and a second
+	# command of one name replaced the first, so Edit, Cut sliced the model
+	# open instead of taking the selection off it.
+	_add("cut_parts", "Cut", CTRL | KEY_X, func() -> void: verbs.cut(), selected,
+		"Take the selection off the model, to paste somewhere else")
 	_add("copy", "Copy", CTRL | KEY_C, func() -> void: verbs.copy(), selected,
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),

@@ -76,6 +76,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Instructions, Render, Parts list — each tooltip its name, key and what it does.
   Narrower than it needs, it folds its least-needed groups (all in the menus
   too); on a phone the file, history and tools stay.
+  One name, one command: Edit's Cut is `cut_parts` and the cut-away (`K`) is
+  `cut`, which had replaced it, so Edit, Cut sliced the model open
+  (`Shell._add` now refuses a second command of a name).
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
