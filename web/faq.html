@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<!--
+  Questions about Brickworks, and how to design with Claude in it.
+
+  Moved off the home page on 2026-10-13, which now says what Brickworks is
+  and shows it; this is where the detail lives: the two ways to bring
+  Claude, what each costs, and the questions people ask. The answers are
+  also FAQPage JSON-LD at the foot (data, not script).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Questions · Brickworks</title>
+<meta name="description" content="How to design with Claude in Brickworks, on your Claude plan or your own API key, and answers to what people ask: price, files, privacy, what it runs on.">
+<link rel="canonical" href="https://brickworks.diy/faq">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="theme-color" content="#0e1013">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Questions · Brickworks">
+<meta property="og:description" content="How to design with Claude in Brickworks, and answers to what people ask.">
+<meta property="og:url" content="https://brickworks.diy/faq">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<link rel="stylesheet" href="/site.css">
+<style>
+.page { padding: clamp(48px, 8vw, 96px) 0; max-width: 820px; }
+.page h1 { font-size: clamp(34px, 5vw, 50px); }
+.page h2 { font-size: clamp(24px, 3.2vw, 30px); margin-top: clamp(48px, 7vw, 72px); }
+.ways { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.way ol { margin: 14px 0 0; padding-left: 20px; color: var(--ink-soft); font-size: 15px; }
+.way li { margin: 0 0 10px; }
+.way b { color: var(--ink); font-weight: 620; }
+.way .for { font-size: 14px; color: var(--ink-faint); margin: 2px 0 0; }
+.way .cost { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14.5px; }
+code.cmd {
+	display: block; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--bg-soft);
+	border: 1px solid var(--line); font-size: 12.5px; overflow-x: auto; white-space: nowrap; color: var(--ink);
+}
+.scroller { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 15px; }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--ink-faint); font-weight: 500; font-size: 13.5px; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/#gallery">Gallery</a>
+			<a href="/#features">Features</a>
+			<a href="/#assistant">Assistant</a>
+			<a href="/faq" aria-current="page">FAQ</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<nav class="menu-list" aria-label="Menu">
+				<a href="/#gallery">Gallery</a>
+				<a href="/#features">Features</a>
+				<a href="/#assistant">Assistant</a>
+				<a href="/faq" aria-current="page">FAQ</a>
+				<a href="/download">Download</a>
+			</nav>
+		</details>
+	</div>
+</header>
+
+<main id="main" class="wrap page">
+	<h1>Questions</h1>
+	<p class="lede">If yours is not here, <a href="https://github.com/Xaxis/brickworks/issues">ask it on GitHub</a>.</p>
+
+	<h2 id="claude">Designing with Claude</h2>
+	<p class="sub">Building by hand needs nothing but an account. To have Claude design, bring your own Claude, one of two ways. Brickworks bills nothing.</p>
+	<div class="ways">
+		<div class="card way">
+			<h3>Your Claude plan</h3>
+			<p class="for">Claude Pro or Max · no key, nothing to install</p>
+			<ol>
+				<li>In the app, press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too.</li>
+				<li>Or in Claude Code, then <b>/mcp</b> and Authenticate:
+					<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
+				<li>With Brickworks open, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
+			</ol>
+			<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
+		</div>
+		<div class="card way">
+			<h3>Your own API key</h3>
+			<p class="for">Pay as you go · from the Anthropic Console</p>
+			<ol>
+				<li>Make a key at <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>, safest in a workspace of its own, with a spend limit, set to expire.</li>
+				<li>Paste it into the app. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
+				<li>Describe what you want and press <b>Build it</b>. Choose the model and how hard it thinks.</li>
+			</ol>
+			<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
+		</div>
+	</div>
+
+	<h2 id="questions">Questions people ask</h2>
+	<details class="qa">
+		<summary>Is Brickworks free?</summary>
+		<div><p>Yes. Building, saving, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks.</p></div>
+	</details>
+	<details class="qa">
+		<summary>Do I need a Claude subscription?</summary>
+		<div><p>No. Everything but the assistant works without one: you can build entirely by hand, and View, Assistant closes its column. To bring Claude in, connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console.</p></div>
+	</details>
+	<details class="qa">
+		<summary>Does Brickworks see my API key?</summary>
+		<div><p>No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go. More on <a href="/privacy">what Brickworks keeps</a>.</p></div>
+	</details>
+	<details class="qa">
+		<summary>Where are my models saved?</summary>
+		<div><p>In your browser, or on your computer in the desktop app, not on a server and not with your account. Export them as LDraw <code>.ldr</code> or Studio <code>.io</code> to keep or move. A model goes online only when you share it by link.</p></div>
+	</details>
+	<details class="qa">
+		<summary>Can it open my BrickLink Studio, LDD or LDraw files?</summary>
+		<div><p>Yes: Studio <code>.io</code> (locked ones too), LEGO® Digital Designer <code>.lxf</code>, and LDraw <code>.ldr</code> and <code>.mpd</code>. It saves LDraw and <code>.io</code>, exports glTF, OBJ and STL, and turns OBJ, STL and glTF models into bricks.</p></div>
+	</details>
+	<details class="qa">
+		<summary>Can I buy the parts to build it?</summary>
+		<div><p>Export the parts list as a BrickLink wanted list or a Rebrickable parts list, by the lot, the way shops sell them. My collection first takes off what you already own.</p></div>
+	</details>
+	<details class="qa">
+		<summary>What do I need to run it?</summary>
+		<div><p>A computer with a recent desktop browser (it runs on WebGL 2 and WebAssembly threads), or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all.</p></div>
+	</details>
+	<details class="qa">
+		<summary>How exact are the parts?</summary>
+		<div>
+			<p>1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry rather than copied from a reference. The tests assert them, so a library update cannot move them quietly.</p>
+			<div class="scroller">
+			<table>
+				<thead><tr><th scope="col">Feature</th><th scope="col">Brickworks</th><th scope="col">Specification</th></tr></thead>
+				<tbody>
+					<tr><td>Stud pitch</td><td>8.00 mm</td><td>8.0</td></tr>
+					<tr><td>Brick height</td><td>9.60 mm</td><td>9.6</td></tr>
+					<tr><td>Plate height</td><td>3.20 mm</td><td>3.2</td></tr>
+					<tr><td>Stud diameter</td><td>4.80 mm</td><td>4.8</td></tr>
+					<tr><td>Wall thickness</td><td>1.60 mm</td><td>1.6</td></tr>
+					<tr><td>2 × 4 brick</td><td>32.00 × 16.00 mm</td><td>32 × 16</td></tr>
+					<tr><td>Stud height</td><td>1.60 mm</td><td>1.8</td></tr>
+				</tbody>
+			</table>
+			</div>
+			<p>Sizes are nominal rather than as moulded, which is what makes parts tile exactly instead of leaving a gap that grows along a long wall. The stud height is the LDraw library's own convention, and every part follows it.</p>
+		</div>
+	</details>
+	<details class="qa">
+		<summary>Is Brickworks made by the LEGO Group?</summary>
+		<div><p>No. LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. The parts come from the community's LDraw library, and the catalogue data from Rebrickable.</p></div>
+	</details>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-cols">
+			<div>
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A complete CAD for LEGO® models. Free, with every line of its source on GitHub.</p>
+			</div>
+			<nav aria-label="Product">
+				<h2>Product</h2>
+				<ul>
+					<li><a href="/app">Open the app</a></li>
+					<li><a href="/gallery">Gallery</a></li>
+					<li><a href="/download">Download</a></li>
+					<li><a href="/changelog">Changelog</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Learn">
+				<h2>Learn</h2>
+				<ul>
+					<li><a href="/faq">FAQ</a></li>
+					<li><a href="/privacy">Privacy</a></li>
+				</ul>
+			</nav>
+			<nav aria-label="Project">
+				<h2>Project</h2>
+				<ul>
+					<li><a href="https://github.com/Xaxis/brickworks">Source on GitHub</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/releases">Every release</a></li>
+					<li><a href="https://github.com/Xaxis/brickworks/issues">Report a problem</a></li>
+				</ul>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group.
+			</p>
+		</div>
+	</div>
+</footer>
+
+<script type="application/ld+json">
+{
+	"@context": "https://schema.org",
+	"@type": "FAQPage",
+	"mainEntity": [
+		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Building, saving, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks." } },
+		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one: you can build entirely by hand, and View, Assistant closes its column. To bring Claude in, connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console." } },
+		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },
+		{ "@type": "Question", "name": "Where are my models saved?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, or on your computer in the desktop app, not on a server and not with your account. Export them as LDraw .ldr or Studio .io. A model goes online only when you share it by link." } },
+		{ "@type": "Question", "name": "Can it open my BrickLink Studio, LDD or LDraw files?", "acceptedAnswer": { "@type": "Answer", "text": "Yes: Studio .io (locked ones too), LEGO® Digital Designer .lxf, and LDraw .ldr and .mpd. It saves LDraw and .io, exports glTF, OBJ and STL, and turns OBJ, STL and glTF models into bricks." } },
+		{ "@type": "Question", "name": "Can I buy the parts to build it?", "acceptedAnswer": { "@type": "Answer", "text": "Export the parts list as a BrickLink wanted list or a Rebrickable parts list, by the lot. My collection first takes off what you already own." } },
+		{ "@type": "Question", "name": "What do I need to run it?", "acceptedAnswer": { "@type": "Answer", "text": "A computer with a recent desktop browser (WebGL 2 and WebAssembly threads), or the desktop app for Linux, macOS and Windows, which builds with no network at all." } },
+		{ "@type": "Question", "name": "How exact are the parts?", "acceptedAnswer": { "@type": "Answer", "text": "1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry: stud pitch 8.00 mm, brick height 9.60 mm, plate height 3.20 mm, stud diameter 4.80 mm. The stud height, 1.60 mm, is the LDraw library's own convention." } },
+		{ "@type": "Question", "name": "Is Brickworks made by the LEGO Group?", "acceptedAnswer": { "@type": "Answer", "text": "No. LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. The parts come from the community's LDraw library, and the catalogue data from Rebrickable." } }
+	]
+}
+</script>
+</body>
+</html>

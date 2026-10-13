@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
 
 ## Sub-features
 
@@ -562,20 +562,45 @@ plan with Claude as the client.
   address answers 404 with `web/404.html`**, at any depth and inside `/b/<sha>/`;
   it used to 308 to `/`. `/parts/` and `/sets/` keep their plain-text 404s.
 - `landing page` (`web/index.html`, `web/site.css`, the pictures in `web/img/`):
-  the hero (the builder with Orthanc, `img/hero-*.webp`), a gallery of real
-  models, a row per feature (the designer, LEGO Art, hoses and posing, Studio and
-  files, instructions, renders, share links, collection), the rest of the
-  toolbox, how it works with the two ways to bring Claude, privacy, the
-  dimensions, an FAQ (also as FAQPage JSON-LD beside the SoftwareApplication) and a
-  last call to open the app. Every page shares `/site.css` (every text colour 4.5:1
-  or better on its background in both schemes), a skip link, a sticky bar with a
-  `<details>` menu under 860 px (no script: the CSP runs none inline), and one
-  footer. Pictures are WebP at two widths with `srcset`, `width` and `height`;
-  all but the hero load lazily. `img/manifest.json` says where each came from
-  (`shots/` of the run that made it) and holds its alt text. `changelog page`
+  short on purpose (2026-10-13, the owner: "overly wordy and verbose and none
+  elegant ... brickworks is much more than an ai tool, its also a fully advanced
+  expert cad system"): under 500 words, from 2,564. The first screen says what
+  a Studio or LDD user cannot do there, without a word about AI (a builder on
+  Reddit, the same day: "that Assistant looks worryingly AI ... a LOT of us
+  ... building freely"): a hero (one line; a sub-line of in any browser with
+  nothing to install, checks that it stands and which joints would fail,
+  turns gear trains at their real ratios (Tools, Simulate mechanism), Studio
+  `.io` in and out, 3D, renders and booklets; Open Brickworks and
+  Download; the builder at work on the castle, `img/hero-*.webp`, under a
+  window's bar with the app's address); `#features`, three pictures (Will it
+  stand?, Technic and mechanisms, Booklets) and six more things in a few words each;
+  `#assistant`, the assistant as one optional pillar, an engineer's assistant
+  that checks the physics and designs on request, and how to build without it
+  (View, Assistant closes its column); `#gallery`, "Made in Brickworks"; one
+  footer. Claim only what ships: gear trains went on the page the day Tools,
+  Simulate mechanism merged, not before. Every
+  page shares `/site.css` (every text colour 4.5:1 or better on its background
+  in both schemes), a skip link, a sticky bar with a `<details>` menu under 860
+  px (no script: the CSP runs none inline), and one footer. Pictures are WebP at
+  two widths, taken from the live app at a device ratio of two
+  (`tools/web/app_shot.mjs --ratio=2`, or `BW_RATIO=2` before any flow that
+  launches through `browser.mjs`), with `srcset`, `width` and `height`; all but
+  the hero load lazily. `img/manifest.json` says where each came from and holds
+  its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
+  as numbered steps with what it costs (`#claude`), the questions (FAQPage
+  JSON-LD), the dimensions. `privacy page` (`web/privacy.html`): what an account
+  holds and what Brickworks never sees — each claim is in
+  `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
+  the CSP in `deploy.sh`; change one, change the page. `changelog page`
   (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
   bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
-  names `sitemap.xml`, which lists `/`, `/download` and `/changelog`.
+  names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
+  `/privacy`. Judge it at 390, 1280 and 1920 px:
+  `node tools/web/page_shot.mjs --file=web/index.html --width=1920 --full`.
+  Lighthouse (performance and accessibility at least 95), on a preview:
+  `CHROME_PATH=~/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome npx
+  lighthouse@12 <preview>/ --extra-headers='{"x-vercel-protection-bypass":"…"}'
+  --chrome-flags="--headless=new --use-angle=swiftshader" --only-categories=performance,accessibility`.
 - `site check` (`tools/web/site_check.mjs --url=<deployment>`): every page 200 at
   its bare name with its title, description, canonical link and an Open Graph
   card whose picture answers; every old `.html` 308 to its bare name; `/app` 200
@@ -917,16 +942,15 @@ the build animation weighed the model once a step.
   `file://`: the pages name `/site.css` and `/img/…` from the root (the 404 page
   is served at any depth), and as files they load unstyled.
 
-  What the page says, in order: the two ways to design with Claude (`#how`:
-  the plan through Connect Claude, or an API key, each as numbered steps with
-  what it costs, after signing in), the castle, what the app does, what
-  Brickworks keeps and never sees (`#private`: the email address and what an
-  account holds, key, login, the relay, models — each claim is in
-  `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `own_key.gd` and the
-  CSP in `deploy.sh`; change one, change the page), and the dimensions. The picture at the top is retaken from a deployment with
-  `tools/web/app_shot.mjs --url=<build>/app --out=web/_shot-app.png` (a clean
-  browser, 1600x900), not by hand, then made `img/hero-1600.webp` and
-  `img/hero-960.webp`.
+  The picture at the top is retaken from a deployment with
+  `tools/web/app_shot.mjs --url=<build>/app --ratio=2 --model=res://models/castle.ldr
+  --menu=menu_view:Key --fold=assistant --click=outliner --click=cube_zoom_in
+  --click=cube_zoom_in --click=view --out=web/_shot-app.png` (a clean browser,
+  1600x900 at twice the pixels, the key strip off), not by hand, then made
+  `img/hero-3200.webp`, `-2400` and `-1200`. Several pictures in one run, which on
+  a busy machine waits for its turn once: `--plan=FILE`, a JSON list of the same
+  options. The stability picture is `src/dev/balance_view_probe.gd` in a 3200x1800
+  window (`img/manifest.json` has each picture's command).
 
   Measure a page where its assets resolve. Comparing the edited page against a
   copy kept in the scratchpad "proved" the overflow was mine — the copy had no

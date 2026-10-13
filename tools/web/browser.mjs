@@ -44,12 +44,24 @@ async function signedIn(context) {
   return context;
 }
 
+// BW_RATIO=2 draws every page a flow opens at that device pixel ratio,
+// unless the flow chooses one itself: how the site's pictures of the app
+// are taken, so they stay sharp on a high-density screen.
+const RATIO = Number(process.env.BW_RATIO || 0);
+const withRatio = (options = {}) =>
+  RATIO > 0 && options.deviceScaleFactor === undefined ? { ...options, deviceScaleFactor: RATIO } : options;
+
 export async function launch(options = {}) {
   const { signedOut = false, ...rest } = options;
   const browser = await chromium.launch({ ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
-  if (signedOut) return browser;
   const newContext = browser.newContext.bind(browser);
-  browser.newContext = async (contextOptions) => signedIn(await newContext(contextOptions));
+  if (signedOut) {
+    const newPage = browser.newPage.bind(browser);
+    browser.newContext = (contextOptions) => newContext(withRatio(contextOptions));
+    browser.newPage = (pageOptions) => newPage(withRatio(pageOptions));
+    return browser;
+  }
+  browser.newContext = async (contextOptions) => signedIn(await newContext(withRatio(contextOptions)));
   // A page of its own context, which Playwright closes with the page.
   browser.newPage = async (pageOptions) => {
     const context = await browser.newContext(pageOptions);

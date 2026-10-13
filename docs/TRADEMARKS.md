@@ -129,9 +129,9 @@ Brickworks is free. If that changes, see "For counsel".
 
 | Where a person reads it | File |
 |---|---|
-| every page's footer: home, download, changelog, 404 (with the second sentence) | `web/*.html` |
+| every page's footer: home, download, changelog, FAQ, privacy, 404 (with the second sentence) | `web/*.html` |
 | the connector's sign-in page | `web/authorize.html` |
-| the home page's FAQ, and its structured data | `web/index.html` |
+| the FAQ page's last answer, and its structured data | `web/faq.html` |
 | the web app's loading page | `src/boot/shell.html` |
 | a share page, and the page for a link that is gone | `api/share.js` (`NOTICE`) |
 | Help, About Brickworks (with the second sentence) | `src/ui/shell.gd` (`_show_about`) |

@@ -1,5 +1,31 @@
 [
  {
+  "slug": "stability",
+  "files": {
+   "640": "stability-640.webp",
+   "1200": "stability-1200.webp"
+  },
+  "width": 1200,
+  "height": 900,
+  "source": "src/dev/balance_view_probe.gd in a 3200 x 1800 window (the 1600 x 900 layout at 2x; MESA_VK_WSI_DEBUG=sw xvfb-run, godot --resolution 3200x1800), shots/balance/1_tips.png, 2026-10-13, cropped to 900,560 1360 x 1020",
+  "subject": "Tools, Check stability",
+  "alt": "Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.",
+  "caption": "Will it stand?"
+ },
+ {
+  "slug": "technic",
+  "files": {
+   "640": "technic-640.webp",
+   "1200": "technic-1200.webp"
+  },
+  "width": 1200,
+  "height": 900,
+  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 --model=res://models/kart.ldr --click=outliner --fold=assistant --click=cube_zoom_in --click=cube_zoom_in --click=cube_zoom_in --click=view (3200 x 1800, 2026-10-13), cropped to 1184,480 1520 x 1140",
+  "subject": "Technic go-kart in the builder",
+  "alt": "A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.",
+  "caption": "Technic."
+ },
+ {
   "slug": "galaxy",
   "files": {
    "1200": "galaxy-1200.webp",
@@ -26,95 +52,31 @@
   "caption": "A barn owl Claude designed, brick by brick."
  },
  {
-  "slug": "flex",
-  "files": {
-   "1200": "flex-1200.webp",
-   "640": "flex-640.webp"
-  },
-  "width": 1038,
-  "height": 649,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/next2/shots/flex/4_chain.png",
-  "subject": "flex hoses and chains",
-  "alt": "The Brickworks builder with the Hose, tube or chain panel open and Technic chain selected: a red chain loops around two grey sprockets above a green baseplate, and below it a red flexible hose curves between two grey bricks.",
-  "caption": "Chains and hoses that bend to fit."
- },
- {
-  "slug": "art-dialog",
-  "files": {
-   "1200": "art-dialog-1200.webp",
-   "640": "art-dialog-640.webp"
-  },
-  "width": 872,
-  "height": 744,
-  "source": "/tmp/claude-1000/-mnt-Projects-brickworks/44a75f29-dacb-4f88-8c1c-c4338fde4542/scratchpad/legal/desk/art_dialog.png, the desktop app at 1600 x 900 with mosaic_probe's galaxy at 48 studs on 3 x 3 panels, cropped to 362,72 872 x 744 (2026-10-13, the mode renamed Brick Art)",
-  "subject": "Brick Art dialog",
-  "alt": "The Build this picture dialog with Brick Art selected: a preview of a blue spiral galaxy mosaic above sliders set to 3 by 3 panels and 3 plates deep, five ticked options, a field to tell Claude how to plan it, and a count of 1,510 parts for a picture 48 by 48 studs, with Cancel and Build it buttons.",
-  "caption": "Turn a picture into a Brick Art mosaic."
- },
- {
-  "slug": "render",
-  "files": {
-   "1200": "render-1200.webp",
-   "640": "render-640.webp"
-  },
-  "width": 1200,
-  "height": 750,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a6a153bba545810db/shots/render/castle_best.png",
-  "subject": "studio render",
-  "alt": "A studio render of a grey stone LEGO® castle on a plain white backdrop: crenellated walls and square towers flying red pennants, an arched gateway, a timber-topped watchtower and a courtyard with a red canopy, on a green baseplate edged by a blue moat.",
-  "caption": "A castle, rendered in the built-in studio."
- },
- {
   "slug": "booklet",
   "files": {
-   "1200": "booklet-1200.webp",
-   "640": "booklet-640.webp"
-  },
-  "width": 1018,
-  "height": 753,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a48946f81ddd9f6f9/shots/booklet_web/page-3.png",
-  "subject": "building instructions booklet",
-  "alt": "A page of building instructions on a pale blue background showing steps 5 to 8 of a red car with a blue seat: each step has a box listing the parts it adds beside a drawing of the car so far, and a progress bar and page number 3 run along the bottom.",
-  "caption": "Printable instructions, step by step, with parts lists."
- },
- {
-  "slug": "share",
-  "files": {
-   "1200": "share-1200.webp",
-   "640": "share-640.webp"
+   "640": "booklet-640.webp",
+   "1200": "booklet-1200.webp"
   },
   "width": 1200,
-  "height": 771,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/next/shots/share_web/2_viewer.png",
-  "subject": "share page",
-  "alt": "The Brickworks share page for a model called Share Flow Car, 61 parts, by Flow Builder: a red car with a black roof and clear windscreen on a green baseplate, with Steps, Booklet, Parts list and Open in Brickworks buttons at the top and a step slider at step 16 of 16 along the bottom.",
-  "caption": "Share a link; anyone can open the model in 3D."
- },
- {
-  "slug": "collection",
-  "files": {
-   "1200": "collection-1200.webp",
-   "640": "collection-640.webp"
-  },
-  "width": 846,
-  "height": 607,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/next/shots/collection_build.png",
-  "subject": "collection",
-  "alt": "The My collection dialog on its What can I build? tab: 343 models ranked by how many of their pieces you own, from an example car at 39 percent and a bench at 14 percent down to official sets such as Gear Grinders, Forestmen’s Crossing and Dragon Defender at around 10 percent, each with an Open link.",
-  "caption": "See what you can build from the bricks you own."
+  "height": 900,
+  "source": "BW_RATIO=2 node tools/web/booklet_flow.mjs --url=https://brickworks.diy/app, page-3.png (2036 x 1506, 2026-10-13), cropped to 4:3",
+  "subject": "building instructions booklet",
+  "alt": "A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.",
+  "caption": "The booklet."
  },
  {
   "slug": "hero",
   "files": {
-   "1600": "hero-1600.webp",
-   "960": "hero-960.webp"
+   "1200": "hero-1200.webp",
+   "2400": "hero-2400.webp",
+   "3200": "hero-3200.webp"
   },
-  "width": 1600,
-  "height": 900,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/shot-app.png",
-  "subject": "app (hero)",
-  "alt": "The Brickworks builder with the Tower of Orthanc open: a tall black tower of 9,429 bricks rising to curved horns on a green baseplate in the centre, the parts bin and colours on the left, and the Design with Claude panel on the right.",
-  "caption": "The Brickworks builder with the Tower of Orthanc open."
+  "width": 3200,
+  "height": 1800,
+  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 with the plan {model: res://models/castle.ldr, menu: menu_view:Key (the key strip off), fold: assistant, click: outliner, cube_zoom_in, cube_zoom_in, view} (3200 x 1800, 2026-10-13)",
+  "subject": "the builder at work (hero)",
+  "alt": "The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.",
+  "caption": "The builder, with the castle's gatehouse selected."
  },
  {
   "slug": "castle",
@@ -130,43 +92,17 @@
   "caption": "A castle Claude designed from one sentence."
  },
  {
-  "slug": "orthanc-corner",
+  "slug": "tower",
   "files": {
-   "640": "orthanc-corner-640.webp",
-   "1024": "orthanc-corner-1024.webp"
+   "640": "tower-640.webp",
+   "1024": "tower-1024.webp"
   },
-  "width": 640,
-  "height": 640,
+  "width": 1024,
+  "height": 1024,
   "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/orthanc-corner.webp",
-  "subject": "Orthanc, front corner",
-  "alt": "The Tower of Orthanc in black LEGO® bricks seen from a front corner: a tall tower of clustered piers banded with grey courses, rising to sharp curved horns, on a stepped plinth on a green baseplate.",
-  "caption": "Orthanc from the front corner."
- },
- {
-  "slug": "orthanc-back",
-  "files": {
-   "640": "orthanc-back-640.webp",
-   "1024": "orthanc-back-1024.webp"
-  },
-  "width": 640,
-  "height": 640,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-a75a0c7d90417428b/web/orthanc-back.webp",
-  "subject": "Orthanc, open back",
-  "alt": "The back of the same black tower, open down a narrow slot between two piers to show furnished floors stacked one above another, with two figures on the summit between the horns.",
-  "caption": "From the back: the furnished floors inside."
- },
- {
-  "slug": "pose",
-  "files": {
-   "1200": "pose-1200.webp",
-   "640": "pose-640.webp"
-  },
-  "width": 1000,
-  "height": 760,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/next/shots/flex_pose_web/4_pose_panel.png",
-  "subject": "pose and animate",
-  "alt": "The Pose and animate panel beside the model: sliders for a turret on its turntable and an arm on its hinge, a key at 0 seconds, and the animation's frame rate and size; on the baseplate a red Technic chain round two sprockets, a red hose curving between two bricks, and a red plate on a hinge.",
-  "caption": "A slider for every joint, and keys made an animation."
+  "subject": "Wizard's Tower (models/orthanc.ldr), designed by Claude",
+  "alt": "A wizard's tower in black LEGO® bricks: a tall faceted tower of four clustered piers, every face a panel of grille between grey string courses, rising to four curved horns around a summit where two wizards stand, on a terraced plinth with grey crags and two guards at the stair.",
+  "caption": "Wizard's Tower: 9,429 parts and nine furnished floors, designed by Claude from one paragraph."
  },
  {
   "slug": "car",
