@@ -70,7 +70,7 @@ static func from_lxfml(xml: PackedByteArray, name: String = "model") -> Dictiona
 	var lines := PackedStringArray([
 		"0 %s" % name,
 		"0 Name: %s.ldr" % name.validate_filename(),
-		"0 Author: converted from LEGO Digital Designer by Brickworks",
+		"0 Author: converted from an LDD .lxf file by Brickworks",
 		"0 !LDRAW_ORG Unofficial_Model",
 		""])
 	var placed: int = 0

@@ -145,6 +145,16 @@ class App:
         self._rest = b""
 
 
+def _cached() -> list[dict] | None:
+    """The copy kept for when the app is closed, or None. Compared before
+    it is written again, so a session listing the tools of an app that has
+    not changed leaves the file (and the checkout) as it was."""
+    try:
+        return json.loads(CACHED_TOOLS.read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def tool_list(app: App) -> list[dict]:
     """The tools, from the app when it is up and from the copy when not.
 
@@ -154,8 +164,8 @@ def tool_list(app: App) -> list[dict]:
     try:
         answer = app.ask("__tools__", {})
         tools = answer.get("tools") or []
-        if tools:
-            CACHED_TOOLS.write_text(json.dumps(tools, indent=2) + "\n")
+        if tools and tools != _cached():
+            CACHED_TOOLS.write_text(json.dumps(tools, indent=2, ensure_ascii=False) + "\n")
     except ConnectionError:
         if not CACHED_TOOLS.exists():
             return []
@@ -174,7 +184,8 @@ def tool_list(app: App) -> list[dict]:
 # Said only when the app is shut, which is the one time the real thing
 # cannot be fetched. Everything specific lives in the app.
 ABOUT = (
-    "Brickworks is a dimensionally exact LEGO CAD app, open in a window the "
+    "Brickworks is a dimensionally exact CAD app for LEGO® bricks, open in a "
+    "window the "
     "person is looking at. These tools are the same ones its own assistant "
     "uses: search the real part catalogue, check a design against the real "
     "collision lattice, look at what is built, and submit a design to stand "

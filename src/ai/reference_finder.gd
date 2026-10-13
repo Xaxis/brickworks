@@ -33,7 +33,7 @@ const WIDTH := 900
 ## More than three and the model is reading pictures instead of building.
 const MOST := 3
 ## Somebody has to be able to say who is asking.
-const AGENT := "Brickworks/1 (https://brickworks.diy; a LEGO CAD application)"
+const AGENT := "Brickworks/1 (https://brickworks.diy; a CAD application for building bricks)"
 
 ## The colours a picture may be read as, [code, Color] each — the plastic
 ## colours sets are made in now, from whoever asks. Empty, and nothing is

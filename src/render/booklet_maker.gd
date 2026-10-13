@@ -108,8 +108,8 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_stock = stock
 	document.pieces = stock.pieces
 	document.credits = ("Part geometry from the LDraw™ Parts Library, © the LDraw community, "
-		+ "CC BY 4.0. Catalogue data: Rebrickable. LEGO® is a trademark of the LEGO Group, "
-		+ "which does not sponsor or endorse this.")
+		+ "CC BY 4.0. Catalogue data: Rebrickable. LEGO® is a trademark of the LEGO Group of "
+		+ "companies which does not sponsor, authorize or endorse this booklet.")
 	_lap("staged")
 	var lots: Dictionary = await _part_pictures(stock)
 	_lap("parts drawn")

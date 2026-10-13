@@ -89,6 +89,18 @@ func open() -> void:
 		else ""
 
 
+## The joints as the model stands, without the panel: for a session over
+## MCP (AppTools), which then swings one with [method set_angle].
+func joints_now() -> Array[Poser.Joint]:
+	poser.world = world
+	poser.builder = builder
+	poser.library = library
+	poser.assemblies = assemblies
+	if poser.joints.is_empty() or _seen_revision != world.revision:
+		_read_pose()
+	return poser.joints
+
+
 func close() -> void:
 	if _playing:
 		_stop()
@@ -338,6 +350,11 @@ func render_animation() -> int:
 
 func is_rendering() -> bool:
 	return _working
+
+
+## What the last render said: where it was written, or why nothing was.
+func rendered_words() -> String:
+	return _status.text
 
 
 func _set_working(on: bool) -> void:

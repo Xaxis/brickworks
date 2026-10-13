@@ -146,8 +146,15 @@ plan with Claude as the client.
   the card's fence the next press can come while the bin is still drawing,
   and its bar then waits for the card too). A first visit's car: the parts bin's first open,
   Instructions, Render, LEGO Art's Build of art_flow's galaxy at 48 across,
-  Brickify of the bunny; then Orthanc opened from a file: Timeline, Delete
-  of all of it, Undo, New. Fails when one that should show the bar does not
+  Brickify of the bunny; then Orthanc opened from a file: Timeline, Save
+  (the toolbar's), File > Export > LDraw (typed into the menus, as a person
+  finds them; a space in a menu presses the item it is on, so only words), the toolbar's Select by > Same colour from one part, Shift-M Mirror
+  and Shift-E of all of it, Tools > Check stability, Delete of all of it,
+  Undo, and New's "Save, then start new" (`brickworksControls.new_save`; the
+  owner's freeze, 2026-10-13; a build without that control is not
+  measured, and plain New is then, as `--only=new` asks). The commands after
+  Timeline are the ones `src/dev/command_probe.gd` found holding the window
+  longest. Fails when one that should show the bar does not
   within `--heard` ms (150), when Timeline, the booklet, Art or Brickify has
   work of its own over `--budget` ms (250) in one go, or a bar is left up; `--report-only` prints
   the table for a build from before. Leaves `progress.json` and a picture
@@ -532,7 +539,12 @@ plan with Claude as the client.
   screenshot at each step. With its default fake key it is free and proves the
   path: the key is taken, the request leaves the browser and reaches Anthropic,
   and the refusal reads "Anthropic refused that key…" with the form back. With
-  `--key=-` (reads `BW_KEY`) it watches a real design start. The live site was
+  `--key=-` (reads `BW_KEY`) it watches a real design start. With
+  `--recorded` it answers Anthropic in the browser itself, from
+  `tests/fixtures/sketches/lighthouse.json`, and proves Sketch first: three
+  cards, the sketches asked of Sonnet 5.5 at medium, sketch 2 pressed, and the
+  design asked of Opus from it; against a local export (`serve.py`) it is the
+  way to see a change to the panel before a deploy. The live site was
   reported as "the assistant doesn't work at all"; it was answering — four 200s
   in ninety seconds — while showing nothing, and no check had ever pressed
   Build. On a preview set `BW_BYPASS`; it goes in the first address only, as a
@@ -544,6 +556,17 @@ plan with Claude as the client.
   ratio of two the panels take far more of the page, and the cursor check's
   "middle of the model" was the parts bin there. `window.brickworksCursor` is
   the pointer's state (`Cursors.show_state`), for `tools/web/cursor_check.mjs`.
+  A centre is where the control was when it was published, so what a flow
+  clicks must not move once it is on screen: LEGO Art's brief sat over a
+  description that grew from one line to three a moment after the dialog
+  opened, the click landed on the text, and the brief was typed into the
+  model as shortcuts. A menu reached by keys is not searched like a list:
+  each letter moves to the *next* line starting with what has been typed,
+  and the search starts again when two keys reach the app more than two
+  seconds apart, as one slow software frame makes them. Type only a prefix
+  no other line in that menu shares (E for Export), and go by the arrows
+  from there. "BrickLink Studio" swung between two lines and downloaded the
+  wanted list on a busy machine.
 
 ## How to reach it
 

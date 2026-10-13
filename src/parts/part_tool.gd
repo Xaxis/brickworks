@@ -26,7 +26,7 @@ static func schema() -> Dictionary:
 		return {"type": "integer", "description": what}
 	return {
 		"name": "make_part",
-		"description": ("Make a part LEGO has not made, when no real part will do: "
+		"description": ("Make a part the LEGO Group has not made, when no real part will do: "
 			+ "search_parts first, and use a real one if there is one. Either a new "
 			+ "part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 "
 			+ "upright, a Technic brick 1 x 9, a brick with studs on two sides — or "
@@ -48,7 +48,7 @@ static func schema() -> Dictionary:
 						+ "hole between every two studs)")},
 				"from": {"type": "string", "description": ("instead of a family: a "
 					+ "real part's number to change, keeping everything not changed "
-					+ "as LEGO made it. Longer, wider and taller repeat a slice of "
+					+ "as the LEGO Group made it. Longer, wider and taller repeat a slice of "
 					+ "it; a part with no slice that repeats (a 1 x 1, a round brick "
 					+ "across) is refused.")},
 				"across": number.call("studs along X: a brick's length; a slope's, "
@@ -62,7 +62,7 @@ static func schema() -> Dictionary:
 				"run": number.call("slope, inverted, curved: the rows the face falls "
 					+ "over, from the front; the rest are flat with studs"),
 				"angle": {"type": "integer", "enum": [33, 45, 65, 75], "description":
-					"slope, inverted: one of LEGO's named angles, which sets run and "
+					"slope, inverted: one of the named angles of LEGO® slopes, which sets run and "
 					+ "plates as the real part has them"},
 				"diameter": number.call("round: studs across"),
 				"rise": number.call("bracket: the upright's height in studs"),

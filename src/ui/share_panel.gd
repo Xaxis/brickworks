@@ -240,7 +240,13 @@ func publish() -> void:
 	_status.text = "Taking its picture…"
 	var png: PackedByteArray = await _picture()
 	_status.text = "Publishing…"
-	var body: Dictionary = {"name": name, "model": store.to_text(name, true)}
+	# A big model's build order a slice at a time, said and counted.
+	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name)
+	if model.is_empty():
+		_publish.disabled = false
+		_fail("Stopped before it was published.")
+		return
+	var body: Dictionary = {"name": name, "model": model}
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():
 		body["author"] = author

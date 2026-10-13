@@ -621,7 +621,7 @@ picture the assistant is shown.
   6 min, 137 MB and a 105 MB PDF (LEGO's own PDFs run about 0.5 MB a page). In
   Chromium on SwiftShader the web build makes the example car's in 89 s.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
-  a picture built two ways. **LEGO Art**, the default, as a modern Art set
+  a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
   matched in Oklab with damped Floyd–Steinberg (`Mosaic`, unchanged). The
   dialog has the mode, panels across and down (down follows the picture's
@@ -709,7 +709,7 @@ picture the assistant is shown.
   submit_design. In the mosaic dialog, under the Art switches, a brief field
   and **Design with Claude**: the dialog closes, the assistant column opens and
   the chat panel sends `MosaicDialog.art_brief` ("Make the picture I chose
-  into a LEGO Art set with make_art: look_at_picture first…" and what was
+  into Brick Art with make_art: look_at_picture first…" and what was
   typed) as if typed (`ChatPanel.ask`), so it runs on the person's key or
   their own Claude exactly as a design does, and with neither says what is
   needed. However it is laid, `main._art_laid` frames it, checks it on a
@@ -870,8 +870,10 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 # python3 tools/web/serve.py build/web PORT): Build > Mosaic from a picture
 # (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
 # brickworksState.art read for its parts, every one on the baseplate, one
-# piece, Panel N#1 and Frame#1 in the tree; then Design with Claude, which
-# must close the dialog, open the assistant and, with no key, say so.
+# piece, Panel N#1 and Frame#1 in the tree; then a brief typed into the
+# dialog, which must take it (the tool still Select, not Orbit from its O),
+# and Design with Claude, which must close the dialog, open the assistant
+# and, with no key, say so.
 node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one

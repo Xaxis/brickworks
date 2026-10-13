@@ -165,7 +165,8 @@ func _item(name: String, icon: String) -> Control:
 		steps.about_to_popup.connect(func() -> void:
 			shell._fill_history(steps)
 			_open_below(menu, steps))
-		steps.id_pressed.connect(func(id: int) -> void: shell.verbs.go_back(id + 1))
+		steps.id_pressed.connect(func(id: int) -> void:
+			shell.attend("history", shell.verbs.go_back.bind(id + 1)))
 		button = menu
 	elif name == "select":
 		var menu := MenuButton.new()

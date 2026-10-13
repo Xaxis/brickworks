@@ -75,7 +75,7 @@ signal cancelled
 ## [family, the button's word, what it makes].
 const FAMILIES: Array = [
 	["brick", "Brick", "A brick, plate or tile; studs on its sides if you want them"],
-	["slope", "Slope", "A slope at LEGO's angles or any other"],
+	["slope", "Slope", "A slope at the angles LEGO® slopes have, or any other"],
 	["curved", "Curved", "A curved slope, with flat rows behind the curve if you want them"],
 	["inverted", "Inverted", "An inverted slope"],
 	["round", "Round", "A round brick, plate or tile"],
@@ -268,13 +268,13 @@ func _build() -> void:
 			_changed())
 	way_row.add_child(_way)
 
-	var angle_row := _row(column, "LEGO's angles")
+	var angle_row := _row(column, "Standard angles")
 	_rows["angles"] = angle_row.get_parent()
 	_angles = angle_row
 	for angle: int in [33, 45, 65, 75]:
 		var button := Button.new()
 		button.text = "%d°" % angle
-		button.tooltip_text = ("The proportions LEGO's %d degree slope is drawn "
+		button.tooltip_text = ("The proportions the LEGO® %d degree slope is drawn "
 			+ "with in the library") % angle
 		button.pressed.connect(func() -> void:
 			ElementMaker.use_angle(_spec, angle)
@@ -618,7 +618,7 @@ func _show_edit() -> void:
 	(_rows["plates"].get_child(0) as Label).text = "Height, plates"
 	var info: PartLibrary.PartInfo = library.parts.get(_edit.from)
 	_modify_note.text = ("Changing %s, %s, from its own geometry: whatever you do not "
-		+ "change stays as LEGO made it. Longer, wider and taller repeat a slice of it; "
+		+ "change stays as the LEGO Group made it. Longer, wider and taller repeat a slice of it; "
 		+ "or press a family to make a new part instead.") % [_edit.from,
 		Inventory._tidy(info.name) if info != null else ""]
 	_modify_note.visible = true
@@ -824,7 +824,7 @@ static func describe(spec: ElementMaker.Spec, built: PartForge.Result) -> String
 	if spec.family == "slope" or spec.family == "inverted":
 		var named: int = ElementMaker.named_angle(spec)
 		words += " The face is at %.1f°" % ElementMaker.true_angle(spec)
-		words += (" — what LEGO calls a %d." % named) if named > 0 else "."
+		words += (" — what the LEGO Group calls a %d." % named) if named > 0 else "."
 	elif spec.family == "curved":
 		words += " The curve leaves the top level and meets its foot at %.1f°." \
 			% ElementMaker.true_angle(spec)

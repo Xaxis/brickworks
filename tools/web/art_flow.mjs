@@ -15,9 +15,10 @@
 // land with window.brickworksState.art saying its parts, every one of them on
 // the baseplate, in one piece, its panels in the model tree as Panel N#1, or
 // a script error reaches the console. Design with Claude cannot design here —
-// that is a network run on a key or a plan — so what is checked is that it
-// goes to the assistant: its column opens, and with no key of its own the
-// page says so rather than doing nothing.
+// that is a network run on a key or a plan — so what is checked is that the
+// brief takes what is typed into it, and that it goes to the assistant: its
+// column opens, and with no key of its own the page says so rather than
+// doing nothing.
 import { launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -165,7 +166,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 
 ok(await choosePicture(), "Build > Mosaic from a picture… brings up the page's file chooser");
 ok(await until(async () => Boolean((await controls()).mosaic_build), 120, "dialog"),
-  "the picture dialog comes up for galaxy.png, in LEGO Art");
+  "the picture dialog comes up for galaxy.png, in Brick Art");
 // Its picture of the result and what it comes to are worked out a moment
 // after it opens.
 await page.waitForTimeout(8000);
@@ -191,8 +192,13 @@ await shot("2_laid.png");
 // Design with Claude: the picture again, a brief, and the button.
 ok(await choosePicture(), "and again, for Design with Claude");
 const brief = await where("mosaic_brief");
+const tool = (await state())?.mode;
 await page.mouse.click(brief.x, brief.y);
 await page.keyboard.type("raise the core, make the stars glow", { delay: 40 });
+// Typed anywhere but the brief, those letters are shortcuts: O takes up
+// the orbit tool, M opens the minifigure builder, the comma the controls.
+await page.waitForTimeout(1500);
+ok((await state())?.mode === tool, `the brief takes what is typed: the tool is still ${tool} (${(await state())?.mode})`);
 await click("mosaic_claude");
 // The status line clears itself after a few seconds, so it is read as it
 // changes rather than once at the end.

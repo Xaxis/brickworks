@@ -231,8 +231,13 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 ## copy goes on with its last part, after it is built.
 static func numbers_from_plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> Dictionary:
+	return numbers_of(world, Instructions.plan(world, library, skip), skip)
+
+
+## The same numbers, from steps already worked out (Instructions.plan_paced).
+static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
+		skip: Dictionary = {}) -> Dictionary:
 	var bricks: Dictionary = {}
-	var steps: Array[Instructions.Step] = Instructions.plan(world, library, skip)
 	for index: int in steps.size():
 		for brick_id: int in steps[index].brick_ids:
 			bricks[brick_id] = index

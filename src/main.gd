@@ -362,7 +362,13 @@ func _tell_page() -> void:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
 			continue
-		var centre: Vector2 = (to_window * control.get_global_rect()).get_center() / per_css
+		# A dialog's button is placed in the dialog, which is placed in the
+		# window (New's question: tools/web/progress_check.mjs).
+		var rect: Rect2 = control.get_global_rect()
+		var holder: Viewport = control.get_viewport()
+		if holder is Window and holder != get_window():
+			rect.position += Vector2((holder as Window).position)
+		var centre: Vector2 = (to_window * rect).get_center() / per_css
 		where[name] = {"x": roundi(centre.x), "y": roundi(centre.y)}
 	if _gizmo != null and _gizmo.is_visible_in_tree() and not _gated():
 		var faces: Dictionary = _gizmo.face_points()
@@ -1027,6 +1033,9 @@ func _ask_claude_code(brief: String) -> void:
 		print("asking about %d parts inside %s, room %s" % [picked, about,
 			Assistant._box_words(_assistant.focus.region)])
 		brief = Assistant.selection_brief(brief, picked)
+	# Three massings first, the session choosing among them (Sketch first).
+	if about.is_empty() and _has_argument("--sketch-first"):
+		brief = Assistant.sketch_brief(brief)
 	if not design_with_claude_code(brief):
 		print("claude code: could not start")
 		_ask_went_well = false
@@ -1044,6 +1053,7 @@ func _ask_claude_code(brief: String) -> void:
 	_assistant.progress.connect(func(note: String) -> void:
 		print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0,
 			note.replace("\n", "\n             ")]))
+	_watch_sketches(session, started)
 	if not about.is_empty():
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
@@ -1054,8 +1064,39 @@ func _ask_claude_code(brief: String) -> void:
 		outcome[0], _world.brick_count() - _store.scenery.size(),
 		(Time.get_ticks_msec() - started) / 1000.0,
 		str(outcome[1]).substr(0, 600)])
+	print("  the session spent %s over %d replies" % [_tokens_said(session.spent()),
+		session.replies()])
 	_camera.frame(_built_bounds())
 	await get_tree().process_frame
+
+
+## Sketch first, from the command line: each sketch said, its picture kept
+## beside --out as NAME_sketchN.png, and when one is chosen how long the
+## sketches took and what they spent, against the design after them.
+func _watch_sketches(session: ClaudeCode, started: int) -> void:
+	var out: String = _argument("--out")
+	_assistant.sketches_ready.connect(func(sketches: Array, _model: String,
+			_tokens: Brain.Spend, _ours: bool) -> void:
+		for one: Sketches.Sketch in sketches:
+			var kept: String = ""
+			if one.picture != null and not out.is_empty():
+				var path: String = "%s_sketch%d.png" % [out.get_basename(), one.number]
+				if one.picture.save_png(path) == OK:
+					kept = ", pictured at " + path
+			print("  [%5.1fs]   sketch %d, \"%s\": %d parts, %s, %s%s" % [
+				(Time.get_ticks_msec() - started) / 1000.0, one.number, one.name, one.parts,
+				one.measures(), "holds" if one.holds() else "does not hold", kept]))
+	_assistant.sketch_chosen.connect(func(number: int) -> void:
+		var so_far: Brain.Spend = session.spent()
+		print("  [%5.1fs]   chose sketch %d; the sketches took %.0fs, %d replies, %s in (%s of it cached)" % [
+			(Time.get_ticks_msec() - started) / 1000.0, number,
+			(Time.get_ticks_msec() - started) / 1000.0, session.replies(),
+			Brain.in_tokens(so_far.total_in()), Brain.in_tokens(so_far.cached)]))
+
+
+static func _tokens_said(tokens: Brain.Spend) -> String:
+	return "%s in (%s of it cached), %s out" % [Brain.in_tokens(tokens.total_in()),
+		Brain.in_tokens(tokens.cached), Brain.in_tokens(tokens.made)]
 
 
 ## Run at full speed when the window is a formality.
@@ -2397,9 +2438,9 @@ func _build_ui() -> void:
 	# Anything that changes the model marks it for saving. Placing and
 	# removing are somebody's own doing, so they also settle the
 	# question of whether the model on screen is the one to keep.
-	_builder.placed.connect(func(_id: int, _part: String) -> void:
-		_on_model_edited())
-	_builder.removed.connect(func(_id: int) -> void: _on_model_edited())
+	# Once a frame, not once a part (_edited_soon).
+	_builder.placed.connect(func(_id: int, _part: String) -> void: _edited_soon())
+	_builder.removed.connect(func(_id: int) -> void: _edited_soon())
 	# Watch it go up, in the order it would be built, rather than find
 	# it already there.
 	_playback = BuildPlayback.new()
@@ -2880,7 +2921,7 @@ const MOSAIC_TALL := 720.0
 func _build_art(options: MosaicArt.Options) -> void:
 	if _mosaic_source == null:
 		return
-	var job: Working.Job = Working.begin("Laying the picture out in LEGO Art…")
+	var job: Working.Job = Working.begin("Laying the picture out as Brick Art…")
 	await job.shown()
 	var art: MosaicArt.Art = _mosaic.current_art() if _mosaic != null else null
 	if art == null:
@@ -3158,6 +3199,26 @@ func _on_model_edited() -> void:
 	# working out takes five seconds.)
 	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS:
 		_steps.refresh()
+
+
+## [method _on_model_edited] at the end of this frame, once however many
+## parts were placed or taken off in it. What it does is for the whole model
+## (the floor asks every part whether it is a baseplate): once a part,
+## taking all of Orthanc off held the window for a minute (2026-10-13,
+## command_probe).
+func _edited_soon() -> void:
+	if _edit_coming:
+		return
+	_edit_coming = true
+	_edited_now.call_deferred()
+
+
+var _edit_coming: bool = false
+
+
+func _edited_now() -> void:
+	_edit_coming = false
+	_on_model_edited()
 
 
 ## File, Render….
@@ -4661,6 +4722,18 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if focused is LineEdit or focused is TextEdit:
 		return
 	var key: InputEventKey = event
+	# A command's key is that command, as from its menu: timed, and said on
+	# the status bar first when it is slow (Shell.attend). Echoes are a key
+	# held down, never put off.
+	var command: String = _shell.command_for_key(key) \
+		if _shell != null and _viewing.is_empty() and not key.echo else ""
+	if command.is_empty():
+		_key_pressed(key)
+	else:
+		_shell.attend(command, _key_pressed.bind(key))
+
+
+func _key_pressed(key: InputEventKey) -> void:
 	# Zoom from the keys every viewer answers to: + and -, on the main keys
 	# or the keypad, and Page Up and Down. A tap is a wheel notch; holding
 	# goes on in _steer_from_keys. "+" is shift and = on most keyboards and

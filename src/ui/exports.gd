@@ -73,7 +73,10 @@ func studio_io() -> String:
 		say.call("nothing to export")
 		return ""
 	say.call("writing the Studio file…")
-	var text: String = store.to_text(str(named.call()), true)
+	var text: String = await store.text_for_file(str(named.call()), "Writing the Studio file…")
+	if text.is_empty():
+		say.call("stopped writing the Studio file")
+		return ""
 	# A headless run draws nothing, and a Studio file without its picture
 	# is still the model.
 	var thumbnail := PackedByteArray()
@@ -105,10 +108,7 @@ static func _give_bytes(bytes: PackedByteArray, file_name: String, mime: String,
 	if OS.has_feature("web"):
 		JavaScriptBridge.download_buffer(bytes, file_name, mime)
 		return "downloaded %s" % file_name
-	var to: String = into if not into.is_empty() \
-		else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	if to.is_empty():
-		to = OS.get_user_data_dir()
+	var to: String = into if not into.is_empty() else Download.downloads()
 	var path: String = to.path_join(file_name.replace("\\", "/").get_file())
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

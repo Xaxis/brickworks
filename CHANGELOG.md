@@ -15,6 +15,23 @@ whole cycle.
 
 ### Added
 
+- Sketch first: a first design can begin with three quick sketches to
+  choose between, so you see whether your brief was understood before a
+  full design is paid for. Each is the model's main masses only, under 150
+  parts, made in one go on a cheaper Claude, checked, and shown as a picture
+  in the chat with what the three cost. Choose one and it goes on the
+  baseplate, and the whole model is designed from it at the model and
+  effort you chose. It is ticked beside Build it; untick it to go straight
+  to a full design. Claude over the connector, My Claude and a session of
+  your own can sketch too: `submit_design` with `sketch: true` answers
+  with the three pictures, and `choose_sketch` picks one.
+- Claude can do what you do from the menus, over the connector, My Claude
+  and a session of your own: choose the floor, edit the build steps, lay a
+  hose, tube or chain between two connectors, swing a hinge or a
+  turntable and animate it, undo and redo, open one of your models, read the parts list
+  and what your collection is short of, render a picture or a turntable,
+  and export the model as LDraw, a Studio .io, a picture, a BrickLink or
+  Rebrickable list, or its building instructions. Each change is one undo.
 - Ask Claude about this…: select parts, right-click one (or Ctrl+K), and
   ask for a change to just those — "make this wing curved", "recolour
   this in tan", "why is this not stable?". Claude sees the parts, where
@@ -50,7 +67,7 @@ whole cycle.
   two. Each step opens on the side the booklet would draw it from. The
   step reached is kept for that link on that device, so a phone that
   sleeps comes back where it was.
-- Building instructions laid out as a LEGO booklet, from the toolbar's
+- Building instructions laid out like a LEGO® instruction booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of
   every part per step, several small steps to a page, every part outlined
@@ -62,7 +79,7 @@ whole cycle.
 - File, Export, BrickLink Studio model (.io): the model, its build order
   and a picture of it, in the zip Studio opens its own files from. Not
   yet seen opening in Studio itself; what is inside is plain LDraw.
-- LEGO Art: Mosaic lays a picture as a modern LEGO Art set builds one —
+- Brick Art: Mosaic lays a picture the way a modern LEGO® Art set builds one —
   2 × 4 tiles in courses, round and quarter-round accents, raised up to
   six plates deep, a panel at a time — or as classic 1 × 1 plates. Claude
   can plan one too, look at it, and revise it.
@@ -81,15 +98,23 @@ whole cycle.
   or BrickLink file, or your Rebrickable account — kept with your account;
   what a model still needs, what could stand in, and which models you
   could build.
-- Brickify: a 3D model in OBJ, STL or glTF laid in LEGO at the size you
-  pick.
+- Brickify: a 3D model in OBJ, STL or glTF laid in LEGO® bricks at the size
+  you pick.
 - Prints and stickers: draw a print or bring in a picture for any face of
   a part, or a sticker for a model, saved as real LDraw parts, and a
   model's sticker sheet printed at true size.
 - File, Export: a BrickLink wanted list and a Rebrickable parts list. File,
-  Import: LEGO Digital Designer's .lxf.
+  Import: LEGO® Digital Designer's .lxf.
 
 ### Changed
+
+- Part search finds a printed part by what is printed on it: "porsche
+  print", "control panel print", "wood grain print", or "3623 print" for
+  every print of the 1 x 3 plate; "sticker" finds parts with stickers on.
+  It reads a part's keywords too, so "porsche" finds the turbo printed on
+  a Porsche, and the figure builder finds a torso by its character. Plain
+  searches answer as before. Claude is told when a part it finds has
+  prints.
 
 - A BrickLink Studio .io opens in its own colours. It was read from the
   copy inside that uses BrickLink's colour numbers, so white came in blue.
@@ -105,6 +130,11 @@ whole cycle.
   put the model in the middle and fill the frame with it. They were framed
   on the box round the model, so a flat car sat low in its own picture and
   an L-shaped model off to one side.
+- The mosaic mode that lays a picture like a LEGO® Art set is now called
+  Brick Art, a name of our own. The app, the site and the designer
+  write LEGO® as the LEGO Group's Fair Play policy asks, and its notice is
+  in Help, About, on share pages and on every page of the site
+  (docs/TRADEMARKS.md).
 
 ## [0.2.0] - 2026-10-11
 

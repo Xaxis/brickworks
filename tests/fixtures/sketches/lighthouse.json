@@ -1,0 +1,830 @@
+{
+ "why": "A recorded sketch-first turn for a lighthouse: what Claude says when asked for three sketches in one reply. sketch_probe.gd answers the app's loop with it, and tools/web/assistant_flow.mjs --recorded answers the browser with it.",
+ "brief": "a lighthouse on a rocky base",
+ "sketches": [
+  {
+   "name": "A slender tower on a rock",
+   "description": "One tall striped column on a small rock: the tower is the whole idea.",
+   "bricks": [
+    {
+     "part": "3958",
+     "color": 72,
+     "x": 0,
+     "y": 0,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 1,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 2,
+     "y": 4,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 7,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 2,
+     "y": 10,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 13,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 2,
+     "y": 16,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 19,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 2,
+     "y": 22,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 25,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 2,
+     "y": 28,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 14,
+     "x": 2,
+     "y": 31,
+     "z": 2,
+     "rot": 0
+    }
+   ],
+   "assemblies": [],
+   "features": [],
+   "sketch": true
+  },
+  {
+   "name": "A keeper's cottage beside a short tower",
+   "description": "Low and wide: a cottage on the rock, with a short tower at its corner.",
+   "bricks": [
+    {
+     "part": "3036",
+     "color": 2,
+     "x": 0,
+     "y": 0,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 0,
+     "y": 1,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 0,
+     "y": 4,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 0,
+     "y": 7,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 1,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 4,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 7,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 0,
+     "y": 1,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 0,
+     "y": 4,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 0,
+     "y": 7,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 1,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 4,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 7,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 1,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 4,
+     "y": 4,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 7,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 4,
+     "y": 10,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 13,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 4,
+     "y": 16,
+     "z": 4,
+     "rot": 0
+    }
+   ],
+   "assemblies": [],
+   "features": [],
+   "sketch": true
+  },
+  {
+   "name": "A stepped tower on a wide pier",
+   "description": "Broad at the foot and stepping in: a squat, heavy lighthouse.",
+   "bricks": [
+    {
+     "part": "41539",
+     "color": 72,
+     "x": 0,
+     "y": 0,
+     "z": 0,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 1,
+     "y": 1,
+     "z": 1,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 1,
+     "y": 4,
+     "z": 1,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 1,
+     "y": 1,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 1,
+     "y": 4,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 1,
+     "y": 1,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 1,
+     "y": 4,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 3,
+     "y": 1,
+     "z": 1,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 3,
+     "y": 4,
+     "z": 1,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 3,
+     "y": 1,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 3,
+     "y": 4,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 3,
+     "y": 1,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 3,
+     "y": 4,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 5,
+     "y": 1,
+     "z": 1,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 5,
+     "y": 4,
+     "z": 1,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 5,
+     "y": 1,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 5,
+     "y": 4,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 5,
+     "y": 1,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 71,
+     "x": 5,
+     "y": 4,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 7,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 10,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 13,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 7,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 10,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 2,
+     "y": 13,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 7,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 10,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 13,
+     "z": 2,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 7,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 10,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 15,
+     "x": 4,
+     "y": 13,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 3,
+     "y": 16,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 4,
+     "x": 3,
+     "y": 19,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "part": "3003",
+     "color": 14,
+     "x": 3,
+     "y": 22,
+     "z": 3,
+     "rot": 0
+    }
+   ],
+   "assemblies": [],
+   "features": [],
+   "sketch": true
+  }
+ ],
+ "same_as_first": {
+  "name": "A white column on a rock",
+  "description": "A tall white column on a rock.",
+  "bricks": [
+   {
+    "part": "3958",
+    "color": 72,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 1,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 4,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 7,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 10,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 13,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 16,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 19,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 22,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 25,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 14,
+    "x": 2,
+    "y": 28,
+    "z": 2,
+    "rot": 0
+   }
+  ],
+  "assemblies": [],
+  "features": [],
+  "sketch": true
+ },
+ "full": {
+  "name": "Keeper's cottage lighthouse",
+  "description": "The cottage and its tower, with a lantern.",
+  "bricks": [
+   {
+    "part": "3036",
+    "color": 2,
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 0,
+    "y": 1,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 0,
+    "y": 4,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 0,
+    "y": 7,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 1,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 4,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 7,
+    "z": 0,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 0,
+    "y": 1,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 0,
+    "y": 4,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 0,
+    "y": 7,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 1,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 4,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 2,
+    "y": 7,
+    "z": 2,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 4,
+    "y": 1,
+    "z": 4,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 4,
+    "x": 4,
+    "y": 4,
+    "z": 4,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 4,
+    "y": 7,
+    "z": 4,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 4,
+    "x": 4,
+    "y": 10,
+    "z": 4,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 15,
+    "x": 4,
+    "y": 13,
+    "z": 4,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 4,
+    "x": 4,
+    "y": 16,
+    "z": 4,
+    "rot": 0
+   },
+   {
+    "part": "3003",
+    "color": 14,
+    "x": 4,
+    "y": 19,
+    "z": 4,
+    "rot": 0
+   }
+  ],
+  "assemblies": [
+   {
+    "name": "cottage",
+    "x_from": 0,
+    "x_to": 4,
+    "y_from": 0,
+    "y_to": 10,
+    "z_from": 0,
+    "z_to": 4
+   }
+  ],
+  "features": [
+   "lantern"
+  ]
+ }
+}

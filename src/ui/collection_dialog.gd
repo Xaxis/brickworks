@@ -279,7 +279,7 @@ func _own_page() -> Control:
 	_button(files, "Rebrickable CSV…", func() -> void:
 		_picking = "rebrickable_csv"
 		_picker.ask(".csv,.txt"), "collection_csv",
-		"A sets list or a parts list exported from Rebrickable (My LEGO, Export)")
+		"A sets list or a parts list exported from Rebrickable (My LEGO®, Export)")
 	_button(files, "BrickLink XML…", func() -> void:
 		_picking = "bricklink_xml"
 		_picker.ask(".xml,.txt"), "collection_xml",

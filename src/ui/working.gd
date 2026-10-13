@@ -58,6 +58,9 @@ class Job extends RefCounted:
 	var cancelled: bool = false
 	var ended: bool = false
 	var began_ms: int = 0
+	## Which job this is, counting from the first: Working.attend asks
+	## whether a command began one of its own.
+	var number: int = 0
 	## Pressed Cancel.
 	signal cancel_wanted
 
@@ -132,6 +135,8 @@ static func begin(words: String, total: int = 0, can_cancel: bool = false) -> Jo
 	job.can_cancel = can_cancel
 	job.began_ms = Time.get_ticks_msec()
 	job._drawn_from = Engine.get_frames_drawn()
+	_begun += 1
+	job.number = _begun
 	_jobs.append(job)
 	if shown_in != null:
 		shown_in._refresh(true)
@@ -146,6 +151,170 @@ static func current() -> Job:
 
 static func is_busy() -> bool:
 	return not _jobs.is_empty()
+
+
+## -- Every command, attended ---------------------------------------------
+##
+## The owner (2026-10-13): "a standard 'progress indicator or working
+## indicator' for actions taken in the app … when I clicked 'Save and then
+## new' it seemingly froze the app … for probably all actions
+## comprehensively." So every command goes through [method attend], from a
+## menu, the toolbar, a key or a dialog's button, and none of them has to
+## ask for the bar.
+##
+## A command that holds the frame cannot draw anything while it does: the
+## bar has to be on screen before it starts. So each command's cost is
+## remembered, by how big the model was (the same Save is nothing on a car
+## and seconds on Orthanc), and one known to be slow is said first —
+## "Saving…" drawn, then the command run the frame after. One not known is
+## run at once and timed, and is said first from then on. A command that
+## goes on after it returns (a coroutine) and has not said what it is doing
+## gets its own words on the bar until it ends.
+##
+## Fast commands never flash a bar: one is said first only when what it
+## cost the last time and what it costs on average are both over
+## [constant SAY_FIRST_MS]: a dialog that is slow to build only the first
+## time it opens is not said first again.
+
+## What a command must cost to be said before it runs.
+const SAY_FIRST_MS := 150.0
+## How long a command that goes on after returning may run before it is
+## said: two frames, so one that only waits a frame never shows the bar.
+const GOES_ON_FRAMES := 2
+const COSTS_PATH := "user://command_costs.json"
+
+## "name@size" -> [average ms, last ms]. Kept between visits.
+static var costs: Dictionary = {}
+static var _depth: int = 0
+static var _costs_read: bool = false
+static var _begun: int = 0
+static var _frame_end: _FrameEnd = null
+
+
+## Run command [param name] now, or said first when it is known to be slow.
+## [param doing] is what the bar says: "Saving…". [param in_press] for a
+## command that must run inside the press itself (a browser opens a file
+## dialog or goes full screen only then), which is never put off a frame;
+## [param slow] when the caller already knows it will be, the first time.
+##
+## Its costs are kept by [param size], how much it has to do: the model's
+## parts, or the selection's for a command that works on the selection.
+static func attend(name: String, doing: String, run: Callable, in_press: bool = false,
+		slow: bool = false, size: int = 0) -> void:
+	# Inside another command: that one is being timed and said.
+	if _depth > 0:
+		run.call()
+		return
+	var parts: int = size
+	var said: Job = null
+	if not in_press and (slow or expected_ms(name, parts) >= SAY_FIRST_MS):
+		said = begin(doing)
+		await said.shown()
+	var begun_before: int = _begun
+	var from: int = Time.get_ticks_usec()
+	_depth += 1
+	var state: Variant = run.call()
+	_depth -= 1
+	# A coroutine still going hands back its state; it signals when done.
+	var going: bool = state is Object and is_instance_valid(state) \
+		and (state as Object).get_class() == "GDScriptFunctionState"
+	var finished: Array[bool] = [not going]
+	if going:
+		(state as Object).connect("completed", func(_result: Variant) -> void:
+			finished[0] = true, CONNECT_ONE_SHOT)
+	# What it held: the rest of this frame's work, whatever it set going.
+	if _frame_end != null and is_instance_valid(_frame_end):
+		await _frame_end.ended
+	var held: float = (Time.get_ticks_usec() - from) / 1000.0
+	_remember(name, parts, held)
+	# It began a job of its own that is still going: that says what it does.
+	if finished[0] or _has_job_since(begun_before):
+		if said != null:
+			said.end()
+		return
+	# Still going after it returned, and saying nothing: said, until it ends.
+	if said == null:
+		var tree: SceneTree = Engine.get_main_loop() as SceneTree
+		for _n: int in GOES_ON_FRAMES:
+			await tree.process_frame
+			if finished[0] or _has_job_since(begun_before):
+				return
+		said = begin(doing)
+	while not finished[0]:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	said.end()
+
+
+## Whether a job begun after the [param count]th is still going.
+static func _has_job_since(count: int) -> bool:
+	for job: Job in _jobs:
+		if job.number > count:
+			return true
+	return false
+
+
+## What [param name] is expected to cost on a model of [param parts] parts:
+## the least of its average and its last there, or where it has never run
+## at this size, at the biggest size below it where it has. 0 when unknown.
+static func expected_ms(name: String, parts: int) -> float:
+	_read_costs()
+	for size: int in range(_size_class(parts), -1, -1):
+		var known: Variant = costs.get("%s@%d" % [name, size])
+		if known is Array and (known as Array).size() == 2:
+			return minf(float(known[0]), float(known[1]))
+	return 0.0
+
+
+## Sizes go up by fours: 0, 1-3, 4-15 … 4,096-16,383 parts.
+static func _size_class(parts: int) -> int:
+	return floori(log(float(maxi(parts, 0)) + 1.0) / log(4.0))
+
+
+static func _remember(name: String, parts: int, ms: float) -> void:
+	_read_costs()
+	var key: String = "%s@%d" % [name, _size_class(parts)]
+	var was: Variant = costs.get(key)
+	var average: float = ms if not (was is Array) else (float(was[0]) + ms) / 2.0
+	var before: bool = was is Array and minf(float(was[0]), float(was[1])) >= SAY_FIRST_MS
+	costs[key] = [snappedf(average, 0.1), snappedf(ms, 0.1)]
+	# Kept for the next visit only when it changes what is said first.
+	if before != (minf(average, ms) >= SAY_FIRST_MS) and not _probing():
+		var file: FileAccess = FileAccess.open(COSTS_PATH, FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify(costs))
+			file.close()
+
+
+static func _read_costs() -> void:
+	if _costs_read:
+		return
+	_costs_read = true
+	# A probe starts from nothing, whatever ran before it in its folder.
+	if _probing() or not FileAccess.file_exists(COSTS_PATH):
+		return
+	var read: Variant = JSON.parse_string(FileAccess.get_file_as_string(COSTS_PATH))
+	if read is Dictionary:
+		costs = read
+
+
+static func _probing() -> bool:
+	return OS.get_cmdline_args().has("--script")
+
+
+## The end of each frame's work: after every node's _process and whatever
+## it deferred, drawn or not (OwnFrames). A command is timed to here.
+class _FrameEnd extends Node:
+	signal ended
+
+	func _ready() -> void:
+		process_priority = 1000000
+		process_mode = Node.PROCESS_MODE_ALWAYS
+
+	func _process(_delta: float) -> void:
+		_end.call_deferred()
+
+	func _end() -> void:
+		ended.emit()
 
 
 ## The line and the count, for the page (brickworksState.working).
@@ -225,6 +394,8 @@ func _ready() -> void:
 		if job != null:
 			job.cancel())
 	add_child(_cancel)
+	_frame_end = _FrameEnd.new()
+	add_child(_frame_end)
 	shown_in = self
 	_refresh(true)
 

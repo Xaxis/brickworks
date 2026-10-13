@@ -169,6 +169,17 @@ def drive(relay: Relay) -> None:
     check("...with something in it, %d characters" % len(text_of(answer)),
           len(text_of(answer)) > 20)
 
+    # Asked with the subject before building, it also hands over our own
+    # scored designs of the nearest one and the judge's faults in them
+    # (src/ai/design_memory.gd). Not with the app started --held-out.
+    recalled = relay.call("tools/call", {
+        "name": "how_real_sets_build_this", "arguments": {"subject": "race car"}})
+    said = text_of(recalled.get("result", {}))
+    check("how_real_sets_build_this \"race car\" hands over our best Porsche "
+          "and what the judge faulted",
+          "FROM OUR OWN SCORED DESIGNS" in said and "Porsche" in said
+          and "What the judge faulted" in said)
+
     # From bare ground, or the design below lands inside whatever model
     # the app restored on start-up and comes back as an overlap. A session
     # arriving at an app somebody is already using faces the same thing,
@@ -214,6 +225,32 @@ def drive(relay: Relay) -> None:
     check("...and the file holds the two bricks, %d" % len(bricks),
           len(bricks) == 2)
     kept.unlink(missing_ok=True)
+
+    # The window's own commands, which a session has as tools too
+    # (src/net/app_tools.gd): read back off the model, not off the answer.
+    def say(name: str, arguments: dict) -> str:
+        return text_of(relay.call("tools/call", {
+            "name": name, "arguments": arguments}).get("result", {}))
+
+    said = say("set_floor", {"kind": "grid"})
+    check("the floor is chosen from outside: %s" % said, "grid floor" in said)
+    said = say("set_floor", {})
+    check("...and reads back as it was set: %s" % said, "grid floor" in said)
+    said = say("undo", {})
+    check("undo takes it back: %s" % said[:60],
+          said.startswith("Undid floor") and "grid" not in say("set_floor", {}))
+    listed = say("edit_steps", {})
+    check("the build steps are listed: %s" % listed.splitlines()[0] if listed else "",
+          "step" in listed and "#" in listed)
+    parts = say("parts_list", {})
+    check("the parts list counts the two bricks: %s" % parts.splitlines()[0] if parts else "",
+          parts.startswith("2 pieces in 1 lots") and "3001" in parts)
+    said = say("lay_flex", {"kind": "rope"})
+    check("a refusal says what to fix: %s" % said[:50], said.startswith("kind is one of"))
+
+    cached = json.loads((ROOT / "tools" / "mcp_tools.json").read_text())
+    check("tools/mcp_tools.json names every tool the app serves, %d" % len(cached),
+          {tool["name"] for tool in cached} == named)
 
     unknown = relay.call("tools/call", {"name": "no_such_tool", "arguments": {}})
     check("an unknown tool is an answer, not a crash",

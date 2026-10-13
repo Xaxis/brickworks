@@ -117,9 +117,16 @@ func _run() -> void:
 	var names: Array = []
 	for tool: Variant in ((listed.get("result", {}) as Dictionary).get("tools", []) as Array):
 		names.append(str((tool as Dictionary).get("name", "")))
-	_check("submit_design" in names and "search_parts" in names
-			and "clear_model" in names,
-		"the tool list is the app's own: %d tools" % names.size())
+	# All of them, not three: the relay keeps no list of its own (api/mcp.js
+	# answers with what the tab sent when it switched on), so a tool the app
+	# gains reaches Claude with nothing to change here.
+	var served: Array = []
+	for tool: Variant in connector.rpc.assistant.tool_catalogue() + connector.rpc._own_tools():
+		served.append(str((tool as Dictionary).get("name", "")))
+	names.sort()
+	served.sort()
+	_check(names == served and names.has("set_floor") and names.has("export_model"),
+		"the tool list is the app's own, every one of its %d tools" % names.size())
 	await create_timer(1.5).timeout
 	_check(calls.has(""), "...and the tab hears that Claude has connected")
 	var found: Dictionary = await _claude(address, "tools/call",
@@ -129,6 +136,12 @@ func _run() -> void:
 			(found.get("result", {}) as Dictionary).get("isError", true)),
 		"a tool call is run in the tab and answered: %s" % text.substr(0, 60).replace("\n", " "))
 	_check(calls.has("search_parts"), "...and the tab saw which tool it was")
+	# One of the window's commands (AppTools), as Claude asks for it: run in
+	# the tab, which here has no window to set a floor in, and says so.
+	var floor_said: String = _text_of(await _claude(address, "tools/call",
+		{"name": "set_floor", "arguments": {}}))
+	_check(calls.has("set_floor") and not floor_said.is_empty(),
+		"...and so is one of the window's commands: %s" % floor_said)
 
 	print("\nClaude signed in to the account, at the one address for everybody")
 	# The way since 2026-10-11: Claude is never given this tab's address. It

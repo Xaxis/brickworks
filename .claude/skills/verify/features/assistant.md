@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, ui:ask claude about the selection -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, ui:ask claude about the selection, ui:sketch first -->
 
 ## Sub-features
 
@@ -111,6 +111,69 @@ fixing what it got wrong.
   1 for the wall (that one landed on the next try, 6 s later), 105 s and
   116 s. The spikes are still small: landing first time did not make Claude
   bolder by itself.
+- `sketch first`: **Sketch first**, ticked beside Build it whenever the next
+  request would start a design from nothing (not for a change, not about a
+  selection: `ChatPanel._show_sketch_first`). Build it then calls
+  `Assistant.sketch`, which asks for three `submit_design` calls with
+  `sketch: true` in one reply (`SKETCH_ASK`), on `Brain.sketch_model()` at
+  `Brain.sketch_effort()` — Sonnet 5.5 at medium, or what is chosen when
+  that is cheaper or lower. Each sketch is read, refused past 150 parts
+  once its patterns are laid, checked (`_checked`), and drawn on a world of
+  its own that is in no tree and draws nothing (`BrickWorld.add_unseen`,
+  `Assistant._stage_of`) by `ModelShot` with no studs written on; nothing
+  touches the baseplate, and the stream's live drawing is off for the round.
+  `Sketches.measure` reads each one's size and its outline from the front,
+  the side and above, counted from its own ground corner; two within 15% on
+  every size whose outlines overlap 70% are one idea (`Sketches.alike`), and
+  the later one is sent back once for another (`SKETCH_REDOS`). After four
+  turns whatever there is is shown. Then `sketches_ready`: the run's card
+  closes saying what the three cost, and the panel shows a card for each —
+  picture, name, parts and size, its description, and Design this one
+  (`sketch_1` to `sketch_3` in `controls_by_name`). Choosing calls
+  `choose_sketch`: the sketch is put down as a design is (`_apply`, so
+  `built` and the build animation), the other two dropped, and the whole
+  model designed from it in a fresh conversation at the chosen model and
+  effort, opening on the chosen sketch's picture and its submit_design
+  input (`_sketch_opening`, `FROM_SKETCH`). The final bill line adds "the
+  sketches before it". A brief typed instead of choosing starts afresh.
+  Over MCP: each `submit_design` with `sketch: true` answers with its
+  picture and asks for the next; the third answers with all three and how
+  to choose; `choose_sketch` (`sketch_tools`, served outside only) puts one
+  down and says to design the whole from it. The panel shows a session's
+  three too, without buttons, and marks the one it chose. My Claude with
+  the box ticked, and `--ask-claude-code=… --sketch-first`, put
+  `Assistant.SKETCH_FIRST` after the brief; from the command line each
+  sketch is printed, its picture kept beside `--out` as `NAME_sketchN.png`,
+  and the session's time and tokens printed when one is chosen and at the
+  end (`ClaudeCode.spent`). `sketch_probe` (a recorded brain,
+  `tests/fixtures/sketches/lighthouse.json`), and in a browser
+  `tools/web/assistant_flow.mjs --recorded`, which answers Anthropic itself
+  with the same recording, presses Build it and then sketch 2's card, and
+  checks the requests' models.
+  A real run on the subscription (2026-10-13, Opus 5.5 through Claude Code,
+  `--sketch-first`, off-screen in software), held out: "A lighthouse on a
+  rocky coast, as a detailed display model about 30 cm tall." Three ideas,
+  each holding: a slender banded tower on a reef (71 parts, 16 x 16 studs,
+  84 plates), a short white tower on a stepped headland (98; 16 x 16, 48),
+  and a tapering banded tower with a keeper's cottage on a rock shelf (143;
+  28 x 24, 80). Six more were refused for passing 150 once their patterns
+  were laid (375, 561, 186, 168, 158, 159), which is why the refusal now
+  says patterns count and to use the biggest pieces. It chose the third
+  ("a lighthouse and a coast, and its tapered outline reads better"), and
+  the design from it was 572 parts: the tower and the cottage on a rock
+  shelf, a blue baseplate for the sea, a keeper, the lamp on a turntable.
+  The composition held; the taper and the red bands did not (black bands).
+  The sketches took 132 s of the session's 622, 13 replies, 712k tokens in
+  (643k of them cached) and 12.4k out; the design after them 490 s, 42
+  replies, 5,145k in (5,053k cached) and 39.4k out — a fifth of the time
+  and a quarter of the output, about 72¢ against $2.26 at Opus API prices,
+  and the 69k of rules the sketches wrote to the cache are what the design
+  then read at a twentieth of the price. The app's own loop sketches on Sonnet at medium,
+  cheaper again. The output tokens are from the session's transcript:
+  Claude Code's stream gives each reply's usage as it starts, so
+  `ClaudeCode.spent` counts input as it goes and output only from the
+  session's result. Pictures and the log: `shots/runs/sketch_lighthouse/`
+  in the drafts worktree.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
@@ -1505,6 +1568,38 @@ fixing what it got wrong.
   (feather, claw, exhaust). `snippets_probe` checks credit, search, that the app
   and `tools/snippets.py search --ids` agree, and lays an eye, a car nose, a
   wing, a beak and a turret roof on a plate, whole and joined.
+- `recall our own scored designs`: `src/ai/design_memory.gd` over
+  `assets/knowledge/designs.json.gz`, which `tools/design_memory.py build`
+  writes from the design bench's records (every
+  `<batch>/<subject>/<run>/record.json` under the main checkout's
+  `bench/results/`, where `tools/bench/run.py` now writes from any worktree, or
+  `--results DIR`; dry runs and a re-score's `oldcheck/` left out) and merges
+  into what the index already holds: bench results are gitignored, and the
+  creative, d5 and d5b rounds' critiques survive only in the index. The
+  baseline's build is taken from the re-score's table in
+  `docs/DESIGN_SCORES.md` (`RESCORED`); the d5 batches' build, judged on the
+  old check, is not told (`OLD_CHECK`). Each design:
+  subject, title, brief, the judge's six scores and reasons, its visual mean
+  (buildability left out: the check mis-scored it before 26ddb89), how it was
+  built (`tools/style.py`'s shares and its five most-used shaped parts), what
+  its log says it did (features worked, worked techniques read, real-set pieces
+  laid, figures stood) and a 192-pixel JPEG of its corner view. Search is
+  BM25 like the real-set index (title x3, brief x1.5, kinds of subject,
+  features, the judge's words x0.3), with a subject word also asking for its
+  kinds (`snippets.SUBJECTS`: an eagle asks for birds); a design is near only
+  if the query shares a word of its title or a kind with it, so a revision is
+  handed nothing. `how_real_sets_build_this` answers with it after the
+  kinds data (`DesignMemory.recall`: the nearest subject's best design, its
+  scores, how it was built, the judge's three lowest reasons to design out, its
+  best, two more subjects in a line each, and its picture), and the app's own
+  loop has it in its first message (`opening_for`), in words only, because the
+  pictures there are the reference (`reference_probe`). `--held-out=ID[,ID]`
+  hides a subject's designs; `tools/bench/run.py` passes the subject under
+  test, so a bench score is never the memory of the same subject.
+  `design_memory_probe` measures recall on sixteen phrasings no title uses,
+  checks a revision gets nothing, that holding out hides the subject, and that
+  the tool, the first message and the guidance head carry it; run with
+  `-- --held-out=speed_champions` it checks the flag as the bench passes it.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a
@@ -1544,6 +1639,8 @@ godot --path .                                   # the Design panel
 tools/design.py "a small lighthouse"             # COSTS MONEY
 tools/design.py "a red sports car" --out models/car.ldr --effort max
 godot --headless --path . -- --ask="a small lighthouse" --out=/tmp/x.ldr --effort=low
+env -u ANTHROPIC_API_KEY xvfb-run -a godot --path . -- --mcp=8790 \
+  --ask-claude-code="a lighthouse" --sketch-first --out=/tmp/x.ldr   # three sketches first, on your plan
 ```
 
 Effort is one of `low medium high xhigh max`. The app needs the person's own key,
@@ -1574,6 +1671,8 @@ godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
+godot --headless --path . --script src/dev/sketch_probe.gd      # Sketch first: three sketches, one sent back, the second chosen and designed from; over MCP too
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/sketch_probe.gd -- --pictures=DIR   # ...and each one's picture
 godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, copies that follow
 xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/selection_fit_probe.gd   # ...and the numbered picture: shots/selection_fit/points.png
 godot --headless --path . --script src/dev/scale_probe.gd       # a model too big to list in one go
@@ -1597,6 +1696,9 @@ godot --headless --path . --script src/dev/detail_probe.gd      # each assembly 
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
 godot --headless --path . --script src/dev/snippets_probe.gd    # real sets' pieces found by what they are, credited, laid whole and joined
 python3 tools/minitest.py tests/test_snippets.py                # the search on a hand-made index: subject first, plurals, filters
+godot --headless --path . --script src/dev/design_memory_probe.gd  # our scored designs found by subject, the judge's faults handed over
+godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=speed_champions  # ...and never the subject under test
+python3 tools/design_memory.py list                             # what the memory holds: each design's scores and kinds
 godot --path . --resolution 1400x900 --script src/dev/technique_sheet_probe.gd  # and each looks like its name: shots/techniques/
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```

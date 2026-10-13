@@ -397,7 +397,7 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
                   "mac": "Brickworks.app/Contents/MacOS/Brickworks",
                   "windows": "Brickworks.console.exe"}[platform], "",
               "LEGO(R) is a trademark of the LEGO Group of companies which does not",
-              "sponsor, authorize or endorse this software. Part geometry is derived",
+              "sponsor, authorize or endorse this app. Part geometry is derived",
               "from the LDraw(TM) Parts Library; see ATTRIBUTION.md.", ""]
     return "\n".join(lines)
 

@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step -->
 
 ## Sub-features
 
@@ -39,6 +39,33 @@ asking for an API key.
   starts the Claude Code on this machine and points it back at itself over MCP, so
   the thinking is paid for by the person's Claude subscription — no API key, no
   account, nothing billed by us. Desktop only; a browser cannot start a program.
+- `the window's commands over mcp`: `src/net/app_tools.gd` (AppTools), what
+  the person does from the menus besides designing, as tools a session has
+  and the design loop does not: `set_floor` (View, Floor), `edit_steps`
+  (Edit, Build steps; the timeline), `lay_flex` (Build, Hose, tube or
+  chain; Reshape), `pose_model` (Build, Pose; the hinge tool),
+  `animate_model` (Pose and animate's keys and Render), `undo` (Edit,
+  Undo and Redo), `open_model` (File, Open), `parts_list` (Build, Parts
+  list; My collection, What do I need, What can I build), `render_model`
+  (File, Render) and `export_model` (File, Export, and Instructions). Each
+  is a thin wrapper over the code the command runs — `Shell.change_steps`,
+  `FlexTool.lay`, `PosePanel.joints_now`/`set_angle`/`render_animation`,
+  `RenderDialog.render_for`,
+  `ModelBar.export_now`, `Exports`, main's `choose_floor` and
+  `_export_booklet` — one undo step where it changes the model
+  (`Builder.fold_since` folds a call that took two of the window's steps),
+  and a refusal that says what to fix. They take their turn in the queue as
+  the assistant's tools do. Guidance: `AppTools.GUIDE`, the "THE REST OF THE
+  APP" section, which `read_guide("app")` serves and `guidance()` ends with.
+- `keep the mcp in step`: `src/dev/mcp_sync_probe.gd`. Fails when
+  `tools/mcp_tools.json` is not what the app serves (`-- --write` writes it
+  again from the app; it was four tools behind when this was written), when
+  `GUIDE_HEAD` reaches 3,500 characters, when a tool is named in neither the
+  head nor a section `read_guide` serves (`make_part` and `clear_model` were
+  in neither), and when one of the window's commands (Shell) is in neither
+  `AppTools.COMMANDS` (the tool that does it) nor `AppTools.WINDOW_ONLY`
+  (why it is the window's alone). A command added to the menus fails it
+  until it is placed in one.
 - `drive the app from a shell`: `tools/brick.py` calls one tool and prints the
   answer, writing any picture to `--png=PATH`. The same socket without the MCP
   wrapping, for a script, a person reading along, or an agent that would rather
@@ -60,7 +87,11 @@ it lays a picture as a LEGO Art set to a plan of its own — see
 [view](view.md); and `selection`, `where_to_attach` and `edit_selection`,
 with which a session is told what the person has selected in the window,
 where it can take a part, and changes that alone, as **Ask Claude about
-this…** does — see assistant.md, "ask claude about the selection".)
+this…** does — see assistant.md, "ask claude about the selection"; and
+the window's commands, ten more — see "the window's commands over mcp"
+above; and `choose_sketch`, with `submit_design`'s `sketch: true`, for
+Sketch first — see assistant.md, "sketch first". 38 in all on 2026-10-13;
+`mcp_sync_probe` keeps the count honest.)
 
 ## How to reach it
 
@@ -96,6 +127,8 @@ Runtime:
 
 ```sh
 godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queue included
+godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, the guide, the menus in step
+godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 ```
@@ -120,7 +153,7 @@ is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
 tools, all of them this app's" when it connects.
 
 And `mcp_probe` ends on "a session outside the app can use the app's own
-tools" — a client connects over real TCP, gets 9 tools all carrying schemas,
+tools" — a client connects over real TCP, gets every tool (37 on 2026-10-13) carrying a schema,
 searches the real catalogue, submits a design that puts 3 bricks in the world, and
 has a floating brick refused, and three clients asking at once each get their
 own answer while the app does them one at a time. Over HTTP, a body with an
@@ -130,7 +163,22 @@ Brickworks over MCP" — initialize, ping, `tools/list` with MCP's `inputSchema`
 spelling, a search, a cleared baseplate, a design that lands, a save read back off
 disk, and the no-app case answering "not running" with the command to start it.
 
-Both are in `tools/check.sh`.
+`mcp_sync_probe` ends on "the MCP is in step with the app". `app_tools_probe`
+ends on "a session can do what the person does from the menus": every one of
+the ten called through `answer_rpc` (the connector's and the HTTP port's
+path) and read back off the model — the floor it stands on, the step a part
+is in, the tube's pieces, the turret's transform, the file on disk — one undo
+each, and each refusal naming what to give. Headless, `render_model` and the
+picture and booklet exports are refused with "without a window"; in a window
+(it runs again on screen in the suite) a quick 720p render comes back with
+its picture and is written where Render writes, the crane's animation is
+written as a WebP, and the picture and the
+booklet are written where Export writes. The probe points `Exports.folder`
+and `RenderDialog.folder` and `PosePanel.folder` at its own folder, so nothing lands in Downloads.
+`mcp_check.py` also sets a floor, undoes it, lists the steps and the parts
+over the real relay, and checks `tools/mcp_tools.json` names every tool.
+
+All of these are in `tools/check.sh`.
 
 ## Gotchas
 

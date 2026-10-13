@@ -184,7 +184,7 @@ func art_picture() -> Image:
 func _make_art(args: Dictionary) -> Variant:
 	var plan: ArtPlan = ArtPlan.parse(args, library)
 	if not plan.ok():
-		progress.emit("a LEGO Art plan that could not be laid")
+		progress.emit("a Brick Art plan that could not be laid")
 		return plan.trouble()
 	var art: MosaicArt.Art = plan.lay(art_picture(), library)
 	if art == null:
@@ -212,7 +212,7 @@ func _make_art(args: Dictionary) -> Variant:
 	art_laid.emit(art)
 	built.emit(_placed_ids.size())
 	var said: String = ArtPlan.said_of(art)
-	progress.emit("laid a LEGO Art picture: %d parts" % _placed_ids.size())
+	progress.emit("laid a Brick Art picture: %d parts" % _placed_ids.size())
 	# Laid again under the same name is a revision of the same picture.
 	if plan.name.to_lower() != _art_name:
 		_art_name = plan.name.to_lower()
@@ -257,7 +257,7 @@ func _look_at_picture() -> Variant:
 		shown.resize(maxi(1, int(shown.get_width() * scale)),
 			maxi(1, int(shown.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
 	return [
-		{"type": "text", "text": ("The picture to make LEGO Art of, %d x %d pixels. "
+		{"type": "text", "text": ("The picture to make into Brick Art, %d x %d pixels. "
 			% [picture.get_width(), picture.get_height()]
 			+ "Plan it with make_art; coordinates are fractions of it, 0 to 1 from the "
 			+ "top left, after any crop.")},
@@ -647,8 +647,367 @@ func design(brief: String) -> bool:
 	if _busy:
 		return false
 	_messages.clear()
+	_drop_sketches()
 	_start(brief)
 	return true
+
+
+# -- sketch first ----------------------------------------------------------
+
+
+## Three massings to choose between, in one turn on the cheaper model
+## (Brain.sketch_model), before anything is paid for in full. Each is
+## checked and pictured off the baseplate, and [signal sketches_ready]
+## hands them to whoever shows them; [method choose_sketch] puts the chosen
+## one down and designs the whole model from it at the person's own model
+## and effort. Refused while a design runs, as [method design] is.
+func sketch(brief: String) -> bool:
+	if _busy:
+		return false
+	_messages.clear()
+	_drop_sketches()
+	_sketch_brief = brief
+	_sketch_round = true
+	_start(brief)
+	return true
+
+
+## The sketches are in: who shows them, what they are, and what making them
+## cost. [param ours] is false for a session's from outside, which chooses
+## for itself with choose_sketch.
+signal sketches_ready(sketches: Array, model_id: String, tokens: Brain.Spend, ours: bool)
+## One was chosen, by its number; the others are gone.
+signal sketch_chosen(number: int)
+
+## Turns the sketches may take: a look-up or two, then the three. Past it,
+## whatever was sketched is shown.
+const SKETCH_TURNS := 4
+## Times three that are one idea are sent back for another.
+const SKETCH_REDOS := 1
+
+const SKETCH_ASK := """Sketch first. Before the full design, the person \
+wants three quick sketches to choose between, so call submit_design three \
+times in this one reply, each with "sketch": true. A sketch is massing only: \
+the main masses at their sizes and in their colours, under 150 parts once \
+any patterns are laid, each mass in the biggest pieces that fit it — no \
+detail, no rooms, no features worked; assemblies and features may be empty. Make \
+them three ideas a person can choose between: a different silhouette, \
+different proportions, or a different approach to the subject — not one \
+model three times at slightly different sizes. Name each for its idea and \
+say in its description what makes it different. Each is checked and \
+pictured, not built; the person chooses one, and the full design is built \
+from it."""
+
+## The same, said to a session outside the app with its brief.
+const SKETCH_FIRST := """Sketch first: before the full design, make three \
+quick sketches to choose between — submit_design with "sketch": true, three \
+times, each massing only, under 150 parts once its patterns are laid (each \
+mass in the biggest pieces that fit it), and different from the others in \
+silhouette, proportion or approach. Then choose_sketch the one that best \
+answers this brief, and design the whole model from it."""
+
+const FROM_SKETCH := """Design the whole model from it now. Keep what the \
+person chose — its silhouette, its proportions and its approach — and build \
+it as a set is built: the right parts, real detail, the assemblies a person \
+would name and the features the subject is known by. submit_design the \
+whole model, without sketch: it replaces the sketch."""
+
+var _sketch_round: bool = false
+var _sketch_brief: String = ""
+var _held_sketches: Array = []
+## Whether the held ones came from a session outside the app.
+var _sketches_outside: bool = false
+## The number the next sketch replaces, when two were one idea; 0 for none.
+var _sketch_redo: int = 0
+var _sketch_redos: int = 0
+## Sketches held during the reply being answered.
+var _sketch_arrivals: int = 0
+## The one chosen, while the full design's opening is made from it.
+var _chosen_sketch: Sketches.Sketch = null
+
+
+## A brief with the sketch-first ask on it, for a session outside the app
+## (My Claude with Sketch first ticked, --ask-claude-code --sketch-first).
+static func sketch_brief(text: String) -> String:
+	return "%s\n\n%s" % [text, SKETCH_FIRST]
+
+
+## The sketches held, for a probe or a panel.
+func held_sketches() -> Array:
+	return _held_sketches.duplicate()
+
+
+func _drop_sketches() -> void:
+	_held_sketches = []
+	_sketch_round = false
+	_sketch_redo = 0
+	_sketch_redos = 0
+	_sketch_arrivals = 0
+	_chosen_sketch = null
+
+
+## What the first message of a run carries besides the brief: the ask for
+## sketches, or the chosen one to design from.
+func _sketch_opening() -> Array:
+	if _sketch_round:
+		return [{"type": "text", "text": SKETCH_ASK}]
+	if _chosen_sketch == null:
+		return []
+	var one: Sketches.Sketch = _chosen_sketch
+	var said: Array = [{"type": "text", "text": ("You sketched three massings for "
+		+ "this, and the person chose sketch %d, \"%s\"" % [one.number, one.name]
+		+ (": %s" % one.description if not one.description.is_empty() else "")
+		+ ". It stands on the baseplate now: %d parts, %s." % [one.parts, one.measures()])}]
+	if not one.block.is_empty():
+		said.append(one.block)
+	var written: Dictionary = one.args.duplicate()
+	written.erase("sketch")
+	said.append({"type": "text", "text": "Its parts, as you submitted them:\n"
+		+ JSON.stringify(written)})
+	said.append({"type": "text", "text": FROM_SKETCH})
+	return said
+
+
+## A sketch, from submit_design with sketch: true (or any submission while
+## the app's own loop is sketching): read, checked, measured and pictured on
+## a world of its own, and held. Nothing is put on the baseplate.
+func _hold_sketch(args: Dictionary) -> Variant:
+	var model: Model = _read_model(args)
+	_say_shorthand_trouble()
+	var parts: int = model.placements.size()
+	if parts == 0:
+		return "Not held — that sketch has no parts in it."
+	if parts > Sketches.MOST_PARTS:
+		progress.emit("a sketch of %d parts, over the %d a sketch may have"
+			% [parts, Sketches.MOST_PARTS])
+		return ("Not held — a sketch is massing only, under %d parts, and this is %d "
+			% [Sketches.MOST_PARTS, parts] + "once its patterns are laid. Say each mass "
+			+ "in the biggest pieces that fit it — 2 x 4 bricks, 6 x 6 and larger "
+			+ "plates — or fewer masses, and leave the detail for the full design.")
+	# A fourth in the same reply is not the first of a new three.
+	if _sketch_round and _sketch_redo == 0 and _held_sketches.size() >= Sketches.COUNT:
+		return "Not held — three sketches are in already, and the person chooses among them."
+	var running: bool = _busy
+	if not _sketch_round:
+		# From outside: a set begun by the app's own loop is not this one's.
+		if not _sketches_outside:
+			_held_sketches = []
+		_sketches_outside = true
+	else:
+		_sketches_outside = false
+	await _ensure_parts(model)
+	progress.emit("checking a sketch of %d parts" % parts)
+	var report: Dictionary = await _checked(model)
+	if running and not _busy:
+		return ""
+	var one := Sketches.Sketch.new()
+	one.name = model.name if model.name != "Model" else "Sketch"
+	one.description = model.description
+	one.model = model
+	one.args = args
+	one.report = report
+	one.parts = parts
+	var stage: BrickWorld = _stage_of(model)
+	var measured: Dictionary = Sketches.measure(stage)
+	one.size = measured["size"]
+	one.outline = measured["outline"]
+	if ModelShot.possible():
+		one.picture = await _sketch_picture(stage)
+		if running and not _busy:
+			stage.free()
+			return ""
+		if one.picture != null:
+			one.block = await _shot.encode(one.picture)
+	if one.block.is_empty():
+		one.letters = "%s\n%s" % [ModelView.draw(stage, library, "top"),
+			ModelView.draw(stage, library, "front")]
+	stage.free()
+
+	# Where it goes: in place of one that was the same idea as another, or
+	# after the last, or as the first of a new three.
+	if _sketch_redo > 0 and _sketch_redo <= _held_sketches.size():
+		one.number = _sketch_redo
+		_held_sketches[_sketch_redo - 1] = one
+		_sketch_redo = 0
+	else:
+		if _held_sketches.size() >= Sketches.COUNT:
+			_held_sketches = []
+			_sketch_redos = 0
+		_held_sketches.append(one)
+		one.number = _held_sketches.size()
+	_sketch_arrivals += 1
+	progress.emit("sketch %d of %d: %s, %s" % [one.number, Sketches.COUNT, one.name,
+		one.measures()])
+	return _sketch_answer(one)
+
+
+## A world holding only [param model], in no tree and drawing nothing, to be
+## measured and photographed. The caller frees it.
+func _stage_of(model: Model) -> BrickWorld:
+	var stage := BrickWorld.new()
+	stage.library = library
+	stage.keeps_history = false
+	for placement: Placement in model.placements:
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		stage.add_unseen(placement.part, placement.color,
+			_transform(placement, part, model.section_for(placement)))
+	return stage
+
+
+## A sketch from a corner, as a person sees it: its own colours, no studs
+## written on, nothing picked out.
+func _sketch_picture(stage: BrickWorld) -> Image:
+	var shot: ModelShot = _ensure_shot()
+	var was: Array = [shot.highlight, shot.marks, shot.rulers]
+	shot.highlight = {}
+	shot.marks = []
+	shot.rulers = false
+	var image: Image = await shot.take(stage, "corner")
+	shot.highlight = was[0]
+	shot.marks = was[1]
+	shot.rulers = was[2]
+	return image
+
+
+## What a sketch's submit_design answers: what it is and its picture; and,
+## once there are three, whether they are three ideas, and then all three
+## pictures and how to choose (from outside) — or that the person chooses.
+func _sketch_answer(one: Sketches.Sketch) -> Variant:
+	var verdict: String = ("it holds together" if one.holds()
+		else "the check says %s" % str(one.report.get("summary", "")))
+	var blocks: Array = [{"type": "text", "text": "Sketch %d of %d held, not built: "
+		% [one.number, Sketches.COUNT] + "%d parts, %s; %s." % [one.parts,
+			one.measures(), verdict]}]
+	blocks.append_array(_sketch_shown(one))
+	if _held_sketches.size() < Sketches.COUNT:
+		var others := PackedStringArray()
+		for held: Sketches.Sketch in _held_sketches:
+			others.append("%d" % held.number)
+		blocks.append({"type": "text", "text": ("Now sketch %d: another idea, "
+			% (_held_sketches.size() + 1)) + "different from sketch %s in silhouette, "
+			% " and ".join(others) + "proportion or approach."})
+		return blocks
+	var pairs: Array = Sketches.alike_pairs(_held_sketches)
+	if not pairs.is_empty() and _sketch_redos < SKETCH_REDOS:
+		_sketch_redos += 1
+		var pair: Array = pairs[0]
+		var first: Sketches.Sketch = _held_sketches[int(pair[0]) - 1]
+		_sketch_redo = int(pair[1])
+		progress.emit("sketches %d and %d are one idea; asking for another" % pair)
+		blocks.append({"type": "text", "text": ("Sketches %d and %d are nearly the "
+			% pair) + "same idea: both about %s, with outlines that overlap %d%%. " % [
+				first.measures(), roundi(Sketches.overlap(first,
+					_held_sketches[int(pair[1]) - 1]) * 100.0)]
+			+ "A person cannot choose between those. Submit submit_design with "
+			+ "\"sketch\": true once more: it replaces sketch %d, and should differ " % pair[1]
+			+ "from the other two in silhouette, proportion or approach."})
+		return blocks
+	if not _sketches_outside:
+		blocks.append({"type": "text", "text":
+			"That is three. The person chooses one, and the full design is built from it."})
+		return blocks
+	# From outside: all three, and how to choose.
+	sketches_ready.emit(_held_sketches.duplicate(), "", Brain.Spend.new(), false)
+	blocks.append({"type": "text", "text": "The three sketches, side by side:"})
+	for held: Sketches.Sketch in _held_sketches:
+		blocks.append({"type": "text", "text": "Sketch %d, \"%s\": %d parts, %s%s." % [
+			held.number, held.name, held.parts, held.measures(),
+			"" if held.holds() else ", and it does not hold together yet"]})
+		blocks.append_array(_sketch_shown(held))
+	blocks.append({"type": "text", "text": ("Choose the one that best answers the "
+		+ "brief — its silhouette, its proportions, its approach — with choose_sketch "
+		+ "{\"sketch\": N}. It goes on the baseplate and the other two are dropped; "
+		+ "then design the whole model from it and submit_design it without sketch. "
+		+ "Or submit_design with \"sketch\": true again for a new three.")})
+	return blocks
+
+
+## A sketch as Claude is shown it: its picture, or the letters without one.
+static func _sketch_shown(one: Sketches.Sketch) -> Array:
+	if not one.block.is_empty():
+		return [one.block]
+	return [{"type": "text", "text": one.letters}]
+
+
+## After a reply in the app's own sketch round: true when it has been dealt
+## with here — the sketches shown, sent back for the rest, or the round
+## given up — and false when the reply was only look-ups, to be answered as
+## any turn is.
+func _sketch_turn_over(tool_results: Array) -> bool:
+	var arrived: int = _sketch_arrivals
+	_sketch_arrivals = 0
+	var full: bool = _held_sketches.size() >= Sketches.COUNT
+	if full and _sketch_redo == 0:
+		_sketches_shown()
+		return true
+	var out_of_turns: bool = _turns >= SKETCH_TURNS
+	if out_of_turns:
+		if _held_sketches.is_empty():
+			_stop(false, "it made no sketches")
+		else:
+			_sketches_shown()
+		return true
+	if arrived == 0 and not tool_results.is_empty():
+		return false
+	if not full:
+		var ask: String = ("%d of the three sketches so far. " % _held_sketches.size()
+			+ "Submit the other %d now, each submit_design with \"sketch\": true, "
+			% (Sketches.COUNT - _held_sketches.size())
+			+ "each a different idea from the ones before.")
+		if tool_results.is_empty():
+			ask = ("No sketches yet. Call submit_design three times now, each with "
+				+ "\"sketch\": true: three massings under 150 parts, three different ideas.")
+		tool_results.append({"type": "text", "text": ask})
+	_messages.append({"role": "user", "content": tool_results})
+	_send()
+	return true
+
+
+## The round is over: the sketches go to the panel, with what they cost, and
+## the conversation that made them is done with. Choosing begins the design.
+func _sketches_shown() -> void:
+	_sketch_round = false
+	_busy = false
+	_messages.clear()
+	var spend: Brain.Spend = _spend
+	_spend = Brain.Spend.new()
+	progress.emit("%d sketches to choose from" % _held_sketches.size())
+	sketches_ready.emit(_held_sketches.duplicate(), _spent_on, spend, true)
+
+
+## Put sketch [param number] down and go on from it; the others are dropped.
+## The app's own: the whole model designed from it, a fresh conversation at
+## the person's model and effort ("" when that has begun). From outside:
+## what to do next, said to the session.
+func choose_sketch(number: int) -> String:
+	if _busy:
+		return "Not now — a design is running. Choose when it has finished."
+	if _held_sketches.is_empty():
+		return ("There are no sketches to choose from. submit_design with \"sketch\": "
+			+ "true, three times, makes them.")
+	if number < 1 or number > _held_sketches.size():
+		return "There is no sketch %d; choose 1 to %d." % [number, _held_sketches.size()]
+	var one: Sketches.Sketch = _held_sketches[number - 1]
+	var outside: bool = _sketches_outside
+	_held_sketches = []
+	_sketch_redo = 0
+	sketch_chosen.emit(number)
+	progress.emit("putting down sketch %d, %s" % [number, one.name])
+	var model: Model = one.model
+	await _ensure_parts(model)
+	await _apply(model, true, true)
+	if outside:
+		# Standing, so a check is a check and not a replacement for it.
+		_outside_standing = true
+		return ("Sketch %d, \"%s\", stands on the baseplate: %d parts, %s. " % [number,
+			one.name, one.parts, one.measures()] + "It is the massing the design is built "
+			+ "from.\n\n" + FROM_SKETCH + " Then review_model, as its answer says.")
+	_chosen_sketch = one
+	_start(_sketch_brief)
+	_chosen_sketch = null
+	return ""
 
 
 ## Whether there is a conversation to carry on, as against a fresh
@@ -671,6 +1030,7 @@ func cancel() -> void:
 	if not _busy:
 		return
 	_busy = false
+	_drop_sketches()
 	_http.cancel_request()
 	if _streaming != null:
 		_streaming.stop()
@@ -721,7 +1081,7 @@ func _start(text: String) -> void:
 	_art_name = ""
 	_brief = text
 	_spend = Brain.Spend.new()
-	_spent_on = Brain.chosen()
+	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
 	_before = _snapshot()
 	# References first, in the same message as the brief.
@@ -738,7 +1098,11 @@ func _start(text: String) -> void:
 			return
 		_messages.append({"role": "user", "content": opening})
 	else:
-		_messages.append({"role": "user", "content": opening_for(text)})
+		# On the web our scored designs are fetched the first time.
+		await DesignMemory.ensure(self)
+		if not _busy:
+			return
+		_messages.append({"role": "user", "content": opening_for(text) + _sketch_opening()})
 	progress.emit("thinking")
 	_send()
 
@@ -782,9 +1146,13 @@ func opening_for(text: String) -> Array:
 	if not measured.is_empty() and not measured.begins_with("No kind") \
 			and not measured.begins_with("This build"):
 		opening.append({"type": "text", "text":
-			"Before you choose parts, this is how real LEGO sets of this "
+			"Before you choose parts, this is how real LEGO® sets of this "
 			+ "kind are actually built. It is measured over every "
 			+ "catalogued set, not advice.\n" + measured})
+	# And, for the same reason, what our own scored designs of the nearest
+	# subject did and what the bench's judge faulted (src/ai/design_memory.gd).
+	# In words: the pictures here are the reference.
+	opening.append_array(DesignMemory.recall(text, false))
 	return opening
 
 
@@ -906,7 +1274,8 @@ func _send() -> void:
 		# never happened.
 		_sketching = false
 		reader.fragment.connect(func(tool: String, piece: String) -> void:
-			if tool != "submit_design" and tool != "check_design":
+			# Sketches are held off the baseplate, not drawn on it.
+			if _sketch_round or (tool != "submit_design" and tool != "check_design"):
 				return
 			for raw: Dictionary in scanner.feed(piece):
 				if not raw.has("part") or _edited:
@@ -1013,7 +1382,10 @@ func _sketch_one(placement: Placement,
 ## Separated from _send so a probe can inspect it without a network
 ## call, which is the only way this stays fixed.
 func request_body() -> Dictionary:
-	var choice: Brain.Choice = Brain.find(Brain.chosen())
+	# Sketches on the cheaper model and effort; everything else on the chosen.
+	var choice: Brain.Choice = Brain.find(Brain.sketch_model() if _sketch_round
+		else Brain.chosen())
+	var effort: String = Brain.sketch_effort() if _sketch_round else Brain.effort()
 	# As much as the chosen model will write, when the reply is
 	# streamed.
 	#
@@ -1066,8 +1438,8 @@ func request_body() -> Dictionary:
 	# refuses the effort parameter, each with a 400 — so sending either
 	# unconditionally turns choosing the quick model into choosing a
 	# broken assistant.
-	if choice.effort and not Brain.effort().is_empty():
-		body["output_config"] = {"effort": Brain.effort()}
+	if choice.effort and not effort.is_empty():
+		body["output_config"] = {"effort": effort}
 	if choice.adaptive:
 		body["thinking"] = {"type": "adaptive"}
 	return body
@@ -1143,6 +1515,10 @@ func _on_response(result: Array) -> void:
 				"tool_use_id": block.get("id", ""),
 				"content": await _run_tool(block),
 			})
+
+	# Sketching first: shown once there are three, asked for the rest until.
+	if _sketch_round and _busy and _sketch_turn_over(tool_results):
+		return
 
 	if tool_results.is_empty():
 		# About a selection, a reply with nothing to call is the answer:
@@ -2384,7 +2760,11 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"how_real_sets_build_this":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up how real sets build a %s" % subject)
-			return _how_real_sets_build_this(subject)
+			# And what our own scored designs of the nearest subject did and
+			# were faulted for: asked once, with the subject, before building.
+			await DesignMemory.ensure(self)
+			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
+				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world(args)
@@ -2437,7 +2817,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# src/assembly/art_plan.gd.
 			if _keeps_to_focus():
 				return _not_while_scoped()
-			progress.emit("laying out a LEGO Art picture")
+			progress.emit("laying out a Brick Art picture")
 			return await _make_art(args)
 		"look_at_picture":
 			progress.emit("looking at the picture")
@@ -2577,12 +2957,20 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return ("Not applied — the person asked about the parts they "
 					+ "selected, and submit_design would replace the model. Change "
 					+ "them with edit_selection.")
+			if bool(args.get("sketch", false)) or _sketch_round:
+				return await _hold_sketch(args)
+			# A whole design instead of choosing: the sketches are done with.
+			if not _held_sketches.is_empty():
+				_held_sketches = []
+				sketch_chosen.emit(0)
 			_last_submitted = args
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
 			_say_shorthand_trouble()
 			return "Received. Checking it now."
+		"choose_sketch":
+			return await choose_sketch(int(args.get("sketch", 0)))
 	return "No tool called %s." % name
 
 
@@ -3960,10 +4348,66 @@ func _search(query: String, limit: int) -> String:
 				library.request_mesh(info.id)
 
 	var lines: PackedStringArray = PackedStringArray()
+	var told: String = ""
 	for info: PartLibrary.PartInfo in usable:
-		lines.append(_describe(info)
+		lines.append(_describe(info) + _prints_note(info)
 			+ (Collection.owned_note(info.id, owned, library) if from_collection else ""))
+		if told.is_empty() and not library.prints_of(info.id).is_empty():
+			told = _prints_named(info)
+	if not told.is_empty():
+		lines.append(told)
 	return "\n".join(lines)
+
+
+## What a part in a search's answer has printed on it, or what prints of
+## it there are, at the end of its line.
+##
+## A design that cannot see the prints does not know they exist: it
+## builds a badge out of plates, or does without. 3623 has eleven, and
+## "porsche print" did not find the one a Porsche wants (2026-10-13).
+func _prints_note(info: PartLibrary.PartInfo) -> String:
+	if not info.print_of.is_empty():
+		return (", a print of %s" if info.decor() & PartLibrary.PartInfo.PRINTED
+			else ", %s with a sticker on") % info.print_of
+	var how_many: String = _prints_counted(info)
+	return "" if how_many.is_empty() else ", " + how_many
+
+
+## "11 prints", "25 prints and 17 stickered", or "" for a part with none.
+func _prints_counted(info: PartLibrary.PartInfo) -> String:
+	var printed: int = 0
+	var stuck: int = 0
+	for each: PartLibrary.PartInfo in library.prints_of(info.id):
+		if each.decor() & PartLibrary.PartInfo.PRINTED:
+			printed += 1
+		else:
+			stuck += 1
+	var said := PackedStringArray()
+	if printed > 0:
+		said.append("%d print%s" % [printed, "" if printed == 1 else "s"])
+	if stuck > 0:
+		said.append("%d stickered" % stuck)
+	return " and ".join(said)
+
+
+## The first part in an answer that has prints, a few of them by what is
+## on them, and how to ask for the rest.
+func _prints_named(info: PartLibrary.PartInfo) -> String:
+	var prints: Array[PartLibrary.PartInfo] = library.prints_of(info.id)
+	var some := PackedStringArray()
+	for each: PartLibrary.PartInfo in prints.slice(0, 3):
+		var on_it: String = each.printed()
+		if on_it.length() > 40:
+			var cut: int = on_it.rfind(" ", 40)
+			on_it = on_it.left(cut if cut > 0 else 40) + "…"
+		some.append("%s %s" % [each.id, on_it])
+	var asks: String = "\"%s print\"" % info.id
+	if _prints_counted(info).contains("stickered"):
+		asks += " or \"%s sticker\"" % info.id
+	return ("%s has %s: %s%s. search_parts %s lists them; \"porsche print\" "
+		% [info.id, _prints_counted(info), "; ".join(some),
+			"; and %d more" % (prints.size() - 3) if prints.size() > 3 else "", asks]
+		+ "finds any print by what is on it.")
 
 
 func _describe(info: PartLibrary.PartInfo) -> String:
@@ -6015,7 +6459,7 @@ func _at_display_proportions(pattern: Dictionary) -> Dictionary:
 		var laid: Dictionary = pattern.duplicate(true)
 		laid["courses"] = best
 		_pattern_advice.append(("No courses were said, so the tower is laid in %d: %s times "
-			+ "as tall as its base is wide (%s studs), as a display model stands — LEGO's "
+			+ "as tall as its base is wide (%s studs), as a display model stands — set "
 			+ "10237 is 21 cm across and 73 cm tall.") % [best, "%.1f" % DISPLAY_TALL,
 			roundi(wide)])
 		return laid
@@ -6023,7 +6467,7 @@ func _at_display_proportions(pattern: Dictionary) -> Dictionary:
 	var ratio: float = _display_height(pattern, courses) * PLATE / maxf(wide * STUD, 1.0)
 	if absf(ratio - DISPLAY_TALL) > DISPLAY_TALL * DISPLAY_SLACK:
 		_pattern_advice.append(("This tower stands %.1f times as tall as its base is wide "
-			+ "(%s studs); a display model stands about %s — LEGO's 10237 is 21 cm across "
+			+ "(%s studs); a display model stands about %s — set 10237 is 21 cm across "
 			+ "and 73 cm tall. %s, about %d courses, or leave courses out and they are "
 			+ "worked out.") % [ratio, roundi(wide), "%.1f" % DISPLAY_TALL,
 			"Taller" if ratio < DISPLAY_TALL else "Lower, or a wider radius", best])
@@ -8444,7 +8888,7 @@ func _piece_line(n: int, entry: Dictionary) -> String:
 ## the design's.
 const TURNS_FOR_TOUCHES := 6
 
-const CREATIVE_PASS := """The creative pass: the last a LEGO designer \
+const CREATIVE_PASS := """The creative pass: the last a LEGO® designer \
 makes, and the one people remember. The model holds together and reads as \
 its subject — {subject}. Now give it what a competent model lacks and a \
 real set has: something a person finds and smiles at.
@@ -8463,7 +8907,7 @@ printed. A plain slope where a nameplate goes reads as blank: print it or \
 leave it out.
   A nod: what only someone who knows the subject would catch — its maker, \
 its number or its year on a printed part, the detail it is famous for, \
-what LEGO's own set of it is loved for — or a part used for what it looks \
+what the LEGO® set of it is loved for — or a part used for what it looks \
 like rather than what it is: a claw for a thorn, a flower stem for an \
 aerial, a pearl-gold ring for a crest. A lamp post, a chimney and a flag \
 are what every model has; they are not this.
@@ -12653,7 +13097,7 @@ func _what_a_set_is_made_of() -> String:
 				int(entry.get("most_of_one", 0))]
 			+ "any one piece, and %d%% of its pieces as big as a 2 x 4 "
 			% int(entry.get("big", 10)) + "brick")
-	return ("\n\nWHAT A SET IS MADE OF\nMeasured over every LEGO set there "
+	return ("\n\nWHAT A SET IS MADE OF\nMeasured over every LEGO® set there "
 		+ "is, by size:\n" + "\n".join(lines)
 		+ "\nThese are medians of real sets, not a target to hit exactly. "
 		+ "What they are for is the shape of the mistake: a model that is "
@@ -12691,10 +13135,10 @@ func _what_sets_are_built_from() -> String:
 			PackedStringArray(info.name.split(" ", false)))
 		lines.append("  %-8s %-42s %d sets" % [info.id, name, info.in_sets])
 	return ("\n\nTHE PARTS REAL SETS ARE MADE OF\nThe thirty most used "
-		+ "parts in LEGO history, counted over every catalogued set "
+		+ "parts in the history of LEGO® sets, counted over every catalogued set "
 		+ "inventory:\n" + "\n".join(lines)
 		+ "\n\nRead the shape of that list, not the individual numbers. A "
-		+ "LEGO set is mostly plates: the 2x4 brick everyone pictures is "
+		+ "LEGO® set is mostly plates: the 2x4 brick everyone pictures is "
 		+ "twenty-second, under the 1x1 round plate and four sizes of "
 		+ "tile. Plates let a shape be refined a plate at a time where "
 		+ "bricks force it in threes, and tiles are what makes a surface "
@@ -12711,11 +13155,16 @@ func _rules() -> String:
 that builds whatever you submit. Your designs get built, so they have to \
 hold together.
 
-LEGO ART
-A picture to hang up — LEGO Art, a mosaic, wall art, a portrait or a \
-scene in bricks — is not modelled with submit_design. Call make_art, \
-which lays it as a LEGO Art set while you decide what its designer \
-would. With a picture the person chose, look_at_picture first; with \
+When you write to the person, LEGO® is a brand name: in capitals, with \
+its ®, and an adjective (LEGO® bricks, a LEGO® set), never plural or \
+possessive. The company is the LEGO Group.
+
+BRICK ART
+A picture to hang up — a mosaic in the style of LEGO® Art sets, \
+wall art, a portrait or a scene in bricks — is not modelled with \
+submit_design. Call make_art, which lays it the way a LEGO® Art set is \
+laid while you decide what its designer would. With a picture the person \
+chose, look_at_picture first; with \
 none, draw it in make_art's svg. {31212}
 
 COORDINATES
@@ -12950,8 +13399,10 @@ each feature the subject is known by, then the detail. In this order:
      SUBJECT NEEDS, below, says which call builds each; \
      how_real_sets_build_this, asked with the plainest word for the \
      kind (a rocket: space; a locomotive: train; a galleon: pirate; an \
-     owl: animal), says what real sets of it are made of and in. The \
-     picture's colours come with it as numbers.
+     owl: animal), says what real sets of it are made of and in, and \
+     what our own scored designs of the nearest subject did and the \
+     faults the judge found in them, to design out. The picture's \
+     colours come with it as numbers.
   4. The feature list: what the subject is known by, given to \
      submit_design as features — an owl's facial disc, eyes, beak, ear \
      tufts, wings, talons; a car's wheel arches, headlamps, grille, \
@@ -13047,7 +13498,7 @@ alongside the bricks you write by hand:
            with a stair up the front to its door — Orthanc, a keep with \
            corner towers, anything clustered. With no "courses" it is \
            laid at a display model's proportions, 3.3 times as tall as \
-           its base is wide, horns and all (LEGO's 10237 is 21 cm \
+           its base is wide, horns and all (set 10237 is 21 cm \
            across and 73 cm tall), and the reply says how many; a run \
            that chose its own stood a thin tower on a base twice its \
            width, and its check says when the courses given are far \
@@ -13073,7 +13524,7 @@ alongside the bricks you write by hand:
            stuck on. The top is capped with a summit two plates thick, \
            which ties it all together; the reply says at what y (without \
            storeys, y + 3 x courses), so build on it two plates higher. \
-           Each horn is a blade, as LEGO's 10237 builds Orthanc's: \
+           Each horn is a blade, as set 10237 builds Orthanc's: \
            plates on their side pressed onto bricks with side studs on \
            the summit, edges cut by wedge plates, sweeping out from its \
            pier and back in to a point, so they open round the platform \
@@ -13229,8 +13680,8 @@ a model of the thing and a model of bricks.
   It is measurement, not instruction. Use what the shape calls for and \
 ignore the rest; a part that is characteristic of a kind is not a part \
 every set of that kind has. But do not pass over it because you already \
-have a picture in mind — the picture is what you remember of LEGO, and \
-this is what LEGO did.
+have a picture in mind — the picture is what you remember of LEGO® sets, and \
+this is what the sets did.
   how_real_sets_build_this asks the same question about anything else: \
 a part of the model that is its own kind of thing, or a subject the \
 brief did not name in plain words.
@@ -13260,7 +13711,7 @@ most of the library — not parts that were never sold.
 
 SOMETHING BIG
 A set-sized model — a ship, a building, a vehicle with a real interior \
-— is hundreds to thousands of parts. A real LEGO set of any ambition is \
+— is hundreds to thousands of parts. A real LEGO® set of any ambition is \
 a thousand to four thousand, and nothing here stops you: the checker \
 handles ten thousand parts and a model of fifty thousand fits in \
 memory. If what you have built is two hundred parts and the subject \
@@ -13427,7 +13878,7 @@ than sit on it with spikes stuck on. A prism's "storeys" steps a tower in \
 on ledges in one call; a round's stack takes a smaller diameter; a stack \
 of either, each a little smaller, says a taper in plain calls.
   Dark is not one colour. A big face of black or dark brown with nothing \
-on it photographs as a hole. LEGO's own Tower of Orthanc (10237) is 66% \
+on it photographs as a hole. The Tower of Orthanc set (10237) is 66% \
 black and breaks it with 86 grille bricks, 63 headlight bricks, 58 \
 bricks with a handle, 47 cheese slopes, 36 curved ribs and 13% dark \
 bluish grey on its ledges: texture in the same colour, a second tone in \
@@ -13537,7 +13988,7 @@ own: a piece apart that nothing names is a part that has come off, and \
 fails.
   A nod to the subject's story: a detail only someone who knows it \
 would catch — a mission patch, a launch date, a famous passenger, the \
-ship's cat, what LEGO's own set of it is loved for — on a printed part \
+ship's cat, what the LEGO® set of it is loved for — on a printed part \
 (search_parts with "print" and the subject's own word: there are \
 printed parts for a great many real things), or a part used for what it \
 looks like.
@@ -13581,19 +14032,30 @@ edit away."""
 ## no session from outside — the bench's, a person's My Claude — had ever
 ## read how to work, the rules, the shapes or what a subject needs. The head
 ## says the process and where the rest is; read_guide serves any section.
+##
+## And ends with the rest of the app (AppTools.GUIDE): the floor, the build
+## steps, hoses, posing, undo, rendering and exporting, which a session has
+## and the design loop does not.
 func guidance() -> String:
-	return GUIDE_HEAD + "\n\n" + _system_prompt()
+	return GUIDE_HEAD + "\n\n" + _guide_text()
+
+
+## What read_guide serves sections of: the design loop's own guidance, and
+## the rest of the app's tools.
+func _guide_text() -> String:
+	return _system_prompt() + "\n\n" + AppTools.GUIDE
 
 
 ## What a session reads first, inside the 3,800 characters that reach it.
-const GUIDE_HEAD := """You design LEGO models with this app's tools: it builds \
+const GUIDE_HEAD := """You design LEGO® models with this app's tools: it builds \
 what you submit, checks that it holds together, and refuses what does not. \
 Only the start of these instructions may reach you: read_guide gives any \
 section of the rest in full.
 
 HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
-that exists.
+that exists; how_real_sets_build_this with the subject: real sets' parts, \
+and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture, each \
 said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
 "shapes") — and a head that looks at you with its "face" on its shape. \
@@ -13620,11 +14082,18 @@ ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
 edit_selection; never submit_design.
 
+SKETCH FIRST, when the brief asks for it: three massings to choose between \
+before the full design — submit_design with "sketch": true, three times, \
+each under 150 parts and a different idea; then choose_sketch one and design \
+the whole model from it.
+
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
 kind of subject needs), "real", "colour", "angle" (sections on hinges), \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
-"creative", "changing", "kind", "art"."""
+"creative", "changing", "kind", "art", and "app" (what else the person can \
+do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
+animate_model, undo, open_model, parts_list, render_model, export_model)."""
 
 
 ## Names a session may ask read_guide for, beside the headings' own words.
@@ -13638,13 +14107,16 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"creative": "THE CREATIVE PASS",
 	"changing": "CHANGING SOMETHING THAT IS ALREADY BUILT", "edit": "CHANGING SOMETHING THAT IS ALREADY BUILT",
 	"kind": "HOW REAL SETS OF THIS KIND ARE BUILT", "module": "AND BEYOND THAT, A MODULE SAID AGAIN",
-	"art": "LEGO ART", "mosaic": "LEGO ART"}
+	"art": "BRICK ART", "mosaic": "BRICK ART",
+	"app": "THE REST OF THE APP", "menus": "THE REST OF THE APP", "floor": "THE REST OF THE APP",
+	"steps": "THE REST OF THE APP", "hose": "THE REST OF THE APP", "pose": "THE REST OF THE APP",
+	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP"}
 
 
 ## One section of the guidance by its name or a word of its heading: the
 ## heading's text to the next heading. The headings, if none matches.
 func read_guide(section: String) -> String:
-	var text: String = _system_prompt()
+	var text: String = _guide_text()
 	var headings: Array[String] = []
 	var at: Array[int] = []
 	var heading := RegEx.create_from_string("(?m)^[A-Z][A-Z ,'-]{4,}$")
@@ -13774,10 +14246,11 @@ func _find_parts_like(query: String) -> String:
 	if not await RealSnippets.ensure_looks(self):
 		return "This build has no list of what parts look like (tools/part_looks.py)."
 	var found: Array = RealSnippets.search_looks(query, 6)
+	var printed: String = _printed_with(query)
 	if found.is_empty():
 		return ("No family of parts reads as \"%s\" in what is written about them. " % query
 			+ "Try a plainer word for the look (claw, feather, scale, exhaust, eye), "
-			+ "or search_parts for one you can name.")
+			+ "or search_parts for one you can name." + printed)
 	var rows := PackedStringArray()
 	for raw: Variant in found:
 		var family: Dictionary = raw
@@ -13787,7 +14260,27 @@ func _find_parts_like(query: String) -> String:
 		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
 			family["looks"], "; ".join(parts)])
 	return ("Parts that read as %s, best first:\n\n%s\n\nsearch_parts with a number "
-		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in.")
+		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in."
+		+ printed)
+
+
+## Prints that show what find_parts_like was asked for, as a paragraph to
+## end its answer with, or "".
+##
+## The families it searches are plain moulds, described by what they read
+## as; a print is the same mould with a picture on, so none is among them.
+## But a control panel, a gauge or a grille is as often a print as a
+## shape, and a design told only of shapes builds a control panel out of
+## round tiles when the LEGO Group printed one on a 2 x 2 slope.
+func _printed_with(query: String) -> String:
+	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4)
+	if found.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for info: PartLibrary.PartInfo in found:
+		named.append("%s %s" % [info.id, _part_called(info.id)])
+	return ("\n\nPrinted with it: %s. search_parts \"%s print\" for more."
+		% ["; ".join(named), query])
 
 
 ## Each piece drawn on its own and set side by side, in the order found.
@@ -14173,7 +14666,27 @@ var _lookup_waiting: bool = false
 ## session outside the app can be handed this same list and call into
 ## the same implementations, which is the only way the two cannot drift.
 func tool_catalogue() -> Array:
-	return _tools() + focus_tools()
+	return _tools() + focus_tools() + sketch_tools()
+
+
+## Choosing a sketch, for a session outside the app: in the app's own loop
+## the person chooses, on the cards in the panel, so the loop is not offered it.
+func sketch_tools() -> Array:
+	return [{
+		"name": "choose_sketch",
+		"description": ("Choose one of the three sketches made with submit_design "
+			+ "\"sketch\": true. It goes on the baseplate as the massing the full "
+			+ "design is built from, and the other two are dropped. Then design the "
+			+ "whole model from it, and submit_design that without sketch."),
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"sketch": {"type": "integer", "description": "its number, 1 to 3"},
+			},
+			"required": ["sketch"],
+			"additionalProperties": false,
+		},
+	}]
 
 
 ## Run one tool the way a design run would.
@@ -15687,7 +16200,7 @@ func _tools() -> Array:
 						+ "faces, so there is a cleft front and back)"},
 					"horns": {"type": "string", "enum": ["blade", "spire", "flat"],
 						"description": "what piers taller than the core rise "
-						+ "into: a blade (the default, as LEGO's 10237 builds "
+						+ "into: a blade (the default, as set 10237 builds "
 						+ "Orthanc's), a square spire stepping in to a point, or "
 						+ "flat, a turret's cap"},
 					"flare": {"type": "number", "description":
@@ -15866,7 +16379,10 @@ func _tools() -> Array:
 			"description": ("Find real parts by description. Returns part "
 				+ "numbers with their footprint, height and the colours "
 				+ "they were really made in. Use this instead of "
-				+ "guessing a part number."),
+				+ "guessing a part number. Printed parts are found by "
+				+ "what is on them with the word print: \"porsche print\", "
+				+ "\"control panel print\", \"3623 print\" (3623's prints); "
+				+ "a part with a sticker on, with sticker."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -15916,8 +16432,8 @@ func _tools() -> Array:
 		{
 			"name": "show_technique",
 			"description": ("How a construction is actually made, in "
-				+ "part numbers and coordinates, most of them as LEGO "
-				+ "built them in real sets. By what they are for — %s. "
+				+ "part numbers and coordinates, most of them as the LEGO "
+				+ "Group built them in real sets. By what they are for — %s. "
 				% Techniques.listing()
 				+ "Ask before building one of these for the first time "
 				+ "— a bracket's sideways stud is not at a whole number "
@@ -15936,7 +16452,7 @@ func _tools() -> Array:
 		},
 		{
 			"name": "find_techniques",
-			"description": ("How real LEGO sets built a feature, found by "
+			"description": ("How real LEGO® sets built a feature, found by "
 				+ "what it is: the sub-assemblies of thousands of real sets "
 				+ "(an owl's eye, a car's nose, a dragon's wing, a turret "
 				+ "roof, a grille, a beak, a tree), each with a picture, its "
@@ -15986,7 +16502,7 @@ func _tools() -> Array:
 		{
 			"name": "place_technique",
 			"description": ("Lay one of find_techniques' pieces into the "
-				+ "model as LEGO built it: every part where the set has it, "
+				+ "model as the LEGO Group built it: every part where the set has it, "
 				+ "turned a number of quarter turns about the upright and "
 				+ "moved so its low corner is at x, y, z, in your colours "
 				+ "if you say which of its colours become which. Parts "
@@ -16065,11 +16581,11 @@ func _tools() -> Array:
 		},
 		{
 			"name": "how_real_sets_build_this",
-			"description": ("What real LEGO sets of this kind are "
+			"description": ("What real LEGO® sets of this kind are "
 				+ "actually built from — the parts they reach for far "
 				+ "more often than sets in general, and the colours "
 				+ "they use. Measured over fifteen thousand real sets, "
-				+ "so it is what LEGO's own designers did and not "
+				+ "so it is what the LEGO Group's own designers did and not "
 				+ "advice.\n\nCall it for any subject that is a kind of "
 				+ "set: a castle, a fire station, a spaceship, a train, "
 				+ "a house, a tractor, a police car. A castle set is "
@@ -16080,7 +16596,10 @@ func _tools() -> Array:
 				+ "difference between a model of the thing and a model "
 				+ "of bricks, and you cannot get it from the shape "
 				+ "alone.\n\nGive the plain word for the thing. Nothing "
-				+ "matches a specific name."),
+				+ "matches a specific name.\n\nWith it comes our own best "
+				+ "design of the nearest subject, as the design bench's judge "
+				+ "scored it: how it was built, what it did best, and the "
+				+ "faults to design out before you build."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -16466,6 +16985,11 @@ func _tools() -> Array:
 							+ "whole, each comes back to you on its own with "
 							+ "how real sets built it, to lay, adapt or build "
 							+ "before the assemblies are detailed."},
+					"sketch": {"type": "boolean", "description":
+						"true for a sketch: massing only, under 150 parts, checked "
+						+ "and pictured but not built. Three are made to choose "
+						+ "between before the full design, each a different idea: "
+						+ "in silhouette, proportion or approach."},
 				},
 				"required": ["name", "description", "bricks", "assemblies", "features"],
 				"additionalProperties": false,

@@ -467,19 +467,37 @@ func _hand_back() -> void:
 	_in_hand = maxi(0, _in_hand - 1)
 
 
+## The rest of the window's commands, for a session: src/net/app_tools.gd.
+var _app_tools: AppTools = null
+
+
+func _the_app_tools() -> AppTools:
+	if _app_tools == null:
+		_app_tools = AppTools.new()
+	_app_tools.app = app
+	_app_tools.assistant = assistant
+	return _app_tools
+
+
 ## Tools an outside session needs and the design loop does not.
 ##
 ## The loop clears the baseplate itself when a design begins, and never
 ## saves — the person does that from the window. A session driving from
 ## outside has neither moment, so without these it would build into
-## whatever was already standing and leave no file behind.
+## whatever was already standing and leave no file behind. And the rest
+## of what the window does (AppTools): the floor, the build steps, hoses,
+## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
+	return _socket_tools() + _the_app_tools().definitions()
+
+
+func _socket_tools() -> Array:
 	return [
 		{
 			"name": "review_model",
 			"description": ("Look a built model over the way Brickworks' own "
 				+ "designer does after a design stands: with no assembly, the "
-				+ "whole model measured against real LEGO sets of its size and "
+				+ "whole model measured against real LEGO® sets of its size and "
 				+ "kind — shapes, colours, the one-off pieces, how coarse — and "
 				+ "what to check it for; with an assembly named in "
 				+ "submit_design, that one close up, measured, with the parts "
@@ -573,12 +591,21 @@ static func _model_file(asked: String) -> String:
 
 
 func _own_tools_have(tool: String) -> bool:
-	return tool in ["clear_model", "save_model", "review_model"]
+	return tool in ["clear_model", "save_model", "review_model"] or _the_app_tools().has(tool)
 
 
 ## A coroutine: reviewing the whole model checks it, which a big model does
 ## on a worker thread (Assistant._checked) while the app goes on drawing.
-func _run_own(tool: String, input: Dictionary) -> String:
+## The window's other commands wait their turn as the assistant's tools do:
+## a render, a hose and a pose all draw or change the one model.
+func _run_own(tool: String, input: Dictionary) -> Variant:
+	if _the_app_tools().has(tool):
+		if not await _take_a_turn():
+			return ("Another call is still running — the app does one at a time. "
+				+ "Send them one after another.")
+		var answer: Variant = await _the_app_tools().run(tool, input)
+		_hand_back()
+		return answer
 	if tool == "review_model" and assistant != null:
 		return await assistant.review(str(input.get("assembly", "")),
 			str(input.get("feature", "")), bool(input.get("creative", false)))

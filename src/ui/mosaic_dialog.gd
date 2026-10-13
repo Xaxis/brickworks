@@ -93,12 +93,25 @@ func _build() -> void:
 	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(_preview)
 
+	# What it comes to, under the picture of it. Worked out a moment after
+	# each change, it goes from a line ("working it out…") to three or
+	# four, and the picture gives way to it. Below the controls it pushed
+	# everything above it up by those lines as the count arrived: a click
+	# aimed at the brief landed on this text instead, and what was typed
+	# next went to the model as shortcuts (tools/web/art_flow.mjs).
+	_detail = Label.new()
+	_detail.add_theme_font_size_override("font_size", 12)
+	_detail.modulate = Color(1, 1, 1, 0.68)
+	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail.custom_minimum_size = Vector2(300, 0)
+	column.add_child(_detail)
+
 	var modes := HBoxContainer.new()
 	modes.add_theme_constant_override("separation", 6)
 	column.add_child(modes)
 	var group := ButtonGroup.new()
-	_art_mode = _mode(modes, group, "LEGO Art",
-		"Panels of round tiles, quarter circles, smooth tiles and raised relief, as a LEGO Art set is built")
+	_art_mode = _mode(modes, group, "Brick Art",
+		"Panels of round tiles, quarter circles, smooth tiles and raised relief, in the style of LEGO® Art sets")
 	_classic_mode = _mode(modes, group, "Classic",
 		"One 1 × 1 plate a pixel, flat")
 	_art_mode.button_pressed = true
@@ -157,19 +170,12 @@ func _build() -> void:
 	claude.add_child(_brief)
 	_ask = Button.new()
 	_ask.text = "Design with Claude"
-	_ask.tooltip_text = ("Claude looks at the picture and plans it as a LEGO Art "
-		+ "designer would — what stands out, the textures, the stars — with your "
+	_ask.tooltip_text = ("Claude looks at the picture and plans it as a designer of LEGO® Art "
+		+ "sets would — what stands out, the textures, the stars — with your "
 		+ "key or your own Claude, as the assistant designs")
 	_ask.add_theme_font_size_override("font_size", 12)
 	_ask.pressed.connect(design_with_claude)
 	claude.add_child(_ask)
-
-	_detail = Label.new()
-	_detail.add_theme_font_size_override("font_size", 12)
-	_detail.modulate = Color(1, 1, 1, 0.68)
-	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail.custom_minimum_size = Vector2(300, 0)
-	column.add_child(_detail)
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
@@ -309,9 +315,9 @@ func design_with_claude() -> void:
 ## What a design run is asked when the dialog hands it the picture: on the
 ## panels the person chose, since the size is theirs to decide.
 static func art_brief(said: String, panels: Vector2i) -> String:
-	var ask: String = ("Make the picture I chose into a LEGO Art set with make_art, "
-		+ "%d x %d panels: look_at_picture first, then plan it as a LEGO Art "
-		% [panels.x, panels.y] + "designer would.")
+	var ask: String = ("Make the picture I chose into Brick Art with make_art, "
+		+ "%d x %d panels: look_at_picture first, then plan it as a designer of "
+		% [panels.x, panels.y] + "LEGO® Art sets would.")
 	return ask if said.is_empty() else "%s %s" % [ask, said]
 
 
