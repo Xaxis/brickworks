@@ -205,14 +205,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   while it works and on the web turns only once the card has drawn the last
   turn, so it queues no frames ahead of the bar — though the bar still waits
   for whatever else the card has in hand, a picture being read among it:
-  125 ms and 4.9 s in two runs, 4.3 s before, 2026-10-13), opening a model (from a file,
-  Open's list or Recent: `ModelStore.open_text_paced`, `LdrModel.parse_paced`,
-  the lines read and then the parts put down counted, the drawing held till
-  the end; a second open meanwhile is refused. In a browser drawing in
-  software Orthanc's open held the page 1.7 s at most instead of 5.3, and
-  took 16 s instead of 5.4, most likely the page's state for the checks
-  (`Main._tell_page`, the tree and the joints of every part, twice a second)
-  told between the slices as the model grows), and a delete, undo, redo,
+  125 ms and 4.9 s in two runs, 4.3 s before, 2026-10-13), opening a model (from a file, Open's list or Recent,
+  `ModelBar.open_with_progress`), one long frame, said first. Put down a
+  slice at a time with the bar counting, Orthanc's open in a browser
+  drawing in software took 15.7 s against 3.7 s in one frame, with the
+  page's state told only every two seconds (it was 15.9 s without that, so
+  that was not it), and 8.8 s in slices of a tenth of a second (2026-10-13):
+  every frame given back cost more than the work done in it, so it is one
+  frame again, and a delete, undo, redo,
   New or Clear of 300 parts or more (`EditVerbs.BIG_CHANGE`), one long frame
   each, said first. Made a slice at a time, a delete of all of Orthanc in a
   browser drawing in software took 231 s instead of 1.2 and its undo 19 s
@@ -229,9 +229,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Cancel as `brickworksControls.work_cancel`. Proves it: `progress_probe`
   (windowed, Orthanc and the car: the bar up in the frame pressed, before the
   work; the timeline's longest frame against 200 ms; the same steps as
-  `Instructions.plan`; Cancel and a second press stop it; Orthanc opened
-  from Open's list counted as its parts go down; delete all and undo say so
-  first; the car's booklet counted and stoppable) and
+  `Instructions.plan`; Cancel and a second press stop it; Open's list says
+  "Opening…" before Orthanc lands; delete all and undo say so first; the
+  car's booklet counted and stoppable) and
   `tools/web/progress_check.mjs` ([web](web.md)).
 - `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
   where a part in hand or a carried group can land across the ground

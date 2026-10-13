@@ -127,21 +127,6 @@ static func load_file(path: String) -> LdrModel:
 ## losing one line is better than losing the model.
 static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var model := LdrModel.new()
-	_parse_into(model, text, source_name, null)
-	return model
-
-
-## [method parse], a slice at a time (FramePace), counting lines on
-## [param job]: Orthanc's ten thousand lines, read and put down in one go,
-## were one frame of five seconds in a browser (ModelStore.open_text_paced).
-static func parse_paced(text: String, source_name: String, job: Working.Job) -> LdrModel:
-	var model := LdrModel.new()
-	await _parse_into(model, text, source_name, job)
-	return model
-
-
-static func _parse_into(model: LdrModel, text: String, source_name: String,
-		job: Working.Job) -> void:
 	model.name = source_name
 
 	# A plain .ldr has no FILE lines and is one implicit sub-model.
@@ -159,12 +144,7 @@ static func _parse_into(model: LdrModel, text: String, source_name: String,
 	var data_name: String = ""
 	var data := PackedStringArray()
 
-	var lines: PackedStringArray = text.split("\n")
-	for at: int in lines.size():
-		if job != null and job.due():
-			job.count(at, lines.size())
-			await job.next()
-		var raw: String = lines[at]
+	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
 			if line.begins_with("0 !:"):
@@ -264,13 +244,14 @@ static func _parse_into(model: LdrModel, text: String, source_name: String,
 	if not data_name.is_empty():
 		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
 	for file_name: String in sections:
-		var section_lines := PackedStringArray(sections[file_name])
+		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called.
-		if file_name == model.main.name.to_lower() or not _is_part(file_name, section_lines):
+		if file_name == model.main.name.to_lower() or not _is_part(file_name, lines):
 			continue
 		var key: String = file_name if file_name.ends_with(".dat") else file_name + ".dat"
-		model.embedded_parts[key.get_file()] = "\n".join(section_lines).strip_edges() + "\n"
+		model.embedded_parts[key.get_file()] = "\n".join(lines).strip_edges() + "\n"
 		model.submodels.erase(_key(file_name))
+	return model
 
 
 static func _is_file_line(line: String) -> bool:
