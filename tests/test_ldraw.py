@@ -481,6 +481,42 @@ def test_stickers_have_no_connectors(library: Library) -> None:
     assert extract(library, "003238a.dat") == []
 
 
+def _holes(library: Library, part: str, kind: ConnectorKind) -> list[tuple]:
+    return sorted((round(c.position.x), round(c.position.y), round(c.position.z))
+                  for c in extract(library, part) if c.kind is kind)
+
+
+def test_the_24_tooth_gear_has_its_centre_axle_hole(library: Library) -> None:
+    """3648a and 3648b draw their centre hole as eight mirrored eighths
+    with no hole primitive, so they read as a gear with no centre and every
+    one in a model floated off its axle (docs/MECHANISMS.md)."""
+    for part in ("3648a.dat", "3648b.dat", "24505.dat"):
+        assert _holes(library, part, ConnectorKind.AXLE_HOLE) == [(0, 0, 0)], part
+
+
+def test_plain_cylinder_holes_are_pin_holes(library: Library) -> None:
+    """A Technic plate's holes and 6542a's hub are plain cylinders."""
+    assert _holes(library, "3709b.dat", ConnectorKind.PIN_HOLE) == [
+        (-20, 4, 0), (0, 4, 0), (20, 4, 0)]
+    assert len(_holes(library, "3738.dat", ConnectorKind.PIN_HOLE)) == 7
+    assert _holes(library, "6542a.dat", ConnectorKind.PIN_HOLE) == [(0, 0, 1)]
+    # Only those: a 2 x 2 slope's underside has a whole bore that size, and
+    # 4,970 parts like it, and a pin goes in none of them.
+    assert _holes(library, "3039.dat", ConnectorKind.PIN_HOLE) == []
+
+
+def test_an_axle_has_no_hole_where_it_meets_its_own_stop(library: Library) -> None:
+    """32062's notch and an axle's stop draw axle-hole edges, which read
+    as a hole in the middle of the axle."""
+    for part in ("32062.dat", "15462.dat", "99008.dat", "2736.dat", "6587.dat"):
+        assert _holes(library, part, ConnectorKind.AXLE_HOLE) == [], part
+    # A real hole beside an axle stays: 6553's, across it.
+    assert _holes(library, "6553.dat", ConnectorKind.AXLE_HOLE) == [(10, 0, 0)]
+    # And so does every hole of a part with no axle of its own.
+    assert len(_holes(library, "32523.dat", ConnectorKind.PIN_HOLE)) == 3
+    assert _holes(library, "3647.dat", ConnectorKind.AXLE_HOLE) == [(0, 0, 0)]
+
+
 # -- shafts and bores: what round things fit what ------------------------
 
 

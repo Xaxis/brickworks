@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints, lib:flexible parts along a path -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:round joints, lib:flexible parts along a path, lib:mechanisms -->
 
 ## Sub-features
 
@@ -168,7 +168,7 @@ Python: `tools/ldraw/occupancy.py` (the same lattice, used by the mesh build).
 ## How to check it
 
 Static: the Python half is pinned by `tests/test_ldraw.py` — stud pitch 8 mm,
-brick 9.6 mm, plate a third of a brick, −Y up, and the lattice dividing every LEGO
+brick 9.6 mm, plate a third of a brick, −Y up, and the lattice dividing every LEGO®
 dimension. **The six tests that voxelise a part need numpy and scipy** and skip
 without them, which is 25 of the 67 cases.
 
@@ -224,30 +224,51 @@ refuses has the part's own plastic inside a stud in the set file. A line
 ending "NOTHING IN THE WAY" is a real seat the rule refused, and the rule's to
 fix. 31 of 2,828, all in the way, on 2026-10-11.
 
-Mechanisms, research only (docs/MECHANISMS.md; no feature yet, not in the
-suite): gear trains read off the parts and turned. It reads the joints from
-the connectors (an axle keyed in an axle hole, an axle or a pin turning in a
-round hole, studs in sockets, a turntable's top on its base), the meshes from
-a table of tooth counts, and solves one linear equation per mesh:
+`mechanisms` (`src/assembly/mechanism.gd`, docs/MECHANISMS.md phase P1a; no UI or
+MCP tool yet): gear trains read off the parts and turned. It reads the bodies and
+joints from the connectors (an axle keyed in an axle hole, an axle or a pin turning
+in a round hole or a bore its size, studs in sockets, two pins through two beams, a
+turntable's top on its base, a differential's planet on its casing's stub, a
+driving ring on its ridged joiner and in the clutch gear it is pushed into), the
+gears from `assets/ldraw/gears.json` (see [pipeline](pipeline.md), `check the gear
+table`), and solves one linear equation per coupling (spur, crown, bevel, worm,
+ring, chain) by sparse elimination:
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
   --script src/dev/mechanism_probe.gd                                # and drawn, in shots/mechanism/
+godot --headless --path . --script src/dev/mechanism_sets.gd        # 42055 and 42082 read whole
 ```
 
-Proves it when it ends on "mechanism: gear trains read off the parts …". The
-cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
+The probe proves it when it ends on "mechanism: gear trains read off the parts …".
+The cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
 `tools/omr.py fetch`), an 8 driving a 24, the same axles also joined 16 to 16
-(locked, both meshes named), a worm driving a 24 (1/24), and a two-planet
-orrery (Mars's year 1.96 Earth years against 1.8808). With a display, every
-frame is read back off the renderer's copy, and each output must turn its
-ratio times the driver's step to 0.01°.
+(locked, both meshes named), a worm driving a 24 (1/24), a two-planet orrery
+(Mars's year 1.96 Earth years against 1.8808), a 12 carried round inside four
+24121 quarter rings (140/12 on its arm), a quarter held by nothing turning on its
+rim (12/140, the same way), a Flex-laid chain from a 24 to an 8 (3:1, the same
+way), a gearbox whose driving ring is in neutral and pushed into each clutch gear
+(free, then 1:1, then 3:1), and a 62821 differential (one driver leaves one
+freedom; two drivers decide it, and the sides' rates sum to twice the casing's to
+1e-6, the 32-bit transforms' precision). It first checks that the catalogue it
+reads has every table gear's hole: a catalogue built before `connectivity.py`
+read 3648's centre axle hole fails there. The fix is a sub-build of the parts
+`connectivity.py` changes, merged (`tools/build_meshes.py --only <ids and 200
+unchanged controls> --out DIR`, then `tools/merge_subbuild.py DIR ids.txt`; see
+[pipeline](pipeline.md)), or a full rebuild. With a display, every frame is read
+back off the renderer's copy, and each output must turn its ratio times the
+driver's step to 0.01°. The sets script ends on "mechanism sets: 2 read, every
+gear on what it turns on or said why not": each gear that floats is a near miss
+the file draws (42082 stands two 24s 2 LDU off their axles) or in a group that
+touches nothing else (42055's mine truck, a second model in the file), read
+again on its own with nothing floating there. Anything else fails, said with what
+stands on its axis and the holes its axles nearly turn in.
 
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at
 32.00 × 9.60 × 16.00 mm, three plates to a brick, 8.00 mm stud pitch. It prints
-one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
+one `--` line on purpose: LDraw draws a 1.6 mm stud where the LEGO Group moulds 1.8 mm.
 
 ## Gotchas
 
@@ -314,7 +335,7 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where LEGO moulds 1.8 mm.
   2x4 brick — plus `_columns` holding the same volume again. Eight thousand
   bricks took **9.24 GB**, which is more than a browser gives the whole app, so
   the size of a model was capped by how collision was stored rather than by
-  anything about LEGO. Fifty thousand bricks now cost **180 MB** and 938 ms.
+  anything about LEGO® bricks. Fifty thousand bricks now cost **180 MB** and 938 ms.
 
   The migration's whole difficulty is that `brick_at` was a dictionary lookup
   and is now a search of the boxes near a cell. Four places asked it per cell

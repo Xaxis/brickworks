@@ -117,7 +117,7 @@ else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
     tests/test_release.py tests/test_minifig.py tests/test_elements.py \
     tests/test_merge_featuremap.py tests/test_lens.py tests/test_bench.py \
-    tests/test_snippets.py)
+    tests/test_snippets.py tests/test_gears.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped
@@ -138,7 +138,7 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features creative rooms style turned detail chat project example_name minifig print sticker mould brickify; do
+for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch mechanism variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features creative rooms style turned detail chat project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
