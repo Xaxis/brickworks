@@ -301,7 +301,7 @@ func _on_save() -> bool:
 			_say("stopped saving “%s”; nothing was written" % name)
 			return false
 	if not saved:
-		_say("could not save that name")
+		_say(store.refused if not store.refused.is_empty() else "could not save that name")
 	return saved
 
 

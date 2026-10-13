@@ -15,12 +15,13 @@
 //       Claude signs in to it with OAuth (api/oauth.js): asked with no
 //       token, this answers 401 and names where to sign in, Claude sends
 //       the person to Brickworks to sign in and allow it, and is given a
-//       token for their account. Each call goes to that account's open
-//       tab, whichever it is, on any device. The app opens claude.ai's
-//       "Add custom connector" with this address filled in.
-//   https://brickworks.diy/api/mcp?t=<token>  one browser's private
-//       address, made by the tab and pasted into Claude by hand: the way
-//       from 2026-10-09, kept working for everyone who added one.
+//       token for their account. Each call goes to one of that account's
+//       open tabs, on any device — which one is below ("Several tabs").
+//       The app opens claude.ai's "Add custom connector" with this
+//       address filled in.
+//   https://brickworks.diy/api/mcp?t=<token>  one tab's private address,
+//       made by the tab and pasted into Claude by hand: the way from
+//       2026-10-09, kept working for everyone who added one.
 //
 // Routes, all POST to this one function:
 //   /api/mcp                  an MCP request from Claude signed in to an
@@ -42,6 +43,27 @@
 //
 // Every tab listens on its own token's channel, either way; a call for an
 // account is put on the channel of that account's tab.
+//
+// Several tabs (2026-10-13). One account often has more than one tab open,
+// each on a model of its own — in one browser, or on two computers. Each
+// tab is its own connector now (its token is kept with the tab's own
+// working state, src/parts/tab_session.gd), registered with a short id and
+// its model's name (&tab=, and &model= with every word that it is alive),
+// and which tab a session's calls go to is exact:
+//
+//   tabs         a tool of the relay's: the account's open tabs, by id,
+//                model, in view or not, and when the person last used each
+//   select_tab   another: this session's calls go to that tab from now on
+//   target       an argument every tool takes: this call, in that tab
+//
+// Without a choice a session's first call goes to the tab the person used
+// most recently, and the session stays with it (relay_picks, keyed by the
+// Mcp-Session-Id this hands out at initialize, or by the connection for a
+// client that sends none) — so the person clicking into another tab while
+// Claude works does not split the work between two models. If that tab
+// closes, the next call says so and does nothing, rather than carrying on
+// in another model. Every answer begins by naming the tab and model it
+// acted on (the tab says which in the answer's _meta).
 //
 // A browser stops drawing a tab it is not showing, and the app runs on
 // drawing. While the connector is on the page now keeps the app running
@@ -71,13 +93,20 @@
 // Needs SUPABASE_URL and SUPABASE_SECRET_KEY on the project, and
 // SUPABASE_PUBLISHABLE_KEY for accounts.
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
 
 const TOKEN = /^[A-Za-z0-9_-]{40,96}$/;
 const INSTANCE = /^[A-Za-z0-9_-]{8,40}$/;
+// A tab's id (TabSession.SHAPE), and the session id handed to Claude.
+const TAB_ID = /^[a-z2-9]{4,12}$/;
+const SESSION = /^[A-Za-z0-9_-]{16,128}$/;
+// A pick made for a connection rather than a session is a conversation's
+// only for so long: a client that sends no session id starts the next
+// conversation with the tab used most recently, not yesterday's.
+const CONNECTION_PICK_MS = 2 * 60 * 60 * 1000;
 // How long Claude's request waits for the tab, and how long the tab's ask
 // for work waits for Claude. Both well inside the function's 300 s.
 // Long, because a large submit_design is checked and built in the tab: three
@@ -99,6 +128,24 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 function channelOf(token) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+// When a tab was last used, from how many seconds ago its page says.
+function usedFrom(value) {
+  const seconds = Number(value);
+  if (value === undefined || value === "" || !Number.isFinite(seconds) || seconds < 0) return null;
+  return new Date(Date.now() - Math.min(seconds, 30 * 86400) * 1000).toISOString();
+}
+
+// What a tab says its model is called, kept short.
+function modelFrom(value) {
+  return typeof value === "string" ? value.slice(0, 120) : null;
+}
+
+// The Streamable HTTP session Claude was given at initialize, if it sends one.
+function sessionOf(request) {
+  const said = String(request.headers?.["mcp-session-id"] || "");
+  return SESSION.test(said) ? said : null;
 }
 
 function rpcError(id, code, message) {
@@ -132,11 +179,18 @@ const HIDDEN =
   "Brickworks tab into view for a moment — it carries on by itself — then " +
   "call again.";
 
-const TAB = "channel,seen_at,hello,instance,visible,open,owner";
+// A tab's row, without its hello: that is the app's whole guidance and
+// tool list, read only when it is what is wanted (helloOf).
+const TAB = "channel,seen_at,instance,visible,open,owner,tab,model,used_at";
 
 async function tabOf(channel) {
   const rows = await db(`relay_tabs?channel=eq.${channel}&select=${TAB}`);
   return rows && rows.length ? rows[0] : null;
+}
+
+async function helloOf(channel) {
+  const rows = await db(`relay_tabs?channel=eq.${channel}&select=hello`);
+  return rows && rows.length ? rows[0].hello : null;
 }
 
 // "closed", "hidden" or "ready". Alive is ready, in view or not; a page
@@ -150,43 +204,161 @@ function stateOf(tab) {
   return tab.visible ? "closed" : "hidden";
 }
 
+// What a tab is called to Claude: the id it registered with, or, for a
+// page from before tabs had ids, the start of its channel.
+function idOf(tab) {
+  return (tab && (tab.tab || String(tab.channel || "").slice(0, 6))) || "?";
+}
+
+function modelOf(tab, answered) {
+  const said = answered && typeof answered === "string" ? answered : (tab && tab.model) || "";
+  return said ? `“${said}”` : "an unnamed model";
+}
+
+// When the person last used it, as a number to sort by.
+function usedAt(tab) {
+  return Date.parse(tab.used_at || "") || Date.parse(tab.seen_at || "") || 0;
+}
+
+function ago(when) {
+  const s = Math.max(0, Math.round((Date.now() - when) / 1000));
+  if (s < 20) return "just now";
+  if (s < 90) return `${s} s ago`;
+  if (s < 5400) return `${Math.round(s / 60)} min ago`;
+  if (s < 129600) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} days ago`;
+}
+
+// The tab the person used most recently: one answering before one paused.
+function lastUsed(tabs) {
+  const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+  live.sort((a, b) => (stateOf(b) === "ready") - (stateOf(a) === "ready") || usedAt(b) - usedAt(a));
+  return live[0] || null;
+}
+
+// The open tabs, one line each, newest use first.
+function listing(tabs, current) {
+  const live = tabs.filter((tab) => stateOf(tab) !== "closed")
+    .sort((a, b) => usedAt(b) - usedAt(a));
+  return live.map((tab) => {
+    const where = stateOf(tab) === "hidden"
+      ? "paused out of view by the browser"
+      : tab.visible ? "in view" : "out of view";
+    const mine = current && tab.channel === current.channel ? " — this session's" : "";
+    return `- ${idOf(tab)}: ${modelOf(tab)}, ${where}, used ${ago(usedAt(tab))}${mine}`;
+  }).join("\n");
+}
+
+// The line every answer starts with: which tab and model it acted on, and
+// that there are others when there are.
+function header(tab, answered, tabs) {
+  const others = tabs.filter((one) => stateOf(one) !== "closed" && one.channel !== tab.channel).length;
+  return `Tab ${idOf(tab)}, ${modelOf(tab, answered)}.`
+    + (others ? ` ${others} other tab${others === 1 ? " is" : "s are"} open; tabs lists them.` : "");
+}
+
+function withHeader(answer, tab, tabs) {
+  const result = answer && answer.result;
+  if (!result || typeof result !== "object") return answer;
+  const meta = result._meta && typeof result._meta === "object" ? result._meta : {};
+  const content = Array.isArray(result.content) ? result.content : [];
+  result.content = [{ type: "text", text: header(tab, meta["brickworks/model"], tabs) }, ...content];
+  return answer;
+}
+
+// Tools the relay answers itself, about the tabs; and the argument every
+// tool of the app's gains, saying which tab to do it in.
+const TARGET = {
+  type: "string",
+  description: "Which Brickworks tab to do this in, by the id tabs gives (such as k7qd). " +
+    "Leave it out to stay in the tab this session is working in.",
+};
+const RELAY_TOOLS = [
+  {
+    name: "tabs",
+    description: "The Brickworks tabs open for this account, each with its id, its model's " +
+      "name, whether it is in view and when the person last used it, and which one this " +
+      "session's calls go to. Call it when the person has more than one tab open, or when " +
+      "an answer names a tab or model you did not expect.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "select_tab",
+    description: "Send this session's calls to another Brickworks tab from now on, by the id " +
+      "tabs gives. To do one call elsewhere, pass target on that call instead.",
+    inputSchema: {
+      type: "object",
+      properties: { tab: { type: "string", description: "The tab's id, from tabs." } },
+      required: ["tab"],
+    },
+  },
+];
+
+function toolsWithTabs(tools) {
+  const own = (Array.isArray(tools) ? tools : []).map((tool) => {
+    const schema = tool && tool.inputSchema && typeof tool.inputSchema === "object" ? tool.inputSchema : {};
+    return {
+      ...tool,
+      inputSchema: { type: "object", ...schema, properties: { ...(schema.properties || {}), target: TARGET } },
+    };
+  });
+  return [...own, ...RELAY_TOOLS];
+}
+
+// Which tab a session is working in (relay_picks): set by its first call
+// and by select_tab; dropped once that tab has closed and it has been told.
+async function pickOf(key) {
+  if (!key) return null;
+  const rows = await db(`relay_picks?key=eq.${encodeURIComponent(key)}&select=channel,picked_at`);
+  const row = rows && rows[0];
+  if (!row) return null;
+  if (key.startsWith("connection:") && Date.now() - Date.parse(row.picked_at) > CONNECTION_PICK_MS) return null;
+  return row;
+}
+
+async function pick(key, owner, channel) {
+  if (!key) return;
+  await db("relay_picks", {
+    method: "POST",
+    body: { key, owner, channel, picked_at: new Date().toISOString() },
+    prefer: "resolution=merge-duplicates",
+  });
+}
+
+async function unpick(key) {
+  if (key) await db(`relay_picks?key=eq.${encodeURIComponent(key)}`, { method: "DELETE" });
+}
+
 // Where Claude's requests go. Two ways in:
 //
-//   one tab     an address with a token in it (?t=), made by one browser:
+//   one tab     an address with a token in it (?t=), made by one tab:
 //               that tab, and no other — the way since 2026-10-09, kept
 //               for everyone who added such an address
 //   an account  Claude signed in with OAuth (api/oauth.js), at the one
-//               address everybody adds: whichever of the account's tabs
-//               is open, on any device
+//               address everybody adds: the account's tabs, on any device,
+//               chosen between as the head of this file says
 //
-// Each says which tab to send a request to now, what to answer the
-// handshake and the tool list with, and what to tell Claude when there
-// is no tab.
+// Each says which tabs there are, what to answer the handshake and the
+// tool list with, and what to tell Claude when there is no tab.
 function oneTab(channel) {
   return {
-    find: () => tabOf(channel),
-    hello: async (tab) => (tab && tab.hello) || null,
+    tabs: async () => {
+      const tab = await tabOf(channel);
+      return tab ? [tab] : [];
+    },
+    hello: async (tab) => (tab ? await helloOf(tab.channel) : await helloOf(channel)),
     notOpen: NOT_OPEN,
+    key: null,
+    owner: null,
     used: async () => {},
   };
 }
 
-function accountTabs(grant, origin) {
+function accountTabs(grant, origin, session) {
   return {
-    // The tab to build in: one that is answering before one that is
-    // paused; the tab this connection last built in before any other, so a
-    // conversation's model stays in one place; then one in view, then the
-    // most recently heard from.
-    async find() {
-      const rows = await db(`relay_tabs?owner=eq.${grant.owner}&open=is.true`
+    async tabs() {
+      return await db(`relay_tabs?owner=eq.${grant.owner}&open=is.true`
         + `&select=${TAB}&order=seen_at.desc&limit=20`) || [];
-      const score = (tab) => {
-        const state = stateOf(tab);
-        return (state === "ready" ? 100 : state === "hidden" ? 10 : 0)
-          + (state !== "closed" && tab.channel === grant.channel ? 5 : 0)
-          + (tab.visible ? 2 : 0);
-      };
-      return rows.sort((a, b) => score(b) - score(a))[0] || null;
     },
     // The handshake and the tool list are the app's, the same for every
     // account: from the tab if there is one, else from the last tab of this
@@ -195,7 +367,8 @@ function accountTabs(grant, origin) {
     // is the fullest of the latest few, so a test's one-tool tab is never
     // what a person's Claude is shown.
     async hello(tab) {
-      if (tab && tab.hello) return tab.hello;
+      const its = tab ? await helloOf(tab.channel) : null;
+      if (its) return its;
       const own = await db(`relay_tabs?owner=eq.${grant.owner}&hello=not.is.null`
         + "&select=hello&order=seen_at.desc&limit=1");
       if (own && own.length) return own[0].hello;
@@ -203,11 +376,13 @@ function accountTabs(grant, origin) {
         + "&select=channel,tools:hello->tools&order=seen_at.desc&limit=20") || [];
       const count = (row) => (Array.isArray(row.tools) ? row.tools.length : 0);
       const fullest = recent.sort((a, b) => count(b) - count(a))[0];
-      if (!fullest) return null;
-      const [row] = await db(`relay_tabs?channel=eq.${fullest.channel}&select=hello`) || [];
-      return row ? row.hello : null;
+      return fullest ? await helloOf(fullest.channel) : null;
     },
     notOpen: notOpenFor(origin),
+    // This conversation's pick when Claude sends the session id it was
+    // given, and the connection's when it sends none.
+    key: session ? `session:${session}` : `connection:${grant.id}`,
+    owner: grant.owner,
     // What the account panel shows of the connection: when Claude last
     // used it, what it called itself, and the tab it builds in.
     async used(message, tab) {
@@ -243,8 +418,62 @@ async function tellTab(channel, asked) {
   });
 }
 
+function text(id, words, isError = false) {
+  return { jsonrpc: "2.0", id, result: { isError, content: [{ type: "text", text: words }] } };
+}
+
+// The relay's own tools: the list of tabs, and choosing one.
+async function relayTool(where, message, response) {
+  const id = message.id;
+  const name = message.params?.name;
+  const tabs = await where.tabs();
+  const live = tabs.filter((tab) => stateOf(tab) !== "closed");
+  const picked = await pickOf(where.key);
+  const current = (picked && live.find((tab) => tab.channel === picked.channel)) || lastUsed(tabs);
+  if (!live.length) return response.status(200).json(text(id, where.notOpen, true));
+  if (name === "tabs") {
+    const count = live.length === 1 ? "One Brickworks tab is open" : `${live.length} Brickworks tabs are open`;
+    const goes = picked && current && picked.channel === current.channel
+      ? `This session's calls go to ${idOf(current)}.`
+      : `This session has not used one yet: its next call goes to ${idOf(current)}, the one used most recently.`;
+    return response.status(200).json(text(id, `${count}:\n${listing(tabs, current)}\n${goes} `
+      + (live.length > 1
+        ? "Pass target: \"<id>\" on a call to do it in another tab, or call select_tab to move this session there."
+        : "")));
+  }
+  const wanted = String(message.params?.arguments?.tab || "").trim().toLowerCase();
+  const chosen = live.find((tab) => idOf(tab) === wanted);
+  if (!chosen) {
+    return response.status(200).json(text(id, `No open tab is called “${wanted}”. Open now:\n`
+      + listing(tabs, current), true));
+  }
+  if (!where.key) {
+    return response.status(200).json(text(id, `This connector's address reaches one tab, `
+      + `${idOf(chosen)} (${modelOf(chosen)}), and its calls go there already.`));
+  }
+  await pick(where.key, where.owner, chosen.channel);
+  return response.status(200).json(text(id, `${header(chosen, null, tabs)} This session's calls `
+    + `go to tab ${idOf(chosen)} now, on ${modelOf(chosen)}.`));
+}
+
+// A session's tab has closed: said once, with nothing done, and the
+// session let go of it, so its next call without a choice goes to the tab
+// used most recently, and is named.
+async function closedSaying(where, tab, tabs, taken = false) {
+  await unpick(where.key);
+  const live = tabs.filter((one) => one.channel !== tab.channel);
+  const next = lastUsed(live);
+  return `The tab this session was working in, ${idOf(tab)}${tab.model ? ` (${modelOf(tab)})` : ""}, `
+    + (taken ? "closed before it answered, so whether it was done is not known. "
+      : "has closed, so nothing was done. ")
+    + (next
+      ? `Open now:\n${listing(live, null)}\nCall select_tab, or pass target, to choose one; `
+        + `a call with neither goes to ${idOf(next)} (${modelOf(next)}), the one used most recently.`
+      : where.notOpen);
+}
+
 // Claude's side: put the request in the queue and wait for the tab.
-async function fromClaude(where, message, response) {
+async function fromClaude(where, message, response, sessionToGive = null) {
   if (Array.isArray(message)) {
     return response.status(200).json(rpcError(null, -32600, "batches are not supported"));
   }
@@ -256,7 +485,50 @@ async function fromClaude(where, message, response) {
     return response.status(202).end();
   }
   const id = message.id;
-  let tab = await where.find();
+  const calling = message.method === "tools/call";
+  const name = calling ? String(message.params?.name || "") : "";
+  if (calling && RELAY_TOOLS.some((tool) => tool.name === name)) {
+    await where.used(message, null);
+    return await relayTool(where, message, response);
+  }
+  const tabs = await where.tabs();
+  const live = tabs.filter((one) => stateOf(one) !== "closed");
+
+  // Which tab: the one named on this call, else the one this session is
+  // working in, else the one the person used most recently — which this
+  // session then stays with.
+  let tab = null;
+  if (calling) {
+    const given = message.params?.arguments;
+    const args = given && typeof given === "object" && !Array.isArray(given) ? { ...given } : {};
+    const target = typeof args.target === "string" ? args.target.trim().toLowerCase() : "";
+    delete args.target;
+    message = { ...message, params: { ...message.params, arguments: args } };
+    if (target) {
+      tab = tabs.find((one) => idOf(one) === target && stateOf(one) !== "closed")
+        || tabs.find((one) => idOf(one) === target) || null;
+      if (!tab || stateOf(tab) === "closed") {
+        await where.used(message, null);
+        return response.status(200).json(text(id, `No open tab is called “${target}”, so nothing was `
+          + `done. ${live.length ? `Open now:\n${listing(tabs, null)}` : where.notOpen}`, true));
+      }
+    } else {
+      const picked = await pickOf(where.key);
+      if (picked) {
+        tab = tabs.find((one) => one.channel === picked.channel) || await tabOf(picked.channel);
+        if (!tab || stateOf(tab) === "closed") {
+          await where.used(message, null);
+          return response.status(200).json(text(id,
+            await closedSaying(where, tab || { channel: picked.channel }, tabs), true));
+        }
+      } else {
+        tab = lastUsed(tabs);
+        if (tab) await pick(where.key, where.owner, tab.channel);
+      }
+    }
+  } else {
+    tab = lastUsed(tabs);
+  }
   const hello = await where.hello(tab);
 
   // The handshake and the tool list, from what the tab sent when it
@@ -268,8 +540,9 @@ async function fromClaude(where, message, response) {
       return response.status(200).json({ jsonrpc: "2.0", id, result: {} });
     }
     if (message.method === "tools/list") {
-      return response.status(200).json({ jsonrpc: "2.0", id, result: { tools: hello.tools || [] } });
+      return response.status(200).json({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools) } });
     }
+    if (sessionToGive) response.setHeader("mcp-session-id", sessionToGive);
     return response.status(200).json({
       jsonrpc: "2.0", id,
       result: {
@@ -282,21 +555,24 @@ async function fromClaude(where, message, response) {
   }
 
   let state = stateOf(tab);
-  if (state === "hidden" && message.method === "tools/call") {
+  if (state === "hidden" && calling) {
     // Often only a moment: they have gone to look at the tab.
     const until = Date.now() + HIDDEN_WAIT_MS;
     while (state === "hidden" && Date.now() < until) {
       await sleep(1000);
-      tab = await where.find();
+      tab = await tabOf(tab.channel);
       state = stateOf(tab);
     }
-    if (state === "hidden") return response.status(200).json(toolTrouble(id, HIDDEN));
+    if (state === "hidden") {
+      return response.status(200).json(toolTrouble(id, `${header(tab, null, tabs)} ${HIDDEN}`));
+    }
   }
   if (state !== "ready") {
     await where.used(message, null);
     // Enough to be added as a connector with the tab closed; nothing that
     // pretends the tab is there.
     if (message.method === "initialize") {
+      if (sessionToGive) response.setHeader("mcp-session-id", sessionToGive);
       return response.status(200).json({
         jsonrpc: "2.0", id,
         result: {
@@ -310,7 +586,7 @@ async function fromClaude(where, message, response) {
     if (message.method === "ping") {
       return response.status(200).json({ jsonrpc: "2.0", id, result: {} });
     }
-    if (message.method === "tools/call") {
+    if (calling) {
       return response.status(200).json(toolTrouble(id, where.notOpen));
     }
     return response.status(200).json(rpcError(id, -32000, where.notOpen));
@@ -331,27 +607,32 @@ async function fromClaude(where, message, response) {
     const [done] = await db(`relay?id=eq.${row.id}&select=response,taken_at`);
     if (done && done.response) {
       await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
-      return response.status(200).json(done.response);
+      return response.status(200).json(calling ? withHeader(done.response, tab, tabs) : done.response);
     }
-    // Not taken at all, and the page has stopped since: say so now rather
-    // than at the end of four minutes.
-    if (done && !done.taken_at && Date.now() - asked > UNTAKEN_MS
-        && Date.now() - checked > 5_000) {
+    // The page has said it is closing, or, not taken at all, has stopped
+    // since: say so now rather than at the end of four minutes.
+    if (done && Date.now() - checked > 5_000) {
       checked = Date.now();
-      const now = stateOf(await tabOf(channel));
-      if (now !== "ready") {
+      const row_ = await tabOf(channel);
+      const now = stateOf(row_);
+      const shut = row_ && row_.open === false;
+      if (shut || (now !== "ready" && !done.taken_at && Date.now() - asked > UNTAKEN_MS)) {
         await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
+        if (calling && now === "closed") {
+          return response.status(200).json(text(id,
+            await closedSaying(where, row_ || tab, tabs, Boolean(done.taken_at)), true));
+        }
         const why = now === "hidden" ? HIDDEN : where.notOpen;
-        return response.status(200).json(message.method === "tools/call"
-          ? toolTrouble(id, why) : rpcError(id, -32000, why));
+        return response.status(200).json(calling
+          ? toolTrouble(id, `${header(tab, null, tabs)} ${why}`) : rpcError(id, -32000, why));
       }
     }
   }
   // Gone, so that a tab waking later does not do what Claude has stopped
   // waiting for and may be about to ask for again.
   await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
-  return response.status(200).json(message.method === "tools/call"
-    ? toolTrouble(id, "The Brickworks tab did not answer in time. If it is " +
+  return response.status(200).json(calling
+    ? toolTrouble(id, `${header(tab, null, tabs)} The Brickworks tab did not answer in time. If it is ` +
         "out of view, ask the person to bring it into view; then try again.")
     : rpcError(id, -32000, "the Brickworks tab did not answer in time"));
 }
@@ -364,7 +645,7 @@ async function forAccount(request, response) {
   const origin = originOf(request);
   // Browser-based MCP clients read the challenge across origins.
   response.setHeader("access-control-allow-origin", "*");
-  response.setHeader("access-control-expose-headers", "www-authenticate");
+  response.setHeader("access-control-expose-headers", "www-authenticate, mcp-session-id");
   if (request.method === "OPTIONS") {
     return response.status(204)
       .setHeader("access-control-allow-headers",
@@ -386,7 +667,12 @@ async function forAccount(request, response) {
   if (request.method === "GET") return response.status(405).setHeader("allow", "POST").end();
   if (request.method === "DELETE") return response.status(204).end();
   if (request.method !== "POST") return response.status(405).end();
-  return await fromClaude(accountTabs(grant, origin), request.body, response);
+  // A session id for each conversation, handed out at initialize: what
+  // keeps one conversation's calls in the tab it chose (relay_picks).
+  const session = sessionOf(request);
+  const give = request.body && request.body.method === "initialize" && !session
+    ? randomBytes(24).toString("base64url") : null;
+  return await fromClaude(accountTabs(grant, origin, session), request.body, response, give);
 }
 
 // The tab switching on: what it would answer to initialize and tools/list,
@@ -417,12 +703,17 @@ async function helloFromTab(channel, instance, request, response) {
       error: "this connector address belongs to another Brickworks account",
     });
   }
+  // Which tab it is, to Claude: its id and its model's name.
+  const id = String(request.query?.tab || "");
   await db("relay_tabs", {
     method: "POST",
     body: {
       channel, seen_at: new Date().toISOString(), instance, visible: true, open: true,
       owner: claims.sub,
       hello: { instructions: String(body.instructions || ""), tools: body.tools },
+      tab: TAB_ID.test(id) ? id : null,
+      model: modelFrom(body.model),
+      used_at: usedFrom(request.query?.used) || new Date().toISOString(),
     },
     prefer: "resolution=merge-duplicates",
   });
@@ -430,7 +721,7 @@ async function helloFromTab(channel, instance, request, response) {
 }
 
 // The tab's side: say it is listening, then take the next request.
-async function nextForTab(channel, instance, response) {
+async function nextForTab(channel, instance, request, response) {
   const tab = await tabOf(channel);
   if (instance && tab && tab.instance && tab.instance !== instance) {
     return response.status(409).json({ error: "another page took over this connector" });
@@ -443,9 +734,14 @@ async function nextForTab(channel, instance, response) {
       error: "switch the connector on while signed in to Brickworks",
     });
   }
+  const seen = { channel, seen_at: new Date().toISOString(), open: true };
+  const used = usedFrom(request.query?.used);
+  const model = modelFrom(request.query?.model);
+  if (used) seen.used_at = used;
+  if (model !== null) seen.model = model;
   await db("relay_tabs", {
     method: "POST",
-    body: { channel, seen_at: new Date().toISOString(), open: true },
+    body: seen,
     prefer: "resolution=merge-duplicates",
   });
   if (Math.random() < 0.05) await db("rpc/relay_sweep", { method: "POST", body: {} });
@@ -454,6 +750,13 @@ async function nextForTab(channel, instance, response) {
     const taken = await db("rpc/relay_take", { method: "POST", body: { p_channel: channel } });
     if (taken && taken.length > 0) {
       const { id, request } = taken[0];
+      // The page said it was closing while this ask was waiting: the call
+      // goes back, for Claude to be told, not to a page that has gone.
+      const still = await tabOf(channel);
+      if (!still || still.open === false) {
+        await db(`relay?id=eq.${id}`, { method: "PATCH", body: { taken_at: null } });
+        return response.status(204).end();
+      }
       // A notification is delivered once and wants no answer, so it is
       // not left to be handed out again.
       if (request.id === undefined || request.id === null) {
@@ -501,13 +804,16 @@ export default async function handler(request, response) {
       if (!instance) return response.status(400).json({ error: "hello needs ?i=" });
       return await helloFromTab(channel, instance, request, response);
     }
-    if (op === "next") return await nextForTab(channel, instance, response);
+    if (op === "next") return await nextForTab(channel, instance, request, response);
     if (op === "state") {
-      // Also the page's word that it is alive, so it counts as seen.
-      await db(`relay_tabs?channel=eq.${channel}${mine}`, {
-        method: "PATCH",
-        body: { visible: String(request.query?.visible) !== "0", seen_at: new Date().toISOString() },
-      });
+      // Also the page's word that it is alive, so it counts as seen; and
+      // when it was last used, and what its model is called now.
+      const said = { visible: String(request.query?.visible) !== "0", seen_at: new Date().toISOString() };
+      const used = usedFrom(request.query?.used);
+      const model = modelFrom(request.query?.model);
+      if (used) said.used_at = used;
+      if (model !== null) said.model = model;
+      await db(`relay_tabs?channel=eq.${channel}${mine}`, { method: "PATCH", body: said });
       return response.status(204).end();
     }
     if (op === "answer") {
@@ -520,6 +826,12 @@ export default async function handler(request, response) {
         method: "PATCH",
         body: { response: answer, answered_at: new Date().toISOString() },
       });
+      // The model's name as the call left it: a call can begin, open or
+      // name one, and the list of tabs should say so at once.
+      const named = modelFrom(answer.result?._meta?.["brickworks/model"]);
+      if (named !== null) {
+        await db(`relay_tabs?channel=eq.${channel}`, { method: "PATCH", body: { model: named } });
+      }
       return response.status(204).end();
     }
     if (op === "close") {

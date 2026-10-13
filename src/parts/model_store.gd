@@ -29,7 +29,11 @@ const SAVE_DIR := "user://models/"
 ## said "nothing saved yet" to everybody the first time they opened it,
 ## which is a poor answer to "show me what this can do".
 const EXAMPLE_DIR := "res://models/"
-const AUTOSAVE := "user://autosave.ldr"
+## Where the working model is kept: this tab's own (TabSession). It was one
+## file for every tab and window, so two tabs reopened the same model,
+## under the name of whichever had written it last.
+static func autosave() -> String:
+	return TabSession.autosave()
 
 ## How long after the last change to write the working model. Long
 ## enough that dropping a large model in does not write it repeatedly;
@@ -150,19 +154,21 @@ func tick() -> void:
 	# in flight.
 	if not whole:
 		return
-	_write(AUTOSAVE, title)
+	_write(autosave(), title)
 
 
 ## Restore the working model from the last session, if there is one.
 func restore() -> int:
-	if not FileAccess.file_exists(AUTOSAVE):
+	if not FileAccess.file_exists(autosave()):
 		return 0
-	return open(AUTOSAVE)
+	return open(autosave())
 
 
 func save_as(name: String) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
+		return false
+	if _saved_over_elsewhere(SAVE_DIR + clean + ".ldr", name):
 		return false
 	if _write(SAVE_DIR + clean + ".ldr", name, true):
 		title = name
@@ -172,6 +178,77 @@ func save_as(name: String) -> bool:
 		saved.emit(name)
 		return true
 	return false
+
+
+## The saved file the model on the baseplate is, as this tab or window last
+## read or wrote it, so a save of it from another one is noticed: offered
+## as a reload ([method saved_elsewhere]), and never saved over unasked.
+## Saved models are the person's, shared by every tab and window on
+## purpose; until 2026-10-13 one tab's Save went over another's in silence,
+## and on the web the other tab's next autosave deleted it outright (the
+## page's user:// sync, src/boot/shell.html).
+var _known_path: String = ""
+var _known_time: int = 0
+var _known_lines: PackedStringArray = PackedStringArray()
+## Why the last save was not made, in words, or "".
+var refused: String = ""
+## A save was not made because another tab or window saved this model since
+## this one read it: the person is asked which to keep (Main's ReloadOffer).
+signal saved_by_another(name: String)
+
+
+## The file a model called [param name] is saved in.
+static func saved_path(name: String) -> String:
+	return SAVE_DIR + _safe_name(name) + ".ldr"
+
+
+## This tab now takes [param path] to hold what is on disk: after it opened
+## or wrote it, or when the person chose to keep their own over a save made
+## elsewhere.
+func know(path: String) -> void:
+	_known_path = path
+	_known_time = FileAccess.get_modified_time(path) if FileAccess.file_exists(path) else 0
+	_known_lines = _brick_lines(FileAccess.get_file_as_string(path)) \
+		if _known_time > 0 else PackedStringArray()
+
+
+## Whether another tab or window saved the model on the baseplate since this
+## one last read or wrote it: the file of its name now holds other bricks.
+## Asked every couple of seconds (Main), which offers to reload it; true
+## until the person has chosen.
+func saved_elsewhere() -> bool:
+	if title == UNTITLED or example or read_only:
+		return false
+	var path: String = saved_path(title)
+	if path != _known_path:
+		know(path)
+		return false
+	return _changed_since_known(path)
+
+
+func _changed_since_known(path: String) -> bool:
+	if path != _known_path or not FileAccess.file_exists(path):
+		return false
+	var time: int = FileAccess.get_modified_time(path)
+	if time == _known_time:
+		return false
+	if _brick_lines(FileAccess.get_file_as_string(path)) == _known_lines:
+		# Written again as it was: nothing to ask about.
+		_known_time = time
+		return false
+	return true
+
+
+## Refuses, saying why, a save over a model another tab or window saved
+## since this one read it. The person is asked which to keep instead.
+func _saved_over_elsewhere(path: String, name: String) -> bool:
+	refused = ""
+	if not _changed_since_known(path):
+		return false
+	refused = ("“%s” was saved in %s since this one opened it — "
+		+ "reload it, or keep yours and save again") % [name, TabSession.elsewhere()]
+	saved_by_another.emit(name)
+	return true
 
 
 ## The model on the baseplate is a new one, nothing of it saved, called
@@ -336,6 +413,8 @@ func open(path: String) -> int:
 	var result: Dictionary = open_text(text, path.get_file())
 	if int(result["placed"]) > 0:
 		example = path.begins_with(EXAMPLE_DIR)
+		if path.begins_with(SAVE_DIR):
+			know(path)
 	return int(result["placed"])
 
 
@@ -348,7 +427,7 @@ static func _title_of(model: LdrModel, file_name: String) -> String:
 	if not said.is_empty() and not said in ["Working model", "Model", "model", "Untitled Model"]:
 		return said
 	var stem: String = file_name.get_basename()
-	if stem.is_empty() or stem == AUTOSAVE.get_file().get_basename():
+	if stem.is_empty() or stem == autosave().get_file().get_basename():
 		return UNTITLED
 	return stem.capitalize()
 
@@ -708,6 +787,8 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
+	if _saved_over_elsewhere(SAVE_DIR + clean + ".ldr", name):
+		return false
 	var text: String = await to_text_paced(name, job)
 	if text.is_empty() or job.cancelled:
 		return false
@@ -814,6 +895,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 	file.store_string(text)
 	file.close()
 	_tell_page_wrote(path, text.to_utf8_buffer().size())
+	if path.begins_with(SAVE_DIR):
+		know(path)
 	return true
 
 

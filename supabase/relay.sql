@@ -63,9 +63,37 @@ alter table public.relay_tabs add column if not exists owner uuid
   references auth.users (id) on delete cascade;
 create index if not exists relay_tabs_owner on public.relay_tabs (owner);
 
-alter table public.relay      enable row level security;
-alter table public.relay_tabs enable row level security;
-revoke all on public.relay, public.relay_tabs from anon, authenticated;
+-- 2026-10-13: several tabs of one account, each a connector of its own.
+-- A tab keeps its token with its own working state now, so every tab is a
+-- row here, and Claude chooses between them (api/mcp.js):
+--
+--   tab       the tab's short id (src/parts/tab_session.gd), what Claude
+--             calls it by: the tabs tool lists it, select_tab and target
+--             take it
+--   model     the name of the model open in it, as the page last said
+--   used_at   when the person last used it: a session's first call goes
+--             to the tab used most recently
+alter table public.relay_tabs add column if not exists tab     text
+  check (tab ~ '^[a-z2-9]{4,12}$');
+alter table public.relay_tabs add column if not exists model   text;
+alter table public.relay_tabs add column if not exists used_at timestamptz;
+
+-- Which tab each Claude session is working in, so its calls stay in one
+-- model: by the Mcp-Session-Id the relay hands out at initialize
+-- ("session:<id>"), or by the connection for a client that sends none
+-- ("connection:<grant id>"). Set by a session's first call and by
+-- select_tab; gone once that tab has closed and the session was told.
+create table if not exists public.relay_picks (
+  key       text        primary key,
+  owner     uuid        references auth.users (id) on delete cascade,
+  channel   text        not null check (channel ~ '^[0-9a-f]{64}$'),
+  picked_at timestamptz not null default now()
+);
+
+alter table public.relay       enable row level security;
+alter table public.relay_tabs  enable row level security;
+alter table public.relay_picks enable row level security;
+revoke all on public.relay, public.relay_tabs, public.relay_picks from anon, authenticated;
 
 -- Hand the oldest waiting request on a channel to the tab. Skip locked, so
 -- two polls cannot both take it at once.
@@ -101,6 +129,7 @@ as $$
   -- Kept a month, for its hello: a connector added once lists its tools
   -- on any later visit, and a call tells the person to open the tab.
   delete from public.relay_tabs where seen_at    < now() - interval '30 days';
+  delete from public.relay_picks where picked_at < now() - interval '30 days';
 $$;
 
 revoke all on function public.relay_take(text), public.relay_sweep()

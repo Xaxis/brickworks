@@ -55,9 +55,22 @@ extends Node
 ## What Claude shows the connector as.
 const NAME := "Brickworks"
 
-## Where the address and whether it was on are kept. A probe points this
+## Where the address and whether it was on are kept: in this tab's own
+## folder (TabSession), since 2026-10-13. It was one file for the browser,
+## so every tab had the one address, the relay knew them as one tab, and a
+## second tab switching on took it from the first ("another page switched
+## this connector on"). Now each tab is its own connector, which Claude can
+## list and choose between (api/mcp.js, the tabs tool). A probe points this
 ## elsewhere so it never touches the one this machine uses.
-static var where: String = "user://claude_connector.json"
+static var where: String = ""
+## Which tab this is, as Claude is shown it: this tab's id (TabSession). A
+## probe playing several tabs in one process gives each its own, and each
+## a file of its own ([member kept_in]); both before it is added.
+var tab_id: String = ""
+var kept_in: String = ""
+## The name of the model in this tab, as Claude is told it with every
+## answer and in the list of tabs. Main's is its ModelStore title.
+var model_name: Callable = func() -> String: return ""
 
 ## Where the relay is. The site the page came from on the web; on the
 ## desktop the deployment the account signs in to — the live site, or
@@ -148,6 +161,10 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var now: int = Time.get_ticks_msec()
+	# A headless run has no window anybody uses, though it says it has focus.
+	if not OS.has_feature("web") and DisplayServer.get_name() != "headless" \
+			and get_window().has_focus():
+		_focused_at = now
 	if _waiting_until > now and now >= _next_ask and not _asking_connections:
 		_next_ask = now + 5000
 		refresh_connections()
@@ -444,6 +461,15 @@ func _watch_the_page() -> void:
 				var url = window.brickworksConnector;
 				if (url) navigator.sendBeacon(url + op);
 			}
+			// That the page is alive, whether it is in view, when the person
+			// last used it and what its model is called: the relay lists the
+			// tabs by these and sends a session's calls to the tab used last.
+			function alive() {
+				return "&op=state&visible=" + (document.hidden ? "0" : "1")
+					+ "&used=" + (window.brickworksUsedAgo ? window.brickworksUsedAgo() : "")
+					+ "&model=" + encodeURIComponent(String(window.brickworksModelName || "").slice(0, 120));
+			}
+			var focusedAt = 0;
 			function steer() {
 				var away = document.hidden && !!window.brickworksConnector;
 				if (!clock) {
@@ -454,7 +480,7 @@ func _watch_the_page() -> void:
 					clock = new Worker(URL.createObjectURL(new Blob([code], {type: "text/javascript"})));
 					clock.onmessage = function (e) {
 						if (e.data === "frame") frame();
-						else tell("&op=state&visible=" + (document.hidden ? "0" : "1"));
+						else tell(alive());
 					};
 				}
 				clock.postMessage({beat: window.brickworksConnector ? 10000 : 0});
@@ -476,8 +502,15 @@ func _watch_the_page() -> void:
 				return paint(wrapped);
 			};
 			document.addEventListener("visibilitychange", function () {
-				tell("&op=state&visible=" + (document.hidden ? "0" : "1"));
+				tell(alive());
 				steer();
+			});
+			// Used now: said at once, so a call made the moment the person
+			// comes back from another tab goes to this one.
+			window.addEventListener("focus", function () {
+				if (Date.now() - focusedAt < 2000) return;
+				focusedAt = Date.now();
+				tell(alive());
 			});
 			window.addEventListener("pagehide", function () {
 				tell("&op=close");
@@ -487,10 +520,23 @@ func _watch_the_page() -> void:
 	""" % JSON.stringify(url), true)
 
 
+## Which tab this is, as the relay and Claude know it.
+func tab() -> String:
+	return tab_id if not tab_id.is_empty() else TabSession.id()
+
+
+func _file() -> String:
+	if not kept_in.is_empty():
+		return kept_in
+	if not where.is_empty():
+		return where
+	return TabSession.ROOT + tab() + "/claude_connector.json"
+
+
 func _read() -> Dictionary:
-	if not FileAccess.file_exists(where):
+	if not FileAccess.file_exists(_file()):
 		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(where))
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(_file()))
 	return parsed if parsed is Dictionary else {}
 
 
@@ -504,10 +550,11 @@ func _load() -> void:
 
 func _save() -> void:
 	if _token.is_empty() and not _off_here:
-		if FileAccess.file_exists(where):
-			DirAccess.remove_absolute(where)
+		if FileAccess.file_exists(_file()):
+			DirAccess.remove_absolute(_file())
 		return
-	var file: FileAccess = FileAccess.open(where, FileAccess.WRITE)
+	DirAccess.make_dir_recursive_absolute(_file().get_base_dir())
+	var file: FileAccess = FileAccess.open(_file(), FileAccess.WRITE)
 	if file == null:
 		return
 	file.store_string(JSON.stringify({"token": _token, "on": _on, "used": _used,
@@ -515,13 +562,39 @@ func _save() -> void:
 	file.close()
 
 
-## Said to Claude first, so it can set the person up rather than find out
-## from a failed call.
-const CONNECTED_NOTE := ("These tools build in Brickworks, open in a tab of "
-	+ "the person's browser; the model appears there as you work, and each "
-	+ "step shows in its panel. The tab keeps working while they are here in "
-	+ "this chat. Only if a call says the browser has paused it, ask them to "
-	+ "bring the Brickworks tab into view for a moment and call again.\n\n")
+## Said to Claude first, ahead of the app's guidance. Short: Claude Code
+## reads only the first 3,800 characters of a server's instructions, and
+## the app's own head (Assistant.GUIDE_HEAD) is most of that, so what a
+## session must act on goes in the answers instead — a paused tab says to
+## ask for it to be shown, and every answer names its tab and model, and
+## says when others are open (api/mcp.js). mcp_sync_probe holds the two
+## together under the limit.
+const CONNECTED_NOTE := ("These tools build in Brickworks, in a tab of the "
+	+ "person's browser that keeps working while they are here. Each answer "
+	+ "begins with the tab and model it acted on; tabs lists them all.\n\n")
+
+
+func _model() -> String:
+	var said: Variant = model_name.call()
+	return str(said).left(120) if said != null else ""
+
+
+## Seconds since the person last used this tab or window: the relay sends
+## a session's calls to the one used most recently. On the web the page
+## counts presses and focus; on the desktop, the window having focus
+## ([method _process]). -1 for a window nobody has used — one run headless
+## — which the relay leaves as it was rather than call it used just now.
+func _used_ago() -> int:
+	if OS.has_feature("web"):
+		var ago: Variant = JavaScriptBridge.eval(
+			"window.brickworksUsedAgo ? window.brickworksUsedAgo() : 0", true)
+		return int(ago) if ago != null else 0
+	if _focused_at == 0:
+		return -1
+	return (Time.get_ticks_msec() - _focused_at) / 1000
+
+
+var _focused_at: int = 0
 
 
 ## What this tab would answer to the handshake and the tool list, for the
@@ -544,8 +617,9 @@ func _hello() -> int:
 			.get("result", {}) as Dictionary).get("instructions", "")),
 		"tools": ((listed as Dictionary).get("result", {}) as Dictionary).get("tools", []),
 	}
-	var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&op=hello" % [
-		base_url, _token, _instance], JSON.stringify(body),
+	body["model"] = _model()
+	var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&tab=%s&used=%d&op=hello" % [
+		base_url, _token, _instance, tab(), _used_ago()], JSON.stringify(body),
 		PackedStringArray(["authorization: Bearer " + session]))
 	return int(got[1]) if got[0] == HTTPRequest.RESULT_SUCCESS else 0
 
@@ -585,8 +659,8 @@ func _listen() -> void:
 		await get_tree().create_timer(3.0).timeout
 	while mine == _generation:
 		_asking_since = Time.get_ticks_msec()
-		var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&op=next" % [
-			base_url, token, _instance], "")
+		var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&used=%d&model=%s&op=next" % [
+			base_url, token, _instance, _used_ago(), _model().uri_encode()], "")
 		if mine != _generation:
 			return
 		_asking_since = 0
@@ -662,6 +736,12 @@ func _answer(token: String, work: Dictionary) -> void:
 	if answer == null:
 		answer = {"jsonrpc": "2.0", "id": request.get("id"),
 			"error": {"code": -32603, "message": "this tab cannot answer"}}
+	# Which tab answered, and what its model is called now: the relay
+	# starts every answer by naming them, so a session working with several
+	# tabs open knows where each call landed (api/mcp.js).
+	if (answer as Dictionary).get("result") is Dictionary:
+		((answer as Dictionary)["result"] as Dictionary)["_meta"] = {
+			"brickworks/tab": tab(), "brickworks/model": _model()}
 	await _ask(_reply, "%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
 		int(work.get("id", 0))], JSON.stringify(answer))
 	var result: Dictionary = (answer as Dictionary).get("result", {}) as Dictionary

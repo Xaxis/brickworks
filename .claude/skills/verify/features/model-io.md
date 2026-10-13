@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check -->
 
 ## Sub-features
 
@@ -30,6 +30,81 @@ Whether what you built is still there tomorrow, and still means the same thing.
   design wrote it ("north-east tower" in `north_east_tower.ldr`), and comes back
   in with every brick in its group. The booklet builds by those groups and names
   them. `store_probe` asserts the round trip and the named parts.
+- `a session per tab`: every tab of the site in a browser (and every window
+  of the desktop app) works on a model of its own (`src/parts/tab_session.gd`,
+  `TabSession`, 2026-10-13). Its working model and its Claude connector live
+  under `user://sessions/<id>/` (`ModelStore.autosave()`, `ClaudeConnector`'s
+  file); the person's saved models and settings stay shared on purpose. The id
+  is five letters and digits that cannot be misread (`TabSession.LETTERS`). On
+  the web the page chooses it before the engine starts
+  (`src/boot/shell.html`, `claimTab`): kept in sessionStorage (a reload keeps
+  it, no other tab has it) and held with a Web Lock for the life of the page,
+  one tab choosing at a time (`brickworks-claim`). A tab with none takes the
+  most recently written session no open tab holds, so closing the browser and
+  coming back tomorrow opens what was there; a duplicated tab, whose id its
+  original holds, gets another; a shared model opened to look at
+  (`?view=`) takes none. The one `user://autosave.ldr` and
+  `claude_connector.json` from before go to the first tab to open, once
+  (`brickworks.legacy` in localStorage). On the desktop a window holds a
+  session by a folder with its process id in it, renamed into place (`_hold`:
+  a rename onto a folder that holds something fails, so two windows cannot
+  both win, and none ever sees a hold without its id — made empty and filled
+  after, two windows started together both took one), refreshed every
+  minute (`TabSession.still_here`), good for three minutes, gone at once
+  where `/proc` says the process has, and let go on exit. Not
+  `OS.is_process_running`, which knows only processes this one started and
+  called every other window's hold gone. A run driven from the command line
+  holds none (`TabSession.driven`). **Why the page had to change as well
+  as the app:** the engine keeps user:// as a copy in memory and after each
+  write makes IndexedDB match its copy wholesale (Emscripten's
+  `IDBFS.reconcile`: every file it holds put back, every file it lacks
+  deleted). So with two tabs open a model saved in one was deleted by the
+  other's next autosave, a setting changed in one was put back, and both tabs
+  reopened the one autosave under the last writer's name. The shell now stands
+  between the engine and IndexedDB: a tab stores only files it changed itself
+  (`seen`, the stored version its copy is), deletes only files it knew and
+  nobody has changed since, never a folder with anything left in it, and says
+  what it stored over a BroadcastChannel; the other tabs copy those files into
+  their own user:// (`engine.copyToFS`), never over a write of their own still
+  on its way (`brickworksWrote`, `brickworksWriting`). So Open lists a model
+  another tab saved, and the parts bin's shelf another tab changed is read
+  again before this one writes it (`PartShelf._read_at`, `reread`). A copy
+  of another tab's file is never put back as this tab's (`pulled`, compared
+  byte for byte).
+- `reload a model saved elsewhere`: when another tab or window saves the model
+  this one has open, this one is told and asked (`ReloadOffer`, a strip over the
+  model like the seat offer: **Reload it** or **Keep mine**), never saved over
+  in silence. `ModelStore.saved_elsewhere` compares the file of the model's name
+  with what this tab last read or wrote of it (`know`: on open, on every save,
+  and when the name changes), by time and then by its brick lines, so a save of
+  the same bricks asks nothing; Main asks once a second
+  (`_watch_other_tabs`). Saving over a file changed elsewhere since is refused
+  with the reason in the bar (`refused`, `saved_by_another`), and the offer
+  comes up; Keep mine takes the other's save as seen, and saving then replaces
+  it, as the person chose.
+- `tabs browser flow`: `tools/web/tabs_flow.mjs`, three pages of one browser
+  context (one IndexedDB, one account): the house, the kart and the tree, each
+  renamed by typing and with a part clicked and deleted; three ids, and each
+  autosave in the browser's storage under its own session; each tab reloaded
+  to its own name and part count, in the same session; a model saved in one
+  still stored after the other two changed and autosaved theirs; and the tree's
+  tab opening that saved model, the house's tab saving it again, and the tree's
+  offered a reload that brings it in part for part; then Claude through the
+  relay (see [web](web.md), "Several tabs, one account"): each tab's connector
+  on by itself, `tabs` listing the three by the pages' ids and names, a look
+  targeted at each answered by that page with its own part count, an edit
+  targeted at the kart in the kart's page alone, and the tree's tab closed
+  reported on the next call. On a local export (2026-10-13) all of it passes.
+  Against the live build of before, it failed from the first step: no tab
+  had an id or a session, and the house's tab, reloaded, showed the tree's
+  model ("Tabs Tree"), then said its sign-in had ended.
+- `two windows check`: `tools/windows_check.py`, the desktop's half, with real
+  processes in a data folder of their own: a working model from before
+  sessions in the folder; two headless apps started together hold a session
+  each (each with its own process id) and only one takes the old model; each
+  given a different model over its port autosaves into its own session; both
+  stopped and started again one after the other, the first reopens the model
+  written last and the second the other one, not the same one twice.
 - `a model's name, and a new one`: `ModelStore.title` is the model's name — set
   by Save, read from an opened file's first line (a placeholder such as
   "Working model" falls back to the file name, the autosave's to Untitled), and
@@ -293,6 +368,10 @@ python3 tests/fixtures/studio/make_fixtures.py   # after changing what the .io f
 node tools/web/io_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: open an .io, export one, open it again
 python3 tools/ldd_map.py vendor/ldraw.xml   # after a newer ldraw.xml: assets/ldraw/ldd.json again
 tools/check.sh --network   # adds open_probe: opening the way the browser has to
+# several tabs, one browser: a local export served with the relay, .env sourced
+node tools/web/relay_server.mjs 8790 --static=build/web &
+node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app --out=shots/tabs
+tools/windows_check.py      # two windows of the desktop app, a model each
 ```
 
 And the round trip, which is the one to run after touching the writer:
