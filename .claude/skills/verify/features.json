@@ -181,7 +181,9 @@
       "entry": "tools/design.py",
       "reach": "tools/design.py \"a small lighthouse\" --effort low --out /tmp/x.ldr   (COSTS MONEY)",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_bench.py"
+      ]
     },
     {
       "id": "cli:download page check",
@@ -378,6 +380,17 @@
       "reach": "godot --headless --path . -- --about",
       "area": "release",
       "tests": []
+    },
+    {
+      "id": "cli:score designs on the bench",
+      "kind": "cli",
+      "entry": "tools/bench/run.py",
+      "reach": "python3 tools/bench/run.py run --dry-run --subjects bonsai   (the real batch: run, then summary --append docs/DESIGN_SCORES.md)",
+      "area": "assistant",
+      "tests": [
+        "tests/test_bench.py",
+        "tests/test_elements.py"
+      ]
     },
     {
       "id": "cli:see inside in a browser",

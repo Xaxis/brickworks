@@ -34,6 +34,9 @@ node_modules/
 *.swp
 shots/
 models/design.ldr
+# The design bench's runs: designs, renders, fetched photographs, the judge's
+# replies. Its summary is docs/DESIGN_SCORES.md; photographs are not ours to commit.
+bench/results/
 .vercel
 tools/web/node_modules/
 tools/web/package-lock.json

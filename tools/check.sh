@@ -116,7 +116,7 @@ if python3 -c 'import pytest' 2>/dev/null; then
 else
   suite=(python3 tools/minitest.py tests/test_ldraw.py tests/test_style.py \
     tests/test_release.py tests/test_minifig.py tests/test_elements.py \
-    tests/test_merge_featuremap.py tests/test_lens.py)
+    tests/test_merge_featuremap.py tests/test_lens.py tests/test_bench.py)
 fi
 pyout=$("${suite[@]}" 2>&1); pystatus=$?
 # The verdict is printed either way, because a check that silently skipped

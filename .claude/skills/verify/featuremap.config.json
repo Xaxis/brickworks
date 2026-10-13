@@ -140,6 +140,13 @@
       "area": "assistant"
     },
     {
+      "kind": "cli",
+      "label": "score designs on the bench",
+      "entry": "tools/bench/run.py",
+      "reach": "python3 tools/bench/run.py run --dry-run --subjects bonsai   (the real batch: run, then summary --append docs/DESIGN_SCORES.md)",
+      "area": "assistant"
+    },
+    {
       "kind": "lib",
       "label": "model and effort settings",
       "entry": "src/ai/brain.gd",

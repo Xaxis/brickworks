@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
 
 ## Sub-features
 
@@ -26,6 +26,10 @@ fixing what it got wrong.
   how a model is built against real sets: orientation (SNOT, angled), kinds of
   part, shaping spread and mirror symmetry. Run it after a design ends, beside
   `tools/texture.py`; the recipe is under How to check it.
+- `score designs on the bench`: `tools/bench/run.py`, ten fixed held-out
+  subjects designed on the subscription, rendered, checked, measured and scored
+  1-10 on six dimensions by a judge calibrated by two anchor pictures; tables in
+  `docs/DESIGN_SCORES.md`. Under How to check it, "The design bench".
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
@@ -1326,6 +1330,51 @@ beside a shaped part, and how much of it a mirror plane matches, each against th
 from `vendor/omr/files` in about a minute; without them it prints the measures
 alone. `tests/test_style.py` pins each measure on hand-made models. A driven run
 prints what it spent before its verdict; report it.
+
+### The design bench: is a round better, and by more than the noise
+
+`tools/bench/run.py` is the measuring stick for design rounds; its tables are
+`docs/DESIGN_SCORES.md`. Ten fixed held-out subjects (`tools/bench/suite.py`),
+each designed by the real loop on the subscription, rendered, checked, measured
+and scored 1-10 on six dimensions by a calibrated judge (`tools/bench/judge.py`).
+
+```sh
+python3 tools/bench/run.py list                     # the suite, its briefs and references
+python3 tools/bench/run.py run --dry-run --subjects bonsai   # canned design + canned judge, no network
+python3 tools/bench/run.py run --date 2026-10-12    # the batch: every subject once, one at a time
+python3 tools/bench/run.py run --date 2026-10-12 --run 2 --subjects barn_owl,bonsai,mobile_crane
+python3 tools/bench/run.py summary --date 2026-10-12 --append docs/DESIGN_SCORES.md
+python3 tools/minitest.py tests/test_bench.py       # the reply, the probe and the summary read right
+```
+
+Per subject: the design (`--ask-claude-code` off-screen under `heavy`, its own
+port, `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` taken out, `--timeout`
+2700 s); corner/front/close by `src/dev/bench_views.gd` under `gpu`;
+`candidate_probe`; `tools/style.py --json`; the references (Commons photographs
+fetched, real sets from the model repository rendered); then the judge —
+`claude -p` with `--tools Read --restricted --strict-mcp-config --json-schema`,
+on the subscription, shown the two anchors (LEGO's 10242 MINI Cooper = 9, a
+naive brick-stack car `tools/bench/naive_car.ldr` = 2, rendered once into
+`bench/results/anchors/`), the references, the views and the probe's words.
+Everything goes to `bench/results/<date>/<subject>/<run>/` (gitignored), and each
+stage is skipped when its file is there, so the same command resumes a stopped
+batch — pass the same `--date`, or a batch run past midnight starts a new folder.
+The design's saves and its `claude-code-mcp-<port>.json` are moved out of the
+app's user folder into the run's `saves/` — a save is the run's if the log names
+it or it was written during one of the session's `saving` steps (the session
+names only its last save; the first baseline owl left its first behind), never
+a file older than the session; Godot's own log goes to the run's folder
+(`--log-file`), not `user://logs`. `--no-judge` designs, pictures, checks and
+measures only; the same command without it later judges what is there.
+`rejudge` judges recorded runs a second time (`judge_again.json`), the judge's
+own noise without the design's. A fresh worktree needs `godot --headless --path
+. --import --quit` once before `bench_views.gd` can name the app's classes.
+
+Proves it when: the dry run writes `record.json` with the canned scores (mean
+4.5) and three real views, `views_*.png` show the model, the probe and style
+JSON are filled; a real judge's `judge.json` lists in `looked_at` every picture
+named in `judge_prompt.txt`; and `summary` prints a row per subject, the suite
+mean, the run-to-run spread and the three weakest dimensions.
 
 ## Gotchas
 

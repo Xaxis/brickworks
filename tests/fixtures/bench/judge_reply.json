@@ -1,0 +1,16 @@
+{
+ "type": "result",
+ "subtype": "success",
+ "is_error": false,
+ "result": "",
+ "structured_output": {
+  "looked_at": ["high_corner.png", "low_corner.png", "views_corner.png", "views_front.png", "views_close.png"],
+  "likeness": {"score": 5, "reason": "Reads as a small car from the corner; the cabin is too tall for its length."},
+  "surface": {"score": 3, "reason": "Studs on every top face, the bonnet a staircase of plates."},
+  "colour": {"score": 4, "reason": "Red body, black wheels, trans windows; large flat red sides."},
+  "technique": {"score": 3, "reason": "Everything studs up; no SNOT, no curved slopes."},
+  "creativity": {"score": 2, "reason": "Nothing beyond the body itself."},
+  "buildability": {"score": 10, "reason": "Opens whole, one piece, stands, no fault named."}
+ },
+ "modelUsage": {"canned-judge": {"inputTokens": 0, "outputTokens": 0}}
+}
