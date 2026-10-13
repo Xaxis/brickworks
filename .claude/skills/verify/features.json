@@ -120,6 +120,14 @@
       "tests": []
     },
     {
+      "id": "cli:audit connections in real sets",
+      "kind": "cli",
+      "entry": "tools/connection_audit.py",
+      "reach": "python3 tools/connection_audit.py run && python3 tools/connection_audit.py report --write docs/CONNECTIONS.md   (hours, under heavy; needs vendor/omr)",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",

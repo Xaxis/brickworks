@@ -10629,6 +10629,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var cells_of: Dictionary = {}
 	var boxes_of: Dictionary = {}   ## index -> its boxes, six ints each
 	var box_of: Dictionary = {}     ## index -> [low cell, high cell]
+	## Overlaps between bricks standing, excused: see [method _standing_overlaps].
+	var collided: Array = []
 
 	for said: Variant in _pattern_trouble:
 		_note(issues, "pattern", str(said))
@@ -10837,6 +10839,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
 			# 10240's X-wing, where there had been none.
+			_standing_overlaps(near, placement, index, model, collided)
 			near = _between_standing(near, placement, model)
 			near = _give_way(near, placement, index, model, gave_way)
 			if gave_way.has(index):
@@ -10895,6 +10898,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
 			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
 
+		_standing_overlaps(blockers, placement, index, model, collided)
 		blockers = _between_standing(blockers, placement, model)
 
 		blockers = _give_way(blockers, placement, index, model, gave_way)
@@ -11212,6 +11216,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		## Each piece, as indices into the placements, for a probe to say
 		## where each one is.
 		"each_piece": each_piece,
+		## Pairs of standing bricks that overlap and were excused, [index,
+		## other], for an audit of real sets to count.
+		"standing_overlaps": collided,
 	}
 	if weigh:
 		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, joined, rounds, alone)
@@ -11277,6 +11284,22 @@ func _weighed(model: Model, lattice: BrickLattice, placed_at: Dictionary,
 	judge.library = library
 	judge.lattice = lattice
 	return judge.measure(bricks, [], links)
+
+
+## The overlaps between bricks already standing that [method
+## _between_standing] is about to excuse, kept as [index, other index]:
+## not this design's to answer for, but a real set's parts do not overlap,
+## so each one in a set read from a file is the cover of a part wrong
+## (src/dev/connection_audit.gd counts them). Nothing reads them to decide.
+static func _standing_overlaps(blockers: PackedInt64Array, placement: Placement,
+		index: int, model: Model, into: Array) -> void:
+	if blockers.is_empty() or placement.id == 0 or placement.moved:
+		return
+	for key: int in blockers:
+		if key > 0 and key - 1 < model.placements.size():
+			var other: Placement = model.placements[key - 1]
+			if other.id != 0 and not other.moved:
+				into.append([index, key - 1])
 
 
 ## What is left of [param blockers] for [param placement]: nothing, when it and
