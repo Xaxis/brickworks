@@ -179,6 +179,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   fill a 2400 x 1600 PNG on a clear background, drawn by a SubViewport looking at
   the same world with a copy of the scene's environment that clears instead of
   drawing the sky. Downloaded in a browser, written to Downloads on the desktop.
+  Framed on what is drawn (`Picture._frame`): every part's box corners, seen
+  from an eye as far back as a ball round the model needs, and the lens
+  shifted and narrowed so they sit in the middle and fill 90% of the narrower
+  way. The share card and the Studio thumbnail are the same picture at other
+  sizes. `centring_probe` measures all three, with either column folded. In a
+  browser, `share_flow.mjs` on a local export (2026-10-13) got a card
+  (`og_image.png`) with the car's middle 0.0% off the picture's, filling 88%.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list): BrickLink's wanted-list XML (item, its
   colour number, quantity) and Rebrickable's `Part,Color,Quantity` CSV. The

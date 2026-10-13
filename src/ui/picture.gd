@@ -34,8 +34,8 @@ var shown_again: Callable = func() -> void: pass
 ## Draw the model and return the picture, or null if there is nothing to
 ## draw. Takes a few frames.
 func take(size: Vector2i = SIZE) -> Image:
-	var bounds: AABB = _model_bounds()
-	if bounds.size.length_squared() <= 0.0:
+	var corners: PackedVector3Array = await _corners()
+	if corners.is_empty():
 		return null
 	var view := SubViewport.new()
 	view.size = size
@@ -49,9 +49,9 @@ func take(size: Vector2i = SIZE) -> Image:
 	lens.fov = camera.fov
 	lens.near = camera.near
 	lens.far = camera.far
-	# Perspective or straight-on, centred: the view's own lens is shifted
-	# to the middle of the model's column (CadCamera), and this picture is
-	# framed on the model by itself.
+	# Perspective or straight-on. Not the view's lens, which is shifted to
+	# the middle of the model's column (CadCamera): this picture has a lens
+	# of its own, shifted to the middle of what it draws (_frame).
 	lens.projection = Camera3D.PROJECTION_ORTHOGONAL \
 		if camera.projection == Camera3D.PROJECTION_ORTHOGONAL \
 		else Camera3D.PROJECTION_PERSPECTIVE
@@ -59,7 +59,7 @@ func take(size: Vector2i = SIZE) -> Image:
 	if environment != null:
 		lens.environment = environment
 	view.add_child(lens)
-	_frame(lens, bounds, float(size.x) / float(size.y))
+	_frame(lens, corners, float(size.x) / float(size.y))
 	lens.current = true
 
 	# The model on its floor: the baseplate it stands on is in the picture,
@@ -122,33 +122,97 @@ func _clear_environment() -> Environment:
 	return copy
 
 
-## From the direction the view is looking, at the distance that makes the
-## model fill the picture.
-func _frame(lens: Camera3D, bounds: AABB, aspect: float) -> void:
-	var facing: Vector3 = -camera.global_transform.basis.z.normalized()
-	var radius: float = bounds.size.length() * 0.5
-	var centre: Vector3 = bounds.get_center()
-	# The narrower of the two angles decides; a little room round it.
+## How much of the picture's narrower way the model fills: a twentieth
+## clear on each side.
+const FILL := 0.9
+
+
+## From the direction the view is looking, framed on what is drawn: every
+## corner of every part, as the lens sees it, in the middle of the picture
+## and filling it.
+##
+## This framed the box round the model, from its middle, and what is drawn
+## is not the box: in perspective the near half of a model is drawn larger
+## than the far half, and a model that is not a box leaves much of its box
+## empty. The example car sat 5% low in its own picture and filled 64% of
+## it; an L of bricks sat 9% low and 8% to one side and filled 44%
+## (centring_probe).
+##
+## The eye stays where it was, as far back as takes in a ball round the
+## model, so the picture is in no stronger perspective than before: put
+## close enough to fill the picture with the view's own lens, an L's near
+## end loomed over the rest. The lens is then shifted and narrowed to what
+## that eye sees, which from one eye is the same picture moved and enlarged,
+## so it is exactly in the middle both ways. Straight-on, the lens is slid
+## in its plane, which is the same thing.
+func _frame(lens: Camera3D, corners: PackedVector3Array, aspect: float) -> void:
+	var axes: Basis = camera.global_transform.basis.orthonormalized()
+	var across: Vector3 = axes.x
+	var up: Vector3 = axes.y
+	var ahead: Vector3 = -axes.z
+	# The corners in the view's own axes: across, up and ahead.
+	var low := Vector3(INF, INF, INF)
+	var high := Vector3(-INF, -INF, -INF)
+	for point: Vector3 in corners:
+		var at := Vector3(point.dot(across), point.dot(up), point.dot(ahead))
+		low = low.min(at)
+		high = high.max(at)
+	var middle: Vector3 = (low + high) * 0.5
+	if lens.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		lens.global_transform = Transform3D(axes,
+			across * middle.x + up * middle.y + ahead * (low.z - 100.0))
+		lens.size = maxf(high.y - low.y, (high.x - low.x) / aspect) / FILL
+		lens.far = maxf(camera.far, high.z - low.z + 200.0)
+		return
+
+	var radius: float = (high - low).length() * 0.5
 	var half_tall: float = deg_to_rad(lens.fov) * 0.5
 	var half_wide: float = atan(tan(half_tall) * aspect)
-	var distance: float = radius / sin(minf(half_tall, half_wide)) * 1.05
-	var up: Vector3 = camera.global_transform.basis.y.normalized()
-	lens.global_transform = Transform3D(Basis.IDENTITY, centre - facing * distance) \
-		.looking_at(centre, up)
-	if lens.projection == Camera3D.PROJECTION_ORTHOGONAL:
-		lens.size = radius * 2.1
+	var back: float = radius / sin(minf(half_tall, half_wide)) * 1.05
+	var eye: Vector3 = across * middle.x + up * middle.y + ahead * (middle.z - back)
+
+	# What that eye sees, as the slope of a ray from it: across and up over
+	# the distance ahead.
+	var seen_low := Vector2(INF, INF)
+	var seen_high := Vector2(-INF, -INF)
+	var nearest: float = INF
+	var farthest: float = 0.0
+	for point: Vector3 in corners:
+		var from_eye: Vector3 = point - eye
+		var deep: float = from_eye.dot(ahead)
+		var at := Vector2(from_eye.dot(across), from_eye.dot(up)) / deep
+		seen_low = seen_low.min(at)
+		seen_high = seen_high.max(at)
+		nearest = minf(nearest, deep)
+		farthest = maxf(farthest, deep)
+	var tall: float = maxf(seen_high.y - seen_low.y, (seen_high.x - seen_low.x) / aspect) / FILL
+	lens.global_transform = Transform3D(axes, eye)
+	lens.near = clampf(nearest * 0.5, 0.05, camera.near)
+	lens.far = maxf(camera.far, farthest * 1.5)
+	lens.set_frustum(lens.near * tall, (seen_low + seen_high) * 0.5 * lens.near,
+		lens.near, lens.far)
 
 
-func _model_bounds() -> AABB:
-	var box := AABB()
-	var first: bool = true
+## The corners of every part shown, each part's box turned with the part.
+## What is drawn lies inside them and reaches them nearly everywhere. A
+## slice of the model a frame (FramePace): Orthanc is 9,429 parts.
+func _corners() -> PackedVector3Array:
+	var corners := PackedVector3Array()
+	var pace := FramePace.new()
 	for brick: BrickWorld.Brick in world.bricks():
+		if pace.due():
+			await pace.next()
 		if scenery.has(brick.id) or brick.hidden:
 			continue
 		var part: Lbm.PartMesh = world.library.mesh_for(brick.part_id)
-		if part == null:
-			continue
-		var here: AABB = (brick.transform * part.bounds).abs()
-		box = here if first else box.merge(here)
-		first = false
-	return box
+		if part != null:
+			add_corners(corners, brick.transform, part.bounds)
+	return corners
+
+
+## A box's eight corners, placed: what a picture is framed on. ModelShot's
+## too.
+static func add_corners(into: PackedVector3Array, at: Transform3D, box: AABB) -> void:
+	for n: int in 8:
+		into.append(at * (box.position + box.size * Vector3(
+			float(n & 1), float((n >> 1) & 1), float((n >> 2) & 1))))

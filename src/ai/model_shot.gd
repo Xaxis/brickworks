@@ -200,6 +200,9 @@ const PICKED_OUT := 5
 ## pixels — and every picture after it again.
 var _staged: Array = []
 var _staged_bounds := AABB()
+## And every corner of every part staged, each part's box turned with it:
+## what a picture is framed on (Picture.add_corners).
+var _staged_corners := PackedVector3Array()
 
 
 ##
@@ -215,6 +218,7 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 	_stage.hold_drawing()
 	var pace := FramePace.new()
 	var box := AABB()
+	var corners := PackedVector3Array()
 	var first: bool = true
 	for brick: BrickWorld.Brick in world.bricks():
 		if pace.due():
@@ -242,8 +246,10 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 		var here: AABB = (brick.transform * part.bounds).abs()
 		box = here if first else box.merge(here)
 		first = false
+		Picture.add_corners(corners, brick.transform, part.bounds)
 	_stage.release_drawing()
 	_staged_bounds = box
+	_staged_corners = corners
 	return box
 
 
@@ -364,23 +370,37 @@ func _take(world: BrickWorld, from: String,
 		up_is = Vector3.FORWARD
 	_camera.look_at(centre, up_is)
 
-	# How much of the view the model actually needs, worked out by
-	# projecting its eight corners onto what the camera calls across and
-	# up. Guessing from the diagonal was the first attempt and it framed
-	# an eight-brick tower so close that the tower was the whole picture
-	# and none of its edges were in it.
+	# How much of the view the model actually needs, and where in it:
+	# every corner of every part, put onto what the camera calls across and
+	# up, and the camera slid to the middle of them. Guessing from the
+	# diagonal was the first attempt and it framed an eight-brick tower so
+	# close that the tower was the whole picture and none of its edges were
+	# in it. The corners of the box round the model were the next, framed
+	# on the box's middle, and a model that is not a box was drawn to one
+	# side of its picture: an L on the corner it does not have. A close
+	# look is framed on the box it looks at.
 	var across: Vector3 = _camera.global_transform.basis.x
 	var up: Vector3 = _camera.global_transform.basis.y
-	var widest: float = 0.0
-	for n: int in 8:
-		var corner: Vector3 = bounds.position + Vector3(
-			bounds.size.x if n & 1 else 0.0,
-			bounds.size.y if n & 2 else 0.0,
-			bounds.size.z if n & 4 else 0.0) - centre
-		widest = maxf(widest, absf(corner.dot(across)))
-		widest = maxf(widest, absf(corner.dot(up)))
+	var corners := PackedVector3Array()
+	if only.size.length() > 0.0:
+		Picture.add_corners(corners, Transform3D.IDENTITY, only)
+	else:
+		corners = _staged_corners
+		# The ruler is drawn too, along two edges of the box's base.
+		if rulers:
+			corners = corners + PackedVector3Array([bounds.position,
+				bounds.position + Vector3(bounds.size.x, 0.0, 0.0),
+				bounds.position + Vector3(0.0, 0.0, bounds.size.z)])
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for point: Vector3 in corners:
+		var at := Vector2((point - centre).dot(across), (point - centre).dot(up))
+		low = low.min(at)
+		high = high.max(at)
+	var middle: Vector2 = (low + high) * 0.5
+	_camera.position += across * middle.x + up * middle.y
 	# A tenth of margin, so nothing is cropped by a stud.
-	_camera.size = maxf(widest * 2.2, 40.0)
+	_camera.size = maxf(maxf(high.x - low.x, high.y - low.y) * 1.1, 40.0)
 	_camera.current = true
 
 	if _ruler != null:
