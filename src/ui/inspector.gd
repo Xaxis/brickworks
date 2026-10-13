@@ -577,12 +577,14 @@ func _step_words(brick_id: int) -> String:
 	if key != _steps_for:
 		_steps_for = key
 		_step_of.clear()
-		var steps: Array = Instructions.plan(shell.world, shell.library, shell.store.scenery)
-		_step_count = steps.size()
+		# The author's steps when there are any, numbered as the booklet is.
+		var steps: Array = Instructions.plan(shell.world, shell.library, shell.store.scenery,
+			{}, true)
+		_step_count = (steps.back() as Instructions.Step).number if not steps.is_empty() else 0
 		for n: int in steps.size():
 			var step: Instructions.Step = steps[n]
 			for id: int in step.brick_ids:
-				_step_of[id] = n + 1
+				_step_of[id] = step.number
 	if not _step_of.has(brick_id):
 		return ""
 	return "Step %d of %d in the instructions" % [int(_step_of[brick_id]), _step_count]

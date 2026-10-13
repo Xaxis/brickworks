@@ -20,6 +20,7 @@
 ##   each copy? a figure in its own callout?
 ##   when a step's parts are behind the model, is it turned round?
 ##   does the timeline number its steps as the booklet does?
+##   does a model with its author's steps get a booklet in those steps?
 ##   does every page fit its sheet (Booklet.PAGE inside A4 and Letter)?
 extends SceneTree
 
@@ -51,6 +52,7 @@ func _run() -> void:
 	await _shed()
 	await _house()
 	await _turned()
+	await _authored()
 	await _the_button()
 
 	print("")
@@ -245,6 +247,44 @@ func _the_button() -> void:
 	await process_frame
 
 
+## tests/fixtures/steps/gatehouse.mpd, which its author built in five steps,
+## a base in two of its own and a window in three: the booklet's steps are
+## those, the window in a callout "2x" in the step that puts it on with the
+## white brick, and not the order Brickworks would have worked out.
+func _authored() -> void:
+	var ldr: LdrModel = LdrModel.load_file("res://tests/fixtures/steps/gatehouse.mpd")
+	var world: BrickWorld = _world_of(ldr, true)
+	var made: Array = await _make(world, "gatehouse")
+	var maker: BookletMaker = made[0]
+	print("\n  the gatehouse, in its author's steps")
+	var numbers: Array = _entries(maker).map(func(entry: Booklet.Entry) -> int:
+		return entry.number)
+	_assert("the pages number the author's steps 1 to 6 — the base's two, then the model's "
+		+ "four with parts of their own (%s)" % str(numbers), numbers == [1, 2, 3, 4, 5, 6])
+	var parts: Array = _entries(maker).map(func(entry: Booklet.Entry) -> String:
+		var named := PackedStringArray()
+		for lot: Booklet.Lot in entry.lots:
+			named.append("%s x%d" % [lot.part_id, lot.count])
+		named.sort()
+		return " ".join(named))
+	_assert("each step's parts box is what the author put in it (%s)" % " | ".join(parts),
+		parts == ["3001 x2", "3001 x2", "3003 x1", "3005 x1", "3004 x1 3005 x4 3024 x2", "3022 x1"])
+	var callout: Booklet.Callout = null
+	for entry: Booklet.Entry in _entries(maker):
+		if entry.callout != null:
+			callout = entry.callout
+	_assert("the window is built on the side in its own three steps, 2x, in step 5 (%s)"
+		% ("%s %dx, %d steps" % [callout.name, callout.times, callout.steps.size()]
+			if callout != null else "no callout"), callout != null and callout.times == 2
+		and callout.steps.size() == 3 and callout.name == "Window")
+	var worked: Array = Instructions.plan(world, _library, {})
+	_assert("...where the order worked out for it would be another (%d steps there, %d here)"
+		% [worked.size(), Instructions.plan(world, _library, {}, {}, true).size()],
+		worked.map(func(step: Instructions.Step) -> PackedInt64Array: return step.brick_ids)
+		!= Instructions.plan(world, _library, {}, {}, true).map(
+			func(step: Instructions.Step) -> PackedInt64Array: return step.brick_ids))
+
+
 func _make(world: BrickWorld, name: String) -> Array:
 	var maker := BookletMaker.new()
 	maker.library = _library
@@ -342,7 +382,9 @@ func _note_for(maker: BookletMaker, what: String) -> Dictionary:
 	return {}
 
 
-func _world_of(ldr: LdrModel) -> BrickWorld:
+## The model in a world of its own; with [param steps], in the file's
+## steps, as ModelStore.open_text keeps an author's.
+func _world_of(ldr: LdrModel, steps: bool = false) -> BrickWorld:
 	var world := BrickWorld.new()
 	world.library = _library
 	root.add_child(world)
@@ -353,6 +395,10 @@ func _world_of(ldr: LdrModel) -> BrickWorld:
 		var brick_id: int = world.add_brick(id, piece.color_code, piece.transform)
 		world.get_brick(brick_id).group = piece.group
 		world.get_brick(brick_id).unit = piece.unit
+		if steps:
+			world.get_brick(brick_id).step = piece.step
+	if steps:
+		world.unit_steps = ldr.unit_steps.duplicate()
 	return world
 
 

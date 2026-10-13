@@ -229,8 +229,11 @@ static var laps: Array = []
 ## order; only where it gives the frame back differs. Returns no steps when
 ## the job was cancelled.
 static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
-		regions: Dictionary, job: Working.Job) -> Array[Step]:
+		regions: Dictionary, job: Working.Job, authored: bool = false) -> Array[Step]:
 	laps.clear()
+	# The author's steps are read, not worked out: nothing to pace.
+	if authored and AuthorSteps.any(world, skip):
+		return _authored_plan(world, library, skip)
 	var clock: Array[int] = [Time.get_ticks_msec()]
 	var lap := func(what: String) -> void:
 		var now: int = Time.get_ticks_msec()

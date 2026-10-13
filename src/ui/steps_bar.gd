@@ -20,6 +20,12 @@
 ##                 being replaced, a wall taken down and built again. What
 ##                 is no longer there is put back for the timeline to show
 ##                 (BrickWorld.history) and taken away again after
+##   Author's steps  the steps the model's author gave it, in Studio, LDCad
+##                 or here (AuthorSteps): the order a model that has them
+##                 opens in. Its own row of buttons changes them — a step
+##                 earlier or later, merged with the next, taken out — and
+##                 Edit's Move to previous/next step and New step from
+##                 selection put the selected parts in another
 ##
 ## Shown only while it is on, because it is a mode: while it is up the
 ## model on screen is not the whole model, and something has to say so
@@ -63,9 +69,17 @@ var _playing: int = 0
 ## Fractional bricks owed by the clock, so a slow speed still moves.
 var _owed: float = 0.0
 var _speed_at: int = 1
-## 0 the build order, 1 as made, 2 the history.
+## 0 the build order, 1 as made, 2 the history, 3 the author's steps.
 var _mode: int = 0
-const MODES: Array[String] = ["Build order", "As made", "History"]
+const MODES: Array[String] = ["Build order", "As made", "History", "Author's steps"]
+const AUTHORS := 3
+## The model has steps its author gave it, so the fourth order is offered.
+var _authored: bool = false
+## The row of step edits, shown in the author's steps.
+var _edits: HBoxContainer
+## Whether the steps may be changed here: not for a model shared by link
+## and opened to look at.
+var editable: bool = true
 ## History: the changes, each [add or remove, key], or ["clear", ""].
 var _events: Array = []
 ## History: which brick in the world shows a key — the brick itself while
@@ -79,6 +93,9 @@ signal reveal(brick_ids: Dictionary)
 ## Someone wants the booklet as a file. The bar does not write it: the
 ## pictures come from the main viewport, which the bar is sitting on.
 signal export_wanted()
+## A step edit pressed on the bar: "earlier", "later", "merge", "delete" or
+## "new" (Shell.edit_steps does it, on the step showing).
+signal edit_wanted(op: String)
 signal closed
 
 ## Its buttons and the slider by name, for the page to find (controls_by_name).
@@ -178,10 +195,12 @@ func _build() -> void:
 	row.add_child(_speed)
 	_order_button = _button("Build order", "Build order: how you would put it "
 		+ "together. As made: the order what stands was placed in. History: "
-		+ "every change, removals included — how it was really made")
+		+ "every change, removals included — how it was really made. Author's "
+		+ "steps: the steps the model came with, or that you gave it")
 	_order_button.custom_minimum_size = Vector2(92, 0)
-	_order_button.pressed.connect(func() -> void: set_mode((_mode + 1) % MODES.size()))
+	_order_button.pressed.connect(func() -> void: set_mode(_next_mode()))
 	row.add_child(_order_button)
+	_named["steps_order"] = _order_button
 
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -198,6 +217,26 @@ func _build() -> void:
 	row.add_child(close)
 	_named["steps_done"] = close
 	_named["steps_slider"] = _slider
+
+	# Changing the author's steps, on the step showing: as LeoCAD and Studio
+	# keep theirs beside the step list. Shown in the author's steps only.
+	_edits = HBoxContainer.new()
+	_edits.add_theme_constant_override("separation", 6)
+	_edits.visible = false
+	column.add_child(_edits)
+	for edit: Array in [
+			["earlier", "Earlier", "This step before the one ahead of it"],
+			["later", "Later", "This step after the one that follows it"],
+			["merge", "Merge with next", "This step and the next made one"],
+			["delete", "Delete step", "Take this step out; its parts join the step before. "
+				+ "No part is taken off"],
+			["new", "New step from selection", "The selected parts in a step of their own, "
+				+ "after this one (Shift-N)"]]:
+		var op: String = edit[0]
+		var made: Button = _button(edit[1], edit[2])
+		made.pressed.connect(func() -> void: edit_wanted.emit(op))
+		_edits.add_child(made)
+		_named["steps_" + op] = made
 
 
 ## Words, not symbols.
@@ -244,12 +283,19 @@ func start(world: BrickWorld, library: PartLibrary,
 	_library = library
 	_world = world
 	_scenery = scenery
+	# A model with its author's steps opens in them; one without has none
+	# to show.
+	_authored = AuthorSteps.any(world, scenery)
+	if _authored and _mode == 0:
+		_set_mode_quietly(AUTHORS)
+	elif not _authored and _mode == AUTHORS:
+		_set_mode_quietly(0)
 	var job: Working.Job = Working.begin("Laying out %s parts in steps…"
 		% Working.comma(world.brick_count() - scenery.size()), 0, true)
 	_job = job
 	await job.shown()
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
-		world, library, scenery, {}, job)
+		world, library, scenery, {}, job, _mode == AUTHORS)
 	_job = null
 	if job.cancelled or steps.is_empty():
 		job.end()
@@ -261,7 +307,8 @@ func start(world: BrickWorld, library: PartLibrary,
 	_reorder()
 	# The first step, as the booklet opens: an empty baseplate is a page
 	# with nothing on it.
-	_show(_step_ends[0] if _mode == 0 and not _step_ends.is_empty() else 1)
+	_show(_step_ends[0] if (_mode == 0 or _mode == AUTHORS) and not _step_ends.is_empty()
+		else 1)
 	job.end()
 	return true
 
@@ -297,6 +344,14 @@ func controls_by_name() -> Dictionary:
 	return _named.duplicate() if visible else {}
 
 
+## What a person reads on it, for a browser check; nothing while it is down.
+func page_state() -> Dictionary:
+	if not visible:
+		return {}
+	return {"order": MODES[_mode], "caption": _caption.text, "pieces": _pieces.text,
+		"at": [_shown, _length()]}
+
+
 ## How many places along the timeline there are, and which is showing.
 func timeline_at() -> Vector2i:
 	return Vector2i(_shown, _length())
@@ -307,17 +362,97 @@ func set_as_made(yes: bool) -> void:
 	set_mode(1 if yes else 0)
 
 
-## 0 the build order, 1 as made, 2 the history.
+## 0 the build order, 1 as made, 2 the history, 3 the author's steps.
 func set_mode(mode: int) -> void:
 	if mode == _mode:
 		return
-	_mode = mode
-	_order_button.text = MODES[mode]
+	var planned_by: bool = _mode == AUTHORS
+	_set_mode_quietly(mode)
 	if visible:
 		_stop_play()
 		var share: float = float(_shown) / maxf(_length(), 1.0)
+		if planned_by != (mode == AUTHORS):
+			_steps = _plan()
 		_reorder()
 		_show(int(round(share * _length())))
+
+
+func _set_mode_quietly(mode: int) -> void:
+	_mode = mode
+	_order_button.text = MODES[mode]
+	_edits.visible = mode == AUTHORS and editable
+
+
+## The order after this one, the author's steps only for a model that has them.
+func _next_mode() -> int:
+	var next: int = (_mode + 1) % MODES.size()
+	if next == AUTHORS and not _authored:
+		next = 0
+	return next
+
+
+func mode() -> int:
+	return _mode
+
+
+## The steps for the order showing.
+func _plan() -> Array[Instructions.Step]:
+	return Instructions.plan(_world, _library, _scenery, {}, _mode == AUTHORS)
+
+
+## The step the timeline is on, in the build order or the author's steps:
+## the one whose end it shows, or is past the start of. Null in the other
+## orders, and at an empty baseplate.
+func current_step() -> Instructions.Step:
+	if not visible or _shown == 0 or _step_ends.is_empty() or not (_mode == 0 or _mode == AUTHORS):
+		return null
+	var step: int = 0
+	while step < _step_ends.size() - 1 and _step_ends[step] < _shown:
+		step += 1
+	# A callout's last step and the step that puts it on end together when
+	# that step has no parts of its own: it is the step of the model that an
+	# edit of "this step" means.
+	while step < _step_ends.size() - 1 and _step_ends[step + 1] == _step_ends[step]:
+		step += 1
+	return _steps[step]
+
+
+## The step a part put down by hand goes in (Builder.place_step): the one
+## showing, in the author's steps, when the part goes where that step is.
+func place_step(path: String) -> int:
+	if _mode != AUTHORS:
+		return -1
+	var at: Instructions.Step = current_step()
+	if at == null or at.authored_step < 0 or at.authored_in != path:
+		return -1
+	return at.authored_step
+
+
+## The steps worked out again after the model or its steps changed, in the
+## author's steps when it now has them, showing the end of the main step
+## numbered [param number] (the one showing, when -1).
+func refresh(number: int = -1) -> void:
+	if not visible:
+		return
+	var at: Instructions.Step = current_step()
+	if number < 0:
+		number = at.number if at != null else -1
+	_authored = AuthorSteps.any(_world, _scenery)
+	if _authored and _mode == 0:
+		_set_mode_quietly(AUTHORS)
+	_steps = _plan()
+	if _steps.is_empty():
+		stop()
+		return
+	_reorder()
+	if _mode != 0 and _mode != AUTHORS:
+		_show(_shown)
+		return
+	var end: int = -1
+	for index: int in _steps.size():
+		if _steps[index].number <= number:
+			end = _step_ends[index]
+	_show(end if end >= 0 else (_step_ends[0] if not _step_ends.is_empty() else 0))
 
 
 ## How many places there are along the timeline.
@@ -340,6 +475,7 @@ func _reorder() -> void:
 				_order.append(brick_id)
 		_order.sort()
 	else:
+		# The build order, or the author's steps.
 		for step: Instructions.Step in _steps:
 			for brick_id: int in step.brick_ids:
 				_order.append(brick_id)
@@ -426,7 +562,7 @@ func toggle_play() -> void:
 
 
 func _next_stop(direction: int) -> int:
-	if _mode != 0 or _step_ends.is_empty():
+	if (_mode != 0 and _mode != AUTHORS) or _step_ends.is_empty():
 		return _shown + 10 * direction
 	if direction > 0:
 		for end: int in _step_ends:
@@ -530,7 +666,8 @@ func _show(count: int) -> void:
 		var at: Instructions.Step = _steps[step]
 		_caption.text = "%s · %s" % [at.caption(_steps[-1].number), of]
 		if _shown == 0:
-			_pieces.text = "An empty baseplate"
+			_pieces.text = "An empty baseplate" + (": the steps are the author's"
+				if _mode == AUTHORS else "")
 		else:
 			_pieces.text = at.summary(_library)
 			# A callout is built on the side in the booklet; here it goes

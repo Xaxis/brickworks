@@ -73,7 +73,7 @@ const MENUS: Array = [
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
 		"-", "ask_claude", "-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
-		"rename_assembly", "make_unique", "-", "reshape_flex"]],
+		"rename_assembly", "make_unique", "-", ">steps", "-", "reshape_flex"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
@@ -101,6 +101,8 @@ const SUBMENUS: Dictionary = {
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
+	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
+		"step_merge", "step_delete"],
 }
 
 
@@ -355,8 +357,15 @@ static func key_text(accel: int) -> String:
 const SHOWN_AS: Dictionary = {KEY_QUOTELEFT: 0x201B, KEY_COMMA: 0x201A}
 
 
+## Keys with no look-alike the menus' font has (the step keys, Shift-[ and
+## Shift-]): none, and the menu writes the key into the line instead.
+const UNDRAWN: Array[int] = [KEY_BRACKETLEFT, KEY_BRACKETRIGHT]
+
+
 static func menu_accel(accel: int) -> int:
 	var code: int = accel & KEY_CODE_MASK
+	if code in UNDRAWN:
+		return 0
 	if not SHOWN_AS.has(code):
 		return accel
 	return (accel & ~KEY_CODE_MASK) | int(SHOWN_AS[code])
@@ -459,6 +468,27 @@ func _define() -> void:
 	_add("ask_claude", "Ask Claude about this…", CTRL | KEY_K,
 		func() -> void: app.call("ask_about_selection"), selected,
 		"Ask Claude to change the selected parts, and only them, or ask about them")
+	# The author's steps: src/assembly/author_steps.gd. The selection, then
+	# the step the timeline is on.
+	_add("step_prev", "Move to previous step", SHIFT | KEY_BRACKETLEFT,
+		func() -> void: edit_steps("prev"), selected,
+		"The selected parts a step earlier in the build steps")
+	_add("step_next", "Move to next step", SHIFT | KEY_BRACKETRIGHT,
+		func() -> void: edit_steps("next"), selected,
+		"The selected parts a step later in the build steps, in a new step from the last")
+	_add("step_new", "New step from selection", SHIFT | KEY_N,
+		func() -> void: edit_steps("new"), selected,
+		"The selected parts in a step of their own, after the step the timeline is on")
+	var on_a_step: Callable = func() -> bool:
+		return (app.get("_steps") as StepsBar).current_step() != null
+	_add("step_earlier", "Step earlier", 0, func() -> void: edit_steps("earlier"), on_a_step,
+		"The step the timeline is on, before the one ahead of it")
+	_add("step_later", "Step later", 0, func() -> void: edit_steps("later"), on_a_step,
+		"The step the timeline is on, after the one that follows it")
+	_add("step_merge", "Merge with the next step", 0, func() -> void: edit_steps("merge"),
+		on_a_step, "The step the timeline is on and the next made one")
+	_add("step_delete", "Delete the step", 0, func() -> void: edit_steps("delete"), on_a_step,
+		"Take out the step the timeline is on; its parts join the step before")
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -714,7 +744,7 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			sub.add_theme_font_size_override("font_size", 13)
 			var words: String = {"recent": "Open recent", "import": "Import",
 				"export": "Export", "history": "History",
-				"select_by": "Select by", "cut_away": "Cut along"}[kind]
+				"select_by": "Select by", "cut_away": "Cut along", "steps": "Build steps"}[kind]
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(words, sub, SUBMENU_ID + popup.item_count)
 			if SUBMENUS.has(kind):
@@ -735,12 +765,16 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			var id: int = _ids.size()
 			_ids.append(item)
 			var shown: int = menu_accel(found.accel)
+			# A key the menu can neither name nor draw goes in the words.
+			var words: String = found.words
+			if shown == 0 and found.accel != 0:
+				words += "    " + key_text(found.accel)
 			if found.radio:
-				popup.add_radio_check_item(found.words, id, shown)
+				popup.add_radio_check_item(words, id, shown)
 			elif found.ticked.is_valid():
-				popup.add_check_item(found.words, id, shown)
+				popup.add_check_item(words, id, shown)
 			else:
-				popup.add_item(found.words, id, shown)
+				popup.add_item(words, id, shown)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
 
@@ -926,7 +960,107 @@ func handle_key(key: InputEventKey) -> bool:
 			if can("enter_assembly") and not held:
 				run("enter_assembly")
 				return true
+		# Shift with the colour keys, as Studio's step keys: with nothing
+		# selected [ and ] still change the colour in hand. A browser names
+		# the key by what Shift makes of it, { and }.
+		KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_BRACELEFT, KEY_BRACERIGHT:
+			if key.shift_pressed and not held and can("step_prev"):
+				return run("step_prev" if key.keycode in [KEY_BRACKETLEFT, KEY_BRACELEFT]
+					else "step_next")
+		KEY_N:
+			if key.shift_pressed and not held and can("step_new"):
+				return run("step_new")
 	return false
+
+
+## A step edit: the selection moved a step or into a new one, or the step
+## the timeline is on moved, merged or taken out. One undo, and the first
+## edit of a model with no steps of its own gives it the worked-out ones
+## first, in the same undo (AuthorSteps.ensure).
+func edit_steps(op: String) -> void:
+	# The bar's buttons come here without asking can(): a model shared to
+	# look at is not to be changed, and the selection's edits need one.
+	if read_only:
+		return
+	if op in ["prev", "next", "new"] and builder.selection.is_empty():
+		bar.say("select the parts first")
+		return
+	var steps: StepsBar = app.get("_steps")
+	var at: Instructions.Step = steps.current_step()
+	if not op in ["prev", "next", "new"] and at == null:
+		bar.say("go to a step on the timeline first")
+		return
+	var number: int = at.number if at != null else -1
+	var skip: Dictionary = store.scenery
+	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	var where: Array = _step_at(at)
+	var ids: Array = Array(builder.selection.keys())
+	var level: String = assemblies.entered if assemblies != null else ""
+	var count: int = ids.size()
+	var words: String = ""
+	match op:
+		"prev", "next":
+			undo.append_array(AuthorSteps.move(world, ids, -1 if op == "prev" else 1, level, skip))
+			words = "moved %s to the %s step" % [_parts(count), "previous" if op == "prev" else "next"]
+		"new":
+			undo.append_array(AuthorSteps.new_step(world, ids, level, str(where[0]),
+				int(where[1]), skip))
+			words = "made a new step of %s" % _parts(count)
+			number += 1
+		"earlier", "later":
+			if int(where[1]) >= 0:
+				undo.append_array(AuthorSteps.swap(world, str(where[0]), int(where[1]),
+					-1 if op == "earlier" else 1, skip))
+			words = "put step %d %s" % [number, "earlier" if op == "earlier" else "later"]
+			number += -1 if op == "earlier" else 1
+		"merge":
+			if int(where[1]) >= 0:
+				undo.append_array(AuthorSteps.merge(world, str(where[0]), int(where[1]), skip))
+			words = "merged step %d with the next" % number
+		"delete":
+			if int(where[1]) >= 0:
+				undo.append_array(AuthorSteps.remove(world, str(where[0]), int(where[1]), skip))
+			words = "took out step %d; its parts are in the step %s" % [number,
+				"before" if int(where[1]) > 0 else "after"]
+			number = maxi(number - 1, 1)
+	undo = AuthorSteps.squash(undo)
+	if undo.is_empty():
+		bar.say("the steps are as they were")
+		return
+	builder.record(undo, words)
+	# Saved with the model, as any edit is (not _on_model_edited, which
+	# would work the timeline out a second time).
+	store.adopt()
+	store.touch()
+	steps.refresh(number)
+	bar.say(words)
+
+
+static func _parts(count: int) -> String:
+	return "1 part" if count == 1 else "%d parts" % count
+
+
+## Where the timeline's step is among the author's: [section, step], or
+## ["", -1]. Read off its first part when it was a worked-out step, which
+## giving the model its steps has just made one of the author's.
+func _step_at(at: Instructions.Step) -> Array:
+	if at == null:
+		return ["", -1]
+	if at.authored_step >= 0:
+		return [at.authored_in, at.authored_step]
+	var ids: PackedInt64Array = at.brick_ids if not at.brick_ids.is_empty() \
+		else (at.copies[0] if not at.copies.is_empty() else PackedInt64Array())
+	if ids.is_empty():
+		return ["", -1]
+	var brick: BrickWorld.Brick = world.get_brick(ids[0])
+	if brick == null or brick.step < 0:
+		return ["", -1]
+	# A step that puts a sub-assembly on is a step of the model, where the
+	# copy goes on.
+	if at.attaches() and at.brick_ids.is_empty():
+		var top: String = Assemblies.segments(Assemblies.path_of(brick))[0]
+		return ["", int(world.unit_steps.get(top, 0))]
+	return [Assemblies.path_of(brick), brick.step]
 
 
 ## Whether a point is over the shell's own panels rather than the model.

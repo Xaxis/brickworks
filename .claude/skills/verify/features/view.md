@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
 
 ## Sub-features
 
@@ -488,6 +488,51 @@ picture the assistant is shown.
   4 bricks under 150 parts, 6 under 500, else 8 (`_per_step`). Supports are
   found through a two-stud grid and the order through a set of ready bricks:
   the 8,603-part Orthanc planned in 87 s and now in 5.
+- `the author's steps` (`src/assembly/author_steps.gd`, `AuthorSteps`): the
+  steps a model's designer gave it in Studio, LDCad, LeoCAD or Bricksmith,
+  kept and changed here. A file's `0 STEP` (and `0 ROTSTEP`) lines were read
+  into `LdrModel.Placement.step` and dropped, and saving wrote the worked-out
+  order over them, so a model opened and saved lost its booklet. Now each part
+  keeps its step within its own sub-model (`BrickWorld.Brick.step`, -1 for
+  none) and each sub-model copy the step it goes on in within the one that
+  places it (`BrickWorld.unit_steps`, from `LdrModel.unit_steps`; a reference
+  was always written first, so a window put on in step 9 came back in step 1).
+  `ModelStore.to_text` writes them, the autosave too, and the
+  `0 !BRICKWORKS AUTHORED_STEPS` line under the model's header. A file
+  Brickworks wrote with its own worked-out steps (`0 Author: Brickworks` and no
+  such line: every shipped model, every save before this) is not the author's,
+  and is worked out again (`LdrModel.steps_are_authored`), or a model saved
+  yesterday would put a new tower in its last step. `Instructions.plan(...,
+  authored=true)` groups by those steps (`_authored_plan`): a sub-model's own
+  steps before the step that puts it on, a small one still a callout ("2x",
+  found by unit as the worked-out plan finds one) whose put-on step also takes
+  the parts of the author's step it is in; regions and the parts-a-step limit
+  are ignored; parts with no step (added since, by hand or by a design) come
+  after, worked out. The timeline's fourth order, **Author's steps**, is the
+  default for such a model, and the booklet follows it. Edit, Build steps (and
+  the timeline's row under its buttons): **Move to previous/next step**
+  (`Shift-[`, `Shift-]`: the selection; from the last step makes a new one),
+  **New step from selection** (`Shift-N`: after the step the timeline is on,
+  everything later one on — how a step is split or put in), **Step
+  earlier/later** (reorder), **Merge with the next step**, **Delete the step**
+  (its parts join the step before; none is taken off). Each is one undo
+  (`restep`/`unitstep` in `Builder._apply`, `AuthorSteps.squash`: an undo
+  group is applied in the order kept, so a part renumbered after a move came
+  back to its middle step). The first edit of a model with no steps copies the
+  worked-out order in, in the same undo (`AuthorSteps.ensure`). A part put
+  down, pasted or a figure placed while the timeline shows a step goes in it
+  (`Builder.place_step`); moved, a part keeps its step; replaced or mirrored,
+  the new part has the old one's. A design's own build keeps the worked-out
+  order. Inside a sub-assembly (Enter) the edits are of its steps; Earlier,
+  Later, Merge and Delete change every copy of it. `[`/`]` alone still change
+  the colour in hand; the shell takes them only with Shift and a selection,
+  `{`/`}` too, which is what a browser calls them. The menus cannot write `[`
+  as a key and have no look-alike for it in their font, so those two lines
+  say "Shift+[" in their words (`Shell.UNDRAWN`). While the timeline is up,
+  the pointer passes through the parts it has not put on yet
+  (`BrickLattice.ahead`, set on every reveal): a click on the step showing
+  took the invisible part above it, and Shift-] moved that one;
+  `handbuild_probe` clicks the yellow brick under the white one to come.
 - `the booklet`: build instructions laid out as a LEGO booklet, one HTML
   file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
   inside both) and reads on screen (`--mm` scales the same millimetres to the
@@ -806,7 +851,27 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 #   figure, the turn sign behind a wall, the timeline's numbers = the booklet's,
 #   and the app's own toolbar: Instructions after Timeline, pressed, writes
 #   the booklet to Downloads (BookletMaker.open_when_written off, no browser);
-#   leaves shots/booklet/{shed,house,turned}.html — print and look at them
+#   the gatehouse (tests/fixtures/steps/gatehouse.mpd) in its author's steps:
+#   pages numbered 1-6, each parts box what the author put in, the window a
+#   3-step 2x callout;
+#   leaves shots/booklet/{shed,house,turned,gatehouse}.html — print and look at them
+# The author's steps: gatehouse.mpd and gatehouse_2025.io opened, saved (and
+# the autosave), out to .io and opened again, every sub-model's steps as the
+# author made them and the timeline the same; a part moved a step, saved,
+# reopened, and undone. Ends "...an author's steps survive open, edit and save".
+godot --headless --path . --script src/dev/io_probe.gd
+# ...and changed by hand: B, Next, Shift-] / Shift-[ / Ctrl-Z, Edit > Build
+# steps > New step from selection, the timeline's Back, Merge with next,
+# Earlier, Delete step, a copy pasted into the step showing, and ] alone still
+# a colour. Every check passed is the pass.
+godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=author_steps
+# In a browser, on a local web export (tools/export.sh web, then
+# python3 tools/web/serve.py build/web PORT, .env sourced): the gatehouse
+# through Open > From a file, Timeline in Author's steps "Step 1 of 6", Next
+# twice, a click on the yellow brick (brickworksLayout.targets now name the
+# part), Shift-] -> "Step 3 of 5", Ctrl-Z -> "of 6", again, and File > Export
+# > LDraw model read by Python: four steps, the yellow with the blue.
+node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/steps_web
 # In a browser, on a local web export (tools/export.sh web, then
 # python3 tools/web/serve.py build/web PORT): presses Instructions, follows
 # the tab it opens, checks the booklet in it and prints it to booklet.pdf

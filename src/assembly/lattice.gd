@@ -64,6 +64,14 @@ var see_through: Dictionary = {}:
 	set(value):
 		see_through = value
 		revision += 1
+## Bricks the pointer passes through because the timeline has not put them
+## on yet (StepsBar): drawn nowhere, they took the click, and a part on
+## the step showing could not be picked from under the step after it.
+## Set whole, so the revision moves with it.
+var ahead: Dictionary = {}:
+	set(value):
+		ahead = value
+		revision += 1
 ## The cut-away (SeeInside): a ray passes through every cell on the side of
 ## this plane its normal points to, as the eye does. Off while the normal is
 ## zero.
@@ -922,6 +930,7 @@ func clear() -> void:
 	_bounds.clear()
 	unseen.clear()
 	see_through.clear()
+	ahead = {}
 
 
 ## A copy to be read on another thread while this one goes on changing.
@@ -1192,7 +1201,7 @@ func raycast(origin: Vector3, direction: Vector3, max_distance: float = 20000.0)
 	for _n: int in 20000:
 		var owner: int = brick_at(cell)
 		if owner != 0 and not unseen.has(owner) and not see_through.has(owner) \
-				and not _cut_away(cell):
+				and not ahead.has(owner) and not _cut_away(cell):
 			hit.brick_id = owner
 			hit.cell = cell
 			hit.normal = entered

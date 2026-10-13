@@ -465,6 +465,14 @@
       "tests": []
     },
     {
+      "id": "cli:the author's steps in a browser",
+      "kind": "cli",
+      "entry": "tools/web/steps_flow.mjs",
+      "reach": "node tools/web/steps_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/steps_web   (a local export, with .env sourced)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:upload parts to storage",
       "kind": "cli",
       "entry": "tools/storage_parts.py",
@@ -1371,6 +1379,14 @@
       "tests": [
         "tests/fixtures/collection/fake_rebrickable.py"
       ]
+    },
+    {
+      "id": "ui:the author's steps",
+      "kind": "ui",
+      "entry": "src/assembly/author_steps.gd",
+      "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: open a Studio, LDCad or LeoCAD model; B opens the timeline in Author's steps; Shift-[ / Shift-] / Shift-N, Edit, Build steps, and the timeline's Earlier, Later, Merge with next, Delete step)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "ui:the booklet",
