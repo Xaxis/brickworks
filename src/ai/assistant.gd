@@ -152,6 +152,10 @@ func forget_references() -> void:
 
 ## The picture the person chose to make into a mosaic, for make_art.
 var art_source: Image = null
+## How many times make_art has laid the picture named [member _art_name]:
+## the first look, then a revision or two (ArtPlan.next_step).
+var _art_laid: int = 0
+var _art_name: String = ""
 ## Said when make_art has laid a picture, for the window to look at it.
 signal art_laid(art: MosaicArt.Art)
 
@@ -205,16 +209,32 @@ func _make_art(args: Dictionary) -> Variant:
 	built.emit(_placed_ids.size())
 	var said: String = ArtPlan.said_of(art)
 	progress.emit("laid a LEGO Art picture: %d parts" % _placed_ids.size())
-	var face: Image = MosaicArt.picture_of(art, library,
-		clampi(768 / maxi(art.plan.across, art.plan.down), 4, 12))
+	# Laid again under the same name is a revision of the same picture.
+	if plan.name.to_lower() != _art_name:
+		_art_name = plan.name.to_lower()
+		_art_laid = 0
+	_art_laid += 1
+	# Face on, as a person sees it on the wall: rendered where there is a
+	# renderer, drawn element by element where there is not.
+	var seen: Dictionary = {}
+	if ModelShot.possible():
+		seen = await _ensure_shot().block(world, "face", scenery)
+	var shown: String = "This is it face on, as it hangs on a wall:"
+	if seen.is_empty():
+		var face: Image = MosaicArt.picture_of(art, library,
+			clampi(768 / maxi(art.plan.across, art.plan.down), 4, 12))
+		seen = {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(face.save_png_to_buffer())}}
+		shown = ("This is it face on, each element drawn as its shape and lighter the "
+			+ "higher it stands:")
 	return [
-		{"type": "text", "text": ("Laid. %s\n\nThis is it face on, each element drawn "
-			% said + "as its shape and lighter the higher it stands. Does it read as the "
-			+ "subject from across a room — the subject standing out, the background "
-			+ "calm, the stars few and bright? If not, change the plan and call make_art "
-			+ "again; view_model shows it in 3D.")},
-		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
-			"data": Marshalls.raw_to_base64(face.save_png_to_buffer())}},
+		{"type": "text", "text": "Laid (%s). %s\n\n%s" % [
+			"first look" if _art_laid == 1 else "revision %d" % (_art_laid - 1), said,
+			ArtPlan.measured(art, library)]},
+		{"type": "text", "text": shown},
+		seen,
+		{"type": "text", "text": "%s\n\n%s\n\n%s" % [ArtPlan.CRITIQUE, ArtPlan.REFERENCE,
+			ArtPlan.next_step(_art_laid)]},
 	]
 
 
@@ -653,6 +673,8 @@ func _start(text: String) -> void:
 	_sent_back = false
 	_before_detail = ""
 	_turn_cap = MAX_TURNS
+	_art_laid = 0
+	_art_name = ""
 	_brief = text
 	_spend = Brain.Spend.new()
 	_spent_on = Brain.chosen()
@@ -11539,7 +11561,7 @@ A picture to hang up — LEGO Art, a mosaic, wall art, a portrait or a \
 scene in bricks — is not modelled with submit_design. Call make_art, \
 which lays it as a LEGO Art set while you decide what its designer \
 would. With a picture the person chose, look_at_picture first; with \
-none, draw it in make_art's svg.
+none, draw it in make_art's svg. {31212}
 
 COORDINATES
 Positions are in brick units, not millimetres.
@@ -11644,7 +11666,7 @@ inventories. A number not in this list is very likely either wrong or a \
 shade that was discontinued, and one that is not a colour at all is \
 refused: 16 and 24 are codes inside LDraw's part files, not plastic.
 
-""" + _palette_lines() + """
+""".replace("{31212}", ArtPlan.REFERENCE) + _palette_lines() + """
 
 71 and 72 are the greys modern sets use. 7 and 8 are the greys sets \
 used until """ + _old_greys_until() + """ and they read as slightly green \

@@ -98,7 +98,7 @@ var depth: int = 3
 var base_colour: int = -1
 var palette := PackedInt32Array()
 var regions: Array[Region] = []
-## [position in fractions, finish code] each.
+## [position in fractions, finish code, size in studs: 1 or 2] each.
 var points: Array = []
 ## Every fault found, in words a caller can act on. Empty is a plan.
 var errors := PackedStringArray()
@@ -300,23 +300,27 @@ func _read_points(value: Variant, library: PartLibrary) -> void:
 		var one: Variant = value[index]
 		var where: Variant = null
 		var finish: int = FINISHES["trans-clear"]
+		var size: int = 1
 		if one is Array:
 			where = _point(one, at)
 		elif one is Dictionary:
 			for key: Variant in one:
-				if str(key) not in ["at", "finish"]:
-					errors.append("%s: \"%s\" is not part of a point (at, finish)" % [at, key])
+				if str(key) not in ["at", "finish", "size"]:
+					errors.append("%s: \"%s\" is not part of a point (at, finish, size)"
+						% [at, key])
 			if not (one as Dictionary).has("at"):
 				errors.append("%s needs \"at\": [x, y]" % at)
 				continue
 			where = _point(one["at"], at + ".at")
 			if (one as Dictionary).has("finish"):
 				finish = _finish(one["finish"], at + ".finish", library)
+			if (one as Dictionary).has("size"):
+				size = _whole(one["size"], at + ".size", 1, 2, 1)
 		else:
 			errors.append("%s must be [x, y] or {\"at\": [x, y], \"finish\": ...}" % at)
 			continue
 		if where is Vector2 and finish >= 0:
-			points.append([where, finish])
+			points.append([where, finish, size])
 
 
 ## A whole number from [param least] to [param most], or [param fallback]
@@ -499,9 +503,21 @@ func guide(across: int, down: int) -> MosaicArt.Guide:
 					out.colour[i] = region.colour
 	for point: Array in points:
 		var at: Vector2 = point[0]
+		if int(point[2]) == 2 and across >= 2 and down >= 2:
+			# A 2 x 2 round tile centred on the point, its low corner
+			# marked, the three studs it covers marked as covered.
+			var x0: int = clampi(roundi(at.x * across - 1.0), 0, across - 2)
+			var z0: int = clampi(roundi(at.y * down - 1.0), 0, down - 2)
+			for dz: int in 2:
+				for dx: int in 2:
+					var j: int = (x0 + dx) + (z0 + dz) * across
+					out.point[j] = int(point[1])
+					out.big[j] = 1 if dx == 0 and dz == 0 else 2
+			continue
 		var x: int = clampi(int(at.x * across), 0, across - 1)
 		var z: int = clampi(int(at.y * down), 0, down - 1)
 		out.point[x + z * across] = int(point[1])
+		out.big[x + z * across] = 0
 	return out
 
 
@@ -616,9 +632,12 @@ static func schemas() -> Array:
 					+ "Leave it out for all of them.")},
 				"regions": {"type": "array", "items": region},
 				"points": {"type": "array", "items": {"type": "object", "properties": {
-					"at": point, "finish": finish}, "required": ["at"],
-					"additionalProperties": false},
-					"description": "single stars, each one stud (default trans-clear)"},
+					"at": point, "finish": finish, "size": {"type": "integer", "enum": [1, 2],
+						"description": ("1 (default): a 1 x 1 round tile; 2: a 2 x 2 round "
+							+ "tile, for the few brightest")}},
+					"required": ["at"], "additionalProperties": false},
+					"description": ("single stars put by hand (default 1 x 1 trans-clear). "
+						+ "A sky like 31212's has dozens, of varied size and finish")},
 			},
 			"additionalProperties": false,
 		},
@@ -629,6 +648,190 @@ static func schemas() -> Array:
 			+ "plan from it. When there is none it says so: draw one in make_art's svg."),
 		"input_schema": {"type": "object", "properties": {}, "additionalProperties": false},
 	}]
+
+
+## What makes a LEGO Art picture work, as 31212 The Milky Way shows it. Said
+## in the rules and again with every picture laid.
+const REFERENCE := """What makes 31212 The Milky Way work: the galaxy fills \
+the panels edge to edge; its arms are tonal gradients of blues and whites \
+with soft edges, never one flat band; the core is a warm gradient of white, \
+yellow and orange, raised; and the black sky is dense with small stars of \
+varied size and brightness."""
+
+## The look a LEGO Art designer gives a picture before it ships, asked of
+## the one just laid. The 3D designer's critique, for a picture.
+const CRITIQUE := """Look at it as LEGO Art's designers judge a picture:
+1. Does the subject fill the frame, edge to edge, or float small in a \
+plain field?
+2. Are the gradients soft — each tone dithered across three or four related \
+colours — or is each a hard band of one colour? In the drawing, use SVG \
+gradients and overlapping translucent shapes rather than flat fills; in \
+the plan, put the related colours in the palette.
+3. Is the sky alive with stars of varied size and brightness: many 1 x 1, \
+mostly trans-clear, some glow, and a few 2 x 2 (points with size 2) for \
+the brightest?
+4. Is the palette harmonious — related hues, no off-key accent nobody asked \
+for?
+5. Is the subject raised and the background flat, the relief stepping up \
+toward what matters most?"""
+
+
+## What to do after looking, by how many times this picture has been laid:
+## revise once, twice at most, then stop. Unbounded, a look-and-revise loop
+## spends a plan's whole allowance on one picture.
+static func next_step(laid: int) -> String:
+	if laid <= 1:
+		return ("If any answer is no, revise the plan — the drawing as well as the "
+			+ "regions — and call make_art again. Two revisions at most.")
+	if laid == 2:
+		return ("One more revision at most. If it reads now, say in a line what you "
+			+ "changed and stop.")
+	return "That was the last revision: say in a line what you changed, and stop."
+
+
+## What a laid picture is, measured as the critique asks: how much of the
+## frame the subject fills, its colours, the largest flat patch of one
+## colour, the stars by size and finish, and the relief.
+static func measured(art: MosaicArt.Art, library: PartLibrary) -> String:
+	var plan: MosaicArt.Plan = art.plan
+	var n: int = plan.cells()
+	if n == 0:
+		return ""
+	var colour := PackedInt32Array()
+	colour.resize(n)
+	colour.fill(-1)
+	var level := PackedInt32Array()
+	level.resize(n)
+	level.fill(-1)
+	var stars: Dictionary = {}
+	for placement: Assistant.Placement in art.placements:
+		if placement.y < MosaicArt.SURFACE:
+			continue
+		var size: Vector2i = MosaicArt.footprint(placement.part, placement.rot)
+		if placement.part in [MosaicArt.ROUND, MosaicArt.BIG_ROUND] \
+				and MosaicArt.ACCENTS.has(placement.color):
+			var key: String = "%d x %d %s" % [size.x, size.y, _name_of(library, placement.color)]
+			stars[key] = int(stars.get(key, 0)) + 1
+		for dz: int in size.y:
+			for dx: int in size.x:
+				if not plan.inside(int(placement.x) + dx, int(placement.z) + dz):
+					continue
+				var i: int = plan.at(int(placement.x) + dx, int(placement.z) + dz)
+				if int(placement.y) > level[i]:
+					level[i] = int(placement.y)
+					colour[i] = placement.color
+	# The background: the commonest colour round the edge.
+	var edge: Dictionary = {}
+	for z: int in plan.down:
+		for x: int in plan.across:
+			if x == 0 or z == 0 or x == plan.across - 1 or z == plan.down - 1:
+				var code: int = colour[plan.at(x, z)]
+				edge[code] = int(edge.get(code, 0)) + 1
+	var ground: int = -1
+	for code: int in edge:
+		if ground < 0 or int(edge[code]) > int(edge[ground]):
+			ground = code
+	var plain: int = 0
+	var raised: int = 0
+	var highest: int = 0
+	var edge_raised: int = 0
+	# The subject's extent: what is raised, where anything is. A dithered
+	# sky is not plain anywhere, so "not plain" spanned the whole frame on
+	# every picture whose sky was read off the drawing.
+	var low := Vector2i(plan.across, plan.down)
+	var high := Vector2i(-1, -1)
+	var flat_low := Vector2i(plan.across, plan.down)
+	var flat_high := Vector2i(-1, -1)
+	var used: Dictionary = {}
+	for z: int in plan.down:
+		for x: int in plan.across:
+			var i: int = plan.at(x, z)
+			if colour[i] >= 0:
+				used[colour[i]] = int(used.get(colour[i], 0)) + 1
+			var star: bool = plan.style[i] == MosaicArt.Style.STAR \
+				or plan.style[i] == MosaicArt.Style.COVERED
+			if colour[i] == ground and plan.relief[i] == 0:
+				plain += 1
+			elif not star:
+				flat_low = Vector2i(mini(flat_low.x, x), mini(flat_low.y, z))
+				flat_high = Vector2i(maxi(flat_high.x, x), maxi(flat_high.y, z))
+			if plan.relief[i] > 0 and not star:
+				low = Vector2i(mini(low.x, x), mini(low.y, z))
+				high = Vector2i(maxi(high.x, x), maxi(high.y, z))
+				raised += 1
+				highest = maxi(highest, plan.relief[i])
+				if x == 0 or z == 0 or x == plan.across - 1 or z == plan.down - 1:
+					edge_raised += 1
+	var lines := PackedStringArray()
+	var subject: String = "The raised subject"
+	if raised == 0:
+		subject = "What is not plain %s" % _name_of(library, ground)
+		low = flat_low
+		high = flat_high
+	var span: Vector2 = Vector2(maxi(0, high.x - low.x + 1), maxi(0, high.y - low.y + 1)) \
+		/ Vector2(plan.across, plan.down)
+	lines.append("- Frame: %d x %d studs. %s spans %d%% of the width and %d%% of the "
+		% [plan.across, plan.down, subject, roundi(span.x * 100), roundi(span.y * 100)]
+		+ "height; plain %s background is %d%% of the picture."
+		% [_name_of(library, ground), roundi(100.0 * plain / n)])
+	var by_count: Array = used.keys()
+	by_count.sort_custom(func(a: int, b: int) -> bool: return int(used[a]) > int(used[b]))
+	var named := PackedStringArray()
+	for code: int in by_count.slice(0, 10):
+		named.append("%s %d" % [_name_of(library, code), int(used[code])])
+	lines.append("- Colours on the face: %d — %s%s." % [used.size(), ", ".join(named),
+		", …" if used.size() > 10 else ""])
+	var patch: Array = _largest_patch(plan, colour, ground)
+	if not patch.is_empty():
+		lines.append("- The largest patch of one colour outside the background: %d studs of %s."
+			% [int(patch[0]), _name_of(library, int(patch[1]))])
+	var star_words := PackedStringArray()
+	var star_count: int = 0
+	for key: String in stars:
+		star_words.append("%d %s" % [int(stars[key]), key])
+		star_count += int(stars[key])
+	lines.append("- Stars: %d%s." % [star_count,
+		" — " + ", ".join(star_words) if not star_words.is_empty() else ""])
+	lines.append("- Relief: %d%% of the picture raised, up to %d plate%s; %s."
+		% [roundi(100.0 * raised / n), highest, "" if highest == 1 else "s",
+		"the edge is flat" if edge_raised == 0 else "%d studs at the edge raised" % edge_raised])
+	return "Measured on what was laid:\n" + "\n".join(lines)
+
+
+## The largest four-connected patch of one colour that is not [param ground]:
+## [studs, colour], or empty.
+static func _largest_patch(plan: MosaicArt.Plan, colour: PackedInt32Array,
+		ground: int) -> Array:
+	var seen := PackedByteArray()
+	seen.resize(plan.cells())
+	var best: Array = []
+	for start: int in plan.cells():
+		if seen[start] == 1 or colour[start] < 0 or colour[start] == ground:
+			continue
+		var code: int = colour[start]
+		var size: int = 0
+		var todo: Array[int] = [start]
+		seen[start] = 1
+		while not todo.is_empty():
+			var i: int = todo.pop_back()
+			size += 1
+			var x: int = i % plan.across
+			var z: int = i / plan.across
+			for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if not plan.inside(x + step.x, z + step.y):
+					continue
+				var j: int = plan.at(x + step.x, z + step.y)
+				if seen[j] == 0 and colour[j] == code:
+					seen[j] = 1
+					todo.append(j)
+		if best.is_empty() or size > int(best[0]):
+			best = [size, code]
+	return best
+
+
+static func _name_of(library: PartLibrary, code: int) -> String:
+	var colour: PartLibrary.BrickColor = library.color(code)
+	return colour.name if colour != null else "colour %d" % code
 
 
 ## What a laid plan came to, in words: its size, and its parts by element.

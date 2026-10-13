@@ -352,7 +352,9 @@ picture the assistant is shown.
   carries by its pixels against the SVGs, and fails on brickworks.diy as of
   2026-10-11. Escape also throws away a box being drawn (its release is not a
   click) and closes the controls panel.
-- `renders for the critique`: the image handed to the assistant so it can see what
+- `renders for the critique` (views: corner, far corner, front, back, left,
+  right, top, and "face", straight down the right way up for a LEGO Art
+  picture): the image handed to the assistant so it can see what
   it built, drawn by a SubViewport. Two opposite corners, so every side has been
   seen; a close look at one part of a model too big to judge whole; and, after an
   edit, the bricks that edit added or moved restaged in magenta, so the design can
@@ -581,7 +583,9 @@ picture the assistant is shown.
   rect), each changing only what it says — texture (round, smooth, or as the
   picture reads), relief in plates, whether contours run there, whether its
   points of light are stars and in what finish, or one colour for all of it;
-  single stars put by hand (`points`); a palette; the panels' colour; and an
+  single stars put by hand (`points`, 1 x 1 round tiles, or with `size` 2 a
+  14769 2 x 2 round tile on four studs for the brightest, the three it covers
+  `Style.COVERED`); a palette; the panels' colour; and an
   SVG drawn by Claude when there is no picture (`Image.load_svg_from_string`,
   eight pixels a stud, over the panels' colour so a drawing with no
   background is no holes). Coordinates are fractions of the picture after
@@ -598,6 +602,23 @@ picture the assistant is shown.
   over MCP or the connector all have them: `make_art` (a plan in, laid in
   place of the model as the dialog's Build does, answered with the picture
   face on and its parts by element, so the designer can look and plan again)
+  — then a look-and-revise pass, as the 3D designer's critique: the answer is
+  the picture face on (rendered where there is a renderer, from the
+  `ModelShot` view "face": straight down, the picture's top edge at the top
+  — "top" shows a picture laid flat turned half round, and the first rerun
+  was shown it upside down — else `MosaicArt.picture_of`),
+  `ArtPlan.measured` (how much of the frame the raised subject spans — not
+  "what is not plain", which a dithered sky made 100% every time — and how
+  much is plain background, the colours on the face,
+  the largest one-colour patch outside the background, the stars by size and
+  finish, the relief and whether the edge is flat), `ArtPlan.CRITIQUE` (fills
+  the frame? soft gradients over three or four related colours? stars of varied
+  size and brightness? a harmonious palette? subject raised, background
+  flat?), `ArtPlan.REFERENCE` (what makes 31212 work: the galaxy edge to
+  edge, arms as soft tonal gradients of blues and whites, a warm raised core,
+  a sky dense with small stars of varied size; also in the rules), and
+  `ArtPlan.next_step`: revise once, twice at most, then stop. Laid again under
+  the same name is a revision; another name is a first look —
   and `look_at_picture` (the person's picture — the one chosen for the mosaic,
   or the first reference — for a session that is given a sentence, not the
   picture). The rules say a picture to hang up is make_art, not
@@ -752,9 +773,12 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 #   round and one up, core three up, three stars by hand in glow, trans-clear
 #   and pearl gold) checked stud by stud against what was laid, the palette,
 #   made-in colours, one piece, the parts list; a plan that draws its own
-#   SVG; 16 malformed plans each refused with its fault named; make_art and
+#   SVG; two 2 x 2 round stars, each the top of its four studs and one piece;
+#   17 malformed plans each refused with its fault named; make_art and
 #   look_at_picture called as a design calls them (a bad plan leaves the
-#   baseplate alone, a good one replaces it, panels as sub-assemblies); and
+#   baseplate alone, a good one replaces it, panels as sub-assemblies, the
+#   answer the picture plus what was measured and the checklist, laid again
+#   under the same name revision 1 then revision 2 and told to stop); and
 #   the dialog's Design with Claude. Ends "an Art plan is laid as it says".
 # In a browser, on a local web export (tools/export.sh web, then
 # python3 tools/web/serve.py build/web PORT): Build > Mosaic from a picture
@@ -869,6 +893,20 @@ take, which is what made a design run give up on looking at itself.
   did not plan again; a second look is where the wispy arms would come from.
   The plans are in the session's transcript under `~/.claude/projects/` for
   the worktree, which is how to see what a run asked for.
+- **With the look-and-revise pass, the same prompt again (2026-10-12).** Two
+  reruns, 96 s and 113 s, each looked once and revised once, as told. The
+  second, on the final code (upright face view): 6 x 3 panels (77 x 38 cm,
+  31212's size), the drawing in SVG gradients, arms dark blue to white with
+  soft dithered edges, a warm orange-to-white core three plates up, no
+  Magenta, 43 stars of which 3 are 2 x 2 round tiles; 5,018 parts against
+  2,070, buildable in one piece (checked again offline from the transcript's
+  plan). Its measure said the raised subject spans 90% by 92% and the plain
+  sky is 18%. Still short of 31212: two regular arms in an even ellipse where
+  the set's are many and ragged, and the sky's 43 stars are fewer than the
+  set's. Between its two plans it asked for Dark Azure (321) and was refused,
+  as Medium Lilac was before; the modern colours the classic palette predates
+  are now Art colours (`MosaicArt.SOLID`). Renders:
+  `shots/runs/artai_milkyway_face.png` (before) and `artai_milkyway3_face.png`.
 - **A viewport is cleared every time it is drawn, whatever its clear mode.**
   Best's frames were to be added into one viewport set to `CLEAR_MODE_NEVER`;
   after 64 frames it held the last frame's 1/64th, on both renderers. So two
