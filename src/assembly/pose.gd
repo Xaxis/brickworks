@@ -263,6 +263,47 @@ static func _near(a: Transform3D, b: Transform3D) -> bool:
 		and a.basis.y.distance_to(b.basis.y) < 0.001 and a.basis.z.distance_to(b.basis.z) < 0.001
 
 
+## The poses a balance check weighs (Balance.measure): each
+## {"label", "angles": path -> degrees, "transforms": brick id -> Transform3D}.
+##
+## The frames of [param animation] when it has keys, as Play and Render
+## animation run them. Otherwise every joint swung on its own from where it
+## is now, [param step] degrees at a time each way round to half a turn, as
+## far as it has room for, the others held: what the sliders can reach. A
+## turntable goes all the way round, and an arm on a hinge stops where it
+## would run into the model, as the slider does (see [method settle]).
+func sweep(animation: PoseAnimation = null, step: float = 15.0) -> Array:
+	var out: Array = []
+	if joints.is_empty():
+		return out
+	if animation != null and not animation.keys.is_empty():
+		for n: int in animation.frame_count():
+			var t: float = animation.time_of(n)
+			var angles_then: Dictionary = animation.angles_at(t)
+			out.append({"label": "the animation at %.2f s" % t, "angles": angles_then,
+				"transforms": transforms_for(angles_then)})
+		return out
+	var now: Dictionary = angles()
+	var start: Dictionary = transforms_for(now)
+	for one: Joint in joints:
+		for way: float in [1.0, -1.0]:
+			var turned: float = step
+			# The other way stops a step short of half a turn: that one is
+			# already in.
+			var furthest: float = 180.0 if way > 0.0 else 180.0 - step
+			while turned <= furthest + 0.001:
+				var wanted: Dictionary = now.duplicate()
+				wanted[one.path] = one.angle + way * turned
+				var placed: Dictionary = transforms_for(wanted)
+				if not _has_room(one, placed, start):
+					break
+				out.append({"label": "%s at %d°" % [Assemblies.label(one.path),
+					roundi(wrapf(one.angle + way * turned, -180.0, 180.0))],
+					"angles": wanted, "transforms": placed})
+				turned += step
+	return out
+
+
 ## The box every part that moves sweeps through over [param poses], each a
 ## brick id -> Transform3D: what a render of them must frame.
 func reach(poses: Array) -> AABB:

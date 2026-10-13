@@ -363,7 +363,13 @@ then prove it turns, the same loop it already uses for `check_design`.
 
 ## 4. Balance and strength
 
-**What the app checks today** (`src/assembly/stability.gd`):
+**Phase S1 at rest is built** (2026-10-13): `src/assembly/balance.gd`, over
+the Pose panel's animation or every joint swept through its reach
+(`Poser.sweep`), in Tools, Check stability and in check_design's result. The
+gear-driven sweep waits for the mechanism module: it hands its frames to
+`Balance.measure` as poses. What follows is the research it was built from.
+
+**What the app checked before it** (`src/assembly/stability.gd`):
 
 - every stud joint's load against **80 g per stud**;
 - whether the load's centre of mass falls past the joint's footprint

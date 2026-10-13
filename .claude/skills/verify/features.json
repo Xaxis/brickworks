@@ -601,6 +601,14 @@
       "tests": []
     },
     {
+      "id": "lib:balance",
+      "kind": "lib",
+      "entry": "src/assembly/balance.gd",
+      "reach": "godot --headless --path . --script src/dev/balance_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:brickify",
       "kind": "lib",
       "entry": "src/assembly/brickify.gd",
@@ -976,6 +984,14 @@
       "entry": "src/ai/selection_scope.gd",
       "reach": "godot --path .  (select parts, right-click one: Ask Claude about this\u2026, or Ctrl+K; over MCP the selection and edit_selection tools)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "ui:balance readout",
+      "kind": "ui",
+      "entry": "src/render/balance_mark.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
+      "area": "geometry",
       "tests": []
     },
     {

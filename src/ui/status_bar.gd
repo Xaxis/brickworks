@@ -109,9 +109,13 @@ func _process(_delta: float) -> void:
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
 	var said: String = message.text
+	# Or, while Check stability's marks are on the floor, its readout.
+	if said.is_empty():
+		said = shell.balance_line()
 	var line: String = said if not said.is_empty() else shell.verbs.hint()
 	if _hint.text != line:
 		_hint.text = line
+		_hint.tooltip_text = said
 		_hint.modulate.a = 1.0 if not said.is_empty() else 0.62
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 150:
