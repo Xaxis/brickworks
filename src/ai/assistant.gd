@@ -3960,10 +3960,66 @@ func _search(query: String, limit: int) -> String:
 				library.request_mesh(info.id)
 
 	var lines: PackedStringArray = PackedStringArray()
+	var told: String = ""
 	for info: PartLibrary.PartInfo in usable:
-		lines.append(_describe(info)
+		lines.append(_describe(info) + _prints_note(info)
 			+ (Collection.owned_note(info.id, owned, library) if from_collection else ""))
+		if told.is_empty() and not library.prints_of(info.id).is_empty():
+			told = _prints_named(info)
+	if not told.is_empty():
+		lines.append(told)
 	return "\n".join(lines)
+
+
+## What a part in a search's answer has printed on it, or what prints of
+## it there are, at the end of its line.
+##
+## A design that cannot see the prints does not know they exist: it
+## builds a badge out of plates, or does without. 3623 has eleven, and
+## "porsche print" did not find the one a Porsche wants (2026-10-13).
+func _prints_note(info: PartLibrary.PartInfo) -> String:
+	if not info.print_of.is_empty():
+		return (", a print of %s" if info.decor() & PartLibrary.PartInfo.PRINTED
+			else ", %s with a sticker on") % info.print_of
+	var how_many: String = _prints_counted(info)
+	return "" if how_many.is_empty() else ", " + how_many
+
+
+## "11 prints", "25 prints and 17 stickered", or "" for a part with none.
+func _prints_counted(info: PartLibrary.PartInfo) -> String:
+	var printed: int = 0
+	var stuck: int = 0
+	for each: PartLibrary.PartInfo in library.prints_of(info.id):
+		if each.decor() & PartLibrary.PartInfo.PRINTED:
+			printed += 1
+		else:
+			stuck += 1
+	var said := PackedStringArray()
+	if printed > 0:
+		said.append("%d print%s" % [printed, "" if printed == 1 else "s"])
+	if stuck > 0:
+		said.append("%d stickered" % stuck)
+	return " and ".join(said)
+
+
+## The first part in an answer that has prints, a few of them by what is
+## on them, and how to ask for the rest.
+func _prints_named(info: PartLibrary.PartInfo) -> String:
+	var prints: Array[PartLibrary.PartInfo] = library.prints_of(info.id)
+	var some := PackedStringArray()
+	for each: PartLibrary.PartInfo in prints.slice(0, 3):
+		var on_it: String = each.printed()
+		if on_it.length() > 40:
+			var cut: int = on_it.rfind(" ", 40)
+			on_it = on_it.left(cut if cut > 0 else 40) + "…"
+		some.append("%s %s" % [each.id, on_it])
+	var asks: String = "\"%s print\"" % info.id
+	if _prints_counted(info).contains("stickered"):
+		asks += " or \"%s sticker\"" % info.id
+	return ("%s has %s: %s%s. search_parts %s lists them; \"porsche print\" "
+		% [info.id, _prints_counted(info), "; ".join(some),
+			"; and %d more" % (prints.size() - 3) if prints.size() > 3 else "", asks]
+		+ "finds any print by what is on it.")
 
 
 func _describe(info: PartLibrary.PartInfo) -> String:
@@ -13774,10 +13830,11 @@ func _find_parts_like(query: String) -> String:
 	if not await RealSnippets.ensure_looks(self):
 		return "This build has no list of what parts look like (tools/part_looks.py)."
 	var found: Array = RealSnippets.search_looks(query, 6)
+	var printed: String = _printed_with(query)
 	if found.is_empty():
 		return ("No family of parts reads as \"%s\" in what is written about them. " % query
 			+ "Try a plainer word for the look (claw, feather, scale, exhaust, eye), "
-			+ "or search_parts for one you can name.")
+			+ "or search_parts for one you can name." + printed)
 	var rows := PackedStringArray()
 	for raw: Variant in found:
 		var family: Dictionary = raw
@@ -13787,7 +13844,27 @@ func _find_parts_like(query: String) -> String:
 		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
 			family["looks"], "; ".join(parts)])
 	return ("Parts that read as %s, best first:\n\n%s\n\nsearch_parts with a number "
-		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in.")
+		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in."
+		+ printed)
+
+
+## Prints that show what find_parts_like was asked for, as a paragraph to
+## end its answer with, or "".
+##
+## The families it searches are plain moulds, described by what they read
+## as; a print is the same mould with a picture on, so none is among them.
+## But a control panel, a gauge or a grille is as often a print as a
+## shape, and a design told only of shapes builds a control panel out of
+## round tiles when the LEGO Group printed one on a 2 x 2 slope.
+func _printed_with(query: String) -> String:
+	var found: Array[PartLibrary.PartInfo] = library.search(query + " print", 4)
+	if found.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for info: PartLibrary.PartInfo in found:
+		named.append("%s %s" % [info.id, _part_called(info.id)])
+	return ("\n\nPrinted with it: %s. search_parts \"%s print\" for more."
+		% ["; ".join(named), query])
 
 
 ## Each piece drawn on its own and set side by side, in the order found.
@@ -15866,7 +15943,10 @@ func _tools() -> Array:
 			"description": ("Find real parts by description. Returns part "
 				+ "numbers with their footprint, height and the colours "
 				+ "they were really made in. Use this instead of "
-				+ "guessing a part number."),
+				+ "guessing a part number. Printed parts are found by "
+				+ "what is on them with the word print: \"porsche print\", "
+				+ "\"control panel print\", \"3623 print\" (3623's prints); "
+				+ "a part with a sticker on, with sticker."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
