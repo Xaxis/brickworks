@@ -795,6 +795,14 @@
       "tests": []
     },
     {
+      "id": "lib:recall our own scored designs",
+      "kind": "lib",
+      "entry": "src/ai/design_memory.gd",
+      "reach": "godot --headless --path . --script src/dev/design_memory_probe.gd   (and -- --held-out=speed_champions; the index: tools/design_memory.py build)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:reference pictures",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",

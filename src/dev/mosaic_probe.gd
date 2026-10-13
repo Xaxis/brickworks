@@ -454,7 +454,7 @@ func _dialog_case() -> void:
 	dialog._panels.value = 2
 	dialog._work_out()
 	var said: String = dialog._detail.text
-	_check("opens in LEGO Art and says what it comes to: \"%s\"" % said,
+	_check("opens in Brick Art and says what it comes to: \"%s\"" % said,
 		dialog.is_art() and said.contains("round tiles") and said.contains("16 × 16 panels")
 		and said.contains("32 × 32 studs"))
 	var shown: Texture2D = dialog._preview.texture

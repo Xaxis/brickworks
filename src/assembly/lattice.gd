@@ -867,28 +867,32 @@ func release(brick_id: int) -> void:
 		n += 6
 	var flat: Dictionary = {}
 	for key: Vector3i in seen:
-		var here: PackedInt64Array = _bucket.get(key, PackedInt64Array())
-		var kept := PackedInt64Array()
-		for other: int in here:
-			if other != brick_id:
-				kept.append(other)
-		if kept.is_empty():
-			_bucket.erase(key)
-		else:
-			_bucket[key] = kept
+		_take_out(_bucket, key, brick_id)
 		flat[Vector2i(key.x, key.z)] = true
 	for key: Vector2i in flat:
-		var column: PackedInt64Array = _column_bucket.get(key, PackedInt64Array())
-		var kept := PackedInt64Array()
-		for other: int in column:
-			if other != brick_id:
-				kept.append(other)
-		if kept.is_empty():
-			_column_bucket.erase(key)
-		else:
-			_column_bucket[key] = kept
+		_take_out(_column_bucket, key, brick_id)
 	_boxes.erase(brick_id)
 	_bounds.erase(brick_id)
+
+
+## [param brick_id] out of one bucket's list, by the engine's own search.
+##
+## Copied over in a loop here, a column of a tall model held thousands, and
+## taking all of Orthanc off (Delete, Cut) cost a minute on one frame: every
+## part's release walked its whole column (2026-10-13, command_probe).
+static func _take_out(buckets: Dictionary, key: Variant, brick_id: int) -> void:
+	var here: Variant = buckets.get(key)
+	if here == null:
+		return
+	var list: PackedInt64Array = here
+	var at: int = list.find(brick_id)
+	while at >= 0:
+		list.remove_at(at)
+		at = list.find(brick_id, at)
+	if list.is_empty():
+		buckets.erase(key)
+	else:
+		buckets[key] = list
 
 
 func brick_at(cell: Vector3i) -> int:

@@ -372,7 +372,7 @@ func _colour(value: Variant, at: String, library: PartLibrary) -> int:
 	if code < 0:
 		return -1
 	if library.color(code) == null or not (MosaicArt.SOLID.has(code) or MosaicArt.ACCENTS.has(code)):
-		errors.append("%s %d is not a colour LEGO Art is laid in; those are %s"
+		errors.append("%s %d is not a colour LEGO® Art sets are laid in; those are %s"
 			% [at, code, _named(library, PackedInt32Array(MosaicArt.SOLID + MosaicArt.ACCENTS))])
 		return -1
 	return code
@@ -584,18 +584,19 @@ static func schemas() -> Array:
 	}
 	return [{
 		"name": "make_art",
-		"description": ("Lay a picture as a LEGO Art set is laid — 31212 The Milky Way, "
+		"description": ("Lay a picture as a LEGO® Art set is laid — 31212 The Milky Way, "
 			+ "31208 The Great Wave, 31213 Mona Lisa — on 16 x 16 panels joined underneath "
 			+ "into one piece: square tiles merged where it is flat, 1 x 1 round tiles for "
 			+ "texture, quarter circles along curved contours, stars in trans-clear, "
 			+ "glow-in-the-dark, pearl and metallic set a plate proud, and the subject "
 			+ "raised on stacked plates with cheese slopes. Use this, not submit_design, "
-			+ "whenever LEGO Art, a mosaic, a picture in bricks or wall art is asked for. "
+			+ "whenever a mosaic, a picture in bricks, wall art or something like a LEGO® Art "
+			+ "set is asked for. "
 			+ "It replaces what is on the baseplate.\n"
 			+ "The picture is the one the person chose (look_at_picture shows it). With "
 			+ "none, draw it yourself as svg: one stud is one pixel, so big simple shapes "
 			+ "in flat colours, like a poster.\n"
-			+ "You decide what a LEGO Art designer decides, and the app reads everything "
+			+ "You decide what a designer of LEGO® Art sets decides, and the app reads everything "
 			+ "you leave out off the picture: the panels and the crop; regions over the "
 			+ "picture, each with its texture, its relief (the subject raised, the "
 			+ "background flat), whether contours run in it and whether its points of "
@@ -643,7 +644,7 @@ static func schemas() -> Array:
 		},
 	}, {
 		"name": "look_at_picture",
-		"description": ("The picture the person chose to make into LEGO Art, as they "
+		"description": ("The picture the person chose to make into Brick Art, as they "
 			+ "gave it, with its size in pixels. Look at it before writing a make_art "
 			+ "plan from it. When there is none it says so: draw one in make_art's svg."),
 		"input_schema": {"type": "object", "properties": {}, "additionalProperties": false},
@@ -660,7 +661,7 @@ varied size and brightness."""
 
 ## The look a LEGO Art designer gives a picture before it ships, asked of
 ## the one just laid. The 3D designer's critique, for a picture.
-const CRITIQUE := """Look at it as LEGO Art's designers judge a picture:
+const CRITIQUE := """Look at it as the designers of LEGO® Art sets judge a picture:
 1. Does the subject fill the frame, edge to edge, or float small in a \
 plain field?
 2. Are the gradients soft — each tone dithered across three or four related \

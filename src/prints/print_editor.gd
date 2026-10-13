@@ -401,7 +401,7 @@ func _build_tools() -> Control:
 	_text_row.visible = false
 	column.add_child(_text_row)
 	_words = LineEdit.new()
-	_words.text = "LEGO"
+	_words.text = "Hello"
 	_words.placeholder_text = "Words"
 	_words.text_changed.connect(func(text: String) -> void: _canvas.words = text)
 	_text_row.add_child(_words)
@@ -461,9 +461,9 @@ func _build_picture_panel() -> Control:
 		if not _picture_quiet:
 			_change_picture({"opacity": value / 100.0}))
 	_picture_lego = CheckBox.new()
-	_picture_lego.text = "LEGO inks"
+	_picture_lego.text = "LEGO® inks"
 	_picture_lego.focus_mode = Control.FOCUS_NONE
-	_picture_lego.tooltip_text = ("Every colour the nearest of LEGO's, flat, as a pad print is; "
+	_picture_lego.tooltip_text = ("Every colour the nearest LEGO® ink, flat, as a pad print is; "
 		+ "off, the picture's own colours")
 	_picture_lego.toggled.connect(func(on: bool) -> void:
 		if not _picture_quiet:
@@ -667,7 +667,7 @@ func _build_side() -> Control:
 	_start.fit_to_longest_item = false
 	_start.clip_text = true
 	_start.add_theme_font_size_override("font_size", 12)
-	_start.tooltip_text = "A clean sheet, one of LEGO's own prints of this part, or one made before"
+	_start.tooltip_text = "A clean sheet, a print the LEGO Group made for this part, or one made before"
 	_start.item_selected.connect(_start_from)
 	column.add_child(_start)
 	_button(column, "Add a picture…", func() -> void: _files.ask(),

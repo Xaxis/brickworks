@@ -66,7 +66,7 @@ static func definition() -> Dictionary:
 	return {
 		"name": TOOL,
 		"description": ("How a long piece of work is going: a call that answered with a "
-			+ "job number (a render, a turntable, a booklet, a Studio file, a LEGO® Art "
+			+ "job number (a render, a turntable, a booklet, a Studio file, a Brick Art "
 			+ "picture, a brickify, or any call still going after 20 s). It waits up to "
 			+ "10 s for the work to end, then says how far it has got; once done it gives "
 			+ "the work's answer, picture and all, or why it stopped. cancel=true stops "
@@ -150,7 +150,7 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 			if assistant == null or not ArtPlan.parse(input, app.get("_library")).ok() \
 					or (not input.has("svg") and assistant.art_picture() == null):
 				return {}
-			return {"words": "Laying out a LEGO® Art picture…", "cancel": false}
+			return {"words": "Laying out a Brick Art picture…", "cancel": false}
 	return {}
 
 

@@ -331,7 +331,7 @@
                     "type": "number"
                   },
                   "horns": {
-                    "description": "what piers taller than the core rise into: a blade (the default, as LEGO's 10237 builds Orthanc's), a square spire stepping in to a point, or flat, a turret's cap",
+                    "description": "what piers taller than the core rise into: a blade (the default, as set 10237 builds Orthanc's), a square spire stepping in to a point, or flat, a turret's cap",
                     "enum": [
                       "blade",
                       "spire",
@@ -583,7 +583,7 @@
     "name": "read_guide"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -600,7 +600,7 @@
     "name": "show_technique"
   },
   {
-    "description": "How real LEGO sets built a feature, found by what it is: the sub-assemblies of thousands of real sets (an owl's eye, a car's nose, a dragon's wing, a turret roof, a grille, a beak, a tree), each with a picture, its parts and colours, its size in studs, the set and modeller it is from, and an id for place_technique. Ask before inventing any feature of a face, a creature or a machine: a real designer's answer is better than a first guess. Name the subject too — \"owl eye\", \"car nose\" — and pieces from sets about it come first.",
+    "description": "How real LEGO® sets built a feature, found by what it is: the sub-assemblies of thousands of real sets (an owl's eye, a car's nose, a dragon's wing, a turret roof, a grille, a beak, a tree), each with a picture, its parts and colours, its size in studs, the set and modeller it is from, and an id for place_technique. Ask before inventing any feature of a face, a creature or a machine: a real designer's answer is better than a first guess. Name the subject too — \"owl eye\", \"car nose\" — and pieces from sets about it come first.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -656,7 +656,7 @@
     "name": "find_parts_like"
   },
   {
-    "description": "Lay one of find_techniques' pieces into the model as LEGO built it: every part where the set has it, turned a number of quarter turns about the upright and moved so its low corner is at x, y, z, in your colours if you say which of its colours become which. Parts cannot be scaled; pick a piece of the right size. Checked like any edit: it is refused, with the reason, if it overlaps the model or does not hold on. The answer lists the bricks as placed.",
+    "description": "Lay one of find_techniques' pieces into the model as the LEGO Group built it: every part where the set has it, turned a number of quarter turns about the upright and moved so its low corner is at x, y, z, in your colours if you say which of its colours become which. Parts cannot be scaled; pick a piece of the right size. Checked like any edit: it is refused, with the reason, if it overlaps the model or does not hold on. The answer lists the bricks as placed.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -736,7 +736,7 @@
     "name": "find_reference"
   },
   {
-    "description": "What real LEGO sets of this kind are actually built from — the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what LEGO's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.",
+    "description": "What real LEGO® sets of this kind are actually built from — the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what the LEGO Group's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.\n\nWith it comes our own best design of the nearest subject, as the design bench's judge scored it: how it was built, what it did best, and the faults to design out before you build.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1711,7 +1711,7 @@
                     "type": "number"
                   },
                   "horns": {
-                    "description": "what piers taller than the core rise into: a blade (the default, as LEGO's 10237 builds Orthanc's), a square spire stepping in to a point, or flat, a turret's cap",
+                    "description": "what piers taller than the core rise into: a blade (the default, as set 10237 builds Orthanc's), a square spire stepping in to a point, or flat, a turret's cap",
                     "enum": [
                       "blade",
                       "spire",
@@ -2108,7 +2108,7 @@
     "name": "add_minifig"
   },
   {
-    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides — or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
+    "description": "Make a part the LEGO Group has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides — or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2117,7 +2117,7 @@
           "type": "integer"
         },
         "angle": {
-          "description": "slope, inverted: one of LEGO's named angles, which sets run and plates as the real part has them",
+          "description": "slope, inverted: one of the named angles of LEGO® slopes, which sets run and plates as the real part has them",
           "enum": [
             33,
             45,
@@ -2181,7 +2181,7 @@
           "type": "string"
         },
         "from": {
-          "description": "instead of a family: a real part's number to change, keeping everything not changed as LEGO made it. Longer, wider and taller repeat a slice of it; a part with no slice that repeats (a 1 x 1, a round brick across) is refused.",
+          "description": "instead of a family: a real part's number to change, keeping everything not changed as the LEGO Group made it. Longer, wider and taller repeat a slice of it; a part with no slice that repeats (a 1 x 1, a round brick across) is refused.",
           "type": "string"
         },
         "name": {
@@ -2221,7 +2221,7 @@
     "name": "make_part"
   },
   {
-    "description": "Lay a picture as a LEGO Art set is laid — 31212 The Milky Way, 31208 The Great Wave, 31213 Mona Lisa — on 16 x 16 panels joined underneath into one piece: square tiles merged where it is flat, 1 x 1 round tiles for texture, quarter circles along curved contours, stars in trans-clear, glow-in-the-dark, pearl and metallic set a plate proud, and the subject raised on stacked plates with cheese slopes. Use this, not submit_design, whenever LEGO Art, a mosaic, a picture in bricks or wall art is asked for. It replaces what is on the baseplate.\nThe picture is the one the person chose (look_at_picture shows it). With none, draw it yourself as svg: one stud is one pixel, so big simple shapes in flat colours, like a poster.\nYou decide what a LEGO Art designer decides, and the app reads everything you leave out off the picture: the panels and the crop; regions over the picture, each with its texture, its relief (the subject raised, the background flat), whether contours run in it and whether its points of light are stars and in what finish; single stars put exactly where you want them; a palette to keep to. Coordinates are fractions of the picture, 0 to 1 from its top left. Later regions lie over earlier ones and change only what they say, so start with the whole picture and work inward. A plan that cannot be laid is refused with every fault named.\nThe answer is the picture as laid, face on, and what it is made of. Look at it as a person would from across a room, and call make_art again with the plan changed if it does not read as the subject.",
+    "description": "Lay a picture as a LEGO® Art set is laid — 31212 The Milky Way, 31208 The Great Wave, 31213 Mona Lisa — on 16 x 16 panels joined underneath into one piece: square tiles merged where it is flat, 1 x 1 round tiles for texture, quarter circles along curved contours, stars in trans-clear, glow-in-the-dark, pearl and metallic set a plate proud, and the subject raised on stacked plates with cheese slopes. Use this, not submit_design, whenever a mosaic, a picture in bricks, wall art or something like a LEGO® Art set is asked for. It replaces what is on the baseplate.\nThe picture is the one the person chose (look_at_picture shows it). With none, draw it yourself as svg: one stud is one pixel, so big simple shapes in flat colours, like a poster.\nYou decide what a designer of LEGO® Art sets decides, and the app reads everything you leave out off the picture: the panels and the crop; regions over the picture, each with its texture, its relief (the subject raised, the background flat), whether contours run in it and whether its points of light are stars and in what finish; single stars put exactly where you want them; a palette to keep to. Coordinates are fractions of the picture, 0 to 1 from its top left. Later regions lie over earlier ones and change only what they say, so start with the whole picture and work inward. A plan that cannot be laid is refused with every fault named.\nThe answer is the picture as laid, face on, and what it is made of. Look at it as a person would from across a room, and call make_art again with the plan changed if it does not read as the subject.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2438,7 +2438,7 @@
     "name": "make_art"
   },
   {
-    "description": "The picture the person chose to make into LEGO Art, as they gave it, with its size in pixels. Look at it before writing a make_art plan from it. When there is none it says so: draw one in make_art's svg.",
+    "description": "The picture the person chose to make into Brick Art, as they gave it, with its size in pixels. Look at it before writing a make_art plan from it. When there is none it says so: draw one in make_art's svg.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {},
@@ -2834,7 +2834,7 @@
     "name": "where_to_attach"
   },
   {
-    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then creative last.",
+    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then creative last.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2887,7 +2887,7 @@
       "additionalProperties": false,
       "properties": {
         "across": {
-          "description": "studs along x; 16, 32 and 48 are the square ones LEGO sells",
+          "description": "studs along x; 16, 32 and 48 are the square ones the LEGO Group sells",
           "type": "integer"
         },
         "colour": {
@@ -3136,7 +3136,7 @@
     "name": "open_model"
   },
   {
-    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" says which of their saved models their collection builds.",
+    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO® element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" says which of their saved models their collection builds.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3351,7 +3351,7 @@
     "name": "make_unique"
   },
   {
-    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a LEGO® Art picture, a brickify, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
+    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {

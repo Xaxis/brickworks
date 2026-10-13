@@ -233,6 +233,52 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   "Opening…" before Orthanc lands; delete all and undo say so first; the
   car's booklet counted and stoppable) and
   `tools/web/progress_check.mjs` ([web](web.md)).
+  Every command, too, without asking (2026-10-13, the owner: "when I clicked
+  'Save and then new' it seemingly froze the app … for probably all actions
+  comprehensively"): `Shell.run` (the menus, the toolbar, the context menu),
+  every key that is a command's shortcut (`Main._unhandled_key_input` →
+  `Shell.command_for_key`), and the dialogs' and the properties panel's
+  buttons (`Shell.attend`, `ModelBar.attend`) go through `Working.attend`.
+  It keeps what each command cost by how much it had to do (`Shell.work_size`:
+  the selection for one that works on it, what is in hand for Paste, else
+  the model's parts, in sizes going up by fours), kept between visits in
+  `user://command_costs.json` (not read or written under `--script`); one
+  known to be slow — the least of its last and its average cost over
+  `SAY_FIRST_MS` (150), or `Shell.SLOW_FROM` before it has ever run — has
+  the bar up with its own words (`Shell.DOING`: "Saving…", "Mirroring…")
+  and drawn before it runs, the frame after. A coroutine that goes on more
+  than two frames after it returns, saying nothing, gets its words on the bar
+  until it ends. A command a browser only lets happen inside the press (a
+  file dialog, full screen, a page) is never put off (`Shell.IN_THE_PRESS`).
+  Save, the exports and Share work out a big model's build order a slice at
+  a time (`ModelStore.to_text_paced`, `text_for_file`, `save_as_paced`,
+  `export_paced`; `ModelBar._on_save` returns whether it saved), with
+  Cancel; "Save, then start new" starts new only once the save is made.
+  The audit is `src/dev/command_probe.gd` (windowed or headless; `--judge`
+  fails a command over 250 ms of its own work in one frame that was not
+  said first): every command in the shell's table on Orthanc and the car,
+  the selection everything where one is needed, undone after, its exports
+  into `user://command_probe_downloads` (`Download.folder`), never
+  Downloads. It found, on Orthanc on the desktop: taking all of it off
+  (Delete, Cut) a minute on one frame, because every part removed ran the
+  whole model's after-edit work (`Main._edited_soon` now runs it once a
+  frame); Same colour, Same part, Same part and colour over a minute each
+  with all of it selected, asked part by part (`SelectBy.matching_any`);
+  Everything connected 14 s (`EditVerbs.select_connected`, paced, with
+  Cancel; the properties panel counts the joined parts up to 500,
+  `Inspector.JOINED_MOST`, since every click on one part of Orthanc counted
+  all 9,428); and Save 2.7 s with its build order on one frame. Writing a
+  file sorts by a key the engine compares and writes whole numbers straight
+  off (`ModelStore._in_file_order`, `LdrModel._line_numbers`): the same
+  bytes, checked on car, castle, Orthanc, house and station, Orthanc's
+  text in 300 ms instead of 390. In Chromium on SwiftShader on a loaded box
+  (`progress_check.mjs`, Orthanc): Save held the page 3.3 s with nothing on
+  screen, and now has the bar up in 100 ms and holds it 0.9 s at most; "Save,
+  then start new" the same, 139 ms and 0.9 s; Delete of all of it 130 s,
+  now 1.3 s; Mirror of all of it 125 s, now 20 s, most of it drawing all of
+  Orthanc outlined as selected (an 8 s frame in software, which also holds
+  the bar back: the selection outline's cost, not the command's); Shift-E
+  4.6 s unsaid, now said in 69 ms.
 - `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
   where a part in hand or a carried group can land across the ground
   (`Builder.snap_across`) and how far the arrows nudge a selection across and,

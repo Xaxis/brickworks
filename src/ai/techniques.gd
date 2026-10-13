@@ -297,7 +297,7 @@ static func all() -> Array:
 			"name": "lamp post",
 			"group": "lights",
 			"when": "a street, a square, a doorway, a quay",
-			"why": "A real street lamp is a post and a lantern, not a yellow brick on a stick. As LEGO built it in 4886 Building Bonanza: 7 parts, from LDraw's model repository (model by Robert Paciorek, CC BY 2.0).",
+			"why": "A real street lamp is a post and a lantern, not a yellow brick on a stick. As the LEGO Group built it in 4886 Building Bonanza: 7 parts, from LDraw's model repository (model by Robert Paciorek, CC BY 2.0).",
 			"bricks": [
 				{"part": "3941", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 2},
 				{"part": "3941", "color": 15, "x": 0, "y": 3, "z": 0, "rot": 2},
@@ -312,7 +312,7 @@ static func all() -> Array:
 			"name": "tree",
 			"group": "plants",
 			"when": "a garden, a courtyard, the ground around a building or a castle",
-			"why": "A real tree is a trunk and a canopy of leaf pieces at more than one height. As LEGO built it in 4956 House: 13 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "A real tree is a trunk and a canopy of leaf pieces at more than one height. As the LEGO Group built it in 4956 House: 13 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3022", "color": 2, "x": 1, "y": 9, "z": 1, "rot": 0},
 				{"part": "3660a", "color": 2, "x": 2, "y": 10, "z": 1, "rot": 1},
@@ -333,7 +333,7 @@ static func all() -> Array:
 			"name": "bed",
 			"group": "furniture and interiors",
 			"when": "a room someone sleeps in: a house, an inn, a barracks, a castle keep",
-			"why": "Interiors are what a real building set is full of and what every building built here has lacked. As LEGO built it in 10297 Boutique Hotel: 15 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "Interiors are what a real building set is full of and what every building built here has lacked. As the LEGO Group built it in 10297 Boutique Hotel: 15 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "3032", "color": 19, "x": 0, "y": 1, "z": 0, "rot": 3},
 				{"part": "6141", "color": 19, "x": 0, "y": 0, "z": 5, "rot": 3},
@@ -356,7 +356,7 @@ static func all() -> Array:
 			"name": "bench",
 			"group": "furniture and interiors",
 			"when": "a station, a park, a square, a waiting room",
-			"why": "Seats in a row on a shared rail, as a real station has them. As LEGO built it in 2150 Train Station: 6 parts, from LDraw's model repository (model by Robert Paciorek, CC BY 2.0).",
+			"why": "Seats in a row on a shared rail, as a real station has them. As the LEGO Group built it in 2150 Train Station: 6 parts, from LDraw's model repository (model by Robert Paciorek, CC BY 2.0).",
 			"bricks": [
 				{"part": "3623", "color": 0, "x": 1, "y": 0, "z": 0, "rot": 3},
 				{"part": "3623", "color": 0, "x": 6, "y": 0, "z": 0, "rot": 3},
@@ -370,7 +370,7 @@ static func all() -> Array:
 			"name": "armchair",
 			"group": "furniture and interiors",
 			"when": "a room: an office, a parlour, a lounge",
-			"why": "A chair is a seat, a back and arms, a few small parts. As LEGO built it in 10246 Detective’s Office: 8 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
+			"why": "A chair is a seat, a back and arms, a few small parts. As the LEGO Group built it in 10246 Detective’s Office: 8 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
 			"bricks": [
 				{"part": "3679", "color": 71, "x": 1, "y": 0, "z": 1, "rot": 1},
 				{"part": "99207", "color": 0, "x": 1, "y": 1, "z": 1, "rot": 2},
@@ -386,7 +386,7 @@ static func all() -> Array:
 			"name": "table",
 			"group": "furniture and interiors",
 			"when": "a kitchen, an inn, a hall, a café, a market",
-			"why": "A table top on legs, at the height a minifigure sits to. As LEGO built it in 31025 Mountain Hut: 10 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "A table top on legs, at the height a minifigure sits to. As the LEGO Group built it in 31025 Mountain Hut: 10 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "3004", "color": 70, "x": 0, "y": 1, "z": 4, "rot": 0},
 				{"part": "3020", "color": 70, "x": 0, "y": 4, "z": 1, "rot": 1},
@@ -404,7 +404,7 @@ static func all() -> Array:
 			"name": "planter",
 			"group": "plants",
 			"when": "a window box, a doorstep, a balcony, a garden edge",
-			"why": "Flowers are small parts in a second and third colour, which is most of what a real set's one-off pieces are. As LEGO built it in 4956 House: 14 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "Flowers are small parts in a second and third colour, which is most of what a real set's one-off pieces are. As the LEGO Group built it in 4956 House: 14 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3795", "color": 70, "x": 0, "y": 0, "z": 0, "rot": 1},
 				{"part": "6141", "color": 70, "x": 1, "y": 1, "z": 0, "rot": 1},
@@ -426,7 +426,7 @@ static func all() -> Array:
 			"name": "chimney",
 			"group": "roofs and spires",
 			"when": "any roof a building with a fire has",
-			"why": "A real chimney has a cap and a pot, not just a stack. As LEGO built it in 10182 Cafe Corner: 10 parts, from LDraw's model repository (model by Max Martin Richter, CC BY 2.0).",
+			"why": "A real chimney has a cap and a pot, not just a stack. As the LEGO Group built it in 10182 Cafe Corner: 10 parts, from LDraw's model repository (model by Max Martin Richter, CC BY 2.0).",
 			"bricks": [
 				{"part": "3005", "color": 71, "x": 2, "y": 0, "z": 0, "rot": 0},
 				{"part": "2877", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
@@ -444,7 +444,7 @@ static func all() -> Array:
 			"name": "fence",
 			"group": "rock and ground",
 			"when": "a garden, a paddock, a yard, a forecourt",
-			"why": "A fence of posts and rails, as a real set builds one. As LEGO built it in 3189 Heartlake Stables: 3 parts, from LDraw's model repository (model by Takeshi Takahashi, CC BY 2.0).",
+			"why": "A fence of posts and rails, as a real set builds one. As the LEGO Group built it in 3189 Heartlake Stables: 3 parts, from LDraw's model repository (model by Takeshi Takahashi, CC BY 2.0).",
 			"bricks": [
 				{"part": "6079", "color": 15, "x": 0, "y": 1, "z": 0.5, "rot": 0},
 				{"part": "3794a", "color": 2, "x": 1, "y": 0, "z": 0, "rot": 3},
@@ -465,7 +465,7 @@ static func all() -> Array:
 			"name": "rough stone wall",
 			"group": "walls and stone",
 			"when": "a castle, a keep, a forge, a ruin: any wall that should read as stone",
-			"why": "Masonry bricks (98283) in light grey with dark grey bricks set in at random, and the face broken up studs-out: bricks with studs on one side (11211) and headlight bricks (4070) carry grooved tiles turned to face out. One grey in plain bricks reads as plastic; two greys, masonry and a few faces turned out read as dressed stone. As LEGO built it in 21325 Medieval Blacksmith: 24 parts, from LDraw's model repository (model by Vincent Messenet, CC BY 2.0).",
+			"why": "Masonry bricks (98283) in light grey with dark grey bricks set in at random, and the face broken up studs-out: bricks with studs on one side (11211) and headlight bricks (4070) carry grooved tiles turned to face out. One grey in plain bricks reads as plastic; two greys, masonry and a few faces turned out read as dressed stone. As the LEGO Group built it in 21325 Medieval Blacksmith: 24 parts, from LDraw's model repository (model by Vincent Messenet, CC BY 2.0).",
 			"bricks": [
 				{"part": "44861", "color": 0, "x": 2, "y": 0, "z": 0, "rot": 1},
 				{"part": "54200", "color": 57, "x": 3, "y": 0, "z": 0, "rot": 3},
@@ -497,7 +497,7 @@ static func all() -> Array:
 			"name": "weathered stone wall",
 			"group": "walls and stone",
 			"when": "an old wall, a ruin, a fortress that has stood a long time",
-			"why": "Light grey with sand green bricks laid through it for moss and age, 2 x 2 facet bricks (87620) to knock the corner off, and a cheese slope turned sideways in the face. The second colour is what makes it old. As LEGO built it in 9471 Uruk-hai Army: 18 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "Light grey with sand green bricks laid through it for moss and age, 2 x 2 facet bricks (87620) to knock the corner off, and a cheese slope turned sideways in the face. The second colour is what makes it old. As the LEGO Group built it in 9471 Uruk-hai Army: 18 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "32000", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 2},
 				{"part": "3004", "color": 71, "x": 2, "y": 0, "z": 0, "rot": 1},
@@ -523,7 +523,7 @@ static func all() -> Array:
 			"name": "corbelled wall walk",
 			"group": "walls and stone",
 			"when": "the top of a castle wall or tower, where the walk is wider than the wall",
-			"why": "Inverted 45 slopes (3665) under the top course flare the wall out so the walkway oversails the face below: the corbel a castle's wall-walk stands on. A plate with a clip carries a flag or a torch. As LEGO built it in 6080 King's Castle: 6 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "Inverted 45 slopes (3665) under the top course flare the wall out so the walkway oversails the face below: the corbel a castle's wall-walk stands on. A plate with a clip carries a flag or a torch. As the LEGO Group built it in 6080 King's Castle: 6 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "4085a", "color": 7, "x": 0, "y": 0, "z": 0, "rot": 2},
 				{"part": "3024", "color": 7, "x": 0, "y": 0, "z": 2, "rot": 2},
@@ -537,7 +537,7 @@ static func all() -> Array:
 			"name": "oversail on inverted slopes",
 			"group": "walls and stone",
 			"when": "an upper storey, a tower top or a gallery that stands out past the wall below",
-			"why": "Inverted 2 x 2 slopes (3660) under the course above step the upper wall out over the lower one, with a band of reddish brown plates at the floor line. The shadow under the oversail is what makes a tower top read as a separate stage. As LEGO built it in 10176 Royal King's Castle: 5 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "Inverted 2 x 2 slopes (3660) under the course above step the upper wall out over the lower one, with a band of reddish brown plates at the floor line. The shadow under the oversail is what makes a tower top read as a separate stage. As the LEGO Group built it in 10176 Royal King's Castle: 5 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3660a", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 2},
 				{"part": "3023b", "color": 70, "x": 0, "y": 3, "z": 3, "rot": 0},
@@ -550,7 +550,7 @@ static func all() -> Array:
 			"name": "stone corbel",
 			"group": "walls and stone",
 			"when": "a ledge, a balcony or a floor held out from a wall or column",
-			"why": "A tall inverted 75 slope (2449) under a plate holds the ledge out from its column with nothing underneath it, the way a stone corbel does. As LEGO built it in 7327 Scorpion Pyramid: 7 parts, from LDraw's model repository (model by Christian Neumann, CC BY 2.0).",
+			"why": "A tall inverted 75 slope (2449) under a plate holds the ledge out from its column with nothing underneath it, the way a stone corbel does. As the LEGO Group built it in 7327 Scorpion Pyramid: 7 parts, from LDraw's model repository (model by Christian Neumann, CC BY 2.0).",
 			"bricks": [
 				{"part": "2449", "color": 19, "x": 3, "y": 0, "z": 3, "rot": 3},
 				{"part": "3005", "color": 19, "x": 4, "y": 9, "z": 3, "rot": 3},
@@ -565,7 +565,7 @@ static func all() -> Array:
 			"name": "balustrade",
 			"group": "walls and stone",
 			"when": "a terrace, a bridge, a balcony, a garden wall, a palace roof",
-			"why": "Open bays of 1 x 3 arches (4490) and half-arch bricks (38585) on Technic 1 x 1 bricks, capped with plates and tiles: a rail that is light, open, and curved in every bay. As LEGO built it in 10359 Fountain Garden: 22 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 4.0).",
+			"why": "Open bays of 1 x 3 arches (4490) and half-arch bricks (38585) on Technic 1 x 1 bricks, capped with plates and tiles: a rail that is light, open, and curved in every bay. As the LEGO Group built it in 10359 Fountain Garden: 22 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 4.0).",
 			"bricks": [
 				{"part": "2420", "color": 15, "x": 0, "y": 0, "z": 9, "rot": 0},
 				{"part": "6541", "color": 15, "x": 0, "y": 1, "z": 10, "rot": 3},
@@ -595,7 +595,7 @@ static func all() -> Array:
 			"name": "embossed brick wall",
 			"group": "walls and stone",
 			"when": "a house, a cottage, a workshop: a wall of small bricks rather than stone",
-			"why": "Bricks with embossed bricks (15533) lay a face of small bricks in mortar courses in a few large parts, beside a 60592 window in a second colour. As LEGO built it in 75980 Attack on The Burrow: 12 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "Bricks with embossed bricks (15533) lay a face of small bricks in mortar courses in a few large parts, beside a 60592 window in a second colour. As the LEGO Group built it in 75980 Attack on The Burrow: 12 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "3005", "color": 84, "x": 2, "y": 0, "z": 0, "rot": 0},
 				{"part": "15533", "color": 84, "x": 3, "y": 0, "z": 0, "rot": 0},
@@ -615,7 +615,7 @@ static func all() -> Array:
 			"name": "columns with capitals",
 			"group": "towers and columns",
 			"when": "a portico, a hall, a doorway, a temple, a cloister",
-			"why": "1 x 1 x 6 round bricks with square bases (43888) for the shafts and half-arch bricks (38585) for capitals under a plate: classical columns at minifigure scale. As LEGO built it in 10278 Police Station: 8 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "1 x 1 x 6 round bricks with square bases (43888) for the shafts and half-arch bricks (38585) for capitals under a plate: classical columns at minifigure scale. As the LEGO Group built it in 10278 Police Station: 8 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "3623", "color": 19, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "54200", "color": 19, "x": 1, "y": 1, "z": 0, "rot": 0},
@@ -631,7 +631,7 @@ static func all() -> Array:
 			"name": "stone column",
 			"group": "towers and columns",
 			"when": "a pillar under an arch or a floor, a gatepost",
-			"why": "Round 1 x 1 bricks for the shaft and a headlight brick at the top with a tile turned out on its face for the capital. As LEGO built it in 4954 Model Town House: 6 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "Round 1 x 1 bricks for the shaft and a headlight brick at the top with a tile turned out on its face for the capital. As the LEGO Group built it in 4954 Model Town House: 6 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3062b", "color": 71, "x": 0.5, "y": 0, "z": 0.5, "rot": 0},
 				{"part": "3062b", "color": 71, "x": 0.5, "y": 3, "z": 0.5, "rot": 0},
@@ -645,7 +645,7 @@ static func all() -> Array:
 			"name": "turned wooden pillar",
 			"group": "towers and columns",
 			"when": "a porch, a hall, a timber-framed building",
-			"why": "Round 1 x 1 bricks and round plates in reddish brown with a tan cap: a post with the turned profile of a carpenter's pillar. As LEGO built it in 10182 Cafe Corner: 6 parts, from LDraw's model repository (model by Max Martin Richter, CC BY 2.0).",
+			"why": "Round 1 x 1 bricks and round plates in reddish brown with a tan cap: a post with the turned profile of a carpenter's pillar. As the LEGO Group built it in 10182 Cafe Corner: 6 parts, from LDraw's model repository (model by Max Martin Richter, CC BY 2.0).",
 			"bricks": [
 				{"part": "6141", "color": 70, "x": 0.5, "y": 0, "z": 0.5, "rot": 0},
 				{"part": "3062b", "color": 70, "x": 0.5, "y": 1, "z": 0.5, "rot": 0},
@@ -659,7 +659,7 @@ static func all() -> Array:
 			"name": "turret spire",
 			"group": "roofs and spires",
 			"when": "the top of a round turret, a tower, a wizard's or a castle's roofline",
-			"why": "A 2 x 2 x 2 cone (3942c) in dark grey with a sand green 1 x 1 cone for the finial on a turret of round 2 x 2 bricks: the spire Hogwarts sets crown their towers with. As LEGO built it in 75969 Hogwarts Astronomy Tower: 7 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "A 2 x 2 x 2 cone (3942c) in dark grey with a sand green 1 x 1 cone for the finial on a turret of round 2 x 2 bricks: the spire Hogwarts sets crown their towers with. As the LEGO Group built it in 75969 Hogwarts Astronomy Tower: 7 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "3023b", "color": 84, "x": 3, "y": 0, "z": 0, "rot": 3},
 				{"part": "3020", "color": 19, "x": 0, "y": 1, "z": 0, "rot": 0},
@@ -674,7 +674,7 @@ static func all() -> Array:
 			"name": "roof ridge",
 			"group": "roofs and spires",
 			"when": "a pitched roof whose two sides are hinged panels",
-			"why": "The ridge of a roof built as two panels: hinge bases (3937) along a beam of Technic bricks take the panels' hinge tops (3938), set at whatever pitch the roof wants, with slopes and finials along the top. As LEGO built it in 75954 Hogwarts Great Hall: 22 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "The ridge of a roof built as two panels: hinge bases (3937) along a beam of Technic bricks take the panels' hinge tops (3938), set at whatever pitch the roof wants, with slopes and finials along the top. As the LEGO Group built it in 75954 Hogwarts Great Hall: 22 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "3703", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "2780", "color": 0, "x": 14.6, "y": 0.75, "z": 0, "rot": 1},
@@ -704,7 +704,7 @@ static func all() -> Array:
 			"name": "striped awning",
 			"group": "roofs and spires",
 			"when": "a shop front, a market stall, a café, an inn's door",
-			"why": "Brackets turn the studs out of the wall, and cutout slopes and rounded tiles laid on them in two alternating colours make the stripes of an awning that leans out over the door. As LEGO built it in 10278 Police Station: 35 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "Brackets turn the studs out of the wall, and cutout slopes and rounded tiles laid on them in two alternating colours make the stripes of an awning that leans out over the door. As the LEGO Group built it in 10278 Police Station: 35 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "3666", "color": 30, "x": 1, "y": 2.5, "z": 0.5, "rot": 0},
 				{"part": "3009", "color": 30, "x": 1, "y": 3.5, "z": 0.5, "rot": 0},
@@ -747,7 +747,7 @@ static func all() -> Array:
 			"name": "arched window",
 			"group": "windows and doors",
 			"when": "a tall window in a hall, a library, a chapel or a shop",
-			"why": "Four 1 x 2 x 2 windows (60592) in a block under a half-round 1 x 4 window top (20309), with curved-top 1 x 1 bricks laid on their sides along a brick with studs on its side for the sill. As LEGO built it in 10270 Bookshop: 14 parts, from LDraw's model repository (model by Ulrich Röder, CC BY 2.0).",
+			"why": "Four 1 x 2 x 2 windows (60592) in a block under a half-round 1 x 4 window top (20309), with curved-top 1 x 1 bricks laid on their sides along a brick with studs on its side for the sill. As the LEGO Group built it in 10270 Bookshop: 14 parts, from LDraw's model repository (model by Ulrich Röder, CC BY 2.0).",
 			"bricks": [
 				{"part": "30414", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1},
 				{"part": "49307", "color": 71, "x": 1, "y": 0.5, "z": 0, "rot": 1, "face": "+x"},
@@ -769,7 +769,7 @@ static func all() -> Array:
 			"name": "window with shutters",
 			"group": "windows and doors",
 			"when": "a house, an inn, a townhouse front",
-			"why": "The shutters are bricks and tiles turned sideways on 1 x 2 door-rail plates (32028) either side of two 60592 windows, so they lie flat on the wall in a second colour. As LEGO built it in 10243 Parisian Restaurant: 27 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
+			"why": "The shutters are bricks and tiles turned sideways on 1 x 2 door-rail plates (32028) either side of two 60592 windows, so they lie flat on the wall in a second colour. As the LEGO Group built it in 10243 Parisian Restaurant: 27 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
 			"bricks": [
 				{"part": "99206", "color": 15, "x": 0, "y": 0, "z": 4, "rot": 0},
 				{"part": "99206", "color": 15, "x": 0, "y": 0, "z": 2, "rot": 2},
@@ -804,7 +804,7 @@ static func all() -> Array:
 			"name": "postern arch",
 			"group": "windows and doors",
 			"when": "a small door or window head in a castle wall",
-			"why": "A 1 x 3 arch (4490) in a wall of 1 x 1 and 1 x 2 bricks, with an inverted slope beside it stepping the wall out. As LEGO built it in 6080 King's Castle: 6 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "A 1 x 3 arch (4490) in a wall of 1 x 1 and 1 x 2 bricks, with an inverted slope beside it stepping the wall out. As the LEGO Group built it in 6080 King's Castle: 6 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "3004", "color": 7, "x": 0, "y": 0, "z": 0, "rot": 2},
 				{"part": "3005", "color": 7, "x": 3, "y": 0, "z": 0, "rot": 1},
@@ -818,7 +818,7 @@ static func all() -> Array:
 			"name": "rock outcrop",
 			"group": "rock and ground",
 			"when": "a crag, a cliff face, the rock a tower or a forge stands on",
-			"why": "Slopes, inverted slopes, a 2 x 2 double concave slope and a 65 slope stacked so each face leans a different way, with dark green bricks for moss. Rock is slopes in two greys at many angles, never a stack of bricks. As LEGO built it in 9476 The Orc Forge: 10 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "Slopes, inverted slopes, a 2 x 2 double concave slope and a 65 slope stacked so each face leans a different way, with dark green bricks for moss. Rock is slopes in two greys at many angles, never a stack of bricks. As the LEGO Group built it in 9476 The Orc Forge: 10 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "3004", "color": 288, "x": 0, "y": 0, "z": 2, "rot": 3},
 				{"part": "3005", "color": 288, "x": 0, "y": 3, "z": 2, "rot": 3},
@@ -836,7 +836,7 @@ static func all() -> Array:
 			"name": "rocky ground with plants",
 			"group": "rock and ground",
 			"when": "the ground a castle, an outpost or a ruin stands on",
-			"why": "Bricks and plates in grey stepped to different heights, the edges softened with hinged car-roof plates, and plant leaves (2423) growing out of the cracks. As LEGO built it in 6066 Camouflaged Outpost: 13 parts, from LDraw's model repository (model by Takeshi Takahashi, CC BY 2.0).",
+			"why": "Bricks and plates in grey stepped to different heights, the edges softened with hinged car-roof plates, and plant leaves (2423) growing out of the cracks. As the LEGO Group built it in 6066 Camouflaged Outpost: 13 parts, from LDraw's model repository (model by Takeshi Takahashi, CC BY 2.0).",
 			"bricks": [
 				{"part": "3036", "color": 7, "x": 0, "y": 0, "z": 3, "rot": 0},
 				{"part": "3034", "color": 7, "x": 0, "y": 0, "z": 9, "rot": 0},
@@ -857,7 +857,7 @@ static func all() -> Array:
 			"name": "stone with ivy",
 			"group": "rock and ground",
 			"when": "a wall, a gatepost or a ruin that has been there a long time",
-			"why": "Plant leaves (2417) clipped to a bracket turned on its side, so the ivy climbs the face of the stone rather than standing on top of it. As LEGO built it in 6071 Forestmen's Crossing: 14 parts, from LDraw's model repository (model by Takeshi Takahashi, CC BY 2.0).",
+			"why": "Plant leaves (2417) clipped to a bracket turned on its side, so the ivy climbs the face of the stone rather than standing on top of it. As the LEGO Group built it in 6071 Forestmen's Crossing: 14 parts, from LDraw's model repository (model by Takeshi Takahashi, CC BY 2.0).",
 			"bricks": [
 				{"part": "3023b", "color": 7, "x": 2, "y": 0, "z": 1, "rot": 0},
 				{"part": "3710", "color": 7, "x": 1, "y": 1, "z": 1, "rot": 0},
@@ -879,7 +879,7 @@ static func all() -> Array:
 			"name": "cobbled path",
 			"group": "rock and ground",
 			"when": "a path to a door, a yard, a village street",
-			"why": "Round 1 x 1 tiles (98138) in dark tan and 3 x 3 round tiles (67095) set on a nougat plate with a rounded end, on olive green ground: a path that is not a rectangle. As LEGO built it in 21325 Medieval Blacksmith: 16 parts, from LDraw's model repository (model by Vincent Messenet, CC BY 2.0).",
+			"why": "Round 1 x 1 tiles (98138) in dark tan and 3 x 3 round tiles (67095) set on a nougat plate with a rounded end, on olive green ground: a path that is not a rectangle. As the LEGO Group built it in 21325 Medieval Blacksmith: 16 parts, from LDraw's model repository (model by Vincent Messenet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3034", "color": 330, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "3034", "color": 330, "x": 1, "y": 1, "z": 1, "rot": 0},
@@ -903,7 +903,7 @@ static func all() -> Array:
 			"name": "staircase",
 			"group": "rock and ground",
 			"when": "a stair inside a building or up to a door",
-			"why": "4 x 4 facet bricks (14413) turned on their sides make the treads and the slope under them in one part each, and triangular tiles (35787) make the stringer: a staircase that is smooth underneath. As LEGO built it in 10278 Police Station: 7 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "4 x 4 facet bricks (14413) turned on their sides make the treads and the slope under them in one part each, and triangular tiles (35787) make the stringer: a staircase that is smooth underneath. As the LEGO Group built it in 10278 Police Station: 7 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "14413", "color": 71, "x": 0.5, "y": 0, "z": 2.6, "rot": 3, "face": "+z"},
 				{"part": "14413", "color": 71, "x": 0.5, "y": 0, "z": 1.4, "rot": 3, "face": "+z"},
@@ -918,7 +918,7 @@ static func all() -> Array:
 			"name": "hedge with flowers",
 			"group": "plants",
 			"when": "a garden, a courtyard, a window box, the foot of a wall",
-			"why": "Bricks with studs on one side (11211) carry corner-round tiles turned out, so the hedge has a soft rounded face, with petal plates (24866) on its top and on its side. As LEGO built it in 10297 Boutique Hotel: 10 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "Bricks with studs on one side (11211) carry corner-round tiles turned out, so the hedge has a soft rounded face, with petal plates (24866) on its top and on its side. As the LEGO Group built it in 10297 Boutique Hotel: 10 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "3710", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "11211", "color": 2, "x": 2, "y": 1, "z": 0, "rot": 0},
@@ -936,7 +936,7 @@ static func all() -> Array:
 			"name": "clipped hedge",
 			"group": "plants",
 			"when": "a formal garden, a palace or a manor's grounds",
-			"why": "Headlight bricks with cheese slopes turned to both sides and corner-round tiles on top: a hedge with its corners clipped round. As LEGO built it in 10359 Fountain Garden: 9 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 4.0).",
+			"why": "Headlight bricks with cheese slopes turned to both sides and corner-round tiles on top: a hedge with its corners clipped round. As the LEGO Group built it in 10359 Fountain Garden: 9 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 4.0).",
 			"bricks": [
 				{"part": "3623", "color": 0, "x": 1, "y": 0, "z": 0, "rot": 0},
 				{"part": "4070", "color": 288, "x": 1, "y": 1, "z": 0, "rot": 3},
@@ -953,7 +953,7 @@ static func all() -> Array:
 			"name": "leafy plant",
 			"group": "plants",
 			"when": "a pot, a corner of a garden, a forest floor",
-			"why": "Tooth plates (49668) in two greens fanned out from a corner plate: leaves out of one small part used for what it looks like. As LEGO built it in 5766 Log Cabin: 10 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "Tooth plates (49668) in two greens fanned out from a corner plate: leaves out of one small part used for what it looks like. As the LEGO Group built it in 5766 Log Cabin: 10 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "2420", "color": 70, "x": 1, "y": 0, "z": 1, "rot": 0},
 				{"part": "49668", "color": 288, "x": 2, "y": 1, "z": 2, "rot": 0},
@@ -971,7 +971,7 @@ static func all() -> Array:
 			"name": "flower bed",
 			"group": "plants",
 			"when": "a garden, a border along a path or a wall",
-			"why": "Round plates and 1 x 1 cones in red, yellow and orange on lime round plates for leaves, on a green plate: three colours of one-off parts in a dozen pieces. As LEGO built it in 5891 Apple Tree House: 13 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "Round plates and 1 x 1 cones in red, yellow and orange on lime round plates for leaves, on a green plate: three colours of one-off parts in a dozen pieces. As the LEGO Group built it in 5891 Apple Tree House: 13 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3020", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "6141", "color": 14, "x": 3, "y": 1, "z": 1, "rot": 0},
@@ -992,7 +992,7 @@ static func all() -> Array:
 			"name": "bookcase",
 			"group": "furniture and interiors",
 			"when": "a library, a study, a wizard's tower, a shop",
-			"why": "Books are bricks with studs on their sides and tiles turned out on them, in several colours and heights, in a frame of reddish brown tiles turned sideways. As LEGO built it in 10270 Bookshop: 30 parts, from LDraw's model repository (model by Ulrich Röder, CC BY 2.0).",
+			"why": "Books are bricks with studs on their sides and tiles turned out on them, in several colours and heights, in a frame of reddish brown tiles turned sideways. As the LEGO Group built it in 10270 Bookshop: 30 parts, from LDraw's model repository (model by Ulrich Röder, CC BY 2.0).",
 			"bricks": [
 				{"part": "3020", "color": 70, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "87580", "color": 70, "x": 0, "y": 1, "z": 0, "rot": 0},
@@ -1030,7 +1030,7 @@ static func all() -> Array:
 			"name": "fireplace",
 			"group": "furniture and interiors",
 			"when": "a hall, a cabin, an inn, a castle's great room",
-			"why": "A chimney breast of 1 x 4 bricks and 45 slopes with a 1 x 4 arch over the firebox, trans-neon-orange round plates for the fire, and a pair of horns on clip plates over the mantel. As LEGO built it in 5766 Log Cabin: 24 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "A chimney breast of 1 x 4 bricks and 45 slopes with a 1 x 4 arch over the firebox, trans-neon-orange round plates for the fire, and a pair of horns on clip plates over the mantel. As the LEGO Group built it in 5766 Log Cabin: 24 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3020", "color": 2, "x": 1, "y": 0, "z": 0, "rot": 0},
 				{"part": "6141", "color": 38, "x": 2, "y": 1, "z": 0, "rot": 0},
@@ -1062,7 +1062,7 @@ static func all() -> Array:
 			"name": "hearth",
 			"group": "furniture and interiors",
 			"when": "a kitchen, a cottage, a camp, a hobbit hole",
-			"why": "A low cooking hearth in dark grey: round 1 x 1 bricks for the flue, a panel for the back and a brick with studs on its side for the front. As LEGO built it in 30210 Frodo with Cooking Corner: 8 parts, from LDraw's model repository (model by Stan Isachenko, CC BY 2.0).",
+			"why": "A low cooking hearth in dark grey: round 1 x 1 bricks for the flue, a panel for the back and a brick with studs on its side for the front. As the LEGO Group built it in 30210 Frodo with Cooking Corner: 8 parts, from LDraw's model repository (model by Stan Isachenko, CC BY 2.0).",
 			"bricks": [
 				{"part": "11211", "color": 0, "x": 1, "y": 0, "z": 0, "rot": 0},
 				{"part": "3004", "color": 72, "x": 3, "y": 0, "z": 0, "rot": 1},
@@ -1078,7 +1078,7 @@ static func all() -> Array:
 			"name": "anvil",
 			"group": "furniture and interiors",
 			"when": "a forge, a smithy, a dwarf or an orc's workshop",
-			"why": "An inverted dish (4740) for the base and a brick with studs on two sides (47905) with cheese slopes and round plates turned out to make the horn and the heel: six parts that read as nothing else. As LEGO built it in 9476 The Orc Forge: 7 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "An inverted dish (4740) for the base and a brick with studs on two sides (47905) with cheese slopes and round plates turned out to make the horn and the heel: six parts that read as nothing else. As the LEGO Group built it in 9476 The Orc Forge: 7 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "4740", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 0},
 				{"part": "47905", "color": 0, "x": 0.5, "y": 2, "z": 1.5, "rot": 0},
@@ -1093,7 +1093,7 @@ static func all() -> Array:
 			"name": "chest",
 			"group": "furniture and interiors",
 			"when": "a treasure room, a bedroom, a ship's hold, a dungeon",
-			"why": "Two curved-top 1 x 1 bricks (49307) on a plate make the domed lid, and a plate with a clip on its side (11476) the lock. As LEGO built it in 10267 Gingerbread House: 4 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 2.0).",
+			"why": "Two curved-top 1 x 1 bricks (49307) on a plate make the domed lid, and a plate with a clip on its side (11476) the lock. As the LEGO Group built it in 10267 Gingerbread House: 4 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 2.0).",
 			"bricks": [
 				{"part": "3023b", "color": 30, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "11476", "color": 27, "x": 0, "y": 0.75, "z": 0, "rot": 0},
@@ -1105,7 +1105,7 @@ static func all() -> Array:
 			"name": "potion shelf",
 			"group": "furniture and interiors",
 			"when": "a wizard's study, an apothecary, a kitchen wall",
-			"why": "A bracket (99780) turned up off the wall carries a plate with three transparent round 1 x 1 bricks for bottles: a shelf that hangs on the wall rather than standing on the floor. As LEGO built it in 75953 Hogwarts Whomping Willow: 5 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "A bracket (99780) turned up off the wall carries a plate with three transparent round 1 x 1 bricks for bottles: a shelf that hangs on the wall rather than standing on the floor. As the LEGO Group built it in 75953 Hogwarts Whomping Willow: 5 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "99780", "color": 70, "x": 1, "y": 0, "z": 1, "rot": 2},
 				{"part": "3062b", "color": 33, "x": 1, "y": 1, "z": 1, "rot": 2},
@@ -1118,7 +1118,7 @@ static func all() -> Array:
 			"name": "dresser",
 			"group": "furniture and interiors",
 			"when": "a kitchen, an inn, a dining room",
-			"why": "Headlight bricks stacked in reddish brown with jumper plates turned out on their faces for drawer fronts and handles, and bottles on top. As LEGO built it in 10243 Parisian Restaurant: 22 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
+			"why": "Headlight bricks stacked in reddish brown with jumper plates turned out on their faces for drawer fronts and handles, and bottles on top. As the LEGO Group built it in 10243 Parisian Restaurant: 22 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
 			"bricks": [
 				{"part": "3710", "color": 0, "x": 0.8, "y": 1.5, "z": 0, "rot": 1, "face": "+x"},
 				{"part": "4070", "color": 70, "x": 0, "y": 1, "z": 0, "rot": 1},
@@ -1148,7 +1148,7 @@ static func all() -> Array:
 			"name": "sofa",
 			"group": "furniture and interiors",
 			"when": "a parlour, a hotel lounge, a sitting room",
-			"why": "Bricks with curved tops for the back and the cushions, 2 x 2 bricks with a curved corner for the arms, on round plates for feet. As LEGO built it in 10297 Boutique Hotel: 25 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
+			"why": "Bricks with curved tops for the back and the cushions, 2 x 2 bricks with a curved corner for the arms, on round plates for feet. As the LEGO Group built it in 10297 Boutique Hotel: 25 parts, from LDraw's model repository (model by Philippe Hurbain, CC BY 2.0).",
 			"bricks": [
 				{"part": "3460", "color": 0, "x": 0, "y": 1, "z": 0, "rot": 0},
 				{"part": "3020", "color": 320, "x": 4, "y": 2, "z": 0, "rot": 0},
@@ -1181,7 +1181,7 @@ static func all() -> Array:
 			"name": "four-poster bed",
 			"group": "furniture and interiors",
 			"when": "a castle bedchamber, a manor, a treehouse",
-			"why": "The posts are oars held upside down in clip plates, and a curved slope makes the pillow end of the bedding. As LEGO built it in 21318 Tree House: 17 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 2.0).",
+			"why": "The posts are oars held upside down in clip plates, and a curved slope makes the pillow end of the bedding. As the LEGO Group built it in 21318 Tree House: 17 parts, from LDraw's model repository (model by Orion Pobursky, CC BY 2.0).",
 			"bricks": [
 				{"part": "3021", "color": 70, "x": 2.5, "y": 2, "z": 1, "rot": 0},
 				{"part": "3710", "color": 70, "x": 4.5, "y": 3, "z": 0, "rot": 3},
@@ -1206,7 +1206,7 @@ static func all() -> Array:
 			"name": "log pile",
 			"group": "furniture and interiors",
 			"when": "beside a forge, a cabin, a hearth, a woodshed",
-			"why": "Round 1 x 1 bricks laid on their sides with tree-stump round tiles on the ends: a pile of logs from parts turned sideways. As LEGO built it in 21325 Medieval Blacksmith: 20 parts, from LDraw's model repository (model by Vincent Messenet, CC BY 2.0).",
+			"why": "Round 1 x 1 bricks laid on their sides with tree-stump round tiles on the ends: a pile of logs from parts turned sideways. As the LEGO Group built it in 21325 Medieval Blacksmith: 20 parts, from LDraw's model repository (model by Vincent Messenet, CC BY 2.0).",
 			"bricks": [
 				{"part": "3710", "color": 70, "x": 3.2, "y": 0, "z": 0, "rot": 3, "face": "-x"},
 				{"part": "3062b", "color": 308, "x": 2, "y": 0, "z": 0, "rot": 3, "face": "-x"},
@@ -1234,7 +1234,7 @@ static func all() -> Array:
 			"name": "wall lantern",
 			"group": "lights",
 			"when": "a doorway, a gate, a street wall, a tavern sign",
-			"why": "A brick with a stud on one side (87087) holds a tap (4599) whose spout carries a black and a trans-neon-orange round plate: a lantern on a bracket off the wall. As LEGO built it in 5766 Log Cabin: 4 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "A brick with a stud on one side (87087) holds a tap (4599) whose spout carries a black and a trans-neon-orange round plate: a lantern on a bracket off the wall. As the LEGO Group built it in 5766 Log Cabin: 4 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "6141", "color": 0, "x": 0.5, "y": 0, "z": 1.5, "rot": 0},
 				{"part": "6141", "color": 38, "x": 0.5, "y": 1, "z": 1.5, "rot": 0},
@@ -1246,7 +1246,7 @@ static func all() -> Array:
 			"name": "hanging lamp",
 			"group": "lights",
 			"when": "over a door, a counter or a table",
-			"why": "A tap hung from a brick's side stud with an inverted dish (4740) for the shade and a trans-yellow cone for the bulb. As LEGO built it in 10246 Detective’s Office: 4 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
+			"why": "A tap hung from a brick's side stud with an inverted dish (4740) for the shade and a trans-yellow cone for the bulb. As the LEGO Group built it in 10246 Detective’s Office: 4 parts, from LDraw's model repository (model by Willy Tschager, CC BY 2.0).",
 			"bricks": [
 				{"part": "87087", "color": 0, "x": 0, "y": 4.75, "z": 2.5, "rot": 2},
 				{"part": "4599b", "color": 15, "x": 0.1, "y": 4, "z": 1.3, "rot": 0, "face": "-z"},
@@ -1258,7 +1258,7 @@ static func all() -> Array:
 			"name": "bedside lamp",
 			"group": "lights",
 			"when": "a bedroom, a study, a desk",
-			"why": "A tap stood upright for the stand, a fez (85975) for the shade over a trans-yellow round plate, on a small cabinet of jumper plates on headlight bricks. As LEGO built it in 75948 Hogwarts Clock Tower: 9 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
+			"why": "A tap stood upright for the stand, a fez (85975) for the shade over a trans-yellow round plate, on a small cabinet of jumper plates on headlight bricks. As the LEGO Group built it in 75948 Hogwarts Clock Tower: 9 parts, from LDraw's model repository (model by Stefan Frenz, CC BY 2.0).",
 			"bricks": [
 				{"part": "4070", "color": 15, "x": 0, "y": 1, "z": 0.5, "rot": 0},
 				{"part": "4070", "color": 15, "x": 1, "y": 1, "z": 0.5, "rot": 0},
@@ -1275,7 +1275,7 @@ static func all() -> Array:
 			"name": "campfire",
 			"group": "lights",
 			"when": "a camp, a hearth, a forge's fire, a beacon",
-			"why": "Four trans-neon-orange round plates on a black 2 x 2 round plate: fire, in a grate or in the open. As LEGO built it in 5766 Log Cabin: 5 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
+			"why": "Four trans-neon-orange round plates on a black 2 x 2 round plate: fire, in a grate or in the open. As the LEGO Group built it in 5766 Log Cabin: 5 parts, from LDraw's model repository (model by Marc Giraudet, CC BY 2.0).",
 			"bricks": [
 				{"part": "4032a", "color": 0, "x": 0, "y": 0, "z": 1, "rot": 0},
 				{"part": "6141", "color": 38, "x": 0, "y": 1, "z": 2, "rot": 0},
@@ -1302,7 +1302,7 @@ static func all() -> Array:
 				+ "turns on it about their shared middle. Build the base "
 				+ "square, and the top and everything on it in a section "
 				+ "turned about that middle, at any angle; the top's studs "
-				+ "carry the rest. As LEGO built it in 10182 Cafe Corner, "
+				+ "carry the rest. As the LEGO Group built it in 10182 Cafe Corner, "
 				+ "the corner entrance's steps turned 45 degrees: 20 parts, "
 				+ "from LDraw's model repository (model by Max Martin "
 				+ "Richter, CC BY 2.0).",
@@ -1345,7 +1345,7 @@ static func all() -> Array:
 				+ "section the top sits at y=-0.75, and what it carries "
 				+ "starts on its studs at y=1.25. Turn the section about x "
 				+ "to lean it; to lean the other way, turn the base round "
-				+ "(rot 2) and the section with it. As LEGO built it in 6085 "
+				+ "(rot 2) and the section with it. As the LEGO Group built it in 6085 "
 				+ "Black Monarch's Castle, the gatehouse flag leaning out 30 "
 				+ "degrees: 6 parts, from LDraw's model repository (model by "
 				+ "Stefan Frenz, CC BY 2.0).",
@@ -1370,7 +1370,7 @@ static func all() -> Array:
 				+ "one seam down it, five bricks tall; a 4 x 4 round brick is "
 				+ "a band of another colour or the tie between two pairs of "
 				+ "halves; a 4 x 4 cone and a 2 x 2 cone narrow it to a point. "
-				+ "LEGO's City rockets are built this way (60228, 60351: "
+				+ "The rockets of LEGO® City sets are built this way (60228, 60351: "
 				+ "cylinder halves, round plates, cones). Never square bricks "
 				+ "stacked into a round. The round pattern lays it, any "
 				+ "length, diameter 1 to 8, in one call: {\"pattern\": "
@@ -1485,7 +1485,7 @@ static func all() -> Array:
 			"why": "Plates, and curved bricks in pairs back to back across "
 				+ "them, so the panel's face is an arch; built flat like this "
 				+ "and hung on a core with studs on its sides (\"studs-out "
-				+ "core\"), four of them make a round. As LEGO built it in "
+				+ "core\"), four of them make a round. As the LEGO Group built it in "
 				+ "21309 NASA Apollo Saturn V, the second stage's skin: 16 "
 				+ "parts, from LDraw's model repository (model by Jaco van der "
 				+ "Molen, CC BY 2.0).",
@@ -1517,7 +1517,7 @@ static func all() -> Array:
 			"why": "Brackets turned four ways round a 2 x 2 core, and on each "
 				+ "side jumper plates and clip plates, so every side offers "
 				+ "studs for a panel to hang on — the four faces of a round "
-				+ "built flat and carried. As LEGO built it in 21309 NASA "
+				+ "built flat and carried. As the LEGO Group built it in 21309 NASA "
 				+ "Apollo Saturn V: 26 parts, from LDraw's model repository "
 				+ "(model by Jaco van der Molen, CC BY 2.0).",
 			"bricks": [
@@ -1556,7 +1556,7 @@ static func all() -> Array:
 				+ "body or along a hull",
 			"why": "Grille tiles side by side on a plate read as ribbed metal, "
 				+ "a plain tile beside them as the smooth skin it breaks. As "
-				+ "LEGO built it in 21309 NASA Apollo Saturn V, the first "
+				+ "the LEGO Group built it in 21309 NASA Apollo Saturn V, the first "
 				+ "stage's corrugated band: 10 parts, from LDraw's model "
 				+ "repository (model by Jaco van der Molen, CC BY 2.0).",
 			"bricks": [
@@ -1578,7 +1578,7 @@ static func all() -> Array:
 			"when": "a big engine bell, a nozzle, a horn of a gramophone, a "
 				+ "bell — a cone hung under round plates",
 			"why": "A 3 x 3 cone, wide end down, under two 2 x 2 round plates "
-				+ "that take it to the body above. As LEGO built it in 21309 "
+				+ "that take it to the body above. As the LEGO Group built it in 21309 "
 				+ "NASA Apollo Saturn V, an F-1 engine: 3 parts, from LDraw's "
 				+ "model repository (model by Jaco van der Molen, CC BY 2.0).",
 			"bricks": [
@@ -1593,7 +1593,7 @@ static func all() -> Array:
 			"when": "the point of a nose, a mast top, an aerial's foot, a "
 				+ "finial",
 			"why": "A 1 x 1 round brick, a round plate and a cone: a tip that "
-				+ "narrows in three steps. As LEGO built it in 21309 NASA "
+				+ "narrows in three steps. As the LEGO Group built it in 21309 NASA "
 				+ "Apollo Saturn V: 3 parts, from LDraw's model repository "
 				+ "(model by Jaco van der Molen, CC BY 2.0).",
 			"bricks": [
@@ -1669,7 +1669,7 @@ static func all() -> Array:
 			"why": "Two Technic bricks face to face with a friction pin "
 				+ "through both, so the root cannot slide off; a slope over "
 				+ "them shapes the fin's leading edge and palisade bricks "
-				+ "finish its ends. As LEGO built it in 21309 NASA Apollo "
+				+ "finish its ends. As the LEGO Group built it in 21309 NASA Apollo "
 				+ "Saturn V, a first-stage fin's root: 6 parts, from LDraw's "
 				+ "model repository (model by Jaco van der Molen, CC BY 2.0).",
 			"bricks": [
@@ -1862,7 +1862,7 @@ static func all() -> Array:
 			"when": "a story in one part — a mouse at an owl's feet, a cat on a "
 				+ "sill, a frog by the water, a bird on a branch, a rat in a "
 				+ "cellar, a spider in a ruin",
-			"why": "LEGO's creatures are single parts that stand on a stud: "
+			"why": "LEGO® creatures are single parts that stand on a stud: "
 				+ "search_parts \"animal\" for the one the story needs (33320 "
 				+ "frog, 35757 mouse, 41835 songbird, 13786 cat, 40234 rat, "
 				+ "30238 spider). Set it where the eye finds it a moment after "
@@ -1882,7 +1882,7 @@ static func all() -> Array:
 				+ "figure — that should stand the way it is shown",
 			"why": "A black base, a column holding the model up, and a 6 x 8 "
 				+ "slope at ten degrees across the front as the plaque: the "
-				+ "part LEGO's own display sets carry their name on (4515p04 "
+				+ "part the LEGO Group's own display sets carry their name on (4515p04 "
 				+ "is the U.S.S. Enterprise's nameplate, 4515d03 the Hubble's). "
 				+ "Search for a printed one with the subject's name; a plain "
 				+ "one with a printed 2 x 6 tile on a plate in front of it "

@@ -32,7 +32,7 @@ var colour: Color = Color.BLACK
 ## Brush and line width, in canvas pixels.
 var radius: float = 6.0
 var filled: bool = true
-var words: String = "LEGO"
+var words: String = "Hello"
 var word_size: int = 32
 
 var _zoom: float = 1.0

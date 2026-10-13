@@ -486,11 +486,7 @@ func select_by(kind: String) -> int:
 			if seeds.is_empty():
 				say.call("select a brick first, then choose what to match")
 				return 0
-			var wanted: Dictionary = {}
-			for seed_id: int in seeds:
-				for brick_id: int in SelectBy.matching(kind, world, seed_id, scenery):
-					wanted[brick_id] = true
-			found = wanted.keys()
+			found = SelectBy.matching_any(kind, world, seeds, scenery)
 		"submodel":
 			if seeds.is_empty():
 				say.call("select a brick of the sub-model first")
@@ -511,12 +507,37 @@ func select_by(kind: String) -> int:
 		"none":
 			builder.clear_selection()
 			return 0
+	return _select_found(found)
+
+
+func _select_found(found: Array) -> int:
 	builder.selection.clear()
 	for brick_id: int in found:
 		if not builder.lattice.unseen.has(brick_id) and not builder.is_locked(brick_id):
 			builder.selection[brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
 	return builder.selection.size()
+
+
+## Everything joined to the selection, however far (Select by, Everything
+## connected): on a big model followed a slice at a time, the status bar
+## counting, with Cancel. On one frame it held the window for fourteen
+## seconds over Orthanc, all of which is joined to all of it (2026-10-13,
+## command_probe).
+func select_connected() -> int:
+	var seeds: Array = builder.selection.keys()
+	if seeds.is_empty() or world.brick_count() < BIG_CHANGE:
+		return select_by("connected")
+	var job: Working.Job = Working.begin("Finding everything joined to %s…"
+		% _parts(seeds.size()), 0, true)
+	await job.shown()
+	var found: Array = await SelectBy.connected_paced(world, builder.lattice, seeds,
+		scenery, job)
+	job.end()
+	if job.cancelled:
+		say.call("stopped looking for what is joined to it")
+		return 0
+	return _select_found(found)
 
 
 # -- hiding -------------------------------------------------------------------

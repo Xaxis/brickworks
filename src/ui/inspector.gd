@@ -227,18 +227,20 @@ func _action(words: String, says: String, does: Callable) -> Button:
 var _for_assembly: bool = false
 
 
+## The panel's buttons are the commands of the same names, timed and said
+## on the status bar first when slow, as from the menus (Shell.attend).
 func _act(which: int) -> void:
 	var verbs: EditVerbs = shell.verbs
 	if _for_assembly:
 		match which:
-			0: verbs.enter_assembly()
-			1: verbs.leave_submodel()
-			2: verbs.make_unique()
+			0: shell.attend("enter_assembly", verbs.enter_assembly)
+			1: shell.attend("leave_submodel", verbs.leave_submodel)
+			2: shell.attend("make_unique", verbs.make_unique)
 		return
 	match which:
-		0: verbs.select_by("connected")
-		1: verbs.lock(true)
-		2: verbs.hide_selection()
+		0: shell.attend("select_connected", verbs.select_connected)
+		1: shell.attend("lock", verbs.lock.bind(true))
+		2: shell.attend("hide", verbs.hide_selection)
 
 
 func _buttons_for(assembly: bool) -> void:
@@ -359,6 +361,10 @@ func _show_nothing() -> void:
 		control.visible = false
 
 
+## How many joined parts the properties count before saying "or more".
+const JOINED_MOST := 500
+
+
 func _show_one(brick: BrickWorld.Brick) -> void:
 	var library: PartLibrary = shell.library
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
@@ -373,11 +379,13 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	_actions.visible = true
 	_colour_row.visible = true
 	_set_place(brick.transform.origin, _yaw_of(brick.transform.basis))
+	# Counted up to a point: on a big model all of it is joined to all of it.
 	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
-		[brick.id], shell.store.scenery).size() - 1
+		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
 	var lines := PackedStringArray()
 	lines.append("Joined to %s" % ("nothing" if joined <= 0 else (
-		"1 other part" if joined == 1 else "%d other parts, directly or through others" % joined)))
+		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
+			% ("%d" % joined if joined < JOINED_MOST else "%d or more" % JOINED_MOST)))))
 	lines.append("Faces: studs %s" % _face_of(brick.transform.basis))
 	if not brick.group.is_empty():
 		lines.append("In %s" % _chain(Assemblies.path_of(brick)))
@@ -501,7 +509,7 @@ func _show_colours(codes: Array[int]) -> void:
 	var plain: int = library.plain_code(first.code)
 	var lego: String = ""
 	if not first.lego_name.is_empty():
-		lego = "LEGO %s%s" % [first.lego_name.replace("_", " "),
+		lego = "LEGO® %s%s" % [first.lego_name.replace("_", " "),
 			(" %d" % first.lego_ids[0]) if not first.lego_ids.is_empty() else ""]
 	var shops := PackedStringArray()
 	if library.bricklink_colour(plain) >= 0:

@@ -112,7 +112,7 @@ Besides designing, a session can do what the person does from the menus. \
 Each change is one undo step.
  - clear_model takes everything off for a new model, as New does; \
 save_model writes it with the person's models; make_part makes a part \
-LEGO has not made, when search_parts finds no real one that will do.
+the LEGO Group has not made, when search_parts finds no real one that will do.
  - set_floor: what the model stands on — a baseplate 8 to 192 studs in \
 eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \
@@ -179,7 +179,7 @@ func definitions() -> Array:
 				+ "booklet. Nothing built moves. With nothing given it says what it is now."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"kind": {"type": "string", "enum": ModelFloor.KINDS},
-				"across": {"type": "integer", "description": "studs along x; 16, 32 and 48 are the square ones LEGO sells"},
+				"across": {"type": "integer", "description": "studs along x; 16, 32 and 48 are the square ones the LEGO Group sells"},
 				"deep": {"type": "integer", "description": "studs along z; the same as across when omitted"},
 				"colour": {"type": "integer", "description": "LDraw code: " + ", ".join(colours)},
 				"part_of_model": {"type": "boolean"},
@@ -280,7 +280,7 @@ func definitions() -> Array:
 		{
 			"name": "parts_list",
 			"description": ("The model's parts, as Build, Parts list shows them: by part and "
-				+ "colour, with counts and LEGO element ids. which=\"need\" measures it "
+				+ "colour, with counts and LEGO® element ids. which=\"need\" measures it "
 				+ "against the person's collection (My collection): how much they own and "
 				+ "what they are short of; which=\"buildable\" says which of their saved "
 				+ "models their collection builds."),
@@ -994,7 +994,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 	var said: String = ""
 	match str(input.get("format", "")):
 		"ldraw":
-			said = bar.export_now(exports.folder)
+			said = await bar.export_now(exports.folder)
 		"studio":
 			said = await exports.studio_io()
 		"picture":

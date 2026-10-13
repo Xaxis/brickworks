@@ -277,50 +277,16 @@ required, and it is given anyway.
 
 ## LEGO trademarks
 
-Quoted from the LEGO Group's Fair Play guidelines
-(https://www.lego.com/legal/notices-and-policies/fair-play/):
+LEGO® is a trademark of the LEGO Group of companies which does not
+sponsor, authorize or endorse this app. LEGO® Art, Technic, the Minifigure
+and the Brick and Knob configurations are also trademarks of the LEGO Group.
 
-> If the LEGO trademark is used at all, it should always be used as an
-> adjective, not as a noun.
-
-> [the mark should appear] in the same typeface as the surrounding text
-> and should not be isolated or set apart.
-
-> The LEGO logo [should] NEVER be used on an unofficial web site.
-
-and the mark "cannot be used in an Internet address". Note also:
-
-> a disclaimer will not serve to undo an improper trademark use.
-
-Required notice, which must appear in the about screen, the README and
-the web footer:
-
-> LEGO® is a trademark of the LEGO Group of companies which does not
-> sponsor, authorize or endorse this site.
-
-Binding consequences for naming and UI copy:
-
-- **Never "LEGOs", never "a LEGO".** Adjective only: "models built of
-  LEGO® bricks". Always carry the ®.
-- **The mark may not appear in the domain, package name, application
-  identifier or repository name.** The application is called Brickworks
-  for this reason, the repository is `Xaxis/brickworks`, the domain is
-  brickworks.diy, and the Python package is `brickworks-tools` — that
-  last one carried the old name longest, in a file nobody reads.
-- No LEGO logo, brand typography or product photography anywhere.
-- No minifigure trade dress in branding — the app icon, store banner or
-  marketing. Rendering minifigure *parts* inside the app from CC BY
-  geometry is what every fan tool has done for thirty years and is a
-  different question from putting one on the box.
-- No stud-array pattern as a logo mark.
-- Part names come from LDraw's descriptions, which are descriptive
-  ("Brick 2 x 4"), not from LEGO's marketing names.
-
-Precedent is otherwise reassuring: LDraw (1995), LeoCAD (1997),
-Mecabricks and BrickStore have run for decades unchallenged, and the
-LEGO Group bought BrickLink in 2019 and still ships Studio on the LDraw
-library. Enforcement has gone at clone-brick manufacturers and retail
-trade dress, not at CAD software.
+How the app, the site and the designer follow the LEGO Group's Fair Play
+policy — the rules, quoted from the policy with links, where the
+disclaimer is, the test that holds it, and the questions left for counsel —
+is in `docs/TRADEMARKS.md`. Part names come from LDraw's descriptions,
+which are descriptive ("Brick 2 x 4"), not from the LEGO Group's marketing
+names.
 
 ## Catalogue metadata
 

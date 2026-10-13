@@ -241,15 +241,17 @@ func has_unsaved_work() -> bool:
 	# it while there is nothing to undo (an Open forgets the history).
 	if example and builder != null and builder.history_depth() == 0:
 		return false
-	var now: PackedStringArray = _brick_lines(to_text(UNTITLED))
-	if now.is_empty():
+	if world.brick_count() - scenery.size() <= 0:
 		return false
+	# The model written out and compared only when there is a saved one to
+	# compare it with: on Orthanc that is a third of a second, and New asks
+	# this before it can ask anything else.
 	if title == UNTITLED:
 		return true
 	var kept: String = SAVE_DIR + _safe_name(title) + ".ldr"
 	if not FileAccess.file_exists(kept):
 		return true
-	return _brick_lines(FileAccess.get_file_as_string(kept)) != now
+	return _brick_lines(FileAccess.get_file_as_string(kept)) != _brick_lines(to_text(UNTITLED))
 
 
 static func _brick_lines(text: String) -> PackedStringArray:
@@ -582,13 +584,17 @@ var whole: bool = true
 ## A model with the author's steps (AuthorSteps) always writes them, the
 ## autosave too, since they are the model's and cost nothing to write;
 ## and says so in the file, so they are kept when it is opened again.
-func to_text(title: String = "Model", with_steps: bool = false) -> String:
+func to_text(title: String = "Model", with_steps: bool = false,
+		worked: Dictionary = {}) -> String:
 	## brick id -> which step it belongs to, and each sub-assembly copy's
 	## path -> the step it goes on in.
 	var step_of: Dictionary = {}
 	var unit_steps: Dictionary = {}
 	var authored: bool = AuthorSteps.any(world, scenery)
-	if authored or (with_steps and world.library != null):
+	if not worked.is_empty() and not authored:
+		step_of = worked["bricks"]
+		unit_steps = worked["units"]
+	elif authored or (with_steps and world.library != null):
 		var numbers: Dictionary = AuthorSteps.numbers_for_file(world, world.library,
 			scenery, with_steps) if authored \
 			else AuthorSteps.numbers_from_plan(world, world.library, scenery)
@@ -615,20 +621,11 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 	# height went out in whatever order the world held them, which a
 	# reopen changes, so saving a model twice wrote two files. Two
 	# figures standing on one plate swapped places in it.
-	placements.sort_custom(func(a: LdrModel.Placement, b: LdrModel.Placement) -> bool:
-		if a.step != b.step:
-			return a.step < b.step
-		if not is_equal_approx(a.transform.origin.y, b.transform.origin.y):
-			return a.transform.origin.y < b.transform.origin.y
-		if a.group != b.group:
-			return a.group < b.group
-		if a.part_id != b.part_id:
-			return a.part_id < b.part_id
-		if not is_equal_approx(a.transform.origin.x, b.transform.origin.x):
-			return a.transform.origin.x < b.transform.origin.x
-		if not is_equal_approx(a.transform.origin.z, b.transform.origin.z):
-			return a.transform.origin.z < b.transform.origin.z
-		return a.color_code < b.color_code)
+	#
+	# Sorted by a key each, compared by the engine: the same order as a
+	# comparison written out here, which took a quarter of a second of
+	# Orthanc's every save, export and autosave.
+	placements = _in_file_order(placements)
 	# A made part goes out inside the file, or the file means nothing
 	# anywhere the part was not made.
 	var used: Dictionary = {}
@@ -651,6 +648,89 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
 	return model_floor.written_into(text) if model_floor != null else text
+
+
+## [method to_text] with the build order, for a save or an export: on a big
+## model the order is worked out a slice at a time (Instructions.plan_paced)
+## with [param job] counting it, and the page goes on drawing.
+##
+## Worked out in one go, it held a browser for seconds on Orthanc: "when I
+## clicked 'Save and then new' it seemingly froze the app" (the owner,
+## 2026-10-13). "" when the job was cancelled.
+func to_text_paced(title: String, job: Working.Job) -> String:
+	if not paces():
+		return to_text(title, true)
+	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
+		world, world.library, scenery, {}, job)
+	if job.cancelled or steps.is_empty():
+		return ""
+	job.say("Writing %s parts…" % Working.comma(world.brick_count() - scenery.size()))
+	job.count(0, 0)
+	await job.next()
+	return to_text(title, true, AuthorSteps.numbers_of(world, steps, scenery))
+
+
+## A model this big has its build order worked out a slice at a time when
+## it is saved or exported; a smaller one in one go, as before.
+const PACED_FROM := 300
+
+
+## Whether this model's build order is worked out a slice at a time.
+func paces() -> bool:
+	return not AuthorSteps.any(world, scenery) and world.library != null \
+		and world.brick_count() - scenery.size() >= PACED_FROM
+
+
+## The model's text with its build order, for an export or a share: on a
+## big model worked out a slice at a time, the status bar saying
+## [param doing] and counting, with Cancel ([method to_text_paced]). ""
+## when it was cancelled.
+func text_for_file(title: String, doing: String) -> String:
+	if not paces():
+		return to_text(title, true)
+	var job: Working.Job = Working.begin(doing, 0, true)
+	await job.shown()
+	var text: String = await to_text_paced(title, job)
+	job.end()
+	return "" if job.cancelled else text
+
+
+## [method save_as], its build order worked out a slice at a time
+## ([method to_text_paced]). False when it was not saved, cancelled too.
+func save_as_paced(name: String, job: Working.Job) -> bool:
+	var clean: String = _safe_name(name)
+	if clean.is_empty():
+		return false
+	var text: String = await to_text_paced(name, job)
+	if text.is_empty() or job.cancelled:
+		return false
+	if _write(SAVE_DIR + clean + ".ldr", name, true, text):
+		title = name
+		whole = true
+		example = false
+		saved.emit(name)
+		return true
+	return false
+
+
+## [param placements] in the order a file lists them: by step, then height,
+## group, part, across, along and colour. Heights a hair apart are one
+## height: rounded to a thousandth of an LDU, finer than any part sits.
+static func _in_file_order(placements: Array) -> Array:
+	var keys: Array = []
+	keys.resize(placements.size())
+	for n: int in placements.size():
+		var placement: LdrModel.Placement = placements[n]
+		var at: Vector3 = placement.transform.origin
+		keys[n] = [placement.step, roundi(at.y * 1000.0), placement.group,
+			placement.part_id, roundi(at.x * 1000.0), roundi(at.z * 1000.0),
+			placement.color_code, n]
+	keys.sort()
+	var ordered: Array = []
+	ordered.resize(keys.size())
+	for n: int in keys.size():
+		ordered[n] = placements[int((keys[n] as Array)[7])]
+	return ordered
 
 
 ## [param text] saying its steps are its author's, under the model's own
@@ -689,7 +769,18 @@ func figure_frames() -> Dictionary:
 ## so the bytes are handed to the browser as a download instead — the
 ## same model either way, by two entirely different mechanisms.
 func export_to(path: String, title: String = "Model") -> bool:
-	var text: String = to_text(title, true)
+	return _export_text(path, to_text(title, true))
+
+
+## [method export_to] from a person's press: a big model's build order
+## worked out a slice at a time, said and counted ([method text_for_file]).
+## False when it was cancelled or not written.
+func export_paced(path: String, title: String = "Model") -> bool:
+	var text: String = await text_for_file(title, "Exporting %s…" % path.get_file())
+	return not text.is_empty() and _export_text(path, text)
+
+
+func _export_text(path: String, text: String) -> bool:
 	if OS.has_feature("web"):
 		JavaScriptBridge.download_buffer(
 			text.to_utf8_buffer(), path.get_file(), "text/plain")
@@ -703,14 +794,16 @@ func export_to(path: String, title: String = "Model") -> bool:
 	return true
 
 
-func _write(path: String, title: String, with_steps: bool = false) -> bool:
+func _write(path: String, title: String, with_steps: bool = false,
+		written: String = "") -> bool:
 	if read_only:
 		return false
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
-	var text: String = with_share(to_text(title, with_steps), share_id)
+	var text: String = with_share(written if not written.is_empty()
+		else to_text(title, with_steps), share_id)
 	file.store_string(text)
 	file.close()
 	_tell_page_wrote(path, text.to_utf8_buffer().size())
