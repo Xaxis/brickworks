@@ -899,6 +899,14 @@
       "tests": []
     },
     {
+      "id": "lib:the surface pass",
+      "kind": "lib",
+      "entry": "src/ai/surface_pass.gd",
+      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:the window's commands over mcp",
       "kind": "lib",
       "entry": "src/net/app_tools.gd",

@@ -711,6 +711,10 @@ func _start(text: String) -> void:
 	# conversation, and a selection is the person's model.
 	_creative_wanted = not _scoped and _messages.is_empty()
 	_creative_record = ""
+	# And the surface pass before it: see SurfacePass.
+	_surface_wanted = _creative_wanted
+	if _surface_wanted:
+		surface_pass().reset()
 	_detail_count = 0
 	_detail_added = []
 	_parts_before_pass = {}
@@ -1203,14 +1207,21 @@ func _on_response(result: Array) -> void:
 		_detail_turns += 1
 		var feature: bool = bool(_detailing.get("feature", false))
 		var creative: bool = bool(_detailing.get("creative", false))
-		if _detail_turns >= (TURNS_FOR_TOUCHES if creative
+		var surface: bool = bool(_detailing.get("surface", false))
+		# Every finding of the surface pass settled: that is its answer.
+		if surface and surface_pass().open().is_empty():
+			if await _detail_next(tool_results.duplicate()):
+				return
+			_stop(true, "%d bricks" % world.brick_count())
+			return
+		if _detail_turns >= (TURNS_FOR_TOUCHES if creative else SurfacePass.TURNS if surface
 				else TURNS_PER_FEATURE if feature else TURNS_PER_ASSEMBLY):
 			progress.emit("out of turns for the %s" % _detailing["name"])
 			var moved_on: Array = tool_results.duplicate()
 			moved_on.append({"type": "text", "text": "That is as many "
 				+ "turns as the %s gets, so on to the next." % (
-					"creative pass" if creative else "feature" if feature
-						else "assembly")})
+					"creative pass" if creative else "surface pass" if surface
+						else "feature" if feature else "assembly")})
 			if await _detail_next(moved_on):
 				return
 			_stop(true, "%d bricks" % world.brick_count())
@@ -1629,7 +1640,8 @@ func _detail_next(also: Array = []) -> bool:
 	# alone, and under 60 parts there is no range to be outside.
 	if not _detailing.is_empty() and not _sent_back and also.is_empty() \
 			and not bool(_detailing.get("feature", false)) \
-			and not bool(_detailing.get("creative", false)):
+			and not bool(_detailing.get("creative", false)) \
+			and not bool(_detailing.get("surface", false)):
 		var here: Array[BrickWorld.Brick] = _bricks_inside(
 			_detailing["where"])
 		var normal: Dictionary = library.normal_for(here.size())
@@ -1713,6 +1725,10 @@ func _detail_next(also: Array = []) -> bool:
 			_messages.append({"role": "user", "content": " ".join(said)})
 			_send()
 			return true
+	if not _detailing.is_empty() and bool(_detailing.get("surface", false)):
+		surface_pass().close()
+		progress.emit("the surface pass: %s" % surface_pass().record())
+		_detailing = {}
 	if not _detailing.is_empty() and bool(_detailing.get("creative", false)):
 		_creative_record = _creative_said(_parts_before_pass, int(_detailing["count"]))
 		progress.emit("the creative pass: %s" % _creative_record)
@@ -1786,6 +1802,11 @@ func _detail_next(also: Array = []) -> bool:
 	if not _features.is_empty() and not _features_told:
 		_features_told = true
 		progress.emit("features:\n%s" % _features_record(_features))
+	# Then the surface pass, before the creative pass: see SurfacePass.
+	if _surface_wanted:
+		_surface_wanted = false
+		if await _surface_turn(also):
+			return true
 	# Last, once everything else has had its turn: see CREATIVE_PASS.
 	if _creative_wanted:
 		_creative_wanted = false
@@ -2553,6 +2574,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 				_hanging_before = [world.revision] + _hanging_after \
 					if focus.followed == 0 else []
 				return await _focus_answer(said, words)
+			# A pass laying its own proposal shows one picture of all of it
+			# afterwards (SurfacePass): a picture per edit is time thrown away.
+			if _quiet_edit:
+				return said
 			# Set before the picture, dropped after it: a magenta
 			# brick in a check_design render a minute later would read
 			# as a colour somebody chose.
@@ -2583,6 +2608,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"where_to_attach":
 			progress.emit("finding where parts fit on the selection")
 			return await _where_to_attach(args)
+		"settle_surface":
+			progress.emit("settling the surface pass: %s %s" % [str(args.get("finding", "")),
+				str(args.get("verdict", ""))])
+			return await surface_pass().settle(args)
 		"submit_design":
 			# Asked about part of the model, a whole new one is not an answer.
 			if _keeps_to_focus():
@@ -8520,9 +8549,11 @@ func _creative_brief() -> String:
 	for one: Variant in Techniques.all():
 		if str((one as Dictionary).get("group", "")) == "creative touches":
 			worked.append("\"%s\"" % str((one as Dictionary)["name"]))
-	return CREATIVE_PASS.replace("{subject}",
+	var brief: String = CREATIVE_PASS.replace("{subject}",
 		"\"%s\"" % subject if not subject.is_empty() else "what was asked").replace(
 		"{has}", _touches_had()).replace("{techniques}", ", ".join(worked))
+	var tiled: String = surface_pass().for_touches()
+	return brief if tiled.is_empty() else "%s\n\n%s" % [brief, tiled]
 
 
 ## What the model has already of the touches a set designer adds, in
@@ -8625,6 +8656,72 @@ func _creative_passed() -> String:
 			+ "— small, joined, where it is seen — with edit_model, place_technique "
 			+ "or add_minifig, then save again.")
 	return "The creative pass: %s." % said
+
+
+# -- the surface pass ----------------------------------------------------------
+
+
+## The surface pass (SurfacePass): the open stud fields, stud staircases and
+## plain walls a set would have finished, found and laid by the app, settled
+## by the design with settle_surface. In the loop it has a turn of its own
+## after the assemblies and before the creative pass; from outside,
+## review_model {"surface": true}, and saving says when it was never run.
+var _surface: SurfacePass = null
+## Whether this run's surface pass is still to come (see [method _start]).
+var _surface_wanted: bool = false
+
+
+func surface_pass() -> SurfacePass:
+	if _surface == null:
+		_surface = SurfacePass.new(self)
+	return _surface
+
+
+## The loop's turn for the surface pass, with [param also] first: false when
+## it found nothing, so the creative pass comes straight after.
+func _surface_turn(also: Array) -> bool:
+	var handed: Variant = await surface_pass().hand()
+	if not _busy:
+		return true
+	if surface_pass().findings.is_empty():
+		return false
+	_detailing = {"name": "surface pass", "where": {}, "surface": true}
+	_detail_turns = 0
+	_repairs = 0
+	_turn_cap = maxi(_turn_cap, _turns + 2 + SurfacePass.TURNS)
+	_forget_old_pictures()
+	var content: Array = also.duplicate()
+	if handed is Array:
+		content.append_array(handed)
+	else:
+		content.append({"type": "text", "text": str(handed)})
+	_messages.append({"role": "user", "content": content})
+	_send()
+	return true
+
+
+## review_model {"surface": true}, for a session from outside: the pass laid
+## on the model as it stands, with what comes after it.
+func surface_review() -> Variant:
+	if _bricks_inside({}).is_empty():
+		return "The baseplate is bare: there is nothing to review."
+	var handed: Variant = await surface_pass().hand()
+	var then: String = ("Then the creative pass: review_model {\"creative\": true}."
+		if not _outside_creative_handed else "Then save_model.")
+	if handed is Array:
+		return (handed as Array) + [{"type": "text", "text": then}]
+	return "%s\n\n%s" % [str(handed), then]
+
+
+## Saving, from outside, when the features and assemblies have had their
+## turns and the surface pass was never run: said once on its own, before the
+## creative pass is handed. "" otherwise.
+func _surface_first_reminder() -> String:
+	if not _outside_designed or surface_pass().ran or surface_pass().reminded:
+		return ""
+	surface_pass().reminded = true
+	progress.emit("saved before the surface pass: reminded")
+	return "Before it is finished: %s" % surface_pass().reminder()
 
 
 ## What a run will detail, one assembly at a time. Nothing for a model
@@ -10153,6 +10250,8 @@ const SPRINKLED_FROM := 6
 ## makes its edit: what it lays is a wall's ribs or a room's furniture, not
 ## dressing placed a part at a time.
 var _laying_whole: bool = false
+## Set while a pass lays its own proposal: edit_model answers without a picture.
+var _quiet_edit: bool = false
 
 
 func _sprinkled(model: Model) -> String:
@@ -13530,6 +13629,22 @@ edge_color or mix_color on a fill, or a course in a second colour.
 one built well and the pattern saying the rest (beside, repeat, \
 mirror, repeat_section).
 
+THE SURFACE PASS
+A real set leaves studs only where something is built on them: a roof, \
+a bonnet, a wing top and the top of a wall are tiled, and a slope or a \
+curve follows a line that would otherwise step. Once the model stands and \
+its assemblies have had their turns, the app reads its open studs, the \
+way they step and its plain walls exactly, and lays the real pieces for \
+each as a proposal on the model (from outside, review_model {"surface": \
+true}): tiles in the part's own colour, largest first, with a textured one \
+or two; slopes on a staircase's treads, or a step brick laid again as a \
+slope; masonry and turned-out studs in a long plain wall. Settle each with \
+settle_surface: accept it (adjusted: "plain", "recolor"); reject it with a \
+reason, to finish it your own way; or keep the studs with a reason where \
+they are the point — a yard figures stand on, a mosaic, a studded texture, \
+where a touch will stand. The ground is offered, never laid unless you say \
+"tile".
+
 THE CREATIVE PASS
 A designer adds things nobody asked for, and they are what a person \
 finds and smiles at. Of 2,517 real sets of 300 parts or more since \
@@ -13638,7 +13753,10 @@ adapt one, or build it from show_technique, and say which. A feature is \
 parts with depth, never a tile painted on a panel.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
- 6. Last, the creative pass: review_model {"creative": true} — three \
+ 6. The surface pass: review_model {"surface": true} — the app tiles open \
+stud fields, slopes stud staircases and textures plain walls on the model; \
+settle each with settle_surface (accept, reject or keep, with a reason).
+ 7. Last, the creative pass: review_model {"creative": true} — three \
 touches proposed for this subject, the best one or two added. Then \
 save_model.
 
@@ -13667,7 +13785,7 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
 	"pins": "BUILDING WITH PINS AND AXLES", "technic": "BUILDING WITH PINS AND AXLES",
 	"real": "WHAT MAKES A MODEL LOOK REAL", "touches": "THE CREATIVE PASS",
-	"creative": "THE CREATIVE PASS",
+	"creative": "THE CREATIVE PASS", "surface": "THE SURFACE PASS", "studs": "THE SURFACE PASS",
 	"changing": "CHANGING SOMETHING THAT IS ALREADY BUILT", "edit": "CHANGING SOMETHING THAT IS ALREADY BUILT",
 	"kind": "HOW REAL SETS OF THIS KIND ARE BUILT", "module": "AND BEYOND THAT, A MODULE SAID AGAIN",
 	"art": "BRICK ART", "mosaic": "BRICK ART",
@@ -14242,10 +14360,11 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 			_feature_used = {}
 		_outside_features = design.features.duplicate()
 		_feature_now = ""
-		# A new design, so its creative pass is still to come.
+		# A new design, so its surface and creative passes are still to come.
 		_outside_designed = true
 		_outside_creative_handed = false
 		_outside_creative = {}
+		surface_pass().reset()
 	return _built_from_outside(design, report)
 
 
@@ -14283,7 +14402,11 @@ measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
 replaces the whole model.
-  4. Then the creative pass, last: review_model {"creative": true}. Three \
+  4. Then the surface pass: review_model {"surface": true}. The app tiles \
+the open stud fields, slopes the stud staircases and textures the plain \
+walls on the model, and you settle each with settle_surface — accept, \
+reject or keep, with a reason.
+  5. Then the creative pass, last: review_model {"creative": true}. Three \
 touches proposed for this subject — a story, a play or display feature, a \
 nod only someone who knows it would catch — and the best one or two added, \
 small and joined, where they are seen."""
@@ -14340,7 +14463,8 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> S
 		said.append(CRITIQUE)
 		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
-		said.append("Last, the creative pass: review_model {\"creative\": true}.")
+		said.append("Then the surface pass, review_model {\"surface\": true}; last, the "
+			+ "creative pass: review_model {\"creative\": true}.")
 		# The first feature with no turn yet, here: a list to work through
 		# was read and put down, and the run went on to save.
 		var left: Array[String] = _features_left()
@@ -14370,7 +14494,8 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> S
 		+ "{\"assembly\": \"%s\"}%s." % [left[0], " — %d more after it" % (left.size() - 1)
 			if left.size() > 1 else ""]) if not left.is_empty() \
 		else ("say in a line what you changed: it is the last of its assemblies. "
-			+ "Then the creative pass, review_model {\"creative\": true}.")
+			+ "Then the surface pass, review_model {\"surface\": true}, and the creative "
+			+ "pass, review_model {\"creative\": true}.")
 	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s." % [
 		_assembly_measured(name, inside, _bounds_of(inside)),
 		ASSEMBLY_CRITIQUE.replace("{name}", name).replace(
@@ -14394,7 +14519,11 @@ func next_review() -> String:
 				await _review_feature(undone[0])])
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
-		return _creative_next()
+		# The surface pass before the creative pass; reminded, never refused.
+		var first_time: String = _surface_first_reminder()
+		if not first_time.is_empty():
+			return _first(_creative_passed(), first_time)
+		return _first(surface_pass().reminder() if _outside_designed else "", _creative_next())
 	var name: String = left[0]
 	var passed_too: String = _creative_passed()
 	return _first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
@@ -16439,6 +16568,34 @@ func _tools() -> Array:
 					},
 				},
 				"required": ["from"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "settle_surface",
+			"description": ("Settle what the surface pass laid (review_model "
+				+ "{\"surface\": true}, or the app's own turn for it): accept a "
+				+ "finding, adjusted if need be; reject it with a reason, which "
+				+ "takes the app's pieces off and puts back what they replaced; or "
+				+ "keep the studs there for good with a reason — a yard, a mosaic, "
+				+ "a studded texture, where a touch will stand. \"tile\" lays "
+				+ "ground the pass only offered."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"finding": {"type": "string", "description":
+						"its key, S1 or G1, several as \"S1, S3\", or \"all\""},
+					"verdict": {"type": "string",
+						"enum": ["accept", "reject", "keep", "tile"]},
+					"reason": {"type": "string", "description":
+						"why, in a sentence: required to reject or keep"},
+					"plain": {"type": "boolean", "description":
+						"with accept: plain tiles where the textured ones are"},
+					"recolor": {"type": "object", "description":
+						"with accept: its colours to others by LDraw code, "
+						+ "{\"4\": 320}", "additionalProperties": {"type": "integer"}},
+				},
+				"required": ["finding", "verdict"],
 				"additionalProperties": false,
 			},
 		},

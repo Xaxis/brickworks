@@ -1328,6 +1328,13 @@
       "entry": "src/ai/design_memory.gd",
       "reach": "godot --headless --path . --script src/dev/design_memory_probe.gd   (and -- --held-out=speed_champions; the index: tools/design_memory.py build)",
       "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "the surface pass",
+      "entry": "src/ai/surface_pass.gd",
+      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
+      "area": "assistant"
     }
   ]
 }

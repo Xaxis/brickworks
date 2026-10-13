@@ -78,7 +78,13 @@ func _run() -> void:
 	_ok(assistant._looked_back, "it holds, so it is looked at whole first")
 	var standing: int = world.brick_count()
 	await _reply(assistant, [{"type": "text", "text": "It reads as a pond."}])
+	# The surface pass comes first (surface_probe): kept, the frog sits there.
+	_ok(_text_of(assistant._messages.back()).begins_with("The surface pass"),
+		"the surface pass comes before it")
+	await _reply(assistant, [_tool("settle_surface", {"finding": "all", "verdict": "keep",
+		"reason": "the frog will sit on these studs"})])
 	var brief: String = _text_of(assistant._messages.back())
+	brief = brief.substr(brief.find("The creative pass"))
 	print("    " + brief.substr(0, 700).replace("\n", "\n    "))
 	_ok(ended.is_empty(), "the run has not ended: the pass is its last turn")
 	_ok(brief.begins_with("The creative pass") and brief.contains("Propose three touches"),
@@ -122,6 +128,7 @@ func _run() -> void:
 		"bricks": [{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0}],
 		"features": []})])
 	await _reply(assistant, [{"type": "text", "text": "It reads."}])
+	await _reply(assistant, [_tool("settle_surface", {"finding": "all", "verdict": "accept"})])
 	var calls: int = 0
 	while ended.is_empty() and calls < Assistant.TURNS_FOR_TOUCHES + 2:
 		calls += 1
@@ -145,7 +152,13 @@ func _run() -> void:
 	_ok(str(built).contains("the creative pass, last: review_model {\"creative\": true}"),
 		"the build's answer names the creative pass as the last step")
 	var whole: String = await assistant.review("")
-	_ok(whole.contains("Last, the creative pass"), "the whole review ends on it")
+	_ok(whole.contains("last, the creative pass"), "the whole review ends on it")
+	var reminded: String = await assistant.next_review()
+	_ok(reminded.begins_with("Before it is finished: The surface pass has not been run"),
+		"saving with nothing else left says the surface pass comes first")
+	await assistant.surface_review()
+	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "keep",
+		"reason": "the frog will sit on these studs"})
 	var handed: String = await assistant.next_review()
 	_ok(handed.begins_with("Before it is finished: the creative pass")
 		and handed.contains("Propose three touches"),

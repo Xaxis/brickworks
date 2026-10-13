@@ -274,6 +274,8 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 	if plain == "review_model":
 		if bool(input.get("creative", false)):
 			return "the creative pass"
+		if bool(input.get("surface", false)):
+			return "the surface pass"
 		for key: String in ["feature", "assembly"]:
 			if not str(input.get(key, "")).strip_edges().is_empty():
 				return "reviewing the %s" % str(input[key]).strip_edges()
@@ -297,6 +299,7 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 		"read_guide": "reading the design guide",
 		"place_technique": "laying a piece as a real set built it",
 		"find_parts_like": "looking for a part by its look",
+		"settle_surface": "settling the surface pass",
 	}.get(plain, plain.replace("_", " "))
 
 

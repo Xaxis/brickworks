@@ -504,10 +504,13 @@ func _socket_tools() -> Array:
 				+ "real sets of the kind use that it has none of; with a feature "
 				+ "(eyes, beak, wheel arches, grille), three real sets' pieces for "
 				+ "it with ids for place_technique and the worked technique that "
-				+ "builds one; with creative, the creative pass — three touches "
-				+ "proposed for this subject and the best one or two added. Call it "
-				+ "after submit_design, then once per feature, then once per "
-				+ "assembly, working each before the next, then creative last."),
+				+ "builds one; with surface, the surface pass — the app tiles the "
+				+ "open stud fields, slopes the stud staircases and textures the "
+				+ "plain walls on the model, to settle each with settle_surface; "
+				+ "with creative, the creative pass — three touches proposed for "
+				+ "this subject and the best one or two added. Call it after "
+				+ "submit_design, then once per feature, then once per assembly, "
+				+ "working each before the next, then surface, then creative last."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -517,9 +520,11 @@ func _socket_tools() -> Array:
 					"feature": {"type": "string", "description":
 						"a feature the subject is known by, as listed in "
 						+ "submit_design's features"},
-					"creative": {"type": "boolean", "description":
-						"true for the creative pass, once the features and "
+					"surface": {"type": "boolean", "description":
+						"true for the surface pass, once the features and "
 						+ "assemblies have had their turns"},
+					"creative": {"type": "boolean", "description":
+						"true for the creative pass, after the surface pass"},
 				},
 				"additionalProperties": false,
 			},
@@ -607,6 +612,8 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 		_hand_back()
 		return answer
 	if tool == "review_model" and assistant != null:
+		if bool(input.get("surface", false)):
+			return await assistant.surface_review()
 		return await assistant.review(str(input.get("assembly", "")),
 			str(input.get("feature", "")), bool(input.get("creative", false)))
 	if app == null:
