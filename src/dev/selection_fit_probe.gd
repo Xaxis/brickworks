@@ -66,7 +66,7 @@ func _run() -> void:
 	_ok(assistant.focus_on(builder.selection.keys(), true).is_empty(), "...asked about")
 
 	print("\nselection says each part where edit_model reads it")
-	var said: String = str(await assistant.use_tool("selection", {}))
+	var said: String = _text(await assistant.use_tool("selection", {}))
 	var turned: RegEx = RegEx.create_from_string("section='(turned [^']+)'")
 	var section: RegExMatch = turned.search(said)
 	_ok(section != null, "a turned part is given in its section: %s" % (

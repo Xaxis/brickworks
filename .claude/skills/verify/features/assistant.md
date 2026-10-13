@@ -99,6 +99,18 @@ fixing what it got wrong.
   `Assistant.assemblies`). New parts now really go into the selection's
   sub-assembly: `Builder.set_path` called by the class's name reached
   Resource's own one-argument set_path and failed. `selection_fit_probe`.
+  Measured on the subscription (2026-10-13, Opus 5.5 through Claude Code,
+  the same three requests on the code before and after, both with the short
+  guidance head): Orthanc's west horn, "more jagged and menacing: two or
+  three smaller spikes", had 12 edits refused before the first landed at
+  507 s (542 s in all) before, and 2 after (one a check_only try, one
+  reaching outside the room), landing at 277 s (283 s in all): three 1 x 3
+  plates set into the blade, each with a tooth plate standing out past the
+  edge. The car's bonnet ("sleeker, curved") and a castle wall ("weathering")
+  were easy either way: 0 and 0 refused, 53 s and 52 s for the bonnet; 0 and
+  1 for the wall (that one landed on the next try, 6 s later), 105 s and
+  116 s. The spikes are still small: landing first time did not make Claude
+  bolder by itself.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
