@@ -10,16 +10,24 @@
 //
 // So it is the first thing that happens, it is done against a verified
 // token rather than anything the caller supplies, and it fails closed —
-// MASTER_EMAIL unset means nobody rather than everybody. It reads and
-// never writes: there is nothing about an account to change from here.
+// MASTER_EMAIL unset means nobody rather than everybody. There is nothing
+// about an account to change from here. The one write is the gallery's:
+// a model listed there that should not be (2026-10-13) is taken out, and
+// barred, so its owner cannot list it again. Its link still works; taking
+// that down is its owner's.
 //
-//   GET /api/admin     accounts, sign-ins, connectors, the email sender
+//   GET /api/admin                   accounts, sign-ins, connectors, the
+//                                    email sender, the gallery's models
+//   POST /api/admin?op=unlist&id=X   take X out of the gallery for good
 //
 // Restored 2026-10-11 with accounts, without the tiers and the design
 // budget the first one managed: those belonged to the proxy that spent
 // the project's key, which has not come back.
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
+import { db } from "./_db.js";
+
+const ID = /^[A-Za-z0-9]{10}$/;
 
 function project() {
   return (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -43,7 +51,7 @@ export default async function handler(request, response) {
       .status(204)
       .setHeader("Access-Control-Allow-Origin", "*")
       .setHeader("Access-Control-Allow-Headers", "content-type, authorization")
-      .setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+      .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
       .end();
   }
   response.setHeader("Access-Control-Allow-Origin", "*");
@@ -67,8 +75,16 @@ export default async function handler(request, response) {
     // surface and that they are simply not it.
     return response.status(404).json({ error: "not found" });
   }
+  const op = String(request.query?.op || "");
+  if (request.method === "POST" && op === "unlist") {
+    try {
+      return await unlist(request, response);
+    } catch (error) {
+      return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
+    }
+  }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET only" });
+    return response.status(405).json({ error: "GET, or POST ?op=unlist" });
   }
 
   try {
@@ -79,12 +95,29 @@ export default async function handler(request, response) {
   }
 }
 
+/// Out of the gallery, and barred from it: listed false, and a republish
+/// with the box ticked refused (api/share.js). The row and its files are
+/// untouched, so the link goes on working.
+async function unlist(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a link: ?id=<ten characters>" });
+  const rows = await db(`shared_models?id=eq.${id}`, {
+    method: "PATCH", body: { listed: false, listed_at: null, barred: true },
+    prefer: "return=representation" });
+  if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "no model at that link" });
+  return response.status(200).json({ id, listed: false, barred: true });
+}
+
 async function report() {
-  const [listed, tabs] = await Promise.all([
+  const [listed, tabs, gallery] = await Promise.all([
     asServer("/auth/v1/admin/users?page=1&per_page=1000"),
     asServer("/rest/v1/relay_tabs?select=owner,seen_at,open&owner=not.is.null"),
+    // What strangers can see in /gallery right now, and whose it is.
+    asServer("/rest/v1/shared_models?listed=is.true&published=is.true"
+      + "&select=id,owner,name,author,parts,listed_at&order=listed_at.desc&limit=500"),
   ]);
   const users = listed.users || [];
+  const emails = new Map(users.map((user) => [user.id, user.email || null]));
 
   // Whose connectors, and when each was last heard from.
   const connectors = new Map();
@@ -121,5 +154,9 @@ async function report() {
       borrowing: process.env.EMAIL_FROM_FALLBACK || null,
     },
     people,
+    gallery: gallery.map((model) => ({
+      id: model.id, name: model.name, author: model.author, parts: model.parts,
+      listed_at: model.listed_at, email: emails.get(model.owner) || null,
+    })),
   };
 }

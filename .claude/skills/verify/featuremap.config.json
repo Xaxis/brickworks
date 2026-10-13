@@ -1100,6 +1100,20 @@
     },
     {
       "kind": "ui",
+      "label": "gallery page",
+      "entry": "web/gallery.html",
+      "reach": "https://brickworks.diy/gallery   (gallery.js reads /api/share?op=list; locally relay_server.mjs serves /gallery)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "seed the gallery",
+      "entry": "tools/web/gallery_seed.mjs",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR; then BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR   (.env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "share panel",
       "entry": "src/ui/share_panel.gd",
       "reach": "godot --path .  (File › Share…, or Share on the toolbar, signed in)",

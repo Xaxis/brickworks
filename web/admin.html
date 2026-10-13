@@ -67,6 +67,9 @@
   .warn { border-color: #5a4a1e; background: #241f10; margin-bottom: 14px; }
   .warn b { color: var(--yellow); }
   .foot { margin-top: 30px; color: var(--faint); font-size: 12.5px; }
+  h2 { font-size: 19px; margin: 34px 0 4px; }
+  h2 + .note { margin: 0 0 12px; }
+  td.model { max-width: 320px; overflow-wrap: anywhere; }
   a { color: var(--blue); }
 </style>
 
@@ -105,6 +108,21 @@
       <button id="again">Refresh</button>
       <span class="note" id="note"></span>
     </div>
+
+    <h2>In the gallery</h2>
+    <p class="note">What anyone can see at <a href="/gallery">/gallery</a>.
+       Take out takes a model out of it for good: its link goes on
+       working, and its owner cannot list it again.</p>
+    <div class="card scroller" style="padding:4px 4px 0">
+      <table>
+        <thead><tr>
+          <th>Model</th><th>Credited to</th><th>Account</th>
+          <th class="n">Parts</th><th>Listed</th><th></th>
+        </tr></thead>
+        <tbody id="gallery"></tbody>
+      </table>
+    </div>
+    <p class="note" id="gallery-note"></p>
   </div>
 
   <p class="foot">

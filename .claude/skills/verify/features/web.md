@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:landing page, ui:changelog page, ui:404 page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
 
 ## Sub-features
 
@@ -198,6 +198,57 @@ plan with Claude as the client.
   (Supabase refuses to delete storage objects from SQL), so Vercel's cron calls
   `/api/share/sweep` (`op=sweep`) at 04:17 UTC daily with `CRON_SECRET`, and it
   removes every file an hour old or more that no published row owns.
+  **The gallery** (2026-10-13, `supabase/gallery.sql`, applied to the live
+  project that day with `tools/apply_sql.mjs`: columns `listed` boolean not
+  null default false, `listed_at`, `remixed_from` → `shared_models(id)` on
+  delete set null, `barred` boolean not null default false; select granted on
+  the first three to `anon` and `authenticated`, never `barred`; index
+  `shared_models_gallery` on `(listed_at desc, id desc) where listed and
+  published`; table `share_listings` and `may_list` (6 an hour, 20 a day,
+  `service_role` only), as `share_publishes` and `may_publish`; no existing row
+  changed). The POST also takes `listed` (true or false, else 400) and
+  `remixed_from` (a link's id, else 400; one that is not there is stored as
+  none; once said it is kept on a republish that does not say), and answers
+  `listed`, `remixed_from` and `gallery`. Going into the gallery is counted
+  (429 past the limit, before the publish is), staying in it is not;
+  unpublishing takes a model out of it. `GET ?op=list&page=1..400` (400
+  otherwise): the listed, published rows through the publishable key, newest
+  listed first, 24 a page and `more`, each `{id, name, author, parts,
+  listed_at, url, image}` (`image` null with no picture), `no-cache`. `/m/<id>`
+  says "Remixed from <a href=/m/X>title</a>" while X is published, and `GET
+  ?id=` gives `remixed_from: {id, name, url}`. The site's owner takes a model
+  out (`POST /api/admin?op=unlist&id=`, [account](account.md)): `listed` off
+  and `barred` on, its link untouched; its owner listing it again is refused
+  409 (not 403, which the app answers by publishing at a new link). A name is
+  one printable line of at most 80 characters (the table's own check too),
+  escaped by every page that shows it and put in as text by `gallery.js` and
+  the admin page.
+- `gallery page` (`web/gallery.html`, `web/gallery.js`): `/gallery`, its
+  `.html` redirecting to it as every page's does (`deploy.sh`'s page loop; the
+  local relay maps `/gallery` itself). The site's header (Gallery is now
+  `/gallery` in every page's nav, its one change to the other pages), a grid of cards in the
+  shape of a share's 1200 x 630 picture — the picture, the name (two lines at
+  most, the whole in its title), "N parts, by X" — each a link to `/m/<id>`;
+  Show more for the next page; words for nothing listed, for a list that did
+  not load and for no JavaScript; how to put yours there; the site's footer
+  with the LDraw and LEGO® notices and a line on reporting a model. Names and
+  credits are put in with `textContent`, links built from an id that matches
+  `^[A-Za-z0-9]{10}$` only. `data-gallery` on `<html>` says `ready` or `broken`
+  for a check.
+- `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
+  the project's own showcase models, listed by the project's account
+  (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
+  empty on day one. The Godot half opens each file in the real app and
+  publishes it through the real Share panel (Show who made it: Brickworks;
+  List it in the gallery ticked) into a `SharedModels` that keeps the body —
+  so the picture is the panel's own; the node half publishes those bodies to a
+  deployment's `/api/share`, updating at its link any model that account
+  already shares under the same title. Seeded 2026-10-13, from a preview:
+  Wizard's Tower (`models/orthanc.ldr`) and A castle, from one sentence
+  (`models/castle.ldr`), A barn owl and A sports car, and its driver (the
+  homepage's renders), A three-core heavy-lift rocket and A small modular
+  corner shop (the bench's best, 2026-10-12). Titles carry no licensed name
+  (films, books, brands): the tower is Wizard's Tower on every public page.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
   app's isolation headers and CSP are not put on them; `web/share-page.js` is the
@@ -219,7 +270,9 @@ plan with Claude as the client.
   along the top with the name, part count and author, Steps, Booklet, Parts list
   and Open in Brickworks; the part under the pointer outlined in blue and named
   beside it (`_view_hover`, the lattice ray, skipping parts the timeline hides);
-  the address put back to `/m/<id>`. **No sign-in** (no gate) and **no write
+  the address put back to `/m/<id>`; a remix's about line ends "· remixed from
+  X", and a click on it opens X's link (`view_remixed_from` in the controls,
+  `about` and `remixed_from` in `view`). **No sign-in** (no gate) and **no write
   path**: `Shell.can` runs only `Shell.LOOKING` (views, fit, timeline, parts
   list, instructions, full screen, website, about), the mouse goes to
   `_view_input` (a left drag turns the view, Shift slides it; nothing else) and
@@ -612,9 +665,30 @@ file is left; `CRON_SECRET` from `.env` for the sweep; about 40 s locally):
 
 ```sh
 set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 &
-node tools/web/share_probe.mjs --url=http://127.0.0.1:8790
-BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<deployment>
+node tools/web/share_probe.mjs --url=http://127.0.0.1:8790 --master
+BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<deployment> --master
 ```
+
+The gallery's part of it (since 2026-10-13, two more throwaway accounts;
+`--master` signs in as `MASTER_EMAIL` the way the tests sign in, to take a
+model out; without it that part is skipped and said to be): listed, a model
+is first in `?op=list` with its name, author, count, link and picture, no
+owner, 24 a page; one shared unticked is not there; the list `no-cache`; a page
+outside 1 to 400 is 400; `listed: "yes"` 400; a name that is markup listed
+later is ahead of it, comes back from the list as text and is escaped on its
+page; a copy published with `remixed_from` says it on its page with a link and
+in the viewer's JSON, and still knows after a republish that does not say;
+`remixed_from` that is not an id 400, one that never was stored as none;
+unticked and republished it leaves the list and keeps its link; ticked again
+it is back; unpublished it leaves, and the remix's page stops naming it;
+another account asking to take it out 404, signed out 401; the owner's admin
+answer lists it with its account, takes it out (200), it leaves the list, its
+link works, its owner listing it again 409 and publishing it unlisted 200, an
+unknown or malformed id 404 or 400; six listings an hour then 429, a listed
+model republished still listed, and publishing unlisted unaffected; with the
+publishable key, `listed`, `listed_at` and `remixed_from` readable, `barred`
+not, the listing log closed and `may_list` not callable. 120 checks with
+`--master`, about a minute locally.
 
 Proves it when it ends "a model can be shared by link, and nothing else can be
 done with one" (79 checks): publish refused signed out and with a made-up
@@ -662,9 +736,14 @@ booklet; a link taken down saying so on a card in the middle. Then the panel,
 signed in: Share opens it with the name, Show who made it offers one, Publish
 sends the LDraw with the made part and print and no link line, the author, and
 a 1200 x 630 PNG; the link kept with the model and sent back on the next
-publish (no author once unticked); Unpublish; another account's link replaced;
-Clear forgets it. Pictures in `shots/share/` (`7_og_image.png` is the link's
-preview picture).
+publish (no author once unticked); not listed unless List it in the gallery is
+ticked, then sent `listed: true` with the panel saying so, unticked sent false;
+a copy's `remixed_from` sent, kept in its saves on a line LDraw ignores beside
+the link's and read back when it opens; Unpublish; another account's link
+replaced; Clear and new work forget both. The viewer's about line ends
+"· remixed from Probe Original" for a link that is a remix. Pictures in
+`shots/share/` (`7_og_image.png` is the link's preview picture,
+`8b_list_ticked.png` the panel with the box ticked).
 
 The whole of it in real browsers, on a deployment (two throwaway accounts,
 deleted at the end with the row; no email sent; ten minutes or more on
@@ -676,7 +755,43 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --
 
 Proves it when it ends "a model can be shared by link, looked at by anyone,
 and taken down": see the steps in the script's header; pictures
-`1_shared.png` to `11_viewer_unpublished.png` and `og_image.png`.
+`1_shared.png` to `11_viewer_unpublished.png` and `og_image.png`. The gallery
+in it: the box there and unticked, ticked, published "listed in the gallery";
+its card first on `/gallery` in a browser that never signed in, with its
+name, "N parts, by Flow Builder" and its picture drawn (`1b_gallery.png`); the
+copier's copy knowing what it came from, shared at a link of its own unlisted,
+its page saying "Remixed from Share Flow Car" with a link (`9b_remix_shared.png`);
+the owner's panel opened again with the box ticked as the link is, unticked
+and updated, the card gone from `/gallery` (`9c_gallery_unlisted.png`) and
+the link still working; no script error or refused request on any page.
+
+The gallery page under the site's security policy, locally with a made-up
+list of 26 (one with no picture, one whose name is markup) or against a
+deployment (part of `download_check.mjs`, after the download page):
+
+```sh
+node tools/web/download_check.mjs --shots=shots/gallery
+VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment>/download --shots=shots/gallery
+```
+
+Proves it when the gallery lines say 24 cards then 26 after Show more
+(locally), the markup name shown as text and no `img` but the pictures', a
+model with no picture given none, "86 parts, by Builder 2"; and at 390 and
+1280 px no console error, no sideways scroll, no broken picture
+(`gallery-phone.png`, `gallery-laptop.png`). `site_check.mjs` has `/gallery`
+among its pages (200, title, description, canonical, card), `/gallery.html`
+308 to it, its links resolving and its screenshots.
+
+Seeding (once; again only to change the seeds — it updates them in place):
+
+```sh
+godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR
+BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR [--dry]
+```
+
+Proves it when the first ends "the gallery's models, as the app shares them"
+(each a 1200 x 630 picture, listed, credited) and the second "N models in the
+gallery, shared by gallery@brickworks.diy", every line `ok`.
 
 **Build it.** The pages, headless, in about half a minute (the catalogue load):
 

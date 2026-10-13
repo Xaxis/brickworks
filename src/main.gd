@@ -1451,7 +1451,8 @@ func _view_shared() -> void:
 		return
 	_store.title = name
 	_store.share_id = ""
-	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")))
+	_share_view.show_model(name, author, int(shared.get("parts", 0)), str(shared.get("url", "")),
+		shared["remixed_from"] if shared.get("remixed_from") is Dictionary else {})
 	_show_name(name)
 	_set_address("/m/" + _viewing)
 	_lay_baseplate()
@@ -1641,7 +1642,9 @@ func _set_address(path: String) -> void:
 ## they are signed in and whatever was on the baseplate is back. That is
 ## kept first if it was not saved, so following a link never loses work.
 ## The copy is saved under its own name, never over one of theirs, and has
-## no link: it is theirs to change and to share as their own.
+## no link: it is theirs to change and to share as their own. It does know
+## which link it came from (ModelStore.remixed_from), so when they share
+## it, its page says what it was remixed from.
 func _maybe_copy() -> void:
 	if _copying.is_empty() or _copy_started or not _first_open_done \
 			or _account == null or not _account.lets_in():
@@ -1663,6 +1666,7 @@ func _maybe_copy() -> void:
 		_bar.say("could not open that model: %s" % result["error"])
 		return
 	_store.share_id = ""
+	_store.remixed_from = _copying
 	_bar.opened.emit(int(result["placed"]))
 	var since: int = Time.get_ticks_msec()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:

@@ -50,7 +50,8 @@ const MAPPED = [
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
 ];
-const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"]];
+// And the site's pages at their bare names, as deploy.sh serves them.
+const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"], [/^\/gallery\/?$/, "gallery.html"]];
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", svg: "image/svg+xml",
   png: "image/png", json: "application/json", css: "text/css" };
 

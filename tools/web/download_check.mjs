@@ -13,6 +13,15 @@
 // there; one that reached for GitHub's API, or put its logic in an inline
 // script, fails here the way it would fail live.
 //
+// And the gallery, /gallery (web/gallery.html), under the same policy: its
+// script draws the listed models from /api/share?op=list, a page at a time.
+// Locally the list is a made-up one of 26 models — one with no picture, one
+// whose name is markup — so the check sees two pages, Show more, and a name
+// that must be shown as the text it is; against a deployment, what it lists.
+// No error in the console (a refused script or fetch is one), and no
+// sideways scroll on a phone or a laptop. --shots gets gallery-phone.png and
+// gallery-laptop.png.
+//
 // Each system is a real browser told it is that system the way a browser
 // says so: the user agent, navigator.platform and the client hints, through
 // the DevTools protocol. Playwright's userAgent option changes only the
@@ -61,13 +70,39 @@ let target = args.url;
 const bypass = process.env.VERCEL_BYPASS
   ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS, "x-vercel-skip-toolbar": "1" } : {};
 let manifest = null;
+// The gallery's made-up list, for a check with no deployment behind it.
+const HOSTILE = `<img src=x onerror="document.title='owned'">Hostile & "named"`;
+const LISTED = Array.from({ length: 26 }, (_, n) => ({
+  id: `Gal${String(n).padStart(7, "0")}`,
+  name: n === 0 ? HOSTILE : `Listed model ${n + 1}`,
+  author: n % 3 === 0 ? null : `Builder ${n}`,
+  parts: 12 + n * 37,
+  image: n === 1 ? null : "yes",
+}));
+let galleryTarget = "";
 if (!target) {
   const root = resolve("web");
   const replacement = args.manifest ? resolve(args.manifest) : null;
+  const picture = await readFile(join(root, "share.png"));
   server = createServer(async (request, response) => {
-    const path = new URL(request.url, "http://x").pathname;
+    const url = new URL(request.url, "http://x");
+    const path = url.pathname;
+    const headers = { "Content-Security-Policy": CSP, "X-Content-Type-Options": "nosniff",
+      "Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Resource-Policy": "same-origin" };
+    if (path === "/api/share" && url.searchParams.get("op") === "list") {
+      const page = Number(url.searchParams.get("page") || 1);
+      const models = LISTED.slice((page - 1) * 24, page * 24).map((m) => ({ ...m,
+        url: `http://x/m/${m.id}`, image: m.image ? `http://x/m/${m.id}.png` : null }));
+      response.writeHead(200, { ...headers, "Content-Type": "application/json" });
+      return response.end(JSON.stringify({ page, per_page: 24, more: page * 24 < LISTED.length, models }));
+    }
+    if (/^\/m\/[A-Za-z0-9]{10}\.png$/.test(path)) {
+      response.writeHead(200, { ...headers, "Content-Type": "image/png" });
+      return response.end(picture);
+    }
     const file = path === "/releases.json" && replacement ? replacement
-      : join(root, path === "/" ? "index.html" : path.slice(1));
+      : join(root, path === "/" ? "index.html" : path === "/gallery" ? "gallery.html" : path.slice(1));
     try {
       const body = await readFile(file);
       response.writeHead(200, { "Content-Type": TYPES[extname(file)] || "application/octet-stream",
@@ -81,6 +116,7 @@ if (!target) {
   });
   await new Promise((done) => server.listen(0, "127.0.0.1", done));
   target = `http://127.0.0.1:${server.address().port}/download.html`;
+  galleryTarget = `http://127.0.0.1:${server.address().port}/gallery`;
   manifest = JSON.parse(await readFile(replacement || join(root, "releases.json"), "utf8"));
 } else {
   // The manifest the live page reads, so its offers are checked against it —
@@ -185,6 +221,69 @@ for (const system of SYSTEMS) {
       ? "no release yet" : "no offer") + (seen.offer ? `  (${seen.meta})` : ""));
   if (args.shots) {
     const path = join(args.shots, `download-${system.label}.png`);
+    await page.screenshot({ path, fullPage: true });
+    console.log(`           ${path}`);
+  }
+  await context.close();
+}
+
+// -- the gallery -------------------------------------------------------------
+if (!galleryTarget) galleryTarget = new URL("/gallery", target).href;
+for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
+  const context = await browser.newContext({ viewport: { width, height: 900 },
+    extraHTTPHeaders: args.url ? bypass : {} });
+  const page = await context.newPage();
+  const said = [];
+  page.on("console", (m) => { if (m.type() === "error") said.push(m.text()); });
+  page.on("pageerror", (e) => said.push(String(e)));
+  const fail = (text) => problems.push(`gallery at ${label} width: ${text}`);
+  const response = await page.goto(galleryTarget, { waitUntil: "load", timeout: 45000 });
+  if (!response || !response.ok()) {
+    fail(`the page answered ${response && response.status()}`);
+    await context.close();
+    continue;
+  }
+  await page.waitForFunction(() => document.documentElement.dataset.gallery, null, { timeout: 20000 }).catch(() => {});
+  const look = () => page.evaluate(() => ({
+    state: document.documentElement.dataset.gallery || "",
+    cards: [...document.querySelectorAll("#models a.model")].map((a) => ({
+      href: a.getAttribute("href"), name: a.querySelector("b").textContent,
+      about: a.querySelector("span").textContent, img: (a.querySelector("img") || {}).src || "" })),
+    more: !document.getElementById("more").hidden,
+    empty: !document.getElementById("empty").hidden,
+    stray: document.querySelectorAll('#models img[src="x"], #models img:not([src*="/m/"])').length,
+    title: document.title,
+    scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth,
+    broken: [...document.images].filter((i) => i.complete && !i.naturalWidth).map((i) => i.src),
+  }));
+  await page.evaluate(async () => {
+    for (const img of document.querySelectorAll("img[loading=lazy]")) img.loading = "eager";
+    await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+  });
+  let seen = await look();
+  if (seen.state !== "ready") fail(`the list did not load (${seen.state || "nothing said"})`);
+  if (!args.url) {
+    if (seen.cards.length !== 24 || !seen.more) fail(`the first page is ${seen.cards.length} cards, Show more ${seen.more ? "shown" : "hidden"}`);
+    const first = seen.cards[0] || {};
+    if (first.name !== HOSTILE || seen.stray || seen.title === "owned") fail("a name that is markup was not shown as text");
+    if (first.href !== "/m/Gal0000000" || first.about !== "12 parts") fail(`the first card is ${JSON.stringify(first)}`);
+    if ((seen.cards[1] || {}).img) fail("a model with no picture was given one");
+    if ((seen.cards[2] || {}).about !== "86 parts, by Builder 2") fail(`a credit reads "${(seen.cards[2] || {}).about}"`);
+    await page.click("#more");
+    await page.waitForFunction(() => document.querySelectorAll("#models a.model").length > 24, null, { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    seen = await look();
+    if (seen.cards.length !== 26 || seen.more) fail(`after Show more, ${seen.cards.length} cards, Show more ${seen.more ? "still shown" : "gone"}`);
+  } else if (!seen.cards.length && !seen.empty) {
+    fail("neither cards nor the empty gallery's words");
+  }
+  if (said.length) fail(`the console said: ${said.slice(0, 3).join(" | ")}`);
+  if (seen.scrollW > seen.clientW + 1) fail(`scrolls sideways, ${seen.scrollW}px in ${seen.clientW}px`);
+  if (seen.broken.length) fail(`broken pictures: ${seen.broken.slice(0, 3).join(", ")}`);
+  console.log(`  gallery  ${label}: ${seen.cards.length} cards${seen.empty ? " (nothing listed)" : ""}`
+    + (seen.cards[0] ? `, first "${seen.cards[0].name.slice(0, 40)}"` : ""));
+  if (args.shots) {
+    const path = join(args.shots, `gallery-${label}.png`);
     await page.screenshot({ path, fullPage: true });
     console.log(`           ${path}`);
   }

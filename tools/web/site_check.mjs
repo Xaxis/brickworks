@@ -6,7 +6,7 @@
 //
 // What it asks of a deployment, every answer read off the wire:
 //
-//   the pages answer 200 at their bare names (/, /download, /changelog,
+//   the pages answer 200 at their bare names (/, /gallery, /download, /changelog,
 //     /admin), each with its own title, description and canonical link and
 //     an Open Graph card whose picture is really there;
 //   each old .html address answers 308 to its bare one, query and all, and
@@ -74,6 +74,7 @@ function meta(html, attr, name) {
 const PAGES = [
   { path: "/", canonical: `${SITE}/` },
   { path: "/download", canonical: `${SITE}/download` },
+  { path: "/gallery", canonical: `${SITE}/gallery` },
   { path: "/changelog", canonical: `${SITE}/changelog` },
   { path: "/admin", private: true },
 ];
@@ -135,6 +136,7 @@ console.log("redirects");
 for (const [from, to] of [
   ["/index.html", "/"],
   ["/download.html", "/download"],
+  ["/gallery.html", "/gallery"],
   ["/changelog.html", "/changelog"],
   ["/admin.html", "/admin"],
   ["/download.html?os=macos", "/download?os=macos"],
@@ -285,7 +287,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
-const SHOTS = [["/", "home"], ["/download", "download"], ["/changelog", "changelog"],
+const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
   ["/admin", "admin"], ["/no-such-page", "404"]];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
@@ -296,6 +298,9 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
     page.on("pageerror", (e) => said.push(String(e).slice(0, 160)));
     try {
       await page.goto(base + path, { waitUntil: "load", timeout: 60000 });
+      // The gallery draws its cards after load, from /api/share?op=list.
+      await page.waitForFunction(() => !document.getElementById("models")
+        || document.documentElement.dataset.gallery, null, { timeout: 20000 }).catch(() => {});
       // Every lazy picture in, so the full-page shot shows the page as read.
       await page.evaluate(async () => {
         for (const img of document.querySelectorAll("img[loading=lazy]")) img.loading = "eager";

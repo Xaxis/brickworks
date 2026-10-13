@@ -13,11 +13,17 @@
 ## it from where the view is looking, for the link's preview on other
 ## sites. The link is kept with the model (ModelStore.share_id), so the
 ## next Publish of the same model updates it.
+##
+## List it in the gallery, off unless ticked, also puts the model on
+## brickworks.diy/gallery for anyone to find (2026-10-13); unticked and
+## published again, it leaves the gallery and keeps its link. A model
+## copied from somebody's link says so when it is published
+## (ModelStore.remixed_from), and its page names the one it came from.
 class_name SharePanel
 extends PanelContainer
 
 const WIDE := 470.0
-const TALL := 470.0
+const TALL := 500.0
 ## The size social sites show a link's picture at.
 const CARD := Vector2i(1200, 630)
 ## Under the server's 600 KB, with room to spare.
@@ -38,6 +44,7 @@ var embed: String = ""
 var _name: LineEdit
 var _credit: CheckBox
 var _author: LineEdit
+var _list: CheckBox
 var _status: Label
 var _publish: Button
 var _link_box: VBoxContainer
@@ -95,6 +102,16 @@ func setup() -> void:
 	_author.max_length = 60
 	_author.visible = false
 	column.add_child(_author)
+
+	# Off unless ticked: a link is for whoever it is sent to, and the
+	# gallery is for everybody.
+	_list = CheckBox.new()
+	_list.text = "List it in the gallery"
+	_list.tooltip_text = "Anyone can find it at brickworks.diy/gallery, not only people sent the link. " \
+		+ "Untick it and publish again to take it out and keep the link."
+	_list.focus_mode = Control.FOCUS_NONE
+	_list.add_theme_font_size_override("font_size", 12)
+	column.add_child(_list)
 
 	_publish = Button.new()
 	_publish.text = "Publish"
@@ -184,6 +201,8 @@ func open() -> void:
 	_show_link(store.share_id)
 	if store.share_id.is_empty():
 		state = "idle"
+		_list.button_pressed = false
+		_list.disabled = false
 		_status.text = "" if account.signed_in() else "Sign in to Brickworks to share a model."
 	else:
 		_status.text = "This model has a link. Publish again to update what it shows."
@@ -203,8 +222,17 @@ func _check_link(id: String) -> void:
 		if one is Dictionary and str((one as Dictionary).get("id", "")) == id:
 			var up: bool = bool((one as Dictionary).get("published", false))
 			state = "published" if up else "unpublished"
+			# The box as the link is, so Update the link does not take a
+			# listed model out of the gallery by surprise.
+			var barred: bool = bool((one as Dictionary).get("barred", false))
+			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
+			_list.disabled = barred
 			_status.text = ("Shared at this link. Publish again to update what it shows."
 				if up else "Taken down. Publish again to bring it back at the same link.")
+			if up and _list.button_pressed:
+				_status.text = "Shared at this link and listed in the gallery. Publish again to update it."
+			if barred:
+				_status.text += " Brickworks took it out of the gallery, so it cannot be listed there."
 			_show_link(id)
 			return
 
@@ -254,6 +282,9 @@ func publish() -> void:
 		body["image"] = Marshalls.raw_to_base64(png)
 	if not store.share_id.is_empty():
 		body["id"] = store.share_id
+	body["listed"] = _list.button_pressed and not _list.disabled
+	if not store.remixed_from.is_empty():
+		body["remixed_from"] = store.remixed_from
 	var answer: Dictionary = await shared.publish(token, body)
 	# A link that is not this account's — the model came from somebody
 	# else's link, or another account shared it on this device — or one
@@ -275,7 +306,11 @@ func publish() -> void:
 	url = str(said.get("url", url))
 	embed = str(said.get("embed", embed))
 	_link.text = url
-	_status.text = "%s at this link, %d parts. Anyone with it can look — no account needed." % [
+	var listed: bool = bool(said.get("listed", false))
+	_list.button_pressed = listed
+	_status.text = ("%s at this link and listed in the gallery, %d parts. Anyone can find it "
+		+ "at brickworks.diy/gallery — no account needed." if listed
+		else "%s at this link, %d parts. Anyone with it can look — no account needed.") % [
 		"Updated" if bool(said.get("updated", false)) else "Shared", int(said.get("parts", 0))]
 
 
@@ -294,6 +329,9 @@ func unpublish() -> void:
 		_fail(SharedModels.trouble(answer, "Brickworks could not take it down just now."))
 		return
 	state = "unpublished"
+	# Out of the gallery with it (api/share.js); listed again only if
+	# ticked again.
+	_list.button_pressed = false
 	_show_link(store.share_id)
 	_status.text = "Taken down: the link now says the model is no longer shared. Publish again to bring it back at the same link."
 
@@ -333,7 +371,7 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	var named_controls: Dictionary = {"share_name": _name, "share_credit": _credit,
-		"share_publish": _publish, "share_done": _done}
+		"share_list": _list, "share_publish": _publish, "share_done": _done}
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
 	if _link_box.is_visible_in_tree():
@@ -348,7 +386,9 @@ func controls_by_name() -> Dictionary:
 ## What a browser test cannot read off the canvas.
 func page_state() -> Dictionary:
 	return {"open": visible, "state": state, "id": store.share_id if store != null else "",
-		"url": url, "embed": embed, "status": _status.text if _status != null else ""}
+		"url": url, "embed": embed, "status": _status.text if _status != null else "",
+		"listed": _list.button_pressed if _list != null else false,
+		"remixed_from": store.remixed_from if store != null else ""}
 
 
 ## Escape closes it, like the other panels.
