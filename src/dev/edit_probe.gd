@@ -226,27 +226,76 @@ func _unknown_numbers(assistant: Assistant, world: BrickWorld) -> void:
 		print("  FAIL  it also changed how many bricks there are")
 
 
-## And a design in two halves is noticed, without being refused.
+## And a design in two halves is refused unless the half apart is named.
+##
+## A remark let the held-out sports car finish with a nameplate lying loose
+## on the ground in front of it, saying every check passed. A piece apart is
+## an item of its own (a stand, a sign) only when an assembly names it.
 func _pieces(assistant: Assistant) -> void:
+	# A stack of twelve, and one brick on the ground four studs from it: a part
+	# a twelfth of the model's size, standing apart.
 	var model := Assistant.Model.new()
-	for raw: Variant in [
-		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0},
-		{"part": "3001", "color": 4, "x": 0, "y": 3, "z": 0},
-		{"part": "3001", "color": 1, "x": 10, "y": 0, "z": 0},
-	]:
-		model.placements.append(Assistant.Placement.from_dict(raw))
+	for n: int in 12:
+		model.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 4, "x": 0, "y": 3 * n, "z": 0}))
+	model.placements.append(Assistant.Placement.from_dict(
+		{"part": "3001", "color": 1, "x": 6, "y": 0, "z": 0}))
+	var apart: Assistant.Placement = model.placements[-1]
 	var verdict: Dictionary = assistant._check(model, true)
-	if int(verdict.get("pieces", 0)) == 2:
-		print("  ok    a model in two halves is counted as two pieces")
+	_said("a model in two halves is counted as two pieces",
+		int(verdict.get("pieces", 0)) == 2, "%d" % int(verdict.get("pieces", -1)))
+	_said("and the half apart that nothing names is refused as loose: %s"
+		% verdict["summary"], not bool(verdict["ok"])
+		and (verdict["kinds"] as Array).has("loose") and int(verdict["loose"]) == 1
+		and str(verdict["feedback"]).contains("name it"), verdict["summary"])
+	# Named in a box of its own: an item, not a part come off.
+	var plate: Array[Dictionary] = [{"name": "nameplate", "where": {"x_from": 5, "x_to": 9}}]
+	model.assemblies = plate
+	verdict = assistant._check(model, true)
+	_said("named in an assembly of its own it stands apart as an item: %s, %s"
+		% [verdict["summary"], ", ".join(PackedStringArray(verdict["items"]))],
+		bool(verdict["ok"]) and int(verdict["loose"]) == 0
+		and PackedStringArray(verdict["items"]).has("nameplate"), verdict["summary"])
+	# Named in a box that holds the model too: still loose.
+	var all: Array[Dictionary] = [{"name": "everything", "where": {}}]
+	model.assemblies = all
+	verdict = assistant._check(model, true)
+	_said("a box holding the model as well does not name it apart: %s"
+		% verdict["summary"], not bool(verdict["ok"]), verdict["summary"])
+	# A file's sub-model names it the same way.
+	model.assemblies = []
+	apart.group = "Stand"
+	verdict = assistant._check(model, true)
+	_said("a file's sub-model names it too: %s" % verdict["summary"],
+		bool(verdict["ok"]) and int(verdict["loose"]) == 0, verdict["summary"])
+	# And a piece of the person's own is theirs to leave.
+	apart.group = ""
+	apart.mine = false
+	verdict = assistant._check(model, true)
+	_said("a piece of the person's own beside the design is left alone: %s"
+		% verdict["summary"], bool(verdict["ok"]), verdict["summary"])
+	# A piece of a size with the model is a scene's other thing, said as before.
+	apart.mine = true
+	for n: int in 11:
+		model.placements.append(Assistant.Placement.from_dict(
+			{"part": "3001", "color": 1, "x": 6, "y": 3 * (n + 1), "z": 0}))
+	verdict = assistant._check(model, true)
+	_said("a second stack as big is a scene, said and not refused: %s"
+		% verdict["summary"], bool(verdict["ok"])
+		and str(verdict["feedback"]).contains("pieces that nothing joins"), verdict["summary"])
+	# An edit names one: assemblies on edit_model.
+	var named: Array[Dictionary] = Assistant._read_assemblies({"assemblies": [
+		{"name": "stand", "x_from": 9, "x_to": 13, "z_from": 0, "z_to": 2}]})
+	_said("edit_model reads an assembly to name", named.size() == 1
+		and str(named[0]["name"]) == "stand", str(named))
+
+
+func _said(what: String, ok: bool, why: String) -> void:
+	if ok:
+		print("  ok    " + what)
 	else:
 		_failures += 1
-		print("  FAIL  two separated stacks counted as %d piece(s)"
-			% int(verdict.get("pieces", -1)))
-	if not bool(verdict["ok"]):
-		_failures += 1
-		print("  FAIL  and it was refused for it: %s" % verdict["summary"])
-	else:
-		print("  ok    and it is not refused for it")
+		print("  FAIL  %s (%s)" % [what, why])
 
 
 ## A submitted design does not get to stand where somebody else's brick
