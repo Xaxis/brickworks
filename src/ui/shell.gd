@@ -522,6 +522,10 @@ func _define() -> void:
 		Callable(),
 		"What is selected: its part, colour, where it stands and what it is joined to")
 	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
+	_add("show_properties", "Properties", 0, func() -> void:
+		(app.get("_bin_dock") as SideDock).set_open(true)
+		inspector.set_open(true), selected,
+		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
@@ -617,6 +621,46 @@ func _define() -> void:
 	_add("website", "Brickworks website", 0,
 		func() -> void: OS.shell_open("https://brickworks.diy"))
 	_add("about", "About Brickworks", 0, _show_about)
+
+
+## What a right click on a part offers: the verbs a person reaches for,
+## each the command Edit or Build has, greyed where it would do nothing.
+## A right click on a part did nothing (brickworks.diy, 2026-10-12).
+const ON_A_PART: Array = ["select_connected", "-", "hide", "isolate", "-", "paint",
+	"copy", "delete", "-", "make_submodel", "-", "show_properties"]
+var context: PopupMenu
+
+
+## The menu for a part, at a point on the screen, for the selection the
+## right click left: the part, or the selection it is in.
+func open_context(at: Vector2) -> void:
+	if context == null:
+		context = PopupMenu.new()
+		_fill(context, ON_A_PART)
+		context.set_item_text(item_index(context, "select_connected"),
+			"Select everything joined to it")
+		context.id_pressed.connect(_on_id)
+		add_child(context)
+	_refresh(context)
+	# Painting is with the colour in hand: which one, said.
+	context.set_item_text(item_index(context, "paint"),
+		"Paint with %s" % library.color(builder.held_color).name)
+	context.reset_size()
+	var room: Vector2 = app.get_viewport().get_visible_rect().size
+	var corner: Vector2 = Vector2(minf(at.x, room.x - context.size.x - 4.0),
+		minf(at.y, room.y - context.size.y - 4.0))
+	context.position = Vector2i(corner.max(Vector2.ZERO))
+	context.popup()
+
+
+## Where a command is in one menu: each menu that lists a command has an
+## id of its own for it.
+func item_index(popup: PopupMenu, name: String) -> int:
+	for index: int in popup.item_count:
+		var id: int = popup.get_item_id(index)
+		if id >= 0 and id < _ids.size() and _ids[id] == name:
+			return index
+	return -1
 
 
 ## A menu on the bar, from its list of commands.

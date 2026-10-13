@@ -17,8 +17,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   hand: its ghost follows the pointer and each click puts one down, staying in
   hand for the next as Studio's "repeat inserting" does by default. `Esc` or a
   right click lets go, back to Select, leaving nothing behind. Taking a part off
-  is `Delete` (or the Delete tool): the right button is for looking, never for
-  acting. The mode is always on the toolbar (Select or Place lit, Place's
+  is `Delete` (or the Delete tool). At rest, a right click on a part (not a
+  right drag, which turns the view) selects it, unless it is in the selection
+  already, and opens its menu (`Shell.open_context`): Select everything joined
+  to it, Hide, Show only the selection, Paint with the colour in hand (named),
+  Copy, Delete, Make a sub-assembly…, Properties, each Edit's or Build's own
+  command, greyed where it would do nothing. It did nothing (2026-10-12). The mode is always on the toolbar (Select or Place lit, Place's
   tooltip naming the part), in the status bar's hint and in the pointer.
   `tools/web/controls_flow.mjs` counts a person's first tasks in clicks and keys
   on a build, the old way (`--recipe=old`) or this one.

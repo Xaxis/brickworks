@@ -1468,6 +1468,7 @@ func _first_timer() -> void:
 	await _the_palette_stays_put()
 	await _the_note_says_the_selection()
 	await _undo_says_what()
+	await _right_click_a_part()
 	await _an_untouched_example()
 
 
@@ -1574,6 +1575,48 @@ func _menus_show_the_real_keys() -> void:
 	await _shot("first_timer_view_menu")
 	view.hide()
 	await _frames(3)
+
+
+## A right click on a part did nothing. Now a menu of what a person
+## reaches for, each the command Edit or Build has.
+func _right_click_a_part() -> void:
+	var shell: Shell = _main.get("_shell")
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	var blue: int = _bricks_near(Vector3(60, 0, 20))[0]
+	var on_blue: Vector2 = _screen(Vector3(60, 24, 20))
+	await _move(on_blue)
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_RIGHT
+		event.pressed = down
+		event.position = _as_event(on_blue)
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2)
+	await _frames(4)
+	var menu: PopupMenu = shell.get("context")
+	var words: PackedStringArray = []
+	if menu != null:
+		for index: int in menu.item_count:
+			if not menu.is_item_separator(index):
+				words.append(menu.get_item_text(index))
+	_check("a right click on a part opens its menu (%s)" % ", ".join(words),
+		menu != null and menu.visible)
+	_check("...on that part, selected", _builder.selection.keys() == [blue])
+	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
+		"Select everything joined to it, Hide, Show only the selection, Paint with")
+		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
+		and words.has("Properties"))
+	await _shot("first_timer_part_menu")
+	if menu == null:
+		return
+	var hide_id: int = menu.get_item_id(int(shell.call("item_index", menu, "hide")))
+	menu.id_pressed.emit(hide_id)
+	menu.hide()
+	await _frames(4)
+	_check("...and Hide there hides it", _world.get_brick(blue).hidden)
+	await _key_alt(KEY_H)
 
 
 ## Choosing a part moved the palette 19 px (its note wrapped to a second

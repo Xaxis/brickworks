@@ -3492,7 +3492,19 @@ func _mac_right_click(button: InputEventMouseButton) -> bool:
 ## A right click: lets go of what is in hand and goes back to Select, as
 ## Studio's does. It takes nothing off the model (Delete does, or the Delete
 ## tool) — the right button is for looking.
-func _right_click() -> void:
+func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
+	# At rest, on a part: its menu, as Studio and Mecabricks have one. The
+	# part is selected first unless it is already in the selection, which
+	# the menu then acts on whole.
+	if _verbs != null and _shell != null and at.x >= 0.0 and _verbs.mode == "select" \
+			and not _builder.is_carrying() and not _builder.is_holding_figure():
+		var brick_id: int = _verbs.brick_at(at)
+		if brick_id != 0 and not _builder.is_locked(brick_id):
+			if not _builder.selection.has(brick_id):
+				_builder.select_brick(brick_id, false)
+			_builder.hide_preview()
+			_shell.open_context(at)
+			return
 	if _verbs != null:
 		if _builder.is_carrying():
 			_verbs.put_away()
@@ -3662,7 +3674,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _camera.turned_rather_than_clicked():
 			return
-		_right_click()
+		_right_click(button.position)
 		return
 
 	if button.button_index != MOUSE_BUTTON_LEFT:
@@ -3765,7 +3777,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var was_pending: bool = _pending_left
 	_pending_left = false
 	if was_pending and _pending_right:
-		_right_click()
+		_right_click(_press_at)
 		return
 	# Alt and a click takes the part under the pointer into hand, in its
 	# colour: Studio's eyedropper.
