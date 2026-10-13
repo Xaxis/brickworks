@@ -1464,6 +1464,7 @@ func _first_timer() -> void:
 
 	await _edit_cut()
 	await _hide_says_its_keys()
+	await _menus_show_the_real_keys()
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the
@@ -1513,6 +1514,62 @@ func _hide_says_its_keys() -> void:
 		and _model().any(func(b: BrickWorld.Brick) -> bool: return b.hidden))
 	await _key(KEY_ESCAPE)
 	await _key_alt(KEY_H)
+
+
+## The keys the menus show are the keys that do it, written as a person
+## writes them. View said Q and E turn the model (Shift-Q and Shift-E do; Q
+## takes the last part) and that orthographic is "QuoteLeft".
+func _menus_show_the_real_keys() -> void:
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	var engine_names: PackedStringArray = []
+	var wrong: PackedStringArray = []
+	var allowed := RegEx.create_from_string("^(F[0-9]+|Enter|Delete|Ctrl|Shift|Alt|Command|Cmd|.)$")
+	for menu: MenuButton in (_main.get("_bar") as ModelBar).menus.get_children():
+		var list: PopupMenu = menu.get_popup()
+		for index: int in list.item_count:
+			var accel: int = list.get_item_accelerator(index)
+			if accel == 0:
+				continue
+			var shown: String = OS.get_keycode_string(accel)
+			for part: String in shown.split("+"):
+				if allowed.search(part) == null:
+					engine_names.append("%s: %s" % [list.get_item_text(index), shown])
+			var id: int = list.get_item_id(index)
+			var name: String = shell._ids[id] if id >= 0 and id < shell._ids.size() else ""
+			var bound: int = shell.command(name).accel if not name.is_empty() else accel
+			if (accel & ~KEY_CODE_MASK) != (bound & ~KEY_CODE_MASK):
+				wrong.append("%s: %s" % [list.get_item_text(index), shown])
+	_check("no menu writes a key by the engine's name for it (%s)" % ", ".join(engine_names),
+		engine_names.is_empty())
+	_check("...and every key shown has the modifiers it is pressed with (%s)" % ", ".join(wrong),
+		wrong.is_empty())
+	var view: PopupMenu = shell.menu("View").get_popup()
+	var left_at: int = view.get_item_index(shell.menu_id("turn_left"))
+	_check("View says Shift+Q turns the model left (%s)" % OS.get_keycode_string(
+		view.get_item_accelerator(left_at)),
+		OS.get_keycode_string(view.get_item_accelerator(left_at)) == "Shift+Q")
+	var ortho_at: int = view.get_item_index(shell.menu_id("ortho"))
+	_check("...and orthographic is ` (%s), as the toolbar's tip writes it (%s)" % [
+		OS.get_keycode_string(view.get_item_accelerator(ortho_at)), shell.key_words("ortho")],
+		shell.key_words("ortho") == "`" and OS.get_keycode_string(
+			view.get_item_accelerator(ortho_at)).length() == 1)
+	var turned: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	var facing: Basis = _world.get_brick(turned).transform.basis
+	await _key(KEY_Q, false, true)
+	_check("...and Shift+Q does turn it, and puts no part in hand", verbs.mode != "place"
+		and _world.get_brick(turned) != null
+		and not _world.get_brick(turned).transform.basis.is_equal_approx(facing))
+	await _key(KEY_E, false, true)
+	var was_square: bool = _camera.is_square_on()
+	await _key(KEY_QUOTELEFT)
+	_check("...and ` puts the view square on", _camera.is_square_on() != was_square)
+	await _key(KEY_QUOTELEFT)
+	await _click(shell.menu("View").get_global_rect().get_center())
+	await _frames(4)
+	await _shot("first_timer_view_menu")
+	view.hide()
+	await _frames(3)
 
 
 # -- helpers ------------------------------------------------------------------

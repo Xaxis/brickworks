@@ -316,9 +316,49 @@ func ticked(name: String) -> int:
 ## What a command's key reads as, for a tooltip: "Ctrl+Z".
 func key_words(name: String) -> String:
 	var found: Command = _commands.get(name)
-	if found == null or found.accel == 0:
+	if found == null:
 		return ""
-	return OS.get_keycode_string(found.accel)
+	return key_text(found.accel)
+
+
+## The keys the engine names by what its source calls them — "QuoteLeft",
+## "Comma" — as a person writes them on a key or in a manual.
+const WRITTEN: Dictionary = {KEY_QUOTELEFT: "`", KEY_COMMA: ",", KEY_PERIOD: ".",
+	KEY_SLASH: "/", KEY_BACKSLASH: "\\", KEY_MINUS: "-", KEY_EQUAL: "=",
+	KEY_BRACKETLEFT: "[", KEY_BRACKETRIGHT: "]", KEY_SEMICOLON: ";",
+	KEY_APOSTROPHE: "'"}
+
+
+## A key and its modifiers as a person writes them: "Ctrl+Z", "Shift+Q",
+## "`". The menus showed the orthographic key as "QuoteLeft", and turning
+## the model as Q when it is Shift-Q (brickworks.diy, 2026-10-12).
+static func key_text(accel: int) -> String:
+	if accel == 0:
+		return ""
+	var parts := PackedStringArray()
+	if accel & KEY_MASK_CMD_OR_CTRL or accel & KEY_MASK_CTRL:
+		parts.append(EditVerbs.held_key())
+	if accel & KEY_MASK_ALT:
+		parts.append("Alt")
+	if accel & KEY_MASK_SHIFT:
+		parts.append("Shift")
+	var code: int = accel & KEY_CODE_MASK
+	parts.append(str(WRITTEN[code]) if WRITTEN.has(code) else OS.get_keycode_string(code))
+	return "+".join(parts)
+
+
+## What a menu is given to show for a key. The menu writes a key with the
+## engine's own name for it and has no way to be told other words; for a
+## key it misnames, the character it would draw for itself. The menus never
+## answer a key (Shell._menu), so this is only ever read, never pressed.
+const SHOWN_AS: Dictionary = {KEY_QUOTELEFT: 0x201B, KEY_COMMA: 0x201A}
+
+
+static func menu_accel(accel: int) -> int:
+	var code: int = accel & KEY_CODE_MASK
+	if not SHOWN_AS.has(code):
+		return accel
+	return (accel & ~KEY_CODE_MASK) | int(SHOWN_AS[code])
 
 
 func _define() -> void:
@@ -466,10 +506,11 @@ func _define() -> void:
 			or not assemblies.entered.is_empty()),
 		"Everything but the selection, or the sub-assembly being edited, see-through")
 	_ticked("xray", func() -> bool: return see_inside.seeing_through)
-	_add("turn_left", "Turn the model left", KEY_Q, func() -> void: app.call("_turn_model", -1),
-		something)
-	_add("turn_right", "Turn the model right", KEY_E, func() -> void: app.call("_turn_model", 1),
-		something)
+	# Shift: Q alone takes the last part back into hand (Tools, Place).
+	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
+		func() -> void: app.call("_turn_model", -1), something)
+	_add("turn_right", "Turn the model right", SHIFT | KEY_E,
+		func() -> void: app.call("_turn_model", 1), something)
 	_add("panel_parts", "Parts bin", 0, func() -> void:
 		(app.get("_bin_dock") as SideDock).toggle())
 	_ticked("panel_parts", func() -> bool: return (app.get("_bin_dock") as SideDock).is_open())
@@ -641,12 +682,13 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 				continue
 			var id: int = _ids.size()
 			_ids.append(item)
+			var shown: int = menu_accel(found.accel)
 			if found.radio:
-				popup.add_radio_check_item(found.words, id, found.accel)
+				popup.add_radio_check_item(found.words, id, shown)
 			elif found.ticked.is_valid():
-				popup.add_check_item(found.words, id, found.accel)
+				popup.add_check_item(found.words, id, shown)
 			else:
-				popup.add_item(found.words, id, found.accel)
+				popup.add_item(found.words, id, shown)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
 

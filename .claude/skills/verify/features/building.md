@@ -80,6 +80,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   One name, one command: Edit's Cut is `cut_parts` and the cut-away (`K`) is
   `cut`, which had replaced it, so Edit, Cut sliced the model open
   (`Shell._add` now refuses a second command of a name).
+  A key is shown as the binding a press really reaches, written as a person
+  writes it (`Shell.key_text`: Shift+Q turns the model, `` ` `` is
+  orthographic, `,` Settings; never the engine's "QuoteLeft" or "Comma"). The
+  menus can only draw the engine's name for a key, so one it misnames is
+  handed the character it then draws (`Shell.menu_accel`).
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
