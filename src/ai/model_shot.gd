@@ -71,6 +71,10 @@ const ANGLES: Dictionary = {
 	"left": Vector3(-1.0, 0.18, 0.0),
 	"right": Vector3(1.0, 0.18, 0.0),
 	"top": Vector3(0.0, 1.0, 0.02),
+	# Straight down too, but the right way up for a picture laid flat: its
+	# top edge (z = 0) at the top and x to the right, as it hangs on a wall.
+	# "top" shows it turned half round.
+	"face": Vector3(0.0, 1.0, -0.02),
 }
 
 var _viewport: SubViewport
@@ -352,8 +356,10 @@ func _take(world: BrickWorld, from: String,
 	var reach: float = bounds.size.length()
 	_camera.position = centre + direction * reach
 	# Looking straight down has no usable up vector along Y.
-	_camera.look_at(centre,
-		Vector3.BACK if absf(direction.y) > 0.95 else Vector3.UP)
+	var up_is: Vector3 = Vector3.BACK if absf(direction.y) > 0.95 else Vector3.UP
+	if from == "face":
+		up_is = Vector3.FORWARD
+	_camera.look_at(centre, up_is)
 
 	# How much of the view the model actually needs, worked out by
 	# projecting its eight corners onto what the camera calls across and

@@ -50,10 +50,12 @@ const QUARTER := "25269"    ## Tile 1 x 1 Corner Round, a quarter circle
 const SPECK := "6141"       ## Plate 1 x 1 Round, its stud proud
 const SLOPE := "54200"      ## Slope 30 1 x 1 x 2/3, the cheese slope
 const RISER := "3024"       ## Plate 1 x 1, under one stud of relief
+const BIG_ROUND := "14769"  ## Tile 2 x 2 Round, for the brightest stars
 
 ## What a stud of the picture is. HOLE is a transparent pixel: nothing on
-## the panel's studs there.
-enum Style { HOLE, ROUND, SQUARE, QUARTER, STAR, SPECK, SLOPE }
+## the panel's studs there. COVERED is under a 2 x 2 star laid from the
+## stud up and to the left of it: plates under it, nothing of its own on top.
+enum Style { HOLE, ROUND, SQUARE, QUARTER, STAR, SPECK, SLOPE, COVERED }
 
 ## The tiles a flat run merges into, largest first: part, studs along x
 ## and along z unturned. All are longer along x unturned.
@@ -69,11 +71,16 @@ const PLATES: Array = [
 
 ## The solid colours: the classic mosaic's palette without its
 ## transparent, pearl, metallic and chrome ones, which here are accents.
-## And Medium Lilac (85), which the classic palette lacks: the first Milky Way
-## Claude planned asked for it for the violet between the arms, was refused,
-## and the nearest the palette had was Magenta.
+## And the modern colours the classic palette predates, which Art sets are
+## laid in and every Art element is made in: Medium Lilac (85), Dark and
+## Medium Azure (321, 322), Light Aqua (323), Medium Lavender and Lavender
+## (30, 31), Coral (353) and Yellowish Green (326). Two Milky Ways Claude
+## planned asked for one each — Medium Lilac for the violet between the arms,
+## Dark Azure for the arms — were refused, and took the nearest left:
+## Magenta, and Light Blue.
 const SOLID: Array[int] = [15, 71, 7, 72, 0, 4, 5, 27, 2, 10, 1, 9, 14, 25, 70, 28,
-	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308, 379, 378, 85]
+	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308, 379, 378,
+	85, 321, 322, 323, 30, 31, 353, 326]
 ## Finishes a star may take: trans-clear, glow-in-the-dark white, pearl
 ## white, metallic gold and silver, pearl gold and grey, and the trans
 ## colours a nebula is made of.
@@ -157,6 +164,8 @@ class Plan extends RefCounted:
 	var relief: PackedByteArray = PackedByteArray()
 	## 1 where an accent finish may be used.
 	var accent: PackedByteArray = PackedByteArray()
+	## 1 where a star is a 2 x 2 round tile, at its low corner.
+	var big: PackedByteArray = PackedByteArray()
 	## For a quarter, the colour across the edge, which its cut corner shows.
 	var across_edge: PackedColorArray = PackedColorArray()
 	## A star's finish, a colour code, or -1 to match one to the picture.
@@ -190,6 +199,8 @@ class Plan extends RefCounted:
 		relief.fill(0)
 		accent.resize(a * d)
 		accent.fill(0)
+		big.resize(a * d)
+		big.fill(0)
 		across_edge.resize(a * d)
 		across_edge.fill(Color(0, 0, 0))
 		finish.resize(a * d)
@@ -218,6 +229,9 @@ class Guide extends RefCounted:
 	var colour: PackedInt32Array = PackedInt32Array()
 	## A star put exactly there, in this finish; -1 for none.
 	var point: PackedInt32Array = PackedInt32Array()
+	## 1 at the low corner of a star put as a 2 x 2 round tile, 2 on the
+	## three other studs it covers.
+	var big: PackedByteArray = PackedByteArray()
 	var palette: PackedInt32Array = PackedInt32Array()
 	var base_colour: int = -1
 	## How high relief read off the picture rises where [member relief]
@@ -241,6 +255,8 @@ class Guide extends RefCounted:
 		colour.fill(-1)
 		point.resize(cells)
 		point.fill(-1)
+		big.resize(cells)
+		big.fill(0)
 
 
 ## What a region's top is laid in: as the picture reads (round where it is
@@ -302,6 +318,8 @@ static func kind_of(placement: Assistant.Placement, panel: int) -> String:
 			return "16 × 16 panels"
 		ROUND:
 			return "stars" if ACCENTS.has(placement.color) else "round tiles"
+		BIG_ROUND:
+			return "large stars"
 		SQUARE:
 			return "square tiles"
 		QUARTER:
@@ -445,6 +463,16 @@ static func read(plan: Plan, options: Options, library: PartLibrary,
 		for i: int in n:
 			if guide.relief[i] >= 0 and hole[i] == 0:
 				plan.relief[i] = clampi(guide.relief[i], 0, MOST_DEPTH)
+		# A 2 x 2 star stands level on all four of its studs.
+		for i: int in n:
+			if guide.big[i] != 1 or not plan.inside(i % plan.across + 1, i / plan.across + 1):
+				continue
+			var four: Array[int] = [i, i + 1, i + plan.across, i + plan.across + 1]
+			var level: int = 0
+			for j: int in four:
+				level = maxi(level, plan.relief[j])
+			for j: int in four:
+				plan.relief[j] = level
 	# The ground the slopes are read off, before any star is lifted: a star
 	# set proud is not a hill to slope up to.
 	var terrain: PackedByteArray = plan.relief.duplicate()
@@ -506,6 +534,10 @@ static func read(plan: Plan, options: Options, library: PartLibrary,
 
 			if star[i] == 1:
 				style = Style.STAR
+				if guide != null and guide.big[i] == 2:
+					style = Style.COVERED
+				elif guide != null and guide.big[i] == 1:
+					plan.big[i] = 1
 				plan.accent[i] = 1 if options.accents else 0
 				if guide != null:
 					plan.finish[i] = guide.point[i] if guide.point[i] >= 0 else guide.finish[i]
@@ -518,7 +550,7 @@ static func read(plan: Plan, options: Options, library: PartLibrary,
 			var sloping: bool = lab[i].distance_to(ground) >= BACKGROUND
 			if guide != null and guide.relief[i] >= 0:
 				sloping = guide.relief[i] > 0
-			if style != Style.STAR and options.depth > 0 and sloping:
+			if style != Style.STAR and style != Style.COVERED and options.depth > 0 and sloping:
 				var up := Vector2i.ZERO
 				var most: int = terrain[i]
 				for side: Vector2i in SIDES:
@@ -536,7 +568,7 @@ static func read(plan: Plan, options: Options, library: PartLibrary,
 	# Stars set a plate proud of what they are in.
 	if options.depth > 0:
 		for i: int in n:
-			if plan.style[i] == Style.STAR:
+			if plan.style[i] == Style.STAR or plan.style[i] == Style.COVERED:
 				plan.relief[i] = mini(plan.relief[i] + 1, MOST_DEPTH + 1)
 
 
@@ -856,9 +888,9 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 		for x: int in plan.across:
 			var i: int = plan.at(x, z)
 			var style: int = plan.style[i]
-			if style == Style.HOLE:
+			if style == Style.HOLE or style == Style.COVERED:
 				continue
-			var part: String = part_for(style, flat)
+			var part: String = BIG_ROUND if plan.big[i] == 1 else part_for(style, flat)
 			var accented: bool = style == Style.STAR and plan.accent[i] == 1 and options.accents
 			var key: String = part + ("+" if accented else "")
 			if not palettes.has(key):
@@ -945,7 +977,8 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 			if style == Style.HOLE or style == Style.SQUARE or colour[i] < 0:
 				continue
 			var turn: int = plan.turn[i] if style == Style.QUARTER or style == Style.SLOPE else 0
-			_add(art, part_for(style, flat), colour[i], x, SURFACE + plan.relief[i], z, turn,
+			_add(art, BIG_ROUND if plan.big[i] == 1 else part_for(style, flat), colour[i], x,
+				SURFACE + plan.relief[i], z, turn,
 				x / PANEL + (z / PANEL) * art.panels.x)
 	return art
 
@@ -1216,6 +1249,8 @@ static func footprint(part: String, rot: int) -> Vector2i:
 				return along if rot % 2 == 0 else Vector2i(along.y, along.x)
 	if part == BASE:
 		return Vector2i(PANEL, PANEL)
+	if part == BIG_ROUND:
+		return Vector2i(2, 2)
 	return Vector2i.ONE
 
 
@@ -1229,7 +1264,6 @@ static func picture_of(art: Art, library: PartLibrary, px: int = 6) -> Image:
 		false, Image.FORMAT_RGBA8)
 	var base: PartLibrary.BrickColor = library.color(art.base_colour)
 	image.fill(base.rgb if base != null else Color.BLACK)
-	var r: float = px / 2.0
 	for placement: Assistant.Placement in art.placements:
 		if placement.y < SURFACE or plan.style.is_empty():
 			continue
@@ -1237,7 +1271,8 @@ static func picture_of(art: Art, library: PartLibrary, px: int = 6) -> Image:
 		var z0: int = int(placement.z)
 		var style: int = plan.style[plan.at(x0, z0)]
 		# The relief plates are covered by what is on them.
-		if style != Style.SQUARE and placement.part != part_for(style, false) \
+		if style != Style.SQUARE and placement.part != BIG_ROUND \
+				and placement.part != part_for(style, false) \
 				and placement.part != part_for(style, true):
 			continue
 		if style == Style.SQUARE and not (placement.part == SQUARE
@@ -1247,6 +1282,7 @@ static func picture_of(art: Art, library: PartLibrary, px: int = 6) -> Image:
 		var tone: Color = colour.rgb if colour != null else Color.MAGENTA
 		tone = tone.lightened(0.05 * (int(placement.y) - SURFACE))
 		var size: Vector2i = footprint(placement.part, placement.rot)
+		var rr: float = size.x * px / 2.0
 		var corner := Vector2.ZERO
 		if style == Style.QUARTER:
 			for facing: Vector2i in QUARTER_TURN:
@@ -1258,9 +1294,9 @@ static func picture_of(art: Art, library: PartLibrary, px: int = 6) -> Image:
 				var shade: Color = tone
 				match style:
 					Style.ROUND, Style.STAR, Style.SPECK:
-						if at.distance_to(Vector2(r, r)) > r:
+						if at.distance_to(Vector2(rr, rr)) > rr:
 							continue
-						if style == Style.SPECK and at.distance_to(Vector2(r, r)) < r * 0.55:
+						if style == Style.SPECK and at.distance_to(Vector2(rr, rr)) < rr * 0.55:
 							shade = tone.lightened(0.12)
 					Style.QUARTER:
 						if at.distance_to(corner) > px:

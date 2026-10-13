@@ -44,6 +44,7 @@ func _run() -> void:
 
 	await _picture_case()
 	_svg_case()
+	_big_star_case()
 	_refusals()
 	await _tool_case()
 	await _dialog_case()
@@ -209,6 +210,15 @@ func _picture_case() -> void:
 
 	_check_made_in(art)
 	_check_one_piece(art)
+	var measured: String = ArtPlan.measured(art, _library)
+	_check("measured as the critique asks: %s" % measured.replace("\n", " ").left(200),
+		measured.contains("Frame: 48 x 32 studs") and measured.contains("Stars: 3 —")
+		and measured.contains("Relief:") and measured.contains("the edge is flat"))
+	# The disc is 0.72 of 48 studs across, 34.6, so 34 stud centres (71%);
+	# and 2 x 0.16 x 48 = 15.4 down, 16 rows of 32 (50%). What is raised
+	# spans that, whatever the sky is read as.
+	_check("the frame is the raised subject's: 71% by 50%",
+		measured.contains("The raised subject spans 71% of the width and 50% of the height"))
 
 	# As the tool lays it: into the world, a parts list to match.
 	_world.clear()
@@ -288,6 +298,48 @@ func _svg_case() -> void:
 	_check_one_piece(art)
 
 
+## The brightest stars as 2 x 2 round tiles: one element on four studs, level,
+## a plate proud, nothing else on top of them, and still one piece.
+func _big_star_case() -> void:
+	print("\nthe brightest stars as 2 x 2 round tiles")
+	var plan: ArtPlan = ArtPlan.parse({"svg": ('<svg xmlns="http://www.w3.org/2000/svg" '
+			+ 'viewBox="0 0 32 16"><rect width="32" height="16" fill="#05050a"/></svg>'),
+		"panels": [2, 1], "regions": [{"everything": true, "texture": "smooth", "relief": 0}],
+		"points": [{"at": [0.25, 0.5], "size": 2}, {"at": [0.75, 0.5], "size": 2,
+			"finish": "pearl-gold"}, {"at": [0.5, 0.25]}]}, _library)
+	_check("accepted: %s" % ("yes" if plan.ok() else plan.trouble()), plan.ok())
+	var art: MosaicArt.Art = plan.lay(null, _library)
+	if art == null:
+		return
+	var big: Array[Assistant.Placement] = []
+	for placement: Assistant.Placement in art.placements:
+		if placement.part == MosaicArt.BIG_ROUND:
+			big.append(placement)
+	var tops: Dictionary = _tops(art)
+	var whole: int = 0
+	for star: Assistant.Placement in big:
+		var one: bool = int(star.y) == MosaicArt.SURFACE + 1
+		for dz: int in 2:
+			for dx: int in 2:
+				one = one and tops.get(Vector2i(int(star.x) + dx, int(star.z) + dz)) == star
+		if one:
+			whole += 1
+	_check("two 2 x 2 round tiles, each the top of all four of its studs, a plate up: %s"
+		% ", ".join(big.map(func(p: Assistant.Placement) -> String:
+			return "(%d, %d) in %s" % [p.x, p.z, _library.color(p.color).name])),
+		big.size() == 2 and whole == 2 and big[0].x == 7 and big[0].z == 7)
+	_check("in finishes the part is made in, the gold one gold",
+		big.size() == 2 and big[1].color == 297
+		and not _library.parts[MosaicArt.BIG_ROUND].never_made_in(big[0].color))
+	_check("the measure counts them by size: %s" % ArtPlan.measured(art, _library).get_slice(
+		"- Stars: ", 1).get_slice("\n", 0), ArtPlan.measured(art, _library).contains("2 x 2"))
+	_check_made_in(art)
+	_check_one_piece(art)
+	var bad: ArtPlan = ArtPlan.parse({"points": [{"at": [0.5, 0.5], "size": 3}]}, _library)
+	_check("a star of size 3 is refused: \"%s\"" % (bad.errors[0] if not bad.ok() else ""),
+		not bad.ok() and bad.trouble().contains("points[0].size is 3"))
+
+
 ## Plans that are not plans, each refused with the fault named.
 func _refusals() -> void:
 	print("\nmalformed plans are refused, each fault named")
@@ -325,11 +377,13 @@ func _refusals() -> void:
 		var said: String = plan.trouble() if not plan.ok() else "(accepted)"
 		_check("%s: \"%s\"" % [case[0], said.split("\n- ")[1] if said.contains("\n- ") else said],
 			not plan.ok() and said.contains(str(case[2])))
-	# What the first real Milky Way asked for and was refused: Medium Lilac,
-	# for the violet between the arms. The nearest left was Magenta.
-	var lilac: ArtPlan = ArtPlan.parse({"palette": [0, 272, 85, 1],
-		"regions": [{"everything": true, "colour": 85}]}, _library)
-	_check("Medium Lilac, which Art sets are laid in, is a colour a plan may ask for: %s"
+	# What real Milky Ways asked for and were refused: Medium Lilac for the
+	# violet between the arms, Dark Azure for the arms. The nearest left
+	# were Magenta and Light Blue.
+	var lilac: ArtPlan = ArtPlan.parse({"palette": [0, 272, 85, 321, 1],
+		"regions": [{"everything": true, "colour": 85}, {"rect": {"x": 0, "y": 0, "w": 0.5,
+			"h": 1}, "colour": 321}]}, _library)
+	_check("Medium Lilac and Dark Azure, which Art sets are laid in, a plan may ask for: %s"
 		% ("yes" if lilac.ok() else lilac.trouble().split("\n")[1].left(60)), lilac.ok())
 	# Every fault at once, so it can all be fixed in one go.
 	var many: ArtPlan = ArtPlan.parse({"panels": [0, 1], "depth": -1,
@@ -403,8 +457,34 @@ func _tool_case() -> void:
 	_check("make_art lays the plan in place of what was there: %d bricks, said \"%s\""
 		% [_world.brick_count(), said.left(90)], art != null
 		and _world.brick_count() == art.placements.size() and not old_brick)
-	_check("and answers with the picture face on, to judge it by", answer is Array
-		and str((answer as Array)[1].get("type", "")) == "image")
+	var images: int = 0
+	var words: String = ""
+	if answer is Array:
+		for block: Variant in answer as Array:
+			if str((block as Dictionary).get("type", "")) == "image":
+				images += 1
+			else:
+				words += str((block as Dictionary).get("text", "")) + "\n"
+	_check("and answers with the picture face on, to judge it by", images == 1)
+	_check("with what was measured on it and the designers' checklist: %s" % (
+		words.substr(words.find("- Frame"), 120).replace("\n", " ")),
+		words.contains("first look") and words.contains("- Frame: 48 x 32 studs")
+		and words.contains("- Stars: 3 —") and words.contains("the edge is flat")
+		and words.contains("largest patch of one colour") and words.contains("fill the frame")
+		and words.contains("31212") and words.contains("Two revisions at most"))
+	# Revised under the same name: a revision, then the last one.
+	var again: Variant = await _assistant.use_tool("make_art", PLAN)
+	var third: Variant = await _assistant.use_tool("make_art", PLAN)
+	var said_again: String = str((again as Array)[0]["text"]) if again is Array else str(again)
+	var said_last: String = JSON.stringify(third)
+	_check("laid again it is revision 1, then revision 2 and told to stop: \"%s\""
+		% said_again.left(20), said_again.begins_with("Laid (revision 1)")
+		and said_last.contains("revision 2") and said_last.contains("That was the last revision"))
+	var renamed: Dictionary = PLAN.duplicate(true)
+	renamed["name"] = "Another picture"
+	var fresh: Variant = await _assistant.use_tool("make_art", renamed)
+	_check("and a picture of another name is a first look again", fresh is Array
+		and str((fresh as Array)[0]["text"]).begins_with("Laid (first look)"))
 	var tops: Dictionary = {}
 	for brick: BrickWorld.Brick in _world.bricks():
 		if brick.part_id == MosaicArt.ROUND and brick.color_code == 329:
