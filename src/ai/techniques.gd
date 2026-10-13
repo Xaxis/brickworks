@@ -1367,9 +1367,11 @@ static func all() -> Array:
 			"when": "a dome, a sphere or any big curved shell: the surface as small "
 				+ "flat panels, each tipped to the curve on a hinge, never plates "
 				+ "stepped in",
-			"why": "Each panel is a plate with tiles on it, built flat in its own "
-				+ "section on a clip hinge (a bar on 60478's end, 63868's clip on "
-				+ "it), and the panel above is a section within it, hinged at its "
+			"why": "Each panel is plates 1 x 4 along it with tiles across them, built "
+				+ "flat in its own section on a clip hinge (a bar on 60478's end, "
+				+ "63868's clip on it); the plate over the hinge runs from the top "
+				+ "half to the next base, so the panel is one piece whichever way it "
+				+ "hangs. The panel above is a section within it, hinged at its "
 				+ "far end and folded in by one band's angle — so a strip from the "
 				+ "equator up is said once, in plates, and no angle is worked out "
 				+ "for a brick. Here three bands of one strip, the first standing "
@@ -1392,16 +1394,17 @@ static func all() -> Array:
 			"bricks": [
 				{"part": "3001", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "3062b", "color": 72, "x": 1, "y": 3, "z": 0, "rot": 0},
-				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 0, "section": "band 1"},
-				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 2, "rot": 0, "section": "band 1"},
+				{"part": "3710", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 1, "section": "band 1"},
+				{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 1"},
+				{"part": "3710", "color": 71, "x": 1, "y": 0, "z": 0, "rot": 1, "section": "band 1"},
 				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 0, "rot": 0, "section": "band 1"},
 				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 1"},
-				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 0, "section": "band 2"},
-				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 2, "rot": 0, "section": "band 2"},
+				{"part": "3710", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 1, "section": "band 2"},
+				{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 2"},
+				{"part": "3710", "color": 71, "x": 1, "y": 0, "z": 0, "rot": 1, "section": "band 2"},
 				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 0, "rot": 0, "section": "band 2"},
 				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 2"},
-				{"part": "3023", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 3"},
-				{"part": "3023", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 1, "section": "band 3"},
+				{"part": "3710", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 3"},
 				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 0, "rot": 1, "section": "band 3"},
 				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 2, "rot": 1, "section": "band 3"},
 			],

@@ -60,12 +60,18 @@ can occupy the same millimetre.
   within, round a centre, a panel on each hinge at three yaw/pitch pairs, a
   dome 33 studs across of 12 strips (6, and 6 raised on spacers lapping over
   them as scales) of 36 hinged panels at 48 two-axis angles under a dish,
-  held with no overlap, four sideways skins on side studs, an edit saying
+  and a ball of 72 at 84 angles with the same strips hung below its ring on
+  a column, each held with no overlap (each panel's 1 x 4 plates run its
+  length, or a hung one falls apart, and the ring keeps a stud clear of every
+  joint beside it), four sideways skins on side studs, an edit saying
   only a new pitch, and a part tipped by the window read back tipped. It
   fails on the code before (f2cbfe6): the dome's sections are not read at
   all ("hinge": "clip" stops the reader), and with hinge: true its panels
   lie at 2 angles with 115 overlaps. `-- --dome_ldr=PATH --band_ldr=PATH`
-  writes them out to look at (`bench_views.gd --views=corner,front,right,top`).
+  `--ball_ldr=PATH` writes them out to look at (`bench_views.gd
+  --views=corner,front,right,top`). A `shape` dome or ellipsoid 12 studs
+  across or more is answered with a nudge to panels or skins
+  (`Assistant._round_by_panels`).
   The quarter turns are exact (`Section.exact`) and frames lose their float
   dust (`Section.dusted`): a skin on side studs read a ten-millionth of a
   stud off was rasterised a cell away and called adrift.
