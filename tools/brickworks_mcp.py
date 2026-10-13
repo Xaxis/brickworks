@@ -145,6 +145,16 @@ class App:
         self._rest = b""
 
 
+def _cached() -> list[dict] | None:
+    """The copy kept for when the app is closed, or None. Compared before
+    it is written again, so a session listing the tools of an app that has
+    not changed leaves the file (and the checkout) as it was."""
+    try:
+        return json.loads(CACHED_TOOLS.read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def tool_list(app: App) -> list[dict]:
     """The tools, from the app when it is up and from the copy when not.
 
@@ -154,8 +164,8 @@ def tool_list(app: App) -> list[dict]:
     try:
         answer = app.ask("__tools__", {})
         tools = answer.get("tools") or []
-        if tools:
-            CACHED_TOOLS.write_text(json.dumps(tools, indent=2) + "\n")
+        if tools and tools != _cached():
+            CACHED_TOOLS.write_text(json.dumps(tools, indent=2, ensure_ascii=False) + "\n")
     except ConnectionError:
         if not CACHED_TOOLS.exists():
             return []

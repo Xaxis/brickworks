@@ -300,6 +300,14 @@
       "tests": []
     },
     {
+      "id": "cli:keep the mcp in step",
+      "kind": "cli",
+      "entry": "src/dev/mcp_sync_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/mcp_sync_probe.gd   (-- --write writes tools/mcp_tools.json again from the app)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:mcp server",
       "kind": "cli",
       "entry": "tools/brickworks_mcp.py",
@@ -880,6 +888,14 @@
       "entry": "src/parts/part_tool.gd",
       "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:the window's commands over mcp",
+      "kind": "lib",
+      "entry": "src/net/app_tools.gd",
+      "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, undo, open_model, parts_list, render_model, export_model)",
+      "area": "mcp",
       "tests": []
     },
     {

@@ -13581,8 +13581,18 @@ edit away."""
 ## no session from outside — the bench's, a person's My Claude — had ever
 ## read how to work, the rules, the shapes or what a subject needs. The head
 ## says the process and where the rest is; read_guide serves any section.
+##
+## And ends with the rest of the app (AppTools.GUIDE): the floor, the build
+## steps, hoses, posing, undo, rendering and exporting, which a session has
+## and the design loop does not.
 func guidance() -> String:
-	return GUIDE_HEAD + "\n\n" + _system_prompt()
+	return GUIDE_HEAD + "\n\n" + _guide_text()
+
+
+## What read_guide serves sections of: the design loop's own guidance, and
+## the rest of the app's tools.
+func _guide_text() -> String:
+	return _system_prompt() + "\n\n" + AppTools.GUIDE
 
 
 ## What a session reads first, inside the 3,800 characters that reach it.
@@ -13624,7 +13634,9 @@ read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
 kind of subject needs), "real", "colour", "angle" (sections on hinges), \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
-"creative", "changing", "kind", "art"."""
+"creative", "changing", "kind", "art", and "app" (what else the person can \
+do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
+animate_model, undo, open_model, parts_list, render_model, export_model)."""
 
 
 ## Names a session may ask read_guide for, beside the headings' own words.
@@ -13638,13 +13650,16 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"creative": "THE CREATIVE PASS",
 	"changing": "CHANGING SOMETHING THAT IS ALREADY BUILT", "edit": "CHANGING SOMETHING THAT IS ALREADY BUILT",
 	"kind": "HOW REAL SETS OF THIS KIND ARE BUILT", "module": "AND BEYOND THAT, A MODULE SAID AGAIN",
-	"art": "LEGO ART", "mosaic": "LEGO ART"}
+	"art": "LEGO ART", "mosaic": "LEGO ART",
+	"app": "THE REST OF THE APP", "menus": "THE REST OF THE APP", "floor": "THE REST OF THE APP",
+	"steps": "THE REST OF THE APP", "hose": "THE REST OF THE APP", "pose": "THE REST OF THE APP",
+	"render": "THE REST OF THE APP", "export": "THE REST OF THE APP", "undo": "THE REST OF THE APP"}
 
 
 ## One section of the guidance by its name or a word of its heading: the
 ## heading's text to the next heading. The headings, if none matches.
 func read_guide(section: String) -> String:
-	var text: String = _system_prompt()
+	var text: String = _guide_text()
 	var headings: Array[String] = []
 	var at: Array[int] = []
 	var heading := RegEx.create_from_string("(?m)^[A-Z][A-Z ,'-]{4,}$")

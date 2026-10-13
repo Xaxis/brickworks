@@ -15,6 +15,13 @@ whole cycle.
 
 ### Added
 
+- Claude can do what you do from the menus, over the connector, My Claude
+  and a session of your own: choose the floor, edit the build steps, lay a
+  hose, tube or chain between two connectors, swing a hinge or a
+  turntable and animate it, undo and redo, open one of your models, read the parts list
+  and what your collection is short of, render a picture or a turntable,
+  and export the model as LDraw, a Studio .io, a picture, a BrickLink or
+  Rebrickable list, or its building instructions. Each change is one undo.
 - Ask Claude about this…: select parts, right-click one (or Ctrl+K), and
   ask for a change to just those — "make this wing curved", "recolour
   this in tan", "why is this not stable?". Claude sees the parts, where

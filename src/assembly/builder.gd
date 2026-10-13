@@ -1074,6 +1074,21 @@ func extend_last(steps: Array) -> void:
 	(last["steps"] as Array).append_array(steps)
 
 
+## Everything kept since the history was [param depth] deep, as one step:
+## one call of a session's tool is one undo, however many of the window's
+## own commands it took (AppTools). The newest first, as they are undone.
+func fold_since(depth: int) -> void:
+	if _history.size() <= depth + 1:
+		return
+	var steps: Array = []
+	var said := PackedStringArray()
+	while _history.size() > depth:
+		var last: Dictionary = _history.pop_back()
+		said.insert(0, _words_for(last))
+		steps.append(last)
+	_history.append({"undo": "group", "steps": steps, "words": "; ".join(said)})
+
+
 ## A brick laid again as another number is the same brick to the history:
 ## a baseplate taken up and put back by a change of floor (FloorLayer).
 func renumber(old_id: int, new_id: int) -> void:

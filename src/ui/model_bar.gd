@@ -409,9 +409,17 @@ func _on_export_chosen(id: int) -> void:
 func _on_export() -> void:
 	if store == null:
 		return
+	var said: String = export_now()
+	if not said.is_empty():
+		_say(said)
+
+
+## The model as LDraw, into [param into] (the Downloads folder when empty;
+## a download on the web). What was written, or why not: File, Export, and
+## a session over MCP (AppTools).
+func export_now(into: String = "") -> String:
 	if world.brick_count() == 0:
-		_say("nothing to export")
-		return
+		return "nothing to export"
 	# A model in assemblies is written as a multi-part document, and LDraw
 	# names those .mpd so that whatever opens it knows to look for them.
 	var grouped: bool = world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
@@ -420,14 +428,15 @@ func _on_export() -> void:
 		+ (".mpd" if grouped else ".ldr")
 	if OS.has_feature("web"):
 		store.export_to(file_name, model_name())
-		_say("downloaded %s" % file_name)
-		return
+		return "downloaded %s" % file_name
 	# Only the name's last part: a model's title is named by whoever
 	# designed it, and "../" in one would put the file somewhere else.
-	var path: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS).path_join(
-		file_name.replace("\\", "/").get_file())
+	var folder: String = into if not into.is_empty() \
+		else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	var path: String = folder.path_join(file_name.replace("\\", "/").get_file())
 	if store.export_to(path, model_name()):
-		_say("wrote %s" % path)
+		return "wrote %s" % path
+	return "could not write %s" % path
 
 
 ## New, asking first only when there is something it would lose.

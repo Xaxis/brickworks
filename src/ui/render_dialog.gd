@@ -121,16 +121,7 @@ static func _nobody_looking() -> bool:
 
 
 func open() -> void:
-	if renderer == null:
-		renderer = StudioRender.new()
-		add_child(renderer)
-		renderer.progress.connect(_on_progress)
-		renderer.piece_done.connect(_on_piece)
-	renderer.library = library
-	renderer.scenery = scenery
-	renderer.eye = eye
-	renderer.look = look
-	renderer.rig_lights = rig_lights
+	_make_renderer()
 	# The lens the window has, so the view looked at comes out as it is.
 	if eye != null and settings.view == "current" and _last.is_empty():
 		settings.focal_mm = roundf(RenderSettings.focal_for(eye.fov, settings.size))
@@ -148,6 +139,34 @@ func open() -> void:
 	_status.text = "Choose how it should look; the picture is a quick draft of it."
 	_progress.value = 0.0
 	_ask_preview(0)
+
+
+func _make_renderer() -> void:
+	if renderer == null:
+		renderer = StudioRender.new()
+		add_child(renderer)
+		renderer.progress.connect(_on_progress)
+		renderer.piece_done.connect(_on_piece)
+	renderer.library = library
+	renderer.scenery = scenery
+	renderer.eye = eye
+	renderer.look = look
+	renderer.rig_lights = rig_lights
+
+
+## Render as Picture or Turntable would, with [param chosen] and without
+## the panel: what a session over MCP asks for (AppTools). What was
+## written, or why nothing was; [method last_picture] is a picture's image.
+func render_for(kind: String, chosen: RenderSettings) -> String:
+	if is_rendering():
+		return "a render is already being drawn"
+	_make_renderer()
+	var lines: PackedStringArray = await _start(kind, chosen)
+	return "; ".join(lines) if not lines.is_empty() else _status.text
+
+
+func last_picture() -> Image:
+	return _last.get("image") as Image if _last.get("kind", "") == "picture" else null
 
 
 func close() -> void:
@@ -657,12 +676,12 @@ func _show(image: Image) -> void:
 	_preview.texture = ImageTexture.create_from_image(image)
 
 
-func _start(kind: String) -> void:
+func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	if world == null or is_rendering():
-		return
+		return PackedStringArray()
 	if world.brick_count() - scenery.size() <= 0:
 		_status.text = "There is nothing on the baseplate to render yet."
-		return
+		return PackedStringArray()
 	if renderer.is_busy():
 		renderer.cancel()
 		while renderer.is_busy():
@@ -672,7 +691,7 @@ func _start(kind: String) -> void:
 	_loop.clear()
 	_set_working(true)
 	var started: int = Time.get_ticks_msec()
-	var chosen: RenderSettings = settings.copy()
+	var chosen: RenderSettings = given if given != null else settings.copy()
 	var output := RenderOutput.new()
 	output.folder = folder
 	var model: String = str(named.call())
@@ -711,11 +730,12 @@ func _start(kind: String) -> void:
 	if lines.is_empty():
 		_status.text = "Cancelled." if not _status.text.begins_with("could not") else _status.text
 		_progress.value = 0.0
-		return
+		return lines
 	_progress.value = 1.0
 	_status.text = "%s — %.0f s." % ["; ".join(lines), seconds]
 	_again_button.visible = true
 	_again_button.text = "Download again" if OS.has_feature("web") else "Show in folder"
+	return lines
 
 
 ## A picture far bigger than the panel, shrunk to it: an 8-megapixel
