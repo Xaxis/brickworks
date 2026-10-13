@@ -74,3 +74,102 @@
 .mini:hover b { text-decoration: underline; }
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
+
+/* Like, Favourite and Add to a collection, on a model's page (model-page.js);
+   hidden until the script is there to make them work. */
+.marks { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin: 14px 0 0; }
+.marks .mark, .collect summary {
+	font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink); cursor: pointer;
+	background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+	padding: 8px 14px; min-height: 40px; list-style: none;
+}
+.marks .mark[aria-pressed="true"] { border-color: var(--accent); }
+.marks .mark:hover, .collect summary:hover { border-color: var(--ink-faint); }
+.collect summary::-webkit-details-marker { display: none; }
+.collect summary { display: inline-flex; align-items: center; width: fit-content; }
+.collect[open] summary { border-color: var(--ink-faint); }
+/* Open, it takes a row of its own and the page moves down for it: hung
+   over the page from the button it ran off a laptop's right edge. */
+.collect[open] { flex-basis: 100%; }
+.collect-panel {
+	margin-top: 8px; max-width: 420px;
+	padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel);
+	display: grid; gap: 8px;
+}
+.collect-list { display: grid; gap: 4px; max-height: 240px; overflow: auto; }
+.collect-list label { display: flex; gap: 8px; align-items: center; font-size: 14.5px; min-height: 34px; cursor: pointer; }
+.collect-list label span { flex: 1; overflow-wrap: anywhere; }
+.collect-list small { color: var(--ink-faint); }
+.collect-new { display: flex; gap: 6px; }
+.collect-new input, .profile-form input, .profile-form textarea, .list-top input {
+	flex: 1; min-width: 0; font: inherit; font-size: 15px; color: var(--ink); background: var(--bg-soft);
+	border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
+}
+.marks .said { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--ink-soft); min-height: 1em; }
+.shared-by { margin: 0 0 8px; color: var(--ink-soft); }
+.shared-by a { color: var(--ink); }
+
+/* The sign-in that a page opens over itself (account.js). */
+dialog.sign-in {
+	width: min(420px, 92vw); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); color: var(--ink); padding: 22px; box-shadow: var(--shadow);
+}
+dialog.sign-in::backdrop { background: rgba(0, 0, 0, 0.55); }
+dialog.sign-in h2 { font-size: 22px; margin: 0 0 6px; }
+dialog.sign-in p { color: var(--ink-soft); margin: 0 0 14px; }
+dialog.sign-in label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); margin-bottom: 14px; }
+dialog.sign-in input {
+	font: inherit; font-size: 16px; color: var(--ink); background: var(--bg-soft);
+	border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+}
+dialog.sign-in .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
+
+/* Cards of models, on a profile, a collection and your own page: the
+   gallery's (gallery.html), the shape of a share's picture. */
+.models { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+a.model {
+	display: flex; flex-direction: column; text-decoration: none; color: inherit; min-width: 0;
+	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
+	background: var(--panel); box-shadow: var(--shadow);
+}
+a.model:hover { border-color: var(--ink-faint); }
+a.model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
+a.model .frame { aspect-ratio: 1200 / 630; background: var(--bg-soft); overflow: hidden; }
+a.model .frame img { width: 100%; height: 100%; object-fit: cover; }
+a.model .frame.none { display: grid; place-items: center; color: var(--ink-faint); font-size: 14px; }
+a.model .words { padding: 12px 16px 14px; display: grid; gap: 2px; }
+a.model b {
+	color: var(--ink); font-size: 16px; font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
+	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+a.model span { color: var(--ink-soft); font-size: 14px; overflow-wrap: anywhere; }
+a.model small { color: var(--ink-faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+.kept { display: grid; gap: 8px; align-content: start; }
+.cta.small { min-height: 36px; padding: 6px 12px; font-size: 14px; }
+
+/* A person, a collection, and your own page. */
+.person { padding: clamp(36px, 6vw, 64px) 0 80px; }
+.person h1 { font-size: clamp(30px, 5vw, 48px); margin-bottom: 6px; overflow-wrap: anywhere; }
+.person .handle { color: var(--ink-soft); margin: 0 0 12px; overflow-wrap: anywhere; }
+.person .handle a { color: var(--ink); }
+.person .bio { max-width: 64ch; white-space: pre-line; overflow-wrap: anywhere; margin: 0 0 14px; }
+.person .counts { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--ink-soft); margin: 0 0 26px; }
+.person section { margin-top: 30px; }
+.person section h2 { font-size: 22px; margin-bottom: 10px; }
+.person .lists { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.person .lists a { color: var(--ink); font-weight: 600; }
+.person .lists span { color: var(--ink-faint); font-size: 14px; margin-left: 6px; }
+.profile-form { display: grid; gap: 12px; max-width: 560px; margin: 8px 0 0; }
+.profile-form h2 { font-size: 22px; margin: 0; }
+.profile-form label { display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-soft); }
+.profile-form .hint { font-size: 13px; color: var(--ink-faint); }
+.profile-form .hint b { color: var(--ink-soft); }
+.said { color: var(--ink-soft); font-size: 14.5px; min-height: 1em; margin: 6px 0 0; }
+.lists-mine { display: grid; gap: 12px; margin-top: 12px; }
+.list-mine { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg-soft); }
+.list-top { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.list-top .tick { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--ink-soft); }
+.list-top small { color: var(--ink-faint); }
+.list-mine details { margin-top: 8px; }
+.list-mine summary { cursor: pointer; color: var(--ink-soft); font-size: 14px; }
+.list-mine .models { margin-top: 10px; }

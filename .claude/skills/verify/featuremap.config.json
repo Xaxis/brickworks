@@ -1419,6 +1419,48 @@
       "entry": "tools/web/list_load.mjs",
       "reach": "node tools/web/list_load.mjs --url=<deployment> [--n=200] [--at-once=10]   (BW_BYPASS for a preview)",
       "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "GET/POST /api/people",
+      "entry": "api/people.js",
+      "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "profile and collection pages",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle>  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your profile page",
+      "entry": "web/profile.html",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in, name and handle, favourites, collections)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "like and keep a model",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Favourite, Add to a collection; signs in on the way)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "site sign-in",
+      "entry": "web/account.js",
+      "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "people browser flow",
+      "entry": "tools/web/people_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
+      "area": "web"
     }
   ]
 }

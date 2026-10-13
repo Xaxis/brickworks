@@ -7,7 +7,7 @@
 // What it asks of a deployment, every answer read off the wire:
 //
 //   the pages answer 200 at their bare names (/, /gallery, /download, /changelog,
-//     /admin), each with its own title, description and canonical link and
+//     /admin, /profile), each with its own title, description and canonical link and
 //     an Open Graph card whose picture is really there; and so does the page
 //     of the gallery's newest model, /m/<id>, made by api/share.js;
 //   each old .html address answers 308 to its bare one, query and all, and
@@ -78,6 +78,7 @@ const PAGES = [
   { path: "/gallery", canonical: `${SITE}/gallery` },
   { path: "/changelog", canonical: `${SITE}/changelog` },
   { path: "/admin", private: true },
+  { path: "/profile", private: true },
 ];
 // The newest model in the gallery, whose page is the site's too.
 const newest = await get("/api/share?op=list&page=1");
@@ -160,6 +161,7 @@ for (const [from, to] of [
   ["/gallery.html", "/gallery"],
   ["/changelog.html", "/changelog"],
   ["/admin.html", "/admin"],
+  ["/profile.html", "/profile"],
   ["/download.html?os=macos", "/download?os=macos"],
   ["/authorize.html", "/oauth/authorize"],
   ["/download/", "/download"],
@@ -309,7 +311,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
 const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
-  ["/admin", "admin"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
+  ["/admin", "admin"], ["/profile", "profile"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });

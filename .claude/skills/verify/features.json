@@ -56,6 +56,14 @@
       "tests": []
     },
     {
+      "id": "api:GET/POST /api/people",
+      "kind": "api",
+      "entry": "api/people.js",
+      "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "api:GET/POST /api/share",
       "kind": "api",
       "entry": "api/share.js",
@@ -388,6 +396,14 @@
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
       "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:people browser flow",
+      "kind": "cli",
+      "entry": "tools/web/people_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
       "area": "web",
       "tests": []
     },
@@ -925,6 +941,14 @@
       "tests": []
     },
     {
+      "id": "lib:site sign-in",
+      "kind": "lib",
+      "entry": "web/account.js",
+      "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:stability",
       "kind": "lib",
       "entry": "src/assembly/stability.gd",
@@ -1229,6 +1253,14 @@
       "tests": []
     },
     {
+      "id": "ui:like and keep a model",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Favourite, Add to a collection; signs in on the way)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:lock parts",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
@@ -1430,6 +1462,14 @@
       "entry": "src/prints/print_studio.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/studio_ui_probe.gd   (by hand: Parts bin > Print\u2026 / Stickers\u2026)",
       "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "ui:profile and collection pages",
+      "kind": "ui",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle>  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1670,6 +1710,14 @@
       "entry": "src/ui/see_inside.gd",
       "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: select a part, or edit inside a sub-assembly, then I, or View, X-ray)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:your profile page",
+      "kind": "ui",
+      "entry": "web/profile.html",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in, name and handle, favourites, collections)",
+      "area": "web",
       "tests": []
     }
   ]

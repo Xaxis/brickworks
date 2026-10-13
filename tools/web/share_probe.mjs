@@ -34,6 +34,13 @@
 // licence a remix has to keep; and a view counted once a day per visitor,
 // never for a robot, a headless browser or another site's page.
 //
+// And people (supabase/people.sql, api/people.js): a profile by a name its
+// owner chooses, its handle checked and kept unique, listing only what was
+// listed and credited; likes counted once per account; favourites and
+// private lists their owner's alone, a private list answering anybody
+// else as one that does not exist; a public list's page; and every table
+// of it closed to the key every page has.
+//
 // Throwaway accounts at Resend test addresses (no email is sent: the
 // sessions are minted here), deleted at the end with every row of theirs.
 // Every model this publishes is unpublished or swept before that, so no
@@ -134,6 +141,8 @@ const emailE = `delivered+bw-share-e-${rand}@resend.dev`;
 // The directory's: one who shares a model with steps of its own, a gear
 // train, and a remix.
 const emailF = `delivered+bw-share-f-${rand}@resend.dev`;
+// People's: one with a profile, credited and not, liked, kept and listed.
+const emailG = `delivered+bw-share-g-${rand}@resend.dev`;
 const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
 const ID = /^[A-Za-z0-9]{10}$/;
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
@@ -274,6 +283,7 @@ async function main() {
 
   await theGallery(tokenA, tokenB, id);
   await theDirectory(tokenA);
+  await thePeople(tokenA, tokenB);
 
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
@@ -758,11 +768,157 @@ async function theDirectory(tokenA) {
   }
 }
 
+/// People (supabase/people.sql, api/people.js): a profile by a name its
+/// owner chooses, listing only what they listed and are credited for;
+/// likes counted on the model; favourites and private lists their owner's
+/// alone; public lists with pages of their own.
+async function thePeople(tokenA, tokenB) {
+  console.log("people: profiles, likes, favourites and collections");
+  const g = await mintSession(emailG);
+  const tokenG = g.access_token;
+  const handle = `probe-${rand}`;
+  const NAME = `<b>Probe</b> & "Maker"`;
+
+  let r = await call("/api/people?op=me");
+  check(r.status === 401, `who am I, signed out: 401 (${r.status})`);
+  r = await call("/api/people?op=me", { token: tokenG });
+  check(r.status === 200 && r.json?.profile === null && Array.isArray(r.json?.collections) && r.json.collections.length === 0,
+    "a new account has no profile and no lists: nothing is made from its address");
+  for (const [what, body, status] of [
+    ["a handle of two letters", { handle: "ab", name: "x" }, 400],
+    ["a handle with a capital in a symbol", { handle: "a!b", name: "x" }, 400],
+    ["a handle ending in a hyphen", { handle: "abc-", name: "x" }, 400],
+    ["a handle with two hyphens together", { handle: "a--b", name: "x" }, 400],
+    ["a handle of 25", { handle: "a".repeat(25), name: "x" }, 400],
+    ["a handle kept for the site", { handle: "brickworks", name: "x" }, 409],
+    ["no name", { handle, name: "   " }, 400],
+    ["about you over 300", { handle, name: "x", bio: "y".repeat(301) }, 400],
+  ]) {
+    r = await call("/api/people?op=profile", { method: "POST", token: tokenG, body });
+    check(r.status === status, `${what}: ${status} (${r.status}) "${r.json?.error}"`);
+  }
+  r = await call("/api/people?op=profile", { method: "POST", body: { handle, name: "x" } });
+  check(r.status === 401, `a profile, signed out: 401 (${r.status})`);
+  r = await call("/api/people?op=profile", { method: "POST", token: tokenG,
+    body: { handle: handle.toUpperCase(), name: `${NAME}\u0007`, bio: "Builds\r\n\r\n\r\nthings." } });
+  check(r.status === 200 && r.json?.handle === handle && r.json?.name === NAME && r.json?.bio === "Builds\n\nthings."
+    && r.json?.url === `${base}/u/${handle}`, `made: its handle in lower case, the name cleaned (${r.status} ${r.json?.handle})`);
+  r = await call("/api/people?op=profile", { method: "POST", token: tokenA, body: { handle, name: "Somebody else" } });
+  check(r.status === 409, `somebody else taking the same handle: 409 (${r.status}) "${r.json?.error}"`);
+
+  // What the profile lists: listed and credited, nothing else.
+  const publish = async (body) => {
+    const reply = await call("/api/share", { method: "POST", token: tokenG, body: { model: SMALL, ...body } });
+    if (reply.json?.id) published.add(reply.json.id);
+    return reply.json?.id || "";
+  };
+  const credited = await publish({ name: "Probe Credited", author: "Probe Maker", listed: true, kind: "castle" });
+  const nameless = await publish({ name: "Probe Nameless", listed: true });
+  const byLink = await publish({ name: "Probe By Link", author: "Probe Maker" });
+  r = await call(`/api/people?op=profile&handle=${handle}`);
+  const shown = (r.json?.models || []).map((m) => m.id);
+  check(r.status === 200 && r.json?.name === NAME && r.json?.models_count === 1 && shown.includes(credited)
+    && !shown.includes(nameless) && !shown.includes(byLink) && !("account" in (r.json || {})),
+    `its profile lists what it listed and is credited for, and nothing shared without a name or only by link (${shown.length})`);
+  r = await call(`/u/${handle}`);
+  check(r.status === 200 && r.text.includes("&lt;b&gt;Probe&lt;/b&gt; &amp; &quot;Maker&quot;") && !r.text.includes("<b>Probe</b>")
+    && r.text.includes(`href="/m/${credited}"`) && !r.text.includes(`/m/${nameless}`) && !r.text.includes(`/m/${byLink}`)
+    && r.text.includes(`<link rel="canonical" href="${base}/u/${handle}">`) && r.text.includes('class="site-head"'),
+    `/u/${handle}: its name escaped, its credited model's card, nothing else, a page of the site (${r.status})`);
+  r = await call("/u/nobody-has-this");
+  check(r.status === 404, `a handle nobody has: 404 (${r.status})`);
+  r = await call(`/m/${credited}`);
+  check(r.text.includes(`Shared by <a href="/u/${handle}">&lt;b&gt;Probe&lt;/b&gt;`), "the credited model's page links its profile");
+  r = await call(`/m/${nameless}`);
+  check(!r.text.includes(`/u/${handle}`), "the one shared without a name does not");
+  let l = await call(`/api/share?op=list&page=1&q=probe%20credited`);
+  const card = (l.json?.models || []).find((m) => m.id === credited) || {};
+  check(card.by?.handle === handle && (l.json?.models || []).find((m) => m.id === nameless)?.by == null,
+    "a card says who shared it, by handle, only when credited");
+
+  // Likes.
+  r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", body: { on: true } });
+  check(r.status === 401, `a like, signed out: 401 (${r.status})`);
+  r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenA, body: { on: "yes" } });
+  check(r.status === 400, `on that is not true or false: 400 (${r.status})`);
+  r = await call("/api/people?op=like&id=QQQQQQQQQQ", { method: "POST", token: tokenA, body: { on: true } });
+  check(r.status === 404, `a like of a link that never was: 404 (${r.status})`);
+  r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenA, body: { on: true } });
+  check(r.status === 200 && r.json?.liked === true && r.json?.likes === 1, `liked: 1 like (${r.json?.likes})`);
+  r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenA, body: { on: true } });
+  check(r.json?.likes === 1, "liked again by the same account: still 1");
+  r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenB, body: { on: true } });
+  check(r.json?.likes === 2, `another account: 2 (${r.json?.likes})`);
+  r = await call(`/api/people?op=like&id=${credited}`, { method: "POST", token: tokenB, body: { on: false } });
+  check(r.json?.likes === 1 && r.json?.liked === false, "unliked: 1");
+  r = await call(`/m/${credited}`);
+  check(r.text.includes('<span data-count="likes">1 like</span>'), "its page counts it");
+  l = await call("/api/share?op=list&page=1&sort=likes");
+  const liked = (l.json?.models || []).map((m) => m.likes);
+  check(liked.every((n, k) => k === 0 || n <= liked[k - 1]) && (l.json?.models || []).find((m) => m.id === credited)?.likes === 1,
+    `most liked first (${liked.slice(0, 4).join(", ")})`);
+  r = await call(`/api/people?op=marks&id=${credited}`, { token: tokenA });
+  check(r.status === 200 && r.json?.liked === true && r.json?.favourite === false, "what the account did to it: liked, not kept");
+
+  // Favourites: the owner's alone, one shared by link included.
+  r = await call(`/api/people?op=favourite&id=${byLink}`, { method: "POST", token: tokenA, body: { on: true } });
+  check(r.status === 200 && r.json?.favourite === true, `kept a model shared by link (${r.status})`);
+  r = await call("/api/people?op=favourites&page=1", { token: tokenA });
+  check(r.status === 200 && (r.json?.models || []).some((m) => m.id === byLink), "it is in their favourites");
+  r = await call("/api/people?op=favourites&page=1", { token: tokenB });
+  check(!(r.json?.models || []).some((m) => m.id === byLink), "and in nobody else's");
+  r = await call("/api/people?op=favourites&page=1");
+  check(r.status === 401, `favourites signed out: 401 (${r.status})`);
+
+  // Lists.
+  r = await call("/api/people?op=collection", { method: "POST", token: tokenA, body: { name: "<i>Castles</i> I like", public: false } });
+  const list = r.json?.id || "";
+  check(r.status === 200 && ID.test(list) && r.json?.public === false, `a list made, private (${r.status} ${list})`);
+  for (const model of [credited, byLink]) {
+    r = await call("/api/people?op=collect", { method: "POST", token: tokenA, body: { collection: list, model, on: true } });
+  }
+  check(r.status === 200 && r.json?.has === true, "two models put in it");
+  r = await call("/api/people?op=collect", { method: "POST", token: tokenB, body: { collection: list, model: credited, on: false } });
+  check(r.status === 404, `somebody else changing it: 404 (${r.status})`);
+  r = await call(`/api/people?op=collection&id=${list}`, { token: tokenB });
+  check(r.status === 404, `somebody else asking for a private list: 404, as for none (${r.status})`);
+  r = await call(`/c/${list}`);
+  check(r.status === 404, `nor has it a page (${r.status})`);
+  r = await call(`/api/people?op=collection&id=${list}`, { token: tokenA });
+  check(r.status === 200 && r.json?.mine === true && r.json?.count === 2 && (r.json?.models || []).length === 2,
+    "its owner sees both, the one shared by link too");
+  r = await call("/api/people?op=collection", { method: "POST", token: tokenA, body: { id: list, name: "<i>Castles</i> I like", public: true } });
+  check(r.status === 200 && r.json?.public === true, "made public");
+  r = await call(`/api/people?op=collection&id=${list}`);
+  check(r.status === 200 && r.json?.count === 1 && (r.json?.models || []).map((m) => m.id).join() === credited,
+    "anybody now sees it, with only the listed model in it");
+  r = await call(`/c/${list}`);
+  check(r.status === 200 && r.text.includes("&lt;i&gt;Castles&lt;/i&gt; I like") && r.text.includes(`href="/m/${credited}"`)
+    && !r.text.includes(`/m/${byLink}`), `its page: its name escaped, the listed model and not the other (${r.status})`);
+  r = await call(`/api/people?op=marks&id=${credited}`, { token: tokenA });
+  check((r.json?.collections || []).some((c) => c.id === list && c.has === true), "the model's marks say which list has it");
+  r = await call(`/api/people?op=uncollection&id=${list}`, { method: "POST", token: tokenB });
+  check(r.status === 404, `somebody else deleting it: 404 (${r.status})`);
+  r = await call(`/api/people?op=uncollection&id=${list}`, { method: "POST", token: tokenA });
+  check(r.status === 200 && (await call(`/c/${list}`)).status === 404, "deleted by its owner, its page gone");
+
+  // The database, with the key every page has.
+  for (const table of ["people", "model_likes", "model_favourites", "model_collections", "model_collection_items"]) {
+    const d = await anonRest(`${table}?select=*`);
+    check(d.status === 401 || d.status === 403, `${table} is closed to it (${d.status})`);
+  }
+  const d = await anonRest("rpc/profile_page", { method: "POST", body: { wanted: handle } });
+  check(d.status >= 400, `profile_page cannot be called with it (${d.status})`);
+  const p = await anonRest(`profiles?select=email&limit=1`);
+  check(p.status === 401 || p.status === 403 || (p.status === 200 && (p.json || []).length === 0),
+    `schema.sql's profiles, with addresses, as closed as before (${p.status})`);
+}
+
 async function cleanUp() {
   // Every model published here is taken down (the files go with that),
   // then every account, which takes their rows with them.
   const sessions = [];
-  for (const email of [emailA, emailB, emailD, emailE, emailF]) {
+  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG]) {
     sessions.push(await mintSession(email).catch(() => null));
   }
   for (const id of published) {
@@ -776,7 +932,8 @@ async function cleanUp() {
   const goneD = await deleteAccount(emailD);
   const goneE = await deleteAccount(emailE);
   const goneF = await deleteAccount(emailF);
-  check(goneA && goneB && goneD && goneE && goneF, "every throwaway account deleted, and their rows with them");
+  const goneG = await deleteAccount(emailG);
+  check(goneA && goneB && goneD && goneE && goneF && goneG, "every throwaway account deleted, and their rows with them");
   const left = await call(`/api/share?id=${[...published][0] || "QQQQQQQQQQ"}`);
   check(left.status === 404, `nothing left behind: the link is gone with the account (${left.status})`);
 }
