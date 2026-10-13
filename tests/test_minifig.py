@@ -121,7 +121,9 @@ def test_a_greatsword_slides_no_further_than_its_hilt(library: Library) -> None:
     assert minifig.along_bar(library, "66964", at, along) == (-7.625, 7.625)
     # A spear's shaft runs the length of it.
     (at, along) = minifig.grip_of(library, "4497")
-    low, high = minifig.along_bar(library, "4497", at, along)
+    shaft = minifig.along_bar(library, "4497", at, along)
+    assert shaft is not None
+    low, high = shaft
     assert high - low > 90.0
     # And a carrot, with no bar to slide on, says so.
     assert minifig.along_bar(library, "33172", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0)) is None
