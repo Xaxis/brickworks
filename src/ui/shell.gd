@@ -1091,19 +1091,25 @@ func edit_steps(op: String) -> void:
 	# look at is not to be changed, and the selection's edits need one.
 	if read_only:
 		return
-	if op in ["prev", "next", "new"] and builder.selection.is_empty():
-		bar.say("select the parts first")
-		return
 	var steps: StepsBar = app.get("_steps")
-	var at: Instructions.Step = steps.current_step()
+	bar.say(change_steps(op, Array(builder.selection.keys()), steps.current_step()))
+
+
+## The same edit for [param ids], or the step [param at]: what the
+## selection and the timeline give, or what a session over MCP names by
+## number (AppTools). Returns what was done, or why nothing was.
+func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
+	if read_only:
+		return "this model is open to look at, not to change"
+	if op in ["prev", "next", "new"] and ids.is_empty():
+		return "select the parts first"
 	if not op in ["prev", "next", "new"] and at == null:
-		bar.say("go to a step on the timeline first")
-		return
+		return "go to a step on the timeline first"
+	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number if at != null else -1
 	var skip: Dictionary = store.scenery
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
 	var where: Array = _step_at(at)
-	var ids: Array = Array(builder.selection.keys())
 	var level: String = assemblies.entered if assemblies != null else ""
 	var count: int = ids.size()
 	var words: String = ""
@@ -1134,15 +1140,14 @@ func edit_steps(op: String) -> void:
 			number = maxi(number - 1, 1)
 	undo = AuthorSteps.squash(undo)
 	if undo.is_empty():
-		bar.say("the steps are as they were")
-		return
+		return "the steps are as they were"
 	builder.record(undo, words)
 	# Saved with the model, as any edit is (not _on_model_edited, which
 	# would work the timeline out a second time).
 	store.adopt()
 	store.touch()
 	steps.refresh(number)
-	bar.say(words)
+	return words
 
 
 static func _parts(count: int) -> String:

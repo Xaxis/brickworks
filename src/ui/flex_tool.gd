@@ -161,6 +161,50 @@ func reshape(path: String) -> bool:
 	return true
 
 
+## Lay one without the panel, as two clicks and Done would: between two
+## connectors ([param anchors], Flex.Anchor) or round [param sprockets]
+## (brick ids), in [param colour]; in place of [param item]'s pieces when
+## one is named. What a session over MCP asks for (AppTools). The laid
+## result, or null when the ends make nothing; [method laid_item] is its
+## path. One undo step, as a laying by hand is.
+func lay(of_kind: String, anchors: Array, sprockets: Array, colour: int,
+		item: String = "") -> Flex.Laid:
+	if _laying or not Flex.KINDS.has(of_kind):
+		return null
+	var was_active: bool = active
+	kind = of_kind
+	_item = item
+	_laid = null
+	_real_id = ""
+	_length_kept = false
+	length_choice = -1
+	_ends.clear()
+	_sprockets.clear()
+	_controls = PackedVector3Array()
+	_colour = colour
+	for anchor: Flex.Anchor in anchors:
+		var record: Dictionary = _end_record(anchor, Vector2.ZERO)
+		# Out of the face toward the other end, not the one the person's
+		# camera happens to look at.
+		record.erase("eye")
+		_ends.append(record)
+	_sprockets.assign(sprockets)
+	stage = "sprockets" if _is_chain() else "shaping"
+	await _put()
+	var laid: Flex.Laid = _laid
+	if not was_active:
+		active = false
+		stage = ""
+		panel.visible = false
+		_draw()
+	return laid
+
+
+## The path of what was laid or reshaped last.
+func laid_item() -> String:
+	return _item
+
+
 ## Whether the selection is exactly one flexible item, and its path.
 func selected_item() -> String:
 	if builder == null or assemblies == null:

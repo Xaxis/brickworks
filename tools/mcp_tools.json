@@ -100,7 +100,7 @@
                 "description": "mirror: the line to reflect about, in studs. fill, round: where the footprint's low corner sits, as {x, y, z} (a round lying along x or z: the low end of it, on the ground)."
               },
               "axis": {
-                "description": "round: y stands it up (the default); x or z lays it along that axis on the ground \u2014 a boiler, a fuselage, a hull, a log",
+                "description": "round: y stands it up (the default); x or z lays it along that axis on the ground — a boiler, a fuselage, a hull, a log",
                 "enum": [
                   "y",
                   "x",
@@ -113,7 +113,7 @@
                 "type": "integer"
               },
               "bands": {
-                "description": "shape: [{\"from\": plates, \"to\": plates, \"color\"}] \u2014 a waterline, a stripe, a belly, by height.",
+                "description": "shape: [{\"from\": plates, \"to\": plates, \"color\"}] — a waterline, a stripe, a belly, by height.",
                 "items": {
                   "type": "object"
                 },
@@ -205,7 +205,7 @@
                 "type": "number"
               },
               "diameter": {
-                "description": "round: studs across \u2014 the sizes round parts come in (at is the low corner of its square)",
+                "description": "round: studs across — the sizes round parts come in (at is the low corner of its square)",
                 "enum": [
                   1,
                   2,
@@ -224,7 +224,7 @@
                 "type": "boolean"
               },
               "dress": {
-                "description": "studs_out: what every side stud carries \u2014 a mix (the default), flat tiles for a smooth panel, round plates as rivets, round tiles as portholes, or lights (round tiles in a transparent face_color): a band of detail along a hull, a boiler, a wall",
+                "description": "studs_out: what every side stud carries — a mix (the default), flat tiles for a smooth panel, round plates as rivets, round tiles as portholes, or lights (round tiles in a transparent face_color): a band of detail along a hull, a boiler, a wall",
                 "enum": [
                   "mixed",
                   "tiles",
@@ -235,7 +235,7 @@
                 "type": "string"
               },
               "edge_color": {
-                "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
+                "description": "fill: a second colour for the outside stud of every layer — hull plating, a trim, a kerb.",
                 "type": "integer"
               },
               "ellipsoid": {
@@ -244,6 +244,10 @@
               },
               "extrude": {
                 "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by}.",
+                "type": "object"
+              },
+              "face": {
+                "description": "shape: a face laid on a curved side, studs out — {\"facing\": \"+z\", \"x\", \"y\", \"z\": its middle, \"across\": 4, 6 or 8, \"color\": the disc, \"rim\": the plate behind it, \"eyes\": the iris, \"beak\": its colour or -1}: a round plate disc on side studs, two 2 x 2 round eyes with printed eye tiles, a beak.",
                 "type": "object"
               },
               "face_color": {
@@ -273,7 +277,7 @@
                 "type": "number"
               },
               "loft": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} \u2014 the section between each two is in between; width 0 at an end is a point.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point.",
                 "type": "object"
               },
               "masonry": {
@@ -285,7 +289,7 @@
                 "type": "number"
               },
               "mix_color": {
-                "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time — a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
               "open": {
@@ -297,7 +301,7 @@
                 "type": "boolean"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids \u2014 a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome \u2014 less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line — build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond — and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object — courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object — courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object — a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object — a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk — of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids — a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome — less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -312,7 +316,7 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns: blades of plates on their side, cut by wedge plates, sweeping out and back in to a point (the reply says where the tips are).",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two — a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns: blades of plates on their side, cut by wedge plates, sweeping out and back in to a point (the reply says where the tips are).",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
@@ -355,7 +359,7 @@
                 "type": "object"
               },
               "plinth": {
-                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level, and crags in its dark tones rising against it at their corners and sides (rock: false for none). The reply says the tower's foot (and add_rooms' y).",
+                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} — the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level, and crags in its dark tones rising against it at their corners and sides (rock: false for none). The reply says the tower's foot (and add_rooms' y).",
                 "properties": {
                   "out": {
                     "type": "integer"
@@ -385,7 +389,7 @@
                 "type": "number"
               },
               "seed": {
-                "description": "rock: which rock \u2014 each number leans and wanders its own way",
+                "description": "rock: which rock — each number leans and wanders its own way",
                 "type": "integer"
               },
               "shape": {
@@ -409,14 +413,14 @@
                 "type": "number"
               },
               "solids": {
-                "description": "shape: what it is made of, each an object naming one kind \u2014 {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} \u2014 with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at.",
+                "description": "shape: what it is made of, each an object naming one kind — {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at.",
                 "items": {
                   "type": "object"
                 },
                 "type": "array"
               },
               "stack": {
-                "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach \u2014 grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") \u2014 nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) \u2014 legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
+                "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach — grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") — nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) — legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
                 "items": {
                   "type": "object"
                 },
@@ -439,7 +443,7 @@
                 "type": "object"
               },
               "storeys": {
-                "description": "prism: {\"count\": 2 to 8, \"in\": studs} \u2014 the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} — the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
                 "properties": {
                   "count": {
                     "type": "integer"
@@ -562,7 +566,24 @@
     "name": "check_design"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for \u2014 basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; display and touches: display stand with a nameplate. Ask before building one of these for the first time \u2014 a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "A section of how to design in this app, in full: \"work\" (the process: silhouette, features, detail), \"rules\", \"shapes\" (the patterns that lay a wall, a dome, a tower, a body and a head with its face), \"subject\" (what each kind of subject needs), \"angle\", \"pins\", \"colour\", \"touches\" and more. Read \"shapes\" before saying a shape.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "section": {
+          "description": "work, rules, shapes, subject, real, colour, angle, coordinates, sideways, pins, big, look, good, beautiful, touches, changing, kind or art",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section"
+      ],
+      "type": "object"
+    },
+    "name": "read_guide"
+  },
+  {
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; display and touches: display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -579,7 +600,7 @@
     "name": "show_technique"
   },
   {
-    "description": "How real LEGO sets built a feature, found by what it is: the sub-assemblies of thousands of real sets (an owl's eye, a car's nose, a dragon's wing, a turret roof, a grille, a beak, a tree), each with a picture, its parts and colours, its size in studs, the set and modeller it is from, and an id for place_technique. Ask before inventing any feature of a face, a creature or a machine: a real designer's answer is better than a first guess. Name the subject too \u2014 \"owl eye\", \"car nose\" \u2014 and pieces from sets about it come first.",
+    "description": "How real LEGO sets built a feature, found by what it is: the sub-assemblies of thousands of real sets (an owl's eye, a car's nose, a dragon's wing, a turret roof, a grille, a beak, a tree), each with a picture, its parts and colours, its size in studs, the set and modeller it is from, and an id for place_technique. Ask before inventing any feature of a face, a creature or a machine: a real designer's answer is better than a first guess. Name the subject too — \"owl eye\", \"car nose\" — and pieces from sets about it come first.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -698,12 +719,12 @@
     "name": "plan_scale"
   },
   {
-    "description": "Pictures of a real thing, so you can build to what it looks like rather than to what you recall of it. Ask for this first for any subject that exists \u2014 a lighthouse, a tractor, a kingfisher, a particular building \u2014 and judge the proportions off the picture before you place a brick. The pictures come from Wikimedia Commons, which carries what is free to use: each is named and credited, and a famous ship from a film will not be there, so check what came back is the thing before building to it.",
+    "description": "Pictures of a real thing, so you can build to what it looks like rather than to what you recall of it. Ask for this first for any subject that exists — a lighthouse, a tractor, a kingfisher, a particular building — and judge the proportions off the picture before you place a brick. The pictures come from Wikimedia Commons, which carries what is free to use: each is named and credited, and a famous ship from a film will not be there, so check what came back is the thing before building to it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "subject": {
-          "description": "what to look for, in the words you would use looking it up \u2014 \"Fresnel lighthouse lantern room\" rather than \"lighthouse\" when it is a detail you are after",
+          "description": "what to look for, in the words you would use looking it up — \"Fresnel lighthouse lantern room\" rather than \"lighthouse\" when it is a detail you are after",
           "type": "string"
         }
       },
@@ -715,12 +736,12 @@
     "name": "find_reference"
   },
   {
-    "description": "What real LEGO sets of this kind are actually built from \u2014 the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what LEGO's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.",
+    "description": "What real LEGO sets of this kind are actually built from — the parts they reach for far more often than sets in general, and the colours they use. Measured over fifteen thousand real sets, so it is what LEGO's own designers did and not advice.\n\nCall it for any subject that is a kind of set: a castle, a fire station, a spaceship, a train, a house, a tractor, a police car. A castle set is arch doors and lattice windows in tan and pearl gold; a fire station is trans-blue lights, taps and red; a spaceship is brackets, antennas, cones and inverted dishes in white and grey. That is the difference between a model of the thing and a model of bricks, and you cannot get it from the shape alone.\n\nGive the plain word for the thing. Nothing matches a specific name.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "subject": {
-          "description": "the kind of thing being built, in plain words \u2014 \"fire station\", \"medieval castle\", \"spaceship\"",
+          "description": "the kind of thing being built, in plain words — \"fire station\", \"medieval castle\", \"spaceship\"",
           "type": "string"
         }
       },
@@ -732,7 +753,7 @@
     "name": "how_real_sets_build_this"
   },
   {
-    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself \u2014 a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time \u2014 a wedge put on backwards looks exactly like a wedge until you look at it.",
+    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -772,7 +793,7 @@
     "name": "attachment_points"
   },
   {
-    "description": "A finishing pass over what is already built, wall by wall: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air, and the outer row of two-wide ones, are laid again in place as one structure per wall \u2014 ribs (a column of round plates on bricks with a stud on the side, every few studs), bands (a course of grille), panels (grille between the ribs, framed by a plain stud at each end and a plain course at each ledge, as 10237 Orthanc textures its black), grid (ribs and bands) or courses (round bricks, a recessed line) \u2014 in the wall's own colour, never a part at a time. A dark wall gets panels unasked; a light wall not given a style gets a scatter of dressed bricks (sideways) and masonry. The faces of a prism or a cluster too, in their own sections, and a model opened from a file. Done for you, in one call, checked like any edit.",
+    "description": "A finishing pass over what is already built, wall by wall: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air, and the outer row of two-wide ones, are laid again in place as one structure per wall — ribs (a column of round plates on bricks with a stud on the side, every few studs), bands (a course of grille), panels (grille between the ribs, framed by a plain stud at each end and a plain course at each ledge, as 10237 Orthanc textures its black), grid (ribs and bands) or courses (round bricks, a recessed line) — in the wall's own colour, never a part at a time. A dark wall gets panels unasked; a light wall not given a style gets a scatter of dressed bricks (sideways) and masonry. The faces of a prism or a cluster too, in their own sections, and a model opened from a file. Done for you, in one call, checked like any edit.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -841,7 +862,7 @@
     "name": "restyle_model"
   },
   {
-    "description": "Floors and furnished rooms inside a building that already stands \u2014 a tower, a keep, a house \u2014 in one call, as a real set opens at the back onto them (10237 Orthanc: a library, Saruman's chamber, a dungeon, the palant\u00edr). Give the building's box (where) or, for a prism, the prism's own at, sides and radius (prism), and the floors bottom up, each a kind of room: library, study, bedchamber, hall, throne room, forge, armoury, dungeon, kitchen, lookout, palantir room, stair. Each floor is laid as plates and tiles held up on columns; each room is furnished from the worked examples real sets built \u2014 bookcases, a fireplace, an anvil, a four-poster bed, lamps, chests, barrels \u2014 against its walls and facing in, varied by the seed; stair: true climbs to the next floor. The shell is left as it is and the edit is checked like any other, so build it open at the back (a prism's open, or no back wall) for the rooms to be seen. This is where a real set's different pieces and colours are, and a solid shell has none of them.",
+    "description": "Floors and furnished rooms inside a building that already stands — a tower, a keep, a house — in one call, as a real set opens at the back onto them (10237 Orthanc: a library, Saruman's chamber, a dungeon, the palantír). Give the building's box (where) or, for a prism, the prism's own at, sides and radius (prism), and the floors bottom up, each a kind of room: library, study, bedchamber, hall, throne room, forge, armoury, dungeon, kitchen, lookout, palantir room, stair. Each floor is laid as plates and tiles held up on columns; each room is furnished from the worked examples real sets built — bookcases, a fireplace, an anvil, a four-poster bed, lamps, chests, barrels — against its walls and facing in, varied by the seed; stair: true climbs to the next floor. The shell is left as it is and the edit is checked like any other, so build it open at the back (a prism's open, or no back wall) for the rooms to be seen. This is where a real set's different pieces and colours are, and a solid shell has none of them.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -943,7 +964,7 @@
     "name": "add_rooms"
   },
   {
-    "description": "Change what is already built without describing it again. Takes the numbers look_at_model prints beside each brick. Use this for any change to an existing model \u2014 moving a wall, recolouring a roof, taking a chimney off, adding a door \u2014 and only use submit_design when starting something new. Everything is checked together before any of it is applied, so a change that would not hold together changes nothing.",
+    "description": "Change what is already built without describing it again. Takes the numbers look_at_model prints beside each brick. Use this for any change to an existing model — moving a wall, recolouring a roof, taking a chimney off, adding a door — and only use submit_design when starting something new. Everything is checked together before any of it is applied, so a change that would not hold together changes nothing.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1005,7 +1026,7 @@
           "type": "array"
         },
         "assemblies": {
-          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model \u2014 a display stand, a sign, a nameplate in front of it \u2014 must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
+          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model — a display stand, a sign, a nameplate in front of it — must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -1104,7 +1125,7 @@
           "type": "array"
         },
         "repeat_section": {
-          "description": "say a section again somewhere else. One bay of a wall, repeated \u2014 rather than forty bays dictated.",
+          "description": "say a section again somewhere else. One bay of a wall, repeated — rather than forty bays dictated.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -1155,7 +1176,7 @@
           "type": "array"
         },
         "sections": {
-          "description": "add a section, or give one that already exists a new angle or position \u2014 which moves everything in it without naming a single brick.",
+          "description": "add a section, or give one that already exists a new angle or position — which moves everything in it without naming a single brick.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -1215,7 +1236,7 @@
     "name": "edit_model"
   },
   {
-    "description": "See what is already on the baseplate, in the same stud and plate coordinates you use. Call this first whenever the request is about what is there \u2014 adding to it, changing part of it, matching its colours or its height. You cannot see the model otherwise.\n\nA large model will not fit in one reply. Give where= to list one section, or skip= to carry on from where the last listing stopped. The totals and the overall span are always for the whole model, whatever you ask for.",
+    "description": "See what is already on the baseplate, in the same stud and plate coordinates you use. Call this first whenever the request is about what is there — adding to it, changing part of it, matching its colours or its height. You cannot see the model otherwise.\n\nA large model will not fit in one reply. Give where= to list one section, or skip= to carry on from where the last listing stopped. The totals and the overall span are always for the whole model, whatever you ask for.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1312,12 +1333,12 @@
     "name": "view_model"
   },
   {
-    "description": "Submit the finished model, with every part. It replaces everything on the baseplate that you put there \u2014 including anything you added with edit_model. If you have been building with edit_model, the model is already built: say so and stop, rather than submitting a list that is missing the additions.",
+    "description": "Submit the finished model, with every part. It replaces everything on the baseplate that you put there — including anything you added with edit_model. If you have been building with edit_model, the model is already built: say so and stop, rather than submitting a list that is missing the additions.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "assemblies": {
-          "description": "the parts of this model a person would name \u2014 the gatehouse, each tower, each run of wall, the keep \u2014 each a box in studs and plates. Once the model holds together and you have looked at it whole, each one is shown to you close up, on its own, to detail. A pass adds about as much to a big assembly as to a small one, so name them at about a hundred parts each: on a building, a floor's front is one and its sides another, the roof one and the sign on it another. A model that is one thing is one assembly.",
+          "description": "the parts of this model a person would name — the gatehouse, each tower, each run of wall, the keep — each a box in studs and plates. Once the model holds together and you have looked at it whole, each one is shown to you close up, on its own, to detail. A pass adds about as much to a big assembly as to a small one, so name them at about a hundred parts each: on a building, a floor's front is one and its sides another, the roof one and the sign on it another. A model that is one thing is one assembly.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -1416,8 +1437,15 @@
         "description": {
           "type": "string"
         },
+        "features": {
+          "description": "what the subject is known by, a few words each: an owl's facial disc, eyes, beak, ear tufts, wings, talons; a car's wheel arches, headlamps, grille, windscreen, spoiler. Once the shape stands and you have looked at it whole, each comes back to you on its own with how real sets built it, to lay, adapt or build before the assemblies are detailed.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "floor": {
-          "description": "what it stands on. \"none\" for anything that is picked up and played with or stood on a shelf \u2014 a vehicle, a ship, a figure, a creature, a spacecraft: a set like that has no plate in the box. \"baseplate\" for a scene, a diorama, a building on its lot, a landscape: a real baseplate, sized to it, goes in the box as the first part of the build \u2014 build on it, never lay ground plates of your own under the model as well. \"grid\" for neither. Say in the description which you chose and why; the person can change it.",
+          "description": "what it stands on. \"none\" for anything that is picked up and played with or stood on a shelf — a vehicle, a ship, a figure, a creature, a spacecraft: a set like that has no plate in the box. \"baseplate\" for a scene, a diorama, a building on its lot, a landscape: a real baseplate, sized to it, goes in the box as the first part of the build — build on it, never lay ground plates of your own under the model as well. \"grid\" for neither. Say in the description which you chose and why; the person can change it.",
           "enum": [
             "baseplate",
             "grid",
@@ -1452,7 +1480,7 @@
                 "description": "mirror: the line to reflect about, in studs. fill, round: where the footprint's low corner sits, as {x, y, z} (a round lying along x or z: the low end of it, on the ground)."
               },
               "axis": {
-                "description": "round: y stands it up (the default); x or z lays it along that axis on the ground \u2014 a boiler, a fuselage, a hull, a log",
+                "description": "round: y stands it up (the default); x or z lays it along that axis on the ground — a boiler, a fuselage, a hull, a log",
                 "enum": [
                   "y",
                   "x",
@@ -1465,7 +1493,7 @@
                 "type": "integer"
               },
               "bands": {
-                "description": "shape: [{\"from\": plates, \"to\": plates, \"color\"}] \u2014 a waterline, a stripe, a belly, by height.",
+                "description": "shape: [{\"from\": plates, \"to\": plates, \"color\"}] — a waterline, a stripe, a belly, by height.",
                 "items": {
                   "type": "object"
                 },
@@ -1557,7 +1585,7 @@
                 "type": "number"
               },
               "diameter": {
-                "description": "round: studs across \u2014 the sizes round parts come in (at is the low corner of its square)",
+                "description": "round: studs across — the sizes round parts come in (at is the low corner of its square)",
                 "enum": [
                   1,
                   2,
@@ -1576,7 +1604,7 @@
                 "type": "boolean"
               },
               "dress": {
-                "description": "studs_out: what every side stud carries \u2014 a mix (the default), flat tiles for a smooth panel, round plates as rivets, round tiles as portholes, or lights (round tiles in a transparent face_color): a band of detail along a hull, a boiler, a wall",
+                "description": "studs_out: what every side stud carries — a mix (the default), flat tiles for a smooth panel, round plates as rivets, round tiles as portholes, or lights (round tiles in a transparent face_color): a band of detail along a hull, a boiler, a wall",
                 "enum": [
                   "mixed",
                   "tiles",
@@ -1587,7 +1615,7 @@
                 "type": "string"
               },
               "edge_color": {
-                "description": "fill: a second colour for the outside stud of every layer \u2014 hull plating, a trim, a kerb.",
+                "description": "fill: a second colour for the outside stud of every layer — hull plating, a trim, a kerb.",
                 "type": "integer"
               },
               "ellipsoid": {
@@ -1596,6 +1624,10 @@
               },
               "extrude": {
                 "description": "shape: {\"along\": \"x\" or \"z\", \"from\": studs across, \"width\": studs, \"profile\": [[studs along, plates up], ...] its top seen from the side, \"under\": the same for its underside (0 unless said), \"round\": studs its top edges are rounded by}.",
+                "type": "object"
+              },
+              "face": {
+                "description": "shape: a face laid on a curved side, studs out — {\"facing\": \"+z\", \"x\", \"y\", \"z\": its middle, \"across\": 4, 6 or 8, \"color\": the disc, \"rim\": the plate behind it, \"eyes\": the iris, \"beak\": its colour or -1}: a round plate disc on side studs, two 2 x 2 round eyes with printed eye tiles, a beak.",
                 "type": "object"
               },
               "face_color": {
@@ -1625,7 +1657,7 @@
                 "type": "number"
               },
               "loft": {
-                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} \u2014 the section between each two is in between; width 0 at an end is a point.",
+                "description": "shape: {\"along\": \"x\" or \"z\", \"centre\": studs across (half the widest unless said), \"sections\": [{\"at\": studs along, \"width\": studs, \"height\": plates, \"bottom\": plates, \"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far its lower half narrows to a V, \"offset\": studs across}, ...]} — the section between each two is in between; width 0 at an end is a point.",
                 "type": "object"
               },
               "masonry": {
@@ -1637,7 +1669,7 @@
                 "type": "number"
               },
               "mix_color": {
-                "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time \u2014 a weathered wall. Real castle walls are 9-19% their second grey.",
+                "description": "fill, rock: a second colour through some of its bricks, chosen by where they are, the same every time — a weathered wall. Real castle walls are 9-19% their second grey.",
                 "type": "integer"
               },
               "open": {
@@ -1649,7 +1681,7 @@
                 "type": "boolean"
               },
               "pattern": {
-                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line \u2014 build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond \u2014 and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object \u2014 courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object \u2014 courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object \u2014 a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object \u2014 a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk \u2014 of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids \u2014 a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome \u2014 less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there.",
+                "description": "repeat: the bricks again, stepped each time. mirror: everything so far, reflected about a line — build one side and mirror it rather than writing both. fill: a footprint tiled with the largest plates that fit, or with rise 3 a wall of short bricks in a running bond — and with layers, a shrink and a wall it is a dome, a cone, a hull, a tube or a bowl in one object. rock: a crag in one object — courses stepping in unevenly towards a peak off the middle, faced with slopes, cheese slopes, pebbles and bare ledges in two greys; a different seed is a different rock. studs_out: a face built sideways in one object — courses of 1x1 bricks with a side stud, tied by plates, each stud carrying a tile, round tile, round plate or cheese slope laid on its side; the arithmetic of where a side stud is, done for you. prism: a many-sided shaft in one object — a tower, a pier, a turret of 5 to 16 sides, each face a bonded wall turned to its angle about the middle (at is the middle), grooved where the faces meet. round: anything round in section, in one object — a column, a rocket stage, a lighthouse, a silo, a boiler, a fuselage, a tree trunk — of the round parts sets use at each diameter (round bricks, cylinder halves, corner rounds tied by round plates), colour bands, cones, Technic struts and spokes up its stack, ending in a nose; upright or lying along x or z. shape: a body that is not a box, said as solids — a loft through cross-sections, an extruded side profile, a revolve, a box with rounded or cut corners and edges, an ellipsoid or dome — less any cuts, laid in the parts a builder would choose: bricks and plates inside, slopes and curved slopes fitted to the surface's fall, inverted slopes under it, wedge plates on a diagonal edge, round parts where a section is round, a side that curves up and down laid on its side on side studs, tiles on top, one half and its mirror; a car's body, a hull, a fuselage, an animal's body. Another shape standing on it keeps its studs there.",
                 "enum": [
                   "repeat",
                   "mirror",
@@ -1664,7 +1696,7 @@
               },
               "piers": {
                 "additionalProperties": false,
-                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two \u2014 a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns: blades of plates on their side, cut by wedge plates, sweeping out and back in to a point (the reply says where the tips are).",
+                "description": "prism: faceted piers clustered round it, each a prism of its own built against the core, with a cleft between each two — a tower like Orthanc in one object. The core is capped with a summit two plates thick at y + 3 x courses, and piers taller than the core rise past it as horns: blades of plates on their side, cut by wedge plates, sweeping out and back in to a point (the reply says where the tips are).",
                 "properties": {
                   "count": {
                     "description": "how many, 2-8 (4)",
@@ -1707,7 +1739,7 @@
                 "type": "object"
               },
               "plinth": {
-                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} \u2014 the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level, and crags in its dark tones rising against it at their corners and sides (rock: false for none). The reply says the tower's foot (and add_rooms' y).",
+                "description": "prism: {\"steps\": 1 to 4, \"out\": studs, \"stair\": true, \"rock\": true} — the tower raised on square terraces stepping down from its foot, two courses each, their tops tiled in the second tone up to its faces, with a stair cut into the front (+z) up to its door's level, and crags in its dark tones rising against it at their corners and sides (rock: false for none). The reply says the tower's foot (and add_rooms' y).",
                 "properties": {
                   "out": {
                     "type": "integer"
@@ -1737,7 +1769,7 @@
                 "type": "number"
               },
               "seed": {
-                "description": "rock: which rock \u2014 each number leans and wanders its own way",
+                "description": "rock: which rock — each number leans and wanders its own way",
                 "type": "integer"
               },
               "shape": {
@@ -1761,14 +1793,14 @@
                 "type": "number"
               },
               "solids": {
-                "description": "shape: what it is made of, each an object naming one kind \u2014 {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} \u2014 with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at.",
+                "description": "shape: what it is made of, each an object naming one kind — {\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, {\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — with its own \"color\" if it wants one (the last that holds a stud gives it its colour). Studs across and along, plates up, from at.",
                 "items": {
                   "type": "object"
                 },
                 "type": "array"
               },
               "stack": {
-                "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach \u2014 grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") \u2014 nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) \u2014 legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
+                "description": "round: what goes up the axis, bottom first, each square on the last. {\"plates\": N} a length of body (\"color\" a band of another colour, \"diameter\" wider or narrower, \"spokes\": 4 or 2 its top plate reaching a stud out with a \"tile\" on each reach — grid fins, gallery brackets, yard stubs); {\"cones\": 9 or 1} cones under a round plate (\"cone_color\") — nozzles, engine bells, lamps; {\"technic\": true, \"struts\": 0-4} a course with a pin hole out of each side and a Technic beam pinned on that many sides (\"strut_color\", \"strut_length\" in holes) — legs, stays; {\"nose\": cone, ogive, dome, point or flat} its top, and the end of the stack.",
                 "items": {
                   "type": "object"
                 },
@@ -1791,7 +1823,7 @@
                 "type": "object"
               },
               "storeys": {
-                "description": "prism: {\"count\": 2 to 8, \"in\": studs} \u2014 the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
+                "description": "prism: {\"count\": 2 to 8, \"in\": studs} — the courses split into storeys, each in studs smaller than the one below (its piers drawn in with it) and standing on a ledge two plates thick in the second tone, only the top storey's piers rising into horns: a tower that steps in as it rises, not a shaft. The reply says the top's radius (for add_rooms) and its summit's y.",
                 "properties": {
                   "count": {
                     "type": "integer"
@@ -1960,14 +1992,15 @@
         "name",
         "description",
         "bricks",
-        "assemblies"
+        "assemblies",
+        "features"
       ],
       "type": "object"
     },
     "name": "submit_design"
   },
   {
-    "description": "Stand a minifigure in the model, made from real parts in their real places: who lives in it, guards it, works in it. Add them once the model is built \u2014 submitting a whole new design replaces them. Each slot takes a part number or a few words matched against the names of the parts made for it (\"wizard hat\", \"long beard\", \"robe\", \"staff\"); leave a slot out for a plain one. It stands on whatever is highest under its feet, two studs side by side, and is refused if something is in the way. Its parts are not counted in the model's variety, as a set's figures are not.",
+    "description": "Stand a minifigure in the model, made from real parts in their real places: who lives in it, guards it, works in it. Add them once the model is built — submitting a whole new design replaces them. Each slot takes a part number or a few words matched against the names of the parts made for it (\"wizard hat\", \"long beard\", \"robe\", \"staff\"); leave a slot out for a plain one. It stands on whatever is highest under its feet, two studs side by side, and is refused if something is in the way. Its parts are not counted in the model's variety, as a set's figures are not.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2075,7 +2108,7 @@
     "name": "add_minifig"
   },
   {
-    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size \u2014 a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides \u2014 or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
+    "description": "Make a part LEGO has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides — or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2095,7 +2128,7 @@
         },
         "cut": {
           "additionalProperties": false,
-          "description": "with from: a box to cut out of the part \u2014 a corner, a notch, a step \u2014 in studs from its low x and low z (its left and back) and plates up from its bottom; the cut faces are closed and a wall put back where it opens the part's hollow underside.",
+          "description": "with from: a box to cut out of the part — a corner, a notch, a step — in studs from its low x and low z (its left and back) and plates up from its bottom; the cut faces are closed and a wall put back where it opens the part's hollow underside.",
           "properties": {
             "plates_from": {
               "type": "integer"
@@ -2188,7 +2221,7 @@
     "name": "make_part"
   },
   {
-    "description": "Lay a picture as a LEGO Art set is laid \u2014 31212 The Milky Way, 31208 The Great Wave, 31213 Mona Lisa \u2014 on 16 x 16 panels joined underneath into one piece: square tiles merged where it is flat, 1 x 1 round tiles for texture, quarter circles along curved contours, stars in trans-clear, glow-in-the-dark, pearl and metallic set a plate proud, and the subject raised on stacked plates with cheese slopes. Use this, not submit_design, whenever LEGO Art, a mosaic, a picture in bricks or wall art is asked for. It replaces what is on the baseplate.\nThe picture is the one the person chose (look_at_picture shows it). With none, draw it yourself as svg: one stud is one pixel, so big simple shapes in flat colours, like a poster.\nYou decide what a LEGO Art designer decides, and the app reads everything you leave out off the picture: the panels and the crop; regions over the picture, each with its texture, its relief (the subject raised, the background flat), whether contours run in it and whether its points of light are stars and in what finish; single stars put exactly where you want them; a palette to keep to. Coordinates are fractions of the picture, 0 to 1 from its top left. Later regions lie over earlier ones and change only what they say, so start with the whole picture and work inward. A plan that cannot be laid is refused with every fault named.\nThe answer is the picture as laid, face on, and what it is made of. Look at it as a person would from across a room, and call make_art again with the plan changed if it does not read as the subject.",
+    "description": "Lay a picture as a LEGO Art set is laid — 31212 The Milky Way, 31208 The Great Wave, 31213 Mona Lisa — on 16 x 16 panels joined underneath into one piece: square tiles merged where it is flat, 1 x 1 round tiles for texture, quarter circles along curved contours, stars in trans-clear, glow-in-the-dark, pearl and metallic set a plate proud, and the subject raised on stacked plates with cheese slopes. Use this, not submit_design, whenever LEGO Art, a mosaic, a picture in bricks or wall art is asked for. It replaces what is on the baseplate.\nThe picture is the one the person chose (look_at_picture shows it). With none, draw it yourself as svg: one stud is one pixel, so big simple shapes in flat colours, like a poster.\nYou decide what a LEGO Art designer decides, and the app reads everything you leave out off the picture: the panels and the crop; regions over the picture, each with its texture, its relief (the subject raised, the background flat), whether contours run in it and whether its points of light are stars and in what finish; single stars put exactly where you want them; a palette to keep to. Coordinates are fractions of the picture, 0 to 1 from its top left. Later regions lie over earlier ones and change only what they say, so start with the whole picture and work inward. A plan that cannot be laid is refused with every fault named.\nThe answer is the picture as laid, face on, and what it is made of. Look at it as a person would from across a room, and call make_art again with the plan changed if it does not read as the subject.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2414,47 +2447,7 @@
     "name": "look_at_picture"
   },
   {
-    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind \u2014 shapes, colours, the one-off pieces, how coarse \u2014 and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of. Call it after submit_design, then once per assembly, detailing each with edit_model before the next.",
-    "input_schema": {
-      "additionalProperties": false,
-      "properties": {
-        "assembly": {
-          "description": "an assembly's name as given in submit_design; omit for the whole model",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "name": "review_model"
-  },
-  {
-    "description": "Take everything off the baseplate and start from bare ground. Do this before building something new, or the new thing is built into the old one.",
-    "input_schema": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "name": "clear_model"
-  },
-  {
-    "description": "Write what is on the baseplate to an LDraw .ldr file in this app's models, where its Open finds it and other LDraw tools can read it. A name, not a path; it will not write over a model the person saved.",
-    "input_schema": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "description": "the file's name, such as orthanc.ldr",
-          "type": "string"
-        }
-      },
-      "required": [
-        "name"
-      ],
-      "type": "object"
-    },
-    "name": "save_model"
-  },
-  {
-    "description": "What the person has selected in Brickworks \u2014 the parts they mean by \"this\", \"these\" or \"the selected\": each by number with where it stands, their box, the sub-assembly they are in, the room a change about them may use, how the joints round them stand, and pictures with them picked out, close up and in the whole model. Call it whenever a request is about part of the model, then change that part with edit_selection.",
+    "description": "What the person has selected in Brickworks — the parts they mean by \"this\", \"these\" or \"the selected\": each by number with where it stands, their box, the sub-assembly they are in, the room a change about them may use, how the joints round them stand, and pictures with them picked out, close up and in the whole model. Call it whenever a request is about part of the model, then change that part with edit_selection.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {},
@@ -2463,7 +2456,7 @@
     "name": "selection"
   },
   {
-    "description": "Change the selected parts as edit_model does \u2014 take off, paint, move, put down \u2014 keeping to the selection's room: a change that reaches outside it is refused whole, and everything else in the model stays where it is. It is checked as any design is, so a change that would not hold together or leaves a part loose changes nothing, and the refusal says, part by part, what each ran into or why nothing holds it, and the nearest place it fits and holds. check_only=true tries a change without making it. Other copies of the sub-assembly follow the change. One undo takes the request back. For more room, give room= and why=: the person is asked first.",
+    "description": "Change the selected parts as edit_model does — take off, paint, move, put down — keeping to the selection's room: a change that reaches outside it is refused whole, and everything else in the model stays where it is. It is checked as any design is, so a change that would not hold together or leaves a part loose changes nothing, and the refusal says, part by part, what each ran into or why nothing holds it, and the nearest place it fits and holds. check_only=true tries a change without making it. Other copies of the sub-assembly follow the change. One undo takes the request back. For more room, give room= and why=: the person is asked first.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2525,7 +2518,7 @@
           "type": "array"
         },
         "assemblies": {
-          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model \u2014 a display stand, a sign, a nameplate in front of it \u2014 must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
+          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model — a display stand, a sign, a nameplate in front of it — must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -2628,7 +2621,7 @@
           "type": "array"
         },
         "repeat_section": {
-          "description": "say a section again somewhere else. One bay of a wall, repeated \u2014 rather than forty bays dictated.",
+          "description": "say a section again somewhere else. One bay of a wall, repeated — rather than forty bays dictated.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -2712,7 +2705,7 @@
           "type": "object"
         },
         "sections": {
-          "description": "add a section, or give one that already exists a new angle or position \u2014 which moves everything in it without naming a single brick.",
+          "description": "add a section, or give one that already exists a new angle or position — which moves everything in it without naming a single brick.",
           "items": {
             "additionalProperties": false,
             "properties": {
@@ -2774,23 +2767,6 @@
       "type": "object"
     },
     "name": "edit_selection"
-  },
-  {
-    "description": "A section of how to design in this app, in full: \"work\" (the process: silhouette, features, detail), \"rules\", \"shapes\" (the patterns that lay a wall, a dome, a tower, a body and a head with its face), \"subject\" (what each kind of subject needs), \"angle\", \"pins\", \"colour\", \"touches\" and more. Read \"shapes\" before saying a shape.",
-    "input_schema": {
-      "additionalProperties": false,
-      "properties": {
-        "section": {
-          "description": "work, rules, shapes, subject, real, colour, angle, coordinates, sideways, pins, big, look, good, beautiful, touches, changing, kind or art",
-          "type": "string"
-        }
-      },
-      "required": [
-        "section"
-      ],
-      "type": "object"
-    },
-    "name": "read_guide"
   },
   {
     "description": "Where the selected parts can take another part: every open stud, anti-stud (the hollow underneath that takes a stud), side stud, pin hole, bar and clip, grouped by the way it faces, each with the part that carries it and where it is in the coordinates edit_selection takes (a section's own, for parts laid turned), and a picture with the free ones numbered. Give part= (and color=) and it seats that part on them and tries each against the model as it stands: what comes back fits and holds, to put in edit_selection's add as it is. toward= puts first the points facing that way (out: away from the model's middle, for spikes or detail on an outer face); near= {x, y, z} those nearest a place.",
@@ -2856,5 +2832,394 @@
       "type": "object"
     },
     "name": "where_to_attach"
+  },
+  {
+    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one. Call it after submit_design, then once per feature, then once per assembly, working each before the next.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "assembly": {
+          "description": "an assembly's name as given in submit_design; omit for the whole model",
+          "type": "string"
+        },
+        "feature": {
+          "description": "a feature the subject is known by, as listed in submit_design's features",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "review_model"
+  },
+  {
+    "description": "Take everything off the baseplate and start from bare ground. Do this before building something new, or the new thing is built into the old one.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "clear_model"
+  },
+  {
+    "description": "Write what is on the baseplate to an LDraw .ldr file in this app's models, where its Open finds it and other LDraw tools can read it. A name, not a path; it will not write over a model the person saved.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "the file's name, such as orthanc.ldr",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "name": "save_model"
+  },
+  {
+    "description": "Choose what the model stands on, as View, Floor does: a baseplate (studs across and deep, in eights from 8 to 192, in a colour baseplates come in), a grid floor with no plate, or none — a vehicle stands on a table, a scene on a baseplate in its ground's colour. part_of_model=true makes the baseplate a part of the model: counted, saved, step 1 of the booklet. Nothing built moves. With nothing given it says what it is now.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "across": {
+          "description": "studs along x; 16, 32 and 48 are the square ones LEGO sells",
+          "type": "integer"
+        },
+        "colour": {
+          "description": "LDraw code: 2 Green, 10 Bright Green, 288 Dark Green, 19 Tan, 28 Dark Tan, 71 Light Bluish Grey, 72 Dark Bluish Grey, 378 Sand Green, 1 Blue, 15 White, 0 Black, 7 Light Grey",
+          "type": "integer"
+        },
+        "deep": {
+          "description": "studs along z; the same as across when omitted",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "baseplate",
+            "grid",
+            "none"
+          ],
+          "type": "string"
+        },
+        "part_of_model": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "set_floor"
+  },
+  {
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "description": "part numbers from look_at_model, for next, prev and new",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "from": {
+          "description": "list from this step; 1 when omitted",
+          "type": "integer"
+        },
+        "op": {
+          "enum": [
+            "list",
+            "next",
+            "prev",
+            "new",
+            "earlier",
+            "later",
+            "merge",
+            "delete"
+          ],
+          "type": "string"
+        },
+        "step": {
+          "description": "a step's number, for earlier, later, merge and delete",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "edit_steps"
+  },
+  {
+    "description": "Lay a hose, tube, string or chain, as Build, Hose, tube or chain does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two parts' pin holes, axles or pins; string between two studs; chain or tread round sprockets= (two or more gears in one plane). The real length that fits is chosen, and it bends no tighter than the real one can. It goes in as one sub-assembly, named in the answer; item= that name lays it again between new ends.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "description": "LDraw colour; black when omitted",
+          "type": "integer"
+        },
+        "from": {
+          "additionalProperties": false,
+          "properties": {
+            "brick": {
+              "description": "the part's number in look_at_model",
+              "type": "integer"
+            },
+            "x": {
+              "description": "studs: the connector nearest this, when the part has several",
+              "type": "number"
+            },
+            "y": {
+              "description": "plates",
+              "type": "number"
+            },
+            "z": {
+              "description": "studs",
+              "type": "number"
+            }
+          },
+          "required": [
+            "brick"
+          ],
+          "type": "object"
+        },
+        "item": {
+          "description": "a hose already laid, by its name in an earlier answer",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "pneumatic_tube",
+            "ribbed_hose",
+            "flex_hose",
+            "flex_axle",
+            "string",
+            "chain",
+            "tread"
+          ],
+          "type": "string"
+        },
+        "sprockets": {
+          "description": "part numbers of the gears a chain or tread goes round",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "to": {
+          "additionalProperties": false,
+          "properties": {
+            "brick": {
+              "description": "the part's number in look_at_model",
+              "type": "integer"
+            },
+            "x": {
+              "description": "studs: the connector nearest this, when the part has several",
+              "type": "number"
+            },
+            "y": {
+              "description": "plates",
+              "type": "number"
+            },
+            "z": {
+              "description": "studs",
+              "type": "number"
+            }
+          },
+          "required": [
+            "brick"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "lay_flex"
+  },
+  {
+    "description": "Swing a part about its joint, as Build, Pose does: a sub-assembly on a hinge, a turntable or a clip on a bar. With no joint it lists them, numbered, with the angle each is at. joint= (number or name) and degrees= (from where it was built, -180 to 180) swings it as far as it has room; the answer says where it stopped if something is in the way.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "degrees": {
+          "type": "number"
+        },
+        "joint": {
+          "description": "its number or name in the list",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "pose_model"
+  },
+  {
+    "description": "Animate the model as Build, Pose's keys do: poses at moments, played smoothly between (an arm raised over two seconds and lowered again, doors opening), the model turned round once as well if asked, and rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], joints by number or name from pose_model's list. Rendering needs the app in a window; render=false only sets the keys, for the person to play.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "keys": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "angles": {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "description": "joint (number or name) -> degrees from where it was built",
+                "type": "object"
+              },
+              "t": {
+                "description": "seconds from the start",
+                "type": "number"
+              }
+            },
+            "required": [
+              "t",
+              "angles"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "render": {
+          "description": "true when omitted",
+          "type": "boolean"
+        },
+        "turntable": {
+          "description": "turn the model round once over it",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "animate_model"
+  },
+  {
+    "description": "Take back the last change to the model, as Edit, Undo does — yours or the person's — or steps= of them. redo=true puts back what was undone. The answer names what was undone and what is next.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "redo": {
+          "type": "boolean"
+        },
+        "steps": {
+          "description": "how many, 1 to 25; 1 when omitted",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "undo"
+  },
+  {
+    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Opening cannot be undone, so it is refused while the model has changes not saved, unless discard_changes=true.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "discard_changes": {
+          "type": "boolean"
+        },
+        "name": {
+          "description": "a model's name from the list",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "open_model"
+  },
+  {
+    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" says which of their saved models their collection builds.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "how many rows; 60 when omitted",
+          "type": "integer"
+        },
+        "which": {
+          "enum": [
+            "model",
+            "need",
+            "buildable"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "parts_list"
+  },
+  {
+    "description": "Render the model as File, Render does: a picture, or a turntable (a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable when omitted); size 720p, 1080p, 4k or square; view hero, front, side, back, low or top. Saved where Render saves, and a picture comes back with the answer. Needs the app in a window.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "picture",
+            "turntable"
+          ],
+          "type": "string"
+        },
+        "quality": {
+          "enum": [
+            "quick",
+            "good",
+            "best"
+          ],
+          "type": "string"
+        },
+        "size": {
+          "enum": [
+            "720p",
+            "1080p",
+            "4k",
+            "square"
+          ],
+          "type": "string"
+        },
+        "view": {
+          "enum": [
+            "hero",
+            "front",
+            "side",
+            "back",
+            "low",
+            "top"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "render_model"
+  },
+  {
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print, which takes a while on a big model).",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "enum": [
+            "ldraw",
+            "studio",
+            "picture",
+            "bricklink",
+            "rebrickable",
+            "instructions"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "type": "object"
+    },
+    "name": "export_model"
   }
 ]

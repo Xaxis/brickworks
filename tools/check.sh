@@ -138,7 +138,11 @@ else
 fi
 
 echo "── godot probes ──"
-for name in element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features rooms style turned detail chat project example_name minifig print sticker mould brickify; do
+# The MCP first of all: it is the app's AI interface, and it falls behind
+# with nothing failing — a tool list four tools stale, a menu command no
+# session can reach (mcp_sync); and the window's commands as tools, each
+# read back off the model (app_tools).
+for name in mcp_sync app_tools element_files element modify part_tool dimensions snap stability history restore store instructions playback responsive search inventory mosaic world_view controls snot technic joints flex clutch variety repeat usage kinds rules angled section scale edit selection scanner attach import lxf io select reader camera brain keeping glyph fetch busy dropped vocab reference search_quality moved availability holds mcp claude_code techniques patterns face features rooms style turned detail chat project example_name minifig print sticker mould brickify; do
   probe "$name"
 done
 
@@ -291,6 +295,11 @@ run "brickify" "${screen[@]}" godot --path . --resolution 1400x900 \
 # the WebP and the MP4 kept. Pictures in shots/pose/.
 run "pose and animate" "${screen[@]}" godot --path . --resolution 1400x900 \
   --script src/dev/pose_probe.gd
+# The window's commands as MCP tools again, with a window this time: a
+# render comes back with its picture, and the picture and the booklet are
+# written where Export writes (the probe's own folder, not Downloads).
+run "the menus over MCP, on screen" "${screen[@]}" godot --path . --resolution 1400x900 \
+  --script src/dev/app_tools_probe.gd
 # Nothing in the builder can be used until someone is signed in: with
 # nowhere to sign in (the deployment pointed at a dead port, so offline and
 # free) the sign-in screen is up, a click places nothing and a key changes

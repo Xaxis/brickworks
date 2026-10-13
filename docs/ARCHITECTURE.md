@@ -292,6 +292,16 @@ a name and writes with the app's own models, never over the person's. The
 port refuses any request a web page makes (it carries an Origin) or that
 reaches it under another host name.
 
+And the rest of the window's commands (`src/net/app_tools.gd`): the floor,
+the build steps, hoses, posing, undo, opening, the parts list against the
+collection, rendering and exporting. A session is the person's designer
+and editor, and one that cannot do what the person does from the menus is
+half of one. Each is a wrapper over the code the menu command runs, never a
+second copy of it, and `src/dev/mcp_sync_probe.gd` fails when a command is
+added to the menus without either a tool that does it or a reason it is the
+window's alone (`AppTools.COMMANDS`, `AppTools.WINDOW_ONLY`), when the cached
+tool list goes stale, or when a tool is named nowhere a session can read.
+
 ## 8. Still open
 
 - **Web delivery.** 863 MB of geometry cannot ship wholesale. Plan: a core

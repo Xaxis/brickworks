@@ -177,7 +177,7 @@ subscription: no API key, and nothing billed by us.
 That session can reach this app's bricks and nothing else on your
 computer — no shell, no files, none of your other MCP servers. It is
 started with `--tools "" --restricted --strict-mcp-config`, so the only
-tools in front of it are the nine Brickworks serves.
+tools in front of it are the ones Brickworks serves.
 
 It is a desktop feature, because a browser cannot start a program.
 
@@ -196,10 +196,14 @@ godot --path . -- --mcp
 ```
 
 Driving it from a session you already have open, rather than letting the
-app start one, is the same thing by hand. Your session gets the same nine
-tools the app's own assistant uses —
+app start one, is the same thing by hand. Your session gets the tools the
+app's own assistant uses —
 search the catalogue, check a design against the lattice, look at what is
-built, submit it — and the bricks land in the window while you watch. No
+built, submit it — and what you would otherwise do from the menus: choose
+the floor, edit the build steps, lay a hose, pose a hinge and animate
+it, undo, open a
+model, read its parts list against your collection, render it and export
+it. The bricks land in the window while you watch. No
 key is pasted into the app and nothing is billed here, because the only
 thing spending tokens is the session you already had. (A window opened
 from a checkout asks you to sign in like any other; `godot --headless
