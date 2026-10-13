@@ -69,7 +69,7 @@ const ALT := KEY_MASK_ALT
 const MENUS: Array = [
 	["File", ["new", "open", ">recent", ">import", "-", "save", "save_as", "-",
 		"share", ">export", "render", "instructions", "-", "clear", "account", "quit"]],
-	["Edit", ["undo", "redo", ">history", "-", "cut", "copy", "paste", "duplicate",
+	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
 		"-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
@@ -250,6 +250,10 @@ func _section_shown(section: Control) -> bool:
 ## Define one command.
 func _add(name: String, words: String, accel: int, run: Callable,
 		can: Callable = Callable(), tip: String = "") -> Command:
+	# Two commands of one name: the second replaced the first, and its
+	# menu item ran the other one (Edit, Cut ran the cut-away).
+	if _commands.has(name):
+		push_error("two commands are named %s" % name)
 	var command := Command.new()
 	command.name = name
 	command.words = words
@@ -312,9 +316,49 @@ func ticked(name: String) -> int:
 ## What a command's key reads as, for a tooltip: "Ctrl+Z".
 func key_words(name: String) -> String:
 	var found: Command = _commands.get(name)
-	if found == null or found.accel == 0:
+	if found == null:
 		return ""
-	return OS.get_keycode_string(found.accel)
+	return key_text(found.accel)
+
+
+## The keys the engine names by what its source calls them — "QuoteLeft",
+## "Comma" — as a person writes them on a key or in a manual.
+const WRITTEN: Dictionary = {KEY_QUOTELEFT: "`", KEY_COMMA: ",", KEY_PERIOD: ".",
+	KEY_SLASH: "/", KEY_BACKSLASH: "\\", KEY_MINUS: "-", KEY_EQUAL: "=",
+	KEY_BRACKETLEFT: "[", KEY_BRACKETRIGHT: "]", KEY_SEMICOLON: ";",
+	KEY_APOSTROPHE: "'"}
+
+
+## A key and its modifiers as a person writes them: "Ctrl+Z", "Shift+Q",
+## "`". The menus showed the orthographic key as "QuoteLeft", and turning
+## the model as Q when it is Shift-Q (brickworks.diy, 2026-10-12).
+static func key_text(accel: int) -> String:
+	if accel == 0:
+		return ""
+	var parts := PackedStringArray()
+	if accel & KEY_MASK_CMD_OR_CTRL or accel & KEY_MASK_CTRL:
+		parts.append(EditVerbs.held_key())
+	if accel & KEY_MASK_ALT:
+		parts.append("Alt")
+	if accel & KEY_MASK_SHIFT:
+		parts.append("Shift")
+	var code: int = accel & KEY_CODE_MASK
+	parts.append(str(WRITTEN[code]) if WRITTEN.has(code) else OS.get_keycode_string(code))
+	return "+".join(parts)
+
+
+## What a menu is given to show for a key. The menu writes a key with the
+## engine's own name for it and has no way to be told other words; for a
+## key it misnames, the character it would draw for itself. The menus never
+## answer a key (Shell._menu), so this is only ever read, never pressed.
+const SHOWN_AS: Dictionary = {KEY_QUOTELEFT: 0x201B, KEY_COMMA: 0x201A}
+
+
+static func menu_accel(accel: int) -> int:
+	var code: int = accel & KEY_CODE_MASK
+	if not SHOWN_AS.has(code):
+		return accel
+	return (accel & ~KEY_CODE_MASK) | int(SHOWN_AS[code])
 
 
 func _define() -> void:
@@ -364,7 +408,11 @@ func _define() -> void:
 		func() -> bool: return builder.history_depth() > 0, "Take back the last change")
 	_add("redo", "Redo", CTRL | SHIFT | KEY_Z, func() -> void: verbs.press("redo"),
 		func() -> bool: return not builder._redo.is_empty(), "Put it back")
-	_add("cut", "Cut", CTRL | KEY_X, func() -> void: verbs.cut(), selected)
+	# Not "cut": that is the cut-away (K), defined under View, and a second
+	# command of one name replaced the first, so Edit, Cut sliced the model
+	# open instead of taking the selection off it.
+	_add("cut_parts", "Cut", CTRL | KEY_X, func() -> void: verbs.cut(), selected,
+		"Take the selection off the model, to paste somewhere else")
 	_add("copy", "Copy", CTRL | KEY_C, func() -> void: verbs.copy(), selected,
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),
@@ -458,10 +506,11 @@ func _define() -> void:
 			or not assemblies.entered.is_empty()),
 		"Everything but the selection, or the sub-assembly being edited, see-through")
 	_ticked("xray", func() -> bool: return see_inside.seeing_through)
-	_add("turn_left", "Turn the model left", KEY_Q, func() -> void: app.call("_turn_model", -1),
-		something)
-	_add("turn_right", "Turn the model right", KEY_E, func() -> void: app.call("_turn_model", 1),
-		something)
+	# Shift: Q alone takes the last part back into hand (Tools, Place).
+	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
+		func() -> void: app.call("_turn_model", -1), something)
+	_add("turn_right", "Turn the model right", SHIFT | KEY_E,
+		func() -> void: app.call("_turn_model", 1), something)
 	_add("panel_parts", "Parts bin", 0, func() -> void:
 		(app.get("_bin_dock") as SideDock).toggle())
 	_ticked("panel_parts", func() -> bool: return (app.get("_bin_dock") as SideDock).is_open())
@@ -473,6 +522,10 @@ func _define() -> void:
 		Callable(),
 		"What is selected: its part, colour, where it stands and what it is joined to")
 	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
+	_add("show_properties", "Properties", 0, func() -> void:
+		(app.get("_bin_dock") as SideDock).set_open(true)
+		inspector.set_open(true), selected,
+		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
@@ -570,6 +623,46 @@ func _define() -> void:
 	_add("about", "About Brickworks", 0, _show_about)
 
 
+## What a right click on a part offers: the verbs a person reaches for,
+## each the command Edit or Build has, greyed where it would do nothing.
+## A right click on a part did nothing (brickworks.diy, 2026-10-12).
+const ON_A_PART: Array = ["select_connected", "-", "hide", "isolate", "-", "paint",
+	"copy", "delete", "-", "make_submodel", "-", "show_properties"]
+var context: PopupMenu
+
+
+## The menu for a part, at a point on the screen, for the selection the
+## right click left: the part, or the selection it is in.
+func open_context(at: Vector2) -> void:
+	if context == null:
+		context = PopupMenu.new()
+		_fill(context, ON_A_PART)
+		context.set_item_text(item_index(context, "select_connected"),
+			"Select everything joined to it")
+		context.id_pressed.connect(_on_id)
+		add_child(context)
+	_refresh(context)
+	# Painting is with the colour in hand: which one, said.
+	context.set_item_text(item_index(context, "paint"),
+		"Paint with %s" % library.color(builder.held_color).name)
+	context.reset_size()
+	var room: Vector2 = app.get_viewport().get_visible_rect().size
+	var corner: Vector2 = Vector2(minf(at.x, room.x - context.size.x - 4.0),
+		minf(at.y, room.y - context.size.y - 4.0))
+	context.position = Vector2i(corner.max(Vector2.ZERO))
+	context.popup()
+
+
+## Where a command is in one menu: each menu that lists a command has an
+## id of its own for it.
+func item_index(popup: PopupMenu, name: String) -> int:
+	for index: int in popup.item_count:
+		var id: int = popup.get_item_id(index)
+		if id >= 0 and id < _ids.size() and _ids[id] == name:
+			return index
+	return -1
+
+
 ## A menu on the bar, from its list of commands.
 func _menu(title: String, items: Array) -> MenuButton:
 	var button := MenuButton.new()
@@ -633,12 +726,13 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 				continue
 			var id: int = _ids.size()
 			_ids.append(item)
+			var shown: int = menu_accel(found.accel)
 			if found.radio:
-				popup.add_radio_check_item(found.words, id, found.accel)
+				popup.add_radio_check_item(found.words, id, shown)
 			elif found.ticked.is_valid():
-				popup.add_check_item(found.words, id, found.accel)
+				popup.add_check_item(found.words, id, shown)
 			else:
-				popup.add_item(found.words, id, found.accel)
+				popup.add_item(found.words, id, shown)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
 

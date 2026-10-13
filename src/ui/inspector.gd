@@ -137,8 +137,8 @@ func _ready() -> void:
 		func() -> void: _act(0))
 	_lock_button = _action("Lock", "Keep it from being picked out, moved, painted or taken off",
 		func() -> void: _act(1))
-	_hide_button = _action("Hide", "Hide it, to reach what is behind it   H",
-		func() -> void: _act(2))
+	_hide_button = _action("Hide", "Hide it, to reach what is behind it   "
+		+ shell.key_words("hide"), func() -> void: _act(2))
 
 	shell.builder.selection_changed.connect(func(_n: int) -> void: _refresh(true))
 	shell.world.rebuilt.connect(func(_b: int, _c: int, _t: int) -> void: _refresh(true))
@@ -224,11 +224,11 @@ func _act(which: int) -> void:
 func _buttons_for(assembly: bool) -> void:
 	_for_assembly = assembly
 	var faces: Array = [["Edit inside", "Work on its parts one by one   Enter, or double-click"],
-		["Ungroup", "Take it apart one level   Ctrl+Shift+G"],
+		["Ungroup", "Take it apart one level   " + shell.key_words("leave_submodel")],
 		["Make unique", "Cut this copy loose, so editing it changes no other"]] if assembly \
 		else [["Joined", "Select it and everything joined to it"],
 		["Lock", "Keep it from being picked out, moved, painted or taken off"],
-		["Hide", "Hide it, to reach what is behind it   H"]]
+		["Hide", "Hide it, to reach what is behind it   " + shell.key_words("hide")]]
 	for n: int in 3:
 		var button: Button = [_joined_button, _lock_button, _hide_button][n]
 		button.text = faces[n][0]

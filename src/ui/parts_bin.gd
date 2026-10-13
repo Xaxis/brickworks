@@ -253,11 +253,21 @@ func _build() -> void:
 	_palette.minimum_size_changed.connect(_fit_palette)
 	resized.connect(_fit_palette)
 
+	# Always two lines tall, whatever it says: it was one line for a colour
+	# and two for a part, and choosing a part moved the palette up 19 px
+	# under the pointer, so the next colour clicked was a row off
+	# (brickworks.diy, 2026-10-12). What does not fit is on its tooltip.
 	_colour_note = Label.new()
 	_colour_note.add_theme_font_size_override("font_size", 12)
 	_colour_note.modulate = Color(1, 1, 1, 0.78)
 	_colour_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_colour_note.max_lines_visible = NOTE_LINES
+	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_colour_note.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(_colour_note)
+	var font: Font = _colour_note.get_theme_font("font")
+	_colour_note.custom_minimum_size.y = ceilf(font.get_height(12) * NOTE_LINES
+		+ float(_colour_note.get_theme_constant("line_spacing")) * (NOTE_LINES - 1))
 
 
 ## Fill in once the library is available.
@@ -507,6 +517,43 @@ func _on_colour(code: int) -> void:
 	_fill_grid()
 
 
+## How many lines the note under the palette always takes.
+const NOTE_LINES := 2
+
+## What is selected in the model, while a colour clicked paints it
+## (Main._on_swatch_pressed): part id -> how many, colour -> how many.
+## Empty when nothing is, or when the colour is for what goes down next.
+var _chosen_parts: Dictionary = {}
+var _chosen_colours: Dictionary = {}
+
+
+## Say what is selected under the palette, not the part in hand: with a
+## brick selected the note described the part in hand and its colours,
+## while a click on a colour painted the brick (brickworks.diy, 2026-10-12).
+func show_selection(parts: PackedStringArray, colours: PackedInt32Array) -> void:
+	var by_part: Dictionary = {}
+	var by_colour: Dictionary = {}
+	for part: String in parts:
+		by_part[part] = int(by_part.get(part, 0)) + 1
+	for code: int in colours:
+		by_colour[code] = int(by_colour.get(code, 0)) + 1
+	if by_part == _chosen_parts and by_colour == _chosen_colours:
+		return
+	_chosen_parts = by_part
+	_chosen_colours = by_colour
+	_mark_swatches()
+
+
+## The part the note and the dots are about: the selected one, all of one
+## part; none, when the selection is of several; or the part in hand.
+func _subject() -> PartLibrary.PartInfo:
+	if _chosen_parts.is_empty():
+		return library.parts.get(_selected_part)
+	if _chosen_parts.size() == 1:
+		return library.parts.get(str(_chosen_parts.keys()[0]))
+	return null
+
+
 ## Which colours the part in hand was really made in: those carry a dot.
 ## A colour it was never made in is dimmed, not hidden — a builder may
 ## want it anyway — and only where the part's list is complete, which
@@ -515,7 +562,7 @@ func _on_colour(code: int) -> void:
 func _mark_swatches() -> void:
 	if library == null:
 		return
-	var info: PartLibrary.PartInfo = library.parts.get(_selected_part)
+	var info: PartLibrary.PartInfo = _subject()
 	for code: int in _swatches:
 		var swatch: Swatch = _swatches[code]
 		var made: int = 0
@@ -551,14 +598,32 @@ func _swatch_tip(color: PartLibrary.BrickColor, info: PartLibrary.PartInfo,
 func _say_colour() -> void:
 	if _colour_note == null or library == null:
 		return
-	var color: PartLibrary.BrickColor = library.color(_selected_color)
-	var text: String = "%s, %s" % [color.name, color.finish_name()]
-	var info: PartLibrary.PartInfo = library.parts.get(_selected_part)
-	if info != null and info.availability_known():
-		text += ". A dot marks the %d colours %s comes in" % [info.colors.size(), info.id]
-		if not info.colors_partial:
-			text += "; it was made in no other"
+	var text: String = ""
+	var info: PartLibrary.PartInfo = _subject()
+	if not _chosen_parts.is_empty():
+		var count: int = 0
+		for part: String in _chosen_parts:
+			count += int(_chosen_parts[part])
+		var what: String = "%d parts" % count
+		if info != null:
+			what = Inventory._tidy(info.name) if count == 1 \
+				else "%d × %s" % [count, Inventory._tidy(info.name)]
+		var colour: String = " in %d colours" % _chosen_colours.size()
+		if _chosen_colours.size() == 1:
+			colour = " in " + library.color(int(_chosen_colours.keys()[0])).name
+		text = "%s%s, selected: a colour clicked paints %s" % [what, colour,
+			"it" if count == 1 else "them"]
+		if info != null and info.availability_known():
+			text += ". A dot marks the %d colours it comes in" % info.colors.size()
+	else:
+		var color: PartLibrary.BrickColor = library.color(_selected_color)
+		text = "%s, %s" % [color.name, color.finish_name()]
+		if info != null and info.availability_known():
+			text += ". A dot marks the %d colours %s comes in" % [info.colors.size(), info.id]
+			if not info.colors_partial:
+				text += "; it was made in no other"
 	_colour_note.text = text
+	_colour_note.tooltip_text = text
 
 
 ## One colour in the palette, drawn as what it is: see-through over a
@@ -1196,12 +1261,9 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	button.toggle_mode = true
 	button.button_pressed = info.id == _selected_part
 	button.pressed.connect(_on_part.bind(info.id))
-	button.tooltip_text += "\nRight-click to keep it in Favourites"
+	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
 	button.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
-			_toggle_favourite(info.id)
-			button.accept_event())
+		_cell_input(button, info.id, event))
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1250,6 +1312,53 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 		if ready_now:
 			image.show_picture(ready_now, false)
 	return button
+
+
+## A part pressed and dragged out of the bin: picked up, its ghost after
+## the pointer over the model, and put down where it is let go (Main), as
+## Studio and Mecabricks have it. A drag did nothing but carry the part's
+## tooltip along with the pointer (brickworks.diy, 2026-10-12).
+signal part_drag_moved(at: Vector2)
+signal part_dropped(at: Vector2)
+## How far the pointer goes with the button down before it is a drag.
+const DRAG_START := 8.0
+var _drag_from: Vector2 = Vector2.INF
+var _drag_part: String = ""
+
+
+func is_dragging_part() -> bool:
+	return not _drag_part.is_empty()
+
+
+func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
+	var press := event as InputEventMouseButton
+	if press != null:
+		if press.button_index == MOUSE_BUTTON_RIGHT and press.pressed:
+			_toggle_favourite(part_id)
+			button.accept_event()
+		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed:
+			_drag_from = press.global_position
+		elif press.button_index == MOUSE_BUTTON_LEFT:
+			_drag_from = Vector2.INF
+			if not _drag_part.is_empty():
+				_drag_part = ""
+				button.tooltip_text = str(button.get_meta("tip", button.tooltip_text))
+				part_dropped.emit(press.global_position)
+		return
+	var motion := event as InputEventMouseMotion
+	if motion == null or _drag_from == Vector2.INF \
+			or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
+		return
+	if _drag_part.is_empty():
+		if motion.global_position.distance_to(_drag_from) < DRAG_START:
+			return
+		_drag_part = part_id
+		# No tooltip while it is carried: it followed the pointer out.
+		button.set_meta("tip", button.tooltip_text)
+		button.tooltip_text = ""
+		_on_part(part_id)
+	part_drag_moved.emit(motion.global_position)
+	button.accept_event()
 
 
 static func _height_text(info: PartLibrary.PartInfo) -> String:

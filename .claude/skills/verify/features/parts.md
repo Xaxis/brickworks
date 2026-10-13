@@ -17,7 +17,11 @@ geometry in front of them.
   2026-10-12). `vocab_probe` holds both spellings to the same answer;
   `handbuild_probe` types them into the bin's field.
 - `parts bin`: the panel that shows the results, with a category filter and the
-  current colour applied to the thumbnails. **Make a part…** in its header
+  current colour applied to the thumbnails. A part dragged out of it is in hand
+  from the start of the drag, its ghost follows the pointer over the model and
+  it is put down where it is let go (`PartsBin._cell_input`, `part_dropped`);
+  let go over a panel, it stays in hand. Its tooltip hides while it is carried.
+  A drag did nothing and carried the tooltip along (2026-10-12). **Make a part…** in its header
   opens the element maker, and made parts lead the categories as Custom —
   see [elements](elements.md).
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
@@ -42,7 +46,12 @@ geometry in front of them.
   colour data carries them, otherwise any part in a set in it since
   `recent_since` — 84 colours); "All 320" adds the rest after a rule. Each
   swatch is drawn as its finish; its name, finish and status are on hover, and
-  the colour in hand is named under the palette. A dot marks the colours the
+  the colour in hand is named under the palette, in a note always two lines
+  tall (the rest on its tooltip): it grew from one line to two when a part was
+  chosen and moved the palette 19 px under the pointer. With parts selected,
+  and a click on a colour would paint them, the note describes them instead
+  ("Brick 2 x 4 in Red, selected: a colour clicked paints it", and the dots are
+  that part's; `PartsBin.show_selection`, `Main._tell_bin_selection`). A dot marks the colours the
   part in hand was really made in; a colour it was never made in is dimmed, but
   only where its list is complete. A swatch clicked with parts selected and
   nothing in hand paints them too, one undo step (`swatch_pressed`,

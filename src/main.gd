@@ -1660,6 +1660,20 @@ func _build_ui() -> void:
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_bin.swatch_pressed.connect(_on_swatch_pressed)
+	# A part dragged out of the bin: in hand from the start of the drag
+	# (part_chosen), its ghost after the pointer over the model, and put
+	# down where it is let go. Let go over a panel, it stays in hand.
+	_bin.part_drag_moved.connect(func(at: Vector2) -> void:
+		if _over_panel_at(at):
+			_builder.hide_preview()
+		else:
+			_refresh_preview(at))
+	_bin.part_dropped.connect(func(at: Vector2) -> void:
+		if _over_panel_at(at):
+			return
+		_aim_at(at)
+		_builder.place()
+		_refresh_preview(at))
 
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).
@@ -2068,6 +2082,9 @@ func _build_ui() -> void:
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.
 	_verbs.mode_changed.connect(func(mode: String) -> void:
+		# A part in hand: the palette's colour is for it now, not the
+		# selection's.
+		_tell_bin_selection()
 		if mode == "place":
 			_bring_out_bin())
 	# The menus, the toolbar, the properties and the status bar:
@@ -2171,6 +2188,7 @@ func _build_ui() -> void:
 	_pose.changed.connect(_on_model_edited)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
+		_tell_bin_selection()
 		if count == 0:
 			_bar.say("")
 		else:
@@ -2181,6 +2199,8 @@ func _build_ui() -> void:
 	# assistant. Without redrawing the outline then, it is a box round
 	# nothing.
 	_world.rebuilt.connect(func(_bricks: int, _batches: int, _tris: int) -> void:
+		# Painted, or taken off by undo: what the palette's note says too.
+		_tell_bin_selection()
 		if not _builder.selection.is_empty():
 			_outline.show_selection(_builder.selection))
 	# So a snapshot does not carry the baseplate off with it.
@@ -2801,9 +2821,32 @@ func _on_color_chosen(color_code: int) -> void:
 ## goes down next. Edit, Paint the selection, so it is one undo step and
 ## refused where that is.
 func _on_swatch_pressed(_color_code: int) -> void:
-	if _verbs.mode == "place" or _builder.is_carrying():
+	if not _swatch_paints():
 		return
 	_shell.run("paint")
+
+
+## Whether a colour clicked in the palette paints the selection, rather
+## than being the colour of what goes down next.
+func _swatch_paints() -> bool:
+	return not _builder.selection.is_empty() and _verbs.mode != "place" \
+		and not _builder.is_carrying()
+
+
+## The palette's note says what a colour clicked would paint: the
+## selection, while there is one to paint (PartsBin.show_selection).
+func _tell_bin_selection() -> void:
+	if _bin == null or _verbs == null:
+		return
+	var parts := PackedStringArray()
+	var colours := PackedInt32Array()
+	if _swatch_paints():
+		for brick_id: int in _builder.selection:
+			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+			if brick != null:
+				parts.append(brick.part_id)
+				colours.append(brick.color_code)
+	_bin.show_selection(parts, colours)
 
 
 ## Open an LDraw model and place every part of it. Returns how many landed.
@@ -3463,7 +3506,19 @@ func _mac_right_click(button: InputEventMouseButton) -> bool:
 ## A right click: lets go of what is in hand and goes back to Select, as
 ## Studio's does. It takes nothing off the model (Delete does, or the Delete
 ## tool) — the right button is for looking.
-func _right_click() -> void:
+func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
+	# At rest, on a part: its menu, as Studio and Mecabricks have one. The
+	# part is selected first unless it is already in the selection, which
+	# the menu then acts on whole.
+	if _verbs != null and _shell != null and at.x >= 0.0 and _verbs.mode == "select" \
+			and not _builder.is_carrying() and not _builder.is_holding_figure():
+		var brick_id: int = _verbs.brick_at(at)
+		if brick_id != 0 and not _builder.is_locked(brick_id):
+			if not _builder.selection.has(brick_id):
+				_builder.select_brick(brick_id, false)
+			_builder.hide_preview()
+			_shell.open_context(at)
+			return
 	if _verbs != null:
 		if _builder.is_carrying():
 			_verbs.put_away()
@@ -3633,7 +3688,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _camera.turned_rather_than_clicked():
 			return
-		_right_click()
+		_right_click(button.position)
 		return
 
 	if button.button_index != MOUSE_BUTTON_LEFT:
@@ -3736,7 +3791,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var was_pending: bool = _pending_left
 	_pending_left = false
 	if was_pending and _pending_right:
-		_right_click()
+		_right_click(_press_at)
 		return
 	# Alt and a click takes the part under the pointer into hand, in its
 	# colour: Studio's eyedropper.
@@ -4356,11 +4411,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_TAB:
 			_tab_columns()
 		KEY_Z:
+			# The same undo as Edit's, which says what it took back.
 			if key.ctrl_pressed or key.meta_pressed:
-				if key.shift_pressed:
-					_builder.redo()
-				else:
-					_builder.undo()
+				_verbs.press("redo" if key.shift_pressed else "undo")
 				_refresh_preview()
 		KEY_COMMA:
 			# Where a preferences panel lives in every app on this

@@ -137,14 +137,19 @@ func handle_key(key: InputEventKey) -> bool:
 func press(name: String) -> void:
 	match name:
 		"undo":
+			# Said, whatever it was: undoing a sub-assembly made changes
+			# nothing a person can see, and the line said nothing either.
 			if builder.undo():
 				edited.call()
+				say.call("undid: %s" % builder.redo_words())
 			else:
 				say.call("nothing to undo")
 			aim_again.call()
 		"redo":
 			if builder.redo():
 				edited.call()
+				var done: PackedStringArray = builder.history_words(1)
+				say.call("redid: %s" % (done[0] if not done.is_empty() else "the change"))
 			else:
 				say.call("nothing to redo")
 			aim_again.call()
@@ -499,7 +504,9 @@ func hide_selection() -> int:
 		builder.lattice.unseen[brick_id] = true
 	builder.clear_selection()
 	apply_hidden()
-	say.call("hid %s — H with nothing selected shows everything" % _parts(ids.size()))
+	# H alone is the Pan tool: the keys that bring it back are these.
+	say.call("hid %s — Alt-H, or %s-H with nothing selected, shows everything"
+		% [_parts(ids.size()), _hold()])
 	return ids.size()
 
 
@@ -516,7 +523,7 @@ func isolate() -> int:
 		builder.lattice.unseen[brick.id] = true
 		hid += 1
 	apply_hidden()
-	say.call("showing only %s — Alt-H or H shows everything" % _parts(keep.size()))
+	say.call("showing only %s — Alt-H shows everything" % _parts(keep.size()))
 	return hid
 
 

@@ -47,6 +47,17 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_library = _main.get("_library")
 	_store = _main.get("_store")
+	# `-- only=<section>` runs one section of this probe on its own, after
+	# the same start: `-- only=first_timer`.
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("only="):
+			_main.call("clear_model")
+			await call("_" + arg.substr(5))
+			print("")
+			print("by hand, %s only: %s" % [arg.substr(5),
+				"every check passed" if _failures == 0 else "%d FAILED" % _failures])
+			quit(1 if _failures > 0 else 0)
+			return
 	await _one_column_at_a_time()
 	_main.call("clear_model")
 	# A clipboard from nobody: a probe must not paste whatever the person
@@ -92,6 +103,7 @@ func _run() -> void:
 	await _a_submodel()
 	await _the_ruler()
 	await _a_small_laptop()
+	await _first_timer()
 
 	print("")
 	if _failures == 0:
@@ -1436,6 +1448,345 @@ func _seated_near(mesh: Lbm.PartMesh, near: Vector3) -> Variant:
 			if Seating.off_the_studs(mesh, at) <= 0.01:
 				return at
 	return null
+
+
+## What a first-time builder hit on brickworks.diy, the second round
+## (2026-10-12): each check here failed there.
+func _first_timer() -> void:
+	print("  what a first-time builder hit, round two")
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	_put("3001", 1, Vector3(60, 24, 20))
+	_put("3003", 14, Vector3(0, 24, -100))
+	await _frames(3)
+	_camera.frame(AABB(Vector3(-200, 0, -200), Vector3(400, 80, 400)))
+	await _frames(20)
+
+	await _edit_cut()
+	await _hide_says_its_keys()
+	await _menus_show_the_real_keys()
+	await _the_palette_stays_put()
+	await _the_note_says_the_selection()
+	await _undo_says_what()
+	await _right_click_a_part()
+	await _drag_from_the_bin()
+	await _an_untouched_example()
+
+
+## Edit, Cut takes the selection off the model. Two commands shared the
+## name "cut" and the cut-away's replaced it, so Edit, Cut sliced the model
+## open with a plane instead.
+func _edit_cut() -> void:
+	var shell: Shell = _main.get("_shell")
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	_select_only([red])
+	await _frames(2)
+	var edit: MenuButton = shell.menu("Edit")
+	await _click(edit.get_global_rect().get_center())
+	var popup: PopupMenu = edit.get_popup()
+	var cut_at: int = -1
+	for index: int in popup.item_count:
+		if popup.get_item_text(index) == "Cut":
+			cut_at = index
+	_check("Edit has Cut, by Ctrl+X (%s)" % (OS.get_keycode_string(
+		popup.get_item_accelerator(cut_at)) if cut_at >= 0 else "none"), cut_at >= 0
+		and popup.get_item_accelerator(cut_at) == (KEY_MASK_CMD_OR_CTRL | KEY_X))
+	Carry.clipboard = []
+	if cut_at >= 0:
+		popup.id_pressed.emit(popup.get_item_id(cut_at))
+	popup.hide()
+	await _frames(4)
+	_check("Edit, Cut takes the selection off the model (%d parts)" % _count(), _count() == 2)
+	_check("...onto the clipboard (%d)" % Carry.clipboard.size(), Carry.clipboard.size() == 1)
+	_check("...and does not cut the model away", not _world.is_cut())
+	if _world.is_cut():
+		shell.see_inside.set_cut(false)
+	await _key(KEY_Z, true)
+
+
+## Hiding says the keys that bring it back. "H with nothing selected" was
+## the Pan tool.
+func _hide_says_its_keys() -> void:
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	_select_only(_bricks_near(Vector3(60, 0, 20)))
+	await _frames(2)
+	await _key(KEY_H, true)
+	var said: String = str(shell.status.fields()["message"])
+	_check("Ctrl-H says what shows it again (%s)" % said, said.contains("Alt-H")
+		and said.contains("Ctrl-H with nothing selected") and not said.contains(" H with"))
+	await _key(KEY_H)
+	_check("...and H, the Pan tool, is not one of them", verbs.mode == "pan"
+		and _model().any(func(b: BrickWorld.Brick) -> bool: return b.hidden))
+	await _key(KEY_ESCAPE)
+	await _key_alt(KEY_H)
+
+
+## The keys the menus show are the keys that do it, written as a person
+## writes them. View said Q and E turn the model (Shift-Q and Shift-E do; Q
+## takes the last part) and that orthographic is "QuoteLeft".
+func _menus_show_the_real_keys() -> void:
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	var engine_names: PackedStringArray = []
+	var wrong: PackedStringArray = []
+	var allowed := RegEx.create_from_string("^(F[0-9]+|Enter|Delete|Ctrl|Shift|Alt|Command|Cmd|.)$")
+	for menu: MenuButton in (_main.get("_bar") as ModelBar).menus.get_children():
+		var list: PopupMenu = menu.get_popup()
+		for index: int in list.item_count:
+			var accel: int = list.get_item_accelerator(index)
+			if accel == 0:
+				continue
+			var shown: String = OS.get_keycode_string(accel)
+			for part: String in shown.split("+"):
+				if allowed.search(part) == null:
+					engine_names.append("%s: %s" % [list.get_item_text(index), shown])
+			var id: int = list.get_item_id(index)
+			var name: String = shell._ids[id] if id >= 0 and id < shell._ids.size() else ""
+			var bound: int = shell.command(name).accel if not name.is_empty() else accel
+			if (accel & ~KEY_CODE_MASK) != (bound & ~KEY_CODE_MASK):
+				wrong.append("%s: %s" % [list.get_item_text(index), shown])
+	_check("no menu writes a key by the engine's name for it (%s)" % ", ".join(engine_names),
+		engine_names.is_empty())
+	_check("...and every key shown has the modifiers it is pressed with (%s)" % ", ".join(wrong),
+		wrong.is_empty())
+	var view: PopupMenu = shell.menu("View").get_popup()
+	var left_at: int = view.get_item_index(shell.menu_id("turn_left"))
+	_check("View says Shift+Q turns the model left (%s)" % OS.get_keycode_string(
+		view.get_item_accelerator(left_at)),
+		OS.get_keycode_string(view.get_item_accelerator(left_at)) == "Shift+Q")
+	var ortho_at: int = view.get_item_index(shell.menu_id("ortho"))
+	_check("...and orthographic is ` (%s), as the toolbar's tip writes it (%s)" % [
+		OS.get_keycode_string(view.get_item_accelerator(ortho_at)), shell.key_words("ortho")],
+		shell.key_words("ortho") == "`" and OS.get_keycode_string(
+			view.get_item_accelerator(ortho_at)).length() == 1)
+	var turned: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	var facing: Basis = _world.get_brick(turned).transform.basis
+	await _key(KEY_Q, false, true)
+	_check("...and Shift+Q does turn it, and puts no part in hand", verbs.mode != "place"
+		and _world.get_brick(turned) != null
+		and not _world.get_brick(turned).transform.basis.is_equal_approx(facing))
+	await _key(KEY_E, false, true)
+	var was_square: bool = _camera.is_square_on()
+	await _key(KEY_QUOTELEFT)
+	_check("...and ` puts the view square on", _camera.is_square_on() != was_square)
+	await _key(KEY_QUOTELEFT)
+	await _click(shell.menu("View").get_global_rect().get_center())
+	await _frames(4)
+	await _shot("first_timer_view_menu")
+	view.hide()
+	await _frames(3)
+
+
+## Dragging a part from the bin onto the model did nothing, and the part's
+## tooltip followed the pointer. Now the part is picked up and put down
+## where it is let go, as in Studio and Mecabricks.
+func _drag_from_the_bin() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	bin._search.text = "3003"
+	bin._run_search("3003")
+	await _frames(10)
+	var cell: Button = null
+	for child: Node in bin._grid.get_children():
+		if str(child.get_meta("part", "")) == "3003":
+			cell = child
+	_check("the bin offers Brick 2 x 2 to drag", cell != null)
+	if cell == null:
+		return
+	var tip: String = cell.tooltip_text
+	var from: Vector2 = cell.get_global_rect().get_center()
+	var to: Vector2 = _screen(Vector3(-100, 0, -140))
+	var before: int = _count()
+	await _move(from)
+	_button(from, true)
+	await _frames(2)
+	var tip_during: String = "unread"
+	for step: int in range(1, 13):
+		var event := InputEventMouseMotion.new()
+		event.position = _as_event(from.lerp(to, step / 12.0))
+		event.global_position = event.position
+		event.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(event)
+		await _frames(2)
+		if step == 6:
+			tip_during = cell.tooltip_text
+	await _frames(3)
+	_check("dragged over the model, its ghost follows the pointer (%s)" % _builder.held_part,
+		_builder.held_part == "3003" and _builder.has_preview())
+	_check("...with no tooltip along with it (\"%s\")" % tip_during, tip_during.is_empty())
+	await _shot("first_timer_bin_drag")
+	_button(to, false)
+	await _frames(6)
+	var landed: Array = _bricks_near(Vector3(-100, 0, -140)).filter(func(b: int) -> bool:
+		return _world.get_brick(b).part_id == "3003")
+	_check("let go, it is put down there (%d parts, was %d)" % [_count(), before],
+		_count() == before + 1 and landed.size() == 1)
+	_check("...and the part keeps its tooltip", cell.tooltip_text == tip)
+	await _key(KEY_ESCAPE)
+
+
+## A right click on a part did nothing. Now a menu of what a person
+## reaches for, each the command Edit or Build has.
+func _right_click_a_part() -> void:
+	var shell: Shell = _main.get("_shell")
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	var blue: int = _bricks_near(Vector3(60, 0, 20))[0]
+	var on_blue: Vector2 = _screen(Vector3(60, 24, 20))
+	await _move(on_blue)
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_RIGHT
+		event.pressed = down
+		event.position = _as_event(on_blue)
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2)
+	await _frames(4)
+	var menu: PopupMenu = shell.get("context")
+	var words: PackedStringArray = []
+	if menu != null:
+		for index: int in menu.item_count:
+			if not menu.is_item_separator(index):
+				words.append(menu.get_item_text(index))
+	_check("a right click on a part opens its menu (%s)" % ", ".join(words),
+		menu != null and menu.visible)
+	_check("...on that part, selected", _builder.selection.keys() == [blue])
+	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
+		"Select everything joined to it, Hide, Show only the selection, Paint with")
+		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
+		and words.has("Properties"))
+	await _shot("first_timer_part_menu")
+	if menu == null:
+		return
+	var hide_id: int = menu.get_item_id(int(shell.call("item_index", menu, "hide")))
+	menu.id_pressed.emit(hide_id)
+	menu.hide()
+	await _frames(4)
+	_check("...and Hide there hides it", _world.get_brick(blue).hidden)
+	await _key_alt(KEY_H)
+
+
+## Choosing a part moved the palette 19 px (its note wrapped to a second
+## line), so the next colour clicked was a row off.
+func _the_palette_stays_put() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	var dock: SideDock = _main.get("_bin_dock")
+	dock.set_open(true)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	# A colour in hand and no part: the note one line long, as it was
+	# before a part was chosen.
+	bin._selected_part = ""
+	bin._on_colour(15)
+	bin._mark_swatches()
+	# Slope 45 2 x 4, whose colours are all known: its note ran to two
+	# lines, as it did on the site.
+	bin._search.text = "3037"
+	bin._run_search("3037")
+	await _frames(10)
+	var white: Control = bin._swatches.get(15)
+	var cell: Button = null
+	for child: Node in bin._grid.get_children():
+		if str(child.get_meta("part", "")) == "3037":
+			cell = child
+	_check("the bin shows a white swatch and Slope 45 2 x 4 to choose",
+		white != null and cell != null)
+	if white == null or cell == null:
+		return
+	var was: float = white.get_global_rect().position.y
+	var note_was: String = bin._colour_note.text
+	await _click(cell.get_global_rect().get_center())
+	await _frames(10)
+	_check("choosing a part leaves the palette where it was (%.0f to %.0f px; \"%s\" to \"%s\")"
+		% [was, white.get_global_rect().position.y, note_was, bin._colour_note.text],
+		is_equal_approx(white.get_global_rect().position.y, was))
+	await _shot("first_timer_part_chosen")
+	await _key(KEY_ESCAPE)
+
+
+## With a brick selected the note under the palette described the part in
+## hand, while a colour clicked painted the brick.
+func _the_note_says_the_selection() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	(_main.get("_bin_dock") as SideDock).set_open(true)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	await _frames(4)
+	var white: Control = bin._swatches.get(15)
+	var was: float = white.get_global_rect().position.y
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	await _click(_screen(Vector3(-60, 24, 20)))
+	await _frames(6)
+	_check("a brick selected: the note under the palette describes it (%s)" % bin._colour_note.text,
+		_builder.selection.keys() == [red]
+		and bin._colour_note.text.begins_with("Brick 2 x 4 in Red, selected"))
+	_check("...and the palette has not moved (%.0f px)" % white.get_global_rect().position.y,
+		is_equal_approx(white.get_global_rect().position.y, was))
+	await _click(white.get_global_rect().get_center())
+	await _frames(6)
+	_check("...and the colour clicked paints it, and the note says so (%s)" % bin._colour_note.text,
+		_world.get_brick(red).color_code == 15
+		and bin._colour_note.text.begins_with("Brick 2 x 4 in White, selected"))
+	await _shot("first_timer_selection_note")
+	await _key(KEY_Z, true)
+	await _key(KEY_ESCAPE)
+	_check("nothing selected, it is the colour in hand again (%s)" % bin._colour_note.text,
+		not bin._colour_note.text.contains("selected"))
+
+
+## Undo said nothing, and undoing a sub-assembly made changed nothing a
+## person could see either.
+func _undo_says_what() -> void:
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	_select_only(_bricks_near(Vector3(-60, 0, 20)) + _bricks_near(Vector3(60, 0, 20)))
+	await _frames(2)
+	verbs.name_submodel("Body")
+	await _frames(3)
+	await _key(KEY_Z, true)
+	var said: String = str(shell.status.fields()["message"])
+	_check("Ctrl-Z says what it undid (%s)" % said,
+		said.begins_with("undid: ") and said.contains("Body"))
+	await _key(KEY_Z, true, true)
+	said = str(shell.status.fields()["message"])
+	_check("...and Ctrl-Shift-Z what it put back (%s)" % said,
+		said.begins_with("redid: ") and said.contains("Body"))
+	shell.run("undo")
+	said = str(shell.status.fields()["message"])
+	_check("...and so does Edit, Undo (%s)" % said, said.begins_with("undid: "))
+
+
+## New on the first visit's example car, untouched, asked whether to save
+## it: an example as it shipped is nobody's unsaved work.
+func _an_untouched_example() -> void:
+	var shell: Shell = _main.get("_shell")
+	var bar: ModelBar = _main.get("_bar")
+	var placed: int = _main.call("_open", "res://models/car.ldr")
+	bar.opened.emit(placed)
+	await _frames(5)
+	shell.run("new")
+	await _frames(3)
+	_check("New on the example car, untouched, asks nothing (%d parts were there)" % placed,
+		placed > 0 and not bar._confirm_new.visible and _count() == 0)
+	bar._confirm_new.hide()
+	placed = _main.call("_open", "res://models/car.ldr")
+	bar.opened.emit(placed)
+	await _frames(5)
+	# Painted, it is somebody's work, and New asks.
+	_select_only([_model()[0].id])
+	_builder.held_color = 2 if _model()[0].color_code != 2 else 4
+	shell.run("paint")
+	_builder.clear_selection()
+	await _frames(3)
+	shell.run("new")
+	await _frames(3)
+	_check("...and once painted, New asks first", bar._confirm_new.visible and _count() > 0)
+	bar._confirm_new.hide()
+	_main.call("clear_model")
+	await _frames(3)
 
 
 # -- helpers ------------------------------------------------------------------

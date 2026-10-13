@@ -230,6 +230,11 @@ static func name_for(brief: String) -> String:
 ## Whether starting a new model would lose anything: bricks that are not
 ## in a saved model under this name, exactly as they stand.
 func has_unsaved_work() -> bool:
+	# An example as it shipped is nobody's work: New on the first visit's
+	# car, untouched, asked whether to save it. Nothing has been done to
+	# it while there is nothing to undo (an Open forgets the history).
+	if example and builder != null and builder.history_depth() == 0:
+		return false
 	var now: PackedStringArray = _brick_lines(to_text(UNTITLED))
 	if now.is_empty():
 		return false
@@ -693,30 +698,55 @@ static func stored(path: String) -> bool:
 
 
 static func _count_bricks(path: String) -> int:
-	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return 0
-	var count: int = 0
-	# Not the lines inside a part the file carries: a made 2 x 7 brick is
-	# twenty-odd references to studs and tubes, and one brick. A section
-	# is counted when it ends, once its header has said what it is.
-	var section: int = 0
+	return count_in(FileAccess.get_file_as_string(path))
+
+
+## How many bricks a model's text opens as, counted the way the app counts
+## the model on the baseplate: each copy of a sub-model as the parts in
+## it. The Open list counted a sub-model's reference as a brick and its
+## parts once however many copies there were, and said "My House — 14
+## bricks" of a house the app called 13 (brickworks.diy, 2026-10-12).
+## Not the lines inside a part the file carries: a made 2 x 7 brick is
+## twenty-odd references to studs and tubes, and one brick.
+static func count_in(text: String) -> int:
+	# Each section by its name: the files its lines refer to, and whether
+	# it declares a part. The first with any lines is the model.
+	var refs: Dictionary = {}
+	var is_part: Dictionary = {}
+	var order: Array[String] = []
+	var name: String = ""
+	var lines := PackedStringArray()
 	var head := PackedStringArray()
-	while not file.eof_reached():
-		var line: String = file.get_line()
+	for raw: String in (text + "\n0 NOFILE").split("\n"):
+		var line: String = raw.strip_edges()
 		if line.begins_with("0 FILE ") or line.begins_with("0 NOFILE"):
-			if not LdrModel.declares_part(head):
-				count += section
-			section = 0
+			if not lines.is_empty() and not refs.has(name):
+				refs[name] = lines
+				is_part[name] = LdrModel.declares_part(head)
+				order.append(name)
+			name = LdrModel._key(line.substr(7)) if line.begins_with("0 FILE ") else ""
+			lines = PackedStringArray()
 			head = PackedStringArray()
 			continue
 		if head.size() < 16:
 			head.append(line)
 		if line.begins_with("1 "):
-			section += 1
-	file.close()
-	if not LdrModel.declares_part(head):
-		count += section
+			var fields: PackedStringArray = line.split(" ", false)
+			if fields.size() >= 15:
+				lines.append(LdrModel._key(" ".join(fields.slice(14))))
+	if order.is_empty():
+		return 0
+	return _bricks_in(order[0], refs, is_part, 0)
+
+
+static func _bricks_in(section: String, refs: Dictionary, is_part: Dictionary,
+		depth: int) -> int:
+	var count: int = 0
+	for named: String in refs[section]:
+		if depth < 32 and refs.has(named) and named != section and not bool(is_part[named]):
+			count += _bricks_in(named, refs, is_part, depth + 1)
+		else:
+			count += 1
 	return count
 
 

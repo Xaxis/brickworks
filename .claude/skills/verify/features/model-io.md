@@ -8,7 +8,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
 
 - `save and reopen`: the app writes what is on the baseplate to `user://` and
   restores it on start-up — bricks, colours, orientations, sections and the
-  camera. A design that fails must leave the model it was asked to change alone.
+  camera. The Open list counts a model as the app does once it is open
+  (`ModelStore.count_in`): each copy of a sub-model as its parts, a made part as
+  one. It counted a sub-model's reference as a brick, "My House — 14 bricks" of
+  a house the app called 13; `store_probe` checks both against what opens. A design that fails must leave the model it was asked to change alone.
 - `ldr read and write`: real LDraw `.ldr`. Written files open in other LDraw
   tools, and files from them open here.
 - `assemblies in the file`: a brick's `group` — the assembly a design named,
@@ -30,7 +33,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   New (Ctrl+N on the
   desktop) begins an empty baseplate, Untitled, with a fresh chat; it asks first
   when the model is not saved as it stands (`has_unsaved_work`: Untitled with
-  bricks, or bricks unlike the saved file's). There was no way to begin another
+  bricks, or bricks unlike the saved file's). An example as it shipped — the
+  first visit's car — is nobody's work: untouched (nothing to undo since it
+  opened), New asks nothing; it asked whether to save the car. There was no way to begin another
   model. `project_probe` (headless; puts this machine's autosave back) and
   `tools/web/project_flow.mjs` (types a name, saves, waits until the save and
   the named autosave are in the browser's storage, reloads, reads the tab,

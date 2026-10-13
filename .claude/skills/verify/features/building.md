@@ -17,8 +17,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   hand: its ghost follows the pointer and each click puts one down, staying in
   hand for the next as Studio's "repeat inserting" does by default. `Esc` or a
   right click lets go, back to Select, leaving nothing behind. Taking a part off
-  is `Delete` (or the Delete tool): the right button is for looking, never for
-  acting. The mode is always on the toolbar (Select or Place lit, Place's
+  is `Delete` (or the Delete tool). At rest, a right click on a part (not a
+  right drag, which turns the view) selects it, unless it is in the selection
+  already, and opens its menu (`Shell.open_context`): Select everything joined
+  to it, Hide, Show only the selection, Paint with the colour in hand (named),
+  Copy, Delete, Make a sub-assembly…, Properties, each Edit's or Build's own
+  command, greyed where it would do nothing. It did nothing (2026-10-12). The mode is always on the toolbar (Select or Place lit, Place's
   tooltip naming the part), in the status bar's hint and in the pointer.
   `tools/web/controls_flow.mjs` counts a person's first tasks in clicks and keys
   on a build, the old way (`--recipe=old`) or this one.
@@ -34,7 +38,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   adds to the selection; `G` takes the part under the pointer into hand, `X`
   lifts it off into hand.
 - `undo and redo`: `Cmd/Ctrl-Z` and `Cmd/Ctrl-Shift-Z`, over placements, removals,
-  paints, nudges and whole assistant designs. Undo belongs to the model it was
+  paints, nudges and whole assistant designs. Each says in the status line what
+  it took back or put back ("undid: made the sub-assembly Body of 2 parts"),
+  the keys and Edit's Undo alike (`EditVerbs.press`, `Builder.redo_words`): it
+  said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
 - `the ghost`: the part about to go down is drawn in its own colour, shaded,
@@ -58,8 +65,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
   across its stud axis), the opposite, all, none. The baseplate is never taken.
-- `hide and show only`: `H` hides the selection, `Shift-H` hides everything
-  else, `Alt-H` (or `H` with nothing selected) shows all. Hidden parts are not
+- `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
+  tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
+  selected) shows all, and the status line names those keys. Hidden parts are not
   drawn, the pointer passes through them (`BrickLattice.unseen`) and boxes and
   `Ctrl-A` skip them, but they still take up their room. The timeline's end
   puts them back hidden.
@@ -76,6 +84,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Instructions, Render, Parts list — each tooltip its name, key and what it does.
   Narrower than it needs, it folds its least-needed groups (all in the menus
   too); on a phone the file, history and tools stay.
+  One name, one command: Edit's Cut is `cut_parts` and the cut-away (`K`) is
+  `cut`, which had replaced it, so Edit, Cut sliced the model open
+  (`Shell._add` now refuses a second command of a name).
+  A key is shown as the binding a press really reaches, written as a person
+  writes it (`Shell.key_text`: Shift+Q turns the model, `` ` `` is
+  orthographic, `,` Settings; never the engine's "QuoteLeft" or "Comma"). The
+  menus can only draw the engine's name for a key, so one it misnames is
+  handed the character it then draws (`Shell.menu_accel`).
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
