@@ -33,12 +33,18 @@ static func here() -> String:
 	return str(value).rstrip("/")
 
 
-## The page's own directory, "https://brickworks.diy/b/<sha>/", where
+## The build's own directory, "https://brickworks.diy/b/<sha>/", where
 ## files that ship beside a build are (export.sh web puts the real-set
 ## index in knowledge/ there); empty on the desktop. Not the root: these
 ## are this build's, and the /b/ path is what lets them be cached forever.
+##
+## Read from where the engine was loaded, not from the page: the app is
+## served at /app now, so the page's own directory is the site's root and
+## the index was asked for at /knowledge/, which is the 404 page.
 static func build() -> String:
 	if not OS.has_feature("web"):
 		return ""
-	var value: Variant = JavaScriptBridge.eval("new URL('.', location.href).href", true)
+	var value: Variant = JavaScriptBridge.eval(
+		"new URL('.', typeof GODOT_CONFIG !== 'undefined' && GODOT_CONFIG.executable"
+		+ " ? new URL(GODOT_CONFIG.executable, location.href) : location.href).href", true)
 	return "" if value == null else str(value)

@@ -103,6 +103,7 @@ func _run() -> void:
 		await _fit()
 		_centred(folded)
 		await _clicks(folded)
+		await _picture_centred(folded)
 		await _shot("%dx_%s_folded" % [_ratio, folded])
 
 	await _glides()
@@ -210,6 +211,45 @@ func _clicks(folded: String) -> void:
 		found == _targets.size() and drawn == found)
 	_check("...and a click on each selects exactly that part (%d of %d)" % [picked, found],
 		found == _targets.size() and picked == found)
+
+
+## Where the model's opaque pixels sit in an exported picture, by fold.
+var _pictured: Dictionary = {}
+
+
+## A picture taken off screen (File, Export, Picture; the share page's card,
+## the Studio file's thumbnail) has a camera of its own and no column beside
+## it: the window's lens shift must not reach it, or the model would come out
+## to the left with one column folded and to the right with the other. So
+## the picture is taken with the lens shifted each way, and the model must
+## sit in the same place in both. Where that place is, is the picture's own
+## framing (Picture._frame centres the box round the model, not what is
+## drawn of it), said and not judged here.
+func _picture_centred(folded: String) -> void:
+	var exports: Exports = _main.get("_exports")
+	var image: Image = await exports.picture.take(Vector2i(600, 400))
+	if image == null:
+		_check("%dx, %s folded: an exported picture is taken" % [_ratio, folded], false)
+		return
+	var lo := Vector2i(image.get_width(), image.get_height())
+	var hi := Vector2i(-1, -1)
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			if image.get_pixel(x, y).a > 0.5:
+				lo = Vector2i(mini(lo.x, x), mini(lo.y, y))
+				hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
+	var size := Vector2(image.get_width(), image.get_height())
+	var middle: Vector2 = (Vector2(lo) + Vector2(hi)) * 0.5
+	var off: Vector2 = (middle - size * 0.5) / size
+	_pictured[folded] = off
+	print("    an exported picture, %s folded (the window's lens %.0f units across): the model %.1f%% across and %.1f%% down from its middle"
+		% [folded, _camera._shift.x, off.x * 100.0, off.y * 100.0])
+	if hi.x < 0:
+		_check("%dx, %s folded: an exported picture shows the model" % [_ratio, folded], false)
+	elif _pictured.size() == 2:
+		var apart: Vector2 = (_pictured["assistant"] as Vector2) - (_pictured["parts"] as Vector2)
+		_check("%dx: an exported picture is the same with either column folded, the window's lens not in it (%.2f%%, %.2f%% apart)"
+			% [_ratio, apart.x * 100.0, apart.y * 100.0], absf(apart.x) <= 0.005 and absf(apart.y) <= 0.005)
 
 
 ## A column folding moves the model to the new middle a little at a time, and

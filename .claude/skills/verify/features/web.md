@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:landing page, ui:changelog page, ui:404 page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
 
 ## Sub-features
 
@@ -23,8 +23,8 @@ plan with Claude as the client.
   are in [account](account.md). **The person's own key never reaches the
   server** — there is nothing on it that could take one.
 - `web build and deploy`: `tools/deploy.sh` exports the WebAssembly build, puts it
-  under `/b/<sha>/`, points `/` at it and then proves it in a browser. With
-  `--prod` it ends only once brickworks.diy redirects to the new sha: the domain
+  under `/b/<sha>/`, serves its page at `/app` and then proves it in a browser. With
+  `--prod` it ends only once brickworks.diy/app names the new sha: the domain
   lagged `vercel promote` by up to a minute, twice, and checks run on "done"
   measured the previous build. It first runs `tools/storage_parts.py`, which
   uploads any part mesh the catalogue names that object storage lacks, and
@@ -140,7 +140,11 @@ plan with Claude as the client.
   That last is why the bar is not redrawn until the card has drawn its last
   change (`GpuFence`): every 250 ms regardless, as first written, Orthanc's
   timeline took 77 s instead of 8, software drawings of the whole tower
-  queued up behind each other. A first visit's car: the parts bin's first open,
+  queued up behind each other. The parts bin is timed until the page has gone
+  quiet after it, since it opens at once and then draws its pictures (the
+  quiet is the engine's frames, not the pictures: with them read back after
+  the card's fence the next press can come while the bin is still drawing,
+  and its bar then waits for the card too). A first visit's car: the parts bin's first open,
   Instructions, Render, LEGO Art's Build of art_flow's galaxy at 48 across,
   Brickify of the bunny; then Orthanc opened from a file: Timeline, Delete
   of all of it, Undo, New. Fails when one that should show the bar does not
@@ -195,9 +199,9 @@ plan with Claude as the client.
   nothing; one that never was, 404. The card is a picture and a View in 3D that
   opens the link in a tab.
 - `shared model viewer` (`src/ui/share_view.gd`, `main._enter_view`,
-  `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>`, which
-  `deploy.sh` 308s to `/b/<sha>/?view=<id>` (Vercel keeps a query across that
-  redirect by itself; `?copy=` likewise), and which the shell hands the app as `--view=<id>`
+  `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>` — the app's page
+  itself since 2026-10-12, query and all, so the address bar keeps it (`?copy=`
+  likewise) — which the shell hands the app as `--view=<id>`
   (checked against `^[A-Za-z0-9]{10}$` before anything uses it). The same app,
   read-only, no second renderer: one GET of `/api/share?id=` (asked again, up
   to three times, when nothing at all comes back: on a preview a viewer said
@@ -230,6 +234,53 @@ plan with Claude as the client.
   the threaded engine needs cross-origin isolation, which an iframe in a page
   that did not ask for it cannot have — so the embed is the card, and the 3D
   opens in a tab.
+- `build it step player` (`src/ui/build_mode.gd`, `main._enter_build`,
+  `_build_go`, `_leave_build`): **Build it**, first and yellow on the viewer's
+  bar, turns the viewer into a step player for building the model with real
+  bricks, on a phone, a tablet or the desktop. The whole window: along the top
+  Close, "Step 3 of 24" (a callout's steps as the timeline says them, "Step 12
+  of 40 · Window (2x), 1 of 3") and a progress bar; the model between the bars,
+  what earlier steps built drawn **faded** (`BrickWorld.set_faded`: washed pale
+  and still solid — x-ray's 4% ghosts left the new parts floating) and the
+  step's new parts in their own colours with a yellow outline; along the
+  bottom the step's parts on a pale card, a picture and "2x" each, and a Back
+  and a bigger red Next. Page 0 is the finished model, "Ready to build", with
+  Start; Next past the last step (Finish) is Close. Sized in points, not
+  interface units (a phone has ~1.85 units to the point): Next and Back 60 pt
+  tall, the step at 24 pt. A swipe across either bar turns the page (left is
+  Next) and never turns the model; on the model one finger turns it and two
+  pinch, as `CadCamera` already did — `_view_input` now leaves a finger's
+  emulated click alone, which turned the view a second time. Keys: Right,
+  Space, Page Down, Enter are Next; Left, Page Up, Backspace Back; Home the
+  cover, End the last step; Esc Close. Each page opens on the view the booklet
+  would draw it from (`BuildSteps.view`: front unless the new parts are
+  hidden from there and the back shows them, decided per page) framed between
+  the bars (`CadCamera.seen` is the player's free rect while it is up), close
+  round the new parts when they are under a fifth of the model across. The
+  page is kept per link on the device — `localStorage["brickworks.build.<id>"]`
+  = `{"page", "building"}`, the one thing the viewer writes, and only in the
+  browser (this run only on the desktop) — so a link opened again goes
+  straight back to the step it was on. The steps are the timeline's
+  (`StepsBar.steps`); since they break ties by the order parts stand in, the
+  viewer opens a link a second time once every part has arrived, so the parts
+  stand in the file's order and step 12 is the same step 12 after a reload.
+  Published as `brickworksShare.build` (`open`, `page`, `last`, `caption`,
+  `note`, `told`, `lots`, `pictures`, `next`, `points` of the buttons,
+  `caption_points`, `faded`, `fresh`, `shown`, `from`); controls `build_next`,
+  `build_back`, `build_close`, `build_parts`, `build_top`, `build_bottom`, and
+  `view_build` (the bar's, or on a window under 1,040 points a big yellow
+  Build it over the model, above the timeline). `brickworksState.told_ms` and
+  `told_most_ms` say what publishing all this to the page costs a frame,
+  twice a second. Not done: the author's own steps (`0 STEP`, item 1
+  of docs/COMPETITIVE.md) are not kept yet, so these are always
+  `Instructions.plan`'s; the parts are fetched for the whole model before
+  the first page, not page by page; and a page turn is not yet under 100 ms
+  on a phone (see the browser flow below).
+- `build pages` (`src/assembly/build_steps.gd`): what each page shows —
+  `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
+  the most first), `caption`, `note` ("Build this on the side", "Put them on",
+  "hold this one in place"), `view` — and `recall`/`remember` for the kept
+  page, which reads a stored value of the wrong shape as none.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -246,7 +297,9 @@ plan with Claude as the client.
   the sign-in screen. `deploy.sh` sources `.env`, so its checks are signed in.
   Pages of the site that are not the app launch with `{ signedOut: true }`.
 - `which build this is`: the deploy writes `version.json` (commit, UTC time)
-  beside the build and the Help panel shows "This build: <commit>, updated
+  beside the build, and the Help panel finds it beside the engine
+  (`GODOT_CONFIG.executable`), not beside the page — at `/app` the page is not
+  in the build's directory — and shows "This build: <commit>, updated
   <local time>". The owner, looking at the live site, could not tell when it had
   last been deployed. Desktop builds say "Development build".
 - `fits the page at every density`: the layout stretches to the canvas
@@ -421,7 +474,49 @@ plan with Claude as the client.
   does and how it is checked is in [release](release.md). The landing page
   links to it from the nav and the footer. The deploy does not check it yet:
   after a release, run `node tools/web/download_check.mjs
-  --url=https://brickworks.diy/download.html`.
+  --url=https://brickworks.diy/download`.
+- `put the website together` (`tools/site.py OUT`): every file in `web/` (and
+  `web/img/`) but working ones named `_…` and `img/manifest.json`, with
+  `changelog.html` filled from `CHANGELOG.md` and `releases.json`. The deploy runs
+  it into `.vercel/output/static`; run it into a scratch directory to look at the
+  changelog. **Clean addresses** (2026-10-12, the owner: "pages at brickworks.diy
+  shouldn't end in .html"): every top-level page but `index`, `404` and
+  `authorize` is served at its bare name by a Build Output `overrides` entry
+  (`/download`, `/changelog`, `/admin`), and `/<name>.html` answers 308 to it,
+  query and all (`/index.html` to `/`, `/authorize.html` to `/oauth/authorize`);
+  `/download/` and `/app/` lose the slash. **`/app` is a rewrite**, not a redirect:
+  the page under `/b/<sha>/` is served at `/app`, `no-cache`, with every file it
+  names made absolute by the deploy (`src="/b/<sha>/index.js"`,
+  `GODOT_CONFIG.executable` and `fileSizes`), because the CSP's `base-uri 'none'`
+  rules out a `<base>`. The CSP's script hash is of that served copy. **An unknown
+  address answers 404 with `web/404.html`**, at any depth and inside `/b/<sha>/`;
+  it used to 308 to `/`. `/parts/` and `/sets/` keep their plain-text 404s.
+- `landing page` (`web/index.html`, `web/site.css`, the pictures in `web/img/`):
+  the hero (the builder with Orthanc, `img/hero-*.webp`), a gallery of real
+  models, a row per feature (the designer, LEGO Art, hoses and posing, Studio and
+  files, instructions, renders, share links, collection), the rest of the
+  toolbox, how it works with the two ways to bring Claude, privacy, the
+  dimensions, an FAQ (also as FAQPage JSON-LD beside the SoftwareApplication) and a
+  last call to open the app. Every page shares `/site.css` (every text colour 4.5:1
+  or better on its background in both schemes), a skip link, a sticky bar with a
+  `<details>` menu under 860 px (no script: the CSP runs none inline), and one
+  footer. Pictures are WebP at two widths with `srcset`, `width` and `height`;
+  all but the hero load lazily. `img/manifest.json` says where each came from
+  (`shots/` of the run that made it) and holds its alt text. `changelog page`
+  (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
+  bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
+  names `sitemap.xml`, which lists `/`, `/download` and `/changelog`.
+- `site check` (`tools/web/site_check.mjs --url=<deployment>`): every page 200 at
+  its bare name with its title, description, canonical link and an Open Graph
+  card whose picture answers; every old `.html` 308 to its bare name; `/app` 200
+  with its build's engine named under `/b/<sha>/`, COOP/COEP and the app's CSP, not
+  cached, and the build's files immutable; unknown addresses the 404 page with a
+  404; the sitemap's pages 200 and robots keeping `/admin` out; every link,
+  picture and `#fragment` on every page resolving (external links fail only when
+  gone, 404 or 410); and in a browser, no page logging an error or scrolling
+  sideways at 390 px, with a full-page shot of each at 390 and 1280 px in `--out`,
+  and `/app` booting with the address bar still `/app` and its `version.json`
+  found. About four minutes on SwiftShader.
 - `the assistant, as a person uses it`: `tools/web/assistant_flow.mjs` pastes a
   key, asks for a small house and records every answer from Anthropic, with a
   screenshot at each step. With its default fake key it is free and proves the
@@ -447,6 +542,8 @@ tools/deploy.sh                 # a preview URL
 tools/deploy.sh --prod          # the one brickworks.diy points at
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
+VERCEL_BYPASS=… node tools/web/site_check.mjs --url=<deployment> --out=shots/site
+python3 tools/site.py /tmp/site && (cd /tmp/site && python3 -m http.server 8098)   # the pages, as files
 python3 tools/web/serve.py build/web 8099    # locally, with the isolation headers
 # ...and standing in for the deployment on a slow network: /api/account names
 # its own /parts/, served from the directory after a delay (see parts.md previews)
@@ -552,6 +649,61 @@ Proves it when it ends "a model can be shared by link, looked at by anyone,
 and taken down": see the steps in the script's header; pictures
 `1_shared.png` to `11_viewer_unpublished.png` and `og_image.png`.
 
+**Build it.** The pages, headless, in about half a minute (the catalogue load):
+
+```sh
+godot --headless --path . --script src/dev/build_steps_probe.gd
+```
+
+Proves it when it ends "every page of the step player can be built from, and
+a link comes back where it was left" with no `FAIL`: on the shed (two windows
+and a figure in callouts), the house and the 2,438-part castle, every part
+picked up on exactly one page, each page showing what is built by then and
+nothing after, what came before faded and the page's own parts not, the parts
+listed being the page's new parts by part and colour, the most first, the
+pages numbered as the timeline numbers them, a callout's first page saying to
+build it on the side and the page that puts it on outlining every copy; a
+page's view worked out in under 20 ms on the castle; the same file making the
+same pages twice (and, printed, that the reverse order does not — why the
+viewer opens a link again in its file's order); a part behind a wall looked
+at from the back; a tile on a big floor framed close; the kept page per link,
+and junk in its place read as none.
+
+The player in the real scene is the last part of `share_view_probe` above
+(`shots/share/9_build_cover.png` to `11_build_again.png`): Build it pressed on
+the bar, the cover, Next pressed three times to "Step 3 of N", the faded parts
+read back from their batch as `BrickWorld.faded` of their colour and the new
+ones in their own, the outline, every part picture drawn, the step framed
+between the bars, a swipe each way across the parts (and the model not
+turning under it), the arrow keys, a finger turning the model and two
+pinching it, the page kept; the viewer opened again straight on step 3;
+Close; Build it again back on step 3; and Finish.
+
+In real Chromium with touch, at a phone's and a tablet's size, against a local
+export (no account, no database: `serve.py --share` plays the link), about ten
+minutes on SwiftShader:
+
+```sh
+tools/export.sh web
+python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr &
+node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web
+```
+
+Proves it when it ends "build it works on a phone and a tablet, and comes back
+where it was left": at 390 x 844 (3x) and 820 x 1180 (2x), `/m/<id>` opens the
+viewer with Build it on the bar; tapped, the cover; Next tapped three times,
+"Step 3 of N" with steps 1 and 2 faded and every part picture drawn, Next and
+Back at least 46 points tall, every control inside the page; with the CPU
+slowed four times, the worst frame of three page turns no more than twice the
+worst of three Nexts on the viewer's own timeline (both printed: the aim is
+100 ms and on this box neither meets it — 2026-10-13, phone, the timeline 158
+to 165 ms, the pages 122 to 280 ms, of which the page's own work
+(`brickworksShare.build.turn_most`) was 54 to 126); a swipe each way across
+the parts; a finger turning the model; the page in `localStorage`; and after a
+reload, step 3 again. Pictures
+`shots/build_web/<size>_1_viewer.png` to `_5_reloaded.png`. Against a
+deployment: `--url=<preview> --id=<a published link's id> --bypass=…`.
+
 And the deploy, which is the only proof that counts for the web build:
 
 ```sh
@@ -602,8 +754,8 @@ the build animation weighed the model once a step.
   anything.** What *is* greppable is packed data: `assets/generated/catalogue.json`
   goes in as JSON, so
   `curl --compressed <build>/index.pck | grep -a '"castle":{"sets"'` really does
-  prove the catalogue that shipped. For code, the honest proof is the stamp — `/`
-  308s to `/b/<sha>/`, and that sha names the tree.
+  prove the catalogue that shipped. For code, the honest proof is the stamp —
+  `/app` names `/b/<sha>/index.js`, and that sha names the tree.
 - **A 200 from the landing page says nothing about how it renders.** That was
   the whole of the deploy's landing check, and what it missed for as long as the
   page has existed: five header links are 405px wide in a 358px bar, the nav does
@@ -611,7 +763,10 @@ the build animation weighed the model once a step.
   scrolled sideways**. `tools/web/landing_check.mjs` loads it in a browser at
   phone and laptop width and fails the deploy on a sideways scroll, on nothing
   visible linking to `/app`, or on a missing heading. Run it on a file while
-  editing: `node tools/web/landing_check.mjs --file=web/index.html`.
+  editing: `node tools/web/landing_check.mjs --file=web/index.html`. A file is
+  served from its directory over http (`static_server.mjs`), not opened as
+  `file://`: the pages name `/site.css` and `/img/…` from the root (the 404 page
+  is served at any depth), and as files they load unstyled.
 
   What the page says, in order: the two ways to design with Claude (`#how`:
   the plan through Connect Claude, or an API key, each as numbered steps with
@@ -620,8 +775,9 @@ the build animation weighed the model once a step.
   account holds, key, login, the relay, models — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `own_key.gd` and the
   CSP in `deploy.sh`; change one, change the page), and the dimensions. The picture at the top is retaken from a deployment with
-  `tools/web/app_shot.mjs --url=<build>/app --out=web/shot-app.png` (the castle,
-  a clean browser, 1600x900), not by hand.
+  `tools/web/app_shot.mjs --url=<build>/app --out=web/_shot-app.png` (a clean
+  browser, 1600x900), not by hand, then made `img/hero-1600.webp` and
+  `img/hero-960.webp`.
 
   Measure a page where its assets resolve. Comparing the edited page against a
   copy kept in the scratchpad "proved" the overflow was mine — the copy had no
@@ -629,7 +785,7 @@ the build animation weighed the model once a step.
   Three single-change bisects all showing the same 566px is what exposed the
   baseline rather than the change.
 
-- **A wrong path under `/b/<sha>/` answers with a 308 to `/`,** not a 404, so a
-  typo in a filename reads as "the file is missing" when it is the URL that is
-  wrong. Read the deployed page for the real names: `index.js`, `index.pck`,
+- **A wrong path under `/b/<sha>/` answers 404 with the site's 404 page** (it
+  was a 308 to `/` until 2026-10-12), so a typo in a filename reads as "the file
+  is missing" when it is the URL that is wrong. Read the deployed page for the real names: `index.js`, `index.pck`,
   `index.wasm`.

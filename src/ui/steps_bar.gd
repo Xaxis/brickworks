@@ -339,6 +339,12 @@ func is_playing_back() -> bool:
 	return visible
 
 
+## The steps worked out at [method start], in the build order: the step
+## player (BuildSteps) builds from these, so it numbers them as this does.
+func steps() -> Array[Instructions.Step]:
+	return _steps
+
+
 ## Its controls, for the page to find, while it is up.
 func controls_by_name() -> Dictionary:
 	return _named.duplicate() if visible else {}

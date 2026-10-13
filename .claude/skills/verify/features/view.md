@@ -102,7 +102,17 @@ picture the assistant is shown.
   it inside, then picks five parts from the world (a straight line from the
   eye reaches each first), checks hiding each changes the pixel at its point
   and a click there selects exactly it; on the code before this, the middle
-  is 168 units out. `tools/web/centre_check.mjs --url=…` does the centring
+  is 168 units out. It also takes an exported picture (`Picture.take`, the
+  share card's and the Studio thumbnail's path) with the lens shifted each
+  way and requires the model in the same place in both: the window's lens
+  never reaches a camera of its own. Where it sits there is the picture's
+  own framing, which centres the box round the model, not what is drawn
+  (1.8% left and 9% low on the probe's flat scene, either way). A
+  check that aims at the model must find it again after a column opens or
+  folds, Q among them (it brings the bin out, and in a window with room for
+  one column the model moves 338 units): `cursor_check.mjs` does, and
+  `nav_flow.mjs` frames the model before the view tools, since its pinch
+  at the middle of the view now ends under the baseplate. `tools/web/centre_check.mjs --url=…` does the centring
   and the five clicks in Chromium at 1x and 2x (`brickworksLayout.centre`
   and `.targets`, `brickworksState.selection`).
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
@@ -711,7 +721,9 @@ picture the assistant is shown.
   While it is open a veil covers the window and the window's own model is
   not drawn (`disable_3d`, put back as Main would have it on Close).
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
-  viewports with a copy of the model staged a slice a frame (`FramePace`).
+  viewports with a copy of the model staged a slice a frame (`FramePace`), on
+  its floor: the baseplate it stands on is staged with it when that is its
+  floor (`ModelFloor`), and a model on No floor stands on the sweep alone.
   The set: a sweep (`studio_backdrop.gdshader`, a floor curving into a wall,
   turned to face the camera), the contact shadow (`studio_contact.gdshader`:
   three silhouettes of the model seen from under the floor, within 6, 30 and

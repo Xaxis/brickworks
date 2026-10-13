@@ -120,11 +120,27 @@
       "tests": []
     },
     {
+      "id": "cli:build browser flow",
+      "kind": "cli",
+      "entry": "tools/web/build_flow.mjs",
+      "reach": "node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web   (serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:build custom parts",
       "kind": "cli",
       "entry": "tools/build_custom.py",
       "reach": "tools/build_custom.py PART.dat --out DIR   (needs numpy and scipy)",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "cli:build steps probe",
+      "kind": "cli",
+      "entry": "src/dev/build_steps_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/build_steps_probe.gd",
+      "area": "web",
       "tests": []
     },
     {
@@ -252,6 +268,14 @@
       "tests": []
     },
     {
+      "id": "cli:floor in a browser",
+      "kind": "cli",
+      "entry": "tools/web/floor_flow.mjs",
+      "reach": "node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html  (a local export, serve.py --parts)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:freeze check",
       "kind": "cli",
       "entry": "tools/web/freeze_check.mjs",
@@ -358,6 +382,14 @@
       "tests": []
     },
     {
+      "id": "cli:put the website together",
+      "kind": "cli",
+      "entry": "tools/site.py",
+      "reach": "python3 tools/site.py /tmp/site",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:redraw check",
       "kind": "cli",
       "entry": "tools/web/redraw_check.mjs",
@@ -454,6 +486,14 @@
       "entry": "src/dev/sign_in.gd",
       "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:site check",
+      "kind": "cli",
+      "entry": "tools/web/site_check.mjs",
+      "reach": "VERCEL_BYPASS=\u2026 node tools/web/site_check.mjs --url=<deployment> --out=shots/site",
+      "area": "web",
       "tests": []
     },
     {
@@ -566,6 +606,14 @@
       "entry": "src/parts/part_forge.gd",
       "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:build pages",
+      "kind": "lib",
+      "entry": "src/assembly/build_steps.gd",
+      "reach": "godot --headless --path . --script src/dev/build_steps_probe.gd",
+      "area": "web",
       "tests": []
     },
     {
@@ -859,6 +907,14 @@
       "tests": []
     },
     {
+      "id": "ui:404 page",
+      "kind": "ui",
+      "entry": "web/404.html",
+      "reach": "https://brickworks.diy/<anything not there>   (answers 404)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:LEGO Art designed by Claude",
       "kind": "ui",
       "entry": "src/ai/assistant.gd",
@@ -878,7 +934,7 @@
       "id": "ui:admin page",
       "kind": "ui",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin.html   (signed in to the app as MASTER_EMAIL)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
       "area": "account",
       "tests": []
     },
@@ -915,6 +971,14 @@
       "tests": []
     },
     {
+      "id": "ui:build it step player",
+      "kind": "ui",
+      "entry": "src/ui/build_mode.gd",
+      "reach": "https://brickworks.diy/m/<id>, then Build it on the viewer's bar  (a phone or a tablet; the desktop too)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:build steps",
       "kind": "ui",
       "entry": "src/ui/steps_bar.gd",
@@ -928,6 +992,14 @@
       "entry": "src/camera/cad_camera.gd",
       "reach": "godot --headless --path . --script src/dev/camera_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:changelog page",
+      "kind": "ui",
+      "entry": "web/changelog.html",
+      "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
+      "area": "web",
       "tests": []
     },
     {
@@ -982,7 +1054,7 @@
       "id": "ui:download page",
       "kind": "ui",
       "entry": "web/download.html",
-      "reach": "https://brickworks.diy/download.html  (locally: node tools/web/download_check.mjs)",
+      "reach": "https://brickworks.diy/download  (locally: node tools/web/download_check.mjs)",
       "area": "release",
       "tests": []
     },
@@ -992,6 +1064,14 @@
       "entry": "src/render/idle_draw.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:floor",
+      "kind": "ui",
+      "entry": "src/render/floor_layer.gd",
+      "reach": "godot --path .  (View, Floor; the properties with nothing selected; Settings, New models start on)",
+      "area": "building",
       "tests": []
     },
     {
@@ -1008,6 +1088,14 @@
       "entry": "src/ui/flex_tool.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain\u2026, click two pin holes or two gears; Edit, Reshape the hose or chain)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:landing page",
+      "kind": "ui",
+      "entry": "web/index.html",
+      "reach": "https://brickworks.diy/   (locally: node tools/web/landing_check.mjs --file=web/index.html)",
+      "area": "web",
       "tests": []
     },
     {

@@ -362,7 +362,7 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
              "instructions and a parts list at the end. The whole part library is",
              "inside this package, so building needs no network.", "",
              "https://brickworks.diy        the site, and this app in a browser",
-             "https://brickworks.diy/download.html   checksums and every download", ""]
+             "https://brickworks.diy/download        checksums and every download", ""]
     if platform == "linux":
         lines += ["To start it:", "",
                   "  ./brickworks.x86_64", "",
@@ -1239,7 +1239,7 @@ def release_notes(version: str, files: list[dict[str, Any]], tag: str) -> str:
     return "\n".join([
         body, "", "## Downloads", "",
         "The right one for your system, with checksums and what each needs: "
-        "https://brickworks.diy/download.html", "",
+        "https://brickworks.diy/download", "",
         "| System | File | Size |", "|---|---|---|", rows, "",
         "Every file's SHA-256 is in `SHA256SUMS` (`sha256sum -c SHA256SUMS`).", "",
         *(["### The first launch", "", *first, ""] if first else []),

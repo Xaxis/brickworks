@@ -215,6 +215,61 @@ func _initialize() -> void:
 			["3679", 4, Vector3(0, -8, 0), Basis.IDENTITY],
 			["3003", 1, Vector3(0, -32, 0), Basis.IDENTITY]]), true)
 
+	print("\ntipped on a hinge and read from a file, in a section of its own")
+	# And so is a part tipped about a flat axis. Read back at the nearest
+	# square turn, a hinge's top and what stands on it were a plate or so off
+	# where they are: the bench's starfighter, its wings opened ten degrees,
+	# came back in ten pieces and its crane, the boom raised, in sixteen, each
+	# one piece as its session built it. Real sets' sub-models, as LDraw's
+	# model repository has them (vendor/omr), each refused before.
+	await _one_piece("10179's hinge tipped 53 degrees, a jumper and a bar on its top", """
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+1 72 0 -24 10 1 0 0 0 1 0 0 0 1 3937.dat
+1 71 0 -20.0182 2.0136 1 0 0 0 0.6018 -0.7986 0 0.7986 0.6018 3938.dat
+1 72 0 -24.8327 -4.3754 1 0 0 0 0.6018 -0.7986 0 0.7986 0.6018 3794b.dat
+1 71 0 -72.9779 -68.2663 1 0 0 0 0.6018 -0.7986 0 0.7986 0.6018 30374.dat
+1 71 0 -8 -30 0 0 -1 0 1 0 1 0 0 3021.dat
+""")
+	await _one_piece("6285's rail on three hinges tipped 21.5 degrees, plates stacked on them", """
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 4477.dat
+1 0 40 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 0 -40 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 0 -80 -24 0 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 -80 -23.304 -3.665 1 0 0 0 0.93 -0.367 0 0.367 0.93 3938.dat
+1 14 0 -23.304 -3.665 1 0 0 0 0.93 -0.367 0 0.367 0.93 3938.dat
+1 0 0 -24 0 1 0 0 0 1 0 0 0 1 3937.dat
+1 14 80 -23.304 -3.665 1 0 0 0 0.93 -0.367 0 0.367 0.93 3938.dat
+1 0 80 -24 0 1 0 0 0 1 0 0 0 1 3937.dat
+1 0 -40 -16 0 1 0 0 0 1 0 0 0 1 3069b.dat
+1 0 40 -16 0 1 0 0 0 1 0 0 0 1 3069b.dat
+1 0 0 -30.748 -6.597 1 0 0 0 0.93 -0.367 0 0.367 0.93 4477.dat
+1 0 0 -38.191 -9.529 1 0 0 0 0.93 -0.367 0 0.367 0.93 4477.dat
+1 0 -70 -45.634 -12.461 1 0 0 0 0.93 -0.367 0 0.367 0.93 3623.dat
+1 0 70 -45.634 -12.461 1 0 0 0 0.93 -0.367 0 0.367 0.93 3623.dat
+1 14 0 -45.634 -12.461 1 0 0 0 0.93 -0.367 0 0.367 0.93 3710.dat
+""")
+	await _one_piece("75144's panel on a hinge tipped 17 degrees, a plate on it", """
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3937.dat
+1 15 0 0.437 -2.924 1 0 0 0 0.956 -0.292 0 0.292 0.956 3938.dat
+1 47 0 -45.466 -16.958 1 0 0 0 0.956 -0.292 0 0.292 0.956 87552.dat
+1 15 0 -53.116 -19.297 1 0 0 0 0.956 -0.292 0 0.292 0.956 32028.dat
+""")
+	await _one_piece("21307's hinge tipped 60 degrees, a tile and a clip on its top", """
+1 0 0 0 0 0 0 -1 0 1 0 1 0 0 3738.dat
+1 72 0 -24 -30 0 0 -1 0 1 0 1 0 0 3002.dat
+1 0 0 -24 10 -1 0 0 0 1 0 0 0 -1 3937.dat
+1 0 0 -8 30 1 0 0 0 1 0 0 0 1 15573.dat
+1 0 0 -8 50 1 0 0 0 1 0 0 0 1 15573.dat
+1 0 0 -8 70 1 0 0 0 1 0 0 0 1 15573.dat
+1 0 0 -16 50 1 0 0 0 1 0 0 0 1 3024.dat
+1 0 0 -16 70 0 0 -1 0 1 0 1 0 0 15712.dat
+1 72 0 -22.66 15 -1 0 0 0 0.866 -0.5 0 -0.5 -0.866 3938.dat
+1 71 -10 -29.588 19 -1 0 0 0 0.866 -0.5 0 -0.5 -0.866 85861.dat
+1 0 10 -29.588 19 -1 0 0 0 0.866 -0.5 0 -0.5 -0.866 3070b.dat
+1 72 -10 -39.981 25 -1 0 0 0 0.5 0.866 0 0.866 -0.5 22484.dat
+1 0 0 -22 70 0 0 1 0.866 0.5 0 -0.5 0.866 0 23443.dat
+""")
+
 	print("")
 	if _failures == 0:
 		print("the joints real sets use pass, and the same parts apart do not")
@@ -328,6 +383,16 @@ func _passes(said: String, ldraw: String, sections: bool = false) -> void:
 	var verdict: Dictionary = _assistant._check(model, true)
 	_ok(bool(verdict["ok"]) and model.placements.size() >= 2,
 		"%s (%s)" % [said, verdict["summary"]])
+
+
+## Read from a file with its sections, and passed in one piece: a part a
+## plate off what it stands on passes as a piece of its own.
+func _one_piece(said: String, ldraw: String) -> void:
+	var model: Assistant.Model = await _design(ldraw, true)
+	var verdict: Dictionary = _assistant._check(model, true)
+	_ok(bool(verdict["ok"]) and int(verdict["pieces"]) == 1,
+		"%s: %d parts, %s, %d piece%s" % [said, model.placements.size(), verdict["summary"],
+			int(verdict["pieces"]), "" if int(verdict["pieces"]) == 1 else "s"])
 
 
 func _refused(said: String, ldraw: String, sections: bool = false) -> void:

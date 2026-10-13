@@ -127,7 +127,7 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
     FAIL  it is buildable, in one piece: 1 problem (loose 1), 2 pieces
     ok    it stands up: stable
     ok    the check does not call it a dark face with nothing on it
-    still lit windows in rows, as orthanc.ldr is
+    ok    not counted: called lit windows in rows, as orthanc.ldr on the page is
     FAIL  the check does not call it a yard for a base
   not a candidate: 2 faults
 """
@@ -149,6 +149,24 @@ def test_a_failing_probe_is_read_into_facts():
     assert found["faults"] == ["a yard for a base"]
     assert found["shared_faults"] == ["lit windows in rows"]
     assert found["candidate"] is False
+
+
+def test_a_fault_the_page_has_too_is_said_as_a_pass_and_read_as_shared():
+    # The judge is shown the probe's lines: one the probe lets through must
+    # not read as a fault named. Before, it said "still ..." and four runs
+    # lost two points of buildability for it.
+    line = "    ok    not counted: called sky through a slit, as orthanc.ldr on the page is"
+    found = scores.read_probe(A_CANDIDATE.replace("  a candidate", line + "\n  a candidate"))
+    assert found["faults"] == [] and found["shared_faults"] == ["sky through a slit"]
+    assert found["candidate"] is True
+    old = scores.read_probe("    still sky through a slit, as orthanc.ldr is\n")
+    assert old["shared_faults"] == ["sky through a slit"] and old["faults"] == []
+
+
+def test_figures_standing_apart_do_not_change_the_piece_count():
+    found = scores.read_probe("    ok    it is buildable, in one piece: 244 bricks, buildable, "
+                              "3 pieces, 2 figures apart\n")
+    assert found["buildable"] is True and found["pieces"] == 3
 
 
 def test_pieces_named_apart_are_read_and_the_count_is_the_last_number():

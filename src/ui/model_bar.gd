@@ -329,7 +329,17 @@ func _on_pick(id: int) -> void:
 	if id < 0 or id >= _entries.size():
 		return
 	var entry: ModelStore.Entry = _entries[id]
-	opened.emit(store.open(entry.path))
+	opened.emit(await open_with_progress(entry.path))
+
+
+## Open a saved model or an example, a slice at a time, the status bar
+## counting its parts as they go down (Working). How many landed.
+func open_with_progress(path: String) -> int:
+	var job: Working.Job = Working.begin("Opening %s…" % path.get_file())
+	await job.shown()
+	var placed: int = await store.open_paced(path, job)
+	job.end()
+	return placed
 
 
 ## Somebody else's .ldr, from wherever they keep it.
@@ -343,12 +353,12 @@ func _import() -> void:
 		_picker = ModelFilePicker.new()
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
-			# Reading a big model is a long frame: the status bar says so
-			# first (Working), and has been drawn before it begins.
+			# A slice at a time, the status bar counting the parts as they
+			# go down (Working), drawn before it begins.
 			var job: Working.Job = Working.begin("Opening %s…" % file_name.get_file())
 			await job.shown()
-			var result: Dictionary = store.open_text(
-				text, file_name.get_basename())
+			var result: Dictionary = await store.open_text_paced(
+				text, file_name.get_basename(), job)
 			job.end()
 			if not str(result["error"]).is_empty():
 				_say(str(result["error"]))

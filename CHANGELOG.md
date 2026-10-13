@@ -33,6 +33,23 @@ whole cycle.
   Shift-]; New step from selection, Shift-N; a step earlier or later, merged
   with the next, or taken out), on the timeline too, each one undo.
 
+- A floor of your choosing under every model (View, Floor; the properties
+  with nothing selected): a baseplate 16, 32 or 48 studs square or any
+  size in eights, in the colours baseplates come in; a grid floor with no
+  plate, as Studio has; or nothing, as a car stands on a table. Saved
+  with the model. The baseplate can be made part of the model, counted
+  and in the booklet's first step. Settings says what new models start
+  on, and the assistant chooses one for what it builds.
+- Build it, on a shared model's link: the model as a step player for
+  building it with real bricks, made for a phone or a tablet propped
+  beside the pile and working on the desktop too. Full screen, a step at
+  a time, with big Back and Next buttons and a swipe; what is already
+  built drawn faded and the step's new parts in full colour and outlined;
+  the step's parts along the bottom, a picture and "2x" each, as a
+  booklet's callout; the model turned with one finger and zoomed with
+  two. Each step opens on the side the booklet would draw it from. The
+  step reached is kept for that link on that device, so a phone that
+  sleeps comes back where it was.
 - Building instructions laid out as a LEGO booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of
@@ -45,6 +62,32 @@ whole cycle.
 - File, Export, BrickLink Studio model (.io): the model, its build order
   and a picture of it, in the zip Studio opens its own files from. Not
   yet seen opening in Studio itself; what is inside is plain LDraw.
+- LEGO Art: Mosaic lays a picture as a modern LEGO Art set builds one —
+  2 × 4 tiles in courses, round and quarter-round accents, raised up to
+  six plates deep, a panel at a time — or as classic 1 × 1 plates. Claude
+  can plan one too, look at it, and revise it.
+- Hoses, tubes, strings and chains (Build, Hose, tube or chain…): laid
+  along a path between the connectors you click, and reshaped later. A
+  laid hose is counted as the one hose a shop sells.
+- Pose and animate: a slider for every hinge, turntable and joint a
+  sub-assembly turns on, and keyframes played as an animation.
+- File, Render…: a picture or a turntable worth keeping, Quick, Good or
+  Best, up to 4K, on a studio sweep with soft shadows.
+- Share by link (File, Share…): a brickworks.diy/m/ link with a picture
+  and a card wherever it is pasted, and a 3D viewer with the steps, the
+  booklet and the parts list. Open in Brickworks copies it into your own
+  models.
+- My collection: the sets and parts you own — by set number, a Rebrickable
+  or BrickLink file, or your Rebrickable account — kept with your account;
+  what a model still needs, what could stand in, and which models you
+  could build.
+- Brickify: a 3D model in OBJ, STL or glTF laid in LEGO at the size you
+  pick.
+- Prints and stickers: draw a print or bring in a picture for any face of
+  a part, or a sticker for a model, saved as real LDraw parts, and a
+  model's sticker sheet printed at true size.
+- File, Export: a BrickLink wanted list and a Rebrickable parts list. File,
+  Import: LEGO Digital Designer's .lxf.
 
 ### Changed
 

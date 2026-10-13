@@ -53,7 +53,7 @@ const page_html = `<!doctype html>
      Claude plan or API key. Then build it.</p>
   <div class="url">brickworks.diy</div>
 </div>
-<div class="shot"><img src="castle.png"><div class="fade"></div></div>`;
+<div class="shot"><img src="_castle.png"><div class="fade"></div></div>`;
 
 const browser = await launch({ signedOut: true });  // a page of the site, not the app
 const page = await browser.newPage({

@@ -181,6 +181,9 @@ func _build() -> void:
 ## Bricks to pick out, by number. The stage is a copy of the world, so
 ## recolouring one here changes a picture and not a model.
 var highlight: Dictionary = {}
+## Points numbered on the picture, each [position in LDU, label] (see
+## [member ShotRuler.marks]).
+var marks: Array = []
 ## Dark Pink, which is to say magenta. Opaque — trans-neon green was
 ## the first choice and renders as a wash you can see the brick behind,
 ## which is the wrong thing when the question is "which brick" — and far
@@ -381,8 +384,10 @@ func _take(world: BrickWorld, from: String,
 	_camera.current = true
 
 	if _ruler != null:
-		_ruler.visible = rulers
+		_ruler.visible = rulers or not marks.is_empty()
 		_ruler.bounds = bounds
+		_ruler.marks = marks
+		_ruler.rules = rulers
 		_ruler.queue_redraw()
 
 	# Drawn over the next few frames rather than awaited once.

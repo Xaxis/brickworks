@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The pages of brickworks.diy worth finding. tools/web/site_check.mjs
+     reads this list and fails a deploy on any address in it that does not
+     answer 200 with its own canonical link. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://brickworks.diy/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://brickworks.diy/download</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brickworks.diy/changelog</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+</urlset>

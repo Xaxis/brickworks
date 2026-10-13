@@ -46,6 +46,11 @@ var before: Image = null
 var step: Dictionary = {}
 ## Parts changed, all told, for the panel.
 var changed: int = 0
+## The steps of [member step] that are the change itself, without the
+## other copies of the sub-assembly built again after it, which are said
+## apart; and how many copies the last change brought along.
+var own_steps: Array = []
+var followed: int = 0
 
 
 ## The scope of a selection, or null when none of it is a part that can be

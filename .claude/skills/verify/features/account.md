@@ -248,7 +248,7 @@ first visit with only the form pressable, clicks and keys changing nothing
 behind it, an address that is not one held back, Email me a code moving on (the
 deployment really sends it, to a Resend test address), a wrong code refused, the
 minted code signing in, the session kept in the browser, a reload still signed
-in, `/admin.html` refusing the account, Account then Sign out bringing the
+in, `/admin` refusing the account, Account then Sign out bringing the
 screen back with the session gone, and no security-policy refusals. `--master`
 also signs the owner's account in (no email sent) and checks the admin page
 lists the accounts.

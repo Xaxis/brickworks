@@ -413,6 +413,7 @@ func clear() -> void:
 	_ghosts.clear()
 	# Numbers start again, so x-ray's would name the next model's bricks.
 	_xray.clear()
+	_faded.clear()
 	_spans.clear()
 	_next_id = 1
 	unit_steps.clear()
@@ -765,7 +766,7 @@ func _write_instance(batch: Batch, slot: int, brick: Brick,
 	# that is what keeps a printed face black on a yellow head.
 	var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT else surface_color
 	var color: PartLibrary.BrickColor = library.color(code)
-	multimesh.set_instance_color(slot, color.shown)
+	multimesh.set_instance_color(slot, faded(color.shown) if _faded.has(brick.id) else color.shown)
 	multimesh.set_instance_custom_data(slot, color.instance_custom)
 
 
@@ -1296,6 +1297,56 @@ func set_xray(see_through: Dictionary) -> void:
 ## The bricks x-ray draws see-through.
 func xray_ids() -> Dictionary:
 	return _xray
+
+
+## Bricks drawn faded, by id: in the step player (BuildMode), what is
+## already built, so the step's new parts are the ones in full colour.
+##
+## Washed pale and still solid, rather than x-ray's see-through ghosts. A
+## ghost is a few percent of fill and an edge: drawn under a step's new
+## parts it left them floating, with nothing to say what they go on. A
+## booklet draws the model built so far whole; drawn pale, it is there to
+## find the place by and is not what the eye lands on.
+var _faded: Dictionary = {}
+
+## How far a faded brick's colour goes towards [constant FADED_TO].
+const FADING := 0.62
+const FADED_TO := Color(0.86, 0.87, 0.89)
+
+
+## Draw these bricks faded and every other in its own colour; an empty set
+## is none faded. Each batch with a brick changing is written again, once,
+## at the end of the frame, as for x-ray.
+func set_faded(ids: Dictionary) -> void:
+	var changed: Dictionary = {}
+	for brick_id: int in _faded:
+		if not ids.has(brick_id):
+			changed[brick_id] = true
+	for brick_id: int in ids:
+		if not _faded.has(brick_id):
+			changed[brick_id] = true
+	_faded = ids.duplicate()
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func faded_ids() -> Dictionary:
+	return _faded
+
+
+## A colour as a faded brick is drawn in. Its alpha is kept: faded
+## transparent plastic is still see-through.
+static func faded(colour: Color) -> Color:
+	var pale: Color = colour.lerp(FADED_TO, FADING)
+	pale.a = colour.a
+	return pale
 
 
 ## A batch's x-ray ghosts written into their own MultiMesh, or the MultiMesh

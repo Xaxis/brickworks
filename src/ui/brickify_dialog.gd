@@ -334,9 +334,22 @@ func controls_by_name() -> Dictionary:
 		"brickify_hollow": _hollow, "brickify_cancel": _cancel}
 
 
+## The fence behind the last turn of the preview drawn (GpuFence).
+var _turned: int = 0
+
+
 func _process(delta: float) -> void:
-	if visible and _turntable != null:
-		_turntable.rotate_y(delta * 0.5)
+	# Still while it works, and on the web turned again only once the card
+	# has drawn the last turn: spun every frame, a browser drawing in
+	# software queued frame after frame of it, and the status bar's line
+	# saying Brickify had started was drawn 1.6 s after the press, behind
+	# them (2026-10-12).
+	if not visible or _turntable == null or _busy:
+		return
+	if not GpuFence.passed(_turned):
+		return
+	_turntable.rotate_y(delta * 0.5)
+	_turned = GpuFence.put()
 
 
 # -- the choices --------------------------------------------------------------

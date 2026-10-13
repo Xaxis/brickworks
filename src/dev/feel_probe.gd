@@ -614,7 +614,7 @@ func _framing() -> void:
 	_check("no ground is left behind as an ordinary brick, %d" % strays,
 		strays == 0)
 	_check("...and the model is standing on it",
-		_main._ground.encloses(AABB(
+		(_main.get("_floor") as FloorLayer).area.encloses(AABB(
 			Vector3(built.position.x, 0.0, built.position.z),
 			Vector3(built.size.x, 0.0, built.size.z))))
 

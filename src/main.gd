@@ -40,6 +40,8 @@ var _notices: PanelContainer
 ## the model (the cut-away's strip) is laid in it.
 var _over_model: Control
 var _store: ModelStore
+## The baseplate, the grid floor or nothing under the model.
+var _floor: FloorLayer
 var _bar: ModelBar
 var _bin: PartsBin
 var _chat: ChatPanel
@@ -60,6 +62,10 @@ var _stats_shown: bool = _has_argument("--stats")
 var _connector: ClaudeConnector
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
+## ...and how long telling it took the last time, which is a frame's work
+## twice a second: a check reads it beside the slow frames.
+var _told_page_us: int = 0
+var _told_page_most_us: int = 0
 var _deployment: Deployment
 ## Who is signed in. Everyone using Brickworks is (src/account/account.gd).
 var _account: Account
@@ -85,6 +91,20 @@ var _first_open_done: bool = false
 var _shared: SharedModels
 var _share_panel: SharePanel
 var _share_view: ShareView
+## Build it, in the viewer: the step player, the pages it shows, the line
+## round each page's new parts, and the page it is on (_enter_build).
+var _build_mode: BuildMode
+var _build_pages: BuildSteps
+var _build_outline: SelectionOutline
+var _build_page: int = 0
+## What was in sight before the player took the window, put back after.
+var _build_left: Dictionary = {}
+## How long turning to the last page took, and the longest, in microseconds:
+## the page's own work, before the batches are written at the frame's end.
+var _build_turned_us: int = 0
+var _build_turned_most_us: int = 0
+## ...and where the longest one's time went, ms by what it did.
+var _build_turned_most: Dictionary = {}
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -274,6 +294,7 @@ func _tell_page() -> void:
 	if now - _told_page_at < 500:
 		return
 	_told_page_at = now
+	var telling: int = Time.get_ticks_usec()
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
@@ -310,6 +331,8 @@ func _tell_page() -> void:
 		named.merge(_share_panel.controls_by_name())
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
+	if _build_mode != null:
+		named.merge(_build_mode.controls_by_name())
 	if _inventory != null:
 		named.merge(_inventory.controls_by_name())
 	if _steps != null:
@@ -365,6 +388,11 @@ func _tell_page() -> void:
 	# what is in hand, which parts were made here.
 	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
 		"bricks": _world.brick_count() - _store.scenery.size(),
+		# What it stands on, and the plates laid as scenery, for
+		# tools/web/floor_flow.mjs.
+		"floor": _store.model_floor.to_meta().trim_prefix(ModelFloor.META),
+		"scenery": _store.scenery.size(),
+		"own_plate": _floor != null and _floor.has_own_plate(),
 		"held": _builder.held_part,
 		"custom": _library.custom.keys(),
 		# The tool in use and what is selected, so a browser check can
@@ -386,6 +414,8 @@ func _tell_page() -> void:
 		"triangles": _drawn[1],
 		"now": Time.get_ticks_msec(),
 		"slow": _slow_frames,
+		"told_ms": roundi(_told_page_us / 1000.0),
+		"told_most_ms": roundi(_told_page_most_us / 1000.0),
 		"playing": _playback != null and _playback.is_playing(),
 		# The sub-assemblies, path -> their own parts, and the one being
 		# edited: what tools/web/assembly_flow.mjs reads the tree by.
@@ -444,6 +474,7 @@ func _tell_page() -> void:
 		"panel": _share_panel.page_state() if _share_panel != null else {},
 		"view": _share_view.page_state() if _share_view != null else {},
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
+		"build": build_state(),
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
@@ -469,6 +500,8 @@ func _tell_page() -> void:
 			"connected": clients,
 			"status": _chat.connector_status(),
 		}), true)
+	_told_page_us = Time.get_ticks_usec() - telling
+	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
 
 
 ## The model's part of the window and every panel's, in CSS pixels, and
@@ -1230,6 +1263,7 @@ func clear_model() -> void:
 	_builder.clear_selection()
 	_builder.forget_history()
 	_assistant.forget_built()
+	_store.model_floor = ModelFloor.preferred()
 	_lay_baseplate()
 	_sample_untouched = false
 	_store.begin(ModelStore.UNTITLED)
@@ -1362,7 +1396,23 @@ func _enter_view() -> void:
 	_share_view.booklet_wanted.connect(_booklet_wanted)
 	_share_view.parts_wanted.connect(_toggle_parts)
 	_share_view.copy_wanted.connect(_open_copy)
+	_share_view.build_wanted.connect(func() -> void: _enter_build())
+	# The big Build it of a phone sits above the timeline.
+	_share_view.floor_at = func() -> float:
+		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
+			else _share_view.size.y
 	_share_view.loading()
+	_build_mode = BuildMode.new()
+	_build_mode.thumbnails = _thumbnails
+	$HUD.add_child(_build_mode)
+	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1))
+	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
+	_build_mode.close_wanted.connect(_leave_build)
+	_build_outline = SelectionOutline.new()
+	_build_outline.world = _world
+	_build_outline.library = _library
+	_build_outline.width = 3.0
+	add_child(_build_outline)
 	# A step scrubbed shows and hides parts under a pointer that has not moved.
 	_steps.reveal.connect(func(_ids: Dictionary) -> void:
 		_hovered_from = Vector2(-1, -1))
@@ -1405,9 +1455,19 @@ func _view_shared() -> void:
 	# On the web most parts are fetched as they are wanted; the steps are
 	# worked out from all of them, so they wait for the last.
 	var since: int = Time.get_ticks_msec()
+	var waited: bool = not _store.awaited.is_empty()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
 		_share_view.arriving(_store.awaited.size())
 		await get_tree().create_timer(0.3).timeout
+	if waited and _store.awaited.is_empty():
+		# Opened again now every part is here, so the parts stand in the
+		# file's order and not the order they happened to arrive in. The
+		# steps break ties by that order: worked out from an arrival order,
+		# a reload could make step 12 a different step 12, and someone
+		# coming back to the page they left would be on another one.
+		_store.open_text(str(shared.get("model", "")), name)
+		_store.title = name
+		_store.share_id = ""
 	_lay_baseplate()
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
@@ -1415,6 +1475,12 @@ func _view_shared() -> void:
 	# The finished model, on a timeline to drag back through.
 	if await _steps.start(_world, _library, _store.scenery):
 		_steps.to_end()
+	# Back where this device left it: a phone that slept mid-build opens on
+	# the page it was on.
+	_build_pages = null
+	var kept: Dictionary = BuildSteps.recall(_viewing)
+	if bool(kept.get("building", false)):
+		_enter_build(int(kept["page"]))
 
 
 ## Open in Brickworks, from the viewer: the app as everybody else gets
@@ -1425,6 +1491,134 @@ func _open_copy() -> void:
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
 		OS.shell_open(Deployment.api_base() + address)
+
+
+## Build it: the viewer as a step player, full screen, at [param page] —
+## where this device left the link when none is given (BuildSteps.recall).
+func _enter_build(page: int = -1) -> void:
+	if _share_view == null or _share_view.state != "ready" or _build_mode.is_open():
+		return
+	if _inventory.is_showing():
+		_inventory.hide_list()
+	var made: Array[Instructions.Step] = _steps.steps()
+	# start() works the steps out a slice at a time with the progress bar,
+	# so it has to be waited for.
+	if made.is_empty() and not await _steps.start(_world, _library, _store.scenery):
+		return
+	made = _steps.steps()
+	_build_left = {"timeline": _steps.is_playing_back(), "cube": _gizmo.visible}
+	# Put out of sight, not stopped: stopping forgets nothing, but starting
+	# it again afterwards works the steps out again, and on a castle that
+	# is seconds of a phone's time for the press of Close.
+	if _steps.is_playing_back():
+		_steps.to_end()
+		_steps.visible = false
+	if _build_pages == null:
+		_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	_share_view.show_bar(false)
+	_share_view.hover("", Vector2.ZERO)
+	_hovered = 0
+	_hover_outline.show_selection({})
+	_gizmo.visible = false
+	_build_mode.open()
+	_camera.seen = _build_mode.free_rect
+	if page < 0:
+		page = int(BuildSteps.recall(_viewing).get("page", 0))
+	# A frame for the bars to be laid out, so the view is framed between them.
+	await get_tree().process_frame
+	_build_go(page)
+
+
+## Put [param page] on screen: what is built by then, the rest out of
+## sight; what was built before it faded; its new parts outlined; its
+## parts along the bottom; the view the booklet would draw it from. And
+## kept as where this device is on the link.
+func _build_go(page: int) -> void:
+	if _build_pages == null or not _build_mode.is_open():
+		return
+	if page > _build_pages.last():
+		# Finish, on the last page: the whole model, as it is now built.
+		_leave_build()
+		return
+	var started: int = Time.get_ticks_usec()
+	var took: Dictionary = {}
+	var lap: int = started
+	page = _build_pages.clamped(page)
+	_build_page = page
+	# Faded first: it only marks the batches, and showing them writes each
+	# once, faded and shown together, rather than once each.
+	_world.set_faded(_build_pages.faded(page))
+	_world.show_only(_build_pages.shown(page))
+	lap = _lap(took, "world", lap)
+	_build_outline.show_selection(_build_pages.fresh(page))
+	lap = _lap(took, "outline", lap)
+	var view: Dictionary = _build_pages.view(page)
+	_camera.look_from(view["from"])
+	# The ball round a flat box is roomy already: a step on a baseplate
+	# framed at the usual 1.25 sat in the middle third of a phone.
+	_camera.frame(view["box"], 1.0)
+	lap = _lap(took, "view", lap)
+	_build_mode.show_page(page, _build_pages.last(), _build_pages.caption(page),
+		_build_pages.note(page), _build_pages.lots(page))
+	lap = _lap(took, "page", lap)
+	BuildSteps.remember(_viewing, page, true)
+	_lap(took, "kept", lap)
+	_build_turned_us = Time.get_ticks_usec() - started
+	if _build_turned_us > _build_turned_most_us:
+		_build_turned_most_us = _build_turned_us
+		_build_turned_most = took
+
+
+## Milliseconds since [param since], under [param name]; now.
+static func _lap(took: Dictionary, name: String, since: int) -> int:
+	var now: int = Time.get_ticks_usec()
+	took[name] = snappedf((now - since) / 1000.0, 0.1)
+	return now
+
+
+## Back to the whole model, as the viewer opened it: the timeline at the
+## end, the bar along the top. The page reached is kept, for Build it to
+## come back to.
+func _leave_build() -> void:
+	if _build_mode == null or not _build_mode.is_open():
+		return
+	_build_mode.close()
+	_world.set_faded({})
+	_build_outline.show_selection({})
+	_camera.seen = _model_rect
+	_share_view.show_bar(true)
+	_gizmo.visible = bool(_build_left.get("cube", true))
+	BuildSteps.remember(_viewing, _build_page, false)
+	if bool(_build_left.get("timeline", false)):
+		_steps.visible = true
+		_steps.to_end()
+	else:
+		_world.show_only({})
+	_camera.look_from(BookletStudio.FRONT)
+	_camera.frame(_built_bounds())
+
+
+## The step player as a check reads it (tools/web/build_flow.mjs,
+## share_view_probe): the page and what it says, and what the world draws.
+func build_state() -> Dictionary:
+	if _build_mode == null:
+		return {}
+	var said: Dictionary = _build_mode.page_state()
+	if not _build_mode.is_open():
+		return said
+	said["faded"] = _world.faded_ids().size()
+	said["fresh"] = _build_pages.fresh(_build_page).size() if _build_pages != null else 0
+	said["turn_ms"] = roundi(_build_turned_us / 1000.0)
+	said["turn_most_ms"] = roundi(_build_turned_most_us / 1000.0)
+	said["turn_most"] = _build_turned_most
+	var shown: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not brick.hidden and not _store.scenery.has(brick.id):
+			shown += 1
+	said["shown"] = shown
+	said["from"] = ("back" if _build_pages != null and _build_mode.is_open()
+		and _build_pages.view(_build_page)["from"] == BookletStudio.BACK else "front")
+	return said
 
 
 ## The page's address, put right without a reload: the link itself while
@@ -1484,6 +1678,10 @@ func _view_input(event: InputEvent) -> void:
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
 		return
+	# A finger's click, emulated: the camera turns the view with the finger
+	# itself already (CadCamera), and the two together turned it twice.
+	if button.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	if button.pressed:
 		if _over_panel_at(button.position):
 			return
@@ -1500,6 +1698,25 @@ func _view_input(event: InputEvent) -> void:
 ## the steps and the parts list here; everything else does nothing.
 func _looking_key(key: InputEventKey) -> bool:
 	if key.ctrl_pressed or key.meta_pressed:
+		return false
+	# The step player: pages and closing, and the views; nothing of the
+	# timeline's, which is put away while it is up.
+	if _build_mode != null and _build_mode.is_open():
+		match key.keycode:
+			KEY_RIGHT, KEY_SPACE, KEY_PAGEDOWN, KEY_ENTER:
+				_build_go(_build_page + 1)
+			KEY_LEFT, KEY_PAGEUP, KEY_BACKSPACE:
+				_build_go(_build_page - 1)
+			KEY_HOME:
+				_build_go(0)
+			KEY_END:
+				_build_go(_build_pages.last() if _build_pages != null else 0)
+			KEY_ESCAPE:
+				_leave_build()
+			KEY_F, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, \
+					KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, \
+					KEY_KP_6, KEY_KP_7:
+				return true
 		return false
 	match key.keycode:
 		KEY_B:
@@ -1552,6 +1769,9 @@ func _look_under_again() -> void:
 ## The part under the pointer in the viewer: outlined, and named beside it.
 func _view_hover() -> void:
 	if _share_view == null or _share_view.state != "ready":
+		return
+	# Building, every part on show is one to look at, not one to name.
+	if _build_mode != null and _build_mode.is_open():
 		return
 	var at: Vector2 = _view_pointer
 	if at == _hovered_from:
@@ -1614,6 +1834,24 @@ func _build_ui() -> void:
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
+
+	# What the model stands on: src/render/floor_layer.gd.
+	_floor = FloorLayer.new()
+	_floor.name = "Floor"
+	_floor.world = _world
+	_floor.builder = _builder
+	_floor.store = _store
+	_floor.library = _library
+	_floor.model_bounds = _model_bounds
+	add_child(_floor)
+	# A plate made part of the model, or the floor again, changes what is
+	# counted and weighed without changing a brick: counted again now.
+	_floor.changed.connect(func() -> void:
+		_stability_revision = -1
+		_stability_at = 0
+		_on_rebuilt(_world.brick_count(), _drawn[0], _drawn[1]))
+	_builder.scenery = _store.scenery
+	_builder.floor_hook = _floor.put
 
 	_stability = Stability.new()
 	_stability.library = _library
@@ -1723,6 +1961,8 @@ func _build_ui() -> void:
 		_assistant.forget_built()
 		if _chat != null:
 			_chat.new_chat()
+		# A new model stands on what the person chose for new ones.
+		_store.model_floor = ModelFloor.preferred()
 		_lay_baseplate()
 		_on_model_changed()
 		_camera.frame(_built_bounds()))
@@ -1971,6 +2211,12 @@ func _build_ui() -> void:
 		if name != _store.title and _store.title in [ModelStore.UNTITLED, _named_for_work]:
 			_store.begin(name)
 			_named_for_work = _store.title)
+	# What the design said it stands on, laid when it stands.
+	_assistant.floor_chosen.connect(_on_floor_chosen)
+	_assistant.finished.connect(func(ok: bool, _summary: String) -> void:
+		if _plate_after_design and ok:
+			floor_part_of_model(true)
+		_plate_after_design = false)
 	# Saved, opened or begun again, it is not named for that work any more.
 	_store.saved.connect(func(_name: String) -> void: _named_for_work = "")
 	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _named_for_work = "")
@@ -2210,6 +2456,9 @@ func _build_ui() -> void:
 	_shell.app = self
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	# Claude's change to a selection made in one copy of a sub-assembly is
+	# followed by the others, as a change by hand is.
+	_assistant.assemblies = _shell.assemblies
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
 	_stack.add_section(_bin.colours)
@@ -2271,7 +2520,8 @@ func _build_ui() -> void:
 	_exports.picture.world = _world
 	_exports.picture.camera = _camera
 	_exports.picture.scenery = _store.scenery
-	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame]
+	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
+		_shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)
@@ -2541,21 +2791,18 @@ func _booklet_wanted() -> void:
 ## everything when the model *is* scenery, so a picture of a bare plate
 ## still gets framed rather than pointing at nothing.
 func _built_bounds() -> AABB:
-	var bounds := AABB()
-	var first: bool = true
-	for brick: BrickWorld.Brick in _world.bricks():
-		if _store.scenery.has(brick.id):
-			continue
-		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-		if part == null:
-			continue
-		var box: AABB = brick.transform * part.bounds
-		bounds = box if first else bounds.merge(box)
-		first = false
+	var bounds: AABB = _model_bounds()
+	if bounds.size.length_squared() > 0.0:
+		return bounds
 	# Everything, including the scenery, when nothing has been built —
 	# a box round nothing frames nothing, and the baseplate is at least
 	# somewhere to stand. Not _built_bounds(), which is this function.
-	return _world.model_bounds() if first else bounds
+	# With no baseplate, the ground the floor covers.
+	var everything: AABB = _world.model_bounds()
+	if everything.size.length_squared() <= 0.0 and _floor != null \
+			and _floor.area.size.length_squared() > 0.0:
+		return AABB(_floor.area.position, _floor.area.size + Vector3(0.0, BrickLattice.BRICK, 0.0))
+	return everything
 
 
 ## Lay the chosen picture out in plates.
@@ -2596,10 +2843,22 @@ func _build_mosaic(across: int, dither: bool) -> void:
 		if brick_id != 0:
 			_builder.register(brick_id, Mosaic.PIXEL_PART, at)
 
+	_on_a_floor_of_its_own()
 	_camera.frame(_built_bounds(), 1.1)
 	_camera.set_view("top")
 	_on_model_changed()
 	_bar.say("%d plates — press P for what to buy" % pixels.size())
+
+
+## A picture laid in plates is a whole model on its own panels, with nothing
+## under it: its floor is none, or the next edit would lay a baseplate under
+## the picture (FloorLayer.is_stale). Not a step of the history, which the
+## picture replaced.
+func _on_a_floor_of_its_own() -> void:
+	var none: ModelFloor = _store.model_floor.copy()
+	none.kind = ModelFloor.NONE
+	_store.model_floor = none
+	_lay_baseplate()
 
 
 ## The picture dialog's size: room for the Art mode's picture, its
@@ -2664,6 +2923,7 @@ var _art_said: Dictionary = {}
 ## A picture laid in LEGO Art, by the dialog's Build or by make_art: looked
 ## at, then checked as a design is, so the line says whether it is one piece.
 func _art_laid(art: MosaicArt.Art) -> void:
+	_on_a_floor_of_its_own()
 	if _shell != null:
 		_shell.assemblies.changed.emit()
 	_camera.frame(_built_bounds(), 1.1)
@@ -2878,6 +3138,10 @@ func _on_model_edited() -> void:
 	if _store != null:
 		_store.adopt()
 		_store.touch()
+	# A model's own baseplate taken off, or brought back by an undo: the
+	# floor's plate goes back under it, or comes away.
+	if _floor != null and _floor.is_stale():
+		_lay_baseplate()
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -3162,94 +3426,108 @@ func _ground_for_the_model(and_frame: bool = false) -> void:
 		return
 	if and_frame:
 		_camera.frame(box)
-	if _ground.size.length_squared() > 0.0 \
-			and _ground.encloses(AABB(
-				Vector3(box.position.x, 0.0, box.position.z),
-				Vector3(box.size.x, 0.0, box.size.z))):
+	if _floor.covers(_model_bounds()):
 		return
 	_lay_baseplate()
 
 
-## The ground laid down, flattened: x and z only, since the plates are
-## all at y=0 and a model's height has nothing to do with whether it
-## fits on them.
-var _ground: AABB = AABB()
-
-
+## Put the model's floor down under it (FloorLayer): the baseplate it
+## stands on, the grid floor, or nothing, as its floor says.
+##
+## At zero, not a plate below it. A part's origin sits at the top of its
+## body, and bricks rest with their undersides on the plane that
+## GROUND_CELL names — which is zero. Laying the baseplate at -8 put its
+## surface a full plate under them, so everything on it floated three
+## millimetres clear of the studs it was supposed to be on. Centred on the
+## model and tiled to cover it: a set-sized model on one plate ran off the
+## edge and hung in the air, which reads as the model being broken.
 func _lay_baseplate() -> void:
-	const PLATE := "3811"   # Baseplate 32 x 32
-	# The ground that was here goes, brick and record together.
-	#
-	# Clearing the record alone was harmless while this only ran just
-	# after the world was emptied — there was nothing left to be stale.
-	# Laying fresh ground under a model that has outgrown its plate
-	# runs it with the old plate still in the world, and dropping it
-	# from the set does not remove it: it becomes an ordinary brick,
-	# sitting under everything, in the way of every edit. Two designs
-	# reported exactly that — "a stray baseplate part sitting below
-	# ground level" — and I read the code that skips scenery, decided
-	# they had misdiagnosed it, and moved on. They had not.
-	#
-	# A stale id matters the other way too. BrickWorld numbers from one
-	# again after a clear, so an id left in this set names an ordinary
-	# brick somebody places later — and a brick marked as scenery is
-	# left out of Save, Export, the parts list and the booklet,
-	# silently.
-	if _store != null:
-		for old_id: int in _store.scenery.keys():
-			_builder.lattice.release(old_id)
-			_world.remove_brick(old_id)
-		_store.scenery.clear()
-	# At zero, not a plate below it. A part's origin sits at the top of
-	# its body, and bricks rest with their undersides on the plane that
-	# GROUND_CELL names — which is zero. Laying the baseplate at -8 put
-	# its surface a full plate under them, so everything on it floated
-	# three millimetres clear of the studs it was supposed to be on.
-	# Measured: the gap was 8 LDU, and closing it moves the baseplate
-	# rather than anything built on it.
-	# Enough ground to stand the model on.
-	#
-	# One plate is thirty-two studs across, which was the whole world
-	# back when a model was fifty bricks. A set-sized one runs off the
-	# edge and hangs in the air — the first thing anyone sees of a big
-	# model is half of it over nothing, which reads as the model being
-	# broken rather than the ground being small. Tiled to cover what is
-	# actually there, and still a single plate when there is nothing.
-	const ACROSS := 32.0 * BrickLattice.STUD
-	var box: AABB = _built_bounds()
-	var wide: int = 1
-	var deep: int = 1
-	if box.size.x > 0.0 or box.size.z > 0.0:
-		wide = maxi(int(ceil(box.size.x / ACROSS)), 1)
-		deep = maxi(int(ceil(box.size.z / ACROSS)), 1)
-	# Centred on the model rather than on the origin.
-	#
-	# A baseplate's origin is its middle, not a corner, so one laid at
-	# zero covers sixteen studs each way — and a model built outward
-	# from the origin, which is where designs start, hung off two
-	# edges of it from the beginning.
-	#
-	# Snapped to whole studs so the plates meet the grid; neighbours
-	# are a whole plate apart, so snapping the first snaps them all.
-	var middle: Vector3 = box.get_center()
-	var first_x: float = snappedf(
-		middle.x - float(wide - 1) * ACROSS * 0.5, BrickLattice.STUD)
-	var first_z: float = snappedf(
-		middle.z - float(deep - 1) * ACROSS * 0.5, BrickLattice.STUD)
-	_ground = AABB(
-		Vector3(first_x - ACROSS * 0.5, 0.0, first_z - ACROSS * 0.5),
-		Vector3(float(wide) * ACROSS, 0.0, float(deep) * ACROSS))
-	for column: int in wide:
-		for row: int in deep:
-			var at := Transform3D(Basis.IDENTITY, Vector3(
-				first_x + float(column) * ACROSS, 0.0,
-				first_z + float(row) * ACROSS))
-			var brick_id: int = _world.add_brick(PLATE, 288, at)  # Dark Green
-			if brick_id == 0:
-				continue
-			_builder.register(brick_id, PLATE, at)
-			if _store != null:
-				_store.scenery[brick_id] = true
+	if _floor == null:
+		return
+	_floor.lay(_model_bounds())
+
+
+## What is built, without the floor, and nothing when nothing is.
+func _model_bounds() -> AABB:
+	var bounds := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var box: AABB = brick.transform * part.bounds
+		bounds = box if first else bounds.merge(box)
+		first = false
+	return bounds
+
+
+## Change what the model stands on (View, Floor; the properties), as one
+## step of the history. Never moves what is built.
+func choose_floor(chosen: ModelFloor) -> void:
+	if _floor == null or _store.read_only:
+		return
+	if _floor.choose(chosen):
+		_on_model_edited()
+		_bar.say("Now on %s." % chosen.words().to_lower())
+
+
+## The design's baseplate is made part of the model when the design is
+## done: while it is being designed, the plate is the floor, and the
+## pictures the designer judges by are of the model and not a green square.
+var _plate_after_design: bool = false
+
+
+## What a design said it stands on (Assistant.floor_chosen): no floor for a
+## vehicle, a baseplate in its ground's colour for a scene, made part of
+## the build. Said in the chat, and the person can change it.
+func _on_floor_chosen(choice: Dictionary) -> void:
+	var chosen: ModelFloor = _store.model_floor.copy()
+	chosen.kind = str(choice.get("kind", ModelFloor.BASEPLATE))
+	if chosen.is_plate():
+		if int(choice.get("colour", -1)) >= 0:
+			chosen.colour = int(choice["colour"])
+		# The least plate the model stands on with a stud to spare: one of
+		# the three sizes when it fits one, in eights otherwise.
+		var box: AABB = _model_bounds()
+		var wide: int = int(ceil(box.size.x / BrickLattice.STUD)) + 2
+		var deep: int = int(ceil(box.size.z / BrickLattice.STUD)) + 2
+		var side: int = -1
+		for studs: int in ModelFloor.SIZES:
+			if side < 0 and studs >= maxi(wide, deep):
+				side = studs
+		chosen.across = side if side > 0 else wide
+		chosen.deep = side if side > 0 else deep
+	var was_own: bool = _floor.has_own_plate()
+	var changed: bool = not chosen.same_as(_store.model_floor)
+	if changed:
+		_floor.choose(chosen)
+		_on_model_edited()
+	if chosen.is_plate() and bool(choice.get("part", false)) and not was_own:
+		changed = changed or not _plate_after_design
+		if _assistant.is_busy():
+			_plate_after_design = true
+		else:
+			floor_part_of_model(true)
+	# Once, not at every revision of the design.
+	if changed and _chat != null:
+		_chat.note(("It stands on %s, part of the build." % chosen.words().to_lower())
+			if chosen.is_plate() and bool(choice.get("part", false))
+			else "It stands on %s. View, Floor changes it." % chosen.words().to_lower())
+
+
+## Make the baseplate part of the model, or the floor again. One step of
+## the history either way, and nothing moves.
+func floor_part_of_model(part: bool) -> void:
+	if _floor == null or _store.read_only:
+		return
+	var plates: int = _floor.adopt() if part else _floor.release()
+	if plates == 0:
+		return
+	_on_model_edited()
+	_bar.say(("The baseplate is part of the model: counted, saved and step 1 of the booklet."
+		if part else "The baseplate is the floor again: not counted, not saved."))
 
 
 ## Counted once. Walking 29,479 entries on every rebuild would be work
@@ -3312,7 +3590,8 @@ func _on_rebuilt(brick_count: int, batch_count: int, triangle_count: int) -> voi
 			_comma(brick_count), batch_count, _comma(triangle_count),
 			_comma(_placeable_parts())]
 	elif own == 0:
-		_counts_base = "Nothing built yet: pick a part, then click the baseplate"
+		_counts_base = "Nothing built yet: pick a part, then click the %s" % (
+			"baseplate" if _store != null and _store.model_floor.is_plate() else "ground")
 	else:
 		_counts_base = "%s brick%s" % [_comma(own), "" if own == 1 else "s"]
 	_weigh()
@@ -4195,6 +4474,8 @@ func _over_panel_at(point: Vector2) -> bool:
 			return true
 	if _shell != null and _shell.covers(point):
 		return true
+	if _build_mode != null and _build_mode.covers(point):
+		return true
 	# These cover the model rather than sitting beside it, so anywhere
 	# is over them.
 	if _inventory != null and _inventory.is_showing():
@@ -4354,6 +4635,7 @@ func _escape_closes_something() -> bool:
 		or not _builder.selection.is_empty() \
 		or (_inventory != null and _inventory.is_showing()) \
 		or (_steps != null and _steps.is_playing_back()) \
+		or (_build_mode != null and _build_mode.is_open()) \
 		or (_verbs != null and _verbs.mode != "select") \
 		or (_verbs != null and _verbs.assemblies != null and not _verbs.assemblies.entered.is_empty())
 
