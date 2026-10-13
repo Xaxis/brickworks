@@ -19,7 +19,7 @@
     "name": "search_parts"
   },
   {
-    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model. Safe to call on a partial design while you work.",
+    "description": "Check a list of parts for overlaps, floating parts and whether it is one connected model, and weigh it: whether it stands (its centre of mass against the edge of what it stands on, in every pose its hinges and turntables reach), the counterweight that would hold it, and its most loaded stud joints. Safe to call on a partial design while you work.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
