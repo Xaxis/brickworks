@@ -67,7 +67,7 @@ func _run() -> void:
 	await process_frame
 
 	print("\na 6 x 8 roof of studs gets tiled")
-	await _build("roof", _roof())
+	await _build("house", _roof())
 	var plate: int = _brick_of("3036")
 	_ok(_open_on(plate) == 48, "the roof plate has 48 open studs (%d)" % _open_on(plate))
 	var handed: Variant = await assistant.surface_review()
@@ -114,7 +114,7 @@ func _run() -> void:
 		"a second review leaves the rejected roof alone")
 
 	print("\naccept, adjusted plain")
-	await _build("roof", _roof())
+	await _build("house", _roof())
 	plate = _brick_of("3036")
 	await assistant.surface_review()
 	roof = _finding("studs")
@@ -263,7 +263,7 @@ func _run() -> void:
 	_ok(_open_on(base) == 0, "\"tile\" lays it: %s" % tiled.get_slice("\n", 0))
 
 	print("\nsaving from outside reminds a session that never ran it, without refusing")
-	await _build("roof", _roof())
+	await _build("house", _roof())
 	var reminder: String = await assistant.next_review()
 	_ok(reminder.begins_with("Before it is finished: The surface pass has not been run"),
 		"the first save says so: %s" % reminder.substr(0, 90))

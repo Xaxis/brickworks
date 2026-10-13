@@ -47,7 +47,7 @@
 ##     — is open (standing_free): a stud something stands on, or a floor
 ##     between walls and under a roof, is not finished; and each lay is
 ##     checked again first, since anything may stand there by then;
-##   - only studs of bricks, plates, slopes, wedges, wings and baseplates are
+##   - only studs of bricks, plates, slopes, wedges and wings are
 ##     read: a round plate's, a jumper's, a figure's or a plant's stud is the
 ##     detail itself; and a stud whose square is not all part (a wedge's
 ##     corner) is left, since a tile there would overhang;
@@ -107,16 +107,21 @@ const PLATES: Array = ["41539", "3036", "3958", "3032", "3035", "3031", "3034", 
 const EDGE_SLOPES: Array = ["15068", "11477"]
 ## Edges rounded at once, the biggest tops first.
 const MOST_EDGES := 4
-## Families whose studs are finished; any other part's stud is its detail.
-const FINISHED_KINDS: Array = ["Brick", "Plate", "Slope", "Wedge", "Wing", "Baseplate"]
+## Families whose studs are finished; any other part's stud is its detail. Not a
+## baseplate's: it is the floor, which the app may take back as scenery, and a
+## tile left on the floor is a piece of its own. The edges round's shop had 29
+## of them, single tiles lying on its floor, after its ground was tiled.
+const FINISHED_KINDS: Array = ["Brick", "Plate", "Slope", "Wedge", "Wing"]
 ## What standing among a field makes it a yard.
 const LIVING: Array = ["Minifig", "Figure", "Animal", "Plant"]
 ## A subject built of straight slopes first; anything else curved first.
-const BUILT_WORDS: Array = ["house", "shop", "store", "castle", "tower", "roof",
-	"station", "temple", "cabin", "church", "gate", "gatehouse", "wall", "building",
-	"modular", "street", "town", "city", "hut", "lighthouse", "fort", "palace",
-	"bridge", "cottage", "school", "bank", "cafe", "bakery", "garage", "hall",
-	"mill", "factory", "warehouse", "pagoda", "shed"]
+## Only words that name a building: a car has a roof, and in the edges round
+## the car found nothing to round, read as a building, where the same model
+## read as a car had three tops rounded.
+const BUILT_WORDS: Array = ["house", "shop", "store", "castle", "tower", "temple",
+	"cabin", "church", "gatehouse", "building", "modular", "hut", "lighthouse", "fort",
+	"fortress", "palace", "cottage", "school", "bank", "cafe", "bakery", "mill",
+	"factory", "warehouse", "pagoda", "shed", "inn", "tavern"]
 ## Along +z, +x, -z, -x in half studs: the ways a staircase can rise.
 const WAYS: Array[Vector2i] = [Vector2i(0, 2), Vector2i(2, 0), Vector2i(0, -2),
 	Vector2i(-2, 0)]
@@ -735,7 +740,7 @@ func _other_than(own: int, at: Vector3) -> bool:
 
 
 ## Whether a part's studs are ones a set finishes: a plain brick's, plate's,
-## slope's, wedge's, wing's or baseplate's. A round plate, a jumper, a
+## slope's, wedge's or wing's. A round plate, a jumper, a
 ## Technic part, a figure or a plant has its stud as its detail.
 static func finished_kind(info: PartLibrary.PartInfo) -> bool:
 	if not FINISHED_KINDS.has(info.family_category()):
@@ -784,11 +789,13 @@ func _is_mosaic() -> bool:
 	return dots >= 0.7 * bricks.size()
 
 
-## Whether the subject is built of straight slopes first: a building's roof.
-## Anything else follows its line with curves first.
+## Whether the subject is a building: built of straight slopes first, and its
+## roof and parapet keep their edges. Read off its name — the design's name
+## from outside, the request's first sentence in the app's loop — and not its
+## description, where a car's roof and windscreen are described.
 func _straight_first() -> bool:
-	var words: PackedStringArray = assistant._brief.to_lower().replace(".", " ").replace(
-		",", " ").split(" ", false)
+	var words: PackedStringArray = assistant._brief.get_slice(".", 0).to_lower().replace(
+		",", " ").replace("-", " ").split(" ", false)
 	for word: String in words:
 		if BUILT_WORDS.has(word) or BUILT_WORDS.has(word.trim_suffix("s")):
 			return true
