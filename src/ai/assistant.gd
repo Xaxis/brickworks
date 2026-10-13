@@ -13233,6 +13233,10 @@ THE RULES: nothing overlaps; nothing floats (every part on the ground or \
 on a part under it); the model is one connected thing — parts side by side \
 are not joined, only stacking joins, so stagger the joints.
 
+ASKED ABOUT A SELECTION (parts the person selected): selection, then \
+where_to_attach (with part=, placements that fit as they are), then \
+edit_selection; never submit_design.
+
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
 kind of subject needs), "real", "colour", "angle" (sections on hinges), \
