@@ -247,6 +247,48 @@ func _run() -> void:
 		_check("...%d curved slopes on its flank, %d side-stud bricks holding %d lanes"
 			% [curved, anchors, lanes], (curved * 20 >= turned or one[0] == "a hull")
 				and anchors * 4 < lanes * 3)
+		# A side and its mirror turned out together: judged one at a time, the
+		# hull kept one flank and laid the other upright. (Its two shells are
+		# not yet laid alike: 29 parts on one side, 14 on the other.)
+		var by_face: Dictionary = {}
+		for placement: Assistant.Placement in model.placements:
+			by_face[placement.face] = int(by_face.get(placement.face, 0)) + 1
+		var axis: String = str(Shapes.last.get("mirror", ""))
+		var pair: Array = ["+z", "-z"] if axis == "z" else (["+x", "-x"] if axis == "x" else [])
+		_check("...both its mirrored sides turned out: %s; %s" % [str(by_face),
+			str(Shapes.last.get("shells_kept", []))], pair.is_empty()
+			or int(by_face.get(pair[0], 0)) > 0 and int(by_face.get(pair[1], 0)) > 0)
+	# A minifigure-scale car, 8 wide and 3.5 plates tall over its arches, as
+	# the held-out run said it: the shells took two studs off each side and
+	# kept 5 of their 74 parts, and the body "eroded into a narrow strip" four
+	# studs wide. A shell that holds less than most of what it takes is
+	# given back, and that side laid upright.
+	var thin: Array = _laid({"pattern": "shape", "color": 4, "at": {"x": 0, "y": 0, "z": 0},
+		"solids": [{"loft": {"along": "x", "centre": 4, "sections": [
+			{"at": 0, "width": 7, "height": 3, "bottom": 4, "round": 0.3},
+			{"at": 1, "width": 8, "height": 3.5, "bottom": 4, "round": 0.3},
+			{"at": 5, "width": 8, "height": 3.5, "bottom": 4, "round": 0.3},
+			{"at": 9, "width": 8, "height": 3, "bottom": 4, "round": 0.3},
+			{"at": 15, "width": 8, "height": 2, "bottom": 4, "round": 0.3},
+			{"at": 17.5, "width": 7.5, "height": 1.5, "bottom": 4, "round": 0.3},
+			{"at": 18, "width": 6, "height": 1, "bottom": 4, "round": 0.3}]}},
+			{"loft": {"along": "x", "centre": 4, "color": 40, "sections": [
+				{"at": 3.5, "width": 6, "height": 0, "bottom": 7.5, "round": 0.8},
+				{"at": 6, "width": 6, "height": 3, "bottom": 7, "round": 0.8},
+				{"at": 9, "width": 6, "height": 3, "bottom": 7, "round": 0.8},
+				{"at": 13, "width": 6, "height": 0, "bottom": 7, "round": 0.8}]}}],
+		"cuts": [
+			{"revolve": {"axis": "z", "centre": [4, 3, -0.5], "profile": [[0, 1.3], [2.5, 1.3]]}},
+			{"revolve": {"axis": "z", "centre": [4, 3, 6], "profile": [[0, 1.3], [2.5, 1.3]]}},
+			{"revolve": {"axis": "z", "centre": [14, 3, -0.5], "profile": [[0, 1.3], [2.5, 1.3]]}},
+			{"revolve": {"axis": "z", "centre": [14, 3, 6], "profile": [[0, 1.3], [2.5, 1.3]]}}]})
+	var wide := Vector2(INF, -INF)
+	for one: Dictionary in thin:
+		if float(one["x"]) >= 6.0 and float(one["x"]) < 12.0 and str(one.get("face", "up")) == "up":
+			wide = Vector2(minf(wide.x, float(one["z"])), maxf(wide.y, float(one["z"])))
+	_check("a minifigure-scale car's body keeps its flanks: %d parts, across its middle from z %s to %s; %s"
+		% [thin.size(), wide.x, wide.y, str(Shapes.last.get("shells_kept", []))],
+		thin.size() >= 60 and wide.x <= 0.0 and wide.y >= 7.0)
 	# A cylinder curves round, not up: its side is the round parts', and a
 	# ramp's low end is its slopes'.
 	var tower: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,

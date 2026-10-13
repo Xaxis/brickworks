@@ -1610,6 +1610,43 @@ above was three plates).
 Pictures: `shots/d3/head_{before,after}_{corner,front}.png` and
 `shots/d3/domes_{before,after}_corner.png` in this worktree.
 
+*Why the owl was seven pieces.* Not its body: laid again as submitted, its
+shape was one piece. Its base was a `fill` 20 x 16, two layers of plates,
+and the fill tiled every layer of plates the same way, so the base was
+columns of two plates each held only to the one over it; the post and the
+body joined some, and the rest stood side by side, eleven pieces as
+submitted and seven after the run's edits bridged a few. Plates over plates
+are now laid the way of four (turned or not, from the near corner or the
+far) that leaves the two layers in fewest pieces, never a plate exactly over
+one under it (`Patterns._layers_apart`). The owl's submission: 12 pieces
+before, 1 after. A round fill is still in pieces where its rim's wing
+plates lie wedge on wedge (14 across, two plates: 7 pieces).
+
+The check still says pieces against the model as a remark, now each with
+where it is and how to join it, where it only counted them. Made a fault,
+it failed 15 of `patterns_probe`'s models (round towers, octagonal shafts,
+turrets, domes, cones, rock), 5 of `rooms_probe`'s shells, 6 worked
+techniques, `dress_probe`'s wall and `rules_probe`'s one-layer wall: the
+patterns themselves lay pieces that touch (a prism's faces against its
+core, a column of side-stud bricks up a shaft). Those are to be joined
+before it can refuse a design.
+
+*A thin body kept whole.* The car's body, 8 wide and 3.5 plates over its
+arches, lost two studs a side to shells that kept 5 of their 74 parts:
+rows are laid a stud apart from the top, and on a body that short the
+lower row reached below the shape and was dropped, its plates already
+taken out of the core; the side studs found three plates behind the top
+row only under the cabin. A shell is now tried before the core is laid and
+given back (its plates, its clearance and its side studs) when its kept
+parts cover less than 40% of what it took (the car's 13%; the egg, bird, hull and owl 55 to 94%, a side and its mirror judged together), and that side is laid upright;
+so is one held by no side stud, which before kept its plates and laid
+none. The run's loft alone: before 45 parts, across its middle z 2 to 5
+(a strip four studs wide), 5 sideways; after 74 parts, z 0 to 7, laid
+upright. The egg, the bird and the hull keep their shells
+(`shapes_probe`). Not done: a shell made for a thin body (plates and tiles
+on side studs, rows fitted to its height), so the flank is smooth rather
+than upright plates. Pictures: `shots/d3/car_{before,after}_corner.png`.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

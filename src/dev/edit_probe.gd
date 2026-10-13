@@ -294,6 +294,29 @@ func _pieces(assistant: Assistant) -> void:
 	_said("a second stack as big is a scene, said and not refused: %s"
 		% verdict["summary"], bool(verdict["ok"])
 		and str(verdict["feedback"]).contains("pieces that nothing joins"), verdict["summary"])
+	# Against the model and joined to nothing: a stack of eleven plates
+	# standing against a tower of a hundred, touching it. The held-out owl
+	# finished in seven pieces side by side, told only how many: now each is
+	# said where it is, and how to join it.
+	var beside := Assistant.Model.new()
+	for n: int in 100:
+		beside.placements.append(Assistant.Placement.from_dict(
+			{"part": "3020", "color": 4, "x": 0, "y": n, "z": 0}))
+	for n: int in 11:
+		beside.placements.append(Assistant.Placement.from_dict(
+			{"part": "3020", "color": 1, "x": 4, "y": n, "z": 0}))
+	verdict = assistant._check(beside, true)
+	_said("a piece against the model that nothing joins is said where it is: %s"
+		% verdict["summary"], int(verdict["pieces"]) == 2
+		and str(verdict["feedback"]).contains("11 parts (11 x 3020) with corners from x 4")
+		and str(verdict["feedback"]).contains("reaches across"), verdict["summary"])
+	# A plate across the joint, in the layer over where the two meet, makes it one.
+	beside.placements[11] = Assistant.Placement.from_dict(
+		{"part": "3020", "color": 4, "x": 2, "y": 11, "z": 0})
+	verdict = assistant._check(beside, true)
+	_said("...and a plate laid across the joint joins it: %s, %d pieces"
+		% [verdict["summary"], int(verdict["pieces"])], bool(verdict["ok"])
+		and int(verdict["pieces"]) == 1, verdict["summary"])
 	# An edit names one: assemblies on edit_model.
 	var named: Array[Dictionary] = Assistant._read_assemblies({"assemblies": [
 		{"name": "stand", "x_from": 9, "x_to": 13, "z_from": 0, "z_to": 2}]})

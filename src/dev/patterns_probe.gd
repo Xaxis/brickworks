@@ -264,6 +264,15 @@ func _holds_up() -> void:
 		["a hull", {"pattern": "fill", "shape": "rectangle",
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 10, "deep": 6,
 			"layers": 6, "rise": 3, "color": 71}],
+		# Two layers of plates laid the same way were columns of two, each
+		# joined only to the one over it: the held-out owl's base was eleven
+		# pieces side by side. Now one.
+		["a display base two plates thick", {"pattern": "fill", "shape": "rectangle",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 20, "deep": 16,
+			"layers": 2, "color": 0}],
+		["a round base of two plates (its rim wedges lie wedge on wedge)", {"pattern": "fill", "shape": "ellipse",
+			"at": {"x": 0, "y": 0, "z": 0}, "across": 14, "deep": 14,
+			"layers": 2, "color": 0}],
 		["a bowl", {"pattern": "fill", "shape": "ellipse",
 			"at": {"x": 0, "y": 0, "z": 0}, "across": 8, "deep": 8,
 			"wall": 2, "layers": 6, "shrink": -2, "color": 71}],
@@ -323,7 +332,11 @@ func _holds_up() -> void:
 		var model: Assistant.Model = assistant._read_model(
 			{"patterns": [one[1]]})
 		var verdict: Dictionary = assistant._check(model)
-		if bool(verdict["ok"]):
+		if bool(verdict["ok"]) and str(one[0]).ends_with("plates thick"):
+			_check("%s holds together, %d parts, %d piece%s"
+				% [one[0], model.placements.size(), int(verdict["pieces"]),
+				"" if int(verdict["pieces"]) == 1 else "s"], int(verdict["pieces"]) == 1)
+		elif bool(verdict["ok"]):
 			_check("%s holds together, %d parts"
 				% [one[0], model.placements.size()], true)
 		else:

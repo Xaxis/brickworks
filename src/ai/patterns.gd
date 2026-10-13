@@ -408,6 +408,8 @@ static func _fill(pattern: Dictionary, trouble: Array,
 	var made: Array = []
 	## What the layer below covers, so that nothing is laid in mid-air.
 	var below: Dictionary = {}
+	## Where each plate of the layer below lies, "x z across deep".
+	var under: Dictionary = {}
 	for layer: int in layers:
 		var off: int = shrink * layer
 		var wide: int = across - off
@@ -470,8 +472,34 @@ static func _fill(pattern: Dictionary, trouble: Array,
 		if band_colour >= 0 and layer % BAND_EVERY == BAND_EVERY - 1 \
 				and layer < layers - 1:
 			tone = band_colour
-		made.append_array(_tile(here, at_y, tone, tiles, below, laid,
-			course))
+		var over: Dictionary = {}
+		if course < 0 and not under.is_empty():
+			# Plates over plates, laid the way that leaves the two layers in
+			# fewest pieces: turned or not, from the near corner or the far,
+			# never a plate exactly over one under it. Laid the same way
+			# every layer, a base two plates thick was columns of two, each
+			# held only to the one over it: the held-out owl's base was
+			# eleven pieces side by side, joined to nothing.
+			var best: Array = []
+			for turned: bool in [false, true]:
+				for far: bool in [false, true]:
+					var trial_laid: Dictionary = laid.duplicate()
+					var trial_over: Dictionary = {}
+					var parts: Array = _tile(_reversed(here) if far else here.duplicate(), at_y,
+						tone, _corners_turn(tiles, 1) if turned else tiles, below, trial_laid,
+						course, trial_over, under)
+					var pieces: int = _layers_apart(under, trial_over)
+					if best.is_empty() or pieces < int(best[0]) \
+							or pieces == int(best[0]) and parts.size() < (best[1] as Array).size():
+						best = [pieces, parts, trial_laid, trial_over]
+			made.append_array(best[1])
+			for key: Variant in best[2]:
+				laid[key] = true
+			over = best[3]
+		else:
+			made.append_array(_tile(here, at_y, tone, tiles, below, laid,
+				course, over, under if course < 0 else {}))
+		under = over
 		# Before the masonry, which would otherwise have every 1x2 first.
 		if sideways > 0.0:
 			_sideways(made, from_here, sideways, middle, dark)
@@ -1224,7 +1252,7 @@ static func _placement(named: String, shape: Array, corner: Vector2i,
 ## are laid largest first wherever they fit.
 static func _tile(wanted: Dictionary, y: float, colour: int,
 		tiles: Array, below: Dictionary, laid: Dictionary,
-		course: int = -1) -> Array:
+		course: int = -1, footprints: Dictionary = {}, forbid: Dictionary = {}) -> Array:
 	var made: Array = []
 	for tile: Variant in _corners_turn(tiles, course):
 		var one: Array = tile
@@ -1253,6 +1281,12 @@ static func _tile(wanted: Dictionary, y: float, colour: int,
 					break
 			if not fits or not held:
 				continue
+			# Not exactly over a plate of the layer under it, which it would
+			# join and nothing else would: a column of two.
+			var footprint: String = "%d %d %d %d" % [cell.x, cell.y, wide, tall]
+			if wide * tall > 1 and forbid.has(footprint):
+				continue
+			footprints[footprint] = true
 			for dx: int in wide:
 				for dz: int in tall:
 					wanted.erase(cell + Vector2i(dx, dz))
@@ -1260,6 +1294,38 @@ static func _tile(wanted: Dictionary, y: float, colour: int,
 			made.append({"part": one[2], "color": colour,
 				"x": cell.x, "y": y, "z": cell.y, "rot": one[3]})
 	return made
+
+
+## How many pieces two layers of plates are in, each plate given as
+## "x z across deep": one joins another where it lies over it.
+static func _layers_apart(lower: Dictionary, upper: Dictionary) -> int:
+	var rects: Array = []
+	for key: Variant in lower.keys() + upper.keys():
+		var n: PackedStringArray = str(key).split(" ")
+		rects.append(Rect2i(n[0].to_int(), n[1].to_int(), n[2].to_int(), n[3].to_int()))
+	var root: Array = range(rects.size())
+	var find := func(i: int) -> int:
+		while int(root[i]) != i:
+			i = int(root[i])
+		return i
+	for a: int in lower.size():
+		for b: int in range(lower.size(), rects.size()):
+			if (rects[a] as Rect2i).intersects(rects[b]):
+				root[find.call(a)] = find.call(b)
+	var seen: Dictionary = {}
+	for i: int in rects.size():
+		seen[find.call(i)] = true
+	return seen.size()
+
+
+## [param cells] with its keys in the other order.
+static func _reversed(cells: Dictionary) -> Dictionary:
+	var keys: Array = cells.keys()
+	keys.reverse()
+	var out: Dictionary = {}
+	for key: Variant in keys:
+		out[key] = cells[key]
+	return out
 
 
 ## The tiles in the order to try them, which on every other course puts

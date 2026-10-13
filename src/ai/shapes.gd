@@ -251,6 +251,33 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		var shells: Array = []
 		if sideways:
 			shells = plan.shells()
+			# A shell whose side studs hold less than most of what it took out
+			# of the core is laid upright instead: on a body three and a half
+			# plates tall (a minifigure-scale car) the rows and the side studs
+			# found little to hold, and the shells kept 5 of their 74 parts, the
+			# body "eroded into a narrow strip".
+			# A side and its mirror are kept or given back together, on what
+			# the two cover between them: a hull kept one flank at 65% and gave
+			# the other back at 59%, and came out lopsided.
+			var covered: Dictionary = {}    ## facing -> share
+			for shell: Dictionary in shells:
+				plan.lay_shell(shell, "straight" if surface == "none" else surface, true)
+				covered[shell["facing"]] = float(shell.get("covered", 0.0))
+			var held: Array = []
+			for shell: Dictionary in shells:
+				var facing: Vector2i = shell["facing"]
+				var share: float = covered[facing]
+				var twin := Vector2i(facing.x, -facing.y) if plan.axis == "z" \
+					else Vector2i(-facing.x, facing.y)
+				if not plan.axis.is_empty() and twin != facing and covered.has(twin):
+					share = (share + float(covered[twin])) / 2.0
+				if share >= Plan.SHELL_KEEPS:
+					held.append(shell)
+				else:
+					plan.drop_shell(shell)
+					plan.kept.append("%s given back, %d%% of its plates held" % [str(facing),
+						roundi(100.0 * float(covered[facing]))])
+			shells = held
 		if surface != "none":
 			plan.surface(surface)
 		plan.lay()
@@ -296,6 +323,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		made = made + laid
 	last["shells"] = shells.size()
 	last["sideways"] = turned_out
+	last["shells_kept"] = plan.kept
 	var top_colour: int = int(pattern.get("top_color", pattern.get("top_colour", -1)))
 	var placed: Array = []
 	for one: Dictionary in made:
@@ -1591,6 +1619,9 @@ class Plan extends RefCounted:
 	const SHELL_DEPTH := 2
 	## A side narrower than this behind its shell keeps no core to hold it.
 	const SHELL_CORE := 2
+	## The share of the plates a shell takes out of the core that its kept
+	## parts must cover, or the side is laid upright.
+	const SHELL_KEEPS := 0.4
 	## The brick with a stud on one side that holds a shell.
 	const ANCHOR := "87087"
 	## And the longer ones, by how many lanes each holds: a run of lanes in a
@@ -1600,6 +1631,8 @@ class Plan extends RefCounted:
 
 	## Side studs a shell is held by, laid in the core: placements.
 	var anchors: Array = []
+	## What each shell laid came to (lay_shell), said.
+	var kept: Array = []
 	## For a shell's own plan, the cells of its foot a side stud reaches:
 	## only parts joined to those are kept.
 	var held: Dictionary = {}
@@ -1749,10 +1782,12 @@ class Plan extends RefCounted:
 		for key: Vector3i in outside:
 			taken[key] = true
 		var shell := {"facing": facing, "along": along, "a0": low.x, "a1": high.x + 1,
-			"face": face, "top": top, "rows": rows, "held": {}, "cells": mine}
+			"face": face, "top": top, "rows": rows, "held": {}, "cells": mine,
+			"outside": outside}
 		# Its side studs: every second row, in the core's outer wall behind
 		# each lane the shell's first row of plates covers there.
 		if _anchor_turn(facing) < 0:
+			drop_shell(shell)
 			return {}
 		for w: int in range(0, rows, 2):
 			var jb: int = top - roundi(2.5 * w) - 3
@@ -1814,9 +1849,31 @@ class Plan extends RefCounted:
 					for held: Vector2i in holds:
 						(shell["held"] as Dictionary)[held] = true
 				run = [lane] if not lane.is_empty() else []
+		# Held by nothing, its plates go back to the core: taken and then
+		# left, they were laid by nobody, and a body thinned to a strip.
 		if (shell["held"] as Dictionary).is_empty():
+			drop_shell(shell)
 			return {}
 		return shell
+
+	## A shell given back to the core: its plates, the plates beside it it
+	## kept clear, and its side studs.
+	func drop_shell(shell: Dictionary) -> void:
+		for key: Variant in shell["cells"]:
+			taken.erase(key)
+			shelled.erase(key)
+		for key: Vector3i in shell["outside"]:
+			taken.erase(key)
+		var facing: Vector2i = shell["facing"]
+		var left: Array = []
+		for one: Dictionary in anchors:
+			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
+				for cell: Vector2i in one["_cells"]:
+					for m: int in 3:
+						taken.erase(Vector3i(cell.x, int(one["y"]) + m, cell.y))
+			else:
+				left.append(one)
+		anchors = left
 
 	## A run of [param n] lanes as side-stud bricks, longest first and the
 	## same from either end: 6 is 2 2 2, 9 is 4 1 4.
@@ -1851,7 +1908,7 @@ class Plan extends RefCounted:
 	## A shell's parts: its own plan, a stud along the side by a plate out
 	## by a row down, laid as any shape is, and each part turned so its up
 	## points out of the side.
-	func lay_shell(shell: Dictionary, kind: String) -> Array:
+	func lay_shell(shell: Dictionary, kind: String, trial: bool = false) -> Array:
 		var facing: Vector2i = shell["facing"]
 		var along: Vector2i = shell["along"]
 		var a0: int = shell["a0"]
@@ -1901,19 +1958,39 @@ class Plan extends RefCounted:
 			return int(local_colour.call(x, j, z)) >= 0
 		# Held where an anchor the core kept reaches: one in a column the
 		# core's own pruning let go holds nothing.
-		for one: Dictionary in made:
+		# Tried before the core is laid, every side stud it was given.
+		for one: Dictionary in (anchors if trial else made):
 			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
 				for held: Vector2i in (one["_holds"] as Array)[1]:
 					sub.held[held] = true
 		if sub.held.is_empty():
+			shell["covered"] = 0.0
 			return []
 		sub.mirror_of()
 		sub.surface(kind)
 		sub.lay()
+		var laid: int = sub.made.size()
 		# Pruned to what a side stud holds, and not stitched: a piece of a
 		# shell on a stud of its own is held, and a stitch lays parts again
 		# that no stud may reach.
 		sub.prune()
+		# How much of what it took out of the core its kept parts cover.
+		var covered: Dictionary = {}
+		for one: Dictionary in sub.made:
+			for cell: Vector2i in one.get("_cells", []):
+				for v: int in int(one.get("_h", 1)):
+					var p: Vector3 = to_world.call(cell.x + 0.5, float(one["y"]) + v + 0.5, cell.y + 0.5)
+					var row: float = top - Shapes.PLATES_PER_STUD * (cell.y + 1)
+					for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+						var key := Vector3i(floori(p.x), j_, floori(p.z))
+						if mine.has(key):
+							covered[key] = true
+		shell["covered"] = float(covered.size()) / float(maxi(1, mine.size()))
+		if trial:
+			return []
+		# How much of each shell its side studs kept, for a probe to say.
+		kept.append("%s %d of %d parts on %d side studs, %d%% of its plates" % [str(facing),
+			sub.made.size(), laid, sub.held.size(), roundi(100.0 * float(shell["covered"]))])
 		# Turned: up to out, x to along, z to down; the frame's foot where
 		# the first lane meets the face at the top row.
 		var c1 := Vector3(along.x, 0, along.y)
