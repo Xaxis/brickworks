@@ -960,6 +960,50 @@
     "name": "attachment_points"
   },
   {
+    "description": "The gear trains of real spur gears (8 to 40 teeth) nearest a ratio, every mesh at a spacing the stud grid gives: an orrery's year, a clock's hour, a reduction for a slow arm. ratio= is output turns per input turn, negative for the other way round; or period= input turns per output turn. With to= [x, z] the output's axle stands that many studs from the input's, and the answer gives every axle between, on a grid point within within= studs of the line; without it, each mesh's spacing. Each train with its fraction, its error, its gears by part. Lay them as it says, and simulate_mechanism shows the ratio the parts give.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "first": {
+          "description": "the teeth of the gear on the input axle: two trains taken off one shaft at one height share it",
+          "type": "integer"
+        },
+        "gears": {
+          "description": "the tooth counts to use; 8, 12, 16, 20, 24, 28, 36, 40 when omitted",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "period": {
+          "description": "input turns per output turn, instead of ratio",
+          "type": "number"
+        },
+        "ratio": {
+          "description": "output turns per input turn",
+          "type": "number"
+        },
+        "stages": {
+          "description": "most meshes, 1 to 6; 4 when omitted",
+          "type": "integer"
+        },
+        "to": {
+          "description": "[x, z]: studs from the input's axle to the output's, axles parallel",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "within": {
+          "description": "with to: how far off the line between them an axle may stand, studs; 2 when omitted",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "search_gear_ratio"
+  },
+  {
     "description": "A finishing pass over what is already built, wall by wall: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air, and the outer row of two-wide ones, are laid again in place as one structure per wall — ribs (a column of round plates on bricks with a stud on the side, every few studs), bands (a course of grille), panels (grille between the ribs, framed by a plain stud at each end and a plain course at each ledge, as 10237 Orthanc textures its black), grid (ribs and bands) or courses (round bricks, a recessed line) — in the wall's own colour, never a part at a time. A dark wall gets panels unasked; a light wall not given a style gets a scatter of dressed bricks (sideways) and masonry. The faces of a prism or a cluster too, in their own sections, and a model opened from a file. Done for you, in one call, checked like any edit.",
     "input_schema": {
       "additionalProperties": false,

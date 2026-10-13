@@ -1580,6 +1580,13 @@
       "entry": "src/dev/gallery_tool_probe.gd",
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced)",
       "area": "mcp"
+    },
+    {
+      "kind": "lib",
+      "label": "gear ratio search",
+      "entry": "src/assembly/gear_ratios.gd",
+      "reach": "godot --headless --path . --script src/dev/gear_ratio_probe.gd   (over MCP: search_gear_ratio)",
+      "area": "geometry"
     }
   ]
 }

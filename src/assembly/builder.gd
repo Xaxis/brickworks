@@ -1771,6 +1771,10 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false) -> bool:
 					Transform3D.IDENTITY,
 					Joints.ROUND_SLACK if square else Joints.ROUND_SLACK_TURNED, own):
 				continue
+		# A gear's square cover reaches past its teeth (Joints.past_the_teeth).
+		if Joints.past_the_teeth(packed, lattice.boxes_of(other),
+				Joints.gear_rounds([[mine, at], [theirs, there]], library), Transform3D.IDENTITY):
+			continue
 		return false
 	return true
 

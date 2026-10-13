@@ -613,3 +613,25 @@ func _by_hand() -> void:
 		"...and none 36 LDU from it")
 	if eight == null:
 		_ok(false, "3647 has geometry")
+	# An 8 and a 28 on a stud's diagonal, 44.72 for 45, as real sets stand
+	# them: the 28's teeth clear the 8's axle by 1.4 LDU, less than a cell.
+	_clear()
+	var up := Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1))
+	var flat := Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0))
+	_builder.put_part("3705", 0, Transform3D(up, Vector3(0, 60, 0)))
+	_builder.put_part("3647", 72, Transform3D(flat, Vector3(0, 60, 0)))
+	_builder.put_part("3705", 0, Transform3D(up, Vector3(40, 60, 20)))
+	_ok(_builder.room_for("46372", Transform3D(flat, Vector3(40, 60, 20)), true),
+		"a 28 on a stud's diagonal from an 8 has room beside the 8's axle")
+	# The 28's cover is the square round its teeth; past them is air, but
+	# inside them is the gear: an axle 30 LDU from its middle is in its way.
+	_clear()
+	_builder.put_part("3705", 0, Transform3D(up, Vector3(30, 60, 0)))
+	_builder.put_part("3705", 0, Transform3D(up, Vector3(0, 60, 0)))
+	_ok(not _builder.room_for("46372", Transform3D(flat, Vector3(0, 60, 0)), true),
+		"...and a bare axle 30 LDU from a 28's middle, inside its teeth, is in its way")
+	_clear()
+	_builder.put_part("3705", 0, Transform3D(up, Vector3(32, 60, 32)))
+	_builder.put_part("3705", 0, Transform3D(up, Vector3(0, 60, 0)))
+	_ok(_builder.room_for("46372", Transform3D(flat, Vector3(0, 60, 0)), true),
+		"...and one in its square's corner, 45.3 LDU out on the diagonal, past its teeth, is not")

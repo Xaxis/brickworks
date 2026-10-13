@@ -3076,6 +3076,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"attachment_points":
 			progress.emit("working out where things attach")
 			return await _attachment_points(args)
+		"search_gear_ratio":
+			progress.emit("searching gear trains for a ratio")
+			return gear_ratio_said(args)
 		"show_technique":
 			var wanted: String = str(args.get("name", ""))
 			progress.emit("looking up how to do %s" % wanted)
@@ -13707,6 +13710,14 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 						to_world, 0.0, [_own_cover(model, index),
 							_own_cover(model, other)]):
 				continue
+			# A gear's square cover reaches past its teeth: meeting it only
+			# there is meeting air.
+			if placed_at.has(other):
+				var teeth: Array = Joints.gear_rounds([
+					[library.resolve(model.placements[index].part), at],
+					[library.resolve(model.placements[other].part), placed_at[other]]], library)
+				if Joints.past_the_teeth(mine, against.boxes_of(key), teeth, to_world):
+					continue
 		kept.append(key)
 	return kept
 
@@ -13764,6 +13775,9 @@ func _drive_said(model: Model, entries: Array, meshing: Dictionary,
 	var said: Dictionary = {}
 	for index: Variant in meshing:
 		for other: Variant in meshing[index]:
+			# A gear forgiven against its partner's axle is not a mesh.
+			if str(meshing[index][other]).begins_with("past the axle"):
+				continue
 			if int(index) < int(other) and lines.size() < WORTH_SAYING:
 				lines.append("  brick %d meshes brick %d: %s" % [index, other,
 					meshing[index][other]])
@@ -14862,7 +14876,10 @@ axles, in one plane: an 8 and a 24 at 40 LDU, which is 2 studs; 24 and \
 and a 24 at 2. So put the two axles through holes that far apart and \
 the gears at the same place along them. check_design forgives gears in \
 mesh and names each mesh; two too near, or nearly in mesh, are told the \
-spacing they mesh at. A gear between two others, an idler, makes the \
+spacing they mesh at. For a ratio no two gears give (a planet's year, a \
+clock's hours), search_gear_ratio gives the nearest trains of real gears \
+on the stud grid, with to= every axle between two holes, and \
+simulate_mechanism then reads what the parts give. A gear between two others, an idler, makes the \
 last turn the same way as the first. Gears reduce by the ratio of their \
 teeth: an 8 driving a 24 turns it a third as fast. find_techniques with \
 "gear train" or "worm" shows how real sets built one, and \
@@ -15909,7 +15926,8 @@ are not joined, only stacking joins, so stagger the joints.
 A MECHANISM (gears, axles, a crank, a turntable): read_guide "pins" \
 first. Put a pin, an axle, a gear or a bush by its line, axis "z" and \
 the x, y, z attachment_points gives the hole, never by its corner. Gears \
-mesh 1.25 LDU a tooth apart: an 8 and a 24, 2 studs.
+mesh 1.25 LDU a tooth apart: an 8 and a 24, 2 studs. A ratio no two gears \
+give: search_gear_ratio.
 
 A CURVED SURFACE (a dome, a sphere, a round body): read_guide "round" \
 first: hinged panels turned by yaw and pitch, or skins built sideways — \
@@ -16539,6 +16557,42 @@ func sketch_tools() -> Array:
 			"additionalProperties": false,
 		},
 	}]
+
+
+## search_gear_ratio: GearRatios over the asked ratio, said compactly, or
+## what to give instead.
+static func gear_ratio_said(args: Dictionary) -> String:
+	var wanted: float = 0.0
+	if args.has("ratio"):
+		wanted = float(args["ratio"])
+	elif args.has("period") and float(args["period"]) != 0.0:
+		wanted = 1.0 / float(args["period"])
+	if wanted == 0.0 or is_nan(wanted) or is_inf(wanted):
+		return ("Give ratio= (output turns per input turn: 1/3 for an 8 driving a 24 is 0.3333, "
+			+ "negative for the other way) or period= (input turns per output turn).")
+	if absf(wanted) < 1e-6 or absf(wanted) > 1e6:
+		return "%s is out of reach of a gear train: between a millionth and a million." % str(wanted)
+	var most: int = clampi(int(args.get("stages", 4)), 1, GearRatios.MOST_STAGES)
+	var to: Variant = null
+	if args.get("to") is Array:
+		var at: Array = args["to"]
+		if at.size() != 2:
+			return "to= is [x, z], in studs."
+		to = Vector2i(roundi(float(at[0])), roundi(float(at[1])))
+	var teeth: Array = []
+	for one: Variant in (args.get("gears", []) as Array if args.get("gears") is Array else []):
+		if not GearRatios.PARTS.has(int(one)):
+			return "gears= takes tooth counts of %s." % ", ".join(PackedStringArray(
+				GearRatios.PARTS.keys().map(func(t: int) -> String: return str(t))))
+		teeth.append(int(one))
+	if teeth.is_empty():
+		teeth = GearRatios.PARTS.keys()
+	var first: int = int(args.get("first", 0))
+	if first != 0 and not first in teeth:
+		return "first= is the input's gear, one of the tooth counts searched."
+	var trains: Array[GearRatios.Train] = GearRatios.search(wanted, most, to,
+		clampi(int(args.get("within", 2)), 0, 4), teeth, GearRatios.KEEP, first)
+	return GearRatios.said(trains, wanted, most, to)
 
 
 ## Run one tool the way a design run would.
@@ -18630,6 +18684,36 @@ func _tools() -> Array:
 						"description": "as a brick's: x, y, z are then where its joint's "
 							+ "middle goes"},
 					"joint": {"type": "integer"},
+				},
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "search_gear_ratio",
+			"description": ("The gear trains of real spur gears (8 to 40 teeth) nearest a "
+				+ "ratio, every mesh at a spacing the stud grid gives: an orrery's year, a "
+				+ "clock's hour, a reduction for a slow arm. ratio= is output turns per input "
+				+ "turn, negative for the other way round; or period= input turns per output "
+				+ "turn. With to= [x, z] the output's axle stands that many studs from the "
+				+ "input's, and the answer gives every axle between, on a grid point within "
+				+ "within= studs of the line; without it, each mesh's spacing. Each train with "
+				+ "its fraction, its error, its gears by part. Lay them as it says, and "
+				+ "simulate_mechanism shows the ratio the parts give."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"ratio": {"type": "number", "description": "output turns per input turn"},
+					"period": {"type": "number", "description": "input turns per output turn, "
+						+ "instead of ratio"},
+					"stages": {"type": "integer", "description": "most meshes, 1 to 6; 4 when omitted"},
+					"to": {"type": "array", "items": {"type": "integer"}, "description":
+						"[x, z]: studs from the input's axle to the output's, axles parallel"},
+					"within": {"type": "integer", "description": "with to: how far off the line "
+						+ "between them an axle may stand, studs; 2 when omitted"},
+					"gears": {"type": "array", "items": {"type": "integer"}, "description":
+						"the tooth counts to use; 8, 12, 16, 20, 24, 28, 36, 40 when omitted"},
+					"first": {"type": "integer", "description": "the teeth of the gear on the "
+						+ "input axle: two trains taken off one shaft at one height share it"},
 				},
 				"additionalProperties": false,
 			},

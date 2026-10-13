@@ -209,7 +209,8 @@ static func _lines_of(part: Lbm.PartMesh) -> Array:
 
 
 ## Gears whose teeth are in each other's, both ways round: key -> {other key
-## -> "an 8 with a 24"}. Their covers are discs, and two discs a mesh apart
+## -> "an 8 with a 24"}; and each such gear with the axle its partner is
+## keyed on, said "past the axle of what it meshes". Their covers are discs, and two discs a mesh apart
 ## share the ring the teeth turn in, so the checker would refuse every
 ## gear train there is; this is what it forgives. Read by Mechanism, from
 ## the gear table, so a mesh here is a mesh there: spur, crown, bevel and
@@ -242,6 +243,30 @@ static func meshing(entries: Array) -> Dictionary:
 			if not out.has(pair[0]):
 				out[pair[0]] = {}
 			(out[pair[0]] as Dictionary)[pair[1]] = said
+	if out.is_empty():
+		return out
+	# And each gear with the axle its partner is keyed on. On a stud's
+	# diagonal a 28 meshing an 8 stands 44.72 from the 8's middle, and its
+	# teeth clear the 8's axle by 1.4 LDU: a cell of the 2 LDU lattice, so the
+	# two covers met, and the check refused the 8 and 28 real sets stand at
+	# 44.7. A gear in mesh never reaches its partner's axle: the partner's
+	# pitch circle is between them.
+	var keyed: Dictionary = {}   ## a gear's own key -> the shafts gripping it
+	for one: Array in through(entries):
+		if str(one[2]) == "grips":
+			if not keyed.has(one[1]):
+				keyed[one[1]] = []
+			(keyed[one[1]] as Array).append(one[0])
+	for gear: Variant in out.keys():
+		for partner: Variant in (out[gear] as Dictionary).keys():
+			for shaft: Variant in keyed.get(partner, []):
+				if shaft == gear:
+					continue
+				for pair: Array in [[gear, shaft], [shaft, gear]]:
+					if not out.has(pair[0]):
+						out[pair[0]] = {}
+					if not (out[pair[0]] as Dictionary).has(pair[1]):
+						(out[pair[0]] as Dictionary)[pair[1]] = "past the axle of what it meshes"
 	return out
 
 
@@ -522,6 +547,69 @@ static func _in_boxes(cell: Vector3i, boxes: PackedInt32Array) -> bool:
 			return true
 		i += 6
 	return false
+
+
+## The round of each gear among [param parts] ([part id, Transform3D] each):
+## [where it stands, its middle and its axis in its own frame, the radius
+## its teeth reach]. A gear's cover is the square round its teeth when its
+## outline will not go in the box limit (a 20 is 8 boxes, a 28 and a 36 26),
+## and the square's corners are air: [method past_the_teeth] reads them so.
+static func gear_rounds(parts: Array, from: PartLibrary) -> Array:
+	var out: Array = []
+	for one: Array in parts:
+		var spec: Dictionary = Mechanism.spec_of(str(one[0]))
+		if spec.is_empty() or str(spec.get("kind", "")) in ["worm", "ring"]:
+			continue
+		var mesh: Lbm.PartMesh = from.mesh_for(str(one[0])) if from != null else null
+		if mesh == null:
+			continue
+		var axis: Vector3 = Mechanism._axis_of(spec.get("axis", "z"))
+		var reach: float = 0.0
+		for n: int in 3:
+			if absf(axis[n]) < 0.5:
+				reach = maxf(reach, maxf(absf(mesh.bounds.position[n]), absf(mesh.bounds.end[n])))
+		out.append([one[1], axis * float(spec.get("plane", 0.0)), axis, reach])
+	return out
+
+
+## Whether two covers meet only where one of [param rounds] (gear_rounds)
+## reaches past its teeth: every cell both hold has its middle outside that
+## gear's round. A 20 beside a frame on a stud's diagonal meets it only in
+## its square's corner.
+static func past_the_teeth(mine: PackedInt32Array, theirs: PackedInt32Array, rounds: Array,
+		to_world: Transform3D) -> bool:
+	if rounds.is_empty():
+		return false
+	var any: bool = false
+	var i: int = 0
+	while i < mine.size():
+		var j: int = 0
+		while j < theirs.size():
+			var from := Vector3i(maxi(mine[i], theirs[j]), maxi(mine[i + 1], theirs[j + 1]),
+				maxi(mine[i + 2], theirs[j + 2]))
+			var to := Vector3i(mini(mine[i + 3], theirs[j + 3]),
+				mini(mine[i + 4], theirs[j + 4]), mini(mine[i + 5], theirs[j + 5]))
+			if from.x < to.x and from.y < to.y and from.z < to.z:
+				for x: int in range(from.x, to.x):
+					for y: int in range(from.y, to.y):
+						for z: int in range(from.z, to.z):
+							var middle: Vector3 = to_world * (
+								Vector3(x + 0.5, y + 0.5, z + 0.5) * BrickLattice.CELL)
+							var outside: bool = false
+							for round: Array in rounds:
+								var at: Transform3D = round[0]
+								var centre: Vector3 = at * (round[1] as Vector3)
+								var way: Vector3 = (at.basis * (round[2] as Vector3)).normalized()
+								var gap: Vector3 = middle - centre
+								if (gap - way * gap.dot(way)).length() > float(round[3]):
+									outside = true
+									break
+							if not outside:
+								return false
+							any = true
+			j += 6
+		i += 6
+	return any
 
 
 static func _in_a_zone(point: Vector3, zones: Array, slack: float) -> bool:

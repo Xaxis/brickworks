@@ -767,6 +767,15 @@ def to_boxes(
     xs, ys, zs = np.nonzero(grid)
     bounds = np.zeros(grid.shape, dtype=bool)
     bounds[xs.min():xs.max() + 1, ys.min():ys.max() + 1, zs.min():zs.max() + 1] = True
+    # A curve whose bounding box is mostly air keeps its own cells, as many
+    # boxes as that takes up to CARVED_LIMIT: its box would claim the room
+    # the curve goes round. A quarter of a 140 tooth ring is 472 boxes
+    # exact; as its box it was solid inside, and the pinion that drives it
+    # from there, and everything else a ring goes round, overlapped it.
+    if bounds.sum() > MOSTLY_AIR * grid.sum():
+        exact = _greedy(grid, occupancy.origin, CARVED_LIMIT)
+        if exact is not None:
+            return exact
     whole = _greedy(bounds, occupancy.origin, 1)
     if not found and not rooms:
         return whole or []
@@ -775,6 +784,13 @@ def to_boxes(
         carved[window] |= room
     bounds &= ~(carved & ~grid)
     return _greedy(bounds, occupancy.origin, CARVED_LIMIT) or whole or []
+
+
+## How many times its own cells a part's bounding box must be before it is
+## too much air to stand for the part: past it the part keeps an exact
+## cover however many boxes that takes (up to CARVED_LIMIT). 24121, a
+## quarter of a ring of 140, is 7.6.
+MOSTLY_AIR = 3.0
 
 
 ## The boxes a hole is allowed on top of the limit. Opening a hole costs
