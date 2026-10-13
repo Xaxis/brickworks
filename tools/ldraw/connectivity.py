@@ -367,11 +367,14 @@ def _on_round(point: Vec3, axis: Vec3, round_one: Connection, slack: float) -> b
 ##   6542a               the 16 tooth gear with clutch, its hub a cylinder
 ##                       from z -8 to 10, where 6542b, the same gear
 ##                       redrawn, has a peg hole.
+##   6573, 4141, 73071   the old differentials, a hub at each end: 6573
+##                       with its 16 and 24, 4141 the casing alone, and
+##                       73071 the casing with its crown wheel.
 ##
 ## A rule for every such bore would not do: 4,970 parts have a whole bore
 ## of that size with no hole on it, most of them minifigure hands, hair
 ## and slopes' undersides, and a pin goes in none of them.
-_PLAIN_HOLES = frozenset({"3709b", "3738", "32001", "6542a"})
+_PLAIN_HOLES = frozenset({"3709b", "3738", "32001", "6542a", "6573", "4141", "73071"})
 PLAIN_HOLE_RADIUS = 6.0
 
 

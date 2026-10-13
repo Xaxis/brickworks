@@ -500,6 +500,8 @@ def test_plain_cylinder_holes_are_pin_holes(library: Library) -> None:
         (-20, 4, 0), (0, 4, 0), (20, 4, 0)]
     assert len(_holes(library, "3738.dat", ConnectorKind.PIN_HOLE)) == 7
     assert _holes(library, "6542a.dat", ConnectorKind.PIN_HOLE) == [(0, 0, 1)]
+    for part in ("6573.dat", "4141.dat", "73071.dat"):   # a differential's two hubs
+        assert _holes(library, part, ConnectorKind.PIN_HOLE) == [(0, 0, -30), (0, 0, 30)], part
     # Only those: a 2 x 2 slope's underside has a whole bore that size, and
     # 4,970 parts like it, and a pin goes in none of them.
     assert _holes(library, "3039.dat", ConnectorKind.PIN_HOLE) == []

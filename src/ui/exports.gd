@@ -1,6 +1,7 @@
 ## What Export writes besides the LDraw file: a picture of the model, its
-## parts list for BrickLink or Rebrickable, and the model as a BrickLink
-## Studio file. See [Picture], [ShopLists], [StudioIo].
+## parts list for BrickLink or Rebrickable, the model as a BrickLink Studio
+## file, and the model as a 3D file. See [Picture], [ShopLists], [StudioIo],
+## [MeshExport].
 class_name Exports
 extends Node
 
@@ -86,6 +87,142 @@ func studio_io() -> String:
 			thumbnail = image.save_png_to_buffer()
 	var bytes: PackedByteArray = StudioIo.pack(text, thumbnail, ModelStore.count_in(text))
 	var line: String = _give_bytes(bytes, _file("io"), "application/octet-stream", folder)
+	say.call(line)
+	return line
+
+
+## File, Export, 3D model…: which format, GLB unless another was chosen
+## last, and what each is for and holds.
+func ask_model_3d() -> void:
+	if world.brick_count() - scenery.size() <= 0:
+		say.call("nothing to export")
+		return
+	if _model_3d == null:
+		_model_3d = ConfirmationDialog.new()
+		_model_3d.title = "Export a 3D model"
+		_model_3d.ok_button_text = "Export"
+		var asking := VBoxContainer.new()
+		var words := Label.new()
+		words.text = "The model as a 3D file, at its real size, for Blender or another 3D program, AR, or a 3D printer."
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# A wrapping label with no width of its own is a word a line until it
+		# is laid out, and the dialog took the window's whole height from it.
+		words.custom_minimum_size = Vector2(440, 0)
+		asking.add_child(words)
+		_format_choice = OptionButton.new()
+		for format: String in MeshExport.FORMATS:
+			_format_choice.add_item(MeshExport.NAMES[format])
+		_format_choice.item_selected.connect(func(_index: int) -> void: _describe_format())
+		asking.add_child(_format_choice)
+		_format_note = Label.new()
+		_format_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_format_note.custom_minimum_size = Vector2(440, 0)
+		_format_note.add_theme_font_size_override("font_size", 12)
+		_format_note.modulate = Color(1, 1, 1, 0.75)
+		asking.add_child(_format_note)
+		_model_3d.add_child(asking)
+		_model_3d.confirmed.connect(func() -> void:
+			_format = MeshExport.FORMATS[_format_choice.selected]
+			model_3d(_format))
+		add_child(_model_3d)
+	_format_choice.select(maxi(MeshExport.FORMATS.find(_format), 0))
+	_describe_format()
+	_model_3d.popup_centered()
+	_model_3d.get_ok_button().grab_focus()
+
+
+var _model_3d: ConfirmationDialog
+var _format_choice: OptionButton
+var _format_note: Label
+var _format: String = "glb"
+## A 3D model is being written; one at a time.
+static var _writing: bool = false
+
+
+## What the chosen format is for, and whether this model fits in it: OBJ and
+## STL write every triangle and are capped (MeshExport.most_triangles).
+func _describe_format() -> void:
+	var format: String = MeshExport.FORMATS[_format_choice.selected]
+	var maker: MeshExport = _mesh_export()
+	var refused: String = maker.refusal(format)
+	var cap: String = ""
+	if MeshExport.most_triangles.has(format):
+		cap = " Up to %s triangles; this model is %s." % [
+			Working.comma(int(MeshExport.most_triangles[format])),
+			Working.comma(maker.triangles_in(maker.bricks()))]
+	var note: String = {
+		"glb": "Every part a node, in its sub-model, and each shape kept once, so any model fits. In metres. Opens in Blender, three.js and AR viewers.",
+		"gltf": "The same as GLB, written as text with its data inside.",
+		"obj": "Every part with its own triangles, and an .mtl of its colours. In metres." + cap,
+		"stl": "One mesh of every part, in millimetres, standing on Z, for a slicer." + cap,
+	}[format]
+	if not refused.is_empty():
+		note = refused.left(1).to_upper() + refused.substr(1) + "."
+	_format_note.text = note
+	_model_3d.get_ok_button().disabled = not refused.is_empty()
+	# As tall as what it now says.
+	_model_3d.reset_size()
+
+
+func _mesh_export() -> MeshExport:
+	var maker := MeshExport.new()
+	maker.world = world
+	maker.library = library
+	maker.scenery = scenery
+	return maker
+
+
+## The model as a 3D file (MeshExport): glb, gltf, obj or stl. Downloaded in a
+## browser, where an OBJ and its MTL come as one zip; written to Downloads
+## on the desktop. What was written, or why not: the dialog, and a session
+## over MCP (AppTools).
+func model_3d(format: String) -> String:
+	if _writing:
+		say.call("already writing a 3D model")
+		return "already writing a 3D model"
+	var maker: MeshExport = _mesh_export()
+	var refused: String = maker.refusal(format)
+	if not refused.is_empty():
+		say.call(refused)
+		return refused
+	_writing = true
+	var job: Working.Job = Working.begin("Writing the model as %s…" % format.to_upper(), 0, true)
+	maker.job = job
+	await job.shown()
+	var made: MeshExport.Made = await maker.write(format, str(named.call()))
+	var line: String
+	if made.cancelled:
+		line = "stopped writing the 3D model"
+	elif not made.refused.is_empty():
+		line = made.refused
+	else:
+		job.can_cancel = false
+		job.count(0, 0)
+		var files: Array = made.files
+		if OS.has_feature("web") and files.size() > 1:
+			job.say("Packing the OBJ and its colours…")
+			files = [[str(files[0][0]).get_basename() + "_obj.zip",
+				await maker.zip(files), MeshExport.MIME["zip"]]]
+		job.say("Saving %s…" % str(files[0][0]))
+		await job.shown()
+		var said: PackedStringArray = []
+		for file: Array in files:
+			said.append(_give_bytes(file[1], file[0], file[2], folder))
+		line = " and ".join(said)
+		line += " — %s parts" % Working.comma(made.parts)
+		if made.shapes > 0:
+			line += ", %d shapes kept once (%s triangles)" % [made.shapes,
+				Working.comma(made.triangles)]
+		else:
+			line += ", %s triangles" % Working.comma(made.triangles)
+		if not made.left_out.is_empty():
+			var count: int = 0
+			for id: String in made.left_out:
+				count += int(made.left_out[id])
+			line += " — %d left out, with no shape here yet (%s)" % [count,
+				ModelStore.named_counts(made.left_out)]
+	job.end()
+	_writing = false
 	say.call(line)
 	return line
 

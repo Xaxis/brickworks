@@ -949,6 +949,14 @@
       "tests": []
     },
     {
+      "id": "ui:3d model export",
+      "kind": "ui",
+      "entry": "src/parts/mesh_export.gd",
+      "reach": "godot --headless --path . --script src/dev/mesh_export_probe.gd   (by hand: File, Export, then 3D model (.glb, .gltf, .obj, .stl)\u2026)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:404 page",
       "kind": "ui",
       "entry": "web/404.html",

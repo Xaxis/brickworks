@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export -->
 
 ## Sub-features
 
@@ -155,6 +155,52 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `make_fixtures.py` from `tests/fixtures/steps/gatehouse.mpd`) and the
   `.mpd`, saves, packs as .io, reads and opens again, and compares every
   sub-model's steps with the author's.
+- `3d model export` (`src/parts/mesh_export.gd`, `Exports.model_3d` and
+  `ask_model_3d` in `src/ui/exports.gd`; File, Export → 3D model (.glb, .gltf,
+  .obj, .stl)…, and `export_model` format `glb`/`gltf`/`obj`/`stl` over MCP):
+  a dialog with GLB chosen (or the format chosen last) and a line on what each
+  is for and, for OBJ and STL, the cap and this model's triangles; Export
+  writes it with the Working bar and Cancel. Real size: glTF and OBJ in
+  metres with +Y up, STL in millimetres with +Z up for a slicer. **glTF is
+  written by hand, not by `GLTFDocument.append_from_scene`**: measured on
+  4.7.2 it writes a mesh for every `MeshInstance3D` (a thousand instances of
+  one box came out as a thousand meshes), a `MultiMesh` comes out in one
+  colour, and an `ImporterMeshInstance3D` not at all, all in one call no
+  frame can be given back from. Here each shape is written once, a mesh is a
+  shape in a colour sharing its data (glTF's own instancing, read the same by
+  Blender, three.js and Godot), every part is a node (its matrix; extras
+  `ldraw_part`, `ldraw_colour`) under a node per sub-model
+  (`Assemblies.path_of`), and colours are `MeshExport.material_for`'s
+  `StandardMaterial3D` (colors.json's colour turned linear, a see-through
+  colour's alpha with `BLEND`, roughness and metallic from the finish as the
+  plastic shader has them, `doubleSided` for a two-sided surface). OBJ writes
+  every part as an object with its own vertices and an MTL (Kd, d, Pr, Pm,
+  Ns); STL is binary (a fifth of text's size), one mesh of every part's
+  triangles. In a browser it is a download, an OBJ and its MTL as one zip
+  deflated a slice at a time (`MeshExport.zip`, `StudioIo.zip` taking a
+  member already deflated); on the desktop it goes to Downloads. A part with
+  no shape here (on the web, one still arriving) is left out and named. Caps
+  (`MeshExport.most_triangles`), as OBJ and STL cannot share a shape: OBJ
+  1,000,000 triangles (about 106 bytes a triangle, held twice over while a
+  browser zips it, in a tab whose heap stops at 2 GB), STL 3,000,000.
+  Measured 2026-10-13 headless on this box at load 16, every slice timed
+  (`mesh_export_probe -- --orthanc`): Orthanc (9,429 parts, 2,575,061
+  triangles, 101 shapes) as GLB 0.4 s, 4.7 MB, 221 meshes, no frame held
+  past 63 ms; as .gltf 0.5 s, 5.5 MB, 114 ms; as STL 2.5 s, 123 MB, 187 ms,
+  which is the one 123 MB buffer being had at all; as OBJ, past its cap by
+  the probe, 22.9 s and 273 MB with the process at 987 MB. The castle's 1.59
+  million triangles as OBJ: 8.9 s, 162 MB. What held frames before they
+  were sliced: `JSON.stringify` of Orthanc's whole document (300 ms; each
+  node is now its JSON as it is made), a loop turning a baseplate's 100,000
+  triangles round (`indices.reverse()` does it natively), and a big shape's
+  OBJ lines or STL corners written in one go. In three.js (r182, Chromium on
+  SwiftShader) the car's GLB, .gltf, OBJ and STL, the castle's GLB and STL
+  and Orthanc's GLB all load with no error and look like the model: the
+  same triangles, colours, see-through glass, standing up. STL closed
+  volumes: 54 of the car's 61 parts are closed, and the other 7 have gaps in
+  LDraw's own geometry (4600 is open underneath by 0.8 mm, 3829c01 by
+  1.6 mm), written as LDraw draws them, for a slicer to mend; the probe
+  checks the file adds no gap the part does not have.
 - `open an ldd model` (`src/parts/ldd_lxf.gd`, `src/ui/model_file_picker.gd`):
   File, Import → LEGO Digital Designer model, or Open → From a file, reads
   LDD's `.lxf` (a zip around LXFML; the zip is read by `StudioIo`'s reader) or
@@ -240,6 +286,9 @@ godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, write, round trip, refusals
+godot --headless --path . --script src/dev/mesh_export_probe.gd   # 3D model: the car as GLB, glTF, OBJ, STL, read back
+godot --headless --path . --script src/dev/mesh_export_probe.gd -- --orthanc   # ...and the castle and Orthanc, every format, timed (~6 min)
+node tools/web/model3d_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: the car's GLB from the menu, downloaded and read
 python3 tests/fixtures/studio/make_fixtures.py   # after changing what the .io fixtures hold
 node tools/web/io_flow.mjs --url=http://127.0.0.1:8147/index.html   # a browser: open an .io, export one, open it again
 python3 tools/ldd_map.py vendor/ldraw.xml   # after a newer ldraw.xml: assets/ldraw/ldd.json again
@@ -258,6 +307,14 @@ says `61`. Every one of the nine files in `models/` is a fair target; `car.ldr`
 is 61 parts, and the count printed and the count in the file must agree.
 
 ## Gotchas
+
+- **Typing into the menus in a browser test presses more than it means.**
+  `model3d_flow.mjs` first typed "3D model" into File, Export: "3" is View,
+  From the left, and the space pressed whichever line was lit, so the LDraw
+  file came down and "model" went to the app as keys (M opened the
+  minifigure maker). It now goes down to the line with the arrow keys and
+  fails unless what downloads is a `.glb`. Words typed to find a line must
+  find it before their first space.
 
 - **A PopupMenu reports a negative id as the item's index.** The Open menu's
   "From a file on this computer…" had id -2, so pressing it said 0 and opened
