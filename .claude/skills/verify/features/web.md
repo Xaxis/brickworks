@@ -831,7 +831,13 @@ plan with Claude as the client.
   name, and no banner. Against the build before (a7a0099, tabs merged) 5
   checks fail: no banner, no `brickworksNewer`, and Save stored
   `models/Reload Flow House.ldr`, `command_costs.json` and two folders after
-  the newer build was seen.
+  the newer build was seen. Two deploys apart, for real (2026-10-13): a
+  preview of ffeb8db aliased to a test address, the flow started there with
+  `--next-deploy`, a preview of 9f72c2d (`--no-export`) aliased over it; all
+  20 checks passed, the banner within 6 s of the focus, and the page came back
+  on 9f72c2d. The alias answered the old `/version.json` for a few seconds
+  after `vercel alias set` (Vercel's edge, `age:` on a `no-store` file), which
+  is why the flow polls it rather than reading it once.
   **`list changed check`** (`tools/web/list_changed_check.mjs`, `node
   tools/web/relay_server.mjs 8790` and `.env`): a tab played from the script
   says hello with one build's tools and again with a newer build's, both ways
