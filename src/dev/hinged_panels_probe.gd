@@ -198,15 +198,16 @@ func _dome_kind() -> String:
 ## the equator, then two meridian strips — a panel hinged on the ring, and
 ## each panel above hinged within the one below at the next band's angle —
 ## each repeated round the centre, the second between the first's copies,
-## its panels raised three plates on a spacer and wider, so it laps over
+## its panels raised four plates on a spacer and wider, so it laps over
 ## its neighbours' edges as scales do and no gap shows between strips; a
 ## dish on a column for the crown. [param strips] round in all, [param
 ## bands] from the equator to the top, of which the lowest [param built]
 ## are panels, each [param length] studs from hinge line to hinge line;
 ## [param widths] the inner strips' panels band by band, [param over] the
-## outer ones'.
-func _dome_args(strips: int, bands: int, built: int, length: int,
-		widths: Array, over: Array) -> Dictionary:
+## outer ones'. With [param sphere], the ring stands on a column and the
+## same strips hang below it as well: a ball.
+func _round_args(strips: int, bands: int, built: int, length: int,
+		widths: Array, over: Array, sphere: bool = false) -> Dictionary:
 	var kind: String = _dome_kind()
 	var fit := Assistant.Section.from_dict({"name": "fit", "hinge": kind, "pitch": 1})
 	_assistant._fit_hinge(fit)
@@ -216,18 +217,105 @@ func _dome_args(strips: int, bands: int, built: int, length: int,
 	# The line round the equator, where a chord of this length spans a band.
 	var radius: float = length * Assistant.STUD / (2.0 * sin(deg_to_rad(step * 0.5)))
 	var centre := Vector2(20, 20)    ## studs
-	# The ring the strips stand on: plates in two crossed layers, the upper
-	# outside the lines only, the lower a whole disc for the crown's column.
+	# The ring's foot, in plates: on the ground for a dome, held up on a
+	# column for a ball, high enough for its lower half to hang clear.
+	var foot: int = 36 if sphere else 0
 	var bricks: Array = []
+	var sections: Array = []
+	var repeats: Array = []
+	for half: int in (2 if sphere else 1):
+		for strip: int in 2:
+			var stems: Array = ["band", "over"] if half == 0 else ["low", "under"]
+			var stem: String = stems[strip]
+			var first: String = "%s 1" % stem
+			# The strip's base: at the far side from the centre, turned round
+			# it by this strip's share. Above, standing on the ring's top, its
+			# nose to the centre, so pitch lifts the panel up and in with its
+			# studs facing out; below, hanging under the ring by its studs,
+			# its nose out, so a pitch past the upright tips the panel down
+			# and in, studs out again.
+			var yaw: float = (180.0 if half == 0 else 0.0) + strip * 360.0 / strips
+			var away: Vector3 = Basis(Vector3.UP, deg_to_rad(yaw - (180.0 if half == 0
+				else 0.0))) * Vector3(0, 0, radius)
+			var stands: int = foot + 2 if half == 0 else foot - 1
+			var line := Vector3(centre.x * Assistant.STUD + away.x,
+				stands * Assistant.PLATE + pin.y, centre.y * Assistant.STUD + away.z)
+			var stud := Vector3(10, 0, 10)
+			var corner: Vector3 = line - stud - Basis(Vector3.UP, deg_to_rad(yaw)) * (pin - stud)
+			# On whole studs: the base swivels on the stud of its first one.
+			corner = Vector3(roundf(corner.x / Assistant.STUD) * Assistant.STUD, corner.y,
+				roundf(corner.z / Assistant.STUD) * Assistant.STUD)
+			sections.append({"name": first, "x": corner.x / Assistant.STUD, "y": stands,
+				"z": corner.z / Assistant.STUD, "yaw": yaw,
+				"pitch": (90.0 - step * 0.5) if half == 0 else -(90.0 + step * 0.5),
+				"hinge": kind, "hinge_color": 72})
+			# Each next panel's base at the far end of the one before, in
+			# its frame: the line [param length] studs on from this one's.
+			var next: Vector3 = line_in_top + Vector3(0, 0, length * Assistant.STUD) - pin
+			for band: int in range(1, built):
+				sections.append({"name": "%s %d" % [stem, band + 1],
+					"within": "%s %d" % [stem, band], "x": next.x / Assistant.STUD,
+					"y": next.y / Assistant.PLATE, "z": next.z / Assistant.STUD,
+					"pitch": -step, "hinge": kind, "hinge_color": 72})
+			var rise: int = 0 if strip == 0 else 4
+			for band: int in built:
+				# Plates 1 x (L - 1) along the panel, side by side, as many as
+				# it is wide, centred on the hinge (x 0..1): the one over the
+				# hinge runs from the top half under its start to the next
+				# panel's base under its end. Tiles across them two studs
+				# deep, split one way and then the other row by row, so they
+				# tie the plates together whichever way the panel hangs. Laid
+				# in short pieces end to end, a panel above its hinge only
+				# rested on itself, and one hung below fell apart. The outer
+				# strip's stand on a spacer a stud wide.
+				var width: int = int((widths if strip == 0 else over)[mini(band,
+					(widths if strip == 0 else over).size() - 1)])
+				var name: String = "%s %d" % [stem, band + 1]
+				var far: int = length - 1
+				var long: String = _plate(1, far)
+				for y: int in rise:
+					bricks.append({"part": long, "color": 72, "x": 0, "y": y, "z": 0,
+						"rot": _rot_across(long, 1), "section": name})
+				var left: int = _pieces(width, false)[0].x
+				for x: int in range(left, left + width):
+					bricks.append({"part": long, "color": 71, "x": x, "y": rise, "z": 0,
+						"rot": _rot_across(long, 1), "section": name})
+				for z: int in range(0, far, 2):
+					var deep: int = mini(2, far - z)
+					for piece: Vector2i in _pieces(width, (z / 2) % 2 == 1):
+						var part: String = _tile(piece.y, deep)
+						bricks.append({"part": part, "color": 71, "x": piece.x,
+							"y": rise + 1, "z": z, "rot": _rot_across(part, piece.y),
+							"section": name})
+			repeats.append({"from": first, "times": strips / 2 - 1,
+				"around": {"x": centre.x, "z": centre.y}, "yaw": 720.0 / strips})
+	# Where the joints on the ring are, read off the strips as laid: each
+	# layer of the ring stands back a stud from the joints beside it — the
+	# top from those standing on it, the bottom from those hanging under it
+	# — since a clip's round reaches past the plates it joins, and each copy
+	# stands on the studs nearest where its turn carries it, not on a circle.
+	var above: Array[Vector3] = []
+	var below: Array[Vector3] = []
+	var laid: Assistant.Model = _assistant._read_model({"sections": sections,
+		"bricks": [], "repeat_section": repeats})
+	for section: Assistant.Section in laid.sections.values():
+		if section.hinge and section.within.is_empty():
+			var at: Vector3 = section.hinge_frame() * section.pin_from_corner
+			(below if section.name.begins_with("low") or section.name.begins_with("under")
+				else above).append(at)
+	# The ring: plates in two crossed layers, each a whole disc but there.
 	var ring_out: float = radius / Assistant.STUD + 4.0
-	var ring_in: float = radius / Assistant.STUD + 0.6
 	for layer: int in 2:
+		var near: Array[Vector3] = above if layer == 1 else below
 		var cells: Dictionary = {}
 		for x: int in range(int(floor(centre.x - ring_out)), int(ceil(centre.x + ring_out))):
 			for z: int in range(int(floor(centre.y - ring_out)), int(ceil(centre.y + ring_out))):
 				var far: float = Vector2(x + 0.5 - centre.x, z + 0.5 - centre.y).length()
-				if far <= ring_out and (layer == 0 or far >= ring_in):
-					cells[Vector2i(x, z)] = true
+				if far > ring_out or near.any(func(at: Vector3) -> bool:
+						return Vector2(at.x / Assistant.STUD - x - 0.5,
+							at.z / Assistant.STUD - z - 0.5).length() < 1.3):
+					continue
+				cells[Vector2i(x, z)] = true
 		# Rows along x below, columns along z above: each plate crosses the
 		# joints of the layer under it, so the ring is one piece.
 		for line_at: int in range(int(floor(centre.y - ring_out)) - 1, int(ceil(centre.y + ring_out)) + 1):
@@ -238,113 +326,102 @@ func _dome_args(strips: int, bands: int, built: int, length: int,
 				if cells.has(cell):
 					run.append(along)
 					continue
-				if not run.is_empty():
-					_lay_run(bricks, layer, line_at, run[0], run[-1] + 1, layer == 0)
-					run.clear()
-	var sections: Array = []
-	var repeats: Array = []
-	for strip: int in 2:
-		var first: String = "band 1" if strip == 0 else "over 1"
-		# The strip's base: on the ring's top, at the far side from the
-		# centre, turned round it by this strip's share, nose to the centre,
-		# so pitch lifts the panel up and in and its studs face out.
-		var yaw: float = 180.0 + strip * 360.0 / strips
-		var away: Vector3 = Basis(Vector3.UP, deg_to_rad(yaw - 180.0)) * Vector3(0, 0, radius)
-		var line := Vector3(centre.x * Assistant.STUD + away.x, 2.0 * Assistant.PLATE + pin.y,
-			centre.y * Assistant.STUD + away.z)
-		var stud := Vector3(10, 0, 10)
-		var corner: Vector3 = line - stud - Basis(Vector3.UP, deg_to_rad(yaw)) * (pin - stud)
-		# On whole studs: the base swivels on the stud under its first one.
-		corner = Vector3(roundf(corner.x / Assistant.STUD) * Assistant.STUD, corner.y,
-			roundf(corner.z / Assistant.STUD) * Assistant.STUD)
-		sections.append({"name": first, "x": corner.x / Assistant.STUD, "y": 2,
-			"z": corner.z / Assistant.STUD, "yaw": yaw, "pitch": 90.0 - step * 0.5,
-			"hinge": kind, "hinge_color": 72})
-		# Each next panel's base at the far end of the one below, in its
-		# frame: the line [param length] studs on from this one's.
-		var next: Vector3 = line_in_top + Vector3(0, 0, length * Assistant.STUD) - pin
-		var stem: String = first.trim_suffix(" 1")
-		for band: int in range(1, built):
-			sections.append({"name": "%s %d" % [stem, band + 1],
-				"within": "%s %d" % [stem, band], "x": next.x / Assistant.STUD,
-				"y": next.y / Assistant.PLATE, "z": next.z / Assistant.STUD, "pitch": -step,
-				"hinge": kind, "hinge_color": 72})
-		var rise: int = 0 if strip == 0 else 3
-		for band: int in built:
-			# Plates the panel's width over both hinge halves, centred on
-			# them (x 0..1), and tiles on them: L - 1 studs long, the top half
-			# under its first two and the next panel's base under its last
-			# two. The outer strip's stand on a spacer a stud wide.
-			var width: int = int((widths if strip == 0 else over)[mini(band,
-				(widths if strip == 0 else over).size() - 1)])
-			var name: String = "%s %d" % [stem, band + 1]
-			var far: int = length - 1
-			for z: int in range(0, far, 2):
-				var deep: int = mini(2, far - z)
-				for y: int in rise:
-					var part: String = _plate(1, deep)
-					bricks.append({"part": part, "color": 72, "x": 0, "y": y, "z": z,
-						"rot": _rot_across(part, 1), "section": name})
-				# The tiles split the other way from the plates, so each one
-				# ties two plates across the seam between them.
-				for layer: int in 2:
-					for piece: Vector2i in _pieces(width, layer == 1):
-						var part: String = _plate(piece.y, deep) if layer == 0 \
-							else _tile(piece.y, deep)
-						bricks.append({"part": part, "color": 71, "x": piece.x,
-							"y": layer + rise, "z": z, "rot": _rot_across(part, piece.y),
-							"section": name})
-		repeats.append({"from": first, "times": strips / 2 - 1,
-			"around": {"x": centre.x, "z": centre.y}, "yaw": 720.0 / strips})
+				# A lone stud's plate left between two joints' clearances is
+				# held by nothing: left out.
+				if run.size() > 1:
+					_lay_run(bricks, foot + layer, line_at, run[0], run[-1] + 1, layer == 0)
+				run.clear()
 	# The crown: a dish over the top band, on a column of round bricks
 	# standing on the ring's lower layer.
 	var top: float = radius * sin(deg_to_rad(step * built)) / Assistant.PLATE + 2.0
-	var lift: int = int(ceil(top)) + 5
-	var y: int = 1
-	while y + 3 <= lift:
+	var lift: int = foot + int(ceil(top)) + 5
+	_column(bricks, centre, foot + 2, lift)
+	bricks.append({"part": "50990b", "color": 71, "x": centre.x - 5, "y": lift,
+		"z": centre.y - 5, "rot": 0})
+	# And a ball stands on a column from a plate on the ground, up through
+	# the opening its lower half leaves round it.
+	if sphere:
+		bricks.append({"part": "3958", "color": 72, "x": centre.x - 3, "y": 0,
+			"z": centre.y - 3, "rot": 0})
+		_column(bricks, centre, 1, foot)
+	return {"name": "hinged ball" if sphere else "hinged dome", "sections": sections,
+		"bricks": bricks, "repeat_section": repeats, "radius": radius}
+
+
+## 2 x 2 round bricks, then round plates, from [param from] up to [param to]
+## plates, centred on [param centre].
+func _column(bricks: Array, centre: Vector2, from: int, to: int) -> void:
+	var y: int = from
+	while y + 3 <= to:
 		bricks.append({"part": "3941", "color": 72, "x": centre.x - 1, "y": y,
 			"z": centre.y - 1, "rot": 0})
 		y += 3
-	while y < lift:
+	while y < to:
 		bricks.append({"part": "4032a", "color": 72, "x": centre.x - 1, "y": y,
 			"z": centre.y - 1, "rot": 0})
 		y += 1
-	bricks.append({"part": "50990b", "color": 71, "x": centre.x - 5, "y": lift,
-		"z": centre.y - 5, "rot": 0})
-	return {"name": "hinged dome", "sections": sections, "bricks": bricks,
-		"repeat_section": repeats, "radius": radius}
 
 
 func _dome() -> void:
 	print("")
 	print("  a hinged-panel dome")
-	var args: Dictionary = _dome_args(12, 4, 3, 5, [5, 5, 3], [9, 7, 5])
+	_judge(_round_args(12, 4, 3, 5, [5, 5, 3], [9, 7, 5]), 36, "--dome_ldr=",
+		"Hinged dome", "--dump=")
+	print("")
+	print("  and a ball: the same strips hung below the ring as well")
+	_judge(_round_args(12, 4, 3, 5, [5, 5, 3], [9, 7, 5], true), 72, "--ball_ldr=",
+		"Hinged ball", "")
+
+
+## A dome's or a ball's design put to the check: every hinge's halves
+## joined, [param hinges] of them, the panels at as many two-axis angles,
+## held with nothing overlapping. Written out where -- [param flag]PATH asks,
+## and the design itself where -- [param dump]PATH does, to be put to
+## another build's check as it stands.
+func _judge(args: Dictionary, hinges: int, flag: String, title: String, dump: String) -> void:
 	var radius: float = float(args["radius"])
 	args.erase("radius")
-	# Written out on request, to be put to another build's check as it
-	# stands: -- --dump=PATH.
 	for one: String in OS.get_cmdline_user_args():
-		if one.begins_with("--dump="):
-			var file := FileAccess.open(one.trim_prefix("--dump="), FileAccess.WRITE)
+		if not dump.is_empty() and one.begins_with(dump):
+			var file := FileAccess.open(one.trim_prefix(dump), FileAccess.WRITE)
 			if file != null:
 				file.store_string(JSON.stringify(args, "\t"))
 				file.close()
 	var model: Assistant.Model = _assistant._read_model(args)
 	var verdict: Dictionary = _assistant._check(model, true)
-	print("     %s" % str(verdict["feedback"]).replace("\n", " ").substr(0, 900))
+	print("     %s" % str(verdict["feedback"]).replace("\n", " ").substr(0,
+		900 if bool(verdict["ok"]) else 4000))
 	var adrift: Dictionary = {}
 	for index: Variant in verdict.get("floating", []):
 		var placement: Assistant.Placement = model.placements[int(index)]
 		adrift[placement.section] = int(adrift.get(placement.section, 0)) + 1
 	for name: String in adrift:
 		print("       floating in %s: %d" % [name, adrift[name]])
+	var floats: Array = verdict.get("floating", [])
+	for index: int in model.placements.size():
+		var placement: Assistant.Placement = model.placements[index]
+		if placement.section in ["low 1", "low 1 hinge", "low 2", "", "under 1"] and (
+				placement.section != "" or floats.has(index)):
+			print("       %s %d %s in '%s' at %s" % ["FLOATS" if floats.has(index) else "held",
+				index, placement.part, placement.section, placement.where()])
+	for index: Variant in verdict.get("overlapping", {}):
+		var placement: Assistant.Placement = model.placements[int(index)]
+		var hit: int = int(verdict["overlapping"][index]) - 1
+		var other: Assistant.Placement = model.placements[hit] if hit >= 0 \
+			and hit < model.placements.size() else null
+		print("       overlapping: %d %s in '%s' at %s, with %d %s in '%s' at %s" % [index,
+			placement.part, placement.section, placement.where(), hit,
+			other.part if other != null else "?", other.section if other != null else "?",
+			other.where() if other != null else "?"])
 	# Each hinge's two halves, joined by the check's own rule.
 	var rounds: Dictionary = Joints.rounds(_assistant._mating_entries(model))
 	var unjoined := PackedStringArray()
+	var hinged: int = 0
 	for name: String in model.sections:
 		var section: Assistant.Section = model.sections[name]
 		if not section.hinge:
 			continue
+		hinged += 1
 		var held: bool = false
 		for index: int in model.placements.size():
 			if model.placements[index].section != name:
@@ -354,8 +431,8 @@ func _dome() -> void:
 					held = true
 		if not held:
 			unjoined.append(name)
-	_check("every hinge's halves joined, %d of %d not: %s" % [unjoined.size(), 36,
-		", ".join(unjoined)], unjoined.is_empty())
+	_check("all %d hinges' halves joined, %d not: %s" % [hinged, unjoined.size(),
+		", ".join(unjoined)], unjoined.is_empty() and hinged == hinges)
 	var panels: int = 0
 	var angles: Dictionary = {}
 	var low := Vector3.INF
@@ -365,20 +442,20 @@ func _dome() -> void:
 		var at: Transform3D = _pose(model, index)
 		low = low.min(at.origin)
 		high = high.max(at.origin)
-		if not (placement.section.begins_with("band") or placement.section.begins_with("over")) \
-				or placement.section.ends_with("hinge"):
+		var section: Assistant.Section = model.section_for(placement)
+		if section == null or not section.hinge:
 			continue
 		panels += 1
 		var turn: Vector3 = Assistant.Section.angles_of(at.basis)
 		angles["%d %d" % [roundi(fposmod(turn.x, 360.0)), roundi(turn.y)]] = true
 	var across: float = (high.x - low.x) / Assistant.STUD
 	_check("%d panel parts at %d different two-axis angles, %.1f studs across"
-		% [panels, angles.size(), across], angles.size() >= 36 and across >= 20.0)
+		% [panels, angles.size(), across], angles.size() >= hinges and across >= 20.0)
 	_check("every panel held by its hinge, nothing overlapping: %s" % verdict["summary"],
 		bool(verdict["ok"]))
-	_check("and the line it stands on is %.1f studs from the centre" % (radius / Assistant.STUD),
+	_check("and its lines are %.1f studs from the centre" % (radius / Assistant.STUD),
 		radius > 150.0)
-	_write_out(model, "--dome_ldr=", "Hinged dome")
+	_write_out(model, flag, title)
 
 
 # -- a band of skins built sideways ----------------------------------------
@@ -558,16 +635,22 @@ func _write_out(model: Assistant.Model, flag: String, title: String) -> void:
 
 
 ## Plates 1 x n laid end to end from [param from] to [param to] along a
-## row (z = [param at], along x) or a column (x = [param at], along z), on
-## [param layer].
-func _lay_run(bricks: Array, layer: int, at: int, from: int, to: int, along_x: bool) -> void:
+## row (z = [param at], along x) or a column (x = [param at], along z), at
+## height [param y].
+func _lay_run(bricks: Array, y: int, at: int, from: int, to: int, along_x: bool) -> void:
 	var here: int = from
 	while here < to:
-		var run: int = mini(8, to - here)
-		var used: int = {1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 6, 7: 6, 8: 8}[run]
+		# The longest plate there is that leaves no lone stud at the end: a
+		# 1 x 1 cut off between two joints' clearances is held by nothing.
+		var left: int = to - here
+		var used: int = 1
+		for size: int in [8, 6, 4, 3, 2, 1]:
+			if size <= left and (left - size != 1 or size == 1):
+				used = size
+				break
 		var part: String = {1: "3024", 2: "3023", 3: "3623", 4: "3710", 6: "3666",
 			8: "3460"}[used]
-		bricks.append({"part": part, "color": 72, "x": here if along_x else at, "y": layer,
+		bricks.append({"part": part, "color": 72, "x": here if along_x else at, "y": y,
 			"z": at if along_x else here, "rot": 0 if along_x else 1})
 		here += used
 

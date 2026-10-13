@@ -5990,6 +5990,7 @@ func _read_model(args: Dictionary) -> Model:
 			for brick: Dictionary in _prism(prisms[n], model, n, trouble):
 				model.placements.append(Placement.from_dict(brick))
 		_pattern_trouble = trouble
+		_pattern_advice.append_array(_round_by_panels(plain))
 	else:
 		_pattern_trouble = []
 
@@ -10223,6 +10224,34 @@ func _fit_hinge(section: Section) -> void:
 			section.odd = trouble
 		section.hinge = false
 		return
+
+
+## Round bodies too big for moulded parts, said as shapes of plates: a nudge
+## to the way real sets build them. A ball asked for came back a lumpy
+## ellipsoid of plates, the session having read of hinged panels and taken
+## them for a dome's alone; the guide is read once, and the shape's answer
+## is read when the choice is made.
+const ROUND_PANELS_FROM := 12.0
+
+
+static func _round_by_panels(patterns: Array) -> Array:
+	var said: Array = []
+	for raw: Variant in patterns:
+		if not raw is Dictionary or str((raw as Dictionary).get("pattern", "")) != "shape":
+			continue
+		for solid: Dictionary in Shapes._read(raw, "solids", [], true):
+			var box: AABB = solid.get("box", AABB())
+			var across: float = maxf(box.size.x, box.size.z)
+			if solid["kind"] in ["dome", "ellipsoid"] and across >= ROUND_PANELS_FROM:
+				said.append(("The %s %s studs across is laid in plates, and a curve of "
+					% [solid["kind"], Placement._num(snappedf(across, 0.5))])
+					+ "plates is a staircase however fine. A round body that size reads "
+					+ "smooth as panels on hinges, tipped to the curve, or skins on side "
+					+ "studs — above a ring and hung below it alike, for a ball (read_guide "
+					+ "\"round\", show_technique \"hinged panels\") — with the shape kept "
+					+ "inside as its core if you like.")
+				return said
+	return said
 
 
 ## The section a hinge's base stands in when the hinge is turned about the
@@ -14898,29 +14927,29 @@ line to hinge line: at least 5, since each panel's own top half and the \
 next one's base both sit under it. Each band spans 90/K degrees, and the \
 lines lie on a circle of radius r = L / (2 sin(45/K)) studs: 4 bands of \
 L = 5 is 12.8, about 27 studs across over the panels.
-    2. A ring for the equator, outside the lines only — a clip's round \
-reaches past the plates it joins, so nothing may be under a joint: plates \
-in two crossed layers from r + 0.6 to r + 3 studs from the centre, its top \
-at y = 2. The lower layer may run on across the middle, a plate below the \
-joints, for the cap's column to stand on.
+    2. A ring for the equator: plates in two crossed layers out to r + 4 \
+studs from the centre, its top at y = 2 — a whole disc, for the crown's \
+column to stand on, but for a stud's clearance round each hinge's line \
+beside it: a clip's round reaches past the plates it joins.
     3. Band 1: a hinged section standing on the ring at the far side from \
 the centre, on whole studs, its nose to the centre (yaw 180 for one on the \
 +z side), pitch 90 - 45/K: nearly upright, its studs facing out.
     4. Each band above: a hinged section within the one below, its base \
 at that one's far end ({HINGE NEXT}), pitch -90/K — folding in by a \
 band's angle.
-    5. In each band's section: plates the panel's width over its hinge \
-halves, L - 1 studs long from z = 0, centred on the hinge's x 0..1 (an odd \
-width: x from -1 for 3, -2 for 5), tiles on them. A width no plate comes \
-in is two side by side, and then the tiles over them split the other way \
-round — a 2 then a 3 under, a 3 then a 2 over — or the half off the hinge \
-holds nothing.
+    5. In each band's section: plates 1 x (L - 1) along the panel from \
+z = 0, side by side, as many as it is wide, centred on the hinge's x 0..1 \
+(x from -1 for 3, -2 for 5); the one over the hinge runs from the top half \
+under its start to the next base under its end. Tiles across them, two \
+studs deep, split one way and then the other row by row, so they tie the \
+plates together. Laid in short pieces end to end, a panel only rests on \
+itself, and hung below a ring it falls apart.
     6. Strips side by side leave a gap that widens as they climb, and \
 whatever is inside shows through it: a dome built so read as ribs over a \
 dark core. So lay two strips that take turns round it, as scales lap: the \
 second ("over 1") turned 360/N further round than the first, its panels \
-standing on a spacer — 1 x n plates three high over its hinge halves, x \
-0..1 — and wider, so they lap over the edges of the strips either side. \
+standing on a spacer — 1 x (L - 1) plates four high over its hinge halves, \
+x 0..1 — and wider, so they lap over the edges of the strips either side. \
 For N = 12 of 4 bands of L = 5: the first's panels 5, 5, 3 wide, the \
 second's 9, 7, 5; the top band left for the crown.
     7. repeat_section for each, {from: "band 1", times: N/2 - 1, around: \
@@ -14928,7 +14957,15 @@ second's 9, 7, 5; the top band left for the crown.
 everything within each goes round with it, each copy's base on the studs \
 nearest where the turn carries it.
     8. The crown: a dish just over the top band (50990b, 10 x 10, for r = \
-12.8) on a column of 2 x 2 round bricks from the ring's lower layer.
+12.8) on a column of 2 x 2 round bricks from the ring.
+    9. A ball is the same strips hung below the ring as well, two more \
+strips repeated as these are: each one's base under the ring, held by its \
+studs (y one plate below the ring's foot), nose out (yaw 0 for one on the \
++z side), pitch -(90 + 45/K), each band below within the one above at \
+pitch -90/K — the studs face out again. The ring's lower layer keeps a \
+stud clear of those joints, and the ring stands on a column of round \
+bricks from a plate on the ground, up through the opening the lower half \
+leaves — 36 plates up for r = 12.8.
 show_technique("hinged panels") is a small one, built and checked.
 
 THE RULES YOUR DESIGN MUST SATISFY
