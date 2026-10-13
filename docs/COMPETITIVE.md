@@ -571,6 +571,17 @@ Shared links exist: `api/share.js`, `/m/<id>`, an embed card, and *Open in
 Brickworks*. But every link is unlisted. Nobody can find a model they were
 not sent, so a newcomer never sees what people build here.
 
+**Done, 2026-10-13** (`web/gallery.html`, `supabase/gallery.sql`; the
+recipes are "gallery page" and "seed the gallery" in
+`.claude/skills/verify/features/web.md`). As specified, with what building it
+showed: the columns went in a file of their own, applied to the live project
+as additions only; going into the gallery is counted on top of publishing
+(`may_list`, 6 an hour); the owner's unlist also bars the model, so its owner
+cannot list it again, and that refusal is a 409, since the panel answers a 403
+by publishing at a new link; the viewer's bar says "remixed from" too, since a
+person never sees the share page; and six of the project's own models were
+listed from a project account so it is not empty.
+
 **Spec.**
 - `supabase/shared_models.sql` gets `listed boolean default false`, granted
   to the visitor's key.

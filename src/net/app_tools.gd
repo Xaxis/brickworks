@@ -64,7 +64,7 @@ const COMMANDS: Dictionary = {
 ## in neither this nor COMMANDS fails the sync probe.
 const WINDOW_ONLY: Dictionary = {
 	"import_*": "reads a file from the person's disk, picked in a dialog; open_model opens the app's own models",
-	"share": "publishes the model on the web as the person, for anyone with the link: theirs to decide",
+	"share": "publishes the model on the web as the person, for anyone with the link and, ticked, in the public gallery: theirs to decide",
 	"account": "signing in is the person's",
 	"quit": "closes the app the session is driving",
 	"connector": "connects Claude to this tab; a session is already connected",

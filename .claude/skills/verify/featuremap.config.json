@@ -1377,6 +1377,20 @@
       "entry": "src/render/balance_mark.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
       "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "gallery page",
+      "entry": "web/gallery.html",
+      "reach": "https://brickworks.diy/gallery   (gallery.js reads /api/share?op=list; locally relay_server.mjs serves /gallery)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "seed the gallery",
+      "entry": "tools/web/gallery_seed.mjs",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR; then BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR   (.env sourced)",
+      "area": "web"
     }
   ]
 }

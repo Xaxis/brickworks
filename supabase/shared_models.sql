@@ -31,6 +31,9 @@
 -- A person's builds are still files on their own disk or in their
 -- browser (supabase/schema.sql); what is here is only what they chose to
 -- publish. Gone with the account.
+--
+-- supabase/gallery.sql, applied after this, adds the public gallery: the
+-- listed, listed_at, remixed_from and barred columns, and may_list.
 
 create table if not exists public.shared_models (
     id          text primary key check (id ~ '^[A-Za-z0-9]{10}$'),

@@ -97,6 +97,49 @@ function draw(data) {
     cell(row, when(person.connector_seen), person.connector_seen ? "" : "faint");
     rows.append(row);
   }
+
+  // The gallery: names strangers chose, so text and never markup.
+  const listed = $("gallery");
+  listed.replaceChildren();
+  for (const model of data.gallery || []) {
+    const row = document.createElement("tr");
+    const name = document.createElement("td");
+    name.className = "model";
+    const link = document.createElement("a");
+    link.href = `/m/${encodeURIComponent(model.id)}`;
+    link.textContent = model.name;
+    name.append(link);
+    row.append(name);
+    cell(row, model.author ?? "nobody", model.author ? "" : "faint");
+    cell(row, model.email ?? "—", model.email ? "" : "faint");
+    cell(row, Number(model.parts).toLocaleString(), "n");
+    cell(row, when(model.listed_at));
+    const act = document.createElement("td");
+    const out = document.createElement("button");
+    out.textContent = "Take out";
+    out.addEventListener("click", () => takeOut(model, out));
+    act.append(out);
+    row.append(act);
+    listed.append(row);
+  }
+  say("gallery-note", data.gallery?.length ? "" : "Nothing is listed.");
+}
+
+/// Out of the gallery for good (api/admin.js ?op=unlist), asked first.
+async function takeOut(model, button) {
+  if (!confirm(`Take "${model.name}" out of the gallery? Its owner will not be able to list it again.`)) return;
+  button.disabled = true;
+  try {
+    const token = await accessToken();
+    const reply = await fetch(`/api/admin?op=unlist&id=${encodeURIComponent(model.id)}`, {
+      method: "POST", headers: { authorization: `Bearer ${token}` } });
+    if (!reply.ok) throw new Error(`The server said ${reply.status}.`);
+    await refresh();
+    say("gallery-note", `"${model.name}" is out of the gallery.`);
+  } catch (problem) {
+    button.disabled = false;
+    say("gallery-note", problem.message, true);
+  }
 }
 
 async function refresh() {

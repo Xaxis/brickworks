@@ -55,6 +55,11 @@ var read_only: bool = false
 ## published or exported: that is to_text, which leaves it out.
 var share_id: String = ""
 const SHARE_META := "0 !BRICKWORKS SHARE "
+## The link this model was copied from with Open in Brickworks, or empty.
+## Kept the same way as [member share_id], and sent when it is published,
+## so its page can say what it was remixed from (api/share.js).
+var remixed_from: String = ""
+const REMIX_META := "0 !BRICKWORKS REMIX "
 
 
 class Entry extends RefCounted:
@@ -184,8 +189,9 @@ func begin(name: String) -> void:
 	whole = true
 	example = false
 	# New work is not the model that was shared: publishing it must not
-	# replace that one at its link.
+	# replace that one at its link, nor say it was copied from one.
 	share_id = ""
+	remixed_from = ""
 	begun.emit(title)
 
 
@@ -455,6 +461,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	whole = missing.is_empty() and awaited.is_empty()
 	title = _title_of(model, name)
 	share_id = share_in(text)
+	remixed_from = remix_in(text)
 	var said: ModelFloor = ModelFloor.read(text)
 	model_floor = said if said != null else ModelFloor.preferred()
 	example = false
@@ -803,28 +810,38 @@ func _write(path: String, title: String, with_steps: bool = false,
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])
 		return false
 	var text: String = with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id)
+		else to_text(title, with_steps), share_id, remixed_from)
 	file.store_string(text)
 	file.close()
 	_tell_page_wrote(path, text.to_utf8_buffer().size())
 	return true
 
 
-## [param text] with the link it is shared at, on the line after its
-## first (inside the model itself, for an .mpd); as it is for none.
-static func with_share(text: String, id: String) -> String:
-	if id.is_empty():
+## [param text] with the link it is shared at and the link it was copied
+## from, each on a line after its first (inside the model itself, for an
+## .mpd); as it is for neither.
+static func with_share(text: String, id: String, remix: String = "") -> String:
+	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
+		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "")
+	if lines.is_empty():
 		return text
 	var cut: int = text.find("\n")
 	if cut < 0:
-		return text + "\n" + SHARE_META + id + "\n"
-	return text.substr(0, cut + 1) + SHARE_META + id + "\n" + text.substr(cut + 1)
+		return text + "\n" + lines
+	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
 
 
 ## The link a model's text says it is shared at, or empty.
 static func share_in(text: String) -> String:
 	var found: RegExMatch = RegEx.create_from_string(
 		"(?m)^0 !BRICKWORKS SHARE ([A-Za-z0-9]{10})\\s*$").search(text)
+	return found.get_string(1) if found != null else ""
+
+
+## The link a model's text says it was copied from, or empty.
+static func remix_in(text: String) -> String:
+	var found: RegExMatch = RegEx.create_from_string(
+		"(?m)^0 !BRICKWORKS REMIX ([A-Za-z0-9]{10})\\s*$").search(text)
 	return found.get_string(1) if found != null else ""
 
 
