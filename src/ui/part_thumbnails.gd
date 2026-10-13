@@ -20,6 +20,14 @@
 ## moment the page was made, in list order, so after a fast scroll the
 ## screen being looked at waited behind every page scrolled past on the
 ## way to it — and on the web each of those was a network fetch first.
+##
+## The tiles just out of sight, which a grid also names so that a scroll
+## finds them drawn, are drawn only in a frame being drawn anyway. A
+## preview is a frame of the whole window, model and all: the first part
+## taken in hand resized the bin's palette, a dozen tiles below the fold
+## came into the grid's next screenful, and their pictures drew the window
+## again a dozen times while nothing on it changed — 23 s of a software
+## renderer drawing the castle with the pointer still (idle_probe, 2026-10-13).
 class_name PartThumbnails
 extends Node
 
@@ -73,7 +81,8 @@ var _drawing: bool = false
 var _watching: Array[Array] = []
 ## Something has changed since the tiles in sight were last looked
 ## through: a scroll, a picture, a part arriving or failing. Without it
-## an idle bin would walk its tiles every frame to find nothing to do.
+## an idle bin would walk its tiles every frame to find nothing to do. It
+## stays up while a tile out of sight waits for a frame drawn anyway.
 var _look: bool = false
 ## Fetches have been asked for, or the tiles in sight have changed, since
 ## the library's queue was last put in their order.
@@ -81,6 +90,9 @@ var _reorder: bool = false
 
 
 func _ready() -> void:
+	# After every other node's _process, so that whether the frame is drawn
+	# anyway is known (see _process).
+	process_priority = 1000
 	# Geometry that arrives after a preview was asked for has to put the
 	# work back on the queue, or the cell stays empty for ever having
 	# been one frame too early.
@@ -172,6 +184,11 @@ func _print_holder(n: int) -> MeshInstance3D:
 
 
 func _process(_delta: float) -> void:
+	# Whether this frame is being drawn whatever happens here: every frame
+	# is, unless only what changed is drawn (IdleDraw), and then it is if
+	# something else has changed what is on the screen. Asked after every
+	# other node's _process (see _ready), which is what has made the changes.
+	var drawn_anyway: bool = not OS.low_processor_usage_mode or RenderingServer.has_changed()
 	# One draw at a time, and only once the last one has finished.
 	#
 	# _render is a coroutine: it sets the holder's mesh, the tint and
@@ -186,7 +203,7 @@ func _process(_delta: float) -> void:
 	for _n: int in ASKS_PER_FRAME:
 		if _drawing:
 			break
-		var job: Dictionary = _next_job()
+		var job: Dictionary = _next_job(drawn_anyway)
 		if job.is_empty():
 			break
 		_render(job)
@@ -215,9 +232,11 @@ func watch(owner: Object, tiles: Array[ThumbTile]) -> void:
 ## The next preview to draw: the first tile in sight still waiting, then
 ## anything asked for through [method request]. Tiles whose picture is
 ## already to hand, or whose part cannot be drawn, are settled on the way.
-func _next_job() -> Dictionary:
+## A tile out of sight waits for a frame [param drawn_anyway].
+func _next_job(drawn_anyway: bool = true) -> Dictionary:
 	if _look:
 		var now: int = Time.get_ticks_msec()
+		var put_off: bool = false
 		for entry: Array in _watching:
 			# Untyped until checked: a view that has just rebuilt its grid
 			# has not said so yet, and its old tiles are already freed.
@@ -227,10 +246,17 @@ func _next_job() -> Dictionary:
 				var tile: ThumbTile = item
 				if tile.state != ThumbTile.State.LOADING:
 					continue
+				# Out of sight, its picture drawn and handed over only in a
+				# frame drawn anyway: handed over, a tile is drawn again.
+				if not tile.in_sight and not drawn_anyway:
+					put_off = true
+					continue
 				var key: String = tile.key()
 				if _cache.has(key):
 					_touch(key)
-					tile.show_picture(_cache[key])
+					# Faded in where it can be seen; out of sight a fade is
+					# a fifth of a second of frames nobody sees.
+					tile.show_picture(_cache[key], tile.in_sight)
 					continue
 				if _awaiting.has(tile.part_id):
 					continue
@@ -241,7 +267,8 @@ func _next_job() -> Dictionary:
 					_failed.erase(tile.part_id)
 				return {"part": tile.part_id, "color": tile.color_code, "key": key,
 					"printed": tile.printed}
-		_look = false
+		# Looked at again next frame while a tile out of sight waits.
+		_look = put_off
 	while not _queue.is_empty():
 		var job: Dictionary = _queue.pop_front()
 		if not _cache.has(job["key"]):

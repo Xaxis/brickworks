@@ -244,6 +244,14 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
   (2026-10-11); `placeholder_probe` still finds every tile in sight shimmering
   while it waits.
 
+- **A picture of a part is a frame of the whole window.** The next screenful
+  below, drawn ahead so a scroll finds it, is pictures nobody sees, and each
+  drew the model again: the first part taken in hand resized the palette and
+  a dozen of them kept the castle drawing for 23 s with the pointer still.
+  Tiles out of sight are drawn, and handed their pictures, only in a frame
+  drawn anyway (`PartThumbnails._next_job`); tiles in sight as before.
+  `idle_probe -- --model=res://models/castle.ldr` is the check.
+
 - **A grid rebuilt with the same number of cells is a different grid.** A new
   colour rebuilds every cell in the same places; `ThumbTile.Sight` compares the
   first and last cells by identity, or it would keep watching freed tiles and
