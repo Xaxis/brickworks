@@ -325,6 +325,12 @@ func _refusals() -> void:
 		var said: String = plan.trouble() if not plan.ok() else "(accepted)"
 		_check("%s: \"%s\"" % [case[0], said.split("\n- ")[1] if said.contains("\n- ") else said],
 			not plan.ok() and said.contains(str(case[2])))
+	# What the first real Milky Way asked for and was refused: Medium Lilac,
+	# for the violet between the arms. The nearest left was Magenta.
+	var lilac: ArtPlan = ArtPlan.parse({"palette": [0, 272, 85, 1],
+		"regions": [{"everything": true, "colour": 85}]}, _library)
+	_check("Medium Lilac, which Art sets are laid in, is a colour a plan may ask for: %s"
+		% ("yes" if lilac.ok() else lilac.trouble().split("\n")[1].left(60)), lilac.ok())
 	# Every fault at once, so it can all be fixed in one go.
 	var many: ArtPlan = ArtPlan.parse({"panels": [0, 1], "depth": -1,
 		"regions": [{"everything": true, "relief": 8}], "points": [[2, 2]]}, _library)

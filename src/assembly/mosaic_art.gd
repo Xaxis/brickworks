@@ -69,8 +69,11 @@ const PLATES: Array = [
 
 ## The solid colours: the classic mosaic's palette without its
 ## transparent, pearl, metallic and chrome ones, which here are accents.
+## And Medium Lilac (85), which the classic palette lacks: the first Milky Way
+## Claude planned asked for it for the violet between the arms, was refused,
+## and the nearest the palette had was Magenta.
 const SOLID: Array[int] = [15, 71, 7, 72, 0, 4, 5, 27, 2, 10, 1, 9, 14, 25, 70, 28,
-	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308, 379, 378]
+	19, 84, 26, 22, 3, 73, 6, 272, 288, 320, 191, 226, 212, 308, 379, 378, 85]
 ## Finishes a star may take: trans-clear, glow-in-the-dark white, pearl
 ## white, metallic gold and silver, pearl gold and grey, and the trans
 ## colours a nebula is made of.

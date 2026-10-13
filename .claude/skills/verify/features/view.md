@@ -848,6 +848,27 @@ take, which is what made a design run give up on looking at itself.
 
 ## Gotchas
 
+- **The first real LEGO Art run (2026-10-12), judged against 31212.** "a LEGO
+  Art picture of the Milky Way galaxy", from the sentence alone, by Claude Code
+  on the owner's plan (`--ask-claude-code`, Opus 5.5, 45 s, nothing billed):
+  look_at_picture (none), then a plan with its own 64 x 32 SVG — a tilted
+  spiral, two arms, a bulge and a core — regions for space (relief 0), arms
+  (round, 1 up, trans-clear stars), bulge (round, 2) and core (smooth, 3), 14
+  stars by hand. The validator refused it once, rightly by its rules:
+  `palette[2] 85` (Medium Lilac, for the violet between the arms) was not an
+  Art colour. Claude fixed it in one call by taking Magenta, and 2,070 parts
+  on 4 x 2 panels landed in one piece. It reads at once as a spiral galaxy:
+  a raised glowing core with cheese slopes up to it, round-tile arms, a calm
+  black sky in courses, stars few and bright. Against 31212 it falls short:
+  half the size (51 x 26 cm against about 80 x 40), two thick arms with hard
+  edges where the set has many wispy ones, a near-empty sky, and Magenta
+  dust lanes that read as a toy, not as a galaxy. Medium Lilac is now an Art
+  colour (`MosaicArt.SOLID`); the same plan replayed offline with it lays the
+  violet Claude drew (`shots/runs/artai_replay_after_1.png` against
+  `artai_replay_before_2.png`). Claude looked at the face-on answer once and
+  did not plan again; a second look is where the wispy arms would come from.
+  The plans are in the session's transcript under `~/.claude/projects/` for
+  the worktree, which is how to see what a run asked for.
 - **A viewport is cleared every time it is drawn, whatever its clear mode.**
   Best's frames were to be added into one viewport set to `CLEAR_MODE_NEVER`;
   after 64 frames it held the last frame's 1/64th, on both renderers. So two
