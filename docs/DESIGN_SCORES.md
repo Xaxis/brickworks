@@ -60,9 +60,9 @@ real-set pieces laid) and a small picture. After a batch, run
 `python3 tools/design_memory.py build` (it reads the main checkout's
 `bench/results/`) and commit the index: it merges into what the index holds,
 and it is now the only copy of the creative, d5 and d5b rounds' critiques and
-pictures, read before their worktrees went. It holds 37 designs: the
+pictures, read before their worktrees went. It holds 41 designs: the
 baseline's 13, the creative round's 4, d5's 2, d5b's 3, d6's 4, d6b's 2, the
-surface round's 4 and the edges rounds' 5. What is missing is
+surface round's 4, the edges rounds' 5 and the steps round's 4. What is missing is
 the re-score's own replies: the baseline keeps its first judgement's scores
 and words, with the re-scored build taken from the table below, and the
 design5 batches' build, judged on the old check and never re-scored, is not
@@ -545,3 +545,79 @@ tall. The real answer takes two plate steps at a time: a curved slope two
 plates tall (11477, 15068) laid over each pair of one-stud treads, cut and
 re-laid the way the crown is. After that come the flanks ("walls of stacked
 plain bricks"), which want sideways building, not a top.
+
+## 2026-10-13-steps: commit dac9143, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 4.0 | 4.0 | 4.0 | 4.0 | 5.0 | 10.0 | **5.2** | 1,041 | 1 |
+| corner_shop | 1 | 6.0 | 6.0 | 6.0 | 5.0 | 5.0 | 10.0 | **6.3** | 1,111 | 1 |
+| speed_champions | 1 | 3.0 | 3.0 | 4.0 | 3.0 | 3.0 | 10.0 | **4.3** | 150 | 2 |
+| starfighter | 1 | 6.0 | 6.0 | 5.0 | 6.0 | 4.0 | 10.0 | **6.2** | 464 | 2 |
+| **suite mean** | 4 | **4.8** | **4.8** | **4.8** | **4.5** | **4.2** | **10.0** | **5.5** |  |  |
+
+Weakest across the suite: **creativity** (4.2), **technique** (4.5), **likeness** (4.8).
+
+**What the steps round says: plate steps, flank skins, every finding laid,
+masonry only on a building (dac9143).** The surface pass gained four things.
+Steps a plate high are taken two at a time: one curved slope two plates tall
+over each pair, with the upper tread's plate cut under it. A body's flank of
+plain bricks gets a skin on its side: a course laid again with its studs
+turned out, plates and tiles on them, and a curved slope at each end. Every
+finding is laid at once (up to 40, not 12). A building's long walls get
+masonry and no studs turned out. Held out and on the subscription, one run a
+subject, design memory on. Against the earlier rounds (likeness / surface /
+colour / technique / creative):
+
+| subject | baseline (re-scored) | d6 | surface | edges | steps |
+|---|---|---|---|---|---|
+| corner_shop | 4.5 / 3.5 / 4.5 / 3.5 / 3 | 4 / 4 / 4 / 3 / 4 | 5 / 6 / 5 / 4 / 4 | 5 / 5 / 5 / 4 / 4 | 6 / 6 / 6 / 5 / 5 |
+| starfighter | 6 / 4 / 5 / 4 / 5 | 5 / 3 / 5 / 4 / 4 | 6 / 6 / 5 / 6 / 6 | 6 / 5 / 5 / 5 / 5 | 6 / 6 / 5 / 6 / 4 |
+| barn_owl | 4 / 3.5 / 4 / 4 / 4 | 5 / 4 / 4 / 5 / 5 | 4 / 4 / 4 / 4 / 4 | 5 / 4 / 4 / 4 / 4 | 4 / 4 / 4 / 4 / 5 |
+| speed_champions | 3.5 / 4.5 / 3.5 / 3.5 / 3 | 3 / 3 / 3 / 3 / 3 | 3 / 4 / 3 / 3 / 4 | 3 / 4 / 4 / 3 / 3 | 3 / 3 / 4 / 3 / 3 |
+| the four | 4.5 / 3.9 / 4.25 / 3.75 / 3.75 | 4.25 / 3.5 / 4.0 / 3.75 / 4.0 | 4.5 / 5.0 / 4.25 / 4.25 / 4.5 | 4.75 / 4.5 / 4.5 / 4.0 / 4.0 | 4.75 / 4.75 / 4.75 / 4.5 / 4.25 |
+
+**On surface, a null.** Surface is 6, 6, 4 and 3. The surface round had 6, 6,
+4 and 4, and the edges round 5, 5, 4 and 4. Every cell is within the 1.0
+run-to-run spread. Over the four it is 4.75, between the surface round's 5.0
+and the edges round's 4.5. The suite mean is 5.5, the highest of any round
+(the surface round 5.2, edges 5.0, d6 4.9). That rests mostly on the shop,
+whose 6.3 is its best (likeness, surface and colour 6, built whole). It is
+one run a subject, so treat it as a mean inside its noise.
+
+**What reached the designs, from each design's log:**
+- **Plate steps reached none.** No design had a pair laid: not one staircase
+  among the four runs' findings. The lever works on a stepped model: run on
+  the edges round's starfighter (`design.ldr`), the same pass lays two
+  plate-step staircases in 7302s and one crown, all in one edit, and the
+  model stays one piece. But the steps the judge names now are on the sides,
+  not the tops: the starfighter's "fuselage sides are a terrace of stacked
+  plates", the owl's "head and body are rough, stepped blocks". A pass that
+  reads up-facing studs and tiles cannot see them.
+- **Flank skins reached two, and hurt one.** The car got two skins, and the
+  owl two on the grey of its perch. The car's were laid on the black course
+  between its wheels, under the red body, and the judge saw them: "the black
+  slabs between the wheels hang below the body like blocks". The flanks the judge
+  faults are built of plates ("flanks and tail are plain brick walls", the
+  starfighter's terrace of plates). A skin hung on a course of bricks cannot
+  read those either. The car's surface fell to 3 (4 in the surface and
+  edges rounds), inside the noise, but the critique names the skin.
+- **Laying every finding reached two.** The shop laid 28 findings in one edit
+  (710 studs tiled, 5 walls) and the starfighter 14 (522 studs, 3 tops
+  rounded). The starfighter's "rows of exposed studs along the dark-red wing
+  stripes" from the edges round is gone. What it still names, "the nose tip
+  and wing tops still show exposed studs", are groups under four studs that
+  the pass leaves as detail.
+- **Masonry only reached the shop.** Its 5 walls got masonry and no turned-out
+  studs. "Odd studs and stud-up knobs poke out of the tan facade" is gone.
+  Now it says "masonry-profile texture in places" and "little relief". Its
+  build of 10, against 4 in the surface and edges rounds, is the session's
+  doing: its base was not loose plates this time.
+
+**Next.** First, the sides of bodies built of plates: a terrace of offset
+plates on a flank or a nose, and a flank of plate layers. These are what the
+judge names on the starfighter, the car and the owl, and the pass reads only
+tops and brick courses. Second, a skin must never go on a course under the
+body (a chassis or skirt), or in a colour the body above is not. On the car
+it read as a slab. Laying tiles straight on the turned-out studs, a plate
+proud and not two, would also make a skin read less like a block.
