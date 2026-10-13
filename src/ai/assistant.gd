@@ -738,6 +738,10 @@ func _start(text: String) -> void:
 			return
 		_messages.append({"role": "user", "content": opening})
 	else:
+		# On the web our scored designs are fetched the first time.
+		await DesignMemory.ensure(self)
+		if not _busy:
+			return
 		_messages.append({"role": "user", "content": opening_for(text)})
 	progress.emit("thinking")
 	_send()
@@ -785,6 +789,10 @@ func opening_for(text: String) -> Array:
 			"Before you choose parts, this is how real LEGO sets of this "
 			+ "kind are actually built. It is measured over every "
 			+ "catalogued set, not advice.\n" + measured})
+	# And, for the same reason, what our own scored designs of the nearest
+	# subject did and what the bench's judge faulted (src/ai/design_memory.gd).
+	# In words: the pictures here are the reference.
+	opening.append_array(DesignMemory.recall(text, false))
 	return opening
 
 
@@ -2384,7 +2392,11 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"how_real_sets_build_this":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up how real sets build a %s" % subject)
-			return _how_real_sets_build_this(subject)
+			# And what our own scored designs of the nearest subject did and
+			# were faulted for: asked once, with the subject, before building.
+			await DesignMemory.ensure(self)
+			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
+				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world(args)
@@ -12950,8 +12962,10 @@ each feature the subject is known by, then the detail. In this order:
      SUBJECT NEEDS, below, says which call builds each; \
      how_real_sets_build_this, asked with the plainest word for the \
      kind (a rocket: space; a locomotive: train; a galleon: pirate; an \
-     owl: animal), says what real sets of it are made of and in. The \
-     picture's colours come with it as numbers.
+     owl: animal), says what real sets of it are made of and in, and \
+     what our own scored designs of the nearest subject did and the \
+     faults the judge found in them, to design out. The picture's \
+     colours come with it as numbers.
   4. The feature list: what the subject is known by, given to \
      submit_design as features — an owl's facial disc, eyes, beak, ear \
      tufts, wings, talons; a car's wheel arches, headlamps, grille, \
@@ -13603,7 +13617,8 @@ section of the rest in full.
 
 HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
-that exists.
+that exists; how_real_sets_build_this with the subject: real sets' parts, \
+and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture, each \
 said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
 "shapes") — and a head that looks at you with its "face" on its shape. \
@@ -16095,7 +16110,10 @@ func _tools() -> Array:
 				+ "difference between a model of the thing and a model "
 				+ "of bricks, and you cannot get it from the shape "
 				+ "alone.\n\nGive the plain word for the thing. Nothing "
-				+ "matches a specific name."),
+				+ "matches a specific name.\n\nWith it comes our own best "
+				+ "design of the nearest subject, as the design bench's judge "
+				+ "scored it: how it was built, what it did best, and the "
+				+ "faults to design out before you build."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

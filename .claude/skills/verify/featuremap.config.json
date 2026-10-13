@@ -1321,6 +1321,13 @@
       "entry": "tools/web/build_flow.mjs",
       "reach": "node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web   (serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "recall our own scored designs",
+      "entry": "src/ai/design_memory.gd",
+      "reach": "godot --headless --path . --script src/dev/design_memory_probe.gd   (and -- --held-out=speed_champions; the index: tools/design_memory.py build)",
+      "area": "assistant"
     }
   ]
 }
