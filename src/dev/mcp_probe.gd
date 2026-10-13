@@ -384,6 +384,7 @@ func _run() -> void:
 
 	await _one_at_a_time(port)
 	await _over_http(port)
+	await _list_changes(port)
 	await _saving()
 
 	# An unknown tool is an answer, not a dropped connection.
@@ -562,6 +563,120 @@ func _over_http(port: int) -> void:
 			refused.size() == 1 and not (refused[0] as Dictionary).has("result")
 				and _world.brick_count() == standing and standing > 0)
 		page.disconnect_from_host()
+
+
+## Is a session told when the tools it was given have changed?
+##
+## The app is updated and started again, and Claude Code, still attached
+## to the port, went on with the old build's tools for good. Each session
+## is handed an id at initialize carrying a short hash of its list, so a
+## session from before an update (played here by an id whose hash is not
+## this build's) is told on its next request: as an event stream with
+## notifications/tools/list_changed ahead of the answer, or in words at the
+## end of a call's answer for a client that takes JSON alone. Once.
+func _list_changes(port: int) -> void:
+	print("")
+	var started: Dictionary = await _http_raw(port, "", true, {"jsonrpc": "2.0", "id": 81,
+		"method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}}})
+	var said: Dictionary = _messages(started)[0] if not _messages(started).is_empty() else {}
+	var caps: Variant = (said.get("result", {}) as Dictionary).get("capabilities", {})
+	_check("initialize says the tools can change: listChanged %s"
+			% str(((caps as Dictionary).get("tools", {}) as Dictionary).get("listChanged")),
+		((caps as Dictionary).get("tools", {}) as Dictionary).get("listChanged") == true)
+	var session: String = _header_of(str(started["head"]), "mcp-session-id")
+	_check("...and hands out a session id carrying its list: %s" % session,
+		session.contains(".") and _socket.has_method("tools_listed")
+			and session.get_slice(".", 1) == str(_socket.call("tools_listed")))
+	var listed: Dictionary = await _http_raw(port, session, true, {"jsonrpc": "2.0", "id": 82,
+		"method": "tools/list", "params": {}})
+	var call := {"jsonrpc": "2.0", "id": 83, "method": "tools/call",
+		"params": {"name": "search_parts", "arguments": {"query": "2 x 4"}}}
+	var plain: Dictionary = await _http_raw(port, session, true, call)
+	_check("a session that listed this build's tools is answered in JSON, told nothing",
+		str(listed["type"]).begins_with("application/json")
+			and str(plain["type"]).begins_with("application/json") and _messages(plain).size() == 1)
+
+	# A session from before the app was updated: the same id, an older list.
+	var older: String = session.get_slice(".", 0) + ".0000000000000000"
+	var told: Dictionary = await _http_raw(port, older, true, call)
+	var messages: Array = _messages(told)
+	_check("a session given another build's tools is told, ahead of the answer, as a stream (%s)"
+			% str(told["type"]),
+		str(told["type"]).begins_with("text/event-stream") and messages.size() == 2
+			and str((messages[0] as Dictionary).get("method", "")) == "notifications/tools/list_changed"
+			and int((messages[1] as Dictionary).get("id", -1)) == 83)
+	var again: Dictionary = await _http_raw(port, older, true, call)
+	_check("...once: its next call is answered in JSON", str(again["type"]).begins_with("application/json"))
+	var json_only: String = session.get_slice(".", 0).reverse() + ".1111111111111111"
+	var worded: Dictionary = await _http_raw(port, json_only, false, call)
+	var text: String = ""
+	for block: Variant in ((_messages(worded)[0] as Dictionary).get("result", {}) as Dictionary).get("content", []):
+		text += str((block as Dictionary).get("text", ""))
+	_check("...and a client taking JSON alone is told in words: %s" % text.right(90),
+		str(worded["type"]).begins_with("application/json") and text.contains("tools have changed"))
+	var stream: Dictionary = await _http_raw(port, session, true, {}, "GET")
+	_check("a GET for a stream of its own is refused, 405, as the spec has it: %s"
+			% str(stream["head"]).get_slice("\r\n", 0),
+		str(stream["head"]).begins_with("HTTP/1.1 405"))
+
+
+## One HTTP request, and its answer: {head, type, body}.
+func _http_raw(port: int, session: String, streams: bool, body: Dictionary,
+		verb: String = "POST") -> Dictionary:
+	var peer: StreamPeerTCP = await _another(port)
+	var bytes: PackedByteArray = (JSON.stringify(body) if verb == "POST" else "").to_utf8_buffer()
+	var head: String = ("%s /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\n" % verb
+		+ "Accept: %s\r\n" % ("application/json, text/event-stream" if streams else "application/json")
+		+ ("Mcp-Session-Id: %s\r\n" % session if not session.is_empty() else "")
+		+ "Content-Type: application/json\r\nContent-Length: %d\r\n\r\n" % bytes.size())
+	var sent := head.to_utf8_buffer()
+	sent.append_array(bytes)
+	peer.put_data(sent)
+	var buffer := PackedByteArray()
+	for _n: int in 7200:
+		peer.poll()
+		var ready: int = peer.get_available_bytes()
+		if ready > 0:
+			var got: Array = peer.get_data(ready)
+			if got[0] == OK:
+				buffer.append_array(got[1])
+		var blank: int = CommandSocket._find_bytes(buffer, "\r\n\r\n")
+		if blank >= 0:
+			var said: String = buffer.slice(0, blank).get_string_from_utf8()
+			var length: int = _header_of(said, "content-length").to_int()
+			if buffer.size() >= blank + 4 + length:
+				peer.disconnect_from_host()
+				return {"head": said, "type": _header_of(said, "content-type"),
+					"body": buffer.slice(blank + 4, blank + 4 + length).get_string_from_utf8()}
+		await process_frame
+	peer.disconnect_from_host()
+	return {"head": "", "type": "", "body": ""}
+
+
+## One header's value from a head, or "".
+static func _header_of(head: String, name: String) -> String:
+	for line: String in head.split("\n"):
+		var at: int = line.find(":")
+		if at > 0 and line.substr(0, at).strip_edges().to_lower() == name:
+			return line.substr(at + 1).strip_edges()
+	return ""
+
+
+## The JSON-RPC messages in an answer, a stream's in order.
+func _messages(answer: Dictionary) -> Array:
+	var found: Array = []
+	var body: String = str(answer["body"])
+	if str(answer["type"]).begins_with("text/event-stream"):
+		for line: String in body.split("\n"):
+			if line.begins_with("data:"):
+				var one: Variant = JSON.parse_string(line.substr(5).strip_edges())
+				if one is Dictionary:
+					found.append(one)
+	else:
+		var one: Variant = JSON.parse_string(body)
+		if one is Dictionary:
+			found.append(one)
+	return found
 
 
 ## Does save_model keep to the app's own models, and off the person's?

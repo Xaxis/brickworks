@@ -26,12 +26,21 @@ tools/mcp_tools.json is used only to answer tools/list while the app is
 closed, so a session that connects first still knows what it will be able
 to do.
 
+And the list changes: the app is updated and started again, or was not
+running when the session listed the copy. A session went on with the list
+it was given for good. So this says listChanged: true, and whenever it has
+had to connect to the app afresh it asks the app's list again; when that
+is not the list the session was last given, it sends
+notifications/tools/list_changed after the answer, once, and the session
+lists the tools again.
+
 No dependencies: stdlib only, because the machines this runs on do not all
 have pip.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import socket
@@ -39,7 +48,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CACHED_TOOLS = ROOT / "tools" / "mcp_tools.json"
+# BRICKWORKS_MCP_CACHE moves it, for a test playing an app of its own.
+CACHED_TOOLS = Path(os.environ.get("BRICKWORKS_MCP_CACHE") or ROOT / "tools" / "mcp_tools.json")
 DEFAULT_PORT = 8787
 # Long enough for a tool that fetches geometry or draws a picture, short
 # enough that a wedged app does not hang the session forever.
@@ -85,6 +95,9 @@ class App:
         self._sock: socket.socket | None = None
         self._rest = b""
         self._next_id = 0
+        # How many times a connection has been made: one more than before
+        # means the app may be another one, started since.
+        self.connected = 0
 
     def ask(self, tool: str, arguments: dict) -> dict:
         """One request. Raises ConnectionError, saying which kind."""
@@ -121,6 +134,7 @@ class App:
         sock.settimeout(PATIENCE)
         self._sock = sock
         self._rest = b""
+        self.connected += 1
         return sock
 
     def _read_line(self, sock: socket.socket) -> bytes:
@@ -155,21 +169,31 @@ def _cached() -> list[dict] | None:
         return None
 
 
-def tool_list(app: App) -> list[dict]:
-    """The tools, from the app when it is up and from the copy when not.
-
-    The app's schemas are Anthropic's shape (`input_schema`); MCP wants
-    `inputSchema`. Translated here because it is the only difference.
-    """
+def live_tools(app: App) -> list[dict] | None:
+    """The app's own list, or None when it cannot be asked."""
     try:
         answer = app.ask("__tools__", {})
-        tools = answer.get("tools") or []
-        if tools and tools != _cached():
-            CACHED_TOOLS.write_text(json.dumps(tools, indent=2, ensure_ascii=False) + "\n")
     except ConnectionError:
-        if not CACHED_TOOLS.exists():
-            return []
-        tools = json.loads(CACHED_TOOLS.read_text())
+        return None
+    tools = answer.get("tools") or []
+    if tools and tools != _cached():
+        CACHED_TOOLS.write_text(json.dumps(tools, indent=2, ensure_ascii=False) + "\n")
+    return _as_mcp(tools)
+
+
+def tool_list(app: App) -> list[dict]:
+    """The tools, from the app when it is up and from the copy when not."""
+    live = live_tools(app)
+    if live is not None:
+        return live
+    if not CACHED_TOOLS.exists():
+        return []
+    return _as_mcp(json.loads(CACHED_TOOLS.read_text()))
+
+
+def _as_mcp(tools: list[dict]) -> list[dict]:
+    """The app's schemas are Anthropic's shape (`input_schema`); MCP wants
+    `inputSchema`. Translated here because it is the only difference."""
     return [
         {
             "name": tool["name"],
@@ -228,7 +252,43 @@ def call(app: App, name: str, arguments: dict) -> dict:
     return {"content": content or [{"type": "text", "text": "(nothing)"}], "isError": False}
 
 
-def handle(app: App, message: dict) -> dict | None:
+def _hash(tools: list[dict]) -> str:
+    return hashlib.sha256(json.dumps(tools, sort_keys=True).encode()).hexdigest()[:16]
+
+
+LIST_CHANGED = {"jsonrpc": "2.0", "method": "notifications/tools/list_changed"}
+
+
+class Listing:
+    """Which tools the session was last given, so it can be told when the
+    app it reaches serves others."""
+
+    def __init__(self) -> None:
+        self.given: str | None = None
+        self.told: str | None = None
+        self.on = -1
+
+    def gave(self, tools: list[dict], app: App) -> None:
+        self.given = self.told = _hash(tools)
+        self.on = app.connected
+
+    def changed(self, app: App) -> bool:
+        """True, once, when the app has been connected to afresh since the
+        session listed the tools and serves another list now."""
+        if self.given is None or app.connected == self.on:
+            return False
+        self.on = app.connected
+        live = live_tools(app)
+        if live is None:
+            return False
+        now = _hash(live)
+        if now in (self.given, self.told):
+            return False
+        self.told = now
+        return True
+
+
+def handle(app: App, message: dict, listing: Listing | None = None) -> dict | None:
     """A JSON-RPC request in, a response out, or None for a notification."""
     method = message.get("method", "")
     sent_id = message.get("id")
@@ -244,14 +304,17 @@ def handle(app: App, message: dict) -> dict | None:
         wanted = params.get("protocolVersion")
         return result({
             "protocolVersion": wanted if wanted in KNOWN_PROTOCOLS else PROTOCOL,
-            "capabilities": {"tools": {"listChanged": False}},
+            "capabilities": {"tools": {"listChanged": True}},
             "serverInfo": {"name": "brickworks", "version": "1"},
             "instructions": guidance(app),
         })
     if method == "ping":
         return result({})
     if method == "tools/list":
-        return result({"tools": tool_list(app)})
+        tools = tool_list(app)
+        if listing is not None:
+            listing.gave(tools, app)
+        return result({"tools": tools})
     if method == "tools/call":
         name = str(params.get("name", ""))
         if not name:
@@ -278,6 +341,7 @@ def main(argv: list[str]) -> int:
             print("brickworks_mcp: unknown option %s" % argument, file=sys.stderr)
             return 2
     app = App(port)
+    listing = Listing()
     # Line-buffered stdout, and nothing else may ever be written to it:
     # one stray print corrupts the stream and the session loses the server.
     out = sys.stdout
@@ -293,12 +357,19 @@ def main(argv: list[str]) -> int:
             out.flush()
             continue
         try:
-            answer = handle(app, message)
+            answer = handle(app, message, listing)
         except Exception as wrong:  # noqa: BLE001 - never die on one bad call
             answer = {"jsonrpc": "2.0", "id": message.get("id"),
                       "error": {"code": -32603, "message": str(wrong)}}
         if answer is not None:
             out.write(json.dumps(answer) + "\n")
+            out.flush()
+        try:
+            told = message.get("method") not in ("initialize", "tools/list") and listing.changed(app)
+        except Exception:  # noqa: BLE001 - a check, never a reason to stop
+            told = False
+        if told:
+            out.write(json.dumps(LIST_CHANGED) + "\n")
             out.flush()
     return 0
 

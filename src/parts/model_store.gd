@@ -157,6 +157,18 @@ func tick() -> void:
 	_write(autosave(), title)
 
 
+## Write the working model now rather than when it settles, as a reload
+## is about to take the page away (UpdateOffer). The file to wait on until
+## it is stored (ModelStore.stored), or "" when there is nothing to keep.
+func write_now() -> String:
+	if not keeps or read_only:
+		return ""
+	if _pending and whole:
+		_pending = false
+		_write(autosave(), title)
+	return autosave() if FileAccess.file_exists(autosave()) else ""
+
+
 ## Restore the working model from the last session, if there is one.
 func restore() -> int:
 	if not FileAccess.file_exists(autosave()):
@@ -885,6 +897,11 @@ func _export_text(path: String, text: String) -> bool:
 func _write(path: String, title: String, with_steps: bool = false,
 		written: String = "") -> bool:
 	if read_only:
+		return false
+	# A newer build is live: this tab stores nothing outside its own session
+	# until it reloads (NewerBuild), so a save there is refused, saying why.
+	if not NewerBuild.may_write(path):
+		refused = NewerBuild.REFUSAL
 		return false
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

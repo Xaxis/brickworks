@@ -539,6 +539,8 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	};
 	IDBObjectStore.prototype.put = function (value, key) {
 		if (typeof key !== "string" || !ours(this) || !value || !value.contents) {
+			// A folder, held back like a file once a newer build is live.
+			if (typeof key === "string" && ours(this) && value && holdBack(key, value)) return skipped();
 			return native.put.apply(this, arguments);
 		}
 		const at = stamp(value.timestamp);
@@ -550,6 +552,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 			if (copied) unstored.delete(key);
 			return skipped();
 		}
+		if (holdBack(key, value)) return skipped();
 		const request = native.put.apply(this, arguments);
 		const store = this;
 		request.addEventListener("success", function () {
@@ -565,6 +568,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		const copied = pulled.get(key);
 		// Never known here: another tab's, made since this one started.
 		if (known === undefined && !copied) return skipped();
+		if (holdBack(key, null)) return skipped();
 		const store = this;
 		const look = native.get.call(store, key);
 		look.onsuccess = function () {
@@ -656,6 +660,79 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	// A write of the app's that is not a save (a setting, the parts bin's
 	// shelf): kept from being copied over until it is stored.
 	window.brickworksWriting = function (path) { writing.set(path, Date.now()); };
+
+	// -- A newer build ------------------------------------------------
+	//
+	// People keep a tab open for hours, and after a deploy an open tab goes
+	// on running the build it loaded. Which build is live is in
+	// /version.json, which deploy.sh writes at the root of the site and
+	// serves never cached. This tab's own is in its address
+	// (/b/<sha>/index); served from a folder, as a local check serves it,
+	// it is the version.json beside the build, read as the page starts.
+	// The live one is asked when the person comes back to the tab (focus,
+	// or shown again) and every few minutes while it is in view: a small
+	// file, never more than once in LOOK_AGAIN.
+	//
+	// Once another build is live the app says so above the model and
+	// offers to reload (src/ui/update_offer.gd), and from then on this tab
+	// stores nothing outside its own session (user://sessions/<id>/, which
+	// the reload brings back). The newer build owns what the tabs share and
+	// may keep it differently, and a build from before the tabs had their
+	// own wrote the whole of user:// back as it held it, deleting a newer
+	// tab's files (2026-10-13). A file this tab changed before the newer
+	// build was seen is still stored; one changed after it, and any delete,
+	// is not (window.brickworksHeld lists them). The sign-in in
+	// localStorage is not held back: a session renewed and not kept would
+	// sign every tab out.
+	const LOOK_EVERY = 4 * 60 * 1000;
+	const LOOK_AGAIN = 20 * 1000;
+	const BUILD_AT = new URL(GODOT_CONFIG.executable, location.href);
+	const LIVE = new URL("/version.json", location.href).href;
+	let built = (/\/b\/([^/]+)\/[^/]*$/.exec(BUILD_AT.pathname) || [])[1] || "";
+	let newer = "";
+	let frozenAt = 0;
+	let lookedAt = 0;
+	const heldBack = new Set();
+	function commitAt(address) {
+		return fetch(address, { cache: "no-store" })
+			.then(function (answer) { return answer.ok ? answer.json() : null; })
+			.then(function (said) { return said && typeof said.commit === "string" ? said.commit : ""; })
+			.catch(function () { return ""; });
+	}
+	const builtKnown = built ? Promise.resolve(built)
+		: commitAt(new URL("version.json", BUILD_AT).href).then(function (own) { built = own; return own; });
+	function lookForNewer() {
+		if (newer || document.visibilityState !== "visible") return;
+		if (Date.now() - lookedAt < LOOK_AGAIN) return;
+		lookedAt = Date.now();
+		builtKnown.then(function (own) {
+			if (!own) return null;
+			return commitAt(LIVE).then(function (live) {
+				if (!live || live === own || newer) return;
+				newer = live;
+				frozenAt = Date.now();
+				console.log("Brickworks " + live + " is live; this tab runs " + own
+					+ ", and stores nothing outside its own session until it reloads");
+			});
+		});
+	}
+	window.addEventListener("focus", lookForNewer);
+	document.addEventListener("visibilitychange", lookForNewer);
+	setInterval(lookForNewer, LOOK_EVERY);
+	// The build live now, once it is not this tab's; "" until then.
+	window.brickworksNewer = function () { return newer; };
+	window.brickworksHeld = function () { return JSON.stringify(Array.from(heldBack)); };
+	// Whether a write to [key] is held back: [value] is a put's, null a delete.
+	function holdBack(key, value) {
+		if (!frozenAt) return false;
+		const session = SESSION_KEY.exec(key);
+		if (session && session[1] === window.brickworksTab) return false;
+		if (value && stamp(value.timestamp) < frozenAt) return false;
+		heldBack.add(key);
+		unstored.delete(key);
+		writing.delete(key);
+		return true;
+	}
 
 	// When the person last used this tab: the relay sends a session's
 	// calls to the tab they used most recently (ClaudeConnector).

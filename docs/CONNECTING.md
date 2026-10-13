@@ -161,6 +161,13 @@ From <https://claude.com/docs/connectors/building/authentication> unless noted:
 | Tokens | `/oauth/token`: S256 PKCE, exact return address (loopback: any port), resource checked; access an hour, refresh rotated, both kept only as SHA-256 |
 | Revocation | `/oauth/revoke` (RFC 7009), **Disconnect** in the app, or deleting the account |
 | Routing | each call goes to the account's open tab (`relay_tabs.owner`), whichever device |
+| Tools that change | `listChanged: true`. A tab reloaded into a newer build says hello with its tools; each conversation's next call after that is answered as an event stream with `notifications/tools/list_changed` ahead of the answer, once (`relay_lists`). A client that takes JSON alone is told in words in that answer. The desktop's port and `tools/brickworks_mcp.py` do the same for an app updated and started again |
+
+A client that does not act on `notifications/tools/list_changed` keeps the
+list it was given until it connects again: a new conversation, or reconnecting
+Brickworks (claude.ai: Settings, Connectors; Claude Code: `/mcp`, Reconnect).
+The FAQ says so (`web/faq.html#new-tools`). `tools/web/list_changed_check.mjs`
+proves the relay's half, both ways in.
 
 The endpoints are in `api/oauth.js`, the tables in `supabase/oauth.sql`, and
 the proofs in `tools/web/oauth_probe.mjs` (every endpoint and refusal),

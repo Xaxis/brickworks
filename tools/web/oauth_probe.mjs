@@ -63,7 +63,13 @@ async function call(path, { method = "GET", headers = {}, body, form } = {}) {
   const text = await reply.text();
   let json = null;
   try {
-    json = text ? JSON.parse(text) : null;
+    // An event stream when the relay has something of its own to say
+    // first (the tools changed, api/mcp.js): the answer is the message
+    // with an id, as a client reads it.
+    json = (reply.headers.get("content-type") || "").startsWith("text/event-stream")
+      ? text.split("\n").filter((line) => line.startsWith("data:"))
+        .map((line) => JSON.parse(line.slice(5))).find((message) => message.id !== undefined) || null
+      : text ? JSON.parse(text) : null;
   } catch {
     json = null;
   }
@@ -217,7 +223,9 @@ try {
       body: { jsonrpc: "2.0", id: taken.request.id, result: { content: [{ type: "text", text: "3001 Brick 2 x 4" }] } } });
   }
   const answered = await asked;
-  check((answered.json?.result?.content || [])[0]?.text === "3001 Brick 2 x 4", "...and the tab's answer reaches Claude");
+  // After the line naming the tab, which every answer now begins with.
+  check((answered.json?.result?.content || []).some((block) => block.text === "3001 Brick 2 x 4"),
+    "...and the tab's answer reaches Claude");
   const strangerNext = await call(`${strangerTab}&op=next`, { method: "POST" });
   check(strangerNext.status === 204, "the other account's tab was handed nothing");
   await call(`${strangerTab}&op=close`, { method: "POST" });

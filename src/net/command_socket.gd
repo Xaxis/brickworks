@@ -195,9 +195,17 @@ func _pump(client: Client) -> bool:
 #   claude --mcp-config '{"mcpServers":{"brickworks":
 #     {"type":"http","url":"http://127.0.0.1:8787/mcp"}}}'
 #
-# One request, one response, no stream: every tool here answers once and
-# nothing is ever pushed the other way, which is the shape the spec calls
-# a plain JSON response rather than an event stream.
+# One request, one response: every tool here answers once, which is the
+# shape the spec calls a plain JSON response rather than an event stream.
+# Except when the tools have changed since the session listed them
+# (2026-10-13): the app was updated, and the session, still attached to the
+# same port, would go on with the old list for good. Each session is handed
+# an id at initialize that carries a short hash of the list it was given
+# ([method tools_listed]), so even an app started since knows; its next
+# request is answered as an event stream with
+# notifications/tools/list_changed ahead of the answer, or, for a client
+# that takes JSON alone, with the same said in words at the end of a call's
+# answer. Once each time.
 
 
 ## A whole request, or nothing yet. Returns false when the client has gone.
@@ -247,12 +255,20 @@ static func _find_bytes(haystack: PackedByteArray, needle: String) -> int:
 
 func _serve_http(client: Client, head: String, body: String) -> void:
 	var first: String = head.split("\n")[0].strip_edges()
+	var session: String = _header(head, "mcp-session-id")
+	var streams: bool = _header(head, "accept").contains("text/event-stream")
 	if _from_a_web_page(head):
 		_http(client, 403, JSON.stringify({"error": "This port is for programs "
 			+ "on this computer, such as Claude Code. Web pages may not use it."}))
 		return
 	if first.begins_with("OPTIONS"):
 		_http(client, 204, "")
+		return
+	if first.begins_with("GET") and streams:
+		# A client asking for a stream of its own, which the spec answers
+		# with 405 when there is none: the word that the tools changed
+		# comes with an answer instead.
+		_http(client, 405, "")
 		return
 	if not first.begins_with("POST"):
 		# A browser pointed at the port, or a health check.
@@ -266,6 +282,7 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 			"error": {"code": -32700, "message": "not JSON"}}))
 		return
 	var request: Dictionary = parsed
+	var method: String = str(request.get("method", ""))
 	var answer: Variant = await answer_rpc(request)
 	if answer == null:
 		# A notification has no id and wants no answer.
@@ -273,6 +290,28 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 		return
 	if client.gone:
 		return
+	var listed: String = tools_listed()
+	if method == "initialize":
+		# The id says which list this session is about to be given.
+		session = "%s.%s" % [Crypto.new().generate_random_bytes(12).hex_encode(), listed]
+		_given[session] = listed
+		_http(client, 200, JSON.stringify(answer), "Mcp-Session-Id: %s\r\n" % session)
+		return
+	if session.is_empty():
+		_http(client, 200, JSON.stringify(answer))
+		return
+	if method == "tools/list":
+		_given[session] = listed
+		_told[session] = listed
+	elif _to_be_told(session, listed) and (streams or method == "tools/call"):
+		_told[session] = listed
+		if streams:
+			_http_events(client, [{"jsonrpc": "2.0", "method": "notifications/tools/list_changed"},
+				answer])
+			return
+		var result: Variant = (answer as Dictionary).get("result")
+		if result is Dictionary and (result as Dictionary).get("content") is Array:
+			((result as Dictionary)["content"] as Array).append({"type": "text", "text": CHANGED_WORDS})
 	_http(client, 200, JSON.stringify(answer))
 
 
@@ -315,23 +354,16 @@ func answer_rpc(request: Dictionary) -> Variant:
 		var wanted: Variant = params.get("protocolVersion")
 		return _result(sent_id, {
 			"protocolVersion": wanted if wanted is String else PROTOCOL,
-			"capabilities": {"tools": {"listChanged": false}},
+			# The list changes when the app is updated: see "MCP over HTTP",
+			# and the relay's own (api/mcp.js) for the web.
+			"capabilities": {"tools": {"listChanged": true}},
 			"serverInfo": {"name": "brickworks", "version": "1"},
 			"instructions": assistant.guidance() if assistant != null else "",
 		})
 	if method == "ping":
 		return _result(sent_id, {})
 	if method == "tools/list":
-		var listed: Array = []
-		if assistant != null:
-			for tool: Variant in assistant.tool_catalogue() + _own_tools():
-				var one: Dictionary = tool
-				listed.append({
-					"name": one.get("name", ""),
-					"description": one.get("description", ""),
-					"inputSchema": one.get("input_schema", {}),
-				})
-		return _result(sent_id, {"tools": listed})
+		return _result(sent_id, {"tools": served_tools()})
 	if method == "tools/call":
 		var name: String = str(params.get("name", ""))
 		var input: Dictionary = params.get("arguments", {}) as Dictionary
@@ -343,25 +375,101 @@ func answer_rpc(request: Dictionary) -> Variant:
 		if not bool(called[1]):
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": QUEUED_OUT}]})
-		return _result(sent_id, {"content": _as_content(called[0]),
-			"isError": false})
+		var content: Array = _as_content(called[0])
+		# A newer build is live than this tab's (NewerBuild): Claude is told
+		# once, as the person is by the banner.
+		if not _told_newer and not NewerBuild.live().is_empty():
+			_told_newer = true
+			content.append({"type": "text", "text": NEWER_WORDS})
+		return _result(sent_id, {"content": content, "isError": false})
 	if method in ["resources/list", "prompts/list"]:
 		return _result(sent_id, {"resources": [], "prompts": []})
 	return {"jsonrpc": "2.0", "id": sent_id,
 		"error": {"code": -32601, "message": "no method %s" % method}}
 
 
+var _told_newer: bool = false
+const NEWER_WORDS := ("Brickworks has been updated since this tab opened. The tab goes on "
+	+ "working, but saves nothing to the person's saved models until it reloads: ask them to "
+	+ "press Reload, above the model, when it suits them. The model comes back as it is, and "
+	+ "the new version's tools with it.")
+
+
 static func _result(sent_id: Variant, result: Dictionary) -> Dictionary:
 	return {"jsonrpc": "2.0", "id": sent_id, "result": result}
 
 
-func _http(client: Client, code: int, body: String) -> void:
+## The tools, as tools/list gives them.
+func served_tools() -> Array:
+	var listed: Array = []
+	if assistant != null:
+		for tool: Variant in assistant.tool_catalogue() + _own_tools():
+			var one: Dictionary = tool
+			listed.append({
+				"name": one.get("name", ""),
+				"description": one.get("description", ""),
+				"inputSchema": one.get("input_schema", {}),
+			})
+	return listed
+
+
+## Which tools this app serves, in short: a hash of [method served_tools],
+## compared and never shown. Worked out once a frame at most.
+func tools_listed() -> String:
+	var frame: int = Engine.get_process_frames()
+	if _listed_on != frame or _listed.is_empty():
+		_listed_on = frame
+		_listed = JSON.stringify(served_tools()).sha256_text().substr(0, 16)
+	return _listed
+
+
+var _listed: String = ""
+var _listed_on: int = -1
+## Each HTTP session's list as it was last given it, and as it was last
+## told it had changed to, by its id.
+var _given: Dictionary = {}
+var _told: Dictionary = {}
+
+const CHANGED_WORDS := ("Brickworks has been updated since this session listed its tools, "
+	+ "and its tools have changed. List them again to see the new ones; in Claude Code, /mcp "
+	+ "reconnects.")
+
+
+## Whether a session is to be told its tools have changed: the list it was
+## given (as its id says, for one this app did not hand out) is not the one
+## served now, and it has not been told of this one.
+func _to_be_told(session: String, listed: String) -> bool:
+	var given: String = str(_given.get(session, session.get_slice(".", 1) if session.contains(".") else ""))
+	return not given.is_empty() and given != listed and str(_told.get(session, "")) != listed
+
+
+## One header's value from a request's head, or "".
+static func _header(head: String, name: String) -> String:
+	for line: String in head.split("\n"):
+		var at: int = line.find(":")
+		if at > 0 and line.substr(0, at).strip_edges().to_lower() == name:
+			return line.substr(at + 1).strip_edges()
+	return ""
+
+
+## Messages as an event stream: the spec's way for a server to say
+## something of its own before its answer.
+func _http_events(client: Client, messages: Array) -> void:
+	var events: String = ""
+	for message: Variant in messages:
+		events += "event: message\ndata: %s\n\n" % JSON.stringify(message)
+	_http(client, 200, events, "", "text/event-stream")
+
+
+func _http(client: Client, code: int, body: String, extra: String = "",
+		type: String = "application/json") -> void:
 	var reason: String = {200: "OK", 202: "Accepted", 204: "No Content",
-		400: "Bad Request", 403: "Forbidden"}.get(code, "OK")
+		400: "Bad Request", 403: "Forbidden", 405: "Method Not Allowed"}.get(code, "OK")
 	var bytes: PackedByteArray = body.to_utf8_buffer()
 	var head: String = ("HTTP/1.1 %d %s\r\n" % [code, reason]
-		+ "Content-Type: application/json\r\n"
+		+ "Content-Type: %s\r\n" % type
 		+ "Content-Length: %d\r\n" % bytes.size()
+		+ extra
 		+ "Connection: keep-alive\r\n\r\n")
 	if not client.gone:
 		client.peer.put_data(head.to_utf8_buffer())

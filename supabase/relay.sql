@@ -90,10 +90,28 @@ create table if not exists public.relay_picks (
   picked_at timestamptz not null default now()
 );
 
+-- 2026-10-13: which tools each Claude conversation was given, by the same
+-- key as its pick (or "address:<channel>" for a tab's own address with no
+-- session), so that when the tab it works in says hello with other tools —
+-- reloaded into a newer build — the conversation is told so, once
+-- (api/mcp.js, notifications/tools/list_changed). A list is a short hash
+-- of the tab's tools, never the tools.
+--
+--   listed  the list it was last given (initialize, tools/list)
+--   told    the list it was last told had changed to
+create table if not exists public.relay_lists (
+  key    text        primary key,
+  listed text        not null,
+  told   text,
+  at     timestamptz not null default now()
+);
+
 alter table public.relay       enable row level security;
 alter table public.relay_tabs  enable row level security;
 alter table public.relay_picks enable row level security;
-revoke all on public.relay, public.relay_tabs, public.relay_picks from anon, authenticated;
+alter table public.relay_lists enable row level security;
+revoke all on public.relay, public.relay_tabs, public.relay_picks, public.relay_lists
+  from anon, authenticated;
 
 -- Hand the oldest waiting request on a channel to the tab. Skip locked, so
 -- two polls cannot both take it at once.
@@ -130,6 +148,7 @@ as $$
   -- on any later visit, and a call tells the person to open the tab.
   delete from public.relay_tabs where seen_at    < now() - interval '30 days';
   delete from public.relay_picks where picked_at < now() - interval '30 days';
+  delete from public.relay_lists where at        < now() - interval '30 days';
 $$;
 
 revoke all on function public.relay_take(text), public.relay_sweep()
