@@ -5,8 +5,13 @@
 ##   a 6 x 8 roof of studs gets tiled, in its own colour, largest first, with
 ##   a textured tile or two;
 ##   a 3-step staircase of 2 x 4 bricks gets 45 degree slopes;
+##   a stair of four plate steps a stud deep gets two curved slopes, the
+##   model in no more pieces;
+##   a body's flank of six plain bricks gets a skin on its side;
+##   sixteen small tops are all laid in one review;
 ##   a yard a minifigure stands on keeps its studs;
-##   a long plain wall is laid again with texture in it;
+##   a building's long plain wall is laid again with masonry, no stud
+##   turned out;
 ##
 ## then that settling works (reject with a reason puts the studs back and is
 ## never proposed again, keep remembers, accept adjusts), that the app's own
@@ -178,6 +183,79 @@ func _run() -> void:
 		and _brick_at("3001", 3) != 0, "rejected, the bricks and the tread's tile are back: %s"
 		% put_back.get_slice("\n", 0))
 
+	print("\na stair of four plate steps a stud deep gets two curved slopes, a pair each")
+	await _build("speeder nose", _plate_steps())
+	var pieces_before: int = await _pieces()
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 700).replace("\n", "\n    "))
+	stairs = _finding("staircase")
+	_ok(stairs != null and not stairs.ids.is_empty() and stairs.said.contains("by a plate"),
+		"a staircase of plate steps is found and laid")
+	var curves: Array = []
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id in ["15068", "11477", "88930", "7302"]:
+			curves.append(brick)
+	_ok(curves.size() == 2 and (curves[0] as BrickWorld.Brick).part_id == "15068",
+		"...as 2 curved slopes two plates tall, two studs across: %s" % str(curves.map(
+			func(brick: BrickWorld.Brick) -> String: return brick.part_id)))
+	_ok(_brick_at("3020", 4) == 0 and _brick_at("3021", 6) == 0
+		and _brick_at("3021", 4) != 0 and _brick_at("3022", 6) != 0,
+		"...the upper treads' plates cut under them, the rest of each laid again")
+	# Read as the pass reads them: a stud under a curved slope's hollow high
+	# end is open to a tip test, and the lattice knows better.
+	var stepped: SurfacePass = assistant.surface_pass()
+	stepped._read = OpenPoints.read(assistant)
+	var left_on_steps: int = 0
+	for key: Vector3i in stepped.open_tops():
+		if key.y * 2 < 64:
+			left_on_steps += 1
+	_ok(left_on_steps == 0, "...no stud left open on the four steps (%d)" % left_on_steps)
+	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
+		% pieces_before)
+
+	print("\na flank of six plain bricks on a body gets a skin on its side")
+	await _build("speeder hull", _flank())
+	pieces_before = await _pieces()
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 900).replace("\n", "\n    "))
+	var skins: int = 0
+	for one: SurfacePass.Finding in assistant.surface_pass().findings:
+		if one.kind == "flank" and not one.ids.is_empty():
+			skins += 1
+	_ok(skins == 2 and _finding("wall") == null,
+		"both flanks are skinned (%d), and not textured as a building's wall" % skins)
+	_ok(_count(_bricks(), ["30414"]) == 4 and _count(_bricks(), ["3010"]) == 8,
+		"...one course of each laid again with its studs turned out (%d 30414)"
+		% _count(_bricks(), ["30414"]))
+	_ok(_sideways(["15068"]) == 4 and _sideways(["3020"]) == 2 and _sideways(["87079"]) == 1,
+		"...and on them, on their side, a curved slope at each end and a plate and tile "
+		+ "between (%d, %d, %d)" % [_sideways(["15068"]), _sideways(["3020"]),
+			_sideways(["87079"])])
+	var rows: Array = []
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id == "2431" and BrickLattice.face_of(brick.transform.basis) != "up":
+			rows.append(brick.color_code)
+	rows.sort()
+	_ok(rows == [4, 15], "...and where the course over it is white, each row of the skin "
+		+ "keeps its own colour: %s" % str(rows))
+	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
+		% pieces_before)
+	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "reject",
+		"reason": "the hull wants its bricks bare here"})
+	_ok(_count(_bricks(), ["30414", "15068", "87079"]) == 0
+		and _count(_bricks(), ["3010"]) == 12, "rejected, the plain bricks are back")
+
+	print("\nevery finding is laid at once, not twelve of them")
+	await _build("pillars", _pillars())
+	said = _text_of(await assistant.surface_review())
+	var laid_fields: int = 0
+	for one: SurfacePass.Finding in assistant.surface_pass().findings:
+		if one.kind == "studs" and not one.ids.is_empty():
+			laid_fields += 1
+	_ok(laid_fields == 16 and assistant.surface_pass().more == 0
+		and not said.contains("not laid yet"),
+		"all 16 tops are laid in one review (%d), none left for another" % laid_fields)
+
 	print("\na head's hard top edges are curved over, the top raised flush")
 	await _build("owl head", _head())
 	var head_top: float = assistant._bounds_of(_bricks()).end.y
@@ -241,14 +319,15 @@ func _run() -> void:
 	_ok(_open_on(yard) == before, "...and its studs are left as they were (%d)" % _open_on(yard))
 	_ok(said.contains("a yard"), "...said: a yard")
 
-	print("\na long plain wall is laid again with texture in it")
-	await _build("wall", _wall())
+	print("\na building's long plain wall is laid again with masonry in it, no stud turned out")
+	await _build("house wall", _wall())
 	said = _text_of(await assistant.surface_review())
 	print("    " + said.substr(0, 700).replace("\n", "\n    "))
 	var wall: SurfacePass.Finding = _finding("wall")
 	_ok(wall != null and not wall.ids.is_empty(), "a plain wall is found and laid again")
-	_ok(_count(_bricks(), ["98283", "15533", "87087"]) > 0,
-		"...with masonry or turned-out studs in it")
+	_ok(_count(_bricks(), ["98283", "15533"]) > 0 and _count(_bricks(), ["87087"]) == 0,
+		"...with masonry in it (%d) and no turned-out stud (%d)" % [
+			_count(_bricks(), ["98283", "15533"]), _count(_bricks(), ["87087"])])
 
 	print("\nthe ground is offered, laid only when told")
 	await _build("ground", _ground())
@@ -347,6 +426,54 @@ func _wall() -> Array:
 			out.append({"part": "3004", "color": 19, "x": 0, "y": course * 3, "z": 0, "rot": 0})
 			out.append({"part": "3010", "color": 19, "x": 2, "y": course * 3, "z": 0, "rot": 0})
 			out.append({"part": "3004", "color": 19, "x": 6, "y": course * 3, "z": 0, "rot": 0})
+	return out
+
+
+## Five white plates on a block of bricks, each a stud shorter than the one
+## under it, along x: four steps a plate high and a stud deep, then a top two
+## studs deep. The second step's plate is a 2 x 4 and a 1 x 2.
+func _plate_steps() -> Array:
+	return [{"part": "3001", "color": 15, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "3003", "color": 15, "x": 4, "y": 0, "z": 0, "rot": 0},
+		{"part": "3795", "color": 15, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "3020", "color": 15, "x": 1, "y": 4, "z": 0, "rot": 0},
+		{"part": "3023b", "color": 15, "x": 5, "y": 4, "z": 0, "rot": 1},
+		{"part": "3020", "color": 15, "x": 2, "y": 5, "z": 0, "rot": 0},
+		{"part": "3021", "color": 15, "x": 3, "y": 6, "z": 0, "rot": 0},
+		{"part": "3022", "color": 15, "x": 4, "y": 7, "z": 0, "rot": 0}]
+
+
+## A red body 8 studs long and 4 deep, three courses tall: each long side a
+## flank of six 1 x 4 bricks, two a course, round a core of 2 x 4 and 2 x 2
+## bricks bonded across its joints, and a 4 x 8 plate on top. The +z side's
+## top course is white, a stripe.
+func _flank() -> Array:
+	var out: Array = []
+	for course: int in 3:
+		for x: int in [0, 4]:
+			for z: int in [0, 3]:
+				out.append({"part": "3010", "color": 15 if course == 2 and z == 3 else 4,
+					"x": x, "y": course * 3, "z": z, "rot": 0})
+		if course % 2 == 0:
+			for x: int in [0, 4]:
+				out.append({"part": "3001", "color": 4, "x": x, "y": course * 3, "z": 1, "rot": 0})
+		else:
+			out.append({"part": "3003", "color": 4, "x": 0, "y": course * 3, "z": 1, "rot": 0})
+			out.append({"part": "3001", "color": 4, "x": 2, "y": course * 3, "z": 1, "rot": 0})
+			out.append({"part": "3003", "color": 4, "x": 6, "y": course * 3, "z": 1, "rot": 0})
+	out.append({"part": "3035", "color": 4, "x": 0, "y": 9, "z": 0, "rot": 0})
+	return out
+
+
+## Sixteen 2 x 2 columns in a row on two 2 x 16 plates, a brick and three
+## bricks tall by turns: sixteen tops of four studs, each a finding.
+func _pillars() -> Array:
+	var out: Array = [{"part": "4282", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": "4282", "color": 72, "x": 16, "y": 0, "z": 0, "rot": 0}]
+	for n: int in 16:
+		for course: int in (1 if n % 2 == 0 else 3):
+			out.append({"part": "3003", "color": 1, "x": n * 2, "y": 1 + course * 3, "z": 0,
+				"rot": 0})
 	return out
 
 
@@ -469,6 +596,21 @@ func _laid_by(one: SurfacePass.Finding) -> Array:
 		if brick != null:
 			out.append(brick)
 	return out
+
+
+## How many pieces the model is in, as the check reads it.
+func _pieces() -> int:
+	var report: Dictionary = await assistant._check(assistant._model_from_world())
+	return int(report.get("pieces", 0))
+
+
+## The bricks of [param parts] laid on their side.
+func _sideways(parts: Array) -> int:
+	var n: int = 0
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id in parts and BrickLattice.face_of(brick.transform.basis) != "up":
+			n += 1
+	return n
 
 
 func _count(bricks: Array, parts: Array) -> int:
