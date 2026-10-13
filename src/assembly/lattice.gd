@@ -913,6 +913,27 @@ func brick_at(cell: Vector3i) -> int:
 	return 0
 
 
+## Is anything standing on these studs? For each stud, [x, z] in studs on
+## the grid, on a top face whose first cell above is [param top]: the brick
+## in the room that stud takes (its square, from the face to past its tip),
+## or nothing. A smooth top keeps to it: a tile where nothing stands, a stud
+## where something does (Assistant._studs_where_stood_on); a pass that tiles
+## open studs should ask it first. [param ignore] is the part the studs
+## belong to.
+func standing_on(studs: Array, top: int, ignore: int = 0) -> Dictionary:
+	var out: Dictionary = {}
+	var tall: int = int(ceil((4.0 + 2.0) / CELL))    ## a stud is 4 LDU
+	for raw: Variant in studs:
+		var stud: Vector2i = raw
+		var found: PackedInt64Array = blockers_boxes(PackedInt32Array([
+			stud.x * CELLS_PER_STUD, top, stud.y * CELLS_PER_STUD,
+			(stud.x + 1) * CELLS_PER_STUD, top + tall, (stud.y + 1) * CELLS_PER_STUD]),
+			ignore)
+		if not found.is_empty():
+			out[stud] = found[0]
+	return out
+
+
 func occupied_cells() -> int:
 	var total: int = 0
 	for brick_id: int in _boxes:

@@ -1635,6 +1635,7 @@ func _on_response(result: Array) -> void:
 
 	# A design arrived. Check it against the real lattice.
 	progress.emit("checking %d bricks" % _pending.placements.size())
+	await _ready_to_check(_pending)
 	var report: Dictionary = await _checked(_pending)
 	# Stopped while it was being checked: nothing more to do with it.
 	if not _busy:
@@ -2742,7 +2743,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# build tells the model that real catalogue parts do not
 			# exist — they are simply not loaded yet — and it goes off
 			# and picks something else.
-			await _ensure_parts(trial)
+			await _ready_to_check(trial)
 			var running: bool = _busy
 			var report: Dictionary = await _checked(trial, false, true)
 			# This app's own run, stopped while it was checked.
@@ -2925,7 +2926,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if not sprinkled.is_empty():
 				progress.emit("tried to sprinkle dressing over a dark wall")
 				return "Not applied — " + sprinkled
-			await _ensure_parts(edited)
+			await _ready_to_check(edited)
 			# About a selection: only inside its room, said before anything
 			# is checked, because nothing outside it is this request's.
 			var scoped: bool = _keeps_to_focus()
@@ -13492,6 +13493,107 @@ func _ensure_parts(model: Model) -> void:
 				wanted.erase(part_id)
 
 
+## The plate of each tile's size: what a tile is laid again as where
+## something stands on it.
+const TILE_PLATES: Dictionary = {
+	"3070b": "3024", "3070a": "3024", "3069b": "3023", "3069a": "3023",
+	"63864": "3623", "2431": "3710", "6636": "3666", "4162": "3460",
+	"3068b": "3022", "3068a": "3022", "26603": "3021", "87079": "3020",
+	"98138": "6141", "14769": "4032a",
+}
+
+
+## Every part a model needs, then the studs under whatever stands on a tile
+## (see [method _studs_where_stood_on]) and the plates that brings. Awaited,
+## as [method _ensure_parts] is. Every design and every edit comes through
+## here before it is checked, so what is checked is what is built.
+func _ready_to_check(model: Model) -> void:
+	await _ensure_parts(model)
+	if _studs_where_stood_on(model) > 0:
+		await _ensure_parts(model)
+
+
+## A part standing on a tile grips nothing: a tile has no stud for it. The
+## owner's orrery stood a collar on a shape's tiled top, and it floated —
+## held, the check said, because resting on a part counts as held up. A
+## builder tiles a top only where nothing will stand on it, and where
+## something goes on a tile the tile becomes the plate of its size. The
+## same size, not plates under the part and tiles round it: a top's tiles
+## often tie the plates under them together, and split, a rooms floor's
+## 1 x 2 tile left a 1 x 1 plate and the tile on it held by nothing. So
+## wherever a part that takes studs is put down studs-up on a tile, the tile
+## is that plate, in the same change, so one undo takes back both. Only a
+## tile square to the grid and on it, in no section; Shapes keeps the studs
+## of its own tops under what the design stands there (Patterns.expand).
+## Returns how many tiles changed.
+func _studs_where_stood_on(model: Model) -> int:
+	if library == null or builder == null:
+		return 0
+	var tiles: Array[int] = []
+	var tops: Dictionary = {}       ## a tile's top, in plates -> true
+	for n: int in model.placements.size():
+		var placement: Placement = model.placements[n]
+		if TILE_PLATES.has(placement.part) and _square_on_grid(placement):
+			tiles.append(n)
+			tops[roundi(placement.y) + 1] = true
+	if tiles.is_empty():
+		return 0
+	# What could stand on one: a part that takes studs, studs up, its foot at
+	# a tile's top — and one this change puts down or moves. An edit is read
+	# from the whole model, and the person's own parts resting on their own
+	# tiles are theirs, not the edit's to re-lay.
+	var standing := BrickLattice.new()
+	standing.keeps_columns = false
+	for n: int in model.placements.size():
+		var placement: Placement = model.placements[n]
+		if (placement.id != 0 and not placement.moved) \
+				or placement.face != "up" or not placement.section.is_empty() \
+				or not is_equal_approx(placement.y, roundf(placement.y)) \
+				or not tops.has(roundi(placement.y)):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if info == null or info.socket_count == 0 or mesh == null:
+			continue
+		standing.occupy_boxes(n + 1, builder.boxes_for(mesh, _transform(placement, mesh)))
+	# About a selection, a tile of the model round it is not this change's.
+	var scoped: bool = _keeps_to_focus()
+	var changed: int = 0
+	for n: int in tiles:
+		var tile: Placement = model.placements[n]
+		var mesh: Lbm.PartMesh = library.mesh_for(tile.part)
+		if mesh == null:
+			continue
+		var at: Transform3D = _transform(tile, mesh)
+		if scoped and tile.id != 0 and not focus.holds(
+				SelectionScope.box_of(tile.part, at, library)):
+			continue
+		var box: PackedInt32Array = BrickLattice._bound_of(builder.boxes_for(mesh, at))
+		var per: float = float(BrickLattice.CELLS_PER_STUD)
+		var studs: Array[Vector2i] = []
+		for sx: int in range(floori(box[0] / per), ceili(box[3] / per)):
+			for sz: int in range(floori(box[2] / per), ceili(box[5] / per)):
+				studs.append(Vector2i(sx, sz))
+		if standing.standing_on(studs, box[4], n + 1).is_empty():
+			continue
+		# A part changed is another brick to the edit (Assistant._apply_edit):
+		# the tile comes off and the plate goes on, in this one change.
+		tile.part = str(TILE_PLATES[tile.part])
+		changed += 1
+	if changed > 0:
+		progress.emit("laid %d tile%s again as plates, under what stands on %s"
+			% [changed, "" if changed == 1 else "s", "it" if changed == 1 else "them"])
+	return changed
+
+
+## Studs up, square to the grid on whole studs and plates, in no section.
+static func _square_on_grid(placement: Placement) -> bool:
+	return placement.face == "up" and placement.section.is_empty() \
+		and is_equal_approx(placement.x, roundf(placement.x)) \
+		and is_equal_approx(placement.y, roundf(placement.y)) \
+		and is_equal_approx(placement.z, roundf(placement.z))
+
+
 ## Put a model in the world.
 ##
 ## [param finished] separates the design it submitted from the drafts it
@@ -15544,6 +15646,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		return answer
 	var design: Model = _pending
 	_pending = null
+	await _ready_to_check(design)
 	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
 		return "Not applied — it does not hold together yet.\n%s" \
