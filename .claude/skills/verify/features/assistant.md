@@ -976,9 +976,19 @@ fixing what it got wrong.
   plate with a quarter-round tile (6141, 25269) on each corner's one stud,
   two plates tall; inside them a core four studs narrower (round plates),
   and the round above goes on from a round plate that bridges in over the
-  slopes (`_round_run`'s `under`). Only where the round above is three
-  plates or more, one colour with the one below, and nothing else of the
-  shape is in the rim (`_rim_free`).
+  slopes (`_round_run`'s `under`). A round above only one or two plates
+  tall is the slopes, all of it, and a round on it within those two plates
+  goes on from over them ("6 at 2,2 is the slopes"): a squat dome's rings
+  were a stack of round plates under a dish, studs bare on every ring.
+  Only where the round above is one colour with the one below and nothing
+  else of the shape is in the rim (`_rim_free`). A disc one plate thick is
+  a round only on or under another round about the same middle
+  (`Plan._stacked`): an oval head (the held-out owl's, 13 by 11 studs)
+  passes through a disc of 8 at its crown, and a round plate there with a
+  dish on it read as a hat. `shapes_probe` ("a round section is laid in
+  round parts"): the dome eases both its steps (15068 x12, 25269 x8); a
+  squat dome 4 x 7 x 4 eases its short ring (15068 x8, no 11213 or 3961);
+  the owl's head lays no round plate or dish, one piece.
   A side that curves up and down is laid on its side (`Plan.shells`,
   `lay_shell`): for each way out, where the shape reaches past a face two
   studs in from its outermost, steeply (out no more than two studs in four

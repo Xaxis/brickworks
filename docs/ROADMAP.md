@@ -1583,6 +1583,33 @@ slopes on a hull's straight-falling side; and an 11477 on its side is held
 only where a stud reaches its solid end, which the shell's plan cannot
 tell (the fuselage's canopy edge).
 
+**A head without a hat, a model that lifts as one, a thin body kept
+whole, a hull's bilge turned (2026-10-12).** Four of what the last round
+left, each measured on probe bodies, then the owl and the car held out
+again.
+
+*An oval is not a round.* The owl's head was the run's own: its shape laid
+the crown of a 13 x 11 oval as a round plate of 8 one plate thick with an
+8 x 8 dish on it, and the run, judging "the flat disc on top of the head,
+which reads like a hat", took it off and stacked round plates there by
+hand, studs bare on every ring. A disc one plate thick where an oval body
+passes through one is not a round section; it is now a round only on or
+under another round about the same middle (`Plan._stacked`), and the oval
+is laid by the plan: curved slopes falling off the crown and tiles. A true
+dome's short rings are eased too: a round of 6 or 8 with a round a stud
+narrower one or two plates tall on it lays its curved-slope rim and core
+in that round's place (it was left a ring of bare studs unless the round
+above was three plates).
+
+| body | before | after |
+|---|---|---|
+| owl's head alone (two ellipsoids, as the run said it) | 369 parts; a round plate of 8 and a 3961 dish at the crown; 1 floating | 329 parts, buildable, one piece; no round plate, no dish; crown in curved slopes and tiles |
+| squat dome 4 x 7 x 4 | three round plates of 8 under a 3961 dish: a tin with a lid | the 8's rim eased in eight 15068 and four corner tiles, a round of 4 and a 3960 dish |
+| dome 4 x 12 x 4 | one step eased, a 44375b dish on the 6 | both steps eased (15068 x12) |
+
+Pictures: `shots/d3/head_{before,after}_{corner,front}.png` and
+`shots/d3/domes_{before,after}_corner.png` in this worktree.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

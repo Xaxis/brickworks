@@ -269,7 +269,7 @@ func _run() -> void:
 					"profile": [[0, 4], [9, 4]]}}]}, ["48092", "74611", "27507", "79393", "27925", "14769"]],
 			["a dome", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
 				"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 12, 4]}}]},
-				["74611", "11213", "44375b", "15068", "60474"]],
+				["74611", "11213", "15068", "60474"]],
 			["a column stepping in", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
 				"color": 15, "solids": [{"revolve": {"axis": "y", "centre": [4, 0, 4], "profile": [
 					[0, 3], [6, 3], [7, 2], [16, 2], [17, 1], [22, 1]]}}]}, ["5152", "3941"]]]:
@@ -297,9 +297,29 @@ func _run() -> void:
 		"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 12, 4]}}]})
 	var eased: Array = (Shapes.last.get("round_runs", []) as Array).filter(
 		func(said: String) -> bool: return said.ends_with("eased"))
+	# Both its steps: the 8 to the 6, and the 6 to the 4, whose rim is the 2 x 2
+	# curved slopes of a round of 6.
 	_check("a dome's step is eased in curved slopes round the rim below: %s; %s"
 		% [", ".join(PackedStringArray(eased)), _counted(dome)],
-		eased.size() == 1 and _count(dome, ["15068"]) == 8 and _count(dome, ["25269"]) == 4)
+		eased.size() == 2 and _count(dome, ["15068"]) == 12 and _count(dome, ["25269"]) == 8)
+	# A squat dome's rings are a plate or two each, and were a stack of round
+	# plates under a dish, studs bare on every ring: a tin with a lid. The
+	# round of 6 a plate tall over the 8 is the 8's eased rim, all of it.
+	var squat: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+		"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 7, 4]}}]})
+	var squat_said: Array = Shapes.last.get("round_runs", [])
+	_check("...and a squat dome's short rings too: %s; %s" % [", ".join(PackedStringArray(squat_said)),
+		_counted(squat)], _count(squat, ["15068"]) == 8 and _count(squat, ["11213", "3961"]) == 0)
+	# An oval is not a round: an owl's head, 13 studs by 11, passes through a
+	# disc of 8 one plate thick at its crown, and a round plate laid there
+	# with a dish on it read as a hat. A disc a plate thick is a round only
+	# on or under another round.
+	var head: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "solids": [
+		{"ellipsoid": {"centre": [12, 13, 10], "radii": [6.6, 13, 5.5]}, "color": 19},
+		{"ellipsoid": {"centre": [12, 12, 13.6], "radii": [5.4, 10.5, 2.2]}, "color": 15}]})
+	_check("an oval head is not crowned with a round plate and a dish: %s" % str(Shapes.last.get(
+		"round_runs", [])), _count(head, ["3961", "44375b", "3960", "74611", "11213"]) == 0
+		and int(Shapes.last.get("pieces", 0)) == 1)
 	# A square post is not a round one: its section fills its box.
 	var post: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 15,
 		"box": {"from": [0, 0, 0], "size": [2, 9, 2]}})
