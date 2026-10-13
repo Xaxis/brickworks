@@ -60,7 +60,10 @@ it lays a picture as a LEGO Art set to a plan of its own — see
 [view](view.md); and `selection`, `where_to_attach` and `edit_selection`,
 with which a session is told what the person has selected in the window,
 where it can take a part, and changes that alone, as **Ask Claude about
-this…** does — see assistant.md, "ask claude about the selection".)
+this…** does — see assistant.md, "ask claude about the selection"; and
+`settle_feature`, with which a session accepts, adjusts or rejects the real
+piece the app laid for each feature, and without which `save_model` refuses
+— see assistant.md, the design loop's features.)
 
 ## How to reach it
 

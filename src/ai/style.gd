@@ -331,7 +331,9 @@ const TRAITS: Dictionary = {
 		"ship", "yacht", "galleon", "schooner", "submarine", "tractor",
 		"motorbike", "motorcycle", "bicycle", "kart", "racer", "tank",
 		"spaceship", "starship", "shuttle", "rocket", "rover", "digger",
-		"excavator", "bulldozer", "vehicle"],
+		"excavator", "bulldozer", "vehicle", "porsche", "ferrari", "lamborghini",
+		"coupe", "roadster", "supercar", "hatchback", "sedan", "saloon",
+		"speed champions", "formula 1", "f1"],
 	"living": ["animal", "dragon", "owl", "bird", "eagle", "parrot", "cat",
 		"dog", "horse", "dinosaur", "creature", "monster", "fish", "whale",
 		"shark", "insect", "butterfly", "bear", "lion", "elephant", "bust",
@@ -343,13 +345,17 @@ const TRAITS: Dictionary = {
 
 
 ## The subject's traits, as {trait: true}. Whole words, plurals let in:
-## "car" is not in "carriage" or "scarlet".
+## "car" is not in "carriage" or "scarlet". A hyphenated word is one word:
+## a Porsche's "whale-tail spoiler" and "rear-engine" layout made it a
+## living thing and a machine, and no description said "car", so every
+## check told the bench's car to shape a creature's body with eyes and
+## talons and never named the car advice.
 static func traits_of(about: String) -> Dictionary:
 	var said: String = about.to_lower()
 	var found: Dictionary = {}
 	for one: String in TRAITS:
 		for word: String in TRAITS[one]:
-			var whole := RegEx.create_from_string("\\b%s(s|es)?\\b" % word)
+			var whole := RegEx.create_from_string("(?<![\\w-])%s(s|es)?(?![\\w-])" % word)
 			if whole.search(said) != null:
 				found[one] = true
 				break
@@ -380,7 +386,12 @@ static func calls_for(traits: Dictionary, found: Dictionary, band: Dictionary,
 		calls.append("the shape pattern, for a body that is not a box — a car's, a "
 			+ "hull, a fuselage — said as its solids (a side profile extruded, a "
 			+ "loft through sections, a revolve), which lays its slopes, curved "
-			+ "slopes, wedge plates and tiles for you")
+			+ "slopes, wedge plates and tiles for you. On wheels, it stands on "
+			+ "something: the chassis plates and the wheel units first, as bricks, "
+			+ "then the shape with its at.y on the chassis's top, and a box cut "
+			+ "round each wheel's whole box (a round cut leaves the tyre's corners "
+			+ "in the body, and the check refuses the overlap) — a shape raised "
+			+ "over nothing floats")
 		calls.append("for a vehicle: wedge plates where an edge runs at a slant "
 			+ "(show_technique \"smooth diagonal\"), curved slopes over a bonnet, a "
 			+ "hull or a cab roof, studs_out for a smooth side panel, a section "

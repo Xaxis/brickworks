@@ -613,6 +613,9 @@ class Model extends RefCounted:
 	## each worked once the shape stands: looked up in real sets, laid as
 	## one of theirs, or built from a worked technique.
 	var features: Array[String] = []
+	## Where each feature goes, where the design said: name in lower case ->
+	## {x, y, z, facing} (FeaturePass.read_spots).
+	var feature_spots: Dictionary = {}
 	## What it stands on, as floor_chosen says it; empty when not said.
 	var stands_on: Dictionary = {}
 
@@ -707,6 +710,8 @@ func _start(text: String) -> void:
 	_features_told = false
 	_feature_used = {}
 	_feature_now = ""
+	_feature_closed = false
+	feature_pass().reset({})
 	# A fresh design gets the creative pass; a revision carries on the
 	# conversation, and a selection is the person's model.
 	_creative_wanted = not _scoped and _messages.is_empty()
@@ -1195,6 +1200,15 @@ func _on_response(result: Array) -> void:
 		_detail_turns += 1
 		var feature: bool = bool(_detailing.get("feature", false))
 		var creative: bool = bool(_detailing.get("creative", false))
+		# Settled with settle_feature: that is the feature's answer, so on
+		# to the next with the answers to this turn's tools.
+		if feature and _feature_closed:
+			_feature_closed = false
+			var settled: Array = tool_results.duplicate()
+			if await _detail_next(settled):
+				return
+			_stop(true, "%d bricks" % world.brick_count())
+			return
 		if _detail_turns >= (TURNS_FOR_TOUCHES if creative
 				else TURNS_PER_FEATURE if feature else TURNS_PER_ASSEMBLY):
 			progress.emit("out of turns for the %s" % _detailing["name"])
@@ -1246,6 +1260,7 @@ func _on_response(result: Array) -> void:
 			_to_detail = _queue_features(_pending.features)
 			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
 			_features = _pending.features
+			feature_pass().reset(_pending.feature_spots)
 			_declared = _pending.assemblies
 			_pending = null
 			progress.emit("looking at the finished model: %s"
@@ -1276,8 +1291,9 @@ func _on_response(result: Array) -> void:
 				ask += ("\n\nThis look is for the silhouette and the proportions: "
 					+ "the masses, their sizes against the reference, the outline. "
 					+ "After it, each feature you listed — %s — comes back to you "
-					% ", ".join(_features) + "on its own, with how real sets built "
-					+ "it, to lay, adapt or build one at a time.")
+					% ", ".join(_features) + "on its own: the app lays the best real "
+					+ "set's piece for it where it goes, and you accept it, adjust "
+					+ "it, or reject it with a reason, one at a time.")
 			else:
 				ask += ("\n\nYou listed no features. Name what the subject is "
 					+ "known by — its eyes, beak, ears, wheel arches, grille, "
@@ -1312,6 +1328,7 @@ func _on_response(result: Array) -> void:
 			_to_detail.append_array(_queue_assemblies(_pending.assemblies))
 			if not _pending.features.is_empty():
 				_features = _pending.features
+				feature_pass().reset(_pending.feature_spots)
 			_declared = _pending.assemblies
 		_pending = null
 		if await _detail_next():
@@ -1710,6 +1727,12 @@ func _detail_next(also: Array = []) -> bool:
 		progress.emit("the creative pass: %s" % _creative_record)
 		_detailing = {}
 	elif not _detailing.is_empty() and bool(_detailing.get("feature", false)):
+		# Its turns over with the app's piece standing and nothing said of
+		# it: the piece stays, as a piece in the model does.
+		var left: FeaturePass.Proposal = feature_pass().proposal(_detailing["name"])
+		if left != null and not left.settled() and not left.ids.is_empty() \
+				and feature_pass()._standing(left.ids):
+			left.verdict = "kept"
 		progress.emit("the %s: %s" % [_detailing["name"], _feature_said(_detailing["name"])])
 		var brought := PackedStringArray()
 		for part_id: String in _parts_in(_bricks_inside({})):
@@ -2272,13 +2295,15 @@ func _run_tool(block: Dictionary) -> Variant:
 ## build's answer, the held-out owl worked none of them, looked at the whole
 ## once and saved.
 func _with_features_left(name: String, answer: Variant) -> Variant:
-	if _busy or not _outside_standing or not name in ["edit_model", "place_technique"]:
+	if _busy or not _outside_standing or not name in ["edit_model", "place_technique"] \
+			or _laying_whole:
 		return answer
 	var left: Array[String] = _features_left()
 	if left.is_empty():
 		return answer
-	var line: String = ("Features not worked yet: %s — review_model {\"feature\": \"%s\"} "
-		% [", ".join(left), left[0]] + "next: how real sets built it, to lay or build.")
+	var line: String = ("Features not settled yet: %s — review_model {\"feature\": \"%s\"} "
+		% [", ".join(left), left[0]] + "lays the app's piece for it, to settle with "
+		+ "settle_feature. Saving waits until each is settled.")
 	if answer is String:
 		return "%s\n\n%s" % [answer, line]
 	if answer is Array:
@@ -2568,6 +2593,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("trying a change to the selection" if bool(args.get("check_only", false))
 				else "changing the selection")
 			return await _edit_selection(args)
+		"settle_feature":
+			return await _settle_feature(args)
 		"where_to_attach":
 			progress.emit("finding where parts fit on the selection")
 			return await _where_to_attach(args)
@@ -4824,6 +4851,7 @@ func _read_model(args: Dictionary) -> Model:
 	_expand_repeats(model, args, _repeat_trouble)
 	model.assemblies = _read_assemblies(args)
 	model.features = _read_features(args)
+	model.feature_spots = FeaturePass.read_spots(args)
 	return model
 
 
@@ -8284,6 +8312,34 @@ var _feature_used: Dictionary = {}
 var _feature_now: String = ""
 ## The features a session from outside listed when it submitted.
 var _outside_features: Array[String] = []
+## The app's own feature pass: a real piece laid per feature, settled by
+## the design (FeaturePass). Set when settle_feature ends a feature's turn
+## in the loop.
+var _feature_pass: FeaturePass = null
+var _feature_closed: bool = false
+
+
+func feature_pass() -> FeaturePass:
+	if _feature_pass == null:
+		_feature_pass = FeaturePass.new(self)
+	return _feature_pass
+
+
+## [param text] ahead of [param more], a String or the blocks of an answer
+## with a picture: blocks when there is a picture to keep.
+static func _joined(text: String, more: Variant) -> Variant:
+	if text.is_empty():
+		return more
+	if more is Array:
+		var out: Array = (more as Array).duplicate()
+		if not out.is_empty() and out[0] is Dictionary \
+				and str((out[0] as Dictionary).get("type", "")) == "text":
+			out[0] = {"type": "text", "text": "%s\n\n%s" % [text, (out[0] as Dictionary)["text"]]}
+		else:
+			out.push_front({"type": "text", "text": text})
+		return out
+	var after: String = str(more)
+	return text if after.is_empty() else "%s\n\n%s" % [text, after]
 
 
 ## The listed feature the words of [param query] name, or "": "owl eye"
@@ -8313,6 +8369,12 @@ func _note_feature(what: String) -> void:
 ## A feature's record in a line: "real piece 4349-3 laid", "built by hand
 ## after show_technique eye with a highlight", or "not worked yet".
 func _feature_said(name: String) -> String:
+	var settled: String = feature_pass().said(name)
+	if not settled.is_empty():
+		return settled
+	var proposed: FeaturePass.Proposal = feature_pass().proposal(name)
+	if proposed != null and not proposed.piece.is_empty():
+		return "real piece %s laid by the app, not settled yet" % proposed.piece["id"]
 	var used: Array = _feature_used.get(name.to_lower(), [])
 	if used.is_empty():
 		return "not worked yet"
@@ -8355,52 +8417,216 @@ static func _subject_words(text: String) -> String:
 	return " ".join(kept)
 
 
-## One feature, handed to the design to work: the best three real pieces
-## for it, shortly — id, size, whether it lays, what it is, its parts —
-## the worked technique that builds one, and what to do. Text, kept short
-## so working every feature is cheap; [param picture] adds the pieces side
-## by side in one small picture, for the loop's own pass.
+## One feature, handed to the design to work: the app looks up how real
+## sets built it, lays the best piece that lays whole and fits where the
+## feature goes (FeaturePass), and hands it over with a picture of it
+## standing there, to accept, adjust or reject with settle_feature. When
+## nothing fits, the pieces it tried and the worked technique, to build it.
+## [param picture] adds the picture where one can be taken.
 func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant:
-	var subject: String = ""
-	var have: bool = await RealSnippets.ensure(self)
-	if have:
-		subject = _subject_words(_brief)
-	var query: String = ("%s %s" % [subject, name]).strip_edges()
 	var said := PackedStringArray()
 	said.append("The %s — feature %d of %d." % [name, of, count])
-	var shown: Array = []
-	if have:
-		var found: Array = RealSnippets.search(query, 0.0, [], 3)
-		if found.is_empty():
-			said.append("No real set has a piece called anything like \"%s\"." % query)
-		else:
-			said.append("How real sets built it (find_techniques \"%s\"):" % query)
-			for n: int in found.size():
-				var entry: Dictionary = found[n][1]
-				shown.append(entry)
-				said.append(_piece_line(n + 1, entry))
+	var one: FeaturePass.Proposal = null
+	if await RealSnippets.ensure(self):
+		one = await feature_pass().propose(name)
 	var worked: Dictionary = Techniques.for_feature(name)
-	if not worked.is_empty():
-		said.append("The worked technique for it: show_technique(\"%s\") — %s."
-			% [worked["name"], worked["when"]])
-	said.append("Do one, and say in a line which: lay a real piece with "
-		+ "place_technique where one fits (turn and recolor it to your model); "
-		+ "adapt one — the same idea at your size, in your parts; or build it "
-		+ "from the worked technique. A feature is parts with depth — a round "
-		+ "plate, a slope, a printed tile, studs out — never a tile painted on "
-		+ "a flat panel. A face on a shaped head is the shape's \"face\", said "
-		+ "with the shape: it lays the disc, 2 x 2 eyes and a beak on side studs, "
-		+ "flush with the curve; a head already standing without one takes the "
-		+ "eyes on brackets as the round face technique shows.")
+	var technique: String = ("show_technique(\"%s\") — %s" % [worked["name"], worked["when"]]) \
+		if not worked.is_empty() else ""
+	if one != null and not one.piece.is_empty():
+		said.append(_proposal_said(one))
+	else:
+		var tried: String = ""
+		if one != null and not one.candidates.is_empty():
+			var ids := PackedStringArray()
+			for entry: Variant in one.candidates:
+				ids.append(str((entry as Dictionary)["id"]))
+			tried = " (tried %s)" % ", ".join(ids)
+		said.append(("No real set's piece that lays whole fits where it goes%s, so build it "
+			% tried) + ("from the worked technique, %s" % technique if not technique.is_empty()
+				else "your own way") + ", then settle_feature \"built\" with how; or "
+			+ "\"reject\" with a reason if the model has it already.")
+		return "\n".join(said)
+	if not technique.is_empty():
+		said.append("To build it your own way instead: %s." % technique)
+	said.append(SETTLE_HOW.replace("{name}", name))
 	var text: String = "\n".join(said)
-	if not picture or shown.is_empty():
+	if not picture:
 		return text
-	var sheet: Image = await _snippet_picture(shown)
-	if sheet == null:
+	var shown: Dictionary = await _proposal_picture(one)
+	if shown.is_empty():
 		return text
-	return [{"type": "text", "text": text + "\n\nThe pieces, in that order:"},
-		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
-			"data": Marshalls.raw_to_base64(sheet.save_png_to_buffer())}}]
+	return [{"type": "text", "text": text}, shown]
+
+
+const SETTLE_HOW := """Settle it with settle_feature {"feature": "{name}", \
+"verdict": ...}: "accept" keeps it (with move {dx, dy, dz} in studs and \
+plates, turn or recolor {"15": 1} to adjust it first); "next" takes it off \
+and lays the next-best piece; "reject" with a reason takes it off, to build \
+it your own way or leave it out; "built" if you built it yourself. A \
+feature is parts with depth, never a tile painted on a panel. Saving waits \
+until every feature is settled."""
+
+
+## The piece the app laid for a feature, in a few lines: what it is and
+## whose, where it went and how, the bricks it is, and the next-best.
+func _proposal_said(one: FeaturePass.Proposal) -> String:
+	var entry: Dictionary = one.piece
+	var copy: Dictionary = one.copies[0]
+	var at: Vector3 = copy.get("at", Vector3.ZERO)
+	var how: String = "as built, its front to %s" % one.spot["facing"] \
+		if str(copy["up"]) == "up" else "tipped whole, studs out to %s" % copy["up"]
+	var text: String = str(entry.get("text", ""))
+	if text.length() > 140:
+		text = text.substr(0, text.rfind(" ", 140)) + "…"
+	var bricks := PackedStringArray()
+	for id: int in one.ids:
+		bricks.append("#%d" % id)
+	var lines := PackedStringArray()
+	lines.append(("The app looked up how real sets built it and laid the best piece "
+		+ "that lays whole and fits where it goes, as a proposal:\n  %s \"%s\", %s, "
+		% [entry["id"], entry["name"], RealSnippets.credit(entry)])
+		+ "%d parts. %s\n  Seated on the stud at x=%s y=%s z=%s, %s%s; bricks %s."
+		% [int(entry["parts"]), text, _studs(at.x), _studs(at.y), _studs(at.z), how,
+			", and its pair across the model" if one.copies.size() > 1 else "",
+			", ".join(bricks.slice(0, 24))])
+	if one.guessed:
+		lines.append(("Where it goes was read off its name (facing %s, x=%s y=%s z=%s): "
+			% [one.spot["facing"], _studs(float(one.spot["x"])), _studs(float(one.spot["y"])),
+				_studs(float(one.spot["z"]))]) + "if that is not where it belongs, accept it "
+			+ "with move, or give each feature x, y, z and facing in submit_design.")
+	var rest := PackedStringArray()
+	for n: int in range(one.next, one.candidates.size()):
+		var other: Dictionary = one.candidates[n]
+		rest.append("%s \"%s\" (%d parts)" % [other["id"], other["name"], int(other["parts"])])
+	if not rest.is_empty():
+		lines.append("Next-best, for \"next\": %s." % "; ".join(rest.slice(0, 3)))
+	return "\n".join(lines)
+
+
+## The proposal standing in the model, framed on it from the way it faces.
+## {} where no picture can be taken.
+func _proposal_picture(one: FeaturePass.Proposal) -> Dictionary:
+	if not ModelShot.possible() or one == null or one.ids.is_empty():
+		return {}
+	var bricks: Array[BrickWorld.Brick] = []
+	for id: int in one.ids:
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		if brick != null:
+			bricks.append(brick)
+	if bricks.is_empty():
+		return {}
+	var box: AABB = _bounds_of(bricks).grow(4.0 * STUD)
+	var from: String = str({"+z": "front", "-z": "back", "+x": "right", "-x": "left"}.get(
+		str(one.spot.get("facing", "")), "corner"))
+	var image: Image = await _ensure_shot().take(world, from, scenery, box)
+	if image == null:
+		return {}
+	return await _shot.encode(image)
+
+
+## settle_feature: what the design says of the app's piece for a feature.
+## In the loop the loop then hands the next feature; from outside this
+## answer does, with its piece laid, and after the last says what is next.
+func _settle_feature(args: Dictionary) -> Variant:
+	var asked: String = str(args.get("feature", "")).strip_edges()
+	var names: Array[String] = _features if _busy else _outside_features
+	var name: String = ""
+	for listed: String in names:
+		if listed.to_lower() == asked.to_lower():
+			name = listed
+	if name.is_empty():
+		name = _feature_named(asked)
+	if name.is_empty():
+		return ("No feature called \"%s\". The features listed: %s." % [asked,
+			", ".join(names) if not names.is_empty() else "none (submit_design's features)"])
+	var features: FeaturePass = feature_pass()
+	var one: FeaturePass.Proposal = features.proposal(name)
+	var verdict: String = str(args.get("verdict", "")).strip_edges().to_lower()
+	var reason: String = str(args.get("reason", "")).strip_edges()
+	_feature_now = name
+	match verdict:
+		"accept":
+			if one == null or one.piece.is_empty() or not features._standing(one.ids):
+				return ("Nothing of the app's stands for the %s to accept. \"next\" lays " % name
+					+ "a real piece for it, \"built\" says you built it, \"reject\" with a "
+					+ "reason leaves it out.")
+			var move: Dictionary = args.get("move", {}) if args.get("move") is Dictionary else {}
+			var turns: int = int(args.get("turn", 0))
+			var recolor: Dictionary = {}
+			if args.get("recolor") is Dictionary:
+				for key: Variant in args["recolor"]:
+					recolor[int(str(key))] = int((args["recolor"] as Dictionary)[key])
+			var moving: bool = not move.is_empty() and (absf(float(move.get("dx", 0.0)))
+				+ absf(float(move.get("dy", 0.0))) + absf(float(move.get("dz", 0.0)))) > 0.0
+			if moving or turns % 4 != 0 or not recolor.is_empty():
+				var why: String = await features.adjust(one, move if moving else {}, turns % 4, recolor)
+				if not why.is_empty():
+					return why
+				one.verdict = "adjusted"
+			else:
+				one.verdict = "accepted"
+		"next":
+			if one == null:
+				one = await features.propose(name)
+			else:
+				if not await features.take_off(one):
+					return "Could not take the %s's piece off; settle it another way." % name
+				if one.candidates.is_empty():
+					one.candidates = features.candidates_for(name)
+				if one.spot.is_empty():
+					one.spot = features.spot_for(name)
+				await features._lay_next(one)
+			var of: int = names.find(name) + 1
+			return await _feature_brief(name, of, names.size(), true) if not one.piece.is_empty() \
+				else ("No other real piece fits where the %s goes. Build it your own way and " % name
+					+ "settle_feature \"built\" with how, or \"reject\" with a reason.")
+		"reject":
+			if reason.split(" ", false).size() < 3:
+				return ("Say why in a sentence (reason): what is wrong with the piece here — "
+					+ "its size, its shape, its colours, or that the model has it already.")
+			if one == null:
+				one = FeaturePass.Proposal.new()
+				one.feature = name
+				features.proposals[name.to_lower()] = one
+			elif not await features.take_off(one):
+				return "Could not take the %s's piece off; settle it another way." % name
+			one.verdict = "rejected"
+			one.reason = reason
+		"built":
+			var used: Array = _feature_used.get(name.to_lower(), [])
+			if reason.is_empty() and not used.has("edited"):
+				return ("Nothing has been built for the %s since it was handed: build it " % name
+					+ "with edit_model, or say how you built it (reason).")
+			if one == null:
+				one = FeaturePass.Proposal.new()
+				one.feature = name
+				features.proposals[name.to_lower()] = one
+			one.verdict = "built"
+			one.reason = reason
+		_:
+			return "verdict is one of \"accept\", \"next\", \"reject\" or \"built\"."
+	progress.emit("the %s: %s" % [name, _feature_said(name)])
+	var head: String = "The %s: %s." % [name, _feature_said(name)]
+	if _busy:
+		_feature_closed = true
+		return head
+	var left: Array[String] = features.open(_outside_features)
+	if not left.is_empty():
+		var brief: Variant = await _review_feature(left[0])
+		return _joined(head + " Next, the %s:" % left[0], brief)
+	_feature_now = ""
+	return "%s\n\nEvery feature is settled:\n%s\n\n%s" % [head,
+		_features_record(_outside_features), _after_features()]
+
+
+## What comes after the features, for a session from outside: the first
+## assembly not yet looked at closely, or the creative features.
+func _after_features() -> String:
+	var left: Array[String] = _not_yet_reviewed()
+	if not left.is_empty():
+		return ("Next, each assembly close up: review_model {\"assembly\": \"%s\"}%s."
+			% [left[0], " — %d more after it" % (left.size() - 1) if left.size() > 1 else ""])
+	return "Next, the creative features: review_model {\"creative\": true}."
 
 
 ## One real piece in a line or two: its id, name and where it is from, its
@@ -12953,17 +13179,20 @@ each feature the subject is known by, then the detail. In this order:
      owl: animal), says what real sets of it are made of and in. The \
      picture's colours come with it as numbers.
   4. The feature list: what the subject is known by, given to \
-     submit_design as features — an owl's facial disc, eyes, beak, ear \
+     submit_design as features, each with where it goes (x, y, z and \
+     the way it faces out) — an owl's facial disc, eyes, beak, ear \
      tufts, wings, talons; a car's wheel arches, headlamps, grille, \
      windscreen, spoiler; a castle's gate, arrow slits, crenellations, \
      turret roofs.
-  5. Each feature, one at a time, once the shape stands: how real sets \
-     built it (find_techniques "owl eye", "car nose"; the app hands each \
-     listed feature back with three real pieces), then lay one with \
-     place_technique where it fits — turned, moved, in your colours — \
-     adapt one, or build it from the worked technique (show_technique; \
-     faces and features has the eye, the round face, the beak, ears, \
-     talons, headlamps and grille), and say in a line which you used. \
+  5. Each feature, one at a time, once the shape stands: the app looks \
+     up how real sets built it, lays the best piece that lays whole and \
+     fits where the feature goes, and hands it to you with a picture. \
+     settle_feature says what it is to be: accept it — moved, turned or \
+     recoloured first if it needs it — "next" for the next-best piece, \
+     reject it with a reason and build your own from the worked \
+     technique (show_technique; faces and features has the eye, the \
+     round face, the beak, ears, talons, headlamps and grille), or \
+     "built". A design is not finished until each feature is settled. \
      A feature is parts with depth, never a tile painted on a panel. A \
      face on a shaped head is the shape's "face", said when the shape is \
      submitted: it lays the disc, 2 x 2 eyes and a beak on side studs, \
@@ -13597,14 +13826,15 @@ that exists.
  2. The silhouette: the main masses, sized in studs off the picture, each \
 said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
 "shapes") — and a head that looks at you with its "face" on its shape. \
-submit_design that first, with its assemblies and its features: what the \
-subject is known by (an owl's facial disc, eyes, beak, ear tufts, talons; a \
+submit_design that first, with its assemblies and its features, each with \
+where it goes (x, y, z, facing): what the subject is known by (an owl's facial disc, eyes, beak, ear tufts, talons; a \
 car's wheel arches, headlamps, grille, windscreen, spoiler).
  3. review_model: the silhouette and proportions against real sets. Fix \
 the masses before any detail.
- 4. Each feature in turn: review_model {"feature": "eyes"} gives three real \
-sets' pieces for it and the worked technique; lay one with place_technique, \
-adapt one, or build it from show_technique, and say which. A feature is \
+ 4. Each feature in turn: the app lays the best real set's piece for it \
+where it goes and hands it over (the whole review, each settle, saving); \
+settle_feature accepts it (adjusted if need be), asks for the next, rejects \
+it with a reason, or says you built it. Saving waits for all. A feature is \
 parts with depth, never a tile painted on a panel.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
@@ -13879,11 +14109,13 @@ func _place_technique(args: Dictionary) -> Variant:
 
 
 ## A piece's parts as placements: turned a number of quarter turns about
-## the upright, moved by whole studs so its low corner is at `at` and
-## what was on the grid stays on it, colours swapped where `recolor` says.
-## A String says why it cannot be.
+## the upright, then, with [param up] other than "up", tipped whole so its
+## own up points that way (an eye built studs up, laid studs out on a
+## face), moved by whole studs so its low corner is at `at` and what was
+## on the grid stays on it, colours swapped where `recolor` says. A String
+## says why it cannot be.
 func _snippet_bricks(entry: Dictionary, at: Vector3, turns: int,
-		recolor: Dictionary) -> Variant:
+		recolor: Dictionary, up: String = "up") -> Variant:
 	var model: LdrModel = LdrModel.parse(RealSnippets.ldr_text(entry), "piece")
 	var placed: Array = []
 	for item: Variant in model.flatten(library.parts):
@@ -13901,6 +14133,8 @@ func _snippet_bricks(entry: Dictionary, at: Vector3, turns: int,
 		wanted.placements.append(as_placed)
 	await _ensure_parts(wanted)
 	var turn := Transform3D(Basis(Vector3.UP, posmod(turns, 4) * PI / 2.0), Vector3.ZERO)
+	if up != "up" and FACES.has(up):
+		turn = Transform3D(BrickLattice.basis_for(up, 0), Vector3.ZERO) * turn
 	var read: Array = []
 	var low := Vector3(INF, INF, INF)
 	for put: LdrModel.Placement in placed:
@@ -14207,6 +14441,8 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 			_feature_used = {}
 		_outside_features = design.features.duplicate()
 		_feature_now = ""
+		# The model is new, so whatever the pass laid is gone with the old one.
+		feature_pass().reset(design.feature_spots)
 		# A new design, so its creative pass is still to come.
 		_outside_designed = true
 		_outside_creative_handed = false
@@ -14238,11 +14474,12 @@ set; this app's own designer always goes on from here, and so should you:
 the whole model measured against real sets of its size and kind, with what \
 to look for. view_model from two corners to see it. Fix the masses before \
 any detail.
-  2. Then each feature, one at a time{features}: review_model \
-{"feature": "<its name>"} says how real sets built it — three real pieces, \
-with ids — and the worked technique that builds one. Lay a real piece with \
-place_technique, adapt one, or build it from the technique, and say in a \
-line which you used, before the next feature.
+  2. Then each feature, one at a time{features}: the app lays the best \
+real set's piece for it where it goes and hands it to you with a picture \
+(the whole review hands the first). settle_feature says what it is to be: \
+accept it (moved, turned or recoloured first if it needs it), "next" for \
+the next-best, reject it with a reason and build your own, or "built". \
+Each settle hands the next. Saving waits until every feature is settled.
   3. Then review_model for each assembly in turn{names}: close up, \
 measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
@@ -14275,7 +14512,7 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
-func review(assembly: String, feature: String = "", creative: bool = false) -> String:
+func review(assembly: String, feature: String = "", creative: bool = false) -> Variant:
 	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
@@ -14310,8 +14547,9 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> S
 		# was read and put down, and the run went on to save.
 		var left: Array[String] = _features_left()
 		if not left.is_empty():
-			said.append("Once the silhouette is right, the first feature, the %s:\n\n%s"
-				% [left[0], await _review_feature(left[0])])
+			said.append("Once the silhouette is right, the first feature, the %s — the app "
+				% left[0] + "has laid a real set's piece for it:")
+			return _joined("\n\n".join(said), await _review_feature(left[0]))
 		return "\n\n".join(said)
 	var one: Dictionary = {}
 	for named: Dictionary in _outside_assemblies:
@@ -14348,24 +14586,44 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> S
 ## Orthanc's last act was to save, with two of its three assemblies never
 ## reviewed: so saving hands it the next, as this app's own loop hands each
 ## assembly back in turn.
-func next_review() -> String:
+func next_review() -> Variant:
 	# A coroutine because review is: callers await it.
 	var undone: Array[String] = _features_left()
 	if not undone.is_empty():
 		var passed: String = _creative_passed()
-		return _first(passed, "Before it is finished: %d of its %d features %s not had "
-			% [undone.size(), _outside_features.size(), "has" if undone.size() == 1 else "have"]
-			+ "its turn yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
-				await _review_feature(undone[0])])
+		return _joined(_first(passed, "Before it is finished: %d of its %d features %s not "
+			% [undone.size(), _outside_features.size(), "is" if undone.size() == 1 else "are"]
+			+ "settled yet (%s). The next is the %s." % [", ".join(undone), undone[0]]),
+			await _review_feature(undone[0]))
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
 		return _creative_next()
 	var name: String = left[0]
 	var passed_too: String = _creative_passed()
-	return _first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
+	return _joined(_first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
 		+ "a close look (%s). This app's own designer details each in turn; the " % ", ".join(left)
-		+ "next is the %s.\n\n%s" % [name, await review(name)])
+		+ "next is the %s." % name), await review(name))
+
+
+## Whether a session from outside may save yet: "" when it may; otherwise
+## why not, with the first feature not settled handed over, its piece laid.
+## Every bench session saved with features never worked, and saving handed
+## the next one back only after the file was written: the session read
+## "Written" and ended. A save that waits is a turn the design cannot skip.
+func save_gate() -> Variant:
+	if _busy or not _outside_standing:
+		return ""
+	var left: Array[String] = _features_left()
+	if left.is_empty():
+		return ""
+	progress.emit("not saved: %d features not settled" % left.size())
+	return _joined(("Not saved yet: %d of its %d features %s not settled (%s). For each, "
+		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
+			", ".join(left)]) + "the app lays the best real set's piece where it goes; "
+		+ "settle_feature accepts it (adjusted if need be), asks for the next, rejects "
+		+ "it with a reason, or says you built it. Then save again. The %s:" % left[0],
+		await _review_feature(left[0]))
 
 
 ## [param said] and then [param then], or [param then] alone.
@@ -14387,7 +14645,7 @@ func _not_yet_reviewed() -> Array[String]:
 ## A feature for a session from outside: how real sets built it and the
 ## worked technique, and from now until the next review what it uses is
 ## put down to this feature.
-func _review_feature(name: String) -> String:
+func _review_feature(name: String) -> Variant:
 	var known: String = name
 	for listed: String in _outside_features:
 		if listed.to_lower() == name.to_lower():
@@ -14398,21 +14656,12 @@ func _review_feature(name: String) -> String:
 	_note_feature("looked up %s" % known)
 	var of: int = _outside_features.find(known) + 1
 	progress.emit("working the %s (feature %d of %d)" % [known, of, _outside_features.size()])
-	var brief: String = str(await _feature_brief(known, of, _outside_features.size(), false))
-	var left: Array[String] = _features_left()
-	left.erase(known)
-	return brief + ("\n\nThen review_model {\"feature\": \"%s\"}." % left[0] if not left.is_empty()
-		else "\n\nIt is the last of the features; then the assemblies.")
+	return await _feature_brief(known, of, _outside_features.size(), true)
 
 
-## The features listed that have not had their turn: never looked up.
+## The features listed that have not been settled (settle_feature).
 func _features_left() -> Array[String]:
-	var left: Array[String] = []
-	for name: String in _outside_features:
-		var said: String = _feature_said(name)
-		if said == "not worked yet":
-			left.append(name)
-	return left
+	return feature_pass().open(_outside_features)
 
 
 func _features_to_review() -> String:
@@ -14420,7 +14669,7 @@ func _features_to_review() -> String:
 		return ("No features were listed. Name what the subject is known by in "
 			+ "submit_design's features, or review_model {\"feature\": \"eyes\"} "
 			+ "for each: a feature a real set solved is better than a first guess.")
-	return ("Its features, each to work in turn with review_model {\"feature\": ...}:\n%s"
+	return ("Its features, each laid by the app and settled in turn (settle_feature):\n%s"
 		% _features_record(_outside_features))
 
 
@@ -16017,6 +16266,48 @@ func _tools() -> Array:
 			},
 		},
 		{
+			"name": "settle_feature",
+			"description": ("Say what a feature is to be, once the app has "
+				+ "laid a real set's piece for it where it goes (the whole "
+				+ "review, each settle and saving hand the next feature with "
+				+ "its piece laid and a picture): accept it — moved, turned "
+				+ "or recoloured first if it needs it — ask for the next-best "
+				+ "piece instead, reject it with a reason, or say you built "
+				+ "it yourself. Saving waits until every feature listed in "
+				+ "submit_design is settled."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"feature": {"type": "string", "description":
+						"the feature, as listed in submit_design's features"},
+					"verdict": {"type": "string",
+						"enum": ["accept", "next", "reject", "built"],
+						"description": "accept: keep the app's piece (adjusted "
+							+ "by move, turn or recolor first, if given); next: "
+							+ "take it off and lay the next-best piece; reject: "
+							+ "take it off, with a reason, and build it your own "
+							+ "way or leave it out; built: you built it yourself"},
+					"reason": {"type": "string", "description":
+						"a sentence: what is wrong with the piece here (to "
+						+ "reject), or how you built it (built)"},
+					"move": {"type": "object", "description":
+						"accept, moved first: studs across and deep, plates up. "
+						+ "The other of a pair moves the mirror way.",
+						"properties": {"dx": {"type": "number"},
+							"dy": {"type": "number"}, "dz": {"type": "number"}},
+						"additionalProperties": false},
+					"turn": {"type": "integer", "description":
+						"accept, turned first: quarter turns on the spot"},
+					"recolor": {"type": "object", "description":
+						"accept, recoloured first: its colours to yours by "
+						+ "LDraw code, {\"15\": 1} makes its white blue",
+						"additionalProperties": {"type": "integer"}},
+				},
+				"required": ["feature", "verdict"],
+				"additionalProperties": false,
+			},
+		},
+		{
 			"name": "plan_scale",
 			"description": ("How big the model should be, worked out "
 				+ "before anything is placed. Give the real thing's "
@@ -16456,16 +16747,31 @@ func _tools() -> Array:
 							+ "sides another, the roof one and the sign "
 							+ "on it another. A model that is one thing "
 							+ "is one assembly."},
-					"features": {"type": "array", "items": {"type": "string"},
+					"features": {"type": "array", "items": {
+						"type": "object",
+						"properties": {
+							"name": {"type": "string"},
+							"x": {"type": "number", "description": "studs across"},
+							"y": {"type": "number", "description": "plates up"},
+							"z": {"type": "number", "description": "studs deep"},
+							"facing": {"type": "string",
+								"enum": ["+z", "-z", "+x", "-x", "up"],
+								"description": "the way it faces out; the front is +z"},
+						},
+						"required": ["name"],
+						"additionalProperties": false},
 						"description":
 							"what the subject is known by, a few words "
 							+ "each: an owl's facial disc, eyes, beak, ear "
 							+ "tufts, wings, talons; a car's wheel arches, "
-							+ "headlamps, grille, windscreen, spoiler. Once "
-							+ "the shape stands and you have looked at it "
-							+ "whole, each comes back to you on its own with "
-							+ "how real sets built it, to lay, adapt or build "
-							+ "before the assemblies are detailed."},
+							+ "headlamps, grille, windscreen, spoiler — and "
+							+ "where each goes: x, y, z on the model's surface "
+							+ "and the way it faces out (one of a pair; the "
+							+ "other is mirrored). Once the shape stands and "
+							+ "you have looked at it whole, each comes back to "
+							+ "you in turn with the best real set's piece for "
+							+ "it laid there by the app, to accept, adjust or "
+							+ "reject with settle_feature."},
 				},
 				"required": ["name", "description", "bricks", "assemblies", "features"],
 				"additionalProperties": false,
