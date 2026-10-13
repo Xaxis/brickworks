@@ -1,0 +1,76 @@
+/*
+  The directory's pages that the server makes, after /site.css: only what
+  they have and the site's other pages do not.
+
+  A shared model's page, /m/<id> (api/share.js): the picture first and
+  large, what it is beside it on a laptop and under it on a phone, then
+  what its owner wrote, its licence and its remix tree.
+*/
+.model-page { padding: 22px 0 72px; }
+.crumbs { font-size: 14px; color: var(--ink-faint); margin: 0 0 14px; }
+.crumbs a { color: var(--ink-soft); }
+.model-page .top {
+	display: grid; gap: 22px 32px; align-items: start;
+	grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+}
+@media (max-width: 900px) { .model-page .top { grid-template-columns: minmax(0, 1fr); } }
+
+/* The picture is the shape it was published at, 1200 x 630, so the page
+   holds its space before it arrives. */
+.model-page .picture {
+	position: relative; display: block; border-radius: var(--radius); overflow: hidden;
+	border: 1px solid var(--line); background: var(--bg-soft); aspect-ratio: 1200 / 630;
+	box-shadow: var(--shadow); text-decoration: none; color: inherit;
+}
+.model-page .picture img { width: 100%; height: 100%; object-fit: cover; }
+.model-page .picture .none { display: grid; place-items: center; height: 100%; color: var(--ink-faint); }
+.model-page .picture .go {
+	position: absolute; right: 14px; bottom: 14px; padding: 8px 14px; border-radius: 10px;
+	background: var(--accent); color: var(--on-accent); font-weight: 650; font-size: 15px;
+}
+.model-page .picture:hover .go { filter: brightness(1.07); }
+
+.model-page h1 { font-size: clamp(26px, 3.6vw, 38px); margin: 0 0 6px; overflow-wrap: anywhere; line-height: 1.15; }
+.model-page .by { margin: 0 0 6px; color: var(--ink-soft); font-size: 16.5px; overflow-wrap: anywhere; }
+.model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .from a { color: var(--ink); }
+.model-page .facts { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.model-page .facts li {
+	font-size: 13.5px; color: var(--ink-soft); border: 1px solid var(--line);
+	border-radius: 999px; padding: 3px 10px; background: var(--panel);
+}
+.model-page .counts { margin: 0 0 16px; color: var(--ink-soft); font-size: 15px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.model-page .counts span { font-variant-numeric: tabular-nums; }
+.model-page .side .note { margin-top: 12px; }
+
+.model-page section { margin-top: 34px; max-width: 72ch; }
+.model-page section h2 { font-size: 20px; margin: 0 0 8px; }
+.model-page section h3 { font-size: 15px; margin: 16px 0 8px; color: var(--ink-soft); font-weight: 600; }
+.model-page .description { margin: 0; white-space: pre-line; overflow-wrap: anywhere; color: var(--ink); }
+.model-page .licence p { margin: 0; color: var(--ink-soft); }
+.model-page .licence b { color: var(--ink); }
+
+.model-page .tags { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.model-page .tags a {
+	display: inline-block; text-decoration: none; font-size: 14px; color: var(--ink);
+	background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+}
+.model-page .tags a:hover { border-color: var(--ink-faint); }
+.model-page .tags a::before { content: "#"; color: var(--ink-faint); margin-right: 1px; }
+
+.model-page .tree { max-width: none; }
+.model-page .line { margin: 0; padding-left: 22px; color: var(--ink-soft); }
+.model-page .line li { margin: 3px 0; overflow-wrap: anywhere; }
+.model-page .line a { color: var(--ink); }
+.minis { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.mini {
+	display: grid; text-decoration: none; color: inherit; border: 1px solid var(--line);
+	border-radius: 12px; overflow: hidden; background: var(--panel);
+}
+.mini img, .mini .none { aspect-ratio: 1200 / 630; width: 100%; object-fit: cover; background: var(--bg-soft); }
+.mini .none { display: grid; place-items: center; color: var(--ink-faint); font-size: 13px; }
+.mini b { padding: 8px 12px 0; font-size: 15px; overflow-wrap: anywhere; }
+.mini span { padding: 0 12px 10px; font-size: 13.5px; color: var(--ink-soft); }
+.mini:hover b { text-decoration: underline; }
+
+.gone { padding: clamp(56px, 10vw, 110px) 0; }

@@ -26,11 +26,20 @@
 // a session minted as for any test) takes one out (api/admin.js), which
 // nobody else can, and its owner cannot list it again.
 //
+// And the directory (supabase/directory.sql, api/_directory.js): what an
+// owner says about a model (a description, tags, a kind, a licence) cleaned
+// and refused at the edge; its steps and whether it is Technic counted from
+// the file; the gallery searched, filtered and sorted; the model's page
+// with its words escaped, its licence, its counts and its remix tree; a
+// licence a remix has to keep; and a view counted once a day per visitor,
+// never for a robot, a headless browser or another site's page.
+//
 // Throwaway accounts at Resend test addresses (no email is sent: the
 // sessions are minted here), deleted at the end with every row of theirs.
 // Every model this publishes is unpublished or swept before that, so no
 // file is left in the bucket.
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { deleteAccount, mintSession } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -50,8 +59,8 @@ const check = (ok, what) => {
   if (!ok) failures += 1;
 };
 
-async function call(path, { method = "GET", token, body, raw } = {}) {
-  const headers = {};
+async function call(path, { method = "GET", token, body, raw, headers: more = {} } = {}) {
+  const headers = { ...more };
   if (bypass) headers["x-vercel-protection-bypass"] = bypass;
   if (token) headers.authorization = `Bearer ${token}`;
   let payload;
@@ -112,6 +121,8 @@ const MODEL = [
 ].join("\r\n");
 // A PNG, which is all the picture has to be.
 const PICTURE = PIXEL;
+// And a WebP, the small picture's: one pixel.
+const THUMB = "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==";
 
 const rand = randomBytes(4).toString("hex");
 const emailA = `delivered+bw-share-a-${rand}@resend.dev`;
@@ -120,6 +131,9 @@ const emailC = `delivered+bw-share-c-${rand}@resend.dev`;
 // The gallery's: one who remixes, one who lists too much.
 const emailD = `delivered+bw-share-d-${rand}@resend.dev`;
 const emailE = `delivered+bw-share-e-${rand}@resend.dev`;
+// The directory's: one who shares a model with steps of its own, a gear
+// train, and a remix.
+const emailF = `delivered+bw-share-f-${rand}@resend.dev`;
 const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
 const ID = /^[A-Za-z0-9]{10}$/;
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
@@ -185,14 +199,16 @@ async function main() {
   check(r.text.includes('<meta property="og:title" content="Probe Tower — a Brickworks model">'), "its og:title names the model");
   check(r.text.includes(`<meta property="og:image" content="${base}/m/${id}.png">`), "its og:image is the model's picture");
   check(r.text.includes("9 parts, by Probe Builder"), "it says the part count and who made it");
-  check(r.text.includes(`data-viewer="/app?view=${id}"`) && r.text.includes('<script src="/share-page.js"'),
-    "a person goes on to the viewer, /app?view=<id>");
+  check(r.text.includes(`<a class="cta" href="/app?view=${id}">View in 3D</a>`) && r.text.includes('<script src="/share-page.js"')
+    && r.text.includes(`data-viewer="/app?view=${id}"`), "a person goes on to the viewer, /app?view=<id>, with View in 3D");
   check(/frame-ancestors 'none'/.test(r.headers.get("content-security-policy") || ""), "the page is not frameable");
 
   r = await call(`/m/${id}.png`);
   check(r.status === 200 && r.headers.get("content-type") === "image/png" && r.bytes.equals(Buffer.from(PICTURE, "base64")),
     `its picture: 200 image/png, the bytes published (${r.status} ${r.headers.get("content-type")})`);
   check(r.headers.get("cross-origin-resource-policy") === "cross-origin", "the picture may be shown on any site");
+  const heads = [(await call(`/m/${id}`, { method: "HEAD" })).status, (await call(`/m/${id}.png`, { method: "HEAD" })).status];
+  check(heads.every((s) => s === 200), `the page and its picture asked with HEAD, as a link checker asks: 200 (${heads.join(", ")})`);
 
   r = await call(`/m/${id}/embed`);
   check(r.status === 200 && r.text.includes(`href="${base}/m/${id}"`) && r.text.includes('target="_blank"'),
@@ -257,6 +273,7 @@ async function main() {
   check(r.status === 401, `the list signed out: 401 (${r.status})`);
 
   await theGallery(tokenA, tokenB, id);
+  await theDirectory(tokenA);
 
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
@@ -505,11 +522,247 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   check(r.status === 201, `and publishing unlisted is not held up by it (${r.status})`);
 }
 
+/// The directory (supabase/directory.sql, api/_directory.js): what an owner
+/// says about a model, what the server counts from its file, the gallery's
+/// search, filters and sorts, a model's page with its licence, counts and
+/// remix tree, and a view counted once per visitor per day and never for a
+/// robot.
+async function theDirectory(tokenA) {
+  console.log("the directory");
+  const f = await mintSession(emailF);
+  const tokenF = f.access_token;
+  const word = `zebrafinch${rand}`;
+  const list = (query = "") => call(`/api/share?op=list&page=1${query}`);
+  const ids = (l) => (l.json?.models || []).map((m) => m.id);
+
+  // The kinds the gallery offers are the ones the Share panel guesses from.
+  const gd = readFileSync(new URL("../../src/net/model_kinds.gd", import.meta.url), "utf8");
+  const block = gd.slice(gd.indexOf("const KINDS"), gd.indexOf("\n]\n", gd.indexOf("const KINDS")));
+  const app = [...block.matchAll(/\["([a-z]+)", "([^"]+)"\]/g)].map((m) => `${m[1]}=${m[2]}`);
+  let l = await list();
+  const site = (l.json?.kinds || []).map((k) => `${k.id}=${k.label}`);
+  check(app.length >= 10 && app.join("|") === site.join("|"),
+    `the gallery's kinds are the app's, in its order (${site.length} and ${app.length})`);
+
+  // What an owner says, cleaned at the edge.
+  const ABOUT = `A gatehouse with a ${word} on the wall.\u0007\r\n\r\n\r\n\r\nIt <b>opens</b> & "closes".`;
+  let r = await call("/api/share", { method: "POST", token: tokenA, body: {
+    name: "Probe Directory Gate", author: "Probe Builder", model: MODEL, image: PICTURE, thumb: THUMB,
+    listed: true, description: ABOUT, tags: "Castle, Tower!!, tower, <b>gate</b>, x",
+    kind: "castle", licence: "cc-by-sa-4.0" } });
+  const gate = r.json?.id || "";
+  if (gate) published.add(gate);
+  check(r.status === 201 && r.json?.description === `A gatehouse with a ${word} on the wall.\n\nIt <b>opens</b> & "closes".`,
+    `published with a description, control characters out and blank lines one (${r.status}) ${JSON.stringify(r.json?.description)}`);
+  check(JSON.stringify(r.json?.tags) === JSON.stringify(["castle", "tower", "b gate b"]),
+    `tags in lower case, the same one once, the too short left out (${JSON.stringify(r.json?.tags)})`);
+  check(r.json?.kind === "castle" && r.json?.licence === "cc-by-sa-4.0", `its kind and licence (${r.json?.kind}, ${r.json?.licence})`);
+  check(r.json?.steps === 2 && r.json?.own_steps === false && r.json?.technic === false,
+    `counted from the file: 2 steps, Brickworks's own, not Technic (${r.json?.steps}, ${r.json?.own_steps}, ${r.json?.technic})`);
+
+  for (const [what, body, status] of [
+    ["a description over 1000 characters", { description: "x".repeat(1001) }, 400],
+    ["nine tags", { tags: "aa,bb,cc,dd,ee,ff,gg,hh,ii" }, 400],
+    ["tags that are not words", { tags: [1, 2] }, 400],
+    ["a kind that is not one", { kind: "spaceship" }, 400],
+    ["a licence that is not one", { licence: "mit" }, 400],
+    ["a small picture that is not a WebP", { thumb: PICTURE }, 415],
+    ["a small picture over 64 KB", { thumb: Buffer.concat([Buffer.from(THUMB, "base64"), Buffer.alloc(70000)]).toString("base64") }, 413],
+  ]) {
+    r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Refused", model: SMALL, ...body } });
+    check(r.status === status, `${what}: ${status} (${r.status}) "${r.json?.error}"`);
+  }
+
+  // Its own steps, and Technic: counted from the file, not said by it.
+  const OWN = MODEL.replace("0 Author: Brickworks", "0 Author: Probe Person");
+  r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Own Steps", model: OWN, listed: true,
+    kind: "castle", tags: "castle" } });
+  const own = r.json?.id || "";
+  if (own) published.add(own);
+  check(r.status === 201 && r.json?.own_steps === true && r.json?.steps === 2,
+    `a file not written by Brickworks, with steps: its builder's own (${r.status}, ${r.json?.own_steps})`);
+  const GEARS = ["0 Probe Gears", "1 71 0 0 0 1 0 0 0 1 0 0 0 1 3743.dat", "1 71 40 0 0 1 0 0 0 1 0 0 0 1 3647.dat",
+    "1 71 80 0 0 1 0 0 0 1 0 0 0 1 3648.dat", "1 15 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat", ""].join("\r\n");
+  r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Gear Train", model: GEARS,
+    listed: true, kind: "mechanism", licence: "all-rights-reserved" } });
+  const gears = r.json?.id || "";
+  if (gears) published.add(gears);
+  check(r.status === 201 && r.json?.technic === true && r.json?.own_steps === false && r.json?.steps === 1,
+    `three gears (one by its old number) and a brick: Technic or a mechanism; no steps, so one (${r.json?.technic}, ${r.json?.steps})`);
+
+  // The list: asked, filtered, sorted.
+  console.log("the gallery's search, filters and sorts");
+  l = await list();
+  const card = (l.json?.models || []).find((m) => m.id === gate) || {};
+  check(card.kind === "castle" && JSON.stringify(card.tags) === JSON.stringify(["castle", "tower", "b gate b"])
+    && card.licence === "cc-by-sa-4.0" && card.steps === 2 && card.own_steps === false && card.views === 0
+    && card.likes === 0 && card.remixes === 0 && !("owner" in card) && !("description" in card),
+    "a card: kind, tags, licence, steps, counts; no owner, no description");
+  check(String(card.thumb || "").startsWith(`${base}/m/${gate}.webp?v=`) && card.image === `${base}/m/${gate}.png`,
+    `and its small picture, by a versioned address (${card.thumb})`);
+  r = await call(`/m/${gate}.webp`);
+  check(r.status === 200 && r.headers.get("content-type") === "image/webp" && r.bytes.equals(Buffer.from(THUMB, "base64")),
+    `the small picture: 200 image/webp, the bytes published (${r.status})`);
+  for (const [what, query, wanted, unwanted] of [
+    ["a word of its description", `&q=${word}`, [gate], [own, gears]],
+    ["a word's start, any case", `&q=${word.slice(0, 8).toUpperCase()}`, [gate], []],
+    ["its name, two words", "&q=directory%20gate", [gate], [own]],
+    ["a plural of its tag", "&q=towers", [gate], []],
+    ["its credit", "&q=probe%20builder", [gate], [own]],
+    ["a tag", "&tag=tower", [gate], [own, gears]],
+    ["a kind", "&kind=castle", [gate, own], [gears]],
+    ["another kind", "&kind=mechanism", [gears], [gate, own]],
+    ["small", "&size=small", [gate, own, gears], []],
+    ["large", "&size=large", [], [gate, own, gears]],
+    ["has instructions", "&instructions=1", [own], [gate, gears]],
+    ["Technic or mechanism", "&technic=1", [gears], [gate, own]],
+    ["two at once", "&kind=castle&instructions=1", [own], [gate]],
+    ["a word nothing has", `&q=nothing${rand}x`, [], [gate, own, gears]],
+  ]) {
+    const got = await list(query);
+    const found = ids(got);
+    check(got.status === 200 && wanted.every((id) => found.includes(id)) && !unwanted.some((id) => found.includes(id)),
+      `${what} (${query}): ${wanted.length} wanted found, none unwanted (${got.status}, ${found.length})`);
+  }
+  for (const [what, query] of [["a search over 100 characters", `&q=${"x".repeat(101)}`], ["a kind that is not one", "&kind=boat"],
+    ["a size that is not one", "&size=huge"], ["instructions=maybe", "&instructions=maybe"], ["a sort that is not one", "&sort=best"],
+    ["a one-letter tag", "&tag=a"]]) {
+    const got = await list(query);
+    check(got.status === 400, `${what}: 400 (${got.status}) "${got.json?.error}"`);
+  }
+  l = await list("&q=%3Cscript%3E%20%27%20%26%20%7C%20!%20(");
+  check(l.status === 200, `a search of nothing but punctuation and markup asks nothing of the database's syntax (${l.status})`);
+
+  // A view, counted once a day per visitor, never a robot's.
+  console.log("views");
+  const PERSON = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+  const look = (id, headers) => call(`/api/share?op=seen&id=${id}`, { method: "POST", body: {}, headers });
+  const asPerson = { "user-agent": PERSON, "sec-fetch-site": "same-origin" };
+  r = await look(own, asPerson);
+  check(r.status === 200 && r.json?.counted === true, `a person's first look: counted (${r.status}, ${r.json?.counted})`);
+  r = await look(own, asPerson);
+  check(r.json?.counted === false, "the same person again today: not counted");
+  r = await look(own, { ...asPerson, "user-agent": PERSON.replace("Linux x86_64", "Macintosh; Intel Mac OS X 10_15_7") });
+  check(r.json?.counted === true, "another person: counted");
+  for (const [what, headers] of [
+    ["a crawler", { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "sec-fetch-site": "same-origin" }],
+    ["a headless browser", { "user-agent": PERSON.replace("Chrome/", "HeadlessChrome/"), "sec-fetch-site": "same-origin" }],
+    ["a link preview", { "user-agent": "facebookexternalhit/1.1", "sec-fetch-site": "same-origin" }],
+    ["curl", { "user-agent": "curl/8.5.0" }],
+    ["a page on another site", { "user-agent": PERSON, "sec-fetch-site": "cross-site" }],
+    ["no Fetch Metadata", { "user-agent": PERSON }],
+  ]) {
+    r = await look(own, headers);
+    check(r.status === 200 && r.json?.counted === false, `${what}: not counted`);
+  }
+  r = await look("QQQQQQQQQQ", asPerson);
+  check(r.json?.counted === false, "a link that never was: nothing counted");
+  r = await look("../x", asPerson);
+  check(r.status === 400, `an id that is not one: 400 (${r.status})`);
+  l = await list("&sort=views");
+  const viewed = (l.json?.models || []).map((m) => m.views);
+  check(viewed.every((n, k) => k === 0 || n <= viewed[k - 1])
+    && (l.json?.models || []).find((m) => m.id === own)?.views === 2,
+    `most viewed first, and the one looked at by two people says 2 (${viewed.slice(0, 4).join(", ")})`);
+
+  // A remix, its licence, and the tree on both pages.
+  console.log("remixes and licences");
+  r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Gate Remix", model: SMALL,
+    remixed_from: gate, listed: true, licence: "cc-by-4.0" } });
+  check(r.status === 422, `a version of a CC BY-SA model under CC BY: 422, never 403 (${r.status}) "${r.json?.error}"`);
+  r = await call("/api/share", { method: "POST", token: tokenF, body: { name: "Probe Gate Remix", model: SMALL,
+    remixed_from: gate, listed: true, licence: "cc-by-sa-4.0", tags: "gate" } });
+  const remix = r.json?.id || "";
+  if (remix) published.add(remix);
+  check(r.status === 201 && r.json?.remixed_from === gate, `under CC BY-SA too: shared and listed (${r.status})`);
+  r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Probe Gear Copy", model: SMALL,
+    remixed_from: gears, listed: true, licence: "cc-by-4.0" } });
+  check(r.status === 422, `a version of an all-rights-reserved model, listed: 422 (${r.status}) "${r.json?.error}"`);
+  r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Probe Gear Copy", model: SMALL,
+    remixed_from: gears, licence: "cc-by-4.0" } });
+  if (r.json?.id) published.add(r.json.id);
+  const byLink = r.json?.id || "";
+  check(r.status === 201, `...shared by link only: allowed (${r.status})`);
+  l = await list("&sort=remixes");
+  const remixed = (l.json?.models || []).map((m) => m.remixes);
+  check(remixed.every((n, k) => k === 0 || n <= remixed[k - 1]) && remixed[0] >= 1
+    && (l.json?.models || []).find((m) => m.id === gate)?.remixes === 1,
+    `most remixed first, the gate's one remix counted (${remixed.slice(0, 4).join(", ")})`);
+
+  r = await call(`/m/${gate}`);
+  const page = r.text;
+  check(r.status === 200 && page.includes(`<p class="description">A gatehouse with a ${word} on the wall.\n\nIt &lt;b&gt;opens&lt;/b&gt; &amp; &quot;closes&quot;.</p>`),
+    "its page: the description, escaped, its lines kept");
+  check(page.includes('<a href="/gallery?tag=castle">castle</a>') && page.includes('<a href="/gallery?tag=b%20gate%20b">b gate b</a>'),
+    "its tags, each a link to the gallery filtered by it");
+  check(page.includes('<a href="/gallery?kind=castle">Castles and fantasy</a>'), "its kind, a link to the gallery's");
+  check(page.includes("<b>CC BY-SA 4.0.</b>") && page.includes('href="https://creativecommons.org/licenses/by-sa/4.0/"')
+    && page.includes("credit Probe Builder"), "its licence, with whom to credit and the licence itself");
+  check(page.includes("2 steps") && page.includes(">0 views<") && page.includes(">1 remix<"),
+    "its steps and counts: 2 steps, 0 views, 1 remix");
+  check(page.includes(`href="/m/${remix}"`) && page.includes("Probe Gate Remix"), "what was remixed from it, a card linking its page");
+  check(page.includes('<link rel="stylesheet" href="/site.css">') && page.includes('class="site-head"')
+    && page.includes('class="site-foot"') && /LEGO® is a trademark of the LEGO Group/.test(page),
+    "a page of the site: its stylesheet, header and footer, with the notice");
+  check(page.includes(`<link rel="canonical" href="${base}/m/${gate}">`) && page.includes("og:description")
+    && page.includes(`content="A gatehouse with a ${word}`), "a canonical link, and the description in the card a link preview shows");
+  check(/connect-src 'self'/.test(r.headers.get("content-security-policy") || "")
+    && /style-src 'self' 'unsafe-inline'/.test(r.headers.get("content-security-policy") || ""),
+    "its policy lets it load the site's stylesheet and talk to this site, and nowhere else");
+  r = await call(`/m/${remix}`);
+  check(r.text.includes(`Remixed from <a href="/m/${gate}">Probe Directory Gate</a>, by Probe Builder`)
+    && r.text.includes("<h3>It came from</h3>"), "the remix's page names what it came from, and its line");
+  r = await call(`/m/${byLink}`);
+  check(r.text.includes(`href="/m/${gears}"`) && r.text.includes("Probe Gear Train"),
+    "a copy of a listed model, itself shared by link, names the listed one");
+  // Unlisted, the one it came from is no longer named.
+  r = await call("/api/share", { method: "POST", token: tokenA, body: { id: gate, name: "Probe Directory Gate",
+    author: "Probe Builder", model: MODEL, listed: false } });
+  check(r.status === 200 && r.json?.description === `A gatehouse with a ${word} on the wall.\n\nIt <b>opens</b> & "closes".`
+    && r.json?.licence === "cc-by-sa-4.0" && r.json?.kind === "castle" && r.json?.tags?.length === 3,
+    "republished saying nothing about it: what it said is kept");
+  r = await call(`/m/${remix}`);
+  check(r.text.includes("Remixed from a model shared by link") && !r.text.includes(`/m/${gate}"`),
+    "unlisted, the model it came from is a model shared by link, not named or linked");
+  r = await call(`/api/share?id=${remix}`);
+  check(r.json?.remixed_from === null, "...nor in what the viewer reads");
+  r = await call(`/m/${gate}.webp`);
+  check(r.status === 404, `republished without a small picture: the old one is gone (${r.status})`);
+  const thumbFile = await fetch(`${SUPABASE}/storage/v1/object/shared-thumbs/${gate}.webp`,
+    { headers: { apikey: SECRET, authorization: `Bearer ${SECRET}` } });
+  check(thumbFile.status === 400 || thumbFile.status === 404, `...from its bucket too (${thumbFile.status})`);
+  const thumbPublic = await fetch(`${SUPABASE}/storage/v1/object/public/shared-thumbs/${own}.webp`);
+  check(thumbPublic.status >= 400, `the small pictures' bucket is not public (${thumbPublic.status})`);
+  r = await call("/api/share", { method: "POST", token: tokenA, body: { id: gate, name: "Probe Directory Gate",
+    model: MODEL, description: "", tags: "", kind: "" } });
+  check(r.status === 200 && r.json?.description === null && r.json?.tags?.length === 0 && r.json?.kind === null
+    && r.json?.licence === "cc-by-sa-4.0", "emptied, they are emptied; the licence, not said, is kept");
+  r = await call("/api/share?op=mine", { token: tokenF });
+  const mineRow = (r.json?.shared || []).find((m) => m.id === own) || {};
+  check(mineRow.kind === "castle" && Array.isArray(mineRow.tags) && "licence" in mineRow && "description" in mineRow,
+    "the owner's own list has what each says, for the Share panel to show");
+
+  // The database, with the key every page has.
+  let d = await anonRest(`shared_models?id=eq.${own}&select=description,tags,licence,kind,steps,own_steps,technic,has_thumb`);
+  check(d.status === 200 && d.json?.length === 1, `what a model says about itself is readable with the publishable key (${d.status})`);
+  d = await anonRest(`shared_models?id=eq.${own}&select=search`);
+  check(d.status === 401 || d.status === 403, `its search words are not (${d.status})`);
+  for (const table of ["model_stats", "model_views"]) {
+    d = await anonRest(`${table}?select=*`);
+    check(d.status === 401 || d.status === 403, `${table} is closed (${d.status})`);
+  }
+  for (const [fn, args] of [["directory_models", { query: {} }], ["directory_model", { model_id: own }],
+    ["count_view", { model_id: own, visitor_key: "0".repeat(32) }]]) {
+    d = await anonRest(`rpc/${fn}`, { method: "POST", body: args });
+    check(d.status >= 400, `${fn} cannot be called with it (${d.status})`);
+  }
+}
+
 async function cleanUp() {
   // Every model published here is taken down (the files go with that),
   // then every account, which takes their rows with them.
   const sessions = [];
-  for (const email of [emailA, emailB, emailD, emailE]) {
+  for (const email of [emailA, emailB, emailD, emailE, emailF]) {
     sessions.push(await mintSession(email).catch(() => null));
   }
   for (const id of published) {
@@ -522,7 +775,8 @@ async function cleanUp() {
   const goneB = await deleteAccount(emailB);
   const goneD = await deleteAccount(emailD);
   const goneE = await deleteAccount(emailE);
-  check(goneA && goneB && goneD && goneE, "every throwaway account deleted, and their rows with them");
+  const goneF = await deleteAccount(emailF);
+  check(goneA && goneB && goneD && goneE && goneF, "every throwaway account deleted, and their rows with them");
   const left = await call(`/api/share?id=${[...published][0] || "QQQQQQQQQQ"}`);
   check(left.status === 404, `nothing left behind: the link is gone with the account (${left.status})`);
 }

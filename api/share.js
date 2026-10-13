@@ -15,15 +15,23 @@
 //                            when it published
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
-//   GET  ?op=list&page=N     /gallery's models: the listed ones, newest
-//                            first, a page at a time, each with the
-//                            picture it was published with
+//   GET  ?op=thumb&id=X      /m/X.webp: the small picture the gallery's
+//                            cards show, made by the app beside the big one
+//   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
+//                            a time, searched (q), filtered (kind, size,
+//                            instructions, technic, tag) and sorted (sort:
+//                            newest, views, likes, remixes)
 //   POST                     publish, with the session: {name, author?,
-//                            model, image?, id?, listed?, remixed_from?}.
-//                            With an id, the owner's own link is updated
-//                            in place. listed puts it in the gallery;
-//                            remixed_from is the link it was copied from
-//                            (Open in Brickworks), which its page names.
+//                            model, image?, thumb?, id?, listed?,
+//                            remixed_from?, description?, tags?, kind?,
+//                            licence?}. With an id, the owner's own link is
+//                            updated in place. listed puts it in the
+//                            gallery; remixed_from is the link it was
+//                            copied from (Open in Brickworks), which its
+//                            page names. What it says about itself is kept
+//                            on a republish that does not say it again.
+//   POST ?op=seen&id=X       its page was looked at: counted once a day per
+//                            visitor, and never for a robot
 //   POST ?op=unpublish&id=X  the owner takes it down
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
@@ -45,28 +53,50 @@
 // printable line of at most 80 characters, escaped wherever a page shows
 // it; listing is counted (may_list) on top of publishing; and the site's
 // owner can take any model out of it for good (api/admin.js).
+//
+// The directory (2026-10-13, supabase/directory.sql, api/_directory.js)
+// searches, filters and sorts the gallery, and gives each model a page of
+// its own at /m/X: what its owner wrote about it, its tags, its kind and
+// its licence, how many have looked, liked and remixed it, and its remix
+// tree. The facts the filters use that are about the file — its steps,
+// whether they are its builder's own, whether it is Technic — are counted
+// here from the file, like the part count. Nothing a page does writes per
+// request: a view is a beacon the page sends once a day (?op=seen), and
+// counted once per visitor per day, never for a robot.
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
+import {
+  KINDS, LICENCES, NOTICE, SIZES, SORTS, Unacceptable, cardOf, cleanDescription, cleanKind,
+  cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel, listQuery, looksLikePerson,
+  partFacts, siteChrome, visitorKey,
+} from "./_directory.js";
 
 export const MAX_MODEL_BYTES = 2 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 600 * 1024;
+export const MAX_THUMB_BYTES = 64 * 1024;
 const MAX_NAME = 80;
 const MAX_AUTHOR = 60;
 const BUCKET = "shared-models";
+// The gallery's small pictures, in a bucket of their own
+// (supabase/directory.sql): shared-models takes only its two kinds of file.
+const THUMBS = "shared-thumbs";
+/// Which bucket a file is in: the small pictures in theirs.
+const bucketOf = (name) => (name.endsWith(".webp") ? THUMBS : BUCKET);
 const ID = /^[A-Za-z0-9]{10}$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 // What a visitor's key may read: the columns supabase/shared_models.sql
 // and supabase/gallery.sql grant, which are all of them but the owner and
 // barred.
-const PUBLIC = "id,name,author,parts,bytes,has_image,published,updated_at,listed,remixed_from";
-// A card in the gallery.
-const CARD = "id,name,author,parts,has_image,listed_at";
+const PUBLIC = "id,name,author,parts,bytes,has_image,published,updated_at,listed,remixed_from,"
+  + "description,tags,licence,kind,has_thumb";
 export const PER_PAGE = 24;
 const MOST_PAGES = 400;
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const RIFF = Buffer.from("RIFF");
+const WEBP = Buffer.from("WEBP");
 
 function project() {
   return String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -130,6 +160,13 @@ export class Refusal extends Error {
 /// ends .dat is a part (LDraw's own convention, and how the app writes a
 /// custom part), so it counts once wherever it is placed; so does a
 /// submodel that is a hose laid along a bend (FLEX_PIECES).
+///
+/// And what the gallery filters on, read from the same lines: how many
+/// build steps the model has (its own file's, split by 0 STEP and 0
+/// ROTSTEP), whether they are its builder's (LdrModel.steps_are_authored:
+/// steps there, and either marked so by Brickworks or written by another
+/// tool), and how many of its parts are Technic and how many make it move
+/// (partFacts), counted through its submodels as its parts are.
 export function checkModel(text) {
   if (typeof text !== "string" || text.trim() === "") {
     throw new Refusal("there is no model to share");
@@ -146,9 +183,11 @@ export function checkModel(text) {
 
   const files = new Map();
   const order = [];
-  let current = { name: "", placed: [], isPart: false };
+  let current = { name: "", placed: [], isPart: false, steps: 0, open: false, author: "" };
   let inData = false;
   let lineNo = 0;
+  let stepped = false;
+  let markedAuthored = false;
   // A file is known once it has a name or places something: an .ldr
   // has no 0 FILE line, and an .mpd starts with one.
   const keep = () => {
@@ -158,7 +197,7 @@ export function checkModel(text) {
     }
   };
   const start = (name) => {
-    current = { name: name.toLowerCase(), placed: [], isPart: /\.dat$/i.test(name) };
+    current = { name: name.toLowerCase(), placed: [], isPart: /\.dat$/i.test(name), steps: 0, open: false, author: "" };
     keep();
   };
 
@@ -184,6 +223,16 @@ export function checkModel(text) {
         inData = false;
       } else if (meta === "!LDRAW_ORG" && /part|shortcut|primitive|subpart/i.test(tokens[2] || "")) {
         current.isPart = true;
+      } else if (meta === "STEP" || meta === "ROTSTEP") {
+        // A step ends with its parts: a STEP with none since the last is
+        // not one, as a file's closing 0 STEP is not.
+        stepped = true;
+        if (current.open) current.steps += 1;
+        current.open = false;
+      } else if (meta === "AUTHOR:" && !current.author) {
+        current.author = line.replace(/^0\s+Author:\s*/i, "").trim();
+      } else if (meta === "!BRICKWORKS" && (tokens[2] || "").toUpperCase() === "AUTHORED_STEPS") {
+        markedAuthored = true;
       }
       continue;
     }
@@ -196,6 +245,7 @@ export function checkModel(text) {
       }
       keep();
       current.placed.push(line.split(/\s+/).slice(14).join(" ").toLowerCase());
+      current.open = true;
     } else {
       const need = COORDS[kind];
       if (tokens.length !== need + 2 || !COLOUR.test(tokens[1]) || !tokens.slice(2).every((t) => NUMBER.test(t))) {
@@ -204,27 +254,39 @@ export function checkModel(text) {
     }
   }
 
-  // The first file is the model; the rest are what it places.
+  // The first file is the model; the rest are what it places. Each file
+  // counts as [parts, Technic parts, parts that move].
+  const facts = partFacts();
+  const kindOf = (ref) => {
+    const id = ref.replace(/\.dat$/, "");
+    return [1, facts.technic.has(id) ? 1 : 0, facts.mechanism.has(id) ? 1 : 0];
+  };
   const counted = new Map();
   const visiting = new Set();
-  const count = (name) => {
+  const tally = (name) => {
     const file = files.get(name);
-    if (!file) return 1;
-    if (file.isPart || laidFlexible(file.placed)) return 1;
+    if (!file) return kindOf(name);
+    if (file.isPart || laidFlexible(file.placed)) return [1, 0, 0];
     if (counted.has(name)) return counted.get(name);
     if (visiting.has(name)) throw new Refusal("that model places itself inside itself", 415);
     visiting.add(name);
-    let total = 0;
-    for (const ref of file.placed) total += files.has(ref) ? count(ref) : 1;
+    const total = [0, 0, 0];
+    for (const ref of file.placed) {
+      const one = files.has(ref) ? tally(ref) : kindOf(ref);
+      for (let k = 0; k < 3; k += 1) total[k] += one[k];
+    }
     visiting.delete(name);
     counted.set(name, total);
     return total;
   };
   const main = order.find((name) => !files.get(name).isPart);
-  const parts = main === undefined ? 0 : count(main);
+  const [parts, technicParts, movingParts] = main === undefined ? [0, 0, 0] : tally(main);
   if (parts < 1) throw new Refusal("that model has no parts in it", 415);
   if (parts > 200000) throw new Refusal("that model has more parts than a shared model can have", 413);
-  return { parts, bytes };
+  const top = files.get(main);
+  const steps = Math.max(1, top.steps + (top.open ? 1 : 0));
+  const ownSteps = stepped && (markedAuthored || top.author !== "Brickworks");
+  return { parts, bytes, steps, ownSteps, technic: isTechnic(parts, technicParts, movingParts) };
 }
 
 /// The picture, from the base64 the app sends, or null for none.
@@ -237,6 +299,21 @@ export function checkImage(given) {
   if (bytes.length > MAX_IMAGE_BYTES) throw new Refusal("the picture is too large", 413);
   if (bytes.length < PNG.length || !bytes.subarray(0, PNG.length).equals(PNG)) {
     throw new Refusal("the picture is not a PNG", 415);
+  }
+  return bytes;
+}
+
+/// The small picture for the gallery's cards, from the base64 the app
+/// sends, or null for none: a WebP of at most 64 KB.
+export function checkThumb(given) {
+  if (given === undefined || given === null || given === "") return null;
+  if (typeof given !== "string" || !/^[A-Za-z0-9+/]+=*$/.test(given)) {
+    throw new Refusal("the small picture is not readable", 415);
+  }
+  const bytes = Buffer.from(given, "base64");
+  if (bytes.length > MAX_THUMB_BYTES) throw new Refusal("the small picture is too large", 413);
+  if (bytes.length < 16 || !bytes.subarray(0, 4).equals(RIFF) || !bytes.subarray(8, 12).equals(WEBP)) {
+    throw new Refusal("the small picture is not a WebP", 415);
   }
   return bytes;
 }
@@ -274,19 +351,21 @@ async function wasShared(id) {
 
 async function ownRow(id) {
   if (!ID.test(id || "")) return null;
-  const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published,listed,listed_at,barred,remixed_from`);
+  const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published,listed,listed_at,barred,remixed_from,`
+    + "description,tags,kind,licence");
   return rows[0] || null;
 }
 
-/// The link a model says it was copied from: null for none, or for one
-/// that is not there any more (it went with its account). An id that is
-/// not one is refused, like anything else malformed at this edge.
+/// The link a model says it was copied from, as {id, owner, licence}: null
+/// for none, or for one that is not there any more (it went with its
+/// account). An id that is not one is refused, like anything else
+/// malformed at this edge.
 async function remixOf(given, self) {
   if (given === undefined || given === null || given === "") return null;
   if (typeof given !== "string" || !ID.test(given)) throw new Refusal("remixed_from is not a link");
   if (given === self) return null;
-  const rows = await db(`shared_models?id=eq.${given}&select=id`);
-  return rows.length > 0 ? given : null;
+  const rows = await db(`shared_models?id=eq.${given}&select=id,owner,licence`);
+  return rows[0] || null;
 }
 
 function storageHeaders(extra = {}) {
@@ -295,7 +374,7 @@ function storageHeaders(extra = {}) {
 }
 
 async function putFile(name, body, type) {
-  const answer = await fetch(`${project()}/storage/v1/object/${BUCKET}/${name}`, {
+  const answer = await fetch(`${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
     method: "POST",
     headers: storageHeaders({ "content-type": type, "x-upsert": "true", "cache-control": "no-store" }),
     body,
@@ -305,7 +384,7 @@ async function putFile(name, body, type) {
 }
 
 async function getFile(name) {
-  const answer = await fetch(`${project()}/storage/v1/object/${BUCKET}/${name}`, {
+  const answer = await fetch(`${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
     headers: storageHeaders(),
     signal: AbortSignal.timeout(20000),
   });
@@ -315,30 +394,37 @@ async function getFile(name) {
 }
 
 async function deleteFiles(names) {
-  const answer = await fetch(`${project()}/storage/v1/object/${BUCKET}`, {
-    method: "DELETE",
-    headers: storageHeaders({ "content-type": "application/json" }),
-    body: JSON.stringify({ prefixes: names }),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!answer.ok) throw new Error(`storage DELETE: ${answer.status}`);
-}
-
-/// Every file in the bucket, a page at a time: [{name, updated_at}].
-async function listFiles() {
-  const files = [];
-  for (let offset = 0; ; offset += 1000) {
-    const answer = await fetch(`${project()}/storage/v1/object/list/${BUCKET}`, {
-      method: "POST",
+  for (const bucket of [BUCKET, THUMBS]) {
+    const these = names.filter((name) => bucketOf(name) === bucket);
+    if (these.length === 0) continue;
+    const answer = await fetch(`${project()}/storage/v1/object/${bucket}`, {
+      method: "DELETE",
       headers: storageHeaders({ "content-type": "application/json" }),
-      body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }),
+      body: JSON.stringify({ prefixes: these }),
       signal: AbortSignal.timeout(20000),
     });
-    if (!answer.ok) throw new Error(`storage list: ${answer.status}`);
-    const page = await answer.json();
-    files.push(...page.filter((file) => file.id !== null));
-    if (page.length < 1000) return files;
+    if (!answer.ok) throw new Error(`storage DELETE: ${answer.status}`);
   }
+}
+
+/// Every file in both buckets, a page at a time: [{name, updated_at}].
+async function listFiles() {
+  const files = [];
+  for (const bucket of [BUCKET, THUMBS]) {
+    for (let offset = 0; ; offset += 1000) {
+      const answer = await fetch(`${project()}/storage/v1/object/list/${bucket}`, {
+        method: "POST",
+        headers: storageHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!answer.ok) throw new Error(`storage list: ${answer.status}`);
+      const page = await answer.json();
+      files.push(...page.filter((file) => file.id !== null));
+      if (page.length < 1000) break;
+    }
+  }
+  return files;
 }
 
 async function mayPublish(owner) {
@@ -366,16 +452,9 @@ function links(origin, id) {
 }
 
 function describe(row) {
-  const parts = `${row.parts.toLocaleString("en-US")} part${row.parts === 1 ? "" : "s"}`;
+  const parts = count(row.parts, "part");
   return row.author ? `${parts}, by ${row.author}` : parts;
 }
-
-// The LEGO Group's Fair Play policy asks for this on any page that names
-// its mark (docs/TRADEMARKS.md); tests/test_trademarks.py holds it here.
-const NOTICE = "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site.";
-
-const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
-  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const PAGE_STYLE = `
   :root { color-scheme: light dark; --ink: #1d232b; --soft: #5b6573; --card: #fff; --page: #eef0f3; --accent: #c8102e; }
@@ -388,26 +467,23 @@ const PAGE_STYLE = `
   .body { padding: 16px 20px 20px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; overflow-wrap: anywhere; }
   p { margin: 0 0 14px; color: var(--soft); }
-  p.from { margin-top: -8px; overflow-wrap: anywhere; }
-  p.from a { color: var(--ink); }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   a.button { display: inline-block; padding: 10px 16px; border-radius: 9px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; }
-  a.button.quiet { background: transparent; color: var(--ink); border: 1px solid currentColor; }
   footer { margin-top: 18px; font-size: .9rem; color: var(--soft); }
-  footer a { color: inherit; }
   footer small { display: block; margin-top: 6px; font-size: .8rem; }`;
 
-function pageHead(origin, row, id, title) {
+/// What a link preview reads: the title, a sentence, the picture.
+function pageHead(origin, row, id, title, { about = "", canonical = "" } = {}) {
   const link = links(origin, id);
-  const description = row
+  const description = about || (row
     ? `${describe(row)}. Turn it in 3D, step through the build, and get its booklet and parts list.`
-    : "A model built in Brickworks, the CAD app for LEGO® bricks in your browser.";
+    : "A model built in Brickworks, the CAD app for LEGO® bricks in your browser.");
   const image = row && row.has_image ? link.image : `${origin}/share.png`;
   return `<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
-<meta property="og:type" content="website">
+${canonical ? `<link rel="canonical" href="${escapeHtml(canonical)}">\n` : ""}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
@@ -419,39 +495,138 @@ function pageHead(origin, row, id, title) {
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
-<link rel="icon" href="/favicon-32.png">
-<style>${PAGE_STYLE}</style>`;
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">`;
 }
 
-/// /m/X: what a link preview reads, and for a person, the viewer. The
-/// script (web/share-page.js) goes straight on to the viewer; without
-/// scripts the page itself has the picture and the way in.
-function sharePage(origin, id, row, from) {
-  const link = links(origin, id);
-  const title = `${row.name} — a Brickworks model`;
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const when = (iso) => {
+  const at = Date.parse(iso || "");
+  return Number.isFinite(at) ? `<time datetime="${escapeHtml(new Date(at).toISOString())}">${DAY.format(at)}</time>` : "";
+};
+
+/// Who to credit, as a page says it: the name the owner gave, or the link
+/// itself when they gave none.
+const creditOf = (model) => (model.author ? escapeHtml(model.author) : "this page’s link");
+
+/// The licence, said for a person: what they may do, whom to credit, and
+/// the licence itself.
+function licenceWords(model) {
+  const licence = LICENCES[model.licence];
+  if (!licence) {
+    return `<p><b>No licence chosen.</b> It was shared before Brickworks asked for one: ask whoever `
+      + `shared it before you use it anywhere else.</p>`;
+  }
+  const deed = licence.url ? ` <a href="${licence.url}" rel="license">The licence</a>.` : "";
+  if (model.licence === "all-rights-reserved") {
+    return `<p><b>${licence.name}.</b> Look at it and build it for yourself; ask `
+      + `${model.author ? escapeHtml(model.author) : "whoever shared it"} before you share a copy `
+      + `or a version of it.</p>`;
+  }
+  if (model.licence === "cc-by-sa-4.0") {
+    return `<p><b>${licence.name}.</b> Anyone may share it, change it and build on it, as long as `
+      + `they credit ${creditOf(model)}, link to this page, and share what they make under the `
+      + `same licence.${deed}</p>`;
+  }
+  return `<p><b>${licence.name}.</b> Anyone may share it, change it and build on it, for any `
+    + `purpose, as long as they credit ${creditOf(model)} and link to this page.${deed}</p>`;
+}
+
+/// A small card of a model, for the remix tree.
+function smallCard(card) {
+  const picture = card.has_thumb ? `/m/${card.id}.webp` : card.has_image ? `/m/${card.id}.png` : "";
+  return `<a class="mini" href="/m/${card.id}">`
+    + (picture ? `<img src="${picture}" alt="" width="1200" height="630" loading="lazy" decoding="async">`
+      : `<span class="none">No picture</span>`)
+    + `<b>${escapeHtml(card.name)}</b><span>${escapeHtml(describe(card))}</span></a>`;
+}
+
+/// /m/X: the model's own page. What its owner said about it, what it is,
+/// its counts, its licence and its remix tree, with the way into the 3D
+/// viewer and into the app. Every word an owner typed is escaped.
+/// web/share-page.js counts the view, and if a reload finds the viewer was
+/// here (it keeps the link in the address bar), goes back to it.
+function sharePage(origin, id, model) {
+  const title = `${model.name} — a Brickworks model`;
+  const { header, footer } = siteChrome();
+  const kind = kindLabel(model.kind);
+  const about = model.description
+    ? model.description.replace(/\s+/g, " ").slice(0, 157) + (model.description.length > 157 ? "…" : "")
+    : "";
+  // The one it came from, while it is listed; one shared only by link is
+  // not named.
+  const parent = (model.from || [])[0];
+  const fromLine = !parent ? "" : parent.id
+    ? `<p class="from">Remixed from <a href="/m/${parent.id}">${escapeHtml(parent.name)}</a>`
+      + `${parent.author ? `, by ${escapeHtml(parent.author)}` : ""}</p>`
+    : `<p class="from">Remixed from a model shared by link</p>`;
+  // A model shared before the directory was not counted: its steps are
+  // not known, and are not said.
+  const facts = [
+    model.steps ? `${count(model.steps, "step")}${model.own_steps ? ", laid out by its builder" : ""}` : "",
+    model.technic ? "Technic or a mechanism" : "",
+    model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link",
+  ].filter(Boolean);
+  const tags = (model.tags || []).map((tag) =>
+    `<li><a href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
+  const line = (model.from || []).map((one) => one.id
+    ? `<li><a href="/m/${one.id}">${escapeHtml(one.name)}</a>${one.author ? `, by ${escapeHtml(one.author)}` : ""}</li>`
+    : "<li>a model shared by link</li>").join("");
+  const listedRemixes = model.remixes_listed || [];
+  const unlisted = Math.max(0, (Number(model.remixes) || 0) - listedRemixes.length);
   return `<!doctype html>
 <html lang="en">
 <head>
-${pageHead(origin, row, id, title)}
+${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url })}
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
 <script src="/share-page.js" defer></script>
 </head>
-<body data-viewer="${escapeHtml(`/app?view=${id}`)}">
-<main>
-  <div class="card">
-    ${row.has_image ? `<img src="/m/${id}.png" alt="${escapeHtml(row.name)}" width="1200" height="630">` : ""}
-    <div class="body">
-      <h1>${escapeHtml(row.name)}</h1>
-      <p>${escapeHtml(describe(row))}</p>
-      ${from ? `<p class="from">Remixed from <a href="/m/${from.id}">${escapeHtml(from.name)}</a></p>` : ""}
+<body data-viewer="${escapeHtml(`/app?view=${id}`)}" data-id="${id}">
+<a class="skip" href="#main">Skip to content</a>
+${header}
+<main id="main">
+<article class="wrap model-page">
+  <nav class="crumbs" aria-label="Where it is"><a href="/gallery">Gallery</a>${model.kind
+    ? ` <span aria-hidden="true">›</span> <a href="/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}</nav>
+  <div class="top">
+    <a class="picture" href="/app?view=${id}" aria-label="View ${escapeHtml(model.name)} in 3D">${model.has_image
+      ? `<img src="/m/${id}.png" alt="${escapeHtml(model.name)}" width="1200" height="630">`
+      : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
+    <div class="side">
+      <h1>${escapeHtml(model.name)}</h1>
+      <p class="by">${escapeHtml(describe(model))}</p>
+      ${fromLine}
+      <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join("")}</ul>
+      <p class="counts"><span data-count="views">${count(model.views, "view")}</span>
+        <span data-count="likes">${count(model.likes, "like")}</span>
+        <span data-count="remixes">${count(model.remixes, "remix", "remixes")}</span></p>
       <div class="actions">
-        <a class="button" href="/app?view=${id}">Open the 3D viewer</a>
-        <a class="button quiet" href="/app?copy=${id}">Open in Brickworks</a>
+        <a class="cta" href="/app?view=${id}">View in 3D</a>
+        <a class="cta ghost" href="/app?copy=${id}">Open in Brickworks</a>
       </div>
+      <p class="note">View in 3D turns it, steps through its build and gives its booklet and parts
+        list, with no account. Open in Brickworks copies it into your own models, to change and make yours.</p>
     </div>
   </div>
-  <footer>Shared from <a href="/">Brickworks</a>. Link: ${escapeHtml(link.url)}
-    <small>${NOTICE}</small></footer>
+  ${model.description ? `<section class="words" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
+    <p class="description">${escapeHtml(model.description)}</p></section>` : ""}
+  ${tags ? `<ul class="tags" aria-label="Tags">${tags}</ul>` : ""}
+  <section class="licence" aria-labelledby="licence-h"><h2 id="licence-h">Licence</h2>
+    ${licenceWords(model)}</section>
+  <section class="tree" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
+    ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
+    ${listedRemixes.length || unlisted
+      ? `<h3>Made from it</h3>${listedRemixes.length
+        ? `<div class="minis">${listedRemixes.map(smallCard).join("")}</div>` : ""}`
+        + (unlisted ? `<p class="note">${listedRemixes.length ? "And " : ""}${count(unlisted, "remix", "remixes")} `
+          + `shared by link, not in the gallery.</p>` : "")
+      : `<p class="note">Nobody has remixed it yet. Open in Brickworks makes a copy of your own to change;
+        share that, and it shows here.</p>`}
+  </section>
+</article>
 </main>
+${footer}
 </body>
 </html>`;
 }
@@ -466,7 +641,7 @@ function embedCard(origin, id, row) {
 <html lang="en">
 <head>
 ${pageHead(origin, row, id, `${row.name} — a Brickworks model`)}
-<style>
+<style>${PAGE_STYLE}
   body { background: var(--card); }
   a.whole { display: flex; flex-direction: column; height: 100vh; color: inherit; text-decoration: none; }
   a.whole img { flex: 1; min-height: 0; width: 100%; object-fit: cover; background: #d9dce1; }
@@ -491,27 +666,36 @@ function gonePage(origin, id, existed) {
   const said = existed
     ? "Whoever shared it has taken it down. If they share it again, this link will work again."
     : "The link may be mistyped, or cut short.";
+  const { header, footer } = siteChrome();
   return `<!doctype html>
 <html lang="en">
 <head>
 ${pageHead(origin, null, id, title)}
 <meta name="robots" content="noindex">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
 </head>
 <body>
-<main>
-  <div class="card"><div class="body">
+<a class="skip" href="#main">Skip to content</a>
+${header}
+<main id="main">
+  <div class="wrap gone">
     <h1>${escapeHtml(title)}</h1>
-    <p>${escapeHtml(said)}</p>
-    <div class="actions"><a class="button" href="/">Go to Brickworks</a></div>
-  </div></div>
-  <footer><small>${NOTICE}</small></footer>
+    <p class="lede">${escapeHtml(said)}</p>
+    <div class="actions"><a class="cta" href="/gallery">See the gallery</a>
+      <a class="cta ghost" href="/">Go to Brickworks</a></div>
+  </div>
 </main>
+${footer || `<footer><small>${NOTICE}</small></footer>`}
 </body>
 </html>`;
 }
 
-const PAGE_CSP = "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'unsafe-inline'; "
-  + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+// What the pages may load and where they may send anything: themselves
+// only. The site's stylesheet and the page's own; the page's one script
+// (web/share-page.js), which counts a view on this same origin.
+const PAGE_CSP = "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
+  + "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 const EMBED_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors *";
 
@@ -534,6 +718,14 @@ async function missing(id) {
     : { status: 404, error: "There is no model at this link.", unpublished: false };
 }
 
+/// A model's page, read as the server: directory_model says for itself
+/// that it is published, and names only what a visitor may know.
+async function modelPage(id) {
+  if (!ID.test(id || "")) return null;
+  const page = await db("rpc/directory_model", { method: "POST", body: { model_id: id } });
+  return page && typeof page === "object" ? page : null;
+}
+
 // ---------------------------------------------------------------------------
 
 async function read(request, response) {
@@ -545,25 +737,31 @@ async function read(request, response) {
   if (op === "sweep") return sweep(request, response);
   if (op === "list") return gallery(request, response, origin);
 
-  const row = await publishedRow(id);
-  // What it was remixed from, while that is still published: read as a
-  // visitor reads it, so a link taken down is not named.
-  const from = row && row.remixed_from && (op === "page" || op === "")
-    ? await publishedRow(row.remixed_from) : null;
-
-  if (op === "page" || op === "embed") {
-    if (!row) {
+  if (op === "page") {
+    const page = await modelPage(id);
+    if (!page) {
       const gone = await missing(id);
-      return html(response, gone.status, gonePage(origin, id, gone.unpublished), { embed: op === "embed" });
+      return html(response, gone.status, gonePage(origin, id, gone.unpublished));
     }
-    return html(response, 200, op === "page" ? sharePage(origin, id, row, from) : embedCard(origin, id, row),
-      { embed: op === "embed" });
+    return html(response, 200, sharePage(origin, id, page));
   }
 
-  if (op === "image") {
-    const picture = row && row.has_image ? await getFile(`${id}.png`) : null;
+  const row = await publishedRow(id);
+
+  if (op === "embed") {
+    if (!row) {
+      const gone = await missing(id);
+      return html(response, gone.status, gonePage(origin, id, gone.unpublished), { embed: true });
+    }
+    return html(response, 200, embedCard(origin, id, row), { embed: true });
+  }
+
+  if (op === "image" || op === "thumb") {
+    const name = op === "image" ? `${id}.png` : `${id}.webp`;
+    const has = row && (op === "image" ? row.has_image : row.has_thumb);
+    const picture = has ? await getFile(name) : null;
     if (!picture) return response.status(404).setHeader("Cache-Control", "no-store").end("");
-    response.setHeader("Content-Type", "image/png");
+    response.setHeader("Content-Type", op === "image" ? "image/png" : "image/webp");
     // A link preview on any site may show it.
     response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     // Asked again every time, like the pages. It was public for a minute,
@@ -573,7 +771,6 @@ async function read(request, response) {
     return response.status(200).end(picture);
   }
 
-
   if (op !== "") return response.status(400).json({ error: `unknown op ${op}` });
 
   // The viewer's one request: what the model is, and the model.
@@ -582,6 +779,11 @@ async function read(request, response) {
     const gone = await missing(id);
     return response.status(gone.status).json({ error: gone.error, unpublished: gone.unpublished });
   }
+  // What it was remixed from, while that is listed: read as a visitor
+  // reads it, so a link taken down, or only ever sent to some people, is
+  // not named.
+  const parent = row.remixed_from ? await publishedRow(row.remixed_from) : null;
+  const from = parent && parent.listed ? parent : null;
   const model = await getFile(`${id}.mpd`);
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   return response.status(200).json({
@@ -591,41 +793,45 @@ async function read(request, response) {
     parts: row.parts,
     updated_at: row.updated_at,
     listed: row.listed === true,
+    licence: row.licence ?? null,
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}` } : null,
     ...links(origin, id),
     model: model.toString("utf8"),
   });
 }
 
-/// /gallery's models, a page at a time, newest listed first. Read through
-/// the publishable key, so row security is what says each is published.
+/// /gallery's models, a page at a time: the listed ones a query asks for
+/// (api/_directory.js listQuery), through directory_models, which says
+/// for itself what a visitor may see. With the kinds, sizes and sorts it
+/// knows, so a client can ask in its words.
 async function gallery(request, response, origin) {
-  const page = Number(request.query?.page ?? 1);
-  if (!Number.isInteger(page) || page < 1 || page > MOST_PAGES) {
-    return response.status(400).json({ error: `page is a whole number from 1 to ${MOST_PAGES}` });
-  }
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  // One more than a page, to know whether there is another.
-  const answer = await fetch(`${project()}/rest/v1/shared_models?listed=is.true&published=is.true`
-    + `&select=${CARD}&order=listed_at.desc,id.desc&limit=${PER_PAGE + 1}&offset=${(page - 1) * PER_PAGE}`, {
-    headers: { apikey: key },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!answer.ok) throw new Error(`database GET gallery: ${answer.status}`);
-  const rows = await answer.json();
+  const { asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES);
+  const rows = await db("rpc/directory_models", { method: "POST", body: { query: asked } });
   // Asked again each time, like the pages: a model unlisted or taken down
   // leaves the gallery at once.
   response.setHeader("Cache-Control", "no-cache");
   return response.status(200).json({
-    page,
+    ...said,
     per_page: PER_PAGE,
     more: rows.length > PER_PAGE,
-    models: rows.slice(0, PER_PAGE).map((row) => {
-      const link = links(origin, row.id);
-      return { id: row.id, name: row.name, author: row.author, parts: row.parts,
-        listed_at: row.listed_at, url: link.url, image: row.has_image ? link.image : null };
-    }),
+    models: rows.slice(0, PER_PAGE).map((row) => cardOf(origin, row)),
+    kinds: KINDS,
+    sizes: Object.entries(SIZES).map(([id, size]) => ({ id, label: size.label })),
+    sorts: Object.entries(SORTS).map(([id, label]) => ({ id, label })),
   });
+}
+
+/// A view of a model's page, sent by the page (web/share-page.js) once a
+/// day: counted once per visitor per day, and only for what looks like a
+/// person in a browser on this site. The answer says whether it was, and
+/// never who.
+async function seen(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a link: ?id=<ten characters>" });
+  if (!looksLikePerson(request)) return response.status(200).json({ counted: false });
+  const counted = await db("rpc/count_view", { method: "POST",
+    body: { model_id: id, visitor_key: visitorKey(request, id) } });
+  return response.status(200).json({ counted: counted === true });
 }
 
 async function signedIn(request) {
@@ -642,14 +848,31 @@ async function mine(request, response, origin) {
   });
 }
 
+/// What the owner says about the model, checked at this edge: undefined
+/// for anything not said, which a republish keeps as it was.
+function saidAbout(body) {
+  try {
+    return {
+      description: cleanDescription(body.description),
+      tags: cleanTags(body.tags),
+      kind: cleanKind(body.kind),
+      licence: cleanLicence(body.licence),
+    };
+  } catch (trouble) {
+    if (trouble instanceof Unacceptable) throw new Refusal(trouble.message, trouble.status);
+    throw trouble;
+  }
+}
+
 async function publish(request, response) {
   const owner = await signedIn(request);
   const body = request.body && typeof request.body === "object" ? request.body : {};
 
   // Everything about the upload is checked before anything is counted
   // or stored, so a refused upload costs nobody a publish.
-  const { parts, bytes } = checkModel(body.model);
+  const { parts, bytes, steps, ownSteps, technic } = checkModel(body.model);
   const picture = checkImage(body.image);
+  const thumb = checkThumb(body.thumb);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   const author = cleanText(body.author, MAX_AUTHOR) || null;
@@ -657,6 +880,7 @@ async function publish(request, response) {
     throw new Refusal("listed is true or false");
   }
   const listed = body.listed === true;
+  const about = saidAbout(body);
 
   let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
   let existing = null;
@@ -673,7 +897,22 @@ async function publish(request, response) {
   }
   // Said once and kept: a republish from a copy that no longer carries it
   // does not forget where the model came from.
-  const remixedFrom = (await remixOf(body.remixed_from, id)) ?? existing?.remixed_from ?? null;
+  const parent = await remixOf(body.remixed_from, id);
+  const remixedFrom = parent?.id ?? existing?.remixed_from ?? null;
+  const description = about.description !== undefined ? about.description : existing?.description ?? null;
+  const tags = about.tags !== undefined ? about.tags : existing?.tags ?? [];
+  const kind = about.kind !== undefined ? about.kind : existing?.kind ?? null;
+  const licence = about.licence !== undefined ? about.licence : existing?.licence ?? null;
+  // What the model it came from allows. 422, never 403 (above).
+  const from = parent ?? (remixedFrom ? await remixOf(remixedFrom, id) : null);
+  if (from && from.owner !== owner && from.licence === "cc-by-sa-4.0" && licence !== "cc-by-sa-4.0") {
+    throw new Refusal("the model this was copied from is shared under CC BY-SA 4.0, so a version of it "
+      + "has to be too: choose CC BY-SA 4.0 as its licence", 422);
+  }
+  if (from && from.owner !== owner && from.licence === "all-rights-reserved" && listed) {
+    throw new Refusal("the model this was copied from is all rights reserved, so its builder has not "
+      + "let versions of it into the gallery: share it by link without listing it, or ask them", 422);
+  }
   // Into the gallery, as against staying in it: only that is counted.
   const newlyListed = listed && !(existing && existing.published && existing.listed);
 
@@ -689,11 +928,13 @@ async function publish(request, response) {
   await putFile(`${id}.mpd`, body.model, "text/plain");
   if (picture) await putFile(`${id}.png`, picture, "image/png");
   else if (existing) await deleteFiles([`${id}.png`]).catch(() => {});
+  if (thumb) await putFile(`${id}.webp`, thumb, "image/webp");
+  else if (existing) await deleteFiles([`${id}.webp`]).catch(() => {});
 
   const now = new Date().toISOString();
-  const row = { name, author, parts, bytes, has_image: Boolean(picture), published: true,
-    updated_at: now, listed, listed_at: listed ? (newlyListed ? now : existing.listed_at) : null,
-    remixed_from: remixedFrom };
+  const row = { name, author, parts, bytes, has_image: Boolean(picture), has_thumb: Boolean(thumb),
+    published: true, updated_at: now, listed, listed_at: listed ? (newlyListed ? now : existing.listed_at) : null,
+    remixed_from: remixedFrom, description, tags, kind, licence, steps, own_steps: ownSteps, technic };
   if (existing) {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: row });
   } else {
@@ -703,7 +944,9 @@ async function publish(request, response) {
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
     id, name, author, parts, bytes, published: true, updated: Boolean(existing),
-    listed, remixed_from: remixedFrom, gallery: `${origin}/gallery`, ...links(origin, id),
+    listed, remixed_from: remixedFrom, gallery: `${origin}/gallery`,
+    description, tags, kind, licence, steps, own_steps: ownSteps, technic,
+    ...links(origin, id),
   });
 }
 
@@ -720,7 +963,7 @@ async function unpublish(request, response) {
       updated_at: new Date().toISOString() } });
   // The row stays, so the link can say it was taken down, and a
   // republish from the same model keeps the same link. The files go.
-  await deleteFiles([`${id}.mpd`, `${id}.png`]);
+  await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.webp`]);
   return response.status(200).json({ id, published: false });
 }
 
@@ -765,6 +1008,10 @@ async function sweep(request, response) {
   }
   const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0]));
   for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
+  // Who looked at what, kept only as long as it takes to count a visitor
+  // once a day: today's and yesterday's.
+  const yesterday = new Date(now - 24 * 3600 * 1000).toISOString().slice(0, 10);
+  if (only.length === 0) await db(`model_views?day=lt.${yesterday}`, { method: "DELETE" });
   return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone });
 }
 
@@ -786,16 +1033,21 @@ export default async function handler(request, response) {
   }
 
   try {
-    if (request.method === "GET") return await read(request, response);
+    // HEAD as GET, its body left off by the server: what a link checker,
+    // a crawler and a preview ask a page and a picture first.
+    if (request.method === "GET" || request.method === "HEAD") return await read(request, response);
     if (request.method !== "POST") return response.status(405).json({ error: "GET or POST" });
     response.setHeader("Cache-Control", "no-store");
     const op = String(request.query?.op || "");
     if (op === "unpublish") return await unpublish(request, response);
+    if (op === "seen") return await seen(request, response);
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
     if (trouble instanceof AuthError) return response.status(trouble.status).json({ error: trouble.message });
-    if (trouble instanceof Refusal) return response.status(trouble.status).json({ error: trouble.message });
+    if (trouble instanceof Refusal || trouble instanceof Unacceptable) {
+      return response.status(trouble.status).json({ error: trouble.message });
+    }
     console.error("share:", trouble.message);
     return response.status(502).json({ error: "Brickworks could not reach its storage just now. Try again in a minute." });
   }

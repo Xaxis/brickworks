@@ -1677,11 +1677,20 @@ func build_state() -> Dictionary:
 ## The page's address, put right without a reload: the link itself while
 ## its model is being looked at, and the app's own address once a copy is
 ## made, so a reload does not make another. Empty is this page with no query.
+##
+## The link is the model's own page (/m/<id>) since the directory
+## (2026-10-13), so the place in the history is marked as the viewer's: a
+## reload lands on that page, whose script (web/share-page.js) sees the mark
+## and comes straight back here, and someone building from a phone whose tab
+## reloaded is not left on the page.
 func _set_address(path: String) -> void:
 	if not OS.has_feature("web"):
 		return
 	var to: String = JSON.stringify(path) if not path.is_empty() else "location.pathname"
-	JavaScriptBridge.eval("history.replaceState(null, '', %s)" % to, true)
+	var mark: String = "null"
+	if path.begins_with("/m/") and SharedModels.is_id(path.trim_prefix("/m/")):
+		mark = JSON.stringify({"brickworksViewer": path.trim_prefix("/m/")})
+	JavaScriptBridge.eval("history.replaceState(%s, '', %s)" % [mark, to], true)
 
 
 ## Copy a shared model into this person's own models (/app?copy=<id>): once

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test -->
 
 ## Sub-features
 
@@ -223,6 +223,79 @@ plan with Claude as the client.
   one printable line of at most 80 characters (the table's own check too),
   escaped by every page that shows it and put in as text by `gallery.js` and
   the admin page.
+  **The directory** (2026-10-13, `supabase/directory.sql`, applied to the
+  live project that day with `tools/apply_sql.mjs`, dry-run first with
+  `--dry --try=FILE`, which rolls back): columns `description` (1 to 1000
+  characters), `tags` (`text[]`, at most 8 of 2 to 24 characters, lower case,
+  `directory_tags_ok`), `licence` (`cc-by-4.0`, `cc-by-sa-4.0`,
+  `all-rights-reserved`, or null for a model shared before there was a
+  choice — its page says no licence was chosen), `kind`, `steps`,
+  `own_steps`, `technic`, `has_thumb`, and `search`, a stored tsvector
+  (`directory_words`: the name and tags A, the credit B, the description C,
+  the 'simple' configuration); select granted on all but `search`; GIN
+  indexes on `search` and `tags`, and indexes on `kind` and `remixed_from`;
+  tables `model_stats` (views, likes per model) and `model_views` (a model, a
+  day and a 32-hex visitor key, kept two days by the sweep), both closed to
+  the publishable key; functions `count_view`, `directory_card`,
+  `directory_models(query jsonb)` and `directory_model(model_id)`, all
+  security definer and `service_role` only, each saying for itself that a
+  model is listed, published and not barred; a private bucket
+  `shared-thumbs` (WebP only, 64 KB), so `shared-models` was left as it was.
+  No existing row was changed. The POST also takes `description`, `tags` (a
+  list, or words between commas), `kind`, `licence` and `thumb` (base64 WebP),
+  each refused 400 (415/413 for the picture) when it is not one, each kept as
+  it was on a republish that does not say it, and answers them with `steps`,
+  `own_steps` and `technic`, which the server counts from the file
+  (`checkModel`: the main file's steps split by `0 STEP`/`0 ROTSTEP`; its
+  builder's own when the file has steps and either `0 !BRICKWORKS
+  AUTHORED_STEPS` or an `0 Author:` other than Brickworks; Technic or a
+  mechanism when two or more parts make it move or a quarter of it, ten parts
+  at least, is Technic, by `partFacts`). A version of a CC BY-SA model must be
+  CC BY-SA, and one of an all-rights-reserved model cannot be listed: 422,
+  never 403. `GET ?op=list` takes `q` (at most 100 characters; each word of
+  two letters or more a prefix, a plural its singular, nothing but letters
+  and digits reaching the query), `kind`, `size` (`small` under 200 parts,
+  `medium` 200 to 999, `large` 1,000 or more), `instructions=1`,
+  `technic=1`, `tag`, `sort` (`newest`, `views`, `likes`, `remixes`) and
+  `page`, each 400 when it is not one, and answers the question as
+  understood, `more`, the cards (`directory_card`: name, author, parts,
+  kind, tags, licence, steps, `own_steps`, `technic`, `views`, `likes`,
+  `remixes`, `url`, `image`, `thumb` as `/m/<id>.webp?v=<updated>`; never the
+  owner or the description) and the `kinds`, `sizes` and `sorts` it knows.
+  `POST ?op=seen&id=` counts a view of the page: once per visitor per day
+  (an HMAC of the day, the model, the address and the browser, so nobody can
+  be followed from one day or one model to the next), only for a browser's
+  own fetch from this site (`sec-fetch-site: same-origin`) whose user agent
+  is not a robot's, a link preview's, a command line's or a headless
+  browser's; it answers `{counted}` and nothing else. `/m/<id>.webp`
+  (`op=thumb`) is the small picture.
+- `directory` (`api/_directory.js`): what the list, a model's page and
+  publishing share — `KINDS` (the same ids, in the same order, as
+  `src/net/model_kinds.gd`), `LICENCES`, `SIZES`, `SORTS`; the edge's
+  cleaning of a description, tags, a kind and a licence; `listQuery` and
+  `searchWords`; `cardOf`; `partFacts` (`./_part_facts.json` in a deployment,
+  worked out from `assets/generated/catalogue.json` in a checkout by the same
+  `derivePartFacts`; a number LDraw moved, 3648 to 3648b, counts as its new
+  one); `looksLikePerson` and `visitorKey`; and `siteChrome`, the site's
+  header and footer taken from `web/gallery.html` (`./_site.html` in a
+  deployment, a footer of its own with the notice if neither is there), so
+  a page made by a function is a page of the site and changes when the
+  site's do.
+- `model kinds` (`src/net/model_kinds.gd`): `ModelKinds.KINDS` and
+  `guess(text)`, the Share panel's first guess at a kind from the name, the
+  tags and the description, read with the design loop's vocabularies
+  (`Style.GROUP_WORDS`, `Style.TRAITS`) as whole words (`SubjectWords`), the
+  narrow before the broad: a mechanism, space, castles and fantasy, figures,
+  art, vehicles, architecture, town, robots, nature.
+- `part facts` (`tools/web/part_facts.mjs`): writes the Technic parts and
+  the parts that make a model move (gears, worms, differentials, motors,
+  actuators, chain links, pneumatics; never a "~" sub-part or a sticker)
+  from the catalogue; `deploy.sh` puts it beside `/api/share` as
+  `_part_facts.json`, and fails the deploy if the catalogue gives fewer than
+  500 and 50.
+- `list load test` (`tools/web/list_load.mjs`): N requests to the list (200 by
+  default, 10 at a time), each a question a person could ask, timed; passes
+  with no errors and nine in ten within `--most-ms` (2500).
 - `gallery page` (`web/gallery.html`, `web/gallery.js`): `/gallery`, its
   `.html` redirecting to it as every page's does (`deploy.sh`'s page loop; the
   local relay maps `/gallery` itself). The site's header (Gallery is now
@@ -234,7 +307,18 @@ plan with Claude as the client.
   with the LDraw and LEGO® notices and a line on reporting a model. Names and
   credits are put in with `textContent`, links built from an id that matches
   `^[A-Za-z0-9]{10}$` only. `data-gallery` on `<html>` says `ready` or `broken`
-  for a check.
+  for a check (`asking` while a question is out). Since the directory: a
+  search box (asked 350 ms after typing stops, at once on Enter), Filters
+  (Kind and Size, filled from the list's own `kinds` and `sizes`; Has
+  instructions; Technic or mechanism; open on a screen 760 px wide or more,
+  folded on a phone with what they say on the folded line), Sort, a tag as a
+  chip to take off, "N models", and words for nothing matching with a button
+  that clears it all. The question lives in the address
+  (`/gallery?q=castle&kind=space&sort=views`), put back with `replaceState`,
+  so a search can be sent and a reload asks it again; an address asking for
+  what the list does not know gets the whole gallery and its address put
+  right; an answer to an older question is thrown away. A card shows the
+  small picture when there is one, and its views, likes and remixes.
 - `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
   the project's own showcase models, listed by the project's account
   (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
@@ -251,11 +335,28 @@ plan with Claude as the client.
   (films, books, brands): the tower is Wizard's Tower on every public page.
 - `shared model page and card`: `/m/<id>` and `/m/<id>/embed`, rendered by
   `api/share.js` (above) and routed by `deploy.sh` before the catch-all, so the
-  app's isolation headers and CSP are not put on them; `web/share-page.js` is the
-  page's one script (`location.replace` to the viewer, so Back leaves the link).
-  A link taken down answers 410 "This model is no longer shared" and names
-  nothing; one that never was, 404. The card is a picture and a View in 3D that
-  opens the link in a tab.
+  app's isolation headers and CSP are not put on them. Since the directory
+  (2026-10-13) `/m/<id>` is the model's own page, a page of the site (its
+  stylesheet, header and footer, `siteChrome`; `web/directory.css` for what only
+  it has): the picture (a link into the viewer), the name, "N parts, by X",
+  what it was remixed from while that is listed ("a model shared by link"
+  when not), its steps and whether they are its builder's, Technic, when it
+  was listed, its views, likes and remixes, View in 3D and Open in Brickworks;
+  what its owner wrote (escaped, its lines kept), its tags (each a link to
+  `/gallery?tag=`), its kind (in the crumbs, a link to `/gallery?kind=`), its
+  licence in words with whom to credit and the licence's own page, and its
+  remix tree (the line it came from, eight back at most, and the listed
+  models made from it as small cards, with how many more are shared by link
+  only). A canonical link and the description in its card. Its policy lets it
+  load the site's stylesheet and talk to its own origin and nothing else.
+  `web/share-page.js` is its one script: it counts the view once a day in
+  this browser (`localStorage` `brickworks.seen`), and when a reload finds the
+  viewer's mark in the history (`main._set_address` puts
+  `{brickworksViewer: id}` there with `/m/<id>`) it `location.replace`s back
+  to the viewer, so a phone whose tab reloaded mid-build is not left on the
+  page. A link taken down answers 410 "This model is no longer shared" and
+  names nothing; one that never was, 404 (both pages of the site too). The
+  card is a picture and a View in 3D that opens the link in a tab.
 - `shared model viewer` (`src/ui/share_view.gd`, `main._enter_view`,
   `_view_shared`; `src/net/shared_models.gd`): `/app?view=<id>` — the app's page
   itself since 2026-10-12, query and all, so the address bar keeps it (`?copy=`
@@ -720,6 +821,51 @@ publishable key, `listed`, `listed_at` and `remixed_from` readable, `barred`
 not, the listing log closed and `may_list` not callable. 120 checks with
 `--master`, about a minute locally.
 
+The directory's part of it (since 2026-10-13, one more throwaway account):
+the gallery's kinds the app's, in its order (read from `model_kinds.gd`); a
+description with control characters out and blank lines one, tags in lower
+case once each, the too short left out, a kind and a licence; 2 steps,
+Brickworks's own, not Technic, counted from the file; refusals for a
+description over 1000, nine tags, tags that are not words, a kind or a
+licence that is not one (400), a small picture that is not a WebP (415) or
+over 64 KB (413); a file by another tool with steps is its builder's own; three
+gears (one by its old number) and a brick are Technic; a card with kind,
+tags, licence, steps and counts and no owner or description, its small
+picture at a versioned address and served as published; fourteen questions
+(a word of the description, a word's start in capitals, two words of the
+name, a tag's plural, the credit, a tag, two kinds, two sizes, instructions,
+Technic, two filters at once, a word nothing has) each finding what it should
+and nothing it should not; six malformed questions 400, and punctuation and
+markup asking nothing of the query's syntax; a view counted for a person's
+first look and another person's, not for the same person again, a crawler,
+a headless browser, a link preview, curl, another site's page or no Fetch
+Metadata, an unknown link or a bad id (400); most viewed and most remixed in
+order; a CC BY version of a CC BY-SA model 422 and a CC BY-SA one listed; a
+listed version of an all-rights-reserved model 422, by link allowed; the
+page with the description escaped and its lines, tags and kind as links,
+the licence with whom to credit, 2 steps and its counts, the remix as a
+card, the site's stylesheet, header and footer with the notice, a canonical
+link and its description in the card, its policy; the remix's page naming
+it and its line; republished saying nothing, all of it kept; unlisted, the
+remix's page saying "a model shared by link" and the viewer's JSON naming
+nothing; republished without a small picture, gone from the page and its
+bucket, and that bucket not public; emptied, emptied, the licence kept; the
+owner's list with what each says; with the publishable key, the new columns
+readable, `search` not, `model_stats` and `model_views` closed, and the
+three functions not callable. 201 checks with `--master`, about two minutes
+locally (2026-10-13).
+
+The list, asked hard (reads only):
+
+```sh
+node tools/web/list_load.mjs --url=http://127.0.0.1:8790 --n=200
+BW_BYPASS=$VERCEL_BYPASS node tools/web/list_load.mjs --url=<deployment> --n=200
+```
+
+Proves it when it ends "list_load ok: no errors, 90% within N ms": 200
+answers, all 200 with a list, and the slowest questions named. Locally
+against the live database, 2026-10-13: median 224 ms, 90% within 316 ms.
+
 Proves it when it ends "a model can be shared by link, and nothing else can be
 done with one" (79 checks): publish refused signed out and with a made-up
 session; published with an id and a link; the part count 9 for a sub-model
@@ -794,6 +940,20 @@ its page saying "Remixed from Share Flow Car" with a link (`9b_remix_shared.png`
 the owner's panel opened again with the box ticked as the link is, unticked
 and updated, the card gone from `/gallery` (`9c_gallery_unlisted.png`) and
 the link still working; no script error or refused request on any page.
+The directory in it (since 2026-10-13): the tags then the description typed
+in the panel, each read back before the next (keys sent to a canvas drawn in
+software arrive late, and the second box's once went nowhere), the kind
+guessed from the name (vehicle) and CC BY unless changed; the page with the
+description, the tags and the kind as links and CC BY 4.0; the card found on
+`/gallery?q=<a word of the description>` and `/gallery?tag=...&sort=views`
+(`1c_gallery_search.png`, `1d_gallery_tag.png`); the link opened by a visitor
+whose browser says it is a person's is the model's page with View in 3D
+(`2a_model_page.png`), its view counted once, and View in 3D pressed opens
+the viewer; the owner's page counting the copier's remix, shared by link and
+so not named. With a bypass it sends `x-vercel-skip-toolbar`, since Vercel
+puts its preview toolbar in a page for a browser that is not headless and
+the site's policy refuses it. 49 checks on the preview of 2026-10-13, about
+six minutes at a load of 10.
 
 The gallery page under the site's security policy, locally with a made-up
 list of 26 (one with no picture, one whose name is markup) or against a
@@ -808,9 +968,21 @@ Proves it when the gallery lines say 24 cards then 26 after Show more
 (locally), the markup name shown as text and no `img` but the pictures', a
 model with no picture given none, "86 parts, by Builder 2"; and at 390 and
 1280 px no console error, no sideways scroll, no broken picture
-(`gallery-phone.png`, `gallery-laptop.png`). `site_check.mjs` has `/gallery`
-among its pages (200, title, description, canonical, card), `/gallery.html`
-308 to it, its links resolving and its screenshots.
+(`gallery-phone.png`, `gallery-laptop.png`). Locally, since the directory:
+"model 2" typed in the search box asks `q=model+2` and shows its 8, Space
+picked as well shows 5, a search that finds nothing says so with Clear,
+Clear brings back the 24 and `/gallery`, an address asking for a kind there
+is not gets the whole gallery and its address put right (its one refused
+answer not counted as an error), and `?kind=castle` picks Castles and shows
+its 13. `site_check.mjs` has `/gallery` among its pages (200, title,
+description, canonical, card), `/gallery.html` 308 to it, its links resolving
+and its screenshots; and the newest listed model's page, `/m/<id>`, as one of
+the site's pages (title, description, a canonical at the deployment's own
+address, its card's picture there, every link and file it loads answering —
+asked with HEAD, which the function answers as GET — no console error and no
+sideways scroll at 390 and 1280, `model-phone.png`, `model-laptop.png`). It
+found the model page's two columns not folding on a phone (440 px in 390) on
+the first preview of 2026-10-13.
 
 Seeding (once; again only to change the seeds — it updates them in place):
 

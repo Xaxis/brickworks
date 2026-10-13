@@ -582,6 +582,25 @@ by publishing at a new link; the viewer's bar says "remixed from" too, since a
 person never sees the share page; and six of the project's own models were
 listed from a project account so it is not empty.
 
+**The directory, 2026-10-13** (`supabase/directory.sql`, `api/_directory.js`;
+the recipes are under "The directory" in
+`.claude/skills/verify/features/web.md`). The owner asked for "a robust
+directory of submitted projects that users chose to share". `/gallery` now
+searches names, credits, tags and descriptions, filters by kind (guessed in
+the Share panel from the name with the subject vocabulary, and changeable),
+size, the builder's own instructions and Technic, and sorts by newest, most
+viewed, most liked and most remixed, with the question in the address. Each
+model's `/m/<id>` is now a page of its own rather than a hop to the viewer:
+its description and tags, a licence (CC BY 4.0 unless its owner chooses CC
+BY-SA 4.0 or all rights reserved; a version of a CC BY-SA model must keep it,
+and one of an all-rights-reserved model cannot be listed), its views, likes
+and remixes, and its remix tree. Steps, own steps and Technic are counted from
+the file by the server, like the part count. A view counts once per visitor
+per day, never for a robot, and nothing writes per page request. Cards show a
+small WebP the app makes beside the big picture, so a page of them is light on
+a phone. A model this one came from is named only while it is listed, so a
+listed remix no longer makes public a link its owner only sent to some people.
+
 **Spec.**
 - `supabase/shared_models.sql` gets `listed boolean default false`, granted
   to the visitor's key.

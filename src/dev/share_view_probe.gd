@@ -616,6 +616,52 @@ func _the_panel(text: String) -> void:
 		"the panel shows the link and the embed code")
 	_save("8_published.png")
 
+	print("\nwhat its page and the gallery say about it")
+	var small := Image.new()
+	var webp: PackedByteArray = Marshalls.base64_to_raw(str(sent.get("thumb", "")))
+	var small_read: int = small.load_webp_from_buffer(webp) if not webp.is_empty() else ERR_FILE_EOF
+	_ok(small_read == OK and small.get_size() == SharePanel.THUMB and webp.size() <= SharePanel.MOST_THUMB,
+		"and a small WebP for the gallery's cards: %s, %d KB" % [small.get_size(), webp.size() / 1024])
+	_ok(str(sent.get("description", "?")) == "" and str(sent.get("tags", "?")) == ""
+		and str(sent.get("kind", "")) == "town" and str(sent.get("licence", "")) == "cc-by-4.0",
+		"said the first time: no words, no tags, the kind its name says (a house: %s), CC BY (%s)"
+		% [sent.get("kind"), sent.get("licence")])
+	for named: String in ["share_about", "share_tags", "share_kind", "share_licence"]:
+		_ok(panel.controls_by_name().has(named), "the panel has %s" % named)
+	panel._about.text = "A small house.\nTwo windows and a door."
+	panel._tags.text = "house, town"
+	panel._tags.text_changed.emit(panel._tags.text)
+	panel._licence.select(1)
+	panel._licence.item_selected.emit(1)
+	await panel.publish()
+	var words: Dictionary = fake.published[-1]
+	_ok(str(words.get("description", "")) == "A small house.\nTwo windows and a door."
+		and str(words.get("tags", "")) == "house, town" and str(words.get("licence", "")) == "cc-by-sa-4.0"
+		and str(words.get("kind", "")) == "town",
+		"what is typed is sent: the description with its lines, the tags, the licence chosen (%s)" % words.get("licence"))
+	_ok(panel._licence_says.text.contains("shared the same way"), "...and the panel says what that licence allows")
+	panel._kind.select(ModelKinds.ids().find("art") + 1)
+	panel._kind.item_selected.emit(panel._kind.selected)
+	panel._name.text = "Probe Castle"
+	panel._name.text_changed.emit(panel._name.text)
+	_ok(panel.page_state()["kind"] == "art", "a kind chosen stays chosen when the name changes (%s)" % panel.page_state()["kind"])
+	var big := "x".repeat(1200)
+	panel._about.text = big
+	panel._about.text_changed.emit()
+	_ok(panel._about.text.length() == SharePanel.MOST_ABOUT, "the description is kept to %d characters as it is typed" % SharePanel.MOST_ABOUT)
+	panel._about.text = "A small house.\nTwo windows and a door."
+	panel._name.text = "Probe House"
+	panel.visible = false
+	panel.open()
+	_ok(panel._about.text == "A small house.\nTwo windows and a door." and panel._tags.text == "house, town",
+		"closed and opened again, what was said is still there")
+	for pair: Array in [["An orrery with nine planets", "mechanism"], ["A barn owl", "nature"],
+			["Wizard's Tower", "castle"], ["A sports car, and its driver", "vehicle"],
+			["A three-core heavy-lift rocket", "space"], ["A small modular corner shop", "town"],
+			["A minifigure of a chef", "figure"], ["A mosaic of a sunflower", "art"], ["", ""]]:
+		_ok(ModelKinds.guess(str(pair[0])) == str(pair[1]),
+			"the kind of \"%s\": %s (%s)" % [pair[0], pair[1], ModelKinds.guess(str(pair[0]))])
+
 	var kept: String = ModelStore.with_share(store.to_text("Probe House"), store.share_id)
 	_ok(ModelStore.share_in(kept) == "NewL1nk001" and LdrModel.parse(kept, "x").main.title == "Probe House",
 		"the working model carries the link on a line LDraw ignores, and keeps its title")

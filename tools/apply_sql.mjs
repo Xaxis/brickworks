@@ -5,6 +5,9 @@
 //   set -a; . ./.env; set +a
 //   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/collection.sql
 //   ... --look                                  read only: what exists, change nothing
+//   ... --dry [--try=FILE]                      the file run in a transaction that is
+//                                               rolled back: what it would make, and FILE's
+//                                               queries' rows, run after it inside it
 //
 // The file runs in one transaction, so a statement that fails leaves the
 // database as it was. When the project has Supabase's migration table
@@ -24,8 +27,10 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 
-const file = process.argv.find((a) => a.endsWith(".sql"));
+const file = process.argv.find((a) => !a.startsWith("--") && a.endsWith(".sql"));
 const lookOnly = process.argv.includes("--look");
+const dry = process.argv.includes("--dry");
+const trial = (process.argv.find((a) => a.startsWith("--try=")) || "").slice(6);
 const table = (process.argv.find((a) => a.startsWith("--table=")) || "--table=collections").slice(8);
 if (!file && !lookOnly) {
   console.error("apply_sql: name a supabase/*.sql file, or --look");
@@ -49,31 +54,8 @@ const client = new pg.Client({
 await client.connect();
 const rows = async (sql, args = []) => (await client.query(sql, args)).rows;
 
-try {
-  if (!lookOnly) {
-    const text = readFileSync(file, "utf8");
-    const tracked = (await rows("select to_regclass('supabase_migrations.schema_migrations') as t"))[0].t;
-    await client.query("begin");
-    try {
-      await client.query(text);
-      if (tracked) {
-        const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-        await client.query(
-          "insert into supabase_migrations.schema_migrations (version, name, statements) values ($1, $2, $3)",
-          [stamp, basename(file, ".sql"), [text]],
-        );
-        console.log(`recorded as migration ${stamp} ${basename(file, ".sql")}`);
-      } else {
-        console.log("no supabase_migrations.schema_migrations here: applied, not recorded there");
-      }
-      await client.query("commit");
-      console.log(`applied ${file}`);
-    } catch (error) {
-      await client.query("rollback");
-      throw error;
-    }
-  }
-
+/// What the table is now, read back from the catalogue.
+async function look() {
   const columns = await rows(
     `select column_name, data_type, is_nullable, column_default
        from information_schema.columns
@@ -108,6 +90,54 @@ try {
     const count = await rows(`select count(*)::int as n from public.${table.replace(/[^a-z_]/g, "")}`);
     console.log(`  rows: ${count[0].n}`);
   }
+}
+
+try {
+  if (dry) {
+    // Everything in one transaction, and none of it kept: the file, the
+    // trial queries after it, and the look at what the table would be.
+    await client.query("begin");
+    try {
+      await client.query(readFileSync(file, "utf8"));
+      console.log(`dry run: ${file} ran`);
+      if (trial) {
+        for (const statement of readFileSync(trial, "utf8").split(/;\s*\n/).map((s) => s.trim()).filter(Boolean)) {
+          const said = await client.query(statement);
+          const first = statement.split("\n").find((line) => line.trim() && !line.trim().startsWith("--")) || statement;
+          console.log(`try: ${first.trim().slice(0, 100)}`);
+          for (const row of said.rows || []) console.log(`  ${JSON.stringify(row)}`);
+        }
+      }
+      await look();
+    } finally {
+      await client.query("rollback");
+      console.log("dry run: rolled back, nothing kept");
+    }
+  } else if (!lookOnly) {
+    const text = readFileSync(file, "utf8");
+    const tracked = (await rows("select to_regclass('supabase_migrations.schema_migrations') as t"))[0].t;
+    await client.query("begin");
+    try {
+      await client.query(text);
+      if (tracked) {
+        const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+        await client.query(
+          "insert into supabase_migrations.schema_migrations (version, name, statements) values ($1, $2, $3)",
+          [stamp, basename(file, ".sql"), [text]],
+        );
+        console.log(`recorded as migration ${stamp} ${basename(file, ".sql")}`);
+      } else {
+        console.log("no supabase_migrations.schema_migrations here: applied, not recorded there");
+      }
+      await client.query("commit");
+      console.log(`applied ${file}`);
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  }
+
+  if (!dry) await look();
 } finally {
   await client.end();
 }

@@ -8,7 +8,8 @@
 //
 //   the pages answer 200 at their bare names (/, /gallery, /download, /changelog,
 //     /faq, /privacy, /admin), each with its own title, description and canonical link and
-//     an Open Graph card whose picture is really there;
+//     an Open Graph card whose picture is really there; and so does the page
+//     of the gallery's newest model, /m/<id>, made by api/share.js;
 //   each old .html address answers 308 to its bare one, query and all, and
 //     /authorize.html to /oauth/authorize; /download/ and /app/ lose the slash;
 //   /app is the app itself — 200, no redirect — naming its build under
@@ -80,6 +81,21 @@ const PAGES = [
   { path: "/privacy", canonical: `${SITE}/privacy` },
   { path: "/admin", private: true },
 ];
+// The newest model in the gallery, whose page is the site's too.
+const newest = await get("/api/share?op=list&page=1");
+let modelId = "";
+try {
+  modelId = (JSON.parse(newest.body).models || [])[0]?.id || "";
+} catch {
+  modelId = "";
+}
+if (newest.status !== 200) fail(`/api/share?op=list answered ${newest.status}`);
+if (/^[A-Za-z0-9]{10}$/.test(modelId)) {
+  // Its canonical address is the deployment's own: a preview's on a preview.
+  PAGES.push({ path: `/m/${modelId}`, canonical: `${base}/m/${modelId}`, model: true });
+} else {
+  console.log("  note  nothing is listed, so no model's page is checked");
+}
 const pageHtml = {};
 console.log("pages");
 for (const page of PAGES) {
@@ -98,7 +114,9 @@ for (const page of PAGES) {
     continue;
   }
   const canonical = (r.body.match(/<link[^>]*rel="canonical"[^>]*href="([^"]*)"/i) || [])[1];
-  if (canonical !== page.canonical) fail(`${page.path} canonical is ${canonical}, not ${page.canonical}`);
+  if (canonical !== page.canonical && !(page.model && canonical === `${SITE}${page.path}`)) {
+    fail(`${page.path} canonical is ${canonical}, not ${page.canonical}`);
+  }
   const description = meta(r.body, "name", "description");
   if (description.length < 50) fail(`${page.path} has no real description`);
   const card = {};
@@ -109,10 +127,13 @@ for (const page of PAGES) {
   for (const name of ["twitter:card", "twitter:image"]) {
     if (!meta(r.body, "name", name)) fail(`${page.path} has no ${name}`);
   }
-  if (card["og:url"] && card["og:url"] !== page.canonical) fail(`${page.path} og:url ${card["og:url"]} is not its canonical`);
+  if (card["og:url"] && card["og:url"] !== canonical) fail(`${page.path} og:url ${card["og:url"]} is not its canonical`);
   if (card["og:image"]) {
-    if (!card["og:image"].startsWith(`${SITE}/`)) fail(`${page.path} og:image is not absolute: ${card["og:image"]}`);
-    const picture = await get(card["og:image"].replace(SITE, ""));
+    const home = page.model ? new URL(page.canonical).origin : SITE;
+    if (!card["og:image"].startsWith(`${home}/`) && !card["og:image"].startsWith(`${SITE}/`)) {
+      fail(`${page.path} og:image is not absolute: ${card["og:image"]}`);
+    }
+    const picture = await get(card["og:image"].replace(SITE, "").replace(base, ""));
     const kind = picture.headers.get("content-type") || "";
     if (picture.status !== 200 || !kind.startsWith("image/")) fail(`${page.path} og:image answers ${picture.status} ${kind}`);
   }
@@ -291,7 +312,7 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
 console.log("in a browser");
 const browser = await launch({ signedOut: true });
 const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"], ["/changelog", "changelog"],
-  ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/no-such-page", "404"]];
+  ["/faq", "faq"], ["/privacy", "privacy"], ["/admin", "admin"], ["/no-such-page", "404"], ...(modelId ? [[`/m/${modelId}`, "model"]] : [])];
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });
