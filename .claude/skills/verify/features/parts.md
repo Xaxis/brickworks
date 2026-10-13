@@ -284,7 +284,12 @@ nothing was fetched. Whether the waiting looks right is for a person to see.
   a dozen of them kept the castle drawing for 23 s with the pointer still.
   Tiles out of sight are drawn, and handed their pictures, only in a frame
   drawn anyway (`PartThumbnails._next_job`); tiles in sight as before.
-  `idle_probe -- --model=res://models/castle.ldr` is the check.
+  `idle_probe -- --model=res://models/castle.ldr` is the check. And the
+  pictures in sight are drawn eight to a frame, each in a stage of its own
+  (`PartThumbnails.STAGES`, a viewport, world, camera and holder each): one
+  a frame, a screenful took 25 to 45 s to fill in a browser drawing in
+  software (2026-10-13). `placeholder_probe` has the 16 tiles in sight drawn
+  in 4 frames, before any of the next screenful.
 
 - **A grid rebuilt with the same number of cells is a different grid.** A new
   colour rebuilds every cell in the same places; `ThumbTile.Sight` compares the

@@ -549,6 +549,58 @@ func model_bounds() -> AABB:
 	return result
 
 
+## How these bricks (id -> anything) are drawn, for the selection's outline
+## (SelectionOutline) to draw them again: [the MultiMeshes of every batch
+## all of whose bricks are among them, the world's own, so nothing is copied
+## and they follow the world; surface mesh -> the places of the rest, a
+## brick at a time; round all of them; how many triangles all that is].
+## Hidden bricks are left out.
+##
+## All of Orthanc selected was 9,429 bricks written one at a time into
+## MultiMeshes of the outline's own, again at every rebuild of the world.
+func drawn_as(bricks: Dictionary) -> Array:
+	var taken: Dictionary = {}  ## batch key -> the transforms of its bricks among them
+	var bounds := AABB()
+	var any: bool = false
+	for brick_id: int in bricks:
+		var brick: Brick = _bricks.get(brick_id)
+		if brick == null or brick.hidden or _ghosts.has(brick_id):
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		if info != null:
+			var box: AABB = brick.transform * info.bounds
+			bounds = bounds.merge(box) if any else box
+			any = true
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			var places: Array = taken.get(key, [])
+			if places.is_empty():
+				taken[key] = places
+			places.append(brick.transform)
+	var whole: Array[MultiMesh] = []
+	var loose: Dictionary = {}
+	var triangles: int = 0
+	for key: String in taken:
+		var batch: Batch = _batches.get(key)
+		if batch == null:
+			continue
+		var places: Array = taken[key]
+		triangles += batch.triangles * places.size()
+		if places.size() == batch.brick_ids.size():
+			whole.append(batch.multimesh)
+			# What a cut goes through, and what x-ray sees through, are
+			# drawn by MultiMeshes of their own.
+			for twin: MultiMeshInstance3D in [batch.through, batch.xray]:
+				if twin != null:
+					whole.append(twin.multimesh)
+			continue
+		var mesh: Mesh = batch.multimesh.mesh
+		if loose.has(mesh):
+			(loose[mesh] as Array).append_array(places)
+		else:
+			loose[mesh] = places
+	return [whole, loose, bounds, triangles]
+
+
 # -- batching ------------------------------------------------------------
 
 

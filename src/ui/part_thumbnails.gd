@@ -9,9 +9,11 @@
 ## into a small [SubViewport]. Only what is on screen is ever drawn —
 ## thirty or so at a time — and the results are cached by part and colour.
 ##
-## The work is spread across frames deliberately. Rendering thirty parts
-## in one frame drops it visibly; rendering two per frame fills a scrolled
-## page in a quarter of a second and never stutters.
+## The work is spread across frames deliberately, a few previews a frame,
+## each in a stage of its own (see [constant STAGES]): a preview is drawn in
+## a frame of the whole window, model and all, and drawn one a frame a
+## screenful of the bin took 25 to 45 s to fill in a browser drawing in
+## software (2026-10-13).
 ##
 ## What is drawn, and in what order, is what is in sight. A grid tells
 ## [method watch] which of its [ThumbTile]s are on screen, nearest the eye
@@ -32,11 +34,12 @@ class_name PartThumbnails
 extends Node
 
 const SIZE := 96
-## How many previews to render per frame. Two is under a millisecond and
-## keeps a fast scroll filling in without the frame time moving.
-## Nothing is gained by starting more than one, and something is lost:
-## see _process. Kept as a constant so the reason stays written down.
-const PER_FRAME := 1
+## How many previews can be drawn in one frame: one per stage, each its own
+## viewport, camera and holder. One shared viewport drew one a frame, since
+## two started at once both wrote to it and both read back the second's
+## picture: half the bin showed the wrong part. A preview is a 96-pixel
+## square; the frame it is drawn in is the whole window.
+const STAGES := 8
 ## Beyond this many cached textures the least recently used are dropped.
 ## A page holds about 40; this is enough for a good deal of scrollback.
 const CACHE_LIMIT := 600
@@ -52,15 +55,25 @@ const RETRY_MSEC := 30000
 ## a second sent its last request forty seconds after its first.
 const ASKS_PER_FRAME := 32
 
+## A viewport a preview is drawn in, with its own world, lights, camera and
+## holder, and whether a preview is being drawn in it.
+class Stage extends RefCounted:
+	var viewport: SubViewport
+	var camera: Camera3D
+	var holder: MeshInstance3D
+	var material: ShaderMaterial
+	var environment: Environment
+	var key_light: DirectionalLight3D
+	var fill_light: DirectionalLight3D
+	## The surfaces past the first, drawn only for a preview that asks for
+	## its print. One holder each, in its own fixed colour.
+	var print_holders: Array[MeshInstance3D] = []
+	var busy: bool = false
+
+
 var library: PartLibrary
 
-var _viewport: SubViewport
-var _camera: Camera3D
-var _holder: MeshInstance3D
-var _material: ShaderMaterial
-var _environment: Environment
-var _key_light: DirectionalLight3D
-var _fill_light: DirectionalLight3D
+var _stages: Array[Stage] = []
 
 var _cache: Dictionary = {}        ## String key -> ImageTexture
 var _order: Array[String] = []     ## least recently used first
@@ -72,10 +85,9 @@ var _queued: Dictionary = {}       ## key -> true, so nothing queues twice
 var _awaiting: Dictionary = {}
 ## Parts that could not be drawn -> when that was found, in msec.
 var _failed: Dictionary = {}
-## True while a preview is waiting on a draw. The viewport, its camera
-## and its one mesh holder are shared, so a second job started now would
-## overwrite what the first is about to read.
-var _drawing: bool = false
+## The previews being drawn now, by key, so that a tile is not given to two
+## stages at once.
+var _drawing: Dictionary = {}
 ## Who has tiles in sight, the one that last moved first: [owner's
 ## instance id, Array[ThumbTile] in the order to draw them].
 var _watching: Array[Array] = []
@@ -100,11 +112,17 @@ func _ready() -> void:
 		library.fetched.connect(_on_geometry_arrived)
 		library.fetch_failed.connect(_on_fetch_failed)
 
-	_viewport = SubViewport.new()
-	_viewport.size = Vector2i(SIZE, SIZE)
+	for _n: int in STAGES:
+		_stages.append(_stage())
+
+
+func _stage() -> Stage:
+	var stage := Stage.new()
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(SIZE, SIZE)
 	# Drawn on demand, not every frame: most frames render nothing.
-	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	_viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	viewport.transparent_bg = true
 	# The previews want their own lights, not the model's, so the viewport
 	# gets its own world. Assigning one is enough on its own — also
 	# setting own_world_3d makes Godot create a second world and then
@@ -118,38 +136,43 @@ func _ready() -> void:
 	environment.ambient_light_color = Color(0.86, 0.88, 0.94)
 	environment.ambient_light_energy = 1.35
 	world.environment = environment
-	_environment = environment
-	_viewport.world_3d = world
+	stage.environment = environment
+	viewport.world_3d = world
 
-	_viewport.msaa_3d = Viewport.MSAA_4X
-	add_child(_viewport)
+	viewport.msaa_3d = Viewport.MSAA_4X
+	add_child(viewport)
+	stage.viewport = viewport
 
-	_camera = Camera3D.new()
-	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.near = 0.5
-	_camera.far = 8000.0
-	_viewport.add_child(_camera)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.near = 0.5
+	camera.far = 8000.0
+	viewport.add_child(camera)
+	stage.camera = camera
 
 	var key_light := DirectionalLight3D.new()
 	key_light.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
 	key_light.light_energy = 2.0
-	_viewport.add_child(key_light)
-	_key_light = key_light
+	viewport.add_child(key_light)
+	stage.key_light = key_light
 
 	var fill_light := DirectionalLight3D.new()
 	fill_light.rotation_degrees = Vector3(-14.0, 132.0, 0.0)
 	fill_light.light_energy = 0.7
 	fill_light.light_color = Color(0.86, 0.9, 1.0)
-	_viewport.add_child(fill_light)
-	_fill_light = fill_light
+	viewport.add_child(fill_light)
+	stage.fill_light = fill_light
 
-	_material = ShaderMaterial.new()
-	_material.shader = BrickWorld.SHADERS["opaque"]
-	_material.set_shader_parameter("linearise", BrickWorld._linearise_colors())
+	var material := ShaderMaterial.new()
+	material.shader = BrickWorld.SHADERS["opaque"]
+	material.set_shader_parameter("linearise", BrickWorld._linearise_colors())
+	stage.material = material
 
-	_holder = MeshInstance3D.new()
-	_holder.material_override = _material
-	_viewport.add_child(_holder)
+	var holder := MeshInstance3D.new()
+	holder.material_override = material
+	viewport.add_child(holder)
+	stage.holder = holder
+	return stage
 
 
 ## Less light on a light part.
@@ -159,28 +182,23 @@ func _ready() -> void:
 ## sides was a flat silhouette with no studs, no top and no sides. Turned
 ## down as the colour gets lighter, so the faces part again; a dark part
 ## keeps all of it.
-func _light_for(colour: Color) -> void:
+static func _light_for(stage: Stage, colour: Color) -> void:
 	var tame: float = 1.0 - 0.42 * clampf((colour.get_luminance() - 0.5) / 0.45, 0.0, 1.0)
-	_environment.ambient_light_energy = 1.35 * tame
-	_key_light.light_energy = 2.0 * tame
-	_fill_light.light_energy = 0.7 * tame
+	stage.environment.ambient_light_energy = 1.35 * tame
+	stage.key_light.light_energy = 2.0 * tame
+	stage.fill_light.light_energy = 0.7 * tame
 
 
-## The surfaces past the first, drawn only for a preview that asks for
-## its print. One holder each, in its own fixed colour.
-var _print_holders: Array[MeshInstance3D] = []
-
-
-func _print_holder(n: int) -> MeshInstance3D:
-	while _print_holders.size() <= n:
+static func _print_holder(stage: Stage, n: int) -> MeshInstance3D:
+	while stage.print_holders.size() <= n:
 		var holder := MeshInstance3D.new()
 		var material := ShaderMaterial.new()
 		material.shader = BrickWorld.SHADERS["opaque"]
 		material.set_shader_parameter("linearise", BrickWorld._linearise_colors())
 		holder.material_override = material
-		_viewport.add_child(holder)
-		_print_holders.append(holder)
-	return _print_holders[n]
+		stage.viewport.add_child(holder)
+		stage.print_holders.append(holder)
+	return stage.print_holders[n]
 
 
 func _process(_delta: float) -> void:
@@ -189,27 +207,40 @@ func _process(_delta: float) -> void:
 	# something else has changed what is on the screen. Asked after every
 	# other node's _process (see _ready), which is what has made the changes.
 	var drawn_anyway: bool = not OS.low_processor_usage_mode or RenderingServer.has_changed()
-	# One draw at a time, and only once the last one has finished.
+	# A draw in each stage that is free.
 	#
-	# _render is a coroutine: it sets the holder's mesh, the tint and
-	# the camera, then waits for a draw. Starting two of them meant both
-	# wrote to the one shared viewport and both woke on the same draw,
-	# so they read back the same image — the second job's — and the
-	# first cached it under its own key. Half the bin showed the wrong
-	# part, and which half changed with the scroll.
+	# _render is a coroutine: it sets its stage's holder, tint and camera,
+	# then waits for a draw. Two in one stage both wrote to its viewport
+	# and both woke on the same draw, so they read back the same image —
+	# the second job's — and the first cached it under its own key: half
+	# the bin showed the wrong part, and which half changed with the
+	# scroll. So a stage takes one job at a time.
 	#
 	# A job that only asks for geometry starts no draw, so the next is
-	# taken in the same frame.
+	# taken in the same frame. And a frame that draws tiles in sight draws
+	# no tile out of sight: those are drawn after, nearest first.
+	var in_sight: bool = false
 	for _n: int in ASKS_PER_FRAME:
-		if _drawing:
+		var stage: Stage = _free_stage()
+		if stage == null:
 			break
 		var job: Dictionary = _next_job(drawn_anyway)
 		if job.is_empty():
 			break
-		_render(job)
+		if in_sight and not bool(job.get("in_sight", true)):
+			break
+		in_sight = in_sight or bool(job.get("in_sight", true))
+		_render(job, stage)
 	if _reorder:
 		_reorder = false
 		_prefer_in_sight()
+
+
+func _free_stage() -> Stage:
+	for stage: Stage in _stages:
+		if not stage.busy:
+			return stage
+	return null
 
 
 ## The tiles a view has in sight, in the order it wants them drawn.
@@ -252,6 +283,8 @@ func _next_job(drawn_anyway: bool = true) -> Dictionary:
 					put_off = true
 					continue
 				var key: String = tile.key()
+				if _drawing.has(key):
+					continue
 				if _cache.has(key):
 					_touch(key)
 					# Faded in where it can be seen; out of sight a fade is
@@ -266,12 +299,12 @@ func _next_job(drawn_anyway: bool = true) -> Dictionary:
 						continue
 					_failed.erase(tile.part_id)
 				return {"part": tile.part_id, "color": tile.color_code, "key": key,
-					"printed": tile.printed}
+					"printed": tile.printed, "in_sight": tile.in_sight}
 		# Looked at again next frame while a tile out of sight waits.
 		_look = put_off
 	while not _queue.is_empty():
 		var job: Dictionary = _queue.pop_front()
-		if not _cache.has(job["key"]):
+		if not _cache.has(job["key"]) and not _drawing.has(job["key"]):
 			return job
 		_queued.erase(job["key"])
 	return {}
@@ -373,10 +406,10 @@ func _touch(key: String) -> void:
 	_order.append(key)
 
 
-func _render(job: Dictionary) -> void:
+func _render(job: Dictionary, stage: Stage) -> void:
 	var key: String = job["key"]
 	_queued.erase(key)
-	if library == null or _cache.has(key):
+	if library == null or _cache.has(key) or _drawing.has(key):
 		return
 
 	var part: Lbm.PartMesh = library.mesh_for(job["part"])
@@ -407,23 +440,23 @@ func _render(job: Dictionary) -> void:
 	# surface at all, every one of them a sticker, and for those surface
 	# 0 carries its own moulded colour. Tinting it anyway repainted a
 	# Denmark flag in whatever swatch happened to be selected.
-	_holder.mesh = part.surfaces[0]
+	stage.holder.mesh = part.surfaces[0]
 
 	var moulded: int = part.surface_colors[0]
 	var shown: int = int(job["color"]) if moulded == Lbm.COLOR_INHERIT else moulded
 	var color: PartLibrary.BrickColor = library.color(shown)
 	# The shader takes the colour through COLOR, which a lone MeshInstance
 	# has no instance data for — so it rides in as a material tint here.
-	_material.set_shader_parameter("tint_override", color.shown)
-	_material.set_shader_parameter("finish_override", color.instance_custom)
-	_light_for(color.shown)
+	stage.material.set_shader_parameter("tint_override", color.shown)
+	stage.material.set_shader_parameter("finish_override", color.instance_custom)
+	_light_for(stage, color.shown)
 
 	var printed: bool = bool(job.get("printed", false))
-	for n: int in _print_holders.size():
-		_print_holders[n].visible = false
+	for holder: MeshInstance3D in stage.print_holders:
+		holder.visible = false
 	if printed:
 		for n: int in range(1, part.surfaces.size()):
-			var holder: MeshInstance3D = _print_holder(n - 1)
+			var holder: MeshInstance3D = _print_holder(stage, n - 1)
 			holder.mesh = part.surfaces[n]
 			var own: int = part.surface_colors[n]
 			var ink: PartLibrary.BrickColor = library.color(
@@ -440,10 +473,11 @@ func _render(job: Dictionary) -> void:
 			material.set_shader_parameter("finish_override", ink.instance_custom)
 			holder.visible = true
 
-	_frame(part.bounds, printed)
+	_frame(stage.camera, part.bounds, printed)
 
-	_drawing = true
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	stage.busy = true
+	_drawing[key] = true
+	stage.viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
 	# Read back once the card has drawn it (GpuFence, as ModelShot reads):
 	# sooner, the read waits for it on the page's one thread, and a browser
@@ -453,8 +487,9 @@ func _render(job: Dictionary) -> void:
 	# drew the whole window again for it.
 	await GpuFence.finished()
 
-	var image: Image = _viewport.get_texture().get_image()
-	_drawing = false
+	var image: Image = stage.viewport.get_texture().get_image()
+	stage.busy = false
+	_drawing.erase(key)
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
 
 	_cache[key] = texture
@@ -475,14 +510,14 @@ func _render(job: Dictionary) -> void:
 ##
 ## A print is looked at nearer face on: it is on a figure's front, and
 ## from three-quarters a face is half a face.
-func _frame(bounds: AABB, printed: bool = false) -> void:
+static func _frame(camera: Camera3D, bounds: AABB, printed: bool = false) -> void:
 	var centre: Vector3 = bounds.get_center()
 	var radius: float = maxf(bounds.size.length() * 0.5, 4.0)
 
 	var direction := Vector3(0.72, 0.52, 0.86).normalized()
 	if printed:
 		direction = Vector3(0.34, 0.26, 0.9).normalized()
-	_camera.global_position = centre + direction * (radius * 4.0 + 80.0)
-	_camera.look_at(centre, Vector3.UP)
+	camera.global_position = centre + direction * (radius * 4.0 + 80.0)
+	camera.look_at(centre, Vector3.UP)
 	# A little margin so nothing touches the edge of the cell.
-	_camera.size = radius * 2.12
+	camera.size = radius * 2.12

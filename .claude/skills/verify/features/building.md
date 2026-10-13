@@ -52,7 +52,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   x-ray, and the hover — what selecting changed must lie round the parts, not
   over them, and go all the way round. Run it at `--resolution 2800x1800 --
   --tag=2x` for a 2x screen. `tools/web/outline_check.mjs` is the browser's
-  picture at 1x and 2x, and its frames standing still.
+  picture at 1x and 2x, and its frames standing still. The mask and the
+  passes are drawn again only when the selection, the lens, the cut or the
+  window changed, and the overlay otherwise lays the line it has; the mask is
+  depth-tested, so a fragment behind more of the selection is not drawn. A
+  selection of over 100,000 triangles (`MOST_WHILE_MOVING`), and in a
+  software renderer any selection, has its line put away while the view
+  moves and drawn again once it rests. All of Orthanc outlined made every
+  frame several times dearer in a browser drawing in software, the progress
+  bar's too: a frame 8 s, Mirror's bar 11.4 s to appear (2026-10-13). A
+  batch of the world's whose every part is selected goes into the mask as the
+  world's own MultiMesh (`BrickWorld.drawn_as`), not copied a part at a time.
+  `outline_cost_probe` times it by the processor (a busy machine stretches
+  the clock, not that): with all of Orthanc selected a frame with the view
+  still within a twentieth of the bare one and turning within a tenth, and
+  the line back each time the view rests. Measured under heavy on llvmpipe:
+  still 6,090 ms against 5,532 bare before, 5,832 against 5,600 after;
+  turning 6,098 against 5,498 before, 5,925 against 5,735 after. In Chromium
+  on SwiftShader the browser's processor time for a frame where only the
+  interface changed, all of Orthanc selected: 150 to 290 s before, 9 to 18 s
+  after, against 5 to 10 s with nothing selected.
 - `selection edits`: with bricks selected, `C` paints them the current colour
   (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
   the arrow keys and W A S D move them across the ground by the snap, Page Up
@@ -485,6 +504,10 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 2800x1800x24" godot --path . \
   --resolution 2800x1800 --script src/dev/outline_probe.gd -- --tag=2x
 # ...and in a browser, at 1x and 2x, standing still drawing nothing
 node tools/web/outline_check.mjs --dir=build/web   # after tools/export.sh web, .env sourced
+# what the outline costs a frame with all of Orthanc selected, still and turning,
+# by the processor's time, against the same frames with nothing selected
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/outline_cost_probe.gd
 # what the model stands on: each floor saved and read back, one undo each, the
 # model never moving; the first part on the grid floor and on none landing on
 # the same studs as on a plate, stacking, standing up; the stud grid, a box,
