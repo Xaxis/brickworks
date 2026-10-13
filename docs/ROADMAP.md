@@ -1739,6 +1739,47 @@ its bricks, so Brickify lays the same parts as before (`brickify_probe`'s
 forty-stud bunny 6.3 s laid before, 5.6 and 7.0 s in two runs after, on a
 box at load 60: noise).
 
+Held out again on these, on the subscription (`env -u ANTHROPIC_API_KEY`,
+under `heavy`), measured by `tools/style.py` (`other` for the owl,
+`vehicles` for the car) and `candidate_probe`:
+
+| run | parts | shapes | colours | sideways | curved | plain | mirrored | pieces |
+|---|---|---|---|---|---|---|---|---|
+| barn owl (`owl_d4`) | 817 | 43 | 9 | 43% | 12% | 64% | 88% | 1 |
+| *last round (`owl_d3`)* | *613* | *53* | *11* | *32%* | *9.3%* | *47%* | *79%* | *1* |
+| sports car (`car_d4`) | 114 | 32 | 7 | 14% | 18% | 34% | 100% | 1, and the driver, named |
+| *last round (`car_d3`)* | *120* | *35* | *7* | *3.4%* | *13%* | *46%* | *100%* | *1, and the driver, named* |
+
+Both runs asked for the new features by name before building: the owl for
+round face, eye with a highlight, talons and beak or snout; the car for
+headlamps and grille. By eye (`shots/runs/{owl,car}_d4_{corner,front,close}.png`):
+the **car**'s face now reads the way a designer builds one. It has four
+round lamps, two on each side in headlight bricks, and a grille between
+them. It used 8 headlight bricks, 8 round plates and 8 grille tiles
+across its front, its back and its side intakes, plus curved mudguard humps over its
+wheels, a white racing stripe, a wing and black side intakes. It is a
+landing-page candidate. Its shaped body held this time: the two lofts it
+tried came back buildable in one piece (263 and 148 parts), where `car_d3`'s
+nose fell off. It still built the car by hand, judging the shape plainer
+than it wanted, so a shaped car body still has to *look* better than a
+hand-built one before a run will keep it.
+The **owl** is one piece, a candidate, and was not refused once. Its eyes
+are the printed tiles with the glint, its beak is a cheese slope on a
+jumper centred under them, its feet are four tooth plates, and it has a
+mouse at the foot of its stump. But its face is still a flat panel of white
+tiles on the shape's shell, and its eyes are 1 x 1, small on a face eight
+studs wide. It put the printed tile where three 1 x 1 parts of the shell had
+been, because a 2 x 2 round plate wants four studs facing out where the
+shell offers tiles. So the features are now parts, but the face is not yet
+round. One run each.
+
+Left: a shape's face laid as the round face is — a disc of round plates
+on the shell's side studs, with eyes and a beak on it — so the eyes can be
+2 x 2 and the face round without a run having to carve the shell by hand;
+a car's shaped body that reads better than a hand-built one (its flanks are
+plates on side studs, its nose plain), or the run will go on building by
+hand; the rest of the last round's list.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
