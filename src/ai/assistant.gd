@@ -6072,7 +6072,13 @@ func _restyle(args: Dictionary) -> Dictionary:
 	if world == null or builder == null or builder.lattice == null:
 		return {}
 	var where: Dictionary = args.get("where", {}) if args.get("where") is Dictionary else {}
-	var sideways: float = clampf(float(args.get("sideways", 0.15)), 0.0, 0.5)
+	# "turned_out": false (the surface pass, on a building) lays masonry
+	# only: no stud turned out and dressed, and a dark wall scattered like a
+	# light one, not panelled between ribs of studs. The judge called the
+	# edges round shop's turned-out studs "odd studs" "in clumps".
+	var turned_out: bool = bool(args.get("turned_out", true))
+	var sideways: float = clampf(float(args.get("sideways", 0.15)), 0.0, 0.5) \
+		if turned_out else 0.0
 	var masonry: float = clampf(float(args.get("masonry", 0.25)), 0.0, 1.0)
 	var face_colour: int = int(args.get("face_color", args.get("face_colour", -1)))
 	var style: String = str(args.get("style", "")).to_lower()
@@ -6217,7 +6223,7 @@ func _restyle(args: Dictionary) -> Dictionary:
 				colour = code
 		wall["colour"] = colour
 		var chosen: String = style
-		if chosen.is_empty() and _is_dark(colour):
+		if chosen.is_empty() and _is_dark(colour) and turned_out:
 			chosen = "panels"
 		if chosen.is_empty():
 			for one: Dictionary in wall["bricks"]:
@@ -15755,9 +15761,12 @@ tops, the way they step and where they end, and its plain walls exactly, \
 and lays the real pieces for each as a proposal on the model (from outside, \
 review_model {"surface": true}): tiles in the part's own colour, largest \
 first, with a textured one or two; slopes on a staircase's treads, studded \
-or tiled, or a step brick laid again as a slope; curved slopes along a \
-body's hard top edge, flush with its top (not on a building); masonry and \
-turned-out studs in a long plain wall. Settle each with \
+or tiled, or a step brick laid again as a slope; over steps a plate high, a \
+curved slope two plates tall on each pair of them; curved slopes along a \
+body's hard top edge, flush with its top; on a body's flank of plain \
+bricks, a skin on its side (studs turned out of a course, plates and tiles \
+on them, curved slopes at its ends); masonry in a building's long plain \
+wall. Every finding is laid at once. Settle each with \
 settle_surface: accept it (adjusted: "plain", "recolor"); reject it with a \
 reason, to finish it your own way; or keep the studs with a reason where \
 they are the point — a yard figures stand on, a mosaic, a studded texture, \
@@ -15951,7 +15960,8 @@ feature is parts with depth, never a painted tile.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
  6. The surface pass: review_model {"surface": true} — the app tiles open \
-studs, slopes staircases and rounds hard edges; settle each with settle_surface.
+studs, slopes staircases (plate steps too), rounds hard edges, skins flanks \
+and textures walls; settle each with settle_surface (accept, reject or keep).
  7. Last, the creative pass: review_model {"creative": true} — three \
 touches proposed for this subject, the best one or two added. Then \
 save_model.
@@ -16707,10 +16717,10 @@ Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
 replaces the whole model.
   4. Then the surface pass: review_model {"surface": true}. The app tiles \
-the open stud fields, slopes the staircases (tiled ones too), rounds a \
-body's hard top edges with curved slopes and textures the plain walls on \
-the model, and you settle each with settle_surface — accept, reject or \
-keep, with a reason.
+the open stud fields, slopes the staircases (plate steps too), rounds a \
+body's hard top edges, skins its flanks and textures a building's walls, \
+and you settle each with settle_surface — accept, reject or keep, with a \
+reason.
   5. Then the creative pass, last: review_model {"creative": true}. Three \
 touches proposed for this subject — a story, a play or display feature, a \
 nod only someone who knows it would catch — and the best one or two added, \

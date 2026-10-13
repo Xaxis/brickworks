@@ -1605,17 +1605,42 @@ fixing what it got wrong.
   for fall and height; curved first unless the brief is a building), or,
   where the tread is one stud under a brick's rise, the brick above laid
   again as a 45 degree slope (3037-3040b) with the rest of it in bricks and
-  its stud row tiled if open, else a plate and a cheese slope; `edge`, for
+  its stud row tiled if open, else a plate and a cheese slope; and steps a
+  plate high two at a time (`_cover_pairs`, 2026-10-13 steps): up each run
+  of them from the bottom, a curved slope two plates tall (88930, 15068,
+  11477; 7302 where one tread is two studs) on the lower tread's studs, the
+  upper tread's plate cut under it and the rest laid again in plates, the
+  pair's tiles off — a lone step at the top is left; `edge`, for
   anything not a building (`_straight_first`), a flat top of eight studs or
   more, studded or tiled, not the ground and not a yard, whose edges drop
   away: curved slopes two plates tall (15068, 11477) along each edge that
   drops, falling outward, two studs deep, and the rest of the top raised
   flush with a plate and tiles, its own tiles off first (`_crown`) — nothing
-  under the top is touched, so what ties the body together still does; and
-  `wall`, a
+  under the top is touched, so what ties the body together still does;
+  `flank`, for anything not a building (`_flanks`, 2026-10-13 steps), a
+  course of plain one-wide bricks (or two-wide's outer rows), a face stacked
+  two courses or more, four studs long or more, one colour, clear in front
+  for a tile and flush behind over the course above in the same colour
+  (`_skin_room`): the course laid again in bricks with studs on the side
+  (30414, 11211, 87087, `_turned_out`) and on them, laid on their side
+  (`_onto_side`, the arithmetic of `Assistant._panel`), tiles two studs tall
+  straight on the studs, a plate proud, with a rounded-end tile 5520 at each
+  end (`_rounded_end` reads which end is round off its cover), courses tried
+  top down. Not a course that is not the body's (`_off_the_body`, said in
+  "Left as studs"): the bottom course on a wheeled base or one no higher
+  than its wheels (`_wheel_top`, wheels within a plate of the model's
+  bottom), one under a wider course whose face reaches past either end over
+  open space, or one in a colour the body over it is not — the steps
+  round's car had its black course between the wheels skinned, and the
+  judge saw "black slabs ... like blocks"; and `wall`, for a building only, a
   plain one-wide (or two-wide's outer row) wall open to the air, six studs by
   three courses or more, nine tenths one colour, laid again by `_restyle`
-  in its box. Left alone, and said: a Brick Art mosaic, a field a figure,
+  in its box with masonry only (`"turned_out": false`: no stud turned out).
+  No part may be taken off by two findings (`_taken_off`): the edges
+  round's starfighter cut one plate from both sides and the edit of all was
+  refused. Every finding is laid at once up to `MOST_FINDINGS` (40); any
+  more are counted and said for the next review. Left alone, and said: a
+  Brick Art mosaic, a field a figure,
   animal or plant stands among (a yard), fewer than four studs, anywhere the
   design kept or rejected; the ground (a plate or two up, spanning most of
   the model) is offered as G1, laid only on "tile". The findings are laid
