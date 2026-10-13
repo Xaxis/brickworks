@@ -566,12 +566,12 @@
     "name": "check_design"
   },
   {
-    "description": "A section of how to design in this app, in full: \"work\" (the process: silhouette, features, detail), \"rules\", \"shapes\" (the patterns that lay a wall, a dome, a tower, a body and a head with its face), \"subject\" (what each kind of subject needs), \"angle\", \"pins\", \"colour\", \"touches\" and more. Read \"shapes\" before saying a shape.",
+    "description": "A section of how to design in this app, in full: \"work\" (the process: silhouette, features, detail), \"rules\", \"shapes\" (the patterns that lay a wall, a dome, a tower, a body and a head with its face), \"subject\" (what each kind of subject needs), \"angle\", \"pins\", \"colour\", \"creative\" and more. Read \"shapes\" before saying a shape.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "section": {
-          "description": "work, rules, shapes, subject, real, colour, angle, coordinates, sideways, pins, big, look, good, beautiful, touches, changing, kind or art",
+          "description": "work, rules, shapes, subject, real, colour, angle, coordinates, sideways, pins, big, look, good, beautiful, creative, changing, kind or art",
           "type": "string"
         }
       },
@@ -583,7 +583,7 @@
     "name": "read_guide"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; display and touches: display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as LEGO built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -2834,13 +2834,17 @@
     "name": "where_to_attach"
   },
   {
-    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one. Call it after submit_design, then once per feature, then once per assembly, working each before the next.",
+    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), three real sets' pieces for it with ids for place_technique and the worked technique that builds one; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then creative last.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "assembly": {
           "description": "an assembly's name as given in submit_design; omit for the whole model",
           "type": "string"
+        },
+        "creative": {
+          "description": "true for the creative pass, once the features and assemblies have had their turns",
+          "type": "boolean"
         },
         "feature": {
           "description": "a feature the subject is known by, as listed in submit_design's features",
