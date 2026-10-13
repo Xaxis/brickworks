@@ -200,7 +200,10 @@ off its base, or turned 45 degrees about the wrong point. And parts turned 30
 degrees about the upright read from a file, in the sections the assistant finds
 for them (`Assistant._adopted`, see [assistant](assistant.md)): a frame and its
 pane, a turntable's top on its base, each passing, and the pane not turned into
-its groove refused. On a catalogue built
+its groove refused. And real sets' sub-models tipped on a hinge about a flat
+axis, read from a file (10179's hinge at 53 degrees with a jumper and a bar on
+it, 6285's rail on three hinges, 75144's panel, 21307's hinge at 60): each in
+one piece, where read square they were refused in two. On a catalogue built
 before the rounds its first five lines fail, and every case that should pass
 fails with them.
 

@@ -433,7 +433,13 @@ fixing what it got wrong.
   at all nine) and
   `_wide_yard` (a model more than twice as tall as it is wide half way up, on a
   base `YARD_WIDER` (1.6) times as wide: the run stood its tower on a 66-stud
-  yard, 1.9 tall to wide where the tower alone was 3.3). `patterns_probe`
+  yard, 1.9 tall to wide where the tower alone was 3.3; and the base open
+  ground, `YARD_OPEN` (half) of its studs with nothing rising off them, and no
+  stand: not when the brief or the model's name asks for one, nor when most of
+  the base is an assembly named as one, `STAND_WORDS` — stand, plinth, mount,
+  pot... The bench called the stands its owl, astronaut and Falcon Heavy were
+  asked for yards, and the crane's chassis (18% open) and the bonsai's pot (0%)
+  for being wider than a boom and a trunk half way up). `patterns_probe`
   (`_display_faults`): a black wall sprinkled with grey is called speckle, two
   walls half a stud apart with nothing behind are called sky, the guidance's
   tower on a 66-stud yard is told its base is too wide, and the guidance's
@@ -824,7 +830,16 @@ fixing what it got wrong.
   degrees, and a turntable's top turned 30 on its base, from a file with their
   sections kept, and passes them (and refuses the pane not turned into its
   groove). The landing page's Orthanc opened: no sky through slits it was
-  told of before, one piece where the old reading made 232.
+  told of before, one piece where the old reading made 232. Bricks tipped the
+  same way about a flat axis (x or z) are sections too ("tipped 10 about z"):
+  read square, the bench's starfighter, its wings opened ten degrees on hinges,
+  was ten pieces and its crane, boom raised, sixteen, each one piece as built
+  (now 1 and 1, with their figures apart); 10240's X-wing 31 pieces, now 2.
+  Such a section that nothing has added to or moved is not told it leans on
+  nothing, and two bricks standing in one are not an overlap, as outside one
+  (`_between_standing`). `joints_probe` ("tipped on a hinge and read from a
+  file"): four real sets' hinged sub-models (10179, 6285, 75144, 21307), each
+  refused before, pass in one piece.
 - `a piece standing apart`: `Assistant._standing_apart`, in `_check`. The
   held-out sports car (`car_r1`) finished in two pieces and said every check
   passed: a nameplate (a 41539 plate, a 4515 slope and printed tiles) the run
@@ -836,7 +851,11 @@ fixing what it got wrong.
   fault, `loose`, unless it is named: every part of it in assemblies that
   hold none of the model (a design's `assemblies` box, the smallest that holds
   the part's corner, `_assembly_at`; or a file's sub-model: `Placement.group`),
-  or a whole figure. A design's piece against the model (touching it, or
+  or a whole figure. A whole figure of the design's is an item wherever it
+  stands, against the model or inside its plan too (`_our_figure`, its parts
+  known by the library's names: the bench's starfighter pilot wore a baby's
+  head, 24581p01), counted in `figures`; `candidate_probe` says "2 pieces, a
+  figure apart". A design's piece against the model (touching it, or
   touching what does) that nothing joins is said with where it is and what
   it is made of (`_unjoined_said`, the first four) and how to join it — a
   plate or brick across the joint, a layer whose joints land across the
@@ -873,7 +892,10 @@ fixing what it got wrong.
   stands up as the status bar reckons it (`Stability`), and the check says none
   of a picture's faults of it (hole, speckle, office block, straight shaft, sky,
   yard) that the model on the page (`models/orthanc.ldr` unless said) does not
-  have; exits 1 otherwise. Run 4 on the page fails it: "1 weak joint
+  have; exits 1 otherwise. One the page's model has too is said as a pass
+  ("ok    not counted: called sky through a slit, as orthanc.ldr on the page
+  is"): said as "still ...", the bench's judge read it as a fault named and took
+  two points of buildability from four runs the probe had passed. Run 4 on the page fails it: "1 weak joint
   (overloaded)", the foot of its core's face in each cleft between the piers
   hanging over a hole in the plinth, touching a ledge tile at one edge cell, so
   88 g of face rested on a tile corner that holds 80. `redress.gd`'s `underpin`
