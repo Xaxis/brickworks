@@ -777,6 +777,13 @@
       "area": "building"
     },
     {
+      "kind": "cli",
+      "label": "floor in a browser",
+      "entry": "tools/web/floor_flow.mjs",
+      "reach": "node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html  (a local export, serve.py --parts)",
+      "area": "building"
+    },
+    {
       "kind": "ui",
       "label": "tour",
       "entry": "src/ui/tour.gd",

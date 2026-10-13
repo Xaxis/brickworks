@@ -250,6 +250,14 @@
       "tests": []
     },
     {
+      "id": "cli:floor in a browser",
+      "kind": "cli",
+      "entry": "tools/web/floor_flow.mjs",
+      "reach": "node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html  (a local export, serve.py --parts)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:freeze check",
       "kind": "cli",
       "entry": "tools/web/freeze_check.mjs",

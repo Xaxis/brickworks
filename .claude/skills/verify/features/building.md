@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:floor, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:floor, cli:floor in a browser, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
 
 ## Sub-features
 
@@ -387,6 +387,11 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
 # ...View, Floor and the properties by hand (handbuild's floor_menu section)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=floor_menu
+# ...and in a browser: View > Floor switched to none, grid and a 16 x 16, a part
+# put down on each, Tan, and the plate made part of the model
+PARTS_URL=http://127.0.0.1:8761/parts/ tools/export.sh web
+python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts &
+node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html --out=shots/floor_web
 # building by hand as a person does: copy, paste, duplicate, cut, move, turn,
 # select by, hide, the menus, the toolbar and its tools, the properties, the
 # status bar, the tour, replace, history, the parts shelf, the seat offer and
