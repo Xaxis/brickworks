@@ -27,6 +27,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -43,12 +55,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -132,6 +148,18 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "axis": {
+                      "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                      "enum": [
+                        "x",
+                        "-x",
+                        "y",
+                        "-y",
+                        "z",
+                        "-z"
+                      ],
+                      "type": "string"
+                    },
                     "color": {
                       "description": "LDraw colour code",
                       "type": "integer"
@@ -148,12 +176,16 @@
                       ],
                       "type": "string"
                     },
+                    "joint": {
+                      "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                      "type": "integer"
+                    },
                     "part": {
                       "description": "part number, e.g. 3001",
                       "type": "string"
                     },
                     "rot": {
-                      "description": "quarter turns about the face direction, 0-3",
+                      "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                       "type": "integer"
                     },
                     "section": {
@@ -827,6 +859,18 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "axis": {
+          "description": "as a brick's: x, y, z are then where its joint's middle goes",
+          "enum": [
+            "x",
+            "-x",
+            "y",
+            "-y",
+            "z",
+            "-z"
+          ],
+          "type": "string"
+        },
         "brick": {
           "description": "the number look_at_model printed",
           "type": "integer"
@@ -841,6 +885,9 @@
             "-z"
           ],
           "type": "string"
+        },
+        "joint": {
+          "type": "integer"
         },
         "part": {
           "type": "string"
@@ -1042,6 +1089,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -1058,12 +1117,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -1451,6 +1514,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -1467,12 +1542,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {
@@ -1614,6 +1693,18 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "axis": {
+                      "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                      "enum": [
+                        "x",
+                        "-x",
+                        "y",
+                        "-y",
+                        "z",
+                        "-z"
+                      ],
+                      "type": "string"
+                    },
                     "color": {
                       "description": "LDraw colour code",
                       "type": "integer"
@@ -1630,12 +1721,16 @@
                       ],
                       "type": "string"
                     },
+                    "joint": {
+                      "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                      "type": "integer"
+                    },
                     "part": {
                       "description": "part number, e.g. 3001",
                       "type": "string"
                     },
                     "rot": {
-                      "description": "quarter turns about the face direction, 0-3",
+                      "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                       "type": "integer"
                     },
                     "section": {
@@ -2581,6 +2676,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "axis": {
+                "description": "for a pin, an axle, a gear, a bush or a beam put on a line: the way its axle, pin or hole runs. x, y and z are then where that joint's middle goes (the point attachment_points gives a hole or an axle), not the low corner, and face is not used.",
+                "enum": [
+                  "x",
+                  "-x",
+                  "y",
+                  "-y",
+                  "z",
+                  "-z"
+                ],
+                "type": "string"
+              },
               "color": {
                 "description": "LDraw colour code",
                 "type": "integer"
@@ -2597,12 +2704,16 @@
                 ],
                 "type": "string"
               },
+              "joint": {
+                "description": "with axis: which of the part's own holes, pins or axles goes there, numbered as attachment_points lists them; omit for the one at its middle",
+                "type": "integer"
+              },
               "part": {
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
               "rot": {
-                "description": "quarter turns about the face direction, 0-3",
+                "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
               },
               "section": {

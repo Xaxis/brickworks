@@ -60,6 +60,9 @@ const PLATE := 8.0
 ## that a part laid on its side by hand and one laid on its side by the
 ## assistant are laid the same way.
 const FACES: Dictionary = BrickLattice.FACE_AXIS
+## The ways a part's joint can be said to run, for a placement's axis.
+const AXES: Dictionary = {"x": Vector3.RIGHT, "-x": Vector3.LEFT, "y": Vector3.UP,
+	"-y": Vector3.DOWN, "z": Vector3.BACK, "-z": Vector3.FORWARD}
 
 ## The colour of a brick that names none: Light Bluish Grey, the grey
 ## modern sets are built in, and what a fill already defaults to. It was
@@ -400,6 +403,24 @@ class Placement extends RefCounted:
 	## A face that was asked for and is not one of the six. Kept so the
 	## check can say so rather than silently standing the part up.
 	var odd_face: String = ""
+	## For a part that joins by a line (a pin, an axle, a gear, a bush, a
+	## beam's hole): the way that line runs, one of [constant AXES]. Then
+	## x, y and z are where the line's middle goes, which is the point
+	## attachment_points gives for a hole, and not the part's low corner;
+	## rot turns it about the line. Read into the low corner before
+	## anything else sees it (Assistant._onto_lines). Empty for the corner.
+	##
+	## A hole is said by where it is, and a placement was only ever said by
+	## its corner. A session told "a pin goes in at the position given" put
+	## the pin's corner there, half a pin off the hole, and every pin and
+	## axle it tried was refused as an overlap with the brick it was meant
+	## to be in.
+	var axis: String = ""
+	## Which of its joints goes there, as attachment_points numbers them; -1
+	## for the one nearest its middle.
+	var joint: int = -1
+	## Why an axis could not be read, for the check to say.
+	var odd_axis: String = ""
 	## The section this brick belongs to, or empty for the main body.
 	## Its coordinates are then that section's own, not the world's.
 	var section: String = ""
@@ -430,6 +451,12 @@ class Placement extends RefCounted:
 			p.odd_face = p.face
 			p.face = "up"
 		p.rot = posmod(int(raw.get("rot", 0)), 4)
+		var line: String = str(raw.get("axis", "")).strip_edges().to_lower().trim_prefix("+")
+		if AXES.has(line):
+			p.axis = line
+		elif not line.is_empty():
+			p.odd_axis = "asks for axis '%s'; the six are x, -x, y, -y, z and -z" % line
+		p.joint = int(raw.get("joint", -1))
 		p.section = str(raw.get("section", "")).strip_edges()
 		p.dressing = bool(raw.get("dressing", false))
 		return p
@@ -447,6 +474,9 @@ class Placement extends RefCounted:
 		p.face = face
 		p.rot = rot
 		p.odd_face = odd_face
+		p.axis = axis
+		p.joint = joint
+		p.odd_axis = odd_axis
 		p.section = into
 		p.dressing = dressing
 		return p
@@ -3356,6 +3386,7 @@ func _edit(args: Dictionary) -> Model:
 	_pattern_trouble = []
 	_pattern_advice = []
 	_expand_repeats(model, args, _repeat_trouble)
+	_onto_lines(model)
 	_touched += model.placements.size() - before
 	_touched += gone.size()
 	return model
@@ -3844,6 +3875,9 @@ func _attachment_points(args: Dictionary) -> String:
 		var mesh: Lbm.PartMesh = library.mesh_for(part_id)
 		if mesh == null:
 			return "The geometry for %s has not arrived yet." % part_id
+		_on_its_line(hypothetical)
+		if not hypothetical.odd_axis.is_empty():
+			return "%s %s." % [part_id, hypothetical.odd_axis]
 		at = _transform(hypothetical, mesh)
 		label = "%s at %s facing %s" % [
 			part_id, hypothetical.where(), hypothetical.face]
@@ -3883,7 +3917,7 @@ func _attachment_points(args: Dictionary) -> String:
 	# all. A Technic beam has no studs, so this said "no studs — nothing
 	# clutches to it. Tiles and most sloped surfaces are like this" about
 	# the part the whole of Technic is built from.
-	var holes: String = _holes_in(part, at)
+	var holes: String = _holes_in(part, at, part_id)
 
 	if found > MOST_STUDS:
 		return ("%s has %d studs, which is too many to list. " % [label, found]
@@ -3893,7 +3927,7 @@ func _attachment_points(args: Dictionary) -> String:
 	if found == 0:
 		if not holes.is_empty():
 			return ("%s has no studs. It joins to things through its "
-				% label + "holes instead." + shape + holes)
+				% label + "joints instead." + shape + holes)
 		return ("%s has no studs — nothing clutches to it. " % label
 			+ "Tiles and most sloped surfaces are like this." + shape)
 	return ("%s has %d stud%s.%s%s\n" % [label, found,
@@ -3908,8 +3942,9 @@ func _attachment_points(args: Dictionary) -> String:
 		+ "three plates, so three plates or one and a half studs.")
 
 
-## Where a part's holes are, in the coordinates a pin would be written
-## in, and which way each one runs.
+## Where a part's holes, pins and axles are, numbered, and which way each
+## runs: the point a pin, an axle or a gear goes at, said as a placement
+## takes it.
 ##
 ## A hole's position is the one coordinate nobody gets right by
 ## reasoning: it sits at the middle of the part's thickness, so on a
@@ -3917,29 +3952,50 @@ func _attachment_points(args: Dictionary) -> String:
 ## it is one and a half plates up. The whole point of this tool is not
 ## having to work that out, and until now it only did it for studs.
 ##
-## Said as a position rather than as a placement for a particular pin,
-## because which pin goes in is the caller's choice and each has its own
-## length: 2780 and 3673 reach through two beams, 4274 through one.
-func _holes_in(part: Lbm.PartMesh, at: Transform3D) -> String:
+## And it said "a pin goes in at the position given", which was not so: a
+## placement's x, y and z were its low corner, so a pin put there stood half
+## a pin off the hole and was refused as an overlap with the brick it was
+## meant to be in. The owner's session did exactly that with a pin, an axle
+## and an axle through a 40 tooth gear. The point is now said the way a
+## placement takes a middle (axis), and each hole says whether it grips an
+## axle or lets it turn, which is the whole difference between a gear that
+## drives and one that spins on its axle.
+func _holes_in(part: Lbm.PartMesh, at: Transform3D, part_id: String = "") -> String:
 	var lines: PackedStringArray = PackedStringArray()
-	for connector: Lbm.Connector in part.connectors:
-		if connector.kind != "pin_hole" and connector.kind != "axle_hole":
-			continue
+	var joints: Array = _joint_lines(part, part_id)
+	for n: int in joints.size():
 		if lines.size() >= MOST_HOLES:
-			lines.append("  ...and more, a hole every stud along it.")
+			lines.append("  ...and more, one every stud along it.")
 			break
-		var point: Vector3 = at * connector.position
-		var axis: Vector3 = (at.basis * connector.axis).normalized()
-		lines.append("  %s at x=%s y=%s z=%s, running %s" % [
-			"pin hole" if connector.kind == "pin_hole" else "axle hole",
-			Placement._num(point.x / STUD),
-			Placement._num(point.y / PLATE),
-			Placement._num(point.z / STUD),
-			_which_axis(axis)])
+		var joint: Array = joints[n]
+		var point: Vector3 = at * (joint[1] as Vector3)
+		var way: Vector3 = (at.basis * (joint[2] as Vector3)).normalized()
+		var where: String = "x=%s y=%s z=%s" % [Placement._num(point.x / STUD),
+			Placement._num(point.y / PLATE), Placement._num(point.z / STUD)]
+		var said: String = AXLE_WORDS.get(joint[0], "")
+		if joint[0] == "axle" or joint[0] == "pin":
+			# Its length, so a gear can be put anywhere along it.
+			said = said % _studs(float(joint[3]) * 2.0 / STUD)
+		lines.append("  joint %d: %s at %s, running %s — %s" % [n, joint[0], where,
+			_which_axis(way), said])
 	if lines.is_empty():
 		return ""
-	return ("\n\nHoles — a pin goes in at the position given, turned to "
-		+ "run the same way:\n" + "\n".join(lines))
+	return ("\n\nIts joints, each at its middle:\n" + "\n".join(lines)
+		+ "\nTo put a pin, an axle, a gear or a bush on one, give it axis: the way the "
+		+ "joint runs (\"z\" for along z) and that joint's x, y and z: they are then "
+		+ "where its own middle goes, not its low corner. Slide it along by changing "
+		+ "the coordinate it runs along. Its own joint by joint: n, numbered as here.")
+
+
+## What each kind of joint does with an axle, as a session needs to hear it.
+const AXLE_WORDS: Dictionary = {
+	"pin hole": "round: an axle or a pin turns in it",
+	"axle hole": "grips an axle: this part turns with it",
+	"axle": "an axle %s studs long: an axle hole on it turns with it, a round hole turns on it",
+	"pin": "a pin %s studs long, for round holes",
+	"turntable": ("where it turns: its top and its base both go here, each by axis "
+		+ "\"y\" and this point"),
+}
 
 
 ## How many holes are worth listing before it is a wall of text. A
@@ -4101,6 +4157,281 @@ func _corner_on(point: Vector3, axis: Vector3, face: String) -> Vector3:
 		point.z - (back if absf(axis.z) > 0.5 else half))
 
 
+# -- joints on a line: pins, axles, gears, bushes, beams' holes ---------------
+
+
+## The lines a part joins by, in its own frame, in the order attachment_points
+## numbers them: [kind, middle, way, half its length along the line]. kind is
+## "axle", "pin", "axle hole" or "pin hole". An axle's or a pin's middle is
+## halfway along it (Mechanism reads the same lines, Joints.through matches
+## them); a hole's is halfway through the part (JointSnap.ends_of).
+##
+## And a turntable's turning point, given its part: where its top and its
+## base share an origin and an axis (Mechanism's table, as real sets stand
+## them in all 71 the OMR has), so the two are put together by one point.
+static func _joint_lines(part: Lbm.PartMesh, part_id: String = "") -> Array:
+	if part == null:
+		return []
+	var turntables: Dictionary = Mechanism.table().get("turntables", {})
+	if not part_id.is_empty() and (turntables.has(part_id)
+			or turntables.values().has(part_id)):
+		var with: Array = _joint_lines(part).duplicate()
+		var spec: Dictionary = Mechanism.spec_of(part_id)
+		with.append(["turntable", Vector3.ZERO, Mechanism._axis_of(spec.get("axis", "y")),
+			0.0])
+		return with
+	var key: int = part.get_instance_id()
+	if _joints_of.has(key):
+		return _joints_of[key]
+	var out: Array = []
+	_joints_of[key] = out
+	for line: Array in Joints._lines_of(part)[0]:
+		var from: float = line[3]
+		var to: float = line[4]
+		out.append([line[0], (line[1] as Vector3) + (line[2] as Vector3) * ((from + to) * 0.5),
+			line[2], (to - from) * 0.5])
+	for end: JointSnap.End in JointSnap.ends_of(part):
+		if not end.is_hole():
+			continue
+		var kind: String = "axle hole" if end.kind == "axle_hole" else "pin hole"
+		var again: bool = false
+		for one: Array in out:
+			if one[0] == kind and (one[1] as Vector3).distance_to(end.at) < 1.0:
+				again = true
+		if not again:
+			out.append([kind, end.at, end.axis, end.reach])
+	return out
+
+
+## [method _joint_lines] by part, worked out once each.
+static var _joints_of: Dictionary = {}
+
+
+## Which of a part's joints is nearest its middle: the one a placement on a
+## line takes when it names none.
+static func _middle_joint(part: Lbm.PartMesh, lines: Array) -> int:
+	var centre: Vector3 = part.bounds.get_center()
+	var best: int = 0
+	for n: int in lines.size():
+		if (lines[n][1] as Vector3).distance_to(centre) \
+				< (lines[best][1] as Vector3).distance_to(centre) - 0.5:
+			best = n
+	return best
+
+
+## The four square turns that carry [param local] onto [param want], a
+## quarter apart about it: the first the nearest to the part's own way up,
+## the rest that one turned on about the line.
+static func _bases_onto(local: Vector3, want: Vector3) -> Array[Basis]:
+	var first := Basis()
+	var best: float = -INF
+	for face: String in BrickLattice.FACES:
+		for rot: int in 4:
+			var basis: Basis = BrickLattice.basis_for(face, rot)
+			if (basis * local).dot(want) < 0.99:
+				continue
+			var trace: float = basis.x.x + basis.y.y + basis.z.z
+			if trace > best + 0.001:
+				best = trace
+				first = basis
+	var out: Array[Basis] = []
+	if best == -INF:
+		return out
+	for k: int in 4:
+		out.append(BrickLattice.snap_basis(Basis(want, k * PI * 0.5) * first))
+	return out
+
+
+## Write a placement as the low corner, face and turn that put its joint
+## [param line] (from [method _joint_lines]) through [param point] (LDU, in
+## its own frame), running along [param basis].
+func _put_on_line(placement: Placement, part: Lbm.PartMesh, line: Array,
+		point: Vector3, basis: Basis) -> void:
+	var origin: Vector3 = point - basis * (line[1] as Vector3)
+	var cell := Vector3i(roundi(origin.x / BrickLattice.CELL),
+		roundi(origin.y / BrickLattice.CELL), roundi(origin.z / BrickLattice.CELL))
+	var corner: Vector3 = BrickLattice.to_ldu(cell + _corner_cell(part, placement.part, basis))
+	placement.x = snappedf(corner.x / STUD, 0.01)
+	placement.y = snappedf(corner.y / PLATE, 0.01)
+	placement.z = snappedf(corner.z / STUD, 0.01)
+	placement.face = BrickLattice.face_of(basis)
+	placement.rot = BrickLattice.turns_about(basis, placement.face)
+
+
+## Every placement said by its line, written as its corner, and every one
+## whose corner was written at a hole put in the hole: see [method _seat].
+## Run on what a design or an edit says, before anything reads where its
+## parts are.
+func _onto_lines(model: Model) -> void:
+	for placement: Placement in model.placements:
+		_on_its_line(placement)
+	_seat(model)
+
+
+## One placement said by its line, written as its corner; why not, in its
+## odd_axis.
+func _on_its_line(placement: Placement) -> void:
+	if placement.axis.is_empty():
+		return
+	var line_way: String = placement.axis
+	placement.axis = ""
+	var part: Lbm.PartMesh = library.mesh_for(placement.part)
+	if part == null:
+		return
+	var lines: Array = _joint_lines(part, placement.part)
+	if lines.is_empty():
+		placement.odd_axis = ("is said by its axis, but has no pin, axle or hole "
+			+ "to put on a line; give its low corner instead")
+		return
+	var n: int = placement.joint if placement.joint >= 0 else _middle_joint(part, lines)
+	if n >= lines.size():
+		placement.odd_axis = "asks for joint %d and has %d (0 to %d)" % [n,
+			lines.size(), lines.size() - 1]
+		return
+	var turns: Array[Basis] = _bases_onto(lines[n][2], AXES[line_way])
+	if turns.is_empty():
+		placement.odd_axis = ("asks for joint %d, which runs at an angle and cannot "
+			+ "be put on a square line; use a section") % n
+		return
+	_put_on_line(placement, part, lines[n], Vector3(placement.x * STUD,
+		placement.y * PLATE, placement.z * STUD), turns[placement.rot % 4])
+
+
+## A pin, an axle, a gear or a bush whose low corner was written at a hole,
+## or a gear's or a bush's at a point on an axle, put in it: its x, y and z
+## taken for its middle, as though axis had been given.
+##
+## The owner's own session, building an orrery: attachment_points said 3700
+## at 80, 0, 80 has a pin hole at 81, 1.75, 80.5 running along z, and "a pin
+## goes in at the position given". It put 2780 there, then axle 3706, then
+## an axle through a 40 tooth gear's hole, by a quarter turn and by face
+## +z, and every one was refused as an overlap with the part it was meant
+## to be in, because x, y and z are a part's low corner. There is no other
+## reading of a joint's part whose corner is on another part's joint line:
+## its own line is then off that one by its whole radius, in the other
+## part's plastic. Only when the corner reading overlaps the part the hole
+## is in, and only a part with no studs, so a brick is never moved.
+func _seat(model: Model) -> void:
+	var wanted: Array[int] = []
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		if placement.id != 0 or not placement.section.is_empty() \
+				or not placement.odd_axis.is_empty() or _has_studs(placement.part):
+			continue
+		if _joint_lines(library.mesh_for(placement.part)).is_empty():
+			continue
+		wanted.append(index)
+	if wanted.is_empty():
+		return
+	# Where they were written, and room round that for anything whose hole or
+	# axle could be there: a long axle's middle is far from its ends.
+	var region := AABB()
+	for n: int in wanted.size():
+		var one: Placement = model.placements[wanted[n]]
+		var point := Vector3(one.x * STUD, one.y * PLATE, one.z * STUD)
+		region = AABB(point, Vector3.ZERO) if n == 0 else region.expand(point)
+	region = region.grow(STUD)
+	# The holes and the axles and pins of every part that reaches there.
+	var holes: Array = []    ## [index, kind, middle, way, half depth]
+	var shafts: Array = []   ## [index, kind, middle, way, half length]
+	var placed: Dictionary = {}
+	for index: int in model.placements.size():
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var at: Transform3D = _joined_at(placement, part, model)
+		placed[index] = at
+		if not (at * part.bounds).abs().intersects(region):
+			continue
+		for line: Array in _joint_lines(part):
+			var row: Array = [index, line[0], at * (line[1] as Vector3),
+				(at.basis * (line[2] as Vector3)).normalized(), line[3]]
+			if str(line[0]).ends_with("hole"):
+				holes.append(row)
+			else:
+				shafts.append(row)
+	for index: int in wanted:
+		var placement: Placement = model.placements[index]
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		var point := Vector3(placement.x * STUD, placement.y * PLATE, placement.z * STUD)
+		var lines: Array = _joint_lines(part)
+		var found: Array = _hole_at(point, lines, holes, shafts, index)
+		if found.is_empty():
+			continue
+		var line: Array = lines[found[0]]
+		var target: Array = found[1]
+		var way: Vector3 = target[3]
+		# Only where the corner reading runs into the part it was meant to
+		# be in: that is the mistake, and nothing else is moved.
+		var other: Placement = model.placements[target[0]]
+		var theirs: Lbm.PartMesh = library.mesh_for(other.part)
+		if BrickLattice.shared_cells(builder.boxes_for(part, placed[index]),
+				builder.boxes_for(theirs, placed[target[0]])) == 0:
+			continue
+		# Its own turn if that already runs along the line, else the first
+		# square one that does.
+		var basis: Basis = (placed[index] as Transform3D).basis
+		if absf((basis * (line[2] as Vector3)).normalized().dot(way)) < 0.99:
+			basis = _bases_onto(line[2], way)[0]
+		var was: String = placement.where()
+		_put_on_line(placement, part, line, point, basis)
+		_pattern_advice.append(("brick %d (%s): put %s brick %d's %s. Its x, y, z (%s) "
+			% [index, placement.part, "in" if str(target[1]).ends_with("hole") else "on",
+				target[0], target[1], was]
+			+ "were a point on that %s, so they were read as where its middle goes; " % (
+				"hole" if str(target[1]).ends_with("hole") else str(target[1]))
+			+ "it stands at %s face %s rot %d. Say a part by its middle with axis: \"%s\" "
+				% [placement.where(), placement.face, placement.rot, _axis_name(way)]
+			+ "and those x, y, z; without axis, x, y, z are its low corner."))
+
+
+## The joint of a part and the hole or the axle of another that [param
+## point] is on: [joint number, the other's row], or [] for none. A pin or
+## an axle goes into a hole (a pin not into an axle hole); a hole goes onto
+## an axle or a pin.
+func _hole_at(point: Vector3, lines: Array, holes: Array, shafts: Array,
+		own: int) -> Array:
+	for n: int in lines.size():
+		var kind: String = lines[n][0]
+		var male: bool = not kind.ends_with("hole")
+		for row: Array in (holes if male else shafts):
+			if row[0] == own:
+				continue
+			if male and kind == "pin" and row[1] == "axle hole":
+				continue
+			if not male and kind == "axle hole" and row[1] == "pin":
+				continue
+			var gap: Vector3 = point - (row[2] as Vector3)
+			var along: float = gap.dot(row[3])
+			if absf(along) > float(row[4]) + Mechanism.REACH_SLACK:
+				continue
+			if (gap - (row[3] as Vector3) * along).length() > Mechanism.LINE_SLACK:
+				continue
+			return [n, row]
+	return []
+
+
+## Whether a part has studs of its own (a brick, a plate), which a joint's
+## part does not.
+func _has_studs(part_id: String) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return true
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind == "stud" and connector.gender == "male":
+			return true
+	return false
+
+
+## The name a placement's axis has for a way: "z", "-x".
+static func _axis_name(way: Vector3) -> String:
+	for name: String in AXES:
+		if (AXES[name] as Vector3).dot(way) > 0.99:
+			return name
+	return "z"
+
+
 ## What is on the baseplate, in the coordinates the model speaks.
 ##
 ## Without this the assistant is blind to everything it did not place
@@ -4235,11 +4566,12 @@ func _describe_world(args: Dictionary = {}) -> String:
 		# shape of, and the tally below carries what the rows drop.
 		if rows.size() < WORLD_ROWS:
 			var face: String = BrickLattice.face_of(brick.transform.basis)
-			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
+			rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s%s" % [
 				brick.id, brick.part_id, brick.color_code,
 				Placement._num(at.x), Placement._num(at.y),
 				Placement._num(at.z), face,
 				BrickLattice.turns_about(brick.transform.basis, face),
+				_on_line_said(brick),
 				"" if mine.has(brick.id) else "   (placed by hand)"])
 
 	var lines := PackedStringArray()
@@ -4279,6 +4611,26 @@ func _describe_world(args: Dictionary = {}) -> String:
 			+ "z_from,z_to,y_from,y_to} in studs and plates to work on "
 			+ "one section at a time.")
 	return "\n".join(lines)
+
+
+## For a pin, an axle, a gear or a bush, where its line runs, said as a
+## placement on a line takes it: "  axis z at 3, 5.75, 2.5". A gear to go on
+## an axle listed here goes at that x and y, and any z along it. Empty for
+## anything with studs, or no joint.
+func _on_line_said(brick: BrickWorld.Brick) -> String:
+	if _has_studs(brick.part_id):
+		return ""
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	var lines: Array = _joint_lines(part)
+	if lines.is_empty():
+		return ""
+	var line: Array = lines[_middle_joint(part, lines)]
+	var point: Vector3 = brick.transform * (line[1] as Vector3)
+	var way: Vector3 = (brick.transform.basis * (line[2] as Vector3)).normalized()
+	if absf(way.x) < 0.99 and absf(way.y) < 0.99 and absf(way.z) < 0.99:
+		return ""
+	return "  axis %s at %s, %s, %s" % [_axis_name(way), Placement._num(point.x / STUD),
+		Placement._num(point.y / PLATE), Placement._num(point.z / STUD)]
 
 
 ## As many rows as are worth spending. Enough to reason about a typical
@@ -5299,6 +5651,7 @@ func _read_model(args: Dictionary) -> Model:
 
 	_repeat_trouble = []
 	_expand_repeats(model, args, _repeat_trouble)
+	_onto_lines(model)
 	model.assemblies = _read_assemblies(args)
 	model.features = _read_features(args)
 	model.feature_spots = FeaturePass.read_spots(args)
@@ -9662,6 +10015,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	## on a bar, a bar in a hollow stud, a hinge, a turntable. See
 	## [method Joints.rounds].
 	var rounds: Dictionary = Joints.rounds(entries)
+	## And which gears are in mesh, whose discs share the ring their teeth
+	## turn in. Forgiven, and holding nothing: a gear is held by its axle.
+	var meshing: Dictionary = Joints.meshing(entries)
 	## index -> where that placement went, for the inserts below.
 	var placed_at: Dictionary = {}
 
@@ -9724,6 +10080,10 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 					+ "not one of the sections given. Declare it in "
 					+ "sections, or leave the field out and give the "
 					+ "brick the model's own coordinates.")
+			continue
+		if not placement.odd_axis.is_empty():
+			_note(issues, "no such joint", "brick %d (%s) %s." % [index,
+				placement.part, placement.odd_axis])
 			continue
 		if not placement.odd_face.is_empty():
 			_note(issues, "no such face",
@@ -9808,7 +10168,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 			# parts did square.
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
-				model.section_for(placement).placed(), true)
+				model.section_for(placement).placed(), true, meshing)
 			# Between two bricks standing, as outside a section: a file's
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
@@ -9869,7 +10229,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		# overlap lies inside the bore, so the same two parts meeting
 		# anywhere else still collide. See [method Joints.rounds].
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
-			rounds, packed, lattice, Transform3D.IDENTITY, false)
+			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
 
 		blockers = _between_standing(blockers, placement, model)
 
@@ -9921,9 +10281,10 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 						+ "not need rebuilding.")
 				continue
 			_note(issues, "overlap",
-				"brick %d (%s at %s) overlaps %s%s" % [
+				"brick %d (%s at %s) overlaps %s%s%s" % [
 					index, placement.part, placement.where(), who,
-					_ends_at(cells_of.get(blocker - 1))])
+					_ends_at(cells_of.get(blocker - 1)),
+					_gears_apart(model, placed_at, index, blocker - 1)])
 			continue
 
 		lattice.occupy_boxes(index + 1, packed)
@@ -9977,6 +10338,12 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 		if said.size() > WORTH_SAYING:
 			advice[advice.size() - 1] += \
 				"\n  ...and %d more like that." % (said.size() - WORTH_SAYING)
+
+	# What turns with what: which gears mesh, which nearly do, and what each
+	# axle grips and turns in.
+	var turning: String = _drive_said(model, entries, meshing, placed_at)
+	if not turning.is_empty():
+		advice.append(turning)
 
 	# Every section has to be fixed to something outside itself.
 	# Held together inside and touching nothing is a part that falls off
@@ -11921,7 +12288,10 @@ func _mating_entries(model: Model) -> Array:
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
 		if part == null:
 			continue
-		entries.append([index, _joined_at(placement, part, model), part, placement.part])
+		# By the number it moved to, if it moved: the gear table knows 3648b
+		# and not 3648, which a session may well write.
+		entries.append([index, _joined_at(placement, part, model), part,
+			library.resolve(placement.part)])
 	return entries
 
 
@@ -12600,17 +12970,18 @@ const NESTS: Dictionary = {
 func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 		placed_at: Dictionary, joined: Dictionary, rounds: Dictionary,
 		mine: PackedInt32Array, against: BrickLattice, to_world: Transform3D,
-		square: bool) -> PackedInt64Array:
+		square: bool, meshing: Dictionary = {}) -> PackedInt64Array:
 	if blockers.is_empty():
 		return blockers
 	var pinned: Dictionary = joined.get(index, {})
+	var in_mesh: Dictionary = meshing.get(index, {})
 	var turning: Dictionary = rounds.get(index, {})
 	var at: Transform3D = placed_at[index]
 	var kept := PackedInt64Array()
 	for key: int in blockers:
 		var other: int = key - 1
 		if key > 0 and other < model.placements.size():
-			if pinned.has(other):
+			if pinned.has(other) or in_mesh.has(other):
 				continue
 			if placed_at.has(other) and _seated(model.placements[index].part, at,
 					model.placements[other].part, placed_at[other]):
@@ -12639,6 +13010,123 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 				continue
 		kept.append(key)
 	return kept
+
+
+## Two gears that overlap, said by how far apart they are and how far apart
+## they mesh: " — an 8 and a 24 mesh with their centres 40 LDU (2 studs)
+## apart; these are 36". Empty unless both are gears turning in one plane.
+##
+## A session told only "brick 14 (3648b) overlaps brick 13" turned the 8
+## half a tooth, then gave up and ran a chain between the two gears, saying
+## the check treats a gear as a solid disc. The number it needed was the
+## spacing.
+func _gears_apart(model: Model, placed_at: Dictionary, one: int, other: int) -> String:
+	if other < 0 or other >= model.placements.size() or not placed_at.has(one) \
+			or not placed_at.has(other):
+		return ""
+	var ids: Array = [library.resolve(model.placements[one].part),
+		library.resolve(model.placements[other].part)]
+	if Mechanism.spec_of(ids[0]).is_empty() or Mechanism.spec_of(ids[1]).is_empty():
+		return ""
+	var pair: Mechanism = Mechanism.build([
+		{"key": 1, "part": ids[0], "at": placed_at[one], "mesh": library.mesh_for(ids[0])},
+		{"key": 2, "part": ids[1], "at": placed_at[other], "mesh": library.mesh_for(ids[1])}])
+	var a: Mechanism.Gear = pair.gear_at(1)
+	var b: Mechanism.Gear = pair.gear_at(2)
+	if a == null or b == null or a.kind == "worm" or b.kind == "worm" \
+			or absf(a.axis.dot(b.axis)) < 0.999:
+		return ""
+	var gap: Vector3 = b.centre - a.centre
+	var along: float = gap.dot(a.axis)
+	if absf(along) > Mechanism.PLANE_SLACK:
+		return ""
+	var apart: float = (gap - a.axis * along).length()
+	var mesh: float = a.radius + b.radius
+	return (" — %s and %s mesh with their centres %s LDU (%s studs) apart across "
+		% [Joints._teeth(a), Joints._teeth(b), _tidy(mesh),
+			_studs(mesh / STUD)]
+		+ "their axles, and these are %s: put their axles that far apart" % _tidy(apart))
+
+
+## What turns with what, for a model with gears in it: the gears in mesh,
+## those that nearly are (with the spacing they mesh at), and for each
+## axle the parts it grips, which turn with it, and the round holes it
+## turns in. Empty for a model without a gear.
+func _drive_said(model: Model, entries: Array, meshing: Dictionary,
+		placed_at: Dictionary) -> String:
+	var gears: Array = []
+	for entry: Array in entries:
+		if not Mechanism.spec_of(str(entry[3])).is_empty():
+			gears.append({"key": int(entry[0]) + 1, "part": entry[3], "at": entry[1],
+				"mesh": entry[2]})
+	if gears.is_empty():
+		return ""
+	var lines: PackedStringArray = PackedStringArray()
+	var said: Dictionary = {}
+	for index: Variant in meshing:
+		for other: Variant in meshing[index]:
+			if int(index) < int(other) and lines.size() < WORTH_SAYING:
+				lines.append("  brick %d meshes brick %d: %s" % [index, other,
+					meshing[index][other]])
+	# Nearly in mesh: in one plane, a little too far apart. Too near is an
+	# overlap, which says the same.
+	var all: Mechanism = Mechanism.build(gears)
+	for i: int in all.gears.size():
+		for j: int in range(i + 1, all.gears.size()):
+			var a: Mechanism.Gear = all.gears[i]
+			var b: Mechanism.Gear = all.gears[j]
+			if a.kind == "worm" or b.kind == "worm" or a.key == b.key \
+					or absf(a.axis.dot(b.axis)) < 0.999:
+				continue
+			if (meshing.get(a.key - 1, {}) as Dictionary).has(b.key - 1):
+				continue
+			var gap: Vector3 = b.centre - a.centre
+			var along: float = gap.dot(a.axis)
+			var apart: float = (gap - a.axis * along).length()
+			var over: float = apart - a.radius - b.radius
+			if absf(along) > Mechanism.PLANE_SLACK or over <= Mechanism.MESH_SLACK \
+					or over > NEARLY_MESH:
+				continue
+			lines.append("  brick %d and brick %d do not mesh: %s and %s mesh with "
+				% [a.key - 1, b.key - 1, Joints._teeth(a), Joints._teeth(b)]
+				+ "their centres %s LDU (%s studs) apart, and these are %s"
+				% [_tidy(a.radius + b.radius), _studs((a.radius + b.radius) / STUD),
+					_tidy(apart)])
+	var by_axle: Dictionary = {}   ## index -> [grips, turns in], each an Array of numbers
+	for one: Array in Joints.through(entries):
+		var shaft: int = one[0]
+		if not by_axle.has(shaft):
+			by_axle[shaft] = [[], []]
+		(by_axle[shaft][0 if one[2] == "grips" else 1] as Array).append(str(one[1]))
+	# Those that grip something first: a train's axles, before the frame's ties.
+	var order: Array = by_axle.keys()
+	order.sort_custom(func(a: int, b: int) -> bool:
+		return (by_axle[a][0] as Array).size() > (by_axle[b][0] as Array).size())
+	var axles: int = 0
+	for shaft: int in order:
+		if axles >= WORTH_SAYING:
+			break
+		var grips := PackedStringArray(by_axle[shaft][0])
+		var turns := PackedStringArray(by_axle[shaft][1])
+		var part: Lbm.PartMesh = library.mesh_for(model.placements[shaft].part)
+		var kinds: Array = Joints._lines_of(part)[0] if part != null else []
+		if not kinds.any(func(line: Array) -> bool: return line[0] == "axle"):
+			continue
+		axles += 1
+		lines.append("  brick %d (%s, an axle): grips %s; turns in %s" % [shaft,
+			model.placements[shaft].part,
+			"bricks " + ", ".join(grips) if not grips.is_empty() else "nothing",
+			"bricks " + ", ".join(turns) if not turns.is_empty() else "nothing"])
+	if lines.is_empty():
+		return ""
+	return ("What turns with what. A part on an axle by an axle hole turns with it; "
+		+ "an axle in a round hole turns in it; gears in mesh turn each other. A gear "
+		+ "on a round hole spins free and drives nothing:\n" + "\n".join(lines))
+
+
+## How far past meshing two gears in one plane may be and still be said to
+## nearly mesh, LDU: two teeth of module 1.
+const NEARLY_MESH := 6.0
 
 
 ## Whether [param index] is in a section, turned, that turns on a joint
@@ -13519,26 +14007,49 @@ it, nothing is touching it — move it, do not give up on the idea.
 
 BUILDING WITH PINS AND AXLES
 Studs are not the only way parts join, and for anything with a \
-mechanism — a chassis, a steering linkage, a hinge, an arm that moves — \
-they are the wrong way. Technic beams join to each other with pins, \
-and check_design accepts a part held by a pin, an axle or a ball joint \
-exactly as it accepts one held by a stud. A beam pinned to another \
-beam with nothing underneath either of them is held.
+mechanism — a chassis, a steering linkage, a hinge, an arm that moves, \
+a gear train — they are the wrong way. check_design accepts a part held \
+by a pin, an axle or a ball joint exactly as it accepts one held by a \
+stud. A beam pinned to another beam with nothing underneath either of \
+them is held.
   The parts: 32523, 32316 and 32524 are Technic beams 3, 5 and 7, with \
-a hole every stud along their length. 3700, 3701 and 3894 are ordinary \
-bricks 1x2, 1x4 and 1x6 with holes through them, which is how a \
-mechanism meets a studded wall. 2780 is the friction pin that holds \
-two beams together and is the single most used Technic part there is; \
-3673 is the frictionless version for something that must turn; 4274 \
-is a pin with a stud on one end, which joins a hole to a stud. 3705 \
-and 4519 are axles 4 and 3, which turn inside an axle hole rather \
-than gripping it.
-  Call search_parts for "technic beam" or "technic pin", and \
-attachment_points for where the holes are. It lists every hole with \
-its x, y and z and which way the hole runs, and a pin goes in at that \
-position turned to run the same way. Do not work it out instead: a \
-hole sits at the middle of the part's thickness, which is not a whole \
-number of plates and is not the same on a beam as on a brick.
+a hole every stud along their length. 3700, 3701, 3894 and 3702 are \
+bricks 1x2, 1x4, 1x6 and 1x8 with holes through them, which is how a \
+mechanism meets a studded wall. 2780 is the friction pin that holds two \
+beams together; 3673 is the frictionless one, for something that must \
+turn; 4274 is a pin with a stud on one end. 4519, 3705, 3706 and 3707 \
+are axles 3, 4, 6 and 8. Gears: 3647 has 8 teeth, 69779 20, 3648b 24, \
+3649 40, and 4716 is a worm. A bush (3713) or a half bush (4265c) on an \
+axle against a wall stops it sliding. 6632, a thin liftarm with an axle \
+hole at each end, is a crank or an arm.
+  What turns: a round hole (every beam's and every brick's) lets an \
+axle turn in it; an axle hole (the cross in a gear, a bush, a liftarm's \
+end) grips the axle, and the part turns with it. A gear on a round hole \
+spins free and drives nothing. An axle carries every part on its line, \
+all along its length, so one axle goes through both walls of a frame \
+and the gear between them. attachment_points says of each hole which it \
+is, and check_design says what each axle grips and turns in.
+  Say a pin, an axle, a gear, a bush or a liftarm by its line: axis \
+"z" (the way it runs) and, for x, y and z, the point attachment_points \
+gives the hole it goes in. They are then where the part's own middle \
+goes, not its low corner. A part with more than one hole or axle takes \
+joint: n, numbered as attachment_points lists them, and rot turns it \
+about the line, a quarter at a time. To slide it along the line, change \
+the one coordinate the line runs along: a gear a stud further along an \
+axle running along z is z + 1. Do not work a corner out instead: a \
+hole sits at the middle of the part's thickness, and a gear's corner is \
+half its width off its hole.
+  Gears mesh with their centres 1.25 LDU a tooth apart across their \
+axles, in one plane: an 8 and a 24 at 40 LDU, which is 2 studs; 24 and \
+24 at 3 studs; 40 and 40 at 5; 8 and 40 at 3; 16 and 16 at 2; a worm \
+and a 24 at 2. So put the two axles through holes that far apart and \
+the gears at the same place along them. check_design forgives gears in \
+mesh and names each mesh; two too near, or nearly in mesh, are told the \
+spacing they mesh at. A gear between two others, an idler, makes the \
+last turn the same way as the first. Gears reduce by the ratio of their \
+teeth: an 8 driving a 24 turns it a third as fast. find_techniques with \
+"gear train" or "worm" shows how real sets built one, and \
+place_technique lays one of them where you say.
 
 WHAT MAKES A MODEL LOOK REAL
 The difference between a model that reads as the thing and one that \
@@ -14394,6 +14905,11 @@ save_model.
 THE RULES: nothing overlaps; nothing floats (every part on the ground or \
 on a part under it); the model is one connected thing — parts side by side \
 are not joined, only stacking joins, so stagger the joints.
+
+A MECHANISM (gears, axles, a crank, a turntable): read_guide "pins" \
+first. Put a pin, an axle, a gear or a bush by its line, axis "z" and \
+the x, y, z attachment_points gives the hole, never by its corner. Gears \
+mesh 1.25 LDU a tooth apart: an 8 and a 24, 2 studs.
 
 ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
@@ -16332,7 +16848,16 @@ func _tools() -> Array:
 				"description":
 					"which way the studs point. Omit for up."},
 			"rot": {"type": "integer", "description":
-				"quarter turns about the face direction, 0-3"},
+				"quarter turns about the face direction, 0-3; with axis, about that line"},
+			"axis": {"type": "string", "enum": ["x", "-x", "y", "-y", "z", "-z"],
+				"description": "for a pin, an axle, a gear, a bush or a beam put on "
+					+ "a line: the way its axle, pin or hole runs. x, y and z are then "
+					+ "where that joint's middle goes (the point attachment_points "
+					+ "gives a hole or an axle), not the low corner, and face is "
+					+ "not used."},
+			"joint": {"type": "integer", "description": "with axis: which of the "
+				+ "part's own holes, pins or axles goes there, numbered as "
+				+ "attachment_points lists them; omit for the one at its middle"},
 			"section": {"type": "string", "description":
 				"the section this brick belongs to, if any. Its x, y "
 				+ "and z are then that section's own coordinates, not "
@@ -17037,6 +17562,10 @@ func _tools() -> Array:
 					"face": {"type": "string",
 						"enum": ["up", "down", "+x", "-x", "+z", "-z"]},
 					"rot": {"type": "integer"},
+					"axis": {"type": "string", "enum": ["x", "-x", "y", "-y", "z", "-z"],
+						"description": "as a brick's: x, y, z are then where its joint's "
+							+ "middle goes"},
+					"joint": {"type": "integer"},
 				},
 				"additionalProperties": false,
 			},

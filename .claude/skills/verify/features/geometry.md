@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line -->
 
 ## Sub-features
 
@@ -154,6 +154,27 @@ can occupy the same millimetre.
   side pivots are one point on one axis (`MinifigData.PIVOTS`). The covers
   asked are where the parts really are (`Assistant._filled_by`), not the
   square turn the checker's lattice has them at.
+- `axles and gears on a line`: an axle or a pin is in every hole along its
+  whole length (`Joints.through`, by Mechanism's own rule: on the line to
+  1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an
+  axle hole), "grips" in an axle hole and "turns" in a round one. Those pairs
+  hold and are forgiven like any pin (`Joints.pairs`), so one axle carries both
+  walls of a frame and the gear between them. Gears that `Mechanism.build`
+  finds in mesh (spur, crown, bevel, worm, ring, at the table's pitch to
+  1 LDU) are forgiven too and hold nothing (`Joints.meshing`): in the check,
+  by hand (`Builder.room_for`) and in `OpenPoints.test`. Two gears in one plane
+  that overlap are told the spacing they mesh at (`Assistant._gears_apart`);
+  two up to 6 LDU too far are said not to mesh, and the check says what each
+  axle grips and turns in (`Assistant._drive_said`). A placement may be said
+  by its line: `axis` (x, -x, y, -y, z, -z) and optional `joint` make x, y, z
+  where that joint's middle goes (`Assistant._onto_lines`), and a joint part
+  with no studs whose corner was written at another part's hole or axle, and
+  overlaps it there, is put in it and told so (`Assistant._seat`). The owner's
+  orrery session wrote 2780, 3706 and an axle through 3649 at the point
+  attachment_points gave, and every one was refused before this.
+  attachment_points numbers each part's joints with turns/grips;
+  look_at_model says each joint part's line; a turntable's turning point is a
+  joint, so its top goes on its base by one point.
 - `leaning on a joint`: a section turned about x or z must turn on a joint whose
   pin lies along its axis — a hinge brick, finger hinge plates, a clip on a bar,
   a ball — with one half outside the section and the other in it, or it is
@@ -220,6 +241,7 @@ godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles a
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
+godot --headless --path . --script src/dev/axle_probe.gd         # axles through holes, gears in mesh, a crank's train at 1:3
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
 godot --headless --path . --script src/dev/angled_probe.gd       # not square to the grid
 godot --headless --path . --script src/dev/section_probe.gd      # built square, carried at an angle
@@ -305,6 +327,30 @@ the file draws (42082 stands two 24s 2 LDU off their axles) or in a group that
 touches nothing else (42055's mine truck, a second model in the file), read
 again on its own with nothing floating there. Anything else fails, said with what
 stands on its axis and the holes its axles nearly turn in.
+
+Axles and gears: `axle_probe` ends on "axles: a pin and an axle go in the hole
+attachment_points names, an axle carries every part on its line, gears in mesh are
+not an overlap, and a crank turns an 8, a 24 and an arm at 1:3". It drives the
+tools a session calls (use_tool) with the numbers they hand back: the owner's
+sequence first (attachment_points on 3700 at 80, 0, 80 gives 81, 1.75, 80.5 along
+z; 2780 there by a quarter turn, by face +z and by axis, axle 3706 by a quarter
+turn and by axis, each applied with its middle in the hole; submit_design too; the
+same pin half a stud along still overlaps), an axle through a 40's hole at the
+point attachment_points gives it (grips the gear, turns in 3700); the brief's train
+(a frame of 3702s, a crank liftarm with a handle, an 8 and a 24 two studs apart, a
+bush and a half bush, an arm) buildable with the mesh named, then built and solved
+by `Mechanism`: the arm turns -1/3 of the crank, the handle, 8 and bush with the
+crank, the frame still; two 24s two studs apart refused with "60 LDU (3 studs)
+apart", an 8 and a 20 said not to mesh at 35 LDU; the orrery's stages (40 with 40
+five studs apart, a 24 to an 8 idler to a 24, a 20 driving a 12) with four meshes
+and rates -1, 3, -1 and 5/3; a worm on a crank's axle into a turntable whose top
+went on its base by the point attachment_points gave, 1/28 a turn; and by hand, a
+24 has room two studs from an 8 and none at 36 LDU. Windowed (`MESA_VK_WSI_DEBUG=sw
+xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/axle_probe.gd`)
+the train is drawn turning, 16 frames read back off the renderer's copy with the
+arm a third of the crank's step the other way to 0.01°, into `shots/axles/`. A
+catalogue without 3648's centre axle hole (before mech1's connector fix) fails
+the train: see `pipeline.md`.
 
 Balance: `balance_probe` ends on "balance: the margins, the joints and the
 counterweight come out as worked by hand, the shipped models stand, and the
