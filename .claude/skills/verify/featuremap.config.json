@@ -1197,6 +1197,13 @@
       "area": "model-io"
     },
     {
+      "kind": "ui",
+      "label": "3d model export",
+      "entry": "src/parts/mesh_export.gd",
+      "reach": "godot --headless --path . --script src/dev/mesh_export_probe.gd   (by hand: File, Export, then 3D model (.glb, .gltf, .obj, .stl)…)",
+      "area": "model-io"
+    },
+    {
       "kind": "cli",
       "label": "score designs on the bench",
       "entry": "tools/bench/run.py",
