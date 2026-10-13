@@ -1,6 +1,6 @@
 [
   {
-    "description": "Find real parts by description. Returns part numbers with their footprint, height and the colours they were really made in. Use this instead of guessing a part number.",
+    "description": "Find real parts by description. Returns part numbers with their footprint, height and the colours they were really made in. Use this instead of guessing a part number. Printed parts are found by what is on them with the word print: \"porsche print\", \"control panel print\", \"3623 print\" (3623's prints); a part with a sticker on, with sticker.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
