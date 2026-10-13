@@ -18,11 +18,11 @@
    "1200": "owl-1200.webp",
    "640": "owl-640.webp"
   },
-  "width": 790,
-  "height": 790,
-  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/owl_r2_close.png",
+  "width": 1200,
+  "height": 900,
+  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/owl_r2.ldr, rendered with src/dev/render_probe.gd --quality=best --size=1600x1200 (Compatibility, in software), cropped",
   "subject": "owl designed by Claude",
-  "alt": "A barn owl built from LEGO bricks, with a white face and chest, large black eyes, a tan head and dark tan wings, perched on a round brown log on a black baseplate scattered with leaves, small flowers and a grey mouse.",
+  "alt": "A studio render of a barn owl built from LEGO bricks: a white face with large black eyes, a tan head, dark tan folded wings and a white chest, perched on a brown log on a small black base scattered with leaves, flowers and a grey mouse.",
   "caption": "A barn owl Claude designed, brick by brick."
  },
  {
@@ -167,5 +167,18 @@
   "subject": "pose and animate",
   "alt": "The Pose and animate panel beside the model: sliders for a turret on its turntable and an arm on its hinge, a key at 0 seconds, and the animation's frame rate and size; on the baseplate a red Technic chain round two sprockets, a red hose curving between two bricks, and a red plate on a hinge.",
   "caption": "A slider for every joint, and keys made an animation."
+ },
+ {
+  "slug": "car",
+  "files": {
+   "1200": "car-1200.webp",
+   "640": "car-640.webp"
+  },
+  "width": 1200,
+  "height": 900,
+  "source": "/mnt/Projects/brickworks/.claude/worktrees/agent-ac75ba1b2512868d5/shots/runs/car_r2.ldr, rendered with src/dev/render_probe.gd --quality=best --size=1600x1200 (Compatibility, in software), cropped",
+  "subject": "car",
+  "alt": "A studio render of a red LEGO sports car with white racing stripes, a black rear wing and grey wheels, its driver in a red helmet beside it holding a gold trophy, and a black and red Formula sign on the ground in front.",
+  "caption": "A sports car and its driver, designed by Claude."
  }
 ]

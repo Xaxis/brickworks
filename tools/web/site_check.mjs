@@ -40,7 +40,9 @@ const base = String(args.url).replace(/\/+$/, "");
 const out = args.out || "shots/site";
 mkdirSync(out, { recursive: true });
 const bypass = args.bypass || process.env.VERCEL_BYPASS || "";
-const headers = bypass ? { "x-vercel-protection-bypass": bypass } : {};
+// The preview toolbar is Vercel's, never on the real site, and its script is
+// refused by the site's own policy; skipped, so an error logged is the site's.
+const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const SITE = "https://brickworks.diy";
 
 const problems = [];

@@ -53,8 +53,13 @@ const ENDS = { linux: "-linux-x86_64.AppImage", macos: "-macos-universal.zip",
 
 let server = null;
 let target = args.url;
-// A protected preview lets this check in with the bypass; production ignores it.
-const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : {};
+// A protected preview lets this check in with the bypass; production ignores
+// it. And without Vercel's preview toolbar, whose script the site's security
+// policy rightly refuses: it is injected for a browser that does not say it is
+// headless, as this one says it is Chrome on each system, and is never on the
+// real site.
+const bypass = process.env.VERCEL_BYPASS
+  ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS, "x-vercel-skip-toolbar": "1" } : {};
 let manifest = null;
 if (!target) {
   const root = resolve("web");
