@@ -2753,18 +2753,19 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# checks its work two or three times along the way; those
 			# are the only glimpses of the shape there are before the
 			# end, and they were being thrown away.
-			# Only while composing. Once an edit has landed, the model
-			# on the baseplate is the person's model, and a check of
-			# fifteen bricks would replace the hundred and forty that
-			# are standing — and report it as a successful check.
-			# Nor from outside once a design has been built: a session
-			# testing how one part seats wiped a 2,900 part Orthanc this
-			# way, and had to submit the whole of it again.
-			var standing: bool = _outside_standing and not _busy \
-				and world != null and world.brick_count() > scenery.size()
-			# Nor about a selection: the model round it is the person's.
-			var applied: bool = not trial.placements.is_empty() and not _edited \
-				and not standing and not _keeps_to_focus()
+			# Only while this app's own run is composing. Once an edit has
+			# landed, the model on the baseplate is the person's model, and a
+			# check of fifteen bricks would replace the hundred and forty that
+			# are standing — and report it as a successful check. Nor about a
+			# selection: the model round it is the person's. And never from
+			# outside, where the session has no draft to show and a check is
+			# only a check: a session testing how one part seats wiped a
+			# 2,900 part Orthanc this way, and once a design had been built
+			# that was stopped — but a model opened, or built in another
+			# session, was still checked onto: the owner's test gear and axle
+			# came out on the baseplate as bricks #223 and #224.
+			var applied: bool = _busy and not trial.placements.is_empty() \
+				and not _edited and not _keeps_to_focus()
 			if applied:
 				await _apply(trial, false, true)
 			progress.emit("checked %d bricks%s: %s" % [
@@ -2791,7 +2792,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				+ "view_model gives any other side.")
 		"attachment_points":
 			progress.emit("working out where things attach")
-			return _attachment_points(args)
+			return await _attachment_points(args)
 		"show_technique":
 			var wanted: String = str(args.get("name", ""))
 			progress.emit("looking up how to do %s" % wanted)
@@ -3850,7 +3851,9 @@ func _with_a_look(said: String, ask: String,
 ##
 ## Answers for a brick that is already placed, or for one that is not
 ## yet: planning a wall means knowing where its studs will be before
-## committing to it.
+## committing to it. A coroutine: on the web a part's geometry arrives when
+## it is first asked for, and this waits for it rather than answer that it
+## has not — the owner's session was told so of a Technic beam, 32523.
 func _attachment_points(args: Dictionary) -> String:
 	var at: Transform3D
 	var part_id: String
@@ -3873,9 +3876,9 @@ func _attachment_points(args: Dictionary) -> String:
 		if not library.parts.has(part_id):
 			return "No part '%s' exists." % part_id
 		var hypothetical := Placement.from_dict(args)
-		var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+		var mesh: Lbm.PartMesh = await _geometry_of(part_id)
 		if mesh == null:
-			return "The geometry for %s has not arrived yet." % part_id
+			return "The geometry for %s could not be fetched; ask again." % part_id
 		_on_its_line(hypothetical)
 		if not hypothetical.odd_axis.is_empty():
 			return "%s %s." % [part_id, hypothetical.odd_axis]
@@ -3883,9 +3886,9 @@ func _attachment_points(args: Dictionary) -> String:
 		label = "%s at %s facing %s" % [
 			part_id, hypothetical.where(), hypothetical.face]
 
-	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	var part: Lbm.PartMesh = await _geometry_of(part_id)
 	if part == null:
-		return "The geometry for %s has not arrived yet." % part_id
+		return "The geometry for %s could not be fetched; ask again." % part_id
 
 	var shape: String = _footprint_sketch(part, at)
 
@@ -13484,13 +13487,30 @@ func _ensure_parts(model: Model) -> void:
 		library.request_mesh(part_id)
 
 	# Wait for them, but not forever: a part that never arrives should
-	# cost a few seconds, not the whole design.
-	var deadline: int = Time.get_ticks_msec() + 20000
+	# cost a few seconds, not the whole design. On the Working bar while
+	# it waits, as any slow thing is: a tool asked from outside answers
+	# once its parts are here, and the person sees why it is taking a moment.
+	var fetching: int = wanted.size()
+	var job: Working.Job = Working.begin("Fetching %d part%s…" % [fetching,
+		"" if fetching == 1 else "s"], fetching)
+	# Until each has come or is not coming (it failed, or there is nowhere
+	# to fetch it from), not for a fixed few seconds: a fetch is polled once
+	# a frame, and a browser drawing in software at a few frames a second
+	# took longer than the twenty seconds this once allowed, so a check said
+	# a gear "has not arrived" that was on its way.
+	var deadline: int = Time.get_ticks_msec() + FETCH_WAIT_MS
 	while not wanted.is_empty() and Time.get_ticks_msec() < deadline:
 		await Engine.get_main_loop().process_frame
 		for part_id: String in wanted.keys():
-			if library.is_resident(part_id):
+			if library.is_resident(part_id) or not library.is_on_its_way(part_id):
 				wanted.erase(part_id)
+		job.count(fetching - wanted.size())
+	job.end()
+
+
+## The longest a part's geometry is waited for, ms: a request that never
+## answers. One that fails stops the wait at once.
+const FETCH_WAIT_MS := 120000
 
 
 ## The plate of each tile's size: what a tile is laid again as where
@@ -16419,21 +16439,25 @@ func _where_to_attach(args: Dictionary) -> Variant:
 			+ "what it is drawn over):") % from}, picture]
 
 
-## [param part_id] seated on the points given, best first: each tried as
-## the check would try it, so what is listed fits and holds as it stands.
-func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictionary) -> String:
-	if not library.parts.has(part_id):
-		return "No part '%s' exists; search_parts finds one." % part_id
-	if not library.is_resident(part_id):
-		library.mesh_for(part_id)
+## A part's geometry, fetched and waited for where the build does not carry
+## it (the web), as the Working bar says; null if it never comes. Awaited.
+func _geometry_of(part_id: String) -> Lbm.PartMesh:
 	if library.mesh_for(part_id) == null:
 		var model := Model.new()
 		var one := Placement.new()
 		one.part = part_id
 		model.placements.append(one)
 		await _ensure_parts(model)
-	if library.mesh_for(part_id) == null:
-		return "The geometry for %s has not arrived yet; ask again." % part_id
+	return library.mesh_for(part_id)
+
+
+## [param part_id] seated on the points given, best first: each tried as
+## the check would try it, so what is listed fits and holds as it stands.
+func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictionary) -> String:
+	if not library.parts.has(part_id):
+		return "No part '%s' exists; search_parts finds one." % part_id
+	if await _geometry_of(part_id) == null:
+		return "The geometry for %s could not be fetched; ask again." % part_id
 	var most: int = clampi(int(args.get("limit", MOST_FITS)), 1, 30)
 	var fits := PackedStringArray()
 	var tried: int = 0

@@ -48,7 +48,7 @@ func _initialize() -> void:
 	_check_the_holes_are_open(library, builder)
 	_check_a_pin_holds(assistant)
 	await _check_a_round_brick_takes_a_pin(assistant)
-	_check_the_tool_says_where(assistant)
+	await _check_the_tool_says_where(assistant)
 
 	print("")
 	if _failures == 0:
@@ -243,7 +243,7 @@ func _joins(assistant: Assistant, x: float, y: float, z: float,
 
 func _check_the_tool_says_where(assistant: Assistant) -> void:
 	print("\nwhat attachment_points will tell a design")
-	var said: String = assistant._attachment_points(
+	var said: String = await assistant._attachment_points(
 		{"part": "32523", "x": 0, "y": 0, "z": 0})
 	print("     %s" % said.replace("\n", "\n     "))
 	# It reported male studs and nothing else, so about a Technic beam it

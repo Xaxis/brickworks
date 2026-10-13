@@ -46,7 +46,7 @@ func _initialize() -> void:
 			print("  skip  %s is not in the catalogue" % host)
 			continue
 		for face: String in ["up", "+z", "-x"]:
-			_try(assistant, library, host, face)
+			await _try(assistant, library, host, face)
 
 	# The builder's own lattice keeps the index that says where a brick
 	# would come to rest.
@@ -71,9 +71,9 @@ func _initialize() -> void:
 	# on a guess is the same wedge put on backwards four times.
 	print("")
 	print("  the shape of a part that is not a box")
-	var right: String = assistant._attachment_points(
+	var right: String = await assistant._attachment_points(
 		{"part": "41769b", "x": 0, "y": 0, "z": 0, "rot": 0})
-	var left: String = assistant._attachment_points(
+	var left: String = await assistant._attachment_points(
 		{"part": "41770b", "x": 0, "y": 0, "z": 0, "rot": 0})
 	_look("a wedge plate is drawn as a footprint",
 		right.contains("footprint from above"))
@@ -86,20 +86,19 @@ func _initialize() -> void:
 	# Silent about a part that fills its box, or it is noise.
 	for box: String in ["3001", "3024", "3068b"]:
 		_look("%s fills its box, and is not drawn at all" % box,
-			not assistant._attachment_points(
-				{"part": box, "x": 0, "y": 0, "z": 0, "rot": 0})
-				.contains("Its "))
+			not (await assistant._attachment_points(
+				{"part": box, "x": 0, "y": 0, "z": 0, "rot": 0})).contains("Its "))
 
 	# A slope is flat in plan and shaped in its side, so the plan says
 	# nothing and the side says everything. Which way it falls is the
 	# same question as which way a wedge tapers.
-	var slope: String = assistant._attachment_points(
+	var slope: String = await assistant._attachment_points(
 		{"part": "3037", "x": 0, "y": 0, "z": 0, "rot": 0})
 	_look("a slope is drawn from the side instead",
 		slope.contains("Its side"))
 	_look("...and the fall is readable, solid at the bottom",
 		slope.contains("##") and slope.contains("#2"))
-	var arch: String = assistant._attachment_points(
+	var arch: String = await assistant._attachment_points(
 		{"part": "3659", "x": 0, "y": 0, "z": 0, "rot": 0})
 	_look("an arch shows the hole under it",
 		arch.contains("Its side") and arch.contains("#11#"))
@@ -134,7 +133,7 @@ func _try(assistant: Assistant, library: PartLibrary, host: String,
 	var placed := {"part": host, "color": 1, "x": 4, "y": 8, "z": 4,
 		"face": face, "rot": 0}
 
-	var answer: String = assistant._attachment_points(placed)
+	var answer: String = await assistant._attachment_points(placed)
 	for line: String in answer.split("\n"):
 		if not line.strip_edges().begins_with("stud "):
 			continue

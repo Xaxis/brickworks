@@ -452,7 +452,12 @@ func _call(name: String, input: Dictionary) -> Array:
 			else "Working on Claude's %s…" % name
 	if name in ["clear_model", "save_model", "review_model"]:
 		return [await jobs.call_tool(name, {}, func(_work: Working.Job) -> Variant:
-			return await _run_own(name, input), doing), true]
+			# One step too: a review lays a feature's piece, saving can hand
+			# the next feature back laid, and clearing takes everything off.
+			var before: Dictionary = _before_change(name)
+			var said: Variant = await _run_own(name, input)
+			_one_step(name, before)
+			return said, doing), true]
 	if not await _take_a_turn():
 		holding = jobs.running()
 		return [jobs.busy(holding), true] if holding != null else [null, false]
@@ -481,11 +486,66 @@ func _heard(note: String) -> void:
 
 
 ## A tool that takes the app's turn: the window's commands (AppTools), told
-## the Working job it reports to when it is a job, or the assistant's.
+## the Working job it reports to when it is a job, or the assistant's. What
+## it changes is one step of the history (see [method _one_step]).
 func _run(name: String, input: Dictionary, work: Working.Job) -> Variant:
+	var before: Dictionary = _before_change(name)
+	var answer: Variant
 	if _the_app_tools().has(name):
-		return await _the_app_tools().run(name, input, work)
-	return await assistant.use_tool(name, input)
+		answer = await _the_app_tools().run(name, input, work)
+	else:
+		answer = await assistant.use_tool(name, input)
+	_one_step(name, before)
+	return answer
+
+
+## The tools that only look, which a probe holds to changing nothing
+## (src/dev/read_only_probe.gd): no record of the model is taken for them.
+const ONLY_LOOK: Array[String] = ["search_parts", "check_design", "read_guide",
+	"show_technique", "find_techniques", "find_parts_like", "plan_scale",
+	"find_reference", "how_real_sets_build_this", "attachment_points",
+	"look_at_model", "view_model", "look_at_picture", "selection", "where_to_attach",
+	"parts_list", "render_model", "export_model"]
+## And the ones whose change is no step of the history: undo walks it, and
+## opening a model begins another.
+const NOT_A_STEP: Array[String] = ["undo", "open_model", ToolJobs.TOOL]
+
+
+## The model as it stood before a call, for its change to be one step of
+## the history; {} for a call that only looks.
+func _before_change(name: String) -> Dictionary:
+	if assistant == null or assistant.builder == null or assistant.world == null \
+			or name in ONLY_LOOK or name in NOT_A_STEP:
+		return {}
+	var builder: Builder = assistant.builder
+	var last: Dictionary = builder.last_step()
+	return {"depth": builder.history_depth(), "last": last,
+		"size": (last.get("steps", []) as Array).size(),
+		"was": SelectionScope.snapshot(assistant.world, assistant.scenery)}
+
+
+## Whatever a call from outside changed, as one step of the history, named
+## as Claude's. An edit_model from a session went into no history at all, so
+## the person's Undo after it took back their own last part and left
+## Claude's edit standing. A call that keeps its own history (the window's
+## commands, an edit about a selection) has its steps folded into one; any
+## other has the difference made one step.
+func _one_step(name: String, before: Dictionary) -> void:
+	if before.is_empty():
+		return
+	var builder: Builder = assistant.builder
+	if builder.history_depth() > int(before["depth"]):
+		builder.fold_since(int(before["depth"]))
+		return
+	var last: Dictionary = builder.last_step()
+	if not last.is_empty() and is_same(last, before["last"]) \
+			and (last.get("steps", []) as Array).size() != int(before["size"]):
+		return
+	var steps: Array = SelectionScope.steps_back(before["was"], assistant.world,
+		assistant.scenery)
+	if not steps.is_empty():
+		builder.record(steps, "Claude's %s (%s)" % [name.replace("_", " "),
+			SelectionScope.words_for(steps)])
 
 
 ## Wait until no other tool is running, then take the app.
@@ -669,8 +729,10 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				return ("Not now — the person asked about the parts they selected, "
 					+ "and clearing would take their whole model off. Change those "
 					+ "parts with edit_selection.")
+			# One undo puts it back (_call): the person's model, cleared by a
+			# session, was gone for good.
 			app.clear_model()
-			return "The baseplate is bare."
+			return "The baseplate is bare. undo puts it back."
 		"save_model":
 			# A name in the app's own models, never a path. It wrote
 			# wherever it was told: a design run put orthanc.ldr in the

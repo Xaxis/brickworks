@@ -161,6 +161,8 @@ Runtime:
 ```sh
 godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queue included
 godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, the guide, the menus in step
+godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that looks changes nothing
+godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
@@ -305,10 +307,41 @@ All of these are in `tools/check.sh`.
   too (only what is new, a step a count per batch; see view.md's build
   animation), so this is now about not drawing for nobody rather than about
   surviving it.
-- **`check_design` puts the trial on the baseplate**, and the baseplate is saved
-  and restored on the next start. A design checked at the origin overlaps that
-  saved model next time, which reads as a broken checker and is not. Call
-  `clear_model` first.
+- **A check from outside changes nothing.** `check_design` put its trial on the
+  baseplate as the app's own run shows a draft, unless the session had built
+  the model standing there itself: the owner's test gear and axle landed on an
+  opened model as bricks #223 and #224 (2026-10-13). Only the app's own run
+  (`_busy`) shows a draft now. `read_only_probe` opens a model and calls every
+  tool that only looks — check_design, the searches, the guides, the looks,
+  the selection, where_to_attach, edit_selection check_only, review_model of
+  the whole and the creative pass — and the parts, colours and transforms are
+  the same to the byte after each. (review_model with a feature lays a real
+  set's piece by design: a change, one step to undo.)
+- **What a session changes is one undo step, its own.** An edit_model from
+  outside went into no history at all, so the person's Undo after it took back
+  their own last part and left Claude's edit standing. Every call through
+  `CommandSocket._run` (the MCP port, the web connector, a subscription
+  session) that is not in `ONLY_LOOK` or `NOT_A_STEP` has its change made one
+  step, "Claude's edit model (1 put down)": a call that keeps its own history
+  (the window's commands, edit_selection) folded into one, any other as the
+  difference (`SelectionScope.steps_back`). The socket's own tools too:
+  review_model with a feature lays a piece, save_model can hand the next
+  feature back laid, and clear_model begins a new model as New does, its one
+  step putting the old one back.
+  `claude_undo_probe`: the person places a brick, a session edits, Undo takes
+  the edit and keeps the brick, a second Undo takes the brick; then
+  submit_design, review_model of a feature, edit_model (recolour, move,
+  remove), restyle_model, add_minifig and clear_model, each one step that
+  Undo puts back exactly.
+- **A tool waits for geometry; it never says "not arrived".** On the web a
+  part's geometry comes from the parts bucket the first time it is asked for.
+  attachment_points answered "has not arrived yet" for 32523 and 87559, both
+  in the bucket (`tools/storage_parts.py --check`: 0 to upload; the live pack
+  names the same hashes): it never waited. It waits now
+  (`Assistant._geometry_of`), and `_ensure_parts` waits until each part has
+  come or is not coming, on the Working bar, not a fixed 20 s, which a browser
+  drawing in software at a frame every few seconds ran out of before a gear
+  arrived.
 - **A picture needs something to draw with.** Over the socket from a headless app
   the look falls back to a text elevation; from a windowed one it is a PNG.
 - **`--allowedTools` grants, it does not restrict.** The first run of the
