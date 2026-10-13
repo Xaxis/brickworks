@@ -15,6 +15,15 @@ whole cycle.
 
 ### Added
 
+- Ask Claude about this…: select parts, right-click one (or Ctrl+K), and
+  ask for a change to just those — "make this wing curved", "recolour
+  this in tan", "why is this not stable?". Claude sees the parts, where
+  they stand and pictures of them, and may change only them and a little
+  room round them; it asks before reaching further. Everything else stays
+  where it was, the model must still hold together, and the whole request
+  is one undo. Works with your own key, with My Claude, and with Claude
+  over the connector, which gets `selection` and `edit_selection` tools.
+
 - Building instructions laid out as a LEGO booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of

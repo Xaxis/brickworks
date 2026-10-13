@@ -964,11 +964,27 @@ func _ask(brief: String) -> void:
 
 
 ## Drive a local Claude Code session and print what it does.
+##
+## With --ask-about=x0,x1,y0,y1,z0,z1 (studs and plates, as view_model's
+## where) the brief is about the parts of the open model (--model) inside
+## that box, as Ask Claude about this… asks: they are selected, and the
+## session changes them and nothing else.
 func _ask_claude_code(brief: String) -> void:
-	_world.clear()
-	_builder.lattice.clear()
-	_builder.forget_history()
-	_lay_baseplate()
+	var about: String = _argument("--ask-about")
+	if about.is_empty():
+		_world.clear()
+		_builder.lattice.clear()
+		_builder.forget_history()
+		_lay_baseplate()
+	else:
+		var picked: int = _select_inside(about)
+		if picked == 0 or not _assistant.focus_on(_builder.selection.keys(), true).is_empty():
+			print("claude code: nothing to ask about inside %s" % about)
+			_ask_went_well = false
+			return
+		print("asking about %d parts inside %s, room %s" % [picked, about,
+			Assistant._box_words(_assistant.focus.region)])
+		brief = Assistant.selection_brief(brief, picked)
 	if not design_with_claude_code(brief):
 		print("claude code: could not start")
 		_ask_went_well = false
@@ -980,6 +996,14 @@ func _ask_claude_code(brief: String) -> void:
 			(Time.get_ticks_msec() - started) / 1000.0, note]))
 	session.said.connect(func(text: String) -> void:
 		print("  said: %s" % text.substr(0, 300)))
+	# About a selection, what the app made of each call too: a change kept
+	# to the room, or refused and why.
+	if not about.is_empty():
+		_assistant.progress.connect(func(note: String) -> void:
+			print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0, note]))
+		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
+			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
+				(Time.get_ticks_msec() - started) / 1000.0, words, _builder.history_depth()]))
 	var outcome: Array = await session.finished
 	_ask_went_well = bool(outcome[0])
 	print("claude code ok=%s bricks=%d  (%.0fs)\n  %s" % [
@@ -1150,6 +1174,33 @@ func design_with_claude_code(brief: String) -> bool:
 ## The one running, if one is.
 func claude_code() -> ClaudeCode:
 	return _claude_code
+
+
+## Select the parts whose middles are inside a box given as
+## "x0,x1,y0,y1,z0,z1" in studs and plates. How many.
+func _select_inside(box: String) -> int:
+	var sides: PackedFloat64Array = box.split_floats(",")
+	if sides.size() != 6:
+		return 0
+	var inside: AABB = Assistant._box_from({"x_from": sides[0], "x_to": sides[1],
+		"y_from": sides[2], "y_to": sides[3], "z_from": sides[4], "z_to": sides[5]})
+	_builder.selection.clear()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var at: AABB = SelectionScope.box_of(brick.part_id, brick.transform, _library)
+		if at.has_volume() and inside.has_point(at.get_center()):
+			_builder.selection[brick.id] = true
+	_builder.selection_changed.emit(_builder.selection.size())
+	return _builder.selection.size()
+
+
+## Edit, Ask Claude about this… (and the menu on a part): the assistant's
+## panel, its next request about what is selected.
+func ask_about_selection() -> void:
+	_builder.hide_preview()
+	_chat_dock.set_open(true)
+	_chat.ask_about(_builder.selection.keys())
 
 
 ## Empty the baseplate, as starting a design does, and begin a new model.
@@ -1857,6 +1908,10 @@ func _build_ui() -> void:
 	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
 	layout.add_child(_chat_dock)
 	_chat.bind(_assistant)
+	# Claude asking for more room than the selection waits on the person: the
+	# panel the question is in comes into view.
+	_assistant.room_asked.connect(func(_why: String, _where: String) -> void:
+		_chat_dock.set_open(true))
 	# Claude as the client, on the person's own plan: this tab offered as
 	# a connector. Its requests are answered by a CommandSocket that never
 	# listens on a port — only its answer_rpc is used, the same code the

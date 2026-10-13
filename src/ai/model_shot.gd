@@ -480,17 +480,24 @@ func block(world: BrickWorld, from: String,
 	var image: Image = await take(world, from, skip, only)
 	if image == null:
 		return {}
+	return await encode(image)
+
+
+## A picture already taken, as a content block: how one picture is both
+## handed to the model and shown in the panel (the before and after of a
+## change to a selection) without drawing it twice.
+func encode(image: Image) -> Dictionary:
 	# Encoded on a worker where there are workers: a megapixel PNG and its
 	# base64 are a few hundred milliseconds of the page's one thread on the
 	# web, for every picture a design takes. The image is this call's own.
 	var encoded: Array = [PackedByteArray(), ""]
-	var encode := func() -> void:
+	var work := func() -> void:
 		encoded[0] = image.save_png_to_buffer()
 		encoded[1] = Marshalls.raw_to_base64(encoded[0])
 	if OS.has_feature("nothreads"):
-		encode.call()
+		work.call()
 	else:
-		var task: int = WorkerThreadPool.add_task(encode, false, "encode a picture")
+		var task: int = WorkerThreadPool.add_task(work, false, "encode a picture")
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
 		WorkerThreadPool.wait_for_task_completion(task)

@@ -126,6 +126,13 @@
       "area": "assistant"
     },
     {
+      "kind": "ui",
+      "label": "ask claude about the selection",
+      "entry": "src/ai/selection_scope.gd",
+      "reach": "godot --path .  (select parts, right-click one: Ask Claude about this…, or Ctrl+K; over MCP the selection and edit_selection tools)",
+      "area": "assistant"
+    },
+    {
       "kind": "cli",
       "label": "design from a brief",
       "entry": "tools/design.py",

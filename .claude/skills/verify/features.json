@@ -859,6 +859,14 @@
       "tests": []
     },
     {
+      "id": "ui:ask claude about the selection",
+      "kind": "ui",
+      "entry": "src/ai/selection_scope.gd",
+      "reach": "godot --path .  (select parts, right-click one: Ask Claude about this\u2026, or Ctrl+K; over MCP the selection and edit_selection tools)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "ui:box select",
       "kind": "ui",
       "entry": "src/ui/marquee.gd",
