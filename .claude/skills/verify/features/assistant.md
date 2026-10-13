@@ -1530,7 +1530,7 @@ and scored 1-10 on six dimensions by a calibrated judge (`tools/bench/judge.py`)
 ```sh
 python3 tools/bench/run.py list                     # the suite, its briefs and references
 python3 tools/bench/run.py run --dry-run --subjects bonsai   # canned design + canned judge, no network
-python3 tools/bench/run.py run --date 2026-10-12    # the batch: every subject once, one at a time
+~/.claude/claude-core/bin/heavy python3 tools/bench/run.py run --date 2026-10-12  # the batch: every subject once, one at a time
 python3 tools/bench/run.py run --date 2026-10-12 --run 2 --subjects barn_owl,bonsai,mobile_crane
 python3 tools/bench/run.py summary --date 2026-10-12 --append docs/DESIGN_SCORES.md
 python3 tools/minitest.py tests/test_bench.py       # the reply, the probe and the summary read right
@@ -1545,6 +1545,11 @@ fetched, real sets from the model repository rendered); then the judge —
 on the subscription, shown the two anchors (LEGO's 10242 MINI Cooper = 9, a
 naive brick-stack car `tools/bench/naive_car.ldr` = 2, rendered once into
 `bench/results/anchors/`), the references, the views and the probe's words.
+Run a batch as one `heavy` job, as above: the design and probe steps inside it
+then take the slot it holds. Run bare, each queues for a slot of its own, and on
+a busy machine (load 60 on 24 cores, 2026-10-12) a one-minute probe waited 18
+minutes. The per-run `--timeout` is inside the slot, so a queue is never counted
+as the design's time.
 Everything goes to `bench/results/<date>/<subject>/<run>/` (gitignored), and each
 stage is skipped when its file is there, so the same command resumes a stopped
 batch — pass the same `--date`, or a batch run past midnight starts a new folder.
@@ -1563,7 +1568,9 @@ Proves it when: the dry run writes `record.json` with the canned scores (mean
 4.5) and three real views, `views_*.png` show the model, the probe and style
 JSON are filled; a real judge's `judge.json` lists in `looked_at` every picture
 named in `judge_prompt.txt`; and `summary` prints a row per subject, the suite
-mean, the run-to-run spread and the three weakest dimensions.
+mean, the run-to-run spread and the three weakest dimensions. The baseline
+(13 runs, 2026-10-12) took 2 h 26 min once its `heavy` slot came; a judge call is
+about 20 s and reads 7-9 pictures.
 
 ## Gotchas
 

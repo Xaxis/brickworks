@@ -3,9 +3,14 @@
 
     python3 tools/bench/run.py list
     python3 tools/bench/run.py anchors
-    python3 tools/bench/run.py run [--subjects a,b] [--run N] [--date D] [--timeout S]
+    heavy python3 tools/bench/run.py run [--subjects a,b] [--run N] [--date D] [--timeout S]
     python3 tools/bench/run.py run --dry-run [--subjects a]
+    python3 tools/bench/run.py rejudge [--date D] [--subjects a,b]
     python3 tools/bench/run.py summary [--date D] [--append docs/DESIGN_SCORES.md]
+
+(`heavy` is ~/.claude/claude-core/bin/heavy. A batch run as one heavy job
+lets its design and probe steps use the slot it holds; run bare, each of
+them queues for its own.)
 
 A run is, per subject and one at a time:
 
