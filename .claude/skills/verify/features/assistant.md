@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, ui:ask claude about the selection -->
 
 ## Sub-features
 
@@ -30,6 +30,42 @@ fixing what it got wrong.
   subjects designed on the subscription, rendered, checked, measured and scored
   1-10 on six dimensions by a judge calibrated by two anchor pictures; tables in
   `docs/DESIGN_SCORES.md`. Under How to check it, "The design bench".
+- `ask claude about the selection`: select parts, right-click one and choose
+  **Ask Claude about this…** (top of the part's menu; also Edit, and Ctrl+K).
+  The assistant panel opens with a chip, "About 46 selected parts", and the
+  next request is about them: "make this wing curved", "recolour this in
+  tan", "why is this not stable?". Claude is given the parts by number with
+  where each stands, their box, the sub-assembly they share, the joints in
+  and round them (`Stability`, under 1,500 parts), and two pictures with the
+  selection in magenta, close up and in the whole model
+  (`Assistant.selection_said`). It may take off, paint, move or put down
+  parts only inside the selection's box grown by two studs across and three
+  plates up and down (`SelectionScope`, `src/ai/selection_scope.gd`), or a
+  box it asks for with `edit_selection` `room=` and `why=`, which the person
+  allows or refuses on a card in the panel (`room_asked`, two minutes, no
+  one there is a no). A change reaching outside is refused whole, naming
+  the parts. A change inside is checked as any edit is, and then once more
+  for what it leaves hanging: the check excuses parts that already stood, so
+  taking a plate out from under another passed it; `_left_hanging` compares
+  what holds from the ground alone before and after (`_ground_only`), and
+  the number of pieces. While a request about a selection stands (the chip
+  is up, or `--ask-about`), every edit keeps to the room, edit_model from a
+  session included, and submit_design, add_minifig, make_art and
+  clear_model are refused; check_design never puts a trial down.
+  Every change of one request is one undo step ("Claude's change to the
+  selection (3 painted, 1 put down)"); Stop takes it back. New parts go
+  into the selection's sub-assembly, the selection becomes what it now is,
+  and the panel shows Before and After pictures of the room in its own
+  colours. Three ways in: the app's own loop on a key (`about_selection`,
+  edit_selection offered only then), the person's Claude Code ("My Claude":
+  the brief is `Assistant.selection_brief`, the session reads `selection`),
+  and Claude on their plan over the connector or MCP (the `selection` and
+  `edit_selection` tools; see [mcp](mcp.md)). From a command line:
+  `--model=res://models/orthanc.ldr --ask-about=x0,x1,y0,y1,z0,z1
+  --ask-claude-code="..."` selects the parts whose middles are in the box.
+  On the shipped Orthanc (9,429 parts) an edit is ~30 s, three checks of
+  ten; the next edit reuses what held after the last. `selection_probe`,
+  `handbuild_probe` (only=first_timer), `mcp_probe`.
 - `a running design, on screen`: `ChatPanel._open_run` and the card it puts in
   the conversation: what it is doing now, the steps before it, a clock, what to
   expect at this effort, and Stop. It ends as Done, Stopped or Did not finish
@@ -1347,6 +1383,7 @@ Runtime, all free — these are the ones to run after changing the loop:
 godot --headless --path . --script src/dev/rules_probe.gd       # the rules, and what it is told
 godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back what it wrote, and how big it is
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
+godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
 godot --headless --path . --script src/dev/scale_probe.gd       # a model too big to list in one go
 godot --headless --path . --script src/dev/scanner_probe.gd     # half-written arguments yield whole bricks
 godot --headless --path . --script src/dev/reader_probe.gd      # the reassembled answer matches what was sent

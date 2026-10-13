@@ -1514,6 +1514,7 @@ func _first_timer() -> void:
 	await _the_note_says_the_selection()
 	await _undo_says_what()
 	await _right_click_a_part()
+	await _ask_claude_about_a_part()
 	await _drag_from_the_bin()
 	await _the_grid_has_room()
 	await _an_untouched_example()
@@ -1701,7 +1702,8 @@ func _right_click_a_part() -> void:
 		menu != null and menu.visible)
 	_check("...on that part, selected", _builder.selection.keys() == [blue])
 	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
-		"Select everything joined to it, Hide, Show only the selection, Paint with")
+		"Ask Claude about this…, Select everything joined to it, Hide, Show only the "
+		+ "selection, Paint with")
 		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
 		and words.has("Properties"))
 	await _shot("first_timer_part_menu")
@@ -1713,6 +1715,93 @@ func _right_click_a_part() -> void:
 	await _frames(4)
 	_check("...and Hide there hides it", _world.get_brick(blue).hidden)
 	await _key_alt(KEY_H)
+
+
+## Ask Claude about this…, on the menu of a part and on Ctrl+K: the
+## assistant's panel opens with a chip saying what the next request is about,
+## and the chip's cross takes it back to the whole model.
+func _ask_claude_about_a_part() -> void:
+	var shell: Shell = _main.get("_shell")
+	var chat: ChatPanel = _main.get("_chat")
+	var dock: SideDock = _main.get("_chat_dock")
+	var assistant: Assistant = _main.get("_assistant")
+	# The parts bin as it was: a narrow window folds one dock for the other.
+	var bin_dock: SideDock = _main.get("_bin_dock")
+	var bin_was: bool = bin_dock.is_open()
+	dock.set_open(false)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	var blue: int = _bricks_near(Vector3(60, 0, 20))[0]
+	var on_blue: Vector2 = _screen(Vector3(60, 24, 20))
+	await _move(on_blue)
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_RIGHT
+		event.pressed = down
+		event.position = _as_event(on_blue)
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2)
+	await _frames(4)
+	var menu: PopupMenu = shell.get("context")
+	_check("the menu on a part offers Ask Claude about this…", menu != null and menu.visible
+		and menu.get_item_text(0) == "Ask Claude about this…"
+		and not menu.is_item_disabled(0))
+	if menu == null:
+		return
+	menu.id_pressed.emit(menu.get_item_id(int(shell.call("item_index", menu, "ask_claude"))))
+	menu.hide()
+	await _frames(6)
+	_check("...which opens the assistant's panel", dock.is_open())
+	_check("...with a chip saying what the next request is about (\"%s\")"
+		% chat._chip_words.text, chat._chip.visible
+		and chat._chip_words.text == "About 1 selected part")
+	_check("...and the assistant is asked about that part, its room round it",
+		assistant.focus != null and assistant.focus.ids.keys() == [blue]
+		and assistant.focus.region.encloses(assistant.focus.box))
+	_check("...and the brief box says what to ask", chat._input.placeholder_text
+		== ChatPanel.ABOUT_PLACEHOLDER)
+	await _shot("ask_claude_chip")
+	# Two parts, and the key instead of the menu.
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	# Picked in the model, which takes the keys back from the brief box.
+	chat.get_viewport().gui_release_focus()
+	_select_only([blue, red])
+	await _frames(2)
+	_check("Edit has it, with its key, %s" % shell.key_words("ask_claude"),
+		shell.key_words("ask_claude") == "Ctrl+K")
+	await _key(KEY_K, true)
+	await _frames(4)
+	_check("Ctrl+K asks about the two (\"%s\")" % chat._chip_words.text,
+		chat._chip_words.text == "About 2 selected parts" and assistant.focus != null
+		and assistant.focus.ids.size() == 2)
+	# A change to them lands as a card with the two of them before and after.
+	var painted: Variant = await assistant.use_tool("edit_selection", {
+		"recolor": [{"bricks": [blue, red], "color": 14}]})
+	await _frames(6)
+	var card: Node = null
+	for child: Node in chat._log.get_children():
+		if child.name == "changed":
+			card = child
+	_check("a change to them is one undo step and a card, Before and After: %s"
+		% str(painted).substr(0, 60), card != null
+		and card.find_child("Before", true, false) is TextureRect
+		and card.find_child("After", true, false) is TextureRect
+		and _world.get_brick(blue).color_code == 14
+		and _builder.history_words(1)[0].begins_with("Claude's change to the selection"))
+	await _shot("ask_claude_before_after")
+	_builder.undo()
+	await _frames(2)
+	_check("...and one undo takes it back", _world.get_brick(blue).color_code == 1
+		and _world.get_brick(red).color_code == 4)
+	chat._chip_clear.pressed.emit()
+	await _frames(2)
+	_check("...and the chip's cross takes it back to the whole model",
+		not chat._chip.visible and assistant.focus == null)
+	_builder.clear_selection()
+	dock.set_open(false)
+	bin_dock.set_open(bin_was)
+	await _key(KEY_ESCAPE)
 
 
 ## Choosing a part moved the palette 19 px (its note wrapped to a second

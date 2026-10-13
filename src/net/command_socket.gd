@@ -575,6 +575,12 @@ func _run_own(tool: String, input: Dictionary) -> String:
 		return "This app cannot do that from outside."
 	match tool:
 		"clear_model":
+			# The person asked about part of their model: clearing it is not
+			# an answer to that, and cannot be undone.
+			if assistant != null and assistant.asked_about_selection():
+				return ("Not now — the person asked about the parts they selected, "
+					+ "and clearing would take their whole model off. Change those "
+					+ "parts with edit_selection.")
 			app.clear_model()
 			return "The baseplate is bare."
 		"save_model":

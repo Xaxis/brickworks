@@ -72,7 +72,7 @@ const MENUS: Array = [
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "mirror",
-		"-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
+		"-", "ask_claude", "-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
 		"rename_assembly", "make_unique", "-", "reshape_flex"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
@@ -454,6 +454,11 @@ func _define() -> void:
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# src/ai/selection_scope.gd: Claude changes these parts and the room round
+	# them, and nothing else.
+	_add("ask_claude", "Ask Claude about this…", CTRL | KEY_K,
+		func() -> void: app.call("ask_about_selection"), selected,
+		"Ask Claude to change the selected parts, and only them, or ask about them")
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -629,7 +634,7 @@ func _define() -> void:
 ## What a right click on a part offers: the verbs a person reaches for,
 ## each the command Edit or Build has, greyed where it would do nothing.
 ## A right click on a part did nothing (brickworks.diy, 2026-10-12).
-const ON_A_PART: Array = ["select_connected", "-", "hide", "isolate", "-", "paint",
+const ON_A_PART: Array = ["ask_claude", "-", "select_connected", "-", "hide", "isolate", "-", "paint",
 	"copy", "delete", "-", "make_submodel", "-", "show_properties"]
 var context: PopupMenu
 
@@ -903,6 +908,10 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_K:
 			if not held:
 				return run("cut_flip" if key.shift_pressed else "cut")
+			# Ctrl+K: ask Claude about the selection, the key other editors
+			# give asking AI about what is selected.
+			if not key.shift_pressed:
+				return run("ask_claude")
 		KEY_I:
 			# Straight to it rather than through the command, which is
 			# greyed with nothing selected: the key says what to select.

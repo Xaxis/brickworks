@@ -2439,5 +2439,323 @@
       "type": "object"
     },
     "name": "save_model"
+  },
+  {
+    "description": "What the person has selected in Brickworks \u2014 the parts they mean by \"this\", \"these\" or \"the selected\": each by number with where it stands, their box, the sub-assembly they are in, the room a change about them may use, how the joints round them stand, and pictures with them picked out, close up and in the whole model. Call it whenever a request is about part of the model, then change that part with edit_selection.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "selection"
+  },
+  {
+    "description": "Change the selected parts as edit_model does \u2014 take off, paint, move, put down \u2014 keeping to the selection's room: a change that reaches outside it is refused whole, and everything else in the model stays where it is. It is checked as any design is, so a change that would not hold together or leaves a part loose changes nothing. One undo takes the request back. For more room, give room= and why=: the person is asked first.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code",
+                "type": "integer"
+              },
+              "face": {
+                "description": "which way the studs point. Omit for up.",
+                "enum": [
+                  "up",
+                  "down",
+                  "+x",
+                  "-x",
+                  "+z",
+                  "-z"
+                ],
+                "type": "string"
+              },
+              "part": {
+                "description": "part number, e.g. 3001",
+                "type": "string"
+              },
+              "rot": {
+                "description": "quarter turns about the face direction, 0-3",
+                "type": "integer"
+              },
+              "section": {
+                "description": "the section this brick belongs to, if any. Its x, y and z are then that section's own coordinates, not the model's.",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, to the low corner. Tenths allowed.",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep, to the low corner. Tenths allowed.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "x",
+              "y",
+              "z",
+              "rot"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "assemblies": {
+          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model \u2014 a display stand, a sign, a nameplate in front of it \u2014 must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "what a person would call it, e.g. north-east tower",
+                "type": "string"
+              },
+              "x_from": {
+                "type": "number"
+              },
+              "x_to": {
+                "type": "number"
+              },
+              "y_from": {
+                "description": "may be left out, for all of its height",
+                "type": "number"
+              },
+              "y_to": {
+                "type": "number"
+              },
+              "z_from": {
+                "type": "number"
+              },
+              "z_to": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x_from",
+              "x_to",
+              "z_from",
+              "z_to"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "move": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bricks": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "dx": {
+                "description": "studs",
+                "type": "number"
+              },
+              "dy": {
+                "description": "plates",
+                "type": "number"
+              },
+              "dz": {
+                "description": "studs",
+                "type": "number"
+              }
+            },
+            "required": [
+              "bricks"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "recolor": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bricks": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "color": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "bricks",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "remove": {
+          "description": "brick numbers to take away",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "repeat_section": {
+          "description": "say a section again somewhere else. One bay of a wall, repeated \u2014 rather than forty bays dictated.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way that pin runs. Defaults to the source section's.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "turned this much further per copy, about the section's own origin. Put that origin at the centre of a tower and this walks the copies round it.",
+                "type": "number"
+              },
+              "dx": {
+                "description": "studs across, per copy",
+                "type": "number"
+              },
+              "dy": {
+                "description": "plates up, per copy",
+                "type": "number"
+              },
+              "dz": {
+                "description": "studs deep, per copy",
+                "type": "number"
+              },
+              "from": {
+                "description": "the name of a section that already has bricks in it",
+                "type": "string"
+              },
+              "name": {
+                "description": "what to call the copies. They are numbered from 2.",
+                "type": "string"
+              },
+              "times": {
+                "description": "how many copies to make, each one step further than the last",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "from",
+              "times"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "room": {
+          "additionalProperties": false,
+          "description": "more room than the selection gives, in studs and plates, when the change cannot be made inside it. The person is asked in the app, and the change goes ahead only if they say yes.",
+          "properties": {
+            "x_from": {
+              "type": "number"
+            },
+            "x_to": {
+              "type": "number"
+            },
+            "y_from": {
+              "type": "number"
+            },
+            "y_to": {
+              "type": "number"
+            },
+            "z_from": {
+              "type": "number"
+            },
+            "z_to": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_from",
+            "x_to",
+            "y_from",
+            "y_to",
+            "z_from",
+            "z_to"
+          ],
+          "type": "object"
+        },
+        "sections": {
+          "description": "add a section, or give one that already exists a new angle or position \u2014 which moves everything in it without naming a single brick.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "degrees": {
+                "description": "how far it is turned about that pin. Any angle.",
+                "type": "number"
+              },
+              "hinge": {
+                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
+                "type": "boolean"
+              },
+              "hinge_color": {
+                "description": "the hinge's colour, if not 72",
+                "type": "integer"
+              },
+              "name": {
+                "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "x": {
+                "description": "studs across, where this section's own origin sits",
+                "type": "number"
+              },
+              "y": {
+                "description": "plates up",
+                "type": "number"
+              },
+              "z": {
+                "description": "studs deep",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x",
+              "y",
+              "z",
+              "axis",
+              "degrees"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "why": {
+          "description": "why the change needs that room, in a sentence the person reads",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "edit_selection"
   }
 ]

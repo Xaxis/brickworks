@@ -654,7 +654,17 @@ func cancel() -> void:
 	if _streaming != null:
 		_streaming.stop()
 		_streaming = null
-	_restore()
+	if _scoped:
+		# Stopped while changing a selection: its one step taken back, which
+		# is what was there before. _restore puts back only bricks the
+		# assistant built, and a selection is usually the person's.
+		_scoped = false
+		if focus != null and not focus.step.is_empty() \
+				and is_same(builder.last_step(), focus.step):
+			builder.undo()
+			focus.step = {}
+	else:
+		_restore()
 	finished.emit(false, "cancelled")
 
 
@@ -692,7 +702,14 @@ func _start(text: String) -> void:
 	# but nothing in it could ever say "that is not what a Voyager looks
 	# like" — there was no way for a picture to come IN. Renders went
 	# out; nothing came back.
-	_messages.append({"role": "user", "content": opening_for(text)})
+	if _scoped:
+		# The selection, its room and pictures of it, then the request.
+		var opening: Array = await _focus_opening(text)
+		if not _busy:
+			return
+		_messages.append({"role": "user", "content": opening})
+	else:
+		_messages.append({"role": "user", "content": opening_for(text)})
 	progress.emit("thinking")
 	_send()
 
@@ -1003,7 +1020,7 @@ func request_body() -> Dictionary:
 			"cache_control": {"type": "ephemeral"},
 		}],
 		"messages": _messages,
-		"tools": _tools(),
+		"tools": _tools() + (focus_tools() if _scoped else []),
 		# And the conversation, up to whatever was added last.
 		#
 		# The mark above covers the rules and nothing after them, so every
@@ -1099,6 +1116,13 @@ func _on_response(result: Array) -> void:
 			})
 
 	if tool_results.is_empty():
+		# About a selection, a reply with nothing to call is the answer:
+		# what it changed, or what it said about the parts.
+		if _scoped:
+			_stop(true, "changed the selection: %s" % SelectionScope.words_for(
+				focus.step.get("steps", [])) if _edited and focus != null
+				and not focus.step.is_empty() else "answered")
+			return
 		if _pending != null:
 			_stop(true, "done")
 			return
@@ -2065,12 +2089,17 @@ static func _what_went_wrong(code: int) -> String:
 ## happened. Restoring over it threw away a hundred and forty bricks
 ## that were sitting on the baseplate at the time.
 func _stop(ok: bool, summary: String) -> void:
-	_tag_assemblies()
+	# About a selection, nothing outside it was this run's to regroup or to
+	# put back: an edit that landed is one step of the history.
+	var scoped: bool = _scoped
+	_scoped = false
+	if not scoped:
+		_tag_assemblies()
 	# A design that failed leaves the model it was asked to change
 	# exactly as it found it. Without this a revision that ran out of
 	# repairs took the original with it — and the drafts shown along the
 	# way are what removed it.
-	if not ok and not _edited:
+	if not ok and not _edited and not scoped:
 		_restore()
 	# Anything the sketch left standing is not a model; the finished one
 	# either replaced it or never came. Skipping this when an edit had
@@ -2137,7 +2166,9 @@ func _run_tool(block: Dictionary) -> Variant:
 			# way, and had to submit the whole of it again.
 			var standing: bool = _outside_standing and not _busy \
 				and world != null and world.brick_count() > scenery.size()
-			if not trial.placements.is_empty() and not _edited and not standing:
+			# Nor about a selection: the model round it is the person's.
+			if not trial.placements.is_empty() and not _edited and not standing \
+					and not _keeps_to_focus():
 				await _apply(trial, false, true)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
@@ -2239,6 +2270,8 @@ func _run_tool(block: Dictionary) -> Variant:
 		"make_art":
 			# A picture laid as a LEGO Art set, to a plan: see
 			# src/assembly/art_plan.gd.
+			if _keeps_to_focus():
+				return _not_while_scoped()
 			progress.emit("laying out a LEGO Art picture")
 			return await _make_art(args)
 		"look_at_picture":
@@ -2253,6 +2286,8 @@ func _run_tool(block: Dictionary) -> Variant:
 			# The figure is made and stood up in src/minifig/figure_tool.gd.
 			# Its parts are this design's, so a new submission replaces
 			# them along with everything else it built.
+			if _keeps_to_focus():
+				return _not_while_scoped()
 			progress.emit("standing %s in the model" % str(args.get("name", "a figure")))
 			var stood: Dictionary = await FigureTool.add(args, library, world, builder)
 			_placed_ids.append_array(stood["ids"])
@@ -2285,6 +2320,14 @@ func _run_tool(block: Dictionary) -> Variant:
 				progress.emit("tried to sprinkle dressing over a dark wall")
 				return "Not applied — " + sprinkled
 			await _ensure_parts(edited)
+			# About a selection: only inside its room, said before anything
+			# is checked, because nothing outside it is this request's.
+			var scoped: bool = _keeps_to_focus()
+			if scoped:
+				var beyond: PackedStringArray = _beyond_focus(edited)
+				if not beyond.is_empty():
+					progress.emit("tried a change outside the selection")
+					return _refused_beyond(beyond)
 			var running: bool = _busy
 			var verdict: Dictionary = await _checked(edited, true)
 			if running and not _busy:
@@ -2293,6 +2336,20 @@ func _run_tool(block: Dictionary) -> Variant:
 				progress.emit("tried a change: %s" % verdict["summary"])
 				return ("Not applied — the model would not hold together.\n"
 					+ str(verdict["feedback"]))
+			if scoped:
+				var hanging: String = await _left_hanging(edited)
+				if running and not _busy:
+					return ""
+				if not hanging.is_empty():
+					progress.emit("tried a change that leaves the rest hanging")
+					return "Not applied — the model would not hold together: " + hanging
+			# The "before" the panel shows, if nothing has drawn it yet: a
+			# session may change a selection without reading it first.
+			if scoped and focus.before == null and ModelShot.possible():
+				_ensure_shot().highlight = {}
+				focus.before = await _shot.take(world, "corner", scenery, focus.region)
+			var standing_was: Dictionary = SelectionScope.snapshot(world, scenery) \
+				if scoped else {}
 			_apply_edit(edited)
 			_name_assemblies(edited.assemblies)
 			_pending = null
@@ -2303,6 +2360,10 @@ func _run_tool(block: Dictionary) -> Variant:
 			if not _unknown.is_empty():
 				said += " No brick has %s, so those were left alone." \
 					% _numbers(_unknown)
+			if scoped:
+				var words: String = _gather_focus_step(standing_was)
+				_hanging_before = [world.revision] + _hanging_after
+				return await _focus_answer(said, words)
 			# Set before the picture, dropped after it: a magenta
 			# brick in a check_design render a minute later would read
 			# as a colour somebody chose.
@@ -2323,7 +2384,18 @@ func _run_tool(block: Dictionary) -> Variant:
 				from, framed)
 			_shot.highlight = {}
 			return answer
+		"selection":
+			progress.emit("looking at what is selected")
+			return await selection_said()
+		"edit_selection":
+			progress.emit("changing the selection")
+			return await _edit_selection(args)
 		"submit_design":
+			# Asked about part of the model, a whole new one is not an answer.
+			if _keeps_to_focus():
+				return ("Not applied — the person asked about the parts they "
+					+ "selected, and submit_design would replace the model. Change "
+					+ "them with edit_selection.")
 			_last_submitted = args
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks%s"
@@ -10932,7 +11004,10 @@ func _check_support(
 		# On the ground, or already standing before this design and not
 		# touched by it — which, like an overlap between two such bricks,
 		# is not this design's to answer for.
-		if floor_y <= 0 or (placement.id != 0 and not placement.moved):
+		# Unless what is asked is what an edit leaves hanging: then only the
+		# ground holds (_left_hanging).
+		if floor_y <= 0 or (placement.id != 0 and not placement.moved
+				and not _ground_only):
 			grounded.append(index)
 			continue
 
@@ -11778,6 +11853,8 @@ func forget_built() -> void:
 	_section_of.clear()
 	_local_of.clear()
 	_sections.clear()
+	# A selection names bricks by number too.
+	unfocus()
 
 
 func clear_built() -> void:
@@ -13287,7 +13364,7 @@ var _lookup_waiting: bool = false
 ## session outside the app can be handed this same list and call into
 ## the same implementations, which is the only way the two cannot drift.
 func tool_catalogue() -> Array:
-	return _tools()
+	return _tools() + focus_tools()
 
 
 ## Run one tool the way a design run would.
@@ -13462,6 +13539,561 @@ func _assemblies_to_review() -> String:
 	for one: Dictionary in _outside_assemblies:
 		names.append(str(one.get("name", "")))
 	return "Its assemblies, to review one at a time: %s." % ", ".join(names)
+
+
+# -- asked about a selection -------------------------------------------------
+
+
+## The selection a person asked about, or null: its parts, the room a
+## change to them may use, and the undo step the change gathers into. See
+## [SelectionScope].
+var focus: SelectionScope = null
+## Set when the panel asked about [member focus], so a session reading the
+## selection is told about the parts the person asked about rather than
+## whatever is selected by the time it looks.
+var _focus_pinned: bool = false
+## True while the edits being made are about [member focus]: this app's
+## own run asked about a selection, or an edit_selection from outside.
+var _scoped: bool = false
+## And whether the conversation is about a selection, so a second request
+## about it carries on from the first.
+var _scoped_talk: bool = false
+
+## A change to the selection landed: what it did in words, and the room
+## the selection is in before and after, in its own colours (null when
+## there is nothing to draw with).
+signal focus_edited(summary: String, before: Image, after: Image)
+## Claude asks for more room than the selection gives; the person answers
+## with [method answer_room].
+signal room_asked(why: String, where: String)
+## The answer, or -1 while it is awaited.
+var _room_answer: int = -1
+## How long a request for room waits for the person. The relay gives up on
+## a call at three minutes; a no is better than its silence.
+var room_wait_s: float = 120.0
+
+const NOTHING_SELECTED := ("Nothing is selected in Brickworks. Ask the person "
+	+ "to select the parts they mean (click one; shift-click or drag a box for "
+	+ "more), then call selection again.")
+
+const FOCUS_RULES := """A change about them may take off, paint, move or put \
+down parts only inside that room. One that reaches outside it is refused \
+whole, naming the parts that did: everything outside stays exactly where it \
+is. The model must still hold together and be one piece afterwards; the \
+change is checked as any design is, and refused if it would not. Make it with \
+edit_selection, which takes what edit_model takes, by the numbers above. If \
+it cannot be done inside the room, give edit_selection room={x_from, x_to, \
+y_from, y_to, z_from, z_to} in studs and plates and why=, a sentence the \
+person reads: they are asked in the app, and the change goes ahead only if \
+they say yes. A question (why is this not stable, what is this part) is \
+answered in words, changing nothing unless they ask."""
+
+const FOCUS_TASK := """This is not a new design. The person has selected part \
+of their model and asked about that part. Change only it, with \
+edit_selection: never submit_design, which would replace the model, and \
+nothing the room does not hold. Read what changed in the picture that comes \
+back. When it is done, or if it is a question, say so in a sentence or two \
+and stop."""
+
+
+## Ask about these parts: the selection's room is worked out now, from
+## where they stand. "" when it can be, or why not. [param pinned] for the
+## panel's own request: a session then reads these parts, not whatever is
+## selected by the time it looks.
+func focus_on(selected: Array, pinned: bool = false) -> String:
+	if focus != null and focus.same(selected) and _focus_alive():
+		_focus_pinned = _focus_pinned or pinned
+		return ""
+	var scope: SelectionScope = SelectionScope.of(selected, world, library, scenery)
+	if scope == null:
+		return NOTHING_SELECTED
+	focus = scope
+	_focus_pinned = pinned
+	_scoped_talk = false
+	return ""
+
+
+## Whether what is changed now must keep to the selection's room: this
+## app's own run about it, an edit_selection, or anything at all while the
+## person's request about it (the panel's chip, or --ask-about) stands.
+func _keeps_to_focus() -> bool:
+	return (_scoped or _focus_pinned) and _focus_alive()
+
+
+## Whether the person asked about a selection that still stands: their
+## request is about it, whatever a session calls.
+func asked_about_selection() -> bool:
+	return _focus_pinned and _focus_alive()
+
+
+## No longer about a selection.
+func unfocus() -> void:
+	focus = null
+	_focus_pinned = false
+	_scoped_talk = false
+
+
+## Whether the parts asked about still stand. Those an undo or another
+## change took off are let go of; none left, and it is gone.
+func _focus_alive() -> bool:
+	if focus == null:
+		return false
+	for brick_id: Variant in focus.ids.keys():
+		if world.get_brick(int(brick_id)) == null:
+			focus.ids.erase(brick_id)
+	return not focus.ids.is_empty()
+
+
+## The selection, for a session to read: its parts by number, where they
+## are, the room a change may use, and two pictures with it picked out —
+## close up, and the whole model round it.
+func selection_said() -> Variant:
+	var selected: Array = builder.selection.keys() if builder != null else []
+	if not _busy and not _focus_pinned and not selected.is_empty():
+		focus_on(selected)
+	if not _focus_alive():
+		var why: String = focus_on(selected)
+		if not why.is_empty():
+			return why
+	var words: String = _focus_words()
+	if not ModelShot.possible():
+		return words
+	_ensure_shot().highlight = focus.ids.duplicate()
+	var close: Image = await _shot.take(world, "corner", scenery, focus.region)
+	var whole: Image = await _shot.take(world, "corner", scenery)
+	_shot.highlight = {}
+	if focus.before == null:
+		focus.before = await _shot.take(world, "corner", scenery, focus.region)
+	var blocks: Array = [{"type": "text", "text": words}]
+	for pair: Array in [[close, "Close up, from the corner, the selection in magenta (only in "
+			+ "the picture: they are the colours listed):"],
+			[whole, "The whole model, the selection in magenta:"]]:
+		if pair[0] == null:
+			continue
+		var picture: Dictionary = await _shot.encode(pair[0])
+		if not picture.is_empty():
+			blocks.append({"type": "text", "text": pair[1]})
+			blocks.append(picture)
+	return blocks
+
+
+## The selection in words.
+func _focus_words() -> String:
+	var rows := PackedStringArray()
+	var tally: Dictionary = {}
+	var colours: Dictionary = {}
+	var ids: Array = focus.ids.keys()
+	ids.sort()
+	for raw: Variant in ids:
+		var brick: BrickWorld.Brick = world.get_brick(int(raw))
+		if brick == null:
+			continue
+		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
+		tally[key] = int(tally.get(key, 0)) + 1
+		colours[brick.color_code] = true
+		if rows.size() >= WORLD_ROWS:
+			continue
+		var corners: Array = _corners_in_studs(brick)
+		if corners.is_empty():
+			continue
+		var at: Vector3 = corners[0]
+		var face: String = BrickLattice.face_of(brick.transform.basis)
+		rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d" % [
+			brick.id, brick.part_id, brick.color_code, Placement._num(at.x),
+			Placement._num(at.y), Placement._num(at.z), face,
+			BrickLattice.turns_about(brick.transform.basis, face)])
+	var others: int = 0
+	var standing: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		standing += 1
+		if not focus.ids.has(brick.id) and focus.holds(
+				SelectionScope.box_of(brick.part_id, brick.transform, library)):
+			others += 1
+	var lines := PackedStringArray()
+	lines.append("The person has selected %d part%s in Brickworks, of the %d in the model%s. "
+		% [focus.ids.size(), "" if focus.ids.size() == 1 else "s", standing,
+			"" if focus.path.is_empty() else ", all in its sub-assembly \"%s\""
+				% Assemblies.label(focus.path)]
+		+ "This is about them.")
+	lines.append("They stand %s, in %d colour%s." % [_box_words(focus.box),
+		colours.size(), "" if colours.size() == 1 else "s"])
+	lines.append("")
+	lines.append("Parts and colours, most first:")
+	var keys: Array = tally.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool: return int(tally[a]) > int(tally[b]))
+	for key: String in keys:
+		var bits: PackedStringArray = key.split(":")
+		var info: PartLibrary.PartInfo = library.parts.get(bits[0])
+		lines.append("  %d x %s (%s) in %s (%s)" % [int(tally[key]), bits[0],
+			info.name if info != null else "?", _colour_name(int(bits[1])), bits[1]])
+	lines.append("")
+	lines.append("Each, by number:")
+	lines.append_array(rows)
+	if ids.size() > rows.size():
+		lines.append("  ... and %d more: look_at_model with where= the room lists them."
+			% (ids.size() - rows.size()))
+	lines.append("")
+	var allowed: bool = focus.region.size.x > focus.box.size.x \
+		+ SelectionScope.MARGIN.x * 2.0 + 0.5
+	lines.append("The room a change may use: %s — %s. %s" % [
+		_box_words(focus.region),
+		"their box and the room the person allowed" if allowed
+			else "their box, two studs round it and three plates above and below",
+		"%d other part%s stand%s in it, not selected: change them only if the request needs it."
+			% [others, "" if others == 1 else "s", "s" if others == 1 else ""]
+			if others > 0 else "Nothing else stands in it."])
+	lines.append(FOCUS_RULES)
+	var weak: String = _focus_stability()
+	if not weak.is_empty():
+		lines.append("")
+		lines.append(weak)
+	return "\n".join(lines)
+
+
+## How the joints in and round the selection stand, from the same judge as
+## Tools, Check stability: what "why is this not stable" is asking.
+func _focus_stability() -> String:
+	if builder == null or world.brick_count() > 1500:
+		return ""
+	var judge := Stability.new()
+	judge.library = library
+	judge.lattice = builder.lattice
+	var report: Stability.Report = judge.check(world)
+	var near := PackedStringArray()
+	for risk: Stability.Risk in report.risks:
+		var brick: BrickWorld.Brick = world.get_brick(risk.brick_id)
+		if brick == null:
+			continue
+		if focus.ids.has(risk.brick_id) or focus.holds(
+				SelectionScope.box_of(brick.part_id, brick.transform, library)):
+			near.append("  #%d: %s" % [risk.brick_id, risk.message])
+	if near.is_empty():
+		return ("Its joints: %s, and nothing in or round the selection is weak."
+			% report.summary())
+	return "Weak joints in or round the selection (%s):\n%s" % [report.summary(),
+		"\n".join(near.slice(0, 6))]
+
+
+## Set while a check asks what holds a part from the ground alone, not
+## excusing the parts that were standing before (see [method _left_hanging]).
+var _ground_only: bool = false
+## What held before an edit about a selection, by the world's revision:
+## [revision, brick ids hanging already, pieces].
+var _hanging_before: Array = []
+var _hanging_after: Array = []
+
+
+## What an edit leaves hanging that was held: a check excuses what already
+## stood, because a fault it found standing is not the design's to answer
+## for, and so it never asked whether taking a part out from under the rest
+## leaves the rest in the air. A selection's change is checked for exactly
+## that, against how the model stood before it: a part that hung already
+## (the example car's tyres sit below the ground) is still not its fault.
+## And for the model coming apart: more pieces than it was in.
+func _left_hanging(edited: Model) -> String:
+	_ground_only = true
+	if _hanging_before.size() != 3 or int(_hanging_before[0]) != world.revision:
+		var now: Model = _model_from_world()
+		var was: Dictionary = await _checked(now, true)
+		var ids: Dictionary = {}
+		for index: Variant in was.get("floating", []):
+			ids[now.placements[int(index)].id] = true
+		_hanging_before = [world.revision, ids, int(was.get("pieces", 1))]
+	var after: Dictionary = await _checked(edited, true)
+	_ground_only = false
+	# What holds after it, kept for the next edit once this one lands: on
+	# the shipped Orthanc's 9,400 parts a check is ten seconds.
+	var hanging: Dictionary = {}
+	for index: Variant in after.get("floating", []):
+		var one: Placement = edited.placements[int(index)]
+		if one.id != 0:
+			hanging[one.id] = true
+	_hanging_after = [hanging, int(after.get("pieces", 1))]
+	var newly := PackedStringArray()
+	for index: Variant in after.get("floating", []):
+		var placement: Placement = edited.placements[int(index)]
+		if placement.id != 0 and not (_hanging_before[1] as Dictionary).has(placement.id):
+			newly.append("#%d (%s)" % [placement.id, placement.part])
+	if not newly.is_empty():
+		return ("it leaves %s with nothing holding %s up. Everything it stands on "
+			% [", ".join(newly.slice(0, 8)), "it" if newly.size() == 1 else "them"]
+			+ "or under has to stay, or be replaced by something that holds it.")
+	var pieces: int = int(after.get("pieces", 1))
+	if pieces > int(_hanging_before[2]):
+		return ("it leaves the model in %d pieces where it was in %d: what it took "
+			% [pieces, int(_hanging_before[2])] + "out was joining them.")
+	return ""
+
+
+## A box in LDU as studs and plates, the way a session writes one.
+static func _box_words(box: AABB) -> String:
+	var low: Vector3 = box.position
+	var high: Vector3 = box.end
+	return "x %s..%s, z %s..%s studs, y %s..%s plates" % [
+		Placement._num(snappedf(low.x / STUD, 0.1)), Placement._num(snappedf(high.x / STUD, 0.1)),
+		Placement._num(snappedf(low.z / STUD, 0.1)), Placement._num(snappedf(high.z / STUD, 0.1)),
+		Placement._num(snappedf(low.y / PLATE, 0.1)), Placement._num(snappedf(high.y / PLATE, 0.1))]
+
+
+## edit_selection: edit_model, kept to the selection's room, asking the
+## person first for any more room it says it needs.
+func _edit_selection(args: Dictionary) -> Variant:
+	var selected: Array = builder.selection.keys() if builder != null else []
+	if not _focus_alive():
+		var why: String = focus_on(selected)
+		if not why.is_empty():
+			return why
+	var input: Dictionary = args.duplicate(true)
+	var room: AABB = _box_from(input.get("room"))
+	var reason: String = str(input.get("why", "")).strip_edges()
+	input.erase("room")
+	input.erase("why")
+	if room.has_volume() and not focus.region.encloses(room):
+		progress.emit("asking for more room than the selection")
+		if not await _ask_for_room(room, reason):
+			return ("Not applied — the person did not give that room (%s). Keep the "
+				% _box_words(room) + "change inside %s, or say in words what it "
+				% _box_words(focus.region) + "would need and why.")
+		focus.allow(room)
+	var was: bool = _scoped
+	_scoped = true
+	var answer: Variant = await _run_tool({"name": "edit_model", "input": input})
+	_scoped = was
+	return answer
+
+
+## Ask the person for more room, and wait for their answer. False when
+## nobody is there to ask, or they say no, or they do not answer in time.
+func _ask_for_room(room: AABB, why: String) -> bool:
+	if room_asked.get_connections().is_empty():
+		return false
+	_room_answer = -1
+	room_asked.emit(why if not why.is_empty() else "it needs more room than the selection",
+		_box_words(room.merge(focus.region)))
+	var until: int = Time.get_ticks_msec() + int(room_wait_s * 1000.0)
+	while _room_answer < 0 and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+	var yes: bool = _room_answer == 1
+	_room_answer = -1
+	return yes
+
+
+## The person's answer to [signal room_asked].
+func answer_room(yes: bool) -> void:
+	_room_answer = 1 if yes else 0
+
+
+## What an edit about the selection changes outside its room, said: empty
+## when it all keeps inside.
+func _beyond_focus(edited: Model) -> PackedStringArray:
+	var out := PackedStringArray()
+	var kept: Dictionary = {}
+	for placement: Placement in edited.placements:
+		if placement.id != 0:
+			kept[placement.id] = placement
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var placement: Placement = kept.get(brick.id)
+		var did: String = ("takes off" if placement == null
+			else "swaps" if placement.part != brick.part_id
+			else "moves" if placement.moved
+			else "paints" if placement.color != brick.color_code else "")
+		if did.is_empty():
+			continue
+		var was_at: AABB = SelectionScope.box_of(brick.part_id, brick.transform, library)
+		if not focus.holds(was_at):
+			out.append("it %s #%d (%s), which stands at %s" % [did, brick.id,
+				brick.part_id, _box_words(was_at)])
+			continue
+		if placement != null and placement.moved:
+			var to: AABB = _placement_box(placement, edited)
+			if to.has_volume() and not focus.holds(to):
+				out.append("it moves #%d (%s) out to %s" % [brick.id, brick.part_id,
+					_box_words(to)])
+	for placement: Placement in edited.placements:
+		if placement.id != 0:
+			continue
+		var at: AABB = _placement_box(placement, edited)
+		if at.has_volume() and not focus.holds(at):
+			out.append("it puts a %s down at %s" % [placement.part, _box_words(at)])
+	return out
+
+
+func _placement_box(placement: Placement, model: Model) -> AABB:
+	var part: Lbm.PartMesh = library.mesh_for(placement.part)
+	if part == null:
+		return AABB()
+	return SelectionScope.box_of(placement.part,
+		_transform(placement, part, model.section_for(placement)), library)
+
+
+func _refused_beyond(beyond: PackedStringArray) -> String:
+	var listed := PackedStringArray()
+	for said: String in beyond.slice(0, 8):
+		listed.append("  - " + said)
+	if beyond.size() > 8:
+		listed.append("  ...and %d more like that." % (beyond.size() - 8))
+	return ("Not applied — that reaches outside the room the selection gives "
+		+ "(%s):\n%s\nEverything outside it stays as it is. Keep the change "
+		% [_box_words(focus.region), "\n".join(listed)]
+		+ "inside it; or, if the request cannot be met without more, give "
+		+ "edit_selection room= the box it needs and why=, and the person is asked.")
+
+
+## An edit about the selection has landed: its changes made one step of
+## the history (with whatever else this request changed before it), new
+## parts put in the selection's sub-assembly, the selection now what it
+## became.
+func _gather_focus_step(was: Dictionary) -> String:
+	var steps: Array = SelectionScope.steps_back(was, world, scenery)
+	if steps.is_empty():
+		return ""
+	for step: Dictionary in steps:
+		var kind: String = str(step.get("undo", ""))
+		if kind == "remove":
+			var brick: BrickWorld.Brick = world.get_brick(int(step["brick"]))
+			if brick != null:
+				focus.ids[brick.id] = true
+				if not focus.path.is_empty() and brick.group.is_empty() \
+						and brick.unit.is_empty():
+					Builder.set_path(brick, focus.path)
+		elif kind == "add" and step.has("was"):
+			focus.ids.erase(int(step["was"]))
+	focus.changed += steps.size()
+	var words: String = SelectionScope.words_for(steps)
+	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step):
+		focus.step["steps"] = steps + (focus.step["steps"] as Array)
+		focus.step["words"] = "Claude's change to the selection (%s)" \
+			% SelectionScope.words_for(focus.step["steps"])
+	else:
+		builder.record(steps, "Claude's change to the selection (%s)" % words)
+		focus.step = builder.last_step()
+	builder.selection = focus.ids.duplicate()
+	builder.selection_changed.emit(builder.selection.size())
+	return words
+
+
+## The answer to an edit about the selection: what it changed, and the
+## room as it now is in its own colours, the picture the panel shows
+## beside the one from before.
+func _focus_answer(said: String, words: String) -> Variant:
+	var after: Image = null
+	if ModelShot.possible():
+		_ensure_shot().highlight = {}
+		after = await _shot.take(world, "corner", scenery, focus.region)
+	focus_edited.emit(words, focus.before, after)
+	var numbers := PackedStringArray()
+	for brick_id: Variant in focus.ids:
+		numbers.append(str(brick_id))
+	var text: String = ("%s Changed: %s. One undo takes the whole request back. "
+		% [said, words] + "The selection is now #%s." % ", #".join(numbers))
+	if after == null:
+		return text + "\n\n" + _measured()
+	var picture: Dictionary = await _shot.encode(after)
+	if picture.is_empty():
+		return text
+	return [{"type": "text", "text": text},
+		{"type": "text", "text": "The selection's room now, from the corner, in its own colours:"},
+		picture,
+		{"type": "text", "text": "Is that what the person asked for? If not, change it "
+			+ "again; if so, say so in a sentence."}]
+
+
+## The app's own loop, asked about the selection in [member focus] (set by
+## [method focus_on]). A second request about the same selection carries
+## the conversation on.
+func about_selection(text: String) -> bool:
+	if _busy or not _focus_alive():
+		return false
+	if not (_scoped_talk and has_conversation()):
+		_messages.clear()
+	_scoped = true
+	_scoped_talk = true
+	focus.step = {}
+	_start(text)
+	return true
+
+
+## What a run about the selection opens with: the selection, and the
+## request.
+func _focus_opening(text: String) -> Array:
+	var said: Variant = await selection_said()
+	var opening: Array = []
+	if said is Array:
+		opening.append_array(said as Array)
+	else:
+		opening.append({"type": "text", "text": str(said)})
+	opening.append({"type": "text", "text": FOCUS_TASK})
+	opening.append({"type": "text", "text": "The person asks: " + text})
+	return opening
+
+
+## The brief a session started for the person is given, when they asked
+## about a selection: it reads the selection itself.
+static func selection_brief(text: String, count: int) -> String:
+	return ("In Brickworks the person has selected %d part%s of their model and asks "
+		% [count, "" if count == 1 else "s"]
+		+ "about them: \"%s\"\n\nCall selection first: it lists those parts by " % text
+		+ "number, where they stand and the room a change may use, with pictures. "
+		+ "Then make the change with edit_selection, which keeps to that room: "
+		+ "everything else in the model stays where it is and must stay joined. "
+		+ "Never submit_design or clear_model: they would replace the model. If it "
+		+ "is a question, answer it in words. When it is done, say what changed in "
+		+ "a sentence and stop.")
+
+
+## What a tool that puts parts down unchecked says while a run is about a
+## selection: nothing but edit_selection keeps to its room.
+static func _not_while_scoped() -> String:
+	return ("Not while changing the selection: this puts parts down without "
+		+ "keeping to its room. Use edit_selection.")
+
+
+## The two tools a session outside the app asks about a selection with.
+func focus_tools() -> Array:
+	var edit: Dictionary = {}
+	for tool: Dictionary in _tools():
+		if str(tool.get("name", "")) == "edit_model":
+			edit = tool.duplicate(true)
+	var schema: Dictionary = edit.get("input_schema", {"type": "object", "properties": {}})
+	var box: Dictionary = {"type": "object", "properties": {}, "additionalProperties": false,
+		"required": ["x_from", "x_to", "y_from", "y_to", "z_from", "z_to"],
+		"description": ("more room than the selection gives, in studs and plates, "
+			+ "when the change cannot be made inside it. The person is asked in the "
+			+ "app, and the change goes ahead only if they say yes.")}
+	for side: String in ["x_from", "x_to", "y_from", "y_to", "z_from", "z_to"]:
+		(box["properties"] as Dictionary)[side] = {"type": "number"}
+	(schema["properties"] as Dictionary)["room"] = box
+	(schema["properties"] as Dictionary)["why"] = {"type": "string", "description":
+		"why the change needs that room, in a sentence the person reads"}
+	return [
+		{
+			"name": "selection",
+			"description": ("What the person has selected in Brickworks — the parts "
+				+ "they mean by \"this\", \"these\" or \"the selected\": each by number "
+				+ "with where it stands, their box, the sub-assembly they are in, the "
+				+ "room a change about them may use, how the joints round them stand, "
+				+ "and pictures with them picked out, close up and in the whole model. "
+				+ "Call it whenever a request is about part of the model, then change "
+				+ "that part with edit_selection."),
+			"input_schema": {"type": "object", "properties": {},
+				"additionalProperties": false},
+		},
+		{
+			"name": "edit_selection",
+			"description": ("Change the selected parts as edit_model does — take off, "
+				+ "paint, move, put down — keeping to the selection's room: a change "
+				+ "that reaches outside it is refused whole, and everything else in "
+				+ "the model stays where it is. It is checked as any design is, so a "
+				+ "change that would not hold together or leaves a part loose changes "
+				+ "nothing. One undo takes the request back. For more room, give room= "
+				+ "and why=: the person is asked first."),
+			"input_schema": schema,
+		},
+	]
 
 
 func _tools() -> Array:

@@ -157,6 +157,36 @@ func _build() -> void:
 	_composer.add_theme_constant_override("separation", 6)
 	root.add_child(_composer)
 
+	# What the next request is about, when it is about a selection: a chip
+	# over the brief, taken off with its cross.
+	_chip = PanelContainer.new()
+	var chip_style := StyleBoxFlat.new()
+	chip_style.bg_color = Color(0.95, 0.35, 0.75, 0.16)
+	chip_style.border_color = Color(0.95, 0.35, 0.75, 0.6)
+	chip_style.set_border_width_all(1)
+	chip_style.set_corner_radius_all(10)
+	chip_style.content_margin_left = 10
+	chip_style.content_margin_right = 4
+	chip_style.content_margin_top = 2
+	chip_style.content_margin_bottom = 2
+	_chip.add_theme_stylebox_override("panel", chip_style)
+	_chip.visible = false
+	var chip_row := HBoxContainer.new()
+	_chip.add_child(chip_row)
+	_chip_words = Label.new()
+	_chip_words.add_theme_font_size_override("font_size", 12)
+	_chip_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_chip_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chip_row.add_child(_chip_words)
+	_chip_clear = Button.new()
+	_chip_clear.text = "×"
+	_chip_clear.flat = true
+	_chip_clear.focus_mode = Control.FOCUS_NONE
+	_chip_clear.tooltip_text = "Ask about the whole model instead"
+	_chip_clear.pressed.connect(stop_asking_about)
+	chip_row.add_child(_chip_clear)
+	_composer.add_child(_chip)
+
 	_input = TextEdit.new()
 	_input.placeholder_text = PLACEHOLDER
 	_input.custom_minimum_size = Vector2(0, 64)
@@ -268,7 +298,9 @@ func _build_settings() -> void:
 			# app; the Claude on this machine brings its own.
 			_show_settings()
 			_status.text = ("Your own Claude will design it."
-				if designing_locally() else ""))
+				if designing_locally() else "")
+			# With no key, ticked is what makes the button usable at all.
+			_send.disabled = _working or not (OwnKey.has_key() or designing_locally()))
 		_settings.add_child(_use_claude_code)
 
 	_show_settings()
@@ -316,7 +348,7 @@ func gave_up(why: String) -> void:
 	_status.text = why
 	_working = false
 	_send.disabled = false
-	_send.text = "Build it"
+	_send.text = _send_words()
 
 
 ## The same three handlers the assistant's signals use, so a design run
@@ -335,6 +367,165 @@ func bind(to: Assistant) -> void:
 	assistant.finished.connect(_on_finished)
 	assistant.built.connect(_on_built)
 	assistant.spent.connect(_on_spent)
+	assistant.focus_edited.connect(_on_focus_edited)
+	assistant.room_asked.connect(_on_room_asked)
+
+
+# -- asking about the selection ----------------------------------------------
+
+
+const ABOUT_PLACEHOLDER := ("What should Claude do with them? \"Make this curved\", "
+	+ "\"add detail\", \"recolour it in tan\", \"why is this not stable?\"")
+var _chip: PanelContainer
+var _chip_words: Label
+var _chip_clear: Button
+## The card asking the person for more room, while it waits.
+var _room_card: PanelContainer = null
+
+
+## Ask about these parts (Edit, Ask Claude about this…, or the menu on a
+## part): the next request is about them, and Claude may change only them
+## and the room round them.
+func ask_about(selected: Array) -> void:
+	if assistant == null:
+		return
+	# Not the room of a request still being worked on.
+	if _working:
+		_status.text = "Still working on the last one."
+		return
+	if not assistant.focus_on(selected, true).is_empty():
+		_status.text = "Select the parts to ask about first."
+		return
+	_show_chip()
+	_input.placeholder_text = ABOUT_PLACEHOLDER
+	# With no key, the Claude on this machine is the way to ask that works.
+	if not OwnKey.has_key() and claude_code_here and _use_claude_code != null \
+			and not _use_claude_code.button_pressed:
+		_use_claude_code.button_pressed = true
+	if OwnKey.has_key() or claude_code_here:
+		_input.grab_focus()
+	elif _connector_form != null and _connector_form.is_on():
+		note("Ask Claude in your chat about the %d selected part%s. It sees what is "
+			% [assistant.focus.ids.size(), "" if assistant.focus.ids.size() == 1 else "s"]
+			+ "selected here and changes only that.")
+	else:
+		_status.text = ("Paste a key of your own, or connect Claude, to ask about "
+			+ "the selection.")
+
+
+## Back to asking about the whole model.
+func stop_asking_about() -> void:
+	if assistant != null and not _working:
+		assistant.unfocus()
+	_chip.visible = false
+	_input.placeholder_text = PLACEHOLDER
+	if not _working:
+		_send.text = _send_words()
+
+
+## Whether the next request is about a selection.
+func asking_about() -> bool:
+	return _chip != null and _chip.visible and assistant != null \
+		and assistant._focus_alive()
+
+
+func _show_chip() -> void:
+	var count: int = assistant.focus.ids.size() if assistant.focus != null else 0
+	_chip_words.text = "About %d selected part%s" % [count, "" if count == 1 else "s"]
+	_chip.visible = count > 0
+	if not _working:
+		_send.text = _send_words()
+
+
+## What the button says: a request about a selection asks, a brief builds.
+func _send_words() -> String:
+	return "Ask Claude" if _chip != null and _chip.visible else "Build it"
+
+
+## A change to the selection landed: what it did, and the room before and
+## after, side by side.
+func _on_focus_edited(words: String, before: Image, after: Image) -> void:
+	if _chip.visible:
+		_show_chip()
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 4)
+	var said := Label.new()
+	said.text = "Changed the selection: %s. Edit, Undo takes the request back." % words
+	said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	said.add_theme_font_size_override("font_size", 12)
+	card.add_child(said)
+	if before != null or after != null:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		for pair: Array in [["Before", before], ["After", after]]:
+			if pair[1] == null:
+				continue
+			var column := VBoxContainer.new()
+			column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var named := Label.new()
+			named.text = pair[0]
+			named.add_theme_font_size_override("font_size", 11)
+			named.modulate = Color(1, 1, 1, 0.65)
+			column.add_child(named)
+			var picture := TextureRect.new()
+			picture.name = pair[0]
+			picture.texture = ImageTexture.create_from_image(pair[1])
+			picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			picture.custom_minimum_size = Vector2(0, 120)
+			column.add_child(picture)
+			row.add_child(column)
+		card.add_child(row)
+	# Named for a probe to find it, "changed2" and on after the first.
+	card.name = "changed"
+	_log.add_child(card, true)
+	if _run != null and is_instance_valid(_run):
+		_log.move_child(_run, _log.get_child_count() - 1)
+	_follow_the_card()
+
+
+## Claude asks to change more than the selection's room: the person says.
+func _on_room_asked(why: String, where: String) -> void:
+	if _room_card != null and is_instance_valid(_room_card):
+		_room_card.queue_free()
+	_room_card = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.95, 0.65, 0.2, 0.14)
+	style.border_color = Color(0.95, 0.65, 0.2, 0.6)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(10)
+	_room_card.add_theme_stylebox_override("panel", style)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	_room_card.add_child(column)
+	var said := Label.new()
+	said.text = ("Claude asks to change more than the selection: %s.
+It would work in %s."
+		% [why.rstrip("."), where])
+	said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	said.add_theme_font_size_override("font_size", 12)
+	column.add_child(said)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	column.add_child(row)
+	var card: PanelContainer = _room_card
+	for pair: Array in [["Allow", true], ["Keep to the selection", false]]:
+		var button := Button.new()
+		button.text = pair[0]
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var yes: bool = pair[1]
+		button.pressed.connect(func() -> void:
+			assistant.answer_room(yes)
+			row.queue_free()
+			said.text += "\n" + ("Allowed." if yes else "Kept to the selection.")
+			if _room_card == card:
+				_room_card = null)
+		row.add_child(button)
+	_log.add_child(_room_card)
+	if _run != null and is_instance_valid(_run):
+		_log.move_child(_run, _log.get_child_count() - 1)
+	_follow_the_card()
 
 
 ## Why this cannot be sent, or empty when it can.
@@ -484,20 +675,41 @@ func _on_send() -> void:
 		_status.text = why
 		return
 
+	# About a selection: the chip says so, and the parts must still be there.
+	var about: bool = asking_about()
+	if _chip.visible and not about:
+		stop_asking_about()
+		_status.text = "The parts asked about are gone. Select them and ask again."
+		return
+	var count: int = assistant.focus.ids.size() if about else 0
+
 	_suggestions.visible = false
 	_input.text = ""
-	_add(text, _Role.PERSON)
+	_add(("About %d selected part%s: %s" % [count, "" if count == 1 else "s", text])
+		if about else text, _Role.PERSON)
 	_working = true
 	_send.disabled = true
 	_send.text = "Working…"
 	_status.text = ""
-	var fresh: bool = assistant == null or not assistant.has_conversation()
+	# Never a fresh design about a selection: the model round it stays.
+	var fresh: bool = not about and (assistant == null or not assistant.has_conversation())
 	if fresh:
 		designing.emit(text)
 	_open_run(fresh)
+	if about:
+		_run_title.text = "Changing the selection"
 
 	if designing_locally():
-		design_locally.emit(text)
+		design_locally.emit(Assistant.selection_brief(text, count) if about else text)
+		return
+
+	if about:
+		if not assistant.about_selection(text):
+			_status.text = "Still working on the last one."
+			_working = false
+			_send.disabled = false
+			_send.text = _send_words()
+			_close_run("Did not start", "")
 		return
 
 	# A first request designs; a later one revises what is already there.
@@ -514,7 +726,7 @@ func _on_send() -> void:
 		_status.text = "Still working on the last one."
 		_working = false
 		_send.disabled = false
-		_send.text = "Build it"
+		_send.text = _send_words()
 		_close_run("Did not start", "")
 
 
@@ -545,6 +757,8 @@ func new_chat() -> void:
 	if assistant:
 		assistant.cancel()
 		assistant.forget_conversation()
+		assistant.unfocus()
+	stop_asking_about()
 	_bill = ""
 	_run = null
 	for child: Node in _log.get_children():
@@ -554,7 +768,7 @@ func new_chat() -> void:
 	_status.text = ""
 	_working = false
 	_send.disabled = false
-	_send.text = "Build it"
+	_send.text = _send_words()
 	# Whether the openers belong on screen is the same question as
 	# whether the composer does, so it is asked in one place rather than
 	# set true here and decided there.
@@ -899,6 +1113,10 @@ func controls_by_name() -> Dictionary:
 		named.merge(_connector_form.controls_by_name())
 	if _run != null and is_instance_valid(_run):
 		named["stop"] = _run_stop
+	named["about"] = _chip_clear
+	if _room_card != null and is_instance_valid(_room_card):
+		for button: Button in _room_card.find_children("*", "Button", true, false):
+			named["room_allow" if button.text == "Allow" else "room_refuse"] = button
 	return named
 
 
@@ -922,6 +1140,9 @@ func _on_built(brick_count: int) -> void:
 
 func _on_finished(ok: bool, summary: String) -> void:
 	_working = false
+	# The chip taken off while it ran: the next request is about the model.
+	if not _chip.visible and assistant != null:
+		assistant.unfocus()
 	var on_card: bool = _run != null and is_instance_valid(_run)
 	if summary == "cancelled":
 		_close_run("Stopped", "Stopped. What was there before is back.")
@@ -934,11 +1155,11 @@ func _on_finished(ok: bool, summary: String) -> void:
 		OwnKey.forget()
 		_show_for_key(OwnKey.has_key())
 		_status.text = "Paste a working key to carry on."
-		_send.text = "Build it"
+		_send.text = _send_words()
 		return
 	# Not unconditionally: the key may have been changed while it ran.
 	_send.disabled = not _why_not().is_empty()
-	_send.text = "Build it"
+	_send.text = _send_words()
 	# The bill goes in either way. A design that failed after three
 	# repairs is the one you most want the cost of, and leaving it off
 	# would mean the only runs anyone is billed for silently are the

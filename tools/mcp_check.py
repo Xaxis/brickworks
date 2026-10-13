@@ -150,7 +150,7 @@ def drive(relay: Relay) -> None:
     for wanted in ("search_parts", "check_design", "submit_design",
                    "look_at_model", "view_model", "edit_model",
                    "attachment_points", "clear_model", "save_model",
-                   "add_minifig", "make_part"):
+                   "add_minifig", "make_part", "selection", "edit_selection"):
         check("  %s is offered" % wanted, wanted in named)
     # MCP's spelling, not Anthropic's. A session cannot call a tool whose
     # schema it cannot read, and the error it gets names the client.

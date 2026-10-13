@@ -91,7 +91,7 @@ func _run() -> void:
 		names.size() >= 7)
 	for wanted: String in ["search_parts", "check_design", "look_at_model",
 			"view_model", "submit_design", "edit_model",
-			"attachment_points", "make_part"]:
+			"attachment_points", "make_part", "selection", "edit_selection"]:
 		_check("  %s is offered" % wanted, names.has(wanted))
 	# Every tool must carry a schema, or a client has nothing to call it
 	# with. A name alone reads as a working tool and fails on first use.
@@ -220,6 +220,41 @@ func _run() -> void:
 	var nothing: String = _text_of(await _ask("review_model", {"assembly": "moat"}))
 	_check("...and an assembly it never named is answered with the ones it did",
 		nothing.begins_with("No assembly called moat") and nothing.contains("east wall"))
+	# Asked about part of it: the person selects the top course's west end
+	# in the window, and a session reads that and changes it alone.
+	var library: PartLibrary = main.get("_library")
+	builder.selection.clear()
+	for brick: BrickWorld.Brick in _world.bricks():
+		var at: Vector3 = SelectionScope.box_of(brick.part_id, brick.transform, library).get_center()
+		if at.y > 27 * 8 and at.x < 16 * 20:
+			builder.selection[brick.id] = true
+	var picked: Array = builder.selection.keys()
+	var far: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if SelectionScope.box_of(brick.part_id, brick.transform, library).get_center().x > 100 * 20 \
+				and not store.scenery.has(brick.id):
+			far = brick.id
+	var read: String = _text_of(await _ask("selection", {}))
+	_check("selection reads the %d parts the person selected, by number, and their room"
+		% picked.size(), picked.size() >= 3 and read.contains("#%d " % picked[0])
+		and read.contains("The room a change may use") and not read.contains("#%d " % far))
+	var depth: int = builder.history_depth()
+	var painted: String = _text_of(await _ask("edit_selection", {
+		"recolor": [{"bricks": picked, "color": 72}]}))
+	var greys: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.color_code == 72:
+			greys += 1
+	_check("edit_selection paints them, and only them (%d dark grey)" % greys,
+		painted.begins_with("Done.") and greys == picked.size() + 1)
+	var beyond: String = _text_of(await _ask("edit_selection", {"remove": [far]}))
+	_check("...and refuses to take off a brick at the far end",
+		beyond.begins_with("Not applied — that reaches outside") and _world.get_brick(far) != null)
+	_check("...one undo step (%d, was %d)" % [builder.history_depth(), depth],
+		builder.history_depth() == depth + 1)
+	builder.undo()
+	builder.selection.clear()
+	assistant.unfocus()
 	# The finishing pass: plain one-wide bricks with an open face, laid
 	# again in place as one structure. On a black wall one stud thick, in
 	# 1x4s bonded, as a design writes one by hand: panels of grille between
