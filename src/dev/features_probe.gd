@@ -179,12 +179,14 @@ func _run() -> void:
 		and not second.piece.is_empty(), "\"next\" lays the next-best piece instead: %s"
 		% second.piece.get("id", "none"))
 	var where_was: Vector3 = FeaturePass._low(second.copies[0]["bricks"])
+	# A stud toward the middle of the body's top (z 6 to 8), so it still stands.
+	var by: float = -1.0 if where_was.z >= 7.0 else 1.0
 	var adjusted: Variant = await assistant.use_tool("settle_feature", {"feature": "eyes",
-		"verdict": "accept", "move": {"dx": 0, "dy": 0, "dz": -1}})
+		"verdict": "accept", "move": {"dx": 0, "dy": 0, "dz": by}})
 	var moved_to: Vector3 = FeaturePass._low(second.copies[0]["bricks"])
 	print("    " + _blocks_text(adjusted).substr(0, 300).replace("\n", "\n    "))
-	_ok(second.verdict == "adjusted" and is_equal_approx(moved_to.z, where_was.z - 1.0),
-		"accepting it moved a stud back lays it again there (z %s to %s)" % [where_was.z,
+	_ok(second.verdict == "adjusted" and is_equal_approx(moved_to.z, where_was.z + by),
+		"accepting it moved a stud lays it again there (z %s to %s)" % [where_was.z,
 			moved_to.z])
 	_ok(_blocks_text(adjusted).contains("Next, the beak:")
 		and _blocks_text(adjusted).contains("The beak — feature 2 of 2"),

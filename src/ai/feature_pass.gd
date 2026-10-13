@@ -337,9 +337,11 @@ func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
 	for brick: BrickWorld.Brick in assistant._bricks_inside({}):
 		ids.append(brick.id)
 	var free: Array = []
+	var box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
+	var out: Vector3 = Assistant.FACES.get(facing, Vector3.UP)
 	for point: OpenPoints.Point in read.points_of(ids):
 		if point.kind == "stud" and point.by == 0 and point.section.is_empty() \
-				and point.at.distance_to(target) <= REACH:
+				and point.at.distance_to(target) <= REACH and _outside(point, out, box):
 			free.append(point)
 	free.sort_custom(func(a: OpenPoints.Point, b: OpenPoints.Point) -> bool:
 		return a.at.distance_to(target) < b.at.distance_to(target))
@@ -370,6 +372,28 @@ func fit(entry: Dictionary, spot: Dictionary) -> Dictionary:
 					return {"bricks": moved, "turn": turn, "up": up,
 						"at": Vector3(seat.at.x / STUD, seat.at.y / PLATE, seat.at.z / STUD)}
 	return {}
+
+
+## Whether a free stud is on the model's outside, seen the way the feature
+## faces: nothing of the model on it, and nothing between it and the edge of
+## the model's box that way. The nearest free studs to where a corner shop's
+## awning, sign and cornice go were on its floors, inside, and all three were
+## laid there and rejected.
+func _outside(point: OpenPoints.Point, out: Vector3, box: AABB) -> bool:
+	var lattice: BrickLattice = assistant.builder.lattice
+	var start: Vector3 = point.at + point.way * 6.0
+	var at: Vector3 = start
+	var reach: AABB = box.grow(STUD)
+	for way: Vector3 in [point.way, out]:
+		at = start
+		for step: int in 200:
+			at += way * 8.0
+			if not reach.has_point(at):
+				break
+			var other: int = lattice.brick_at(BrickLattice.to_cell(at))
+			if other != 0 and other != point.brick and not assistant.scenery.has(other):
+				return false
+	return true
 
 
 ## The ways a piece is tried facing a spot, as [turns, up]: as built with
