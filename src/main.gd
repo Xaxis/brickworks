@@ -996,11 +996,13 @@ func _ask_claude_code(brief: String) -> void:
 			(Time.get_ticks_msec() - started) / 1000.0, note]))
 	session.said.connect(func(text: String) -> void:
 		print("  said: %s" % text.substr(0, 300)))
-	# About a selection, what the app made of each call too: a change kept
-	# to the room, or refused and why.
+	# What the app made of each call too: a change kept to the room or
+	# refused and why, a feature worked and with what. The session's own
+	# lines name only the tool.
+	_assistant.progress.connect(func(note: String) -> void:
+		print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0,
+			note.replace("\n", "\n             ")]))
 	if not about.is_empty():
-		_assistant.progress.connect(func(note: String) -> void:
-			print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0, note]))
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
 				(Time.get_ticks_msec() - started) / 1000.0, words, _builder.history_depth()]))

@@ -15,9 +15,24 @@ asking for an API key.
   that port. Stdlib only, no dependencies. It carries no tool definitions of its
   own: it fetches them from the app, so the two cannot drift, and keeps a copy in
   `tools/mcp_tools.json` only to answer `tools/list` while the app is closed. The
-  MCP `instructions` are fetched the same way (`__about__`) — all 13k characters
+  MCP `instructions` are fetched the same way (`__about__`) — all 56k characters
   of the app's own design guidance, the same words the in-app loop is given, so a
-  session is not left working out from refusals that wedge plates exist.
+  session is not left working out from refusals that wedge plates exist. But
+  **Claude Code reads only about the first 3,800 characters** of a server's
+  instructions and marks the rest "… [truncated]": asked what it was given, a
+  session quoted LEGO ART, COORDINATES, SIDEWAYS and half of the pins section,
+  and could not see HOW TO WORK (character 12,868), the rules, the shapes or
+  what a subject needs. So the guidance is headed by `Assistant.GUIDE_HEAD`
+  (about 1,900 characters: the process — silhouette as shapes with a face,
+  features, review, each feature, each assembly, touches — the three rules, and
+  the sections there are), and `read_guide(section)` serves any section in full
+  ("work", "rules", "shapes", "subject", "angle", "pins", ...: the heading's
+  text to the next heading, `Assistant.read_guide`). `mcp_probe` checks the
+  head is inside the first 3,500 characters and that read_guide("shapes")
+  serves SAY THE SHAPE with the face in it. To see what a session reads:
+  start the app with `--mcp=PORT` and ask `claude -p` (no tools,
+  `--strict-mcp-config`, on the subscription) to quote the first words under
+  HOW TO WORK and the last sentence it can see.
 - `drive the app over mcp`: `tools/mcp_check.py` starts a headless app, drives the
   relay as a client would, and stops the app it started.
 - `design on your own subscription`: **My Claude** in the design panel. The app

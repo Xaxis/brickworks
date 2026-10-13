@@ -2080,7 +2080,8 @@ class Plan extends RefCounted:
 					any = any or column[v] >= 0
 				if any:
 					local[Vector2i(u, w)] = column
-		if local.is_empty():
+		# A face may take the whole side: then it is all that is laid there.
+		if local.is_empty() and face_parts.is_empty():
 			return []
 		var sub := Plan.new(local, depth, true, library)
 		sub.flank = true
@@ -2094,14 +2095,16 @@ class Plan extends RefCounted:
 		if sub.held.is_empty():
 			shell["covered"] = 0.0
 			return []
-		sub.mirror_of()
-		sub.surface(kind)
-		sub.lay()
+		if not local.is_empty():
+			sub.mirror_of()
+			sub.surface(kind)
+			sub.lay()
 		var laid: int = sub.made.size()
 		# Pruned to what a side stud holds, and not stitched: a piece of a
 		# shell on a stud of its own is held, and a stitch lays parts again
 		# that no stud may reach.
-		sub.prune()
+		if not local.is_empty():
+			sub.prune()
 		sub.made.append_array(face_parts)
 		# How much of what it took out of the core its kept parts cover.
 		var covered: Dictionary = {}
@@ -2251,10 +2254,11 @@ class Plan extends RefCounted:
 		parts.append({"part": discs[0], "color": face_colour, "x": u0, "y": backing, "z": w0,
 			"rot": 0, "_cells": square, "_h": 1})
 		var on: int = backing + 1
-		# The eyes on the upper studs: touching on a 4, a stud in from the
-		# rim on a 6, a stud apart on an 8; the beak under their middle.
+		# The eyes on the upper studs, touching, in the middle: a stud in from
+		# the rim on a 6, two on an 8 (a stud apart, they read as a panda's);
+		# the beak under their middle.
 		var eye_row: int = 0 if n == 4 else 1
-		var eye_at: Array = {4: [0, 2], 6: [1, 3], 8: [1, 5]}[n]
+		var eye_at: Array = {4: [0, 2], 6: [1, 3], 8: [2, 4]}[n]
 		for at_: int in eye_at:
 			parts.append({"part": "18674", "color": int(asked["eyes"]), "x": u0 + at_, "y": on,
 				"z": w0 + eye_row, "rot": 0})
@@ -2265,8 +2269,64 @@ class Plan extends RefCounted:
 				"z": w0 + eye_row + 2, "rot": 0})
 			parts.append({"part": "54200", "color": int(asked["beak"]), "x": u0 + (n >> 1) - 0.5,
 				"y": on + 1, "z": w0 + eye_row + 2, "rot": 0})
-		return {"parts": parts, "cells": cells, "said": "a %d x %d disc %d plate%s out on %d side studs"
-			% [n, n, backing, "" if backing == 1 else "s", studs]}
+		# The disc's other studs tiled, so the face is smooth round its
+		# features: the held-out owl's disc, studs bare, was judged "a round
+		# plate with its studs showing". A 2 x 2 tile where four free studs
+		# lie wholly inside the disc, a 1 x 1 where one does, and a round
+		# 1 x 1 at the rim, where a square one's corner would stand off it.
+		var used: Dictionary = {}
+		for at_: int in eye_at:
+			for di: int in 2:
+				for dk: int in 2:
+					used[Vector2i(at_ + di, eye_row + dk)] = true
+		if int(asked["beak"]) >= 0:
+			used[Vector2i((n >> 1) - 1, eye_row + 2)] = true
+			used[Vector2i(n >> 1, eye_row + 2)] = true
+		# Its studs as the part has them: the 6 x 6's ring is not every stud
+		# whose middle is on the disc, and a tile there held by nothing.
+		var read: Array = Patterns._studs_of(library, discs[0])
+		var has_stud: Dictionary = read[2] if read.size() == 3 else {}
+		var tiles: int = 0
+		for k: int in n:
+			for i: int in n:
+				if used.has(Vector2i(i, k)) or not (has_stud.has(Vector2i(i, k))
+						if not has_stud.is_empty() else _disc_stud(i, k, n)):
+					continue
+				var block: bool = i + 1 < n and k + 1 < n
+				for di: int in 2:
+					for dk: int in 2:
+						block = block and not used.has(Vector2i(i + di, k + dk)) \
+							and _disc_inside(i + di, k + dk, n) and (has_stud.is_empty()
+								or has_stud.has(Vector2i(i + di, k + dk)))
+				var part: String = "98138"
+				if block:
+					part = "3068b"
+					for di: int in 2:
+						for dk: int in 2:
+							used[Vector2i(i + di, k + dk)] = true
+				elif _disc_inside(i, k, n):
+					part = "3070b"
+				used[Vector2i(i, k)] = true
+				parts.append({"part": part, "color": face_colour, "x": u0 + i, "y": on,
+					"z": w0 + k, "rot": 0})
+				tiles += 1
+		return {"parts": parts, "cells": cells, "said": "a %d x %d disc %d plate%s out on %d side studs, %d tiles round its features"
+			% [n, n, backing, "" if backing == 1 else "s", studs, tiles]}
+
+	## Whether a round plate [param n] studs across has a stud at (i, k): its
+	## middle inside the disc.
+	static func _disc_stud(i: int, k: int, n: int) -> bool:
+		var r: float = n / 2.0
+		return Vector2(i + 0.5 - r, k + 0.5 - r).length() < r
+
+	## Whether the whole of the stud's square (i, k) lies on the disc.
+	static func _disc_inside(i: int, k: int, n: int) -> bool:
+		var r: float = n / 2.0
+		for corner: Vector2 in [Vector2(i, k), Vector2(i + 1, k), Vector2(i, k + 1),
+				Vector2(i + 1, k + 1)]:
+			if (corner - Vector2(r, r)).length() > r + 0.01:
+				return false
+		return true
 
 	## Cells whose top plate carries a slope, so is laid with studs, not tiled.
 	var studded: Dictionary = {}
