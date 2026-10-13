@@ -1155,6 +1155,13 @@
       "area": "geometry"
     },
     {
+      "kind": "cli",
+      "label": "audit connections in real sets",
+      "entry": "tools/connection_audit.py",
+      "reach": "python3 tools/connection_audit.py run && python3 tools/connection_audit.py report --write docs/CONNECTIONS.md   (hours, under heavy; needs vendor/omr)",
+      "area": "geometry"
+    },
+    {
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",

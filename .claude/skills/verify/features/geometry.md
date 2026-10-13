@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, cli:audit connections in real sets -->
 
 ## Sub-features
 
@@ -216,6 +216,13 @@ can occupy the same millimetre.
   part's cover is its own stretched (`Builder.boxes_for`): the turned covers
   took a turn only, and gave a piece 40 long a cover one long.
 
+- `connection audit` (`src/dev/connection_audit.gd`, `tools/connection_audit.py`):
+  every set in vendor/omr opened as File, Open does and checked with only
+  the ground holding; each floating cluster put down to the joint it touches
+  held parts by, and every overlap between standing parts the check excuses
+  counted by part (`Assistant._standing_overlaps`). `docs/CONNECTIONS.md` is
+  its report.
+
 ## How to reach it
 
 GDScript: `src/assembly/lattice.gd` (cells, `cells_for_turned`, `is_square_to_grid`),
@@ -239,6 +246,8 @@ godot --headless --path . --script src/dev/snap_probe.gd         # cells
 godot --headless --path . --script src/dev/snot_probe.gd         # held sideways
 godot --headless --path . --script src/dev/technic_probe.gd      # pins, axles and open holes, a pin in 6222/18897
 godot --headless --path . --script src/dev/joints_probe.gd       # clips, bars, hinges, turntables, panes
+python3 tools/connection_audit.py run [--shards 6 --parallel 2]   # every real set, under heavy, hours
+python3 tools/connection_audit.py report --before DIR --write docs/CONNECTIONS.md
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
 godot --headless --path . --script src/dev/axle_probe.gd         # axles through holes, gears in mesh, a crank's train at 1:3
