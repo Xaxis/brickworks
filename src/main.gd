@@ -1590,6 +1590,7 @@ func _build_ui() -> void:
 
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.color_chosen.connect(_on_color_chosen)
+	_bin.swatch_pressed.connect(_on_swatch_pressed)
 
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).
@@ -2622,6 +2623,19 @@ func _on_part_fetched(part_id: String) -> void:
 func _on_color_chosen(color_code: int) -> void:
 	_builder.held_color = color_code
 	_refresh_preview()
+
+
+## A colour clicked in the palette paints what is selected, as Studio's
+## and Mecabricks' palettes do. It only changed the colour in hand: a
+## person selected a brick, clicked blue, saw it stay red, and had to
+## learn C from the status line (brickworks.diy at dd5c10c, 2026-10-12).
+## Not with a part in hand or a copy held, where the colour is for what
+## goes down next. Edit, Paint the selection, so it is one undo step and
+## refused where that is.
+func _on_swatch_pressed(_color_code: int) -> void:
+	if _verbs.mode == "place" or _builder.is_carrying():
+		return
+	_shell.run("paint")
 
 
 ## Open an LDraw model and place every part of it. Returns how many landed.

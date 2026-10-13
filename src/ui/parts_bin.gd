@@ -116,6 +116,10 @@ signal part_chosen(part_id: String)
 ## A part was kept in Favourites, or taken out.
 signal part_favourited(part_id: String, kept: bool)
 signal color_chosen(color_code: int)
+## A swatch clicked by hand, once the colour in hand is that colour: what
+## is selected takes it too (Main._on_swatch_pressed). The eyedropper and
+## the bracket keys choose a colour without one.
+signal swatch_pressed(color_code: int)
 ## "Make a part" was pressed: the element maker, for a part that is not
 ## in the library yet.
 signal make_wanted
@@ -434,7 +438,10 @@ func _flow_of(colors: Array[PartLibrary.BrickColor]) -> FlowContainer:
 	for color: PartLibrary.BrickColor in colors:
 		var swatch := Swatch.new(color)
 		swatch.set_pressed_no_signal(color.code == _selected_color)
-		swatch.pressed.connect(_on_colour.bind(color.code))
+		var code: int = color.code
+		swatch.pressed.connect(func() -> void:
+			_on_colour(code)
+			swatch_pressed.emit(code))
 		_swatches[color.code] = swatch
 		flow.add_child(swatch)
 	return flow

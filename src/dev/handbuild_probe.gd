@@ -78,6 +78,7 @@ func _run() -> void:
 	await _select_by()
 	await _hide_and_isolate()
 	await _the_shell()
+	await _palette_paints_the_selection()
 	await _text_fields_give_keys_back()
 	await _seat_an_old_model()
 	await _replace_and_history()
@@ -694,6 +695,62 @@ func _shift_click(at: Vector2) -> void:
 		Input.parse_input_event(event)
 		await _frames(2)
 	await _frames(2)
+
+
+## A colour clicked in the palette with a part selected paints it, as in
+## Studio. It only changed the colour in hand, and the brick a person had
+## selected stayed red (brickworks.diy at dd5c10c, 2026-10-12).
+func _palette_paints_the_selection() -> void:
+	print("  a colour clicked in the palette")
+	var bin: PartsBin = _main.get("_bin")
+	var verbs: EditVerbs = _main.get("_verbs")
+	await _key(KEY_ESCAPE)
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	_put("3001", 4, Vector3(60, 24, 20))
+	await _frames(3)
+	var picked: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	var other: int = _bricks_near(Vector3(60, 0, 20))[0]
+	await _show_column("_bin_dock")
+	await _frames(10)
+	# Two swatches in sight in the palette's window, the way a person sees
+	# them: neither red nor the colour in hand.
+	var window: Rect2 = bin._palette_scroll.get_global_rect()
+	var seen: Array[Control] = []
+	for code: int in bin._swatches:
+		var here: Control = bin._swatches[code]
+		if code != 4 and code != bin.selected_color() and here.is_visible_in_tree() \
+				and window.encloses(here.get_global_rect()):
+			seen.append(here)
+	if seen.size() < 2:
+		_check("two swatches are in sight in the palette (%d)" % seen.size(), false)
+		return
+	var swatch: Control = seen[0]
+	var colour: int = int(swatch.get_meta("code"))
+	_select_only([picked])
+	await _click(swatch.get_global_rect().get_center())
+	_check("a colour clicked with a part selected paints it (%d, wanted %d)"
+		% [_world.get_brick(picked).color_code, colour],
+		_world.get_brick(picked).color_code == colour)
+	_check("...and nothing else (%d)" % _world.get_brick(other).color_code,
+		_world.get_brick(other).color_code == 4)
+	_check("...and it is the colour in hand now", _builder.held_color == colour)
+	await _key(KEY_Z, true)
+	_check("one undo puts its colour back (%d)" % _world.get_brick(picked).color_code,
+		_world.get_brick(picked).color_code == 4)
+	# With a part in hand the colour is for what goes down next, not a paint.
+	_select_only([picked])
+	await _key(KEY_Q)
+	_check("Q takes a part into hand, the selection still there (%s, %d selected)"
+		% [verbs.mode, _builder.selection.size()],
+		verbs.mode == "place" and _builder.selection.has(picked))
+	var next: int = int(seen[1].get_meta("code"))
+	await _click(seen[1].get_global_rect().get_center())
+	_check("...and a colour clicked then is the part's in hand (%d), painting nothing (%d)"
+		% [_builder.held_color, _world.get_brick(picked).color_code],
+		_builder.held_color == next and _world.get_brick(picked).color_code == 4)
+	await _key(KEY_ESCAPE)
+	_builder.clear_selection()
 
 
 ## The owner: "When the user names a build (renames it), the text input

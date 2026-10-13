@@ -26,7 +26,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   whose screen position falls inside the box is selected (Shift adds to the
   selection). A plain drag there turns the view instead (`left-button
   navigation`). Releasing over a panel still ends the box.
-- `selection edits`: with bricks selected, `C` paints them the current colour,
+- `selection edits`: with bricks selected, `C` paints them the current colour
+  (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
   the arrow keys and W A S D move them across the ground by the snap, Page Up
   and Down raise and lower them, `R` turns them by the turn step and `T` tips
   them over, `Delete` or `Backspace` removes them. `shift-click` or `Ctrl`-click
