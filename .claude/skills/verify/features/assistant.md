@@ -1301,11 +1301,15 @@ fixing what it got wrong.
   sets of a kind are built from, by lift over sets in general. See
   `features/parts.md` for how it is measured.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
-  77 constructions with real part numbers and real coordinates, each in a group
+  83 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round
   bodies, faces and features, machines and joints, angles, roofs and spires,
   windows and doors, rock and ground, plants, furniture and interiors, lights,
-  display and touches). Faces and features (2026-10-12), because the
+  creative touches). Creative touches (2026-10-12) is the creative pass's: a
+  lid or hatch raised on hinges (two 3937 bases, the tops and a 4 x 4 lid in
+  a section turned -60 degrees about the pin), a small creature on a jumper
+  (33320 frog; the why names the mouse, songbird, cat, rat and spider), and
+  the display stand with a nameplate. Faces and features (2026-10-12), because the
   held-out owl's face was a panel of white 1 x 1 tiles with 1 x 1 dots for
   eyes: an eye with a highlight (18674 under a printed 98138p07), a round
   face (a 4 x 4 round plate with two eyes and a beak on it), a beak or snout
@@ -1451,7 +1455,41 @@ fixing what it got wrong.
   place_technique, the beak built from `beak or snout`, the run's record; and
   from outside the build's answer, the whole review handing over the eyes,
   review_model feature=, the piece put down to the eyes and its answer naming
-  the beak, save handing back the beak. Needs the index; SKIP without. `place_technique` reads the piece
+  the beak, save handing back the beak. Needs the index; SKIP without.
+  The creative pass, last (`CREATIVE_PASS`, `_creative_brief`, 2026-10-12):
+  once the features and assemblies have had their turns, a fresh design
+  (`_creative_wanted`, set by `_start` for a new conversation, never a
+  revision or a selection) is handed one more turn of its own,
+  `TURNS_FOR_TOUCHES` 6: propose three touches for this subject, one each of
+  a story (a figure doing the subject's own thing, with its tool, catch or
+  load), a play or display feature shown working (a lid ajar, a jib on a
+  turntable, a printed nameplate — a blank one reads as blank) and a nod
+  (its maker, number or year printed, the detail it is famous for, a part
+  used for its look); add the best one or two, small, joined, where they are
+  seen, never at the likeness's or the build's cost; say which. The brief
+  quotes the subject, says what the model has already (`_touches_had`:
+  figures, creatures, printed parts, parts that hinge or turn) and names
+  find_techniques words and the creative touches techniques. It ends as
+  "the creative pass: 2 parts added, new to the model: 3794b …, 33320 Animal
+  Frog" (`_creative_said`, `_creative_record`) or "nothing added". From
+  outside: the build's answer makes it step 4, `review_model {"creative":
+  true}` hands it, the whole review and the last assembly's end on it, and
+  saving hands it once nothing else is left (`_creative_next`, only after a
+  submit_design from outside); the save after the pass says what it added
+  (or once, that it added nothing) first, before any feature or assembly it
+  hands back (`_creative_passed`: three of four bench sessions worked the
+  pass before their features), then saving only saves. A bench run's log shows "the creative
+  pass" for the call and "app: the creative pass: …" for what it added.
+  `creative_probe` drives it with canned replies: owed to a design and not a
+  revision, handed after the look with its kinds, subject and inventory, a
+  frog on a jumper added and the model one piece, the record said, a pass
+  that only calls tools ended after its six turns, and from outside the
+  answer, saving and review_model creative=, and a pass worked before a
+  feature said at the save that hands the feature. With the pass switched
+  off, 12 of its checks fail. Measured (`2026-10-12-creative`, four subjects
+  one run each, docs/DESIGN_SCORES.md): every session called the pass, and
+  creativity went from 3.0 to 5.2 against the re-scored baseline, each
+  judge's reason naming what the pass added; none added a play feature. `place_technique` reads the piece
   with the app's own LDraw reader, turns it by quarter turns, moves its low
   corner to x, y, z by whole studs, swaps colours by `recolor`, and lays it
   through `edit_model`, so the joints checker refuses it like any edit; pieces

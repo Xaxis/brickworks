@@ -158,3 +158,46 @@ Run to run, the same subject designed again on the same code (each cell is run 1
 Mean spread between runs, per dimension: likeness 0.7, surface 1.0, colour 0.7, technique 0.7, creative 0.7, build 0.0; of a subject's mean score, 0.50 (standard deviation 0.28). A change to a subject's mean smaller than the spread is not yet a result.
 
 Weakest across the suite: **technique** (3.6), **surface** (3.8), **creativity** (4.0).
+
+## 2026-10-12-creative: a creative pass at the end of every design (482576f)
+
+Every design now ends with a turn of its own for touches: it proposes three
+for its subject (a story, a play or display feature, a nod only someone who
+knows it would catch) and adds the best one or two, small and joined. From
+outside, the build's answer, `review_model {"creative": true}` and saving
+hand it over. Four subjects, one run each, on the fixed build check (26ddb89),
+against the re-scored baseline above.
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| bonsai | 1 | 6.0 | 4.0 | 6.0 | 4.0 | 5.0 | 10.0 | **5.8** | 213 | 1 |
+| corner_shop | 1 | 6.0 | 4.0 | 6.0 | 4.0 | 6.0 | 10.0 | **6.0** | 1,212 | 1 |
+| mountain_cabin | 1 | 5.0 | 3.0 | 5.0 | 4.0 | 6.0 | 10.0 | **5.5** | 308 | 1 |
+| speed_champions | 1 | 3.0 | 3.0 | 4.0 | 3.0 | 4.0 | 6.0 | **3.8** | 165 | 2 |
+| **suite mean** | 4 | **5.0** | **3.5** | **5.2** | **3.8** | **5.2** | **9.0** | **5.3** |  |  |
+
+Before and after, the same four subjects (baseline re-scored / this round):
+
+| subject | likeness | surface | colour | technique | creative | build | mean |
+|---|---|---|---|---|---|---|---|
+| bonsai | 4 / 6 | 3 / 4 | 4 / 6 | 2 / 4 | **2 / 5** | 10 / 10 | 4.2 / 5.8 |
+| corner_shop | 4.5 / 6 | 3.5 / 4 | 4.5 / 6 | 3.5 / 4 | **3 / 6** | 10 / 10 | 4.8 / 6.0 |
+| mountain_cabin | 4 / 5 | 3 / 3 | 5 / 5 | 3 / 4 | **4 / 6** | 10 / 10 | 4.8 / 5.5 |
+| speed_champions | 3.5 / 3 | 4.5 / 3 | 3.5 / 4 | 3.5 / 3 | **3 / 4** | 10 / 6 | 4.7 / 3.8 |
+| the four | 4.0 / 5.0 | 3.5 / 3.5 | 4.2 / 5.2 | 3.0 / 3.8 | **3.0 / 5.2** | 10 / 9 | 4.6 / 5.3 |
+
+Creativity rose on all four, by 3, 3, 2 and 1, against a run-to-run spread
+of 0.7. Every session called the pass, and the judge's creative reason names
+what it added each time: pink birds in the bonsai's canopy and a frog in its
+soil; a bicycle, a grocer and customers at the shop; a fish and a duck by the
+cabin's jetty; the Porsche's driver standing by it with a trophy. None of the
+four added a play feature or a clever use of a part, and the judge says so in
+each; that is the next thing to push.
+
+What this does not show. The baseline ran before next3's feature pass and the
+guidance head (6440b60), so the other dimensions moved with those as well;
+creativity is the one this round can claim. An intermediate run on 29592be
+(the feature pass, no creative pass) scored speed_champions 3 for creativity,
+as the baseline did. The Porsche's lower likeness, surface and build are its
+hand-built chassis and body (build: axle 3707 carries 119 g on one stud); the
+pass added only the driver, named apart. One run a subject is one sample.

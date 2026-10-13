@@ -707,6 +707,10 @@ func _start(text: String) -> void:
 	_features_told = false
 	_feature_used = {}
 	_feature_now = ""
+	# A fresh design gets the creative pass; a revision carries on the
+	# conversation, and a selection is the person's model.
+	_creative_wanted = not _scoped and _messages.is_empty()
+	_creative_record = ""
 	_detail_count = 0
 	_detail_added = []
 	_parts_before_pass = {}
@@ -1190,12 +1194,15 @@ func _on_response(result: Array) -> void:
 	if _pending == null and not _detailing.is_empty():
 		_detail_turns += 1
 		var feature: bool = bool(_detailing.get("feature", false))
-		if _detail_turns >= (TURNS_PER_FEATURE if feature else TURNS_PER_ASSEMBLY):
+		var creative: bool = bool(_detailing.get("creative", false))
+		if _detail_turns >= (TURNS_FOR_TOUCHES if creative
+				else TURNS_PER_FEATURE if feature else TURNS_PER_ASSEMBLY):
 			progress.emit("out of turns for the %s" % _detailing["name"])
 			var moved_on: Array = tool_results.duplicate()
 			moved_on.append({"type": "text", "text": "That is as many "
-				+ "turns as one %s gets, so on to the next." % (
-					"feature" if feature else "assembly")})
+				+ "turns as the %s gets, so on to the next." % (
+					"creative pass" if creative else "feature" if feature
+						else "assembly")})
 			if await _detail_next(moved_on):
 				return
 			_stop(true, "%d bricks" % world.brick_count())
@@ -1613,7 +1620,8 @@ func _detail_next(also: Array = []) -> bool:
 	# advice here: an assembly within the range of real sets is left
 	# alone, and under 60 parts there is no range to be outside.
 	if not _detailing.is_empty() and not _sent_back and also.is_empty() \
-			and not bool(_detailing.get("feature", false)):
+			and not bool(_detailing.get("feature", false)) \
+			and not bool(_detailing.get("creative", false)):
 		var here: Array[BrickWorld.Brick] = _bricks_inside(
 			_detailing["where"])
 		var normal: Dictionary = library.normal_for(here.size())
@@ -1697,7 +1705,11 @@ func _detail_next(also: Array = []) -> bool:
 			_messages.append({"role": "user", "content": " ".join(said)})
 			_send()
 			return true
-	if not _detailing.is_empty() and bool(_detailing.get("feature", false)):
+	if not _detailing.is_empty() and bool(_detailing.get("creative", false)):
+		_creative_record = _creative_said(_parts_before_pass, int(_detailing["count"]))
+		progress.emit("the creative pass: %s" % _creative_record)
+		_detailing = {}
+	elif not _detailing.is_empty() and bool(_detailing.get("feature", false)):
 		progress.emit("the %s: %s" % [_detailing["name"], _feature_said(_detailing["name"])])
 		var brought := PackedStringArray()
 		for part_id: String in _parts_in(_bricks_inside({})):
@@ -1766,6 +1778,24 @@ func _detail_next(also: Array = []) -> bool:
 	if not _features.is_empty() and not _features_told:
 		_features_told = true
 		progress.emit("features:\n%s" % _features_record(_features))
+	# Last, once everything else has had its turn: see CREATIVE_PASS.
+	if _creative_wanted:
+		_creative_wanted = false
+		var standing: Array[BrickWorld.Brick] = _bricks_inside({})
+		if not standing.is_empty():
+			_detailing = {"name": "creative touches", "where": {}, "creative": true,
+				"count": standing.size()}
+			_detail_turns = 0
+			_repairs = 0
+			_parts_before_pass = _parts_in(standing)
+			_turn_cap = maxi(_turn_cap, _turns + 2 + TURNS_FOR_TOUCHES)
+			progress.emit("the creative pass: proposing touches for it")
+			_forget_old_pictures()
+			var content: Array = also.duplicate()
+			content.append({"type": "text", "text": _creative_brief()})
+			_messages.append({"role": "user", "content": content})
+			_send()
+			return true
 	return false
 
 
@@ -8395,6 +8425,196 @@ func _piece_line(n: int, entry: Dictionary) -> String:
 			", ".join(made_of), " and %d more" % more if more > 0 else ""])
 
 
+# -- the creative pass ---------------------------------------------------------
+
+
+## The creative pass: what a person finds and smiles at.
+##
+## The bench's first batch scored creativity 4.0 of 10 over thirteen
+## designs, and the judge's reasons repeated: a figure standing about
+## with nothing to do, a nameplate that was a blank black slope, the lamp
+## post and chimney every model has, "nothing goes beyond the expected",
+## no play feature, no story. The rules had asked for each of those by
+## name since before the bench, and the check's advice too (_touches).
+## Rules alone never moved a run; a turn of its own did, for the features.
+## So this is a turn: once the build stands and its features and
+## assemblies have had theirs, the design proposes three touches of
+## different kinds for its subject and adds the best one or two. Nothing
+## here knows a subject: the kinds are a set designer's, the subject is
+## the design's.
+const TURNS_FOR_TOUCHES := 6
+
+const CREATIVE_PASS := """The creative pass: the last a LEGO designer \
+makes, and the one people remember. The model holds together and reads as \
+its subject — {subject}. Now give it what a competent model lacks and a \
+real set has: something a person finds and smiles at.
+
+1. Propose three touches for this subject, not for any model, each of a \
+different kind, in a line each:
+  A story: who flies, drives, works, keeps or hunts from it, doing what \
+this subject is for, with the thing they hold or use; or a small scene of \
+what happens here. A figure standing about is a figure, not a story: give \
+it its tool, its catch, its load, its customer.
+  A play or display feature: something that opens, turns, lifts or comes \
+apart, shown working — a door or a lid on a hinge left ajar, a hatch \
+raised, a jib or a turret on a turntable, a hook hanging on its line, a \
+drawbridge half down; or, for a display model, a stand whose nameplate is \
+printed. A plain slope where a nameplate goes reads as blank: print it or \
+leave it out.
+  A nod: what only someone who knows the subject would catch — its maker, \
+its number or its year on a printed part, the detail it is famous for, \
+what LEGO's own set of it is loved for — or a part used for what it looks \
+like rather than what it is: a claw for a thorn, a flower stem for an \
+aerial, a pearl-gold ring for a crest. A lamp post, a chimney and a flag \
+are what every model has; they are not this.
+2. Add the best one or two now, with edit_model, place_technique or \
+add_minifig: small (a handful to thirty parts), joined to the model, where \
+the eye lands from the front or the corner. Never over what the subject is \
+known by, never changing its silhouette, never at the cost of its build: a \
+touch that hurts the likeness is not one. One hidden inside shows only \
+through a door left open, an open back or a window.
+3. Say in a line which you added and why it belongs to this subject.
+
+What it has now: {has}.
+
+How real sets built one: find_techniques with the touch's own words — \
+"cockpit hatch", "crane hook", "drawbridge", "treasure chest", "mailbox", \
+"flower pot" and "display plaque" are all there — and show_technique for \
+{techniques}. A printed part: search_parts "print" with the subject's own \
+names (its maker, its model, its number) or a word of its story (a flag, a \
+map, a gauge, a sign); there are printed parts for a great many real \
+things. A figure: add_minifig. A creature: search_parts "animal"."""
+
+
+## Whether this run's creative pass is still to come: set for a fresh
+## design (see [method _start]), never for a revision or a selection.
+var _creative_wanted: bool = false
+## What the last creative pass came to, in a line, or "".
+var _creative_record: String = ""
+## From outside: whether a design was submitted in this session, whether
+## its creative pass has been handed, and while it runs the parts and the
+## count the model had when it was handed.
+var _outside_designed: bool = false
+var _outside_creative_handed: bool = false
+var _outside_creative: Dictionary = {}
+
+
+## The pass's brief for the model as it stands.
+func _creative_brief() -> String:
+	var subject: String = _brief.strip_edges()
+	if subject.length() > 160:
+		subject = subject.substr(0, subject.rfind(" ", 160)) + "…"
+	var worked := PackedStringArray()
+	for one: Variant in Techniques.all():
+		if str((one as Dictionary).get("group", "")) == "creative touches":
+			worked.append("\"%s\"" % str((one as Dictionary)["name"]))
+	return CREATIVE_PASS.replace("{subject}",
+		"\"%s\"" % subject if not subject.is_empty() else "what was asked").replace(
+		"{has}", _touches_had()).replace("{techniques}", ", ".join(worked))
+
+
+## What the model has already of the touches a set designer adds, in
+## words: "1 figure, no creature, no printed part, 2 parts that hinge,
+## turn or pin". So the pass proposes what is missing, not a second driver.
+func _touches_had() -> String:
+	if library == null:
+		return "not known"
+	var model: Model = _model_from_world()
+	var figures: int = 0
+	var creatures: int = 0
+	var printed := PackedStringArray()
+	var moving: int = 0
+	for placement: Placement in model.placements:
+		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
+		if info == null:
+			continue
+		var category: String = info.family_category()
+		if info.name.begins_with("Minifig Head"):
+			figures += 1
+		elif category == "Animal":
+			creatures += 1
+		elif _decorated(info) and not category.begins_with("Minifig") \
+				and not printed.has(placement.part):
+			printed.append(placement.part)
+		if category in ["Hinge", "Turntable"] or info.has_connector("ball"):
+			moving += 1
+	for section: Section in model.sections.values():
+		if section.hinge:
+			moving += 1
+	var said := PackedStringArray()
+	said.append("no figure" if figures == 0
+		else "%d figure%s" % [figures, "" if figures == 1 else "s"])
+	said.append("no creature" if creatures == 0
+		else "%d creature%s" % [creatures, "" if creatures == 1 else "s"])
+	said.append("no printed part" if printed.is_empty()
+		else "%d printed part%s (%s)" % [printed.size(), "" if printed.size() == 1 else "s",
+			", ".join(printed.slice(0, 4))])
+	said.append("nothing that hinges or turns" if moving == 0
+		else "%d part%s that hinge or turn" % [moving, "" if moving == 1 else "s"])
+	return ", ".join(said)
+
+
+## What a creative pass came to, in a line: how many parts it added and
+## the kinds new to the model, by name; "nothing added" when it added none.
+func _creative_said(before: Dictionary, count: int) -> String:
+	var now: Array[BrickWorld.Brick] = _bricks_inside({})
+	var added: int = now.size() - count
+	var new_kinds := PackedStringArray()
+	for part_id: String in _parts_in(now):
+		if not before.has(part_id):
+			new_kinds.append("%s %s" % [part_id, _part_called(part_id)])
+	if added <= 0 and new_kinds.is_empty():
+		return "nothing added"
+	return "%d part%s added%s" % [added, "" if added == 1 else "s",
+		"" if new_kinds.is_empty() else ", new to the model: %s" % ", ".join(
+			new_kinds.slice(0, 6))]
+
+
+## The creative pass for a session from outside (review_model creative=),
+## from now until it saves: what it adds is the pass's.
+func _creative_review() -> String:
+	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
+	if everything.is_empty():
+		return "The baseplate is bare: build the model before its touches."
+	_outside_creative_handed = true
+	_outside_creative = {"parts": _parts_in(everything), "count": everything.size()}
+	_feature_now = ""
+	progress.emit("the creative pass: proposing touches for it")
+	return _creative_brief() + "\n\nThen save_model: saving says what the pass added."
+
+
+## What saving hands a session from outside once its features and
+## assemblies have had their turns: the creative pass if it has not been
+## handed; after it, what it added, said once; then "".
+func _creative_next() -> String:
+	var passed: String = _creative_passed()
+	if not passed.is_empty():
+		return passed
+	if _outside_designed and not _outside_creative_handed:
+		return ("Before it is finished: the creative pass, which this app's own "
+			+ "designer makes last.\n\n%s" % _creative_review())
+	return ""
+
+
+## What a creative pass from outside added, said once at the save after it,
+## or "" when none is running. Said before anything else saving hands back:
+## three of four bench sessions worked the pass before their features, and
+## the save that handed the next feature never said what the pass brought.
+func _creative_passed() -> String:
+	if _outside_creative.is_empty():
+		return ""
+	var said: String = _creative_said(_outside_creative["parts"],
+		int(_outside_creative["count"]))
+	_outside_creative = {}
+	_creative_record = said
+	progress.emit("the creative pass: %s" % said)
+	if said == "nothing added":
+		return ("The creative pass added nothing. Add the best touch you proposed "
+			+ "— small, joined, where it is seen — with edit_model, place_technique "
+			+ "or add_minifig, then save again.")
+	return "The creative pass: %s." % said
+
+
 ## What a run will detail, one assembly at a time. Nothing for a model
 ## that is one thing: its whole look is already the look at it.
 static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
@@ -12754,6 +12974,8 @@ each feature the subject is known by, then the detail. In this order:
      Being told to stagger a wall or turn a face sideways is not the \
      same as knowing where the stud sits, and the arithmetic is the \
      part that goes wrong.
+  7. Last, the creative pass: what a person finds and smiles at (THE \
+     CREATIVE PASS, below).
 
 Then lay it out layer by layer from the ground up.
 
@@ -13289,27 +13511,38 @@ edge_color or mix_color on a fill, or a course in a second colour.
 one built well and the pattern saying the rest (beside, repeat, \
 mirror, repeat_section).
 
-FINISHING TOUCHES
+THE CREATIVE PASS
 A designer adds things nobody asked for, and they are what a person \
 finds and smiles at. Of 2,517 real sets of 300 parts or more since \
 2015, 95% carry a printed or stickered part and 94% a hinge, a \
 turntable, a Technic pin or a ball joint; 1.6% have none of these. \
-Before you call a model finished, give it the expert's touches:
-  A figure, or a small scene: who flies it, keeps it, works it — or one \
-hidden somewhere a person will find it (add_minifig).
-  A printed tile: a gauge, a screen, a map, a logo, a nameplate. \
-search_parts with "print" or "sticker" and the subject's own word — \
-there are printed parts for a great many real things.
+Once the model stands and its features have had their turns, the \
+creative pass comes back to you on its own (from outside, review_model \
+{"creative": true}): propose three touches for this subject, each of a \
+different kind, and add the best one or two — small, joined to the \
+model, where they are seen from the front or the corner. The kinds:
+  A story: who flies it, keeps it, works it, hunts from it, doing what \
+the subject is for — a figure with its tool, its catch, its load — or a \
+small scene, or one hidden somewhere a person will find it \
+(add_minifig). A figure standing about is not yet a story.
+  Something that moves, shown working: a hatch raised, a door ajar, a \
+ramp down, a turret or a jib on a turntable, a hook on its line — a \
+section on a hinge or a turntable.
+  A display stand with a nameplate, for a display model: a black base, \
+a plaque on it, the model held up the way it is shown. The plaque is \
+printed (a printed tile or slope that names the subject or its story); \
+a blank one reads as unfinished. Joined to the model — or, where it \
+stands apart (a plaque in front of a car), named as an assembly of its \
+own: a piece apart that nothing names is a part that has come off, and \
+fails.
   A nod to the subject's story: a detail only someone who knows it \
 would catch — a mission patch, a launch date, a famous passenger, the \
-ship's cat.
-  A display stand with a nameplate, for a display model: a black base, \
-a plaque on it (a tile or a slope, printed if one fits), the model held \
-up the way it is shown. Joined to the model — or, where it stands apart \
-(a plaque in front of a car), named as an assembly of its own: a piece \
-apart that nothing names is a part that has come off, and fails.
-  Something that moves: a hatch that opens, a ramp, a turret that \
-turns, a door — a section on a hinge or a turntable.
+ship's cat, what LEGO's own set of it is loved for — on a printed part \
+(search_parts with "print" and the subject's own word: there are \
+printed parts for a great many real things), or a part used for what it \
+looks like.
+  Never at the cost of what it is: a touch that covers what the subject \
+is known by, changes its silhouette or loosens its build is not one.
 
 You are talking to someone who is watching the model appear as you build \
 it. Say what you are going for in a sentence or two — not a list of \
@@ -13375,8 +13608,9 @@ adapt one, or build it from show_technique, and say which. A feature is \
 parts with depth, never a tile painted on a panel.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
- 6. The touches — a figure, a printed tile, a story, a stand with a \
-nameplate — then save_model.
+ 6. Last, the creative pass: review_model {"creative": true} — three \
+touches proposed for this subject, the best one or two added. Then \
+save_model.
 
 THE RULES: nothing overlaps; nothing floats (every part on the ground or \
 on a part under it); the model is one connected thing — parts side by side \
@@ -13390,7 +13624,7 @@ read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
 kind of subject needs), "real", "colour", "angle" (sections on hinges), \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
-"touches", "changing", "kind", "art"."""
+"creative", "changing", "kind", "art"."""
 
 
 ## Names a session may ask read_guide for, beside the headings' own words.
@@ -13400,7 +13634,8 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
 	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
 	"pins": "BUILDING WITH PINS AND AXLES", "technic": "BUILDING WITH PINS AND AXLES",
-	"real": "WHAT MAKES A MODEL LOOK REAL", "touches": "FINISHING TOUCHES",
+	"real": "WHAT MAKES A MODEL LOOK REAL", "touches": "THE CREATIVE PASS",
+	"creative": "THE CREATIVE PASS",
 	"changing": "CHANGING SOMETHING THAT IS ALREADY BUILT", "edit": "CHANGING SOMETHING THAT IS ALREADY BUILT",
 	"kind": "HOW REAL SETS OF THIS KIND ARE BUILT", "module": "AND BEYOND THAT, A MODULE SAID AGAIN",
 	"art": "LEGO ART", "mosaic": "LEGO ART"}
@@ -13972,6 +14207,10 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 			_feature_used = {}
 		_outside_features = design.features.duplicate()
 		_feature_now = ""
+		# A new design, so its creative pass is still to come.
+		_outside_designed = true
+		_outside_creative_handed = false
+		_outside_creative = {}
 	return _built_from_outside(design, report)
 
 
@@ -14009,10 +14248,10 @@ measured, with the parts real sets of the kind use that it has none of. \
 Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
 replaces the whole model.
-  4. The touches nobody asks for and every expert adds, with edit_model \
-and add_minifig: a figure or a small scene, a printed tile, a nod to the \
-subject's story, something that opens or turns, and for a display model \
-a stand with a nameplate."""
+  4. Then the creative pass, last: review_model {"creative": true}. Three \
+touches proposed for this subject — a story, a play or display feature, a \
+nod only someone who knows it would catch — and the best one or two added, \
+small and joined, where they are seen."""
 
 
 func _built_from_outside(design: Model, report: Dictionary) -> String:
@@ -14036,11 +14275,13 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
-func review(assembly: String, feature: String = "") -> String:
+func review(assembly: String, feature: String = "", creative: bool = false) -> String:
 	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
 		return "The baseplate is bare: there is nothing to review."
+	if creative:
+		return _creative_review()
 	if not feature.strip_edges().is_empty():
 		return await _review_feature(feature.strip_edges())
 	# What the last assembly reviewed brought, for the next one to know.
@@ -14064,6 +14305,7 @@ func review(assembly: String, feature: String = "") -> String:
 		said.append(CRITIQUE)
 		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
+		said.append("Last, the creative pass: review_model {\"creative\": true}.")
 		# The first feature with no turn yet, here: a list to work through
 		# was read and put down, and the run went on to save.
 		var left: Array[String] = _features_left()
@@ -14092,7 +14334,8 @@ func review(assembly: String, feature: String = "") -> String:
 	var ending: String = ("say in a line what you changed, then review_model "
 		+ "{\"assembly\": \"%s\"}%s." % [left[0], " — %d more after it" % (left.size() - 1)
 			if left.size() > 1 else ""]) if not left.is_empty() \
-		else "say in a line what you changed: it is the last of its assemblies."
+		else ("say in a line what you changed: it is the last of its assemblies. "
+			+ "Then the creative pass, review_model {\"creative\": true}.")
 	return "%s\n\n%s\n\nSee it with view_model from=\"corner\" and from=\"far corner\", where=%s." % [
 		_assembly_measured(name, inside, _bounds_of(inside)),
 		ASSEMBLY_CRITIQUE.replace("{name}", name).replace(
@@ -14109,18 +14352,25 @@ func next_review() -> String:
 	# A coroutine because review is: callers await it.
 	var undone: Array[String] = _features_left()
 	if not undone.is_empty():
-		return ("Before it is finished: %d of its %d features %s not had its turn "
+		var passed: String = _creative_passed()
+		return _first(passed, "Before it is finished: %d of its %d features %s not had "
 			% [undone.size(), _outside_features.size(), "has" if undone.size() == 1 else "have"]
-			+ "yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
+			+ "its turn yet (%s). The next is the %s.\n\n%s" % [", ".join(undone), undone[0],
 				await _review_feature(undone[0])])
 	var left: Array[String] = _not_yet_reviewed()
 	if left.is_empty():
-		return ""
+		return _creative_next()
 	var name: String = left[0]
-	return ("Before it is finished: %d of its %d assemblies %s not had a close "
+	var passed_too: String = _creative_passed()
+	return _first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
-		+ "look (%s). This app's own designer details each in turn; the next " % ", ".join(left)
-		+ "is the %s.\n\n%s" % [name, await review(name)])
+		+ "a close look (%s). This app's own designer details each in turn; the " % ", ".join(left)
+		+ "next is the %s.\n\n%s" % [name, await review(name)])
+
+
+## [param said] and then [param then], or [param then] alone.
+static func _first(said: String, then: String) -> String:
+	return then if said.is_empty() else "%s\n\n%s" % [said, then]
 
 
 ## The assemblies a session named that have had no close review yet, in
@@ -15649,14 +15899,14 @@ func _tools() -> Array:
 				+ "\"work\" (the process: silhouette, features, detail), \"rules\", "
 				+ "\"shapes\" (the patterns that lay a wall, a dome, a tower, a "
 				+ "body and a head with its face), \"subject\" (what each kind of "
-				+ "subject needs), \"angle\", \"pins\", \"colour\", \"touches\" "
+				+ "subject needs), \"angle\", \"pins\", \"colour\", \"creative\" "
 				+ "and more. Read \"shapes\" before saying a shape."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"section": {"type": "string", "description":
 						"work, rules, shapes, subject, real, colour, angle, coordinates, "
-						+ "sideways, pins, big, look, good, beautiful, touches, changing, "
+						+ "sideways, pins, big, look, good, beautiful, creative, changing, "
 						+ "kind or art"},
 				},
 				"required": ["section"],

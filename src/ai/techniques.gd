@@ -1827,8 +1827,57 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "lid or hatch raised on hinges",
+			"group": "creative touches",
+			"when": "a play feature shown working — a hatch, a lid, a canopy, "
+				+ "a bonnet, a chest or a trapdoor standing open, so what is "
+				+ "under it shows",
+			"why": "Two 1 x 2 hinge bricks (3937) along the back edge, their "
+				+ "tops (3938) turning on the pin, and the lid on the tops' "
+				+ "studs in a section whose origin is the pin: at the base's "
+				+ "x, 1.75 plates above its bottom, half a stud in, turned "
+				+ "about x. Inside it the tops sit at y=-0.75 and the lid on "
+				+ "them at y=1.25. A negative angle lifts the lid's free edge "
+				+ "(towards +z); 0 shuts it. What opens is what people try "
+				+ "first on a set, and a lid left raised says so in a picture: "
+				+ "put what it hides under it — a seat, an engine, a treasure.",
+			"sections": [
+				{"name": "lid", "x": 0, "y": 2.75, "z": 0.5, "axis": "x", "degrees": -60},
+			],
+			"bricks": [
+				{"part": "3020", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3937", "color": 71, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "3937", "color": 71, "x": 2, "y": 1, "z": 0, "rot": 0},
+				{"part": "3938", "color": 71, "x": 0, "y": -0.75, "z": -0.5, "rot": 0,
+					"section": "lid"},
+				{"part": "3938", "color": 71, "x": 2, "y": -0.75, "z": -0.5, "rot": 0,
+					"section": "lid"},
+				{"part": "3031", "color": 4, "x": 0, "y": 1.25, "z": -0.5, "rot": 0,
+					"section": "lid"},
+			],
+		},
+		{
+			"name": "small creature",
+			"group": "creative touches",
+			"when": "a story in one part — a mouse at an owl's feet, a cat on a "
+				+ "sill, a frog by the water, a bird on a branch, a rat in a "
+				+ "cellar, a spider in a ruin",
+			"why": "LEGO's creatures are single parts that stand on a stud: "
+				+ "search_parts \"animal\" for the one the story needs (33320 "
+				+ "frog, 35757 mouse, 41835 songbird, 13786 cat, 40234 rat, "
+				+ "30238 spider). Set it where the eye finds it a moment after "
+				+ "the subject — at a foot, on a sill, by the water — on a "
+				+ "round plate or a jumper, so it sits half a stud off the grid "
+				+ "the way a living thing does, never in a row.",
+			"bricks": [
+				{"part": "3022", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3794b", "color": 2, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "33320", "color": 10, "x": 0.5, "y": 2, "z": 0, "rot": 0},
+			],
+		},
+		{
 			"name": "display stand with a nameplate",
-			"group": "display and touches",
+			"group": "creative touches",
 			"when": "any display model — a rocket, a ship, a vehicle, a "
 				+ "figure — that should stand the way it is shown",
 			"why": "A black base, a column holding the model up, and a 6 x 8 "
@@ -1938,7 +1987,7 @@ const GROUPS: Array[String] = ["basics", "walls and stone",
 	"towers and columns", "round bodies", "faces and features",
 	"machines and joints", "angles",
 	"roofs and spires", "windows and doors", "rock and ground", "plants",
-	"furniture and interiors", "lights", "display and touches"]
+	"furniture and interiors", "lights", "creative touches"]
 
 
 ## Every name, by group: "basics: a, b; walls and stone: c, d".
