@@ -60,8 +60,9 @@ real-set pieces laid) and a small picture. After a batch, run
 `python3 tools/design_memory.py build` (it reads the main checkout's
 `bench/results/`) and commit the index: it merges into what the index holds,
 and it is now the only copy of the creative, d5 and d5b rounds' critiques and
-pictures, read before their worktrees went. It holds 22 designs: the
-baseline's 13, the creative round's 4, d5's 2 and d5b's 3. What is missing is
+pictures, read before their worktrees went. It holds 32 designs: the
+baseline's 13, the creative round's 4, d5's 2, d5b's 3, d6's 4, d6b's 2 and
+the surface round's 4. What is missing is
 the re-score's own replies: the baseline keeps its first judgement's scores
 and words, with the re-scored build taken from the table below, and the
 design5 batches' build, judged on the old check and never re-scored, is not
@@ -286,3 +287,77 @@ dimensions and two on creativity, and the car fell — its two runs hand-built
 studs-up again, technique 2 in the second. Not progress on the bench yet; what
 moved is that sessions now follow the process (they read the guide, review,
 and work features), where before none worked a single feature.
+
+## 2026-10-13-surface: commit 62376c9, rubric v1, judge claude-opus-5-5
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn_owl | 1 | 4.0 | 4.0 | 4.0 | 4.0 | 4.0 | 10.0 | **5.0** | 992 | 1 |
+| corner_shop | 1 | 5.0 | 6.0 | 5.0 | 4.0 | 4.0 | 4.0 | **4.7** | 1,159 | 12 |
+| speed_champions | 1 | 3.0 | 4.0 | 3.0 | 3.0 | 4.0 | 10.0 | **4.5** | 169 | 2 |
+| starfighter | 1 | 6.0 | 6.0 | 5.0 | 6.0 | 6.0 | 10.0 | **6.5** | 495 | 1 |
+| **suite mean** | 4 | **4.5** | **5.0** | **4.2** | **4.2** | **4.5** | **8.5** | **5.2** |  |  |
+
+Weakest across the suite: **colour** (4.2), **technique** (4.2), **likeness** (4.5).
+
+**What the surface round says: an app-driven surface pass (62376c9).** Once a
+design stands and its features and assemblies have had their turns, the app
+reads the model's open studs exactly (nothing on them, nothing within a brick
+over them, seen from above or from two sides; in each section's own frame
+too) and lays real pieces on it as a proposal: tiles in the part's colour,
+largest first, with a grille, ingot or jumper on a big field; slopes over a
+stud staircase; masonry and turned-out studs in a long plain wall. The
+session sees one picture with each finding marked and settles each with
+`settle_surface` (accept, reject with a reason, keep the studs). Yards,
+mosaics and the ground are left; the ground is offered, laid only on "tile".
+Held out and on the subscription as every batch; this branch is staging
+(2beda06) and does not have d6's app-driven feature pass. The five visual
+scores (likeness / surface / colour / technique / creative) against the
+re-scored baseline, d6 and d6b:
+
+| subject | baseline (re-scored) | d6 | d6b | surface |
+|---|---|---|---|---|
+| corner_shop | 4.5 / 3.5 / 4.5 / 3.5 / 3 | 4 / 4 / 4 / 3 / 4 | 5 / 5 / 5 / 4 / 4 | 5 / **6** / 5 / 4 / 4 |
+| starfighter | 6 / 4 / 5 / 4 / 5 | 5 / 3 / 5 / 4 / 4 | — | 6 / **6** / 5 / 6 / 6 |
+| barn_owl | 4 / 3.5 / 4 / 4 / 4 | 5 / 4 / 4 / 5 / 5 | — | 4 / 4 / 4 / 4 / 4 |
+| speed_champions | 3.5 / 4.5 / 3.5 / 3.5 / 3 | 3 / 3 / 3 / 3 / 3 | 3 / 4 / 4 / 4 / 3 | 3 / 4 / 3 / 3 / 4 |
+| the four | 4.5 / 3.9 / 4.25 / 3.75 / 3.75 | 4.25 / 3.5 / 4.0 / 3.75 / 4.0 | | 4.5 / **5.0** / 4.25 / 4.25 / 4.5 |
+
+**Surface moved on the two subjects with open studs, and not on the two
+without.** The shop went to 6 (3.5, 4 and 5 before) and the starfighter to 6
+(4 and 3), each more than the surface run-to-run spread of 1.0. In the judge's
+words: "the roof, cornice and pavement are fully tiled" on the shop, where d6's
+was "a large expanse of exposed studs"; "wings and hull are mostly tiled" on
+the starfighter, where d6's wings were "open fields of studded white plates".
+The owl (4) and the car (4) did not move, as predicted before the batch: the
+pass found 4 fields on the owl and nothing on the car, because their faults
+are not open studs. Over the four, surface is 5.0 against 3.9 and 3.5, the
+first round to move it beyond the noise; one run a subject, so two subjects carry it.
+
+**Behaviour.** All four sessions ran the pass after their assemblies and
+before the creative pass, and accepted every finding ("all"): 12 on the shop
+(699 studs and a wall), 4 on the owl (347 studs), 12 on the starfighter (432
+studs, its wings in sections among them), none on the car. None rejected or
+kept anything. The shop's session put street furniture on its pavement first,
+then asked for the ground (G1) to be tiled; the pass refused where something
+already stood and tiled around it on a second review. Its creative figures
+first landed on the tiled roof (add_minifig stands a figure on the highest
+surface) and the session moved them.
+
+**The shop's build of 4 is not the pass.** It is 12 pieces: the session laid
+its base as 137 loose 4 x 6 plates on the app's floor, and the pavement's
+plates are joined to nothing of the building. The tiles join some of them to
+each other: the same model without its 76 ground tiles is 24 pieces. The
+starfighter's technique and creativity (6 and 6) also rose; one run, and not
+the pass's doing.
+
+**The next lever, from the critiques.** What is left is not open studs but
+steps and right angles on what is already smooth: the car's "stepped rear
+deck ... square corners ... no curved slopes", the owl's "head is a
+hard-edged cube" and breast "stepped and patchy", the starfighter's "nose
+climbs in visible stepped layers" and "hull sides are flat slab walls", the
+shop's "broad flat expanses of tan brick". The pass handles stud staircases
+only. Next: tiled staircases (a tread's tiles off, a slope or curved slope on
+the studs under them) and rounded edges where a body turns (curved slopes and
+wedge plates along a top edge or an outline that steps; the check already
+names the latter), proposed and settled the same way.
