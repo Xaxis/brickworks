@@ -3230,6 +3230,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return ("Not applied — the model would not hold together.\n"
 					+ str(verdict["feedback"]) + (_what_would_fit(edited, verdict)
 						if scoped else ""))
+			# A pass laying its own proposal (SurfacePass) must not leave the
+			# model in more pieces: what it took off may have held some together.
+			if _keep_pieces >= 0 and int(verdict.get("pieces", 0)) > _keep_pieces:
+				progress.emit("tried a change that would split the model")
+				return ("Not applied — it would leave the model in %d pieces, where it is "
+					% int(verdict.get("pieces", 0)) + "in %d." % _keep_pieces)
 			if scoped:
 				var hanging: String = await _left_hanging(edited)
 				if running and not _busy:
@@ -10033,8 +10039,8 @@ func _creative_passed() -> String:
 # -- the surface pass ----------------------------------------------------------
 
 
-## The surface pass (SurfacePass): the open stud fields, stud staircases and
-## plain walls a set would have finished, found and laid by the app, settled
+## The surface pass (SurfacePass): the open stud fields, staircases, hard top
+## edges and plain walls a set would have finished, found and laid by the app, settled
 ## by the design with settle_surface. In the loop it has a turn of its own
 ## after the assemblies and before the creative pass; from outside,
 ## review_model {"surface": true}, and saving says when it was never run.
@@ -11919,6 +11925,9 @@ const SPRINKLED_FROM := 6
 var _laying_whole: bool = false
 ## Set while a pass lays its own proposal: edit_model answers without a picture.
 var _quiet_edit: bool = false
+## And the pieces the model is in while it lays one that takes parts off: an
+## edit that would leave more is refused. -1 when nothing is kept to.
+var _keep_pieces: int = -1
 
 
 func _sprinkled(model: Model) -> String:
@@ -15664,12 +15673,14 @@ THE SURFACE PASS
 A real set leaves studs only where something is built on them: a roof, \
 a bonnet, a wing top and the top of a wall are tiled, and a slope or a \
 curve follows a line that would otherwise step. Once the model stands and \
-its assemblies have had their turns, the app reads its open studs, the \
-way they step and its plain walls exactly, and lays the real pieces for \
-each as a proposal on the model (from outside, review_model {"surface": \
-true}): tiles in the part's own colour, largest first, with a textured one \
-or two; slopes on a staircase's treads, or a step brick laid again as a \
-slope; masonry and turned-out studs in a long plain wall. Settle each with \
+its assemblies have had their turns, the app reads its open studs, its \
+tops, the way they step and where they end, and its plain walls exactly, \
+and lays the real pieces for each as a proposal on the model (from outside, \
+review_model {"surface": true}): tiles in the part's own colour, largest \
+first, with a textured one or two; slopes on a staircase's treads, studded \
+or tiled, or a step brick laid again as a slope; curved slopes along a \
+body's hard top edge, flush with its top (not on a building); masonry and \
+turned-out studs in a long plain wall. Settle each with \
 settle_surface: accept it (adjusted: "plain", "recolor"); reject it with a \
 reason, to finish it your own way; or keep the studs with a reason where \
 they are the point — a yard figures stand on, a mosaic, a studded texture, \
@@ -15863,7 +15874,7 @@ feature is parts with depth, never a painted tile.
  5. Each assembly in turn: review_model {"assembly": name}, detailed with \
 edit_model.
  6. The surface pass: review_model {"surface": true} — the app tiles open \
-studs and slopes staircases; settle each with settle_surface.
+studs, slopes staircases and rounds hard edges; settle each with settle_surface.
  7. Last, the creative pass: review_model {"creative": true} — three \
 touches proposed for this subject, the best one or two added. Then \
 save_model.
@@ -16585,9 +16596,10 @@ Detail it with edit_model — a different piece where something changes — \
 before moving to the next. Never submit_design again for this: it \
 replaces the whole model.
   4. Then the surface pass: review_model {"surface": true}. The app tiles \
-the open stud fields, slopes the stud staircases and textures the plain \
-walls on the model, and you settle each with settle_surface — accept, \
-reject or keep, with a reason.
+the open stud fields, slopes the staircases (tiled ones too), rounds a \
+body's hard top edges with curved slopes and textures the plain walls on \
+the model, and you settle each with settle_surface — accept, reject or \
+keep, with a reason.
   5. Then the creative pass, last: review_model {"creative": true}. Three \
 touches proposed for this subject — a story, a play or display feature, a \
 nod only someone who knows it would catch — and the best one or two added, \

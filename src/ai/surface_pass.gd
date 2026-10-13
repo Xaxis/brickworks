@@ -20,12 +20,24 @@
 ##              hood, a wing, the top of a wall — tiled in its own colour,
 ##              largest real sizes first, with a textured tile or two (grille,
 ##              ingot, jumper) where a set would vary a big one;
-##   staircase  studs stepping up a plate to a brick at a time over one to
-##              three studs, two steps or more: a slope or curved slope laid on
-##              each tread, rising to the next, or the step brick itself laid
-##              again as a 45 degree slope where the tread is one stud deep;
+##   staircase  studs, or tiles, stepping up a plate to a brick at a time over
+##              one to three studs, two steps or more: a slope or curved slope
+##              laid on each tread, rising to the next, or the step brick
+##              itself laid again as a 45 degree slope where the tread is one
+##              stud deep; a tiled tread's tiles come off first, and what of
+##              each lay beyond the slope is laid again;
+##   edge       a body's hard top edge — a flat top, studs or tiles, ending at
+##              a face that drops away: curved slopes along the edge falling
+##              outward, the rest of the top raised flush with a plate and
+##              tiles, its own tiles off first; nothing under the top is
+##              touched. Not for a building, whose roof and parapet keep their
+##              edges;
 ##   wall       a long plain wall of one-wide bricks, one colour: laid again
 ##              by restyle_model's own pass, some as masonry, some turned out.
+##
+## Whatever takes a part off is refused if the model would then be in more
+## pieces: edit_model keeps to the count the model is in (Assistant
+## ._keep_pieces).
 ##
 ## How it decides what is meant to be built on, in the order it asks:
 ##   - only a stud with nothing on it (BrickLattice.standing_on, the same
@@ -35,7 +47,7 @@
 ##     — is open (standing_free): a stud something stands on, or a floor
 ##     between walls and under a roof, is not finished; and each lay is
 ##     checked again first, since anything may stand there by then;
-##   - only studs of bricks, plates, slopes, wedges, wings and baseplates are
+##   - only studs of bricks, plates, slopes, wedges and wings are
 ##     read: a round plate's, a jumper's, a figure's or a plant's stud is the
 ##     detail itself; and a stud whose square is not all part (a wedge's
 ##     corner) is left, since a tile there would overhang;
@@ -88,16 +100,28 @@ const CHEESE := "54200"
 const ROW_PLATES: Array = ["3710", "3623", "3023b", "3024"]
 ## The rest of a step brick behind its slope, a brick tall.
 const FILL_BRICKS: Array = ["3001", "3002", "3010", "3003", "3622", "3004", "3005"]
-## Families whose studs are finished; any other part's stud is its detail.
-const FINISHED_KINDS: Array = ["Brick", "Plate", "Slope", "Wedge", "Wing", "Baseplate"]
+## And of a plate cut along an edge, a plate tall, largest first.
+const PLATES: Array = ["41539", "3036", "3958", "3032", "3035", "3031", "3034", "3795",
+	"3020", "3021", "3022", "3460", "3666", "3710", "3623", "3023b", "3024"]
+## What rounds a hard top edge: curved slopes two plates tall, two studs deep.
+const EDGE_SLOPES: Array = ["15068", "11477"]
+## Edges rounded at once, the biggest tops first.
+const MOST_EDGES := 4
+## Families whose studs are finished; any other part's stud is its detail. Not a
+## baseplate's: it is the floor, which the app may take back as scenery, and a
+## tile left on the floor is a piece of its own. The edges round's shop had 29
+## of them, single tiles lying on its floor, after its ground was tiled.
+const FINISHED_KINDS: Array = ["Brick", "Plate", "Slope", "Wedge", "Wing"]
 ## What standing among a field makes it a yard.
 const LIVING: Array = ["Minifig", "Figure", "Animal", "Plant"]
 ## A subject built of straight slopes first; anything else curved first.
-const BUILT_WORDS: Array = ["house", "shop", "store", "castle", "tower", "roof",
-	"station", "temple", "cabin", "church", "gate", "gatehouse", "wall", "building",
-	"modular", "street", "town", "city", "hut", "lighthouse", "fort", "palace",
-	"bridge", "cottage", "school", "bank", "cafe", "bakery", "garage", "hall",
-	"mill", "factory", "warehouse", "pagoda", "shed"]
+## Only words that name a building: a car has a roof, and in the edges round
+## the car found nothing to round, read as a building, where the same model
+## read as a car had three tops rounded.
+const BUILT_WORDS: Array = ["house", "shop", "store", "castle", "tower", "temple",
+	"cabin", "church", "gatehouse", "building", "modular", "hut", "lighthouse", "fort",
+	"fortress", "palace", "cottage", "school", "bank", "cafe", "bakery", "mill",
+	"factory", "warehouse", "pagoda", "shed", "inn", "tavern"]
 ## Along +z, +x, -z, -x in half studs: the ways a staircase can rise.
 const WAYS: Array[Vector2i] = [Vector2i(0, 2), Vector2i(2, 0), Vector2i(0, -2),
 	Vector2i(-2, 0)]
@@ -200,6 +224,7 @@ func record() -> String:
 	var tiled: int = 0
 	var sloped: int = 0
 	var walls: int = 0
+	var rounded: int = 0
 	for one: Finding in findings:
 		var verdict: String = one.verdict if one.settled() else (
 			"offered" if one.offered else "not settled")
@@ -212,6 +237,8 @@ func record() -> String:
 					sloped += 1
 				"wall":
 					walls += 1
+				"edge":
+					rounded += 1
 	var said := PackedStringArray()
 	for verdict: String in ["accepted", "adjusted", "left", "rejected", "kept", "offered",
 			"not settled"]:
@@ -224,6 +251,8 @@ func record() -> String:
 		kept.append("%d staircase%s sloped" % [sloped, "" if sloped == 1 else "s"])
 	if walls > 0:
 		kept.append("%d wall%s textured" % [walls, "" if walls == 1 else "s"])
+	if rounded > 0:
+		kept.append("%d top%s rounded" % [rounded, "" if rounded == 1 else "s"])
 	return "%d finding%s: %s%s" % [findings.size(), "" if findings.size() == 1 else "s",
 		", ".join(said), "" if kept.is_empty() else "; " + ", ".join(kept)]
 
@@ -300,9 +329,9 @@ func hand() -> Variant:
 
 func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 	var lines := PackedStringArray()
-	lines.append("The surface pass: the app read the model's open studs, the way they "
-		+ "step and its plain walls, and laid real pieces for each as a proposal, "
-		+ "standing on the model now (marked in the picture):")
+	lines.append("The surface pass: the app read the model's open studs, its tops, the "
+		+ "way they step and where they end, and its plain walls, and laid real pieces "
+		+ "for each as a proposal, standing on the model now (marked in the picture):")
 	for one: Finding in laid:
 		lines.append("  %s %s: %s Laid: %s%s." % [one.key, one.kind, one.said, one.laid,
 			_bricks_said(one.ids)])
@@ -486,9 +515,16 @@ func find() -> Array[Finding]:
 	_read = OpenPoints.read(assistant)
 	var points: Array = _points()
 	var tops: Dictionary = open_tops("", points)
+	# And the tops already tiled, by the studs under their tiles: a staircase
+	# of tiled steps is still a staircase, and a tiled top still has an edge.
+	var levels: Dictionary = tile_tops()
+	levels.merge(tops)
 	var claimed: Dictionary = {}
 	var gone: Dictionary = {}
-	var stairs: Array[Finding] = _staircases(tops, claimed, gone)
+	var stairs: Array[Finding] = _staircases(levels, claimed, gone)
+	var edges: Array[Finding] = []
+	if not _straight_first():
+		edges = _edges(levels, claimed)
 	var fields: Array[Finding] = _fields(tops, claimed)
 	# And each section's own: a wing laid at an angle is studs up in its own
 	# frame, and tiled in it. The starfighter's wings were open fields of
@@ -500,10 +536,12 @@ func find() -> Array[Finding]:
 	var walls: Array[Finding] = _walls(gone)
 	var by_size := func(a: Finding, b: Finding) -> bool: return a.studs > b.studs
 	stairs.sort_custom(by_size)
+	edges.sort_custom(by_size)
 	fields.sort_custom(by_size)
 	walls.sort_custom(by_size)
 	var room: int = MOST_FINDINGS
-	for group: Array in [[stairs, MOST_STAIRCASES], [fields, MOST_FINDINGS], [walls, MOST_WALLS]]:
+	for group: Array in [[stairs, MOST_STAIRCASES], [edges, MOST_EDGES], [fields, MOST_FINDINGS],
+			[walls, MOST_WALLS]]:
 		var these: Array = group[0]
 		var most: int = int(group[1])
 		for n: int in these.size():
@@ -559,8 +597,77 @@ func open_tops(section: String = "", points: Array = []) -> Dictionary:
 		var brick: BrickWorld.Brick = assistant.world.get_brick(point.brick)
 		out[key_of(point.local_at)] = {"at": point.at, "here": point.local_at,
 			"brick": point.brick, "colour": brick.color_code if brick != null else 16,
-			"part": point.part}
+			"part": point.part, "top": point.at.y}
 	return out
+
+
+## Every tile of the main body lying face up with nothing on it and seen,
+## by the studs under it, as open_tops has them: {"at" the stud under it,
+## "brick" the part under it, "tile" the tile, "colour" the tile's, "top" the
+## tile's top}. Printed and round tiles are detail and are left out.
+func tile_tops() -> Dictionary:
+	var out: Dictionary = {}
+	var bricks: Array[BrickWorld.Brick] = assistant._bricks_inside({})
+	if bricks.is_empty():
+		return out
+	if _read == null:
+		_read = OpenPoints.read(assistant)
+	var box: AABB = assistant._bounds_of(bricks)
+	var lattice: BrickLattice = assistant.builder.lattice
+	for brick: BrickWorld.Brick in bricks:
+		var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id)
+		if info == null or info.family_category() != "Tile" or _plain(info) != "tile":
+			continue
+		var placement: Assistant.Placement = _read.by_id.get(brick.id)
+		if placement == null or placement.face != "up" or not placement.section.is_empty():
+			continue
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var tile: AABB = (brick.transform * mesh.bounds).abs()
+		for c: Vector2i in _cells_of(tile):
+			var on: Vector3 = Vector3(c.x * 10.0, tile.end.y, c.y * 10.0)
+			if _in_zone(on) or not _seen(on, Vector3.UP, brick.id, box):
+				continue
+			var under: int = lattice.brick_at(BrickLattice.to_cell(
+				Vector3(on.x, tile.position.y - 3.0, on.z)))
+			if under == 0 or assistant.scenery.has(under):
+				continue
+			var at := Vector3(on.x, tile.position.y, on.z)
+			out[key_of(at)] = {"at": at, "here": at, "brick": under, "tile": brick.id,
+				"colour": brick.color_code, "part": brick.part_id, "top": tile.end.y}
+	return out
+
+
+## The stud cells of a part's box, in half studs.
+static func _cells_of(box: AABB) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var x: float = box.position.x + 10.0
+	while x < box.end.x - 1.0:
+		var z: float = box.position.z + 10.0
+		while z < box.end.z - 1.0:
+			out.append(Vector2i(roundi(x / 10.0), roundi(z / 10.0)))
+			z += STUD
+		x += STUD
+	return out
+
+
+## What a part is to a cut: "tile", "plate" or "brick" for the plain ones,
+## a rectangle; "" for anything else, which a cut leaves alone.
+static func _plain(info: PartLibrary.PartInfo) -> String:
+	var name: String = info.name.to_lower()
+	for word: String in ["round", "pattern", "print", "sticker", "grille", "with", "corner",
+			"modulex", "duplo"]:
+		if name.contains(word) and not (word == "with" and name.ends_with("with groove")):
+			return ""
+	match info.family_category():
+		"Tile":
+			return "tile" if name.begins_with("tile") else ""
+		"Plate":
+			return "plate" if name.begins_with("plate") else ""
+		"Brick":
+			return "brick" if name.begins_with("brick") else ""
+	return ""
 
 
 static func key_of(at: Vector3) -> Vector3i:
@@ -575,24 +682,32 @@ static func key_of(at: Vector3) -> Vector3i:
 func standing_free(point: OpenPoints.Point, box: AABB) -> bool:
 	if not _nothing_on(point):
 		return false
+	return _seen(point.at, point.way, point.brick, box)
+
+
+## Whether a surface at [param at], facing [param way], of part [param own],
+## has nothing of the model within a brick over it and is seen: nothing over
+## it out to the edge of the model's [param box], or open to the outside on
+## two sides at least.
+func _seen(at: Vector3, way: Vector3, own: int, box: AABB) -> bool:
 	var reach: AABB = box.grow(8.0)
-	var at: Vector3 = point.at + point.way * 6.0
-	while reach.has_point(at):
-		if _other(point, at):
-			if at.distance_to(point.at) <= 30.0:
+	var up: Vector3 = at + way * 6.0
+	while reach.has_point(up):
+		if _other_than(own, up):
+			if up.distance_to(at) <= 30.0:
 				return false
 			break
-		at += point.way * 8.0
-	if not reach.has_point(at):
+		up += way * 8.0
+	if not reach.has_point(up):
 		return true
 	var open: int = 0
 	for side: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
 		# Over the stripes and greebles a brick tall on the same surface, and
 		# under what is over it: nothing is within a brick of it.
-		var along: Vector3 = point.at + point.way * 34.0
+		var along: Vector3 = at + way * 34.0
 		var clear: bool = true
 		while reach.has_point(along):
-			if _other(point, along):
+			if _other_than(own, along):
 				clear = false
 				break
 			along += side * 8.0
@@ -618,14 +733,14 @@ func _nothing_on(point: OpenPoints.Point) -> bool:
 	return point.by == 0
 
 
-## Whether a brick of the model other than the stud's own is at [param at].
-func _other(point: OpenPoints.Point, at: Vector3) -> bool:
+## Whether a brick of the model other than [param own] is at [param at].
+func _other_than(own: int, at: Vector3) -> bool:
 	var other: int = assistant.builder.lattice.brick_at(BrickLattice.to_cell(at))
-	return other != 0 and other != point.brick and not assistant.scenery.has(other)
+	return other != 0 and other != own and not assistant.scenery.has(other)
 
 
 ## Whether a part's studs are ones a set finishes: a plain brick's, plate's,
-## slope's, wedge's, wing's or baseplate's. A round plate, a jumper, a
+## slope's, wedge's or wing's. A round plate, a jumper, a
 ## Technic part, a figure or a plant has its stud as its detail.
 static func finished_kind(info: PartLibrary.PartInfo) -> bool:
 	if not FINISHED_KINDS.has(info.family_category()):
@@ -674,11 +789,13 @@ func _is_mosaic() -> bool:
 	return dots >= 0.7 * bricks.size()
 
 
-## Whether the subject is built of straight slopes first: a building's roof.
-## Anything else follows its line with curves first.
+## Whether the subject is a building: built of straight slopes first, and its
+## roof and parapet keep their edges. Read off its name — the design's name
+## from outside, the request's first sentence in the app's loop — and not its
+## description, where a car's roof and windscreen are described.
 func _straight_first() -> bool:
-	var words: PackedStringArray = assistant._brief.to_lower().replace(".", " ").replace(
-		",", " ").split(" ", false)
+	var words: PackedStringArray = assistant._brief.get_slice(".", 0).to_lower().replace(
+		",", " ").replace("-", " ").split(" ", false)
 	for word: String in words:
 		if BUILT_WORDS.has(word) or BUILT_WORDS.has(word.trim_suffix("s")):
 			return true
@@ -813,9 +930,12 @@ func _cover_staircase(feet: Array, d: Vector2i, perp: Vector2i, column: Dictiona
 		rise_words.append({1: "a plate", 2: "two plates", 3: "a brick"}[r])
 	var way: String = {Vector2i(0, 2): "+z", Vector2i(2, 0): "+x", Vector2i(0, -2): "-z",
 		Vector2i(-2, 0): "-x"}[d]
-	one.said = "%d studs stepping up %s %d time%s by %s, %s." % [one.cells.size(), way,
-		steps.size(), "" if steps.size() == 1 else "s", " or ".join(rise_words),
-		_where_said(one.box)]
+	var tiled: bool = false
+	for key: Vector3i in one.cells:
+		tiled = tiled or (tops[key] as Dictionary).has("tile")
+	one.said = "%d %s stepping up %s %d time%s by %s, %s." % [one.cells.size(),
+		"tiled studs" if tiled else "studs", way, steps.size(), "" if steps.size() == 1 else "s",
+		" or ".join(rise_words), _where_said(one.box)]
 	one.studs = one.cells.size()
 	one.laid = _pieces_said(one)
 	one.seen_from = "far corner" if d.x > 0 or d.y > 0 else "corner"
@@ -858,8 +978,13 @@ func _cover_row(one: Finding, run: Array[Vector2i], d: Vector2i, perp: Vector2i,
 					cells.append(run[n + a] - d * b)
 			if not _free_cells(cells, column, claimed):
 				continue
+			# A tiled tread: its tiles come off first, the rest of each laid again.
+			var tiles: Array[int] = _tiles_on(cells, column, tops)
+			var skip: Dictionary = {}
+			for id: int in tiles:
+				skip[id] = true
 			var placed: Dictionary = _slope_at(option, cells, column, tops, fall)
-			if not _fits(placed, {}):
+			if not _fits(placed, skip) or not _cut(one, tiles, _set_of(cells), claimed):
 				continue
 			_take(one, cells, column, tops, claimed)
 			one.add.append(placed)
@@ -1018,10 +1143,16 @@ func _lay_brick_again(one: Finding, brick_id: int, feet: Array, d: Vector2i, per
 	for c: Vector2i in row_cells.call(1):
 		if column.has(c) and not claimed.has(c) and (column[c] as Vector3i).y == top_key:
 			studs_up.append(column[c])
+	# The tiles on its tread come off with it.
+	var tiles: Array[int] = _tiles_on(cells, column, tops)
 	var skip: Dictionary = {brick_id: true}
+	for id: int in tiles:
+		skip[id] = true
 	for placed: Variant in made:
 		if not _fits(placed as Dictionary, skip):
 			return false
+	if not _cut(one, tiles, _set_of(cells), claimed):
+		return false
 	gone[brick_id] = true
 	one.remove.append(brick_id)
 	one.restore.append(_as_dict(placement))
@@ -1067,12 +1198,18 @@ func _plate_and_cheese(one: Finding, feet: Array[Vector2i], d: Vector2i, perp: V
 		placed["x"] = snappedf(at.x / STUD - 0.5, 0.05)
 		placed["z"] = snappedf(at.z / STUD - 0.5, 0.05)
 		cheeses.append(placed)
-	for placed: Variant in plates:
-		if not _fits(placed as Dictionary, {}):
-			return
 	var cells: Array[Vector2i] = []
 	for c: Vector2i in free:
 		cells.append(c)
+	var tiles: Array[int] = _tiles_on(cells, column, tops)
+	var skip: Dictionary = {}
+	for id: int in tiles:
+		skip[id] = true
+	for placed: Variant in plates:
+		if not _fits(placed as Dictionary, skip):
+			return
+	if not _cut(one, tiles, _set_of(cells), claimed):
+		return
 	_take(one, cells, column, tops, claimed)
 	one.add.append_array(plates)
 	one.add.append_array(cheeses)
@@ -1091,10 +1228,11 @@ func _at_cells(id: String, cells: Array[Vector2i], bottom: float, colour: int,
 
 
 ## Plain bricks over half-stud cells, largest first, a brick tall from
-## [param bottom].
-func _bricks_over(cells: Dictionary, bottom: float, colour: int) -> Array:
+## [param bottom]; or plates, or tiles, given [param parts].
+func _bricks_over(cells: Dictionary, bottom: float, colour: int,
+		parts: Array = FILL_BRICKS) -> Array:
 	var out: Array = []
-	var options: Array = _rectangles(FILL_BRICKS, colour)
+	var options: Array = _rectangles(parts, colour)
 	var order: Array = cells.keys()
 	order.sort_custom(_before)
 	for raw: Variant in order:
@@ -1109,6 +1247,228 @@ func _bricks_over(cells: Dictionary, bottom: float, colour: int) -> Array:
 				out.append(_at_cells(str(option[0]), span, bottom, colour, int(option[3])))
 				break
 	return out
+
+
+## The tiles lying on these cells, by id.
+static func _tiles_on(cells: Array[Vector2i], column: Dictionary, tops: Dictionary) -> Array[int]:
+	var out: Array[int] = []
+	for c: Vector2i in cells:
+		if not column.has(c):
+			continue
+		var top: Dictionary = tops[column[c]]
+		if top.has("tile") and not out.has(int(top["tile"])):
+			out.append(int(top["tile"]))
+	return out
+
+
+static func _set_of(cells: Array[Vector2i]) -> Dictionary:
+	var out: Dictionary = {}
+	for c: Vector2i in cells:
+		out[c] = true
+	return out
+
+
+## Take plain parts off where a proposal goes ([param band]) and lay again
+## what of each lay outside it, in parts of its own kind, height and colour, so
+## nothing else of the model changes. False, and nothing taken, when one of
+## them is not a plain tile, plate or brick laid square.
+func _cut(one: Finding, ids: Array[int], band: Dictionary, claimed: Dictionary) -> bool:
+	var plan: Array = []
+	for id: int in ids:
+		if one.remove.has(id):
+			continue
+		var brick: BrickWorld.Brick = assistant.world.get_brick(id)
+		var placement: Assistant.Placement = _read.by_id.get(id) if _read != null else null
+		if brick == null or placement == null or placement.face != "up" \
+				or not placement.section.is_empty():
+			return false
+		var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id)
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(brick.part_id)
+		var kind: String = _plain(info) if info != null else ""
+		if mesh == null or kind.is_empty():
+			return false
+		var box: AABB = (brick.transform * mesh.bounds).abs()
+		var rest: Dictionary = {}
+		for c: Vector2i in _cells_of(box):
+			if not band.has(c):
+				rest[c] = true
+		plan.append([id, placement, box.position.y, brick.color_code, kind, rest])
+	for step: Array in plan:
+		one.remove.append(int(step[0]))
+		one.restore.append(_as_dict(step[1] as Assistant.Placement))
+		var rest: Dictionary = step[5]
+		for c: Variant in rest.keys():
+			claimed[c] = true
+		one.add.append_array(_bricks_over(rest, float(step[2]), int(step[3]),
+			{"tile": TILES, "plate": PLATES, "brick": FILL_BRICKS}[str(step[4])]))
+	return true
+
+
+# -- hard edges ---------------------------------------------------------------
+
+
+## The hard top edges of a body, crowned: where a flat top (studs or tiles)
+## ends at a face that drops away, curved slopes along that edge falling
+## outward, and the rest of the top raised flush with them, a plate and a
+## tile; the top's own tiles come off first. Nothing under the top is touched,
+## so whatever ties the body together still does. "The head is a hard-edged
+## cube", "square corners ... no curved slopes": the judge, on every body built
+## here. Not for a building, whose roof and parapet keep their edges, nor for
+## the ground.
+func _edges(levels: Dictionary, claimed: Dictionary) -> Array[Finding]:
+	var out: Array[Finding] = []
+	var cell_key: Dictionary = {}
+	for key: Vector3i in levels:
+		var c := Vector2i(key.x, key.z)
+		if not claimed.has(c):
+			cell_key[c] = key
+	var model_box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
+	var living: Array = _living_boxes()
+	var curves: Array = []
+	for id: String in EDGE_SLOPES:
+		var shape: Dictionary = Shapes.part(assistant.library, id)
+		if not shape.is_empty() and int(shape["h"]) == 2 and int(shape["d"]) == 2:
+			curves.append(shape)
+	curves.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["w"]) > int(b["w"]))
+	if curves.is_empty():
+		return out
+	var seen: Dictionary = {}
+	for start: Vector2i in cell_key:
+		if seen.has(start):
+			continue
+		var top: float = float((levels[cell_key[start]] as Dictionary)["top"])
+		var field: Dictionary = {}
+		var queue: Array[Vector2i] = [start]
+		seen[start] = true
+		while not queue.is_empty():
+			var c: Vector2i = queue.pop_back()
+			field[c] = true
+			for step: Vector2i in WAYS:
+				var next: Vector2i = c + step
+				if cell_key.has(next) and not seen.has(next) and absf(float(
+						(levels[cell_key[next]] as Dictionary)["top"]) - top) < 1.0:
+					seen[next] = true
+					queue.append(next)
+		if field.size() < 2 * SMALLEST_FIELD:
+			continue
+		var keys: Array[Vector3i] = []
+		for c: Variant in field:
+			keys.append(cell_key[c])
+		var box: AABB = _box_of(keys, levels)
+		if _ground(box, model_box) or _lived_on(box, living):
+			continue
+		var one: Finding = _crown(field, cell_key, levels, curves, claimed)
+		if one != null:
+			out.append(one)
+	return out
+
+
+## Crown one flat top: its edges that drop away found and sloped, the rest
+## raised flush. Null where no edge can be, or something does not fit.
+func _crown(field: Dictionary, cell_key: Dictionary, levels: Dictionary, curves: Array,
+		claimed: Dictionary) -> Finding:
+	var first: Dictionary = levels[cell_key[field.keys()[0]]]
+	var base: float = (first["at"] as Vector3).y
+	var counts: Dictionary = {}
+	for c: Variant in field:
+		var colour: int = int((levels[cell_key[c]] as Dictionary)["colour"])
+		counts[colour] = int(counts.get(colour, 0)) + 1
+	var colour: int = int(first["colour"])
+	for code: Variant in counts:
+		if int(counts[code]) > int(counts[colour]):
+			colour = int(code)
+	var band: Dictionary = {}
+	var slopes: Array = []
+	var ways := PackedStringArray()
+	for d: Vector2i in WAYS:
+		var perp := Vector2i(absi(d.y), absi(d.x))
+		var fall := Vector2i(d.x / 2, d.y / 2)
+		# The edge's cells whose two studs in are the top's and not sloped yet,
+		# and whose outside is clear beside a slope and drops below it.
+		var ready: Array[Vector2i] = []
+		for c: Variant in field:
+			var cell: Vector2i = c
+			if field.has(cell + d) or not field.has(cell - d) or band.has(cell) \
+					or band.has(cell - d):
+				continue
+			var clear: bool = true
+			for y: float in [base - 4.0, base + 4.0, base + 12.0]:
+				clear = clear and not _other_than(0, Vector3((cell + d).x * 10.0, y,
+					(cell + d).y * 10.0))
+			if clear:
+				ready.append(cell)
+		ready.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+			return a.x * perp.x + a.y * perp.y < b.x * perp.x + b.y * perp.y)
+		var n: int = 0
+		var sloped: bool = false
+		while n < ready.size():
+			var laid: bool = false
+			for shape: Dictionary in curves:
+				var wide: int = int(shape["w"])
+				if n + wide > ready.size() or ready[n + wide - 1] != ready[n] + perp * (wide - 1):
+					continue
+				# A run of one is a corner's end, not an edge.
+				var alone: bool = wide == 1 and (n == 0 or ready[n - 1] != ready[n] - perp) \
+					and (n + 1 >= ready.size() or ready[n + 1] != ready[n] + perp)
+				if alone:
+					continue
+				var span: Array[Vector2i] = []
+				for a: int in wide:
+					span.append(ready[n + a])
+					span.append(ready[n + a] - d)
+				for cell: Vector2i in span:
+					band[cell] = true
+				slopes.append(_at_cells(str(shape["id"]), span, base, colour,
+					posmod(Shapes.OUT.find(fall) + int(shape["turn"]), 4)))
+				n += wide
+				laid = true
+				sloped = true
+				break
+			if not laid:
+				n += 1
+		if sloped:
+			ways.append({Vector2i(0, 2): "+z", Vector2i(2, 0): "+x", Vector2i(0, -2): "-z",
+				Vector2i(-2, 0): "-x"}[d])
+	if slopes.is_empty():
+		return null
+	var inner: Dictionary = {}
+	for c: Variant in field:
+		if not band.has(c):
+			inner[c] = true
+	var plates: Array = _bricks_over(inner.duplicate(), base, colour, PLATES)
+	var tiles: Array = _bricks_over(inner.duplicate(), base + PLATE, colour, TILES)
+	var cells: Array[Vector2i] = []
+	for c: Variant in field:
+		cells.append(c as Vector2i)
+	var column: Dictionary = {}
+	for c: Vector2i in cells:
+		column[c] = cell_key[c]
+	var old: Array[int] = _tiles_on(cells, column, levels)
+	var skip: Dictionary = {}
+	for id: int in old:
+		skip[id] = true
+	for placed: Variant in slopes + plates:
+		if not _fits(placed as Dictionary, skip):
+			return null
+	for placed: Variant in tiles:
+		if not _fits(placed as Dictionary, skip, plates):
+			return null
+	var one := Finding.new()
+	one.kind = "edge"
+	if not _cut(one, old, field, claimed):
+		return null
+	one.add.append_array(slopes)
+	one.add.append_array(plates)
+	one.add.append_array(tiles)
+	_take(one, cells, column, levels, claimed)
+	one.studs = cells.size()
+	one.said = "a top of %d %s, %s, its hard edge%s on the %s side%s %s." % [cells.size(),
+		"tiles' studs" if not old.is_empty() else "studs", _where_said(one.box),
+		"" if ways.size() == 1 else "s", ", ".join(ways), "" if ways.size() == 1 else "s",
+		"curved over, the rest raised flush with a plate and tiles"]
+	one.laid = _pieces_said(one)
+	return one
 
 
 # -- stud fields ---------------------------------------------------------------
@@ -1524,12 +1884,14 @@ func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
 	for one: Finding in ready:
 		add.append_array(one.add)
 		remove.append_array(one.remove)
+	await _keep_pieces(not remove.is_empty())
+	var out: Array[Finding] = []
 	if ready.size() > 1:
 		var ids: Array[int] = await _edit(add, remove)
 		if not ids.is_empty():
 			_share_out(ready, ids)
-			return ready
-	var out: Array[Finding] = []
+			out = ready
+			ready = []
 	for one: Finding in ready:
 		if Time.get_ticks_msec() > until:
 			more += 1
@@ -1541,7 +1903,20 @@ func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
 		one.ids = ids
 		_boxed(one)
 		out.append(one)
+	assistant._keep_pieces = -1
 	return out
+
+
+## Where a proposal takes parts off, the pieces the model is in now, which
+## edit_model then keeps to: a step brick or a wall brick laid again in smaller
+## parts may have been what held two others together. Read only when it is
+## needed: a check of a model with sections is most of a minute.
+func _keep_pieces(taking_off: bool) -> void:
+	assistant._keep_pieces = -1
+	if not taking_off:
+		return
+	var report: Dictionary = await assistant._checked(assistant._model_from_world(), true)
+	assistant._keep_pieces = int(report.get("pieces", 0))
 
 
 ## Lay one finding (ground offered, tiled when asked), checked open first.
@@ -1550,7 +1925,9 @@ func _lay(one: Finding) -> bool:
 	_why_not = _not_ready(one, {}, _points())
 	if not _why_not.is_empty():
 		return false
+	await _keep_pieces(not one.remove.is_empty())
 	var ids: Array[int] = await _edit(one.add, one.remove)
+	assistant._keep_pieces = -1
 	if ids.is_empty():
 		return false
 	one.ids = ids
@@ -1564,7 +1941,10 @@ func _lay(one: Finding) -> bool:
 func _not_ready(one: Finding, now: Dictionary, points: Array) -> String:
 	if not one.cells.is_empty():
 		if not now.has(one.section):
-			now[one.section] = open_tops(one.section, points)
+			var tops: Dictionary = open_tops(one.section, points)
+			if one.section.is_empty():
+				tops.merge(tile_tops())
+			now[one.section] = tops
 		var open: Dictionary = now[one.section]
 		for key: Vector3i in one.cells:
 			if not open.has(key):
@@ -1704,14 +2084,20 @@ func _bricks(ids: Array[int]) -> Array[BrickWorld.Brick]:
 
 ## Whether a placement would fit and be held where the model stands now,
 ## the bricks in [param skip] taken off.
-func _fits(placed: Dictionary, skip: Dictionary) -> bool:
+func _fits(placed: Dictionary, skip: Dictionary, with_these: Array = []) -> bool:
 	if _read == null:
 		_read = OpenPoints.read(assistant)
-	var trial: Dictionary = _read.test(Assistant.Placement.from_dict(placed), skip)
+	var also: Array = []
+	for n: int in with_these.size():
+		var other: Assistant.Placement = Assistant.Placement.from_dict(with_these[n])
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(other.part)
+		if mesh != null:
+			also.append([-(n + 1), mesh, assistant._transform(other, mesh, null), ""])
+	var trial: Dictionary = _read.test(Assistant.Placement.from_dict(placed), skip, also)
 	if not bool(trial["fits"]):
 		return false
 	for by: Variant in trial["held_by"]:
-		if int(by) > 0 and not skip.has(int(by)):
+		if int(by) != 0 and not skip.has(int(by)):
 			return true
 	return int(trial.get("rests_on", 0)) == -1
 

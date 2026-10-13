@@ -67,7 +67,7 @@ func _run() -> void:
 	await process_frame
 
 	print("\na 6 x 8 roof of studs gets tiled")
-	await _build("roof", _roof())
+	await _build("house", _roof())
 	var plate: int = _brick_of("3036")
 	_ok(_open_on(plate) == 48, "the roof plate has 48 open studs (%d)" % _open_on(plate))
 	var handed: Variant = await assistant.surface_review()
@@ -114,7 +114,7 @@ func _run() -> void:
 		"a second review leaves the rejected roof alone")
 
 	print("\naccept, adjusted plain")
-	await _build("roof", _roof())
+	await _build("house", _roof())
 	plate = _brick_of("3036")
 	await assistant.surface_review()
 	roof = _finding("studs")
@@ -154,6 +154,63 @@ func _run() -> void:
 		"verdict": "keep", "reason": "the steps are a stair for the figures"})
 	_ok(stairs.verdict == "kept" and _brick_at("3001", 3) != 0 and _brick_at("3001", 6) != 0,
 		"kept: the step bricks are back as they were: %s" % kept.get_slice("\n", 0))
+
+	print("\na staircase of tiled steps gets slopes, its tread tiles off")
+	await _build("tiled steps", _tiled_steps())
+	var tread_tile: int = _brick_at("2431", 6)
+	_ok(tread_tile != 0 and _open_at_height(48.0) == 0, "the second tread is a tile, no stud open")
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 700).replace("\n", "\n    "))
+	stairs = _finding("staircase")
+	_ok(stairs != null and stairs.said.contains("tiled studs"), "a tiled staircase is found")
+	slopes = 0
+	for brick: BrickWorld.Brick in _bricks():
+		if (library.parts[brick.part_id] as PartLibrary.PartInfo).family_category() == "Slope":
+			slopes += 1
+	_ok(slopes >= 2 and world.get_brick(tread_tile) == null,
+		"...the steps are slopes (%d) and the tread's tile is off" % slopes)
+	report = await assistant._check(assistant._model_from_world())
+	_ok(bool(report["ok"]) and int(report.get("pieces", 0)) == 1,
+		"...and it holds as one piece: %s" % report["summary"])
+	var put_back: String = await assistant.use_tool("settle_surface", {"finding": "all",
+		"verdict": "reject", "reason": "these steps are a stair for the figures"})
+	_ok(world.get_brick(tread_tile) == null and _brick_at("2431", 6) != 0
+		and _brick_at("3001", 3) != 0, "rejected, the bricks and the tread's tile are back: %s"
+		% put_back.get_slice("\n", 0))
+
+	print("\na head's hard top edges are curved over, the top raised flush")
+	await _build("owl head", _head())
+	var head_top: float = assistant._bounds_of(_bricks()).end.y
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 700).replace("\n", "\n    "))
+	var crown: SurfacePass.Finding = _finding("edge")
+	_ok(crown != null and not crown.ids.is_empty(), "the top's hard edges are found and laid")
+	var curved: int = _count(_bricks(), ["15068", "11477"])
+	_ok(curved >= 4, "...as %d curved slopes along them" % curved)
+	_ok(absf(assistant._bounds_of(_bricks()).end.y - head_top - 8.0) < 1.0,
+		"...and the top raised a plate, flush with them (%.0f to %.0f)"
+		% [head_top, assistant._bounds_of(_bricks()).end.y])
+	# As the pass reads them: a curved slope's hollow underside reads as
+	# nothing on the stud to a tip test, and the lattice knows better.
+	var finished: SurfacePass = assistant.surface_pass()
+	finished._read = OpenPoints.read(assistant)
+	_ok(finished.open_tops().is_empty(), "...with no stud left open on it (%d)"
+		% finished.open_tops().size())
+	report = await assistant._check(assistant._model_from_world())
+	_ok(bool(report["ok"]) and int(report.get("pieces", 0)) == 1,
+		"...and the head holds as one piece: %s" % report["summary"])
+	await _build("house roof", _head())
+	await assistant.surface_review()
+	_ok(_finding("edge") == null, "a building's top keeps its edges")
+
+	print("\nan edit that would leave the model in more pieces is refused while a pass keeps count")
+	await _build("owl head", _head())
+	assistant._keep_pieces = 1
+	var split: String = await assistant.use_tool("edit_model", {"add": [
+		{"part": "3001", "color": 4, "x": 6, "y": 0, "z": 0, "rot": 0}]})
+	assistant._keep_pieces = -1
+	_ok(split.begins_with("Not applied — it would leave the model in 2 pieces"),
+		"refused: %s" % split.get_slice("\n", 0))
 
 	print("\na wing laid at an angle is tiled in its own frame")
 	await _build_with("wing", _wing(), [{"name": "wing", "x": 0, "y": 3, "z": 0,
@@ -206,7 +263,7 @@ func _run() -> void:
 	_ok(_open_on(base) == 0, "\"tile\" lays it: %s" % tiled.get_slice("\n", 0))
 
 	print("\nsaving from outside reminds a session that never ran it, without refusing")
-	await _build("roof", _roof())
+	await _build("house", _roof())
 	var reminder: String = await assistant.next_review()
 	_ok(reminder.begins_with("Before it is finished: The surface pass has not been run"),
 		"the first save says so: %s" % reminder.substr(0, 90))
@@ -302,6 +359,25 @@ func _ground() -> Array:
 
 
 # -- helpers -------------------------------------------------------------------
+
+
+## The three steps again, every tread tiled.
+func _tiled_steps() -> Array:
+	return _steps() + [{"part": "2431", "color": 72, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": "2431", "color": 72, "x": 0, "y": 6, "z": 1, "rot": 0},
+		{"part": "87079", "color": 72, "x": 0, "y": 9, "z": 2, "rot": 0}]
+
+
+## A tan head: 2 x 2 bricks under a 6 x 6 plate, its top tiled.
+func _head() -> Array:
+	var out: Array = []
+	for x: int in [0, 2, 4]:
+		for z: int in [0, 2, 4]:
+			out.append({"part": "3003", "color": 19, "x": x, "y": 0, "z": z, "rot": 0})
+	out.append({"part": "3958", "color": 19, "x": 0, "y": 3, "z": 0, "rot": 0})
+	for z: int in [0, 2, 4]:
+		out.append({"part": "69729", "color": 19, "x": 0, "y": 4, "z": z, "rot": 0})
+	return out
 
 
 ## A 1 x 2 brick and, hinged on it, a 2 x 4 plate: a wing.

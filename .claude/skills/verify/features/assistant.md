@@ -1585,22 +1585,34 @@ fixing what it got wrong.
   Needs the index; SKIP without.
   The surface pass, before the creative pass (`src/ai/surface_pass.gd`,
   `SurfacePass`, 2026-10-13): the app reads the model's open up-facing studs
-  exactly (OpenPoints: nothing on the stud, nothing within a brick over it,
-  and seen — clear to the top, or open to the outside on two sides, as a
-  lower wing under the upper one is; on a plain brick, plate, slope, wedge,
-  wing or baseplate, its whole square part; in the main body and in each
-  section's own frame, so a wing laid at an angle is tiled in it) and finds
-  three things — `studs`, a field of four or more
+  exactly (nothing on the stud — `BrickLattice.standing_on`, the question a
+  shape asks before tiling its top, or for a stud in a turned section the
+  tip test of OpenPoints — nothing within a brick over it, and seen: clear to
+  the top, or open to the outside on two sides, as a lower wing under the
+  upper one is; on a plain brick, plate, slope, wedge, wing or baseplate, its
+  whole square part; in the main body and in each section's own frame, so a
+  wing laid at an angle is tiled in it), and the tiles already lying open
+  (`tile_tops`, by the studs under them), and finds four things — `studs`, a
+  field of four or more
   joined at one height, tiled in the colour under it, largest real sizes
   first (`TILES`, only sizes made in that colour) with one to three textured
   tiles (`ACCENTS`: grille 2412b, ingot 96910, jumper 15573) on a field of
   16 or more; `staircase`, two risers or more of one to three plates along one
-  way with treads of one to three studs, each riser covered by a slope or
+  way with treads of one to three studs, studded or tiled (a tiled tread's
+  tiles come off first, `_cut` laying again what of each lay beyond the
+  slope, and go back on a reject), each riser covered by a slope or
   curved slope laid on the tread below (read off its mesh by `Shapes.part`
   for fall and height; curved first unless the brief is a building), or,
   where the tread is one stud under a brick's rise, the brick above laid
   again as a 45 degree slope (3037-3040b) with the rest of it in bricks and
-  its stud row tiled if open, else a plate and a cheese slope; and `wall`, a
+  its stud row tiled if open, else a plate and a cheese slope; `edge`, for
+  anything not a building (`_straight_first`), a flat top of eight studs or
+  more, studded or tiled, not the ground and not a yard, whose edges drop
+  away: curved slopes two plates tall (15068, 11477) along each edge that
+  drops, falling outward, two studs deep, and the rest of the top raised
+  flush with a plate and tiles, its own tiles off first (`_crown`) — nothing
+  under the top is touched, so what ties the body together still does; and
+  `wall`, a
   plain one-wide (or two-wide's outer row) wall open to the air, six studs by
   three courses or more, nine tenths one colour, laid again by `_restyle`
   in its box. Left alone, and said: a Brick Art mosaic, a field a figure,
@@ -1611,7 +1623,10 @@ fixing what it got wrong.
   minute, and one at a time a review took six, past the relay's three) after
   their studs are checked open again, one at a time only if that is refused
   and for at most `LAYING_MS`; the bricks are given back to each finding by
-  part and place (`_share_out`), and the design
+  part and place (`_share_out`). Where a finding takes parts off, the model's
+  pieces are counted first and edit_model refuses an edit that would leave
+  more (`Assistant._keep_pieces`): the surface round's shop stood on 137 loose plates,
+  and a step brick or wall brick laid again may be what tied two others. The design
   gets one corner picture with each marked S1, S2 ...; `settle_surface`
   accepts (`plain`, `recolor` to adjust), rejects or keeps with a reason
   (pieces off, what they replaced put back, the zone never proposed again).
