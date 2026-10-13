@@ -34,7 +34,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   adds to the selection; `G` takes the part under the pointer into hand, `X`
   lifts it off into hand.
 - `undo and redo`: `Cmd/Ctrl-Z` and `Cmd/Ctrl-Shift-Z`, over placements, removals,
-  paints, nudges and whole assistant designs. Undo belongs to the model it was
+  paints, nudges and whole assistant designs. Each says in the status line what
+  it took back or put back ("undid: made the sub-assembly Body of 2 parts"),
+  the keys and Edit's Undo alike (`EditVerbs.press`, `Builder.redo_words`): it
+  said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
 - `the ghost`: the part about to go down is drawn in its own colour, shaded,

@@ -281,7 +281,13 @@ func undo() -> bool:
 	if _history.is_empty():
 		return false
 	var step: Dictionary = _history.pop_back()
-	_redo.append(_apply(step))
+	# Said before it is undone, while the brick a step names is still
+	# there to name, and kept with the step that redoes it: the step
+	# reversed would read backwards ("removed" for a placing redone).
+	var words: String = _words_for(step)
+	var back: Dictionary = _apply(step)
+	back["words"] = words
+	_redo.append(back)
 	# What an undo took away is no longer selected: an outline round
 	# nothing, and a Delete that finds nothing to delete.
 	_living_selection()
@@ -292,9 +298,17 @@ func redo() -> bool:
 	if _redo.is_empty():
 		return false
 	var step: Dictionary = _redo.pop_back()
-	_history.append(_apply(step))
+	var again: Dictionary = _apply(step)
+	if step.has("words"):
+		again["words"] = step["words"]
+	_history.append(again)
 	_living_selection()
 	return true
+
+
+## What a redo would put back, in words: "placed Brick 2 x 4".
+func redo_words() -> String:
+	return str(_redo.back().get("words", "")) if not _redo.is_empty() else ""
 
 
 ## Carry out a history step and return the step that would reverse it.

@@ -137,14 +137,19 @@ func handle_key(key: InputEventKey) -> bool:
 func press(name: String) -> void:
 	match name:
 		"undo":
+			# Said, whatever it was: undoing a sub-assembly made changes
+			# nothing a person can see, and the line said nothing either.
 			if builder.undo():
 				edited.call()
+				say.call("undid: %s" % builder.redo_words())
 			else:
 				say.call("nothing to undo")
 			aim_again.call()
 		"redo":
 			if builder.redo():
 				edited.call()
+				var done: PackedStringArray = builder.history_words(1)
+				say.call("redid: %s" % (done[0] if not done.is_empty() else "the change"))
 			else:
 				say.call("nothing to redo")
 			aim_again.call()

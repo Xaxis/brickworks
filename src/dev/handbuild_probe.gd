@@ -1467,6 +1467,7 @@ func _first_timer() -> void:
 	await _menus_show_the_real_keys()
 	await _the_palette_stays_put()
 	await _the_note_says_the_selection()
+	await _undo_says_what()
 	await _an_untouched_example()
 
 
@@ -1641,6 +1642,28 @@ func _the_note_says_the_selection() -> void:
 	await _key(KEY_ESCAPE)
 	_check("nothing selected, it is the colour in hand again (%s)" % bin._colour_note.text,
 		not bin._colour_note.text.contains("selected"))
+
+
+## Undo said nothing, and undoing a sub-assembly made changed nothing a
+## person could see either.
+func _undo_says_what() -> void:
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	_select_only(_bricks_near(Vector3(-60, 0, 20)) + _bricks_near(Vector3(60, 0, 20)))
+	await _frames(2)
+	verbs.name_submodel("Body")
+	await _frames(3)
+	await _key(KEY_Z, true)
+	var said: String = str(shell.status.fields()["message"])
+	_check("Ctrl-Z says what it undid (%s)" % said,
+		said.begins_with("undid: ") and said.contains("Body"))
+	await _key(KEY_Z, true, true)
+	said = str(shell.status.fields()["message"])
+	_check("...and Ctrl-Shift-Z what it put back (%s)" % said,
+		said.begins_with("redid: ") and said.contains("Body"))
+	shell.run("undo")
+	said = str(shell.status.fields()["message"])
+	_check("...and so does Edit, Undo (%s)" % said, said.begins_with("undid: "))
 
 
 ## New on the first visit's example car, untouched, asked whether to save

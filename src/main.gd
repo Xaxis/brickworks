@@ -4385,11 +4385,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_TAB:
 			_tab_columns()
 		KEY_Z:
+			# The same undo as Edit's, which says what it took back.
 			if key.ctrl_pressed or key.meta_pressed:
-				if key.shift_pressed:
-					_builder.redo()
-				else:
-					_builder.undo()
+				_verbs.press("redo" if key.shift_pressed else "undo")
 				_refresh_preview()
 		KEY_COMMA:
 			# Where a preferences panel lives in every app on this
