@@ -415,6 +415,7 @@ python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay
 set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 --static=build/web
 node tools/web/freeze_check.mjs --dir=build/web --out=shots/freeze   # a big design, timed
 node tools/web/idle_check.mjs --dir=build/web --out=shots/idle       # nothing drawn standing still
+node tools/web/idle_check.mjs --url=http://127.0.0.1:8761/index.html --floor=none   # ...on no floor, its shadow showing
 ```
 
 ## How to check it

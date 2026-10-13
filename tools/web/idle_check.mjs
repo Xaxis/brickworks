@@ -18,6 +18,10 @@
 // the engine's frames, or where a change was not drawn or the page did not
 // go quiet again. Leaves idle.json
 // and idle.png in --out (shots/idle).
+//
+// --floor=none (or grid) first puts the model on that floor, by View >
+// Floor and the menu's keys: with no baseplate the ground catches the
+// model's shadow, and that must cost nothing standing still either.
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -172,6 +176,30 @@ if (!view) {
   await page.screenshot({ path: `${out}/never_showed.png` }).catch(() => {});
   console.log("FAIL the app never showed the model's view");
   await stop(1);
+}
+
+// On another floor, chosen as a person chooses it.
+if (args.floor) {
+  const words = { none: "No floor", grid: "Grid" }[args.floor];
+  const want = args.floor.toUpperCase();
+  let on = false;
+  for (let tries = 0; tries < 3 && !on; tries++) {
+    const menu = await page.evaluate(() => (window.brickworksControls || {}).menu_view);
+    await page.mouse.click(menu.x, menu.y);
+    await page.waitForTimeout(2000 + 2000 * tries);
+    await page.keyboard.type("Floor", { delay: 110 });
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(1200);
+    await page.keyboard.type(words, { delay: 110 });
+    await page.keyboard.press("Enter");
+    for (let n = 0; n < 40 && !on; n++) {
+      await page.waitForTimeout(500);
+      on = await page.evaluate((want) => (window.brickworksState || {}).floor === want, want);
+    }
+    if (!on) await page.keyboard.press("Escape");
+  }
+  console.log(`${on ? "ok  " : "FAIL"} on ${words}, by View > Floor`);
+  if (!on) await stop(1);
 }
 
 const now = () => page.evaluate(() => performance.now());

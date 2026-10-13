@@ -196,6 +196,8 @@ func _placing_on_each_floor() -> void:
 		var stands: String = str(_main.get("_stability_text"))
 		_check("...and it stands up against the ground (%s)" % stands, stands.begins_with("stands up"))
 		await _shot("placed_" + kind)
+		if kind != ModelFloor.BASEPLATE:
+			await _shadow_falls(kind)
 		_builder.clear_selection()
 		(_main.get("_verbs") as EditVerbs).set_mode("select")
 	_check("the same click lands on the same studs on all three (%s)" % str(landed.values()),
@@ -481,6 +483,57 @@ func _settings() -> void:
 		_store.scenery.size()], _store.model_floor.kind == ModelFloor.NONE
 		and _store.scenery.is_empty())
 	ModelFloor.prefer(ModelFloor.make(ModelFloor.BASEPLATE))
+
+
+## With no plate the model still casts a shadow on the ground it stands
+## on, and nothing else is drawn there: the same view with what takes the
+## shadow taking it and not (the grid's ground, or on no floor the plane
+## under the model), compared pixel by pixel away from the parts themselves.
+func _shadow_falls(kind: String) -> void:
+	_builder.hide_preview()
+	var box: AABB = _main.call("_built_bounds")
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for n: int in 8:
+		var seen: Vector2 = _screen(box.position + box.size * Vector3(n & 1, (n >> 1) & 1, (n >> 2) & 1))
+		low = Vector2(minf(low.x, seen.x), minf(low.y, seen.y))
+		high = Vector2(maxf(high.x, seen.x), maxf(high.y, seen.y))
+	# The viewport's units into the picture's pixels: the window is drawn
+	# scaled (canvas_items), and the picture is the window's.
+	var scale: Vector2 = Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size
+	var parts := Rect2((low - Vector2(6, 6)) * scale, (high - low + Vector2(12, 12)) * scale)
+	var view := Rect2(_camera.seen_rect().position * scale, _camera.seen_rect().size * scale)
+	var takes: Callable
+	if kind == ModelFloor.GRID:
+		var ground: StandardMaterial3D = _floor.get("_ground_material")
+		takes = func(on: bool) -> void: ground.disable_receive_shadows = not on
+	else:
+		var catcher: Node3D = _floor.shadow_node()
+		takes = func(on: bool) -> void: catcher.visible = on
+	takes.call(false)
+	await _frames(4)
+	await RenderingServer.frame_post_draw
+	var without: Image = root.get_texture().get_image()
+	takes.call(true)
+	await _frames(4)
+	await RenderingServer.frame_post_draw
+	var with_shadow: Image = root.get_texture().get_image()
+	var darker: int = 0
+	var lighter: int = 0
+	var x_end: int = mini(int(view.end.x), with_shadow.get_width())
+	var y_end: int = mini(int(view.end.y), with_shadow.get_height())
+	for y: int in range(maxi(int(view.position.y), 0), y_end, 2):
+		for x: int in range(maxi(int(view.position.x), 0), x_end, 2):
+			if parts.has_point(Vector2(x, y)):
+				continue
+			var change: float = without.get_pixel(x, y).get_luminance() \
+				- with_shadow.get_pixel(x, y).get_luminance()
+			if change > 0.04:
+				darker += 1
+			elif change < -0.02:
+				lighter += 1
+	_check("%s: the model's shadow falls on the ground round it (%d samples darker, %d lighter)"
+		% [kind, darker, lighter], darker > 100 and lighter < 50)
 
 
 # -- helpers ------------------------------------------------------------------

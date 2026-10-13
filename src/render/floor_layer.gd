@@ -23,6 +23,14 @@ const STUD_HIGH := 4.0
 const MARGIN := 8
 ## The least ground there is with no baseplate, in studs a side.
 const LEAST_GROUND := 48
+const SHADOW_SHADER := preload("res://src/render/floor_shadow.gdshader")
+## The render layer the shadow's ground is on, and that only the sun
+## lights: the fill and the rim cast no shadows, and lighting it they
+## would light the shadow away. Main keeps them off this layer.
+const SHADOW_LAYER := 1 << 19
+## How long a shadow is against how tall the model is: the sun stands
+## about forty degrees up (main.tscn), with some to spare.
+const SHADOW_LENGTH := 1.4
 
 var world: BrickWorld
 var builder: Builder
@@ -43,6 +51,11 @@ var area: AABB = AABB()
 signal changed
 
 var _grid: MeshInstance3D
+## With no plate, the ground is not drawn but the model's shadow is
+## (floor_shadow.gdshader), so a part on nothing stands on something rather
+## than floating in grey, as Studio's floor and the render's sweep have it.
+var _shadow: MeshInstance3D
+var _shadow_material: ShaderMaterial
 var _ground_material: StandardMaterial3D
 var _line_material: StandardMaterial3D
 ## What the model's bounds were when the floor was last laid.
@@ -60,10 +73,12 @@ var _own_at: Array = []
 
 
 func _ready() -> void:
+	# Lit, so the model's shadow falls on it: by the sun alone, on the
+	# shadow's layer, or the fill and rim would light the shadow away.
 	_ground_material = StandardMaterial3D.new()
-	_ground_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_ground_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_ground_material.albedo_color = Color(0.93, 0.94, 0.96, 0.55)
+	_ground_material.albedo_color = Color(0.97, 0.97, 0.98, 0.55)
+	_ground_material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	_ground_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_line_material = StandardMaterial3D.new()
 	_line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -72,8 +87,18 @@ func _ready() -> void:
 	_grid = MeshInstance3D.new()
 	_grid.name = "GridFloor"
 	_grid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_grid.layers = SHADOW_LAYER
 	_grid.visible = false
 	add_child(_grid)
+	_shadow_material = ShaderMaterial.new()
+	_shadow_material.shader = SHADOW_SHADER
+	_shadow = MeshInstance3D.new()
+	_shadow.name = "FloorShadow"
+	_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_shadow.material_override = _shadow_material
+	_shadow.layers = SHADOW_LAYER
+	_shadow.visible = false
+	add_child(_shadow)
 	if library != null:
 		library.fetched.connect(_on_fetched)
 
@@ -81,6 +106,11 @@ func _ready() -> void:
 ## The grid floor's mesh, for a picture to leave out (Picture.aside).
 func grid_node() -> Node3D:
 	return _grid
+
+
+## The shadow on the ground with no plate, for a picture to leave out too.
+func shadow_node() -> Node3D:
+	return _shadow
 
 
 static func is_upright(at: Transform3D) -> bool:
@@ -133,7 +163,18 @@ func lay(model: AABB) -> void:
 	elif not chosen.is_plate():
 		area = _ground_round(model)
 	_draw_grid(chosen.kind == ModelFloor.GRID)
+	_catch_shadow(chosen.kind == ModelFloor.NONE)
 	changed.emit()
+
+
+## The shadow's ground kept round [param model] as it is built: with no
+## plate nothing else is laid again when a model grows, and its shadow
+## would fall off the edge of what catches it.
+func follow(model: AABB) -> void:
+	if store.model_floor.kind != ModelFloor.NONE or model == _model:
+		return
+	_model = model
+	_catch_shadow(true)
 
 
 ## Whether the floor laid still fits [param model]: a model built past the
@@ -382,6 +423,27 @@ func _ground_round(model: AABB) -> AABB:
 	var x1: float = ceilf((middle.x + half_x) / four) * four
 	var z1: float = ceilf((middle.z + half_z) / four) * four
 	return AABB(Vector3(x0, 0.0, z0), Vector3(x1 - x0, 0.0, z1 - z0))
+
+
+## The ground the shadow falls on, under a model on no floor: round the
+## model and as far out as its shadow reaches, fading to nothing there.
+## Just under the parts' undersides at zero. (On the grid floor the grid's
+## own ground takes the shadow.) One quad, drawn only when the view is.
+func _catch_shadow(on: bool) -> void:
+	_shadow.visible = on
+	if not on:
+		return
+	var middle := Vector2(_model.get_center().x, _model.get_center().z) \
+		if _model.size.length_squared() > 0.0 else Vector2(area.get_center().x, area.get_center().z)
+	var near: float = Vector2(_model.size.x, _model.size.z).length() * 0.5 + BrickLattice.STUD * 2.0
+	var far: float = near + maxf(_model.size.y * SHADOW_LENGTH, BrickLattice.STUD * 6.0)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(far * 2.0, far * 2.0)
+	_shadow.mesh = plane
+	_shadow.position = Vector3(middle.x, -0.3, middle.y)
+	_shadow_material.set_shader_parameter("middle", middle)
+	_shadow_material.set_shader_parameter("near_radius", near)
+	_shadow_material.set_shader_parameter("far_radius", far)
 
 
 ## The grid floor: a faint ground with a line between every pair of
