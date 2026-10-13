@@ -283,7 +283,9 @@ func _stop() -> void:
 
 
 ## Draw every frame and keep them. Returns how many were drawn.
-func render_animation() -> int:
+## [param job], from a session (ToolJobs), is the bar along the foot of the
+## window that counts the frames, and whose Cancel stops it.
+func render_animation(job: Working.Job = null) -> int:
 	if _working or world == null:
 		return 0
 	if animation.keys.is_empty() and not animation.turntable:
@@ -320,6 +322,10 @@ func render_animation() -> int:
 	output.folder = folder
 	var model: String = str(named.call())
 	output.begin_turntable(model, chosen, "_animation")
+	var stop: Callable = renderer.cancel
+	if job != null:
+		job.count(0, frames)
+		job.cancel_wanted.connect(stop)
 	var done: int = await renderer.animate(world, chosen, frames,
 		func(n: int) -> Dictionary: return poses[n],
 		func(n: int) -> float: return animation.turn_at(animation.time_of(n)),
@@ -327,11 +333,18 @@ func render_animation() -> int:
 		func(n: int, image: Image) -> void:
 			_frame.texture = ImageTexture.create_from_image(image)
 			_frame.visible = true
+			if job != null:
+				job.count(n + 1)
 			await output.add_frame(n, image))
 	await output.settle()
+	if job != null:
+		job.cancel_wanted.disconnect(stop)
 	var lines := PackedStringArray()
 	if done == frames:
 		_status.text = "Putting the frames together…"
+		if job != null:
+			job.say(_status.text)
+			job.count(0, 0)
 		lines = await output.finish_turntable()
 	_working = false
 	_set_working(false)

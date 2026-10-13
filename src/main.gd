@@ -2733,10 +2733,15 @@ func _turn_model(quarter_turns: int) -> void:
 ## pressed (a browser only lets a page open a tab in answer to a click,
 ## and the pictures take longer than that), and on the desktop into the
 ## Downloads folder and open in the browser, ready to print.
-func _export_booklet(to: String = "") -> String:
+func _export_booklet(to: String = "", job: Working.Job = null) -> String:
 	# Said in the status bar while it works (Working), and in the tab it is
-	# going to on the web, which is the one in front while it draws.
-	var job: Working.Job = Working.begin("Planning the booklet…", 0, true)
+	# going to on the web, which is the one in front while it draws. A
+	# session's job (ToolJobs) is the same bar, handed in.
+	if job == null:
+		job = Working.begin("Planning the booklet…", 0, true)
+	else:
+		job.say("Planning the booklet…")
+		job.can_cancel = true
 	await job.shown()
 	var maker := BookletMaker.new()
 	maker.library = _library

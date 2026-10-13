@@ -133,7 +133,13 @@ saved models it can build.
 Best, up to 4K, saved where Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a picture, \
 a BrickLink wanted list, a Rebrickable parts list, or the building \
-instructions as a booklet, written where Export writes."""
+instructions as a booklet, written where Export writes.
+ - job: what takes long on a big model (render_model, animate_model's \
+rendering, export_model's studio, picture and instructions, make_art) \
+answers at once with a job number while it works in the app. job {"id": N} \
+waits up to 10 s for it to end, then says how far it has got, or gives its \
+answer once done; call it about every 10 s until then. cancel=true stops \
+it. Nothing else can be done in the app while a job runs."""
 
 
 func definitions() -> Array:
@@ -223,7 +229,8 @@ func definitions() -> Array:
 				+ "rendered as an animation (a WebP, and an MP4 where ffmpeg is installed) "
 				+ "where Render saves. keys: [{\"t\": seconds, \"angles\": {joint: degrees}}], "
 				+ "joints by number or name from pose_model's list. Rendering needs the app "
-				+ "in a window; render=false only sets the keys, for the person to play."),
+				+ "in a window and is a job (job gives the result); render=false only sets "
+				+ "the keys, for the person to play."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"keys": {"type": "array", "items": {"type": "object", "additionalProperties": false,
 					"required": ["t", "angles"], "properties": {
@@ -275,8 +282,9 @@ func definitions() -> Array:
 				+ "(a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft "
 				+ "shadows. quality quick, good or best (good for a picture, quick for a "
 				+ "turntable when omitted); size 720p, 1080p, 4k or square; view hero, "
-				+ "front, side, back, low or top. Saved where Render saves, and a picture "
-				+ "comes back with the answer. Needs the app in a window."),
+				+ "front, side, back, low or top. Saved where Render saves. It is a job: the "
+				+ "answer is a job number at once, and job gives the result, a picture with "
+				+ "it. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"kind": {"type": "string", "enum": ["picture", "turntable"]},
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
@@ -290,8 +298,9 @@ func definitions() -> Array:
 				+ "(the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd "
 				+ "with its sub-models, with its build steps), studio (a BrickLink Studio .io), "
 				+ "picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), "
-				+ "or instructions (the building instructions as a booklet to print, which "
-				+ "takes a while on a big model)."),
+				+ "or instructions (the building instructions as a booklet to print). "
+				+ "studio, picture and instructions are jobs: the answer is a job number "
+				+ "at once, and job gives the result."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "picture", "bricklink",
@@ -309,7 +318,38 @@ func has(tool: String) -> bool:
 
 
 ## A coroutine: several of these wait on the window (a render, a fetch).
-func run(tool: String, input: Dictionary) -> Variant:
+## [param work] is the Working job a long call reports to (ToolJobs): the
+## bar the person sees, and what the session's job tool reads.
+func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
+	var refused: String = refusal(tool, input)
+	if not refused.is_empty():
+		return refused
+	match tool:
+		"set_floor":
+			return _set_floor(input)
+		"edit_steps":
+			return _edit_steps(input)
+		"lay_flex":
+			return await _lay_flex(input)
+		"pose_model":
+			return _pose(input)
+		"animate_model":
+			return await _animate(input, work)
+		"undo":
+			return await _undo(input)
+		"open_model":
+			return await _open(input)
+		"parts_list":
+			return await _parts_list(input)
+		"render_model":
+			return await _render(input, work)
+		"export_model":
+			return await _export(input, work)
+	return "No tool called %s." % tool
+
+
+## Why [param tool] is not done now, before it begins, or "".
+func refusal(tool: String, input: Dictionary) -> String:
 	if app == null:
 		return "This app cannot do that from outside."
 	var shell: Shell = app.get("_shell")
@@ -323,28 +363,7 @@ func run(tool: String, input: Dictionary) -> Variant:
 	if assistant != null and assistant.asked_about_selection() and tool in CHANGES:
 		return ("Not now — the person asked about the parts they selected, and this would "
 			+ "change more than those. Change them with edit_selection.")
-	match tool:
-		"set_floor":
-			return _set_floor(input)
-		"edit_steps":
-			return _edit_steps(input)
-		"lay_flex":
-			return await _lay_flex(input)
-		"pose_model":
-			return _pose(input)
-		"animate_model":
-			return await _animate(input)
-		"undo":
-			return await _undo(input)
-		"open_model":
-			return await _open(input)
-		"parts_list":
-			return await _parts_list(input)
-		"render_model":
-			return await _render(input)
-		"export_model":
-			return await _export(input)
-	return "No tool called %s." % tool
+	return ""
 
 
 ## The tools that change the model.
@@ -669,7 +688,7 @@ static func _joint_named(joints: Array[Poser.Joint], asked: String) -> Poser.Joi
 	return null
 
 
-func _animate(input: Dictionary) -> String:
+func _animate(input: Dictionary, work: Working.Job = null) -> String:
 	var panel: PosePanel = app.get("_pose")
 	if assistant != null:
 		assistant._tag_assemblies()
@@ -707,7 +726,7 @@ func _animate(input: Dictionary) -> String:
 	if not StudioRender.possible():
 		return ("Set %s. Rendering it needs something to draw with, and this app is running "
 			% said + "without a window; the person can play it from Build, Pose and animate.")
-	var frames: int = await panel.render_animation()
+	var frames: int = await panel.render_animation(work)
 	if frames <= 0:
 		return "Nothing rendered: %s" % panel.rendered_words()
 	return "%s: %s" % [said.left(1).to_upper() + said.substr(1), panel.rendered_words()]
@@ -849,7 +868,7 @@ func _parts_list(input: Dictionary) -> String:
 # -- rendering and exporting ---------------------------------------------------------
 
 
-func _render(input: Dictionary) -> Variant:
+func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	if world.brick_count() - store.scenery.size() <= 0:
@@ -860,8 +879,9 @@ func _render(input: Dictionary) -> Variant:
 	var dialog: RenderDialog = app.get("_render")
 	var chosen: RenderSettings = dialog.settings.copy()
 	var kind: String = str(input.get("kind", "picture"))
-	# A turntable is thirty-six pictures: quick and small unless asked, or
-	# it outlasts the three minutes a session waits for an answer.
+	# A turntable is thirty-six pictures: quick and small unless asked. A job
+	# all the same (ToolJobs): on a big model even that outlasts the three
+	# minutes a session waits for an answer.
 	var turning: bool = kind == "turntable"
 	var quality: Dictionary = {"quick": RenderSettings.Quality.QUICK,
 		"good": RenderSettings.Quality.GOOD, "best": RenderSettings.Quality.BEST}
@@ -872,7 +892,7 @@ func _render(input: Dictionary) -> Variant:
 	chosen.size = sizes.get(str(input.get("size", "720p" if turning else "1080p")),
 		Vector2i(1920, 1080))
 	chosen.view = str(input.get("view", "hero"))
-	var said: String = await dialog.render_for(kind, chosen)
+	var said: String = await dialog.render_for(kind, chosen, work)
 	if kind != "picture" or dialog.last_picture() == null:
 		return said
 	var small: Image = dialog.last_picture().duplicate() as Image
@@ -882,7 +902,7 @@ func _render(input: Dictionary) -> Variant:
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
 
 
-func _export(input: Dictionary) -> String:
+func _export(input: Dictionary, work: Working.Job = null) -> String:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var exports: Exports = app.get("_exports")
@@ -911,7 +931,7 @@ func _export(input: Dictionary) -> String:
 			var to: String = exports.folder if not exports.folder.is_empty() \
 				else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
-				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"))
+				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
 			return "format is ldraw, studio, picture, bricklink, rebrickable or instructions."
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."

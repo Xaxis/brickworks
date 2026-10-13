@@ -117,8 +117,14 @@ class Job extends RefCounted:
 		if Working.shown_in != null:
 			Working.shown_in._refresh(true)
 
+	## Counted in hundredths and said as a share, "… 40%": a picture being
+	## rendered has no pieces worth counting, only how far along it is.
+	var percent: bool = false
+
 	## The words with the count: "… 3,200 of 9,429".
 	func line() -> String:
+		if total > 0 and percent:
+			return "%s %d%%" % [words, roundi(100.0 * done / total)]
 		if total > 0:
 			return "%s %s of %s" % [words, Working.comma(done), Working.comma(total)]
 		return words

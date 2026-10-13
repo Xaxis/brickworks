@@ -60,7 +60,7 @@ func _run() -> void:
 	var names: Array = (listed.get("tools", []) as Array).map(
 		func(tool: Dictionary) -> String: return str(tool["name"]))
 	var wanted: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_model", "animate_model", "undo",
-		"open_model", "parts_list", "render_model", "export_model"]
+		"open_model", "parts_list", "render_model", "export_model", "job"]
 	_check("tools/list offers the window's commands too: %s" % ", ".join(wanted),
 		wanted.all(func(name: String) -> bool: return names.has(name)))
 
@@ -71,6 +71,7 @@ func _run() -> void:
 	await _parts()
 	await _exports(out)
 	await _open()
+	await _jobs(out)
 	_done()
 
 
@@ -276,8 +277,8 @@ func _exports(out: String) -> void:
 		said = await _say("export_model", {"format": "picture"})
 		_check("a picture of the model: %s" % said, said.contains(out) and said.contains(".png")
 			and FileAccess.file_exists(said.trim_prefix("Wrote ").get_slice(" ", 0).trim_suffix(".")))
-		var result: Dictionary = await _rpc("tools/call", {"name": "render_model",
-			"arguments": {"kind": "picture", "quality": "quick", "size": "720p"}})
+		var result: Dictionary = await _finished(await _rpc("tools/call", {"name": "render_model",
+			"arguments": {"kind": "picture", "quality": "quick", "size": "720p"}}))
 		var kinds: Array = (result.get("content", []) as Array).map(
 			func(block: Dictionary) -> String: return str(block.get("type", "")))
 		var text: String = str(((result.get("content", []) as Array)[0] as Dictionary).get("text", ""))
@@ -316,6 +317,74 @@ func _open() -> void:
 	shell.read_only = false
 
 
+## Long work answers at once with a job, the one the window's bar shows, and
+## job says how it goes, gives the answer and stops it (src/net/tool_jobs.gd).
+func _jobs(out: String) -> void:
+	print("── long work, as jobs ──")
+	var asked_at: int = Time.get_ticks_msec()
+	var first: Dictionary = await _rpc("tools/call", {"name": "export_model",
+		"arguments": {"format": "studio"}})
+	var waited: int = Time.get_ticks_msec() - asked_at
+	var id: int = _job_of(first)
+	_check("a Studio file is a job, answered at once (%d ms): %s" % [waited, _text(first).left(80)],
+		id > 0 and waited < 2000 and _text(first).contains("job {\"id\": %d}" % id))
+	var shown: Working.Job = Working.current()
+	_check("...and the window's bar is that job: %s" % (shown.line() if shown != null else "none"),
+		shown != null and shown.words.begins_with("Writing") and not shown.can_cancel)
+	var meanwhile: String = await _say("parts_list", {})
+	_check("a call meanwhile is told at once that the app is busy with it: %s" % meanwhile.left(60),
+		meanwhile.begins_with("The app is busy with job %d" % id))
+	var stop: String = await _say("job", {"id": id, "cancel": true})
+	_check("...which cannot be stopped part way, and says so: %s" % stop.left(60),
+		stop.contains("cannot be stopped part way"))
+	var finished: Dictionary = await _finished(first)
+	var said: String = _text(finished)
+	var io: String = said.trim_prefix("Wrote ").trim_suffix(".")
+	_check("job gives the answer once it is done: %s" % str(finished.get("job", "")).get_slice("\n", 0),
+		str(finished.get("job", "")).contains("is done") and said.ends_with(".io.")
+			and FileAccess.get_file_as_bytes(io).size() > 100)
+	_check("...and the bar went with it", not Working.is_busy())
+	said = await _say("job", {"id": id})
+	_check("...and can be asked for again", said.contains("is done") and said.contains(".io"))
+	said = await _say("job", {"id": 999})
+	_check("a job that is not there is refused, naming those that are: %s" % said,
+		said.begins_with("No job 999") and said.contains("%d (export_model, done)" % id))
+	# Any other call still going after its time becomes a job where it stands.
+	_socket.jobs.after_s = 0.0
+	var examples: Array[ModelStore.Entry] = _store.list_examples()
+	var opening: Dictionary = await _rpc("tools/call", {"name": "open_model",
+		"arguments": {"name": examples[0].name, "discard_changes": true}})
+	_socket.jobs.after_s = 20.0
+	var opened: String = _text(await _finished(opening))
+	_check("a call past its time becomes a job: %s" % _text(opening).left(60),
+		_job_of(opening) > id and opened.begins_with("Opened"))
+	if DisplayServer.get_name() == "headless":
+		return
+	# A turntable, stopped part way: by the job tool, as by the bar's Cancel.
+	var turning: Dictionary = await _rpc("tools/call", {"name": "render_model",
+		"arguments": {"kind": "turntable"}})
+	var spin: int = _job_of(turning)
+	_check("a turntable is a job that can be stopped: %s" % _text(turning).left(70),
+		spin > 0 and _text(turning).contains("\"cancel\": true"))
+	var bar: Working.Job = Working.current()
+	while bar != null and not bar.ended and bar.done < 2:
+		await process_frame
+	_socket.jobs.wait_s = 0.0
+	said = await _say("job", {"id": spin})
+	_socket.jobs.wait_s = 10.0
+	_check("job says how far it has got: %s" % said.left(110),
+		said.contains("is still going") and said.contains(" of 36"))
+	said = await _say("job", {"id": spin, "cancel": true})
+	var renderer: StudioRender = (_main.get("_render") as RenderDialog).renderer
+	_check("cancelled, it stops: %s" % said.left(80), said.contains("was cancelled")
+		and not renderer.is_busy() and not Working.is_busy())
+	var name: String = (_main.get("_bar") as ModelBar).model_name()
+	_check("...and no turntable was written",
+		not FileAccess.file_exists(out.path_join(RenderOutput.file_name(name, "_turntable", "webp"))))
+	_check("...and the app is free again: %s" % (await _say("parts_list", {})).get_slice("\n", 0),
+		(await _say("parts_list", {})).contains(" pieces in "))
+
+
 # -- helpers ------------------------------------------------------------------------
 
 
@@ -345,13 +414,47 @@ func _rpc(method: String, params: Dictionary) -> Dictionary:
 	return (answer as Dictionary).get("result", {}) as Dictionary
 
 
-## A tool's answer as text, called as the connector calls it.
+## A tool's answer as text, called as the connector calls it: a job's
+## answer once it is done, when the call answered with a job.
 func _say(tool: String, arguments: Dictionary) -> String:
-	var result: Dictionary = await _rpc("tools/call", {"name": tool, "arguments": arguments})
+	return _text(await _finished(await _rpc("tools/call", {"name": tool, "arguments": arguments})))
+
+
+static func _text(result: Dictionary) -> String:
 	var text: String = ""
 	for block: Dictionary in result.get("content", []):
 		text += str(block.get("text", ""))
 	return text
+
+
+## The job number a call answered with, or 0 when it answered outright.
+static func _job_of(result: Dictionary) -> int:
+	var found: RegExMatch = RegEx.create_from_string("^Started job (\\d+)").search(_text(result))
+	return int(found.get_string(1)) if found != null else 0
+
+
+## [param result], or when it is a job, the job's answer once it ends, polled
+## as a session polls it, without the job's own first line. "job" holds
+## what job last said.
+func _finished(result: Dictionary) -> Dictionary:
+	var id: int = _job_of(result)
+	if id == 0:
+		return result
+	for _n: int in 90:
+		var polled: Dictionary = await _rpc("tools/call", {"name": "job", "arguments": {"id": id}})
+		var said: String = _text(polled)
+		if said.contains(" is still going"):
+			continue
+		var blocks: Array = (polled.get("content", []) as Array).duplicate()
+		# The job's own line, then the work's answer: in the same text, or
+		# the blocks after it when the answer has a picture.
+		var first: String = str((blocks[0] as Dictionary).get("text", ""))
+		if blocks.size() > 1:
+			blocks.pop_front()
+		elif first.contains("\n"):
+			blocks[0] = {"type": "text", "text": first.substr(first.find("\n") + 1)}
+		return {"content": blocks, "job": said}
+	return {"content": [{"type": "text", "text": "job %d never ended" % id}]}
 
 
 func _check(what: String, ok: bool) -> void:
