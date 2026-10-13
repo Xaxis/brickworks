@@ -281,6 +281,7 @@ func _in_words(name: String) -> String:
 		"make_art": "laying out a LEGO Art picture",
 		"selection": "looking at what is selected",
 		"edit_selection": "changing the selection",
+		"where_to_attach": "finding where parts fit on the selection",
 		"look_at_picture": "looking at the picture",
 		"find_techniques": "looking up how real sets built it",
 		"place_technique": "laying a piece as a real set built it",

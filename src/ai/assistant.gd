@@ -2437,8 +2437,11 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return ""
 			if not bool(verdict["ok"]):
 				progress.emit("tried a change: %s" % verdict["summary"])
+				# About a selection, why each part was refused and the
+				# nearest place it does fit, so a refusal teaches.
 				return ("Not applied — the model would not hold together.\n"
-					+ str(verdict["feedback"]))
+					+ str(verdict["feedback"]) + (_what_would_fit(edited, verdict)
+						if scoped else ""))
 			if scoped:
 				var hanging: String = await _left_hanging(edited)
 				if running and not _busy:
@@ -2446,6 +2449,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 				if not hanging.is_empty():
 					progress.emit("tried a change that leaves the rest hanging")
 					return "Not applied — the model would not hold together: " + hanging
+			if _trial_only:
+				progress.emit("tried a change without making it: it would hold")
+				return ("It would be applied: it keeps to the room, holds together and "
+					+ "leaves nothing hanging (%d bricks). Nothing has changed yet: give "
+					% edited.placements.size()
+					+ "edit_selection the same change without check_only to make it.")
 			# The "before" the panel shows, if nothing has drawn it yet: a
 			# session may change a selection without reading it first.
 			if scoped and focus.before == null and ModelShot.possible():
@@ -2465,7 +2474,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 					% _numbers(_unknown)
 			if scoped:
 				var words: String = _gather_focus_step(standing_was)
-				_hanging_before = [world.revision] + _hanging_after
+				# What held is known for the edit as it landed; copies that
+				# followed it are new parts, and asked about afresh.
+				_hanging_before = [world.revision] + _hanging_after \
+					if focus.followed == 0 else []
 				return await _focus_answer(said, words)
 			# Set before the picture, dropped after it: a magenta
 			# brick in a check_design render a minute later would read
@@ -2491,8 +2503,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 			progress.emit("looking at what is selected")
 			return await selection_said()
 		"edit_selection":
-			progress.emit("changing the selection")
+			progress.emit("trying a change to the selection" if bool(args.get("check_only", false))
+				else "changing the selection")
 			return await _edit_selection(args)
+		"where_to_attach":
+			progress.emit("finding where parts fit on the selection")
+			return await _where_to_attach(args)
 		"submit_design":
 			# Asked about part of the model, a whole new one is not an answer.
 			if _keeps_to_focus():
@@ -8611,6 +8627,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	var part_of: Dictionary = {}
 	## Sections reported adrift, so the hint below can address them too.
 	var stuck: Dictionary = {}
+	## index -> the lattice key of what it ran into first, for a refusal
+	## to say where it would fit instead (OpenPoints).
+	var overlapping: Dictionary = {}
 	## Things worth saying that are not faults, and must not be counted
 	## as any.
 	var advice: Array = []
@@ -8818,6 +8837,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 				continue
 			if not near.is_empty():
 				crowded[placement.section] = true
+				overlapping[index] = near[0]
 				_note(issues, "overlap",
 					"brick %d (%s at %s) overlaps brick %d inside "
 						% [index, placement.part, placement.where(),
@@ -8911,6 +8931,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			# sections dipped into the hull", and it came back with
 			# stepped pylons and no angle anywhere in it. A section
 			# collides as a whole and moves as a whole.
+			overlapping[index] = blocker
 			var mine: String = placement.section
 			if not mine.is_empty():
 				crowded[mine] = true
@@ -9175,6 +9196,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		"named": int(apart["named"]),
 		"kinds": issues.keys(),
 		"floating": floating.keys(),
+		"overlapping": overlapping,
 		## Each piece, as indices into the placements, for a probe to say
 		## where each one is.
 		"each_piece": each_piece,
@@ -13900,6 +13922,9 @@ func _assemblies_to_review() -> String:
 ## change to them may use, and the undo step the change gathers into. See
 ## [SelectionScope].
 var focus: SelectionScope = null
+## The model's sub-assemblies, so the other copies of one follow a change
+## to the selection made in it (the app's; null where there are none).
+var assemblies: Assemblies = null
 ## Set when the panel asked about [member focus], so a session reading the
 ## selection is told about the parts the person asked about rather than
 ## whatever is selected by the time it looks.
@@ -13943,9 +13968,11 @@ answered in words, changing nothing unless they ask."""
 const FOCUS_TASK := """This is not a new design. The person has selected part \
 of their model and asked about that part. Change only it, with \
 edit_selection: never submit_design, which would replace the model, and \
-nothing the room does not hold. Read what changed in the picture that comes \
-back. When it is done, or if it is a question, say so in a sentence or two \
-and stop."""
+nothing the room does not hold. where_to_attach says where a part can go on \
+it and, with part=, gives placements that fit and hold. Make the change big \
+enough to see at once: a person asking for spikes wants spikes, not barbs. \
+Read what changed in the picture that comes back. When it is done, or if it \
+is a question, say so in a sentence or two and stop."""
 
 
 ## Ask about these parts: the selection's room is worked out now, from
@@ -14036,6 +14063,13 @@ func _focus_words() -> String:
 	var colours: Dictionary = {}
 	var ids: Array = focus.ids.keys()
 	ids.sort()
+	# Each where edit_model reads it, in the section it is laid in when it
+	# is laid turned: the numbers to write are the numbers given. Said in
+	# the world's square coordinates instead, a part of Orthanc's horn,
+	# turned 25 degrees, read as standing where it does not, and the first
+	# real request about one was refused 22 times finding out.
+	var read: OpenPoints = OpenPoints.read(self)
+	var laid_in: Dictionary = {}
 	for raw: Variant in ids:
 		var brick: BrickWorld.Brick = world.get_brick(int(raw))
 		if brick == null:
@@ -14043,17 +14077,16 @@ func _focus_words() -> String:
 		var key: String = "%s:%d" % [brick.part_id, brick.color_code]
 		tally[key] = int(tally.get(key, 0)) + 1
 		colours[brick.color_code] = true
-		if rows.size() >= WORLD_ROWS:
+		var placement: Placement = read.by_id.get(brick.id)
+		if placement != null and not placement.section.is_empty():
+			laid_in[placement.section] = int(laid_in.get(placement.section, 0)) + 1
+		if rows.size() >= WORLD_ROWS or placement == null:
 			continue
-		var corners: Array = _corners_in_studs(brick)
-		if corners.is_empty():
-			continue
-		var at: Vector3 = corners[0]
-		var face: String = BrickLattice.face_of(brick.transform.basis)
-		rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d" % [
-			brick.id, brick.part_id, brick.color_code, Placement._num(at.x),
-			Placement._num(at.y), Placement._num(at.z), face,
-			BrickLattice.turns_about(brick.transform.basis, face)])
+		rows.append("  #%-4d %-9s c%-3d x=%-6s y=%-6s z=%-6s %s rot=%d%s" % [
+			brick.id, brick.part_id, brick.color_code, Placement._num(placement.x),
+			Placement._num(placement.y), Placement._num(placement.z), placement.face,
+			placement.rot, "" if placement.section.is_empty()
+				else " section='%s'" % placement.section])
 	var others: int = 0
 	var standing: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
@@ -14097,11 +14130,71 @@ func _focus_words() -> String:
 			% [others, "" if others == 1 else "s", "s" if others == 1 else ""]
 			if others > 0 else "Nothing else stands in it."])
 	lines.append(FOCUS_RULES)
+	var frames: String = _sections_said(read, laid_in)
+	if not frames.is_empty():
+		lines.append("")
+		lines.append(frames)
+	lines.append("")
+	lines.append(_open_said(read.points_of(ids)))
 	var weak: String = _focus_stability()
 	if not weak.is_empty():
 		lines.append("")
 		lines.append(weak)
 	return "\n".join(lines)
+
+
+## The sections the selection is laid in, said so a part can be put down
+## in one: its name, where it stands and how it is turned.
+func _sections_said(read: OpenPoints, laid_in: Dictionary) -> String:
+	if laid_in.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for name: String in laid_in:
+		var section: Section = read.model.sections.get(name)
+		if section == null:
+			continue
+		said.append("  '%s' (%d of them): its origin at x=%s y=%s z=%s, turned %s degrees about %s"
+			% [name, int(laid_in[name]), Placement._num(section.x), Placement._num(section.y),
+				Placement._num(section.z), Placement._num(section.degrees), section.axis])
+	return ("Some are laid turned, in a section, and are given above in that section's own "
+		+ "studs and plates. A part put down among them takes the same section= and its "
+		+ "x, y, z in those coordinates; nothing else about the section needs saying, and a "
+		+ "new section at a near angle would not meet them:\n" + "\n".join(said))
+
+
+## The selection's open connection points, counted by the way they face,
+## with one of each kind to start from; where_to_attach lists them all.
+func _open_said(points: Array) -> String:
+	var groups: Dictionary = {}    ## heading and kind -> [count, first point]
+	var taken: int = 0
+	for point: OpenPoints.Point in points:
+		if point.by != 0:
+			taken += 1
+			continue
+		var key: String = "%s|%s" % [OpenPoints.NAMES[point.kind], OpenPoints.heading(point)]
+		if not groups.has(key):
+			groups[key] = [0, point]
+		groups[key][0] = int(groups[key][0]) + 1
+	if groups.is_empty():
+		return ("Open connection points: none — every stud and hollow of the selection "
+			+ "has something on it (%d taken). A part added has to replace one, or join "
+			% taken + "what stands round it.")
+	var keys: Array = groups.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool:
+		return int(groups[a][0]) > int(groups[b][0]))
+	var said := PackedStringArray()
+	for key: String in keys.slice(0, 8):
+		var first: OpenPoints.Point = groups[key][1]
+		said.append("  %d free %s%s %s, e.g. on #%d (%s) at %s" % [int(groups[key][0]),
+			key.get_slice("|", 0), "" if int(groups[key][0]) == 1 else "s",
+			key.get_slice("|", 1), first.brick, first.part, OpenPoints.where_of(first)])
+	if keys.size() > 8:
+		said.append("  ...and %d more kinds." % (keys.size() - 8))
+	return ("Open connection points of the selection (%d taken by the parts on them):\n"
+		% taken + "\n".join(said) + "\nwhere_to_attach lists every one with a picture of "
+		+ "them numbered; given part=, it seats that part on them, tries each against the "
+		+ "model as it stands, and gives the placements that fit and hold, to put in "
+		+ "edit_selection's add as they are.")
 
 
 ## How the joints in and round the selection stand, from the same judge as
@@ -14200,8 +14293,10 @@ func _edit_selection(args: Dictionary) -> Variant:
 	var input: Dictionary = args.duplicate(true)
 	var room: AABB = _box_from(input.get("room"))
 	var reason: String = str(input.get("why", "")).strip_edges()
+	var trial: bool = bool(input.get("check_only", false))
 	input.erase("room")
 	input.erase("why")
+	input.erase("check_only")
 	if room.has_volume() and not focus.region.encloses(room):
 		progress.emit("asking for more room than the selection")
 		if not await _ask_for_room(room, reason):
@@ -14211,9 +14306,342 @@ func _edit_selection(args: Dictionary) -> Variant:
 		focus.allow(room)
 	var was: bool = _scoped
 	_scoped = true
+	_trial_only = trial
 	var answer: Variant = await _run_tool({"name": "edit_model", "input": input})
+	_trial_only = false
 	_scoped = was
 	return answer
+
+
+## Set while edit_selection only tries a change (check_only): it is
+## checked as it would be, and then not made.
+var _trial_only: bool = false
+
+## Free points listed and numbered on the picture, at most.
+const MOST_POINTS := 40
+## Placements where_to_attach gives when not told how many.
+const MOST_FITS := 8
+
+
+## where_to_attach: the selection's connection points, the free ones
+## numbered by the way they face and on a picture, and, given a part, the
+## placements of it on them that fit and hold where the model stands.
+func _where_to_attach(args: Dictionary) -> Variant:
+	var selected: Array = builder.selection.keys() if builder != null else []
+	if not _focus_alive():
+		var why: String = focus_on(selected)
+		if not why.is_empty():
+			return why
+	var read: OpenPoints = OpenPoints.read(self)
+	var all: Array[OpenPoints.Point] = read.points_of(focus.ids.keys())
+	var wanted_kind: String = str(args.get("kind", "")).strip_edges()
+	var free: Array = []
+	var taken: int = 0
+	for point: OpenPoints.Point in all:
+		if not wanted_kind.is_empty() and OpenPoints.NAMES[point.kind] != wanted_kind:
+			continue
+		if point.by != 0:
+			taken += 1
+		else:
+			free.append(point)
+	# Best first: facing the way asked, then nearest the place asked.
+	var toward: String = str(args.get("toward", "any"))
+	var near := Vector3.INF
+	if args.get("near") is Dictionary:
+		var at: Dictionary = args["near"]
+		near = Vector3(float(at.get("x", 0)) * STUD, float(at.get("y", 0)) * PLATE,
+			float(at.get("z", 0)) * STUD)
+	var middle: Vector3 = _middle_of_model()
+	var score := func(point: OpenPoints.Point) -> float:
+		var facing: float = 0.0
+		if toward == "out":
+			var out := Vector3(point.at.x - middle.x, 0.0, point.at.z - middle.z)
+			facing = point.way.dot(out.normalized()) if out.length() > 0.1 else 0.0
+		elif FACES.has(toward):
+			facing = point.way.dot(FACES[toward])
+		var far: float = 0.0 if near == Vector3.INF else point.at.distance_to(near) / STUD
+		return facing * 100.0 - far
+	free.sort_custom(func(a: OpenPoints.Point, b: OpenPoints.Point) -> bool:
+		return score.call(a) > score.call(b))
+	var shown: Array = free.slice(0, MOST_POINTS)
+	for n: int in shown.size():
+		(shown[n] as OpenPoints.Point).number = n + 1
+	var lines := PackedStringArray()
+	lines.append("The selection's open connection points%s: %d free, %d taken by the parts on them."
+		% ["" if wanted_kind.is_empty() else " (%ss)" % wanted_kind, free.size(), taken])
+	if free.is_empty():
+		lines.append("Nothing is free. A part added has to replace one that is there, or "
+			+ "join what stands round the selection.")
+	# Grouped by kind and the way they face, in the order they were ranked.
+	var groups: Dictionary = {}
+	var order: Array = []
+	for point: OpenPoints.Point in shown:
+		var heading: String = "%ss %s" % [OpenPoints.NAMES[point.kind], OpenPoints.heading(point)]
+		if not groups.has(heading):
+			groups[heading] = []
+			order.append(heading)
+		(groups[heading] as Array).append(point)
+	for heading: String in order:
+		var group: Array = groups[heading]
+		var first: OpenPoints.Point = group[0]
+		var section: String = "" if first.section.is_empty() \
+			else ", section='%s'" % first.section
+		var takes: String = ""
+		if first.kind == "stud":
+			takes = " — a part put on one takes face=%s%s" % [first.face, section]
+		elif first.kind == "anti-stud":
+			takes = " — a part put under one, its stud in it, takes face=%s%s" % [
+				OpenPoints.nearest_face(-(FACES[first.face] as Vector3)), section]
+		lines.append("")
+		lines.append("%d %s%s:" % [group.size(), heading, takes])
+		for point: OpenPoints.Point in group:
+			lines.append("  [%d] %s on #%d (%s) at %s" % [point.number,
+				OpenPoints.NAMES[point.kind], point.brick, point.part, OpenPoints.where_of(point)])
+	if free.size() > shown.size():
+		lines.append("  ...and %d more; toward= or near= puts others first." % (
+			free.size() - shown.size()))
+	var part_id: String = str(args.get("part", "")).strip_edges()
+	if not part_id.is_empty():
+		lines.append("")
+		lines.append(await _fits_said(read, shown, part_id, args))
+	if not ModelShot.possible() or shown.is_empty():
+		return "\n".join(lines)
+	var marks: Array = []
+	for point: OpenPoints.Point in shown:
+		marks.append([point.at, point.number])
+	_ensure_shot().highlight = focus.ids.duplicate()
+	_shot.marks = marks
+	var from: String = _facing_view(shown)
+	var image: Image = await _shot.take(world, from, scenery, focus.region)
+	_shot.marks = []
+	_shot.highlight = {}
+	if image == null:
+		return "\n".join(lines)
+	var picture: Dictionary = await _shot.encode(image)
+	if picture.is_empty():
+		return "\n".join(lines)
+	return [{"type": "text", "text": "\n".join(lines)},
+		{"type": "text", "text": ("The selection's room from the %s, the selection in magenta and "
+			+ "its free points numbered in cyan as listed (a number may be on the far side of "
+			+ "what it is drawn over):") % from}, picture]
+
+
+## [param part_id] seated on the points given, best first: each tried as
+## the check would try it, so what is listed fits and holds as it stands.
+func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictionary) -> String:
+	if not library.parts.has(part_id):
+		return "No part '%s' exists; search_parts finds one." % part_id
+	if not library.is_resident(part_id):
+		library.mesh_for(part_id)
+	if library.mesh_for(part_id) == null:
+		var model := Model.new()
+		var one := Placement.new()
+		one.part = part_id
+		model.placements.append(one)
+		await _ensure_parts(model)
+	if library.mesh_for(part_id) == null:
+		return "The geometry for %s has not arrived yet; ask again." % part_id
+	var most: int = clampi(int(args.get("limit", MOST_FITS)), 1, 30)
+	var fits := PackedStringArray()
+	var tried: int = 0
+	# Each tried with those before it standing, so the list goes down
+	# together: offered one by one, the second spike on a horn was refused
+	# for running into the first.
+	var together: Array = []
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	for point: OpenPoints.Point in points:
+		if point.kind != "stud" and point.kind != "anti-stud":
+			continue
+		tried += 1
+		var colour: int = int(args.get("color", world.get_brick(point.brick).color_code))
+		var found: Array[Placement] = read.fits_on(point, part_id, colour, {}, focus.region, 4,
+			together)
+		if found.is_empty():
+			continue
+		together.append([-(together.size() + 1), mesh, read.world_of(found[0], mesh)])
+		var turns := PackedStringArray()
+		for other: Placement in found:
+			if other.rot != found[0].rot and not turns.has(str(other.rot)):
+				turns.append(str(other.rot))
+		fits.append("  %s — on [%d], the %s of #%d (%s)%s" % [OpenPoints.as_json(found[0]),
+			point.number, OpenPoints.NAMES[point.kind], point.brick, point.part,
+			"" if turns.is_empty() else "; turned on it, rot=%s fits too" % ", ".join(turns)])
+		if fits.size() >= most:
+			break
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if fits.is_empty():
+		return ("%s (%s) fits on none of the %d studs and hollows tried: each would run "
+			% [part_id, info.name if info != null else "?", tried]
+			+ "into something or hold by nothing. Try a smaller part, other points (toward=, "
+			+ "near=), or take off what is in the way in the same edit.")
+	return ("%s (%s), seated on the points above and tried against the model as it stands "
+		% [part_id, info.name if info != null else "?"]
+		+ "(nothing in the way, inside the room, holding by the stud it is on), each with "
+		+ "the ones before it, so all of them go down together. Put them in "
+		+ "edit_selection's add as they are:\n" + "\n".join(fits))
+
+
+## The middle of the model, for which way is out.
+func _middle_of_model() -> Vector3:
+	var middle := Vector3.ZERO
+	var count: int = 0
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		middle += brick.transform.origin
+		count += 1
+	return middle / maxf(1.0, float(count))
+
+
+## The named view that faces most of these points.
+static func _facing_view(points: Array) -> String:
+	var best: String = "corner"
+	var most: float = -INF
+	for name: String in ["corner", "far corner", "front", "back", "left", "right", "top"]:
+		var from: Vector3 = (ModelShot.ANGLES[name] as Vector3).normalized()
+		var seen: float = 0.0
+		for point: OpenPoints.Point in points:
+			seen += maxf(0.0, point.way.dot(from))
+		if seen > most + 0.01:
+			most = seen
+			best = name
+	return best
+
+
+## Why a change about the selection was refused, part by part, and the
+## nearest place each refused part does fit and hold, tried on the model as
+## it stands (OpenPoints): a refusal that says where instead costs no
+## second guess. Empty when nothing it put down or moved is to blame.
+func _what_would_fit(edited: Model, verdict: Dictionary) -> String:
+	var overlapping: Dictionary = verdict.get("overlapping", {})
+	var troubled: Dictionary = {}    ## index -> what is wrong with it
+	for raw: Variant in overlapping:
+		var index: int = int(raw)
+		# Numbered in the model checked, which is this one unless dressing
+		# gave way and it was checked again without it.
+		if index >= edited.placements.size():
+			continue
+		var placement: Placement = edited.placements[index]
+		var key: int = int(overlapping[raw])
+		# Laid in model order, a part already standing can be the one told
+		# it overlaps what the edit puts down: the edit's part is to blame.
+		if placement.id != 0 and not placement.moved and key > 0 \
+				and key - 1 < edited.placements.size():
+			var other: Placement = edited.placements[key - 1]
+			if other.id == 0 or other.moved:
+				troubled[key - 1] = ["overlap", index + 1]
+				continue
+		troubled[index] = ["overlap", key]
+	for raw: Variant in verdict.get("floating", []):
+		if not troubled.has(int(raw)) and int(raw) < edited.placements.size():
+			troubled[int(raw)] = ["floating", 0]
+	var read: OpenPoints = null
+	var skip: Dictionary = {}
+	var also: Array = []
+	var free: Array = []
+	var lines := PackedStringArray()
+	var order: Array = troubled.keys()
+	order.sort()
+	for index: int in order:
+		var placement: Placement = edited.placements[index]
+		if placement.id != 0 and not placement.moved:
+			continue
+		if lines.size() >= 6:
+			lines.append("  ...and %d more like that." % (order.size() - lines.size()))
+			break
+		if read == null:
+			read = OpenPoints.read(self)
+			# What the edit takes off or moves is not in the way, and what
+			# it puts down or moves is in the way of the rest of it.
+			var kept: Dictionary = {}
+			for one: Placement in edited.placements:
+				if one.id != 0:
+					kept[one.id] = one
+			for brick: BrickWorld.Brick in world.bricks():
+				var one: Placement = kept.get(brick.id)
+				if not scenery.has(brick.id) and (one == null or one.moved):
+					skip[brick.id] = true
+			for n: int in edited.placements.size():
+				var one: Placement = edited.placements[n]
+				var mesh: Lbm.PartMesh = library.mesh_for(one.part)
+				if mesh != null and (one.id == 0 or one.moved):
+					also.append([-(n + 1), mesh, _transform(one, mesh, edited.section_for(one)), n])
+		var others: Array = also.filter(func(one: Array) -> bool: return int(one[3]) != index)
+		var what: String = "the %s at x=%s y=%s z=%s face=%s%s" % [placement.part,
+			Placement._num(placement.x), Placement._num(placement.y), Placement._num(placement.z),
+			placement.face, "" if placement.section.is_empty()
+				else " in section '%s'" % placement.section]
+		var trouble: Array = troubled[index]
+		var said: String
+		if str(trouble[0]) == "overlap":
+			said = "%s runs into %s" % [what, _key_words(int(trouble[1]), edited)]
+		else:
+			said = ("nothing holds %s: no stud of it reaches into a part, none reaches into it, "
+				% what + "and no pin or clip joins it")
+		var fix: Placement = read.nearest_fit(placement, skip, others, focus.region)
+		if fix != null:
+			lines.append("  - %s. It fits and holds %s: %s" % [said,
+				_moved_by_words(placement, fix), OpenPoints.as_json(fix)])
+			continue
+		if free.is_empty():
+			var near: Array = []
+			for brick: BrickWorld.Brick in world.bricks():
+				if not scenery.has(brick.id) and not skip.has(brick.id) and focus.holds(
+						SelectionScope.box_of(brick.part_id, brick.transform, library)):
+					near.append(brick.id)
+			for point: OpenPoints.Point in read.points_of(near):
+				if point.by == 0 and (point.kind == "stud" or point.kind == "anti-stud"):
+					free.append(point)
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		var here: Vector3 = (_transform(placement, mesh, edited.section_for(placement))
+			* mesh.bounds).abs().get_center() if mesh != null else Vector3.ZERO
+		free.sort_custom(func(a: OpenPoints.Point, b: OpenPoints.Point) -> bool:
+			return a.at.distance_squared_to(here) < b.at.distance_squared_to(here))
+		var seated: String = ""
+		for point: OpenPoints.Point in free.slice(0, 40):
+			var found: Array[Placement] = read.fits_on(point, placement.part, placement.color,
+				skip, focus.region, 1)
+			if not found.is_empty():
+				seated = "the nearest free %s it fits on is on #%d (%s), %s studs away: %s" % [
+					OpenPoints.NAMES[point.kind], point.brick, point.part,
+					Placement._num(snappedf(point.at.distance_to(here) / STUD, 0.1)),
+					OpenPoints.as_json(found[0])]
+				break
+		lines.append("  - %s. Nothing within a stud of there fits; %s" % [said,
+			seated if not seated.is_empty() else "nor does it fit on any free stud of the room "
+				+ "near it, so take off what is in the way in the same edit, or use a "
+				+ "smaller part"])
+	if lines.is_empty():
+		return ""
+	return ("\n\nPart by part, and the nearest place each fits and holds (tried on the model "
+		+ "as it stands, with the rest of this change; nothing else needs to move):\n"
+		+ "\n".join(lines))
+
+
+## What a key from a check names, in words: a part of the edit, or one
+## standing, by its number.
+func _key_words(key: int, edited: Model) -> String:
+	if key > 0 and key - 1 < edited.placements.size():
+		var other: Placement = edited.placements[key - 1]
+		if other.id != 0 and not other.moved:
+			return "#%d (%s)" % [other.id, other.part]
+		return "the %s this change puts at x=%s y=%s z=%s" % [other.part,
+			Placement._num(other.x), Placement._num(other.y), Placement._num(other.z)]
+	return "a part already standing"
+
+
+## How a placement moved to where it fits, in its own frame's words.
+static func _moved_by_words(was: Placement, now: Placement) -> String:
+	var said := PackedStringArray()
+	for axis: Array in [["y", now.y - was.y, "plate", "up", "down"],
+			["x", now.x - was.x, "stud", "+x", "-x"], ["z", now.z - was.z, "stud", "+z", "-z"]]:
+		var by: float = float(axis[1])
+		if is_zero_approx(by):
+			continue
+		var amount: String = Placement._num(absf(snappedf(by, 0.01)))
+		said.append("%s %s%s %s" % [amount, axis[2], "" if absf(by) <= 1.0 else "s",
+			axis[3] if by > 0.0 else axis[4]])
+	return " and ".join(said) if not said.is_empty() else "where it is"
 
 
 ## Ask the person for more room, and wait for their answer. False when
@@ -14309,20 +14737,43 @@ func _gather_focus_step(was: Dictionary) -> String:
 			var brick: BrickWorld.Brick = world.get_brick(int(step["brick"]))
 			if brick != null:
 				focus.ids[brick.id] = true
+				# As Builder.set_path puts it, which cannot be called by the
+				# class's name: that is the Script, whose own set_path
+				# (Resource's, one argument) answers, and the call failed,
+				# so a part put down in a sub-assembly was left out of it.
 				if not focus.path.is_empty() and brick.group.is_empty() \
 						and brick.unit.is_empty():
-					Builder.set_path(brick, focus.path)
+					brick.unit = focus.path
+					brick.group = Assemblies.group_of(focus.path)
 		elif kind == "add" and step.has("was"):
 			focus.ids.erase(int(step["was"]))
 	focus.changed += steps.size()
 	var words: String = SelectionScope.words_for(steps)
+	# Every other copy of the sub-assembly it was made in follows it, as
+	# it does a change made by hand, in the same undo step. Asked about one
+	# of a model's two wings, the other stayed as it was.
+	var followed: Array = [[], 0]
+	if assemblies != null:
+		followed = assemblies.copies_follow(builder.touched_groups(
+			{"undo": "group", "steps": steps}))
+	focus.followed = int(followed[1])
+	var own: Array = steps
+	steps = steps + (followed[0] as Array)
 	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step):
+		focus.own_steps = own + focus.own_steps
 		focus.step["steps"] = steps + (focus.step["steps"] as Array)
 		focus.step["words"] = "Claude's change to the selection (%s)" \
-			% SelectionScope.words_for(focus.step["steps"])
+			% SelectionScope.words_for(focus.own_steps)
 	else:
+		focus.own_steps = own
 		builder.record(steps, "Claude's change to the selection (%s)" % words)
 		focus.step = builder.last_step()
+	if focus.followed > 0:
+		var named: String = Assemblies.definition(Assemblies.leaf(focus.path))
+		words += "; %d other cop%s of %s followed it" % [focus.followed,
+			"y" if focus.followed == 1 else "ies",
+			"its sub-assembly" if named.is_empty() else "\"%s\"" % named]
+		assemblies.changed.emit()
 	builder.selection = focus.ids.duplicate()
 	builder.selection_changed.emit(builder.selection.size())
 	return words
@@ -14390,8 +14841,11 @@ static func selection_brief(text: String, count: int) -> String:
 		% [count, "" if count == 1 else "s"]
 		+ "about them: \"%s\"\n\nCall selection first: it lists those parts by " % text
 		+ "number, where they stand and the room a change may use, with pictures. "
-		+ "Then make the change with edit_selection, which keeps to that room: "
-		+ "everything else in the model stays where it is and must stay joined. "
+		+ "where_to_attach then gives their open studs, and with part= placements on "
+		+ "them that fit and hold. Make the change with edit_selection, which keeps to "
+		+ "that room: everything else in the model stays where it is and must stay "
+		+ "joined; a refusal says where each refused part would fit instead. Make it "
+		+ "plainly visible: a change the person has to look for is not the one asked for. "
 		+ "Never submit_design or clear_model: they would replace the model. If it "
 		+ "is a question, answer it in words. When it is done, say what changed in "
 		+ "a sentence and stop.")
@@ -14421,6 +14875,9 @@ func focus_tools() -> Array:
 	(schema["properties"] as Dictionary)["room"] = box
 	(schema["properties"] as Dictionary)["why"] = {"type": "string", "description":
 		"why the change needs that room, in a sentence the person reads"}
+	(schema["properties"] as Dictionary)["check_only"] = {"type": "boolean", "description":
+		("try the change without making it: says whether it would be applied, or why "
+			+ "not and the nearest place each refused part fits and holds")}
 	return [
 		{
 			"name": "selection",
@@ -14441,9 +14898,44 @@ func focus_tools() -> Array:
 				+ "that reaches outside it is refused whole, and everything else in "
 				+ "the model stays where it is. It is checked as any design is, so a "
 				+ "change that would not hold together or leaves a part loose changes "
-				+ "nothing. One undo takes the request back. For more room, give room= "
-				+ "and why=: the person is asked first."),
+				+ "nothing, and the refusal says, part by part, what each ran into or "
+				+ "why nothing holds it, and the nearest place it fits and holds. "
+				+ "check_only=true tries a change without making it. Other copies of "
+				+ "the sub-assembly follow the change. One undo takes the request back. "
+				+ "For more room, give room= and why=: the person is asked first."),
 			"input_schema": schema,
+		},
+		{
+			"name": "where_to_attach",
+			"description": ("Where the selected parts can take another part: every open "
+				+ "stud, anti-stud (the hollow underneath that takes a stud), side stud, "
+				+ "pin hole, bar and clip, grouped by the way it faces, each with the part "
+				+ "that carries it and where it is in the coordinates edit_selection takes "
+				+ "(a section's own, for parts laid turned), and a picture with the free "
+				+ "ones numbered. Give part= (and color=) and it seats that part on them "
+				+ "and tries each against the model as it stands: what comes back fits "
+				+ "and holds, to put in edit_selection's add as it is. toward= puts first "
+				+ "the points facing that way (out: away from the model's middle, for "
+				+ "spikes or detail on an outer face); near= {x, y, z} those nearest a place."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"part": {"type": "string", "description":
+						"a part to seat on the open points, e.g. 49668"},
+					"color": {"type": "integer", "description":
+						"its LDraw colour; the colour of the part it goes on when omitted"},
+					"toward": {"type": "string",
+						"enum": ["any", "out", "up", "down", "+x", "-x", "+z", "-z"]},
+					"near": {"type": "object", "description": "studs and plates",
+						"properties": {"x": {"type": "number"}, "y": {"type": "number"},
+							"z": {"type": "number"}}},
+					"kind": {"type": "string", "enum": ["stud", "anti-stud", "pin hole",
+						"axle hole", "pin", "axle", "bar", "clip", "ball", "socket"]},
+					"limit": {"type": "integer", "description":
+						"how many placements of part to give; 8 when omitted"},
+				},
+				"additionalProperties": false,
+			},
 		},
 	]
 

@@ -30,6 +30,13 @@ const STUD := 20.0
 
 var _ink := Color(0.22, 0.25, 0.30, 0.85)
 var _pale := Color(0.22, 0.25, 0.30, 0.35)
+## Points to number on the picture, each [position in LDU, label]: the
+## open studs of a selection (OpenPoints), so a number on the image is the
+## number in the list beside it.
+var marks: Array = []
+## Whether the two rulers are drawn: off, a picture may still carry marks.
+var rules: bool = true
+const MARK := Color(0.0, 0.78, 0.86)
 
 
 func _draw() -> void:
@@ -39,6 +46,9 @@ func _draw() -> void:
 	if font == null:
 		return
 	var size: int = 20
+	_mark(font)
+	if not rules:
+		return
 
 	# Along the bottom of the model, at its near corner, so the rulers
 	# lie on the ground beside it rather than across it.
@@ -53,6 +63,21 @@ func _draw() -> void:
 		Vector3(high.x, low.y, low.z), 0, "x", step)
 	_rule(font, size, Vector3(low.x, low.y, low.z),
 		Vector3(low.x, low.y, high.z), 2, "z", step)
+
+
+## Each mark, a ringed dot and its number: cyan, which no part in the
+## picture is drawn in beside the selection's magenta.
+func _mark(font: Font) -> void:
+	for mark: Array in marks:
+		var at: Vector2 = camera.unproject_position(mark[0])
+		if not _on_screen(at) or camera.is_position_behind(mark[0]):
+			continue
+		draw_circle(at, 7.0, Color(0.05, 0.07, 0.10, 0.9))
+		draw_circle(at, 5.0, MARK)
+		draw_string_outline(font, at + Vector2(8, -6), str(mark[1]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 4, Color(1, 1, 1, 0.95))
+		draw_string(font, at + Vector2(8, -6), str(mark[1]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.05, 0.07, 0.10))
 
 
 ## One ruler, from one corner of the base to another.

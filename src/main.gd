@@ -2208,6 +2208,9 @@ func _build_ui() -> void:
 	_shell.app = self
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	# Claude's change to a selection made in one copy of a sub-assembly is
+	# followed by the others, as a change by hand is.
+	_assistant.assemblies = _shell.assemblies
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
 	_stack.add_section(_bin.colours)
