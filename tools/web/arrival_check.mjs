@@ -37,7 +37,7 @@
 // Passes when every case is drawn within three frames of being in view, on
 // no more than --budget ms (2,000) of the engine's own work. Costs nothing:
 // no model is called.
-import { launch, openColumnFor } from "./browser.mjs";
+import { launch, openColumnFor, START_MS } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -178,8 +178,8 @@ async function runCase(size, mode) {
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 
   const controls = () => page.evaluate(() => window.brickworksControls || {});
-  async function control(names, minutes = 5) {
-    for (let tries = 0; tries < minutes * 120; tries++) {
+  async function control(names, within = START_MS) {
+    for (let tries = 0; tries < within / 500; tries++) {
       const shown = await controls();
       for (const name of names) if (shown[name]) return [name, shown[name]];
       // In a laptop's window the assistant's column starts folded.

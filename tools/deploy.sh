@@ -341,9 +341,15 @@ if [ "$do_check" = 1 ]; then
   # And that it fits the page. At two device pixels to the point the
   # toolbar ran off at "He…" and the assistant was off the page, on every
   # Retina screen, while every check here passed at one.
+  # It says 2 when the app did not start at a size, which on a loaded
+  # machine is not the layout.
   node tools/web/fit_check.mjs --url="$url/app" --quick --out=shots/fit \
-      ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"} || {
-    echo "deploy FAILED: the app does not fit the page at $url/app"; exit 1; }
+      ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"}
+  case $? in
+    0) ;;
+    2) echo "deploy FAILED: the app did not start at every size at $url/app"; exit 1 ;;
+    *) echo "deploy FAILED: the app does not fit the page at $url/app"; exit 1 ;;
+  esac
 
   # The landing page is what most people meet first, so a deploy that
   # serves the app but not the page is still a broken deploy.
