@@ -2,7 +2,7 @@
 ##
 ##   godot --headless --path . --script src/dev/example_name_probe.gd
 ##
-## A first visit opens the example, "Example Car for Demonstration". The
+## A first visit opens the example, "Car". The
 ## assistant starting a design on it, or Brickify putting a model down,
 ## takes the car off to make room — and the model kept the car's name, so
 ## the tower in its place was saved as the example. This takes it off each
@@ -18,7 +18,7 @@
 ## Saves only under names of its own, and removes them.
 extends SceneTree
 
-const EXAMPLE := "Example Car for Demonstration of LDRAW Library"
+const EXAMPLE := "Car"
 const OWN := "Brickworks Name Probe House"
 const TAKEN := "Brickworks Name Probe Tower"
 const DESIGNED := "Brickworks Name Probe Orthanc"

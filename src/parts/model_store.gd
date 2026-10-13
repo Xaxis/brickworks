@@ -390,8 +390,9 @@ func list_examples() -> Array[Entry]:
 			continue
 		var entry := Entry.new()
 		entry.path = EXAMPLE_DIR + file_name
-		entry.name = file_name.substr(0, file_name.length() - 4).capitalize()
-		entry.bricks = _count_bricks(entry.path)
+		var text: String = FileAccess.get_file_as_string(entry.path)
+		entry.name = title_in(text, file_name)
+		entry.bricks = count_in(text)
 		entry.example = true
 		found.append(entry)
 	found.sort_custom(func(a: Entry, b: Entry) -> bool:
@@ -442,6 +443,28 @@ static func _title_of(model: LdrModel, file_name: String) -> String:
 	if stem.is_empty() or stem == autosave().get_file().get_basename():
 		return UNTITLED
 	return stem.capitalize()
+
+
+## What a file's first line calls its model, read without parsing the
+## rest: the examples list showed orthanc.ldr as "Orthanc" while the file,
+## and so the bar, the share link and the booklet, called it Wizard's
+## Tower. An MPD names its first section, then the title.
+static func title_in(text: String, file_name: String) -> String:
+	for line: String in text.left(4096).split("\n", false):
+		var said: String = line.strip_edges()
+		if said.is_empty():
+			continue
+		if not said.begins_with("0 ") or said.begins_with("0 FILE "):
+			if said.begins_with("0 FILE "):
+				continue
+			break
+		said = said.substr(2).strip_edges()
+		if said.is_empty() or said.begins_with("!") or said.begins_with("Name:") \
+				or said.begins_with("Author:") or said in ["Working model", "Model", "model",
+				"Untitled Model"]:
+			break
+		return said
+	return file_name.get_basename().capitalize()
 
 
 ## Open a model from text rather than from a path.

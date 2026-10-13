@@ -927,7 +927,9 @@ func _open(input: Dictionary) -> String:
 		return "\n".join(said)
 	var chosen: ModelStore.Entry = null
 	for entry: ModelStore.Entry in saved + examples:
-		if chosen == null and entry.name.to_lower() == name.to_lower():
+		# An example also by its file's name, as tools and probes ask for it.
+		if chosen == null and (entry.name.to_lower() == name.to_lower()
+				or entry.example and entry.path.get_file().get_basename() == name.to_lower()):
 			chosen = entry
 	if chosen == null:
 		return "No model called %s. open_model with no name lists them." % name
