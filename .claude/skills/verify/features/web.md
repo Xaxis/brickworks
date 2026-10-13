@@ -841,7 +841,9 @@ plan with Claude as the client.
   `notifications/tools/list_changed` ahead of the answer, once; a client
   sending `Accept: application/json` alone is told in words at the end of the
   call's answer, once. Before: 9 of its checks fail (`listChanged: false`,
-  JSON every time, no session id on `?t=`). Needs `relay_lists`
+  JSON every time, no session id on `?t=`). It passes against a preview too
+  (ffeb8db, 2026-10-13): Vercel's function sends the event stream as one body
+  (`response.end`), and the root `/version.json` there is `no-store`. Needs `relay_lists`
   (`supabase/relay.sql`, applied to the live project 2026-10-13). The
   desktop's port is checked by `mcp_probe` (`_list_changes`: a session id
   carrying a hash of its list, an older id told as a stream, GET with
