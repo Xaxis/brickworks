@@ -110,6 +110,24 @@ tools/export.sh linux                 # one of them
   `storage_parts.py` to upload; `refresh_catalogue.py` afterwards changed no
   part.
 
+- **A part whose bounding box is mostly air keeps its exact cover (2026-10-13).**
+  Past the box limit a cover was the part's bounding box, holes carved. For a
+  quarter ring of 140 (24121, 472 boxes exact) that was solid inside its
+  teeth, so the pinion that turns a ring from inside overlapped it, and so did
+  the quarter beside it: `check_design` refused the ring LEGO® set 42055 builds.
+  `to_boxes` now keeps a part's own cells, up to `CARVED_LIMIT` boxes, when its
+  box is more than `MOSTLY_AIR` (3) times them
+  (`test_a_quarter_ring_keeps_its_inside_open`). Rebuilt so far with `--only`:
+  24121, 24121d01, 24121d02, 24121d03 and 78442, with 200 random controls (140
+  s on 6 jobs; every control agreed about its connectors; 33 differ in geometry
+  because the library has moved since the shipped build, as `merge_subbuild.py`
+  says). The orrery's worktree merged them into a catalogue of its own; the
+  shared catalogue still needs the same `merge_subbuild.py` run and the five
+  new meshes uploaded (`storage_parts.py`). The other parts the rule changes
+  (round plates, dishes, curved track, anything whose cover was a carved box)
+  are found by the next full build, or a scan of the built covers whose box is
+  a bounding box.
+
 - **A pale face on a black right-hand wedge is the sun, not the mirror.** A
   design stopped using 41769a (Wing 2 x 4 Right) for a "near-white cut face".
   Its body is 41770a's subpart under `-1 0 0 / 0 1 0 / 0 0 1`, so the

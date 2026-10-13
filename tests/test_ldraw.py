@@ -948,6 +948,26 @@ def test_a_clip_on_a_handle_misses_the_cover(part: str) -> None:
             assert pressed & cells, (part, c.pos, out)
 
 
+@needs_numpy
+def test_a_quarter_ring_keeps_its_inside_open() -> None:
+    """A quarter of a ring of 140 (24121) is 472 boxes exact, past the
+    limit, and its cover was its bounding box: solid inside its teeth, so
+    the pinion that turns a ring from inside, and everything else a ring
+    goes round, overlapped it, and four quarters laid as LEGO set 42055
+    lays them overlapped each other. A part whose box is mostly air keeps
+    its own cells (occupancy.MOSTLY_AIR)."""
+    cells, _connectors = _built_cover("24121.dat")
+    # The teeth are on a circle of 175 LDU round the part's origin, on its
+    # up axis; a 12 meshing them stands 160 out and reaches 177.5.
+    inside = [c for c in cells
+              if ((c[0] + 0.5) * occ.CELL) ** 2 + ((c[2] + 0.5) * occ.CELL) ** 2 < 165.0 ** 2]
+    assert inside == [], len(inside)
+    # And it still covers the plastic: the arc between the teeth and the rim.
+    rim = [c for c in cells
+           if 175.0 ** 2 < ((c[0] + 0.5) * occ.CELL) ** 2 + ((c[2] + 0.5) * occ.CELL) ** 2 < 195.0 ** 2]
+    assert len(rim) > 5000, len(rim)
+
+
 # -- things the library does not tell you plainly -----------------------
 
 

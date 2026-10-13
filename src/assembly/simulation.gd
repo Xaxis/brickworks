@@ -472,7 +472,7 @@ func furthest_out(hull: PackedVector2Array, frames: Array) -> Dictionary:
 func rate_lines(reference: int = -1, targets: Dictionary = {}, most: int = 12) -> PackedStringArray:
 	var lines := PackedStringArray()
 	var driver_name: String = str(names.get(driver, "the driver"))
-	for body: int in turning.slice(0, most):
+	for body: int in listed(targets).slice(0, most):
 		var rate: float = float(rates[body])
 		var way: String = ""
 		if parallel(body, driver):
@@ -500,6 +500,26 @@ func rate_lines(reference: int = -1, targets: Dictionary = {}, most: int = 12) -
 	if turning.size() > most:
 		lines.append("and %d more that turn" % (turning.size() - most))
 	return lines
+
+
+## The turning bodies in the order they are said: those named after a
+## planet or asked for by [param targets] first, then those a sub-assembly
+## names, then the rest, each fastest first. An orrery's gear axles turn
+## faster than its outer planets, and its readout of sixteen stopped at
+## Mars with "and 25 more that turn".
+func listed(targets: Dictionary = {}) -> Array:
+	var out: Array = []
+	for rank: int in 3:
+		for body: int in turning:
+			var name: String = str(names.get(body, ""))
+			var said: int = 2
+			if not planet_in(name).is_empty() or _target_for(body, targets) != null:
+				said = 0
+			elif not name.begins_with("the ") and not name.begins_with("#"):
+				said = 1
+			if said == rank:
+				out.append(body)
+	return out
 
 
 func _target_for(body: int, targets: Dictionary) -> Variant:

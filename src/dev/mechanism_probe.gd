@@ -12,6 +12,9 @@
 ##     by its studs, is held with the plate; an 8 to a 40 and a 12 to a 36
 ##     three studs apart; a 20 to a 16 idler to a 20 on two stud diagonals
 ##     (44.72 for 45), the output turning exactly as the input;
+##   - the eight-planet orrery a Claude session built (models/orrery.ldr,
+##     docs/MECHANISMS.md section 9): every planet's year read off its parts
+##     and turned from its crank, within 0.4% of NASA's;
 ##   - a real set, the windmill of LEGO® set 8020 (vendor/omr, tools/omr.py fetch): a
 ##     24 tooth gear drives an 8, whose axle's crown gear drives another 8
 ##     on the sails' axle, 9:1. Skipped, and said, without the file.
@@ -69,6 +72,7 @@ func _run() -> void:
 	_gearbox()
 	_differential()
 	_exact()
+	_orrery_model()
 	print("")
 	if _failures == 0:
 		print("mechanism: gear trains read off the parts, every ratio its tooth counts', a "
@@ -607,6 +611,63 @@ func _exact() -> void:
 		and absf(ratio - 1.0) < 1e-6)
 	_check("...and a stud's diagonal, 0.28 LDU short, is not said to be off its spacing",
 		model.off_spacing().is_empty())
+
+
+const ORRERY := "res://models/orrery.ldr"
+## How far from NASA's year each planet's may be. The session that built it
+## traded a little for room near the central shaft: Mercury is 0.35% short,
+## Mars 0.31% (section 9), where the scale alone allows 0.18%.
+const ORRERY_SLACK := 0.004
+
+
+## The orrery a Claude session built over MCP: read as the app reads it
+## (Simulation, its sub-assemblies naming the planets, the Crank and the
+## Frame), driven from its crank, every planet's year in Earth's against
+## NASA's sidereal period.
+func _orrery_model() -> void:
+	print("  the eight-planet orrery (models/orrery.ldr)")
+	if not FileAccess.file_exists(ORRERY):
+		_check("%s is there" % ORRERY, false)
+		return
+	var bricks: Array = []
+	for placement: LdrModel.Placement in LdrModel.load_file(ORRERY).flatten():
+		var brick := BrickWorld.Brick.new(bricks.size() + 1, placement.part_id,
+			placement.color_code, placement.transform)
+		brick.group = placement.group
+		brick.unit = placement.unit
+		bricks.append(brick)
+	var read: Simulation = Simulation.read(bricks, _library, {})
+	print("    %s; the base is %s" % [read.model.summary(), read.base_said])
+	var crank: int = read.marked()
+	_check("the crank drives it, as its name marks it (%s)" % read.names.get(crank, "none"),
+		crank >= 0)
+	if crank < 0:
+		return
+	var result: Dictionary = read.drive(crank)
+	_check("it turns from the crank, nothing locked or floating (%s)" % result["said"],
+		result["ok"] and not bool(result["locked"]) and read.model.floating_gears().is_empty())
+	var earth: int = read.body_named("Earth")
+	var worst: float = 0.0
+	var lines := PackedStringArray()
+	var found: int = 0
+	for planet: String in ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]:
+		var body: int = read.body_named(planet)
+		var years: float = read.period_in(body, earth) if body >= 0 and earth >= 0 else NAN
+		var real: float = float(Simulation.PERIODS[planet.to_lower()]) / float(Simulation.PERIODS["earth"])
+		if is_nan(years):
+			lines.append("%s: not turning on a line Earth's does" % planet)
+			worst = INF
+			continue
+		found += 1
+		var error: float = absf(years) / real - 1.0
+		worst = maxf(worst, absf(error))
+		lines.append("%s %s years for %s (%+.3f%%)%s" % [planet, Simulation.figure(absf(years)),
+			Simulation.figure(real), error * 100.0, "" if years > 0.0 else ", the wrong way round"])
+		if years < 0.0:
+			worst = INF
+	print("    " + "\n    ".join(lines))
+	_check("seven planets' years in Earth's, each within 0.4%% of NASA's, the same way round "
+		+ "(worst %.3f%%)" % (worst * 100.0), found == 7 and worst < ORRERY_SLACK)
 
 
 ## Where a part's studs stand on it, along its up: their foot.

@@ -1149,6 +1149,13 @@
     },
     {
       "kind": "lib",
+      "label": "gear ratio search",
+      "entry": "src/assembly/gear_ratios.gd",
+      "reach": "godot --headless --path . --script src/dev/gear_ratio_probe.gd   (over MCP: search_gear_ratio)",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
       "label": "axles and gears on a line",
       "entry": "src/assembly/joints.gd",
       "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",

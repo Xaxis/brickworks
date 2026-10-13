@@ -511,7 +511,7 @@ func _rest_on_studs(studs: Array) -> void:
 				for z: int in range(lo.z, hi.z + 1):
 					for stud: Array in at_foot.get(Vector3i(x, y, z), []):
 						if stud[0] != key and body_of(stud[0]) != body_of(key) \
-								and _stands_on(piece.mesh.bounds, inverse, stud[2], stud[3]):
+								and _stands_on(piece.mesh, inverse, stud[2], stud[3]):
 							_join(key, stud[0])
 
 
@@ -520,13 +520,16 @@ func _rest_on_studs(studs: Array) -> void:
 const STUD_INSET := 4.0
 
 
-## Whether a part whose box is [param box], placed by the inverse of
-## [param inverse], stands on a stud whose foot is at [param foot] pointing
-## [param way]: the face of its box that way at the foot, the stud within
-## the face.
-static func _stands_on(box: AABB, inverse: Transform3D, foot: Vector3, way: Vector3) -> bool:
+## Whether [param mesh], placed by the inverse of [param inverse], stands on
+## a stud whose foot is at [param foot] pointing [param way]: the underside
+## of its box that way at the foot, and the stud under some part of its
+## cover, seen from above. Its cover, not only its box: a quarter ring's box
+## is the square round its arc, and a plate's studs under the middle of the
+## ring are under nothing of it.
+static func _stands_on(mesh: Lbm.PartMesh, inverse: Transform3D, foot: Vector3, way: Vector3) -> bool:
 	var here: Vector3 = inverse * foot
 	var up: Vector3 = (inverse.basis * way).normalized()
+	var box: AABB = mesh.bounds
 	for n: int in 3:
 		if absf(up[n]) < 0.99:
 			continue
@@ -537,7 +540,18 @@ static func _stands_on(box: AABB, inverse: Transform3D, foot: Vector3, way: Vect
 			if m != n and (here[m] < box.position[m] + STUD_INSET
 					or here[m] > box.end[m] - STUD_INSET):
 				return false
-		return true
+		if mesh.boxes.is_empty():
+			return true
+		# The stud's middle under some box of the cover, at any height.
+		for cell: AABB in mesh.boxes:
+			var cover := AABB(cell.position * mesh.cell_ldu, cell.size * mesh.cell_ldu)
+			var under: bool = true
+			for m: int in 3:
+				if m != n and (here[m] < cover.position[m] or here[m] > cover.end[m]):
+					under = false
+			if under:
+				return true
+		return false
 	return false
 
 

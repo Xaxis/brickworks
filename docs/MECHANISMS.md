@@ -20,7 +20,10 @@ It is proven by `src/dev/mechanism_probe.gd` and, on real sets,
 mechanism (`src/ui/simulate_panel.gd`, over `src/assembly/simulation.gd`), and
 `simulate_mechanism` over MCP, with P1c's period readout; proven by
 `src/dev/simulate_probe.gd` and `tools/mcp_check.py` (recipes in
-`.claude/skills/verify/features/geometry.md`; section 8 below).
+`.claude/skills/verify/features/geometry.md`; section 8 below). P1c's ratio
+search is `src/assembly/gear_ratios.gd` (`search_gear_ratio` over MCP), proven
+by `src/dev/gear_ratio_probe.gd`, and the eight-planet orrery a Claude session
+built with it is `models/orrery.ldr` (section 9).
 
 ## In short
 
@@ -541,7 +544,7 @@ across its cycle. Nothing on its path waits for linkages or dynamics.
 |---|---|---|---|
 | **P1a Gear trains** | **Shipped:** `src/assembly/mechanism.gd` lifted from the probe, with sparse elimination. The gear table as data (`assets/ldraw/gears.json`) with its pipeline check (`tools/gears.py`, `tests/test_gears.py`). Connector fixes in `connectivity.py` (3648a/b/24505, 3709b with 3738 and 32001, 6542a, the old differentials 6573/4141/73071, 32062 with 153 more), committed on their own first (293bea2) so a session can seat gears on axles. Ring gears (inner mesh: centres r_ring − r apart, same sense, within a quarter's arc; a ring on rollers turns about its own centre), chains on `Flex.SPROCKETS` (same sense, the links' ratio), clutch gears and driving rings, the differential (two freedoms: two drivers, or one and a held output). Locked, free and floating reports; drivers absolute. **Left:** racks (no prismatic joint yet, and the pitch lines in section 2 are unchecked); 42179's year train (not in the OMR); 6573's and 65414c01's planets (the shortcut is one part, so nothing in it can turn); 32187's centre hole; worm handedness; posing a chain's links along their loop. | The probe's cases plus: 42055 (140 gears) and 42082 (135), the OMR's sets with the most gears, read with every gear on what it turns on or a reason the file gives (`src/dev/mechanism_sets.gd`); a differential's Willis relation to 1e-6 under five pairs of drivers. Every check fails on a solver broken on purpose (section 7). | 4–5 agent days |
 | **P1b Simulate mode** | **Shipped (section 8):** Tools, Simulate mechanism (`src/ui/simulate_panel.gd` over `src/assembly/simulation.gd`): pick a driver (the one a sub-assembly named Crank marks, or a click), play, pause, scrub, speed, record to WebP and MP4; bodies tinted by speed; locked meshes red and named; free and floating parts named; the model never moved (`BrickWorld.set_drawn`); the balance over the whole cycle. `simulate_mechanism` over MCP with its compact result and a picture, and `tools/mcp_tools.json` regenerated. | `src/dev/simulate_probe.gd`, windowed, clicking the driver, playing, scrubbing and recording, every frame read back off the renderer, failing on a solver broken on purpose. `tools/mcp_check.py` driving it the way a Claude session does. | 3–4 days |
-| **P1c The orrery** | Periods read out as planet years ("Mars: 1.96 Earth years; NASA 1.8808, +4.2%"): **shipped with P1b**, in the panel and in simulate_mechanism, against NASA's sidereal periods or `targets=`. Turntables (56, 60) and the 140 tooth ring. A ratio search for the designer: the gear trains on the stud grid within n stages that come nearest a target. Every LEGO tooth count factors into primes ≤ 7 (bar the 22), so 365.25 = 3·487/4 can only be approximated; Brocot's method finds the nearest ([AMS](https://www.ams.org/featurecolumn/archive/stern-brocot.html)). | **Acceptance:** an orrery of at least the eight planets, built in the app by the owner or by Claude over MCP. Every arm's period within the error its gear train claims, checked frame by frame off the renderer as the probe does. Recorded to MP4 and WebP. | 2–3 days, plus the build |
+| **P1c The orrery** | **Shipped (section 9):** the ratio search (`src/assembly/gear_ratios.gd`, `search_gear_ratio`), the quarter ring's cover opened inside (`MOSTLY_AIR`), gears read round by the checker, and the eight-planet orrery built by a Claude session over MCP (`models/orrery.ldr`). Periods read out as planet years ("Mars: 1.96 Earth years; NASA 1.8808, +4.2%"): **shipped with P1b**, in the panel and in simulate_mechanism, against NASA's sidereal periods or `targets=`. Turntables (56, 60) and the 140 tooth ring. A ratio search for the designer: the gear trains on the stud grid within n stages that come nearest a target. Every LEGO tooth count factors into primes ≤ 7 (bar the 22), so 365.25 = 3·487/4 can only be approximated; Brocot's method finds the nearest ([AMS](https://www.ams.org/featurecolumn/archive/stern-brocot.html)). | **Acceptance:** an orrery of at least the eight planets, built in the app by the owner or by Claude over MCP. Every arm's period within the error its gear train claims, checked frame by frame off the renderer as the probe does. Recorded to MP4 and WebP. | 2–3 days, plus the build |
 | **S1 Balance at rest and across the cycle** | The support polygon, centre of mass and force-angle tipping margin at every frame. Stud joint moments against the cited capacities. Counterweight advice. The heat map and margin readout. Numbers in `check_design` and `simulate_mechanism`. `Stability` rewritten on margins with sources. | Arrangements with known answers (a T on one stud, a cantilever of n plates). The owner's orrery reproduces "18 studs past the edge" at its worst angle, and a counterweight added by the advice brings it inside. | 3–4 days |
 | **P2 Linkages and closed loops** | Newton–Raphson on loop closure. Cranks, connecting rods, 4-bars, pistons, cardan joints, steering. Linear actuators as screws. Pneumatic cylinders as driven prismatics. Jam, toggle and free-motion reports. | A 4-bar's coupler curve against the closed form. A crank-slider's stroke. 42xxx steering racks from the OMR. | 1.5–2 weeks |
 | **S2 Dynamic loads** | Inverse dynamics over the P1/P2 motion: joint forces and torques, the zero-moment point, a motor torque budget against Philo's table. | A swinging arm against m·ω²·r and I·α by hand. A motor geared to stall reported as stalling. | 1 week |
@@ -831,6 +834,9 @@ reads the model into a `Mechanism`, names its bodies and says what it found.
   to the driver's. With a reference (Earth when a body is named so), each
   other's period in its turns, and for a body named after a planet against
   NASA's sidereal period: "Mars arm: 1.96 Earth years; real 1.8808, +4.2%".
+  The planets and the bodies `targets=` names come first, then those a
+  sub-assembly names, then the rest, each fastest first (`Simulation.listed`):
+  the orrery's gear axles turn faster than its outer planets.
 - **Balance over the motion.** 72 frames of the cycle go to `Balance.measure`
   through Shell's `weigh_balance` (polygon and centre of mass drawn on the
   floor), and the turning body reaching furthest past the base's edge is
@@ -893,6 +899,182 @@ against a windowed app and a headless one. A 24-frame Quick recording took
 79-88 s on this box under a load of 50, longer than a call should wait, so a
 recording is a job; mcp_check asks for one and polls `job` to its end.
 
-**Left for later.** The ratio search P1c names; turntables of 56 and 60 and the
-140 tooth ring are read by P1a but not yet in a fixture here; linkages (P2);
-the frames of a recording are tinted only in the window, not in the WebP.
+**Left for later.** Turntables of 56 and 60 are read by P1a but not yet in a
+fixture here; linkages (P2); the frames of a recording are tinted only in the
+window, not in the WebP.
+
+## 9. The ratio search and the orrery (P1c)
+
+### The ratio search
+
+Every LEGO® tooth count factors into primes of 7 or less (bar the 22 tooth
+bevel), so most ratios a person wants can only be come near. The Stern–Brocot
+tree gives the nearest fraction with a bounded denominator
+([AMS](https://www.ams.org/featurecolumn/archive/stern-brocot.html)), and that
+is the right tool for the question "how near could anything get": a Mars year
+is 686.98 / 365.256 = 1.880813 Earth years, and its best small fractions are
+15/8 (-0.31%), 32/17 (+0.08%), 47/25 (-0.04%), 79/42 (+0.007%) and 363/193.
+Only the first has no prime a gear lacks. So the search does not walk the tree;
+it searches the trains themselves, which are the fractions gears can make:
+
+- **A mesh** is two spur gears of 8, 12, 16, 20, 24, 28, 36 or 40 teeth (the
+  axle-holed ones in `assets/ldraw/gears.json`; a double bevel's teeth mesh a
+  spur's) whose pitch circles meet at a distance the stud grid gives, to
+  `Mechanism.SPACING_SLACK`: 1 stud (8+8), 2 (8+24, 12+20, 16+16), 3 (8+40,
+  12+36, 20+28, 24+24), 4 (24+40, 28+36), 5 (40+40), a stud's diagonal, 44.72
+  LDU for 45 (8+28, 12+24, 16+20) and three studs' diagonal, 84.85 for 85
+  (28+40). One stud's diagonal, 28.28, has none.
+- **A train** is a product of meshes; each reverses the turn, so an even count
+  keeps the way round, and the search keeps to the count that turns the way
+  asked. The halves are met in the middle: every multiset of up to half the
+  meshes, listed by value, each met by the other half's nearest. Six meshes
+  take a quarter of a second.
+- **Between two axles** (`to=`): the output's axle stands where it is asked,
+  and every axle between on a grid point of its own within `within=` studs of
+  the line between them. The grid points reached in so many meshes from each
+  end are met at the points both reach. That is what a gearbox needs, its
+  input and its output already in holes.
+
+`src/assembly/gear_ratios.gd` (`GearRatios`) is the search; over MCP it is the
+assistant's `search_gear_ratio` (so the in-app designer has it too):
+`ratio=` or `period=`, `stages=`, `to=`, `within=`, `gears=`, `first=` (the
+input axle's own gear, for two trains off one shaft at one height). It answers
+with the three nearest trains, each with its fraction, its error, its gears by
+part and, with `to=`, where every axle stands. A Mars year: 15/8 in four
+meshes (-0.31%, the nearest four can do), 2304/1225 in six (-0.0001%).
+
+The proof is `src/dev/gear_ratio_probe.gd` (recipe in
+`.claude/skills/verify/features/geometry.md`, `gear ratio search`). Every train
+any of its searches answers with is laid out axle by axle in beams, each mesh
+three plates above the last, and turned by `Mechanism`: the output must turn
+the train's own ratio, through exactly its meshes, to 1e-5 of itself (the
+32-bit transforms; a mesh read at one gear's pitch circle was 1e-2 out on a
+diagonal). Laying them out found what a session would trip on too: a 40 has
+four more axle holes a stud out from its middle, so an axle reaching
+up into a 40 a stud from its own keys the two axles together and locks the
+train. Each axle reaches its own two gears and no further.
+
+### Why rings, not a stack of hubs
+
+An orrery's arms all turn about one line, at different rates. Brass orreries
+nest tubes; LEGO® parts have none. Every other layout was worked through:
+
+- **Hubs stacked on a central axle, each driven from a gear on a layshaft
+  outside.** An arm reaches out past its layshaft, so every layshaft that
+  goes up past an arm to a hub above it sweeps through that arm once a turn.
+  Driving from below and above, at most two arms clear.
+- **Nested carriers** (each arm's turntable riding on the one below, its
+  layshafts reacting against a fixed sun on the central axle, as
+  [Rob Ayres' orrery](https://mrob.com/pub/lego/orrery.html) and the LEGO
+  Ideas Clockwork Solar System do). Each stage sets the *difference* between
+  neighbouring planets' rates, so its error is multiplied by up to 6.3
+  (Jupiter to Mars); with a 28 tooth turntable as the only hub that carries
+  an arm, the best three-mesh stages left Saturn 2.2% out and Mercury 1.6%,
+  and the central axle runs through the turntables' bores.
+- **A ring per planet, turned from inside.** A ring of 140 teeth (four
+  24121 quarter rings) is hollow: its pinion stands inside it, and so does
+  every other ring's pinion axle passing by, so nothing that turns crosses an
+  arm. Each ring's train is its own, from a fixed central shaft, so each
+  planet's error is only its own train's.
+
+The pinion stands 8 studs out for a 12 (175 - 15 = 160 LDU) or 7 for a 28 (175
+- 35 = 140): the only two the grid gives on an axis. Four axes, a gearbox under
+the rings for the lower four and one over them for the upper four, so each
+axis carries one pinion axle up from below and one down from above, which
+never meet.
+
+**The covers.** A quarter of a ring of 140 is 472 boxes exact, past the
+`to_boxes` limit, and its cover was its bounding box: solid inside its teeth.
+Every pinion, and every quarter beside it, overlapped it, so `check_design`
+refused the ring that LEGO® set 42055 builds. `tools/ldraw/occupancy.py` now
+keeps a part's own cells, however many boxes that takes up to `CARVED_LIMIT`,
+when its bounding box is more than `MOSTLY_AIR` (3) times its own cells
+(`tests/test_ldraw.py`, `test_a_quarter_ring_keeps_its_inside_open`). 24121
+and its three printed variants and 78442 were rebuilt with `--only` and merged
+with 200 controls (`tools/merge_subbuild.py`): all 200 agreed. Other parts
+the rule changes come in with the next full mesh build.
+
+### The trains
+
+The scale: Earth's ring turns 0.57698 for each turn of the central shaft
+(1.7332 turns of the shaft to an Earth year). It was chosen by scanning the
+scale for the one whose worst planet comes nearest, each planet's ring
+taking the nearer of a 12 at 8 studs and a 28 at 7, four meshes within a stud
+of the axis: 0.18% at worst, where three turns to the year left Neptune 0.9%
+out.
+
+### The build
+
+A Claude Code session on the subscription built it over MCP
+(`--ask-claude-code`, `env -u ANTHROPIC_API_KEY`, the app in a window under
+Xvfb), with `search_gear_ratio` for every train, `attachment_points` for every
+hole it put an axle in, and `simulate_mechanism` to read what the parts gave.
+It took two runs. The first (55 minutes) found every train and built the frame,
+both gearboxes and the four lower rings, and ran into three things the check
+got wrong, each fixed in the app then:
+
+- the quarter rings' covers, solid inside (above);
+- **a gear read as the square round its teeth.** A 20 is 8 boxes, a 28 and a
+  36 26: past the box limit their covers are their boxes, and on a stud's
+  diagonal a square's corner meets the next axle. The checker
+  (`Assistant._joints_out`) and `Builder.room_for` now ask
+  `Joints.past_the_teeth`: where two covers meet only outside a gear's round,
+  they do not meet;
+- **an 8 meshing a 28 on a stud's diagonal**, whose teeth clear the 8's axle
+  by 1.4 LDU, a cell of the lattice: `Joints.meshing` forgives a gear against
+  the axle its partner is keyed on (`axle_probe`'s by-hand case).
+
+It was stopped as it began carrying a ring on spokes from a hub on the central
+shaft, which would have swept them through the pinion axles inside the rings.
+The second run was given its saved work and told to rest each ring on smooth
+beams under its band instead (resting holds a part for the check, and adds no
+joint to the mechanism, so the ring stays free to turn on its pinion), and to
+search Neptune again. It rebuilt the whole of it in 87 minutes (101 replies,
+44 M tokens in, 98% of them cached): 494 parts, holding together, nothing
+locked, free or floating (42 of 43 joints turn, none left undecided). Each
+ring is joined to nothing that turns on the central shaft: Mechanism reads
+every one as a ring carried round its own centre by its pinion (a "rim"
+joint), as 42055's bucket wheel is. It found
+two more things: a frame named Frame holds everything in it still, so a shaft
+put in it locks the train (it moved the shaft out); and the readout listed
+the sixteen fastest bodies, so an orrery's gear axles hid its outer planets
+behind "and 25 more" (`Simulation.listed` now says the planets first).
+
+Read back by `mechanism_probe` (headless, off the file) and by
+`simulate_mechanism` over MCP in a window (the same numbers), against NASA's
+sidereal periods, Earth the reference:
+
+| planet | its train, from the central shaft (driver > driven) | pinion > ring | turns a crank turn | period, Earth years | NASA | error |
+|---|---|---|---|---|---|---|
+| Mercury | 40>8, 16>20, 28>8, 24>12 | 12 > 140 | 2.4 | 0.2400 | 0.2408 | -0.35% |
+| Venus | 20>16, 40>8, 12>20, 20>16 | 28 > 140 | 0.9375 | 0.6144 | 0.6152 | -0.13% |
+| Earth | 16>20, 36>12, 12>20, 24>12 | 28 > 140 | 0.576 | 1 | 1 | the reference |
+| Mars | 16>20, 16>20, 16>20, 24>8 | 28 > 140 | 0.3072 | 1.875 | 1.8808 | -0.31% |
+| Jupiter | 28>36, 20>16, 8>40, 20>16 | 28 > 140 | 0.0486 | 11.85 | 11.86 | -0.11% |
+| Saturn | 8>28, 12>36, 16>20, 36>28 | 28 > 140 | 0.0196 | 29.40 | 29.46 | -0.19% |
+| Uranus | 12>20, 8>8, 8>40, 8>28 | 28 > 140 | 0.0069 | 84.00 | 84.01 | -0.01% |
+| Neptune | 8>40, 20>28, 8>28, 8>8 | 12 > 140 | 0.0035 | 164.64 | 164.79 | -0.09% |
+
+The crank turns the central shaft through a pair of 12 tooth bevels, 1:1, so a
+crank turn is a shaft turn and an Earth year is 1.736 of them. Every planet is
+within 0.35% of NASA's year; Mercury and Mars are the two furthest, where the
+session took trains that kept their first axles clear of the central shaft's
+other gears over the scale's best (0.18% at worst, section above), and Mars at
+15/8 is the nearest four meshes give at all.
+
+The balance over the whole cycle (72 frames of 285.8 crank turns, a turn of
+Neptune): it stands, its centre of mass 15.4 studs inside the base's edge at
+the worst pose (force angle 39°), 1,588 g. Neptune's arm reaches 18 studs past
+the base's edge, the same overhang the owner's orrery has; this one's base is
+heavy enough that no counterweight is needed, and simulate_mechanism says so.
+
+The recording: two Earth years (3.47 crank turns) in 96 frames, rendered as a
+job in 481 s on this box in software, a WebP (726 KB) and an MP4 (120 KB). Its
+frames show every arm going round the Sun at its own pace, Mercury eight times,
+the outer planets a few degrees.
+
+Left: the rings rest on beams, which is a sliding bearing, and LEGO® parts
+would want rollers there to turn freely; and the app does not yet check that
+moving parts clear each other through the cycle (P2), so the layout's rule,
+nothing joined to a ring inside its teeth, was the session's to keep.
+

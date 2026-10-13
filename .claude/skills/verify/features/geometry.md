@@ -3,7 +3,7 @@
 Whether a brick here is the size of a brick in your hand, and whether two of them
 can occupy the same millimetre.
 
-<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism -->
+<!-- covers: lib:occupancy lattice, lib:sideways building, lib:angled sections, lib:stability, lib:balance, ui:balance readout, lib:round joints, lib:flexible parts along a path, lib:mechanisms, lib:axles and gears on a line, ui:simulate mechanism, lib:gear ratio search -->
 
 ## Sub-features
 
@@ -337,6 +337,29 @@ touches nothing else (42055's mine truck, a second model in the file), read
 again on its own with nothing floating there. Anything else fails, said with what
 stands on its axis and the holes its axles nearly turn in.
 
+`gear ratio search` (`src/assembly/gear_ratios.gd`, `GearRatios`, docs/MECHANISMS.md
+section 9; over MCP the assistant's `search_gear_ratio`): the trains of real spur
+gears (8 to 40 teeth) nearest a ratio, every mesh at a spacing the stud grid gives
+(1.25 LDU a tooth to `SPACING_SLACK`: two studs, a stud's diagonal, three studs'
+diagonal), halves met in the middle; with `to=` every axle between two holes on a
+grid point near the line.
+
+```sh
+godot --headless --path . --script src/dev/gear_ratio_probe.gd
+```
+
+It ends on "gear ratios: every train the search gives meshes on the grid and turns as
+it says, …". It checks the meshes the grid allows against section 2's real-set
+spacings, finds 1/9 exactly (an 8 to a 24 twice) and -3 (a 24 to an 8), a Mars year
+in Earth's within 0.05% in four meshes, trains landing on (8, 0), (8, 2) and (0, -5)
+within a stud of the line, the orrery's eight trains (each planet's ring of 140
+turned by a 12 eight studs out or a 28 seven out, every period within 0.25% of
+NASA's), and `search_gear_ratio` as a session calls it with its refusals. Every
+train any search answers with is laid out axle by axle in beams, its meshes at their
+own heights, and turned by `Mechanism`: the output must turn the train's own ratio to
+1e-5 of itself (the 32-bit transforms) through exactly its meshes, or the probe fails
+naming it; a mesh read at one gear's pitch circle was 1e-2 out on a diagonal.
+
 Axles and gears: `axle_probe` ends on "axles: a pin and an axle go in the hole
 attachment_points names, an axle carries every part on its line, gears in mesh are
 not an overlap, and a crank turns an 8, a 24 and an arm at 1:3". It drives the
@@ -355,7 +378,13 @@ five studs apart, a 24 to an 8 idler to a 24, a 20 driving a 12) with four meshe
 and rates -1, 3, -1 and 5/3; a worm on a crank's axle into a turntable whose top
 went on its base by the point attachment_points gave, 1/28 a turn exactly (46 LDU off
 for 45), the base held still by the plate's studs it rests on; and by hand, a
-24 has room two studs from an 8 and none at 36 LDU. Windowed (`MESA_VK_WSI_DEBUG=sw
+24 has room two studs from an 8 and none at 36 LDU, a 28 has room on a stud's
+diagonal from an 8 beside the 8's axle (its teeth clear the axle by 1.4 LDU, a cell:
+`Joints.meshing` forgives a gear against the axle its partner is keyed on), and a
+bare axle in a 28's square cover is in its way inside its teeth (30 LDU out) and not
+past them (45.3 out on the diagonal: `Joints.past_the_teeth`, which the checker's
+`_joints_out` and `Builder.room_for` both ask, reads a gear whose cover is the square
+round its teeth as round). Windowed (`MESA_VK_WSI_DEBUG=sw
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/axle_probe.gd`)
 the train is drawn turning, 16 frames read back off the renderer's copy with the
 arm a third of the crank's step the other way to 0.01°, into `shots/axles/`. A
@@ -383,7 +412,9 @@ The turning parts are drawn where the simulation puts them (`BrickWorld.set_draw
 the model, the lattice, the history and `world.revision` never move. With a body
 named after a planet and another as the reference (Earth by default), periods read in
 its years against NASA's sidereal periods ("Mars arm: 1.96 Earth years; real 1.8808,
-+4.2%"). The balance is `Shell.weigh_balance` over 72 frames of the cycle, the polygon
++4.2%"), the planets and the bodies targets= names listed first (`Simulation.listed`; the
+orrery's sixteen fastest bodies were all gear axles). The balance is `Shell.weigh_balance`
+over 72 frames of the cycle, the polygon
 and the centre of mass on the floor, and the turning part furthest past the base's
 edge named. Record draws one turn of the reference (or the driver) through
 `StudioRender.animate` into `RenderOutput` (WebP, and on the desktop frames and an

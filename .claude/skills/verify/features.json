@@ -747,6 +747,14 @@
       "tests": []
     },
     {
+      "id": "lib:gear ratio search",
+      "kind": "lib",
+      "entry": "src/assembly/gear_ratios.gd",
+      "reach": "godot --headless --path . --script src/dev/gear_ratio_probe.gd   (over MCP: search_gear_ratio)",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:keyframed animation",
       "kind": "lib",
       "entry": "src/assembly/pose_animation.gd",

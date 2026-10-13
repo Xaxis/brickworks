@@ -321,6 +321,7 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 		"search_parts": "looking for a part",
 		"check_design": "checking what it has",
 		"attachment_points": "working out where things attach",
+		"search_gear_ratio": "searching gear trains for a ratio",
 		"look_at_model": "reading the baseplate",
 		"view_model": "looking at the model",
 		"submit_design": "building it",
