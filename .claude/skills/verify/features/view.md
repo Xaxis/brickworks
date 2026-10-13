@@ -738,9 +738,9 @@ picture the assistant is shown.
   While it is open a veil covers the window and the window's own model is
   not drawn (`disable_3d`, put back as Main would have it on Close).
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
-  viewports with a copy of the model staged a slice a frame (`FramePace`), on
-  its floor: the baseplate it stands on is staged with it when that is its
-  floor (`ModelFloor`), and a model on No floor stands on the sweep alone.
+  viewports with a copy of the model staged a slice a frame (`FramePace`): the
+  model alone on the sweep, its floor's baseplate left out unless it is part of
+  the model (`ModelFloor`), as Studio's and LEGO's own renders have it.
   The set: a sweep (`studio_backdrop.gdshader`, a floor curving into a wall,
   turned to face the camera), the contact shadow (`studio_contact.gdshader`:
   three silhouettes of the model seen from under the floor, within 6, 30 and

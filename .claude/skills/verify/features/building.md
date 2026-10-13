@@ -280,11 +280,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `0 !BRICKWORKS FLOOR BASEPLATE 32 32 288` / `GRID` / `NONE` in the head of
   the model (`ModelFloor.written_into`), in the autosave, saves, LDraw and
   Studio exports and shared links; a file that says nothing gets the floor new
-  models start on. Pictures use it: renders, Export picture, the share card
-  and the Studio thumbnail show the baseplate floor (and the grid never); a
-  model on No floor stands on the studio's floor alone. The booklet and the
-  designer's own pictures leave a scenery plate out (it is not in the box);
-  a plate made part of the model is in both. The designer chooses
+  models start on. Pictures are of the model: renders, Export picture, the
+  share card, the Studio thumbnail, the booklet and the designer's own pictures
+  show a baseplate only when it is part of the model (it is in the box), on the
+  studio's clean floor otherwise, and never the grid or the shadow's ground;
+  the view keeps the floor as chosen. `floor_probe` draws the example car on
+  the default floor, with its plate made part of it, and on no floor. The designer chooses
   (`submit_design` `floor`, `floor_colour`): none for a vehicle, a baseplate
   in its ground's colour for a scene, made part of the build when the design
   is done, and says so in the chat.
