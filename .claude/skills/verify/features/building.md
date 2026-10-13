@@ -122,10 +122,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   in Tools. Only Place shows the ghost; a part carried by a drag, Move or Clone
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
-- `properties panel` (`src/ui/inspector.gd`): at the foot of the left-hand
-  column, under the parts bin and the model tree (`docked panels`); View,
-  Properties with the column folded opens it with them. Nothing selected, it
-  says what it will show. One part: its name, LDraw and BrickLink numbers, its colour by
+- `properties panel` (`src/ui/inspector.gd`): in the left-hand column, under
+  the parts bin and the model tree and over the colours (`docked panels`);
+  View, Properties with the column folded opens it with them. Nothing
+  selected, it is its header alone ("nothing selected", `Inspector.is_idle`)
+  and the parts grid has its room: an empty Properties took 200 px of the
+  column at 1440 x 900, and the grid had room for two rows (2026-10-12). One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to,
@@ -136,9 +138,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   less room than it needs.
 - `docked panels` (`src/ui/panel_stack.gd`, `Main._fit_panels`): the left
   column holds everything for building by hand, the parts bin with the model
-  tree and the properties under it (`PanelStack`), as Studio keeps its
-  palettes down the left and Blender stacks its outliner over its
-  properties; the right column is the assistant's alone. (Stacked over the
+  tree, the properties and the colours under it (`PanelStack`), as Studio
+  keeps its palettes down the left with the colours at the foot, and Blender
+  stacks its outliner over its properties. The colours are as tall as the
+  column says (`PartsBin._fit_palette`: 14% of it, two category rows from a
+  700-unit column), so a part taken into hand, a brick selected or the tree
+  opened moves the parts grid's foot and never the palette; the grid takes
+  the rest — four rows and more at 1440 x 900 with nothing selected, where it
+  had two; the right column is the assistant's alone. (Stacked over the
   assistant they would not fit: waiting for a key it asks for 783 units of a
   laptop column's 666 to 883.) The tree and the properties fold to their
   headers (the tree starts folded) and the bar between two drags the height

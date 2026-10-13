@@ -205,6 +205,10 @@ func _build() -> void:
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# A row of parts at the least, whatever else the column holds: the
+	# model tree and the properties open give back their room before the
+	# parts do (PanelStack.heights).
+	_scroll.custom_minimum_size.y = PARTS_LEAST
 	root.add_child(_scroll)
 
 	_grid = GridContainer.new()
@@ -224,8 +228,20 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 
+	# The colours are a section of their own at the foot of the column
+	# (Main puts it there), as Studio keeps its colour palette under its
+	# parts: the parts grid above takes whatever room there is, and what
+	# changes height there — the properties opening on a selection, the
+	# model tree — moves the grid's foot and never the palette.
+	colours = PanelContainer.new()
+	colours.name = "Colours"
+	colours.mouse_filter = Control.MOUSE_FILTER_STOP
+	colours.add_theme_stylebox_override("panel", PanelStack.section_style())
+	var colour_box := VBoxContainer.new()
+	colour_box.add_theme_constant_override("separation", 6)
+	colours.add_child(colour_box)
 	var colour_head := HBoxContainer.new()
-	root.add_child(colour_head)
+	colour_box.add_child(colour_head)
 	var colour_title := Label.new()
 	colour_title.text = "Colour"
 	colour_title.add_theme_font_size_override("font_size", 13)
@@ -245,7 +261,7 @@ func _build() -> void:
 	_palette_scroll = ScrollContainer.new()
 	_palette_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_palette_scroll.custom_minimum_size = Vector2(0, PALETTE_FLOOR)
-	root.add_child(_palette_scroll)
+	colour_box.add_child(_palette_scroll)
 	_palette = VBoxContainer.new()
 	_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_palette.add_theme_constant_override("separation", 2)
@@ -264,7 +280,7 @@ func _build() -> void:
 	_colour_note.max_lines_visible = NOTE_LINES
 	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_colour_note.mouse_filter = Control.MOUSE_FILTER_PASS
-	root.add_child(_colour_note)
+	colour_box.add_child(_colour_note)
 	var font: Font = _colour_note.get_theme_font("font")
 	_colour_note.custom_minimum_size.y = ceilf(font.get_height(12) * NOTE_LINES
 		+ float(_colour_note.get_theme_constant("line_spacing")) * (NOTE_LINES - 1))
@@ -400,44 +416,59 @@ func _build_swatches() -> void:
 	_mark_swatches()
 
 
-## The palette's window: the whole of it when that fits in PALETTE_SHARE
-## of the panel, and otherwise a scrolling window onto it, which gives
-## way to the parts above it on a short panel.
+## The palette's window, and the rows of categories: sized by the column
+## they are in, which only the window changes, so that nothing a person
+## does while building moves them.
 ##
+## The palette is the whole of what it holds where that fits in
+## PALETTE_SHARE of the column, and otherwise a scrolling window onto it.
 ## It was a fixed 168, and the colours a set is built in today run to
 ## about 195: the last group's title sat cut in half under the colour's
 ## name at the foot of the panel, on the first screen anyone sees. And on
 ## a phone held sideways that 168 and the rest of the panel took all of
 ## its height: the parts list was a sliver with no part in it.
+##
+## It was sized by the parts bin it sat in, and the bin by what was under
+## it: at 1440 x 900 the parts grid had room for two rows (brickworks.diy,
+## 2026-10-12).
 func _fit_palette() -> void:
 	if _palette == null or _palette_scroll == null:
 		return
-	# Two rows of categories, or one on a panel too short to spare them.
+	var tall_column: float = column.size.y if column != null else size.y
+	# Two rows of categories, or one in a column too short to spare them.
 	if _chip_tall > 0.0:
-		var rows: int = 2 if size.y >= SHORT else 1
+		var rows: int = 2 if tall_column >= SHORT else 1
 		_category_scroll.custom_minimum_size.y = _chip_tall * rows \
 			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
 	var wants: float = _palette.get_combined_minimum_size().y
-	var room: float = maxf(PALETTE_LEAST, size.y * PALETTE_SHARE)
-	# What the rest of the panel needs, leaving the parts list its rows.
-	var root: Control = _palette_scroll.get_parent()
-	var others: float = root.get_combined_minimum_size().y \
-		- _palette_scroll.get_combined_minimum_size().y
-	var inner: float = size.y - get_theme_stylebox("panel").get_minimum_size().y
-	var spare: float = inner - others - PARTS_LEAST
-	var tall: float = maxf(minf(minf(wants, room), spare), PALETTE_FLOOR)
+	var tall: float = clampf(minf(wants, tall_column * PALETTE_SHARE), PALETTE_FLOOR,
+		maxf(wants, PALETTE_FLOOR))
+	tall = roundf(tall)
 	if absf(_palette_scroll.custom_minimum_size.y - tall) > 0.5:
 		_palette_scroll.custom_minimum_size.y = tall
 
 
-const PALETTE_LEAST := 168.0
-const PALETTE_SHARE := 0.3
+## The column the bin and the colours are sections of (Main): their sizes
+## are the column's share, not the bin's.
+var column: Control:
+	set(to):
+		column = to
+		if column != null:
+			column.resized.connect(_fit_palette)
+			_fit_palette.call_deferred()
+## The colours: a section of the column of their own, under the model tree
+## and the properties (Main).
+var colours: PanelContainer
+
+## The palette's share of the column's height: four rows and more of the
+## colours a set is built in today at 1440 x 900, the rest a scroll away.
+const PALETTE_SHARE := 0.14
 ## A row and a half of colours and the title over them.
 const PALETTE_FLOOR := 48.0
-## Height the parts list keeps before the palette takes any: two rows.
-const PARTS_LEAST := 172.0
-## A panel shorter than this shows one row of categories, not two.
-const SHORT := 600.0
+## A row of parts: a cell and the space under it.
+const PARTS_LEAST := 88.0
+## A column shorter than this shows one row of categories, not two.
+const SHORT := 700.0
 var _chip_tall: float = 0.0
 
 
@@ -1237,7 +1268,8 @@ func _update_status() -> void:
 	# Where the rest went. Only on the default view, since that is the
 	# only place anything is held back.
 	if _set_aside > 0:
-		_status.text += "\nStickers and retired parts are left out; search finds them."
+		# One line: as two it took a row from the parts it is about.
+		_status.text += "\nStickers and retired parts: search finds them."
 		_status.tooltip_text = "%s stickers and retired parts" % _comma(_set_aside)
 	if _set_aside == 0:
 		_status.tooltip_text = ("%s parts can be placed in this build"

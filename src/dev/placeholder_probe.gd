@@ -53,6 +53,11 @@ func _run() -> void:
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	await _frames(180)
+	# The bin out: a first visit narrower than 1600 shows the assistant with
+	# the bin folded to its rail, and a folded bin has no tiles in sight.
+	(_main.get("_bin_dock") as SideDock).set_open(true)
+	for _n: int in 30:
+		await process_frame
 	var playback: BuildPlayback = _main.get("_playback")
 	if playback != null:
 		playback.stop()

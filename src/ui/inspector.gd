@@ -55,6 +55,10 @@ var _step_of: Dictionary = {}
 var _step_count: int = 0
 
 signal toggled(open: bool)
+## Nothing selected, or something again: folded to its header while there
+## is nothing to show, its room going to the parts grid (PanelStack).
+signal idled(idle: bool)
+var _idle: bool = false
 
 
 func _ready() -> void:
@@ -240,10 +244,17 @@ func is_open() -> bool:
 	return _open
 
 
+## Open, with nothing selected to show: as tall as its header. An empty
+## Properties took 200 px of the column at 1440 x 900, and the parts grid
+## had room for two rows (brickworks.diy, 2026-10-12).
+func is_idle() -> bool:
+	return _open and _idle
+
+
 func set_open(open: bool) -> void:
 	_open = open
 	if _body != null:
-		_scroll.visible = open
+		_scroll.visible = open and not _idle
 		_arrow.down = open
 		_arrow.queue_redraw()
 	ShellPrefs.put("inspector_open", open)
@@ -272,6 +283,10 @@ func _refresh(_now: bool) -> void:
 			bricks.append(brick)
 	_count.text = "nothing selected" if bricks.is_empty() else (
 		"1 part" if bricks.size() == 1 else "%d parts" % bricks.size())
+	if bricks.is_empty() != _idle:
+		_idle = bricks.is_empty()
+		_scroll.visible = _open and not _idle
+		idled.emit(_idle)
 	if not _open:
 		return
 	var state: String = _state_of(bricks)
@@ -306,18 +321,13 @@ func _state_of(bricks: Array[BrickWorld.Brick]) -> String:
 	return "|".join(parts)
 
 
-## Nothing selected: the header alone, saying so, so the panel covers no
-## more of the model than it must. How to select is the Select tool's hint.
+## Nothing selected: the header alone, saying so (is_idle), and its room
+## the parts grid's. How to select is the Select tool's hint.
 func _show_nothing() -> void:
 	_title.text = ""
 	_ids.text = ""
 	for control: Control in [_title, _ids, _colour_row, _place, _facts, _actions]:
 		control.visible = false
-	# Docked, it has its room whether or not anything is selected: what it
-	# will show, rather than nothing.
-	_facts.text = ("Click a part to see what it is, its colour by every name it has, "
-		+ "where it stands and what it is joined to. Type a number here to move it exactly.")
-	_facts.visible = true
 
 
 func _show_one(brick: BrickWorld.Brick) -> void:
