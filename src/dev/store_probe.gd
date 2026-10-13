@@ -154,6 +154,40 @@ func _initialize() -> void:
 	print("grouped: %s; booklet parts %s then %s" % [str(by_group),
 		steps[0].section, steps[-1].section])
 
+	# The Open list counts a model as the app does once it is open: a
+	# sub-model's reference is not a brick, and each copy of one is its
+	# parts. It said "My House — 14 bricks" of a house the app called 13.
+	var listed: String = "user://store_probe_count.ldr"
+	var file: FileAccess = FileAccess.open(listed, FileAccess.WRITE)
+	file.store_string(store.to_text("Grouped"))
+	file.close()
+	_expect(ModelStore._count_bricks(listed) == world.brick_count(),
+		"the Open list counts the grouped model as %d bricks, as the app does (%d)"
+		% [world.brick_count(), ModelStore._count_bricks(listed)])
+	var copies: String = "\n".join(PackedStringArray([
+		"0 FILE house.ldr", "0 House",
+		"1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 4 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 0 -48 0 1 0 0 0 1 0 0 0 1 wing.ldr",
+		"1 16 0 -96 0 1 0 0 0 1 0 0 0 1 wing.ldr",
+		"1 16 0 -120 0 1 0 0 0 1 0 0 0 1 bw-made.dat",
+		"0 FILE wing.ldr", "0 Wing",
+		"1 1 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"1 1 0 -8 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"1 1 0 -16 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"0 FILE bw-made.dat", "0 A made brick", "0 Name: bw-made.dat",
+		"0 !LDRAW_ORG Unofficial_Part",
+		"1 16 0 0 0 1 0 0 0 1 0 0 0 1 stud.dat",
+		"1 16 20 0 0 1 0 0 0 1 0 0 0 1 stud.dat", ""]))
+	file = FileAccess.open(listed, FileAccess.WRITE)
+	file.store_string(copies)
+	file.close()
+	var opens_as: int = LdrModel.parse(copies, "house.ldr").flatten().size()
+	_expect(ModelStore._count_bricks(listed) == 9 and opens_as == 9,
+		"two copies of a three-part wing, two bricks and a made part count as the 9 "
+		+ "they open as (%d listed, %d opened)" % [ModelStore._count_bricks(listed), opens_as])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(listed))
+
 	# A download is named after the model, and a design names the model:
 	# a title climbing out of the folder must land inside it.
 	var folder: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
