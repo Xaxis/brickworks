@@ -86,6 +86,30 @@ var embedded_parts: Dictionary = {}
 ## The pictures of a print drawn in the app, which its part's TEXMAP lines
 ## name. Lowercase file name -> the bytes.
 var embedded_data: Dictionary = {}
+## Whether the document divides its build into steps at all: it has a
+## "0 STEP" (or "0 ROTSTEP") line somewhere.
+var stepped: bool = false
+## Whether it says its steps are its author's, written by Brickworks:
+## see [method steps_are_authored].
+var marked_authored: bool = false
+## What [method flatten] found: the step each copy of a sub-model is
+## placed in, within the sub-model that places it, by its unit path
+## (Placement.unit) — "House#1/Window#3" -> 2.
+var unit_steps: Dictionary = {}
+
+## The line Brickworks writes into a model whose steps are somebody's own,
+## so they are kept when it is opened again. Other LDraw readers skip a
+## "0 !" meta command they do not know.
+const AUTHORED_META := "0 !BRICKWORKS AUTHORED_STEPS"
+
+
+## Whether the steps in the file are an author's, to keep: there are steps,
+## and they are not ones Brickworks worked out and wrote itself. Every file
+## it saved wrote its worked-out order as 0 STEP lines, so other tools see
+## a build, and those are no one's steps: kept, a model saved yesterday
+## would have a new tower's hundred parts in its last step tomorrow.
+func steps_are_authored() -> bool:
+	return stepped and (marked_authored or author.strip_edges() != "Brickworks")
 
 
 static func load_file(path: String) -> LdrModel:
@@ -174,9 +198,15 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 					model.main = current
 					model.submodels.erase(_key(source_name))
 					first_file = false
-			elif keyword == "STEP":
+			elif keyword == "STEP" or keyword == "ROTSTEP":
+				# A ROTSTEP ends a step as a STEP does, turning the view
+				# for the next (MLCad, LPub).
 				step += 1
 				current.step_count = step + 1
+				model.stepped = true
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == AUTHORED_META.get_slice(" ", 2):
+				model.marked_authored = true
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
 			elif (current.title.is_empty() and current.placements.is_empty()
@@ -371,6 +401,7 @@ static func from_transform(at: Transform3D) -> PackedFloat64Array:
 func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
 	_names = _assembly_names()
+	unit_steps.clear()
 	if main != null:
 		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
 			{})
@@ -442,6 +473,7 @@ func _inline(
 			copies[kind] = int(copies.get(kind, 0)) + 1
 			var copy: String = "%s#%d" % [kind, int(copies[kind])]
 			inside = copy if unit.is_empty() else "%s/%s" % [unit, copy]
+			unit_steps[inside] = placement.step
 			_inline(
 				nested,
 				at * placement.transform,
@@ -549,9 +581,12 @@ static func write_ldr(
 ## a mirrored copy by a matrix that reflects, as LDraw allows. Parts
 ## directly in an assembly are in its section; assemblies inside it are
 ## references there. A part's place is its unit (Placement.unit).
+## [param unit_steps] is each path's step in the section that places it,
+## path -> step (see BrickWorld.unit_steps); without it, every reference
+## goes in its section's first step.
 static func write_tree(
 	placements: Array, title: String, author_name: String,
-	instances: Dictionary, embedded: Dictionary = {}
+	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {}
 ) -> String:
 	var ordered: Array = instances.keys()
 	ordered.sort_custom(func(a: String, b: String) -> bool:
@@ -588,9 +623,15 @@ static func write_tree(
 			out.append("1 16 %s %s" % [_line_numbers(inverse * (entry["frame"] as Transform3D)),
 				str(file_of[str(entry["def"])])])
 		return out
+	var ref_steps := func(parent: String) -> Array:
+		if unit_steps.is_empty():
+			return []
+		return children.get(parent, []).map(func(child: String) -> int:
+			return int(unit_steps.get(child, 0)))
 	var loose: Array = placements.filter(func(p: Placement) -> bool: return p.unit.is_empty())
 	var text: String = "0 FILE " + main_file + "\n" \
-		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY)) \
+		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY), "",
+			ref_steps.call("")) \
 		+ "0 NOFILE\n"
 	for def: String in defs:
 		var master: String = masters[def]
@@ -603,7 +644,8 @@ static func write_tree(
 				local.unit = p.unit
 				return local)
 		text += "0 FILE " + str(file_of[def]) + "\n" \
-			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def])) \
+			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def]),
+				ref_steps.call(master)) \
 			+ "0 NOFILE\n"
 	var names: Array = embedded.keys()
 	names.sort()
@@ -622,8 +664,14 @@ static func write_tree(
 	return text
 
 
+## One file section: its header, then its references to sub-models and its
+## parts, step by step, a "0 STEP" between steps. [param ref_steps] gives
+## each reference the step it goes on in, as [param placements] carry
+## theirs; without them every reference goes first, in the first step. A
+## reference was always written first, so a window an author put on in
+## step 9 came back put on in step 1.
 static func _write_one(placements: Array, title: String, author_name: String,
-		refs: Array[String], file_name: String = "") -> String:
+		refs: Array[String], file_name: String = "", ref_steps: Array = []) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
 	lines.append("0 Name: " + (file_name if not file_name.is_empty()
@@ -631,22 +679,37 @@ static func _write_one(placements: Array, title: String, author_name: String,
 	if not author_name.is_empty():
 		lines.append("0 Author: " + author_name)
 	lines.append("")
-	lines.append_array(PackedStringArray(refs))
 
-	var step: int = -1
-	for item: Variant in placements:
-		var placement: Placement = item
-		if placement.step != step:
-			if step >= 0:
-				lines.append("0 STEP")
-			step = placement.step
+	# [step, 0 for a reference or 1 for a part, its place, its line]: in a
+	# step, the sub-models it puts on before its own parts.
+	var first: int = (placements[0] as Placement).step if not placements.is_empty() else 0
+	var items: Array = []
+	for n: int in refs.size():
+		var at: int = int(ref_steps[n]) if n < ref_steps.size() else first
+		items.append([at, 0, n, refs[n]])
+	for n: int in placements.size():
+		var placement: Placement = placements[n]
 		# A direct colour goes back out in the form it came in, or it
 		# reads as an enormous palette index that nothing has.
 		var colour: String = ("0x%07X" % placement.color_code
 			if is_direct_colour(placement.color_code)
 			else str(placement.color_code))
-		lines.append("1 %s %s %s.dat" % [
-			colour, _line_numbers(placement.transform), placement.part_id])
+		items.append([placement.step, 1, n, "1 %s %s %s.dat" % [
+			colour, _line_numbers(placement.transform), placement.part_id]])
+	items.sort_custom(func(a: Array, b: Array) -> bool:
+		for k: int in 3:
+			if int(a[k]) != int(b[k]):
+				return int(a[k]) < int(b[k])
+		return false)
+
+	var started: bool = false
+	var step: int = 0
+	for item: Array in items:
+		if started and int(item[0]) != step:
+			lines.append("0 STEP")
+		step = int(item[0])
+		started = true
+		lines.append(str(item[3]))
 
 	lines.append("0")
 	return "\n".join(lines) + "\n"

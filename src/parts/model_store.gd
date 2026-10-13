@@ -360,10 +360,15 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 		push_warning("could not build a part the file carries: " + problem)
 
 	var flattened: Array = model.flatten(library.parts)
+	# The author's steps go on to every part; steps Brickworks worked out
+	# and wrote are no one's, and are worked out again (LdrModel).
+	var authored: bool = model.steps_are_authored()
 	# A mirrored copy's parts: each put where its reflection is, in its
 	# other hand where it has one.
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
+		if not authored:
+			placement.step = -1
 		placement.part_id = studio_part(placement.part_id)
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
@@ -406,6 +411,9 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	scenery.clear()
 	awaited.clear()
 
+	# Each sub-model copy's step in the one that places it, by its path.
+	if authored:
+		world.unit_steps = model.unit_steps.duplicate()
 	# Stood on the ground before anything is placed, from every part in it.
 	var up: Vector3 = lift_for(known)
 	var placed: int = 0
@@ -422,6 +430,7 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 			continue
 		world.get_brick(brick_id).group = placement.group
 		world.get_brick(brick_id).unit = placement.unit
+		world.get_brick(brick_id).step = placement.step
 		builder.register(brick_id, placement.part_id, placement.transform)
 		placed += 1
 	_awaited_in = world.generation()
@@ -500,6 +509,7 @@ func place_awaited(part_id: String) -> int:
 		if brick_id != 0:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
+			world.get_brick(brick_id).step = placement.step
 			builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	awaited = still
@@ -552,15 +562,22 @@ var whole: bool = true
 ## two thousand — it compares every brick with every other — and the
 ## autosave fires a second after each change. A saved or exported file
 ## is worth that wait; a keystroke is not.
+##
+## A model with the author's steps (AuthorSteps) always writes them, the
+## autosave too, since they are the model's and cost nothing to write;
+## and says so in the file, so they are kept when it is opened again.
 func to_text(title: String = "Model", with_steps: bool = false) -> String:
-	## brick id -> which step it belongs to.
+	## brick id -> which step it belongs to, and each sub-assembly copy's
+	## path -> the step it goes on in.
 	var step_of: Dictionary = {}
-	if with_steps and world.library != null:
-		var steps: Array[Instructions.Step] = Instructions.plan(
-			world, world.library, scenery)
-		for index: int in steps.size():
-			for brick_id: int in steps[index].brick_ids:
-				step_of[brick_id] = index
+	var unit_steps: Dictionary = {}
+	var authored: bool = AuthorSteps.any(world, scenery)
+	if authored or (with_steps and world.library != null):
+		var numbers: Dictionary = AuthorSteps.numbers_for_file(world, world.library,
+			scenery, with_steps) if authored \
+			else AuthorSteps.numbers_from_plan(world, world.library, scenery)
+		step_of = numbers["bricks"]
+		unit_steps = numbers["units"]
 
 	var placements: Array = []
 	for item: Variant in world.bricks():
@@ -610,9 +627,20 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 	tree.library = library
 	tree.scenery = scenery
 	var instances: Dictionary = tree.file_frames(figure_frames())
-	if not instances.is_empty():
-		return LdrModel.write_tree(placements, title, "Brickworks", instances, embedded)
-	return LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
+	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
+		unit_steps) if not instances.is_empty() \
+		else LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
+	return with_authored_steps(text) if authored else text
+
+
+## [param text] saying its steps are its author's, under the model's own
+## header (after its Author line), where LdrModel looks for it.
+static func with_authored_steps(text: String) -> String:
+	var at: int = text.find("\n0 Author: ")
+	var cut: int = text.find("\n", at + 1) if at >= 0 else text.find("\n")
+	if cut < 0:
+		return text + "\n" + LdrModel.AUTHORED_META + "\n"
+	return text.substr(0, cut + 1) + LdrModel.AUTHORED_META + "\n" + text.substr(cut + 1)
 
 
 ## Each minifigure in the model, by its group, and the frame it stands

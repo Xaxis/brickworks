@@ -85,6 +85,7 @@ static func gather(world: BrickWorld, from: PartLibrary,
 			"at": Transform3D(brick.transform.basis, brick.transform.origin - pivot),
 			"group": brick.group,
 			"unit": brick.unit,
+			"step": brick.step,
 			"pivot": pivot,
 		})
 	return out
@@ -335,6 +336,7 @@ func placements(builder: Builder) -> Array:
 		out.append({
 			"part": item["part"], "color": item["color"],
 			"group": item.get("group", ""),
+			"step": item.get("step", -1),
 			"at": _frame * (item["at"] as Transform3D),
 			"boxes": BrickLattice.moved_by(covers[0][n], shift),
 		})

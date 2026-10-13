@@ -547,7 +547,7 @@ func content(path: String) -> Array:
 	for brick: BrickWorld.Brick in bricks_under(path):
 		out.append({"part": brick.part_id, "color": brick.color_code,
 			"at": brick.transform, "rest": path_of(brick).substr(path.length()).trim_prefix("/"),
-			"id": brick.id})
+			"id": brick.id, "step": brick.step})
 	return out
 
 
@@ -562,7 +562,7 @@ func realize(from: String, to: String, at: Transform3D, mirrored: bool) -> Array
 		adds.append({"part": placed["part"], "color": item["color"],
 			"at": Builder._tidy(at * (placed["at"] as Transform3D),
 				BrickLattice.is_square_to_grid((at * (placed["at"] as Transform3D)).basis)),
-			"path": to if rest.is_empty() else to + "/" + rest})
+			"path": to if rest.is_empty() else to + "/" + rest, "step": item["step"]})
 	return builder.swap_bricks(ids_under(to), adds)
 
 

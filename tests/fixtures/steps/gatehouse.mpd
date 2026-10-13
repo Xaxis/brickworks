@@ -1,0 +1,45 @@
+0 FILE gatehouse.ldr
+0 Gatehouse
+0 Name: gatehouse.ldr
+0 Author: A. Builder
+0 !LDRAW_ORG Unofficial_Model
+0 // Made by hand for the probes of the author's steps (io_probe, booklet_probe,
+0 // handbuild_probe), in the shape LDCad and LeoCAD write. Five steps of the
+0 // model's own: the base, built in two steps of its own, put down; a yellow
+0 // brick; a blue one, the step ended by a ROTSTEP; a window, built in three
+0 // steps of its own, put on twice with a white brick; a green plate.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 base.ldr
+0 STEP
+1 14 -20 -72 20 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 1 -30 -72 50 1 0 0 0 1 0 0 0 1 3005.dat
+0 ROTSTEP 0 45 0 ABS
+1 16 30 -48 0 1 0 0 0 1 0 0 0 1 window.ldr
+1 16 30 -48 40 1 0 0 0 1 0 0 0 1 window.ldr
+1 15 -20 -96 10 1 0 0 0 1 0 0 0 1 3004.dat
+0 STEP
+1 2 -20 -104 20 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+0 NOFILE
+0 FILE base.ldr
+0 Base
+0 Name: base.ldr
+0 Author: A. Builder
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 0 -24 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 0 -48 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 NOFILE
+0 FILE window.ldr
+0 Window
+0 Name: window.ldr
+0 Author: A. Builder
+1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 STEP
+1 71 0 -48 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 STEP
+1 47 0 -56 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 STEP
+0 NOFILE

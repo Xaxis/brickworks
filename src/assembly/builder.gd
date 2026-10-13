@@ -92,6 +92,16 @@ func _ready() -> void:
 	add_child(carrying)
 
 
+## The build step a part put down by hand goes in: the step the timeline is
+## showing, while it shows the author's steps (StepsBar, which sets this),
+## given the place in the tree the part went to. -1 is none: worked out.
+var place_step: Callable = Callable()
+
+
+func _new_step(brick: BrickWorld.Brick) -> int:
+	return int(place_step.call(Assemblies.path_of(brick))) if place_step.is_valid() else -1
+
+
 ## Register a brick that was placed by something other than the mouse —
 ## loading a model, or the design assistant — so the lattice agrees.
 func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
@@ -115,6 +125,7 @@ func place() -> int:
 		return 0
 	# Into the sub-assembly being edited, when one is.
 	set_path(world.get_brick(brick_id), place_group)
+	world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
 
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
 	lattice.occupy_boxes(brick_id, boxes_for(part, _ghost_transform))
@@ -138,7 +149,7 @@ func remove_hovered() -> bool:
 		"part": brick.part_id,
 		"color": brick.color_code,
 		"transform": brick.transform,
-		"group": brick.group, "unit": brick.unit, "was": brick.id,
+		"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
 	})
 	_redo.clear()
 
@@ -210,7 +221,7 @@ func lift_hovered() -> bool:
 		"part": brick.part_id,
 		"color": brick.color_code,
 		"transform": brick.transform,
-		"group": brick.group, "unit": brick.unit, "was": brick.id,
+		"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
 	})
 	_redo.clear()
 
@@ -351,6 +362,25 @@ func _apply(step: Dictionary) -> Dictionary:
 		named.unit = str(step.get("unit", named.unit))
 		return {"undo": "regroup", "brick": named.id, "group": before, "unit": before_unit}
 
+	# A part put in another build step, and a sub-assembly's copy (see
+	# AuthorSteps): each its own reverse, the step it had kept.
+	if step.get("undo", "") == "restep":
+		var stepped: BrickWorld.Brick = world.get_brick(_live(int(step["brick"])))
+		if stepped == null:
+			return step
+		var had: int = stepped.step
+		stepped.step = int(step["step"])
+		return {"undo": "restep", "brick": stepped.id, "step": had}
+
+	if step.get("undo", "") == "unitstep":
+		var unit: String = str(step["unit"])
+		var held: int = int(world.unit_steps.get(unit, -1))
+		if int(step["step"]) < 0:
+			world.unit_steps.erase(unit)
+		else:
+			world.unit_steps[unit] = int(step["step"])
+		return {"undo": "unitstep", "unit": unit, "step": held}
+
 	if step.get("undo", "") == "recolor":
 		# Its own reverse: put the old colour back and remember the one
 		# that was there, so redo works without a second kind of entry.
@@ -372,7 +402,7 @@ func _apply(step: Dictionary) -> Dictionary:
 			"part": brick.part_id,
 			"color": brick.color_code,
 			"transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "was": brick.id,
+			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
 		}
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -384,6 +414,7 @@ func _apply(step: Dictionary) -> Dictionary:
 	if new_id != 0:
 		world.get_brick(new_id).group = str(step.get("group", ""))
 		world.get_brick(new_id).unit = str(step.get("unit", ""))
+		world.get_brick(new_id).step = int(step.get("step", -1))
 		lattice.occupy_boxes(new_id,
 			boxes_for(library.mesh_for(part_id), at))
 		# The brick that comes back is a new id. Steps further back that
@@ -565,7 +596,7 @@ func remove_selection() -> int:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "was": brick.id})
+			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)
@@ -834,10 +865,13 @@ func replace_selection(part_id: String) -> Vector2i:
 			refused += 1
 			continue
 		world.get_brick(made).group = brick.group
+		world.get_brick(made).unit = brick.unit
+		world.get_brick(made).step = brick.step
 		lattice.occupy_boxes(made, packed)
 		steps.append({"undo": "remove", "brick": made})
 		steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
-			"transform": brick.transform, "group": brick.group, "unit": brick.unit, "was": brick.id})
+			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+			"step": brick.step, "was": brick.id})
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)
 		swapped.append(made)
@@ -896,7 +930,8 @@ func mirror_selection(axis: int) -> int:
 	for item: Dictionary in plan:
 		var brick: BrickWorld.Brick = item["brick"]
 		steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
-			"transform": brick.transform, "group": brick.group, "unit": brick.unit, "was": brick.id})
+			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+			"step": brick.step, "was": brick.id})
 		world.remove_brick(brick.id)
 		removed.emit(brick.id)
 	for item: Dictionary in plan:
@@ -906,6 +941,7 @@ func mirror_selection(axis: int) -> int:
 			continue
 		world.get_brick(new_id).group = brick.group
 		world.get_brick(new_id).unit = brick.unit
+		world.get_brick(new_id).step = brick.step
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
@@ -1019,7 +1055,7 @@ func swap_bricks(remove_ids: PackedInt64Array, adds: Array) -> Array:
 			continue
 		taken.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
 			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
-			"was": brick.id})
+			"step": brick.step, "was": brick.id})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		selection.erase(brick_id)
@@ -1032,6 +1068,7 @@ func swap_bricks(remove_ids: PackedInt64Array, adds: Array) -> Array:
 		if new_id == 0:
 			continue
 		set_path(world.get_brick(new_id), str(item.get("path", "")))
+		world.get_brick(new_id).step = int(item.get("step", -1))
 		lattice.occupy_boxes(new_id, boxes_for(library.mesh_for(str(item["part"])), at))
 		put.append({"undo": "remove", "brick": new_id})
 	# Undone in order: the new ones off first, then the old ones back.
@@ -1085,7 +1122,8 @@ func remove_brick_id(brick_id: int) -> bool:
 	if brick == null or locked.has(brick_id):
 		return false
 	_history.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
-		"transform": brick.transform, "group": brick.group, "unit": brick.unit, "was": brick.id})
+		"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+		"step": brick.step, "was": brick.id})
 	_redo.clear()
 	lattice.release(brick_id)
 	world.remove_brick(brick_id)
@@ -1270,7 +1308,7 @@ func lift_selection() -> int:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "was": brick.id})
+			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
 		lattice.release(brick_id)
 		world.remove_brick(brick_id)
 		removed.emit(brick_id)
@@ -1331,6 +1369,10 @@ func _put_carried() -> int:
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
+		# Moved, a part keeps its build step; a copy goes in the step a
+		# placed part would.
+		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
+			else _new_step(world.get_brick(brick_id))
 		lattice.occupy_boxes(brick_id, item["boxes"])
 		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
@@ -2155,6 +2197,7 @@ func _place_figure() -> int:
 		return 0
 	var steps: Array = []
 	for brick_id: int in ids:
+		world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
 		steps.append({"undo": "remove", "brick": brick_id})
 	_history.append({"undo": "group", "steps": steps})
 	_redo.clear()
@@ -2183,7 +2226,7 @@ func _lift_figure(brick_id: int) -> bool:
 			"at": home.affine_inverse() * brick.transform})
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "was": brick.id})
+			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
 		lattice.release(brick.id)
 		world.remove_brick(brick.id)
 		unpicked = selection.erase(brick.id) or unpicked
