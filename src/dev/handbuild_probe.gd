@@ -775,6 +775,10 @@ func _text_fields_give_keys_back() -> void:
 		await process_frame
 	_check("Enter ends the typing (%s)" % field.text, not field.has_focus()
 		and field.text.contains("Renamed"))
+	# The click took the whole name: it was "UntitledRenamed", which the
+	# check above passed (brickworks.diy at dd5c10c, 2026-10-12).
+	_check("...and what was typed is the name, not added to the old one (%s)" % field.text,
+		field.text == "Renamed")
 	await _key(KEY_1)
 	_check("...and 1 looks from the front at once", is_zero_approx(_camera._target_yaw)
 		and is_zero_approx(_camera._target_pitch))
