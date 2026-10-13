@@ -256,6 +256,17 @@ func _pieces(assistant: Assistant) -> void:
 		% [verdict["summary"], ", ".join(PackedStringArray(verdict["items"]))],
 		bool(verdict["ok"]) and int(verdict["loose"]) == 0
 		and PackedStringArray(verdict["items"]).has("nameplate"), verdict["summary"])
+	# Named inside a bigger box named first, the bonnet's that runs on past
+	# the bumper: its own, the smaller. The held-out car was told twice its
+	# named nameplate was loose.
+	var nested: Array[Dictionary] = [{"name": "bonnet", "where": {"x_from": -1, "x_to": 8}},
+		{"name": "nameplate", "where": {"x_from": 5, "x_to": 7}}]
+	model.assemblies = nested
+	verdict = assistant._check(model, true)
+	_said("named in a box inside a bigger one named first, it is the smaller's: %s, %s"
+		% [verdict["summary"], ", ".join(PackedStringArray(verdict["items"]))],
+		bool(verdict["ok"]) and PackedStringArray(verdict["items"]).has("nameplate"),
+		verdict["summary"])
 	# Named in a box that holds the model too: still loose.
 	var all: Array[Dictionary] = [{"name": "everything", "where": {}}]
 	model.assemblies = all

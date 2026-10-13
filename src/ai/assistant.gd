@@ -1363,8 +1363,9 @@ func _keep_the_failure(report: Dictionary) -> void:
 ## between, and that was thrown away with the conversation. Kept on the
 ## bricks it goes into the file as sub-models and into the booklet as
 ## its parts — "the gatehouse" rather than "part 3". A brick belongs to
-## the first assembly whose box holds its corner, the way look_at_model
-## reads where=. A model that is one thing is left as one thing.
+## the smallest assembly whose box holds its corner (the box read the way
+## look_at_model reads where=), so a sign named on a roof is the sign's. A
+## model that is one thing is left as one thing.
 ##
 ## One assembly is tagged only where something stands outside it: a stand
 ## named in front of an otherwise unnamed model is an item of its own, in
@@ -1401,11 +1402,9 @@ func _tag_assemblies() -> void:
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info == null:
 			continue
-		var at: Vector3 = _to_studs(brick, info)
-		for one: Dictionary in named:
-			if _inside(at, one["where"]):
-				brick.group = str(one["name"])
-				break
+		var group: String = _assembly_at(_to_studs(brick, info), named)
+		if not group.is_empty():
+			brick.group = group
 
 
 ## Hand the design the next assembly to detail, or say it is finished.
@@ -9973,13 +9972,19 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		# Held by nothing is said already, part by part.
 		if not designed or adrift:
 			continue
-		var name: String = str(names.keys()[0]) if names.size() == 1 else ""
-		if not name.is_empty() and not main_names.has(name):
+		# Named when every part of it is in an assembly the model has no
+		# part in: a nameplate, or a nameplate with a figure standing on it
+		# (the held-out car's, two assemblies in one piece).
+		var own: bool = not names.has("")
+		for name: Variant in names:
+			own = own and not main_names.has(name)
+		if own:
 			# A packed array is a value: appended to through the
 			# dictionary, the name went into a copy.
 			var items: PackedStringArray = out["items"]
-			if not items.has(name):
-				items.append(name)
+			for name: Variant in names:
+				if not items.has(str(name)):
+					items.append(str(name))
 			out["items"] = items
 			out["named"] = int(out["named"]) + 1
 			continue
@@ -10013,10 +10018,30 @@ static func _assembly_of(model: Model, placement: Placement) -> String:
 	var section: Section = model.section_for(placement)
 	if section != null:
 		at = Vector3(section.x, section.y, section.z)
-	for one: Dictionary in model.assemblies:
-		if _inside(at, one.get("where", {})):
-			return str(one["name"])
-	return ""
+	return _assembly_at(at, model.assemblies)
+
+
+## The assembly a corner [param at] is in: of the boxes that hold it, the
+## smallest. A nameplate named in front of a car whose bonnet's box runs on
+## past the bumper was in the bonnet, first named, and the held-out run was
+## told twice that the nameplate it had named was loose.
+static func _assembly_at(at: Vector3, assemblies: Array[Dictionary]) -> String:
+	var best: String = ""
+	var least: float = INF
+	for one: Dictionary in assemblies:
+		var where: Dictionary = one.get("where", {})
+		if not _inside(at, where):
+			continue
+		var size: float = 1.0
+		for side: Array in [["x_from", "x_to"], ["y_from", "y_to"], ["z_from", "z_to"]]:
+			if where.has(side[0]) and where.has(side[1]):
+				size *= maxf(0.1, float(where[side[1]]) - float(where[side[0]]))
+			else:
+				size *= 10000.0
+		if size < least:
+			least = size
+			best = str(one["name"])
+	return best
 
 
 ## Where a loose piece is and what it is made of, for the check to say.

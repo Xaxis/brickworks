@@ -736,9 +736,10 @@ fixing what it got wrong.
   piece that stands apart from the model — touching nothing of it within half
   a stud and a plate (`_touching`, `NEAR`), its plan outside the plan of the
   rest (`_outside`), fewer than a tenth of the model's parts (`SCENE`) — is a
-  fault, `loose`, unless it is named: every part of it in one assembly that
-  holds none of the model (a design's `assemblies` box, `_assembly_of`, or a
-  file's sub-model: `Placement.group`), or a whole figure. Pieces against the
+  fault, `loose`, unless it is named: every part of it in assemblies that
+  hold none of the model (a design's `assemblies` box, the smallest that holds
+  the part's corner, `_assembly_at`; or a file's sub-model: `Placement.group`),
+  or a whole figure. Pieces against the
   model unjoined (a seam, one layer, a prism's faces), pieces of a size with
   the model (a scene), pieces of the person's own and pieces held by nothing
   (said as floating) are said as before. `edit_model` takes `assemblies` to
@@ -749,9 +750,16 @@ fixing what it got wrong.
   and the person sees it as an item. `edit_probe` ("a design in two halves"):
   unnamed, refused as loose; named in a box of its own, an item; named in a
   box that holds the model too, still loose; a file's sub-model names it; the
-  person's own piece is left alone. `candidate_probe` on `car_r1.ldr` fails it
-  (loose 1); the same file with the plaque in a sub-model passes ("apart as
-  named: Nameplate").
+  person's own piece is left alone; a box inside a bigger one named first is
+  the smaller's. `candidate_probe` on `car_r1.ldr` fails it (loose 1); the
+  same file with the plaque in a sub-model passes ("apart as named:
+  Nameplate"). Found again by the held-out rerun (`car_r2`): it named its
+  nameplate and was told twice it was loose, because the bonnet's box, named
+  first, ran on past the bumper and the first box holding a corner won; and
+  the driver it stood on the nameplate made the piece two assemblies. The
+  smallest box now wins, here and in tagging, and a piece in several
+  assemblies none of the model's is named; the saved file passes
+  `candidate_probe` ("apart as named: nameplate, racing driver").
 - `standing up, for the landing page`: `src/dev/candidate_probe.gd -- MODEL.ldr
   [ON_THE_PAGE.ldr]`. A candidate opens whole, is buildable in one piece (or
   with items named to stand apart, judged as a design),

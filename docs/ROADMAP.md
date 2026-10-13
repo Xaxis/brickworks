@@ -1543,6 +1543,46 @@ curved slope held by nothing). *Side studs in runs.* A shell's side studs are
 1 x 4s and 1 x 2s with studs on a side wherever lanes run in one colour, split
 the same from either end so a mirrored side stays one.
 
+Held-out again on these changes, on the subscription (`env -u
+ANTHROPIC_API_KEY`, under `heavy`), measured by `tools/style.py` (`other` for
+the owl, `vehicle` for the car):
+
+| run | parts | shapes | colours | sideways | curved | plain | mirrored | side-stud bricks | curved slopes turned out | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| barn owl (`owl_r2`) | 1,036 | 56 | 11 | 20% | 10% | 69% | 87% | 82 (24 1 x 1) | 41 | 7, none apart |
+| *last round (`owl_r1`)* | *1,313* | *49* | *11* | *19%* | *5.3%* | *64%* | *88%* | *176 (all 1 x 1)* | *0* | |
+| sports car (`car_r2`) | 174 | 36 | 7 | 9.2% | 14% | 47% | 92% | 10 (all 1 x 1; built by hand) | 0 | 2: car, and the nameplate with its driver, named |
+| *last round (`car_r1`)* | *544* | *46* | *6* | *16%* | *4.6%* | *53%* | *90%* | *100 (88 1 x 1)* | *0* | *2: the nameplate, loose* |
+
+By eye (`shots/runs/owl_r2_{corner,front}.png`): the **owl**'s wings are
+dark tan shells whose flanks round off in curved slopes where `owl_r1`'s
+stepped in cheese wedges and tiles, the breast is a smooth white front, and
+the body sits on a post on a stand with a plaque on its base; the run named
+its body, head and stand as assemblies and they went into the file as
+sub-models. Its head is still a stack of thin round plates with studs on
+every ring: rings a plate or two tall are not eased (the round above must
+be three plates for the core to stand in). It is 7 pieces that touch and are
+not joined (said, not refused; not a landing-page candidate).
+The **car** this time chose minifigure scale, 8 studs wide, and said its
+body as a loft 3.5 plates tall over its arches; the shells turned its flanks
+out and kept only 5 of their parts (a thin side has too little a side stud
+can hold), the body came back 45 parts in five pieces where upright it is 74
+in fifteen, and the run, judging the picture "eroded into a narrow strip",
+built the car by hand, Speed Champions fashion: a red coupe with white
+stripes, mudguard arches, a trans-black screen, a wing and lights
+(`shots/runs/car_r2_{corner,front}.png`). The same loft laid by the code
+before this round erodes the same way (51 parts), so it is not new. It then
+added a nameplate in front with a driver holding a trophy on it, named both,
+and was refused twice — the bug above, fixed after the run; its saved file
+passes as a model and two named items, and is a landing-page candidate.
+
+Left: shells on a thin body drop the flank they take out of the core (the
+car's loft); easing thin rings (a dome of single round plates, the owl's
+head); the owl's 7 unjoined pieces; a dome step wider than a stud; curved
+slopes on a hull's straight-falling side; and an 11477 on its side is held
+only where a stud reaches its solid end, which the shell's plan cannot
+tell (the fuselage's canopy edge).
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
