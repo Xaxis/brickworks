@@ -102,7 +102,7 @@ async function run(scale) {
     }
     return null;
   }
-  const view = await where("view");
+  let view = await where("view");
   await page.mouse.move(view.x, view.y);
   await page.mouse.click(view.x, view.y); // ends the animation if it is still going
   await page.keyboard.press("Escape");
@@ -283,10 +283,13 @@ async function run(scale) {
     return false;
   }
   const spot = (dx, dy) => ({ x: view.x + dx, y: view.y + dy });
-  let part = null;
-  for (const at of [spot(0, 0), spot(0, 30), spot(-40, 20), spot(40, 20), spot(0, -30), spot(-80, 40), spot(80, 40)]) {
-    if (await overPart(at)) { part = at; break; }
+  async function findPart() {
+    for (const at of [spot(0, 0), spot(0, 30), spot(-40, 20), spot(40, 20), spot(0, -30), spot(-80, 40), spot(80, 40)]) {
+      if (await overPart(at)) return at;
+    }
+    return null;
   }
+  let part = await findPart();
   let nothing = null;
   for (const at of [spot(-300, 230), spot(300, 230), spot(-320, -60), spot(320, -60), spot(0, 300), spot(0, -260)]) {
     if (!(await overPart(at))) { nothing = at; break; }
@@ -421,6 +424,12 @@ async function run(scale) {
   await page.keyboard.press("Escape");
 
   console.log("  a part dragged");
+  // Q brought the parts bin out, which in a window with room for one column
+  // folds the assistant's: the model's part of the page moved, and the view
+  // is centred on it (CadCamera.seen), so the model is drawn somewhere else
+  // now. Found again where it is.
+  view = (await where("view")) || view;
+  part = (await findPart()) || part;
   await moveTo(part);
   await expect("select_before_drag", "Select, over a part", "select", part);
   const bricks = (await state()).bricks;
