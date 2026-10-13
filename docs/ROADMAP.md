@@ -1779,6 +1779,57 @@ on the shell's side studs, with eyes and a beak on it — so the eyes can be
 a car's shaped body that reads better than a hand-built one (its flanks are
 plates on side studs, its nose plain), or the run will go on building by
 hand; the rest of the last round's list.
+## Real sets' own pieces, found by what they are (2026-10-12)
+
+Asked for "an intelligent builder that knows how to use these advanced
+building structures like an expert human", the assistant had seventy-odd
+worked constructions chosen by hand. An expert asked for an owl's eye does
+not reach for the nearest of seventy: they remember how a set built one.
+LDraw's model repository has the sets part by part, and its modellers
+split them into named sub-models — Eye L, Beak, Bonnet, Grille, Wing,
+Tower Roof.
+
+**The corpus.** `tools/omr.py fetch --themes all --min-parts 30` takes
+every theme but the unsculpted ones (Duplo, Fabuland, Znap, mosaics, bins
+of loose bricks, robotics), one request a second, nothing twice: **1,266
+sets in 1,576 model files** (252 sets before), 526,000 parts by their
+inventories, 768,000 placed in the files. 59 files are free for
+non-commercial use only and are left out of everything built from them.
+
+**The index**, `tools/snippets.py build` -> `assets/knowledge/snippets.json.gz`
+(2.3 MB, shipped in every export): **9,555 named sub-models of 2-60
+building parts and 3,412 clusters of craft** (three a model, round
+brackets, hinges and slopes, `omr.found_clusters`), from 1,185 sets by 76
+modellers, every one credited, CC BY 2.0 and 4.0 only. Each with its size
+in studs, its parts and colours, its kinds by `tools/style.py`, and the
+LDraw to lay it as built; 10,699 are square to the grid and can be laid
+by `place_technique`, the rest are shown to copy. Search is lexical, BM25
+over the name, what it sits in, a description, synonyms and kinds, and
+the set; the subject's own sets first, then sets about its kind. No
+vector database: whether embeddings would earn a place is what the recall
+below is for. The app reads the index in 2.6 s the first time a design
+asks (desktop).
+
+**The tools.** `find_techniques(query, max_studs?, kinds?)` answers with
+the best five, credited, with a picture of them side by side;
+`place_technique(id, x, y, z, turn?, recolor?)` lays one through
+`edit_model`, so the joints checker refuses it like any edit;
+`find_parts_like(query)` finds parts by what they read as. All three
+reach the in-app loop, My Claude and MCP. The rules' step 5: before
+inventing a feature, look at how real sets built it.
+
+**What placing showed.** On a plate, an eye (4349 Wild Pod), a car nose
+(Fire Rescue's), a wing (31049) and a turret roof (10214) lay whole and
+joined. Many real pieces do not stand alone, so every square one was laid
+alone and checked (`src/dev/snippet_verdicts.gd`, 12 ms each): **4,487 of
+10,699 lay whole as they stand**; 2,770 have a part that floats (held by
+something outside the sub-model when it is cut out), 2,387 float and
+overlap, 650 only overlap — some real, some the checker's known false
+positives (a curved slope seated on the stud of a part below, clips on
+bars), which refuse 31031's parrot beak. The verdict is in the index:
+search counts a piece that lays 1.25 times, and `find_techniques` says
+of each whether it lays or why not.
+
 
 ## Long term: custom elements
 

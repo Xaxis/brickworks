@@ -1188,6 +1188,13 @@
       "entry": "tools/bench/run.py",
       "reach": "python3 tools/bench/run.py run --dry-run --subjects bonsai   (the real batch: run, then summary --append docs/DESIGN_SCORES.md)",
       "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "real sets' pieces by what they are",
+      "entry": "src/ai/real_snippets.gd",
+      "reach": "godot --headless --path . --script src/dev/snippets_probe.gd",
+      "area": "assistant"
     }
   ]
 }

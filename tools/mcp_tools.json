@@ -579,6 +579,105 @@
     "name": "show_technique"
   },
   {
+    "description": "How real LEGO sets built a feature, found by what it is: the sub-assemblies of thousands of real sets (an owl's eye, a car's nose, a dragon's wing, a turret roof, a grille, a beak, a tree), each with a picture, its parts and colours, its size in studs, the set and modeller it is from, and an id for place_technique. Ask before inventing any feature of a face, a creature or a machine: a real designer's answer is better than a first guess. Name the subject too \u2014 \"owl eye\", \"car nose\" \u2014 and pieces from sets about it come first.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "kinds": {
+          "description": "only pieces built this way",
+          "items": {
+            "enum": [
+              "sideways",
+              "angled",
+              "curved",
+              "sloped",
+              "brackets",
+              "hinged",
+              "textured",
+              "smooth",
+              "organic"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_studs": {
+          "description": "the most studs wide or deep it may be; leave out for any size",
+          "type": "number"
+        },
+        "query": {
+          "description": "the feature, and the subject it is on: \"owl eye\", \"sports car front\", \"castle turret roof\"",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "name": "find_techniques"
+  },
+  {
+    "description": "Parts by what they look like in a model, not by their catalogue name: \"feather\", \"claw\", \"exhaust\", \"eyelid\", \"scales\", \"leaf\". Each family of parts comes with what builders use it for and its commonest part numbers. search_parts finds a part you can name; this finds the one you can only describe.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "description": "what the part should read as",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "name": "find_parts_like"
+  },
+  {
+    "description": "Lay one of find_techniques' pieces into the model as LEGO built it: every part where the set has it, turned a number of quarter turns about the upright and moved so its low corner is at x, y, z, in your colours if you say which of its colours become which. Parts cannot be scaled; pick a piece of the right size. Checked like any edit: it is refused, with the reason, if it overlaps the model or does not hold on. The answer lists the bricks as placed.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the id find_techniques gave",
+          "type": "string"
+        },
+        "recolor": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "its colours to yours, by LDraw code: {\"15\": 4} makes its white parts red",
+          "type": "object"
+        },
+        "turn": {
+          "description": "quarter turns about the upright, 0-3",
+          "type": "integer"
+        },
+        "x": {
+          "description": "studs across, to its low corner",
+          "type": "number"
+        },
+        "y": {
+          "description": "plates up, to its low corner",
+          "type": "number"
+        },
+        "z": {
+          "description": "studs deep, to its low corner",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "y",
+        "z"
+      ],
+      "type": "object"
+    },
+    "name": "place_technique"
+  },
+  {
     "description": "How big the model should be, worked out before anything is placed. Give the real thing's longest dimension in metres and this answers with what it comes to in studs at each scale builders use, and which one is worth building at. Settle this first: everything after it depends on the proportions, and changing it later means moving the whole model.",
     "input_schema": {
       "additionalProperties": false,
@@ -673,21 +772,43 @@
     "name": "attachment_points"
   },
   {
-    "description": "A finishing pass over what is already built: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air are laid again, in place, as bricks with a stud on the side carrying a tile, round tile, round plate or cheese slope facing out (sideways), or as masonry bricks with their stonework out (masonry); one two studs wide (2x2 to 2x4) as two rows, the outer one finished so; the faces of a prism or a cluster too, in their own sections. What a builder does to a plain wall, and how real sets come to have a fifth of their parts on their side \u2014 done for you, in one call, checked like any edit.",
+    "description": "A finishing pass over what is already built, wall by wall: plain bricks one stud wide (1x1 to 1x4) whose long face is open to the air, and the outer row of two-wide ones, are laid again in place as one structure per wall \u2014 ribs (a column of round plates on bricks with a stud on the side, every few studs), bands (a course of grille), panels (grille between the ribs, framed by a plain stud at each end and a plain course at each ledge, as 10237 Orthanc textures its black), grid (ribs and bands) or courses (round bricks, a recessed line) \u2014 in the wall's own colour, never a part at a time. A dark wall gets panels unasked; a light wall not given a style gets a scatter of dressed bricks (sideways) and masonry. The faces of a prism or a cluster too, in their own sections, and a model opened from a file. Done for you, in one call, checked like any edit.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "face_color": {
-          "description": "an accent through a fifth of what is laid on the side studs; the rest is the brick's own colour, as a set dresses a black wall in black",
+          "description": "the second tone: on every fifth rib and on bands; the rest is the wall's own colour, as a set dresses a black wall in black",
           "type": "integer"
         },
         "masonry": {
-          "description": "share laid as masonry, 0 to 1; 0.25 if not said",
+          "description": "a light wall given no style: share laid as masonry, 0 to 1; 0.25 if not said",
           "type": "number"
         },
         "sideways": {
-          "description": "share of those bricks turned out and dressed, 0 to 0.5; 0.15 if not said",
+          "description": "a light wall given no style: share of its bricks turned out and dressed, 0 to 0.5; 0.15 if not said",
           "type": "number"
+        },
+        "style": {
+          "description": "how each wall is dressed, as one structure: panels on a dark wall if not said",
+          "enum": [
+            "ribs",
+            "bands",
+            "panels",
+            "grid",
+            "courses"
+          ],
+          "type": "string"
+        },
+        "texture": {
+          "description": "what panels and bands are laid in: grille (the default), masonry, logs (planking), round bricks (fluted) or headlight bricks",
+          "enum": [
+            "grille",
+            "masonry",
+            "log",
+            "round",
+            "headlight"
+          ],
+          "type": "string"
         },
         "where": {
           "additionalProperties": false,
@@ -883,6 +1004,46 @@
           },
           "type": "array"
         },
+        "assemblies": {
+          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model \u2014 a display stand, a sign, a nameplate in front of it \u2014 must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "what a person would call it, e.g. north-east tower",
+                "type": "string"
+              },
+              "x_from": {
+                "type": "number"
+              },
+              "x_to": {
+                "type": "number"
+              },
+              "y_from": {
+                "description": "may be left out, for all of its height",
+                "type": "number"
+              },
+              "y_to": {
+                "type": "number"
+              },
+              "z_from": {
+                "type": "number"
+              },
+              "z_to": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x_from",
+              "x_to",
+              "z_from",
+              "z_to"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
         "move": {
           "items": {
             "additionalProperties": false,
@@ -1047,46 +1208,6 @@
             "type": "object"
           },
           "type": "array"
-        },
-        "assemblies": {
-          "type": "array",
-          "items": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "description": "what a person would call it, e.g. north-east tower",
-                "type": "string"
-              },
-              "x_from": {
-                "type": "number"
-              },
-              "x_to": {
-                "type": "number"
-              },
-              "y_from": {
-                "description": "may be left out, for all of its height",
-                "type": "number"
-              },
-              "y_to": {
-                "type": "number"
-              },
-              "z_from": {
-                "type": "number"
-              },
-              "z_to": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "name",
-              "x_from",
-              "x_to",
-              "z_from",
-              "z_to"
-            ],
-            "type": "object"
-          },
-          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model \u2014 a display stand, a sign, a nameplate in front of it \u2014 must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails."
         }
       },
       "type": "object"
@@ -2052,6 +2173,232 @@
       "type": "object"
     },
     "name": "make_part"
+  },
+  {
+    "description": "Lay a picture as a LEGO Art set is laid \u2014 31212 The Milky Way, 31208 The Great Wave, 31213 Mona Lisa \u2014 on 16 x 16 panels joined underneath into one piece: square tiles merged where it is flat, 1 x 1 round tiles for texture, quarter circles along curved contours, stars in trans-clear, glow-in-the-dark, pearl and metallic set a plate proud, and the subject raised on stacked plates with cheese slopes. Use this, not submit_design, whenever LEGO Art, a mosaic, a picture in bricks or wall art is asked for. It replaces what is on the baseplate.\nThe picture is the one the person chose (look_at_picture shows it). With none, draw it yourself as svg: one stud is one pixel, so big simple shapes in flat colours, like a poster.\nYou decide what a LEGO Art designer decides, and the app reads everything you leave out off the picture: the panels and the crop; regions over the picture, each with its texture, its relief (the subject raised, the background flat), whether contours run in it and whether its points of light are stars and in what finish; single stars put exactly where you want them; a palette to keep to. Coordinates are fractions of the picture, 0 to 1 from its top left. Later regions lie over earlier ones and change only what they say, so start with the whole picture and work inward. A plan that cannot be laid is refused with every fault named.\nThe answer is the picture as laid, face on, and what it is made of. Look at it as a person would from across a room, and call make_art again with the plan changed if it does not read as the subject.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "base_colour": {
+          "description": "the panels' LDraw colour, which shows between round tiles: usually the darkest of the background",
+          "type": "integer"
+        },
+        "crop": {
+          "additionalProperties": false,
+          "properties": {
+            "h": {
+              "type": "number"
+            },
+            "w": {
+              "type": "number"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "depth": {
+          "description": "how high relief read off the picture rises where no region gives one; 0 keeps it flat there. Default 3.",
+          "maximum": 6,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "description": "the picture's title",
+          "type": "string"
+        },
+        "palette": {
+          "description": "LDraw colour codes to lay it in, as a set keeps to a dozen or so. Leave it out for all of them.",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "panels": {
+          "description": "[across, down], 1 to 6 each; a panel is 16 studs, 12.8 cm. down 0 keeps the picture's proportions. A large set is 4 to 6 across.",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "points": {
+          "description": "single stars put by hand (default 1 x 1 trans-clear). A sky like 31212's has dozens, of varied size and finish",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "description": "[x, y], fractions of the picture from its top left",
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              "finish": {
+                "description": "a star's finish: trans-clear, glow, pearl-white, pearl-grey, pearl-gold, metallic-gold, metallic-silver, trans-light-blue, trans-medium-blue, trans-dark-blue, trans-yellow, trans-orange, trans-red, trans-purple, or an LDraw colour code",
+                "type": "string"
+              },
+              "size": {
+                "description": "1 (default): a 1 x 1 round tile; 2: a 2 x 2 round tile, for the few brightest",
+                "enum": [
+                  1,
+                  2
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "at"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "colour": {
+                "description": "lay the whole region in this one LDraw colour, whatever the picture has there",
+                "type": "integer"
+              },
+              "contours": {
+                "description": "curved edges inside it laid in quarter-circle tiles (default true)",
+                "type": "boolean"
+              },
+              "ellipse": {
+                "additionalProperties": false,
+                "properties": {
+                  "angle": {
+                    "description": "degrees clockwise",
+                    "type": "number"
+                  },
+                  "cx": {
+                    "type": "number"
+                  },
+                  "cy": {
+                    "type": "number"
+                  },
+                  "rx": {
+                    "description": "half-width, a fraction of the picture's width",
+                    "type": "number"
+                  },
+                  "ry": {
+                    "description": "half-height, also a fraction of the WIDTH, so rx = ry is a circle",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cx",
+                  "cy",
+                  "rx",
+                  "ry"
+                ],
+                "type": "object"
+              },
+              "everything": {
+                "description": "the whole picture; put it first",
+                "type": "boolean"
+              },
+              "finish": {
+                "description": "a star's finish: trans-clear, glow, pearl-white, pearl-grey, pearl-gold, metallic-gold, metallic-silver, trans-light-blue, trans-medium-blue, trans-dark-blue, trans-yellow, trans-orange, trans-red, trans-purple, or an LDraw colour code",
+                "type": "string"
+              },
+              "name": {
+                "description": "what it is: sky, core, the crest",
+                "type": "string"
+              },
+              "polygon": {
+                "description": "three or more points",
+                "items": {
+                  "description": "[x, y], fractions of the picture from its top left",
+                  "items": {
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              "rect": {
+                "additionalProperties": false,
+                "properties": {
+                  "h": {
+                    "type": "number"
+                  },
+                  "w": {
+                    "type": "number"
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "w",
+                  "h"
+                ],
+                "type": "object"
+              },
+              "relief": {
+                "description": "plates it stands above the panel. The background 0; the subject raised in terraces, an outer region 1 and an inner 2 or 3; cheese slopes are laid on the way up",
+                "maximum": 6,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "stars": {
+                "description": "whether points of light the picture has here become stars in a finish (default true). False on a subject whose highlights are not stars",
+                "type": "boolean"
+              },
+              "texture": {
+                "description": "round: 1 x 1 round tiles, the theme's texture, for what is busy or soft (a star field, foam, cloud, hair, fur); smooth: square tiles merged into long ones, for flat colour (sky, a wall, a plain ground); picture: round where the picture is busy and smooth where it is flat",
+                "enum": [
+                  "picture",
+                  "round",
+                  "smooth"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "svg": {
+          "description": "the picture, drawn, when the person has not chosen one: a whole <svg> with a viewBox in the panels' proportions (0 0 96 48 for 6 x 3 panels, a unit a stud) and a rect filling it as the background. Leave it out to use their picture.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "make_art"
+  },
+  {
+    "description": "The picture the person chose to make into LEGO Art, as they gave it, with its size in pixels. Look at it before writing a make_art plan from it. When there is none it says so: draw one in make_art's svg.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "look_at_picture"
   },
   {
     "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO sets of its size and kind \u2014 shapes, colours, the one-off pieces, how coarse \u2014 and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of. Call it after submit_design, then once per assembly, detailing each with edit_model before the next.",

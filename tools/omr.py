@@ -95,17 +95,29 @@ def _index() -> list[dict]:
     return rows
 
 
+# Themes with nothing to learn about sculpting from: big moulded pieces
+# (Duplo, Fabuland, Znap), flat mosaics (Art, DOTS), bins of loose bricks
+# (Universal Building Set) and the robotics kits. `--themes all` is every
+# other theme.
+UNSCULPTED = {"Duplo", "Znap", "DOTS", "LEGO Art", "Fabuland", "Universal Building Set",
+              "Educational and Dacta", "Mindstorms", "Homemaker", "Sports"}
+
+
 def fetch(themes: list[str], least: int) -> int:
     sys.path.insert(0, str(ROOT / "tools"))
     import rebrickable
     parts = {r["set_num"]: int(r["num_parts"] or 0) for r in rebrickable._rows("sets")}
     files = HERE / "files"
     files.mkdir(parents=True, exist_ok=True)
+    every = themes == ["all"]
     wanted = [row for row in _index()
-              if row["theme"].split(" > ")[0] in themes
+              if (row["theme"].split(" > ")[0] not in UNSCULPTED if every
+                  else row["theme"].split(" > ")[0] in themes)
               and parts.get(row["number"], 0) >= least]
     got = 0
-    for row in wanted:
+    for done, row in enumerate(wanted):
+        if done % 50 == 0:
+            print(f"  {done}/{len(wanted)} sets, {got} files fetched", flush=True)
         page = HERE / "pages" / f"{row['page']}.html"
         if not page.exists():
             page.parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +127,9 @@ def fetch(themes: list[str], least: int) -> int:
             rf'href="({re.escape(SITE)}/library/omr/[^"]+\.(?:mpd|ldr))"',
             page.read_text(errors="replace"))))
         for url in links:
+            # The page writes an apostrophe as &#039;: 10183's Pig's Nose
+            # Train was asked for by that name and was not found.
+            url = html.unescape(url)
             out = files / urllib.parse.unquote(url.rsplit("/", 1)[1])
             if out.exists():
                 continue
@@ -323,79 +338,8 @@ def clusters(out: Path, groups: list[str], most: int, seeds: str = "") -> int:
         lines = text.splitlines()
         author = next((l[9:].strip() for l in lines if l.startswith("0 Author:")), "?")
         licence = next((l[10:].strip() for l in lines if l.startswith("0 !LICENSE")), "?")
-        placed = []
-        for ref, colour, m, sub in _flatten(text):
-            info = parts.get(ref.removesuffix(".dat"))
-            if info is None or info.box is None or not style.building(info):
-                continue
-            turn = _yaw(m[3:])
-            if turn is None:
-                continue
-            # Turned back to the grid about the upright, the turn undone.
-            c, s = math.cos(math.radians(turn)), math.sin(math.radians(turn))
-            undo = [0, 0, 0, c, 0, s, 0, 1, 0, -s, 0, c]
-            m = _compose(undo, m)
-            low, high = info.box
-            r = m[3:]
-            centre = [sum(r[k * 3 + j] * (low[j] + high[j]) / 2 for j in range(3)) + m[k]
-                      for k in range(3)]
-            half = [sum(abs(r[k * 3 + j]) * (high[j] - low[j]) / 2 for j in range(3))
-                    for k in range(3)]
-            kinds = style.kinds(info)
-            worth = min(1.5, sum(CRAFT.get(k, 0.0) for k in kinds))
-            turned = style.facing(style.Matrix(*m[3:], *m[:3])) in ("sideways", "down")
-            if turned:
-                worth += 0.8
-            placed.append({"ref": ref, "colour": colour, "m": m, "sub": sub,
-                           "turn": turn, "lo": [centre[k] - half[k] for k in range(3)],
-                           "hi": [centre[k] + half[k] for k in range(3)],
-                           "worth": worth, "name": info.name, "kinds": sorted(kinds),
-                           "side": turned or bool({"snot_parts", "angle_parts"} & kinds),
-                           "part": parts.canonical(ref.removesuffix(".dat"))})
-        cells: dict[tuple, list[int]] = {}
-        for i, p in enumerate(placed):
-            for cell in _cells(p["lo"], p["hi"]):
-                cells.setdefault((p["turn"],) + cell, []).append(i)
-        # Which parts touch which, once, rather than once a region.
-        near: list[set[int]] = []
-        for i, p in enumerate(placed):
-            near.append({j for cell in _cells(p["lo"], p["hi"])
-                         for j in cells[(p["turn"],) + cell]
-                         if j != i and _touch(p, placed[j])})
-        found = []
-        for i, seed in enumerate(placed):
-            if (re.search(seeds, seed["name"], re.I) is None) if seeds else seed["worth"] < 0.7:
-                continue
-            for across, below, above in REACH:
-                lo = [seed["lo"][0] - across, seed["lo"][1] - above, seed["lo"][2] - across]
-                hi = [seed["hi"][0] + across, seed["hi"][1] + below, seed["hi"][2] + across]
-                inside = {j for cell in _cells(lo, hi)
-                          for j in cells.get((seed["turn"],) + cell, [])
-                          if all(lo[k] - 1 <= placed[j]["lo"][k]
-                                 and placed[j]["hi"][k] <= hi[k] + 1 for k in range(3))}
-                if len(inside) > 48:
-                    continue
-                group = _touching(near, inside, i)
-                if not 5 <= len(group) <= 24:
-                    continue
-                worth = sum(placed[j]["worth"] for j in group) / len(group)
-                shapes = len({placed[j]["part"] for j in group})
-                if worth < (0.25 if seeds else 0.5):
-                    continue
-                found.append((worth * math.sqrt(len(group)) + 0.1 * shapes, i, group))
-        found.sort(key=lambda f: -f[0])
-        taken: set[int] = set()
-        kept = 0
-        for score, i, group in found:
-            if kept >= most or len(group & taken) > 0.4 * len(group):
-                continue
-            body, signature = _standing(placed, group)
-            if body is None or signature in seen:
-                continue
-            seen.add(signature)
-            taken |= group
-            kept += 1
-            seed = placed[i]
+        for kept, (score, seed, group, body) in enumerate(
+                found_clusters(text, parts, most, seeds, seen), 1):
             word = re.sub(r"[^a-z0-9]+", "-", seed["name"].lower()).strip("-")[:30]
             # The file, not the set: a set can have more than one model.
             stem = re.sub(r"[^a-z0-9]+", "-", f"cluster {path.stem} {kept:02d} {word}".lower())
@@ -407,12 +351,106 @@ def clusters(out: Path, groups: list[str], most: int, seeds: str = "") -> int:
                          "theme": row["theme"], "author": author, "licence": licence,
                          "sub": sub, "seed": seed["name"], "turn": seed["turn"],
                          "parts": len(group), "score": round(score, 2),
-                         "shapes": len({placed[j]["part"] for j in group}),
-                         "kinds": dict(Counter(k for j in group for k in placed[j]["kinds"]))})
+                         "shapes": len({p["part"] for p in group}),
+                         "kinds": dict(Counter(k for p in group for k in p["kinds"]))})
             written += 1
     (out / "clusters.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
     print(f"{written} clusters written to {out}")
     return 0
+
+
+def found_clusters(text: str, parts, most: int, seeds: str = "",
+                   seen: set | None = None) -> list[tuple[float, dict, list[dict], list[str]]]:
+    """The best few technique clusters of one model: (score, seed part,
+    the parts, their LDraw lines standing on the ground), best first, none
+    overlapping another by more than 40%. `seen` drops a cluster already
+    found elsewhere, and is added to."""
+    import style
+    seen = set() if seen is None else seen
+    placed = []
+    for ref, colour, m, sub in _flatten(text):
+        info = parts.get(ref.removesuffix(".dat"))
+        if info is None or info.box is None or not style.building(info):
+            continue
+        turn = _yaw(m[3:])
+        if turn is None:
+            continue
+        # Turned back to the grid about the upright, the turn undone.
+        c, s = math.cos(math.radians(turn)), math.sin(math.radians(turn))
+        undo = [0, 0, 0, c, 0, s, 0, 1, 0, -s, 0, c]
+        m = _compose(undo, m)
+        low, high = info.box
+        r = m[3:]
+        centre = [sum(r[k * 3 + j] * (low[j] + high[j]) / 2 for j in range(3)) + m[k]
+                  for k in range(3)]
+        half = [sum(abs(r[k * 3 + j]) * (high[j] - low[j]) / 2 for j in range(3))
+                for k in range(3)]
+        kinds = style.kinds(info)
+        worth = min(1.5, sum(CRAFT.get(k, 0.0) for k in kinds))
+        turned = style.facing(style.Matrix(*m[3:], *m[:3])) in ("sideways", "down")
+        if turned:
+            worth += 0.8
+        placed.append({"ref": ref, "colour": colour, "m": m, "sub": sub,
+                       "turn": turn, "lo": [centre[k] - half[k] for k in range(3)],
+                       "hi": [centre[k] + half[k] for k in range(3)],
+                       "worth": worth, "name": info.name, "kinds": sorted(kinds),
+                       "side": turned or bool({"snot_parts", "angle_parts"} & kinds),
+                       "part": parts.canonical(ref.removesuffix(".dat"))})
+    cells: dict[tuple, list[int]] = {}
+    for i, p in enumerate(placed):
+        for cell in _cells(p["lo"], p["hi"]):
+            cells.setdefault((p["turn"],) + cell, []).append(i)
+    # Which parts touch which, once, rather than once a region.
+    near: list[set[int]] = []
+    for i, p in enumerate(placed):
+        near.append({j for cell in _cells(p["lo"], p["hi"])
+                     for j in cells[(p["turn"],) + cell]
+                     if j != i and _touch(p, placed[j])})
+    found = []
+    for i, seed in enumerate(placed):
+        if (re.search(seeds, seed["name"], re.I) is None) if seeds else seed["worth"] < 0.7:
+            continue
+        # The boxes are nested, so what any of them holds is among what
+        # the largest reaches: looked up once, not nine times a seed.
+        widest = max(r[0] for r in REACH), max(r[1] for r in REACH), max(r[2] for r in REACH)
+        reach = {j for cell in _cells(
+                     [seed["lo"][0] - widest[0], seed["lo"][1] - widest[2],
+                      seed["lo"][2] - widest[0]],
+                     [seed["hi"][0] + widest[0], seed["hi"][1] + widest[1],
+                      seed["hi"][2] + widest[0]])
+                 for j in cells.get((seed["turn"],) + cell, [])}
+        near_boxes = [(j, placed[j]["lo"], placed[j]["hi"]) for j in reach]
+        for across, below, above in REACH:
+            lo = [seed["lo"][0] - across - 1, seed["lo"][1] - above - 1,
+                  seed["lo"][2] - across - 1]
+            hi = [seed["hi"][0] + across + 1, seed["hi"][1] + below + 1,
+                  seed["hi"][2] + across + 1]
+            inside = {j for j, plo, phi in near_boxes
+                      if lo[0] <= plo[0] and phi[0] <= hi[0] and lo[1] <= plo[1]
+                      and phi[1] <= hi[1] and lo[2] <= plo[2] and phi[2] <= hi[2]}
+            if len(inside) > 48:
+                continue
+            group = _touching(near, inside, i)
+            if not 5 <= len(group) <= 24:
+                continue
+            worth = sum(placed[j]["worth"] for j in group) / len(group)
+            shapes = len({placed[j]["part"] for j in group})
+            if worth < (0.25 if seeds else 0.5):
+                continue
+            found.append((worth * math.sqrt(len(group)) + 0.1 * shapes, i, group))
+    found.sort(key=lambda f: -f[0])
+    taken: set[int] = set()
+    out = []
+    for score, i, group in found:
+        if len(out) >= most or len(group & taken) > 0.4 * len(group):
+            continue
+        body, signature = _standing(placed, group)
+        if body is None or signature in seen:
+            continue
+        seen.add(signature)
+        taken |= group
+        out.append((score, placed[i], [placed[j] for j in sorted(group)], body))
+    return out
 
 
 def _cells(lo: list[float], hi: list[float]) -> list[tuple[int, int, int]]:
@@ -480,7 +518,8 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     one = sub.add_parser("fetch")
     one.add_argument("--themes", default="Castle,Modular Buildings,Town,City,"
-                     "LEGO Ideas and CUUSOO,Creator,Pirates,Harry Potter")
+                     "LEGO Ideas and CUUSOO,Creator,Pirates,Harry Potter",
+                     help='top-level themes, or "all": every one but UNSCULPTED')
     one.add_argument("--min-parts", type=int, default=400)
     sub.add_parser("names")
     two = sub.add_parser("harvest")

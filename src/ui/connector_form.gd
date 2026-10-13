@@ -466,6 +466,10 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 		"clear_model": return "Cleared the baseplate"
 		"save_model": return "Saved the model"
 		"show_technique": return "Looked up how to do %s" % about
+		"find_techniques": return "Looked up how real sets built %s" % about
+		"find_parts_like": return "Looked for a part that reads as %s" % about
+		"place_technique":
+			return "Laid %s as a real set built it" % str(arguments.get("id", "a piece"))
 		"attachment_points": return "Worked out where a part attaches"
 		"add_minifig": return "Stood %s in the model" % (about if not about.is_empty() else "a figure")
 	return tool.replace("_", " ").capitalize()
