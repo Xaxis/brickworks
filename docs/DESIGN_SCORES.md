@@ -621,3 +621,10 @@ tops and brick courses. Second, a skin must never go on a course under the
 body (a chassis or skirt), or in a colour the body above is not. On the car
 it read as a slab. Laying tiles straight on the turned-out studs, a plate
 proud and not two, would also make a skin read less like a block.
+
+Both are done since, and not benched: a skin is no longer laid on the bottom
+course on a wheeled base, on a course under a wider one, or in a colour the
+body over it is not; and it is tiles straight on the studs with a rounded
+end at each end, a plate proud. Replayed through the pass, the round's car
+with its skins taken back off gets none: both black courses are left as
+"its wheels' sill", and only the crown on its deck is laid.

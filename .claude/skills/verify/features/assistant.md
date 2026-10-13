@@ -1619,13 +1619,20 @@ fixing what it got wrong.
   under the top is touched, so what ties the body together still does;
   `flank`, for anything not a building (`_flanks`, 2026-10-13 steps), a
   course of plain one-wide bricks (or two-wide's outer rows), a face stacked
-  two courses or more, four studs long or more, clear in front for a plate
-  and a tile and flush behind over the course above (`_skin_room`): the
-  course laid again in bricks with studs on the side (30414, 11211, 87087,
-  `_turned_out`) and on them, laid on their side (`_onto_side`, the
-  arithmetic of `Assistant._panel`), a curved slope 15068 at each end
-  falling away to it and plates and tiles between, two studs tall, courses
-  tried top down; and `wall`, for a building only, a
+  two courses or more, four studs long or more, one colour, clear in front
+  for a tile and flush behind over the course above in the same colour
+  (`_skin_room`): the course laid again in bricks with studs on the side
+  (30414, 11211, 87087, `_turned_out`) and on them, laid on their side
+  (`_onto_side`, the arithmetic of `Assistant._panel`), tiles two studs tall
+  straight on the studs, a plate proud, with a rounded-end tile 5520 at each
+  end (`_rounded_end` reads which end is round off its cover), courses tried
+  top down. Not a course that is not the body's (`_off_the_body`, said in
+  "Left as studs"): the bottom course on a wheeled base or one no higher
+  than its wheels (`_wheel_top`, wheels within a plate of the model's
+  bottom), one under a wider course whose face reaches past either end over
+  open space, or one in a colour the body over it is not — the steps
+  round's car had its black course between the wheels skinned, and the
+  judge saw "black slabs ... like blocks"; and `wall`, for a building only, a
   plain one-wide (or two-wide's outer row) wall open to the air, six studs by
   three courses or more, nine tenths one colour, laid again by `_restyle`
   in its box with masonry only (`"turned_out": false`: no stud turned out).

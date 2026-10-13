@@ -7,7 +7,9 @@
 ##   a 3-step staircase of 2 x 4 bricks gets 45 degree slopes;
 ##   a stair of four plate steps a stud deep gets two curved slopes, the
 ##   model in no more pieces;
-##   a body's flank of six plain bricks gets a skin on its side;
+##   a body's flank of six plain bricks gets a skin on its side, tiles a
+##   plate proud, and one under a course of another colour is left;
+##   a car's black course between its wheels, under its red body, gets none;
 ##   sixteen small tops are all laid in one review;
 ##   a yard a minifigure stands on keeps its studs;
 ##   a building's long plain wall is laid again with masonry, no stud
@@ -227,23 +229,52 @@ func _run() -> void:
 	_ok(_count(_bricks(), ["30414"]) == 4 and _count(_bricks(), ["3010"]) == 8,
 		"...one course of each laid again with its studs turned out (%d 30414)"
 		% _count(_bricks(), ["30414"]))
-	_ok(_sideways(["15068"]) == 4 and _sideways(["3020"]) == 2 and _sideways(["87079"]) == 1,
-		"...and on them, on their side, a curved slope at each end and a plate and tile "
-		+ "between (%d, %d, %d)" % [_sideways(["15068"]), _sideways(["3020"]),
-			_sideways(["87079"])])
-	var rows: Array = []
+	var low_skin: int = 0
+	var side_brick: Lbm.PartMesh = library.mesh_for("30414")
 	for brick: BrickWorld.Brick in _bricks():
-		if brick.part_id == "2431" and BrickLattice.face_of(brick.transform.basis) != "up":
-			rows.append(brick.color_code)
-	rows.sort()
-	_ok(rows == [4, 15], "...and where the course over it is white, each row of the skin "
-		+ "keeps its own colour: %s" % str(rows))
+		if brick.part_id == "30414" and brick.transform.origin.z > 40.0 \
+				and absf((brick.transform * side_brick.bounds).abs().position.y) < 1.0:
+			low_skin += 1
+	_ok(low_skin == 2, "...the white-striped side's a course lower, under a red one (%d)"
+		% low_skin)
+	_ok(_sideways(["5520"]) == 4 and _sideways(["87079"]) == 2
+		and _sideways(["15068", "3020"]) == 0, "...and on them, on their side, tiles straight "
+		+ "on the studs, a rounded end at each end (%d) and a 2 x 4 between (%d)" % [
+			_sideways(["5520"]), _sideways(["87079"])])
+	var proud: float = 0.0
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id in ["5520", "87079"] \
+				and BrickLattice.face_of(brick.transform.basis) != "up":
+			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			proud = maxf(proud, -(brick.transform * mesh.bounds).abs().position.z)
+	_ok(absf(proud - 8.0) < 0.5, "...standing a plate proud of the flank (%.0f LDU)" % proud)
+	_ok(said.contains("under a body of white"),
+		"the flank under a white course is left, not painted over")
 	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
 		% pieces_before)
 	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "reject",
 		"reason": "the hull wants its bricks bare here"})
-	_ok(_count(_bricks(), ["30414", "15068", "87079"]) == 0
+	_ok(_count(_bricks(), ["30414", "5520", "87079"]) == 0
 		and _count(_bricks(), ["3010"]) == 12, "rejected, the plain bricks are back")
+
+	print("\na car's black course between its wheels, under its red body, gets no skin")
+	await _build("racing car", _car())
+	pieces_before = await _pieces()
+	said = _text_of(await assistant.surface_review())
+	print("    " + said.substr(0, 900).replace("\n", "\n    "))
+	var black_out: int = 0
+	var black_plain: int = 0
+	for brick: BrickWorld.Brick in _bricks():
+		if brick.part_id in SurfacePass.SIDE_STUDS.values() and brick.color_code == 0:
+			black_out += 1
+		if brick.part_id == "3009" and brick.color_code == 0:
+			black_plain += 1
+	_ok(black_out == 0 and black_plain == 2,
+		"no stud of the black course is turned out (%d), its bricks as they were" % black_out)
+	_ok(said.contains("under a wider course") or said.contains("under a body of red"),
+		"...said why: it is not the body's flank")
+	_ok(await _pieces() == pieces_before, "...and the model is in as many pieces as before (%d)"
+		% pieces_before)
 
 	print("\nevery finding is laid at once, not twelve of them")
 	await _build("pillars", _pillars())
@@ -462,6 +493,23 @@ func _flank() -> Array:
 			out.append({"part": "3001", "color": 4, "x": 2, "y": course * 3, "z": 1, "rot": 0})
 			out.append({"part": "3003", "color": 4, "x": 6, "y": course * 3, "z": 1, "rot": 0})
 	out.append({"part": "3035", "color": 4, "x": 0, "y": 9, "z": 0, "rot": 0})
+	return out
+
+
+## The bench car's side in small: a black course 6 studs long and 4 deep,
+## between where its wheels would be, and on it a red course 10 long that
+## reaches two studs past it at each end, over the arches, and a
+## red 4 x 10 plate on top.
+func _car() -> Array:
+	var out: Array = []
+	for z: int in [0, 3]:
+		out.append({"part": "3009", "color": 0, "x": 2, "y": 0, "z": z, "rot": 0})
+		out.append({"part": "3009", "color": 4, "x": 0, "y": 3, "z": z, "rot": 0})
+		out.append({"part": "3010", "color": 4, "x": 6, "y": 3, "z": z, "rot": 0})
+	out.append({"part": "2456", "color": 0, "x": 2, "y": 0, "z": 1, "rot": 0})
+	out.append({"part": "3001", "color": 4, "x": 0, "y": 3, "z": 1, "rot": 0})
+	out.append({"part": "2456", "color": 4, "x": 4, "y": 3, "z": 1, "rot": 0})
+	out.append({"part": "3030", "color": 4, "x": 0, "y": 6, "z": 0, "rot": 0})
 	return out
 
 
