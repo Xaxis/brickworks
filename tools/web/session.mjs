@@ -51,15 +51,27 @@ export async function mintCode(email = TEST_EMAIL) {
 
 /// A whole session for [email]: a code minted and redeemed, as the app
 /// redeems one. What the app keeps of it is what is returned.
+///
+/// Flows run two at a time sign in the one test account, and minting a
+/// code replaces the last: one flow's code was refused (403) because the
+/// other minted between its mint and its redeem, and three checks failed
+/// behind the sign-in screen (2026-10-13). So a refused code is minted
+/// again, after a wait that differs between the two.
 export async function mintSession(email = TEST_EMAIL) {
   const p = project();
-  const code = await mintCode(email);
-  const reply = await fetch(`${p.url}/auth/v1/verify`, {
-    method: "POST",
-    headers: { apikey: p.key, "content-type": "application/json" },
-    body: JSON.stringify({ type: "email", email, token: code }),
-  });
-  const body = await reply.json();
+  let reply = null;
+  let body = {};
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const code = await mintCode(email);
+    reply = await fetch(`${p.url}/auth/v1/verify`, {
+      method: "POST",
+      headers: { apikey: p.key, "content-type": "application/json" },
+      body: JSON.stringify({ type: "email", email, token: code }),
+    });
+    body = await reply.json();
+    if (body.refresh_token || reply.status !== 403) break;
+    await new Promise((done) => setTimeout(done, 400 + Math.random() * 1600 * attempt));
+  }
   if (!body.refresh_token) throw new Error(`the code would not redeem: ${reply.status}`);
   return {
     access_token: body.access_token,
