@@ -1107,14 +1107,25 @@ async function theModeration(tokenA) {
   }
   check(made === 20 && refused?.status === 429, `twenty collections an hour, then 429 (${made}, ${refused?.status})`);
 
-  // The sitemap.
-  r = await call("/sitemap.xml");
-  const locs = [...r.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((one) => one[1]);
-  const listed = (await call("/api/share?op=list&page=1")).json?.models || [];
+  // The sitemap. Pages are cached for 30 s and served stale for 30 more
+  // (api/share.js), so a model taken out a moment ago may still be listed:
+  // ask again until the minute has passed.
+  let locs = [];
+  let listed = [];
+  for (let tries = 0; tries < 8; tries += 1) {
+    r = await call("/sitemap.xml");
+    locs = [...r.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((one) => one[1]);
+    listed = (await call("/api/share?op=list&page=1")).json?.models || [];
+    if (listed.every((one) => locs.includes(`${base}/m/${one.id}`)) && !(args.master && locs.includes(`${base}/m/${bad}`))) break;
+    await new Promise((done) => setTimeout(done, 10000));
+  }
   check(r.status === 200 && /xml/.test(r.headers.get("content-type") || "") && locs.some((loc) => loc.endsWith("/gallery"))
     && locs.some((loc) => loc.endsWith("/takedown")) && listed.every((one) => locs.includes(`${base}/m/${one.id}`))
-    && !locs.includes(`${base}/m/${bad}`),
-    `/sitemap.xml: the site's pages and every listed model (${locs.length} pages), none taken out`);
+    // Only the owner (--master) takes the bad actor's model out.
+    && !(args.master && locs.includes(`${base}/m/${bad}`)),
+    `/sitemap.xml: the site's pages and every listed model (${locs.length} pages), none taken out`
+    + ` [missing: ${listed.filter((one) => !locs.includes(`${base}/m/${one.id}`)).map((one) => `${one.id} ${one.name}`).join(", ") || "none"};`
+    + ` taken out still there: ${locs.includes(`${base}/m/${bad}`)}; gallery: ${locs.some((loc) => loc.endsWith("/gallery"))}; takedown: ${locs.some((loc) => loc.endsWith("/takedown"))}; status ${r.status}]`);
 
   // The database, with the key every page has.
   for (const table of ["reports", "barred_accounts", "barred_models", "act_log"]) {
