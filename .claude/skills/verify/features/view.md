@@ -102,7 +102,17 @@ picture the assistant is shown.
   it inside, then picks five parts from the world (a straight line from the
   eye reaches each first), checks hiding each changes the pixel at its point
   and a click there selects exactly it; on the code before this, the middle
-  is 168 units out. `tools/web/centre_check.mjs --url=…` does the centring
+  is 168 units out. It also takes an exported picture (`Picture.take`, the
+  share card's and the Studio thumbnail's path) with the lens shifted each
+  way and requires the model in the same place in both: the window's lens
+  never reaches a camera of its own. Where it sits there is the picture's
+  own framing, which centres the box round the model, not what is drawn
+  (1.8% left and 9% low on the probe's flat scene, either way). A
+  check that aims at the model must find it again after a column opens or
+  folds, Q among them (it brings the bin out, and in a window with room for
+  one column the model moves 338 units): `cursor_check.mjs` does, and
+  `nav_flow.mjs` frames the model before the view tools, since its pinch
+  at the middle of the view now ends under the baseplate. `tools/web/centre_check.mjs --url=…` does the centring
   and the five clicks in Chromium at 1x and 2x (`brickworksLayout.centre`
   and `.targets`, `brickworksState.selection`).
 - `the view from the keyboard`: + and - (= without shift, the keypad, Page Up
