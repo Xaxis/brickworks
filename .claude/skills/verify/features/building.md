@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tool modes, ui:properties panel, ui:status bar, ui:what the app is busy with, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:measure, ui:docked panels -->
 
 ## Sub-features
 
@@ -150,6 +150,39 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
+- `what the app is busy with` (`src/ui/working.gd`, `Working`, 2026-10-12): the
+  one progress pattern for every slow thing, at the left of the status bar in
+  place of the hint while it lasts — the words ("Laying out 9,429 parts in
+  steps… 3,200 of 9,429"), a bar that fills where the work is counted and a
+  block that runs along it where it is not, and Cancel where stopping makes
+  sense; gone when it is done. The owner asked for it after pressing Timeline
+  on a big model and seeing nothing for seconds. Work reports to a
+  `Working.Job` (`begin`, `say`, `count`, `due`/`next` for FramePace slices,
+  `shown`, `end`; a probe or the command line has a job and no bar); the bar
+  is brought up to date at most every 250 ms, and on the web not again until
+  the card has drawn its last change (`GpuFence.put`/`passed`, the fence the
+  picture reads wait on), since every frame drawn draws the model too: in a
+  browser drawing in software over Orthanc, redrawn every 250 ms regardless,
+  the frames queued up behind each other and the timeline took 77 s instead
+  of 8, and the booklet's first part picture waited 17 s for them. `shown()` waits for a frame to be
+  drawn, not for the next process_frame: a press is handled before its
+  frame's processing, so that is the same frame, still to be drawn. Reporting now: Timeline (`StepsBar.start`, worked out by
+  `Instructions.plan_paced`, Cancel or Timeline again stops it, and an edit
+  meanwhile does), Instructions (`BookletMaker.job`: planning, the parts, the
+  views, the steps, counted, with Cancel, and the line also in the tab the
+  booklet goes to on the web), LEGO Art's Build (`MosaicArt.put_down_paced`),
+  Brickify (beside its panel's own line), opening a file, and a delete, undo,
+  redo, New or Clear of 300 parts or more (`EditVerbs.BIG_CHANGE`), which are
+  one long frame each but now say so before it. In the shared model's viewer
+  the status bar is hidden except while there is work (`StatusBar.only_the_work`).
+  The page reads it as `brickworksState.working` and `window.brickworksWork`
+  (when each job was first drawn and when it ended, in the page's clock), and
+  Cancel as `brickworksControls.work_cancel`. Proves it: `progress_probe`
+  (windowed, Orthanc and the car: the bar up in the frame pressed, before the
+  work; the timeline's longest frame against 200 ms; the same steps as
+  `Instructions.plan`; Cancel and a second press stop it; delete all and undo
+  say so first; the car's booklet counted and stoppable) and
+  `tools/web/progress_check.mjs` ([web](web.md)).
 - `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
   where a part in hand or a carried group can land across the ground
   (`Builder.snap_across`) and how far the arrows nudge a selection across and,

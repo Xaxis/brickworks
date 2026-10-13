@@ -204,6 +204,79 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	return steps
 
 
+## How long each part of the last [method plan_paced] took: [what, ms].
+static var laps: Array = []
+
+
+## [method plan], a slice at a time (FramePace): on a big model the page
+## goes on drawing and answering while the steps are worked out, and
+## [param job] says what is being done and how far it has got.
+##
+## Orthanc's 9,429 parts held a browser for seconds on one frame when
+## Timeline was pressed, with nothing on screen to say anything was
+## happening (2026-10-12). The same work as [method plan], in the same
+## order; only where it gives the frame back differs. Returns no steps when
+## the job was cancelled.
+static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		regions: Dictionary, job: Working.Job) -> Array[Step]:
+	laps.clear()
+	var clock: Array[int] = [Time.get_ticks_msec()]
+	var lap := func(what: String) -> void:
+		var now: int = Time.get_ticks_msec()
+		laps.append([what, now - clock[0]])
+		clock[0] = now
+	var nodes: Array[Node2] = []
+	await _survey_into(nodes, world, library, skip, job)
+	lap.call("survey")
+	if nodes.is_empty() or job.cancelled:
+		return []
+	var count: String = Working.comma(nodes.size())
+	job.say("Finding what %s parts rest on…" % count)
+	job.count(0, nodes.size())
+	await _supports_of(nodes, job)
+	lap.call("supports")
+	if job.cancelled:
+		return []
+	job.say("Finding the joints between %s parts…" % count)
+	job.count(0, 0)
+	await job.next()
+	_find_joints(nodes, world, library)
+	_tidy_needs(nodes)
+	lap.call("joints")
+	await job.next()
+	if job.cancelled:
+		return []
+	job.say("Finding what hangs off %s parts…" % count)
+	await _hangers_of(nodes, job)
+	lap.call("hangers")
+	await job.next()
+	if job.cancelled:
+		return []
+	job.say("Finding what is built on the side…")
+	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
+	lap.call("assemblies")
+	await job.next()
+	var built: Array[Node2] = _contract(nodes, assemblies)
+	await job.next()
+	var named: bool = _assign_regions(built, regions)
+	lap.call("contract")
+	await job.next()
+	if job.cancelled:
+		for made: Assembly in assemblies:
+			made.node = null
+		return []
+	job.say("Laying out %s parts in steps…" % count)
+	job.count(0, nodes.size())
+	var raw: Array = []
+	await _sequence_into(raw, built, named, _per_step(nodes.size()), job)
+	lap.call("sequence")
+	var steps: Array[Step] = [] if job.cancelled else _expand(raw, world)
+	lap.call("expand")
+	for made: Assembly in assemblies:
+		made.node = null
+	return steps
+
+
 ## How many bricks a step takes, by the size of the model. A real
 ## seventy-piece set has about three to a step and a two-thousand-piece
 ## one about six; eight was every model's, which made a small one's
@@ -388,9 +461,18 @@ static func _wheels(nodes: Array[Node2]) -> void:
 ## the stack would wait for ever. Those 258 loops were Orthanc's first
 ## try at this, every one a step taken "out of order".
 static func _find_hangers(nodes: Array[Node2]) -> void:
+	_hangers_of(nodes, null)
+
+
+## [method _find_hangers], a slice at a time with a [param job].
+static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 	if nodes.is_empty():
 		return
 	const CELL := 40.0
+	# And by height, as _supports_of keeps them: a part only touches what
+	# overlaps it up the tower too, and Orthanc's columns are hundreds of
+	# parts tall.
+	const LAYER := 40.0
 	var floor_y: float = INF
 	for node: Node2 in nodes:
 		floor_y = minf(floor_y, node.box.position.y)
@@ -404,10 +486,13 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 		return
 	var grid: Dictionary = {}
 	for index: int in nodes.size():
-		for cell: Vector2i in _cells(nodes[index].box.grow(1.0), CELL):
-			if not grid.has(cell):
-				grid[cell] = []
-			(grid[cell] as Array).append(index)
+		var grown: AABB = nodes[index].box.grow(1.0)
+		for layer: int in range(floori(grown.position.y / LAYER), floori(grown.end.y / LAYER) + 1):
+			for cell: Vector2i in _cells(grown, CELL):
+				var key := Vector3i(cell.x, cell.y, layer)
+				if not grid.has(key):
+					grid[key] = []
+				(grid[key] as Array).append(index)
 	# Outward from what is held, a wave at a time: a part hangs from what
 	# it touches that is already held, and is then held itself. A tower's
 	# pinnacles are 1 x 1 plates clipped to round tiles clipped to a wall:
@@ -422,11 +507,24 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 	for _wave: int in 64:
 		var now_held: Array[int] = []
 		for index: int in waiting:
+			if job != null and job.due():
+				await job.next()
+				if job.cancelled:
+					return
 			var node: Node2 = nodes[index]
 			var box: AABB = node.box.grow(1.0)
+			var lowest: int = floori(box.position.y / LAYER)
+			var highest: int = floori(box.end.y / LAYER)
 			var seen: Dictionary = {}
 			for cell: Vector2i in _cells(box, CELL):
-				for other_index: int in grid.get(cell, []):
+				# A square's parts in the order they are listed, as when
+				# they were kept by the square alone.
+				var near: Array = []
+				for layer: int in range(lowest, highest + 1):
+					near.append_array(grid.get(Vector3i(cell.x, cell.y, layer), []))
+				if highest > lowest:
+					near.sort()
+				for other_index: int in near:
 					if other_index == index or seen.has(other_index) \
 							or not held.has(other_index):
 						continue
@@ -446,6 +544,10 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 	# it: after the nearest held part whose top is at its height or below.
 	# Orthanc had 188 of these, and every one was free to go in at step 1.
 	for index: int in waiting:
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
 		var node: Node2 = nodes[index]
 		var nearest: float = INF
 		var under: int = -1
@@ -467,6 +569,10 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 	# hung below a loop free to go in first.
 	var cleared: Array[int] = []
 	for _attempt: int in 4:
+		if job != null:
+			await job.next()
+			if job.cancelled:
+				return
 		var looped: Dictionary = _cycles(nodes)
 		var undone: bool = false
 		for index: int in hanging:
@@ -490,6 +596,10 @@ static func _find_hangers(nodes: Array[Node2]) -> void:
 					dependents[need] = []
 				(dependents[need] as Array).append(other.id)
 	for index: int in cleared:
+		if job != null and job.due():
+			await job.next()
+			if job.cancelled:
+				return
 		var node: Node2 = nodes[index]
 		var after_it: Dictionary = _waiting_on(dependents, node.id)
 		var nearest: float = INF
@@ -614,7 +724,25 @@ static func _tidy_needs(nodes: Array[Node2]) -> void:
 static func _survey(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary) -> Array[Node2]:
 	var nodes: Array[Node2] = []
-	for brick: BrickWorld.Brick in world.bricks():
+	_survey_into(nodes, world, library, skip, null)
+	return nodes
+
+
+## Each brick as a node, into [param nodes]; a slice at a time with a
+## [param job], which then counts them.
+static func _survey_into(nodes: Array[Node2], world: BrickWorld, library: PartLibrary,
+		skip: Dictionary, job: Working.Job) -> void:
+	var bricks: Array = world.bricks()
+	if job != null:
+		job.say("Measuring %s parts…" % Working.comma(bricks.size()))
+		job.count(0, bricks.size())
+	for at: int in bricks.size():
+		var brick: BrickWorld.Brick = bricks[at]
+		if job != null and job.due():
+			job.count(at)
+			await job.next()
+			if job.cancelled:
+				return
 		if skip.has(brick.id):
 			continue
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
@@ -633,7 +761,6 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 		elif name.begins_with("Tyre") or name.begins_with("Tire"):
 			node.wheel = 2
 		nodes.append(node)
-	return nodes
 
 
 ## Who rests on whom.
@@ -648,6 +775,11 @@ static func _survey(world: BrickWorld, library: PartLibrary,
 ## was 74 million comparisons on an 8,600-part tower, and a minute and a
 ## half before its timeline could open.
 static func _find_supports(nodes: Array[Node2]) -> void:
+	_supports_of(nodes, null)
+
+
+## [method _find_supports], a slice at a time with a [param job].
+static func _supports_of(nodes: Array[Node2], job: Working.Job) -> void:
 	# +Y is up here. LDraw has −Y up, but the conversion to engine space
 	# negated Y and Z, so by the time a brick reaches this its underside
 	# is box.position.y and its top is box.end.y.
@@ -657,28 +789,52 @@ static func _find_supports(nodes: Array[Node2]) -> void:
 	# passed "starts at the bottom" while building from the top. What
 	# caught it was looking at a booklet: step one of the lighthouse was
 	# the lamp, hanging in the air above an empty baseplate.
+	#
+	# Kept by where its top is as well as by the square of the plan: a
+	# tower is hundreds of bricks up every square, and comparing each with
+	# every other in its column was five of the six seconds Orthanc's
+	# timeline took to open (2026-10-12). Only a part whose top is within
+	# SLACK of this one's underside can hold it up, and those are in the
+	# layer or two that height falls in. Same answers, in the same order:
+	# a square's candidates are taken in the order the parts are listed.
 	const SLACK := 5.0
 	const CELL := 40.0
+	const LAYER := 8.0
 	var grid: Dictionary = {}
 	for index: int in nodes.size():
-		for cell: Vector2i in _cells(nodes[index].box, CELL):
-			if not grid.has(cell):
-				grid[cell] = []
-			(grid[cell] as Array).append(index)
+		var other: Node2 = nodes[index]
+		# A wheel holds nothing up: it goes on last, and a chassis whose
+		# underside happens to meet a tyre's top is held by the axle, not
+		# the tyre.
+		if other.wheel > 0:
+			continue
+		var layer: int = floori(other.box.end.y / LAYER)
+		for cell: Vector2i in _cells(other.box, CELL):
+			var key := Vector3i(cell.x, cell.y, layer)
+			if not grid.has(key):
+				grid[key] = []
+			(grid[key] as Array).append(index)
 	for index: int in nodes.size():
+		if job != null and job.due():
+			job.count(index)
+			await job.next()
+			if job.cancelled:
+				return
 		var node: Node2 = nodes[index]
+		var lowest: int = floori((node.box.position.y - SLACK) / LAYER)
+		var highest: int = floori((node.box.position.y + SLACK) / LAYER)
 		var seen: Dictionary = {}
 		for cell: Vector2i in _cells(node.box, CELL):
-			for other_index: int in grid.get(cell, []):
+			var near: Array = []
+			for layer: int in range(lowest, highest + 1):
+				near.append_array(grid.get(Vector3i(cell.x, cell.y, layer), []))
+			if highest > lowest:
+				near.sort()
+			for other_index: int in near:
 				if other_index == index or seen.has(other_index):
 					continue
 				seen[other_index] = true
 				var other: Node2 = nodes[other_index]
-				# A wheel holds nothing up: it goes on last, and a chassis
-				# whose underside happens to meet a tyre's top is held by
-				# the axle, not the tyre.
-				if other.wheel > 0:
-					continue
 				# other is under node when other's top meets node's
 				# underside, allowing for the stud that reaches up into it.
 				var sits_on: bool = (other.box.end.y >= node.box.position.y - SLACK
@@ -936,6 +1092,15 @@ static func _in_loops(nodes: Array[Node2]) -> Dictionary:
 ## brick left: a pass over all of them per brick was the other half of
 ## the 8,600-part tower's minute and a half.
 static func _sequence(nodes: Array[Node2], named: bool, per_step: int) -> Array:
+	var steps: Array = []
+	_sequence_into(steps, nodes, named, per_step, null)
+	return steps
+
+
+## [method _sequence] into [param steps]; a slice at a time with a
+## [param job], which counts the bricks placed.
+static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_step: int,
+		job: Working.Job) -> void:
 	var by_id: Dictionary = {}
 	var waiting: Dictionary = {}
 	var dependents: Dictionary = {}
@@ -950,6 +1115,8 @@ static func _sequence(nodes: Array[Node2], named: bool, per_step: int) -> Array:
 					dependents[need] = []
 				(dependents[need] as Array).append(node.id)
 		waiting[node.id] = count
+	if job != null:
+		await job.next()
 	var remaining: Dictionary = {}
 	var ready: Dictionary = {}
 	for node: Node2 in nodes:
@@ -957,15 +1124,20 @@ static func _sequence(nodes: Array[Node2], named: bool, per_step: int) -> Array:
 		if int(waiting[node.id]) == 0:
 			ready[node.id] = node
 
-	var steps: Array = []
 	var last_at: Vector3 = Vector3.ZERO
 	var have_last: bool = false
+	var placed: int = 0
 	## The region being built, and what each one is called in the
 	## booklet: its own name, or "part n" in the order they are reached.
 	var current: String = ""
 	var called: Dictionary = {}
 
 	while not remaining.is_empty():
+		if job != null and job.due():
+			job.count(placed)
+			await job.next()
+			if job.cancelled:
+				return
 		var picked: Array[Node2] = []
 		var section: String = ""
 		var unsupported: bool = false
@@ -1014,7 +1186,8 @@ static func _sequence(nodes: Array[Node2], named: bool, per_step: int) -> Array:
 			break
 		steps.append({"nodes": picked, "section": section,
 			"unsupported": unsupported})
-	return steps
+		for node: Node2 in picked:
+			placed += node.assembly.members.size() if node.assembly != null else 1
 
 
 ## The next node to place, or null when the step should end.

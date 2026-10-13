@@ -1,0 +1,508 @@
+// Does the studio say it heard you, and stay alive, while it works? Presses
+// each slow thing in a real browser and times it.
+//
+//   set -a; . ./.env; set +a
+//   node tools/web/progress_check.mjs --dir=build/web            a local export, served here
+//   BW_BYPASS=… node tools/web/progress_check.mjs --url=<preview>/app
+//   … --only=timeline,booklet                                    some of them
+//
+// The owner (2026-10-12): "when user clicks the 'timeline' function there
+// should be the standard pattern for progress bar or whatever indicating what
+// is happening and what is loading, same for all functions that obviously
+// take a lot of time or between context switches so the studio doesn't
+// appear and functionally act frozen." Each slow thing now reports to one bar
+// in the status bar (src/ui/working.gd), which says on the page when it was
+// first drawn and when it went (window.brickworksWork).
+//
+// For every press it measures, against the press's own time in the page:
+//
+//   heard    how long before the bar was drawn: the end of the engine frame
+//            it was first drawn in. A build without the bar is read by its
+//            page state instead (the status line, the timeline's buttons, the
+//            parts), polled every quarter second, and marked ~;
+//   own      the longest of the app's own work from the press to the end,
+//            which is what is judged: an engine frame less the time it
+//            spent inside WebGL calls, or one of its input handlers, timed
+//            in the page (a press can be handled outside a frame, and
+//            Timeline's eight seconds were), or its slowest frame by its own
+//            clock (brickworksState.slow, labelled with what it was doing);
+//   frame    the longest engine frame callback, timed in the page as
+//            render_open_check.mjs does: the app's work and its WebGL calls,
+//            which on SwiftShader wait for the software drawing of the frame
+//            before whenever the box is busy. Said, not judged;
+//   held     the longest the page ran no timer at all, drawing included.
+//            Said, not judged;
+//   total    from the press until it is done;
+//   gone     whether the bar is gone once it is done.
+//
+// Two pages: a first visit (the example car) for the parts bin's first open,
+// Instructions, the Render dialog, LEGO Art's Build of a picture and
+// Brickify of the bunny; then Orthanc (9,429 parts) opened from a file, for
+// Timeline, Delete of all of it, Undo, and New.
+//
+// Fails when a press that is meant to show the bar (EXPECT) does not within
+// --heard ms (150), when one of the four that must stay alive (ALIVE) has
+// work of its own over --budget ms (250) in one go, or when the bar is still
+// up at the end.
+// --report-only prints the table and passes, for a build from before.
+import { launch, openColumnFor } from "./browser.mjs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { deflateSync } from "node:zlib";
+import { spawn } from "node:child_process";
+import { createServer } from "node:net";
+
+const args = Object.fromEntries(process.argv.slice(2).map((a) => {
+  const [k, ...rest] = a.replace(/^--/, "").split("=");
+  return [k, rest.join("=") || true];
+}));
+const out = args.out || "shots/progress";
+mkdirSync(out, { recursive: true });
+const budget = Number(args.budget || 250);
+const heardBudget = Number(args.heard || 150);
+const reportOnly = Boolean(args["report-only"]);
+const only = args.only ? String(args.only).split(",") : null;
+const wanted = (name) => !only || only.includes(name);
+const bypass = process.env.BW_BYPASS || "";
+// The presses that show the bar, and the ones held to the frame budget.
+const EXPECT = new Set(["timeline", "booklet", "art", "brickify", "open", "delete", "undo", "new"]);
+const ALIVE = new Set(["timeline", "booklet", "art", "brickify"]);
+
+async function freePort() {
+  return new Promise((done) => {
+    const s = createServer();
+    s.listen(0, "127.0.0.1", () => { const { port } = s.address(); s.close(() => done(port)); });
+  });
+}
+let server = null;
+let url = args.url;
+if (!url) {
+  const port = await freePort();
+  server = spawn("node", ["tools/web/relay_server.mjs", String(port), `--static=${args.dir || "build/web"}`],
+    { stdio: ["ignore", "pipe", "inherit"] });
+  await new Promise((done) => server.stdout.once("data", done));
+  url = `http://127.0.0.1:${port}/`;
+}
+const withBypass = (u) => (bypass
+  ? `${u}${u.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : u);
+
+// The galaxy art_flow.mjs lays, 96 x 64, written as a PNG.
+function crc32(bytes) {
+  let c = ~0;
+  for (const b of bytes) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c >>> 0;
+}
+function chunk(type, data) {
+  const head = Buffer.alloc(8);
+  head.writeUInt32BE(data.length, 0);
+  head.write(type, 4, "ascii");
+  const tail = Buffer.alloc(4);
+  tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
+  return Buffer.concat([head, data, tail]);
+}
+function galaxy(w, h) {
+  const rows = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) {
+    rows[y * (w * 3 + 1)] = 0;
+    for (let x = 0; x < w; x++) {
+      const dx = (x - w / 2) / (w / 2);
+      const dy = (y - h / 2) / (h / 2);
+      const r = Math.hypot(dx * 0.9 + dy * 0.3, (dy - dx * 0.2) * 1.8);
+      const disc = Math.max(0, 1 - r);
+      const core = Math.max(0, 1 - r * 4);
+      const at = y * (w * 3 + 1) + 1 + x * 3;
+      rows[at] = Math.min(255, 10 + disc * 150 + core * 105);
+      rows[at + 1] = Math.min(255, 12 + disc * 110 + core * 130);
+      rows[at + 2] = Math.min(255, 40 + disc * 170 + core * 45);
+    }
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(w, 0);
+  header.writeUInt32BE(h, 4);
+  header[8] = 8;
+  header[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", header), chunk("IDAT", deflateSync(rows)), chunk("IEND", Buffer.alloc(0))]);
+}
+const picture = resolve(out, "galaxy.png");
+writeFileSync(picture, galaxy(96, 64));
+const bunny = resolve("tests/fixtures/brickify/bunny.obj");
+const orthanc = resolve("models/orthanc.ldr");
+
+// In the page before the engine starts: every engine frame timed, and every
+// press noted, in the page's own clock.
+function instrument() {
+  const perf = { frames: [], presses: [] };
+  window.brickworksFrames = perf;
+  const real = window.requestAnimationFrame.bind(window);
+  let inside = false;
+  // Time spent inside WebGL calls in the frame going: what is left of a
+  // frame without it is the app's own work, input handled in the frame
+  // included, which the app's own clock (OwnFrames) starts after.
+  let gl = 0;
+  const timed = (callback) => (time) => {
+    if (inside) { callback(time); return; }
+    inside = true;
+    gl = 0;
+    const t0 = performance.now();
+    try { callback(time); } finally {
+      inside = false;
+      perf.frames.push([t0, performance.now() - t0, "frame", gl]);
+      if (perf.frames.length > 40000) perf.frames.splice(0, 20000);
+    }
+  };
+  const context = WebGL2RenderingContext.prototype;
+  for (const name of Object.getOwnPropertyNames(context)) {
+    const d = Object.getOwnPropertyDescriptor(context, name);
+    if (!d || typeof d.value !== "function" || name === "constructor") continue;
+    const was = d.value;
+    context[name] = function (...a) {
+      const t0 = performance.now();
+      try { return was.apply(this, a); } finally { gl += performance.now() - t0; }
+    };
+  }
+  let inner = real;
+  Object.defineProperty(window, "requestAnimationFrame", {
+    configurable: true,
+    get() { const at = inner; return (callback) => at(timed(callback)); },
+    set(f) { inner = f; },
+  });
+  // And the engine's own input handlers, which run outside its frame: a
+  // button's press can do its work there, and the first version of this
+  // check missed Timeline's eight seconds because it timed frames alone.
+  const wrapped = new WeakMap();
+  const add = EventTarget.prototype.addEventListener;
+  const remove = EventTarget.prototype.removeEventListener;
+  EventTarget.prototype.addEventListener = function (type, listener, options) {
+    if (typeof listener !== "function" || !/^(pointer|mouse|key|wheel|touch|click|contextmenu)/.test(type)) {
+      return add.call(this, type, listener, options);
+    }
+    let timedListener = wrapped.get(listener);
+    if (!timedListener) {
+      timedListener = function (...a) {
+        if (inside) return listener.apply(this, a);
+        inside = true;
+        const t0 = performance.now();
+        try { return listener.apply(this, a); } finally {
+          inside = false;
+          perf.frames.push([t0, performance.now() - t0, "input", 0]);
+        }
+      };
+      wrapped.set(listener, timedListener);
+    }
+    return add.call(this, type, timedListener, options);
+  };
+  EventTarget.prototype.removeEventListener = function (type, listener, options) {
+    return remove.call(this, type, wrapped.get(listener) || listener, options);
+  };
+  // The page held, whatever held it: how late a timer every 20 ms ran.
+  perf.stalls = [];
+  let beat = performance.now();
+  setInterval(() => {
+    const now = performance.now();
+    if (now - beat > 70) perf.stalls.push([beat, now - beat - 20]);
+    beat = now;
+  }, 20);
+  for (const kind of ["pointerdown", "keydown"]) {
+    window.addEventListener(kind, () => perf.presses.push(performance.now()), true);
+  }
+}
+
+const rows = [];
+let failures = 0;
+const browser = await launch();
+const errors = [];
+
+async function openPage(address) {
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  await context.addInitScript(instrument);
+  const page = await context.newPage();
+  page.choosers = [];
+  page.on("filechooser", (chooser) => page.choosers.push(chooser));
+  page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
+  page.on("console", (m) => {
+    if (/SCRIPT ERROR|Parse Error|USER ERROR/.test(m.text())) errors.push(m.text().slice(0, 200));
+  });
+  await page.goto(withBypass(address), { waitUntil: "domcontentloaded", timeout: 180000 });
+  return { context, page };
+}
+
+function helpers(page) {
+  const controls = () => page.evaluate(() => window.brickworksControls || {});
+  const state = () => page.evaluate(() => window.brickworksState || {});
+  const now = () => page.evaluate(() => performance.now());
+  async function where(name, seconds = 120) {
+    for (let n = 0; n < seconds * 2; n++) {
+      const at = (await controls())[name];
+      if (at) return at;
+      if (n === 2) await openColumnFor(page, name);
+      await page.waitForTimeout(500);
+    }
+    await page.screenshot({ path: `${out}/never_${name}.png` }).catch(() => {});
+    throw new Error(`the app never showed "${name}"`);
+  }
+  // Quiet: no bar up and [span] ms of engine frames under 100 ms, by
+  // [longest] ms at the latest.
+  async function quiet(span = 3000, longest = 120000) {
+    const until = Date.now() + longest;
+    while (Date.now() < until) {
+      await page.waitForTimeout(500);
+      const ok = await page.evaluate((s) => {
+        const t = performance.now();
+        const recent = window.brickworksFrames.frames.filter(([t0]) => t0 >= t - s);
+        const busy = Object.keys((window.brickworksState || {}).working || {}).length > 0;
+        return !busy && t > s && recent.every(([, d]) => d < 100);
+      }, span);
+      if (ok) return true;
+    }
+    return false;
+  }
+  return { controls, state, now, where, quiet };
+}
+
+// One press, measured. [press] does it; [done] says, from the page's state,
+// when it has finished; [heard] says, for a build without the bar, whether
+// anything on screen has answered yet.
+async function measure(page, name, press, done, heard, seconds = 300) {
+  const { state, now, quiet } = helpers(page);
+  const from = await now();
+  const engineFrom = (await state()).now || 0;
+  await press();
+  const t0 = Date.now();
+  let heardAt = null;
+  let doneAt = null;
+  let last = {};
+  while (Date.now() - t0 < seconds * 1000) {
+    const [s, t, c] = await Promise.all([state(), now(),
+      page.evaluate(() => window.brickworksControls || {})]);
+    last = s;
+    if (heardAt === null && (Object.keys(s.working || {}).length > 0 || (await heard(s, c)))) heardAt = t;
+    if (await done(s, c)) { doneAt = t; break; }
+    await page.waitForTimeout(250);
+  }
+  await quiet(2000, 60000);
+  const facts = await page.evaluate(([a]) => {
+    const p = window.brickworksFrames;
+    const press = p.presses.filter((t) => t >= a)[0] ?? a;
+    const work = (window.brickworksWork || []).filter((e) => e.at >= press);
+    const shown = work.find((e) => e.shown);
+    // The frame the bar was first drawn in ends after it said so.
+    const frameOf = shown ? p.frames.find(([t0, d]) => t0 <= shown.at && shown.at <= t0 + d + 1) : null;
+    return { press, shownAt: shown ? (frameOf ? frameOf[0] + frameOf[1] : shown.at) : null,
+      what: shown ? shown.what : "", frames: p.frames.filter(([t0]) => t0 >= press),
+      stalls: p.stalls.filter(([t0]) => t0 >= press - 20) };
+  }, [from]);
+  const end = doneAt ?? (await now());
+  const during = facts.frames.filter(([t0]) => t0 <= end);
+  const longest = Math.max(0, ...during.map(([, d]) => d));
+  // How long the page went without running a timer, drawing included.
+  const stall = Math.max(0, ...facts.stalls.filter(([t0]) => t0 <= end).map(([, d]) => d));
+  const s = await state();
+  // The app's own work: its slowest frame by its own clock (scripts, from
+  // a frame's start to its drawing: Main._watch_own_frames), or the longest
+  // of its input handlers, which run outside a frame. What is judged: the
+  // engine's whole frame also holds the WebGL calls, which on SwiftShader
+  // wait for software drawing whenever the box is busy.
+  const slow = (s.slow || []).filter(([t]) => t >= engineFrom).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const own = Math.max(0, ...slow.map(([, ms]) => ms), ...during.map(([, d, , g]) => d - (g || 0)));
+  const gone = Object.keys(s.working || {}).length === 0;
+  const heardMs = facts.shownAt !== null ? facts.shownAt - facts.press
+    : (heardAt !== null ? heardAt - facts.press : null);
+  const row = {
+    name, heard: heardMs === null ? null : Math.round(heardMs), byBar: facts.shownAt !== null,
+    own: Math.round(own), longest: Math.round(longest), stall: Math.round(stall), total: doneAt === null ? null : Math.round(doneAt - facts.press),
+    gone, frames: during.length, what: facts.what, said: String(last.said || "").slice(0, 80),
+  };
+  const problems = [];
+  if (doneAt === null) problems.push("never finished");
+  if (EXPECT.has(name) && !(row.byBar && row.heard <= heardBudget)) problems.push(`heard after ${row.heard} ms`);
+  if (ALIVE.has(name) && row.own > budget) problems.push(`a ${row.own} ms frame of its own`);
+  if (!gone) problems.push("the bar is still up");
+  row.problems = problems;
+  rows.push(row);
+  const failed = problems.length > 0 && !reportOnly;
+  if (failed) failures += 1;
+  const heardText = row.heard === null ? "never" : `${row.byBar ? "" : "~"}${row.heard} ms`;
+  console.log(`${failed ? "FAIL" : "ok  "}  ${name.padEnd(10)} heard ${heardText.padStart(9)}  own ${String(row.own).padStart(6)} ms`
+    + `  frame ${String(row.longest).padStart(6)} ms  page held ${String(row.stall).padStart(6)} ms`
+    + `  total ${row.total === null ? "    —" : String(row.total).padStart(7) + " ms"}  ${gone ? "gone" : "STILL UP"}`
+    + `  ${row.what || row.said}${problems.length ? "  [" + problems.join("; ") + "]" : ""}`);
+  // What it was busy with in its slowest frames.
+  if (slow.length) {
+    row.slowest = slow;
+    const said = slow.map(([, ms, , doing]) => `${ms} ms ${String(doing || "").slice(0, 60)}`);
+    console.log(`        (its slowest frames: ${said.join("; ")})`);
+  }
+  await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 }).catch(() => {});
+  return row;
+}
+
+const said = (pattern) => (s) => pattern.test(String(s.said || ""));
+const press = (page, name) => async () => {
+  const at = await helpers(page).where(name);
+  await page.mouse.click(at.x, at.y);
+};
+
+try {
+  // -- a first visit: the example car ----------------------------------------
+  const { context, page } = await openPage(url);
+  const h = helpers(page);
+  await h.where("open", 400);
+  console.log(`car page up; settling…`);
+  await h.quiet(4000, 180000);
+
+  if (wanted("bin")) {
+    await measure(page, "bin", press(page, "parts_rail"),
+      async (s) => Boolean(s.columns && s.columns.parts), async () => false, 60);
+    await h.quiet(3000, 120000);
+  }
+  if (wanted("booklet")) {
+    const opened = context.waitForEvent("page", { timeout: 600000 }).catch(() => null);
+    let tab = null;
+    opened.then((t) => { tab = t; });
+    await measure(page, "booklet", press(page, "instructions"),
+      async (s) => said(/booklet is open|wrote|nothing to write/)(s)
+        || (tab !== null && (await tab.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0)) > 0),
+      async (s) => said(/booklet|planning|setting out|drawing/)(s), 600);
+    if (tab) await tab.close().catch(() => {});
+    await h.quiet(3000, 60000);
+  }
+  if (wanted("render")) {
+    await page.evaluate(() => { window.brickworksRender = null; });
+    await measure(page, "render", press(page, "tool_render"),
+      async () => /Render draws/.test(String((await page.evaluate(() => window.brickworksRender || {})).status || "")),
+      async (_s, c) => Boolean(c.render_picture), 240);
+    const close = (await h.controls()).render_close;
+    if (close) await page.mouse.click(close.x, close.y);
+    else await page.keyboard.press("Escape");
+    await h.quiet(3000, 60000);
+  }
+  if (wanted("art")) {
+    let chooser = null;
+    for (let n = 0; n < 3 && !chooser; n++) {
+      page.choosers.length = 0;
+      const menu = await h.where("menu_build");
+      await page.mouse.click(menu.x, menu.y);
+      await page.waitForTimeout(1500);
+      await page.keyboard.type("Mosaic", { delay: 120 });
+      await page.waitForTimeout(800);
+      await page.keyboard.press("Enter");
+      for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
+      chooser = page.choosers.shift() || null;
+      if (!chooser) await page.keyboard.press("Escape");
+    }
+    if (chooser) {
+      await chooser.setFiles(picture);
+      await h.where("mosaic_build", 120);
+      await page.waitForTimeout(8000);
+      await measure(page, "art", press(page, "mosaic_build"),
+        async (s) => Boolean(s.art && s.art.parts > 0 && s.art.pieces > 0),
+        async (s) => said(/laying|panels/)(s), 600);
+    } else {
+      console.log("FAIL  art: no file chooser came up");
+      failures += 1;
+    }
+    await h.quiet(3000, 120000);
+  }
+  if (wanted("brickify")) {
+    const view = await h.where("view");
+    let chooser = null;
+    for (let n = 0; n < 3 && !chooser; n++) {
+      page.choosers.length = 0;
+      await page.mouse.move(view.x, view.y);
+      await page.keyboard.press("Control+i");
+      for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
+      chooser = page.choosers.shift() || null;
+    }
+    if (chooser) {
+      await chooser.setFiles(bunny);
+      await h.where("brickify_go", 120);
+      await page.waitForTimeout(6000);
+      await measure(page, "brickify", press(page, "brickify_go"),
+        async (s, c) => Boolean(s.tree && s.tree["bunny#1"]) && !c.brickify_go,
+        async () => true, 600);
+    } else {
+      console.log("FAIL  brickify: no file chooser came up");
+      failures += 1;
+    }
+    await h.quiet(3000, 120000);
+  }
+
+  // -- Orthanc, opened from a file -------------------------------------------
+  const big = ["open", "timeline", "delete", "undo", "new"].some(wanted);
+  if (big) {
+    let chooser = null;
+    const at = await h.where("open");
+    for (let n = 0; n < 3 && !chooser; n++) {
+      page.choosers.length = 0;
+      await page.mouse.click(at.x, at.y);
+      await page.waitForTimeout(3000 + 3000 * n);
+      await page.mouse.click(at.x + 40, at.y + 22);
+      for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
+      chooser = page.choosers.shift() || null;
+      if (!chooser) await page.keyboard.press("Escape");
+    }
+    if (!chooser) throw new Error("no file chooser came up for Open");
+    // The press is the file handed over: what a person does last.
+    await measure(page, "open", async () => {
+      await page.evaluate(() => window.brickworksFrames.presses.push(performance.now()));
+      await chooser.setFiles(orthanc);
+    }, async (s) => (s.bricks || 0) > 9000 && !s.playing,
+    async (s) => said(/open|reading|orthanc/i)(s) || (s.bricks || 0) > 1000, 600);
+    await h.quiet(4000, 300000);
+    if (wanted("timeline")) {
+      await measure(page, "timeline", press(page, "tool_timeline"),
+        async (s, c) => Boolean(c.steps_done) && Object.keys(s.working || {}).length === 0,
+        async (_s, c) => Boolean(c.steps_done), 600);
+      const doneAt = (await h.controls()).steps_done;
+      if (doneAt) await page.mouse.click(doneAt.x, doneAt.y);
+      await h.quiet(3000, 120000);
+    }
+    const view = await h.where("view");
+    if (wanted("delete") || wanted("undo")) {
+      await page.mouse.move(view.x, view.y);
+      await page.keyboard.press("Control+a");
+      await page.waitForTimeout(3000);
+      await measure(page, "delete", async () => {
+        await page.mouse.move(view.x, view.y);
+        await page.keyboard.press("Delete");
+      }, async (s) => (s.bricks || 0) < 100, async (s) => (s.bricks || 0) < 9000, 300);
+      await h.quiet(3000, 120000);
+      await measure(page, "undo", async () => {
+        await page.mouse.move(view.x, view.y);
+        await page.keyboard.press("Control+z");
+      }, async (s) => (s.bricks || 0) > 9000, async (s) => (s.bricks || 0) > 100, 300);
+      await h.quiet(3000, 120000);
+    }
+    if (wanted("new")) {
+      // New asks first when the model has changed since it was opened, and
+      // it has: the press that clears it is the one that says so.
+      const button = await h.where("new");
+      await page.mouse.click(button.x, button.y);
+      await page.waitForTimeout(4000);
+      if (((await h.state()).bricks || 0) > 9000) {
+        await measure(page, "new", async () => { await page.keyboard.press("Enter"); },
+          async (s) => (s.bricks || 0) < 100, async (s) => (s.bricks || 0) < 9000, 300);
+      } else {
+        console.log("  (new: no question asked; not measured)");
+      }
+    }
+  }
+} catch (error) {
+  console.log(`FAIL  ${String(error).split("\n")[0]}`);
+  failures += 1;
+} finally {
+  for (const e of errors.slice(0, 8)) console.log(`  error: ${e}`);
+  writeFileSync(`${out}/progress.json`, JSON.stringify({ url, budget, heardBudget, rows }, null, 1));
+  await browser.close().catch(() => {});
+  if (server) server.kill();
+}
+const worst = rows.filter((r) => ALIVE.has(r.name)).reduce((a, r) => Math.max(a, r.own), 0);
+console.log(failures
+  ? `${failures} problem(s); the longest frame of the four kept alive was ${worst} ms (budget ${budget}); see ${out}`
+  : `every slow thing said so and kept the page alive: the longest frame of the four was ${worst} ms (budget ${budget}); see ${out}`);
+process.exit(failures ? 1 : 0);

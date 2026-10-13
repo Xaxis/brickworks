@@ -133,10 +133,27 @@ func handle_key(key: InputEventKey) -> bool:
 	return false
 
 
+## Changes to this many parts or more take long enough to say so first.
+const BIG_CHANGE := 300
+
+
+## For a change to [param count] parts: when it is a big one, the status
+## bar says so (Working) and has been drawn before it is made, since the
+## change itself is one long frame. [param words] takes the count.
+func _say_first(count: int, words: String) -> Working.Job:
+	if count < BIG_CHANGE:
+		return null
+	var job: Working.Job = Working.begin(words % Working.comma(count))
+	await job.shown()
+	return job
+
+
 ## A button on the edit bar, by name: the same thing its key does.
 func press(name: String) -> void:
 	match name:
 		"undo":
+			var job: Working.Job = await _say_first(builder.next_change_size(),
+				"Undoing a change to %s parts…")
 			# Said, whatever it was: undoing a sub-assembly made changes
 			# nothing a person can see, and the line said nothing either.
 			if builder.undo():
@@ -144,14 +161,20 @@ func press(name: String) -> void:
 				say.call("undid: %s" % builder.redo_words())
 			else:
 				say.call("nothing to undo")
+			if job != null:
+				job.end()
 			aim_again.call()
 		"redo":
+			var job: Working.Job = await _say_first(builder.next_change_size(true),
+				"Redoing a change to %s parts…")
 			if builder.redo():
 				edited.call()
 				var done: PackedStringArray = builder.history_words(1)
 				say.call("redid: %s" % (done[0] if not done.is_empty() else "the change"))
 			else:
 				say.call("nothing to redo")
+			if job != null:
+				job.end()
 			aim_again.call()
 		"rotate":
 			if builder.is_carrying() or builder.selection.is_empty():
@@ -177,10 +200,14 @@ func press(name: String) -> void:
 				edited.call()
 				say.call("painted %s" % _parts(painted))
 		"delete":
+			var job: Working.Job = await _say_first(builder.selection.size(),
+				"Taking off %s parts…")
 			var gone: int = builder.remove_selection()
 			if gone > 0:
 				edited.call()
 				say.call("removed %s" % _parts(gone))
+			if job != null:
+				job.end()
 		"replace":
 			replace()
 		"mirror":

@@ -52,12 +52,24 @@ const _ASK := """(function (n) {
 })(%d)"""
 
 
+## A fence after everything asked of the card so far: its number, or 0
+## where there are none (the desktop, or no WebGL 2).
+static func put() -> int:
+	if not OS.has_feature("web"):
+		return 0
+	return int(JavaScriptBridge.eval(_PUT, true))
+
+
+## Whether the card has done what was asked of it before fence [param n]
+## was put in. Asking does not wait.
+static func passed(n: int) -> bool:
+	return n <= 0 or bool(JavaScriptBridge.eval(_ASK % n, true))
+
+
 ## Until the card has done what was asked of it before now. A coroutine:
 ## await it.
 static func finished() -> void:
-	if not OS.has_feature("web"):
-		return
-	var fence: int = int(JavaScriptBridge.eval(_PUT, true))
+	var fence: int = put()
 	if fence <= 0:
 		return
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
@@ -66,7 +78,7 @@ static func finished() -> void:
 	RenderingServer.render_loop_enabled = false
 	while Time.get_ticks_msec() < until:
 		await tree.process_frame
-		if bool(JavaScriptBridge.eval(_ASK % fence, true)):
+		if passed(fence):
 			break
 	_holding -= 1
 	if _holding == 0:

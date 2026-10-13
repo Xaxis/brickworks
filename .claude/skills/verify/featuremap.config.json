@@ -750,6 +750,13 @@
     },
     {
       "kind": "ui",
+      "label": "what the app is busy with",
+      "entry": "src/ui/working.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "snap and turn step",
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (Snap and Turn on the toolbar; then place, nudge with the arrows, R)",
@@ -844,6 +851,13 @@
       "label": "freeze check",
       "entry": "tools/web/freeze_check.mjs",
       "reach": "node tools/web/freeze_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "progress check",
+      "entry": "tools/web/progress_check.mjs",
+      "reach": "node tools/web/progress_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=… --url=<a preview>/app; --only=timeline,booklet,…; --report-only for a build from before)",
       "area": "web"
     },
     {

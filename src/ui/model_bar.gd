@@ -341,8 +341,13 @@ func _import() -> void:
 		_picker = ModelFilePicker.new()
 		add_child(_picker)
 		_picker.picked.connect(func(text: String, file_name: String) -> void:
+			# Reading a big model is a long frame: the status bar says so
+			# first (Working), and has been drawn before it begins.
+			var job: Working.Job = Working.begin("Opening %s…" % file_name.get_file())
+			await job.shown()
 			var result: Dictionary = store.open_text(
 				text, file_name.get_basename())
+			job.end()
 			if not str(result["error"]).is_empty():
 				_say(str(result["error"]))
 				return
@@ -409,13 +414,26 @@ func ask_for_new() -> void:
 
 
 func _start_new() -> void:
+	var job: Working.Job = await _say_first("Clearing %s parts…")
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
 	if store != null:
 		store.begin(ModelStore.UNTITLED)
 	started_new.emit()
+	if job != null:
+		job.end()
 	_say("new model")
+
+
+## For taking a big model off the baseplate, one long frame: the status bar
+## says so first (Working) and has been drawn before it starts.
+func _say_first(words: String) -> Working.Job:
+	if world.brick_count() < EditVerbs.BIG_CHANGE:
+		return null
+	var job: Working.Job = Working.begin(words % Working.comma(world.brick_count()))
+	await job.shown()
+	return job
 
 
 func _ask_to_clear() -> void:
@@ -423,6 +441,7 @@ func _ask_to_clear() -> void:
 
 
 func _on_clear() -> void:
+	var job: Working.Job = await _say_first("Clearing %s parts…")
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()
@@ -431,4 +450,6 @@ func _on_clear() -> void:
 	if store != null:
 		store.share_id = ""
 	cleared.emit()
+	if job != null:
+		job.end()
 	_say("cleared")

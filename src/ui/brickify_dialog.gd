@@ -314,6 +314,10 @@ func _faint(column: Control) -> Label:
 	return label
 
 
+## The status bar's line while the parts go down (Working).
+var _put_job: Working.Job = null
+
+
 ## Put away, or stop: a run in progress is left to finish on its worker and
 ## its result dropped.
 func close() -> void:
@@ -470,14 +474,20 @@ func brickify() -> void:
 	_set_enabled(false)
 	var choice: Brickify.Options = options()
 	var began: int = Time.get_ticks_msec()
+	# Said in the status bar too, as every slow thing is (Working), with its
+	# Cancel the same as the panel's.
+	var job: Working.Job = Working.begin("Brickifying %s…" % _mesh.name, 0, true)
+	job.cancel_wanted.connect(func() -> void: _stopped = true)
 	_status.text = "getting the parts ready…"
+	await job.shown()
 	var missing: PackedStringArray = await _ensure_parts()
 	if _checker == null:
 		_checker = Assistant.new()
 	_checker.library = library
 	_checker.builder = builder
 	_checker.world = world
-	_warm()
+	job.say("Brickifying %s: getting its shapes ready…" % _mesh.name)
+	await _warm(job)
 	var progress := Brickify.Progress.new()
 	var result: Dictionary = {}
 	var mesh: MeshFile = _mesh
@@ -494,22 +504,32 @@ func brickify() -> void:
 		library.reading_in(task)
 		while not WorkerThreadPool.is_task_completed(task):
 			_status.text = "%s… %d s" % [progress.said(), (Time.get_ticks_msec() - began) / 1000]
+			job.say("Brickifying %s: %s…" % [mesh.name, progress.said()])
 			await get_tree().process_frame
 		WorkerThreadPool.wait_for_task_completion(task)
 		library.end_reading(task)
 	if _stopped:
 		_busy = false
 		_set_enabled(true)
+		job.end()
 		said.emit("brickifying %s stopped" % mesh.name)
 		return
 	if result.has("error") or not result.has("model"):
 		_busy = false
 		_set_enabled(true)
+		job.end()
 		_status.text = str(result.get("error", "it could not be laid"))
 		return
 	_status.text = "putting %s parts down…" % Brickify._comma(
 		(result["model"] as Assistant.Model).placements.size())
+	# Past stopping: what is going down goes down whole, as one undo.
+	job.can_cancel = false
+	job.say("Putting %s parts down…" % Brickify._comma(
+		(result["model"] as Assistant.Model).placements.size()))
+	_put_job = job
 	var ids: PackedInt64Array = await _put_down(result, mesh.name)
+	_put_job = null
+	job.end()
 	_busy = false
 	_set_enabled(true)
 	visible = false
@@ -567,7 +587,11 @@ func _fetch_parts() -> PackedStringArray:
 ## The tables filled on first use, filled here rather than by the worker.
 ## A part that had not arrived when one was filled is not in it, and would
 ## never be laid: those are filled again now it may be here.
-func _warm() -> void:
+##
+## A frame given back between each table and each part: filled in one go,
+## on a browser's first Brickify, they held the page for two seconds
+## before anything else happened.
+func _warm(job: Working.Job = null) -> void:
 	for key: Variant in Shapes._parts.keys():
 		if (Shapes._parts[key] as Dictionary).is_empty():
 			Shapes._parts.erase(key)
@@ -579,12 +603,20 @@ func _warm() -> void:
 		Patterns._wedge_prints.clear()
 	Shapes._edge_parts.clear()
 	Style.norms()
+	if job != null:
+		await job.next()
 	Patterns.wedge_shapes(library)
+	if job != null:
+		await job.next()
 	Shapes.edge_parts(library, 1)
+	if job != null:
+		await job.next()
 	Shapes.edge_parts(library, 3)
 	for table: Array in [Shapes.Plan.SLOPES, Shapes.Plan.INVERTED]:
 		for entry: Array in table:
 			for id: Variant in [entry[3], entry[4]]:
+				if job != null and job.due():
+					await job.next()
 				if not str(id).is_empty():
 					Shapes.part(library, str(id), table == Shapes.Plan.INVERTED)
 	for id: String in Brickify.parts_needed():
@@ -613,7 +645,11 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	var steps: Array = []
 	var pace := FramePace.new()
 	var from: int = 0
+	if _put_job != null:
+		_put_job.count(0, adds.size())
 	for n: int in adds.size():
+		if pace.due() and _put_job != null:
+			_put_job.count(n)
 		if pace.due() or n == adds.size() - 1:
 			steps.append_array(builder.swap_bricks(PackedInt64Array(), adds.slice(from, n + 1)))
 			from = n + 1

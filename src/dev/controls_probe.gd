@@ -255,8 +255,11 @@ func _run() -> void:
 
 	var steps: StepsBar = _main.get("_steps")
 	_press(KEY_B)
-	for _n: int in 20:
+	# The steps are worked out a slice at a time (StepsBar.start).
+	for _n: int in 600:
 		await process_frame
+		if steps.is_playing_back() and not steps.is_starting():
+			break
 	_assert("B opens the build steps", steps.is_playing_back())
 
 	# Only worth checking when there is more than one step to move
@@ -312,7 +315,7 @@ func _run() -> void:
 			victim = brick.id
 	var standing: int = world.brick_count()
 	world.remove_brick(victim)
-	steps.start(world, _main.get("_library"), scenery)
+	await steps.start(world, _main.get("_library"), scenery)
 	steps.set_mode(2)
 	var ghosts: int = steps._ghosts.size()
 	_assert("the history puts back what was taken out, %d brick(s)" % ghosts, ghosts >= 1)
@@ -341,7 +344,7 @@ func _run() -> void:
 		_bricks_in(during) == _bricks_in(after) and _bricks_in(after) > 0)
 	_assert("leaving the timeline takes the put-back bricks away, %d -> %d"
 		% [standing - 1 + ghosts, world.brick_count()], world.brick_count() == standing - 1)
-	steps.start(world, _main.get("_library"), scenery)
+	await steps.start(world, _main.get("_library"), scenery)
 	steps.set_mode(0)
 	_press(KEY_ESCAPE)
 	await process_frame

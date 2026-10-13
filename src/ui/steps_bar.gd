@@ -83,6 +83,8 @@ signal closed
 
 ## Its buttons and the slider by name, for the page to find (controls_by_name).
 var _named: Dictionary = {}
+## The steps being worked out (start), until they are.
+var _job: Working.Job = null
 
 
 func _ready() -> void:
@@ -229,24 +231,54 @@ func _button(label: String, tip: String) -> Button:
 
 
 ## Work out the build order for what is in the world and show the first
-## step. Returns false when there is nothing to step through.
+## step. Returns false when there is nothing to step through, or when it
+## was cancelled or stopped before it was worked out.
+##
+## A slice at a time, with the status bar saying how far it has got
+## (Working): on Orthanc the order is seconds of work in a browser, and it
+## held the page on one frame with nothing on screen to say so.
 func start(world: BrickWorld, library: PartLibrary,
 		scenery: Dictionary = {}) -> bool:
+	if _job != null:
+		return false
 	_library = library
 	_world = world
 	_scenery = scenery
-	_steps = Instructions.plan(world, library, scenery)
-	if _steps.is_empty():
+	var job: Working.Job = Working.begin("Laying out %s parts in steps…"
+		% Working.comma(world.brick_count() - scenery.size()), 0, true)
+	_job = job
+	await job.shown()
+	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
+		world, library, scenery, {}, job)
+	_job = null
+	if job.cancelled or steps.is_empty():
+		job.end()
 		return false
+	job.say("Showing the first step…")
+	job.count(0, 0)
+	_steps = steps
 	visible = true
 	_reorder()
 	# The first step, as the booklet opens: an empty baseplate is a page
 	# with nothing on it.
 	_show(_step_ends[0] if _mode == 0 and not _step_ends.is_empty() else 1)
+	job.end()
 	return true
 
 
+## Whether the steps are being worked out: pressing Timeline again then
+## cancels it.
+func is_starting() -> bool:
+	return _job != null
+
+
+func cancel_start() -> void:
+	if _job != null:
+		_job.cancelled = true
+
+
 func stop() -> void:
+	cancel_start()
 	_stop_play()
 	_forget_ghosts()
 	visible = false

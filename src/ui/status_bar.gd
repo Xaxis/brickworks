@@ -20,6 +20,12 @@ var _selected: Label
 var _settings: Label
 var _zoom: Label
 var _looked_at: int = 0
+## What the app is busy with, when it is: Working, in place of the line on
+## the left while it lasts.
+var working: Working
+## Only the work, and only while there is some: the shared model's viewer,
+## which hides the builder's bar but still has slow things to say.
+var work_only: bool = false
 
 
 func _ready() -> void:
@@ -42,6 +48,9 @@ func _ready() -> void:
 	message = Label.new()
 	message.visible = false
 	add_child(message)
+	working = Working.new()
+	working.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(working)
 	_hint = _label(row, 1.0)
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.clip_text = true
@@ -63,6 +72,16 @@ func _label(row: Container, alpha: float) -> Label:
 	return label
 
 
+## For the shared model's viewer: nothing but the work, and only while
+## there is some.
+func only_the_work() -> void:
+	work_only = true
+	for label: Label in [counts, _selected, _settings, _zoom]:
+		label.visible = false
+		(label.get_meta("line") as Control).visible = false
+	visible = Working.is_busy()
+
+
 ## A field on the right, with a line before it and a tooltip saying what
 ## it is.
 func _cell(row: Container, says: String) -> Label:
@@ -79,6 +98,14 @@ func _cell(row: Container, says: String) -> Label:
 
 func _process(_delta: float) -> void:
 	if shell == null:
+		return
+	# While something is being worked on, that is what the left says.
+	var busy: bool = Working.is_busy()
+	if _hint.visible == busy:
+		_hint.visible = not busy
+	if work_only:
+		if visible != busy:
+			visible = busy
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
 	var said: String = message.text

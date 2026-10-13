@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow -->
 
 ## Sub-features
 
@@ -124,6 +124,30 @@ plan with Claude as the client.
   and at once back in view; then a reload, after which the same address
   answers with nothing pressed. Against the build before the fix it fails all
   four out-of-view checks.
+- `progress check` (`tools/web/progress_check.mjs`, 2026-10-12): presses each
+  slow thing in Chromium on SwiftShader and times it against the press's own
+  time in the page — how long before the status bar's bar (`Working`) was
+  drawn (`window.brickworksWork`; a build without it is read by its page
+  state, polled, and marked ~); the app's own longest piece of work, which is
+  what is judged (an engine frame less the time it spent inside WebGL calls,
+  or one of its input handlers, timed in the page — a press can be handled
+  outside a frame, and Timeline's was — or its slowest frame by its own
+  clock, `brickworksState.slow`, labelled with what `Working` said); the
+  longest engine frame callback (as `render_open_check` times them, WebGL
+  calls included) and the longest the page ran no timer, both said and not
+  judged, since on SwiftShader on a busy box a WebGL call waits for the
+  software drawing of the frame before; the total; and that the bar is gone.
+  That last is why the bar is not redrawn until the card has drawn its last
+  change (`GpuFence`): every 250 ms regardless, as first written, Orthanc's
+  timeline took 77 s instead of 8, software drawings of the whole tower
+  queued up behind each other. A first visit's car: the parts bin's first open,
+  Instructions, Render, LEGO Art's Build of art_flow's galaxy at 48 across,
+  Brickify of the bunny; then Orthanc opened from a file: Timeline, Delete
+  of all of it, Undo, New. Fails when one that should show the bar does not
+  within `--heard` ms (150), when Timeline, the booklet, Art or Brickify has
+  work of its own over `--budget` ms (250) in one go, or a bar is left up; `--report-only` prints
+  the table for a build from before. Leaves `progress.json` and a picture
+  after each press in `--out` (shots/progress).
 - `GET/POST /api/share` (`api/share.js`, `supabase/shared_models.sql`, applied
   to the live project 2026-10-12): a model shared by link (2026-10-12). POST
   with a session publishes `{name, author?, model, image?, id?}` and answers
