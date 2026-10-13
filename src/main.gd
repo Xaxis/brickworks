@@ -60,6 +60,10 @@ var _stats_shown: bool = _has_argument("--stats")
 var _connector: ClaudeConnector
 ## When the controls were last told to the page. See [method _tell_page].
 var _told_page_at: int = 0
+## ...and how long telling it took the last time, which is a frame's work
+## twice a second: a check reads it beside the slow frames.
+var _told_page_us: int = 0
+var _told_page_most_us: int = 0
 var _deployment: Deployment
 ## Who is signed in. Everyone using Brickworks is (src/account/account.gd).
 var _account: Account
@@ -85,6 +89,20 @@ var _first_open_done: bool = false
 var _shared: SharedModels
 var _share_panel: SharePanel
 var _share_view: ShareView
+## Build it, in the viewer: the step player, the pages it shows, the line
+## round each page's new parts, and the page it is on (_enter_build).
+var _build_mode: BuildMode
+var _build_pages: BuildSteps
+var _build_outline: SelectionOutline
+var _build_page: int = 0
+## What was in sight before the player took the window, put back after.
+var _build_left: Dictionary = {}
+## How long turning to the last page took, and the longest, in microseconds:
+## the page's own work, before the batches are written at the frame's end.
+var _build_turned_us: int = 0
+var _build_turned_most_us: int = 0
+## ...and where the longest one's time went, ms by what it did.
+var _build_turned_most: Dictionary = {}
 ## The part under the pointer, outlined: in the viewer, and named beside
 ## it; with Select in hand, what a click would take. -1 is not yet looked
 ## at: what is under a still pointer may have changed.
@@ -274,6 +292,7 @@ func _tell_page() -> void:
 	if now - _told_page_at < 500:
 		return
 	_told_page_at = now
+	var telling: int = Time.get_ticks_usec()
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
@@ -308,6 +327,8 @@ func _tell_page() -> void:
 		named.merge(_share_panel.controls_by_name())
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
+	if _build_mode != null:
+		named.merge(_build_mode.controls_by_name())
 	if _inventory != null:
 		named.merge(_inventory.controls_by_name())
 	if _steps != null:
@@ -381,6 +402,8 @@ func _tell_page() -> void:
 		"triangles": _drawn[1],
 		"now": Time.get_ticks_msec(),
 		"slow": _slow_frames,
+		"told_ms": roundi(_told_page_us / 1000.0),
+		"told_most_ms": roundi(_told_page_most_us / 1000.0),
 		"playing": _playback != null and _playback.is_playing(),
 		# The sub-assemblies, path -> their own parts, and the one being
 		# edited: what tools/web/assembly_flow.mjs reads the tree by.
@@ -436,6 +459,7 @@ func _tell_page() -> void:
 		"panel": _share_panel.page_state() if _share_panel != null else {},
 		"view": _share_view.page_state() if _share_view != null else {},
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
+		"build": build_state(),
 		"parts_open": _inventory.is_showing(),
 		"title": _store.title,
 	}), true)
@@ -461,6 +485,8 @@ func _tell_page() -> void:
 			"connected": clients,
 			"status": _chat.connector_status(),
 		}), true)
+	_told_page_us = Time.get_ticks_usec() - telling
+	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
 
 
 ## The model's part of the window and every panel's, in CSS pixels, and
@@ -1295,7 +1321,23 @@ func _enter_view() -> void:
 	_share_view.booklet_wanted.connect(_booklet_wanted)
 	_share_view.parts_wanted.connect(_toggle_parts)
 	_share_view.copy_wanted.connect(_open_copy)
+	_share_view.build_wanted.connect(func() -> void: _enter_build())
+	# The big Build it of a phone sits above the timeline.
+	_share_view.floor_at = func() -> float:
+		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
+			else _share_view.size.y
 	_share_view.loading()
+	_build_mode = BuildMode.new()
+	_build_mode.thumbnails = _thumbnails
+	$HUD.add_child(_build_mode)
+	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1))
+	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
+	_build_mode.close_wanted.connect(_leave_build)
+	_build_outline = SelectionOutline.new()
+	_build_outline.world = _world
+	_build_outline.library = _library
+	_build_outline.width = 3.0
+	add_child(_build_outline)
 	# A step scrubbed shows and hides parts under a pointer that has not moved.
 	_steps.reveal.connect(func(_ids: Dictionary) -> void:
 		_hovered_from = Vector2(-1, -1))
@@ -1338,9 +1380,19 @@ func _view_shared() -> void:
 	# On the web most parts are fetched as they are wanted; the steps are
 	# worked out from all of them, so they wait for the last.
 	var since: int = Time.get_ticks_msec()
+	var waited: bool = not _store.awaited.is_empty()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
 		_share_view.arriving(_store.awaited.size())
 		await get_tree().create_timer(0.3).timeout
+	if waited and _store.awaited.is_empty():
+		# Opened again now every part is here, so the parts stand in the
+		# file's order and not the order they happened to arrive in. The
+		# steps break ties by that order: worked out from an arrival order,
+		# a reload could make step 12 a different step 12, and someone
+		# coming back to the page they left would be on another one.
+		_store.open_text(str(shared.get("model", "")), name)
+		_store.title = name
+		_store.share_id = ""
 	_lay_baseplate()
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
@@ -1348,6 +1400,12 @@ func _view_shared() -> void:
 	# The finished model, on a timeline to drag back through.
 	if _steps.start(_world, _library, _store.scenery):
 		_steps.to_end()
+	# Back where this device left it: a phone that slept mid-build opens on
+	# the page it was on.
+	_build_pages = null
+	var kept: Dictionary = BuildSteps.recall(_viewing)
+	if bool(kept.get("building", false)):
+		_enter_build(int(kept["page"]))
 
 
 ## Open in Brickworks, from the viewer: the app as everybody else gets
@@ -1358,6 +1416,132 @@ func _open_copy() -> void:
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
 		OS.shell_open(Deployment.api_base() + address)
+
+
+## Build it: the viewer as a step player, full screen, at [param page] —
+## where this device left the link when none is given (BuildSteps.recall).
+func _enter_build(page: int = -1) -> void:
+	if _share_view == null or _share_view.state != "ready" or _build_mode.is_open():
+		return
+	if _inventory.is_showing():
+		_inventory.hide_list()
+	var made: Array[Instructions.Step] = _steps.steps()
+	if made.is_empty() and not _steps.start(_world, _library, _store.scenery):
+		return
+	made = _steps.steps()
+	_build_left = {"timeline": _steps.is_playing_back(), "cube": _gizmo.visible}
+	# Put out of sight, not stopped: stopping forgets nothing, but starting
+	# it again afterwards works the steps out again, and on a castle that
+	# is seconds of a phone's time for the press of Close.
+	if _steps.is_playing_back():
+		_steps.to_end()
+		_steps.visible = false
+	if _build_pages == null:
+		_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	_share_view.show_bar(false)
+	_share_view.hover("", Vector2.ZERO)
+	_hovered = 0
+	_hover_outline.show_selection({})
+	_gizmo.visible = false
+	_build_mode.open()
+	_camera.seen = _build_mode.free_rect
+	if page < 0:
+		page = int(BuildSteps.recall(_viewing).get("page", 0))
+	# A frame for the bars to be laid out, so the view is framed between them.
+	await get_tree().process_frame
+	_build_go(page)
+
+
+## Put [param page] on screen: what is built by then, the rest out of
+## sight; what was built before it faded; its new parts outlined; its
+## parts along the bottom; the view the booklet would draw it from. And
+## kept as where this device is on the link.
+func _build_go(page: int) -> void:
+	if _build_pages == null or not _build_mode.is_open():
+		return
+	if page > _build_pages.last():
+		# Finish, on the last page: the whole model, as it is now built.
+		_leave_build()
+		return
+	var started: int = Time.get_ticks_usec()
+	var took: Dictionary = {}
+	var lap: int = started
+	page = _build_pages.clamped(page)
+	_build_page = page
+	# Faded first: it only marks the batches, and showing them writes each
+	# once, faded and shown together, rather than once each.
+	_world.set_faded(_build_pages.faded(page))
+	_world.show_only(_build_pages.shown(page))
+	lap = _lap(took, "world", lap)
+	_build_outline.show_selection(_build_pages.fresh(page))
+	lap = _lap(took, "outline", lap)
+	var view: Dictionary = _build_pages.view(page)
+	_camera.look_from(view["from"])
+	# The ball round a flat box is roomy already: a step on a baseplate
+	# framed at the usual 1.25 sat in the middle third of a phone.
+	_camera.frame(view["box"], 1.0)
+	lap = _lap(took, "view", lap)
+	_build_mode.show_page(page, _build_pages.last(), _build_pages.caption(page),
+		_build_pages.note(page), _build_pages.lots(page))
+	lap = _lap(took, "page", lap)
+	BuildSteps.remember(_viewing, page, true)
+	_lap(took, "kept", lap)
+	_build_turned_us = Time.get_ticks_usec() - started
+	if _build_turned_us > _build_turned_most_us:
+		_build_turned_most_us = _build_turned_us
+		_build_turned_most = took
+
+
+## Milliseconds since [param since], under [param name]; now.
+static func _lap(took: Dictionary, name: String, since: int) -> int:
+	var now: int = Time.get_ticks_usec()
+	took[name] = snappedf((now - since) / 1000.0, 0.1)
+	return now
+
+
+## Back to the whole model, as the viewer opened it: the timeline at the
+## end, the bar along the top. The page reached is kept, for Build it to
+## come back to.
+func _leave_build() -> void:
+	if _build_mode == null or not _build_mode.is_open():
+		return
+	_build_mode.close()
+	_world.set_faded({})
+	_build_outline.show_selection({})
+	_camera.seen = _model_rect
+	_share_view.show_bar(true)
+	_gizmo.visible = bool(_build_left.get("cube", true))
+	BuildSteps.remember(_viewing, _build_page, false)
+	if bool(_build_left.get("timeline", false)):
+		_steps.visible = true
+		_steps.to_end()
+	else:
+		_world.show_only({})
+	_camera.look_from(BookletStudio.FRONT)
+	_camera.frame(_built_bounds())
+
+
+## The step player as a check reads it (tools/web/build_flow.mjs,
+## share_view_probe): the page and what it says, and what the world draws.
+func build_state() -> Dictionary:
+	if _build_mode == null:
+		return {}
+	var said: Dictionary = _build_mode.page_state()
+	if not _build_mode.is_open():
+		return said
+	said["faded"] = _world.faded_ids().size()
+	said["fresh"] = _build_pages.fresh(_build_page).size() if _build_pages != null else 0
+	said["turn_ms"] = roundi(_build_turned_us / 1000.0)
+	said["turn_most_ms"] = roundi(_build_turned_most_us / 1000.0)
+	said["turn_most"] = _build_turned_most
+	var shown: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not brick.hidden and not _store.scenery.has(brick.id):
+			shown += 1
+	said["shown"] = shown
+	said["from"] = ("back" if _build_pages != null and _build_mode.is_open()
+		and _build_pages.view(_build_page)["from"] == BookletStudio.BACK else "front")
+	return said
 
 
 ## The page's address, put right without a reload: the link itself while
@@ -1417,6 +1601,10 @@ func _view_input(event: InputEvent) -> void:
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
 		return
+	# A finger's click, emulated: the camera turns the view with the finger
+	# itself already (CadCamera), and the two together turned it twice.
+	if button.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	if button.pressed:
 		if _over_panel_at(button.position):
 			return
@@ -1433,6 +1621,25 @@ func _view_input(event: InputEvent) -> void:
 ## the steps and the parts list here; everything else does nothing.
 func _looking_key(key: InputEventKey) -> bool:
 	if key.ctrl_pressed or key.meta_pressed:
+		return false
+	# The step player: pages and closing, and the views; nothing of the
+	# timeline's, which is put away while it is up.
+	if _build_mode != null and _build_mode.is_open():
+		match key.keycode:
+			KEY_RIGHT, KEY_SPACE, KEY_PAGEDOWN, KEY_ENTER:
+				_build_go(_build_page + 1)
+			KEY_LEFT, KEY_PAGEUP, KEY_BACKSPACE:
+				_build_go(_build_page - 1)
+			KEY_HOME:
+				_build_go(0)
+			KEY_END:
+				_build_go(_build_pages.last() if _build_pages != null else 0)
+			KEY_ESCAPE:
+				_leave_build()
+			KEY_F, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, \
+					KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, \
+					KEY_KP_6, KEY_KP_7:
+				return true
 		return false
 	match key.keycode:
 		KEY_B:
@@ -1485,6 +1692,9 @@ func _look_under_again() -> void:
 ## The part under the pointer in the viewer: outlined, and named beside it.
 func _view_hover() -> void:
 	if _share_view == null or _share_view.state != "ready":
+		return
+	# Building, every part on show is one to look at, not one to name.
+	if _build_mode != null and _build_mode.is_open():
 		return
 	var at: Vector2 = _view_pointer
 	if at == _hovered_from:
@@ -4073,6 +4283,8 @@ func _over_panel_at(point: Vector2) -> bool:
 			return true
 	if _shell != null and _shell.covers(point):
 		return true
+	if _build_mode != null and _build_mode.covers(point):
+		return true
 	# These cover the model rather than sitting beside it, so anywhere
 	# is over them.
 	if _inventory != null and _inventory.is_showing():
@@ -4232,6 +4444,7 @@ func _escape_closes_something() -> bool:
 		or not _builder.selection.is_empty() \
 		or (_inventory != null and _inventory.is_showing()) \
 		or (_steps != null and _steps.is_playing_back()) \
+		or (_build_mode != null and _build_mode.is_open()) \
 		or (_verbs != null and _verbs.mode != "select") \
 		or (_verbs != null and _verbs.assemblies != null and not _verbs.assemblies.entered.is_empty())
 

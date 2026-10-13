@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow -->
 
 ## Sub-features
 
@@ -206,6 +206,53 @@ plan with Claude as the client.
   the threaded engine needs cross-origin isolation, which an iframe in a page
   that did not ask for it cannot have — so the embed is the card, and the 3D
   opens in a tab.
+- `build it step player` (`src/ui/build_mode.gd`, `main._enter_build`,
+  `_build_go`, `_leave_build`): **Build it**, first and yellow on the viewer's
+  bar, turns the viewer into a step player for building the model with real
+  bricks, on a phone, a tablet or the desktop. The whole window: along the top
+  Close, "Step 3 of 24" (a callout's steps as the timeline says them, "Step 12
+  of 40 · Window (2x), 1 of 3") and a progress bar; the model between the bars,
+  what earlier steps built drawn **faded** (`BrickWorld.set_faded`: washed pale
+  and still solid — x-ray's 4% ghosts left the new parts floating) and the
+  step's new parts in their own colours with a yellow outline; along the
+  bottom the step's parts on a pale card, a picture and "2x" each, and a Back
+  and a bigger red Next. Page 0 is the finished model, "Ready to build", with
+  Start; Next past the last step (Finish) is Close. Sized in points, not
+  interface units (a phone has ~1.85 units to the point): Next and Back 60 pt
+  tall, the step at 24 pt. A swipe across either bar turns the page (left is
+  Next) and never turns the model; on the model one finger turns it and two
+  pinch, as `CadCamera` already did — `_view_input` now leaves a finger's
+  emulated click alone, which turned the view a second time. Keys: Right,
+  Space, Page Down, Enter are Next; Left, Page Up, Backspace Back; Home the
+  cover, End the last step; Esc Close. Each page opens on the view the booklet
+  would draw it from (`BuildSteps.view`: front unless the new parts are
+  hidden from there and the back shows them, decided per page) framed between
+  the bars (`CadCamera.seen` is the player's free rect while it is up), close
+  round the new parts when they are under a fifth of the model across. The
+  page is kept per link on the device — `localStorage["brickworks.build.<id>"]`
+  = `{"page", "building"}`, the one thing the viewer writes, and only in the
+  browser (this run only on the desktop) — so a link opened again goes
+  straight back to the step it was on. The steps are the timeline's
+  (`StepsBar.steps`); since they break ties by the order parts stand in, the
+  viewer opens a link a second time once every part has arrived, so the parts
+  stand in the file's order and step 12 is the same step 12 after a reload.
+  Published as `brickworksShare.build` (`open`, `page`, `last`, `caption`,
+  `note`, `told`, `lots`, `pictures`, `next`, `points` of the buttons,
+  `caption_points`, `faded`, `fresh`, `shown`, `from`); controls `build_next`,
+  `build_back`, `build_close`, `build_parts`, `build_top`, `build_bottom`, and
+  `view_build` (the bar's, or on a window under 1,040 points a big yellow
+  Build it over the model, above the timeline). `brickworksState.told_ms` and
+  `told_most_ms` say what publishing all this to the page costs a frame,
+  twice a second. Not done: the author's own steps (`0 STEP`, item 1
+  of docs/COMPETITIVE.md) are not kept yet, so these are always
+  `Instructions.plan`'s; the parts are fetched for the whole model before
+  the first page, not page by page; and a page turn is not yet under 100 ms
+  on a phone (see the browser flow below).
+- `build pages` (`src/assembly/build_steps.gd`): what each page shows —
+  `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
+  the most first), `caption`, `note` ("Build this on the side", "Put them on",
+  "hold this one in place"), `view` — and `recall`/`remember` for the kept
+  page, which reads a stored value of the wrong shape as none.
 - `content security policy`: every page may connect only to itself, Anthropic,
   Wikimedia, the parts store's origin (from `PARTS_URL`) and the sign-in
   service's (from `SUPABASE_URL`, named on its own since 2026-10-11: it was
@@ -510,6 +557,61 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --
 Proves it when it ends "a model can be shared by link, looked at by anyone,
 and taken down": see the steps in the script's header; pictures
 `1_shared.png` to `11_viewer_unpublished.png` and `og_image.png`.
+
+**Build it.** The pages, headless, in about half a minute (the catalogue load):
+
+```sh
+godot --headless --path . --script src/dev/build_steps_probe.gd
+```
+
+Proves it when it ends "every page of the step player can be built from, and
+a link comes back where it was left" with no `FAIL`: on the shed (two windows
+and a figure in callouts), the house and the 2,438-part castle, every part
+picked up on exactly one page, each page showing what is built by then and
+nothing after, what came before faded and the page's own parts not, the parts
+listed being the page's new parts by part and colour, the most first, the
+pages numbered as the timeline numbers them, a callout's first page saying to
+build it on the side and the page that puts it on outlining every copy; a
+page's view worked out in under 20 ms on the castle; the same file making the
+same pages twice (and, printed, that the reverse order does not — why the
+viewer opens a link again in its file's order); a part behind a wall looked
+at from the back; a tile on a big floor framed close; the kept page per link,
+and junk in its place read as none.
+
+The player in the real scene is the last part of `share_view_probe` above
+(`shots/share/9_build_cover.png` to `11_build_again.png`): Build it pressed on
+the bar, the cover, Next pressed three times to "Step 3 of N", the faded parts
+read back from their batch as `BrickWorld.faded` of their colour and the new
+ones in their own, the outline, every part picture drawn, the step framed
+between the bars, a swipe each way across the parts (and the model not
+turning under it), the arrow keys, a finger turning the model and two
+pinching it, the page kept; the viewer opened again straight on step 3;
+Close; Build it again back on step 3; and Finish.
+
+In real Chromium with touch, at a phone's and a tablet's size, against a local
+export (no account, no database: `serve.py --share` plays the link), about ten
+minutes on SwiftShader:
+
+```sh
+tools/export.sh web
+python3 tools/web/serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr &
+node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web
+```
+
+Proves it when it ends "build it works on a phone and a tablet, and comes back
+where it was left": at 390 x 844 (3x) and 820 x 1180 (2x), `/m/<id>` opens the
+viewer with Build it on the bar; tapped, the cover; Next tapped three times,
+"Step 3 of N" with steps 1 and 2 faded and every part picture drawn, Next and
+Back at least 46 points tall, every control inside the page; with the CPU
+slowed four times, the worst frame of three page turns no more than twice the
+worst of three Nexts on the viewer's own timeline (both printed: the aim is
+100 ms and on this box neither meets it — 2026-10-13, phone, the timeline 158
+to 165 ms, the pages 122 to 280 ms, of which the page's own work
+(`brickworksShare.build.turn_most`) was 54 to 126); a swipe each way across
+the parts; a finger turning the model; the page in `localStorage`; and after a
+reload, step 3 again. Pictures
+`shots/build_web/<size>_1_viewer.png` to `_5_reloaded.png`. Against a
+deployment: `--url=<preview> --id=<a published link's id> --bypass=…`.
 
 And the deploy, which is the only proof that counts for the web build:
 
