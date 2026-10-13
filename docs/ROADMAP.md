@@ -1876,6 +1876,90 @@ did not change how this design was built; the next lever is making the
 detail pass reach for a piece per feature, and a corpus with animals in
 it (the repository has 76 BrickHeadz but no Creator owl).
 
+**Feature by feature, a face on the curve, and the instructions a session
+never read (2026-10-12).** The owner: "This system HAS TO BE ABLE TO CREATE
+HIGHLY ELEGANT EXPERT LEGO DESIGNS!" The owl run above looked features up
+once, before building, and laid nothing from what it found; `owl_d4`'s face
+was white tiles on the shape's shell with 1 x 1 eyes, because a 2 x 2 round
+plate wants studs out where a shell offers tiles.
+
+*A design process the loop follows.* An expert works silhouette first, then
+the features the subject is known by, then the detail. HOW TO WORK says it
+in that order, and the loop does it. `submit_design` takes `features`
+(required in its schema). In the app's own loop the whole look is for the
+silhouette; then each feature comes back on its own, before the assemblies,
+four turns each: the best three real pieces for the brief's subject word and
+the feature ("owl eyes"), the worked technique that builds one (found by its
+name words), a small picture, and "lay a real piece, adapt one, or build it
+from the technique, and say which". What each tool did is put down to the
+feature being worked, and the run ends saying what each came to ("eyes: real
+piece 7784-1/eye-rh laid; beak: built from the worked technique beak or
+snout"). A session from outside gets the same through `review_model
+{"feature": ...}`; the whole review hands over the first feature never
+looked at, every edit's answer names those still waiting, and saving hands
+back one. Cheap enough to do every time: find_techniques answers with three
+pieces in two lines each (1,406 characters for "owl eye", where five with
+whole parts lists ran past three thousand) and a picture 600 x 200, where it
+was 1,600 x 320. `features_probe` drives both with replies written in it.
+
+*A face onto a shell.* A shape takes `"face": {"facing": "+z", "x", "y",
+"z", "across": 4, 6 or 8, "color", "rim", "eyes", "beak"}`. On the shell
+that faces that way the face's square is left out of the shell's own plan;
+on the side-stud bricks the core already has behind it a square plate brings
+it out to the curve, a round plate is the disc, and on the disc two 2 x 2
+round eyes with printed eye tiles and a beak on a jumper, every part studs
+out, the disc's other studs tiled. It moves up to two studs to fit the side
+and clear the core; one that cannot be laid is refused with why.
+`face_probe`: the held-out owl's body with a 6-across face (one piece, every
+face part and tile held), a cat's head with a 4, a big owl's with an 8, a
+bear's facing -x; a box's flat side refused. Pictures:
+`shots/d5/face_{owl_front,owl_close,owl_tiled_close,bigowl_front,cat_corner}.png`.
+
+*What a session from outside was reading.* The first bench runs on the
+feature process (`2026-10-12-d5`, commit 29592be) worked no feature at all:
+the owl reviewed the whole once, edited and saved in 174 s; the car never
+called review_model. Asked to quote what it had been given, a Claude Code
+session on our MCP port quoted LEGO ART, COORDINATES, SIDEWAYS and half of
+BUILDING WITH PINS AND AXLES, then "… [truncated]": **Claude Code reads
+about 3,800 characters of a server's instructions, and ours are 56,000.**
+HOW TO WORK started at character 12,868, so no bench run and no person's
+My Claude session had ever read how to work, the three rules, the shapes or
+what a subject needs; what they knew came from the tools' own descriptions.
+The guidance is now headed by the process and the rules in 1,900
+characters (`GUIDE_HEAD`), and `read_guide(section)` serves any section in
+full. Asked again, the session quoted HOW TO WORK. The next owl read
+"shapes" and "subject" before building, reviewed the whole, then worked the
+facial disc and the talons as features (2 of 6) before saving.
+
+*The bench* (`docs/DESIGN_SCORES.md`, batches `2026-10-12-d5` and `-d5b`,
+on the build check before 26ddb89, so their build scores are left out), the
+five visual dimensions against the re-scored baseline, one run each:
+
+| subject | baseline (2 runs) | d5: features, faces | d5b: + the guidance a session reads |
+|---|---|---|---|
+| barn owl | 4.0 / 3.5 / 4.0 / 4.0 / 4.0 | 4 / 3 / 4 / 4 / 5 | 4 / 4 / 4 / 4 / 4 |
+| Speed Champions 911 | 3.5 / 4.5 / 3.5 / 3.5 / 3.0 | 3 / 4 / 3 / 3 / 3 | 3 / 3 / 3 / 2 / 3 |
+| corner shop | 4.5 / 3.5 / 4.5 / 3.5 / 3.0 | — | 5 / 4 / 5 / 4 / 5 |
+
+(likeness / surface / colour / technique / creative.) **This has not moved
+the bench yet.** The owl is where it was; the shop rose half a point on four
+dimensions; the car fell, built studs-up by hand twice (technique 2). By eye
+(`bench/results/2026-10-12-d5*/*/1/views_*.png`): the d5 owl used the face
+key — an 8 x 8 disc with 2 x 2 eyes and a beak, judged "the face disc is a
+round plate with its studs showing" (now tiled); the d5b owl put eyes on a
+tiled shell by hand, its body still a boxy column. What did move is
+behaviour: the d5b sessions read the guide ("shapes", "subject", "rules",
+"angle"), reviewed the whole and worked features as features — the owl its
+facial disc and talons, the car its wheels ("real set 75895 uses light grey
+rims — adapting that"), the shop its awning and corner door — where no
+session before had worked one. None placed a real set's piece with
+place_technique: they read the pieces and built their own.
+
+Left: sessions stop after two of six features (saving hands back the next,
+and they end anyway); the car's shaped body still loses to a hand build; the
+judge wants an owl's heart-shaped face (a disc is round) and a body that is
+not a column; a real piece is read and never laid — whether the three a
+feature is handed are ever the right size is the next thing to measure.
 
 ## Long term: custom elements
 
