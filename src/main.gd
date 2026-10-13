@@ -237,6 +237,15 @@ func _match_screen_density() -> void:
 		get_window().content_scale_factor = factor
 
 
+## Where the ghost stands, in whole LDU, or null while there is none.
+func _ghost_on_page() -> Variant:
+	var at: Variant = _builder.ghost_place() if _builder != null else null
+	if at == null:
+		return null
+	var place: Vector3 = at
+	return [roundi(place.x), roundi(place.y), roundi(place.z)]
+
+
 ## Each sub-assembly's own parts, where they are on the page: path ->
 ## {x, y} in CSS pixels, the top middle of their bounds.
 func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
@@ -450,6 +459,9 @@ func _tell_page() -> void:
 		"joints": _joint_places(to_window, per_css),
 		"on_joint": _builder.is_on_joint(),
 		"can_place": _builder.can_place(),
+		# Where the ghost stands, for tools/web/idle_check.mjs to know the
+		# pointer moved it before asking that the move was drawn.
+		"ghost": _ghost_on_page(),
 		# Where the view is: how far it has turned in all (not wrapped),
 		# its tilt, its distance and what it looks at, for
 		# tools/web/nav_flow.mjs to see a drag turn it all the way round.

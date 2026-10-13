@@ -2098,6 +2098,13 @@ func has_preview() -> bool:
 	return _ghost != null and _ghost.visible
 
 
+## Where the one ghost stands, in LDU; null while it is not showing.
+func ghost_place() -> Variant:
+	if not has_preview() or is_carrying() or not held_figure.is_empty():
+		return null
+	return _ghost_transform.origin
+
+
 ## Whether a click would put the held part down where the ghost is.
 func can_place() -> bool:
 	if is_carrying():

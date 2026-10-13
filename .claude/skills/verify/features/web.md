@@ -617,8 +617,13 @@ plan with Claude as the client.
   engine's frames, those that asked WebGL to draw, the main thread's busy
   share (CDP `TaskDuration`), and the CPU of every Chromium process by kind
   (the page; SwiftShader in the GPU process). Then a wheel notch over the
-  model, the - key and the pointer over the model with a part in hand must
-  each be drawn, and the page go quiet after. Fails past one frame drawn a
+  model, the - key and the ghost of a part in hand moved over the baseplate
+  must each be drawn, and the page go quiet after. The page says where the
+  ghost stands (`brickworksState.ghost`), and every move of it must be a
+  frame: eight small steps over the example car once aimed every time at its
+  windscreen and put the part on the roof, so nothing moved and nothing was
+  drawn, rightly, and the check failed live and on every build
+  (2026-10-13; the ghost follows the pointer, seen step by step). Fails past one frame drawn a
   second standing still or a tenth of the engine's frames (drawn in
   software a frame of the old build took over a second, so it drew under
   one a second while drawing every frame it had). Measured 2026-10-11 on
