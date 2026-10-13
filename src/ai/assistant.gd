@@ -572,13 +572,15 @@ class Section extends RefCounted:
 		s.origin_from_pin = origin_from_pin
 		return s
 
+	## The way a section's pin runs, for its axis.
+	static func pin_of(along: String) -> Vector3:
+		if along == "x":
+			return Vector3.RIGHT
+		return Vector3.UP if along == "y" else Vector3.BACK
+
 	## Where this section sits in the world, and how it is turned.
 	func placed() -> Transform3D:
-		var pin := Vector3.BACK
-		if axis == "x":
-			pin = Vector3.RIGHT
-		elif axis == "y":
-			pin = Vector3.UP
+		var pin: Vector3 = pin_of(axis)
 		var turn := Basis(pin, deg_to_rad(degrees))
 		var corner := Vector3(x * STUD, y * PLATE, z * STUD)
 		if hinge:
@@ -2610,7 +2612,11 @@ func _name_assemblies(named: Array[Dictionary]) -> void:
 ## fall on one 2 LDU lattice were laid in one frame, so they are one section:
 ## turned by that much, its origin the point of that lattice nearest the
 ## middle of what stands, where a side looking away from it is out, as a
-## prism's faces are read. A square brick stays in the main body, and a
+## prism's faces are read. And so are bricks tipped the same way about a flat
+## axis: a starfighter's wings opened ten degrees on their hinges and a
+## crane's boom raised on its pin, read back square, were sixteen pieces where
+## the session that built them had one, the tiles on each wing a plate's gap
+## above it. A square brick stays in the main body, and a
 ## minifigure's parts are left as they were. Inside a section the joint rules
 ## hold as they do anywhere — a pane in its frame, a turntable's top on its
 ## base — for a reader that keeps the section; one that copies a placement
@@ -2629,10 +2635,17 @@ func _adopted() -> Dictionary:
 		# A figure stands on no stud grid, and its parts nest in each other.
 		if scenery.has(brick.id) or _section_of.has(brick.id) or _figure_part(brick.part_id):
 			continue
-		var turn: float = _turn_about_up(brick.transform.basis)
+		var axis: String = ""
+		var turn: float = NAN
+		for one: String in ["y", "x", "z"]:
+			turn = _turn_about(brick.transform.basis, one)
+			if not is_nan(turn):
+				axis = one
+				break
 		if is_nan(turn):
 			continue
-		var unturn := Basis(Vector3.UP, -deg_to_rad(turn))
+		var pin: Vector3 = Section.pin_of(axis)
+		var unturn := Basis(pin, -deg_to_rad(turn))
 		var local: Vector3 = unturn * brick.transform.origin
 		# A square brick is read where it is, as it always was: the cell it
 		# rounds to is at most an LDU off, which every joint rule allows. Put
@@ -2643,7 +2656,7 @@ func _adopted() -> Dictionary:
 		if turn == 0.0:
 			continue
 		var rest := Vector3(_on_lattice(local.x), _on_lattice(local.y), _on_lattice(local.z))
-		var key: String = "%.2f %.1f %.1f %.1f" % [turn, rest.x, rest.y, rest.z]
+		var key: String = "%s %.2f %.1f %.1f %.1f" % [axis, turn, rest.x, rest.y, rest.z]
 		var section: Section = _adoptions.get(key)
 		if section == null:
 			if middle == Vector3.INF:
@@ -2652,10 +2665,16 @@ func _adopted() -> Dictionary:
 					middle += one.transform.origin
 				middle /= maxf(1.0, float(world.brick_count()))
 			var near: Vector3 = unturn * middle
-			var origin: Vector3 = Basis(Vector3.UP, deg_to_rad(turn)) * Vector3(
-				rest.x + BrickLattice.CELL * round((near.x - rest.x) / BrickLattice.CELL), rest.y,
-				rest.z + BrickLattice.CELL * round((near.z - rest.z) / BrickLattice.CELL))
-			var name: String = "turned %s" % Placement._num(turn)
+			# Along the pin the lattice is where it is; across it, the point
+			# of it nearest the middle.
+			var square := rest
+			for k: int in 3:
+				if pin[k] == 0.0:
+					square[k] = rest[k] + BrickLattice.CELL * round((near[k] - rest[k])
+						/ BrickLattice.CELL)
+			var origin: Vector3 = Basis(pin, deg_to_rad(turn)) * square
+			var name: String = "turned %s" % Placement._num(turn) if axis == "y" \
+				else "tipped %s about %s" % [Placement._num(turn), axis]
 			var named: String = name
 			var n: int = 1
 			while _sections.has(named) or _adoptions.values().any(
@@ -2663,7 +2682,7 @@ func _adopted() -> Dictionary:
 				n += 1
 				named = "%s %d" % [name, n]
 			section = Section.from_dict({"name": named, "x": origin.x / STUD,
-				"y": origin.y / PLATE, "z": origin.z / STUD, "axis": "y", "degrees": turn})
+				"y": origin.y / PLATE, "z": origin.z / STUD, "axis": axis, "degrees": turn})
 			_adoptions[key] = section
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
@@ -2679,18 +2698,24 @@ func _adopted() -> Dictionary:
 	return out
 
 
-## How far a brick is turned about the upright off the square, in degrees
-## from 0 up to 90, or NAN when it is tipped some other way as well.
-static func _turn_about_up(basis: Basis) -> float:
+## How far a brick is turned about [param axis] (x, y or z, as a section's)
+## off the square, in degrees from 0 up to 90, or NAN when it is turned some
+## other way as well.
+static func _turn_about(basis: Basis, axis: String) -> float:
+	var pin: Vector3 = Section.pin_of(axis)
+	# Measured from a flat line across the pin, the way Basis turns it.
+	var across: Vector3 = Vector3.UP if axis == "x" else Vector3.RIGHT
+	var onward: Vector3 = pin.cross(across)
 	var turned: Basis = basis.orthonormalized()
 	for n: int in 3:
 		var column: Vector3 = turned[n]
-		if absf(column.y) > 0.001:
+		if absf(column.dot(pin)) > 0.001:
 			continue
-		var turn: float = snappedf(fposmod(rad_to_deg(atan2(-column.z, column.x)), 90.0), 0.01)
+		var turn: float = snappedf(fposmod(rad_to_deg(atan2(column.dot(onward),
+			column.dot(across))), 90.0), 0.01)
 		if turn >= 90.0 - 0.01:
 			turn = 0.0
-		var square: Basis = Basis(Vector3.UP, -deg_to_rad(turn)) * turned
+		var square: Basis = Basis(pin, -deg_to_rad(turn)) * turned
 		var snapped: Basis = BrickLattice.snap_basis(square)
 		for k: int in 3:
 			if square[k].dot(snapped[k]) < 0.9999:
@@ -8813,6 +8838,11 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
 				model.section_for(placement).placed(), true)
+			# Between two bricks standing, as outside a section: a file's
+			# tipped parts read into one ([method _adopted]) were refused for
+			# what the same parts read square were forgiven — 31 overlaps in
+			# 10240's X-wing, where there had been none.
+			near = _between_standing(near, placement, model)
 			near = _give_way(near, placement, index, model, gave_way)
 			if gave_way.has(index):
 				continue
@@ -8869,13 +8899,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
 			rounds, packed, lattice, Transform3D.IDENTITY, false)
 
-		if not blockers.is_empty() and placement.id != 0 \
-				and not placement.moved:
-			var first: int = blockers[0]
-			if first > 0 and first - 1 < model.placements.size():
-				var other: Placement = model.placements[first - 1]
-				if other.id != 0 and not other.moved:
-					blockers = PackedInt64Array()
+		blockers = _between_standing(blockers, placement, model)
 
 		blockers = _give_way(blockers, placement, index, model, gave_way)
 		if gave_way.has(index):
@@ -9173,12 +9197,29 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		"loose": apart_loose,
 		"items": apart["items"],
 		"named": int(apart["named"]),
+		## Of those, the figures: no name of their own to say.
+		"figures": int(apart["figures"]),
 		"kinds": issues.keys(),
 		"floating": floating.keys(),
 		## Each piece, as indices into the placements, for a probe to say
 		## where each one is.
 		"each_piece": each_piece,
 	}
+
+
+## What is left of [param blockers] for [param placement]: nothing, when it and
+## the first thing it runs into were both standing already and neither has
+## moved — not this design's to answer for (see [method _check]).
+static func _between_standing(blockers: PackedInt64Array, placement: Placement,
+		model: Model) -> PackedInt64Array:
+	if blockers.is_empty() or placement.id == 0 or placement.moved:
+		return blockers
+	var first: int = blockers[0]
+	if first > 0 and first - 1 < model.placements.size():
+		var other: Placement = model.placements[first - 1]
+		if other.id != 0 and not other.moved:
+			return PackedInt64Array()
+	return blockers
 
 
 ## How many separate pieces the design is in.
@@ -9940,11 +9981,27 @@ func _daylight(model: Model) -> String:
 ## the Orthanc after the blades stood its tower on a flat 66-stud yard with rock
 ## piles, 1.9 times as tall as wide where its tower alone was 3.3. 10237's base
 ## is 21 cm across under a tower 16 cm wide.
+##
+## A yard is open ground: YARD_OPEN of its area or more with nothing rising
+## off it (the tower on a 60-stud yard, 75%). The bench's crane, its deck over
+## all of its chassis (18% open), and its bonsai, the pot under the tree's
+## pads (none), were called yards for being wider than a boom and a trunk
+## half way up. And a stand is not a yard: one the brief asks for, or one the
+## design names as one (most of the base an assembly called a stand, a plinth,
+## a mount or a pot), is the display feature it is. The bench's owl, astronaut
+## and Falcon Heavy were each told the stand they were asked for was a yard.
 const YARD_WIDER := 1.6
+const YARD_OPEN := 0.5
+## Whole words, a stand's own plural left out: "it stands on a rock" asks for none.
+const STAND_WORDS := ("stand|plinth|plinths|pedestal|pedestals|podium|plaque|nameplate|"
+	+ "display base|mount|pot|pots|planter|launch pad")
 
 
 func _wide_yard(model: Model, box_of: Dictionary) -> String:
 	if box_of.size() < DAYLIGHT_FROM:
+		return ""
+	var stand := RegEx.create_from_string("\\b(%s)\\b" % STAND_WORDS)
+	if stand.search(("%s %s %s" % [_brief, model.name, model.description]).to_lower()) != null:
 		return ""
 	var low: int = 1 << 30
 	var high: int = -(1 << 30)
@@ -9957,6 +10014,12 @@ func _wide_yard(model: Model, box_of: Dictionary) -> String:
 	var base := Rect2i()
 	var have_body: bool = false
 	var have_base: bool = false
+	var ground: Dictionary = {}     ## a stud of the base's plan -> true
+	var covered: Dictionary = {}    ## a stud something rises off -> true
+	var in_base: int = 0
+	var standing: int = 0
+	var names: Dictionary = {}      ## assembly -> whether it is a stand
+	var stud: int = BrickLattice.CELLS_PER_STUD
 	for index: int in box_of:
 		var lo: Vector3i = box_of[index][0]
 		var hi: Vector3i = box_of[index][1]
@@ -9964,22 +10027,44 @@ func _wide_yard(model: Model, box_of: Dictionary) -> String:
 		if lo.y <= middle and hi.y >= middle:
 			body = plan if not have_body else body.merge(plan)
 			have_body = true
+		var studs: Array = []
+		for x: int in range(floori(float(lo.x) / stud), ceili(float(hi.x) / stud)):
+			for z: int in range(floori(float(lo.z) / stud), ceili(float(hi.z) / stud)):
+				studs.append(Vector2i(x, z))
+		if hi.y > foot:
+			for at: Vector2i in studs:
+				covered[at] = true
 		if lo.y < foot:
 			base = plan if not have_base else base.merge(plan)
 			have_base = true
-	if not have_body or not have_base:
+			for at: Vector2i in studs:
+				ground[at] = true
+			in_base += 1
+			var named: String = _assembly_of(model, model.placements[index])
+			if not names.has(named):
+				names[named] = stand.search(named.to_lower()) != null
+			if bool(names[named]):
+				standing += 1
+	if not have_body or not have_base or standing * 2 >= in_base:
 		return ""
 	var body_wide: float = float(maxi(body.size.x, body.size.y)) / BrickLattice.CELLS_PER_STUD
 	var base_wide: float = float(maxi(base.size.x, base.size.y)) / BrickLattice.CELLS_PER_STUD
 	var tall: float = float(high - low) / BrickLattice.CELLS_PER_STUD
 	if body_wide <= 0.0 or tall < 2.0 * body_wide or base_wide < YARD_WIDER * body_wide:
 		return ""
+	var open: int = 0
+	for at: Vector2i in ground:
+		if not covered.has(at):
+			open += 1
+	if open < YARD_OPEN * ground.size():
+		return ""
 	return ("Its base is %d studs across under a body %d wide, half way up: a tall "
 		% [roundi(base_wide), roundi(body_wide)] + "display model stands on a base "
 		+ "that hugs it — 10237's is 21 cm under a tower 16 cm wide. A wide flat yard "
 		+ "round it, pale above all, is not a display base and makes the whole squat. "
 		+ "Make the base close to its foot: a plinth of terraces, and rock rising "
-		+ "against it in dark tones (a prism's \"plinth\": {\"rock\": true}).")
+		+ "against it in dark tones (a prism's \"plinth\": {\"rock\": true}). If it is "
+		+ "a display stand, name it one (an assembly called a stand) and it is not a yard.")
 
 
 ## A model mostly plain bricks in one dark colour. In a picture a dark face
@@ -10421,7 +10506,7 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		touching: Dictionary = {}, outside: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"loose": [], "unjoined": [], "items": PackedStringArray(),
-		"against": 0, "named": 0}
+		"against": 0, "named": 0, "figures": 0}
 	if pieces.size() <= 1:
 		return out
 	var main: int = -1
@@ -10458,6 +10543,15 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		if n == main:
 			continue
 		var piece: Array = pieces[n]
+		# A whole figure of the design's is an item of its own wherever it
+		# stands, as it is standing apart: beside the model with a hand on its
+		# hull, or on a courtyard's floor. The bench's starfighter pilot, on the
+		# ground by its nose, and its crane's rigger and supervisor were each a
+		# piece against the model, joined to nothing, and failed the probe.
+		if (against.has(n) or not outside.has(n)) and _our_figure(model, piece, floating):
+			out["named"] = int(out["named"]) + 1
+			out["figures"] = int(out["figures"]) + 1
+			continue
 		# Inside the model's plan — a face of a prism against its posts, a
 		# part on the floor of a courtyard — is not standing apart from it.
 		if not against.has(n) and not outside.has(n):
@@ -10503,8 +10597,9 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 			out["items"] = items
 			out["named"] = int(out["named"]) + 1
 			continue
-		if Minifig.is_figure(parts):
+		if Minifig.is_figure(parts, library):
 			out["named"] = int(out["named"]) + 1
+			out["figures"] = int(out["figures"]) + 1
 			continue
 		# A piece apart of a size with the model is a scene's other thing —
 		# a jetty by a boat, a tree by a house, a second tower — said as it
@@ -10521,6 +10616,22 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 ## the model's is an item or a part come off: a nameplate of 7 parts by a
 ## car of 537.
 const SCENE := 10
+
+
+## Whether a piece is a whole figure the design placed, standing on something
+## rather than held by nothing. Its parts known by the library's names: the
+## starfighter's pilot wore 24581p01, a baby's head, which the figure table
+## by number does not list.
+func _our_figure(model: Model, piece: Array, floating: Dictionary) -> bool:
+	var designed: bool = false
+	var adrift: bool = true
+	var parts: Array = []
+	for index: int in piece:
+		var placement: Placement = model.placements[index]
+		designed = designed or placement.mine
+		adrift = adrift and floating.has(index)
+		parts.append({"part": placement.part})
+	return designed and not adrift and Minifig.is_figure(parts, library)
 
 
 ## The assembly a placement is in: its own, as a file or the baseplate
@@ -11142,6 +11253,14 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 		if section.axis == "y" or is_zero_approx(fposmod(section.degrees, 90.0)):
 			continue
 		if not model.placements.any(func(p: Placement) -> bool: return p.section == group):
+			continue
+		# A section found for a file's tipped parts ([method _adopted]) that
+		# nothing has added to or moved is what was standing, as an overlap
+		# among standing bricks is: not this design's to answer for. Poe's
+		# X-wing (75102) read so has two whose joint the checker does not see.
+		if _adoptions.values().any(func(one: Section) -> bool: return one.name == group) \
+				and not model.placements.any(func(p: Placement) -> bool:
+					return p.section == group and (p.id == 0 or p.moved)):
 			continue
 		if _turns_on_a_joint(model, group, joined, rounds):
 			continue

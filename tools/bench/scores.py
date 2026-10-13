@@ -56,7 +56,10 @@ def read_probe(text: str) -> dict:
                 found["stands"] = ok
             elif what.startswith("the check does not call it ") and not ok:
                 found["faults"].append(what.removeprefix("the check does not call it "))
-        elif line.startswith("still "):
+            elif what.startswith("not counted: called "):
+                found["shared_faults"].append(
+                    what.removeprefix("not counted: called ").split(", as ")[0])
+        elif line.startswith("still "):     # as the probe said it before 2026-10-13
             found["shared_faults"].append(line.removeprefix("still ").split(", as ")[0])
         elif line == "a candidate":
             found["candidate"] = True
