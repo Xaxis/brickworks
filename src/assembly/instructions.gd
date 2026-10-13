@@ -101,6 +101,11 @@ class Step extends RefCounted:
 	var shown_ids: PackedInt64Array = PackedInt64Array()
 	## The step that puts it on: each copy's bricks, the first copy first.
 	var copies: Array[PackedInt64Array] = []
+	## Which of the author's steps it is, for an edit to find (AuthorSteps):
+	## the sub-model's path, "" for the model, and its number there. -1 for
+	## a step worked out.
+	var authored_in: String = ""
+	var authored_step: int = -1
 
 	## A step inside a callout box.
 	func in_callout() -> bool:
@@ -183,8 +188,14 @@ class Assembly extends RefCounted:
 ## Without it a brick's own group is used — the assembly a design named,
 ## or the sub-model it was read from — and a big model with none is
 ## divided by area instead.
+##
+## [param authored] follows the steps the model's author gave it, when it
+## has any (AuthorSteps): see [method _authored_plan].
 static func plan(world: BrickWorld, library: PartLibrary,
-		skip: Dictionary = {}, regions: Dictionary = {}) -> Array[Step]:
+		skip: Dictionary = {}, regions: Dictionary = {},
+		authored: bool = false) -> Array[Step]:
+	if authored and AuthorSteps.any(world, skip):
+		return _authored_plan(world, library, skip)
 	var nodes: Array[Node2] = _survey(world, library, skip)
 	if nodes.is_empty():
 		return []
@@ -1211,3 +1222,206 @@ static func _on_the_side(made: Assembly, per_step: int) -> Array:
 		member.region = ""
 		members.append(member)
 	return _sequence(members, false, per_step)
+
+
+# -- the author's steps --------------------------------------------------------
+
+
+## The build in the steps its author gave it: each step what the author put
+## in it, in their order, a sub-model's own steps before the step that puts
+## it on. A small sub-model the main build puts on whole is still built on
+## the side, as a callout, found as the worked-out plan finds one (by
+## unit); a big one is built in its own steps where it stands. Regions and
+## the limit on parts a step are the worked-out plan's, not the author's,
+## and are left out. Parts with no step — added since, by hand or by a
+## design — come after the author's steps, in steps worked out for them.
+static func _authored_plan(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary) -> Array[Step]:
+	var nodes: Array[Node2] = _survey(world, library, skip)
+	if nodes.is_empty():
+		return []
+	_find_supports(nodes)
+	_find_joints(nodes, world, library)
+	_tidy_needs(nodes)
+	_find_hangers(nodes)
+	var lowest: Dictionary = AuthorSteps.lowest_under(world, skip)
+	var stepped: Array[Node2] = []
+	var unstepped: Array[Node2] = []
+	var path_of: Dictionary = {}
+	var step_of: Dictionary = {}
+	for node: Node2 in nodes:
+		var brick: BrickWorld.Brick = world.get_brick(node.id)
+		if brick.step < 0:
+			unstepped.append(node)
+			continue
+		stepped.append(node)
+		path_of[node.id] = Assemblies.path_of(brick)
+		step_of[node.id] = brick.step
+
+	# The sub-assemblies built on the side: whole, every part of one stepped.
+	var callouts: Array[Assembly] = []
+	var in_callout: Dictionary = {}
+	for made: Assembly in _find_assemblies(stepped, world, library):
+		callouts.append(made)
+		for member: Node2 in made.members:
+			in_callout[member.id] = true
+
+	# The author's steps, each by where it is: section|step -> entry.
+	var entries: Dictionary = {}
+	var entry_for := func(section: String, step: int) -> Dictionary:
+		var id: String = "%s|%d" % [section, step]
+		if not entries.has(id):
+			entries[id] = {"section": section, "step": step, "nodes": [], "callouts": [],
+				"key": AuthorSteps.key_of(world, section, step, lowest)}
+		return entries[id]
+	for node: Node2 in stepped:
+		if not in_callout.has(node.id):
+			(entry_for.call(str(path_of[node.id]), int(step_of[node.id]))["nodes"] as Array) \
+				.append(node)
+	for made: Assembly in callouts:
+		var path: String = _path_of_key(made.key)
+		var at: int = maxi(AuthorSteps.unit_step(world, path, lowest), 0)
+		(entry_for.call(Assemblies.parent_of(path), at)["callouts"] as Array).append(made)
+	var ordered: Array = entries.values()
+	ordered.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return AuthorSteps.before(a["key"], b["key"]))
+
+	var out: Array[Step] = []
+	var number: int = 0
+	var boxes: int = 0
+	for entry: Dictionary in ordered:
+		number += 1
+		var last_attach: Step = null
+		# Copies of one kind put on in one step are built once, "2x".
+		var kinds: Dictionary = {}
+		var made_list: Array = entry["callouts"]
+		made_list.sort_custom(func(a: Assembly, b: Assembly) -> bool:
+			return a.key.naturalnocasecmp_to(b.key) < 0)
+		for made: Assembly in made_list:
+			if not kinds.has(made.kind):
+				kinds[made.kind] = []
+			(kinds[made.kind] as Array).append(made)
+		for kind: String in kinds:
+			boxes += 1
+			last_attach = _authored_callout(kinds[kind], number, boxes, world, lowest,
+				path_of, step_of, out)
+			last_attach.authored_in = str(entry["section"])
+			last_attach.authored_step = int(entry["step"])
+		var loose: Array = entry["nodes"]
+		if loose.is_empty():
+			continue
+		# The parts the step puts on as well, with the last sub-assembly it
+		# puts on: one step, as the author made it.
+		var step: Step = last_attach
+		if step == null:
+			step = Step.new()
+			step.number = number
+			step.authored_in = str(entry["section"])
+			step.authored_step = int(entry["step"])
+			out.append(step)
+		# In the order the file had them, which is the author's too.
+		loose.sort_custom(func(a: Node2, b: Node2) -> bool: return a.id < b.id)
+		for node: Node2 in loose:
+			_add(step, node)
+
+	# What nobody gave a step, after the author's: worked out as a booklet's.
+	if not unstepped.is_empty():
+		var own: Dictionary = {}
+		for node: Node2 in unstepped:
+			own[node.id] = true
+		for node: Node2 in unstepped:
+			node.after = PackedInt64Array()
+			for need: int in node.needs:
+				if own.has(need):
+					node.after.append(need)
+			node.region = ""
+		for chunk: Dictionary in _sequence(unstepped, false, _per_step(unstepped.size())):
+			number += 1
+			var step := Step.new()
+			step.number = number
+			step.unsupported = bool(chunk["unsupported"])
+			for node: Node2 in chunk["nodes"]:
+				_add(step, node)
+			out.append(step)
+	for index: int in out.size():
+		out[index].index = index + 1
+	return out
+
+
+## A callout's key as a path: "Window#2" is one; "group:Gandalf" is the one
+## copy of a group.
+static func _path_of_key(key: String) -> String:
+	return Assemblies.path_from(key.trim_prefix("group:"), "") if key.begins_with("group:") \
+		else key
+
+
+## The steps that build copies of one sub-assembly on the side, in the
+## author's steps of each, and the step that puts them all on, added to
+## [param out]. Returns that last one.
+static func _authored_callout(copies: Array, number: int, box: int, world: BrickWorld,
+		lowest: Dictionary, path_of: Dictionary, step_of: Dictionary,
+		out: Array[Step]) -> Step:
+	# Each copy's parts by their step within it, in order.
+	var plans: Array = []
+	for made: Assembly in copies:
+		var depth: int = Assemblies.segments(_path_of_key(made.key)).size()
+		var by_key: Dictionary = {}
+		var keys: Array = []
+		for member: Node2 in made.members:
+			var full: Array = AuthorSteps.key_of(world, str(path_of[member.id]),
+				int(step_of[member.id]), lowest)
+			var inner: Array = full.slice(depth)
+			var id: String = str(inner)
+			if not by_key.has(id):
+				by_key[id] = []
+				keys.append(inner)
+			(by_key[id] as Array).append(member)
+		keys.sort_custom(func(a: Array, b: Array) -> bool: return AuthorSteps.before(a, b))
+		var chunks: Array = []
+		for inner: Array in keys:
+			var members: Array = by_key[str(inner)]
+			members.sort_custom(func(a: Node2, b: Node2) -> bool: return a.id < b.id)
+			chunks.append(members)
+		plans.append(chunks)
+	var first: Assembly = copies[0]
+	var count: int = (plans[0] as Array).size()
+	for at: int in count:
+		var step := Step.new()
+		step.number = number
+		step.assembly = first.name
+		step.figure = first.figure
+		step.callout = box
+		step.callout_step = at + 1
+		step.callout_steps = count
+		step.times = copies.size()
+		for copy: int in plans.size():
+			var chunks: Array = plans[copy]
+			var taken: Array = [chunks[at]] if at < chunks.size() else []
+			if at == count - 1 and chunks.size() > count:
+				taken = chunks.slice(at)
+			for members: Array in taken:
+				for node: Node2 in members:
+					_add(step, node)
+					if copy == 0:
+						step.shown_ids.append(node.id)
+		var shown: Node2 = ((plans[0] as Array)[at] as Array)[0]
+		step.authored_in = str(path_of[shown.id])
+		step.authored_step = int(step_of[shown.id])
+		out.append(step)
+	var attach := Step.new()
+	attach.number = number
+	attach.assembly = first.name
+	attach.figure = first.figure
+	attach.callout = box
+	attach.callout_steps = count
+	attach.times = copies.size()
+	for chunks: Array in plans:
+		var ids := PackedInt64Array()
+		for members: Array in chunks:
+			for node: Node2 in members:
+				ids.append(node.id)
+		attach.copies.append(ids)
+	out.append(attach)
+	for made: Assembly in copies:
+		made.node = null
+	return attach

@@ -16,6 +16,14 @@
 ## Godot's own zip reader both open, holding model.ldr, .info,
 ## errorPartList.err (and the thumbnail, when there is a screen to draw it).
 ##
+## The author's steps: tests/fixtures/steps/gatehouse.mpd (five steps, a base
+## with two of its own, a window with three put on twice) and the same model
+## as a Studio file, gatehouse_2025.io, each opened, saved, exported as .io and
+## opened again: every section's steps as the author made them, and the
+## timeline's steps the same each time. Then a part moved a step later, saved
+## and reopened in its new step, and an undo putting it back. Before, the
+## steps were read and dropped, and saving wrote Brickworks's own order.
+##
 ## Round trip: the castle (2,438 parts in its sub-models, in steps) and the
 ## Studio bay, exported to .io and opened again: the .io carries the
 ## model's LDraw exactly, steps and all, and opens as the same parts in the
@@ -75,11 +83,13 @@ func _run() -> void:
 	_written()
 	_round_trip("res://models/castle.ldr")
 	_round_trip_of(BAY_2025)
+	_authored_steps()
 	await _refused()
 	print("")
 	if _failures == 0:
 		print("io: Studio's .io opens in LDraw's numbers with its sub-models and steps, "
-			+ "an exported one is a zip that opens, and the round trip is the same model")
+			+ "an exported one is a zip that opens, the round trip is the same model, "
+			+ "and an author's steps survive open, edit and save, step by step")
 	else:
 		print("io: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -328,6 +338,148 @@ func _shown(groups: Dictionary) -> String:
 	return ", ".join(keys.slice(0, 4).map(func(k: String) -> String:
 		return "%s %d" % [k if not k.is_empty() else "(loose)", int(groups[k])])) \
 		+ (", …" if keys.size() > 4 else "")
+
+
+# -- the author's steps ---------------------------------------------------------
+
+
+const GATEHOUSE := "res://tests/fixtures/steps/gatehouse.mpd"
+const GATEHOUSE_IO := "res://tests/fixtures/studio/gatehouse_2025.io"
+
+
+func _authored_steps() -> void:
+	var source: String = FileAccess.get_file_as_string(GATEHOUSE)
+	_authored_round_trip(source, "gatehouse", "gatehouse.mpd")
+	var read: Dictionary = StudioIo.read(FileAccess.get_file_as_bytes(GATEHOUSE_IO))
+	_check("gatehouse_2025.io reads (%s)" % _said(read), str(read["error"]).is_empty())
+	_authored_round_trip(str(read["text"]), "gatehouse_2025", "gatehouse_2025.io")
+	_authored_edit(source)
+
+
+## Opened, saved, packed as .io, read and opened again: the steps the file
+## has each time, and the timeline's.
+func _authored_round_trip(source: String, name: String, shown: String) -> void:
+	print("  the author's steps: %s, opened, saved, out to .io and opened again" % shown)
+	var expected: Dictionary = _file_steps(source)
+	var opened: Dictionary = _store.open_text(source, name)
+	_check("%d parts opened, every one with the author's step (%s)" % [int(opened["placed"]),
+		_stepped()], int(opened["placed"]) == 14 and _stepped() == "14 of 14")
+	var timeline: Array = _timeline()
+	_check("the timeline is in the author's steps: %s" % " | ".join(timeline.slice(0, 7)),
+		timeline.size() == 9 and str(timeline[0]).begins_with("1: 3001/4 3001/4")
+		and str(timeline[2]).begins_with("3: 3003/14") and str(timeline[3]).begins_with("4: 3005/1")
+		and str(timeline[4]).begins_with("5 Window 1/3: 3005/71 3005/71"))
+	var saved: String = _store.to_text(name, true)
+	var kept: Dictionary = _file_steps(saved)
+	_check("saved, every sub-model's steps are the author's (%s)" % _shown_steps(kept),
+		kept == expected and not kept.is_empty())
+	_check("...and the file says they are, so they are kept again",
+		saved.contains(LdrModel.AUTHORED_META))
+	_check("the autosave keeps them too", _file_steps(_store.to_text(name)) == expected)
+	var carried: String = str(StudioIo.read(StudioIo.pack(saved, PackedByteArray(),
+		ModelStore.count_in(saved)))["text"]).replace("\r\n", "\n")
+	_check("exported as .io, the same steps", _file_steps(carried) == expected)
+	_world.clear()
+	_store.open_text(carried, name)
+	_check("opened again: the same timeline, step by step", _timeline() == timeline)
+
+
+## A part moved a step later by the edit, then saved and reopened; undone.
+func _authored_edit(source: String) -> void:
+	print("  the author's steps, edited")
+	_store.open_text(source, "gatehouse")
+	var before: Array = _timeline()
+	var yellow: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3003":
+			yellow = brick.id
+	var undo: Array = AuthorSteps.move(_world, [yellow], 1, "", _store.scenery)
+	_builder.record(undo, "moved a part to the next step")
+	var moved: Array = _timeline()
+	_check("the yellow brick moved to the next step, with the blue one: %s"
+		% " | ".join(moved.slice(1, 4)), moved.size() == before.size() - 1
+		and str(moved[2]).begins_with("3: 3003/14 3005/1"))
+	var saved: String = _store.to_text("gatehouse", true)
+	var main: Array = (_file_steps(saved)["main"] as Array)
+	_check("saved: the model's own steps are four, the yellow in the second with the blue (%s)"
+		% " | ".join(main), main.size() == 4 and str(main[1]) == "3003/14 3005/1")
+	_world.clear()
+	_store.open_text(saved, "gatehouse")
+	_check("opened again, it is still there", _timeline() == moved)
+	_store.open_text(source, "gatehouse")
+	_builder.record(AuthorSteps.move(_world, [_find("3003")], 1, "", _store.scenery), "moved")
+	_check("one undo puts it back", _builder.undo() and _timeline() == before)
+
+
+func _find(part: String) -> int:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part:
+			return brick.id
+	return 0
+
+
+func _stepped() -> String:
+	var count: int = 0
+	var all: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		all += 1
+		count += 1 if brick.step >= 0 else 0
+	return "%d of %d" % [count, all]
+
+
+## The timeline in the author's steps: "number: parts" a step, a callout's
+## "number name k/n: parts".
+func _timeline() -> Array:
+	var out: Array = []
+	for step: Instructions.Step in Instructions.plan(_world, _library, _store.scenery, {}, true):
+		var parts: Array = []
+		for brick_id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+			parts.append("%s/%d" % [brick.part_id, brick.color_code])
+		parts.sort()
+		var head: String = str(step.number)
+		if step.in_callout():
+			head += " %s %d/%d" % [step.assembly, step.callout_step, step.callout_steps]
+		elif step.attaches():
+			head += " %s on" % step.assembly
+		out.append("%s: %s" % [head, " ".join(parts)])
+	return out
+
+
+## Every section of [param text] ("main", or a sub-model's title in lower
+## case) -> its steps in order, each its parts and the sub-models it puts
+## on, "part/colour" and "→name", sorted.
+func _file_steps(text: String) -> Dictionary:
+	var model: LdrModel = LdrModel.parse(text, "model")
+	var out: Dictionary = {}
+	for key: String in model.submodels:
+		var sub: LdrModel.SubModel = model.submodels[key]
+		var steps: Dictionary = {}
+		for placement: LdrModel.Placement in sub.placements:
+			var said: String = ("→" + LdrModel._key(placement.part_id)
+				if model.submodels.has(LdrModel._key(placement.part_id))
+				else "%s/%d" % [placement.part_id, placement.color_code])
+			if not steps.has(placement.step):
+				steps[placement.step] = []
+			(steps[placement.step] as Array).append(said)
+		var order: Array = steps.keys()
+		order.sort()
+		var listed: Array = []
+		for at: int in order:
+			var parts: Array = steps[at]
+			parts.sort()
+			listed.append(" ".join(parts))
+		out["main" if sub == model.main else sub.title.to_lower()] = listed
+	return out
+
+
+func _shown_steps(steps: Dictionary) -> String:
+	var said := PackedStringArray()
+	for key: String in steps:
+		said.append("%s %d" % [key, (steps[key] as Array).size()])
+	return ", ".join(said)
 
 
 # -- refused ------------------------------------------------------------------

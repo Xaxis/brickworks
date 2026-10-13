@@ -13,7 +13,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   one. It counted a sub-model's reference as a brick, "My House — 14 bricks" of
   a house the app called 13; `store_probe` checks both against what opens. A design that fails must leave the model it was asked to change alone.
 - `ldr read and write`: real LDraw `.ldr`. Written files open in other LDraw
-  tools, and files from them open here.
+  tools, and files from them open here. A file's own build steps (`0 STEP`,
+  `0 ROTSTEP`, a sub-model's steps of its own and the step each copy of it is
+  put on in) are kept through open, edit and save, `.io` and `.lxf` alike,
+  since all open through `open_text`: see "the author's steps" in
+  [view](view.md). They were read and dropped, and saving wrote Brickworks's
+  own order over them.
 - `assemblies in the file`: a brick's `group` — the assembly a design named,
   tagged as the run ends (`Assistant._tag_assemblies`), or the sub-model it was
   read from — goes out as an `.mpd` with one sub-model per group, titled as the
@@ -138,7 +143,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   which Studio's own LDraw import reads. `io_probe` checks Godot's zip reader
   and the system's `unzip -t` open it, and the round trip: the castle out to
   .io and back is the same parts, colours, places and sub-models, the .io
-  carrying its LDraw and 510 steps exactly.
+  carrying its LDraw and 510 steps exactly. That claim was the zip's: what
+  went in came out. The steps were lost on either side of it — dropped on
+  open, worked out afresh on save — so a Studio model's steps never reached
+  the file. `io_probe` now opens `gatehouse_2025.io` (made by
+  `make_fixtures.py` from `tests/fixtures/steps/gatehouse.mpd`) and the
+  `.mpd`, saves, packs as .io, reads and opens again, and compares every
+  sub-model's steps with the author's.
 - `open an ldd model` (`src/parts/ldd_lxf.gd`, `src/ui/model_file_picker.gd`):
   File, Import → LEGO Digital Designer model, or Open → From a file, reads
   LDD's `.lxf` (a zip around LXFML; the zip is read by `StudioIo`'s reader) or
@@ -246,7 +257,12 @@ is 61 parts, and the count printed and the count in the file must agree.
   out compares every brick with every other: measured at 96 ms for 400 bricks,
   552 ms for a thousand and **2.2 s for two thousand**, and the autosave fires a
   second after every change. So `to_text(title, with_steps)` defaults to off, and
-  `save_as` and `export_to` pass true. Without the `0 STEP` lines an exported
+  `save_as` and `export_to` pass true. An author's steps are the exception: they
+  are the model's, cost nothing to write, and the autosave writes them too (with
+  `0 !BRICKWORKS AUTHORED_STEPS`), or a restart would lose them. A worked-out
+  order Brickworks wrote is not read back as anyone's steps (`0 Author:
+  Brickworks` and no such line). A sub-model's reference now goes in the step
+  it is put on in, not first in its section. Without the `0 STEP` lines an exported
   model opens in Stud.io or LDCad as one flat pile, and for a mechanism the order
   is not recoverable by eye — a pin has to follow the part it goes into.
 

@@ -218,8 +218,30 @@ def make_aes() -> None:
         out.write(body + directory + end)
 
 
+def make_gatehouse() -> None:
+    """gatehouse_2025.io: tests/fixtures/steps/gatehouse.mpd as Studio 2.25 would
+    hold it — a byte-order mark, Windows line ends, its FILE line naming the
+    .io — so the author's steps are opened from a Studio file too."""
+    with open(os.path.join(HERE, "..", "steps", "gatehouse.mpd"), encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    lines[0] = "0 FILE gatehouse_2025.io"
+    parts = sum(1 for line in lines if line.startswith("1 ") and not line.endswith(".ldr"))
+    members = [
+        ("model.ldr", _studio_text(lines)),
+        ("thumbnail.png", _png()),
+        ("errorPartList.err", b"[]"),
+        (".info", json.dumps({"version": "2.25.2_1", "total_parts": parts},
+                             separators=(",", ":")).encode()),
+    ]
+    with zipfile.ZipFile(os.path.join(HERE, "gatehouse_2025.io"), "w",
+                         zipfile.ZIP_DEFLATED) as out:
+        for name, data in members:
+            out.writestr(zipfile.ZipInfo(name, WHEN), data, zipfile.ZIP_DEFLATED)
+
+
 if __name__ == "__main__":
     make_2025()
     make_2021()
     make_aes()
-    print("wrote bay_2025.io, bay_2021.io and bay_aes.io in", HERE)
+    make_gatehouse()
+    print("wrote bay_2025.io, bay_2021.io, bay_aes.io and gatehouse_2025.io in", HERE)

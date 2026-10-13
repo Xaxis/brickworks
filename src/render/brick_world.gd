@@ -47,6 +47,12 @@ class Brick extends RefCounted:
 	## Which copy of which sub-model it was read from, for the booklet to
 	## build as a sub-assembly: see LdrModel.Placement.unit.
 	var unit: String = ""
+	## The build step it goes on in, as the model's author set it, counted
+	## from 0 within its own sub-model (its unit's, or the model's when it
+	## is in none); -1 for a part nobody gave one, whose step is worked out
+	## (Instructions.plan). A file's "0 STEP" lines were read and dropped,
+	## so a Studio model opened and saved here lost its designer's steps.
+	var step: int = -1
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id
@@ -204,6 +210,11 @@ func _material(material_class: int, two_sided: bool) -> ShaderMaterial:
 ## and the generation it was placed in, because clear() starts the numbers
 ## again and the history must not mistake a new brick for an old one.
 var history: Array = []
+## The step each copy of a sub-assembly goes on in, within the sub-model
+## that places it, as the author set it: unit path ("House#1/Window#3") ->
+## step. Kept here and not on the bricks, so it outlives taking a copy's
+## parts off and putting them back. See [member Brick.step].
+var unit_steps: Dictionary = {}
 var _generation: int = 0
 ## Enough for a long session's designs; past it the oldest go.
 const HISTORY_MOST := 60000
@@ -404,6 +415,7 @@ func clear() -> void:
 	_xray.clear()
 	_spans.clear()
 	_next_id = 1
+	unit_steps.clear()
 	_note({"op": "clear"})
 	_generation += 1
 
