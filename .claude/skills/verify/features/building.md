@@ -58,8 +58,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
   across its stud axis), the opposite, all, none. The baseplate is never taken.
-- `hide and show only`: `H` hides the selection, `Shift-H` hides everything
-  else, `Alt-H` (or `H` with nothing selected) shows all. Hidden parts are not
+- `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
+  tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
+  selected) shows all, and the status line names those keys. Hidden parts are not
   drawn, the pointer passes through them (`BrickLattice.unseen`) and boxes and
   `Ctrl-A` skip them, but they still take up their room. The timeline's end
   puts them back hidden.

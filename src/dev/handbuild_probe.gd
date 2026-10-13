@@ -1463,6 +1463,7 @@ func _first_timer() -> void:
 	await _frames(20)
 
 	await _edit_cut()
+	await _hide_says_its_keys()
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the
@@ -1494,6 +1495,24 @@ func _edit_cut() -> void:
 	if _world.is_cut():
 		shell.see_inside.set_cut(false)
 	await _key(KEY_Z, true)
+
+
+## Hiding says the keys that bring it back. "H with nothing selected" was
+## the Pan tool.
+func _hide_says_its_keys() -> void:
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	_select_only(_bricks_near(Vector3(60, 0, 20)))
+	await _frames(2)
+	await _key(KEY_H, true)
+	var said: String = str(shell.status.fields()["message"])
+	_check("Ctrl-H says what shows it again (%s)" % said, said.contains("Alt-H")
+		and said.contains("Ctrl-H with nothing selected") and not said.contains(" H with"))
+	await _key(KEY_H)
+	_check("...and H, the Pan tool, is not one of them", verbs.mode == "pan"
+		and _model().any(func(b: BrickWorld.Brick) -> bool: return b.hidden))
+	await _key(KEY_ESCAPE)
+	await _key_alt(KEY_H)
 
 
 # -- helpers ------------------------------------------------------------------
