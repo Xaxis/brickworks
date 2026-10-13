@@ -1058,6 +1058,28 @@ fixing what it got wrong.
   and keeps its tiles) and that each of the three has fewer side-stud bricks
   than three quarters of the lanes they hold (egg 49 for 86, bird and hull
   22 for 62, where each had a 1 x 1 a lane: 84, 58, 58).
+  A curved slope is hollow under its high end: a stud there reaches into
+  nothing, as the check reads it, and only its low rows grip
+  (`Shapes.part(...)["grips"]`, read off the part's cover a little past a
+  stud's tip: 11477 [1], 24309 [1, 2], 61678 [2, 3], straight slopes every
+  row). Upright that is hidden, since a slope rests on its plates; on a
+  shell nothing rests, and the held-out owl (`owl_d3`) was refused four
+  times for 11477s whose side stud stood under the hollow end — "held by
+  nothing", or resting on the cheese slope a row below. In a flank a slope
+  is laid only where a row it grips by is held (against the core, a side
+  stud there; `_fit`), and its foot is those rows (`_gripped`), so `prune`
+  keeps what the check will. `shapes_probe` ("a stud grips a curved slope
+  under its low rows", "an owl's body on its post"): that owl's post and
+  body, 4 floating and 5 pieces before, 785 bricks buildable in one piece
+  after, 23 curved slopes turned out (29 before, 4 of them held by nothing).
+  And a piece the stitch could not join because its plates stand beside a
+  brick of the rest (`_unbrick`: the brick laid again as three plates, and
+  its mirror, so a plate reaches across; off for a grid): the held-out car's
+  body (`car_d3`), 5 plates over its arches, lost its nose past the front
+  arch in 8 parts, 14 floating with what stood on them, and the run threw the
+  body away. `shapes_probe` ("a car's body over its arches keeps its nose"):
+  its axles, wheels and body as the run said them, 135 bricks, buildable,
+  one piece.
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
@@ -1135,9 +1157,19 @@ fixing what it got wrong.
 - `worked constructions`: `show_technique`, a tool, over `src/ai/techniques.gd`.
   77 constructions with real part numbers and real coordinates, each in a group
   (`Techniques.GROUPS`: basics, walls and stone, towers and columns, round
-  bodies, machines and joints, angles, roofs and spires, windows and doors,
-  rock and ground, plants, furniture and interiors, lights, display and
-  touches). The round bodies, machines and display groups came with the round
+  bodies, faces and features, machines and joints, angles, roofs and spires,
+  windows and doors, rock and ground, plants, furniture and interiors, lights,
+  display and touches). Faces and features (2026-10-12), because the
+  held-out owl's face was a panel of white 1 x 1 tiles with 1 x 1 dots for
+  eyes: an eye with a highlight (18674 under a printed 98138p07), a round
+  face (a 4 x 4 round plate with two eyes and a beak on it), a beak or snout
+  (a cheese slope on a jumper), ears or tufts (slopes falling outward), talons
+  (three 49668 tooth plates) and a vehicle's headlamps and grille, each on a
+  bracket or a side stud where it faces out; the guidance's "WHAT THE SUBJECT
+  NEEDS" sends a face to them and `Style.calls_for` names them for a living
+  thing and a vehicle. `techniques_probe` ("a face is built as features"):
+  each one piece, buildable, the eye a round plate and a printed pupil, and
+  the guidance naming them. The round bodies, machines and display groups came with the round
   pattern: what it lays, named for the technique and not the subject (a round
   body, one lying down, a dome and cone cap, a ring of cones under a round
   plate, spokes with tiles, struts pinned to a Technic course, two rounds

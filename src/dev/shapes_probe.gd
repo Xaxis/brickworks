@@ -289,6 +289,42 @@ func _run() -> void:
 	_check("a minifigure-scale car's body keeps its flanks: %d parts, across its middle from z %s to %s; %s"
 		% [thin.size(), wide.x, wide.y, str(Shapes.last.get("shells_kept", []))],
 		thin.size() >= 60 and wide.x <= 0.0 and wide.y >= 7.0)
+	# A curved slope is hollow under its high end, so a stud there reaches into
+	# nothing: on its side it is held by its low rows or by nothing. The
+	# held-out owl's body on its post, as the run said it, was refused four
+	# times for 11477s held by nothing or resting on a cheese slope.
+	var grips: Array = []
+	for id: String in ["11477", "15068", "50950", "24309", "61678", "54200", "3040b"]:
+		grips.append("%s %s" % [id, str(Shapes.part(_library, id).get("grips", []))])
+	_check("a stud grips a curved slope under its low rows, a straight one under all: %s"
+		% ", ".join(PackedStringArray(grips)), Shapes.part(_library, "11477").get("grips") == [1]
+		and Shapes.part(_library, "24309").get("grips") == [1, 2]
+		and Shapes.part(_library, "3040b").get("grips") == [0, 1])
+	assistant._brief = "a barn owl"
+	var perched: Assistant.Model = assistant._read_model({"patterns": [OWL_POST, OWL_BODY]})
+	var perched_verdict: Dictionary = assistant._check(perched, true)
+	var curved_out: int = 0
+	var held_by_nothing: int = 0
+	for index: int in perched.placements.size():
+		var placement: Assistant.Placement = perched.placements[index]
+		if placement.face != "up" and placement.part in ["11477", "15068", "50950", "24309"]:
+			curved_out += 1
+			if (perched_verdict.get("floating", []) as Array).has(index):
+				held_by_nothing += 1
+	_check("an owl's body on its post, as the held-out run said it: %s, %d pieces, %d curved slopes turned out, %d held by nothing"
+		% [perched_verdict["summary"], int(perched_verdict["pieces"]), curved_out, held_by_nothing],
+		bool(perched_verdict["ok"]) and int(perched_verdict["pieces"]) == 1 and curved_out >= 12
+			and not str(perched_verdict["feedback"]).contains("held by nothing"))
+	# The held-out car's body, 5 plates over arches, on its axles: its nose past
+	# the front arch was plates beside the middle's brick course, joined to it
+	# by nothing, and came away in 14 parts. The run threw the body away.
+	assistant._brief = "a sports car"
+	var nosed: Assistant.Model = assistant._read_model({"bricks": CAR_AXLES, "patterns": [CAR_BODY]})
+	var nosed_verdict: Dictionary = assistant._check(nosed, true)
+	_check("a car's body over its arches keeps its nose: %s, %d pieces; the shape %d piece(s)"
+		% [nosed_verdict["summary"], int(nosed_verdict["pieces"]), int(Shapes.last.get("pieces", 0))],
+		bool(nosed_verdict["ok"]) and int(nosed_verdict["pieces"]) == 1
+			and int(Shapes.last.get("pieces", 0)) == 1 and nosed.placements.size() > 100)
 	# A cylinder curves round, not up: its side is the round parts', and a
 	# ramp's low end is its slopes'.
 	var tower: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
@@ -445,6 +481,47 @@ func _run() -> void:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
 
+
+## The held-out owl's stone post and body, as its run (owl_d3) said them.
+const OWL_POST: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "top": "smooth",
+	"solids": [{"box": {"from": [6, 0, 5], "size": [8, 20, 6], "edge": 1, "round": 1}, "color": 72}]}
+const OWL_BODY: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "solids": [
+	{"ellipsoid": {"centre": [10, 35, 7.5], "radii": [5, 15, 4.5]}, "color": 15},
+	{"loft": {"along": "z", "centre": 10, "sections": [
+		{"at": 1, "width": 5, "height": 3, "bottom": 20, "round": 0.6},
+		{"at": 4, "width": 7, "height": 8, "bottom": 23, "round": 0.8},
+		{"at": 6, "width": 6, "height": 6, "bottom": 30, "round": 0.8}]}, "color": 84},
+	{"ellipsoid": {"centre": [5.8, 35, 6.5], "radii": [1.6, 14, 4.2]}, "color": 84},
+	{"ellipsoid": {"centre": [14.2, 35, 6.5], "radii": [1.6, 14, 4.2]}, "color": 84},
+	{"ellipsoid": {"centre": [10, 54, 7.5], "radii": [4.5, 11, 4]}, "color": 84},
+	{"ellipsoid": {"centre": [10, 53, 9.5], "radii": [3.8, 9, 2.2]}, "color": 15}]}
+
+## The held-out car's axles and wheels and its body, as its run (car_d3) said them.
+const CAR_AXLES: Array = [
+	{"part": "3700", "color": 0, "x": 3, "y": 2, "z": 2, "rot": 0},
+	{"part": "3700", "color": 0, "x": 3, "y": 2, "z": 5, "rot": 0},
+	{"part": "3707", "color": 0, "x": 3.7, "y": 3, "z": 0, "rot": 1},
+	{"part": "18976c01", "color": 71, "x": 2.5, "y": 0, "z": 0, "rot": 0},
+	{"part": "18976c01", "color": 71, "x": 2.5, "y": 0, "z": 6.5, "rot": 2},
+	{"part": "3700", "color": 0, "x": 15, "y": 2, "z": 2, "rot": 0},
+	{"part": "3700", "color": 0, "x": 15, "y": 2, "z": 5, "rot": 0},
+	{"part": "3707", "color": 0, "x": 15.7, "y": 3, "z": 0, "rot": 1},
+	{"part": "18976c01", "color": 71, "x": 14.5, "y": 0, "z": 0, "rot": 0},
+	{"part": "18976c01", "color": 71, "x": 14.5, "y": 0, "z": 6.5, "rot": 2}]
+const CAR_BODY: Dictionary = {"pattern": "shape", "color": 321, "solids": [
+	{"extrude": {"along": "x", "from": 0, "width": 8, "round": 0.5,
+		"profile": [[0, 7], [1, 9], [6, 10], [18, 10.5], [20, 10]], "under": [[0, 5], [20, 5]]},
+		"color": 321},
+	{"loft": {"along": "x", "centre": 4, "sections": [
+		{"at": 7, "width": 6, "height": 0.5, "bottom": 10, "round": 0.3},
+		{"at": 10.5, "width": 6, "height": 4, "bottom": 10, "round": 0.4},
+		{"at": 13.5, "width": 5.5, "height": 4, "bottom": 10, "round": 0.4},
+		{"at": 18, "width": 6, "height": 0.5, "bottom": 10, "round": 0.3}]}, "color": 0}],
+	"cuts": [
+		{"revolve": {"axis": "z", "centre": [4, 3.75, 0], "profile": [[0, 1.9], [2, 1.9]]}},
+		{"revolve": {"axis": "z", "centre": [4, 3.75, 6], "profile": [[0, 1.9], [2, 1.9]]}},
+		{"revolve": {"axis": "z", "centre": [16, 3.75, 0], "profile": [[0, 1.9], [2, 1.9]]}},
+		{"revolve": {"axis": "z", "centre": [16, 3.75, 6], "profile": [[0, 1.9], [2, 1.9]]}}]}
 
 ## The bricks with studs on a side a shell is held by, and how many lanes each.
 const SIDE_STUDS: Dictionary = {"87087": 1, "11211": 2, "30414": 4}

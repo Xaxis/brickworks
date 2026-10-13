@@ -199,6 +199,41 @@ func _run() -> void:
 	_check("there are enough of them to be worth having",
 		Techniques.names().size() >= 6)
 
+	# A face built as features, each a part, and each feature one piece: the
+	# held-out owl's face was a panel of white 1 x 1 tiles with 1 x 1 dots for
+	# eyes and a tan tile for a beak, because nothing said how a designer
+	# builds an eye. One piece, or a feature followed falls off its face.
+	print("")
+	print("  and a face is built as features")
+	var features: PackedStringArray = []
+	for one: Variant in Techniques.all():
+		var technique: Dictionary = one
+		if str(technique.get("group", "")) != "faces and features":
+			continue
+		var model := Assistant.Model.new()
+		var parts: Dictionary = {}
+		for raw: Variant in technique["bricks"]:
+			model.placements.append(Assistant.Placement.from_dict(raw))
+			parts[str((raw as Dictionary)["part"])] = true
+		var verdict: Dictionary = assistant._check(model, true)
+		features.append(str(technique["name"]))
+		_check("%s: %d parts, %d shapes, %s, %d piece(s)" % [technique["name"],
+			model.placements.size(), parts.size(), verdict["summary"], int(verdict["pieces"])],
+			bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	_check("...eyes, a round face, a beak, ears, talons and a vehicle's lamps: %s"
+		% ", ".join(features), features.size() >= 6 and features.has("eye with a highlight")
+			and features.has("round face") and features.has("talons")
+			and features.has("headlamps and grille"))
+	var eye: Dictionary = Techniques.named("eye")
+	var eye_parts: Array = (eye.get("bricks", []) as Array).map(
+		func(brick: Dictionary) -> String: return str(brick["part"]))
+	_check("an eye is a round plate and a printed pupil with its highlight, not a dot: %s"
+		% ", ".join(PackedStringArray(eye_parts)), eye_parts.has("18674")
+			and eye_parts.has("98138p07"))
+	_check("...and the guidance sends a face to them, and away from a grid of tiles",
+		flat.contains("show_technique \"eye with a highlight\"")
+			and flat.contains("(\"round face\")") and flat.contains("pixel picture"))
+
 	# A pane in its frame is forgiven its overlap only where real sets
 	# seat it. A rule that let glass pass through anything would let
 	# every technique above pass too, so the same window with its pane

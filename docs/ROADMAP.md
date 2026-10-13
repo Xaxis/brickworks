@@ -1683,6 +1683,62 @@ the prisms, round towers, domes, rock and rooms the patterns lay are joined
 themselves; a round fill's rim wedges stacked wedge on wedge; an oval
 head's crown and a face in tiles that read round.
 
+**A face built as features, a curved slope held where it grips, a nose
+kept on (2026-10-12).** The owner asked for "an intelligent builder that
+knows how to use these advanced building structures like an expert human".
+`owl_d3` was one piece and a third sideways, and by eye a pixel picture:
+its face a panel of white 1 x 1 tiles with 1 x 1 dots for eyes and a tan
+tile for a beak, its legs white 1 x 1 cylinders. Nothing it was given said
+how a designer builds an eye.
+
+*Faces and features*, a new group of worked constructions (`show_technique`),
+each one piece and checked as a design is: an eye with a highlight (a 2 x 2
+round plate with a centre stud in the iris's colour, on a bracket, under a
+1 x 1 round tile printed with a black eye and its white glint, 98138p07); a
+round face (a 4 x 4 round plate as the disc, two such eyes on its upper
+studs, a beak on a jumper between them); a beak or snout (a cheese slope on
+a jumper); ears or tufts (slopes at a head's corners falling outward);
+talons (three 1 x 1 tooth plates, a round brick for the leg); and a
+vehicle's headlamps and grille. General, named for the feature and not the
+subject. The guidance's "what the subject needs" sends a face to them and
+calls a grid of tiles with a dot for each eye a pixel picture; the check's
+advice names them for a living thing and a vehicle. Pictures:
+`shots/d4/tech_{face,eye,lamps,toes1,ears}_*.png` in this worktree.
+
+*A curved slope on its side, held where it grips.* Measured, not assumed:
+every curved slope is hollow under its high end, so a stud there reaches
+into nothing and only its low rows grip (11477, 15068: the low row of two;
+24309, 50950: two of three; 61678: two of four; straight slopes grip under
+every row). Upright that never shows, since a slope rests on its plates.
+On a shell nothing rests: the plan held each curved slope by the stud under
+its high end, the check found nothing there, and `owl_d3` was refused four
+times — 11477s "held by nothing", or resting on the cheese slope a row
+below. The shell's plan now reads each slope's gripping rows off the part
+and lays a slope against the core only where a side stud meets one.
+
+| `owl_d3`'s four refused submissions, laid again | before | after |
+|---|---|---|
+| 1 | 4 floating, 5 pieces | buildable, 1 piece |
+| 2 | 5 floating | buildable, 1 piece |
+| 3 | 2 floating, 2 pieces | buildable, 1 piece |
+| 4 | 2 floating, 2 pieces | buildable, 1 piece |
+
+The curved slopes turned out fall with it (30 to 24, 29 to 17, 34 to 26,
+34 to 26): the ones a side stud cannot reach are not laid, rather than
+laid and refused.
+
+*A nose kept on.* `car_d3`'s shaped body, 5 plates over its arches, came
+apart past the front arch: the nose's plates stood beside the middle's
+course of bricks, joined across by nothing (8 parts apart, 14 floating with
+what stood on them), and the run built the car by hand. Where a piece cannot
+be stitched because a brick of the rest stands beside its plates, that brick
+is laid again as three plates, and a plate reaches across. The run's body
+on its axles: before 131 parts, 14 floating, 2 pieces; after 135, buildable,
+one piece (`shots/d4/car_{before,after}_corner.png`). A sculpt's grid keeps
+its bricks, so Brickify lays the same parts as before (`brickify_probe`'s
+forty-stud bunny 6.3 s laid before, 5.6 and 7.0 s in two runs after, on a
+box at load 60: noise).
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

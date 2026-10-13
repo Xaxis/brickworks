@@ -12667,6 +12667,16 @@ pinned to Technic bricks (a round's "technic" course pins beams on in \
 one line); grille tiles, round plates, levers and pipes for machinery.
   Organic — rock, a creature, a tree: the rock pattern; curved slopes \
 and wedges for a body; hinged sections for wings and limbs.
+  A face — an animal's, a figure's, a robot's, a vehicle's front: \
+features, each a part a designer chose, not a panel. Eyes are round \
+plates with a printed pupil and its highlight (show_technique "eye with \
+a highlight"); a face that is round is a round plate with the eyes and \
+the beak on it ("round face"); a beak or a snout, a cheese slope on a \
+jumper ("beak or snout"); ears and tufts, slopes at the head's corners \
+("ears or tufts"); feet, claws ("talons"); a vehicle's face, its lamps \
+and grille ("headlamps and grille"). A grid of 1 x 1 tiles with a dot \
+for each eye is a pixel picture, not a face. The face is where a person \
+looks first, so it gets the model's best parts.
   Rough or worn — stone, a hull's planking, weathering: two or three \
 close colours mixed (mix_color), masonry, texture parts.
   A band of detail — rivets down a hull plate, a row of portholes or \
