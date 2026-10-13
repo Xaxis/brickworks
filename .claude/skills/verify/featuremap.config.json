@@ -1566,6 +1566,20 @@
       "entry": "tools/connection_audit.py",
       "reach": "python3 tools/connection_audit.py run && python3 tools/connection_audit.py report --write docs/CONNECTIONS.md   (hours, under heavy; needs vendor/omr)",
       "area": "geometry"
+    },
+    {
+      "kind": "lib",
+      "label": "the gallery over mcp",
+      "entry": "src/net/gallery_tool.gd",
+      "reach": "the gallery tool (AppTools): search brickworks.diy/gallery, open=<id> reads one as a reference with its credit and licence",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "gallery tool probe",
+      "entry": "src/dev/gallery_tool_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced)",
+      "area": "mcp"
     }
   ]
 }

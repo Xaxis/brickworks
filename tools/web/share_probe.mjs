@@ -654,6 +654,10 @@ async function theDirectory(tokenA) {
   r = await call(`/m/${gate}.webp`);
   check(r.status === 200 && r.headers.get("content-type") === "image/webp" && r.bytes.equals(Buffer.from(THUMB, "base64")),
     `the small picture: 200 image/webp, the bytes published (${r.status})`);
+  r = await call(`/api/share?id=${gate}`);
+  check(r.json?.description?.startsWith("A gatehouse") && r.json?.tags?.length === 3 && r.json?.kind === "castle"
+    && r.json?.licence === "cc-by-sa-4.0",
+    "what the viewer and a session's gallery tool read carries what its owner said: description, tags, kind, licence");
   for (const [what, query, wanted, unwanted] of [
     ["a word of its description", `&q=${word}`, [gate], [own, gears]],
     ["a word's start, any case", `&q=${word.slice(0, 8).toUpperCase()}`, [gate], []],

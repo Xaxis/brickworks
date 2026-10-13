@@ -899,6 +899,11 @@ async function read(request, response) {
     updated_at: row.updated_at,
     listed: row.listed === true,
     licence: row.licence ?? null,
+    // What its owner said about it, for a session reading it as a
+    // reference (src/net/gallery_tool.gd) as for its page.
+    description: row.description ?? null,
+    tags: row.tags || [],
+    kind: row.kind ?? null,
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}` } : null,
     ...links(origin, id),
     model: model.toString("utf8"),

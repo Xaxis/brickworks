@@ -32,6 +32,8 @@ var assistant: Assistant
 ## Whether a link to this computer may be fetched (_fetch): a probe serves
 ## its own files from here.
 var fetch_near: bool = false
+## The gallery, read for a session (GalleryTool, 2026-10-13).
+var _gallery: GalleryTool
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -157,6 +159,10 @@ lays what they chose.
 part where it stands, or with sticker=true stuck on one of its faces.
  - make_unique: one copy of a sub-assembly cut loose from the others, so \
 changing it changes no other.
+ - gallery: what people built and shared at brickworks.diy/gallery, searched \
+(q, kind, size, technic, instructions, sort); open=<id> reads one as a \
+reference — its size, parts, credit, licence and picture. Read-only. Credit \
+its builder and keep to its licence in anything made from it.
  - job: what takes long on a big model (render_model, animate_model's \
 rendering, export_model's studio, picture and instructions, make_art, \
 brickify) \
@@ -420,6 +426,7 @@ func definitions() -> Array:
 				"brick": {"type": "integer", "description": "a part in the copy, by its number"},
 			}},
 		},
+		GalleryTool.definition(),
 	]
 
 
@@ -466,6 +473,11 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _print_part(input)
 		"make_unique":
 			return _make_unique(input)
+		"gallery":
+			if _gallery == null:
+				_gallery = GalleryTool.new()
+				_gallery.app = app
+			return await _gallery.run(input)
 	return "No tool called %s." % tool
 
 
@@ -496,6 +508,8 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "lay_flex", "pose_mod
 ## window: its parts, its steps and its booklet, and asking what it stands on.
 static func _while_looking(tool: String, input: Dictionary) -> bool:
 	match tool:
+		"gallery":
+			return true
 		"parts_list":
 			return str(input.get("which", "model")) == "model"
 		"edit_steps":

@@ -278,6 +278,22 @@ def drive(relay: Relay) -> None:
     check("a refusal says what to fix: %s" % said[:50], said.startswith("kind is one of"))
 
     simulate(relay, say, kept.parent)
+    # The gallery (src/net/gallery_tool.gd), read-only, from the app's own
+    # deployment (BRICKWORKS_API, or brickworks.diy): searched, and one
+    # model opened as a reference with its credit, licence and picture.
+    found = say("gallery", {"sort": "newest"})
+    first = re.search(r"^1\. .*?\(([A-Za-z0-9]{10})\)", found, re.M)
+    check("the gallery searched over MCP: %s" % (found.splitlines()[0][:80] if found else "nothing"),
+          found.startswith("The gallery at") and first is not None and "credit them" in found)
+    if first:
+        opened = relay.call("tools/call", {"name": "gallery", "arguments": {"open": first.group(1)}})
+        blocks = opened.get("result", {}).get("content", [])
+        words = text_of(opened.get("result", {}))
+        check("...one opened as a reference, with its licence and size: %s" % words.splitlines()[0][:70],
+              "Licence:" in words and "Size:" in words and "Read-only" in words)
+        check("...and its picture as an MCP image block",
+              any(b.get("type") == "image" and b.get("mimeType", "").startswith("image/")
+                  and len(b.get("data", "")) > 500 for b in blocks))
 
     cached = json.loads((ROOT / "tools" / "mcp_tools.json").read_text())
     check("tools/mcp_tools.json names every tool the app serves, %d" % len(cached),
