@@ -165,6 +165,8 @@ var _shell: Shell
 ## The offer to seat an old model's parts on their studs.
 var _seat_offer: SeatOffer
 var _reload_offer: ReloadOffer
+## "Brickworks has been updated", with Reload (NewerBuild).
+var _update_offer: UpdateOffer
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -346,6 +348,8 @@ func _tell_page() -> void:
 		named.merge(_seat_offer.controls_by_name())
 	if _reload_offer != null:
 		named.merge(_reload_offer.controls_by_name())
+	if _update_offer != null:
+		named.merge(_update_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -2626,6 +2630,12 @@ func _build_ui() -> void:
 	_bar.started_new.connect(_reload_offer.dismiss)
 	_bar.cleared.connect(_reload_offer.dismiss)
 	_store.saved_by_another.connect(_reload_offer.offer)
+	# A newer build is live: said above the model, with Reload, which keeps
+	# the model on the baseplate first (_watch_other_tabs asks).
+	_update_offer = UpdateOffer.new()
+	_update_offer.store = _store
+	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_update_offer)
 
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()
@@ -4015,6 +4025,10 @@ func _watch_other_tabs() -> void:
 			PartShelf.reread()
 	if _reload_offer != null and not _reload_offer.showing() and _store.saved_elsewhere():
 		_reload_offer.offer(_store.title)
+	# And whether a newer build is live than this tab's (the page asks the
+	# site now and then: src/boot/shell.html).
+	if _update_offer != null and not _update_offer.showing():
+		_update_offer.offer(NewerBuild.live())
 	# A window says it still holds its session (TabSession._held).
 	if now - _tabs_said_here > 60000:
 		_tabs_said_here = now

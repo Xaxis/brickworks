@@ -491,8 +491,17 @@ func _claude(address: String, method: String, params: Dictionary) -> Dictionary:
 			"params": params}))
 	var done: Array = await http.request_completed
 	http.queue_free()
-	var parsed: Variant = JSON.parse_string((done[3] as PackedByteArray)
-		.get_string_from_utf8())
+	var body: String = (done[3] as PackedByteArray).get_string_from_utf8()
+	# An event stream when the relay has something of its own to say first
+	# (the tools changed, api/mcp.js): the answer is the message with an id.
+	if body.begins_with("event:") or body.begins_with("data:"):
+		for line: String in body.split("\n"):
+			if line.begins_with("data:"):
+				var message: Variant = JSON.parse_string(line.substr(5).strip_edges())
+				if message is Dictionary and (message as Dictionary).has("id"):
+					return message
+		return {}
+	var parsed: Variant = JSON.parse_string(body)
 	return parsed if parsed is Dictionary else {}
 
 

@@ -77,6 +77,20 @@
 // adds a connector and lists its tools from claude.ai's settings, so
 // those are answered here, from what the tab sent when it switched on.
 //
+// The tools change with the build (2026-10-13). A conversation lists them
+// once, when it connects, and a tab reloaded into a newer build says hello
+// with other ones; the conversation went on with the old list for good,
+// since this said listChanged: false. Now it says true, and remembers which
+// list each conversation was given (relay_lists, by the key its tab is
+// picked by). The first call after the tab it works in said hello with
+// another list is answered as an event stream with
+// notifications/tools/list_changed ahead of the answer — Streamable HTTP
+// lets a server send its own messages before the answer to a POST — and a
+// client that supports it lists the tools again. A client that takes JSON
+// alone is told in words, at the end of that call's answer. Once each time.
+// There is no stream to say it in between calls: a stateless function
+// holds no connection open (GET is refused).
+//
 // A tab's token is long, random, made in the tab, and never stored: the
 // queue (supabase/relay.sql) is keyed by its SHA-256. Anyone holding a
 // private address can build in that tab, which is what the address is
@@ -150,6 +164,63 @@ function sessionOf(request) {
 
 function rpcError(id, code, message) {
   return { jsonrpc: "2.0", id, error: { code, message } };
+}
+
+// Whether Claude takes an event stream for its answer, as the spec asks
+// every client to.
+function streams(request) {
+  return String(request.headers?.accept || "").includes("text/event-stream");
+}
+
+// Which tools a tab serves, in short: compared, never shown. The tab's own
+// list, before the relay adds its own tools to it (toolsWithTabs).
+function listOf(tools) {
+  return createHash("sha256").update(JSON.stringify(Array.isArray(tools) ? tools : [])).digest("hex").slice(0, 24);
+}
+
+const LIST_CHANGED = { jsonrpc: "2.0", method: "notifications/tools/list_changed" };
+const CHANGED_WORDS =
+  "Brickworks has been updated since this conversation listed its tools, and its tools have changed. " +
+  "List them again to see the new ones. If they do not appear, ask the person to reconnect Brickworks " +
+  "in Claude's connector settings (in Claude Code, /mcp), or to start a new conversation.";
+
+// Whether this conversation is to be told that its tools have changed: the
+// tab it works in serves another list than the one it was last given, and
+// it has not been told of that list yet. Remembered on the way, so it is
+// told once.
+async function toBeTold(key, served) {
+  const rows = await db(`relay_lists?key=eq.${encodeURIComponent(key)}&select=listed,told`);
+  const row = rows && rows[0];
+  if (!row || row.listed === served || row.told === served) return false;
+  await db(`relay_lists?key=eq.${encodeURIComponent(key)}`, {
+    method: "PATCH", body: { told: served, at: new Date().toISOString() },
+  });
+  return true;
+}
+
+// The list a conversation has just been given (initialize, tools/list).
+async function listGiven(key, served) {
+  await db("relay_lists", {
+    method: "POST",
+    body: { key, listed: served, told: served, at: new Date().toISOString() },
+    prefer: "resolution=merge-duplicates",
+  });
+}
+
+// The answer to a request, and, when [changed], the word that the tools
+// have changed: ahead of it in an event stream, or in its words.
+function answerWith(response, body, changed, stream) {
+  if (!changed || !body || body.id === undefined || body.id === null) {
+    return response.status(200).json(body);
+  }
+  if (stream) {
+    const event = (message) => `event: message\ndata: ${JSON.stringify(message)}\n\n`;
+    response.setHeader("content-type", "text/event-stream");
+    return response.status(200).end(event(LIST_CHANGED) + event(body));
+  }
+  const content = body.result && Array.isArray(body.result.content) ? body.result.content : null;
+  if (content) content.push({ type: "text", text: CHANGED_WORDS });
+  return response.status(200).json(body);
 }
 
 // What Claude is told when the tab is not there to answer. In words, since
@@ -339,8 +410,10 @@ async function unpick(key) {
 //               chosen between as the head of this file says
 //
 // Each says which tabs there are, what to answer the handshake and the
-// tool list with, and what to tell Claude when there is no tab.
-function oneTab(channel) {
+// tool list with, what to tell Claude when there is no tab, and what the
+// list of tools each conversation was given is kept by (listKey): its
+// session, or, for a client that sends none, its connection or address.
+function oneTab(channel, session) {
   return {
     tabs: async () => {
       const tab = await tabOf(channel);
@@ -349,6 +422,7 @@ function oneTab(channel) {
     hello: async (tab) => (tab ? await helloOf(tab.channel) : await helloOf(channel)),
     notOpen: NOT_OPEN,
     key: null,
+    listKey: session ? `session:${session}` : `address:${channel}`,
     owner: null,
     used: async () => {},
   };
@@ -382,6 +456,7 @@ function accountTabs(grant, origin, session) {
     // This conversation's pick when Claude sends the session id it was
     // given, and the connection's when it sends none.
     key: session ? `session:${session}` : `connection:${grant.id}`,
+    listKey: session ? `session:${session}` : `connection:${grant.id}`,
     owner: grant.owner,
     // What the account panel shows of the connection: when Claude last
     // used it, what it called itself, and the tab it builds in.
@@ -473,7 +548,7 @@ async function closedSaying(where, tab, tabs, taken = false) {
 }
 
 // Claude's side: put the request in the queue and wait for the tab.
-async function fromClaude(where, message, response, sessionToGive = null) {
+async function fromClaude(where, message, response, sessionToGive = null, stream = false) {
   if (Array.isArray(message)) {
     return response.status(200).json(rpcError(null, -32600, "batches are not supported"));
   }
@@ -527,9 +602,26 @@ async function fromClaude(where, message, response, sessionToGive = null) {
       }
     }
   } else {
-    tab = lastUsed(tabs);
+    // The handshake and the list from the tab this session works in, so the
+    // tools it is given are the ones its calls reach.
+    const picked = await pickOf(where.key);
+    tab = (picked && live.find((one) => one.channel === picked.channel)) || lastUsed(tabs);
   }
   const hello = await where.hello(tab);
+
+  // Which tools this conversation was given, and whether it is to be told
+  // they have changed: on any answer that can carry the word, which for a
+  // client taking JSON alone is a call's.
+  const served = hello ? listOf(hello.tools) : "";
+  let changed = false;
+  if (served && where.listKey) {
+    if (["initialize", "tools/list"].includes(message.method)) {
+      await listGiven(where.listKey, served);
+    } else if (calling || stream) {
+      changed = await toBeTold(where.listKey, served);
+    }
+  }
+  const send = (answer) => answerWith(response, answer, changed, stream);
 
   // The handshake and the tool list, from what the tab sent when it
   // switched on: answered whether or not the tab is awake to answer.
@@ -537,17 +629,17 @@ async function fromClaude(where, message, response, sessionToGive = null) {
     await where.used(message, null);
     if (tab && tab.open) await tellTab(tab.channel, message.method);
     if (message.method === "ping") {
-      return response.status(200).json({ jsonrpc: "2.0", id, result: {} });
+      return send({ jsonrpc: "2.0", id, result: {} });
     }
     if (message.method === "tools/list") {
-      return response.status(200).json({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools) } });
+      return send({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools) } });
     }
     if (sessionToGive) response.setHeader("mcp-session-id", sessionToGive);
-    return response.status(200).json({
+    return send({
       jsonrpc: "2.0", id,
       result: {
         protocolVersion: message.params?.protocolVersion || PROTOCOL,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: true } },
         serverInfo: { name: "brickworks", version: "1" },
         instructions: hello.instructions || "",
       },
@@ -564,7 +656,7 @@ async function fromClaude(where, message, response, sessionToGive = null) {
       state = stateOf(tab);
     }
     if (state === "hidden") {
-      return response.status(200).json(toolTrouble(id, `${header(tab, null, tabs)} ${HIDDEN}`));
+      return send(toolTrouble(id, `${header(tab, null, tabs)} ${HIDDEN}`));
     }
   }
   if (state !== "ready") {
@@ -573,23 +665,23 @@ async function fromClaude(where, message, response, sessionToGive = null) {
     // pretends the tab is there.
     if (message.method === "initialize") {
       if (sessionToGive) response.setHeader("mcp-session-id", sessionToGive);
-      return response.status(200).json({
+      return send({
         jsonrpc: "2.0", id,
         result: {
           protocolVersion: message.params?.protocolVersion || PROTOCOL,
-          capabilities: { tools: { listChanged: false } },
+          capabilities: { tools: { listChanged: true } },
           serverInfo: { name: "brickworks", version: "1" },
           instructions: where.notOpen,
         },
       });
     }
     if (message.method === "ping") {
-      return response.status(200).json({ jsonrpc: "2.0", id, result: {} });
+      return send({ jsonrpc: "2.0", id, result: {} });
     }
     if (calling) {
-      return response.status(200).json(toolTrouble(id, where.notOpen));
+      return send(toolTrouble(id, where.notOpen));
     }
-    return response.status(200).json(rpcError(id, -32000, where.notOpen));
+    return send(rpcError(id, -32000, where.notOpen));
   }
   await where.used(message, tab);
 
@@ -607,7 +699,7 @@ async function fromClaude(where, message, response, sessionToGive = null) {
     const [done] = await db(`relay?id=eq.${row.id}&select=response,taken_at`);
     if (done && done.response) {
       await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
-      return response.status(200).json(calling ? withHeader(done.response, tab, tabs) : done.response);
+      return send(calling ? withHeader(done.response, tab, tabs) : done.response);
     }
     // The page has said it is closing, or, not taken at all, has stopped
     // since: say so now rather than at the end of four minutes.
@@ -619,11 +711,11 @@ async function fromClaude(where, message, response, sessionToGive = null) {
       if (shut || (now !== "ready" && !done.taken_at && Date.now() - asked > UNTAKEN_MS)) {
         await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
         if (calling && now === "closed") {
-          return response.status(200).json(text(id,
+          return send(text(id,
             await closedSaying(where, row_ || tab, tabs, Boolean(done.taken_at)), true));
         }
         const why = now === "hidden" ? HIDDEN : where.notOpen;
-        return response.status(200).json(calling
+        return send(calling
           ? toolTrouble(id, `${header(tab, null, tabs)} ${why}`) : rpcError(id, -32000, why));
       }
     }
@@ -631,7 +723,7 @@ async function fromClaude(where, message, response, sessionToGive = null) {
   // Gone, so that a tab waking later does not do what Claude has stopped
   // waiting for and may be about to ask for again.
   await db(`relay?id=eq.${row.id}`, { method: "DELETE" });
-  return response.status(200).json(calling
+  return send(calling
     ? toolTrouble(id, `${header(tab, null, tabs)} The Brickworks tab did not answer in time. If it is ` +
         "out of view, ask the person to bring it into view; then try again.")
     : rpcError(id, -32000, "the Brickworks tab did not answer in time"));
@@ -672,7 +764,7 @@ async function forAccount(request, response) {
   const session = sessionOf(request);
   const give = request.body && request.body.method === "initialize" && !session
     ? randomBytes(24).toString("base64url") : null;
-  return await fromClaude(accountTabs(grant, origin, session), request.body, response, give);
+  return await fromClaude(accountTabs(grant, origin, session || give), request.body, response, give, streams(request));
 }
 
 // The tab switching on: what it would answer to initialize and tools/list,
@@ -799,7 +891,14 @@ export default async function handler(request, response) {
   // Only the page load that is listening may say it is out of view or gone.
   const mine = instance ? `&or=(instance.is.null,instance.eq.${instance})` : "";
   try {
-    if (op === "") return await fromClaude(oneTab(channel), request.body, response);
+    if (op === "") {
+      // A session id here too, for the list of tools each conversation was
+      // given; the tab is the address's either way.
+      const session = sessionOf(request);
+      const give = request.body && request.body.method === "initialize" && !session
+        ? randomBytes(24).toString("base64url") : null;
+      return await fromClaude(oneTab(channel, session || give), request.body, response, give, streams(request));
+    }
     if (op === "hello") {
       if (!instance) return response.status(400).json({ error: "hello needs ?i=" });
       return await helloFromTab(channel, instance, request, response);

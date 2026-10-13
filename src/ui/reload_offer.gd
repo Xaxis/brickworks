@@ -48,22 +48,23 @@ func _ready() -> void:
 	_words.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96))
 	row.add_child(_words)
 
-	_reload = _button("Reload it", true)
+	_reload = button("Reload it", true)
 	_reload.tooltip_text = "Open the model as it was just saved, in place of this tab's"
 	_reload.pressed.connect(reload)
 	row.add_child(_reload)
-	_keep = _button("Keep mine", false)
+	_keep = button("Keep mine", false)
 	_keep.tooltip_text = "Go on with this tab's model; saving it replaces the one saved elsewhere"
 	_keep.pressed.connect(keep)
 	row.add_child(_keep)
 
 
-func _button(words: String, main: bool) -> Button:
-	var button := Button.new()
-	button.text = words
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.add_theme_font_size_override("font_size", 13)
+## A button of the strip over the model: [param main] is the one to press.
+static func button(words: String, main: bool) -> Button:
+	var made := Button.new()
+	made.text = words
+	made.focus_mode = Control.FOCUS_NONE
+	made.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	made.add_theme_font_size_override("font_size", 13)
 	for state: String in ["normal", "hover", "pressed"]:
 		var face := StyleBoxFlat.new()
 		var base: Color = Color(0.29, 0.5, 0.92) if main else Color(1, 1, 1, 0.08)
@@ -74,10 +75,10 @@ func _button(words: String, main: bool) -> Button:
 		face.content_margin_right = 12
 		face.content_margin_top = 6
 		face.content_margin_bottom = 6
-		button.add_theme_stylebox_override(state, face)
-	button.add_theme_color_override("font_color", Color.WHITE)
-	button.add_theme_color_override("font_hover_color", Color.WHITE)
-	return button
+		made.add_theme_stylebox_override(state, face)
+	made.add_theme_color_override("font_color", Color.WHITE)
+	made.add_theme_color_override("font_hover_color", Color.WHITE)
+	return made
 
 
 ## Say that [param name] was saved elsewhere, and ask.

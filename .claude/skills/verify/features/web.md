@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:build browser flow, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:your profile page, ui:like and keep a model, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check -->
 
 ## Sub-features
 
@@ -911,6 +911,73 @@ plan with Claude as the client.
   no other line in that menu shares (E for Export), and go by the arrows
   from there. "BrickLink Studio" swung between two lines and downloaded the
   wanted list on a busy machine.
+- **A newer build is live** (2026-10-13): `ui:newer build banner`
+  (`src/ui/update_offer.gd`), `lib:newer build` (`src/net/newer_build.gd`)
+  and the page's half in `src/boot/shell.html` ("A newer build"). `deploy.sh`
+  writes `/version.json` at the root of every deployment, served `no-store`,
+  beside the immutable `/b/<sha>/version.json`. The page knows its own build
+  from its address (`/b/<sha>/index`; served from a folder, the version.json
+  beside the build, read as the page starts) and asks `/version.json` on
+  focus, on being shown again, and every 4 minutes while in view, never twice
+  in 20 s. Once it names another build: `window.brickworksNewer()` says which,
+  the app shows "Brickworks has been updated" with **Reload** in the strip
+  above the model (control `update_reload`), and the page holds back every
+  write and delete outside the tab's own `user://sessions/<id>/`
+  (`holdBack`, listed by `window.brickworksHeld()`); a file changed before
+  the newer build was seen is still stored. The app refuses a save to the
+  shared models with `NewerBuild.REFUSAL` (`ModelStore._write`) rather than
+  saying "saved" for a file never stored, and Claude is told once over the
+  connector (`CommandSocket.NEWER_WORDS`). Reload writes the working model at
+  once (`ModelStore.write_now`), waits until the browser has stored it, then
+  reloads into the same session. The sign-in in localStorage is not held
+  back (a renewed session not kept would sign every tab out).
+  **`update probe`** (`src/dev/update_probe.gd`, headless): the page's
+  word played with `NewerBuild.pretend`; banner, the refusal, the working
+  model written at once, Reload writing before it reloads, Claude told once.
+  **`reload browser flow`** (`tools/web/reload_flow.mjs`, real Chromium,
+  `.env` sourced): `node tools/web/relay_server.mjs 8790 --static=build/web`
+  then `node tools/web/reload_flow.mjs --url=http://127.0.0.1:8790/app
+  --out=shots/reload`. The newer build is simulated by handing the browser
+  another commit for `/version.json`; with `--next-deploy` against an alias
+  nothing is simulated and it waits for the next deploy there (`vercel alias
+  set <url> <alias>`). A model renamed and changed, the newer build, a focus:
+  the banner within seconds; then Save and a deleted part, with another page
+  of the site watching IndexedDB every 500 ms: the tab's own autosave lands
+  and nothing outside its session is added, changed or deleted up to the
+  reload; another part deleted and Reload pressed at once: the page reloads
+  asking nothing, in the same session, with the model part for part under its
+  name, and no banner. Against the build before (a7a0099, tabs merged) 5
+  checks fail: no banner, no `brickworksNewer`, and Save stored
+  `models/Reload Flow House.ldr`, `command_costs.json` and two folders after
+  the newer build was seen. Two deploys apart, for real (2026-10-13): a
+  preview of ffeb8db aliased to a test address, the flow started there with
+  `--next-deploy`, a preview of 9f72c2d (`--no-export`) aliased over it; all
+  20 checks passed, the banner within 6 s of the focus, and the page came back
+  on 9f72c2d. The alias answered the old `/version.json` for a few seconds
+  after `vercel alias set` (Vercel's edge, `age:` on a `no-store` file), which
+  is why the flow polls it rather than reading it once.
+  **`list changed check`** (`tools/web/list_changed_check.mjs`, `node
+  tools/web/relay_server.mjs 8790` and `.env`): a tab played from the script
+  says hello with one build's tools and again with a newer build's, both ways
+  in (`?t=` and OAuth, one throwaway account). initialize says
+  `listChanged: true` and hands out a session id on both; after the newer
+  hello the next call is `text/event-stream` with
+  `notifications/tools/list_changed` ahead of the answer, once; a client
+  sending `Accept: application/json` alone is told in words at the end of the
+  call's answer, once. Before: 9 of its checks fail (`listChanged: false`,
+  JSON every time, no session id on `?t=`). It passes against a preview too
+  (ffeb8db, 2026-10-13): Vercel's function sends the event stream as one body
+  (`response.end`), and the root `/version.json` there is `no-store`. Needs `relay_lists`
+  (`supabase/relay.sql`, applied to the live project 2026-10-13). The
+  desktop's port is checked by `mcp_probe` (`_list_changes`: a session id
+  carrying a hash of its list, an older id told as a stream, GET with
+  `Accept: text/event-stream` is 405), and `tools/brickworks_mcp.py` by
+  `tests/test_mcp_list_changed.py` (the real bridge and a stand-in app on a
+  port of its own, restarted with a newer list; the bridge's copy of the list
+  goes to a file of the test's own via `BRICKWORKS_MCP_CACHE`). The other
+  relay checks play a client that reads an event-stream answer as Claude
+  does (`connector_probe._claude`, `oauth_probe.call`): a probe whose tab says
+  hello with a list of its own is told the tools changed, and read only JSON.
 
 ## How to reach it
 

@@ -1587,6 +1587,41 @@
       "entry": "src/assembly/gear_ratios.gd",
       "reach": "godot --headless --path . --script src/dev/gear_ratio_probe.gd   (over MCP: search_gear_ratio)",
       "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "newer build banner",
+      "entry": "src/ui/update_offer.gd",
+      "reach": "node tools/web/relay_server.mjs 8790 --static=build/web, then node tools/web/reload_flow.mjs --url=http://127.0.0.1:8790/app   (by hand: a tab of a deployment left open across the next deploy at the same address; focus it)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "newer build",
+      "entry": "src/net/newer_build.gd",
+      "reach": "godot --headless --path . --script src/dev/update_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "update probe",
+      "entry": "src/dev/update_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/update_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "reload browser flow",
+      "entry": "tools/web/reload_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/reload_flow.mjs --url=<deployment>/app --out=shots/reload   (with .env sourced; --next-deploy waits for a real second deploy at that address)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "list changed check",
+      "entry": "tools/web/list_changed_check.mjs",
+      "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/list_changed_check.mjs --url=http://127.0.0.1:8790   (with .env sourced)",
+      "area": "web"
     }
   ]
 }

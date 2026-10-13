@@ -81,6 +81,11 @@ cp "$dir"/knowledge/* ".vercel/output/static/b/$sha/knowledge/"
 # been deployed.
 printf '{"commit": "%s", "deployed": "%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   > ".vercel/output/static/b/$sha/version.json"
+# And the same at the root, which is the build live wherever this deployment
+# is: a tab open since an earlier deploy asks it now and then, never cached
+# (the route below), and offers to reload once it names another build
+# (src/boot/shell.html). People keep a tab open for hours.
+cp ".vercel/output/static/b/$sha/version.json" .vercel/output/static/version.json
 
 # The app is served at /app itself, not redirected to /b/<sha>/, so the
 # address bar says brickworks.diy/app rather than a build hash. The page
@@ -363,6 +368,9 @@ cat > .vercel/output/config.json <<EOF
       "continue": true },
     { "src": "/img/(.*)",
       "headers": { "Cache-Control": "public, max-age=86400, stale-while-revalidate=2592000" },
+      "continue": true },
+    { "src": "/version[.]json",
+      "headers": { "Cache-Control": "no-store" },
       "continue": true },
     { "src": "/app", "dest": "/b/$sha/index.html",
       "headers": { "Cache-Control": "no-cache" } },
