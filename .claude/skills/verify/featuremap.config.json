@@ -689,7 +689,14 @@
       "kind": "ui",
       "label": "open a studio model",
       "entry": "src/parts/studio_io.gd",
-      "reach": "godot --path .  (Open, then From a file on this computer, and choose an .io)",
+      "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Import, then BrickLink Studio model, or Open, then From a file on this computer, and choose an .io)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "save as a studio model",
+      "entry": "src/ui/exports.gd",
+      "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
       "area": "model-io"
     },
     {

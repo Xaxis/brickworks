@@ -1246,26 +1246,39 @@ func _the_ruler() -> void:
 func _studio_file() -> void:
 	print("  opening a BrickLink Studio .io file")
 	var bar: ModelBar = _main.get("_bar")
-	# A zip with Studio's password around an LDraw model, made by the
-	# system's own zip (tests/fixtures/studio_bay.io), not by this app.
-	var bytes: PackedByteArray = FileAccess.get_file_as_bytes("res://tests/fixtures/studio_bay.io")
+	var shell: Shell = _main.get("_shell")
+	# In the shape Studio 2.25 saves one, made by
+	# tests/fixtures/studio/make_fixtures.py, not by this app: the model in
+	# LDraw's numbers in model.ldr, and again in BrickLink's in model2.ldr.
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes("res://tests/fixtures/studio/bay_2025.io")
 	_check("the Studio file is there to open (%d bytes)" % bytes.size(), bytes.size() > 100)
-	var read: Dictionary = StudioIo.read(bytes)
-	_check("its password-protected zip opens to LDraw (%s)" % str(read["error"]),
-		str(read["error"]).is_empty() and str(read["text"]).contains("3001.dat"))
-	bar._import()
+	# File, Import, BrickLink Studio model (.io)… is the way in, as Open's
+	# From a file is: the same picker.
+	var import_menu: PopupMenu = shell.menu("File").get_popup().get_node("import")
+	_check("File, Import offers a BrickLink Studio model (%s)" % import_menu.get_item_text(
+		import_menu.get_item_index(shell.menu_id("import_io"))),
+		import_menu.get_item_text(import_menu.get_item_index(shell.menu_id("import_io")))
+			.begins_with("BrickLink Studio model (.io)"))
+	import_menu.id_pressed.emit(shell.menu_id("import_io"))
 	await _frames(3)
 	var picker: ModelFilePicker = bar._picker
+	_check("...and pressing it asks for a file", picker != null and picker._dialog != null
+		and picker._dialog.visible and picker._dialog.filters[0].contains("*.io"))
+	if picker == null:
+		return
 	if picker._dialog != null:
 		picker._dialog.hide()
-	picker.take(bytes, "studio_bay.io")
+	picker.take(bytes, "bay_2025.io")
 	await _frames(10)
 	var parts: Array = _model().map(func(b: BrickWorld.Brick) -> String: return b.part_id)
 	parts.sort()
-	_check("Open → From a file takes a Studio .io and opens its model (%s)" % str(parts),
-		parts == ["3001", "3004", "3022"])
-	_check("...in its colours", _colours() == {4: 1, 1: 1, 14: 1})
-	_check("...under its own name (%s)" % bar.model_name(), bar.model_name() == "Bay from Studio")
+	_check("a Studio .io opens its model, sub-model and all (%s)" % str(parts),
+		parts == ["3001", "3001", "3004", "3022", "3068b"])
+	_check("...in LDraw's colours, not BrickLink's (%s)" % _colours(),
+		_colours() == {4: 1, 15: 1, 14: 1, 1: 1, 0: 1})
+	_check("...under its file's name (%s)" % bar.model_name(), bar.model_name() == "Bay 2025")
+	_check("...and the part only Studio has is named in the status bar: \"%s\"" % bar._status.text,
+		bar._status.text.contains("1 not in the library, left out (m1a2b3c4_2025408_163200)"))
 
 
 func _exports() -> void:
@@ -1280,11 +1293,14 @@ func _exports() -> void:
 	var file_menu: MenuButton = shell.menu("File")
 	await _click(file_menu.get_global_rect().get_center())
 	var menu: PopupMenu = file_menu.get_popup().get_node("export")
-	_check("File, Export holds what it can write (%d)" % menu.item_count,
-		file_menu.get_popup().visible and menu.item_count >= 4)
+	_check("File, Export holds what it can write (%d), a Studio model among them" % menu.item_count,
+		file_menu.get_popup().visible and menu.item_count >= 5
+		and menu.get_item_text(menu.get_item_index(shell.menu_id("export_io")))
+			== "BrickLink Studio model (.io)")
 	await _shot("export_menu")
 	file_menu.get_popup().hide()
-	for name: String in ["probe_bay.png", "probe_bay_bricklink.xml", "probe_bay_rebrickable.csv"]:
+	for name: String in ["probe_bay.png", "probe_bay_bricklink.xml", "probe_bay_rebrickable.csv",
+			"probe_bay.io"]:
 		DirAccess.remove_absolute(into.path_join(name))
 	menu.id_pressed.emit(shell.menu_id("export_picture"))
 	var png: String = into.path_join("probe_bay.png")
@@ -1318,6 +1334,35 @@ func _exports() -> void:
 	var csv: String = FileAccess.get_file_as_string(into.path_join("probe_bay_rebrickable.csv"))
 	_check("the Rebrickable list is Part,Color,Quantity (%s)" % csv.strip_edges().replace("\n", " / "),
 		csv.begins_with("Part,Color,Quantity\n3002,1,2"))
+	# A Studio file: the model, a picture of it, and what Studio reads
+	# about it, in a zip that opens here again as the same model.
+	var bricks: Array = _model().map(func(b: BrickWorld.Brick) -> String:
+		return "%s/%d" % [b.part_id, b.color_code])
+	bricks.sort()
+	menu.id_pressed.emit(shell.menu_id("export_io"))
+	var io: String = into.path_join("probe_bay.io")
+	for _n: int in 300:
+		if FileAccess.file_exists(io):
+			break
+		await process_frame
+	var zip := ZIPReader.new()
+	var opened: bool = FileAccess.file_exists(io) and zip.open(io) == OK
+	var members: PackedStringArray = zip.get_files() if opened else PackedStringArray()
+	_check("BrickLink Studio model writes probe_bay.io, a zip of %s" % ", ".join(members),
+		Array(members) == ["model.ldr", ".info", "errorPartList.err", "thumbnail.png"])
+	if opened:
+		var thumbnail := Image.new()
+		_check("...its thumbnail a picture of the model (%s)" % (
+			str(thumbnail.get_size()) if thumbnail.load_png_from_buffer(
+				zip.read_file("thumbnail.png")) == OK else "not a picture"),
+			thumbnail.get_size() == Exports.STUDIO_THUMBNAIL and thumbnail.get_pixel(2, 2).a < 0.05)
+		zip.close()
+	var read: Dictionary = StudioIo.read(FileAccess.get_file_as_bytes(io))
+	var back: Array = LdrModel.parse(str(read["text"]), "probe_bay").flatten(_library.parts) \
+		.map(func(p: LdrModel.Placement) -> String: return "%s/%d" % [p.part_id, p.color_code])
+	back.sort()
+	_check("...and its model.ldr is the model on the baseplate (%d parts)" % back.size(),
+		back == bricks and not back.is_empty())
 	exports.folder = ""
 
 

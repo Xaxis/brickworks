@@ -2145,6 +2145,7 @@ func _build_ui() -> void:
 	_exports.scenery = _store.scenery
 	_exports.say = _bar.say
 	_exports.named = _bar.model_name
+	_exports.store = _store
 	add_child(_exports)
 	_exports.picture.world = _world
 	_exports.picture.camera = _camera
@@ -2153,6 +2154,7 @@ func _build_ui() -> void:
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)
+	_bar.studio_wanted.connect(_exports.studio_io)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
