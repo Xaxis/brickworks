@@ -1162,15 +1162,21 @@ fixing what it got wrong.
   plates, so the disc is flush with the curve) and the round plate disc
   (60474/11213/74611), then two 2 x 2 round eyes (18674 in the iris's colour,
   98138p07 on the centre stud) and a beak (3794b jumper, 54200 falling down
-  the face), all studs out. It is moved up to two studs to fit the side and
+  the face), all studs out, and the disc's other studs tiled — 3068b where four
+  free studs lie wholly on it, 3070b where one does, a round 98138 at its rim —
+  read off the part's own studs (`Patterns._studs_of`: the 6 x 6's ring is not
+  every stud whose middle is on the disc). The first held-out owl with a face
+  was judged "a round plate with its studs showing". A face that takes its
+  whole side is laid alone there. It is moved up to two studs to fit the side and
   clear the core (`room`: every plate of a row the shell's or nobody's); a
   face that cannot be laid is a pattern trouble naming why (no curved side
   that way, too small, no side studs, the core in the way), never dropped.
   `owl_d4`'s face was white tiles on the shell and 1 x 1 eyes, because a
   2 x 2 round plate wants four studs out. `face_probe`: the held-out owl's
-  post and body with a 6-across face, a cat's head with a 4, a bear's facing
-  -x with a 6 — each one piece, buildable, disc and both eyes 2 x 2 and studs
-  out, every face part held — and a box's flat side and a face said wrong
+  post and body with a 6-across face, a cat's head with a 4, a big owl's with
+  an 8 and a bear's facing -x with a 6 — each one piece, buildable, disc and
+  both eyes 2 x 2 and studs out, every face part and tile held — and a box's
+  flat side and a face said wrong
   refused with the reason. With an OUTDIR it saves `face_<name>.ldr`; render
   with `src/dev/bench_views.gd` to look (`--closef=0.2,0.8,0.6,1.0,0.5,1.0`
   frames the owl's head).
@@ -1382,12 +1388,24 @@ fixing what it got wrong.
   it the feature being worked, a find_techniques whose words name a listed
   feature is put down to it (`_feature_named`), the whole review lists what
   each came to, and saving hands back a feature never looked at
-  (`next_review`, before assemblies). `features_probe` drives both with
+  (`next_review`, before assemblies). Told once, in the build's answer, the
+  first held-out owl worked none of them: it reviewed the whole once, edited
+  and saved in 174 s. So the whole review ends with the first feature never
+  looked at, brief and all, and every edit_model and place_technique answer
+  names the features not yet worked (`_with_features_left`). A
+  `--ask-claude-code` run prints the app's own progress lines ("app: working
+  the eyes (feature 1 of 4)", "app: the eyes: placed ..."), so a bench log
+  says which features were worked and with what; the session's own lines
+  name only the tool. None of HOW TO WORK reached a session from outside
+  until the guidance was headed by it: Claude Code reads about 3,800
+  characters of a server's instructions (`mcp.md`, `GUIDE_HEAD`,
+  `read_guide`). `features_probe` drives both with
   replies written in it: the silhouette submitted with features, the eyes
   handed back with real pieces and a piece that lays laid with
   place_technique, the beak built from `beak or snout`, the run's record; and
-  from outside the build's answer, review_model feature=, the piece put down
-  to the eyes, save handing back the beak. Needs the index; SKIP without. `place_technique` reads the piece
+  from outside the build's answer, the whole review handing over the eyes,
+  review_model feature=, the piece put down to the eyes and its answer naming
+  the beak, save handing back the beak. Needs the index; SKIP without. `place_technique` reads the piece
   with the app's own LDraw reader, turns it by quarter turns, moves its low
   corner to x, y, z by whole studs, swaps colours by `recolor`, and lays it
   through `edit_model`, so the joints checker refuses it like any edit; pieces

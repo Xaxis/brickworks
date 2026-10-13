@@ -39,6 +39,10 @@ const HEADS: Array = [
 		{"ellipsoid": {"centre": [6, 12, 6], "radii": [5, 12, 5]}}]},
 		{"facing": "+z", "x": 6, "y": 13, "z": 11, "across": 4, "color": 15, "eyes": 2,
 			"beak": 13}],
+	["big owl", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84, "solids": [
+		{"ellipsoid": {"centre": [8, 15, 8], "radii": [7, 15, 7]}}]},
+		{"facing": "+z", "x": 8, "y": 17, "z": 15, "across": 8, "color": 15, "eyes": 0,
+			"beak": 19}],
 	["bear facing -x", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 70, "solids": [
 		{"ellipsoid": {"centre": [7, 11, 7], "radii": [6, 11, 6]}}]},
 		{"facing": "-x", "x": 1, "y": 12, "z": 7, "across": 6, "color": 19, "eyes": 0,
@@ -121,6 +125,20 @@ func _run() -> void:
 			and int(found.get("3794b %s" % facing, 0)) == 1)
 		_check("...every face part held (%s)" % str(held), int(held.get(disc, 0)) == 1
 			and int(held.get("18674", 0)) == 2 and int(held.get("54200", 0)) == 1)
+		# The disc's other studs under tiles: none of it left bare round the
+		# features, every tile held.
+		var tiled: int = 0
+		var tiled_held: int = 0
+		var colour: int = int((head[2] as Dictionary)["color"])
+		for index: int in model.placements.size():
+			var placement: Assistant.Placement = model.placements[index]
+			if placement.part in ["3068b", "3070b", "98138"] and placement.face == facing \
+					and placement.color == colour:
+				tiled += 1
+				if not floating.has(index):
+					tiled_held += 1
+		_check("...the disc tiled round its features: %d tiles, %d held" % [tiled, tiled_held],
+			tiled >= 3 and tiled == tiled_held)
 		if not out_dir.is_empty():
 			assistant._apply(model)
 			for _n: int in 3:

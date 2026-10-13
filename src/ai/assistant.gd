@@ -2225,6 +2225,25 @@ func _run_tool(block: Dictionary) -> Variant:
 		"edit_model", "edit_selection":
 			if not _laying_whole and (grew or not refused):
 				_note_feature("edited")
+	return _with_features_left(name, answer)
+
+
+## A session from outside, changing the model, is told the features it
+## listed that have had no turn yet, on every change: told once, in the
+## build's answer, the held-out owl worked none of them, looked at the whole
+## once and saved.
+func _with_features_left(name: String, answer: Variant) -> Variant:
+	if _busy or not _outside_standing or not name in ["edit_model", "place_technique"]:
+		return answer
+	var left: Array[String] = _features_left()
+	if left.is_empty():
+		return answer
+	var line: String = ("Features not worked yet: %s — review_model {\"feature\": \"%s\"} "
+		% [", ".join(left), left[0]] + "next: how real sets built it, to lay or build.")
+	if answer is String:
+		return "%s\n\n%s" % [answer, line]
+	if answer is Array:
+		return (answer as Array) + [{"type": "text", "text": line}]
 	return answer
 
 
@@ -2300,6 +2319,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var wanted: String = str(args.get("name", ""))
 			progress.emit("looking up how to do %s" % wanted)
 			return _show_technique(wanted)
+		"read_guide":
+			var section: String = str(args.get("section", ""))
+			progress.emit("reading the guide on %s" % section)
+			return read_guide(section)
 		"find_techniques":
 			var query: String = str(args.get("query", ""))
 			progress.emit("looking up how real sets built %s" % query)
@@ -8204,6 +8227,8 @@ func _note_feature(what: String) -> void:
 	var used: Array = _feature_used.get(key, [])
 	if not used.has(what):
 		used.append(what)
+		if not what.begins_with("looked up"):
+			progress.emit("the %s: %s" % [_feature_now, what])
 	_feature_used[key] = used
 
 
@@ -13166,8 +13191,92 @@ edit away."""
 ## it from here rather than writing it again in the relay is the same
 ## reason the tool list is served from here: two copies of advice drift,
 ## and the one that drifts is the one nobody is testing.
+##
+## Headed by GUIDE_HEAD, because Claude Code cuts a server's instructions
+## off at about 3,800 characters: asked what it was given, a session quoted
+## LEGO ART, COORDINATES, SIDEWAYS and half of BUILDING WITH PINS AND AXLES,
+## and "… [truncated]". HOW TO WORK starts at character 12,868 of 54,090, so
+## no session from outside — the bench's, a person's My Claude — had ever
+## read how to work, the rules, the shapes or what a subject needs. The head
+## says the process and where the rest is; read_guide serves any section.
 func guidance() -> String:
-	return _system_prompt()
+	return GUIDE_HEAD + "\n\n" + _system_prompt()
+
+
+## What a session reads first, inside the 3,800 characters that reach it.
+const GUIDE_HEAD := """You design LEGO models with this app's tools: it builds \
+what you submit, checks that it holds together, and refuses what does not. \
+Only the start of these instructions may reach you: read_guide gives any \
+section of the rest in full.
+
+HOW TO WORK — the way a set is designed:
+ 1. plan_scale with the real thing's length; find_reference for anything \
+that exists.
+ 2. The silhouette: the main masses, sized in studs off the picture, each \
+said as a shape pattern — a body, a head, a hull, a cabin (read_guide \
+"shapes") — and a head that looks at you with its "face" on its shape. \
+submit_design that first, with its assemblies and its features: what the \
+subject is known by (an owl's facial disc, eyes, beak, ear tufts, talons; a \
+car's wheel arches, headlamps, grille, windscreen, spoiler).
+ 3. review_model: the silhouette and proportions against real sets. Fix \
+the masses before any detail.
+ 4. Each feature in turn: review_model {"feature": "eyes"} gives three real \
+sets' pieces for it and the worked technique; lay one with place_technique, \
+adapt one, or build it from show_technique, and say which. A feature is \
+parts with depth, never a tile painted on a panel.
+ 5. Each assembly in turn: review_model {"assembly": name}, detailed with \
+edit_model.
+ 6. The touches — a figure, a printed tile, a story, a stand with a \
+nameplate — then save_model.
+
+THE RULES: nothing overlaps; nothing floats (every part on the ground or \
+on a part under it); the model is one connected thing — parts side by side \
+are not joined, only stacking joins, so stagger the joints.
+
+read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
+studs_out, prism, round, and shape with its face), "subject" (what each \
+kind of subject needs), "real", "colour", "angle" (sections on hinges), \
+"coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
+"touches", "changing", "kind", "art"."""
+
+
+## Names a session may ask read_guide for, beside the headings' own words.
+const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK",
+	"rules": "THE RULES YOUR DESIGN MUST SATISFY", "shapes": "SAY THE SHAPE, DO NOT COUNT IT OUT",
+	"patterns": "SAY THE SHAPE, DO NOT COUNT IT OUT", "shape": "SAY THE SHAPE, DO NOT COUNT IT OUT",
+	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
+	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
+	"pins": "BUILDING WITH PINS AND AXLES", "technic": "BUILDING WITH PINS AND AXLES",
+	"real": "WHAT MAKES A MODEL LOOK REAL", "touches": "FINISHING TOUCHES",
+	"changing": "CHANGING SOMETHING THAT IS ALREADY BUILT", "edit": "CHANGING SOMETHING THAT IS ALREADY BUILT",
+	"kind": "HOW REAL SETS OF THIS KIND ARE BUILT", "module": "AND BEYOND THAT, A MODULE SAID AGAIN",
+	"art": "LEGO ART", "mosaic": "LEGO ART"}
+
+
+## One section of the guidance by its name or a word of its heading: the
+## heading's text to the next heading. The headings, if none matches.
+func read_guide(section: String) -> String:
+	var text: String = _system_prompt()
+	var headings: Array[String] = []
+	var at: Array[int] = []
+	var heading := RegEx.create_from_string("(?m)^[A-Z][A-Z ,'-]{4,}$")
+	for found: RegExMatch in heading.search_all(text):
+		headings.append(found.get_string())
+		at.append(found.get_start())
+	var asked: String = section.strip_edges().to_lower()
+	var wanted: String = str(GUIDE_NAMES.get(asked, ""))
+	if wanted.is_empty():
+		for name: String in headings:
+			if name.to_lower().contains(asked) and not asked.is_empty():
+				wanted = name
+				break
+	var n: int = headings.find(wanted)
+	if n < 0:
+		return ("No section called \"%s\". There is: %s." % [section,
+			", ".join(PackedStringArray(GUIDE_NAMES.keys()))]
+			+ " Or a heading: %s." % ", ".join(PackedStringArray(headings)))
+	var end: int = at[n + 1] if n + 1 < at.size() else text.length()
+	return text.substr(at[n], end - at[n]).strip_edges()
 
 
 ## How a construction is actually made, in parts and coordinates.
@@ -13802,6 +13911,12 @@ func review(assembly: String, feature: String = "") -> String:
 		said.append(CRITIQUE)
 		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
+		# The first feature with no turn yet, here: a list to work through
+		# was read and put down, and the run went on to save.
+		var left: Array[String] = _features_left()
+		if not left.is_empty():
+			said.append("Once the silhouette is right, the first feature, the %s:\n\n%s"
+				% [left[0], await _review_feature(left[0])])
 		return "\n\n".join(said)
 	var one: Dictionary = {}
 	for named: Dictionary in _outside_assemblies:
@@ -13879,6 +13994,7 @@ func _review_feature(name: String) -> String:
 	_feature_now = known
 	_note_feature("looked up %s" % known)
 	var of: int = _outside_features.find(known) + 1
+	progress.emit("working the %s (feature %d of %d)" % [known, of, _outside_features.size()])
 	var brief: String = str(await _feature_brief(known, of, _outside_features.size(), false))
 	var left: Array[String] = _features_left()
 	left.erase(known)
@@ -15371,6 +15487,26 @@ func _tools() -> Array:
 					"sections": {"type": "array", "items": section},
 				},
 				"required": ["bricks"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "read_guide",
+			"description": ("A section of how to design in this app, in full: "
+				+ "\"work\" (the process: silhouette, features, detail), \"rules\", "
+				+ "\"shapes\" (the patterns that lay a wall, a dome, a tower, a "
+				+ "body and a head with its face), \"subject\" (what each kind of "
+				+ "subject needs), \"angle\", \"pins\", \"colour\", \"touches\" "
+				+ "and more. Read \"shapes\" before saying a shape."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"section": {"type": "string", "description":
+						"work, rules, shapes, subject, real, colour, angle, coordinates, "
+						+ "sideways, pins, big, look, good, beautiful, touches, changing, "
+						+ "kind or art"},
+				},
+				"required": ["section"],
 				"additionalProperties": false,
 			},
 		},

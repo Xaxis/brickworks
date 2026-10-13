@@ -161,13 +161,19 @@ func _run() -> void:
 		"features": ["eyes", "beak"]})
 	_ok(str(built).contains("each feature, one at a time (eyes, beak)"),
 		"the build's answer says to work each feature, by name")
+	var whole_first: String = await assistant.review("")
+	_ok(whole_first.contains("the first feature, the eyes:") and whole_first.contains(
+		"The eyes — feature 1 of 2"), "the whole review hands over the first feature, with its pieces")
 	var reviewed: String = await assistant.review("", "eyes")
 	_ok(reviewed.contains("The eyes — feature 1 of 2") and reviewed.contains("place_technique"),
 		"review_model feature=eyes: real pieces and what to do")
 	_ok(reviewed.contains("Then review_model {\"feature\": \"beak\"}"), "...and which is next")
-	await assistant.use_tool("place_technique", {"id": laid_id, "x": 6, "y": 1, "z": 6})
+	var placed: Variant = await assistant.use_tool("place_technique",
+		{"id": laid_id, "x": 6, "y": 1, "z": 6})
 	_ok(assistant._feature_said("eyes") == "real piece %s laid" % laid_id,
 		"a piece laid after it is the eyes' (%s)" % assistant._feature_said("eyes"))
+	_ok(JSON.stringify(placed).contains("Features not worked yet: beak"),
+		"...and the answer to it names the feature still to work")
 	var handed: String = await assistant.next_review()
 	_ok(handed.contains("The next is the beak") and handed.contains("The beak — feature 2 of 2"),
 		"saving with the beak never worked hands the beak back")
