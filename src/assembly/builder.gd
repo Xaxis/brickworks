@@ -317,6 +317,16 @@ func redo() -> bool:
 	return true
 
 
+## How many parts the next undo (or with [param again], redo) changes: a
+## group's steps, or one.
+func next_change_size(again: bool = false) -> int:
+	var steps: Array = _redo if again else _history
+	if steps.is_empty():
+		return 0
+	var step: Dictionary = steps.back()
+	return (step.get("steps", []) as Array).size() if step.get("undo", "") == "group" else 1
+
+
 ## What a redo would put back, in words: "placed Brick 2 x 4".
 func redo_words() -> String:
 	return str(_redo.back().get("words", "")) if not _redo.is_empty() else ""

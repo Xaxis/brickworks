@@ -260,6 +260,11 @@ func _with_the_timeline() -> void:
 	await _key(KEY_K)
 	await _key(KEY_B)
 	var steps: StepsBar = _main.get("_steps")
+	# Worked out a slice at a time (StepsBar.start).
+	for _n: int in 600:
+		if not steps.is_starting():
+			break
+		await process_frame
 	_check("B opens the timeline with x-ray and the cut on", steps.is_playing_back())
 	steps.to_start()
 	steps.step_forward()

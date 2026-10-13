@@ -529,7 +529,7 @@ func _wheel_over_the_interface() -> void:
 	await _unmoved_by_scrolling("the parts list (inventory)", _middle)
 	inventory.hide_list()
 	var steps: StepsBar = _main.get("_steps")
-	_main._toggle_steps()
+	await _main._toggle_steps()
 	await _frames(6)
 	await _unmoved_by_scrolling("the timeline bar", _centre(steps))
 	steps.stop()

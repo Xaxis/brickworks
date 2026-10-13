@@ -454,6 +454,12 @@ func _drawn(viewport: SubViewport, spots: Array, tokens: Array) -> Image:
 		var texture: ViewportTexture = viewport.get_texture()
 		if texture == null:
 			continue
+		# Read back once the card has drawn it, with nothing more drawn
+		# meanwhile (GpuFence, as ModelShot reads): sooner, the read waits
+		# for it on the page's one thread, and in a browser drawing in
+		# software the car's booklet held the page three seconds a picture,
+		# and seventeen for the first when frames were queued ahead of it.
+		await GpuFence.finished()
 		var image: Image = texture.get_image()
 		if image == null or image.get_width() < 8:
 			continue

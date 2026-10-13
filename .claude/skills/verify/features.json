@@ -342,6 +342,14 @@
       "tests": []
     },
     {
+      "id": "cli:progress check",
+      "kind": "cli",
+      "entry": "tools/web/progress_check.mjs",
+      "reach": "node tools/web/progress_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app; --only=timeline,booklet,\u2026; --report-only for a build from before)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:publish a release",
       "kind": "cli",
       "entry": "tools/release.py",
@@ -1412,6 +1420,14 @@
       "entry": "src/ui/view_cube.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:what the app is busy with",
+      "kind": "ui",
+      "entry": "src/ui/working.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
+      "area": "building",
       "tests": []
     },
     {

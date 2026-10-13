@@ -427,7 +427,11 @@ picture the assistant is shown.
   where it is, so a number read off the image is the number to write in a
   placement.
 - `the timeline`: `StepsBar` (`src/ui/steps_bar.gd`), opened by B, the toolbar's
-  Timeline or a design's Build steps. A slider over every brick, from an empty
+  Timeline or a design's Build steps. Opening it works the steps out a slice
+  at a time (`StepsBar.start` is a coroutine, `Instructions.plan_paced`) with
+  the status bar saying which part of it and how far, and Cancel; Timeline
+  pressed again, or an edit meanwhile, stops it. Orthanc's took one frame of
+  6.3 s in a browser before (2026-10-12). A slider over every brick, from an empty
   baseplate to the finished model: drag it, Start/End (Home/End), Back/Next a
   step (arrows), Play and Reverse (space plays), at 0.5x-4x, the whole build
   taking 6-40 s at 1x. Three orders: Build order (`Instructions.plan`, the
@@ -494,6 +498,14 @@ picture the assistant is shown.
   browser; on the web it is written into a tab opened as the button was pressed
   (`BookletMaker.open_tab`, then `fill_tab`; a page may only open a tab in
   answer to a click), or downloaded if the browser blocked the tab.
+  While it works the status bar says which part of it and how far (`Working`,
+  `BookletMaker.job`: planning, the parts, the views, the steps, counted, with
+  Cancel, which closes the tab), and so does that tab, which is the one in
+  front (`BookletMaker.tell_tab`). The plan is `Instructions.plan_paced`, and
+  each picture is read back once the card has drawn it (`GpuFence`, in
+  `BookletStudio._drawn`), as `ModelShot` reads: read sooner, in a browser
+  drawing in software the car's booklet held the page about three seconds a
+  picture (2026-10-12, `progress_check.mjs`).
   `BookletMaker` (`src/render/booklet_maker.gd`) plans, decides each step's
   view, lays out (`Booklet.lay_out`, `src/assembly/booklet.gd`) and draws;
   `BookletStudio` (`src/render/booklet_studio.gd`) draws off screen, never

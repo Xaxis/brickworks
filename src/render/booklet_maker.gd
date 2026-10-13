@@ -37,6 +37,10 @@ var px_per_mm: float = 5.0
 var measured: Array = []
 var document: Booklet.Document
 
+## What the status bar shows while it works (Working), and Cancel. Null
+## for the command line and the probes, which wait for it regardless.
+var job: Working.Job = null
+
 var _studio: BookletStudio
 var _world: BrickWorld
 ## The parts list the booklet ends with, which its steps' parts boxes agree
@@ -64,9 +68,14 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_world = world
 	measured.clear()
-	var steps: Array[Instructions.Step] = Instructions.plan(world, library, scenery)
-	if steps.is_empty():
+	var steps: Array[Instructions.Step] = []
+	if job != null:
+		steps = await Instructions.plan_paced(world, library, scenery, {}, job)
+	else:
+		steps = Instructions.plan(world, library, scenery)
+	if steps.is_empty() or _stopped():
 		return ""
+	_say("Setting out %d steps…" % steps.size(), 0)
 	for index: int in steps.size():
 		if steps[index].attaches():
 			_attach_copies[index] = steps[index].copies
@@ -85,7 +94,6 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	add_child(_studio)
 	await get_tree().process_frame
 
-	progress.emit("setting out %d steps…" % steps.size())
 	var order: Array = []
 	for step: Instructions.Step in steps:
 		for brick_id: int in step.brick_ids:
@@ -104,11 +112,15 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_lap("staged")
 	var lots: Dictionary = await _part_pictures(stock)
 	_lap("parts drawn")
+	if _stopped():
+		return _forget_all()
 
 	var entries: Array[Booklet.Entry] = _entries(steps, lots)
 	document.steps = entries.size()
 	await _choose_views(entries)
 	_lap("views chosen")
+	if _stopped():
+		return _forget_all()
 	_subjects(entries)
 
 	var pages: Array[Booklet.Page] = Booklet.lay_out(entries, 2)
@@ -120,7 +132,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		for entry: Booklet.Entry in page.entries:
 			drawn += 1
 			if drawn % 5 == 1:
-				progress.emit("drawing step %d of %d…" % [drawn, total])
+				_say("Drawing the steps…", total, drawn - 1)
+			if _stopped():
+				return _forget_all()
 			await _draw(entry)
 
 	_lap("steps drawn")
@@ -131,14 +145,40 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	document.lots = _inventory(stock, lots)
 	document.pages.append_array(Booklet.parts_pages(document.lots, finished.number + 1))
 
-	for made: BookletStudio.Stage in _stages:
-		_studio.forget(made)
-	_studio.forget(_main)
-	_studio.queue_free()
-	progress.emit("writing the booklet…")
+	_forget_all()
+	_say("Writing the booklet…", 0)
+	await get_tree().process_frame
 	var html: String = Booklet.html(document)
 	_lap("written")
 	return html
+
+
+## Say how it is going: to the status line (progress), and to the job with
+## how far along when [param total] is given (0: not countable).
+func _say(words: String, total: int = -1, done: int = 0) -> void:
+	if job != null:
+		job.say(words)
+		if total >= 0:
+			job.count(done, total)
+	progress.emit(words)
+
+
+## Whether Cancel was pressed.
+func _stopped() -> bool:
+	return job != null and job.cancelled
+
+
+## Put the stages away, as at the end; an empty booklet, for a stop.
+func _forget_all() -> String:
+	for made: BookletStudio.Stage in _stages:
+		_studio.forget(made)
+	_stages.clear()
+	if _main != null:
+		_studio.forget(_main)
+		_main = null
+	if is_instance_valid(_studio):
+		_studio.queue_free()
+	return ""
 
 
 var _stages: Array[BookletStudio.Stage] = []
@@ -197,7 +237,9 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 	for lot: Inventory.Lot in stock.lots:
 		count += 1
 		if count % 10 == 1:
-			progress.emit("drawing part %d of %d…" % [count, stock.lots.size()])
+			_say("Drawing the parts…", stock.lots.size(), count - 1)
+		if _stopped():
+			return lots
 		var key: String = "%s:%d" % [lot.part_id, lot.color_code]
 		var made := Booklet.Lot.new()
 		made.key = key
@@ -390,7 +432,9 @@ func _choose_views(entries: Array[Booklet.Entry]) -> void:
 	for entry: Booklet.Entry in entries:
 		count += 1
 		if count % 10 == 1:
-			progress.emit("looking at step %d of %d…" % [count, entries.size()])
+			_say("Choosing how each step is seen…", entries.size(), count - 1)
+		if _stopped():
+			return
 		var span: Array = _ranks[int(entry.get_meta("step"))]
 		var here: float = await _seen(span, facing)
 		var other: Vector3 = BookletStudio.BACK if facing == BookletStudio.FRONT \
@@ -646,8 +690,34 @@ static func open_tab() -> void:
 			window.brickworksBooklet.document.write(
 				'<title>Building instructions</title>' +
 				'<p style="font:16px system-ui,sans-serif;margin:40px">' +
-				'Drawing your building instructions&hellip;</p>');
+				'Drawing your building instructions&hellip;</p>' +
+				'<p id="working" style="font:14px system-ui,sans-serif;margin:0 40px;color:#555"></p>');
 		}
+	""", true)
+
+
+## Say in the tab opened for the booklet how it is going: that tab is in
+## front while the booklet is drawn, and it said only "Drawing your
+## building instructions…" for as long as that took.
+static func tell_tab(line: String) -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval("""
+		(() => {
+			const tab = window.brickworksBooklet;
+			const said = tab && !tab.closed && tab.document.getElementById('working');
+			if (said) said.textContent = %s;
+		})();
+	""" % JSON.stringify(line), true)
+
+
+## Close the tab opened for a booklet that was stopped or came to nothing.
+static func close_tab() -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval("""
+		if (window.brickworksBooklet && !window.brickworksBooklet.closed) window.brickworksBooklet.close();
+		window.brickworksBooklet = null;
 	""", true)
 
 

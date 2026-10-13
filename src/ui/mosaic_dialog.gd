@@ -291,6 +291,14 @@ func build() -> void:
 		build_wanted.emit(int(_slider.value), _dither.button_pressed)
 
 
+## The Art the dialog has already worked out for what is chosen now, or
+## null when a change is still to be worked out: Build lays it as it is
+## rather than working the same picture out again in the frame it was
+## pressed in (half a second of a browser's page for a 48 x 32 picture).
+func current_art() -> MosaicArt.Art:
+	return last_art if _later != null and _later.is_stopped() and is_art() else null
+
+
 ## Hand the picture to Claude to plan, with whatever the person typed.
 func design_with_claude() -> void:
 	visible = false

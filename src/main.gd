@@ -300,6 +300,8 @@ func _tell_page() -> void:
 		named.merge(_seat_offer.controls_by_name())
 	if _brickify != null:
 		named.merge(_brickify.controls_by_name())
+	if _shell != null:
+		named.merge(_shell.status.working.controls_by_name())
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
 	# Sharing: the owner's panel, the viewer's bar, and the two things the
@@ -424,6 +426,9 @@ func _tell_page() -> void:
 		"xray": _world.xray_ids().size(),
 		# What the status bar says just now (it clears after a few seconds).
 		"said": _shell.status.message.text if _shell != null else "",
+		# And what the app is busy with, if anything (Working): its words,
+		# how far along, and how long it has been going.
+		"working": Working.page_state(),
 	}), true)
 	# And a model shared by link: the owner's panel, what the viewer is
 	# showing, how far along its timeline, and whether this run can write
@@ -1333,9 +1338,12 @@ func _enter_view() -> void:
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
 	for hidden: Control in [_bar, _shell.toolbar, _shell.inspector, _shell.outliner,
-			_shell.banner, _shell.status, _bin_dock, _chat_dock, _tools, _seat_offer]:
+			_shell.banner, _bin_dock, _chat_dock, _tools, _seat_offer]:
 		if hidden != null:
 			hidden.visible = false
+	# ...but not what the app is busy with (Working): the timeline of a big
+	# model takes a while to work out here too.
+	_shell.status.only_the_work()
 	# The strip of editing keys, and the room kept for it.
 	if _hint != null:
 		(_hint.get_parent() as Control).visible = false
@@ -1397,7 +1405,7 @@ func _view_shared() -> void:
 	_camera.frame(_built_bounds())
 	_share_view.ready_to_look()
 	# The finished model, on a timeline to drag back through.
-	if _steps.start(_world, _library, _store.scenery):
+	if await _steps.start(_world, _library, _store.scenery):
 		_steps.to_end()
 
 
@@ -2449,11 +2457,16 @@ func _turn_model(quarter_turns: int) -> void:
 ## and the pictures take longer than that), and on the desktop into the
 ## Downloads folder and open in the browser, ready to print.
 func _export_booklet(to: String = "") -> String:
-	_bar.say("planning the booklet…")
+	# Said in the status bar while it works (Working), and in the tab it is
+	# going to on the web, which is the one in front while it draws.
+	var job: Working.Job = Working.begin("Planning the booklet…", 0, true)
+	await job.shown()
 	var maker := BookletMaker.new()
 	maker.library = _library
+	maker.job = job
 	add_child(maker)
-	maker.progress.connect(func(said: String) -> void: _bar.say(said))
+	maker.progress.connect(func(_said: String) -> void:
+		BookletMaker.tell_tab(job.line()))
 	var title: String = _bar.model_name()
 	var html: String = await maker.make(_world, _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
@@ -2461,9 +2474,16 @@ func _export_booklet(to: String = "") -> String:
 		print("booklet took %s" % ", ".join(maker.laps.map(func(lap: Array) -> String:
 			return "%s %.1f s" % [lap[0], float(lap[1]) / 1000.0])))
 	maker.queue_free()
-	if html.is_empty():
-		_bar.say("nothing to write instructions for")
-		return "nothing to write instructions for"
+	if job.cancelled or html.is_empty():
+		job.end()
+		BookletMaker.close_tab()
+		var why: String = "stopped drawing the booklet" if job.cancelled \
+			else "nothing to write instructions for"
+		_bar.say(why)
+		return why
+	job.say("Opening the booklet…")
+	job.count(0, 0)
+	job.can_cancel = false
 	var file_name: String = title.to_snake_case() + "_instructions.html"
 	var note: String
 	if not to.is_empty():
@@ -2480,6 +2500,7 @@ func _export_booklet(to: String = "") -> String:
 		note = Download.give(html, file_name, "text/html")
 		if note.begins_with("wrote ") and BookletMaker.open_when_written:
 			OS.shell_open("file://" + note.trim_prefix("wrote "))
+	job.end()
 	_bar.say(note)
 	return note
 
@@ -2573,13 +2594,17 @@ const MOSAIC_TALL := 720.0
 func _build_art(options: MosaicArt.Options) -> void:
 	if _mosaic_source == null:
 		return
-	_bar.say("laying it out…")
-	await get_tree().process_frame
-	var art: MosaicArt.Art = MosaicArt.make(_mosaic_source, options, _library)
+	var job: Working.Job = Working.begin("Laying the picture out in LEGO Art…")
+	await job.shown()
+	var art: MosaicArt.Art = _mosaic.current_art() if _mosaic != null else null
+	if art == null:
+		art = MosaicArt.make(_mosaic_source, options, _library)
 	if art.placements.is_empty():
+		job.end()
 		_bar.say("nothing to lay out")
 		return
 	# On the web most of these parts are fetched rather than shipped.
+	job.say("Fetching the parts…")
 	await _assistant._ensure_parts(art.model())
 
 	_world.clear()
@@ -2587,8 +2612,12 @@ func _build_art(options: MosaicArt.Options) -> void:
 	_builder.forget_history()
 	_assistant.forget_built()
 	_store.scenery.clear()
-	MosaicArt.put_down(art, _world, _builder, _assistant)
+	job.say("Putting down %s parts…" % Working.comma(art.placements.size()))
+	await MosaicArt.put_down_paced(art, _world, _builder, _assistant, job)
+	job.say("Checking it holds together…")
+	job.count(0, 0)
 	await _art_laid(art)
+	job.end()
 
 
 ## The mosaic dialog's Design with Claude: the picture handed to the
@@ -2797,17 +2826,24 @@ func _toggle_parts() -> void:
 func _toggle_steps() -> void:
 	if _playback != null and _playback.is_playing():
 		_playback.stop()
+	# Pressed again while the steps are still being worked out: never mind.
+	if _steps.is_starting():
+		_steps.cancel_start()
+		return
 	if _steps.is_playing_back():
 		_steps.stop()
 		return
 	if _world.brick_count() == 0:
 		return
-	_steps.start(_world, _library, _store.scenery)
+	await _steps.start(_world, _library, _store.scenery)
 
 
 func _on_model_changed() -> void:
 	if _store != null:
 		_store.touch()
+	# Steps being worked out are for the model as it was.
+	if _steps != null and _steps.is_starting():
+		_steps.cancel_start()
 
 
 ## Somebody changed the model by hand, so it is theirs now.
@@ -3403,8 +3439,11 @@ func _watch_own_frames() -> void:
 		var waited: float = ModelShot.gpu_wait_us / 1000.0
 		ModelShot.gpu_wait_us = 0
 		if spent > SLOW_FRAME_MS:
+			# What the status bar says it is busy with, if anything: the
+			# slow frames of a timeline or a booklet say which part of it.
+			var doing: String = Working.current().line() if Working.is_busy() else _doing
 			_slow_frames.append([Time.get_ticks_msec(),
-				roundi(maxf(spent - waited, 0.0)), roundi(waited), _doing])
+				roundi(maxf(spent - waited, 0.0)), roundi(waited), doing])
 			if _slow_frames.size() > SLOW_FRAMES:
 				_slow_frames = _slow_frames.slice(-SLOW_FRAMES))
 
@@ -4445,10 +4484,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				if _builder.paint_brick(under, _builder.held_color):
 					_on_model_edited()
 		KEY_DELETE, KEY_BACKSPACE:
-			var gone: int = _builder.remove_selection()
-			if gone > 0:
-				_on_model_edited()
-				_bar.say("removed %d" % gone)
+			_delete_selection()
 		KEY_G:
 			# And take a colour and part back off the model, into hand.
 			if _brick_under_pointer() != 0 \
@@ -4598,6 +4634,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if _steps.is_playing_back():
 				_steps.stop()
 				return
+
+
+## Delete or Backspace: the selection taken off, said first when it is a
+## big one (EditVerbs._say_first), since that is one long frame.
+func _delete_selection() -> void:
+	var job: Working.Job = await _verbs._say_first(_builder.selection.size(),
+		"Taking off %s parts…")
+	var gone: int = _builder.remove_selection()
+	if gone > 0:
+		_on_model_edited()
+		_bar.say("removed %d" % gone)
+	if job != null:
+		job.end()
 
 
 static func _comma(value: int) -> String:

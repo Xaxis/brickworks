@@ -102,7 +102,7 @@ func _shed() -> void:
 	var bar := StepsBar.new()
 	root.add_child(bar)
 	await process_frame
-	bar.start(world, _library)
+	await bar.start(world, _library)
 	var said: Dictionary = {}
 	for _n: int in 40:
 		var caption: String = bar._caption.text

@@ -1220,24 +1220,49 @@ static func _spread(buffer: PackedColorArray, plan: Plan, x: int, z: int, error:
 static func put_down(art: Art, world: BrickWorld, builder: Builder,
 		checker: Assistant) -> PackedInt64Array:
 	var ids := PackedInt64Array()
-	var library: PartLibrary = checker.library
 	for index: int in art.placements.size():
-		var placement: Assistant.Placement = art.placements[index]
-		var part: Lbm.PartMesh = library.mesh_for(placement.part)
-		if part == null:
-			continue
-		var at: Transform3D = checker._transform(placement, part)
-		var brick_id: int = world.add_brick(placement.part, placement.color, at)
-		if brick_id == 0:
-			continue
-		# As Builder.set_path puts it, which a script cannot call by its class:
-		# a class named in code is its Script, whose own set_path wins.
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		brick.unit = art.path_of(index)
-		brick.group = Assemblies.group_of(brick.unit)
-		builder.register(brick_id, placement.part, at)
-		ids.append(brick_id)
+		var brick_id: int = _put_one(art, index, world, builder, checker)
+		if brick_id != 0:
+			ids.append(brick_id)
 	return ids
+
+
+## [method put_down], a slice at a time, counted on [param job]: a 48 x 48
+## picture is a few thousand parts, and put down in one go they held a
+## browser's page for seconds.
+static func put_down_paced(art: Art, world: BrickWorld, builder: Builder,
+		checker: Assistant, job: Working.Job) -> PackedInt64Array:
+	var ids := PackedInt64Array()
+	job.count(0, art.placements.size())
+	world.hold_drawing()
+	for index: int in art.placements.size():
+		if job.due():
+			job.count(index)
+			await job.next()
+		var brick_id: int = _put_one(art, index, world, builder, checker)
+		if brick_id != 0:
+			ids.append(brick_id)
+	world.release_drawing()
+	return ids
+
+
+static func _put_one(art: Art, index: int, world: BrickWorld, builder: Builder,
+		checker: Assistant) -> int:
+	var placement: Assistant.Placement = art.placements[index]
+	var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+	if part == null:
+		return 0
+	var at: Transform3D = checker._transform(placement, part)
+	var brick_id: int = world.add_brick(placement.part, placement.color, at)
+	if brick_id == 0:
+		return 0
+	# As Builder.set_path puts it, which a script cannot call by its class:
+	# a class named in code is its Script, whose own set_path wins.
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	brick.unit = art.path_of(index)
+	brick.group = Assemblies.group_of(brick.unit)
+	builder.register(brick_id, placement.part, at)
+	return brick_id
 
 
 ## Studs a part covers along x and z at a turn, from the tables here.
