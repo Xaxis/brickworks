@@ -930,6 +930,22 @@ func _the_parts_shelf() -> void:
 		return id.begins_with("3023") and not id.substr(4, 1).is_valid_int())
 	_check("searching 3023 lists the 3023 family first, not 30236 or the spider (%s)"
 		% str(first), first.size() >= 3 and first[0] == "3023b" and family)
+	# A size typed without its spaces, into the field, key by key. LDraw
+	# says "Brick  2 x  4" and the words were matched as typed, so
+	# "brick 2x4" found nothing (brickworks.diy at dd5c10c, 2026-10-12);
+	# and the builder's words the assistant's search knows ("cheese
+	# slope") the bin did not.
+	for asked: Array in [["brick 2x4", "3001"], ["plate 2x8", "3034"],
+			["2X4 brick", "3001"], ["cheese slope", "54200"]]:
+		await _click(bin._search.get_global_rect().get_center())
+		await _key(KEY_A, true)
+		await _type(str(asked[0]))
+		await create_timer(0.4).timeout
+		await _frames(3)
+		var led: String = bin._results[0].id if not bin._results.is_empty() else "nothing"
+		_check("typing \"%s\" in the search leads with %s (%s, %d found)"
+			% [asked[0], asked[1], led, bin._results.size()], led == str(asked[1]))
+		await _key(KEY_ESCAPE)
 	bin._search.text = ""
 	bin._run_search("")
 	PartShelf.clear()

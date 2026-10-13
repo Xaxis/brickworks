@@ -9,7 +9,13 @@ geometry in front of them.
 
 - `part search`: ranked search over the catalogue (`assets/generated/catalogue.json`,
   14 MB). Matches the LDraw title, the category and the number, and is judged on
-  whether the *first* few answers are usable rather than on recall.
+  whether the *first* few answers are usable rather than on recall. The bin and
+  the assistant ask in the library's words (`PartLibrary.in_ldraw_words`): a
+  size as people type it, "2x4", "2X4", "2×4", is spelled LDraw's way, "2 x 4",
+  and a builder's word ("cheese slope", "jumper") is put in LDraw's. The bin
+  asked in neither: "brick 2x4" found nothing there (brickworks.diy at dd5c10c,
+  2026-10-12). `vocab_probe` holds both spellings to the same answer;
+  `handbuild_probe` types them into the bin's field.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. **Make a part…** in its header
   opens the element maker, and made parts lead the categories as Custom —
@@ -154,8 +160,10 @@ handful of queries — read them, they are the point. `vocab` is the one that fa
 when the index stops answering a plain English word.
 
 For the bin, launch the app, press `P`, type "wedge": the results are parts whose
-titles contain it, drawn in the current colour. **No probe covers the search
-panel** — it is hands-only, so say so rather than claiming it. The palette below
+titles contain it, drawn in the current colour. `handbuild_probe` types into
+the search field key by key ("brick 2x4", "plate 2x8", "2X4 brick", "cheese
+slope") and reads what leads; the rest of the panel is hands-only, so say so
+rather than claiming it. The palette below
 it is covered by `colour_probe` (windowed, in the suite): the short palette has
 today's colours and not retired ones, every one of the 320 can be pressed and
 held, the eyedropper on a retired colour shows it chosen, and the held part's

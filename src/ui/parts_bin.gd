@@ -721,8 +721,13 @@ func _run_search(query: String) -> void:
 ## it does need is ordering: "brick 2 x 4" matches 3001 and several
 ## hundred stickered and printed versions of 3001, and only one of those
 ## is what was meant.
+##
+## In the library's words, as the assistant's search asks
+## (PartLibrary.in_ldraw_words): "2x4" as "2 x 4", "cheese slope" as
+## what LDraw files it under.
 func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
-	var needles: PackedStringArray = query.to_lower().split(" ", false)
+	var asked: String = PartLibrary.in_ldraw_words(query)
+	var needles: PackedStringArray = asked.split(" ", false)
 	if category == RECENT or category == FAVOURITES:
 		return _from_shelf(category, needles)
 	var wanted_category: String = category.to_lower()
@@ -761,7 +766,7 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		found.append(info)
 
 	_set_aside = set_aside
-	_sort_for(found, query)
+	_sort_for(found, asked)
 	return found
 
 
