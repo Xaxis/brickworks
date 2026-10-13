@@ -224,6 +224,26 @@ refuses has the part's own plastic inside a stud in the set file. A line
 ending "NOTHING IN THE WAY" is a real seat the rule refused, and the rule's to
 fix. 31 of 2,828, all in the way, on 2026-10-11.
 
+Mechanisms, research only (docs/MECHANISMS.md; no feature yet, not in the
+suite): gear trains read off the parts and turned. It reads the joints from
+the connectors (an axle keyed in an axle hole, an axle or a pin turning in a
+round hole, studs in sockets, a turntable's top on its base), the meshes from
+a table of tooth counts, and solves one linear equation per mesh:
+
+```sh
+godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
+MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
+  --script src/dev/mechanism_probe.gd                                # and drawn, in shots/mechanism/
+```
+
+Proves it when it ends on "mechanism: gear trains read off the parts …". The
+cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
+`tools/omr.py fetch`), an 8 driving a 24, the same axles also joined 16 to 16
+(locked, both meshes named), a worm driving a 24 (1/24), and a two-planet
+orrery (Mars's year 1.96 Earth years against 1.8808). With a display, every
+frame is read back off the renderer's copy, and each output must turn its
+ratio times the driver's step to 0.01°.
+
 Proves it when: every probe exits 0 with no `FAIL`, and `dimensions` ends on
 "every measured part is the nominal size, exactly" — a 2×4 brick measured at
 32.00 × 9.60 × 16.00 mm, three plates to a brick, 8.00 mm stud pitch. It prints
