@@ -1187,6 +1187,7 @@ class Plan extends RefCounted:
 					parts[3].to_int(), int(plates[from]), int(plates[to - 1]) + 1])
 				from = to
 		runs.sort_custom(func(a: Array, b: Array) -> bool: return int(a[3]) < int(b[3]))
+		runs = _stacked(runs)
 		_ease(runs)
 		Rounds._parts = library
 		var capped: Dictionary = {}    ## Vector2i cell -> the plate a dish caps it from
@@ -1195,6 +1196,9 @@ class Plan extends RefCounted:
 			var d: int = run[1]
 			if capped.has(low + Vector2i(d / 2, d / 2)) \
 					and int(run[3]) >= int(capped[low + Vector2i(d / 2, d / 2)]):
+				continue
+			# Taken whole by the eased rim under it.
+			if int(run[3]) >= int(run[4]):
 				continue
 			var top: int = run[4]
 			var highest: int = -1
@@ -1246,6 +1250,28 @@ class Plan extends RefCounted:
 				"_base": centre, "_round": true, "_top": true})
 			capped[low + Vector2i(d / 2, d / 2)] = top
 
+	## The runs that are a round body's: two plates or more, or one plate on
+	## or under another round about the same middle. A single plate that is
+	## a disc where an oval body passes through one (an owl's head and body
+	## are ovals, 13 studs by 11) was laid as a round plate with its studs
+	## bare round the rim and, at the crown, a dish on it: the owl's head
+	## wore it as a hat, and the run took it off and stacked round plates
+	## there by hand, studs on every ring.
+	static func _stacked(runs: Array) -> Array:
+		var middles: Dictionary = {}    ## "2x 2z plate" -> true, at each plate a run has
+		for run: Array in runs:
+			var low: Vector2i = run[0]
+			for j: int in range(int(run[3]), int(run[4])):
+				middles["%d %d %d" % [2 * low.x + int(run[1]), 2 * low.y + int(run[1]), j]] = true
+		var out: Array = []
+		for run: Array in runs:
+			var low: Vector2i = run[0]
+			var middle: String = "%d %d" % [2 * low.x + int(run[1]), 2 * low.y + int(run[1])]
+			if int(run[4]) - int(run[3]) >= 2 or middles.has("%s %d" % [middle, int(run[3]) - 1]) \
+					or middles.has("%s %d" % [middle, int(run[4])]):
+				out.append(run)
+		return out
+
 	## A dome's step eased, as a set eases one: where a round of 6 or 8 has a
 	## round a stud narrower standing on it, the step between them was a
 	## ledge of bare studs a stud wide, ring over ring — a wedding cake from
@@ -1254,9 +1280,10 @@ class Plan extends RefCounted:
 	## round below, 2 x 2 curved slopes falling out on each side and a round
 	## plate with a quarter-round tile at each corner; inside them a round
 	## four studs narrower (a core of round plates); and the round above goes
-	## on from a round plate that bridges in over the slopes' tops. Only where
-	## the round above is three plates or more, one colour with the one under
-	## it, and nothing else of the shape is in the rim.
+	## on from a round plate that bridges in over the slopes' tops. A round
+	## above only one or two plates tall is the slopes, all of it. Only where
+	## the round above is one colour with the one under it, and nothing else
+	## of the shape is in the rim.
 	const EASED: Array = [6, 8]
 	## The slope on each side of an eased rim, and what stands on a corner's
 	## one stud: a round plate and a quarter-round tile, two plates as the
@@ -1272,23 +1299,35 @@ class Plan extends RefCounted:
 		for run: Array in runs:
 			var low: Vector2i = run[0]
 			var d: int = run[1]
-			if not d in EASED:
+			if not d in EASED or int(run[3]) >= int(run[4]):
 				continue
 			var key: String = "%d %d %d %d %d" % [low.x + 1, low.y + 1, d - 2, int(run[2]),
 				int(run[4])]
 			if not at_bottom.has(key):
 				continue
-			var above: Array = at_bottom[key]
 			var step: int = int(run[4])
-			if int(above[4]) - int(above[3]) < 3 or not _rim_free(low, d, step):
+			if not _rim_free(low, d, step):
 				continue
 			_ease_rim(low, d, int(run[2]), step)
 			_round_run(low + Vector2i(2, 2), d - 4, int(run[2]), step, step + 2)
 			round_said.append("%d at %d,%d plates %d-%d eased" % [d, low.x, low.y, step,
 				step + 1])
-			above[3] = step + 2
-			if above.size() < 6:
-				above.append(d - 4)
+			# The round above goes on from over the slopes. One or two plates
+			# tall, the slopes are all of it — a dome's rings a plate or two
+			# each were left a stack of round plates with studs bare on every
+			# ring, the owl's head among them — and a round on it within the
+			# two plates goes on from over them too.
+			var middle: Vector2i = 2 * low + Vector2i(d, d)
+			for other: Array in runs:
+				if other == run or 2 * (other[0] as Vector2i) + Vector2i(other[1], other[1]) != middle \
+						or int(other[3]) < step or int(other[3]) >= step + 2:
+					continue
+				other[3] = step + 2
+				if other.size() < 6:
+					other.append(d - 4)
+				if other[3] >= other[4]:
+					round_said.append("%d at %d,%d is the slopes" % [int(other[1]),
+						(other[0] as Vector2i).x, (other[0] as Vector2i).y])
 
 	## Whether the rim of the round of [param d] at [param low], for the two
 	## plates from [param from], has nothing of the shape but the round a
