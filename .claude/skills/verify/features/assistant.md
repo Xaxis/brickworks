@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:real sets' pieces by what they are, lib:find a reference picture -->
 
 ## Sub-features
 
@@ -1203,6 +1203,46 @@ fixing what it got wrong.
   windows and tower at 45 degrees (13 turned assemblies in six sets); the
   harvest only takes square sub-models, so `joints_probe` is where a turntable
   turned 10, 30 and 45 degrees is checked.
+- `real sets' pieces by what they are`: `find_techniques(query, max_studs?,
+  kinds?)`, `place_technique(id, x, y, z, turn?, recolor?)` and
+  `find_parts_like(query)` in `assistant.gd`, over `src/ai/real_snippets.gd`.
+  The worked constructions are seventy-odd chosen by hand; this is every named
+  sub-model of 2 to 60 building parts in LDraw's model repository (Eye L, Beak,
+  Bonnet, Grille, Wing, Tower Roof...) and three clusters of craft a model
+  (`omr.found_clusters`), built by `tools/snippets.py build` from `vendor/omr/files`
+  (`tools/omr.py fetch --themes all --min-parts 30`: every theme but `UNSCULPTED`)
+  into `assets/knowledge/snippets.json.gz`, which ships (`export_presets.cfg`
+  includes `assets/knowledge/*`). Each piece: set, modeller and licence (CC BY;
+  non-commercial and share-alike files left out), part count, size in studs,
+  parts and colours, kinds by `tools/style.py` (sideways, curved, hinged...), the
+  LDraw lines to place it as built, and `text`: a line written by Claude from its
+  thumbnail and part list (`src/dev/snippet_thumbs.gd` renders the thumbnails
+  into `vendor/omr/thumbs/`, `tools/snippets.py batches` makes numbered sheets,
+  `tools/describe_snippets.sh` runs Claude Code on the subscription — no
+  `ANTHROPIC_API_KEY`, Read only, one `heavy` slot — and `tools/snippets.py
+  texts` keeps the answers in `assets/knowledge/snippet_texts.jsonl`). Search is
+  BM25 over fields (name x3, what it sits in, text x1.5, synonyms and kinds, the
+  set x0.7), stemmed alike in Python and GDScript ("EyeL", "eyes" are eye; a
+  Y-wing is not a wing; "wheel arch" also asks for "wheelarch"); pieces from sets
+  about the query's subject come first, then sets about its kind (`SUBJECTS`: an
+  owl, then birds and animals), at most two a set. `find_techniques` answers with
+  the best five, each credited, and one picture of them side by side
+  (`_snippet_picture`, headless: text only). `place_technique` reads the piece
+  with the app's own LDraw reader, turns it by quarter turns, moves its low
+  corner to x, y, z by whole studs, swaps colours by `recolor`, and lays it
+  through `edit_model`, so the joints checker refuses it like any edit; pieces
+  built at an angle or mirrored (`square` false) are shown, not placed.
+  `src/dev/snippet_verdicts.gd` lays every square piece alone the same way and
+  checks it (`vendor/omr/snippet_verdicts.jsonl`, folded in as `lays`/`why`):
+  4,487 of 10,699 lay whole; search counts those 1.25 times and the answer says
+  of each whether it lays. `tools/snippets.py build --from INDEX` redoes only
+  subjects, descriptions, verdicts and terms, in seconds.
+  `find_parts_like` searches `assets/knowledge/part_looks.json`: the 600 part
+  families real sets use most (`tools/part_looks.py`, sizes and hands taken out
+  of the name), each with a line by Claude of what it reads as in a model
+  (feather, claw, exhaust). `snippets_probe` checks credit, search, that the app
+  and `tools/snippets.py search --ids` agree, and lays an eye, a car nose, a
+  wing, a beak and a turret roof on a plate, whole and joined.
 - `held from the ground`: `_check_support`. A part is held if a chain of
   resting-on, clutch (both ways: a stud holds the part it reaches into and
   the part it belongs to) and pin/axle/ball joints reaches the ground or a
@@ -1290,6 +1330,8 @@ xvfb-run -a godot --path . --resolution 1200x800 --script src/dev/rooms_probe.gd
 godot --headless --path . --script src/dev/repeat_probe.gd      # ten thousand bricks from two hundred and fifty
 godot --headless --path . --script src/dev/detail_probe.gd      # each assembly detailed on its own, through the real loop
 godot --headless --path . --script src/dev/techniques_probe.gd  # the worked constructions are real parts
+godot --headless --path . --script src/dev/snippets_probe.gd    # real sets' pieces found by what they are, credited, laid whole and joined
+python3 tools/minitest.py tests/test_snippets.py                # the search on a hand-made index: subject first, plurals, filters
 godot --path . --resolution 1400x900 --script src/dev/technique_sheet_probe.gd  # and each looks like its name: shots/techniques/
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd  # and it is a picture of the model
 ```

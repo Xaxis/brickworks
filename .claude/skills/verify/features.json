@@ -702,6 +702,14 @@
       "tests": []
     },
     {
+      "id": "lib:real sets' pieces by what they are",
+      "kind": "lib",
+      "entry": "src/ai/real_snippets.gd",
+      "reach": "godot --headless --path . --script src/dev/snippets_probe.gd",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:reference pictures",
       "kind": "lib",
       "entry": "src/ai/assistant.gd",

@@ -2166,6 +2166,18 @@ func _run_tool(block: Dictionary) -> Variant:
 			var wanted: String = str(args.get("name", ""))
 			progress.emit("looking up how to do %s" % wanted)
 			return _show_technique(wanted)
+		"find_techniques":
+			var query: String = str(args.get("query", ""))
+			progress.emit("looking up how real sets built %s" % query)
+			return await _find_techniques(query, float(args.get("max_studs", 0.0)),
+				args.get("kinds", []) as Array)
+		"place_technique":
+			progress.emit("laying %s as a real set built it" % str(args.get("id", "")))
+			return await _place_technique(args)
+		"find_parts_like":
+			var query: String = str(args.get("query", ""))
+			progress.emit("looking for a part that reads as %s" % query)
+			return _find_parts_like(query)
 		"plan_scale":
 			progress.emit("working out how big it should be")
 			return _plan_scale(args)
@@ -12149,7 +12161,7 @@ alternate courses so each part bridges the seam below it, exactly as you \
 would with real bricks.
 
 HOW TO WORK
-Four things before the first brick, in this order:
+Five things before the first brick, in this order:
 
   1. plan_scale with how long the real thing is. Everything after it \
      depends on the proportions, and changing the scale later means \
@@ -12168,6 +12180,15 @@ Four things before the first brick, in this order:
      Being told to stagger a wall or turn a face sideways is not the \
      same as knowing where the stud sits, and the arithmetic is the \
      part that goes wrong.
+  5. find_techniques before inventing any feature — a face, an eye, a \
+     beak, a nose, a wing, a tail, a grille, a wheel arch, a turret \
+     roof. It shows how real sets built that feature, with a picture \
+     of each, from sets about your subject first ("owl eye", "car \
+     nose"). place_technique lays one as built, turned and moved, in \
+     your colours; or build your own the way the picture shows. A \
+     feature a real designer solved is better than a first guess. \
+     find_parts_like finds a part by what it should read as — a \
+     feather, a claw, an eyelid, an exhaust.
 
 Then lay it out layer by layer from the ground up.
 
@@ -12783,6 +12804,233 @@ func _show_technique(wanted: String) -> String:
 		+ move + ". Every one "
 		+ "of these is checked against the same lattice your design is, "
 		+ "so it holds together as it stands.")
+
+
+## How real sets built a feature: the best few of the real-set index
+## (src/ai/real_snippets.gd) for the words asked, each with its parts,
+## size, credit and id, and one picture of them side by side.
+##
+## The worked examples behind show_technique are seventy-odd, chosen by
+## hand. A designer asked for an owl's eye needs the eye a set built, not
+## the nearest of seventy, and the repository has thousands of named
+## sub-assemblies. Words find them; the picture says whether one is it.
+func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
+	if not RealSnippets.available():
+		return ("This build has no index of real sets' sub-assemblies "
+			+ "(tools/snippets.py build). show_technique has the worked "
+			+ "examples.")
+	if query.strip_edges().is_empty():
+		return "Say what you are building: \"owl eye\", \"car nose\", \"dragon wing\"."
+	var found: Array = RealSnippets.search(query, max_studs, kinds, 5)
+	if found.is_empty():
+		return ("No real set has a piece called anything like \"%s\"%s. Try the "
+			% [query, " that small" if max_studs > 0.0 else ""]
+			+ "plain word for the feature (eye, beak, nose, wing, roof, "
+			+ "grille, wheel arch), or the subject alone.")
+	var rows := PackedStringArray()
+	var shown: Array = []
+	for n: int in found.size():
+		var entry: Dictionary = found[n][1]
+		shown.append(entry)
+		var size: Array = entry["size"]
+		var inside: Array = entry.get("in", [])
+		rows.append("%d. id %s — \"%s\"%s, %s" % [n + 1, entry["id"], entry["name"],
+			"" if inside.is_empty() else " in " + " > ".join(inside),
+			RealSnippets.credit(entry)])
+		rows.append("   %d parts, %s x %s studs, %s plates tall%s%s" % [
+			int(entry["parts"]), _studs(float(size[0])), _studs(float(size[2])),
+			_studs(float(size[1])),
+			"" if (entry["kinds"] as Array).is_empty()
+				else "; " + ", ".join(entry["kinds"]),
+			"; lays as it stands" if bool(entry.get("lays", false))
+				else ("; built at an angle, to copy by hand"
+					if not bool(entry.get("square", true))
+					else "; does not stand alone (%s): hold it in your model, or copy it"
+						% str(entry.get("why", "held from outside it")))])
+		if not str(entry.get("text", "")).is_empty():
+			rows.append("   " + str(entry["text"]))
+		var made_of := PackedStringArray()
+		for raw: Variant in (entry["bom"] as Array).slice(0, 8):
+			var line: Array = raw
+			made_of.append("%dx %s %s (%s %d)" % [int(line[2]), str(line[0]),
+				_part_called(str(line[0])), _colour_name(int(line[1])), int(line[1])])
+		if (entry["bom"] as Array).size() > 8:
+			made_of.append("and %d more" % ((entry["bom"] as Array).size() - 8))
+		rows.append("   " + "; ".join(made_of))
+	var said: String = ("How real sets built %s, best first:\n\n%s\n\n"
+		% [query, "\n".join(rows)]
+		+ "place_technique with an id lays one as built — turned, moved, and in "
+		+ "your colours if you say which become which — and checks it like any "
+		+ "edit. Parts do not scale: pick one the size your model needs, or "
+		+ "build your own the way the picture shows.")
+	var picture: Image = await _snippet_picture(shown)
+	if picture == null:
+		return said
+	var encoded: PackedByteArray = picture.save_png_to_buffer()
+	return [{"type": "text", "text": said + "\n\nThe picture shows them in that "
+			+ "order, left to right."},
+		{"type": "image", "source": {"type": "base64", "media_type": "image/png",
+			"data": Marshalls.raw_to_base64(encoded)}}]
+
+
+## Parts by what they read as: the families of tools/part_looks.py whose
+## line, written by Claude, matches the words asked.
+func _find_parts_like(query: String) -> String:
+	if RealSnippets.looks().get("families", []).is_empty():
+		return "This build has no list of what parts look like (tools/part_looks.py)."
+	var found: Array = RealSnippets.search_looks(query, 6)
+	if found.is_empty():
+		return ("No family of parts reads as \"%s\" in what is written about them. " % query
+			+ "Try a plainer word for the look (claw, feather, scale, exhaust, eye), "
+			+ "or search_parts for one you can name.")
+	var rows := PackedStringArray()
+	for raw: Variant in found:
+		var family: Dictionary = raw
+		var parts := PackedStringArray()
+		for pair: Variant in (family["parts"] as Array).slice(0, 6):
+			parts.append("%s %s" % [(pair as Array)[0], _part_called(str((pair as Array)[0]))])
+		rows.append("%s — reads as: %s\n   %s" % [family["family"].replace("N x N", "n x n"),
+			family["looks"], "; ".join(parts)])
+	return ("Parts that read as %s, best first:\n\n%s\n\nsearch_parts with a number "
+		% [query, "\n".join(rows)] + "says its sizes and the colours it was made in.")
+
+
+## Each piece drawn on its own and set side by side, in the order found.
+## Null where nothing can be drawn (a headless run).
+func _snippet_picture(entries: Array) -> Image:
+	if not ModelShot.possible() or entries.is_empty() or library == null:
+		return null
+	const TILE := 320
+	var stage := BrickWorld.new()
+	stage.library = library
+	stage.visible = false
+	add_child(stage)
+	var sheet := Image.create(TILE * entries.size(), TILE, false, Image.FORMAT_RGB8)
+	sheet.fill(Color(0.93, 0.94, 0.96))
+	var shot: ModelShot = _ensure_shot()
+	var was_rulers: bool = shot.rulers
+	var was_highlight: Dictionary = shot.highlight
+	shot.rulers = false
+	shot.highlight = {}
+	for n: int in entries.size():
+		stage.clear()
+		var model: LdrModel = LdrModel.parse(RealSnippets.ldr_text(entries[n]), "piece")
+		var placed: Array = []
+		for item: Variant in model.flatten(library.parts):
+			var put: LdrModel.Placement = item
+			if put.mirrored:
+				Assemblies.unmirror(put, library)
+			if library.parts.has(put.part_id):
+				placed.append(put)
+		var wanted := Model.new()
+		for put: LdrModel.Placement in placed:
+			var as_placed := Placement.new()
+			as_placed.part = put.part_id
+			wanted.placements.append(as_placed)
+		await _ensure_parts(wanted)
+		for put: LdrModel.Placement in placed:
+			stage.add_brick(put.part_id, put.color_code, put.transform)
+		var image: Image = await shot.take(stage, "corner")
+		if image == null:
+			continue
+		image.convert(Image.FORMAT_RGB8)
+		image.resize(TILE, TILE, Image.INTERPOLATE_LANCZOS)
+		sheet.blit_rect(image, Rect2i(0, 0, TILE, TILE), Vector2i(n * TILE, 0))
+	shot.rulers = was_rulers
+	shot.highlight = was_highlight
+	stage.queue_free()
+	return sheet
+
+
+## Lay a real set's piece into the model as it was built: find_techniques'
+## id, turned, moved, recoloured, and put through edit_model so it is
+## checked like anything else a design adds. The bricks as laid come back
+## with the answer, so a design writing whole lists can carry them.
+func _place_technique(args: Dictionary) -> Variant:
+	var id: String = str(args.get("id", ""))
+	var entry: Dictionary = RealSnippets.entry(id)
+	if entry.is_empty():
+		return ("No piece has the id \"%s\". Use one find_techniques gave." % id
+			if RealSnippets.available()
+			else "This build has no index of real sets' sub-assemblies.")
+	if not bool(entry.get("square", true)):
+		return ("%s is built at an angle, which a placement here cannot say "
+			% id + "part by part. Build it from the picture, with a section "
+			+ "for the angled part.")
+	var recolor: Dictionary = {}
+	var asked: Variant = args.get("recolor", {})
+	if asked is Dictionary:
+		for key: Variant in asked:
+			recolor[int(str(key))] = int((asked as Dictionary)[key])
+	var at := Vector3(float(args.get("x", 0.0)), float(args.get("y", 0.0)),
+		float(args.get("z", 0.0)))
+	var laid: Variant = await _snippet_bricks(entry, at, int(args.get("turn", 0)), recolor)
+	if laid is String:
+		return laid
+	var bricks: Array = laid
+	_laying_whole = true
+	var said: Variant = await _run_tool({"name": "edit_model", "input": {"add": bricks}})
+	_laying_whole = false
+	var rows := PackedStringArray()
+	for raw: Variant in bricks:
+		rows.append(JSON.stringify(raw))
+	var head: String = ("%s \"%s\", %s: %d parts, as laid:\n%s\n"
+		% [id, entry["name"], RealSnippets.credit(entry), bricks.size(),
+			"\n".join(rows)])
+	if said is Array:
+		return [{"type": "text", "text": head}] + (said as Array)
+	return "%s\n%s" % [head, str(said)]
+
+
+## A piece's parts as placements: turned a number of quarter turns about
+## the upright, moved by whole studs so its low corner is at `at` and
+## what was on the grid stays on it, colours swapped where `recolor` says.
+## A String says why it cannot be.
+func _snippet_bricks(entry: Dictionary, at: Vector3, turns: int,
+		recolor: Dictionary) -> Variant:
+	var model: LdrModel = LdrModel.parse(RealSnippets.ldr_text(entry), "piece")
+	var placed: Array = []
+	for item: Variant in model.flatten(library.parts):
+		var put: LdrModel.Placement = item
+		if put.mirrored:
+			Assemblies.unmirror(put, library)
+		if not library.parts.has(put.part_id):
+			return "%s uses part %s, which this library does not have." % [
+				entry["id"], put.part_id]
+		placed.append(put)
+	var wanted := Model.new()
+	for put: LdrModel.Placement in placed:
+		var as_placed := Placement.new()
+		as_placed.part = library.resolve(put.part_id)
+		wanted.placements.append(as_placed)
+	await _ensure_parts(wanted)
+	var turn := Transform3D(Basis(Vector3.UP, posmod(turns, 4) * PI / 2.0), Vector3.ZERO)
+	var read: Array = []
+	var low := Vector3(INF, INF, INF)
+	for put: LdrModel.Placement in placed:
+		var part_id: String = library.resolve(put.part_id)
+		var placed_at: Transform3D = turn * put.transform
+		var corners: Array = _corners_in_studs(
+			BrickWorld.Brick.new(0, part_id, put.color_code, placed_at))
+		if corners.is_empty():
+			return "Part %s of %s could not be loaded to place." % [part_id, entry["id"]]
+		var corner: Vector3 = corners[0]
+		low = low.min(corner)
+		read.append([part_id, put.color_code, placed_at, corner])
+	var shift := Vector3(at.x - roundf(low.x), at.y - floorf(low.y + 0.01),
+		at.z - roundf(low.z))
+	var bricks: Array = []
+	for row: Array in read:
+		var basis: Basis = (row[2] as Transform3D).basis
+		var face: String = BrickLattice.face_of(basis)
+		var corner: Vector3 = row[3] + shift
+		var brick := {"part": row[0], "color": int(recolor.get(int(row[1]), row[1])),
+			"x": snappedf(corner.x, 0.01), "y": snappedf(corner.y, 0.01),
+			"z": snappedf(corner.z, 0.01), "rot": BrickLattice.turns_about(basis, face)}
+		if face != "up":
+			brick["face"] = face
+		bricks.append(brick)
+	return bricks
 
 
 ## How big the model should be, before a brick is chosen.
@@ -13652,6 +13900,88 @@ func _tools() -> Array:
 						"which one; a partial name will do"},
 				},
 				"required": ["name"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "find_techniques",
+			"description": ("How real LEGO sets built a feature, found by "
+				+ "what it is: the sub-assemblies of thousands of real sets "
+				+ "(an owl's eye, a car's nose, a dragon's wing, a turret "
+				+ "roof, a grille, a beak, a tree), each with a picture, its "
+				+ "parts and colours, its size in studs, the set and modeller "
+				+ "it is from, and an id for place_technique. Ask before "
+				+ "inventing any feature of a face, a creature or a machine: "
+				+ "a real designer's answer is better than a first guess. "
+				+ "Name the subject too — \"owl eye\", \"car nose\" — and "
+				+ "pieces from sets about it come first."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"query": {"type": "string", "description":
+						"the feature, and the subject it is on: \"owl eye\", "
+						+ "\"sports car front\", \"castle turret roof\""},
+					"max_studs": {"type": "number", "description":
+						"the most studs wide or deep it may be; leave out "
+						+ "for any size"},
+					"kinds": {"type": "array", "items": {"type": "string",
+						"enum": ["sideways", "angled", "curved", "sloped",
+							"brackets", "hinged", "textured", "smooth",
+							"organic"]},
+						"description": "only pieces built this way"},
+				},
+				"required": ["query"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "find_parts_like",
+			"description": ("Parts by what they look like in a model, not by "
+				+ "their catalogue name: \"feather\", \"claw\", \"exhaust\", "
+				+ "\"eyelid\", \"scales\", \"leaf\". Each family of parts "
+				+ "comes with what builders use it for and its commonest part "
+				+ "numbers. search_parts finds a part you can name; this finds "
+				+ "the one you can only describe."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"query": {"type": "string", "description":
+						"what the part should read as"},
+				},
+				"required": ["query"],
+				"additionalProperties": false,
+			},
+		},
+		{
+			"name": "place_technique",
+			"description": ("Lay one of find_techniques' pieces into the "
+				+ "model as LEGO built it: every part where the set has it, "
+				+ "turned a number of quarter turns about the upright and "
+				+ "moved so its low corner is at x, y, z, in your colours "
+				+ "if you say which of its colours become which. Parts "
+				+ "cannot be scaled; pick a piece of the right size. "
+				+ "Checked like any edit: it is refused, with the reason, "
+				+ "if it overlaps the model or does not hold on. The "
+				+ "answer lists the bricks as placed."),
+			"input_schema": {
+				"type": "object",
+				"properties": {
+					"id": {"type": "string", "description":
+						"the id find_techniques gave"},
+					"x": {"type": "number", "description":
+						"studs across, to its low corner"},
+					"y": {"type": "number", "description":
+						"plates up, to its low corner"},
+					"z": {"type": "number", "description":
+						"studs deep, to its low corner"},
+					"turn": {"type": "integer", "description":
+						"quarter turns about the upright, 0-3"},
+					"recolor": {"type": "object", "description":
+						"its colours to yours, by LDraw code: {\"15\": 4} "
+						+ "makes its white parts red",
+						"additionalProperties": {"type": "integer"}},
+				},
+				"required": ["id", "x", "y", "z"],
 				"additionalProperties": false,
 			},
 		},

@@ -344,6 +344,13 @@
     },
     {
       "kind": "lib",
+      "label": "real sets' pieces by what they are",
+      "entry": "src/ai/real_snippets.gd",
+      "reach": "godot --headless --path . --script src/dev/snippets_probe.gd",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
       "label": "find a reference picture",
       "entry": "src/ai/reference_finder.gd",
       "reach": "godot --headless --path . --script src/dev/reference_lookup_probe.gd",
