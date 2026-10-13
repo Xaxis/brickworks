@@ -148,6 +148,9 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	var y0: int = floori(box.position.y)
 	var y1: int = ceili(box.end.y)
 	var tall: int = y1 - y0
+	var faces: Array = _read_faces(pattern, y0, trouble)
+	if not trouble.is_empty():
+		return []
 	# A grid solid says how many cells it has, having been sized to them.
 	var most: int = maxi(MOST_CELLS, int(pattern.get("most_cells", 0)))
 	if (x1 - x0) * (z1 - z0) * tall > most or tall < 1:
@@ -243,6 +246,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 			return _colour_at(solids, cuts, Vector3(x, y0 + j, z), colour, bands)
 		plan.rounds = bool(pattern.get("rounds", not gridded))
 		plan.bridges = bool(pattern.get("bridges", not gridded))
+		plan.faces = faces
 		plan.mirror_of()
 		last = {"mirror": plan.axis, "sum": plan.sum, "columns": columns.size(), "plates": tall}
 		plan.round_runs()
@@ -324,6 +328,16 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	last["shells"] = shells.size()
 	last["sideways"] = turned_out
 	last["shells_kept"] = plan.kept
+	last["faces"] = plan.faces_laid
+	# A face that found no curved side with side studs to sit on is said,
+	# not dropped: a head laid without the face it was given reads as done.
+	for asked: Dictionary in faces:
+		if not plan.faces_laid.has(asked["said"]):
+			trouble.append("the face %s has nothing to sit on: %s. A face goes on a "
+				% [asked["said"], str(plan.faces_why.get(asked["said"],
+					"no curved side faces that way, so no side studs are laid there"))]
+				+ "side that curves out (an ellipsoid's front), its centre on that "
+				+ "side's middle, at least a stud inside its edges all round")
 	var top_colour: int = int(pattern.get("top_color", pattern.get("top_colour", -1)))
 	var placed: Array = []
 	for one: Dictionary in made:
@@ -372,6 +386,57 @@ static func _empty(column: PackedInt32Array) -> bool:
 		if value >= 0:
 			return false
 	return true
+
+
+## The ways a face can look out of a shape, by name.
+const FACINGS: Dictionary = {"+x": Vector2i(1, 0), "-x": Vector2i(-1, 0),
+	"+z": Vector2i(0, 1), "-z": Vector2i(0, -1)}
+## A face's disc by how many studs across: a round plate, and the square
+## plate that brings it out to the curve behind it.
+const FACE_DISCS: Dictionary = {4: ["60474", "3031"], 6: ["11213", "3958"],
+	8: ["74611", "41539"]}
+
+
+## The faces a shape is given: {"facing": "+z", "x", "y", "z": its middle in
+## the shape's studs and plates, "across": 4, 6 or 8, "color": the disc's,
+## "rim": the plate behind it, "eyes": the iris, "beak": its colour or -1}.
+## The plate of its middle is counted from the plan's foot ([param y0]).
+static func _read_faces(pattern: Dictionary, y0: int, trouble: Array) -> Array:
+	var asked: Variant = pattern.get("face", pattern.get("faces", []))
+	if asked is Dictionary:
+		asked = [asked]
+	var out: Array = []
+	if not asked is Array:
+		return out
+	for raw: Variant in asked:
+		if not raw is Dictionary:
+			trouble.append("a shape's face is an object: {\"facing\": \"+z\", \"x\", \"y\", "
+				+ "\"z\", \"across\": 6}")
+			continue
+		var one: Dictionary = raw
+		var facing: String = str(one.get("facing", "+z")).strip_edges().to_lower()
+		var across: int = int(one.get("across", 4))
+		if not FACINGS.has(facing):
+			trouble.append("a face looks out +x, -x, +z or -z, not \"%s\"" % facing)
+			continue
+		if not FACE_DISCS.has(across):
+			trouble.append("a face is 4, 6 or 8 studs across, the round plate that is its "
+				+ "disc, not %d" % across)
+			continue
+		var centre: Vector3 = _vec(one.get("centre", [one.get("x", 0.0), one.get("y", 0.0),
+			one.get("z", 0.0)]))
+		out.append({"facing": FACINGS[facing], "x": centre.x, "j": centre.y - y0,
+			"z": centre.z, "across": across, "color": int(one.get("color", -1)),
+			"rim": int(one.get("rim", -1)), "eyes": int(one.get("eyes", 0)),
+			"beak": int(one.get("beak", 19)),
+			"said": "facing %s at %s, %s" % [facing, _num(centre.x), _num(centre.y)]
+				if facing.ends_with("z") else "facing %s at %s, %s" % [facing,
+					_num(centre.z), _num(centre.y)]})
+	return out
+
+
+static func _num(value: float) -> String:
+	return str(int(value)) if is_equal_approx(value, roundf(value)) else str(snappedf(value, 0.1))
 
 
 ## The solids or cuts a shape names: in a list under [param key], and for
@@ -1058,6 +1123,11 @@ class Plan extends RefCounted:
 	## the runs said, for a probe.
 	var round_made: Array = []
 	var round_said: Array = []
+	## Faces to lay onto the shells, as Shapes._read_faces reads them; the
+	## ones laid, by what they were said as, and why each other one was not.
+	var faces: Array = []
+	var faces_laid: Array = []
+	var faces_why: Dictionary = {}
 
 	func _init(given: Dictionary, height: int, tiles: bool, parts: PartLibrary) -> void:
 		columns = given
@@ -1939,7 +2009,11 @@ class Plan extends RefCounted:
 			var p: Vector2 = _point(a0 + x, face + j / Shapes.PLATES_PER_STUD, facing, along)
 			return Vector3(p.x, top - Shapes.PLATES_PER_STUD * z, p.y)
 		var mine: Dictionary = shell["cells"]
+		# The squares a face is laid in, left out of the shell's own plan.
+		var masked: Dictionary = {}    ## Vector2i(lane, row) from a0 and top
 		var local_colour := func(x: float, j: float, z: float) -> int:
+			if masked.has(Vector2i(floori(x), floori(z))):
+				return -1
 			var p: Vector3 = to_world.call(x, j, z)
 			if not mine.has(Vector3i(floori(p.x), floori(p.y), floori(p.z))):
 				return -1
@@ -1954,6 +2028,47 @@ class Plan extends RefCounted:
 				if (taken.has(key) or at(Vector2i(key.x, key.z), j_) >= 0) and not mine.has(key):
 					return -1
 			return int(colour_at.call(p.x, p.y, p.z))
+		# Whether a point of the shell's frame is free for a face: every plate
+		# its row reaches into the shell's or nobody's, as for its own parts.
+		var beside: Dictionary = {}
+		for key: Vector3i in shell["outside"]:
+			beside[key] = true
+		var room := func(x: float, j: float, z: float) -> bool:
+			var p: Vector3 = to_world.call(x, j, z)
+			var row: float = p.y + Shapes.PLATES_PER_STUD * (z - floorf(z) - 1.0)
+			for j_: int in range(floori(row + 0.01), ceili(row + Shapes.PLATES_PER_STUD - 0.01)):
+				if j_ < 0:
+					return false
+				var key := Vector3i(floori(p.x), j_, floori(p.z))
+				if (taken.has(key) or at(Vector2i(key.x, key.z), j_) >= 0) and not mine.has(key) \
+						and not beside.has(key):
+					return false
+			return true
+		# Held where an anchor the core kept reaches: one in a column the
+		# core's own pruning let go holds nothing.
+		# Tried before the core is laid, every side stud it was given.
+		var held_here: Dictionary = {}
+		for one: Dictionary in (anchors if trial else made):
+			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
+				for held: Vector2i in (one["_holds"] as Array)[1]:
+					held_here[held] = true
+		# A face asked for on this side: its square is the face's, laid on the
+		# side studs behind it, and left out of the shell's own plan.
+		var face_parts: Array = []
+		for asked: Dictionary in faces:
+			if asked["facing"] != facing:
+				continue
+			var laid_face: Variant = _face_on_shell(shell, asked, held_here, local_colour, room,
+				depth)
+			if laid_face is String:
+				if not trial:
+					faces_why[asked["said"]] = laid_face
+				continue
+			face_parts.append_array((laid_face as Dictionary)["parts"])
+			masked.merge((laid_face as Dictionary)["cells"])
+			if not trial:
+				faces_laid.append(asked["said"])
+				kept.append("a face %s: %s" % [asked["said"], (laid_face as Dictionary)["said"]])
 		var local: Dictionary = {}
 		for u: int in int(shell["a1"]) - a0:
 			for w: int in rows:
@@ -1975,13 +2090,7 @@ class Plan extends RefCounted:
 		sub.colour_at = local_colour
 		sub.sample = func(x: float, j: float, z: float) -> bool:
 			return int(local_colour.call(x, j, z)) >= 0
-		# Held where an anchor the core kept reaches: one in a column the
-		# core's own pruning let go holds nothing.
-		# Tried before the core is laid, every side stud it was given.
-		for one: Dictionary in (anchors if trial else made):
-			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
-				for held: Vector2i in (one["_holds"] as Array)[1]:
-					sub.held[held] = true
+		sub.held = held_here
 		if sub.held.is_empty():
 			shell["covered"] = 0.0
 			return []
@@ -1993,6 +2102,7 @@ class Plan extends RefCounted:
 		# shell on a stud of its own is held, and a stitch lays parts again
 		# that no stud may reach.
 		sub.prune()
+		sub.made.append_array(face_parts)
 		# How much of what it took out of the core its kept parts cover.
 		var covered: Dictionary = {}
 		for one: Dictionary in sub.made:
@@ -2033,6 +2143,130 @@ class Plan extends RefCounted:
 			placed["_shell"] = true
 			out.append(placed)
 		return out
+
+	## A face laid onto a shell the way a set lays one onto a head: the
+	## square it sits in is taken out of the shell, a square plate (or two)
+	## on the core's side studs behind it brings it out to the curve, a round
+	## plate on that is the disc, and on the disc's upper studs two eyes — a
+	## 2 x 2 round plate with a centre stud in the iris's colour under a
+	## printed eye tile — with a beak on a jumper between them and under, a
+	## cheese slope falling down the face. Every part studs out, so the face
+	## is features on a disc flush with the curve, not tiles on a panel.
+	##
+	## In the shell's own frame, as lay_shell lays it: x along the side, y out
+	## in plates, z down in rows. {parts, cells, said}, or why not.
+	func _face_on_shell(shell: Dictionary, asked: Dictionary, held_cells: Dictionary,
+			colour: Callable, room: Callable, depth: int) -> Variant:
+		var n: int = asked["across"]
+		var along: Vector2i = shell["along"]
+		var lanes: int = int(shell["a1"]) - int(shell["a0"])
+		var rows: int = shell["rows"]
+		var middle: float = float(asked["x"]) * along.x + float(asked["z"]) * along.y
+		var u0: int = roundi(middle - n / 2.0) - int(shell["a0"])
+		var w0: int = roundi((float(shell["top"]) - float(asked["j"])) / Shapes.PLATES_PER_STUD
+			- n / 2.0)
+		if n > lanes or n > rows:
+			return ("the curved side there is %d studs along and %d rows (a row is a stud) "
+				% [lanes, rows] + "from plate %d down, too small for a face %d across"
+				% [int(shell["top"]), n])
+		# A stud or two off the side is the side's: the middle a design reads
+		# off a picture is a guess at where the curve's middle is.
+		var u_in: int = clampi(u0, 0, lanes - n)
+		var w_in: int = clampi(w0, 0, rows - n)
+		if absi(u_in - u0) > 2 or absi(w_in - w0) > 2:
+			return ("its %d x %d square is %d studs off the curved side, which is %d studs "
+				% [n, n, maxi(absi(u_in - u0), absi(w_in - w0)), lanes]
+				+ "along and %d rows (a row is a stud) from plate %d down"
+				% [rows, int(shell["top"])])
+		# Where it was said, or the nearest place a stud or two away where its
+		# square is clear of the core and has side studs behind it.
+		var tries: Array = []
+		for du: int in range(-2, 3):
+			for dw: int in range(-2, 3):
+				tries.append(Vector2i(du, dw))
+		tries.sort_custom(func(one: Vector2i, other: Vector2i) -> bool:
+			return absi(one.x) + absi(one.y) < absi(other.x) + absi(other.y))
+		var why: String = ""
+		var studs: int = 0
+		var backing: int = 0
+		var cells: Dictionary = {}
+		var square: Array[Vector2i] = []
+		var found: bool = false
+		for shift: Vector2i in tries:
+			var u1: int = u_in + shift.x
+			var w1: int = w_in + shift.y
+			if u1 < 0 or w1 < 0 or u1 + n > lanes or w1 + n > rows \
+					or absi(u1 - u0) > 2 or absi(w1 - w0) > 2:
+				continue
+			studs = 0
+			var height: int = 0
+			cells = {}
+			square = []
+			for u: int in range(u1, u1 + n):
+				for w: int in range(w1, w1 + n):
+					var cell := Vector2i(u, w)
+					cells[cell] = true
+					square.append(cell)
+					if held_cells.has(cell):
+						studs += 1
+					for v: int in range(depth - 1, -1, -1):
+						if int(colour.call(u + 0.5, v + 0.5, w + 0.5)) >= 0:
+							height += v + 1
+							break
+			if studs < 2:
+				why = "the core behind it has %d side stud%s there to hold a disc" % [
+					studs, "" if studs == 1 else "s"]
+				continue
+			# Out to the curve: the disc's face where the shell's surface is
+			# on average, the eyes standing a plate or two proud of it.
+			backing = clampi(roundi(float(height) / square.size()) - 2, 0, depth - 2)
+			var clear: bool = true
+			for cell: Vector2i in square:
+				for v: int in backing + 1:
+					clear = clear and bool(room.call(cell.x + 0.5, v + 0.5, cell.y + 0.5))
+			if not clear:
+				why = "the core is in the way of its square"
+				continue
+			u0 = u1
+			w0 = w1
+			found = true
+			break
+		if not found:
+			return why if not why.is_empty() else "it does not fit the curved side"
+		var face_colour: int = int(asked["color"])
+		if face_colour < 0:
+			face_colour = int(colour.call(u0 + n / 2.0, backing + 0.5, w0 + n / 2.0))
+		if face_colour < 0:
+			face_colour = int(colour.call(u0 + n / 2.0, 0.5, w0 + n / 2.0))
+		var rim: int = int(asked["rim"])
+		if rim < 0:
+			rim = int(colour.call(u0 + 0.5, 0.5, w0 + 0.5))
+		if rim < 0:
+			rim = face_colour
+		var parts: Array = []
+		var discs: Array = Shapes.FACE_DISCS[n]
+		for v: int in backing:
+			parts.append({"part": discs[1], "color": rim, "x": u0, "y": v, "z": w0, "rot": 0,
+				"_cells": square, "_h": 1})
+		parts.append({"part": discs[0], "color": face_colour, "x": u0, "y": backing, "z": w0,
+			"rot": 0, "_cells": square, "_h": 1})
+		var on: int = backing + 1
+		# The eyes on the upper studs: touching on a 4, a stud in from the
+		# rim on a 6, a stud apart on an 8; the beak under their middle.
+		var eye_row: int = 0 if n == 4 else 1
+		var eye_at: Array = {4: [0, 2], 6: [1, 3], 8: [1, 5]}[n]
+		for at_: int in eye_at:
+			parts.append({"part": "18674", "color": int(asked["eyes"]), "x": u0 + at_, "y": on,
+				"z": w0 + eye_row, "rot": 0})
+			parts.append({"part": "98138p07", "color": 15, "x": u0 + at_ + 0.5, "y": on + 1,
+				"z": w0 + eye_row + 0.5, "rot": 0})
+		if int(asked["beak"]) >= 0:
+			parts.append({"part": "3794b", "color": face_colour, "x": u0 + (n >> 1) - 1, "y": on,
+				"z": w0 + eye_row + 2, "rot": 0})
+			parts.append({"part": "54200", "color": int(asked["beak"]), "x": u0 + (n >> 1) - 0.5,
+				"y": on + 1, "z": w0 + eye_row + 2, "rot": 0})
+		return {"parts": parts, "cells": cells, "said": "a %d x %d disc %d plate%s out on %d side studs"
+			% [n, n, backing, "" if backing == 1 else "s", studs]}
 
 	## Cells whose top plate carries a slope, so is laid with studs, not tiled.
 	var studded: Dictionary = {}

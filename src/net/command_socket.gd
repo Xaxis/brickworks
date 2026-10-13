@@ -483,15 +483,20 @@ func _own_tools() -> Array:
 				+ "kind — shapes, colours, the one-off pieces, how coarse — and "
 				+ "what to check it for; with an assembly named in "
 				+ "submit_design, that one close up, measured, with the parts "
-				+ "real sets of the kind use that it has none of. Call it after "
-				+ "submit_design, then once per assembly, detailing each with "
-				+ "edit_model before the next."),
+				+ "real sets of the kind use that it has none of; with a feature "
+				+ "(eyes, beak, wheel arches, grille), three real sets' pieces for "
+				+ "it with ids for place_technique and the worked technique that "
+				+ "builds one. Call it after submit_design, then once per feature, "
+				+ "then once per assembly, working each before the next."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
 					"assembly": {"type": "string", "description":
 						"an assembly's name as given in submit_design; omit "
 						+ "for the whole model"},
+					"feature": {"type": "string", "description":
+						"a feature the subject is known by, as listed in "
+						+ "submit_design's features"},
 				},
 				"additionalProperties": false,
 			},
@@ -570,7 +575,8 @@ func _own_tools_have(tool: String) -> bool:
 ## on a worker thread (Assistant._checked) while the app goes on drawing.
 func _run_own(tool: String, input: Dictionary) -> String:
 	if tool == "review_model" and assistant != null:
-		return await assistant.review(str(input.get("assembly", "")))
+		return await assistant.review(str(input.get("assembly", "")),
+			str(input.get("feature", "")))
 	if app == null:
 		return "This app cannot do that from outside."
 	match tool:

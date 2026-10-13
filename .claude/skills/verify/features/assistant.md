@@ -1131,6 +1131,27 @@ fixing what it got wrong.
   body away. `shapes_probe` ("a car's body over its arches keeps its nose"):
   its axles, wheels and body as the run said them, 135 bricks, buildable,
   one piece.
+  A face on a shell: a shape's `"face": {"facing": "+z", "x", "y", "z",
+  "across": 4|6|8, "color", "rim", "eyes", "beak"}` (`Shapes._read_faces`,
+  `Plan._face_on_shell`). On the shell that faces that way, the face's
+  square is masked out of the shell's own plan; on the side-stud bricks the
+  core already has behind it (`anchors`, every second row) a square plate or
+  two (3031/3958/41539, `backing`: the square's mean surface height less two
+  plates, so the disc is flush with the curve) and the round plate disc
+  (60474/11213/74611), then two 2 x 2 round eyes (18674 in the iris's colour,
+  98138p07 on the centre stud) and a beak (3794b jumper, 54200 falling down
+  the face), all studs out. It is moved up to two studs to fit the side and
+  clear the core (`room`: every plate of a row the shell's or nobody's); a
+  face that cannot be laid is a pattern trouble naming why (no curved side
+  that way, too small, no side studs, the core in the way), never dropped.
+  `owl_d4`'s face was white tiles on the shell and 1 x 1 eyes, because a
+  2 x 2 round plate wants four studs out. `face_probe`: the held-out owl's
+  post and body with a 6-across face, a cat's head with a 4, a bear's facing
+  -x with a 6 — each one piece, buildable, disc and both eyes 2 x 2 and studs
+  out, every face part held — and a box's flat side and a face said wrong
+  refused with the reason. With an OUTDIR it saves `face_<name>.ldr`; render
+  with `src/dev/bench_views.gd` to look (`--closef=0.2,0.8,0.6,1.0,0.5,1.0`
+  frames the owl's head).
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
@@ -1315,8 +1336,36 @@ fixing what it got wrong.
   Recall on ten queries written beforehand (`docs/ROADMAP.md`): 8 of 10 with
   something an expert would use on names alone, 9 with descriptions; the miss
   left is the corpus (no owl or dragon set). `find_techniques` answers with
-  the best five, each credited, and one picture of them side by side
-  (`_snippet_picture`, headless: text only). `place_technique` reads the piece
+  the best three (`FOUND`), each credited, in two lines (`_piece_line`: id,
+  size, whether it lays, its description cut at 110 characters, its first
+  four parts), and one picture of them side by side, 200 pixels a piece
+  (`_snippet_picture`, headless: text only) — five with whole parts lists
+  and a 1,600-pixel sheet was a long read a run made once.
+  Features, one at a time: `submit_design` takes `features` (required in
+  the schema: what the subject is known by — eyes, beak, ear tufts, wheel
+  arches, grille), `Model.features`. In the app's loop the whole look is for
+  the silhouette, then each feature comes back before the assemblies
+  (`_queue_features`, the same `_to_detail` queue, `TURNS_PER_FEATURE` 4):
+  `_feature_brief` — the best three real pieces for the brief's subject word
+  (`_subject_words`: the words the index knows as subjects, "owl") and the
+  feature, the worked technique for it (`Techniques.for_feature`: name words
+  count 2, use words 1, stemmed; none unless a name word matches), a small
+  picture, and "lay, adapt or build, and say which". What each tool did is
+  put down to the feature being worked (`_run_tool` wraps `_tool_answer`:
+  find_techniques, show_technique, place_technique that grew the model,
+  edits; `_feature_used`), said as each ends ("the eyes: real piece
+  7784-1/eye-rh laid") and all together as the run ends ("features:").
+  From outside: the build's answer lists the features as step 2,
+  `review_model {"feature": "eyes"}` gives the same brief as text and makes
+  it the feature being worked, a find_techniques whose words name a listed
+  feature is put down to it (`_feature_named`), the whole review lists what
+  each came to, and saving hands back a feature never looked at
+  (`next_review`, before assemblies). `features_probe` drives both with
+  replies written in it: the silhouette submitted with features, the eyes
+  handed back with real pieces and a piece that lays laid with
+  place_technique, the beak built from `beak or snout`, the run's record; and
+  from outside the build's answer, review_model feature=, the piece put down
+  to the eyes, save handing back the beak. Needs the index; SKIP without. `place_technique` reads the piece
   with the app's own LDraw reader, turns it by quarter turns, moves its low
   corner to x, y, z by whole studs, swaps colours by `recolor`, and lays it
   through `edit_model`, so the joints checker refuses it like any edit; pieces

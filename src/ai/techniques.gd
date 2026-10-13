@@ -1719,7 +1719,11 @@ static func all() -> Array:
 				+ "makes the head read round. A 6 x 6 round plate (11213) takes "
 				+ "the eyes a stud further apart; a darker rim round the disc, as "
 				+ "a barn owl's is, is quarter round tiles (25269) or curved "
-				+ "slopes laid round it.",
+				+ "slopes laid round it. On a head said as a shape, say the face "
+				+ "on the shape — \"face\": {\"facing\": \"+z\", \"x\", \"y\", \"z\": "
+				+ "its middle, \"across\": 6} — and it is laid there on side-stud "
+				+ "bricks behind the curve, the disc flush with it: a shell of "
+				+ "tiles has no studs out for a disc to grip.",
 			"bricks": [
 				{"part": "3004", "color": 19, "x": 0, "y": 0, "z": 0, "rot": 0},
 				{"part": "99207", "color": 19, "x": 0, "y": 3, "z": 0, "rot": 0},
@@ -1879,6 +1883,33 @@ static func named(what: String) -> Dictionary:
 				shared += 1
 		if shared > most:
 			most = shared
+			best = technique
+	return best
+
+
+## The worked technique that builds a feature, by the words of its name
+## and of what it is for: "eyes" is the eye with a highlight, "ear tufts"
+## the ears or tufts, "headlamps" the headlamps and grille. Words are seen
+## through their plurals; a name word counts twice what a word of its use
+## does. {} when nothing shares a name word with it.
+static func for_feature(feature: String) -> Dictionary:
+	var asked: PackedStringArray = RealSnippets.words(feature)
+	var best: Dictionary = {}
+	var most: int = 0
+	for one: Variant in all():
+		var technique: Dictionary = one
+		var named: PackedStringArray = RealSnippets.words(str(technique["name"]))
+		var used: PackedStringArray = RealSnippets.words(str(technique["when"]))
+		var score: int = 0
+		var by_name: bool = false
+		for word: String in asked:
+			if named.has(word):
+				score += 2
+				by_name = true
+			elif used.has(word):
+				score += 1
+		if by_name and score > most:
+			most = score
 			best = technique
 	return best
 
