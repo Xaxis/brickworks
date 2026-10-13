@@ -15974,19 +15974,16 @@ ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
 edit_selection; never submit_design.
 
-SKETCH FIRST, when the brief asks for it: three massings to choose between \
-before the full design — submit_design with "sketch": true, three times, \
-each under 150 parts and a different idea; then choose_sketch one and design \
-the whole model from it.
+SKETCH FIRST, when asked: submit_design with "sketch": true three times \
+(each a different idea, under 150 parts), then choose_sketch one and design \
+from it.
 
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
 kind of subject needs), "real", "colour", "angle", "round", \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
-"creative", "changing", "kind", "art", and "app" (what else the person can \
-do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
-animate_model, undo, open_model, parts_list, render_model, export_model, \
-brickify, print_part, make_unique, job).
+"creative", "changing", "kind", "art", and "app" (everything else the \
+person can do from the menus, as tools).
 
 A call answered with a job number is still working in the app: call job \
 about every 10 s until it gives the answer."""
