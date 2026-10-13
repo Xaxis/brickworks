@@ -132,10 +132,11 @@ an animation.
 axle, a sub-assembly named Crank or Motor) as Tools, Simulate does: each \
 arm's turns per driver turn, its period in a reference's turns (Earth \
 years) against the real one, what locks it, what floats, and the balance \
-over the whole cycle, with a picture; record=true keeps a WebP and an MP4. \
-Name each arm's sub-assembly after what it carries (Earth, Mars) and the \
-crank Crank; a frame not held stud by stud to the baseplate is held still \
-when named Frame.
+over the whole cycle, with a picture; record=true keeps a WebP and an MP4, \
+as a job. Name each arm's sub-assembly after what it carries (Earth, Mars) \
+and the crank Crank. What stands on studs (a turntable's base on a plate) \
+is held with what it stands on; a frame held by nothing the parts record \
+is held still when named Frame.
  - undo: takes the last change back, or several; redo=true puts it back.
  - open_model: lists the person's saved models and the examples, and \
 opens one. It cannot be undone: save_model first.
@@ -278,7 +279,7 @@ func definitions() -> Array:
 				+ "floating parts by number, and weighs the balance over the whole cycle: the "
 				+ "worst frame, the arm furthest past the base's edge, a picture of it there. "
 				+ "record=true also renders turns= turns of the reference (1) in frames= frames "
-				+ "(24) as a WebP and an MP4 where Render saves; past 20 s it goes on in the app."),
+				+ "(24) as a WebP and an MP4 where Render saves, as a job (job gives the result)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"driver": {"type": "string", "description": "a part's number from look_at_model, or a sub-assembly's name"},
 				"reference": {"type": "string", "description": "the turning part periods are counted in: a number or a name"},
@@ -446,7 +447,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"pose_model":
 			return _pose(input)
 		"simulate_mechanism":
-			return await _simulate(input)
+			return await _simulate(input, work)
 		"animate_model":
 			return await _animate(input, work)
 		"undo":
@@ -859,11 +860,12 @@ func _animate(input: Dictionary, work: Working.Job = null) -> String:
 
 ## Tools, Simulate mechanism's own reading, driving and weighing
 ## (SimulatePanel.for_session), said for a session.
-func _simulate(input: Dictionary) -> Variant:
+## [param work] is the job a recording reports to (ToolJobs.long_call).
+func _simulate(input: Dictionary, work: Working.Job = null) -> Variant:
 	var panel: SimulatePanel = app.get("_simulate")
 	if panel == null:
 		return "This app has no Simulate mechanism."
-	return await panel.for_session(input)
+	return await panel.for_session(input, work)
 
 
 # -- undo -------------------------------------------------------------------------

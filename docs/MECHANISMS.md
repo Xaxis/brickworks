@@ -321,6 +321,23 @@ parts + transforms ──► Mechanism.build()                 (pure, like Flex)
   - Each gear mesh is one linear equation: the two pitch circles' surfaces move
     together where they touch. This one form covers spur, crown, bevel and
     internal meshes.
+  - **The ratio is the teeth's; the spacing only says whether they mesh.** The
+    2 LDU lattice cannot stand every pair at its pitch: a worm on the 28
+    tooth turntable is 46 LDU off its axis for 45, a 16 and a 20 on a stud's
+    diagonal 44.72 for 45. Read where one gear's pitch circle reaches, as P1a
+    first did, the other's lever took up the difference, and the worm turned
+    the turntable once in 28.8. Now the teeth meet where the line between the
+    centres is split as the radii are (a worm's advance scaled the same), so
+    each lever is its radius times one factor and the ratio is exactly the
+    tooth counts' however far within `MESH_SLACK` they stand. In an
+    epicyclic train the point is shared by both sides, so a carrier's own
+    turn still cancels as it should.
+  - **A mesh further off than real sets stand theirs is said to be.** Past
+    `SPACING_SLACK` (0.3 LDU: 750 of 855 pairs in the sets are within 0.1)
+    Simulate and `simulate_mechanism` say "Off their spacing … 46 LDU apart
+    for 45, 1 LDU loose", and `check_design`'s mesh line carries the same
+    words. It still meshes and still turns at its teeth's ratio; a real one
+    that far out runs loose or binds.
   - A worm's equation adds the thread's advance (lead / 2π per radian).
   - A rack's is the same with its prismatic joint.
   - A chain's is the same as a mesh with the direction kept.
@@ -401,7 +418,7 @@ results:
              "edge": "front", "counterweight_g_at_4_studs_inside": 41}}
 ```
 
-It records on request. That is what lets the designer build a mechanism and
+It records on request, as a job (below). That is what lets the designer build a mechanism and
 then prove it turns, the same loop it already uses for `check_design`.
 
 ## 4. Balance and strength
@@ -639,10 +656,30 @@ ok    the pinion turns the casing 20/28 of a turn (-0.714286)
 ok    two drivers decide it, and the sides sum to twice the casing every time, to 0.00000017881393
         (0.000 + -1.429 = 2 x -0.714; 1.000 + 1.000 = 2 x 1.000; 1.000 + -1.000 = 2 x 0.000;
          0.300 + 2.000 = 2 x 1.150; -1.929 + 0.500 = 2 x -0.714)
+exact ratios where the 2 LDU lattice stands gears off their pitch
+ok    the turntable's base, resting on the plate's studs, is held with it (3033, 99009, 32523 x2)
+ok    a worm 46 LDU off a 28 tooth turntable turns it once in 28 turns, exactly (1/27.999999)
+ok    ...and says it stands off its spacing (46 LDU apart for 45, 1 LDU loose)
+ok    ...in what Simulate and simulate_mechanism say: Off their spacing (they mesh, and turn at
+      their teeth's ratio, but real ones that far out run loose or bind): #7 4716 with #3 99010,
+      46 LDU apart for 45, 1 LDU loose.
+ok    8 to 40 three studs apart: -0.200000, -0.2
+ok    12 to 36 three studs apart: -0.333333, -0.3333
+ok    a 20 to a 16 idler to a 20 on two stud diagonals: the idler -1.250000 (-20/16), the output
+      1.000000, as the input
+ok    ...and a stud's diagonal, 0.28 LDU short, is not said to be off its spacing
 mechanism: gear trains read off the parts, every ratio its tooth counts', a locked train named, a ring, a chain, a gearbox and a differential turned
 ```
 
-That is 43 checks, abridged here; the windowed run has 50, and the sets 3.
+That is 51 checks, abridged here; the windowed run adds the drawn frames, and the sets 3.
+The exact-ratio cases were run (2026-10-13) against a copy of the code with
+the mesh point put back at one gear's pitch circle and parts standing on
+studs not joined, as P1a had it. Four fail: the turntable's base
+floats, so its top floats with it and the worm turns nothing ("1/inf"), and the
+readout names the top floating; and the idler train's output turns 1.025559 for
+1, the idler -1.267661. The 8 to a 40 and the 12 to a 36 stand at their pitch
+and pass on both, as they should. (Held by its name instead, the old code read
+the worm at 46 LDU as 1/28.8: `axle_probe`'s tolerance of 0.03 was there for it.)
 Willis holds to 2e-7, not to 1e-12: the
 parts stand where 32-bit transforms put them, so a lever of 17 LDU is
 17.000001. Periods for P1c should come from the rates, which are exact to
@@ -755,9 +792,13 @@ against NASA's 686.98 / 365.256 = 1.8808: +4.2%. A second stage, (24/16)·(20/16
 
 **Where it is.** Tools, Simulate mechanism…, beside Check stability. Both
 read the model as built and change none of it; Pose and animate is under
-Build because every pose a slider sets is a step to undo. The panel stands
-where Pose's does, over the model's left edge, and opening one closes the
-other. `src/ui/simulate_panel.gd` is the panel; `src/assembly/simulation.gd`
+Build because every pose a slider sets is a step to undo. The panel is
+docked in a column of its own beside the model's, as the parts column is,
+and the parts column folds while it is open (and comes back when it
+closes): the view is centred on what is left (CadCamera's lens), so no
+part of the train is under the panel. It first stood over the model's left
+edge, where at 1600 x 900 it covered half a gear train and a click meant
+for the 8's axle selected the 24. Opening Pose closes it. `src/ui/simulate_panel.gd` is the panel; `src/assembly/simulation.gd`
 reads the model into a `Mechanism`, names its bodies and says what it found.
 
 **What it does.**
@@ -767,10 +808,14 @@ reads the model into a `Mechanism`, names its bodies and says what it found.
   and leaves least undecided. The Select tool is put in hand, so a click on
   an axle or a crank drives that body instead.
 - **The base.** The baseplate and what stands on its studs, plus any
-  sub-assembly named Frame, Base, Stand or Chassis. That is how a person or a
-  session holds still a frame the connectors do not join (the turntable base
-  of section 7's orrery sits on a beam with nothing the parts record holding
-  it). Without a baseplate it is the largest rigid part.
+  sub-assembly named Frame, Base, Stand or Chassis. A part standing on
+  studs is held by them whether or not the part records a socket there
+  (`Mechanism._rest_on_studs`: its underside at the studs' foot, the studs
+  under it): a turntable's base resting on a plate, a frame or the
+  baseplate stands still with it, where it used to float unless pinned or
+  named. The name is still how a person or a session holds still a frame
+  nothing the parts record holds (section 7's orrery's turntable base sits
+  on a studless beam). Without a baseplate it is the largest rigid part.
 - **Tinted by speed**, blue slow to orange fast on a log scale, the driver
   white; the meshes that lock a train red, free bodies amber, floating gears
   violet, each also named with its part numbers in the panel.
@@ -804,10 +849,12 @@ real one (or `targets=`), a locked train's meshes and the free and floating
 parts by number with what to do about each, the balance at the worst frame
 of the cycle with Balance's counterweight advice, and a picture of that
 frame from the hero view. `record=true` renders `turns=` turns of the
-reference in `frames=` frames; the call waits for it 20 s and then says it
-goes on in the app (the mcpjobs job tool was not in staging when this was
-built). It never changes the model, and leaves the panel as the person left
-it.
+reference in `frames=` frames, and is a job as `render_model`'s turntable is
+(`ToolJobs.long_call`): the call answers at once with the job's number, the
+frames are counted on the job (and on the Working bar the person sees), the
+session polls `job` until it gives the whole answer, and `job` with
+`cancel=true` (or the window's Cancel) stops the renderer. It never changes
+the model, and leaves the panel as the person left it.
 
 **The proof** is `src/dev/simulate_probe.gd`, windowed, in the real scene
 with the mouse: an 8 driving a 24 (a 16 free on the 8's axle, an 8 lying
@@ -843,10 +890,9 @@ With the solver broken on purpose (the two sides of a mesh pulling the same
 way) eight of those fail; put back, all pass. Over MCP `tools/mcp_check.py`
 opens the same two models, as a session can, and drives `simulate_mechanism`
 against a windowed app and a headless one. A 24-frame Quick recording took
-79-88 s on this box under a load of 50, so a session's recording is past the
-20 s wait and goes on in the app; the next call says it is done.
+79-88 s on this box under a load of 50, longer than a call should wait, so a
+recording is a job; mcp_check asks for one and polls `job` to its end.
 
 **Left for later.** The ratio search P1c names; turntables of 56 and 60 and the
 140 tooth ring are read by P1a but not yet in a fixture here; linkages (P2);
 the frames of a recording are tinted only in the window, not in the WebP.
-When the job tool lands, a recording past 20 s should become a job.

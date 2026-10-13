@@ -62,9 +62,6 @@ signal frame_drawn(n: int, image: Image)
 const BALANCE_FRAMES := 72
 const FRAME_CHOICES: Array = [24, 48, 96]
 const SPEEDS: Array = [0.1, 0.25, 0.5, 1.0, 2.0]
-## How long a session's call may wait for a recording before it is told
-## the app goes on with it.
-const SESSION_WAIT_MS := 20000
 
 var _title: Label
 var _driver: Label
@@ -413,8 +410,11 @@ func record(frames: int = 0) -> int:
 
 ## [param view] is RenderSettings.view: the person's own camera when empty,
 ## as they see it; a session's is "hero", since it cannot see the window.
+## [param given] is the job a session's call reports to (ToolJobs), the
+## frames counted on it and its cancel stopping the renderer; without one
+## the recording is a Working job of its own.
 func record_of(simulation: Simulation, of: int, frames: int, turns_of: float = 1.0,
-		view: String = "") -> int:
+		view: String = "", given: Working.Job = null) -> int:
 	if _recording:
 		return 0
 	if not StudioRender.possible():
@@ -431,11 +431,16 @@ func record_of(simulation: Simulation, of: int, frames: int, turns_of: float = 1
 	var poses: Array = []
 	for n: int in frames:
 		poses.append(simulation.placed(span * float(n) / float(frames)))
-	var job: Working.Job = Working.begin("Recording the mechanism…", frames, true)
-	job.cancel_wanted.connect(func() -> void:
+	var job: Working.Job = given
+	if job == null:
+		job = Working.begin("Recording the mechanism…", frames, true)
+		await job.shown()
+	else:
+		job.count(0, frames)
+	var stop := func() -> void:
 		if renderer != null:
-			renderer.cancel())
-	await job.shown()
+			renderer.cancel()
+	job.cancel_wanted.connect(stop)
 	_renderer()
 	var chosen: RenderSettings = settings.copy()
 	chosen.fps = 24
@@ -457,11 +462,14 @@ func record_of(simulation: Simulation, of: int, frames: int, turns_of: float = 1
 			frame_drawn.emit(n, image)
 			await output.add_frame(n, image))
 	await output.settle()
+	job.cancel_wanted.disconnect(stop)
 	var lines := PackedStringArray()
 	if done == frames:
 		job.say("Putting the frames together…")
+		job.count(0, 0)
 		lines = await output.finish_turntable()
-	job.end()
+	if given == null:
+		job.end()
 	_recording = false
 	_set_working(false)
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
@@ -545,8 +553,10 @@ func _set_working(on: bool) -> void:
 ## balance as the panel, said compactly with what to do about it, a picture
 ## of its worst frame, and a recording when asked. Never changes the model,
 ## and leaves the panel as the person left it. A String, or text and a
-## picture. Each slow step is on the Working bar, as the panel's are.
-func for_session(input: Dictionary) -> Variant:
+## picture. Each slow step is on the Working bar, as the panel's are. With
+## record=true the call is a job (ToolJobs.long_call), [param work], which
+## the recording's frames are counted on.
+func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	if world == null:
 		return "This app cannot simulate from outside."
 	var job: Working.Job = Working.begin("Reading the mechanism…")
@@ -574,9 +584,6 @@ func for_session(input: Dictionary) -> Variant:
 					return str(simulation.names[b]))))]
 	var targets: Dictionary = input.get("targets", {}) if input.get("targets") is Dictionary else {}
 	var lines := PackedStringArray()
-	var earlier: String = _session_recording_words()
-	if not earlier.is_empty():
-		lines.append(earlier)
 	lines.append("Driven by %s (%s); the base is %s. %s." % [simulation.named_with_parts(body, 2),
 		how, simulation.base_said, str(simulation.solved.get("said", ""))])
 	if simulation.turning.is_empty():
@@ -602,7 +609,7 @@ func for_session(input: Dictionary) -> Variant:
 				worst = float((cycle[report.worst_index] as Dictionary)["turns"])
 	if bool(input.get("record", false)):
 		lines.append(await _record_for_session(simulation, ref,
-			clampi(int(input.get("frames", 24)), 2, 240), float(input.get("turns", 1.0))))
+			clampi(int(input.get("frames", 24)), 2, 240), float(input.get("turns", 1.0)), work))
 	var text: String = "\n".join(lines)
 	if not StudioRender.possible():
 		return text + "\n(No picture: this app is running without a window.)"
@@ -645,58 +652,23 @@ static func _session_driver(simulation: Simulation, asked: String) -> Dictionary
 	return {"refusal": "\n".join(nothing)}
 
 
-## A recording for a session: waited for up to SESSION_WAIT_MS, then left
-## going in the app (the Working bar shows it, and its Cancel stops it), with
-## where its files will be; the next call says when it is done.
-func _record_for_session(simulation: Simulation, of: int, frames: int, turns_of: float) -> String:
+## A recording for a session, drawn to its end: the call is a job
+## (ToolJobs), so the session asks job how far it has got rather than
+## waiting on it, and the job's Cancel stops it as the window's does.
+func _record_for_session(simulation: Simulation, of: int, frames: int, turns_of: float,
+		work: Working.Job = null) -> String:
 	if not StudioRender.possible():
 		return "No recording: this app is running without a window (godot --path . -- --mcp)."
 	if _recording:
 		var going: Working.Job = Working.current()
 		return "Still recording the last one (%s); ask again when it is done." % (
 			going.line() if going != null else "")
-	var finished: Array = [false]
 	var span: float = simulation.turns_for(of) * maxf(turns_of, 0.01)
-	var going_on := func() -> void:
-		await record_of(simulation, of, frames, turns_of, "hero")
-		finished[0] = true
-	_session_recording = true
-	going_on.call()
-	var began: int = Time.get_ticks_msec()
-	while not finished[0] and Time.get_ticks_msec() - began < SESSION_WAIT_MS:
-		await get_tree().process_frame
 	var unit: String = simulation.unit_of(of) if of >= 0 else "turns of %s" % simulation.names.get(
 		simulation.driver, "the driver")
 	var what: String = "%s %s in %d frames" % [Simulation.figure(maxf(turns_of, 0.01)), unit, frames]
-	if not finished[0]:
-		var job: Working.Job = Working.current()
-		var output := RenderOutput.new()
-		output.folder = folder
-		var webp: String = output.where().path_join(RenderOutput.file_name(str(named.call()),
-			"_mechanism", "webp"))
-		return ("Recording %s: still drawing after %d s (%s), so it goes on in the app and is "
-			+ "written to %s, with an MP4 beside it. The next simulate_mechanism call says when "
-			+ "it is done.") % [what, SESSION_WAIT_MS / 1000, job.line() if job != null else "",
-			webp]
-	_session_recording = false
+	await record_of(simulation, of, frames, turns_of, "hero", work)
 	return _recorded_words(what, span)
-
-
-## A session's recording that went on past its call: done, or still going.
-var _session_recording: bool = false
-
-
-## What became of a session's recording left going, for the next call; "".
-func _session_recording_words() -> String:
-	if not _session_recording:
-		return ""
-	if _recording:
-		var job: Working.Job = Working.current()
-		return "The recording asked for earlier is still being drawn (%s)." % (
-			job.line() if job != null else "")
-	_session_recording = false
-	return "The recording asked for earlier is done: " + _recorded_words("it",
-		float(_last.get("turns", 0.0)))
 
 
 func _recorded_words(what: String, span: float) -> String:

@@ -122,6 +122,29 @@ def text_of(result: dict) -> str:
                    if block.get("type") == "text")
 
 
+def followed(relay: "Relay", result: dict) -> dict:
+    """A call that became a job (src/net/tool_jobs.gd), polled with job to its
+    end as a session does: the job's own answer, its "is done" line taken off.
+    Any call still going after 20 s becomes one, so on a loaded machine a
+    simulate_mechanism that weighs and draws a model is one too."""
+    started = re.match(r"Started job (\d+)", text_of(result))
+    if not started:
+        return result
+    waited = time.time()
+    while time.time() - waited < 1800:
+        answer = relay.call("tools/call", {"name": "job", "arguments": {
+            "id": int(started.group(1))}}).get("result", {})
+        if " is still going" in text_of(answer):
+            continue
+        blocks = list(answer.get("content", []))
+        if blocks and blocks[0].get("type") == "text":
+            rest = re.sub(r"^Job \d+ \([^)]*\) is done, after \d+ s:\n?", "",
+                          blocks[0].get("text", ""))
+            blocks = ([{"type": "text", "text": rest}] if rest else []) + blocks[1:]
+        return dict(answer, content=blocks)
+    return result
+
+
 def drive(relay: Relay) -> None:
     hello = relay.call("initialize", {
         "protocolVersion": "2025-06-18",
@@ -235,8 +258,8 @@ def drive(relay: Relay) -> None:
     # The window's own commands, which a session has as tools too
     # (src/net/app_tools.gd): read back off the model, not off the answer.
     def say(name: str, arguments: dict) -> str:
-        return text_of(relay.call("tools/call", {
-            "name": name, "arguments": arguments}).get("result", {}))
+        return text_of(followed(relay, relay.call("tools/call", {
+            "name": name, "arguments": arguments}).get("result", {})))
 
     said = say("set_floor", {"kind": "grid"})
     check("the floor is chosen from outside: %s" % said, "grid floor" in said)
@@ -366,8 +389,8 @@ def simulate(relay: Relay, say: Callable[[str, dict], str], models: Path) -> Non
             opened.append(target)
         said = say("open_model", {"name": opened[0].stem, "discard_changes": True})
         check("the two-planet orrery opens: %s" % said[:50], said.startswith("Opened"))
-        answer = relay.call("tools/call", {"name": "simulate_mechanism",
-                                           "arguments": {}}).get("result", {})
+        answer = followed(relay, relay.call("tools/call", {"name": "simulate_mechanism",
+                                                           "arguments": {}}).get("result", {}))
         said = text_of(answer)
         print("    %s" % said.replace("\n", " | ")[:900])
         check("simulate_mechanism turns it from the crank its name marks",
@@ -392,22 +415,28 @@ def simulate(relay: Relay, say: Callable[[str, dict], str], models: Path) -> Non
         check("a driver that is not there is a refusal that says what to give: %s" % said[:40],
               said.startswith("No part or sub-assembly"))
         if drawn:
-            said = say("simulate_mechanism", {"record": True, "frames": 8})
-            going = re.search(r"written to (\S+\.webp)", said)
-            if going:
-                # Past 20 s it goes on in the app, and the answer says where it
-                # will be: waited for as a session would, then asked again.
-                print("    %s" % said.splitlines()[-1][:300])
-                last = Path(going.group(1))
-                if shutil.which("ffmpeg"):
-                    last = last.with_suffix(".mp4")
-                waited = time.time()
-                while time.time() - waited < 900 and not last.exists():
-                    time.sleep(5)
-                time.sleep(5)
-                said = say("simulate_mechanism", {})
-                check("...and the next call says the recording is done",
-                      "The recording asked for earlier is done" in said)
+            # A recording is a job, as a render is: answered at once, then
+            # polled with job until it gives the answer.
+            began = time.time()
+            said = text_of(relay.call("tools/call", {"name": "simulate_mechanism", "arguments": {
+                "record": True, "frames": 8}}).get("result", {}))
+            took = time.time() - began
+            started = re.match(r"Started job (\d+)", said)
+            check("record=true is a job, answered in %.1f s: %s" % (took, said[:60]),
+                  bool(started) and took < 5.0)
+            job = int(started.group(1)) if started else 0
+            counted: list[int] = []
+            waited = time.time()
+            while job and time.time() - waited < 1800:
+                said = say("job", {"id": job})
+                if " is still going" not in said:
+                    break
+                frame = re.search(r"(\d+) of 8", said)
+                if frame:
+                    counted.append(int(frame.group(1)))
+            print("        frames seen while polling: %s" % counted)
+            check("...polled to its end, the frames counted on it: %s" % said.splitlines()[0][:80],
+                  " is done, after " in said and counted == sorted(counted))
             written = re.findall(r"wrote (\S+\.(?:webp|mp4))", said)
             check("record=true keeps it: %s" % (", ".join(written) or said[-120:]),
                   "Recorded 8 frames" in said and bool(written)

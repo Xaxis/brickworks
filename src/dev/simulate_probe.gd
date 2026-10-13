@@ -1,8 +1,9 @@
 ## Tools, Simulate mechanism in the real scene, as a person uses it (phase
 ## P1b of docs/MECHANISMS.md, with P1c's period readout).
 ##
-##   MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
-##     --script src/dev/simulate_probe.gd
+##   MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1600x900x24" godot --path . \
+##     --resolution 1600x900 --script src/dev/simulate_probe.gd
+##   ... and at 3200x1800, the same layout at 2x
 ##   ... -- --write    also writes the two fixtures to src/dev/fixtures/
 ##
 ## Two models, built here part by part on the baseplate (a session cannot
@@ -115,12 +116,30 @@ func _gear_train() -> void:
 
 	_check("Tools has Simulate mechanism", _shell.can("simulate")
 		and "simulate" in (Shell.MENUS[4][1] as Array))
+	# The parts column open, as a person building by hand has it.
+	var bin: SideDock = _main.get("_bin_dock")
+	bin.set_open(true, false)
+	await _frames(10)
 	_shell.run("simulate")
 	await _frames(1)
 	_check("...and the Working line is up while it reads and turns the mechanism (%s)" % (
 		Working.current().words if Working.current() != null else "nothing"), Working.is_busy())
 	await _settled()
 	_check("the panel is open with the mechanism read", _panel.visible and _panel.sim != null)
+	# Docked beside the model, not over it: the parts column folded for it,
+	# and every part of the train on screen inside the model's column.
+	var model_rect: Rect2 = _main.call("_model_rect")
+	var inside: bool = true
+	for id: int in [axle_a, axle_b, small, large, idle]:
+		var brick: BrickWorld.Brick = _world.get_brick(id)
+		var box: AABB = (brick.transform * _library.mesh_for(brick.part_id).bounds).abs()
+		for n: int in 8:
+			var corner: Vector3 = box.position + box.size * Vector3(n & 1, (n >> 1) & 1, (n >> 2) & 1)
+			inside = inside and model_rect.has_point(_camera.unproject_position(corner))
+	_check("the panel is docked beside the model (%s), the parts column folded for it, and the "
+		% str(_panel.get_global_rect()) + "whole train on screen in the model's column (%s)"
+		% str(model_rect), not _panel.get_global_rect().intersects(model_rect)
+		and not bin.is_open() and inside)
 	var sim: Simulation = _panel.sim
 	var a: int = sim.model.body_of(axle_a)
 	var b: int = sim.model.body_of(axle_b)
@@ -253,8 +272,9 @@ func _gear_train() -> void:
 			"gears_locked.ldr")))
 	_panel.close()
 	await _frames(3)
-	_check("closing puts every part's picture back and the tints away",
-		_world.drawn_ids().is_empty() and _world.tinted_ids().is_empty())
+	_check("closing puts every part's picture back and the tints away, and the parts column "
+		+ "as it was", _world.drawn_ids().is_empty() and _world.tinted_ids().is_empty()
+		and (_main.get("_bin_dock") as SideDock).is_open())
 
 
 # -- a two-planet orrery ---------------------------------------------------------------------
@@ -530,6 +550,13 @@ func _settled() -> void:
 		if not Working.is_busy() and _panel.sim != null and not _panel._reading \
 				and not _panel._driving:
 			break
+	# The panel's column opening (or closing) moves the lens over to the
+	# model's new middle: a click aimed before it arrives lands beside the part.
+	for _n: int in 600:
+		var aim: Vector2 = _camera.seen_rect().get_center() - _camera._room() * 0.5
+		if _camera._shift.distance_to(aim) < 0.5:
+			break
+		await process_frame
 	await _frames(5)
 
 

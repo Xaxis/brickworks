@@ -67,7 +67,8 @@ static func definition() -> Dictionary:
 		"name": TOOL,
 		"description": ("How a long piece of work is going: a call that answered with a "
 			+ "job number (a render, a turntable, a booklet, a Studio file, a Brick Art "
-			+ "picture, a brickify, or any call still going after 20 s). It waits up to "
+			+ "picture, a brickify, a mechanism's recording, or any call still going after "
+			+ "20 s). It waits up to "
 			+ "10 s for the work to end, then says how far it has got; once done it gives "
 			+ "the work's answer, picture and all, or why it stopped. cancel=true stops "
 			+ "it, as Cancel in the window does. id= the job's number; the latest when "
@@ -114,6 +115,12 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 			if not drawn or not bool(input.get("render", true)):
 				return {}
 			return {"words": "Rendering %s's animation…" % model, "cancel": true}
+		"simulate_mechanism":
+			# Reading and weighing it is a moment; a recording is a render of
+			# every frame, 79-88 s for 24 on this box under load.
+			if not built or not drawn or not bool(input.get("record", false)):
+				return {}
+			return {"words": "Recording %s's mechanism…" % model, "cancel": true}
 		"export_model":
 			if not built:
 				return {}
@@ -222,7 +229,8 @@ func _go(entry: Entry, run: Callable) -> void:
 func answer(input: Dictionary) -> Variant:
 	if _entries.is_empty():
 		return ("There are no jobs. A call that takes a long time (render_model, a booklet, "
-			+ "a Studio file, make_art, or anything still going after 20 s) answers with a "
+			+ "a Studio file, make_art, a recording, or anything still going after 20 s) "
+			+ "answers with a "
 			+ "job number to ask about here.")
 	var entry: Entry = _entries[-1]
 	if input.has("id"):

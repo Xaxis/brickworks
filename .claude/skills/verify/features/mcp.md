@@ -69,7 +69,8 @@ asking for an API key.
   and a turntable or a booklet of Orthanc takes longer, so the session was told
   it timed out while the app was still drawing. A call known to be long
   (`ToolJobs.long_call`: `render_model`, `animate_model`'s rendering,
-  `export_model`'s studio, picture and instructions, `make_art`) answers at
+  `simulate_mechanism`'s `record=true`, `export_model`'s studio, picture and
+  instructions, `make_art`) answers at
   once with "Started job N: …" and the work starts on the next frame; any
   other call still going after `after_s` (20 s) becomes a job where it stands
   (timed on Orthanc in software: the first `view_model` over 75 s,
@@ -79,7 +80,8 @@ asking for an API key.
   failed; `cancel=true` stops it where it can be stopped. The job **is** the
   `Working` job the person sees along the foot of the window — its words, its
   count, its Cancel — handed down as `work` to `RenderDialog.render_for`,
-  `PosePanel.render_animation` and main's `_export_booklet`, so the window's
+  `PosePanel.render_animation`, `SimulatePanel.record_of` and main's
+  `_export_booklet`, so the window's
   Cancel stops the session's render and the session's cancel takes the bar
   away. A job keeps the app's turn until it ends; every other call meanwhile is
   answered at once with "The app is busy with job N". A call that would be

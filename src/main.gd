@@ -128,6 +128,13 @@ var _render: RenderDialog
 var _pose: PosePanel
 ## Tools, Simulate mechanism… (src/ui/simulate_panel.gd).
 var _simulate: SimulatePanel
+## Its column, docked beside the model's: shown while it is open, so the
+## model's column (and the lens centred on it) is what is left of the
+## window. Over the model's left edge it covered half a gear train in a
+## window 1600 across, and a click meant for an axle landed on the panel.
+var _simulate_column: ScrollContainer
+## Whether opening Simulate folded the parts column, to put it back.
+var _simulate_folded_parts: bool = false
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -2073,6 +2080,16 @@ func _build_ui() -> void:
 	_bin_dock.setup(_stack, SideDock.Edge.LEFT, 336.0)
 	layout.add_child(_bin_dock)
 
+	# Tools, Simulate mechanism…'s column, beside the model's rather than
+	# over it, shown only while the panel is open (the panel goes in it
+	# below). It scrolls when the window is shorter than the panel.
+	_simulate_column = ScrollContainer.new()
+	_simulate_column.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_simulate_column.custom_minimum_size = Vector2(SIMULATE_WIDTH, 0)
+	_simulate_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_simulate_column.visible = false
+	layout.add_child(_simulate_column)
+
 	# The middle column is the viewport. Nothing is drawn into it, but the
 	# counters and the key list live at its top and bottom so they cannot
 	# end up underneath a panel.
@@ -2626,9 +2643,10 @@ func _build_ui() -> void:
 	_simulate.look = _render.look
 	_simulate.rig_lights = _render.rig_lights
 	_simulate.named = _bar.model_name
-	_over_model.add_child(_simulate)
-	_simulate.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_simulate.position = Vector2(12, 48)
+	_simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_simulate_column.add_child(_simulate)
+	_simulate.visibility_changed.connect(_simulate_shown)
 	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
@@ -3093,8 +3111,35 @@ func _model_rect() -> Rect2:
 	if _columns == "drawers":
 		var across: float = get_viewport().get_visible_rect().size.x
 		rect.position.x = SideDock.RAIL_WIDTH
-		rect.size.x = across - SideDock.RAIL_WIDTH * 2.0
+		# Simulate's column is not a drawer: it stays open beside the model.
+		if _simulate_column != null and _simulate_column.visible:
+			rect.position.x = maxf(rect.position.x, _simulate_column.get_global_rect().end.x)
+		rect.size.x = across - SideDock.RAIL_WIDTH - rect.position.x
 	return rect
+
+
+## How wide Simulate's column is: the panel's own width, its words wrapped
+## at 320, with its margins.
+const SIMULATE_WIDTH := 360.0
+
+
+## Simulate opened or closed: its column shown with it. Opening folds the
+## parts column, which building by hand needs and simulating does not, so
+## the model keeps its room; closing puts it back as it was.
+func _simulate_shown() -> void:
+	var open: bool = _simulate.visible
+	_simulate_column.visible = open
+	if open and _bin_dock.is_open() and _columns != "drawers":
+		_simulate_folded_parts = true
+		_arranging = true
+		_bin_dock.set_open(false, false)
+		_arranging = false
+	elif not open and _simulate_folded_parts:
+		_simulate_folded_parts = false
+		if not _bin_dock.is_open():
+			_arranging = true
+			_bin_dock.set_open(true, false)
+			_arranging = false
 
 
 ## Open and fold the columns as the window's share says, from what the
@@ -4584,7 +4629,7 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _notices]:
+	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _notices, _simulate_column]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
