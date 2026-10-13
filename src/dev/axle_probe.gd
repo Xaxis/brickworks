@@ -514,18 +514,20 @@ func _the_orrery_steps() -> void:
 	if _bricks_of("4716").is_empty() or _bricks_of("99010").is_empty():
 		_ok(false, "submit_design builds the worm and the turntable: %s" % said.left(300))
 		return
-	# The base rests on the plate, which Mechanism does not count as a join
-	# (only studs in sockets): it is said to stand still with the plate.
-	model = _mechanism_of(_bricks_of("3033")[0].id, [_bricks_of("99009")[0].id])
+	# The base rests on the plate's studs, which holds it with the plate
+	# (Mechanism._rest_on_studs): only the plate is the ground here.
+	model = _mechanism_of(_bricks_of("3033")[0].id)
+	_ok(model.body_of(_bricks_of("99009")[0].id) == model.ground,
+		"the turntable's base, resting on the plate's studs, stands still with it")
 	var worm: int = model.body_of(_bricks_of("4716")[0].id)
 	var top: int = model.body_of(_bricks_of("99010")[0].id)
 	solved = model.solve({worm: 1.0})
 	var turned: float = absf(model.spin(top, Vector3.UP))
 	# A tooth a turn is 1/28. The worm is 45 LDU off the axis in a real set,
-	# and the lattice is 2 LDU, so here it is 46, and Mechanism reads the
-	# ratio where the two touch: 1/28.8. Within the 1 LDU a mesh may be out.
-	_ok(bool(solved.get("ok", false)) and absf(turned * 28.0 - 1.0) < 0.03,
-		"a turn of the crank turns the turntable about a tooth, 1/28 (1/%.2f): %s"
+	# and the lattice is 2 LDU, so here it is 46; the ratio is the teeth's all
+	# the same (read at one gear's pitch circle it was 1/28.8).
+	_ok(bool(solved.get("ok", false)) and absf(turned * 28.0 - 1.0) < 1e-5,
+		"a turn of the crank turns the turntable a tooth, 1/28 (1/%.4f): %s"
 			% [1.0 / maxf(turned, 1e-9), solved.get("said", "")])
 
 

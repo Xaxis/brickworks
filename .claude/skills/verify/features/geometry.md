@@ -305,7 +305,16 @@ godot --headless --path . --script src/dev/mechanism_sets.gd        # 42055 and 
 ```
 
 The probe proves it when it ends on "mechanism: gear trains read off the parts …".
-The cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
+Its first cases are exact ratios where the 2 LDU lattice stands gears off their
+pitch: a worm 46 LDU off a 28 tooth turntable (for 45) turns it once in 28 to
+1e-6, not 28.8, and is said "46 LDU apart for 45, 1 LDU loose" (`off_spacing`,
+and in `Simulation.trouble_lines`); the turntable's base, resting on a 3033's
+studs with no socket recorded, is held with the plate (`_rest_on_studs`); an 8
+to a 40 and a 12 to a 36 three studs apart (-1/5, -1/3); a 20 to a 16 idler to a
+20 on two stud diagonals (44.72 for 45), the idler -1.25 and the output exactly 1,
+not said to be off. All but the 8/40 and 12/36 fail with `_gear_mesh`,
+`_ring_mesh` and `_worm_mesh` putting the point at one gear's pitch circle, as
+P1a did. The other cases are 8020's windmill from the OMR (9:1, crank to sails; skipped without
 `tools/omr.py fetch`), an 8 driving a 24, the same axles also joined 16 to 16
 (locked, both meshes named), a worm driving a 24 (1/24), a two-planet orrery
 (Mars's year 1.96 Earth years against 1.8808), a 12 carried round inside four
@@ -344,7 +353,8 @@ crank, the frame still; two 24s two studs apart refused with "60 LDU (3 studs)
 apart", an 8 and a 20 said not to mesh at 35 LDU; the orrery's stages (40 with 40
 five studs apart, a 24 to an 8 idler to a 24, a 20 driving a 12) with four meshes
 and rates -1, 3, -1 and 5/3; a worm on a crank's axle into a turntable whose top
-went on its base by the point attachment_points gave, 1/28 a turn; and by hand, a
+went on its base by the point attachment_points gave, 1/28 a turn exactly (46 LDU off
+for 45), the base held still by the plate's studs it rests on; and by hand, a
 24 has room two studs from an 8 and none at 36 LDU. Windowed (`MESA_VK_WSI_DEBUG=sw
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/axle_probe.gd`)
 the train is drawn turning, 16 frames read back off the renderer's copy with the
@@ -358,7 +368,12 @@ Build because each slider is an undo step). It reads the mechanism (Working: "Re
 the mechanism…", on a worker from 600 parts), drives the part a sub-assembly named
 Crank, Motor, Handle or Driver marks, else the one selected, else the one that turns
 most of the train; a click on an axle or a crank (the Select tool is put in hand)
-drives that. The base is the baseplate and what stands on its studs, plus any
+drives that. The panel is docked in its own column beside the model's (main's
+`_simulate_column`), the parts column folded while it is open and put back after,
+so the lens centres the model on what is left and no gear is under the panel (over
+the model's left edge, at 1600 x 900 at 2x it covered half the train and a click
+meant for the 8's axle selected the 24). The base is the baseplate and what stands
+on its studs (a socket or none: a turntable's base resting on a plate), plus any
 sub-assembly named Frame, Base, Stand or Chassis. Turning parts are tinted by speed
 (blue slow to orange fast), the driver white, the meshes that lock a train red, free
 bodies amber, floating gears violet, each named with part numbers in the panel. Play
@@ -373,12 +388,14 @@ and the centre of mass on the floor, and the turning part furthest past the base
 edge named. Record draws one turn of the reference (or the driver) through
 `StudioRender.animate` into `RenderOutput` (WebP, and on the desktop frames and an
 MP4). Over MCP `simulate_mechanism` (AppTools, `SimulatePanel.for_session`) says the
-same with a picture of the worst frame; record=true is waited for 20 s and then left
-going in the app (the mcpjobs job tool was not in staging).
+same with a picture of the worst frame; record=true is a job (`ToolJobs.long_call`),
+its frames counted on it, polled with `job` and stopped by its cancel.
 
 ```sh
-MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
-  --script src/dev/simulate_probe.gd           # add -- --write to write src/dev/fixtures/{orrery_two_planets,gears_locked}.ldr
+MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1600x900x24" godot --path . \
+  --resolution 1600x900 --script src/dev/simulate_probe.gd   # add -- --write to write src/dev/fixtures/{orrery_two_planets,gears_locked}.ldr
+MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 3200x1800x24" godot --path . \
+  --resolution 3200x1800 --script src/dev/simulate_probe.gd  # the same layout at 2x
 godot --path . --resolution 1400x900 -- --mcp=8795 &   # under xvfb; then
 tools/mcp_check.py --port=8795                 # simulate_mechanism as a session asks it
 ```
@@ -401,16 +418,20 @@ was built, the history as deep and `world.revision` unmoved throughout. Pictures
 `shots/simulate/1_train.png` … `4_orrery_worst.png`, `5_session_picture.png` (the
 hero view a session gets), the recordings in `shots/simulate/{train,orrery}/`.
 On 2026-10-13 under a load of 50 on this box a 24-frame Quick recording took 79-88
-s, so over MCP a recording is past the 20 s wait and goes on in the app; the next
-call says it is done (mcp_check checks that path). With the solver broken on
+s, so over MCP a recording is a job, and mcp_check polls it to its end. With the solver broken on
 purpose (the two sides of a mesh pulling the same way, `_row`) eight checks fail:
 both clicks' ratios, the readout, every played and every recorded frame of the
 train, Earth's and Mars's rates and the recorded year; put back, all pass.
 `mcp_check` opens the two fixtures (written by the probe's `--write`) as a session
 can, and checks the driver, Mars's year, the balance, the picture (or, headless,
 that it says why there is none), reference= and targets= (Earth 0.5102 Mars years
-against 0.5 asked for, +2.0%), a refusal, record=true, and the locked train's
-meshes and floating gear by number.
+against 0.5 asked for, +2.0%), a refusal, record=true (a job at once, polled to its
+end, the WebP and MP4 read off disk), and the locked train's meshes and floating gear
+by number. Any call that becomes a job (past 20 s: a windowed app weighing and drawing
+the orrery on a loaded box) is followed with `job` as a session would
+(`followed`). Run the windowed app with its own `XDG_CONFIG_HOME` whose
+`user-dirs.dirs` points Downloads at a scratch folder: a recording saves where
+Render does.
 
 Balance: `balance_probe` ends on "balance: the margins, the joints and the
 counterweight come out as worked by hand, the shipped models stand, and the

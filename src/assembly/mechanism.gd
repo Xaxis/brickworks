@@ -41,6 +41,15 @@ const TABLE := "res://assets/ldraw/gears.json"
 ## diagonal stand 44.72 for 45; a neighbour that is not a mesh is 1.2 or
 ## more out (docs/MECHANISMS.md, section 2).
 const MESH_SLACK := 1.0
+## A mesh further than this from its ideal spacing is said to be, LDU: real
+## sets stand their gears to 0.3 of it. It still meshes within MESH_SLACK,
+## and still turns at its teeth's ratio, but a real pair that far out is
+## loose or tight. The 2 LDU lattice stands a worm on a 28 tooth turntable
+## 46 apart for 45, and a 16 and a 20 on a stud's diagonal 44.72 for 45.
+const SPACING_SLACK := 0.3
+## What 32-bit transforms leave of a distance on the lattice: 46 - 45 can
+## come out 1.0000001.
+const FLOAT_SLACK := 0.001
 ## Parallel gears mesh when their teeth's planes are this close.
 const PLANE_SLACK := 6.0
 ## A shaft is on a hole's line to within this, LDU, and reaches it to this.
@@ -142,10 +151,29 @@ class Coupling extends RefCounted:
 	var along_other: Vector3
 	## A worm's thread's advance per radian, signed by its hand.
 	var lead: float = 0.0
+	## How far apart the two stand, LDU, and how far their pitch circles
+	## say they should: centres across the axes (a ring's inside, a worm's
+	## axis lines), or from where the axes cross at a right angle. Only
+	## whether they mesh depends on these; the ratio is the teeth's.
+	var apart: float = 0.0
+	var ideal: float = 0.0
 
 	func said() -> String:
 		return "%s %d-%d" % [how, one.teeth if one.kind != "worm" else 1,
 			other.teeth if other.kind != "worm" else 1]
+
+	## How far off its ideal spacing, LDU: more than it, loose; less, tight.
+	func off() -> float:
+		return apart - ideal
+
+	## "46 LDU apart for 45, 1 LDU loose" when it is off by more than
+	## SPACING_SLACK; "" when it stands as real sets stand theirs.
+	func off_said() -> String:
+		if how == "chain" or absf(off()) <= SPACING_SLACK:
+			return ""
+		var from: String = " from where their axes cross" if how == "right angle" else " apart"
+		return "%s LDU%s for %s, %s LDU %s" % [Mechanism._tidy(apart), from,
+			Mechanism._tidy(ideal), Mechanism._tidy(absf(off())), "loose" if off() > 0.0 else "tight"]
 
 
 ## A joint one body turns on in another: a line, and which body hangs from
@@ -355,6 +383,9 @@ func _build() -> void:
 			if (socket[3] as Vector3).dot(stud[2]) < 0.95:
 				continue
 			_join(stud[0], socket[0])
+	# And so is a part standing on studs that records no socket for them: a
+	# turntable's base on a plate, a beam's holes over a plate's studs.
+	_rest_on_studs(studs)
 	# A driving ring is keyed to the ridged part it slides on, and to the
 	# clutch gear it is pushed into.
 	_shift()
@@ -453,6 +484,61 @@ func _build() -> void:
 	_find_gears()
 	_find_couplings()
 	_rims()
+
+
+## Join each part to the studs it stands on: its underside at the studs'
+## foot, the studs under it and clear of its edges. A stud in a socket is
+## joined already; this is what stands on studs without one, so that a
+## turntable's base resting on a plate, a frame or the baseplate is held
+## still with it rather than read as floating. [param studs] are
+## [key, foot, way], as _build gathers them.
+func _rest_on_studs(studs: Array) -> void:
+	if studs.is_empty():
+		return
+	var at_foot: Dictionary = {}   ## bucket -> Array of [key, "stud", foot, way]
+	for stud: Array in studs:
+		_bucket_in(at_foot, [stud[0], "stud", stud[1], stud[2]])
+	for key: int in parts:
+		var piece: Piece = parts[key]
+		if piece.mesh == null:
+			continue
+		var box: AABB = (piece.at * piece.mesh.bounds).abs().grow(STUD_SLACK)
+		var lo: Vector3i = _bucket_of(box.position)
+		var hi: Vector3i = _bucket_of(box.end)
+		var inverse: Transform3D = piece.at.affine_inverse()
+		for x: int in range(lo.x, hi.x + 1):
+			for y: int in range(lo.y, hi.y + 1):
+				for z: int in range(lo.z, hi.z + 1):
+					for stud: Array in at_foot.get(Vector3i(x, y, z), []):
+						if stud[0] != key and body_of(stud[0]) != body_of(key) \
+								and _stands_on(piece.mesh.bounds, inverse, stud[2], stud[3]):
+							_join(key, stud[0])
+
+
+## How far inside a part's edge a stud must be to be under it, LDU: a
+## stud is 6 across its middle, and one at a 1 x 1's middle is 10 in.
+const STUD_INSET := 4.0
+
+
+## Whether a part whose box is [param box], placed by the inverse of
+## [param inverse], stands on a stud whose foot is at [param foot] pointing
+## [param way]: the face of its box that way at the foot, the stud within
+## the face.
+static func _stands_on(box: AABB, inverse: Transform3D, foot: Vector3, way: Vector3) -> bool:
+	var here: Vector3 = inverse * foot
+	var up: Vector3 = (inverse.basis * way).normalized()
+	for n: int in 3:
+		if absf(up[n]) < 0.99:
+			continue
+		var face: float = box.position[n] if up[n] > 0.0 else box.end[n]
+		if absf(here[n] - face) > STUD_SLACK:
+			return false
+		for m: int in 3:
+			if m != n and (here[m] < box.position[m] + STUD_INSET
+					or here[m] > box.end[m] - STUD_INSET):
+				return false
+		return true
+	return false
 
 
 ## Lines inside a part that a gear turns on, from the table's "stubs": the
@@ -668,13 +754,21 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 		if absf(along) > PLANE_SLACK:
 			return null
 		var across: Vector3 = gap - one.axis * along
-		if absf(across.length() - one.radius - other.radius) > MESH_SLACK:
+		var ideal: float = one.radius + other.radius
+		if absf(across.length() - ideal) > MESH_SLACK + FLOAT_SLACK:
 			return null
 		var mesh := Coupling.new()
 		mesh.one = one
 		mesh.other = other
 		mesh.how = "parallel"
-		mesh.point = one.centre + across.normalized() * one.radius
+		mesh.apart = across.length()
+		mesh.ideal = ideal
+		# Where the teeth meet: the line between the centres split as the
+		# radii are, so each gear's lever is its radius times one factor and
+		# the ratio is the teeth's however far off the spacing is. On a
+		# stud's diagonal a 16 and a 20 stand 44.72 for 45, and read at the
+		# 16's pitch circle the 20 turned 16/19.72 of it, not 16/20.
+		mesh.point = one.centre + across.normalized() * mesh.apart * one.radius / ideal
 		mesh.along = one.axis.cross(mesh.point - one.centre).normalized()
 		mesh.point_other = mesh.point
 		mesh.along_other = mesh.along
@@ -706,6 +800,15 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 	mesh.one = one
 	mesh.other = other
 	mesh.how = "right angle"
+	# The worse of the two gears' distances from the crossing. The point
+	# below is a pitch radius from each axis wherever they stand, so the
+	# ratio is the teeth's already.
+	if absf(d_one - other.radius - face_one) >= absf(d_other - one.radius - face_other):
+		mesh.apart = d_one
+		mesh.ideal = other.radius + face_one
+	else:
+		mesh.apart = d_other
+		mesh.ideal = one.radius + face_other
 	mesh.point = cross + toward_one * other.radius + toward_other * one.radius
 	mesh.along = one.axis.cross(mesh.point - one.centre).normalized()
 	mesh.point_other = mesh.point
@@ -724,7 +827,8 @@ func _ring_mesh(ring: Gear, gear: Gear) -> Coupling:
 	if absf(along) > PLANE_SLACK:
 		return null
 	var across: Vector3 = gap - ring.axis * along
-	if absf(across.length() - (ring.radius - gear.radius)) > MESH_SLACK:
+	var ideal: float = ring.radius - gear.radius
+	if absf(across.length() - ideal) > MESH_SLACK + FLOAT_SLACK:
 		return null
 	var toward: Vector3 = across.normalized()
 	if ring.arc_middle != Vector3.ZERO and toward.angle_to(ring.arc_middle) > ring.arc_half:
@@ -733,7 +837,11 @@ func _ring_mesh(ring: Gear, gear: Gear) -> Coupling:
 	mesh.one = ring
 	mesh.other = gear
 	mesh.how = "ring"
-	mesh.point = ring.centre + toward * ring.radius
+	mesh.apart = across.length()
+	mesh.ideal = ideal
+	# On the line from the ring's centre through the gear's, as far out as
+	# makes the levers R and r times one factor: the teeth's ratio.
+	mesh.point = ring.centre + toward * mesh.apart * ring.radius / ideal
 	mesh.along = ring.axis.cross(toward).normalized()
 	mesh.point_other = mesh.point
 	mesh.along_other = mesh.along
@@ -747,7 +855,8 @@ func _worm_mesh(worm: Gear, wheel: Gear) -> Coupling:
 	if absf(gap.dot(wheel.axis)) > 3.0:
 		return null
 	var normal: Vector3 = worm.axis.cross(wheel.axis).normalized()
-	if absf(absf(gap.dot(normal)) - worm.radius - wheel.radius) > MESH_SLACK:
+	var ideal: float = worm.radius + wheel.radius
+	if absf(absf(gap.dot(normal)) - ideal) > MESH_SLACK + FLOAT_SLACK:
 		return null
 	var t: float = _crossing(worm.centre, worm.axis, wheel.centre, wheel.axis)
 	if absf(t) > worm.length * 0.5 + REACH_SLACK:
@@ -758,7 +867,14 @@ func _worm_mesh(worm: Gear, wheel: Gear) -> Coupling:
 	mesh.one = worm
 	mesh.other = wheel
 	mesh.how = "worm"
-	mesh.point = on_worm + toward * worm.radius
+	mesh.apart = absf(gap.dot(normal))
+	mesh.ideal = ideal
+	# The wheel's lever is its radius and the thread's advance a tooth a
+	# turn, both times one factor, so a 28 turns once in 28 however far off
+	# the lattice stands it: 46 for 45 read at the worm's own radius was
+	# 1/28.8.
+	var scale: float = mesh.apart / ideal
+	mesh.point = on_worm + toward * worm.radius * scale
 	mesh.along = worm.axis
 	mesh.point_other = mesh.point
 	mesh.along_other = mesh.along
@@ -766,7 +882,7 @@ func _worm_mesh(worm: Gear, wheel: Gear) -> Coupling:
 	# thread runs is not yet read from the part; the ratio does not depend
 	# on it, the direction does.
 	mesh.lead = float(table().get("worm_lead", PI * 2.5)) / TAU \
-		* float(table().get("worm_hand", 1.0))
+		* float(table().get("worm_hand", 1.0)) * scale
 	return mesh
 
 
@@ -1365,6 +1481,23 @@ func couplings_said() -> String:
 	for coupling: Coupling in couplings:
 		said.append(coupling.said())
 	return ", ".join(said) if not said.is_empty() else "none"
+
+
+## The meshes standing further from their ideal spacing than real sets
+## stand theirs (SPACING_SLACK): they mesh, at their teeth's ratio, and a
+## person building them should know they are loose or tight.
+func off_spacing() -> Array[Coupling]:
+	var out: Array[Coupling] = []
+	for coupling: Coupling in couplings:
+		if not coupling.off_said().is_empty():
+			out.append(coupling)
+	return out
+
+
+## A length as a person reads it: 46, 44.72, 1.5.
+static func _tidy(value: float) -> String:
+	var said: String = "%.2f" % value
+	return said.rstrip("0").rstrip(".") if said.contains(".") else said
 
 
 ## The floating bodies with a gear in them: the drivetrain the reading

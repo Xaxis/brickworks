@@ -3347,7 +3347,7 @@
     "name": "animate_model"
   },
   {
-    "description": "Turn the model's gear train as Tools, Simulate mechanism does, without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves; past 20 s it goes on in the app.",
+    "description": "Turn the model's gear train as Tools, Simulate mechanism does, without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result).",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3636,7 +3636,7 @@
     "name": "make_unique"
   },
   {
-    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
+    "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, a mechanism's recording, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {

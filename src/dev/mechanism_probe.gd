@@ -6,6 +6,12 @@
 ##   godot --path . --resolution 1400x900 --script src/dev/mechanism_probe.gd
 ##
 ## What it turns:
+##   - exact ratios where the lattice stands gears off their pitch: a worm
+##     on a 28 tooth turntable 46 LDU off for 45 turns it 1/28, not 1/28.8,
+##     and says it is 1 LDU loose; the turntable's base, resting on a plate
+##     by its studs, is held with the plate; an 8 to a 40 and a 12 to a 36
+##     three studs apart; a 20 to a 16 idler to a 20 on two stud diagonals
+##     (44.72 for 45), the output turning exactly as the input;
 ##   - a real set, the windmill of LEGO® set 8020 (vendor/omr, tools/omr.py fetch): a
 ##     24 tooth gear drives an 8, whose axle's crown gear drives another 8
 ##     on the sails' axle, 9:1. Skipped, and said, without the file.
@@ -62,6 +68,7 @@ func _run() -> void:
 	_chain()
 	_gearbox()
 	_differential()
+	_exact()
 	print("")
 	if _failures == 0:
 		print("mechanism: gear trains read off the parts, every ratio its tooth counts', a "
@@ -513,6 +520,101 @@ func _differential() -> void:
 	_check("one side held, the other turns twice the casing (%.6f, %.6f)" % [model.spin(r, Z),
 		model.spin(c, Z)], held["ok"] and absf(model.spin(r, Z) - 2.0 * model.spin(c, Z)) < 1e-6
 		and absf(model.spin(r, Z)) > 0.1)
+
+
+## The ratio is the teeth's however far within the slack the lattice stands
+## two gears off their pitch, and a mesh further off than real sets stand
+## theirs is said to be. Read at one gear's pitch circle, as it was, the
+## worm turned the 28 once in 28.8 and the idler train's output 1.0257 for
+## 1; every check below but the 8 to the 40 and the 12 to the 36, which
+## stand at their pitch, fails on that.
+func _exact() -> void:
+	print("  exact ratios where the 2 LDU lattice stands gears off their pitch")
+	# A worm along x into the 28 teeth of a turntable whose base rests on a
+	# 6 x 10 plate's studs: 46 LDU off the turntable's axis, for the worm's
+	# 10 and the top's 35. Only the worm's bearings and the plate are held.
+	var kit := Kit.new(_library)
+	var plate: int = kit.add("3033", Transform3D.IDENTITY, 72)
+	var foot: float = _stud_foot("3033")
+	var base_mesh: Lbm.PartMesh = _library.mesh_for("99009")
+	var level: float = foot - base_mesh.bounds.position.y
+	var base: int = kit.add("99009", Transform3D(Basis.IDENTITY, Vector3(0, level, 0)), 0)
+	var top: int = kit.add("99010", Transform3D(Basis.IDENTITY, Vector3(0, level, 0)), 71)
+	kit.held = [plate]
+	kit.bearings([Vector3(-40, level, 46), Vector3(40, level, 46)], Vector3.RIGHT)
+	var axle: int = kit.add("3706", Transform3D(Basis.IDENTITY, Vector3(0, level, 46)))
+	var worm: int = kit.add("4716", Transform3D(_turn_z_to(Vector3.RIGHT), Vector3(0, level, 46)))
+	var model: Mechanism = kit.build()
+	print("    %s" % model.summary())
+	_check("the turntable's base, resting on the plate's studs, is held with it (%s)"
+		% model.parts_said(model.body_of(base)), model.body_of(base) == model.ground)
+	var result: Dictionary = model.solve({model.body_of(axle): 1.0})
+	var w: Mechanism.Gear = model.gear_at(worm)
+	var ratio: float = model.spin(model.body_of(top), Y) / model.spin(w.body, w.axis)
+	_check("a worm 46 LDU off a 28 tooth turntable turns it once in 28 turns, exactly "
+		+ "(1/%.6f; %s)" % [1.0 / absf(ratio) if ratio != 0.0 else INF, result["said"]],
+		result["ok"] and absf(absf(ratio) - 1.0 / 28.0) < 1e-6)
+	var off: Array[Mechanism.Coupling] = model.off_spacing()
+	_check("...and says it stands off its spacing (%s)" % (off[0].off_said() if not off.is_empty()
+		else "nothing said"), off.size() == 1 and off[0].off_said() == "46 LDU apart for 45, 1 LDU loose")
+	var bricks: Array = []
+	for entry: Dictionary in kit.list:
+		bricks.append(BrickWorld.Brick.new(int(entry["key"]), str(entry["part"]), 71, entry["at"]))
+	var held: Dictionary = {}
+	for key: int in kit.held:
+		held[key] = true
+	var read: Simulation = Simulation.read(bricks, _library, held)
+	read.drive(read.model.body_of(axle))
+	var trouble: String = "\n".join(read.trouble_lines())
+	_check("...in what Simulate and simulate_mechanism say: %s" % trouble.replace("\n", " | "),
+		trouble.contains("Off their spacing") and trouble.contains("46 LDU apart for 45, 1 LDU loose")
+		and not trouble.contains("Floating"))
+
+	# An 8 to a 40 and a 12 to a 36, each three studs apart: 1/5 and 1/3.
+	for pair: Array in [["3647", "3649", 1.0 / 5.0], ["69778", "32498", 1.0 / 3.0]]:
+		kit = Kit.new(_library)
+		kit.bearings([Vector3(0, 0, 0), Vector3(60, 0, 0)], Z)
+		var input: int = kit.add("3706", Transform3D(_turn_x_to(Z), Vector3(0, 0, 30)))
+		kit.add("3706", Transform3D(_turn_x_to(Z), Vector3(60, 0, 30)))
+		var small: int = kit.add(str(pair[0]), Transform3D(Basis.IDENTITY, Vector3(0, 0, 50)))
+		var large: int = kit.add(str(pair[1]), Transform3D(Basis.IDENTITY, Vector3(60, 0, 50)))
+		model = kit.build()
+		result = model.solve({model.body_of(input): 1.0})
+		ratio = model.spin(model.gear_at(large).body, Z) / model.spin(model.gear_at(small).body, Z)
+		_check("%s to %s three studs apart: %.6f, -%s" % [model.gear_at(small).teeth,
+			model.gear_at(large).teeth, ratio, Simulation.figure(float(pair[2]))],
+			result["ok"] and absf(ratio + float(pair[2])) < 1e-6 and model.off_spacing().is_empty())
+
+	# The idler train on two stud diagonals: a 20, a 16 two studs along and
+	# one up from it (44.72 for 45), a 20 two along and one down again.
+	kit = Kit.new(_library)
+	var spots: Array = [Vector3(0, 0, 0), Vector3(40, 20, 0), Vector3(80, 0, 0)]
+	kit.bearings(spots, Z)
+	var axles: Array[int] = []
+	for spot: Vector3 in spots:
+		axles.append(kit.add("3706", Transform3D(_turn_x_to(Z), spot + Vector3(0, 0, 30))))
+	var first: int = kit.add("69779", Transform3D(Basis.IDENTITY, spots[0] + Vector3(0, 0, 50)))
+	var idler: int = kit.add("4019", Transform3D(Basis.IDENTITY, spots[1] + Vector3(0, 0, 50)))
+	var last: int = kit.add("69779", Transform3D(Basis.IDENTITY, spots[2] + Vector3(0, 0, 50)))
+	model = kit.build()
+	result = model.solve({model.body_of(axles[0]): 1.0})
+	var turn: float = model.spin(model.gear_at(first).body, Z)
+	var through: float = model.spin(model.gear_at(idler).body, Z) / turn
+	ratio = model.spin(model.gear_at(last).body, Z) / turn
+	_check("a 20 to a 16 idler to a 20 on two stud diagonals: the idler %.6f (-20/16), the "
+		% through + "output %.6f, as the input (%s)" % [ratio, model.couplings_said()],
+		result["ok"] and model.couplings.size() == 2 and absf(through + 1.25) < 1e-6
+		and absf(ratio - 1.0) < 1e-6)
+	_check("...and a stud's diagonal, 0.28 LDU short, is not said to be off its spacing",
+		model.off_spacing().is_empty())
+
+
+## Where a part's studs stand on it, along its up: their foot.
+func _stud_foot(part_id: String) -> float:
+	for connector: Lbm.Connector in _library.mesh_for(part_id).connectors:
+		if connector.kind == "stud" and connector.gender == "male":
+			return connector.position.y
+	return _library.mesh_for(part_id).bounds.end.y
 
 
 # -- drawing it ---------------------------------------------------------------

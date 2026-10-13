@@ -12,7 +12,8 @@
 ## (BrickWorld.set_drawn), and the renderer a copy of its own.
 ##
 ## What turns is read against the base: the baseplate, when there is one,
-## and everything standing on its studs, else the largest rigid part.
+## and everything standing on its studs (in a socket or not: a turntable's
+## base resting on a plate is held with it), else the largest rigid part.
 ## Periods are counted in that frame, the sidereal one: a planet's arm goes
 ## round once against the base in that many turns of the reference.
 class_name Simulation
@@ -546,6 +547,15 @@ func trouble_lines() -> PackedStringArray:
 			% [others, "" if others == 1 else "s"])
 	for one: Array in model.unseated.slice(0, 3):
 		lines.append("#%d %s" % [int(one[0]), str(one[1])])
+	var off: Array[Mechanism.Coupling] = model.off_spacing()
+	if not off.is_empty():
+		var said := PackedStringArray()
+		for coupling: Mechanism.Coupling in off.slice(0, 6):
+			said.append("#%d %s with #%d %s, %s" % [coupling.one.key, _part(coupling.one.key),
+				coupling.other.key, _part(coupling.other.key), coupling.off_said()])
+		lines.append(("Off their spacing (they mesh, and turn at their teeth's ratio, but real "
+			+ "ones that far out run loose or bind): %s%s.") % ["; ".join(said),
+				"; and %d more" % (off.size() - 6) if off.size() > 6 else ""])
 	return lines
 
 

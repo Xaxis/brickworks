@@ -234,6 +234,10 @@ static func meshing(entries: Array) -> Dictionary:
 		var one: Variant = gears[coupling.one.key - 1]["was"]
 		var other: Variant = gears[coupling.other.key - 1]["was"]
 		var said: String = "%s with %s" % [_teeth(coupling.one), _teeth(coupling.other)]
+		# Meshing, at the teeth's ratio, but further out than real sets
+		# stand theirs: said, so a builder knows it runs loose or tight.
+		if not coupling.off_said().is_empty():
+			said += " (%s)" % coupling.off_said()
 		for pair: Array in [[one, other], [other, one]]:
 			if not out.has(pair[0]):
 				out[pair[0]] = {}
