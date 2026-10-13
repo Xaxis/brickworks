@@ -1335,6 +1335,13 @@
       "entry": "src/ai/sketches.gd",
       "reach": "godot --headless --path . --script src/dev/sketch_probe.gd  (or the assistant panel: Sketch first beside Build it, then a card's Design this one; over MCP submit_design with sketch: true, three times, then choose_sketch)",
       "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "3d model export",
+      "entry": "src/parts/mesh_export.gd",
+      "reach": "godot --headless --path . --script src/dev/mesh_export_probe.gd   (by hand: File, Export, then 3D model (.glb, .gltf, .obj, .stl)…)",
+      "area": "model-io"
     }
   ]
 }

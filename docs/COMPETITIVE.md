@@ -118,7 +118,8 @@ built in other worktrees and are not on `next3`.
    - Studio writes `.dae` and POV-Ray [st-export]. Mecabricks writes OBJ,
      DAE and STL [mb-farm]. LeoCAD writes OBJ, 3DS and COLLADA [lc-history],
      and LDCad writes glTF2 [ld-17b1].
-   - Brickworks writes no mesh at all.
+   - Brickworks writes GLB, glTF, OBJ with its MTL, and STL at real size,
+     every part a node in its sub-model ([model-io]).
 8. **Flexible parts, at the top end.** LDCad's path and spring system shapes
    rubber bands round circles and builds shock absorbers. It maps a path's
    length to a real part number [ld-meta]. Brickworks lays seven kinds
@@ -521,6 +522,20 @@ This also closes the rendering gap by way of Blender instead of in-house.
 Brickworks reads meshes in for brickify (`src/parts/mesh_file.gd` uses
 `GLTFDocument`) but writes none out. For Cycles-quality pictures, a 3D
 printer or AR, the answer is a file.
+
+**Done, 2026-10-13** (`src/parts/mesh_export.gd`; the recipe is "3d model
+export" in `.claude/skills/verify/features/model-io.md`). As specified,
+with what building it showed: glTF is written by hand, not by
+`GLTFDocument.append_from_scene`, which on 4.7.2 writes a mesh for every
+`MeshInstance3D`, drops a `MultiMesh`'s colours and runs in one call. Each
+shape is written once and every part is a node pointing at it, which is
+glTF's own instancing, so Orthanc writes whole: 4.7 MB in 0.4 s, no frame
+held past 63 ms. OBJ and STL cannot share a shape, so they are capped, OBJ
+at 1,000,000 triangles and STL at 3,000,000 (Orthanc's 2,575,061 fit; its
+STL is 123 MB in 2.5 s). STL is binary, not text: a fifth of the size. It
+is one closed volume per part wherever the part's own LDraw shape is
+closed; 7 of the car's 61 parts have gaps in LDraw's geometry (4600 is open
+underneath by 0.8 mm), written as LDraw draws them, for a slicer to mend.
 
 **Spec.**
 - *File → Export → 3D model…* builds an export-only scene from the world:

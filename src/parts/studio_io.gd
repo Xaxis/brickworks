@@ -83,7 +83,8 @@ static func pack(text: String, thumbnail: PackedByteArray, parts: int) -> Packed
 	return zip(members)
 
 
-## A zip of [param members], [[name, bytes], …], each deflated.
+## A zip of [param members], [[name, bytes], …], each deflated; a member
+## given as [name, bytes, deflated, crc] is deflated already.
 ##
 ## Godot's ZIPPacker writes only to a path, and in a browser the bytes are
 ## wanted, not a file. Deflate comes from Godot's gzip, which is raw
@@ -102,7 +103,12 @@ static func zip(members: Array) -> PackedByteArray:
 		var method: int = 0
 		var packed: PackedByteArray = data
 		var crc: int = 0
-		if not data.is_empty():
+		if member.size() >= 4:
+			# Deflated already, a slice at a time (MeshExport.zip).
+			packed = member[2]
+			crc = member[3]
+			method = 8
+		elif not data.is_empty():
 			var gz: PackedByteArray = data.compress(FileAccess.COMPRESSION_GZIP)
 			crc = gz.decode_u32(gz.size() - 8)
 			method = 8

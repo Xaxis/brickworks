@@ -36,7 +36,7 @@ var assistant: Assistant
 const COMMANDS: Dictionary = {
 	"new": "clear_model", "clear": "clear_model", "open": "open_model",
 	"save": "save_model", "save_as": "save_model",
-	"export_ldraw": "export_model", "export_io": "export_model",
+	"export_ldraw": "export_model", "export_io": "export_model", "export_3d": "export_model",
 	"export_picture": "export_model", "export_bricklink": "export_model",
 	"export_rebrickable": "export_model", "instructions": "export_model",
 	"render": "render_model",
@@ -131,9 +131,10 @@ which="need" what the person's collection is short of; "buildable" which \
 saved models it can build.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, saved where Render saves.
- - export_model: the model as LDraw, a BrickLink Studio .io, a picture, \
-a BrickLink wanted list, a Rebrickable parts list, or the building \
-instructions as a booklet, written where Export writes."""
+ - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
+(GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
+parts list, or the building instructions as a booklet, written where \
+Export writes."""
 
 
 func definitions() -> Array:
@@ -289,13 +290,16 @@ func definitions() -> Array:
 			"description": ("Write the model out as File, Export does, where Export writes "
 				+ "(the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd "
 				+ "with its sub-models, with its build steps), studio (a BrickLink Studio .io), "
-				+ "picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), "
-				+ "or instructions (the building instructions as a booklet to print, which "
-				+ "takes a while on a big model)."),
+				+ "a 3D file at real size — glb (one file: Blender, three.js, AR; any size of "
+				+ "model), gltf (the same as text), obj (with an .mtl of its colours) or stl "
+				+ "(one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are "
+				+ "capped — picture (.png), bricklink (a wanted list), rebrickable (a parts "
+				+ "list .csv), or instructions (the building instructions as a booklet to "
+				+ "print, which takes a while on a big model)."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
-				"format": {"type": "string", "enum": ["ldraw", "studio", "picture", "bricklink",
-					"rebrickable", "instructions"]},
+				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
+					"stl", "picture", "bricklink", "rebrickable", "instructions"]},
 			}},
 		},
 	]
@@ -895,6 +899,8 @@ func _export(input: Dictionary) -> String:
 			said = await bar.export_now(exports.folder)
 		"studio":
 			said = await exports.studio_io()
+		"glb", "gltf", "obj", "stl":
+			said = await exports.model_3d(str(input["format"]))
 		"picture":
 			if DisplayServer.get_name() == "headless":
 				return "A picture needs something to draw with, and this app is running without a window."
@@ -913,5 +919,5 @@ func _export(input: Dictionary) -> String:
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"))
 		_:
-			return "format is ldraw, studio, picture, bricklink, rebrickable or instructions."
+			return "format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable or instructions."
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."

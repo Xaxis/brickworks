@@ -96,7 +96,7 @@ const SUBMENU_ID := 10000
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
-	"export": ["export_ldraw", "export_io", "export_picture", "export_bricklink",
+	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_connected",
 		"select_submodel", "select_inverse"],
@@ -543,6 +543,10 @@ func _define() -> void:
 		func() -> void: bar._on_export_chosen(0), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
 		func() -> void: bar._on_export_chosen(4), something)
+	# src/ui/exports.gd, src/parts/mesh_export.gd.
+	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
+		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
+		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
 		func() -> void: bar._on_export_chosen(1), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
