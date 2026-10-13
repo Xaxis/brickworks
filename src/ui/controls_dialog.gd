@@ -1,4 +1,5 @@
-## What everything does, and the two things about it you can change.
+## What everything does, and the things about it you can change: the
+## wheel, the navigation preset and the floor new models start on.
 ##
 ## The strip along the bottom is a reminder, not a reference: it wraps,
 ## it drops the tail when the window is narrow, and it is deliberately
@@ -80,6 +81,7 @@ func _build() -> void:
 		ViewPrefs.invert_zoom,
 		func(on: bool) -> void: ViewPrefs.invert_zoom = on)
 	_presets(column)
+	_new_floor(column)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -238,6 +240,32 @@ func _presets(column: VBoxContainer) -> void:
 		changed.emit())
 
 
+## What a new model stands on (ModelFloor.preferred): New, and a file
+## opened that does not say. Each model's own floor is View, Floor.
+var new_floor: FloorPicker
+
+
+func _new_floor(column: VBoxContainer) -> void:
+	var words := Label.new()
+	words.text = "New models start on"
+	words.add_theme_font_size_override("font_size", 12)
+	column.add_child(words)
+	new_floor = FloorPicker.new()
+	new_floor.with_part = false
+	column.add_child(new_floor)
+	new_floor.show_floor(ModelFloor.preferred(), false)
+	new_floor.picked.connect(func(chosen: ModelFloor) -> void:
+		ModelFloor.prefer(chosen)
+		changed.emit())
+	var note := Label.new()
+	note.text = ("A baseplate, a grid on the ground like Studio's, or nothing, as a car "
+		+ "stands on a table. Each model keeps its own: View, Floor.")
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(note)
+
+
 var _version: Label
 
 
@@ -268,4 +296,6 @@ func _read_version() -> void:
 
 func open() -> void:
 	_fill()
+	if new_floor != null:
+		new_floor.show_floor(ModelFloor.preferred(), false)
 	visible = true

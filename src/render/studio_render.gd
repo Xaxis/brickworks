@@ -102,7 +102,8 @@ const GI_KEY := 1.4
 ## cast shadows, which is what puts occlusion under a ledge.
 const SKY_SHARE := 0.6
 
-## The model, in the world being rendered, and what of it is not the model.
+## The model, in the world being rendered, and what of it is its floor's
+## baseplate: staged with it, and staged again when the floor changes.
 var library: PartLibrary
 var scenery: Dictionary = {}
 ## The window's camera and look, for the view being looked at and the
@@ -138,6 +139,10 @@ var _floor_camera: Camera3D
 
 var _staged: Array = []
 var _bounds := AABB()
+## The model's own bounds, without the baseplate it stands on: what a shot
+## is aimed at and turns about. _bounds, with the plate, is what the sweep
+## and the contact shadow are laid under.
+var _framed := AABB()
 ## HDRI key -> StudioPanorama.
 var _panoramas: Dictionary = {}
 
@@ -744,7 +749,10 @@ func _stage_model(world: BrickWorld) -> bool:
 			if world.revision != wanted[2]:
 				_stage.release_drawing()
 				return await _stage_model(world)
-		if scenery.has(brick.id) or brick.hidden:
+		# The baseplate the model stands on is staged with it: a render is a
+		# photograph of the model on its floor (ModelFloor), and a floor
+		# with no plate has no scenery to stage.
+		if brick.hidden:
 			continue
 		if _step.is_empty():
 			_doing("staging")
@@ -753,6 +761,20 @@ func _stage_model(world: BrickWorld) -> bool:
 	# The batches are written on the frame after.
 	await get_tree().process_frame
 	_bounds = _stage.model_bounds()
+	# Framed on the model, not its baseplate: the plate is the ground it
+	# stands on, running out under the sweep, and a small model on a big
+	# plate is still the subject of the picture.
+	_framed = AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in all:
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if library != null else null
+		if scenery.has(brick.id) or brick.hidden or mesh == null:
+			continue
+		var box: AABB = brick.transform * mesh.bounds
+		_framed = box if first else _framed.merge(box)
+		first = false
+	if first:
+		_framed = _bounds
 	_staged = wanted
 	return true
 
@@ -779,11 +801,12 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		return false
 	if _reach.size.length() > 0.0:
 		_bounds = _bounds.merge(_reach)
+		_framed = _framed.merge(_reach)
 	var plan: Plan = plan_for(settings)
-	var shot: Shot = aim(settings, _bounds, turning)
+	var shot: Shot = aim(settings, _framed, turning)
 	last_shot = shot
 	last_samples = plan.samples
-	_pivot.position = Vector3(_bounds.get_center().x, 0.0, _bounds.get_center().z)
+	_pivot.position = Vector3(_framed.get_center().x, 0.0, _framed.get_center().z)
 	_stage.position = -_pivot.position
 	_pivot.rotation = Vector3.ZERO
 	# What the window's own light makes of this model from here: the

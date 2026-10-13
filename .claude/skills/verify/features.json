@@ -950,6 +950,14 @@
       "tests": []
     },
     {
+      "id": "ui:floor",
+      "kind": "ui",
+      "entry": "src/render/floor_layer.gd",
+      "reach": "godot --path .  (View, Floor; the properties with nothing selected; Settings, New models start on)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:hide and show only",
       "kind": "ui",
       "entry": "src/ui/edit_verbs.gd",

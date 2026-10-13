@@ -1295,6 +1295,19 @@
         "description": {
           "type": "string"
         },
+        "floor": {
+          "description": "what it stands on. \"none\" for anything that is picked up and played with or stood on a shelf \u2014 a vehicle, a ship, a figure, a creature, a spacecraft: a set like that has no plate in the box. \"baseplate\" for a scene, a diorama, a building on its lot, a landscape: a real baseplate, sized to it, goes in the box as the first part of the build \u2014 build on it, never lay ground plates of your own under the model as well. \"grid\" for neither. Say in the description which you chose and why; the person can change it.",
+          "enum": [
+            "baseplate",
+            "grid",
+            "none"
+          ],
+          "type": "string"
+        },
+        "floor_colour": {
+          "description": "a baseplate's colour, from the colours baseplates come in: Green, Bright Green, Dark Green, Tan, Dark Tan, Light Bluish Grey, Dark Bluish Grey, Sand Green, Blue, White, Black. Grass is green, a road or a yard grey, sand or a desert tan, water blue, snow white.",
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },

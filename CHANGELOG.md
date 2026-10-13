@@ -15,6 +15,13 @@ whole cycle.
 
 ### Added
 
+- A floor of your choosing under every model (View, Floor; the properties
+  with nothing selected): a baseplate 16, 32 or 48 studs square or any
+  size in eights, in the colours baseplates come in; a grid floor with no
+  plate, as Studio has; or nothing, as a car stands on a table. Saved
+  with the model. The baseplate can be made part of the model, counted
+  and in the booklet's first step. Settings says what new models start
+  on, and the assistant chooses one for what it builds.
 - Building instructions laid out as a LEGO booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of

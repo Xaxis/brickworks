@@ -43,6 +43,18 @@ fixing what it got wrong.
   a name somebody typed or saved. It kept the car's name, and Save saved the
   tower as "Example Car for Demonstration of LDRAW Library". A design started
   on a bare, Untitled baseplate is named the same way. `example_name_probe`.
+- `the floor a design stands on`: `submit_design` takes `floor` ("none",
+  "baseplate", "grid") and `floor_colour` (a colour baseplates come in, by
+  name); the guidance says a vehicle, a ship, a figure or a creature has no
+  plate in its box and a scene, a diorama or a building on its lot comes on
+  one. `Assistant.floor_chosen` → `Main._on_floor_chosen`: none is View,
+  Floor, No floor; a baseplate is the least of 16, 32 and 48 square that
+  holds the model with a stud to spare (in eights past that), in that colour,
+  made part of the build — when the app's own design finishes
+  (`_plate_after_design`, so the pictures it judges by are of the model), at
+  once for a session over MCP. A line in the chat says which, once; the
+  person changes it with View, Floor, and one undo takes it back. In
+  `floor_probe` (the designer chooses), through `use_tool`, spending nothing.
 - `errors in plain words`: `Assistant._what_went_wrong` leads, with Anthropic's
   own words after it only where they add something; they used to replace it, so
   a mistyped key read "invalid x-api-key". A refused key (`KEY_REFUSED`) is

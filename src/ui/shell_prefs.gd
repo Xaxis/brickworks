@@ -1,7 +1,8 @@
 ## How the window was laid out last time: which panels were open, how
 ## tall the model tree and the properties were in their column, which
 ## column a narrow window showed, whether the key strip and the grid were
-## showing, the snap and the turn step.
+## showing, the snap and the turn step — and the floor a new model starts
+## on, which is a preference of the person's rather than of any model.
 ##
 ## Kept on this machine, like ViewPrefs, and for the same reason: a layout
 ## is a fact about the screen in front of you. A probe neither reads nor
@@ -34,6 +35,10 @@ const DEFAULTS: Dictionary = {
 	"grid": false,
 	"snap": "stud",
 	"turn_step": 90.0,
+	# What a new model stands on (ModelFloor, Settings): the words after
+	# FLOOR in its meta line. The dark green 32 x 32 every model had
+	# before there was a choice.
+	"new_floor": "BASEPLATE 32 32 288",
 }
 
 static var _values: Dictionary = {}

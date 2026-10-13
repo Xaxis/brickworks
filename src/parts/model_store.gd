@@ -84,6 +84,12 @@ var builder: Builder
 ## property of the workspace rather than of the thing built on it.
 var scenery: Dictionary = {}
 
+## What the model stands on: a baseplate of a size and colour, a grid
+## floor, or nothing (ModelFloor). Saved with it as a meta line and read
+## back; a file that says nothing gets the person's choice for new models.
+## Laid by FloorLayer, which is the only thing that changes it.
+var model_floor: ModelFloor = ModelFloor.preferred()
+
 var _dirty_at: int = 0
 var _pending: bool = false
 
@@ -438,6 +444,8 @@ func open_text(text: String, name: String = "model") -> Dictionary:
 	whole = missing.is_empty() and awaited.is_empty()
 	title = _title_of(model, name)
 	share_id = share_in(text)
+	var said: ModelFloor = ModelFloor.read(text)
+	model_floor = said if said != null else ModelFloor.preferred()
 	example = false
 	loaded.emit(title, placed)
 	return {"placed": placed, "missing": missing.size(),
@@ -527,7 +535,15 @@ func lift_for(placements: Array) -> Vector3:
 		var info: PartLibrary.PartInfo = library.parts.get(placement.part_id)
 		if info == null:
 			continue
-		lowest = minf(lowest, (placement.transform * info.bounds).position.y)
+		var box: AABB = placement.transform * info.bounds
+		# A baseplate stands with its top on the ground, as the one laid
+		# under every model does, not its underside: a model saved with its
+		# own plate came back four LDU higher than it went, every part on
+		# the plate off the lattice the ground is laid on.
+		if info.category == "Baseplate" and FloorLayer.is_upright(placement.transform):
+			lowest = minf(lowest, box.end.y - FloorLayer.STUD_HIGH)
+		else:
+			lowest = minf(lowest, box.position.y)
 	if lowest == INF or lowest >= -0.001:
 		return Vector3.ZERO
 	return Vector3(0.0, ceilf(-lowest / BrickLattice.CELL - 0.001) * BrickLattice.CELL, 0.0)
@@ -610,9 +626,12 @@ func to_text(title: String = "Model", with_steps: bool = false) -> String:
 	tree.library = library
 	tree.scenery = scenery
 	var instances: Dictionary = tree.file_frames(figure_frames())
-	if not instances.is_empty():
-		return LdrModel.write_tree(placements, title, "Brickworks", instances, embedded)
-	return LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
+	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded) \
+		if not instances.is_empty() \
+		else LdrModel.write_ldr(placements, title, "Brickworks", figure_frames(), embedded)
+	# What it stands on goes with it, everywhere it goes: the autosave, a
+	# save, an export, a shared link. Another program reads past the line.
+	return model_floor.written_into(text) if model_floor != null else text
 
 
 ## Each minifigure in the model, by its group, and the frame it stands

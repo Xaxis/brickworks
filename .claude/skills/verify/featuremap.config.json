@@ -771,6 +771,13 @@
     },
     {
       "kind": "ui",
+      "label": "floor",
+      "entry": "src/render/floor_layer.gd",
+      "reach": "godot --path .  (View, Floor; the properties with nothing selected; Settings, New models start on)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "tour",
       "entry": "src/ui/tour.gd",
       "reach": "godot --path .  (Help, Take the tour)",

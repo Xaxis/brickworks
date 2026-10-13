@@ -65,6 +65,14 @@ signal selection_changed(count: int)
 var _history: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 
+## The bricks that are scenery (ModelStore.scenery), for the steps that
+## move a baseplate into the model and back (FloorLayer.adopt).
+var scenery: Dictionary = {}
+## Puts a floor down (FloorLayer.put) and returns the one it replaced, for
+## the step that changes what the model stands on. Unset, the step does
+## nothing.
+var floor_hook: Callable = Callable()
+
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
 signal preview_changed(part_id: String, valid: bool)
@@ -340,6 +348,27 @@ func _apply(step: Dictionary) -> Dictionary:
 		lattice.occupy_boxes(moving,
 			boxes_for(library.mesh_for(was.part_id), to))
 		return {"undo": "move", "brick": moving, "transform": previous}
+
+	# What the model stands on: put the floor the step names down, and the
+	# step that puts back the one it replaced is the reverse.
+	if step.get("undo", "") == "floor":
+		var was: Variant = floor_hook.call(step["floor"]) if floor_hook.is_valid() \
+			else step["floor"]
+		return {"undo": "floor", "floor": was}
+
+	# A baseplate made part of the model or scenery again: the brick stays
+	# where it is, and only which of the two it belongs to changes.
+	if step.get("undo", "") == "scenery":
+		var plate_id: int = _live(int(step["brick"]))
+		if world.get_brick(plate_id) == null:
+			return step
+		var was_scenery: bool = scenery.has(plate_id)
+		if bool(step["scenery"]):
+			scenery[plate_id] = true
+			selection.erase(plate_id)
+		else:
+			scenery.erase(plate_id)
+		return {"undo": "scenery", "brick": plate_id, "scenery": was_scenery}
 
 	if step.get("undo", "") == "regroup":
 		var named: BrickWorld.Brick = world.get_brick(_live(int(step["brick"])))
@@ -997,6 +1026,13 @@ func extend_last(steps: Array) -> void:
 		last = {"undo": "group", "steps": [last], "words": words}
 		_history[_history.size() - 1] = last
 	(last["steps"] as Array).append_array(steps)
+
+
+## A brick laid again as another number is the same brick to the history:
+## a baseplate taken up and put back by a change of floor (FloorLayer).
+func renumber(old_id: int, new_id: int) -> void:
+	if old_id != new_id:
+		_renumbered[old_id] = new_id
 
 
 ## Keep [param steps] as one step of the history, called [param words]:

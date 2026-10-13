@@ -341,6 +341,11 @@ signal finished(ok: bool, summary: String)
 signal built(brick_count: int)
 ## The design standing calls itself this: the name submit_design gave it.
 signal titled(name: String)
+## What the design said it stands on (submit_design's floor): {"kind":
+## ModelFloor's, "colour": an LDraw code or -1, "part": whether a baseplate
+## goes in the box as part of the build}. Main lays it; the person can
+## change it after, in View, Floor.
+signal floor_chosen(choice: Dictionary)
 ## A model the assistant is still working on, put on screen so the wait
 ## is not a spinner. Not the same as [signal built] — nothing about a
 ## sketch is finished, and whoever is watching should not be shown an
@@ -594,6 +599,8 @@ class Model extends RefCounted:
 	## each {name, where}, where being a box in studs and plates as
 	## look_at_model takes one. Detailed one at a time once it holds.
 	var assemblies: Array[Dictionary] = []
+	## What it stands on, as floor_chosen says it; empty when not said.
+	var stands_on: Dictionary = {}
 
 	func section_for(placement: Placement) -> Section:
 		return sections.get(placement.section)
@@ -4452,10 +4459,26 @@ static func _height_plates(info: PartLibrary.PartInfo) -> int:
 	return maxi(1, int(round(body / PLATE)))
 
 
+## What submit_design said the model stands on, read at the edge: a kind
+## ModelFloor has, and for a baseplate its colour by name and that it goes
+## in the box. {} for nothing said or nothing sensible.
+func _floor_of(args: Dictionary) -> Dictionary:
+	var said: String = str(args.get("floor", "")).strip_edges().to_lower()
+	if not said in ModelFloor.KINDS:
+		return {}
+	var colour: int = -1
+	var named: String = str(args.get("floor_colour", "")).strip_edges().to_lower()
+	for pair: Array in ModelFloor.COLOURS:
+		if str(pair[1]).to_lower() == named or str(pair[1]).to_lower().replace("grey", "gray") == named:
+			colour = int(pair[0])
+	return {"kind": said, "colour": colour, "part": said == ModelFloor.BASEPLATE}
+
+
 func _read_model(args: Dictionary) -> Model:
 	var model := Model.new()
 	model.name = str(args.get("name", "Model"))
 	model.description = str(args.get("description", ""))
+	model.stands_on = _floor_of(args)
 	_read_sections(model, args)
 	for section: Section in model.sections.values():
 		if section.hinge:
@@ -11703,6 +11726,8 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false) -> voi
 		var named: String = model.name.strip_edges()
 		if not named.is_empty() and named != "Model":
 			titled.emit(named)
+		if not model.stands_on.is_empty():
+			floor_chosen.emit(model.stands_on)
 		built.emit(_placed_ids.size())
 	else:
 		sketched.emit(_placed_ids.size())
@@ -12564,6 +12589,11 @@ Ground is part of the model or it is not there at all. Plates scattered \
 around the base at different heights read as debris, not as a lawn. \
 Either lay a deliberate shape — an even layer, a definite edge — or \
 leave the baseplate bare and let the model stand on it.
+
+Choose what it stands on (submit_design's floor). A vehicle, a ship, a \
+figure or a creature has no plate in its box: floor "none". A scene, a \
+diorama or a building on its lot comes on a baseplate: floor "baseplate" \
+in the colour of its ground, and that plate is part of the build.
 
 WHAT MAKES A MODEL BEAUTIFUL
 Holding together and reading as the thing are the floor, not the goal. \
@@ -14067,6 +14097,25 @@ func _tools() -> Array:
 				"properties": {
 					"name": {"type": "string"},
 					"description": {"type": "string"},
+					"floor": {"type": "string", "enum": ModelFloor.KINDS,
+						"description":
+							"what it stands on. \"none\" for anything that is "
+							+ "picked up and played with or stood on a shelf — a "
+							+ "vehicle, a ship, a figure, a creature, a spacecraft: "
+							+ "a set like that has no plate in the box. "
+							+ "\"baseplate\" for a scene, a diorama, a building on "
+							+ "its lot, a landscape: a real baseplate, sized to it, "
+							+ "goes in the box as the first part of the build — "
+							+ "build on it, never lay ground plates of your own "
+							+ "under the model as well. \"grid\" for neither. Say "
+							+ "in the description which you chose and why; the "
+							+ "person can change it."},
+					"floor_colour": {"type": "string",
+						"description": "a baseplate's colour, from the colours baseplates "
+							+ "come in: Green, Bright Green, Dark Green, Tan, Dark Tan, "
+							+ "Light Bluish Grey, Dark Bluish Grey, Sand Green, Blue, "
+							+ "White, Black. Grass is green, a road or a yard grey, "
+							+ "sand or a desert tan, water blue, snow white."},
 					"bricks": {"type": "array", "items": brick},
 					"patterns": {"type": "array", "items": pattern},
 					"sections": {"type": "array", "items": section},

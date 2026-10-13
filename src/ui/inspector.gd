@@ -37,6 +37,8 @@ var _z: SpinBox
 var _yaw: SpinBox
 var _facts: Label
 var _actions: HBoxContainer
+## What the model stands on, shown with nothing selected.
+var floor_picker: FloorPicker
 var _joined_button: Button
 var _lock_button: Button
 var _hide_button: Button
@@ -93,6 +95,20 @@ func _ready() -> void:
 	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_arrow)
+
+	# Nothing selected: the model's own properties, which is what it
+	# stands on (FloorPicker). Two rows under the header, not the panel's
+	# room: an empty Properties gives that to the parts grid (is_idle).
+	floor_picker = FloorPicker.new()
+	floor_picker.visible = false
+	column.add_child(floor_picker)
+	var floor_layer: FloorLayer = shell.app.get("_floor")
+	floor_picker.picked.connect(func(chosen: ModelFloor) -> void:
+		shell.app.call("choose_floor", chosen))
+	floor_picker.part_toggled.connect(func(on: bool) -> void:
+		shell.app.call("floor_part_of_model", on))
+	if floor_layer != null:
+		floor_layer.changed.connect(_show_floor)
 
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -255,6 +271,7 @@ func set_open(open: bool) -> void:
 	_open = open
 	if _body != null:
 		_scroll.visible = open and not _idle
+		floor_picker.visible = open and _idle
 		_arrow.down = open
 		_arrow.queue_redraw()
 	ShellPrefs.put("inspector_open", open)
@@ -286,6 +303,9 @@ func _refresh(_now: bool) -> void:
 	if bricks.is_empty() != _idle:
 		_idle = bricks.is_empty()
 		_scroll.visible = _open and not _idle
+		floor_picker.visible = _open and _idle
+		if _idle:
+			_show_floor()
 		idled.emit(_idle)
 	if not _open:
 		return
@@ -321,8 +341,17 @@ func _state_of(bricks: Array[BrickWorld.Brick]) -> String:
 	return "|".join(parts)
 
 
-## Nothing selected: the header alone, saying so (is_idle), and its room
-## the parts grid's. How to select is the Select tool's hint.
+## The model's floor, in the picker.
+func _show_floor() -> void:
+	var floor_layer: FloorLayer = shell.app.get("_floor")
+	if floor_picker == null or floor_layer == null:
+		return
+	floor_picker.show_floor(shell.store.model_floor, floor_layer.has_own_plate())
+
+
+## Nothing selected: the header and what the model stands on (is_idle),
+## and the rest of its room the parts grid's. How to select is the Select
+## tool's hint.
 func _show_nothing() -> void:
 	_title.text = ""
 	_ids.text = ""
