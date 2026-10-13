@@ -253,13 +253,6 @@
     },
     {
       "kind": "cli",
-      "label": "check the gear table",
-      "entry": "tools/gears.py",
-      "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
-      "area": "pipeline"
-    },
-    {
-      "kind": "cli",
       "label": "refresh the catalogue",
       "entry": "tools/refresh_catalogue.py",
       "reach": "tools/refresh_catalogue.py",
@@ -1141,20 +1134,6 @@
       "area": "geometry"
     },
     {
-      "kind": "lib",
-      "label": "mechanisms",
-      "entry": "src/assembly/mechanism.gd",
-      "reach": "godot --headless --path . --script src/dev/mechanism_probe.gd   (real sets: src/dev/mechanism_sets.gd)",
-      "area": "geometry"
-    },
-    {
-      "kind": "lib",
-      "label": "axles and gears on a line",
-      "entry": "src/assembly/joints.gd",
-      "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",
-      "area": "geometry"
-    },
-    {
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",
@@ -1349,6 +1328,34 @@
       "entry": "src/ai/design_memory.gd",
       "reach": "godot --headless --path . --script src/dev/design_memory_probe.gd   (and -- --held-out=speed_champions; the index: tools/design_memory.py build)",
       "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "the surface pass",
+      "entry": "src/ai/surface_pass.gd",
+      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "check the gear table",
+      "entry": "tools/gears.py",
+      "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "lib",
+      "label": "mechanisms",
+      "entry": "src/assembly/mechanism.gd",
+      "reach": "godot --headless --path . --script src/dev/mechanism_probe.gd   (real sets: src/dev/mechanism_sets.gd)",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
+      "label": "axles and gears on a line",
+      "entry": "src/assembly/joints.gd",
+      "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",
+      "area": "geometry"
     },
     {
       "kind": "ui",

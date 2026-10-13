@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, ui:ask claude about the selection, ui:sketch first -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, lib:the surface pass, ui:ask claude about the selection, ui:sketch first -->
 
 ## Sub-features
 
@@ -1583,6 +1583,45 @@ fixing what it got wrong.
   godot --path . --resolution 1200x800 --script src/dev/features_probe.gd`)
   it writes the proposal's picture to `shots/features/eyes_proposal.png`.
   Needs the index; SKIP without.
+  The surface pass, before the creative pass (`src/ai/surface_pass.gd`,
+  `SurfacePass`, 2026-10-13): the app reads the model's open up-facing studs
+  exactly (OpenPoints: nothing on the stud, nothing within a brick over it,
+  and seen — clear to the top, or open to the outside on two sides, as a
+  lower wing under the upper one is; on a plain brick, plate, slope, wedge,
+  wing or baseplate, its whole square part; in the main body and in each
+  section's own frame, so a wing laid at an angle is tiled in it) and finds
+  three things — `studs`, a field of four or more
+  joined at one height, tiled in the colour under it, largest real sizes
+  first (`TILES`, only sizes made in that colour) with one to three textured
+  tiles (`ACCENTS`: grille 2412b, ingot 96910, jumper 15573) on a field of
+  16 or more; `staircase`, two risers or more of one to three plates along one
+  way with treads of one to three studs, each riser covered by a slope or
+  curved slope laid on the tread below (read off its mesh by `Shapes.part`
+  for fall and height; curved first unless the brief is a building), or,
+  where the tread is one stud under a brick's rise, the brick above laid
+  again as a 45 degree slope (3037-3040b) with the rest of it in bricks and
+  its stud row tiled if open, else a plate and a cheese slope; and `wall`, a
+  plain one-wide (or two-wide's outer row) wall open to the air, six studs by
+  three courses or more, nine tenths one colour, laid again by `_restyle`
+  in its box. Left alone, and said: a Brick Art mosaic, a field a figure,
+  animal or plant stands among (a yard), fewer than four studs, anywhere the
+  design kept or rejected; the ground (a plate or two up, spanning most of
+  the model) is offered as G1, laid only on "tile". The findings are laid
+  in one edit_model (one check: a check of the starfighter is most of a
+  minute, and one at a time a review took six, past the relay's three) after
+  their studs are checked open again, one at a time only if that is refused
+  and for at most `LAYING_MS`; the bricks are given back to each finding by
+  part and place (`_share_out`), and the design
+  gets one corner picture with each marked S1, S2 ...; `settle_surface`
+  accepts (`plain`, `recolor` to adjust), rejects or keeps with a reason
+  (pieces off, what they replaced put back, the zone never proposed again).
+  In the loop it is a turn of its own (`_surface_wanted`, `_surface_turn`,
+  `SurfacePass.TURNS` 4) after the assemblies, ending when every finding is
+  settled; from outside `review_model {"surface": true}`
+  (`surface_review`), the build's answer and the head name it, and saving
+  says it was never run (once alone, then before the creative pass), or
+  which findings wait — never refusing. The creative brief says a touch
+  stood on a tile floats. `surface_probe` drives it on fixtures.
   The creative pass, last (`CREATIVE_PASS`, `_creative_brief`, 2026-10-12):
   once the features and assemblies have had their turns, a fresh design
   (`_creative_wanted`, set by `_start` for a new conversation, never a

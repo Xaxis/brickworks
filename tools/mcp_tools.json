@@ -1466,6 +1466,48 @@
     "name": "view_model"
   },
   {
+    "description": "Settle what the surface pass laid (review_model {\"surface\": true}, or the app's own turn for it): accept a finding, adjusted if need be; reject it with a reason, which takes the app's pieces off and puts back what they replaced; or keep the studs there for good with a reason — a yard, a mosaic, a studded texture, where a touch will stand. \"tile\" lays ground the pass only offered.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "description": "its key, S1 or G1, several as \"S1, S3\", or \"all\"",
+          "type": "string"
+        },
+        "plain": {
+          "description": "with accept: plain tiles where the textured ones are",
+          "type": "boolean"
+        },
+        "reason": {
+          "description": "why, in a sentence: required to reject or keep",
+          "type": "string"
+        },
+        "recolor": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "with accept: its colours to others by LDraw code, {\"4\": 320}",
+          "type": "object"
+        },
+        "verdict": {
+          "enum": [
+            "accept",
+            "reject",
+            "keep",
+            "tile"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "verdict"
+      ],
+      "type": "object"
+    },
+    "name": "settle_surface"
+  },
+  {
     "description": "Submit the finished model, with every part. It replaces everything on the baseplate that you put there — including anything you added with edit_model. If you have been building with edit_model, the model is already built: say so and stop, rather than submitting a list that is missing the additions.",
     "input_schema": {
       "additionalProperties": false,
@@ -3079,7 +3121,7 @@
     "name": "choose_sketch"
   },
   {
-    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), the best real set's piece for it laid by the app where it goes, with a picture, to settle with settle_feature; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then creative last.",
+    "description": "Look a built model over the way Brickworks' own designer does after a design stands: with no assembly, the whole model measured against real LEGO® sets of its size and kind — shapes, colours, the one-off pieces, how coarse — and what to check it for; with an assembly named in submit_design, that one close up, measured, with the parts real sets of the kind use that it has none of; with a feature (eyes, beak, wheel arches, grille), the best real set's piece for it laid by the app where it goes, with a picture, to settle with settle_feature; with surface, the surface pass — the app tiles the open stud fields, slopes the stud staircases and textures the plain walls on the model, to settle each with settle_surface; with creative, the creative pass — three touches proposed for this subject and the best one or two added. Call it after submit_design, then once per feature, then once per assembly, working each before the next, then surface, then creative last.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -3088,12 +3130,16 @@
           "type": "string"
         },
         "creative": {
-          "description": "true for the creative pass, once the features and assemblies have had their turns",
+          "description": "true for the creative pass, after the surface pass",
           "type": "boolean"
         },
         "feature": {
           "description": "a feature the subject is known by, as listed in submit_design's features",
           "type": "string"
+        },
+        "surface": {
+          "description": "true for the surface pass, once the features and assemblies have had their turns",
+          "type": "boolean"
         }
       },
       "type": "object"
