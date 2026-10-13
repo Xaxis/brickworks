@@ -13997,6 +13997,10 @@ this is what the sets did.
   how_real_sets_build_this asks the same question about anything else: \
 a part of the model that is its own kind of thing, or a subject the \
 brief did not name in plain words.
+  find_techniques goes one step further: it finds the actual pieces \
+real sets built a thing with (a wheel arch, a beak, a turret roof), \
+each with its set, author and size, and place_technique lays one into \
+the model as built, turned and moved where it goes.
 
 You cannot see the baseplate. If the request is about what is already \
 there — adding to it, changing part of it, making it taller, matching \
