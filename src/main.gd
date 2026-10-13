@@ -1844,6 +1844,11 @@ func _build_ui() -> void:
 	_floor.library = _library
 	_floor.model_bounds = _model_bounds
 	add_child(_floor)
+	# The ground's shadow is the sun's alone: lit by the fill or the rim,
+	# which cast none, it is clear everywhere (FloorLayer.SHADOW_LAYER).
+	for light_name: String in ["Fill", "Rim"]:
+		var light: DirectionalLight3D = get_node(light_name)
+		light.light_cull_mask &= ~FloorLayer.SHADOW_LAYER
 	# A plate made part of the model, or the floor again, changes what is
 	# counted and weighed without changing a brick: counted again now.
 	_floor.changed.connect(func() -> void:
@@ -2521,7 +2526,7 @@ func _build_ui() -> void:
 	_exports.picture.camera = _camera
 	_exports.picture.scenery = _store.scenery
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
-		_shell.grid]
+		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
 	_bar.picture_wanted.connect(_exports.take_picture)
 	_bar.shop_list_wanted.connect(_exports.shop_list)
@@ -3142,6 +3147,8 @@ func _on_model_edited() -> void:
 	# floor's plate goes back under it, or comes away.
 	if _floor != null and _floor.is_stale():
 		_lay_baseplate()
+	elif _floor != null:
+		_floor.follow(_model_bounds())
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -3426,7 +3433,9 @@ func _ground_for_the_model(and_frame: bool = false) -> void:
 		return
 	if and_frame:
 		_camera.frame(box)
-	if _floor.covers(_model_bounds()):
+	var model: AABB = _model_bounds()
+	_floor.follow(model)
+	if _floor.covers(model):
 		return
 	_lay_baseplate()
 
