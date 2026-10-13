@@ -590,6 +590,12 @@ func _run_own(tool: String, input: Dictionary) -> String:
 			if FileAccess.file_exists(path) and not _saved_here.has(path):
 				return ("There is already a model called %s, which this "
 					+ "session did not write. Choose another name.") % file
+			# Its named assemblies go into the file as sub-models, as this
+			# app's own run tags them as it ends: a stand named to stand
+			# apart is an item the person sees, and a check of the file
+			# takes it as one.
+			if assistant != null:
+				assistant._tag_assemblies()
 			if not app.save_model(path):
 				return "Could not write %s." % file
 			_saved_here[path] = true

@@ -1047,6 +1047,46 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "assemblies": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "what a person would call it, e.g. north-east tower",
+                "type": "string"
+              },
+              "x_from": {
+                "type": "number"
+              },
+              "x_to": {
+                "type": "number"
+              },
+              "y_from": {
+                "description": "may be left out, for all of its height",
+                "type": "number"
+              },
+              "y_to": {
+                "type": "number"
+              },
+              "z_from": {
+                "type": "number"
+              },
+              "z_to": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x_from",
+              "x_to",
+              "z_from",
+              "z_to"
+            ],
+            "type": "object"
+          },
+          "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model \u2014 a display stand, a sign, a nameplate in front of it \u2014 must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails."
         }
       },
       "type": "object"

@@ -57,10 +57,19 @@ func _run() -> void:
 	_check("it opens whole: %d parts, none of them missing from the library (%d)"
 		% [int(opened.get("placed", 0)), int(opened.get("missing", 0))],
 		int(opened.get("placed", 0)) > 0 and int(opened.get("missing", 0)) == 0)
-	var report: Dictionary = assistant._check(assistant._model_from_world(), true)
-	_check("it is buildable, in one piece: %s, %d piece%s" % [report["summary"],
-		int(report.get("pieces", 0)), "" if int(report.get("pieces", 0)) == 1 else "s"],
-		bool(report["ok"]) and int(report.get("pieces", 0)) == 1)
+	# Judged as a design, not as the person's own: a piece of theirs apart
+	# from a design is theirs to leave, and every part of an opened file is.
+	var candidate: Assistant.Model = assistant._model_from_world()
+	for placement: Assistant.Placement in candidate.placements:
+		placement.mine = true
+	var report: Dictionary = assistant._check(candidate, true)
+	# One piece, or a model and the items named to stand apart from it (a
+	# stand, a sign, a figure): the file's sub-models name them.
+	var items: PackedStringArray = report.get("items", PackedStringArray())
+	_check("it is buildable, in one piece: %s, %d piece%s%s" % [report["summary"],
+		int(report.get("pieces", 0)), "" if int(report.get("pieces", 0)) == 1 else "s",
+		"" if items.is_empty() else " (apart as named: %s)" % ", ".join(items)],
+		bool(report["ok"]) and int(report.get("pieces", 0)) - int(report.get("named", 0)) == 1)
 	var stability := Stability.new()
 	stability.library = library
 	stability.lattice = builder.lattice

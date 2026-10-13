@@ -394,6 +394,11 @@ class Placement extends RefCounted:
 	## (Assistant._dress). Finish, not structure: where it would overlap
 	## a brick, it is the thing left out (Assistant._give_way).
 	var dressing: bool = false
+	## The assembly the brick is in on the baseplate — a file's sub-model,
+	## a run's named part, a figure — or empty. What lets a piece that
+	## stands apart on purpose (a stand, a sign) be told from one that came
+	## loose (Assistant._standing_apart).
+	var group: String = ""
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -1474,9 +1479,26 @@ func _keep_the_failure(report: Dictionary) -> void:
 ## its parts — "the gatehouse" rather than "part 3". A brick belongs to
 ## the first assembly whose box holds its corner, the way look_at_model
 ## reads where=. A model that is one thing is left as one thing.
+##
+## One assembly is tagged only where something stands outside it: a stand
+## named in front of an otherwise unnamed model is an item of its own, in
+## the file as in the check (_standing_apart). A session from outside names
+## its assemblies too, and they are tagged as it saves.
 func _tag_assemblies() -> void:
-	if _declared.size() < 2 or world == null:
+	var named: Array[Dictionary] = _assemblies_named()
+	if named.is_empty() or world == null:
 		return
+	if named.size() == 1:
+		var outside: bool = false
+		for brick: BrickWorld.Brick in world.bricks():
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+			if scenery.has(brick.id) or info == null:
+				continue
+			if not _inside(_to_studs(brick, info), named[0]["where"]):
+				outside = true
+				break
+		if not outside:
+			return
 	# A figure is its own sub-model wherever it stands; renamed after the
 	# tower it is in, it would be three arms and a hat in "tower".
 	var members: Dictionary = {}
@@ -1494,7 +1516,7 @@ func _tag_assemblies() -> void:
 		if info == null:
 			continue
 		var at: Vector3 = _to_studs(brick, info)
-		for one: Dictionary in _declared:
+		for one: Dictionary in named:
 			if _inside(at, one["where"]):
 				brick.group = str(one["name"])
 				break
@@ -2261,6 +2283,7 @@ func _run_tool(block: Dictionary) -> Variant:
 				return ("Not applied — the model would not hold together.\n"
 					+ str(verdict["feedback"]))
 			_apply_edit(edited)
+			_name_assemblies(edited.assemblies)
 			_pending = null
 			_edited = true
 			progress.emit("changed it: %d bricks%s"
@@ -2309,6 +2332,7 @@ func _run_tool(block: Dictionary) -> Variant:
 func _model_from_world() -> Model:
 	var model := Model.new()
 	model.sections = _sections.duplicate()
+	model.assemblies = _assemblies_named()
 	if world == null:
 		return model
 	# The sketch counts as the assistant's. Those bricks are on the
@@ -2340,6 +2364,7 @@ func _model_from_world() -> Model:
 			kept_in.rot = int(read[5])
 			kept_in.id = brick.id
 			kept_in.mine = mine.has(brick.id)
+			kept_in.group = brick.group
 			model.placements.append(kept_in)
 			continue
 		var at: Vector3 = _to_studs(brick, info)
@@ -2367,8 +2392,26 @@ func _model_from_world() -> Model:
 			placement.rot = int(kept[4])
 		placement.id = brick.id
 		placement.mine = mine.has(brick.id)
+		placement.group = brick.group
 		model.placements.append(placement)
 	return model
+
+
+## The assemblies the design standing has named: by the run of this app's
+## own loop, or by a session from outside.
+func _assemblies_named() -> Array[Dictionary]:
+	return (_declared if not _declared.is_empty()
+		else _outside_assemblies).duplicate()
+
+
+## Name the design's assemblies, as an edit left them: where the run is
+## this app's own loop, it tags its bricks with them as it ends; from
+## outside, review_model and saving read them.
+func _name_assemblies(named: Array[Dictionary]) -> void:
+	if _outside_standing or not _outside_assemblies.is_empty():
+		_outside_assemblies = named.duplicate()
+	else:
+		_declared = named.duplicate()
 
 
 ## The sections of the bricks that came without one, as [section name, x, y,
@@ -2570,6 +2613,20 @@ func _edit(args: Dictionary) -> Model:
 		if section.hinge:
 			_fit_hinge(section)
 			_rehinge(model, section, was)
+		_touched += 1
+
+	# And name a part of it: a stand or a sign added in front of a model
+	# stands apart on purpose, and the check takes it as an item of its own
+	# only when it is named (_standing_apart). One of the same name is
+	# moved to the new box.
+	for one: Dictionary in _read_assemblies(args):
+		var replaced: bool = false
+		for n: int in model.assemblies.size():
+			if str(model.assemblies[n]["name"]).to_lower() == str(one["name"]).to_lower():
+				model.assemblies[n] = one
+				replaced = true
+		if not replaced:
+			model.assemblies.append(one)
 		_touched += 1
 
 	for raw: Variant in args.get("add", []):
@@ -8653,7 +8710,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	if not lopsided.is_empty():
 		advice.append(lopsided)
 
-	var pieces: int = _count_pieces(model, cells_of, lattice, boxes_of, holds)
+	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds)
+	var pieces: int = each_piece.size()
+	var apart: Dictionary = _standing_apart(model, each_piece, floating,
+		_touching(each_piece, lattice, boxes_of), _outside(each_piece, box_of))
+	for piece: Array in apart["loose"]:
+		_note(issues, "loose", _loose_said(model, piece))
 
 	var errors: int = 0
 	for kind: String in issues:
@@ -8680,15 +8742,27 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			", ".join(kinds)]
 
 	var feedback: String = _feedback(issues, summary, advice)
-	# Said, never counted.
+	# Pieces nothing joins, said; a piece apart from the model fails unless
+	# it is named.
 	#
-	# Both the tool description and the prompt promised that a design is
-	# checked for being in one piece, and nothing in this file computed
-	# it. Now it does — but as a remark rather than an error, because a
-	# model in two pieces is often exactly what was asked for (a boat
-	# and a jetty, a tree beside a house) and failing it would throw
-	# away a design that is otherwise correct.
-	if pieces > 1:
+	# All of it was a remark, because a model in two pieces is often what
+	# was asked for (a boat and a jetty, a tree beside a house, a nameplate
+	# in front of a car) — and a remark let the held-out car finish with a
+	# plaque lying loose in front of it and say every check passed. What is
+	# meant to stand apart is named, and the person sees it as an item of
+	# its own. What stands against the model unjoined (bricks side by side,
+	# a seam) is a remark still, as it was.
+	var apart_loose: int = (apart["loose"] as Array).size()
+	if apart_loose > 0:
+		feedback += ("\n\nA piece apart from the model is either a part "
+			+ "that has come off — it falls off when the model is picked up "
+			+ "— or an item of its own: a stand, a sign, a nameplate, a "
+			+ "figure's base. Join %s to the model, " % ("it" if apart_loose == 1
+				else "each")
+			+ "or, if it is meant to stand apart, name it: an assembly of "
+			+ "its own (assemblies, on edit_model or submit_design) whose "
+			+ "box holds it and none of the model.")
+	elif int(apart["against"]) > 0:
 		# "Do not touch" was the wrong word, and it was the usual case:
 		# a layer of plates laid side by side is flush against itself
 		# everywhere and joined nowhere, because plastic only holds
@@ -8699,14 +8773,18 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			+ "Intended, if it is meant to be a scene; worth a look "
 			+ "otherwise, because a part held by nothing falls off when "
 			+ "the model is picked up.")
-		# And the commonest way to arrive here, which has its own fix.
-		if _one_layer(box_of):
-			feedback += (" This is one layer thick, and one layer is "
-				+ "always like this: bricks side by side are not "
-				+ "joined, however tightly they are packed. A second "
-				+ "layer over it, with its joints landing across the "
-				+ "joints below, is what makes the whole thing one "
-				+ "piece.")
+	var items := PackedStringArray(apart["items"])
+	if apart_loose == 0 and not items.is_empty():
+		feedback += ("\n\n%s stand%s apart from the model, named."
+			% [", ".join(items), "s" if items.size() == 1 else ""])
+	# And the commonest way to arrive in pieces, which has its own fix.
+	if (apart_loose > 0 or int(apart["against"]) > 0) and _one_layer(box_of):
+		feedback += (" This is one layer thick, and one layer is "
+			+ "always like this: bricks side by side are not "
+			+ "joined, however tightly they are packed. A second "
+			+ "layer over it, with its joints landing across the "
+			+ "joints below, is what makes the whole thing one "
+			+ "piece.")
 
 	return {
 		"ok": ok,
@@ -8714,6 +8792,12 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		"feedback": feedback,
 		"advice": advice,
 		"pieces": pieces,
+		## Pieces apart from the model that nothing names, the names of the
+		## ones that stand apart as items of their own, and how many pieces
+		## those and the figures standing apart are.
+		"loose": apart_loose,
+		"items": apart["items"],
+		"named": int(apart["named"]),
 		"kinds": issues.keys(),
 		"floating": floating.keys(),
 	}
@@ -9863,11 +9947,237 @@ func _unbonded_seam(box_of: Dictionary) -> String:
 		+ "so each brick sits across the joint below it.")
 
 
-func _count_pieces(model: Model, cells_of: Dictionary,
+## The pieces that touch another, face to face or a hair apart, as pairs of
+## piece numbers: piece -> {piece: true}. Bricks laid side by side touch and
+## are not joined, which is a seam or one layer (said by their own advice);
+## a piece that touches nothing of the model stands apart from it. Near is
+## within [constant NEAR] lattice cells, across, up and along.
+func _touching(pieces: Array, lattice: BrickLattice, boxes_of: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if pieces.size() <= 1:
+		return out
+	var piece_of: Dictionary = {}
+	for n: int in pieces.size():
+		for index: int in pieces[n]:
+			piece_of[index] = n
+	# The largest piece is found from the others' side: touching is both ways.
+	var largest: int = 0
+	for n: int in pieces.size():
+		if (pieces[n] as Array).size() > (pieces[largest] as Array).size():
+			largest = n
+	for n: int in pieces.size():
+		if n == largest:
+			continue
+		for index: int in pieces[n]:
+			var packed: PackedInt32Array = boxes_of.get(index, PackedInt32Array())
+			var grown := PackedInt32Array()
+			grown.resize(packed.size())
+			for b: int in range(0, packed.size(), 6):
+				for k: int in 3:
+					grown[b + k] = packed[b + k] - NEAR[k]
+					grown[b + 3 + k] = packed[b + 3 + k] + NEAR[k]
+			for key: int in lattice.blockers_boxes(grown, index + 1):
+				var other: int = int(piece_of.get(key - 1, -1))
+				if key <= 0 or other < 0 or other == n:
+					continue
+				if not out.has(n):
+					out[n] = {}
+				if not out.has(other):
+					out[other] = {}
+				(out[n] as Dictionary)[other] = true
+				(out[other] as Dictionary)[n] = true
+	return out
+
+
+## The pieces whose plan lies outside the plan of all the others, by more
+## than [constant NEAR]: n -> true. A nameplate on the ground in front of a
+## car; not one face of a prism among the others.
+static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if pieces.size() <= 1:
+		return out
+	var plans: Array = []
+	for piece: Array in pieces:
+		var lo := Vector2i(1 << 30, 1 << 30)
+		var hi := -lo
+		for index: int in piece:
+			var corners: Array = box_of.get(index, [])
+			if corners.is_empty():
+				continue
+			var a: Vector3i = corners[0]
+			var b: Vector3i = corners[1]
+			lo = Vector2i(mini(lo.x, a.x), mini(lo.y, a.z))
+			hi = Vector2i(maxi(hi.x, b.x), maxi(hi.y, b.z))
+		plans.append([lo, hi])
+	for n: int in pieces.size():
+		var lo := Vector2i(1 << 30, 1 << 30)
+		var hi := -lo
+		for m: int in pieces.size():
+			if m != n:
+				lo = Vector2i(mini(lo.x, (plans[m][0] as Vector2i).x), mini(lo.y, (plans[m][0] as Vector2i).y))
+				hi = Vector2i(maxi(hi.x, (plans[m][1] as Vector2i).x), maxi(hi.y, (plans[m][1] as Vector2i).y))
+		var mine_lo: Vector2i = plans[n][0]
+		var mine_hi: Vector2i = plans[n][1]
+		var apart: bool = mine_lo.x > hi.x + NEAR[0] or mine_hi.x < lo.x - NEAR[0] \
+			or mine_lo.y > hi.y + NEAR[2] or mine_hi.y < lo.y - NEAR[2]
+		if apart:
+			out[n] = true
+	return out
+
+
+## Which pieces standing apart from the model (touching nothing of it) are
+## there on purpose, and which came loose: {"loose": the pieces nothing
+## names, "items": the names of the rest}.
+##
+## The held-out sports car finished in two pieces and said every check
+## passed: a nameplate on a plate lay on the ground in front of it, joined
+## to nothing. It was meant — "a nameplate plaque in front of the car" —
+## and nothing about it said so: the check called it a remark, and a part
+## that has come off a model reads exactly the same. So a piece apart from
+## the model is an item of its own only when it is named: every part of it
+## in one assembly (the design's named box, or a file's sub-model) that
+## holds none of the model's own, or a whole figure. Anything else is
+## loose, and fails. The model is the largest piece with a part of the
+## design's in it; a piece of the person's own is theirs to leave.
+func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
+		touching: Dictionary = {}, outside: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {"loose": [], "items": PackedStringArray(), "against": 0, "named": 0}
+	if pieces.size() <= 1:
+		return out
+	var main: int = -1
+	for n: int in pieces.size():
+		var designed: bool = false
+		for index: int in pieces[n]:
+			if model.placements[index].mine:
+				designed = true
+				break
+		if designed and (main < 0
+				or (pieces[n] as Array).size() > (pieces[main] as Array).size()):
+			main = n
+	if main < 0:
+		# All the person's own: said, as it always was, and theirs to leave.
+		out["against"] = pieces.size() - 1
+		return out
+	var main_names: Dictionary = {}
+	for index: int in pieces[main]:
+		main_names[_assembly_of(model, model.placements[index])] = true
+	# What touches the model, or touches what does: walls side by side that
+	# nothing bonds, a door beside its frame. Not joined, and said so by the
+	# seam and one-layer advice; not standing apart.
+	var against: Dictionary = {main: true}
+	var reach: Array = [main]
+	while not reach.is_empty():
+		var here: int = reach.pop_back()
+		for other: Variant in touching.get(here, {}):
+			if not against.has(other):
+				against[other] = true
+				reach.append(other)
+	out["against"] = against.size() - 1
+	for n: int in pieces.size():
+		if against.has(n):
+			continue
+		var piece: Array = pieces[n]
+		# Inside the model's plan — a face of a prism against its posts, a
+		# part on the floor of a courtyard — is not standing apart from it.
+		if not outside.has(n):
+			out["against"] = int(out["against"]) + 1
+			continue
+		var designed: bool = false
+		var adrift: bool = true
+		var names: Dictionary = {}
+		var parts: Array = []
+		for index: int in piece:
+			var placement: Placement = model.placements[index]
+			designed = designed or placement.mine
+			adrift = adrift and floating.has(index)
+			names[_assembly_of(model, placement)] = true
+			parts.append({"part": placement.part})
+		# Held by nothing is said already, part by part.
+		if not designed or adrift:
+			continue
+		var name: String = str(names.keys()[0]) if names.size() == 1 else ""
+		if not name.is_empty() and not main_names.has(name):
+			# A packed array is a value: appended to through the
+			# dictionary, the name went into a copy.
+			var items: PackedStringArray = out["items"]
+			if not items.has(name):
+				items.append(name)
+			out["items"] = items
+			out["named"] = int(out["named"]) + 1
+			continue
+		if Minifig.is_figure(parts):
+			out["named"] = int(out["named"]) + 1
+			continue
+		# A piece apart of a size with the model is a scene's other thing —
+		# a jetty by a boat, a tree by a house, a second tower — said as it
+		# always was. One much smaller than the model is a part come off or
+		# an item, and only a name says which.
+		if piece.size() * SCENE >= (pieces[main] as Array).size():
+			out["against"] = int(out["against"]) + 1
+			continue
+		(out["loose"] as Array).append(piece)
+	return out
+
+
+## A piece apart from the model with fewer than one part in this many of
+## the model's is an item or a part come off: a nameplate of 7 parts by a
+## car of 537.
+const SCENE := 10
+
+
+## The assembly a placement is in: its own, as a file or the baseplate
+## has it, or the first named box that holds its corner, as the run ends
+## by tagging it (_tag_assemblies).
+static func _assembly_of(model: Model, placement: Placement) -> String:
+	if not placement.group.is_empty():
+		return placement.group
+	var at := Vector3(placement.x, placement.y, placement.z)
+	var section: Section = model.section_for(placement)
+	if section != null:
+		at = Vector3(section.x, section.y, section.z)
+	for one: Dictionary in model.assemblies:
+		if _inside(at, one.get("where", {})):
+			return str(one["name"])
+	return ""
+
+
+## Where a loose piece is and what it is made of, for the check to say.
+static func _loose_said(model: Model, piece: Array) -> String:
+	var low := Vector3(INF, INF, INF)
+	var high := Vector3(-INF, -INF, -INF)
+	var parts: Dictionary = {}
+	for index: int in piece:
+		var placement: Placement = model.placements[index]
+		var at := Vector3(placement.x, placement.y, placement.z)
+		low = low.min(at)
+		high = high.max(at)
+		parts[placement.part] = int(parts.get(placement.part, 0)) + 1
+	var named := PackedStringArray()
+	for part_id: String in parts:
+		named.append(part_id if int(parts[part_id]) == 1
+			else "%d x %s" % [parts[part_id], part_id])
+		if named.size() == 4:
+			break
+	return ("%d part%s (%s%s) with corners from x %s, y %s, z %s to x %s, y %s, "
+		% [piece.size(), "" if piece.size() == 1 else "s", ", ".join(named),
+			", ..." if parts.size() > 4 else "", Placement._num(low.x),
+			Placement._num(low.y), Placement._num(low.z), Placement._num(high.x),
+			Placement._num(high.y)]
+		+ "z %s, joined to nothing of the model" % Placement._num(high.z))
+
+
+## Half a stud across and a plate up: faces turned to an angle meet at their
+## corners by boxes that leave a sliver between them.
+const NEAR: Array[int] = [5, 4, 5]
+
+
+## The separate pieces the design is in, each the indices of its
+## placements, joined by the rules [method _check] says them by.
+func _pieces_of(model: Model, cells_of: Dictionary,
 		lattice: BrickLattice, boxes_of: Dictionary = {},
-		holds: Dictionary = {}) -> int:
+		holds: Dictionary = {}) -> Array:
 	if cells_of.size() <= 1:
-		return cells_of.size()
+		return [cells_of.keys()] if cells_of.size() == 1 else []
 
 	var joined: Dictionary = {}   ## index -> Array of index
 	for index: int in cells_of:
@@ -9929,11 +10239,11 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 				joined[reached - 1].append(index)
 
 	var seen: Dictionary = {}
-	var pieces: int = 0
+	var pieces: Array = []
 	for start: int in cells_of:
 		if seen.has(start):
 			continue
-		pieces += 1
+		var piece: Array = [start]
 		var stack: Array = [start]
 		seen[start] = true
 		while not stack.is_empty():
@@ -9942,6 +10252,8 @@ func _count_pieces(model: Model, cells_of: Dictionary,
 				if not seen.has(next):
 					seen[next] = true
 					stack.append(next)
+					piece.append(next)
+		pieces.append(piece)
 	return pieces
 
 
@@ -12322,7 +12634,9 @@ would catch — a mission patch, a launch date, a famous passenger, the \
 ship's cat.
   A display stand with a nameplate, for a display model: a black base, \
 a plaque on it (a tile or a slope, printed if one fits), the model held \
-up the way it is shown.
+up the way it is shown. Joined to the model — or, where it stands apart \
+(a plaque in front of a car), named as an assembly of its own: a piece \
+apart that nothing names is a part that has come off, and fails.
   Something that moves: a hatch that opens, a ramp, a turret that \
 turns, a door — a section on a hinge or a turntable.
 
@@ -13570,6 +13884,16 @@ func _tools() -> Array:
 							"say a section again somewhere else. One bay "
 							+ "of a wall, repeated — rather than forty "
 							+ "bays dictated."},
+					"assemblies": {"type": "array", "items": assembly,
+						"description":
+							"name a part of the model, as submit_design's "
+							+ "assemblies do; one of the same name moves "
+							+ "to the new box. Something meant to stand "
+							+ "apart from the model — a display stand, a "
+							+ "sign, a nameplate in front of it — must be "
+							+ "named, its box holding it and none of the "
+							+ "model: a piece apart that nothing names is "
+							+ "a part that has come off, and fails."},
 				},
 				"additionalProperties": false,
 			},

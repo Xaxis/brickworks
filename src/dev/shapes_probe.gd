@@ -220,6 +220,8 @@ func _run() -> void:
 		var turned: int = 0
 		var faces: int = 0
 		var anchors: int = 0
+		var lanes: int = 0
+		var curved: int = 0
 		for placement: Assistant.Placement in model.placements:
 			if placement.face != "up":
 				turned += 1
@@ -227,14 +229,24 @@ func _run() -> void:
 						"3070b", "3069b", "3068b", "2431", "63864", "26603", "87079", "54200",
 						"85984", "11477", "15068", "50950", "24309", "61678", "93606"]:
 					faces += 1
-			elif placement.part == "87087":
+				if placement.part in ["11477", "15068", "50950", "24309", "61678", "93606"]:
+					curved += 1
+			elif placement.part in SIDE_STUDS:
 				anchors += 1
+				lanes += int(SIDE_STUDS[placement.part])
 		var total: int = maxi(1, model.placements.size())
 		_check("%s: %d of %d parts turned out (%d%%), %d of them tiles and slopes, on %d side studs: %s, %d pieces"
 			% [one[0], turned, total, roundi(100.0 * turned / total), faces, anchors,
 			verdict["summary"], int(verdict["pieces"])],
 			turned * 10 >= total and faces > 0 and anchors > 0 and bool(verdict["ok"])
 				and int(verdict["pieces"]) == 1)
+		# Where the flank curves across, curved slopes, not a cheese slope a
+		# stud; and the side studs in runs, 1 x 2s and 1 x 4s, not a 1 x 1 a
+		# lane. The egg was 2 curved of 143 turned out, on 84 1 x 1s. A hull's
+		# side falls straight down to its keel, and keeps its tiles.
+		_check("...%d curved slopes on its flank, %d side-stud bricks holding %d lanes"
+			% [curved, anchors, lanes], (curved * 20 >= turned or one[0] == "a hull")
+				and anchors * 4 < lanes * 3)
 	# A cylinder curves round, not up: its side is the round parts', and a
 	# ramp's low end is its slopes'.
 	var tower: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 84,
@@ -254,10 +266,10 @@ func _run() -> void:
 	for one: Array in [
 			["a cylinder of radius 4", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
 				"color": 84, "solids": [{"revolve": {"axis": "y", "centre": [5, 0, 5],
-					"profile": [[0, 4], [9, 4]]}}]}, ["48092", "74611"]],
+					"profile": [[0, 4], [9, 4]]}}]}, ["48092", "74611", "27507", "79393", "27925", "14769"]],
 			["a dome", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
 				"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 12, 4]}}]},
-				["74611", "11213", "44375b"]],
+				["74611", "11213", "44375b", "15068", "60474"]],
 			["a column stepping in", {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
 				"color": 15, "solids": [{"revolve": {"axis": "y", "centre": [4, 0, 4], "profile": [
 					[0, 3], [6, 3], [7, 2], [16, 2], [17, 1], [22, 1]]}}]}, ["5152", "3941"]]]:
@@ -278,6 +290,16 @@ func _run() -> void:
 			model.placements.size(), ", ".join(PackedStringArray(wanted)), verdict["summary"],
 			int(verdict["pieces"])], curved == model.placements.size() and has_all
 			and bool(verdict["ok"]) and int(verdict["pieces"]) == 1)
+	# A dome's step was a ledge of bare studs a stud wide, ring over ring: a
+	# wedding cake from the side. Eased, the round below carries curved slopes
+	# falling out round its rim and the round above bridges in over them.
+	var dome: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 4,
+		"solids": [{"dome": {"centre": [5, 0, 5], "radii": [4, 12, 4]}}]})
+	var eased: Array = (Shapes.last.get("round_runs", []) as Array).filter(
+		func(said: String) -> bool: return said.ends_with("eased"))
+	_check("a dome's step is eased in curved slopes round the rim below: %s; %s"
+		% [", ".join(PackedStringArray(eased)), _counted(dome)],
+		eased.size() == 1 and _count(dome, ["15068"]) == 8 and _count(dome, ["25269"]) == 4)
 	# A square post is not a round one: its section fills its box.
 	var post: Array = _laid({"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0}, "color": 15,
 		"box": {"from": [0, 0, 0], "size": [2, 9, 2]}})
@@ -360,6 +382,10 @@ func _run() -> void:
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures else 0)
+
+
+## The bricks with studs on a side a shell is held by, and how many lanes each.
+const SIDE_STUDS: Dictionary = {"87087": 1, "11211": 2, "30414": 4}
 
 
 func _laid(shape: Dictionary) -> Array:

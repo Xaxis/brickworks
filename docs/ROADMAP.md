@@ -1499,6 +1499,50 @@ a round of 8's top, fewer side-stud bricks (an 87087 a lane; 1 x 2 and 1 x 4
 in runs would do), shells where arches thin the core, and a curved share
 for the shell's own outline (it lays few curved slopes on its side).
 
+**Finished the way a set finishes a shape: a stand named, steps eased, tops
+tiled, flanks curved, side studs in runs (2026-10-12).** Five things the
+held-out round left, each measured on the probe bodies, then the car and the
+owl held out again.
+
+*A piece apart is named or it fails.* `car_r1` was two pieces and said every
+check passed. Its session says why: "Adding a printed grille tile, spoiler
+tiles, and a nameplate plaque in front of the car" — a 41539 plate, a 4515
+slope and printed tiles laid on the ground two studs in front of the bumper,
+meant, and joined to nothing; to the check a piece apart was a remark, and a
+part that has come off reads the same. Now a piece that stands apart from the
+model (touching nothing of it within half a stud, its plan outside the rest,
+under a tenth of the model's parts) fails as `loose` unless it is named: an
+assembly whose box holds it and none of the model — `edit_model` takes
+`assemblies` now — or a file's sub-model, or a figure. Pieces against the
+model unjoined (a seam, one layer, a prism's faces) and a scene's second
+thing of a size with the model are said as before. The run's assemblies are
+tagged on the bricks as a session saves, so the stand is a sub-model the
+person sees. `candidate_probe` on `car_r1.ldr`: before "544 bricks,
+buildable, 2 pieces"; after "1 problem (loose 1)", and with the plaque in a
+sub-model "apart as named: Nameplate", a candidate.
+
+| body | before | after |
+|---|---|---|
+| dome (radius 4) | 12 parts; a stud-wide ledge of 20 bare studs between its 8 and its 6 | 28 parts, 100% round or curved: eight 15068 round the rim, a round plate and quarter tile on each corner, a core of 4, the 6 bridging in |
+| cylinder of 8, top | four 27507 and 20 bare studs inside them | 23 parts: 27507, 79393 and 27925 rings and a 14769, no stud showing |
+| egg, sideways | 450 parts; 2 curved slopes of 143 turned out; 84 1 x 1 side-stud bricks | 407 parts; 26 curved slopes of 135 turned out; 49 side-stud bricks (30414, 11211, 87087) holding the same 86 lanes |
+
+*Dome steps eased.* The curved-top corner rounds have no studs, so a round
+standing on them has nothing to grip; a set instead lays curved slopes on the
+rim of the round below and stands the next round inset, on a round plate that
+bridges in over them. `Plan._ease` does that where a round of 6 or 8 has a
+round a stud narrower standing on it (three plates or more, one colour, the
+rim otherwise empty). *Round tops.* The 4 x 4 and 3 x 3 corner round tiles
+are rings a stud wide (27507 inside radius 3, 79393 inside radius 2) and the
+2 x 2 one (27925) a ring round a 2 x 2 round tile: nested, a round of 8's top
+is smooth (a 6 x 6 round tile's cover is its square box, and the check reads
+it as overlapping the ring). *Curved flanks.* On a shell (`Plan.flank`) a
+cheese slope is scored 0.3 worse where a curved 2 x 1 fits a fall of a plate
+a stud, except where the colour changes (a fuselage's canopy edge got a
+curved slope held by nothing). *Side studs in runs.* A shell's side studs are
+1 x 4s and 1 x 2s with studs on a side wherever lanes run in one colour, split
+the same from either end so a mirrored side stays one.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks

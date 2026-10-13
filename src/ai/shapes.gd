@@ -1003,6 +1003,10 @@ class Plan extends RefCounted:
 	## plates (lay). A sculpt's grid keeps its bricks: Brickify's own lay
 	## measures what it is, and a hollow sculpt lost 3% of itself.
 	var bridges: bool = true
+	## A curved side laid on its side (lay_shell): its outside is the flank
+	## a person sees, and where it curves a curved slope fits as well as a
+	## cheese slope, the curved one.
+	var flank: bool = false
 	## The round parts round_runs laid, put into [member made] by lay(), and
 	## the runs said, for a probe.
 	var round_made: Array = []
@@ -1183,6 +1187,7 @@ class Plan extends RefCounted:
 					parts[3].to_int(), int(plates[from]), int(plates[to - 1]) + 1])
 				from = to
 		runs.sort_custom(func(a: Array, b: Array) -> bool: return int(a[3]) < int(b[3]))
+		_ease(runs)
 		Rounds._parts = library
 		var capped: Dictionary = {}    ## Vector2i cell -> the plate a dish caps it from
 		for run: Array in runs:
@@ -1205,11 +1210,11 @@ class Plan extends RefCounted:
 			# a set finishes a round it shows from above, not bare studs.
 			if highest < 0 and smooth and not studs_kept:
 				if top - int(run[3]) > 1:
-					_round_run(low, d, run[2], run[3], top - 1)
+					_round_run(low, d, run[2], run[3], top - 1, int(run[5]) if run.size() > 5 else 0)
 				_round_tiles(low, d, run[2], top - 1)
 				round_said.append("%d at %d,%d plates %d-%d, tiled" % [d, low.x, low.y, run[3], top - 1])
 				continue
-			_round_run(low, d, run[2], run[3], run[4])
+			_round_run(low, d, run[2], run[3], run[4], int(run[5]) if run.size() > 5 else 0)
 			round_said.append("%d at %d,%d plates %d-%d" % [d, low.x, low.y, run[3], int(run[4]) - 1])
 			# A dome's crown: where all the shape has left over the run, in its
 			# box, is no taller than a dish, the dish — not a cake of rings.
@@ -1241,6 +1246,124 @@ class Plan extends RefCounted:
 				"_base": centre, "_round": true, "_top": true})
 			capped[low + Vector2i(d / 2, d / 2)] = top
 
+	## A dome's step eased, as a set eases one: where a round of 6 or 8 has a
+	## round a stud narrower standing on it, the step between them was a
+	## ledge of bare studs a stud wide, ring over ring — a wedding cake from
+	## the side. A curved slope wants two studs of ledge to fall over, so the
+	## round above stands inset for the slopes' two plates: on the rim of the
+	## round below, 2 x 2 curved slopes falling out on each side and a round
+	## plate with a quarter-round tile at each corner; inside them a round
+	## four studs narrower (a core of round plates); and the round above goes
+	## on from a round plate that bridges in over the slopes' tops. Only where
+	## the round above is three plates or more, one colour with the one under
+	## it, and nothing else of the shape is in the rim.
+	const EASED: Array = [6, 8]
+	## The slope on each side of an eased rim, and what stands on a corner's
+	## one stud: a round plate and a quarter-round tile, two plates as the
+	## slope is.
+	const EASE_SLOPE := "15068"
+	const EASE_CORNER: Array = ["6141", "25269"]
+
+	func _ease(runs: Array) -> void:
+		var at_bottom: Dictionary = {}    ## "x z d c from" -> the run
+		for run: Array in runs:
+			at_bottom["%d %d %d %d %d" % [(run[0] as Vector2i).x, (run[0] as Vector2i).y,
+				int(run[1]), int(run[2]), int(run[3])]] = run
+		for run: Array in runs:
+			var low: Vector2i = run[0]
+			var d: int = run[1]
+			if not d in EASED:
+				continue
+			var key: String = "%d %d %d %d %d" % [low.x + 1, low.y + 1, d - 2, int(run[2]),
+				int(run[4])]
+			if not at_bottom.has(key):
+				continue
+			var above: Array = at_bottom[key]
+			var step: int = int(run[4])
+			if int(above[4]) - int(above[3]) < 3 or not _rim_free(low, d, step):
+				continue
+			_ease_rim(low, d, int(run[2]), step)
+			_round_run(low + Vector2i(2, 2), d - 4, int(run[2]), step, step + 2)
+			round_said.append("%d at %d,%d plates %d-%d eased" % [d, low.x, low.y, step,
+				step + 1])
+			above[3] = step + 2
+			if above.size() < 6:
+				above.append(d - 4)
+
+	## Whether the rim of the round of [param d] at [param low], for the two
+	## plates from [param from], has nothing of the shape but the round a
+	## stud narrower, and nothing taken.
+	func _rim_free(low: Vector2i, d: int, from: int) -> bool:
+		for i: int in d:
+			for k: int in d:
+				if i >= 2 and i < d - 2 and k >= 2 and k < d - 2:
+					continue
+				var cell := Vector2i(low.x + i, low.y + k)
+				var inner: bool = i >= 1 and i < d - 1 and k >= 1 and k < d - 1
+				for j: int in range(from, from + 2):
+					if taken.has(Vector3i(cell.x, j, cell.y)):
+						return false
+					if not inner and at(cell, j) >= 0:
+						return false
+		return true
+
+	## The slopes and corners round the rim of a round of [param d], on its
+	## top plate at [param j]: the two studs of each side between its
+	## corners fall out, two by two.
+	func _ease_rim(low: Vector2i, d: int, c: int, j: int) -> void:
+		var slope: Dictionary = Shapes.part(library, EASE_SLOPE)
+		if slope.is_empty():
+			return
+		for side: int in 4:
+			var facing: Vector2i = Shapes.OUT[side]
+			var perp := Vector2i(absi(facing.y), absi(facing.x))
+			# The high row, a stud in from the edge on that side.
+			var inner: Vector2i
+			match side:
+				0: inner = Vector2i(0, d - 2)
+				1: inner = Vector2i(d - 2, 0)
+				2: inner = Vector2i(0, 1)
+				_: inner = Vector2i(1, 0)
+			for a: int in range(2, d - 2, 2):
+				var high_row: Array[Vector2i] = []
+				var cells: Array[Vector2i] = []
+				for n: int in 2:
+					var cell: Vector2i = low + inner + perp * (a + n)
+					high_row.append(cell)
+					cells.append(cell)
+					cells.append(cell + facing)
+				var corner := Vector2i(1 << 30, 1 << 30)
+				for one: Vector2i in cells:
+					corner = Vector2i(mini(corner.x, one.x), mini(corner.y, one.y))
+				round_made.append({"part": EASE_SLOPE, "color": c, "x": corner.x, "y": j,
+					"z": corner.y, "rot": posmod(side + int(slope["turn"]), 4), "_top": true,
+					"_cells": cells, "_h": 2, "_studs": [] as Array[Vector2i],
+					"_base": high_row, "_slope": true, "_round": true})
+				_take(cells, j, 2)
+		# A corner's one stud: a round plate, and a quarter-round tile on it
+		# with its curve to the outside.
+		var tile: Lbm.PartMesh = library.mesh_for(EASE_CORNER[1])
+		var corners: Array[Vector2i] = [Vector2i(1, 1), Vector2i(d - 2, 1),
+			Vector2i(d - 2, d - 2), Vector2i(1, d - 2)]
+		var inward: Array[Vector2] = [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1),
+			Vector2(1, -1)]
+		for n: int in 4:
+			var cell: Vector2i = low + corners[n]
+			var one: Array[Vector2i] = [cell]
+			round_made.append({"part": EASE_CORNER[0], "color": c, "x": cell.x, "y": j,
+				"z": cell.y, "rot": 0, "_cells": one, "_h": 1, "_studs": one, "_base": one,
+				"_round": true})
+			var rot: int = Rounds.QUARTER_TURNS[n]
+			if tile != null:
+				for turn: int in 4:
+					if Rounds.lean(tile, turn) == inward[n]:
+						rot = turn
+						break
+			round_made.append({"part": EASE_CORNER[1], "color": c, "x": cell.x, "y": j + 1,
+				"z": cell.y, "rot": rot, "_cells": one, "_h": 1,
+				"_studs": [] as Array[Vector2i], "_base": one, "_round": true, "_top": true})
+			_take(one, j, 2)
+
 	## The dish that crowns a round of each diameter, how many plates of it
 	## there are, as the round pattern's dome nose lays them, and the round
 	## tile over the studs at its middle and how wide: a 4 x 4 dish has one
@@ -1249,13 +1372,13 @@ class Plan extends RefCounted:
 		8: ["3961", 3, "14769", 2]}
 
 	## The round tiles that finish a round's top, by diameter: one whole, or
-	## four corner rounds a quarter each. There is no round tile of 8, and
-	## the 4 x 4 corner round tiles are a ring: the middle of that top keeps
-	## its studs.
+	## rings of corner round tiles (TILE_RINGS). There is no round tile of 8.
 	const ROUND_TILES: Dictionary = {1: "98138", 2: "14769", 4: "27925", 6: "7212", 8: "27507"}
 
 	## A round's top plate in round tiles: one round tile, or four corner
-	## round tiles each turned to lean on the middle, read off its mesh.
+	## round tiles each turned to lean on the middle, read off its mesh — and
+	## a ring's middle in the round tiles of the round inside it. Before, the
+	## middle of a round of 8 kept 12 bare studs.
 	func _round_tiles(low: Vector2i, d: int, c: int, j: int) -> void:
 		var part: String = ROUND_TILES[d]
 		var cells: Array[Vector2i] = []
@@ -1268,16 +1391,52 @@ class Plan extends RefCounted:
 				"rot": 0, "_cells": cells, "_h": 1, "_studs": [] as Array[Vector2i],
 				"_base": cells, "_round": true, "_top": true})
 			return
+		# The corner round tiles of 4 and 8 are rings (macaroni): a set nests
+		# them, 4 x 4 round 3 x 3 round 2 x 2, with a round tile in the middle.
+		# Laid alone, a round of 8's top kept twenty bare studs inside its
+		# ring and a round of 4's a hole a stud across. (A 6 x 6 round tile
+		# would do the middle of 8, but its cover is its square box, and the
+		# check reads it as overlapping the ring.)
+		for ring: Array in TILE_RINGS:
+			var across: int = ring[0]
+			if across > d:
+				continue
+			var off: int = (d - across) / 2
+			_quarter_tiles(low + Vector2i(off, off), across, str(ring[1]), c, j,
+				_box(low + Vector2i(off + 1, off + 1), across - 2))
+		var middle: Array[Vector2i] = []
+		for one: Variant in _box(low + Vector2i(d / 2 - 1, d / 2 - 1), 2):
+			middle.append(one)
+		round_made.append({"part": ROUND_TILES[2], "color": c, "x": low.x + d / 2 - 1, "y": j,
+			"z": low.y + d / 2 - 1, "rot": 0, "_cells": middle, "_h": 1,
+			"_studs": [] as Array[Vector2i], "_base": middle, "_round": true, "_top": true})
+
+	## The rings of corner round tiles, widest first: each a quarter ring a
+	## stud wide, whose inside is the next.
+	const TILE_RINGS: Array = [[8, "27507"], [6, "79393"], [4, "27925"]]
+
+	static func _box(low: Vector2i, d: int) -> Dictionary:
+		var out: Dictionary = {}
+		for i: int in d:
+			for k: int in d:
+				out[low + Vector2i(i, k)] = true
+		return out
+
+	## Four corner round tiles of [param part] over the box of [param d] at
+	## [param low], each turned to lean as a quarter of a round, studs in
+	## [param skip] left to another part.
+	func _quarter_tiles(low: Vector2i, d: int, part: String, c: int, j: int,
+			skip: Dictionary) -> void:
 		var mesh: Lbm.PartMesh = library.mesh_for(part)
 		var half: int = d / 2
 		var corners: Array[Vector2i] = [Vector2i(0, 0), Vector2i(half, 0), Vector2i(half, half),
 			Vector2i(0, half)]
 		# Which way each one's cover leans: a 2 x 2 corner round tile's to the
-		# middle, as a corner round brick's does, the 4 x 4's (a quarter
-		# ring) to its curve. Turned the other way, four made a star of
-		# curves facing each other.
+		# middle, as a corner round brick's does, the 4 x 4's and 3 x 3's
+		# (quarter rings a stud wide) to their curve. Turned the other way,
+		# four made a star of curves facing each other.
 		var inward: Array[Vector2] = [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
-		if part == "27507":
+		if part == "27507" or part == "79393":
 			inward = [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
 		for n: int in 4:
 			var rot: int = Rounds.QUARTER_TURNS[n]
@@ -1289,7 +1448,9 @@ class Plan extends RefCounted:
 			var mine: Array[Vector2i] = []
 			for i: int in half:
 				for k: int in half:
-					mine.append(low + corners[n] + Vector2i(i, k))
+					var cell: Vector2i = low + corners[n] + Vector2i(i, k)
+					if not skip.has(cell):
+						mine.append(cell)
 			round_made.append({"part": part, "color": c, "x": low.x + corners[n].x, "y": j,
 				"z": low.y + corners[n].y, "rot": rot, "_cells": mine, "_h": 1,
 				"_studs": [] as Array[Vector2i], "_base": mine, "_round": true, "_top": true})
@@ -1310,9 +1471,11 @@ class Plan extends RefCounted:
 
 	## Lay plates [param from] to [param to] of a disc [param d] studs across
 	## with its low corner at [param low], in colour [param c].
-	func _round_run(low: Vector2i, d: int, c: int, from: int, to: int) -> void:
+	## [param under]: the diameter of the round it stands on, where that is
+	## narrower — its first plate is then a round plate, bridging in.
+	func _round_run(low: Vector2i, d: int, c: int, from: int, to: int, under: int = 0) -> void:
 		var parts: Array = []
-		var state := {"d": d, "below": "", "last_d": d}
+		var state := {"d": d, "below": "", "last_d": under if under > 0 else d}
 		var centre := Vector2(low.x + d / 2.0, low.y + d / 2.0)
 		Rounds._body(parts, centre, float(from), d, to - from, c, state)
 		for one: Dictionary in parts:
@@ -1391,6 +1554,10 @@ class Plan extends RefCounted:
 	const SHELL_CORE := 2
 	## The brick with a stud on one side that holds a shell.
 	const ANCHOR := "87087"
+	## And the longer ones, by how many lanes each holds: a run of lanes in a
+	## course of the core's wall is held by 1 x 4s and 1 x 2s with studs on a
+	## side, not a 1 x 1 a lane.
+	const ANCHOR_RUNS: Dictionary = {4: "30414", 2: "11211", 1: ANCHOR}
 
 	## Side studs a shell is held by, laid in the core: placements.
 	var anchors: Array = []
@@ -1546,13 +1713,16 @@ class Plan extends RefCounted:
 			"face": face, "top": top, "rows": rows, "held": {}, "cells": mine}
 		# Its side studs: every second row, in the core's outer wall behind
 		# each lane the shell's first row of plates covers there.
-		var rot: int = _anchor_turn(facing)
-		if rot < 0:
+		if _anchor_turn(facing) < 0:
 			return {}
 		for w: int in range(0, rows, 2):
 			var jb: int = top - roundi(2.5 * w) - 3
 			if jb < 0:
 				break
+			# Each lane the shell's row covers there, with the cell of the
+			# core's outer wall behind it: [lane, cell, colour], or [] where
+			# none can go.
+			var lanes: Array = []
 			for a: int in range(low.x, high.x + 1):
 				# In every lane, a course of them as studs_out lays one: one
 				# lane in two cut the core's outer wall into columns of 1 x 1s
@@ -1561,6 +1731,7 @@ class Plan extends RefCounted:
 				var p: Vector2 = _point(a + 0.5, face + 0.2, facing, along)
 				if int(colour_at.call(p.x, row_y, p.y)) < 0 \
 						or not mine.has(Vector3i(floori(p.x), floori(row_y), floori(p.y))):
+					lanes.append([])
 					continue
 				var q: Vector2 = _point(a + 0.5, face - 0.5, facing, along)
 				var cell := Vector2i(floori(q.x), floori(q.y))
@@ -1568,22 +1739,66 @@ class Plan extends RefCounted:
 				for n: int in 3:
 					free = free and at(cell, jb + n) >= 0 \
 						and not taken.has(Vector3i(cell.x, jb + n, cell.y))
-				if not free:
+				lanes.append([a, cell, at(cell, jb + 1)] if free else [])
+			# Runs of lanes side by side in one colour, each held by side-stud
+			# bricks as long as fit, laid the same from either end so a side
+			# that is its own mirror stays one: 84 of an egg's 450 parts were
+			# 1 x 1s with a stud on a side.
+			var run: Array = []
+			for n: int in lanes.size() + 1:
+				var lane: Array = lanes[n] if n < lanes.size() else []
+				if not lane.is_empty() and (run.is_empty()
+						or int((run[-1] as Array)[2]) == int(lane[2])):
+					run.append(lane)
 					continue
-				for n: int in 3:
-					taken[Vector3i(cell.x, jb + n, cell.y)] = true
-				var cells: Array[Vector2i] = [cell]
-				anchors.append({"part": ANCHOR, "color": at(cell, jb + 1), "x": cell.x, "y": jb,
-					"z": cell.y, "rot": rot, "_cells": cells, "_h": 3, "_studs": cells,
-					"_base": cells, "_holds": [facing, Vector2i(a - low.x, w)]})
-				(shell["held"] as Dictionary)[Vector2i(a - low.x, w)] = true
+				var at_: int = 0
+				for size: int in _split(run.size()):
+					var cells: Array[Vector2i] = []
+					var holds: Array = []
+					for k: int in size:
+						var one: Array = run[at_ + k]
+						cells.append(one[1])
+						holds.append(Vector2i(int(one[0]) - low.x, w))
+						for m: int in 3:
+							taken[Vector3i((one[1] as Vector2i).x, jb + m, (one[1] as Vector2i).y)] = true
+					at_ += size
+					var part: String = ANCHOR_RUNS[size]
+					var turn: int = _anchor_turn(facing, part)
+					if turn < 0:
+						continue
+					var corner: Vector2i = cells[0]
+					for cell: Vector2i in cells:
+						corner = Vector2i(mini(corner.x, cell.x), mini(corner.y, cell.y))
+					anchors.append({"part": part, "color": int((run[0] as Array)[2]), "x": corner.x,
+						"y": jb, "z": corner.y, "rot": turn, "_cells": cells, "_h": 3,
+						"_studs": cells, "_base": cells, "_holds": [facing, holds]})
+					for held: Vector2i in holds:
+						(shell["held"] as Dictionary)[held] = true
+				run = [lane] if not lane.is_empty() else []
 		if (shell["held"] as Dictionary).is_empty():
 			return {}
 		return shell
 
-	## The quarter turn that points the anchor's side stud [param facing].
-	func _anchor_turn(facing: Vector2i) -> int:
-		var mesh: Lbm.PartMesh = library.mesh_for(ANCHOR)
+	## A run of [param n] lanes as side-stud bricks, longest first and the
+	## same from either end: 6 is 2 2 2, 9 is 4 1 4.
+	static func _split(n: int) -> Array:
+		var ends: Array = []
+		var left: int = n
+		while not left in [0, 1, 2, 4]:
+			var size: int = 4 if left >= 8 else (2 if left >= 4 else 1)
+			ends.append(size)
+			left -= 2 * size
+		var out: Array = ends.duplicate()
+		if left > 0:
+			out.append(left)
+		ends.reverse()
+		return out + ends
+
+	## The quarter turn that points [param part]'s side studs [param facing].
+	func _anchor_turn(facing: Vector2i, part: String = ANCHOR) -> int:
+		var mesh: Lbm.PartMesh = library.mesh_for(part)
+		if mesh == null:
+			return -1
 		var out := Vector3(facing.x, 0, facing.y)
 		for connector: Lbm.Connector in mesh.connectors:
 			if connector.kind != "stud" or connector.gender != "male" \
@@ -1638,6 +1853,7 @@ class Plan extends RefCounted:
 		if local.is_empty():
 			return []
 		var sub := Plan.new(local, depth, true, library)
+		sub.flank = true
 		sub.sides_smooth = false
 		sub.rounds = false
 		sub.wedges = wedges
@@ -1648,7 +1864,8 @@ class Plan extends RefCounted:
 		# core's own pruning let go holds nothing.
 		for one: Dictionary in made:
 			if one.has("_holds") and (one["_holds"] as Array)[0] == facing:
-				sub.held[(one["_holds"] as Array)[1]] = true
+				for held: Vector2i in (one["_holds"] as Array)[1]:
+					sub.held[held] = true
 		if sub.held.is_empty():
 			return []
 		sub.mirror_of()
@@ -1878,6 +2095,15 @@ class Plan extends RefCounted:
 						if kind == "mixed" and not under and prefer.is_valid() \
 								and entry[0] != "cheese" and str(prefer.call(cell)) != entry[0]:
 							score += 0.5
+						# A flank falling a plate a stud took a cheese slope a
+						# stud, a staircase of little wedges: there a curved
+						# 2 x 1 falls within half a plate of it, and reads as
+						# the curve it is. An egg's flank was 2.6% curved. Not
+						# where its colour changes: on a fuselage's canopy edge
+						# a curved 2 x 1 laid there was held by nothing.
+						if flank and kind == "curved" and entry[0] == "cheese" \
+								and _one_colour(inner, top, cell, out):
+							score += 0.3
 						if error <= 1.0 and (best.is_empty() or score < float(best["score"])):
 							var colour: int = at(inner, (top if under else top - 1))
 							if colour < 0:
@@ -1898,6 +2124,18 @@ class Plan extends RefCounted:
 				var over: float = float(profile_of[n]) if n < profile_of.size() else 0.0
 				height[cell + (best["facing"] as Vector2i) * n] = int(best["y"]) + roundi(over)
 			picks.append(best)
+
+	## Whether the two studs falling from [param inner] (its top at
+	## [param top]) along [param out] from [param cell] are topped in its
+	## colour.
+	func _one_colour(inner: Vector2i, top: int, cell: Vector2i, out: Vector2i) -> bool:
+		var tops_: Dictionary = tops()
+		var colour: int = at(inner, top - 1)
+		for n: int in 2:
+			var here: Vector2i = cell + out * n
+			if not tops_.has(here) or at(here, int(tops_[here]) - 1) != colour:
+				return false
+		return true
 
 	## Take the plates a slope stands in out of the shape — everything over
 	## its foot in the studs it covers, or under an overhang everything under

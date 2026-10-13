@@ -728,8 +728,33 @@ fixing what it got wrong.
   sections kept, and passes them (and refuses the pane not turned into its
   groove). The landing page's Orthanc opened: no sky through slits it was
   told of before, one piece where the old reading made 232.
+- `a piece standing apart`: `Assistant._standing_apart`, in `_check`. The
+  held-out sports car (`car_r1`) finished in two pieces and said every check
+  passed: a nameplate (a 41539 plate, a 4515 slope and printed tiles) the run
+  meant — "a nameplate plaque in front of the car" — lay on the ground in
+  front of it, joined to nothing, and a piece apart was only a remark. Now a
+  piece that stands apart from the model — touching nothing of it within half
+  a stud and a plate (`_touching`, `NEAR`), its plan outside the plan of the
+  rest (`_outside`), fewer than a tenth of the model's parts (`SCENE`) — is a
+  fault, `loose`, unless it is named: every part of it in one assembly that
+  holds none of the model (a design's `assemblies` box, `_assembly_of`, or a
+  file's sub-model: `Placement.group`), or a whole figure. Pieces against the
+  model unjoined (a seam, one layer, a prism's faces), pieces of a size with
+  the model (a scene), pieces of the person's own and pieces held by nothing
+  (said as floating) are said as before. `edit_model` takes `assemblies` to
+  name one (one of the same name moves to the new box), the in-app loop tags
+  its assemblies on the bricks as it ends and a session's on saving
+  (`_tag_assemblies`, from `CommandSocket` `save_model`; one assembly only
+  where something stands outside it), so the stand is a sub-model of the file
+  and the person sees it as an item. `edit_probe` ("a design in two halves"):
+  unnamed, refused as loose; named in a box of its own, an item; named in a
+  box that holds the model too, still loose; a file's sub-model names it; the
+  person's own piece is left alone. `candidate_probe` on `car_r1.ldr` fails it
+  (loose 1); the same file with the plaque in a sub-model passes ("apart as
+  named: Nameplate").
 - `standing up, for the landing page`: `src/dev/candidate_probe.gd -- MODEL.ldr
-  [ON_THE_PAGE.ldr]`. A candidate opens whole, is buildable in one piece,
+  [ON_THE_PAGE.ldr]`. A candidate opens whole, is buildable in one piece (or
+  with items named to stand apart, judged as a design),
   stands up as the status bar reckons it (`Stability`), and the check says none
   of a picture's faults of it (hole, speckle, office block, straight shaft, sky,
   yard) that the model on the page (`models/orthanc.ldr` unless said) does not
@@ -931,9 +956,21 @@ fixing what it got wrong.
   plain before, and 60 parts, 100% curved after. `Shapes.last` says the
   runs (`round_runs`) and where each piece but the largest is (`apart`).
   The top of a smooth round run is its round tiles (`_round_tiles`: 98138,
-  14769, four 27925, 7212; the 4 x 4 corner round tiles 27507 are a ring,
-  so a round of 8 keeps studs in the middle) and a dish crown carries a
-  round tile on its middle studs.
+  14769 and 7212 whole; the corner round tiles of 4 and 8 are rings a stud
+  wide, so a round of 8 is three nested rings, 27507, 79393 and 27925, with a
+  14769 in the middle, and a round of 4 the 27925 ring and a 14769:
+  `TILE_RINGS`, read off their meshes — a 6 x 6 round tile's cover is its
+  square box and overlaps the ring) and a dish crown carries a round tile on
+  its middle studs. A round of 6 or 8 with a round a stud narrower standing
+  on it is eased (`Plan._ease`): the step was a stud-wide ledge of bare
+  studs, a wedding cake from the side; now the rim of the round below
+  carries 2 x 2 curved slopes (15068) falling out on each side and a round
+  plate with a quarter-round tile (6141, 25269) on each corner's one stud,
+  two plates tall; inside them a core four studs narrower (round plates),
+  and the round above goes on from a round plate that bridges in over the
+  slopes (`_round_run`'s `under`). Only where the round above is three
+  plates or more, one colour with the one below, and nothing else of the
+  shape is in the rim (`_rim_free`).
   A side that curves up and down is laid on its side (`Plan.shells`,
   `lay_shell`): for each way out, where the shape reaches past a face two
   studs in from its outermost, steeply (out no more than two studs in four
@@ -943,9 +980,13 @@ fixing what it got wrong.
   plan turned on its side — local x along the side, local plates out
   (0.4 stud), local studs down (2.5 plates a row) — then each part turned by
   the basis that takes up to out (`Rounds._cover`/`_placed`). It is held by
-  87087s in the core's outer wall in every lane of every second row (the
-  side stud is 1.75 plates up the brick; one lane in two cut the wall into
-  columns of 1 x 1s); the shell's own plan keeps only parts joined to a
+  side-stud bricks in the core's outer wall in every lane of every second
+  row (the side stud is 1.75 plates up the brick; one lane in two cut the
+  wall into columns of 1 x 1s): each run of lanes in one colour as 1 x 4s,
+  1 x 2s and 1 x 1s with studs on a side (30414, 11211, 87087:
+  `ANCHOR_RUNS`), split the same from either end so a mirrored side stays
+  one (`_split`: 6 is 2 2 2, 9 is 4 1 4) — an egg was 84 1 x 1s, now 49
+  bricks; the shell's own plan keeps only parts joined to a
   side stud the core kept (`Plan.held` in `prune`), is not stitched, and
   samples a row only where every plate it reaches into is its own. Where
   turning sides out leaves the core in more pieces than upright, it is laid
@@ -965,6 +1006,18 @@ fixing what it got wrong.
   to 60%; bird 0 to 25%, 68 to 55%; hull 0.3 to 19%, 72 to 54%; the owl
   body 2.7 to 37%, 80 to 58% — and the curved share falls (12 to 8%, 10 to
   3%), because the corner rounds at the rim become the shell's plates.
+  A shell's own plan is a flank (`Plan.flank`): where it falls a plate a
+  stud, a curved 2 x 1 fits within half a plate and a cheese slope by a
+  stud each, so the cheese is scored 0.3 worse there and the curved one is
+  laid — except where its colour changes (`_one_colour`): on the probe
+  fuselage's canopy edge a curved 2 x 1 laid there was held by nothing. The
+  egg's flank went from 2 curved slopes of 143 parts turned out to 26 of 135
+  (11477, 50950, 15068, 24309), the whole egg 3% to 9% curved and 450 parts
+  to 407. `shapes_probe` checks the egg's and the bird's shells carry curved
+  slopes (one in twenty turned parts or more; a hull's side falls straight
+  and keeps its tiles) and that each of the three has fewer side-stud bricks
+  than three quarters of the lanes they hold (egg 49 for 86, bird and hull
+  22 for 62, where each had a 1 x 1 a lane: 84, 58, 58).
 - `rock said as a pattern`: `Patterns._rock`. Courses of bonded bricks that
   step in unevenly (per-course weights by seed) and drift towards a peak off
   the middle, each cut to the one below so nothing floats; where a course steps
