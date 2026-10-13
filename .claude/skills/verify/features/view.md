@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, ui:the booklet, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:pose and animate, lib:posing joints, lib:keyframed animation, cli:render open check -->
 
 ## Sub-features
 
@@ -574,6 +574,42 @@ picture the assistant is shown.
   styles off unused), the turn tables against the meshes, and that the classic
   mosaic lays the probe's gradient exactly as it did. Renders of the galaxy:
   `shots/art/`.
+- `LEGO Art plans` (`src/assembly/art_plan.gd`): what a LEGO Art designer
+  decides, as a small JSON plan the engine keeps to (`MosaicArt.Guide`):
+  panels and crop; regions over the picture (`everything`, a polygon, an
+  ellipse whose radii are fractions of the width so a circle is round, or a
+  rect), each changing only what it says — texture (round, smooth, or as the
+  picture reads), relief in plates, whether contours run there, whether its
+  points of light are stars and in what finish, or one colour for all of it;
+  single stars put by hand (`points`); a palette; the panels' colour; and an
+  SVG drawn by Claude when there is no picture (`Image.load_svg_from_string`,
+  eight pixels a stud, over the panels' colour so a drawing with no
+  background is no holes). Coordinates are fractions of the picture after
+  the crop, 0 to 1 from the top left, so a plan survives the panel count
+  changing. Wherever it says nothing the engine reads the picture as before,
+  and `MosaicArt.make` is unchanged as the default. `ArtPlan.parse` is the
+  edge: every field checked, every fault named at once ("regions[0].relief is
+  9; it must be from 0 to 6", "\"height\" is not something a region says"),
+  unknown keys refused rather than ignored. `ArtPlan.schemas()` is the tool
+  definition, beside the reader, and the probe holds the two to the same
+  fields.
+- `LEGO Art designed by Claude`: two tools in the assistant's list, so the
+  in-app loop, Claude Code on the person's plan (My Claude) and a session
+  over MCP or the connector all have them: `make_art` (a plan in, laid in
+  place of the model as the dialog's Build does, answered with the picture
+  face on and its parts by element, so the designer can look and plan again)
+  and `look_at_picture` (the person's picture — the one chosen for the mosaic,
+  or the first reference — for a session that is given a sentence, not the
+  picture). The rules say a picture to hang up is make_art, not
+  submit_design. In the mosaic dialog, under the Art switches, a brief field
+  and **Design with Claude**: the dialog closes, the assistant column opens and
+  the chat panel sends `MosaicDialog.art_brief` ("Make the picture I chose
+  into a LEGO Art set with make_art: look_at_picture first…" and what was
+  typed) as if typed (`ChatPanel.ask`), so it runs on the person's key or
+  their own Claude exactly as a design does, and with neither says what is
+  needed. However it is laid, `main._art_laid` frames it, checks it on a
+  worker and says "one piece" in the status line, and publishes
+  `brickworksState.art` (parts, panels, pieces, ok).
 - `photo-real render` (File, Render…, and the toolbar's camera;
   `src/ui/render_dialog.gd`): a picture or a turntable of the model worth
   keeping, Studio's Eyesight and Mecabricks' Workshop being the bar. The panel's
@@ -711,6 +747,22 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
 #   `-- --every-frame` runs it drawing every frame, as the app did
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture, classic and Art
 #   -- --ldr=shots/art/galaxy.ldr writes the galaxy, to render corner, front and close
+godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan is laid as it says; a bad one is refused
+#   no network: a canned plan over a tilted galaxy (sky smooth and flat, disc
+#   round and one up, core three up, three stars by hand in glow, trans-clear
+#   and pearl gold) checked stud by stud against what was laid, the palette,
+#   made-in colours, one piece, the parts list; a plan that draws its own
+#   SVG; 16 malformed plans each refused with its fault named; make_art and
+#   look_at_picture called as a design calls them (a bad plan leaves the
+#   baseplate alone, a good one replaces it, panels as sub-assemblies); and
+#   the dialog's Design with Claude. Ends "an Art plan is laid as it says".
+# In a browser, on a local web export (tools/export.sh web, then
+# python3 tools/web/serve.py build/web PORT): Build > Mosaic from a picture
+# (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
+# brickworksState.art read for its parts, every one on the baseplate, one
+# piece, Panel N#1 and Frame#1 in the tree; then Design with Claude, which
+# must close the dialog, open the assistant and, with no key, say so.
+node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 #   every step pictured and framed on the model, new parts in frame, a parts box

@@ -278,6 +278,8 @@ func _in_words(name: String) -> String:
 		"edit_model": "changing it",
 		"clear_model": "clearing the baseplate",
 		"save_model": "saving",
+		"make_art": "laying out a LEGO Art picture",
+		"look_at_picture": "looking at the picture",
 	}.get(plain, plain.replace("_", " "))
 
 
