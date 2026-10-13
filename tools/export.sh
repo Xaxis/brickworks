@@ -122,6 +122,12 @@ build_web() {
   local preset="$1" dir="$2"
   export_one "$preset" "$dir/index.html" || return 1
   compress_web "$dir" || return 1
+  # The real-set index beside the build, not in the pack every visitor
+  # waits for: the app fetches it the first time a design asks for a
+  # technique (src/ai/real_snippets.gd).
+  mkdir -p "$dir/knowledge"
+  cp assets/knowledge/snippets.json.gz assets/knowledge/part_looks.json "$dir/knowledge/" \
+    || { echo "export FAILED: no assets/knowledge to put beside $dir"; return 1; }
   report_web "$dir"
 }
 

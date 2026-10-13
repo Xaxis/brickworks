@@ -2208,7 +2208,7 @@ func _run_tool(block: Dictionary) -> Variant:
 		"find_parts_like":
 			var query: String = str(args.get("query", ""))
 			progress.emit("looking for a part that reads as %s" % query)
-			return _find_parts_like(query)
+			return await _find_parts_like(query)
 		"plan_scale":
 			progress.emit("working out how big it should be")
 			return _plan_scale(args)
@@ -12902,7 +12902,8 @@ func _show_technique(wanted: String) -> String:
 ## the nearest of seventy, and the repository has thousands of named
 ## sub-assemblies. Words find them; the picture says whether one is it.
 func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
-	if not RealSnippets.available():
+	# Fetched on the web the first time, from beside the build.
+	if not await RealSnippets.ensure(self):
 		return ("This build has no index of real sets' sub-assemblies "
 			+ "(tools/snippets.py build). show_technique has the worked "
 			+ "examples.")
@@ -12963,7 +12964,7 @@ func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 ## Parts by what they read as: the families of tools/part_looks.py whose
 ## line, written by Claude, matches the words asked.
 func _find_parts_like(query: String) -> String:
-	if RealSnippets.looks().get("families", []).is_empty():
+	if not await RealSnippets.ensure_looks(self):
 		return "This build has no list of what parts look like (tools/part_looks.py)."
 	var found: Array = RealSnippets.search_looks(query, 6)
 	if found.is_empty():
@@ -13035,6 +13036,7 @@ func _snippet_picture(entries: Array) -> Image:
 ## with the answer, so a design writing whole lists can carry them.
 func _place_technique(args: Dictionary) -> Variant:
 	var id: String = str(args.get("id", ""))
+	await RealSnippets.ensure(self)
 	var entry: Dictionary = RealSnippets.entry(id)
 	if entry.is_empty():
 		return ("No piece has the id \"%s\". Use one find_techniques gave." % id

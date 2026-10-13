@@ -74,6 +74,15 @@ def test_the_subject_before_its_kind() -> None:
     assert _ids(snippets.search(document, "dragon wing")) == ["3-1/wing", "1-1/wing", "2-1/wing"]
 
 
+def test_within_the_subject_the_feature_decides() -> None:
+    document = _index(
+        _entry("1-1/bird", "Bird", "Log Cabin", text="small bird with a yellow beak"),
+        _entry("2-1/beak", "Parrot Beak", "Rainforest Animals"),
+    )
+    # both are about birds and both have a beak; the one that is a beak first
+    assert _ids(snippets.search(document, "bird beak"))[0] == "2-1/beak"
+
+
 def test_a_synonym_finds_the_piece() -> None:
     document = _index(_entry("1-1/hood", "Hood", "Sports Car"),
                       _entry("2-1/roof", "Roof", "House"))

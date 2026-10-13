@@ -35,7 +35,7 @@ are left out: what is here is CC BY, credited wherever it is shown.
 The descriptions are written offline by Claude from a thumbnail and the
 part list (`batches` writes the part lists; src/dev/snippet_thumbs.gd
 renders the thumbnails; tools/describe_snippets.sh runs the sessions)
-into assets/knowledge/snippet_texts.jsonl, which `build` reads back.
+into assets/knowledge/snippet_texts.jsonl.gz, which `build` reads back.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ import style  # noqa: E402
 
 FILES = ROOT / "vendor" / "omr" / "files"
 OUT = ROOT / "assets" / "knowledge" / "snippets.json.gz"
-TEXTS = ROOT / "assets" / "knowledge" / "snippet_texts.jsonl"
+TEXTS = ROOT / "assets" / "knowledge" / "snippet_texts.jsonl.gz"
 # Whether each lays whole on its own (src/dev/snippet_verdicts.gd): a
 # local cache like the thumbnails, a few minutes to make again.
 VERDICTS = ROOT / "vendor" / "omr" / "snippet_verdicts.jsonl"
@@ -482,7 +482,7 @@ def _finish(entries: list[dict], out: Path, texts: Path) -> None:
     batch of descriptions is seconds to take in (build --from)."""
     said = {}
     if texts.exists():
-        for line in texts.read_text().splitlines():
+        for line in _lines(texts):
             if line.strip():
                 row = json.loads(line)
                 said[row["id"]] = row["text"]
@@ -602,13 +602,21 @@ def load(path: Path = OUT) -> dict:
     return json.loads(gzip.decompress(raw) if path.suffix == ".gz" else raw)
 
 
+# A word naming the subject ("bird" in "bird beak") counts this much in a
+# piece's score: it has already put the subject's sets first, and within
+# them the feature asked for should decide, or every piece named "bird"
+# comes before the parrot's beak.
+SUBJECT_WEIGHT = 0.3
+
+
 def query_words(query: str, vocabulary: dict) -> list[tuple[str, float]]:
     """The query as stemmed words and their weights, with two words run
     together where the index knows them that way: "wheel arch" also asks
     for "wheelarch", which counts double, being both words at once."""
     found = words(query)
     joined = [a + b for a, b in zip(found, found[1:]) if a + b in vocabulary]
-    return [(w, 1.0) for w in found] + [(w, 2.0) for w in joined]
+    return ([(w, SUBJECT_WEIGHT if w in SUBJECT_OF else 1.0) for w in found]
+            + [(w, 2.0) for w in joined])
 
 
 def search(document: dict, query: str, max_studs: float = 0.0, kinds: list[str] | None = None,
@@ -702,7 +710,7 @@ def batches(document: dict, thumbs: Path, out: Path, size: int, texts: Path) -> 
     colours = _colour_names()
     done = set()
     if texts.exists():
-        done = {json.loads(l)["id"] for l in texts.read_text().splitlines() if l.strip()}
+        done = {json.loads(l)["id"] for l in _lines(texts) if l.strip()}
     # Nor any already in a batch here: run again once more pictures are
     # made, this adds batches after the ones a describing run is working
     # through.
@@ -743,11 +751,17 @@ def batches(document: dict, thumbs: Path, out: Path, size: int, texts: Path) -> 
     return 0
 
 
+def _lines(path: Path) -> list[str]:
+    """A text file's lines, gzipped or not."""
+    raw = path.read_bytes()
+    return (gzip.decompress(raw) if path.suffix == ".gz" else raw).decode().splitlines()
+
+
 def merge_texts(folder: Path, texts: Path) -> int:
     """The describers' answers, numbered as their batch was, into the texts file."""
     known = {}
     if texts.exists():
-        for line in texts.read_text().splitlines():
+        for line in _lines(texts):
             if line.strip():
                 row = json.loads(line)
                 known[row["id"]] = row["text"]
@@ -770,8 +784,9 @@ def merge_texts(folder: Path, texts: Path) -> int:
                 known[ids[n - 1]] = text
                 added += 1
     texts.parent.mkdir(parents=True, exist_ok=True)
-    texts.write_text("".join(json.dumps({"id": k, "text": v}, ensure_ascii=False) + "\n"
-                             for k, v in sorted(known.items())))
+    written = "".join(json.dumps({"id": k, "text": v}, ensure_ascii=False) + "\n"
+                      for k, v in sorted(known.items())).encode()
+    texts.write_bytes(gzip.compress(written, 9, mtime=0) if texts.suffix == ".gz" else written)
     print(f"{added} descriptions added; {len(known)} in {texts}")
     return 0
 
