@@ -122,3 +122,39 @@ it too. Only the crane (16 pieces) and the starfighter (10) are truly loose.
 It does not change the weakest three; but before a round chases
 buildability, the check should know a display stand, and the rubric should
 count only the faults the probe fails on.
+
+## 2026-10-13: the baseline re-scored after the build check was fixed (26ddb89)
+
+The same 13 designs, their pictures and style kept; only the build check and
+the judge run again. The check had misread parts tipped on a flat axis (hinged
+wings, a raised boom) and fired two picture faults written for Orthanc, so
+build was under-scored. This corrects the measure, not the designs: build
+went from 7.5 to 10 and the suite mean from 4.6 to 5.1, and the other five
+dimensions moved within the noise. Compare later rounds with this table.
+
+
+| subject | runs | likeness | surface | colour | technique | creative | build | mean | parts | pieces |
+|---|---|---|---|---|---|---|---|---|---|---|
+| astronaut_bust | 1 | 5.0 | 4.0 | 4.0 | 4.0 | 5.0 | 10.0 | **5.3** | 1,153 | 1 |
+| barn_owl | 2 | 4.0 | 3.5 | 4.0 | 4.0 | 4.0 | 10.0 | **4.9** | 633 | 1, 1 |
+| bonsai | 1 | 4.0 | 3.0 | 4.0 | 2.0 | 2.0 | 10.0 | **4.2** | 213 | 1 |
+| castle_gatehouse | 1 | 5.0 | 3.0 | 5.0 | 4.0 | 5.0 | 10.0 | **5.3** | 1,317 | 1 |
+| corner_shop | 2 | 4.5 | 3.5 | 4.5 | 3.5 | 3.0 | 10.0 | **4.8** | 967 | 1, 1 |
+| falcon_heavy | 1 | 6.0 | 6.0 | 5.0 | 5.0 | 5.0 | 10.0 | **6.2** | 350 | 1 |
+| mobile_crane | 1 | 4.0 | 3.0 | 4.0 | 3.0 | 4.0 | 10.0 | **4.7** | 244 | 3 |
+| mountain_cabin | 1 | 4.0 | 3.0 | 5.0 | 3.0 | 4.0 | 10.0 | **4.8** | 213 | 1 |
+| speed_champions | 2 | 3.5 | 4.5 | 3.5 | 3.5 | 3.0 | 10.0 | **4.7** | 161 | 2, 2 |
+| starfighter | 1 | 6.0 | 4.0 | 5.0 | 4.0 | 5.0 | 10.0 | **5.7** | 204 | 2 |
+| **suite mean** | 13 | **4.6** | **3.8** | **4.4** | **3.6** | **4.0** | **10.0** | **5.1** |  |  |
+
+Run to run, the same subject designed again on the same code (each cell is run 1 / run 2 ...):
+
+| subject | likeness | surface | colour | technique | creative | build | mean |
+|---|---|---|---|---|---|---|---|
+| barn_owl | 4 / 4 | 3 / 4 | 4 / 4 | 4 / 4 | 5 / 3 | 10 / 10 | 5.0 / 4.8 |
+| corner_shop | 4 / 5 | 3 / 4 | 4 / 5 | 3 / 4 | 3 / 3 | 10 / 10 | 4.5 / 5.2 |
+| speed_champions | 3 / 4 | 4 / 5 | 3 / 4 | 3 / 4 | 3 / 3 | 10 / 10 | 4.3 / 5.0 |
+
+Mean spread between runs, per dimension: likeness 0.7, surface 1.0, colour 0.7, technique 0.7, creative 0.7, build 0.0; of a subject's mean score, 0.50 (standard deviation 0.28). A change to a subject's mean smaller than the spread is not yet a result.
+
+Weakest across the suite: **technique** (3.6), **surface** (3.8), **creativity** (4.0).
