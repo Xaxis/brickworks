@@ -244,6 +244,15 @@ check(`a pinch zooms in (${start.distance.toFixed(0)} to ${(await view()).distan
 await nothingPlaced();
 
 console.log("  the view tools");
+// On the model framed, not wherever the trackpad left the view. The view is
+// centred on the model's column (CadCamera.seen), so the pinch above, at the
+// middle of the view, drives straight in: it left the eye 2 LDU under the
+// baseplate, a stud 355 px across and the page all dark green, where a slide
+// that keeps the grabbed surface under the pointer moved the focus 0.3 LDU
+// and nothing on the page. Before, the pinch went in 170 px to one side.
+await key("Digit0");
+await key("KeyF");
+await wait(1500);
 await key("KeyO");
 check(`O is the Orbit tool (${(await state()).mode})`, (await state()).mode === "orbit");
 start = await view();
@@ -253,9 +262,15 @@ check(`...whose drag on the model turns the view (${((await view()).yaw - start.
 check(`...and selects nothing (${(await state()).selected})`, (await state()).selected === 0);
 await key("KeyH");
 start = await view();
+const beforePan = await frameOf();
 await drag(spot(0, 0), spot(-120, 60));
-check(`H, the Pan tool, slides it (${(await state()).mode})`,
-  (await state()).mode === "pan" && focusMoved(start, await view()) > 5);
+// Slid: the focus moved, the picture with it, and the view did not turn.
+const after = await view();
+const panned = focusMoved(start, after);
+const turned = Math.abs(after.yaw - start.yaw) + Math.abs(after.pitch - start.pitch);
+const panChanged = differ(beforePan, await frameOf());
+check(`H, the Pan tool, slides it (${(await state()).mode}; ${panned.toFixed(1)} LDU at ${after.distance.toFixed(0)} back, turned ${turned.toFixed(3)} rad, the picture changed ${panChanged.toFixed(1)})`,
+  (await state()).mode === "pan" && panned > 5 && turned < 0.001 && panChanged > 2);
 await key("KeyZ");
 start = await view();
 await drag(spot(0, 0), spot(0, 100));
