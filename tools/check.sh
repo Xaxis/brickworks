@@ -328,6 +328,11 @@ run "cursors" "${cursor_screen[@]}" godot --path . --resolution 1400x900 \
 # bin clipped away was off the window, and at 1280 x 860 it drew every frame.
 run "draws only what changed" "${cursor_screen[@]}" godot --path . --resolution 1280x860 \
   --script src/dev/idle_probe.gd
+# ...and on a big model, where work a few frames long that redraws the
+# window for nothing is seconds of drawing in software: the first part in
+# hand drew the castle for 23 s with the pointer still.
+run "draws only what changed, big" "${cursor_screen[@]}" godot --path . --resolution 1280x860 \
+  --script src/dev/idle_probe.gd -- --model=res://models/castle.ldr
 
 # Two processes and a socket between them, which is a different kind of
 # failure from anything a single probe can have: the app's half can be

@@ -242,7 +242,16 @@ picture the assistant is shown.
   still 7 a second in software for the camera and gizmo), names the node
   whose processing draws them, and checks each change is drawn and then
   nothing: a turn easing to rest, a right drag, a brick put down, every step
-  of the build animation, the ghost, a lit button, a part's picture.
+  of the build animation, the ghost, a lit button, a part's picture. It opens
+  a model of its own choosing, the house, or the castle with
+  `-- --model=res://models/castle.ldr`, and the suite runs both: it used to
+  open on whatever other probes had left on the baseplate, and passed or
+  failed with that. On the castle a few frames of work redrawing the window
+  for nothing is seconds of software drawing: the first part taken in hand
+  drew a dozen pictures for the bin's tiles out of sight, the whole window
+  each, 23 s of the castle with the pointer still (2026-10-13; the house hid
+  it in under a second). Those tiles are drawn only in frames drawn anyway
+  now (`PartThumbnails`).
   `tools/web/idle_check.mjs` counts the same in Chromium. Frames that draw
   nothing still run every script, so what a script does every frame must be
   in proportion to change as well. The status line and the pointer each
@@ -848,6 +857,9 @@ godot --headless --path . --script src/dev/playback_probe.gd      # the build an
 # nothing drawn standing still, every change drawn (on Xvfb: it moves the pointer)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
   godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd
+#   ...on the house; and on a big model, where a few frames for nothing are seconds
+MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
+  godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd -- --model=res://models/castle.ldr
 #   at the browser checks' size: at 1400x900 the bin's clipped-off shimmer was
 #   off the window and drew nothing, at 1280x860 it drew every frame
 #   on the GPU, for the card's time a frame: ~/.claude/claude-core/bin/gpu before it;
