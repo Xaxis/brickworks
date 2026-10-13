@@ -44,7 +44,10 @@ geometry in front of them.
   swatch is drawn as its finish; its name, finish and status are on hover, and
   the colour in hand is named under the palette, in a note always two lines
   tall (the rest on its tooltip): it grew from one line to two when a part was
-  chosen and moved the palette 19 px under the pointer. A dot marks the colours the
+  chosen and moved the palette 19 px under the pointer. With parts selected,
+  and a click on a colour would paint them, the note describes them instead
+  ("Brick 2 x 4 in Red, selected: a colour clicked paints it", and the dots are
+  that part's; `PartsBin.show_selection`, `Main._tell_bin_selection`). A dot marks the colours the
   part in hand was really made in; a colour it was never made in is dimmed, but
   only where its list is complete. A swatch clicked with parts selected and
   nothing in hand paints them too, one undo step (`swatch_pressed`,

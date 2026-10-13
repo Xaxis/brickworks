@@ -2068,6 +2068,9 @@ func _build_ui() -> void:
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.
 	_verbs.mode_changed.connect(func(mode: String) -> void:
+		# A part in hand: the palette's colour is for it now, not the
+		# selection's.
+		_tell_bin_selection()
 		if mode == "place":
 			_bring_out_bin())
 	# The menus, the toolbar, the properties and the status bar:
@@ -2171,6 +2174,7 @@ func _build_ui() -> void:
 	_pose.changed.connect(_on_model_edited)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
+		_tell_bin_selection()
 		if count == 0:
 			_bar.say("")
 		else:
@@ -2181,6 +2185,8 @@ func _build_ui() -> void:
 	# assistant. Without redrawing the outline then, it is a box round
 	# nothing.
 	_world.rebuilt.connect(func(_bricks: int, _batches: int, _tris: int) -> void:
+		# Painted, or taken off by undo: what the palette's note says too.
+		_tell_bin_selection()
 		if not _builder.selection.is_empty():
 			_outline.show_selection(_builder.selection))
 	# So a snapshot does not carry the baseplate off with it.
@@ -2801,9 +2807,32 @@ func _on_color_chosen(color_code: int) -> void:
 ## goes down next. Edit, Paint the selection, so it is one undo step and
 ## refused where that is.
 func _on_swatch_pressed(_color_code: int) -> void:
-	if _verbs.mode == "place" or _builder.is_carrying():
+	if not _swatch_paints():
 		return
 	_shell.run("paint")
+
+
+## Whether a colour clicked in the palette paints the selection, rather
+## than being the colour of what goes down next.
+func _swatch_paints() -> bool:
+	return not _builder.selection.is_empty() and _verbs.mode != "place" \
+		and not _builder.is_carrying()
+
+
+## The palette's note says what a colour clicked would paint: the
+## selection, while there is one to paint (PartsBin.show_selection).
+func _tell_bin_selection() -> void:
+	if _bin == null or _verbs == null:
+		return
+	var parts := PackedStringArray()
+	var colours := PackedInt32Array()
+	if _swatch_paints():
+		for brick_id: int in _builder.selection:
+			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+			if brick != null:
+				parts.append(brick.part_id)
+				colours.append(brick.color_code)
+	_bin.show_selection(parts, colours)
 
 
 ## Open an LDraw model and place every part of it. Returns how many landed.

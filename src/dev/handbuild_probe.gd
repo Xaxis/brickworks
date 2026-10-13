@@ -1466,6 +1466,7 @@ func _first_timer() -> void:
 	await _hide_says_its_keys()
 	await _menus_show_the_real_keys()
 	await _the_palette_stays_put()
+	await _the_note_says_the_selection()
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the
@@ -1609,6 +1610,36 @@ func _the_palette_stays_put() -> void:
 		is_equal_approx(white.get_global_rect().position.y, was))
 	await _shot("first_timer_part_chosen")
 	await _key(KEY_ESCAPE)
+
+
+## With a brick selected the note under the palette described the part in
+## hand, while a colour clicked painted the brick.
+func _the_note_says_the_selection() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	(_main.get("_bin_dock") as SideDock).set_open(true)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	await _frames(4)
+	var white: Control = bin._swatches.get(15)
+	var was: float = white.get_global_rect().position.y
+	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
+	await _click(_screen(Vector3(-60, 24, 20)))
+	await _frames(6)
+	_check("a brick selected: the note under the palette describes it (%s)" % bin._colour_note.text,
+		_builder.selection.keys() == [red]
+		and bin._colour_note.text.begins_with("Brick 2 x 4 in Red, selected"))
+	_check("...and the palette has not moved (%.0f px)" % white.get_global_rect().position.y,
+		is_equal_approx(white.get_global_rect().position.y, was))
+	await _click(white.get_global_rect().get_center())
+	await _frames(6)
+	_check("...and the colour clicked paints it, and the note says so (%s)" % bin._colour_note.text,
+		_world.get_brick(red).color_code == 15
+		and bin._colour_note.text.begins_with("Brick 2 x 4 in White, selected"))
+	await _shot("first_timer_selection_note")
+	await _key(KEY_Z, true)
+	await _key(KEY_ESCAPE)
+	_check("nothing selected, it is the colour in hand again (%s)" % bin._colour_note.text,
+		not bin._colour_note.text.contains("selected"))
 
 
 # -- helpers ------------------------------------------------------------------
