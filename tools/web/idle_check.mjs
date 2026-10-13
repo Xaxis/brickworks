@@ -12,7 +12,8 @@
 // laptop's graphics card a fan and a battery (2026-10-11). Now it draws only
 // what changed (IdleDraw). Then it does what a person does and requires each
 // to be drawn, and the page to go quiet after: a wheel notch over the model,
-// the - key, the pointer moving over the model with a part in hand.
+// the - key, the pointer moving the ghost of a part in hand over the
+// baseplate (the page says where the ghost stands).
 //
 // Fails past --most (1) frames drawn a second standing still, or a tenth of
 // the engine's frames, or where a change was not drawn or the page did not
@@ -298,12 +299,30 @@ if (held) {
   // where the app rests (2026-10-11), and shows no ghost.
   await page.mouse.move(view.x, view.y);
   await page.keyboard.press("q");
-  row.hover = await drawnBy(`the pointer over the model with ${held} in hand`, async () => {
-    for (let n = 1; n <= 8; n++) {
-      await page.mouse.move(view.x + n * 14, view.y + n * 6);
-      await page.waitForTimeout(120);
-    }
-  });
+  // Over the baseplate in front of the model, more than a stud a step, so
+  // that every step moves the ghost; the page says where the ghost stands,
+  // and every move of it must be a frame drawn. Eight steps of 15 pixels
+  // over the example car moved it nowhere: every one aimed at the
+  // windscreen and put the part on the roof, so nothing was drawn, rightly,
+  // and the check said the ghost was never drawn (2026-10-13).
+  await quiet(2000, 20000);
+  const from = await now();
+  const places = [];
+  for (let n = 0; n < 8; n++) {
+    await page.mouse.move(view.x - 60 + n * 45, view.y + 260, { steps: 2 });
+    // The page is told the app's state twice a second.
+    await page.waitForTimeout(700);
+    const ghost = await page.evaluate(() => (window.brickworksState || {}).ghost);
+    places.push(ghost ? ghost.join(",") : "none");
+  }
+  await page.waitForTimeout(1500);
+  const after = drew(await frames(from));
+  const moved = places.filter((place, n) => n > 0 && place !== "none" && place !== places[n - 1]).length;
+  const still = await quiet(2000, 20000);
+  check(`the pointer over the baseplate with ${held} in hand: the ghost moved ${moved} times, `
+    + `${after.length} frames drawn, then quiet again`, moved >= 3 && after.length >= moved && still);
+  row.hover = after.length;
+  row.ghostMoves = moved;
   await page.keyboard.press("Escape");
 } else {
   console.log("     (nothing in hand, so no ghost to follow the pointer)");
