@@ -98,6 +98,14 @@ whole cycle.
 
 ### Changed
 
+- Part search finds a printed part by what is printed on it: "porsche
+  print", "control panel print", "wood grain print", or "3623 print" for
+  every print of the 1 x 3 plate; "sticker" finds parts with stickers on.
+  It reads a part's keywords too, so "porsche" finds the turbo printed on
+  a Porsche, and the figure builder finds a torso by its character. Plain
+  searches answer as before. Claude is told when a part it finds has
+  prints.
+
 - A BrickLink Studio .io opens in its own colours. It was read from the
   copy inside that uses BrickLink's colour numbers, so white came in blue.
   Files locked with AES open too, and a part only Studio has is named in

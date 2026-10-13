@@ -94,6 +94,7 @@ func _run() -> void:
 	await _seat_an_old_model()
 	await _replace_and_history()
 	await _the_parts_shelf()
+	await _prints_by_their_print()
 	await _exports()
 	await _under_a_part()
 	await _onto_side_studs()
@@ -1026,6 +1027,52 @@ func _the_parts_shelf() -> void:
 	PartShelf.clear()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PartShelf.file))
 	PartShelf.keeps = false
+
+
+## A print found by what is printed on it, typed into the bin's field.
+## "porsche print" found nothing: LDraw names a print a Pattern, and no
+## name has the word print in it (2026-10-13). print_search_probe holds
+## the words; this is the bin a person types them into.
+func _prints_by_their_print() -> void:
+	print("  a print found by what is printed on it")
+	var bin: PartsBin = _main.get("_bin")
+	await _show_column("_bin_dock")
+	bin.show_category("All")
+	await _frames(4)
+	for asked: Array in [["porsche print", "3623pt1"], ["turbo print", "15068pt2"]]:
+		await _click(bin._search.get_global_rect().get_center())
+		await _key(KEY_A, true)
+		await _type(str(asked[0]))
+		await create_timer(0.4).timeout
+		await _frames(3)
+		var first: Array = []
+		for n: int in mini(8, bin._results.size()):
+			first.append(bin._results[n].id)
+		var plain: Array = first.filter(func(id: String) -> bool:
+			return _library.parts[id].decor() == 0)
+		_check("typing \"%s\" shows %s in the first two rows, and only prints (%s)"
+			% [asked[0], asked[1], str(first)],
+			first.has(asked[1]) and plain.is_empty())
+		await _key(KEY_ESCAPE)
+	# The pictures drawn, for a person to look at: 3623pt1 with PORSCHE on.
+	await _click(bin._search.get_global_rect().get_center())
+	await _key(KEY_A, true)
+	await _type("porsche print")
+	await create_timer(0.4).timeout
+	for _n: int in 40:
+		await _frames(6)
+	await _shot("prints_by_their_print")
+	await _key(KEY_ESCAPE)
+	await _click(bin._search.get_global_rect().get_center())
+	await _key(KEY_A, true)
+	await _type("plate 1x3")
+	await create_timer(0.4).timeout
+	await _frames(3)
+	var led: String = bin._results[0].id if not bin._results.is_empty() else "nothing"
+	_check("and \"plate 1x3\" still leads with the plain 3623 (%s)" % led, led == "3623")
+	await _key(KEY_ESCAPE)
+	bin._search.text = ""
+	bin._run_search("")
 
 
 func _under_a_part() -> void:

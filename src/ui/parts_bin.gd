@@ -855,16 +855,11 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		elif info.category.to_lower() != wanted_category:
 			continue
 
-		if not needles.is_empty():
-			var haystack: String = (
-				info.id + " " + info.name + " " + info.category).to_lower()
-			var matched: bool = true
-			for needle: String in needles:
-				if not haystack.contains(needle):
-					matched = false
-					break
-			if not matched:
-				continue
+		# The same words the assistant's search matches, keywords and
+		# prints included.
+		if not needles.is_empty() \
+				and PartLibrary.matched(info, needles) == PartLibrary.NOT_MATCHED:
+			continue
 
 		found.append(info)
 
@@ -876,6 +871,17 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 ## Sort results for a query: match quality first, then staple-ness.
 ## LDraw suffixes a printed part with p and a number: 3001p01.
 static var PRINTED: RegEx = RegEx.create_from_string("p[0-9]+[a-z]?$")
+## The words a query asks for a print or a sticker in, once
+## PartLibrary.in_ldraw_words has put them in the index's words.
+const DECOR_WORDS: Array[String] = ["print", "sticker"]
+## What a printed or renamed version of another part costs a staple.
+const VARIANT := 400
+## What being found only through its keywords costs: more than any score
+## spans, so every part a query's words found by name comes first.
+const KEYWORDS_ONLY := 100000
+## A query's word found in what is printed on a part: above a name that
+## begins with the word (260), so the thing printed outranks the shape.
+const PRINTED_HIT := 300
 ## A query that is a part number, or the start of one: 3023, 3023b.
 static var NUMBER: RegEx = RegEx.create_from_string("^[0-9]+[a-z]*$")
 
@@ -905,11 +911,7 @@ func _from_shelf(shelf: String, needles: PackedStringArray) -> Array[PartLibrary
 		var info: PartLibrary.PartInfo = library.parts.get(id)
 		if info == null or not info.reachable:
 			continue
-		var haystack: String = (info.id + " " + info.name).to_lower()
-		var matched: bool = true
-		for needle: String in needles:
-			matched = matched and haystack.contains(needle)
-		if matched:
+		if PartLibrary.matched(info, needles) != PartLibrary.NOT_MATCHED:
 			found.append(info)
 	_set_aside = 0
 	return found
@@ -932,9 +934,14 @@ func _refresh_shelf() -> void:
 
 static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void:
 	var scores: Dictionary = {}
+	# Found by its name before found only through its keywords, whatever
+	# the scores: a query keeps every answer its name matching gave it,
+	# in that order, and what the keywords add comes after.
+	var needles: PackedStringArray = query.split(" ", false)
 	for info: PartLibrary.PartInfo in found:
 		scores[info.id] = _staple_score(info) + _match_score(info, query) \
-			+ _usage_score(info)
+			+ _usage_score(info) - (KEYWORDS_ONLY
+				if PartLibrary.matched(info, needles) == PartLibrary.BY_KEYWORDS else 0)
 
 	found.sort_custom(func(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
 		var a_score: int = scores[a.id]
@@ -1007,6 +1014,35 @@ static func _match_score(info: PartLibrary.PartInfo, query: String) -> int:
 	var wanted: String = _squeeze(query)
 	var name: String = _squeeze(info.name)
 	var score: int = 0
+
+	# A print asked for. "print" and "sticker" are the index's words and
+	# in no name (PartLibrary.ALSO_KNOWN_AS), so the rest of the query is
+	# what is scored: in the name as for any part, and above all in what
+	# is printed on it. "flame print" wants a tile with flames on it, not
+	# Flame 3.5L, the flame-shaped piece in marbled trans yellow, which
+	# begins with the word and so outscored every print of one.
+	var decor_asked: int = 0
+	for word: String in DECOR_WORDS:
+		if (" %s " % wanted).contains(" %s " % word):
+			decor_asked |= PartLibrary.PartInfo.PRINTED if word == "print" \
+				else PartLibrary.PartInfo.STICKERED | PartLibrary.PartInfo.STICKER
+			wanted = _squeeze((" %s " % wanted).replace(" %s " % word, " "))
+	if (info.decor() & decor_asked) != 0:
+		# And what was asked for is not a variant of anything here: it does
+		# not pay a variant's cost (_staple_score), or the stickers whose
+		# names happen to say Print ("Porsche Bag Print") led "porsche
+		# print" for not being called a Pattern.
+		if _a_print_by_name(info) and not name.begins_with("=") \
+				and not name.begins_with("~"):
+			score += VARIANT
+		var on_it: String = info.printed().to_lower()
+		for word: String in wanted.split(" ", false):
+			if word.length() >= 3 and not word.is_valid_float() and word != "with" \
+					and on_it.contains(word):
+				score += PRINTED_HIT
+				break
+	if wanted.is_empty():
+		return score
 
 	# Whole words, not the starts of longer ones.
 	#
@@ -1129,9 +1165,8 @@ static func _staple_score(info: PartLibrary.PartInfo) -> int:
 	#
 	# A penalty rather than an exclusion. Asking for "aquashark" by name
 	# should still find it; it just should not arrive uninvited.
-	if (name.begins_with("=") or name.begins_with("~")
-			or lowered.contains("pattern") or PRINTED.search(info.id) != null):
-		score -= 400
+	if name.begins_with("=") or name.begins_with("~") or _a_print_by_name(info):
+		score -= VARIANT
 
 	# Modulex is a different product altogether — a separate,
 	# architect's system on its own scale, filed in the same library.
@@ -1213,6 +1248,12 @@ static var SIZE := RegEx.create_from_string(
 ## the superseded one first.
 static var FREE_QUALIFIERS: PackedStringArray = PackedStringArray([
 	"with groove"])
+
+
+## A print by its name or its number: what a variant's cost was written
+## for, before the index could tell a print from its name.
+static func _a_print_by_name(info: PartLibrary.PartInfo) -> bool:
+	return info.name.to_lower().contains("pattern") or PRINTED.search(info.id) != null
 
 
 static func _is_decorated(info: PartLibrary.PartInfo) -> bool:

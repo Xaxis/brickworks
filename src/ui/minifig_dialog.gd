@@ -523,14 +523,11 @@ func _more(left: int) -> Button:
 	return more
 
 
+## The parts bin's index, keywords included: a torso printed as Homer
+## says so only in its keywords (16360pd11), and the name and number
+## alone did not find it.
 static func _matches(info: PartLibrary.PartInfo, words: PackedStringArray) -> bool:
-	if words.is_empty():
-		return true
-	var haystack: String = (info.id + " " + info.name).to_lower()
-	for word: String in words:
-		if not haystack.contains(word):
-			return false
-	return true
+	return PartLibrary.matched(info, words) != PartLibrary.NOT_MATCHED
 
 
 func _cell(info: PartLibrary.PartInfo) -> Button:

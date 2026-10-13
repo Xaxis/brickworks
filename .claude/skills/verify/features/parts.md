@@ -16,6 +16,38 @@ geometry in front of them.
   asked in neither: "brick 2x4" found nothing there (brickworks.diy at dd5c10c,
   2026-10-12). `vocab_probe` holds both spellings to the same answer;
   `handbuild_probe` types them into the bin's field.
+  A print is found by what is printed on it: the bin and the assistant match
+  one index, `PartLibrary.matched` over `PartInfo.own_words` (number, name,
+  category, and "print" or "sticker" for what is on the part,
+  `PartLibrary.decor_of`: LDraw names a print a Pattern, a part with its
+  stickers on a Sticker Shortcut, and the Sticker category is the stickers)
+  and then `keyword_words`, the part's !KEYWORDS ("Porsche", "Speed
+  Champions", the sets, BrickLink's number). A part found only through its
+  keywords is listed after every part its name found (`_sort_for`,
+  `KEYWORDS_ONLY`), so a plain query keeps its answers and their order.
+  "printed", "pattern", "decal" and plurals are put in the index's two words
+  (`ALSO_KNOWN_AS`). Of 28,426 parts that are not redirects, 9,935 are
+  prints, 2,632 have stickers on, 49 both, and 4,265 are stickers. Asked for
+  a print, a print does not pay a variant's cost (`VARIANT`, which still
+  keeps prints under their plain part otherwise), and the query's words found
+  in what is printed (`PartInfo.printed`, the print's words the plain part's
+  name has not got) score `PRINTED_HIT`, above a name that begins with the
+  word: "flame print" leads with a round tile and a 45 slope with flames
+  printed on, not the flame piece in marbled yellow. `_index_prints` gives each print and stickered part its
+  plain part (`print_of`, by number: 3623 for 3623pt1, 3068b for 3068bd2j;
+  584 have none in the catalogue) and `prints_of` the other way. "porsche
+  print" found four stickers whose names say "Porsche Bag Print", and "turbo
+  print" nothing; 15068pt2's keywords alone say Porsche (2026-10-13).
+  Nothing in the catalogue changed: names, categories and keywords were all
+  in it, so the web needs no rebuild. `search_parts` says it on each line
+  (", 11 prints"; ", a print of 3623") and once in full ("3623 has 11 prints:
+  ...; search_parts \"3623 print\" lists them"); `find_parts_like` ends with
+  the prints that show what it was asked for (`Assistant._printed_with`),
+  since its families are plain moulds. The figure builder's search
+  (`MinifigDialog._matches`) reads the same index. `print_search_probe`
+  holds 26 print queries to parts read off the catalogue, 22 plain queries to
+  the part they led with before and the two rows an index of names alone
+  gives, and the tool results.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. A part dragged out of it is in hand
   from the start of the drag, its ghost follows the pointer over the model and
@@ -162,6 +194,8 @@ Runtime:
 godot --headless --path . --script src/dev/search_probe.gd          # what it returns
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
+godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved
+godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=prints_by_their_print  # typed into the bin; shots/handbuild/prints_by_their_print.png
 godot --headless --path . --script src/dev/search_quality_probe.gd  # how much is worth reading
 godot --headless --path . --script src/dev/inventory_probe.gd       # parts lists of known models
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
