@@ -120,11 +120,27 @@
       "tests": []
     },
     {
+      "id": "cli:build browser flow",
+      "kind": "cli",
+      "entry": "tools/web/build_flow.mjs",
+      "reach": "node tools/web/build_flow.mjs --url=http://127.0.0.1:8761 --out=shots/build_web   (serve.py build/web 8761 --parts assets/generated/parts --delay 0 --share models/house.ldr)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:build custom parts",
       "kind": "cli",
       "entry": "tools/build_custom.py",
       "reach": "tools/build_custom.py PART.dat --out DIR   (needs numpy and scipy)",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "cli:build steps probe",
+      "kind": "cli",
+      "entry": "src/dev/build_steps_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/build_steps_probe.gd",
+      "area": "web",
       "tests": []
     },
     {
@@ -593,6 +609,14 @@
       "tests": []
     },
     {
+      "id": "lib:build pages",
+      "kind": "lib",
+      "entry": "src/assembly/build_steps.gd",
+      "reach": "godot --headless --path . --script src/dev/build_steps_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:change a part",
       "kind": "lib",
       "entry": "src/parts/part_editor.gd",
@@ -944,6 +968,14 @@
       "entry": "src/render/build_playback.gd",
       "reach": "godot --headless --path . --script src/dev/playback_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:build it step player",
+      "kind": "ui",
+      "entry": "src/ui/build_mode.gd",
+      "reach": "https://brickworks.diy/m/<id>, then Build it on the viewer's bar  (a phone or a tablet; the desktop too)",
+      "area": "web",
       "tests": []
     },
     {

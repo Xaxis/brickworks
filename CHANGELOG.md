@@ -40,6 +40,16 @@ whole cycle.
   with the model. The baseplate can be made part of the model, counted
   and in the booklet's first step. Settings says what new models start
   on, and the assistant chooses one for what it builds.
+- Build it, on a shared model's link: the model as a step player for
+  building it with real bricks, made for a phone or a tablet propped
+  beside the pile and working on the desktop too. Full screen, a step at
+  a time, with big Back and Next buttons and a swipe; what is already
+  built drawn faded and the step's new parts in full colour and outlined;
+  the step's parts along the bottom, a picture and "2x" each, as a
+  booklet's callout; the model turned with one finger and zoomed with
+  two. Each step opens on the side the booklet would draw it from. The
+  step reached is kept for that link on that device, so a phone that
+  sleeps comes back where it was.
 - Building instructions laid out as a LEGO booklet, from the toolbar's
   new Instructions button (and the timeline's): landscape pages that
   print on A4 or Letter, a big number and a parts box with a picture of

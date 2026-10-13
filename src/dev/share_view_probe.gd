@@ -19,6 +19,13 @@
 ## outlined and named; the parts list with its BrickLink and Rebrickable
 ## lists; the booklet; a link taken down saying so.
 ##
+## Build it: the step player pressed on the bar, Next three times to step
+## 3, what was built before drawn faded and the new parts in their own
+## colours and outlined, their pictures along the bottom, a swipe, the
+## arrow keys, a finger turning the model and two pinching it; the step
+## kept for the link, and the link opened again straight on it; Close,
+## Build it again, and Finish.
+##
 ## The panel: Share on a signed-in model, what it sends (the LDraw with
 ## the made part and the print inside, no link line, the author only when
 ## ticked, a 1200 x 630 PNG), the link kept with the model and sent back on
@@ -282,6 +289,8 @@ func _run() -> void:
 	_main.queue_free()
 	for _n: int in 10:
 		await process_frame
+	await _build_it(text, count)
+
 	# Back as a builder would be: the switches are the app's, not the probe's.
 	ShellPrefs.frozen = false
 	CustomParts.keeps = true
@@ -290,6 +299,255 @@ func _run() -> void:
 	_forget(PARTS_DIR)
 	_forget(OUT_DIR)
 	_finish()
+
+
+## A viewer for the link, opened as a visitor's browser does, against the
+## fake: ready to look at, or null.
+func _open_viewer(text: String, count: int) -> ShareView:
+	var fake := FakeShared.new()
+	fake.answer = {"code": 200, "body": {"id": ID, "name": "Probe House",
+		"author": "Probe Builder", "parts": count, "url": "https://brickworks.diy/m/" + ID,
+		"model": text}}
+	_main = load("res://src/main.tscn").instantiate()
+	_main.set("_viewing", ID)
+	_main.set("_shared", fake)
+	root.add_child(_main)
+	var view: ShareView = null
+	for _n: int in 1200:
+		await process_frame
+		view = _main.get("_share_view")
+		if view != null and view.state in ["ready", "failed", "gone"]:
+			break
+	await _settle()
+	return view if view != null and view.state == "ready" else null
+
+
+func _close_viewer() -> void:
+	_main.queue_free()
+	for _n: int in 10:
+		await process_frame
+
+
+## Build it: the step player, pressed on the viewer's bar, stepped through
+## with the buttons, a swipe and the arrow keys; what it draws faded and
+## outlined; its parts; a finger on the model; and where it was left, kept
+## for the link and come back to when the link is opened again.
+func _build_it(text: String, count: int) -> void:
+	print("\nbuild it: the step player")
+	BuildSteps._kept.clear()
+	var view: ShareView = await _open_viewer(text, count)
+	_ok(view != null, "the link opens again to build from")
+	if view == null:
+		return
+	var world: BrickWorld = _main.get("_world")
+	var store: ModelStore = _main.get("_store")
+	var steps: StepsBar = _main.get("_steps")
+	var camera: CadCamera = _main.get("_camera")
+	var library: PartLibrary = _main.get("_library")
+	_ok(view.controls_by_name().has("view_build"), "the bar has Build it")
+	await _press(view.controls_by_name()["view_build"])
+	await _settle()
+	var mode: BuildMode = _main.get("_build_mode")
+	var pages: BuildSteps = _main.get("_build_pages")
+	_ok(mode != null and mode.is_open() and pages != null, "Build it opens the step player")
+	if mode == null or not mode.is_open() or pages == null:
+		await _close_viewer()
+		return
+	var said: Dictionary = _main.call("build_state")
+	_ok(not view._bar.is_visible_in_tree() and not steps.is_playing_back()
+		and not (_main.get("_gizmo") as Control).visible,
+		"...over the whole window: the bar, the timeline and the view cube put away")
+	_ok(said["page"] == 0 and said["caption"] == "Ready to build" and said["next"] == "Start"
+		and not said["back_enabled"] and int(said["shown"]) == count and int(said["faded"]) == 0,
+		"it opens on the finished model, Ready to build, Start, no Back (%s)" % said["note"])
+	var sizes: Dictionary = said["points"]
+	_ok((sizes["build_next"] as Array)[1] >= 46 and (sizes["build_back"] as Array)[1] >= 46
+		and int(said["caption_points"]) >= 20,
+		"Next and Back are a fingertip tall (%s, %s points) and the step is %d-point words"
+		% [sizes["build_next"], sizes["build_back"], said["caption_points"]])
+	_save("9_build_cover.png")
+
+	var controls: Dictionary = mode.controls_by_name()
+	for _n: int in 3:
+		await _press(controls["build_next"])
+	said = _main.call("build_state")
+	var fresh: Dictionary = pages.fresh(3)
+	var faded: Dictionary = pages.faded(3)
+	_ok(said["page"] == 3 and str(said["caption"]).begins_with("Step 3 of %d" % pages.last()),
+		"Next three times: %s" % said["caption"])
+	_ok(world.faded_ids() == faded and not faded.is_empty() and world.xray_ids().is_empty(),
+		"what steps 1 and 2 built is drawn faded (%d parts), solid, not as x-ray's ghosts"
+		% faded.size())
+	_ok(_shown(world, store) == faded.size() + fresh.size(),
+		"...this step's %d new parts beside it, and nothing after (%d on the baseplate)" % [
+			fresh.size(), _shown(world, store)])
+	var a_faded: int = int(faded.keys()[0])
+	var a_fresh: int = int(fresh.keys()[0])
+	# Read back as the renderer keeps them, in half floats: near, not equal.
+	var own: Color = library.color(world.get_brick(a_faded).color_code).shown
+	var pale: Color = BrickWorld.faded(own)
+	var drawn: Color = _drawn_colour(world, a_faded)
+	_ok(_near(drawn, pale) and not _near(drawn, own),
+		"a faded part is drawn washed pale (%s, its own colour %s)" % [drawn, own])
+	own = library.color(world.get_brick(a_fresh).color_code).shown
+	drawn = _drawn_colour(world, a_fresh)
+	_ok(_near(drawn, own), "...and a new one in its own colour (%s)" % drawn)
+	var outline: SelectionOutline = _main.get("_build_outline")
+	_ok(outline.visible and not outline._drawn.is_empty(), "the new parts are outlined")
+	var lots: Array[Dictionary] = pages.lots(3)
+	var named := PackedStringArray()
+	for lot: Dictionary in lots:
+		named.append("%dx %s %s" % [int(lot["count"]), lot["name"], lot["colour_name"]])
+	_ok(int(said["lots"]) == lots.size() and lots.size() > 0,
+		"the parts for the step are along the bottom, a picture each: %s" % ", ".join(named))
+	for _n: int in 300:
+		said = _main.call("build_state")
+		if int(said["pictures"]) == lots.size():
+			break
+		await process_frame
+	_ok(int(said["pictures"]) == lots.size(), "...and every picture is drawn (%d of %d)" % [
+		said["pictures"], lots.size()])
+	var seen: Rect2 = camera.seen_rect()
+	_ok(seen.position.y >= (controls["build_top"] as Control).get_global_rect().end.y - 1.0
+		and seen.end.y <= (controls["build_bottom"] as Control).get_global_rect().position.y + 1.0,
+		"the step is framed between the two bars (%s)" % seen)
+	await _settle()
+	_save("10_build_step3.png")
+
+	print("\nturning the page with a finger, and the keys")
+	var bottom: Rect2 = (controls["build_parts"] as Control).get_global_rect()
+	var yaw: float = camera.yaw_turned()
+	await _swipe(bottom.get_center() + Vector2(120, 0), bottom.get_center() - Vector2(120, 0))
+	_ok(int(_main.call("build_state")["page"]) == 4, "a swipe to the left across the parts is Next")
+	_ok(is_equal_approx(camera.yaw_turned(), yaw), "...and the model behind does not turn with it")
+	await _swipe(bottom.get_center() - Vector2(120, 0), bottom.get_center() + Vector2(120, 0))
+	_ok(int(_main.call("build_state")["page"]) == 3, "to the right is Back")
+	await _key(KEY_RIGHT, false)
+	_ok(int(_main.call("build_state")["page"]) == 4, "the right arrow is Next")
+	await _key(KEY_LEFT, false)
+	_ok(int(_main.call("build_state")["page"]) == 3, "the left arrow is Back")
+	var middle: Vector2 = mode.free_rect().get_center()
+	yaw = camera.yaw_turned()
+	await _swipe(middle, middle + Vector2(150, 0))
+	_ok(not is_equal_approx(camera.yaw_turned(), yaw) and int(_main.call("build_state")["page"]) == 3,
+		"a finger on the model turns it (%.2f to %.2f) and stays on the page" % [yaw, camera.yaw_turned()])
+	var far: float = camera.distance_now()
+	await _pinch(middle, 60.0, 180.0)
+	_ok(camera.distance_now() < far * 0.8, "two fingers spread zoom in (%.0f to %.0f)" % [
+		far, camera.distance_now()])
+	_ok(BuildSteps.recall(ID) == {"page": 3, "building": true}, "the page is kept for the link (%s)"
+		% BuildSteps.recall(ID))
+
+	print("\nopened again, as a phone that slept")
+	await _close_viewer()
+	view = await _open_viewer(text, count)
+	mode = _main.get("_build_mode") if view != null else null
+	for _n: int in 60:
+		if mode != null and mode.is_open():
+			break
+		await process_frame
+	await _settle()
+	said = _main.call("build_state") if view != null else {}
+	_ok(mode != null and mode.is_open() and said.get("page") == 3
+		and str(said.get("caption", "")).begins_with("Step 3 of "),
+		"the link opens straight on step 3, being built (%s)" % said.get("caption", "nothing"))
+	world = _main.get("_world")
+	pages = _main.get("_build_pages")
+	_ok(pages != null and world.faded_ids() == pages.faded(3), "...faded as it was")
+	_save("11_build_again.png")
+	if mode == null or not mode.is_open():
+		await _close_viewer()
+		return
+	await _press(mode.controls_by_name()["build_close"])
+	steps = _main.get("_steps")
+	store = _main.get("_store")
+	view = _main.get("_share_view")
+	_ok(not mode.is_open() and view._bar.is_visible_in_tree() and world.faded_ids().is_empty()
+		and steps.is_playing_back() and steps.timeline_at().x == steps.timeline_at().y
+		and _shown(world, store) == count,
+		"Close: the whole model again, the bar and the timeline back, nothing faded")
+	_ok(BuildSteps.recall(ID) == {"page": 3, "building": false},
+		"...the page still kept, not being built")
+	await _press(view.controls_by_name()["view_build"])
+	await _settle()
+	said = _main.call("build_state")
+	_ok(mode.is_open() and said["page"] == 3, "Build it again comes back to step 3")
+	for _n: int in pages.last():
+		await _key(KEY_RIGHT, false)
+	_ok(not mode.is_open() and _shown(world, store) == count,
+		"past the last step, Finish puts the whole model back")
+	await _close_viewer()
+	BuildSteps._kept.clear()
+
+
+## The colour a brick is drawn in, read back from its batch.
+func _drawn_colour(world: BrickWorld, brick_id: int) -> Color:
+	for key: String in world._brick_batches.get(brick_id, PackedStringArray()):
+		var batch: BrickWorld.Batch = world._batches[key]
+		if world._surface_colour(batch, key.split(":")[1].to_int()) != Lbm.COLOR_INHERIT:
+			continue
+		var slot: int = 0
+		for one: int in batch.brick_ids:
+			if one == brick_id:
+				return batch.multimesh.get_instance_color(slot)
+			if not world.get_brick(one).hidden:
+				slot += 1
+	return Color(0, 0, 0, 0)
+
+
+func _near(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.004 and absf(a.g - b.g) < 0.004 and absf(a.b - b.b) < 0.004
+
+
+## A finger drawn from one point to another.
+func _swipe(from: Vector2, to: Vector2) -> void:
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = _as_event(from)
+	Input.parse_input_event(down)
+	await process_frame
+	for n: int in 8:
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = _as_event(from.lerp(to, float(n + 1) / 8.0))
+		drag.relative = _as_event((to - from) / 8.0)
+		Input.parse_input_event(drag)
+		await process_frame
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.pressed = false
+	up.position = _as_event(to)
+	Input.parse_input_event(up)
+	await _settle()
+
+
+## Two fingers about [param at], from [param from] apart to [param to].
+func _pinch(at: Vector2, from: float, to: float) -> void:
+	for index: int in 2:
+		var down := InputEventScreenTouch.new()
+		down.index = index
+		down.pressed = true
+		down.position = _as_event(at + Vector2(from * (0.5 if index == 0 else -0.5), 0))
+		Input.parse_input_event(down)
+	await process_frame
+	for n: int in 8:
+		var apart: float = lerpf(from, to, float(n + 1) / 8.0)
+		for index: int in 2:
+			var drag := InputEventScreenDrag.new()
+			drag.index = index
+			var side: float = 0.5 if index == 0 else -0.5
+			drag.position = _as_event(at + Vector2(apart * side, 0))
+			drag.relative = _as_event(Vector2((to - from) / 8.0 * side, 0))
+			Input.parse_input_event(drag)
+		await process_frame
+	for index: int in 2:
+		var up := InputEventScreenTouch.new()
+		up.index = index
+		up.pressed = false
+		up.position = _as_event(at + Vector2(to * (0.5 if index == 0 else -0.5), 0))
+		Input.parse_input_event(up)
+	await _settle()
 
 
 ## File › Share… in the builder, signed in, against the fake.

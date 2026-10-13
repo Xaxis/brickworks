@@ -8,6 +8,10 @@
 ## who made it if they said, its part count, and Open in Brickworks — and
 ## the words for a link that is loading, taken down or wrong.
 ##
+## Build it turns it into a step player for building the model with real
+## bricks (BuildMode); the step reached is the one thing the viewer keeps,
+## per link, in the browser (BuildSteps.remember).
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -16,6 +20,8 @@ class_name ShareView
 extends Control
 
 signal steps_wanted
+## Build it: the step player (BuildMode), to build the model from.
+signal build_wanted
 signal booklet_wanted
 signal parts_wanted
 signal copy_wanted
@@ -31,6 +37,7 @@ var _bar: PanelContainer
 var _name: Label
 var _about: Label
 var _steps: Button
+var _build: Button
 var _booklet: Button
 var _parts: Button
 var _copy: Button
@@ -40,6 +47,13 @@ var _card_words: Label
 var _card_button: Button
 var _card_action: Callable = Callable()
 var _hover: Label
+## Build it on a phone or a tablet: a big button over the model, above the
+## timeline, where the bar's is a word a few points tall (the interface is
+## drawn at about two units to the point there). [member floor_at] says how
+## far down it may come: the top of the timeline.
+var _big: Button
+var _narrow: bool = false
+var floor_at: Callable = Callable()
 
 
 func _ready() -> void:
@@ -60,6 +74,15 @@ func _ready() -> void:
 	_hover.add_theme_stylebox_override("normal", pill)
 	_hover.visible = false
 	add_child(_hover)
+	_big = Button.new()
+	_big.text = "Build it"
+	_big.tooltip_text = _build.tooltip_text
+	_big.focus_mode = Control.FOCUS_NONE
+	_big.visible = false
+	_big.pressed.connect(func() -> void: build_wanted.emit())
+	add_child(_big)
+	get_viewport().size_changed.connect(_fit_big)
+	_fit_big()
 
 
 func _build_bar() -> void:
@@ -101,6 +124,23 @@ func _build_bar() -> void:
 	_about.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	words.add_child(_about)
 
+	# First, and bright: on a phone beside a pile of bricks it is what the
+	# link was opened for.
+	_build = _button(row, "Build it", "Build it with real bricks: one step at a time, "
+		+ "full screen, the parts for each step shown")
+	_build.pressed.connect(func() -> void: build_wanted.emit())
+	for state: String in ["normal", "hover", "pressed"]:
+		var lit := StyleBoxFlat.new()
+		lit.bg_color = {"normal": Color(0.98, 0.78, 0.12), "hover": Color(1.0, 0.85, 0.3),
+			"pressed": Color(0.9, 0.7, 0.08)}[state]
+		lit.set_corner_radius_all(5)
+		lit.content_margin_left = 12
+		lit.content_margin_right = 12
+		lit.content_margin_top = 5
+		lit.content_margin_bottom = 5
+		_build.add_theme_stylebox_override(state, lit)
+	for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		_build.add_theme_color_override(state, Color(0.1, 0.08, 0.02))
 	_steps = _button(row, "Steps", "Step through the build (B)")
 	_steps.pressed.connect(func() -> void: steps_wanted.emit())
 	_booklet = _button(row, "Booklet", "The building instructions, page by page, to read or print")
@@ -122,7 +162,7 @@ func _build_bar() -> void:
 	_copy.add_theme_stylebox_override("hover", lit)
 	_copy.add_theme_stylebox_override("pressed", lit)
 	_copy.pressed.connect(func() -> void: copy_wanted.emit())
-	for button: Button in [_steps, _booklet, _parts, _copy]:
+	for button: Button in [_build, _steps, _booklet, _parts, _copy]:
 		button.disabled = true
 
 
@@ -236,8 +276,53 @@ func show_model(shown_name: String, shown_author: String, part_count: int, at: S
 func ready_to_look() -> void:
 	state = "ready"
 	_card.visible = false
-	for button: Button in [_steps, _booklet, _parts, _copy]:
+	for button: Button in [_build, _steps, _booklet, _parts, _copy]:
 		button.disabled = false
+	_fit_big()
+
+
+## The big Build it, sized in points, on a window under [constant NARROW]
+## points across; the bar's own on a wider one.
+const NARROW := 1040.0
+
+
+func _fit_big() -> void:
+	if _big == null or not is_inside_tree():
+		return
+	var across: float = Room.across()
+	_narrow = across > 0.0 and across < NARROW
+	var pt: float = get_viewport().get_visible_rect().size.x / across if across > 0.0 else 1.0
+	for face: String in ["normal", "hover", "pressed"]:
+		var lit := StyleBoxFlat.new()
+		lit.bg_color = {"normal": Color(0.98, 0.78, 0.12), "hover": Color(1.0, 0.85, 0.3),
+			"pressed": Color(0.9, 0.7, 0.08)}[face]
+		lit.set_corner_radius_all(roundi(26.0 * pt))
+		lit.content_margin_left = 26.0 * pt
+		lit.content_margin_right = 26.0 * pt
+		lit.shadow_color = Color(0, 0, 0, 0.35)
+		lit.shadow_size = roundi(6.0 * pt)
+		_big.add_theme_stylebox_override(face, lit)
+	for colour: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		_big.add_theme_color_override(colour, Color(0.1, 0.08, 0.02))
+	_big.add_theme_font_size_override("font_size", roundi(22.0 * pt))
+	_big.custom_minimum_size = Vector2(0, 52.0 * pt)
+	_big.reset_size()
+	var ready: bool = state == "ready" and _bar.visible
+	_big.visible = _narrow and ready
+	_build.visible = not _narrow and state != "gone"
+	set_process(_big.visible)
+
+
+func _process(_delta: float) -> void:
+	if not _big.visible:
+		set_process(false)
+		return
+	var bottom: float = size.y
+	if floor_at.is_valid():
+		bottom = minf(float(floor_at.call()), size.y)
+	var spot := Vector2((size.x - _big.size.x) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
+	if _big.position != spot:
+		_big.position = spot
 
 
 func gone(title: String, words: String) -> void:
@@ -245,8 +330,9 @@ func gone(title: String, words: String) -> void:
 	_name.text = title
 	_about.text = ""
 	# Nothing to step through, read or copy.
-	for button: Button in [_steps, _booklet, _parts, _copy]:
+	for button: Button in [_build, _steps, _booklet, _parts, _copy]:
 		button.visible = false
+	_fit_big()
 	_say(title, words, "Go to Brickworks",
 		func() -> void: OS.shell_open(Deployment.api_base() + "/"))
 
@@ -286,13 +372,22 @@ static func _count(n: int) -> String:
 	return out
 
 
+## The bar along the top, out of sight while the step player has the
+## window, and back after.
+func show_bar(yes: bool) -> void:
+	_bar.visible = yes
+	_fit_big()
+
+
 func covers(point: Vector2) -> bool:
 	return (_bar.is_visible_in_tree() and _bar.get_global_rect().has_point(point)) \
-		or (_card.is_visible_in_tree() and _card.get_global_rect().has_point(point))
+		or (_card.is_visible_in_tree() and _card.get_global_rect().has_point(point)) \
+		or (_big.is_visible_in_tree() and _big.get_global_rect().has_point(point))
 
 
 func controls_by_name() -> Dictionary:
-	var named: Dictionary = {"view_steps": _steps, "view_booklet": _booklet,
+	var named: Dictionary = {"view_build": _big if _big.visible else _build,
+		"view_steps": _steps, "view_booklet": _booklet,
 		"view_parts": _parts, "view_copy": _copy}
 	if _card.visible and _card_button.visible:
 		named["view_card_button"] = _card_button
