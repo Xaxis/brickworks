@@ -209,7 +209,22 @@ func _build() -> void:
 	_send = Button.new()
 	_send.text = "Build it"
 	_send.pressed.connect(_on_send)
-	_composer.add_child(_send)
+	_send.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var send_row := HBoxContainer.new()
+	send_row.add_theme_constant_override("separation", 8)
+	_composer.add_child(send_row)
+	send_row.add_child(_send)
+
+	# Three quick massings to choose from before a full design is paid for
+	# (Assistant.sketch): on by default for a first design, and not there
+	# for a change to one, which has a model to work from already.
+	_sketch_first = CheckBox.new()
+	_sketch_first.text = "Sketch first"
+	_sketch_first.button_pressed = true
+	_sketch_first.add_theme_font_size_override("font_size", 12)
+	_sketch_first.tooltip_text = ("Three quick massing sketches to choose from, "
+		+ "on a cheaper Claude, before the full design is begun.")
+	send_row.add_child(_sketch_first)
 
 	_build_settings()
 
@@ -369,6 +384,8 @@ func bind(to: Assistant) -> void:
 	assistant.spent.connect(_on_spent)
 	assistant.focus_edited.connect(_on_focus_edited)
 	assistant.room_asked.connect(_on_room_asked)
+	assistant.sketches_ready.connect(_on_sketches)
+	assistant.sketch_chosen.connect(_on_sketch_chosen)
 
 
 # -- asking about the selection ----------------------------------------------
@@ -421,6 +438,7 @@ func stop_asking_about() -> void:
 	_input.placeholder_text = PLACEHOLDER
 	if not _working:
 		_send.text = _send_words()
+	_show_sketch_first()
 
 
 ## Whether the next request is about a selection.
@@ -435,11 +453,179 @@ func _show_chip() -> void:
 	_chip.visible = count > 0
 	if not _working:
 		_send.text = _send_words()
+	_show_sketch_first()
 
 
 ## What the button says: a request about a selection asks, a brief builds.
 func _send_words() -> String:
 	return "Ask Claude" if _chip != null and _chip.visible else "Build it"
+
+
+# -- sketch first ---------------------------------------------------------------
+
+
+var _sketch_first: CheckBox
+## The three cards on show, and what the sketches cost, for the bill of the
+## design chosen from them.
+var _sketch_cards: VBoxContainer = null
+var _sketch_buttons: Array[Button] = []
+var _sketch_bill: String = ""
+
+
+## Sketch first is offered where a request would start a design from
+## nothing: not for a change to one, nor about a selection.
+func _show_sketch_first() -> void:
+	if _sketch_first == null:
+		return
+	_sketch_first.visible = not _working and not (_chip != null and _chip.visible) \
+		and (assistant == null or not assistant.has_conversation())
+
+
+## How long sketching takes, said on its card.
+func _sketch_expect() -> String:
+	var model: Brain.Choice = Brain.find(Brain.sketch_model())
+	var effort: String = Brain.sketch_effort()
+	return ("Three quick massing sketches on %s%s, to choose from before the full "
+		% [model.name, " at %s effort" % effort if not effort.is_empty() else ""]
+		+ "design. Nothing is built until you choose one.")
+
+
+## The sketches are in. The app's own: its card says what they cost, and
+## each sketch is a card to choose from. A session's from outside: the same
+## cards, without the buttons, while it chooses.
+func _on_sketches(sketches: Array, model_id: String, tokens: Brain.Spend, ours: bool) -> void:
+	if ours:
+		_working = false
+		var cost: String = ""
+		if not tokens.is_empty():
+			_sketch_bill = Brain.in_money(Brain.cost(model_id, tokens))
+			cost = " The sketches cost %s: %s · %s in, %s out." % [_sketch_bill,
+				Brain.find(model_id).name, Brain.in_tokens(tokens.total_in()),
+				Brain.in_tokens(tokens.made)]
+		_close_run("%d sketches" % sketches.size(),
+			"Choose one below to design in full.%s" % cost)
+		_send.disabled = not _why_not().is_empty()
+		_send.text = _send_words()
+		_show_sketch_first()
+		_status.text = ""
+	if _sketch_cards != null and is_instance_valid(_sketch_cards):
+		_sketch_cards.name = "sketches_before"
+	_sketch_cards = VBoxContainer.new()
+	_sketch_cards.name = "sketches"
+	_sketch_cards.add_theme_constant_override("separation", 6)
+	var head := Label.new()
+	head.text = ("Choose the one that is closest to what you want:" if ours
+		else "Claude sketched %d ideas and is choosing one:" % sketches.size())
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_theme_font_size_override("font_size", 12)
+	_sketch_cards.add_child(head)
+	_sketch_buttons = []
+	for one: Sketches.Sketch in sketches:
+		_sketch_cards.add_child(_sketch_card(one, ours))
+	_log.add_child(_sketch_cards, true)
+	if _run != null and is_instance_valid(_run):
+		_log.move_child(_run, _log.get_child_count() - 1)
+	_follow_the_card()
+
+
+func _sketch_card(one: Sketches.Sketch, choosable: bool) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.name = "sketch_%d" % one.number
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0.05)
+	style.border_color = Color(1, 1, 1, 0.16)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(8)
+	card.add_theme_stylebox_override("panel", style)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	card.add_child(row)
+	if one.picture != null:
+		var picture := TextureRect.new()
+		picture.name = "picture"
+		picture.texture = ImageTexture.create_from_image(one.picture)
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.custom_minimum_size = Vector2(112, 112)
+		row.add_child(picture)
+	var column := VBoxContainer.new()
+	column.name = "words"
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 3)
+	row.add_child(column)
+	var named := Label.new()
+	named.text = "%d. %s" % [one.number, one.name]
+	named.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	named.add_theme_font_size_override("font_size", 13)
+	column.add_child(named)
+	var measured := Label.new()
+	measured.text = "%d parts · %s%s" % [one.parts, one.measures(),
+		"" if one.holds() else " · does not hold yet"]
+	measured.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	measured.add_theme_font_size_override("font_size", 11)
+	measured.modulate = Color(1, 1, 1, 0.6)
+	column.add_child(measured)
+	if not one.description.is_empty():
+		var said := Label.new()
+		said.text = one.description
+		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		said.add_theme_font_size_override("font_size", 11)
+		said.modulate = Color(1, 1, 1, 0.75)
+		column.add_child(said)
+	if choosable:
+		var choose := Button.new()
+		choose.name = "choose"
+		choose.text = "Design this one"
+		choose.focus_mode = Control.FOCUS_NONE
+		var number: int = one.number
+		choose.pressed.connect(func() -> void: _choose_sketch(number))
+		column.add_child(choose)
+		_sketch_buttons.append(choose)
+	return card
+
+
+## A card's button: that sketch goes down, and the full design begins from it
+## at the model and effort chosen in the row below.
+func _choose_sketch(number: int) -> void:
+	if _working or assistant == null:
+		return
+	for button: Button in _sketch_buttons:
+		button.disabled = true
+	_working = true
+	_send.disabled = true
+	_send.text = "Working…"
+	_show_sketch_first()
+	_open_run(true)
+	_run_title.text = "Designing from sketch %d" % number
+	var why: String = await assistant.choose_sketch(number)
+	if not why.is_empty():
+		_working = false
+		_send.disabled = not _why_not().is_empty()
+		_send.text = _send_words()
+		_close_run("Did not start", why)
+		_show_sketch_first()
+
+
+## One was chosen (0: none, the sketches dropped for a whole design): said
+## on its card, and the rest faded.
+func _on_sketch_chosen(number: int) -> void:
+	if _sketch_cards == null or not is_instance_valid(_sketch_cards):
+		return
+	for button: Button in _sketch_buttons:
+		button.disabled = true
+	for child: Node in _sketch_cards.get_children():
+		if not child is PanelContainer:
+			continue
+		var chosen: bool = child.name == "sketch_%d" % number
+		(child as Control).modulate = Color(1, 1, 1, 1.0 if chosen else 0.45)
+		if chosen:
+			var mark := Label.new()
+			mark.name = "chosen"
+			mark.text = "Chosen"
+			mark.add_theme_font_size_override("font_size", 11)
+			mark.modulate = Color(0.55, 0.85, 1.0)
+			child.find_child("words", true, false).add_child(mark)
 
 
 ## A change to the selection landed: what it did, and the room before and
@@ -580,6 +766,7 @@ func _show_for_key(has_key: bool) -> void:
 	# in it, and is a way to design that needs no key.
 	_composer.visible = has_key or claude_code_here
 	_footer.visible = has_key
+	_show_sketch_first()
 	# While Claude is connected on the person's plan, the key's form is a
 	# way they are not using; it folds to one line rather than sitting
 	# under Claude's card for the whole build.
@@ -682,6 +869,9 @@ func _on_send() -> void:
 		_status.text = "The parts asked about are gone. Select them and ask again."
 		return
 	var count: int = assistant.focus.ids.size() if about else 0
+	# Three massings first, if this starts a design and the box is ticked.
+	var sketching: bool = not about and _sketch_first.visible \
+		and _sketch_first.button_pressed
 
 	_suggestions.visible = false
 	_input.text = ""
@@ -696,11 +886,19 @@ func _on_send() -> void:
 	if fresh:
 		designing.emit(text)
 	_open_run(fresh)
+	_show_sketch_first()
+	# A brief typed instead of choosing: the cards still showing are past.
+	for button: Button in _sketch_buttons:
+		button.disabled = true
 	if about:
 		_run_title.text = "Changing the selection"
+	if sketching:
+		_run_title.text = "Sketching three ideas"
+		_run_hint.text = _sketch_expect()
 
 	if designing_locally():
-		design_locally.emit(Assistant.selection_brief(text, count) if about else text)
+		design_locally.emit(Assistant.selection_brief(text, count) if about
+			else Assistant.sketch_brief(text) if sketching else text)
 		return
 
 	if about:
@@ -717,8 +915,9 @@ func _on_send() -> void:
 	# old test was whether the log had more than two children, which was
 	# true only by an accident of how many rows a message adds, and the
 	# way it fails is to throw the conversation away mid-build.
-	var started: bool = (assistant.revise(text)
-		if assistant.has_conversation() else assistant.design(text))
+	var started: bool = (assistant.sketch(text) if sketching
+		else assistant.revise(text) if assistant.has_conversation()
+		else assistant.design(text))
 	if not started:
 		# Refused because one is already running. The composer is meant
 		# to be disabled then, so this is the belt to that braces — but
@@ -760,6 +959,9 @@ func new_chat() -> void:
 		assistant.unfocus()
 	stop_asking_about()
 	_bill = ""
+	_sketch_bill = ""
+	_sketch_cards = null
+	_sketch_buttons = []
 	_run = null
 	for child: Node in _log.get_children():
 		if child != _suggestions:
@@ -769,6 +971,7 @@ func new_chat() -> void:
 	_working = false
 	_send.disabled = false
 	_send.text = _send_words()
+	_show_sketch_first()
 	# Whether the openers belong on screen is the same question as
 	# whether the composer does, so it is asked in one place rather than
 	# set true here and decided there.
@@ -1106,7 +1309,15 @@ func _follow_the_card() -> void:
 
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"brief": _input, "build": _send,
-		"change_key": _out}
+		"change_key": _out, "sketch_first": _sketch_first}
+	# Each sketch's button, by its card: sketch_1 to sketch_3.
+	for button: Button in _sketch_buttons:
+		if is_instance_valid(button) and not button.disabled:
+			var card: Node = button.get_parent()
+			while card != null and not str(card.name).begins_with("sketch_"):
+				card = card.get_parent()
+			if card != null:
+				named[str(card.name)] = button
 	if _key_form != null:
 		named.merge(_key_form.controls_by_name())
 	if _connector_form != null:
@@ -1160,12 +1371,17 @@ func _on_finished(ok: bool, summary: String) -> void:
 	# Not unconditionally: the key may have been changed while it ran.
 	_send.disabled = not _why_not().is_empty()
 	_send.text = _send_words()
+	_show_sketch_first()
 	# The bill goes in either way. A design that failed after three
 	# repairs is the one you most want the cost of, and leaving it off
 	# would mean the only runs anyone is billed for silently are the
 	# ones that went wrong.
 	var line: String = summary
 	if not _bill.is_empty():
+		# And the sketches it was chosen from, which were paid for too.
+		if not _sketch_bill.is_empty():
+			_bill += " · the sketches before it, %s" % _sketch_bill
+			_sketch_bill = ""
 		line = "%s\n%s" % [summary, _bill] if ok else _bill
 		_bill = ""
 	if ok:

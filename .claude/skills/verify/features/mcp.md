@@ -89,7 +89,9 @@ with which a session is told what the person has selected in the window,
 where it can take a part, and changes that alone, as **Ask Claude about
 this…** does — see assistant.md, "ask claude about the selection"; and
 the window's commands, ten more — see "the window's commands over mcp"
-above. 37 in all on 2026-10-13; `mcp_sync_probe` keeps the count honest.)
+above; and `choose_sketch`, with `submit_design`'s `sketch: true`, for
+Sketch first — see assistant.md, "sketch first". 38 in all on 2026-10-13;
+`mcp_sync_probe` keeps the count honest.)
 
 ## How to reach it
 

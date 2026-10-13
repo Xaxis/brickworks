@@ -153,6 +153,8 @@ func design(brief: String, port: int, tools: PackedStringArray) -> void:
 	_running = true
 	_turns = 0
 	_tools_used = 0
+	_usage = {}
+	_whole = {}
 	_pid = int(started.get("pid", -1))
 	progress.emit("Claude Code is reading the brief")
 	# On its own thread, because a pipe with nothing in it blocks until
@@ -245,6 +247,10 @@ func _saw(line: String) -> void:
 					else "%d of them outside this app" % outside)
 		"assistant":
 			var message: Dictionary = event.get("message", {}) as Dictionary
+			# A reply comes as one event a block, each with the reply's usage.
+			var id: String = str(message.get("id", ""))
+			if not id.is_empty() and message.get("usage") is Dictionary:
+				_usage[id] = message["usage"]
 			for block: Variant in message.get("content", []):
 				var one: Dictionary = block
 				match str(one.get("type", "")):
@@ -263,8 +269,39 @@ func _saw(line: String) -> void:
 			var summary: String = str(event.get("result", "")).strip_edges()
 			if summary.is_empty():
 				summary = "finished" if ok else "stopped"
+			if event.get("usage") is Dictionary:
+				_whole = event["usage"]
 			_running = false
 			finished.emit(ok, summary)
+
+
+## The session's usage so far, by reply, and the whole session's once it
+## has ended.
+var _usage: Dictionary = {}
+var _whole: Dictionary = {}
+
+
+## What the session has spent so far, in tokens: every reply's usage, once;
+## at the end, what the session's result says. On a subscription nothing is
+## billed, so tokens and time are the measure (the sketches against the
+## design after them, say: main prints both). A reply's usage is reported
+## as it starts, so its input is whole and its output is not: until the end,
+## [member Brain.Spend.made] is the replies' first few tokens, and is left
+## at 0 rather than said wrong.
+func spent() -> Brain.Spend:
+	var total := Brain.Spend.new()
+	if not _whole.is_empty():
+		total.add(_whole)
+		return total
+	for id: String in _usage:
+		total.add(_usage[id])
+	total.made = 0
+	return total
+
+
+## How many replies the session has made so far.
+func replies() -> int:
+	return _usage.size()
 
 
 ## A tool name as a person would say it. A review says which, so a run's
@@ -278,6 +315,8 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 			if not str(input.get(key, "")).strip_edges().is_empty():
 				return "reviewing the %s" % str(input[key]).strip_edges()
 		return "reviewing the whole model"
+	if plain == "submit_design" and bool(input.get("sketch", false)):
+		return "sketching an idea"
 	return {
 		"search_parts": "looking for a part",
 		"check_design": "checking what it has",
@@ -285,6 +324,7 @@ func _in_words(name: String, input: Dictionary = {}) -> String:
 		"look_at_model": "reading the baseplate",
 		"view_model": "looking at the model",
 		"submit_design": "building it",
+		"choose_sketch": "choosing a sketch",
 		"edit_model": "changing it",
 		"clear_model": "clearing the baseplate",
 		"save_model": "saving",

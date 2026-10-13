@@ -15,6 +15,16 @@ whole cycle.
 
 ### Added
 
+- Sketch first: a first design can begin with three quick sketches to
+  choose between, so you see whether your brief was understood before a
+  full design is paid for. Each is the model's main masses only, under 150
+  parts, made in one go on a cheaper Claude, checked, and shown as a picture
+  in the chat with what the three cost. Choose one and it goes on the
+  baseplate, and the whole model is designed from it at the model and
+  effort you chose. It is ticked beside Build it; untick it to go straight
+  to a full design. Claude over the connector, My Claude and a session of
+  your own can sketch too: `submit_design` with `sketch: true` answers
+  with the three pictures, and `choose_sketch` picks one.
 - Claude can do what you do from the menus, over the connector, My Claude
   and a session of your own: choose the floor, edit the build steps, lay a
   hose, tube or chain between two connectors, swing a hinge or a

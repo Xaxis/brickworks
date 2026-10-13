@@ -458,8 +458,12 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 		"how_real_sets_build_this": return "Asked how real sets build %s" % about
 		"check_design": return "Checked a design of %d bricks" % bricks
 		"submit_design":
+			if bool(arguments.get("sketch", false)):
+				return "Sketched “%s”, %d bricks" % [about, bricks] \
+					if not about.is_empty() else "Sketched an idea"
 			return "Built “%s”, %d bricks and its patterns" % [about, bricks] \
 				if not about.is_empty() else "Built a design"
+		"choose_sketch": return "Chose sketch %s" % _number(arguments.get("sketch", "?"))
 		"edit_model": return "Changed the model"
 		"look_at_model": return "Read what is built"
 		"view_model": return "Looked at the model from %s" % (about if not about.is_empty() else "a new angle")

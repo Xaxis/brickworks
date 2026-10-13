@@ -647,8 +647,367 @@ func design(brief: String) -> bool:
 	if _busy:
 		return false
 	_messages.clear()
+	_drop_sketches()
 	_start(brief)
 	return true
+
+
+# -- sketch first ----------------------------------------------------------
+
+
+## Three massings to choose between, in one turn on the cheaper model
+## (Brain.sketch_model), before anything is paid for in full. Each is
+## checked and pictured off the baseplate, and [signal sketches_ready]
+## hands them to whoever shows them; [method choose_sketch] puts the chosen
+## one down and designs the whole model from it at the person's own model
+## and effort. Refused while a design runs, as [method design] is.
+func sketch(brief: String) -> bool:
+	if _busy:
+		return false
+	_messages.clear()
+	_drop_sketches()
+	_sketch_brief = brief
+	_sketch_round = true
+	_start(brief)
+	return true
+
+
+## The sketches are in: who shows them, what they are, and what making them
+## cost. [param ours] is false for a session's from outside, which chooses
+## for itself with choose_sketch.
+signal sketches_ready(sketches: Array, model_id: String, tokens: Brain.Spend, ours: bool)
+## One was chosen, by its number; the others are gone.
+signal sketch_chosen(number: int)
+
+## Turns the sketches may take: a look-up or two, then the three. Past it,
+## whatever was sketched is shown.
+const SKETCH_TURNS := 4
+## Times three that are one idea are sent back for another.
+const SKETCH_REDOS := 1
+
+const SKETCH_ASK := """Sketch first. Before the full design, the person \
+wants three quick sketches to choose between, so call submit_design three \
+times in this one reply, each with "sketch": true. A sketch is massing only: \
+the main masses at their sizes and in their colours, under 150 parts once \
+any patterns are laid, each mass in the biggest pieces that fit it — no \
+detail, no rooms, no features worked; assemblies and features may be empty. Make \
+them three ideas a person can choose between: a different silhouette, \
+different proportions, or a different approach to the subject — not one \
+model three times at slightly different sizes. Name each for its idea and \
+say in its description what makes it different. Each is checked and \
+pictured, not built; the person chooses one, and the full design is built \
+from it."""
+
+## The same, said to a session outside the app with its brief.
+const SKETCH_FIRST := """Sketch first: before the full design, make three \
+quick sketches to choose between — submit_design with "sketch": true, three \
+times, each massing only, under 150 parts once its patterns are laid (each \
+mass in the biggest pieces that fit it), and different from the others in \
+silhouette, proportion or approach. Then choose_sketch the one that best \
+answers this brief, and design the whole model from it."""
+
+const FROM_SKETCH := """Design the whole model from it now. Keep what the \
+person chose — its silhouette, its proportions and its approach — and build \
+it as a set is built: the right parts, real detail, the assemblies a person \
+would name and the features the subject is known by. submit_design the \
+whole model, without sketch: it replaces the sketch."""
+
+var _sketch_round: bool = false
+var _sketch_brief: String = ""
+var _held_sketches: Array = []
+## Whether the held ones came from a session outside the app.
+var _sketches_outside: bool = false
+## The number the next sketch replaces, when two were one idea; 0 for none.
+var _sketch_redo: int = 0
+var _sketch_redos: int = 0
+## Sketches held during the reply being answered.
+var _sketch_arrivals: int = 0
+## The one chosen, while the full design's opening is made from it.
+var _chosen_sketch: Sketches.Sketch = null
+
+
+## A brief with the sketch-first ask on it, for a session outside the app
+## (My Claude with Sketch first ticked, --ask-claude-code --sketch-first).
+static func sketch_brief(text: String) -> String:
+	return "%s\n\n%s" % [text, SKETCH_FIRST]
+
+
+## The sketches held, for a probe or a panel.
+func held_sketches() -> Array:
+	return _held_sketches.duplicate()
+
+
+func _drop_sketches() -> void:
+	_held_sketches = []
+	_sketch_round = false
+	_sketch_redo = 0
+	_sketch_redos = 0
+	_sketch_arrivals = 0
+	_chosen_sketch = null
+
+
+## What the first message of a run carries besides the brief: the ask for
+## sketches, or the chosen one to design from.
+func _sketch_opening() -> Array:
+	if _sketch_round:
+		return [{"type": "text", "text": SKETCH_ASK}]
+	if _chosen_sketch == null:
+		return []
+	var one: Sketches.Sketch = _chosen_sketch
+	var said: Array = [{"type": "text", "text": ("You sketched three massings for "
+		+ "this, and the person chose sketch %d, \"%s\"" % [one.number, one.name]
+		+ (": %s" % one.description if not one.description.is_empty() else "")
+		+ ". It stands on the baseplate now: %d parts, %s." % [one.parts, one.measures()])}]
+	if not one.block.is_empty():
+		said.append(one.block)
+	var written: Dictionary = one.args.duplicate()
+	written.erase("sketch")
+	said.append({"type": "text", "text": "Its parts, as you submitted them:\n"
+		+ JSON.stringify(written)})
+	said.append({"type": "text", "text": FROM_SKETCH})
+	return said
+
+
+## A sketch, from submit_design with sketch: true (or any submission while
+## the app's own loop is sketching): read, checked, measured and pictured on
+## a world of its own, and held. Nothing is put on the baseplate.
+func _hold_sketch(args: Dictionary) -> Variant:
+	var model: Model = _read_model(args)
+	_say_shorthand_trouble()
+	var parts: int = model.placements.size()
+	if parts == 0:
+		return "Not held — that sketch has no parts in it."
+	if parts > Sketches.MOST_PARTS:
+		progress.emit("a sketch of %d parts, over the %d a sketch may have"
+			% [parts, Sketches.MOST_PARTS])
+		return ("Not held — a sketch is massing only, under %d parts, and this is %d "
+			% [Sketches.MOST_PARTS, parts] + "once its patterns are laid. Say each mass "
+			+ "in the biggest pieces that fit it — 2 x 4 bricks, 6 x 6 and larger "
+			+ "plates — or fewer masses, and leave the detail for the full design.")
+	# A fourth in the same reply is not the first of a new three.
+	if _sketch_round and _sketch_redo == 0 and _held_sketches.size() >= Sketches.COUNT:
+		return "Not held — three sketches are in already, and the person chooses among them."
+	var running: bool = _busy
+	if not _sketch_round:
+		# From outside: a set begun by the app's own loop is not this one's.
+		if not _sketches_outside:
+			_held_sketches = []
+		_sketches_outside = true
+	else:
+		_sketches_outside = false
+	await _ensure_parts(model)
+	progress.emit("checking a sketch of %d parts" % parts)
+	var report: Dictionary = await _checked(model)
+	if running and not _busy:
+		return ""
+	var one := Sketches.Sketch.new()
+	one.name = model.name if model.name != "Model" else "Sketch"
+	one.description = model.description
+	one.model = model
+	one.args = args
+	one.report = report
+	one.parts = parts
+	var stage: BrickWorld = _stage_of(model)
+	var measured: Dictionary = Sketches.measure(stage)
+	one.size = measured["size"]
+	one.outline = measured["outline"]
+	if ModelShot.possible():
+		one.picture = await _sketch_picture(stage)
+		if running and not _busy:
+			stage.free()
+			return ""
+		if one.picture != null:
+			one.block = await _shot.encode(one.picture)
+	if one.block.is_empty():
+		one.letters = "%s\n%s" % [ModelView.draw(stage, library, "top"),
+			ModelView.draw(stage, library, "front")]
+	stage.free()
+
+	# Where it goes: in place of one that was the same idea as another, or
+	# after the last, or as the first of a new three.
+	if _sketch_redo > 0 and _sketch_redo <= _held_sketches.size():
+		one.number = _sketch_redo
+		_held_sketches[_sketch_redo - 1] = one
+		_sketch_redo = 0
+	else:
+		if _held_sketches.size() >= Sketches.COUNT:
+			_held_sketches = []
+			_sketch_redos = 0
+		_held_sketches.append(one)
+		one.number = _held_sketches.size()
+	_sketch_arrivals += 1
+	progress.emit("sketch %d of %d: %s, %s" % [one.number, Sketches.COUNT, one.name,
+		one.measures()])
+	return _sketch_answer(one)
+
+
+## A world holding only [param model], in no tree and drawing nothing, to be
+## measured and photographed. The caller frees it.
+func _stage_of(model: Model) -> BrickWorld:
+	var stage := BrickWorld.new()
+	stage.library = library
+	stage.keeps_history = false
+	for placement: Placement in model.placements:
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		stage.add_unseen(placement.part, placement.color,
+			_transform(placement, part, model.section_for(placement)))
+	return stage
+
+
+## A sketch from a corner, as a person sees it: its own colours, no studs
+## written on, nothing picked out.
+func _sketch_picture(stage: BrickWorld) -> Image:
+	var shot: ModelShot = _ensure_shot()
+	var was: Array = [shot.highlight, shot.marks, shot.rulers]
+	shot.highlight = {}
+	shot.marks = []
+	shot.rulers = false
+	var image: Image = await shot.take(stage, "corner")
+	shot.highlight = was[0]
+	shot.marks = was[1]
+	shot.rulers = was[2]
+	return image
+
+
+## What a sketch's submit_design answers: what it is and its picture; and,
+## once there are three, whether they are three ideas, and then all three
+## pictures and how to choose (from outside) — or that the person chooses.
+func _sketch_answer(one: Sketches.Sketch) -> Variant:
+	var verdict: String = ("it holds together" if one.holds()
+		else "the check says %s" % str(one.report.get("summary", "")))
+	var blocks: Array = [{"type": "text", "text": "Sketch %d of %d held, not built: "
+		% [one.number, Sketches.COUNT] + "%d parts, %s; %s." % [one.parts,
+			one.measures(), verdict]}]
+	blocks.append_array(_sketch_shown(one))
+	if _held_sketches.size() < Sketches.COUNT:
+		var others := PackedStringArray()
+		for held: Sketches.Sketch in _held_sketches:
+			others.append("%d" % held.number)
+		blocks.append({"type": "text", "text": ("Now sketch %d: another idea, "
+			% (_held_sketches.size() + 1)) + "different from sketch %s in silhouette, "
+			% " and ".join(others) + "proportion or approach."})
+		return blocks
+	var pairs: Array = Sketches.alike_pairs(_held_sketches)
+	if not pairs.is_empty() and _sketch_redos < SKETCH_REDOS:
+		_sketch_redos += 1
+		var pair: Array = pairs[0]
+		var first: Sketches.Sketch = _held_sketches[int(pair[0]) - 1]
+		_sketch_redo = int(pair[1])
+		progress.emit("sketches %d and %d are one idea; asking for another" % pair)
+		blocks.append({"type": "text", "text": ("Sketches %d and %d are nearly the "
+			% pair) + "same idea: both about %s, with outlines that overlap %d%%. " % [
+				first.measures(), roundi(Sketches.overlap(first,
+					_held_sketches[int(pair[1]) - 1]) * 100.0)]
+			+ "A person cannot choose between those. Submit submit_design with "
+			+ "\"sketch\": true once more: it replaces sketch %d, and should differ " % pair[1]
+			+ "from the other two in silhouette, proportion or approach."})
+		return blocks
+	if not _sketches_outside:
+		blocks.append({"type": "text", "text":
+			"That is three. The person chooses one, and the full design is built from it."})
+		return blocks
+	# From outside: all three, and how to choose.
+	sketches_ready.emit(_held_sketches.duplicate(), "", Brain.Spend.new(), false)
+	blocks.append({"type": "text", "text": "The three sketches, side by side:"})
+	for held: Sketches.Sketch in _held_sketches:
+		blocks.append({"type": "text", "text": "Sketch %d, \"%s\": %d parts, %s%s." % [
+			held.number, held.name, held.parts, held.measures(),
+			"" if held.holds() else ", and it does not hold together yet"]})
+		blocks.append_array(_sketch_shown(held))
+	blocks.append({"type": "text", "text": ("Choose the one that best answers the "
+		+ "brief — its silhouette, its proportions, its approach — with choose_sketch "
+		+ "{\"sketch\": N}. It goes on the baseplate and the other two are dropped; "
+		+ "then design the whole model from it and submit_design it without sketch. "
+		+ "Or submit_design with \"sketch\": true again for a new three.")})
+	return blocks
+
+
+## A sketch as Claude is shown it: its picture, or the letters without one.
+static func _sketch_shown(one: Sketches.Sketch) -> Array:
+	if not one.block.is_empty():
+		return [one.block]
+	return [{"type": "text", "text": one.letters}]
+
+
+## After a reply in the app's own sketch round: true when it has been dealt
+## with here — the sketches shown, sent back for the rest, or the round
+## given up — and false when the reply was only look-ups, to be answered as
+## any turn is.
+func _sketch_turn_over(tool_results: Array) -> bool:
+	var arrived: int = _sketch_arrivals
+	_sketch_arrivals = 0
+	var full: bool = _held_sketches.size() >= Sketches.COUNT
+	if full and _sketch_redo == 0:
+		_sketches_shown()
+		return true
+	var out_of_turns: bool = _turns >= SKETCH_TURNS
+	if out_of_turns:
+		if _held_sketches.is_empty():
+			_stop(false, "it made no sketches")
+		else:
+			_sketches_shown()
+		return true
+	if arrived == 0 and not tool_results.is_empty():
+		return false
+	if not full:
+		var ask: String = ("%d of the three sketches so far. " % _held_sketches.size()
+			+ "Submit the other %d now, each submit_design with \"sketch\": true, "
+			% (Sketches.COUNT - _held_sketches.size())
+			+ "each a different idea from the ones before.")
+		if tool_results.is_empty():
+			ask = ("No sketches yet. Call submit_design three times now, each with "
+				+ "\"sketch\": true: three massings under 150 parts, three different ideas.")
+		tool_results.append({"type": "text", "text": ask})
+	_messages.append({"role": "user", "content": tool_results})
+	_send()
+	return true
+
+
+## The round is over: the sketches go to the panel, with what they cost, and
+## the conversation that made them is done with. Choosing begins the design.
+func _sketches_shown() -> void:
+	_sketch_round = false
+	_busy = false
+	_messages.clear()
+	var spend: Brain.Spend = _spend
+	_spend = Brain.Spend.new()
+	progress.emit("%d sketches to choose from" % _held_sketches.size())
+	sketches_ready.emit(_held_sketches.duplicate(), _spent_on, spend, true)
+
+
+## Put sketch [param number] down and go on from it; the others are dropped.
+## The app's own: the whole model designed from it, a fresh conversation at
+## the person's model and effort ("" when that has begun). From outside:
+## what to do next, said to the session.
+func choose_sketch(number: int) -> String:
+	if _busy:
+		return "Not now — a design is running. Choose when it has finished."
+	if _held_sketches.is_empty():
+		return ("There are no sketches to choose from. submit_design with \"sketch\": "
+			+ "true, three times, makes them.")
+	if number < 1 or number > _held_sketches.size():
+		return "There is no sketch %d; choose 1 to %d." % [number, _held_sketches.size()]
+	var one: Sketches.Sketch = _held_sketches[number - 1]
+	var outside: bool = _sketches_outside
+	_held_sketches = []
+	_sketch_redo = 0
+	sketch_chosen.emit(number)
+	progress.emit("putting down sketch %d, %s" % [number, one.name])
+	var model: Model = one.model
+	await _ensure_parts(model)
+	await _apply(model, true, true)
+	if outside:
+		# Standing, so a check is a check and not a replacement for it.
+		_outside_standing = true
+		return ("Sketch %d, \"%s\", stands on the baseplate: %d parts, %s. " % [number,
+			one.name, one.parts, one.measures()] + "It is the massing the design is built "
+			+ "from.\n\n" + FROM_SKETCH + " Then review_model, as its answer says.")
+	_chosen_sketch = one
+	_start(_sketch_brief)
+	_chosen_sketch = null
+	return ""
 
 
 ## Whether there is a conversation to carry on, as against a fresh
@@ -671,6 +1030,7 @@ func cancel() -> void:
 	if not _busy:
 		return
 	_busy = false
+	_drop_sketches()
 	_http.cancel_request()
 	if _streaming != null:
 		_streaming.stop()
@@ -721,7 +1081,7 @@ func _start(text: String) -> void:
 	_art_name = ""
 	_brief = text
 	_spend = Brain.Spend.new()
-	_spent_on = Brain.chosen()
+	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
 	_before = _snapshot()
 	# References first, in the same message as the brief.
@@ -742,7 +1102,7 @@ func _start(text: String) -> void:
 		await DesignMemory.ensure(self)
 		if not _busy:
 			return
-		_messages.append({"role": "user", "content": opening_for(text)})
+		_messages.append({"role": "user", "content": opening_for(text) + _sketch_opening()})
 	progress.emit("thinking")
 	_send()
 
@@ -914,7 +1274,8 @@ func _send() -> void:
 		# never happened.
 		_sketching = false
 		reader.fragment.connect(func(tool: String, piece: String) -> void:
-			if tool != "submit_design" and tool != "check_design":
+			# Sketches are held off the baseplate, not drawn on it.
+			if _sketch_round or (tool != "submit_design" and tool != "check_design"):
 				return
 			for raw: Dictionary in scanner.feed(piece):
 				if not raw.has("part") or _edited:
@@ -1021,7 +1382,10 @@ func _sketch_one(placement: Placement,
 ## Separated from _send so a probe can inspect it without a network
 ## call, which is the only way this stays fixed.
 func request_body() -> Dictionary:
-	var choice: Brain.Choice = Brain.find(Brain.chosen())
+	# Sketches on the cheaper model and effort; everything else on the chosen.
+	var choice: Brain.Choice = Brain.find(Brain.sketch_model() if _sketch_round
+		else Brain.chosen())
+	var effort: String = Brain.sketch_effort() if _sketch_round else Brain.effort()
 	# As much as the chosen model will write, when the reply is
 	# streamed.
 	#
@@ -1074,8 +1438,8 @@ func request_body() -> Dictionary:
 	# refuses the effort parameter, each with a 400 — so sending either
 	# unconditionally turns choosing the quick model into choosing a
 	# broken assistant.
-	if choice.effort and not Brain.effort().is_empty():
-		body["output_config"] = {"effort": Brain.effort()}
+	if choice.effort and not effort.is_empty():
+		body["output_config"] = {"effort": effort}
 	if choice.adaptive:
 		body["thinking"] = {"type": "adaptive"}
 	return body
@@ -1151,6 +1515,10 @@ func _on_response(result: Array) -> void:
 				"tool_use_id": block.get("id", ""),
 				"content": await _run_tool(block),
 			})
+
+	# Sketching first: shown once there are three, asked for the rest until.
+	if _sketch_round and _busy and _sketch_turn_over(tool_results):
+		return
 
 	if tool_results.is_empty():
 		# About a selection, a reply with nothing to call is the answer:
@@ -2589,12 +2957,20 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return ("Not applied — the person asked about the parts they "
 					+ "selected, and submit_design would replace the model. Change "
 					+ "them with edit_selection.")
+			if bool(args.get("sketch", false)) or _sketch_round:
+				return await _hold_sketch(args)
+			# A whole design instead of choosing: the sketches are done with.
+			if not _held_sketches.is_empty():
+				_held_sketches = []
+				sketch_chosen.emit(0)
 			_last_submitted = args
 			_pending = _read_model(args)
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
 			_say_shorthand_trouble()
 			return "Received. Checking it now."
+		"choose_sketch":
+			return await choose_sketch(int(args.get("sketch", 0)))
 	return "No tool called %s." % name
 
 
@@ -13706,6 +14082,11 @@ ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
 edit_selection; never submit_design.
 
+SKETCH FIRST, when the brief asks for it: three massings to choose between \
+before the full design — submit_design with "sketch": true, three times, \
+each under 150 parts and a different idea; then choose_sketch one and design \
+the whole model from it.
+
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
 kind of subject needs), "real", "colour", "angle" (sections on hinges), \
@@ -14285,7 +14666,27 @@ var _lookup_waiting: bool = false
 ## session outside the app can be handed this same list and call into
 ## the same implementations, which is the only way the two cannot drift.
 func tool_catalogue() -> Array:
-	return _tools() + focus_tools()
+	return _tools() + focus_tools() + sketch_tools()
+
+
+## Choosing a sketch, for a session outside the app: in the app's own loop
+## the person chooses, on the cards in the panel, so the loop is not offered it.
+func sketch_tools() -> Array:
+	return [{
+		"name": "choose_sketch",
+		"description": ("Choose one of the three sketches made with submit_design "
+			+ "\"sketch\": true. It goes on the baseplate as the massing the full "
+			+ "design is built from, and the other two are dropped. Then design the "
+			+ "whole model from it, and submit_design that without sketch."),
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"sketch": {"type": "integer", "description": "its number, 1 to 3"},
+			},
+			"required": ["sketch"],
+			"additionalProperties": false,
+		},
+	}]
 
 
 ## Run one tool the way a design run would.
@@ -16584,6 +16985,11 @@ func _tools() -> Array:
 							+ "whole, each comes back to you on its own with "
 							+ "how real sets built it, to lay, adapt or build "
 							+ "before the assemblies are detailed."},
+					"sketch": {"type": "boolean", "description":
+						"true for a sketch: massing only, under 150 parts, checked "
+						+ "and pictured but not built. Three are made to choose "
+						+ "between before the full design, each a different idea: "
+						+ "in silhouette, proportion or approach."},
 				},
 				"required": ["name", "description", "bricks", "assemblies", "features"],
 				"additionalProperties": false,

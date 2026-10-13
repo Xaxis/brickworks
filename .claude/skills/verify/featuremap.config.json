@@ -1328,6 +1328,13 @@
       "entry": "src/ai/design_memory.gd",
       "reach": "godot --headless --path . --script src/dev/design_memory_probe.gd   (and -- --held-out=speed_champions; the index: tools/design_memory.py build)",
       "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "sketch first",
+      "entry": "src/ai/sketches.gd",
+      "reach": "godot --headless --path . --script src/dev/sketch_probe.gd  (or the assistant panel: Sketch first beside Build it, then a card's Design this one; over MCP submit_design with sketch: true, three times, then choose_sketch)",
+      "area": "assistant"
     }
   ]
 }

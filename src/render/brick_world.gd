@@ -513,6 +513,19 @@ func copy_for_reading() -> BrickWorld:
 	return copy
 
 
+## A brick written into a world of that kind, which draws nothing and keeps
+## no history: a model that is not on the baseplate, to be measured and
+## photographed (ModelShot reads a world's bricks and nothing else). A
+## sketch is one (Assistant._hold_sketch). Its id, or 0 with no such part.
+func add_unseen(part_id: String, color_code: int, at: Transform3D) -> int:
+	if library == null or not library.parts.has(part_id):
+		return 0
+	var brick := Brick.new(_next_id, library.resolve(part_id), color_code, at)
+	_bricks[brick.id] = brick
+	_next_id += 1
+	return brick.id
+
+
 ## The bounding box of everything placed, in LDU.
 func model_bounds() -> AABB:
 	var result := AABB()
