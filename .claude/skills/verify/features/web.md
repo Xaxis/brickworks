@@ -483,6 +483,17 @@ plan with Claude as the client.
   ratio of two the panels take far more of the page, and the cursor check's
   "middle of the model" was the parts bin there. `window.brickworksCursor` is
   the pointer's state (`Cursors.show_state`), for `tools/web/cursor_check.mjs`.
+  A centre is where the control was when it was published, so what a flow
+  clicks must not move once it is on screen: LEGO Art's brief sat over a
+  description that grew from one line to three a moment after the dialog
+  opened, the click landed on the text, and the brief was typed into the
+  model as shortcuts. A menu reached by keys is not searched like a list:
+  each letter moves to the *next* line starting with what has been typed,
+  and the search starts again when two keys reach the app more than two
+  seconds apart, as one slow software frame makes them. Type only a prefix
+  no other line in that menu shares (E for Export), and go by the arrows
+  from there. "BrickLink Studio" swung between two lines and downloaded the
+  wanted list on a busy machine.
 
 ## How to reach it
 
