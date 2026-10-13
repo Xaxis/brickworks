@@ -91,6 +91,17 @@ static func pairs(entries: Array) -> Array:
 
 	var found: Array = []
 	var seen: Dictionary = {}
+	# An axle or a pin is in every hole along its whole length, not only
+	# the ones by its ends: an axle 6 through two beams' holes and a gear's
+	# between them is in all three, and the connectors by its tips are
+	# nowhere near the gear. A part with an axle hole goes onto the axle,
+	# as a wheel goes onto its pin; the axle goes into a round hole.
+	for one: Array in through(entries):
+		var pair: Array = [one[1], one[0]] if one[2] == "grips" else [one[0], one[1]]
+		var key: String = "%s|%s" % pair
+		if not seen.has(key):
+			seen[key] = true
+			found.append(pair)
 	for plug: Array in plugs:
 		var wanted: String = MATES[plug[1]]
 		var home: Vector3i = _bucket(plug[2])
@@ -111,6 +122,130 @@ static func pairs(entries: Array) -> Array:
 						seen[key] = true
 						found.append([plug[0], socket[0]])
 	return found
+
+
+## Every hole along an axle or a pin, as [shaft key, hole key, how]: how is
+## "grips" for an axle in an axle hole (the two turn as one) and "turns"
+## for an axle or a pin in a round hole. The rule is Mechanism's, so the
+## checker and the mechanism agree about what holds what: a hole is on the
+## line to within [constant Mechanism.LINE_SLACK] and its middle is no more
+## than [constant Mechanism.REACH_SLACK] past either end; a pin does not go
+## into an axle hole.
+static func through(entries: Array) -> Array:
+	var holes: Dictionary = {}    ## bucket -> Array of [key, kind, middle, way]
+	var lines: Array = []         ## [key, kind, origin, way, from, to]
+	for entry: Array in entries:
+		var part: Lbm.PartMesh = entry[2]
+		if part == null:
+			continue
+		var at: Transform3D = entry[1]
+		var own: Array = _lines_of(part)
+		for line: Array in own[0]:
+			lines.append([entry[0], line[0], at * (line[1] as Vector3),
+				(at.basis * (line[2] as Vector3)).normalized(), line[3], line[4]])
+		for hole: Array in own[1]:
+			Mechanism._bucket_in(holes, [entry[0], hole[0], at * (hole[1] as Vector3),
+				(at.basis * (hole[2] as Vector3)).normalized()])
+	var out: Array = []
+	if holes.is_empty():
+		return out
+	var seen: Dictionary = {}
+	for line: Array in lines:
+		var origin: Vector3 = line[2]
+		var way: Vector3 = line[3]
+		for hole: Array in Mechanism._near_line(holes, origin, way, float(line[4]),
+				float(line[5])):
+			if hole[0] == line[0] or absf((hole[3] as Vector3).dot(way)) < 0.99:
+				continue
+			if line[1] == "pin" and hole[1] == "axle":
+				continue
+			var gap: Vector3 = (hole[2] as Vector3) - origin
+			var along: float = gap.dot(way)
+			if along < float(line[4]) - Mechanism.REACH_SLACK \
+					or along > float(line[5]) + Mechanism.REACH_SLACK:
+				continue
+			if (gap - way * along).length() > Mechanism.LINE_SLACK:
+				continue
+			var how: String = "grips" if line[1] == "axle" and hole[1] == "axle" else "turns"
+			var key: String = "%s|%s" % [line[0], hole[0]]
+			if seen.has(key):
+				# An axle keyed in one of a part's holes and through a round one
+				# of the same part is keyed to it.
+				if how == "grips":
+					(out[int(seen[key])] as Array)[2] = how
+				continue
+			seen[key] = out.size()
+			out.append([line[0], hole[0], how])
+	return out
+
+
+## A part's axles and pins and its holes, in its own frame, worked out once
+## per part: [Mechanism._shaft_of, its holes as Mechanism._holes_of gives
+## them, the pin and axle holes its connectors name and no bare bore].
+##
+## A bore its size is a round hole to Mechanism, and rightly: it turns. But
+## the checker forgives a pair joined here all over, as it does a pin in its
+## hole, and a bore is where a hinge's two halves meet: 3830's pin in 3831's
+## eye, which Joints.rounds forgives only inside the eye. Taken as a hole
+## here, the top swung a quarter turn into its own base was buildable.
+static var _lines: Dictionary = {}
+
+
+static func _lines_of(part: Lbm.PartMesh) -> Array:
+	var key: int = part.get_instance_id()
+	if not _lines.has(key):
+		var shafts: Array = Mechanism._shaft_of(part)
+		var named: Array = []
+		for hole: Array in Mechanism._holes_of(part, shafts):
+			for connector: Lbm.Connector in part.connectors:
+				if (connector.kind == "pin_hole" or connector.kind == "axle_hole") \
+						and Mechanism._same_line(connector.position,
+							connector.axis.normalized(), hole[1], hole[2]) \
+						and connector.position.distance_to(hole[1]) < 1.0:
+					named.append(hole)
+					break
+		_lines[key] = [shafts, named]
+	return _lines[key]
+
+
+## Gears whose teeth are in each other's, both ways round: key -> {other key
+## -> "an 8 with a 24"}. Their covers are discs, and two discs a mesh apart
+## share the ring the teeth turn in, so the checker would refuse every
+## gear train there is; this is what it forgives. Read by Mechanism, from
+## the gear table, so a mesh here is a mesh there: spur, crown, bevel and
+## worm, at the pitch the table gives to within [constant Mechanism.MESH_SLACK].
+## [param entries] as [method pairs] takes them, with the part's id fourth.
+static func meshing(entries: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var gears: Array = []
+	for entry: Array in entries:
+		if entry.size() < 4 or entry[2] == null:
+			continue
+		if Mechanism.spec_of(str(entry[3])).is_empty():
+			continue
+		gears.append({"key": gears.size() + 1, "part": str(entry[3]), "at": entry[1],
+			"mesh": entry[2], "was": entry[0]})
+	if gears.size() < 2:
+		return out
+	var model: Mechanism = Mechanism.build(gears)
+	for coupling: Mechanism.Coupling in model.couplings:
+		if coupling.how == "chain":
+			continue
+		var one: Variant = gears[coupling.one.key - 1]["was"]
+		var other: Variant = gears[coupling.other.key - 1]["was"]
+		var said: String = "%s with %s" % [_teeth(coupling.one), _teeth(coupling.other)]
+		for pair: Array in [[one, other], [other, one]]:
+			if not out.has(pair[0]):
+				out[pair[0]] = {}
+			(out[pair[0]] as Dictionary)[pair[1]] = said
+	return out
+
+
+## "an 8", "a 24", "a worm".
+static func _teeth(gear: Mechanism.Gear) -> String:
+	if gear.kind == "worm":
+		return "a worm"
+	return ("an %d" if gear.teeth in [8, 11, 18, 80] else "a %d") % gear.teeth
 
 
 ## Each thing joined, to everything it is joined to, both ways round.

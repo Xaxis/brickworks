@@ -1713,20 +1713,23 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false) -> bool:
 	var blockers: PackedInt64Array = lattice.blockers_boxes(packed)
 	if blockers.is_empty():
 		return true
-	var entries: Array = [[0, at, part]]
+	var entries: Array = [[0, at, part, library.resolve(part_id)]]
 	for other: int in blockers:
 		var brick: BrickWorld.Brick = world.get_brick(other) if world != null else null
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
 		if mesh == null:
 			return false
-		entries.append([other, brick.transform, mesh, brick.part_id])
+		entries.append([other, brick.transform, mesh, library.resolve(brick.part_id)])
 	var pinned: Dictionary = Joints.both_ways(entries).get(0, {})
 	var turning: Dictionary = Joints.rounds(entries).get(0, {})
+	# A gear put down in mesh with one already there, as check_design
+	# forgives it (Joints.meshing).
+	var in_mesh: Dictionary = Joints.meshing(entries).get(0, {})
 	var mine: String = library.resolve(part_id)
 	for n: int in range(1, entries.size()):
 		var other: int = entries[n][0]
 		var there: Transform3D = entries[n][1]
-		if pinned.has(other):
+		if pinned.has(other) or in_mesh.has(other):
 			continue
 		var theirs: String = library.resolve(str(entries[n][3]))
 		if Assistant._seated_in(mine, at, theirs, there) \

@@ -1148,6 +1148,13 @@
       "area": "geometry"
     },
     {
+      "kind": "lib",
+      "label": "axles and gears on a line",
+      "entry": "src/assembly/joints.gd",
+      "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",
+      "area": "geometry"
+    },
+    {
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",

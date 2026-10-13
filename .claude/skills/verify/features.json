@@ -611,6 +611,14 @@
       "tests": []
     },
     {
+      "id": "lib:axles and gears on a line",
+      "kind": "lib",
+      "entry": "src/assembly/joints.gd",
+      "reach": "godot --headless --path . --script src/dev/axle_probe.gd   (windowed: the train drawn turning, in shots/axles/)",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:balance",
       "kind": "lib",
       "entry": "src/assembly/balance.gd",
