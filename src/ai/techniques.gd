@@ -1362,6 +1362,100 @@ static func all() -> Array:
 			],
 		},
 		{
+			"name": "hinged panels",
+			"group": "round bodies",
+			"when": "a dome, a sphere or any big curved shell: the surface as small "
+				+ "flat panels, each tipped to the curve on a hinge, never plates "
+				+ "stepped in",
+			"why": "Each panel is a plate with tiles on it, built flat in its own "
+				+ "section on a clip hinge (a bar on 60478's end, 63868's clip on "
+				+ "it), and the panel above is a section within it, hinged at its "
+				+ "far end and folded in by one band's angle — so a strip from the "
+				+ "equator up is said once, in plates, and no angle is worked out "
+				+ "for a brick. Here three bands of one strip, the first standing "
+				+ "70 degrees up, each next folding 25 in, the strip faced 30 "
+				+ "degrees round on the one round stud its base swivels on — "
+				+ "nothing under the joint, since a clip's round reaches past the "
+				+ "plates it joins. A dome is this strip repeated round its centre "
+				+ "(repeat_section with around and yaw: read_guide \"round\"). "
+				+ "10143, the Death Star II, builds its shell of panels so on "
+				+ "click hinges, sixteen segments 22.5 degrees apart (find_techniques "
+				+ "\"shell\").",
+			"sections": [
+				{"name": "band 1", "x": 1, "y": 6, "z": 0, "yaw": 30, "pitch": 70,
+					"hinge": "clip"},
+				{"name": "band 2", "within": "band 1", "x": 0, "y": -1, "z": 2,
+					"pitch": -25, "hinge": "clip"},
+				{"name": "band 3", "within": "band 2", "x": 0, "y": -1, "z": 2,
+					"pitch": -25, "hinge": "clip"},
+			],
+			"bricks": [
+				{"part": "3001", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3062b", "color": 72, "x": 1, "y": 3, "z": 0, "rot": 0},
+				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 0, "section": "band 1"},
+				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 2, "rot": 0, "section": "band 1"},
+				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 0, "rot": 0, "section": "band 1"},
+				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 1"},
+				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 0, "rot": 0, "section": "band 2"},
+				{"part": "3021", "color": 71, "x": -1, "y": 0, "z": 2, "rot": 0, "section": "band 2"},
+				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 0, "rot": 0, "section": "band 2"},
+				{"part": "26603", "color": 71, "x": -1, "y": 1, "z": 2, "rot": 0, "section": "band 2"},
+				{"part": "3023", "color": 71, "x": 0, "y": 0, "z": 0, "rot": 1, "section": "band 3"},
+				{"part": "3023", "color": 71, "x": 0, "y": 0, "z": 2, "rot": 1, "section": "band 3"},
+				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 0, "rot": 1, "section": "band 3"},
+				{"part": "3069b", "color": 71, "x": 0, "y": 1, "z": 2, "rot": 1, "section": "band 3"},
+			],
+		},
+		{
+			"name": "sideways skins",
+			"group": "round bodies",
+			"when": "a round band, a body lying on its side, an egg, a curved flank: "
+				+ "round in the plane of a wall, where stacking would step it",
+			"why": "A core with studs out on its sides carries a skin on each, "
+				+ "built flat in a section — a plate the side's width, curved "
+				+ "slopes falling away to its two ends — and stood up facing out: "
+				+ "pitch -90, and yaw 0, 90, 180 or 270 to face the side it is on. "
+				+ "Each skin's first row of tubes takes the side studs (11211 here, "
+				+ "1.75 plates up its course), so it is held as a stud holds, and "
+				+ "four of them read as one round band. The BB-8 sets build their "
+				+ "spheres so, on cores of bricks and brackets with studs out.",
+			"sections": [
+				{"name": "skin front", "x": 0, "y": 7, "z": 4, "yaw": 0, "pitch": -90},
+				{"name": "skin right", "x": 4, "y": 7, "z": 4, "yaw": 90, "pitch": -90},
+				{"name": "skin back", "x": 4, "y": 7, "z": 0, "yaw": 180, "pitch": -90},
+				{"name": "skin left", "x": 0, "y": 7, "z": 0, "yaw": -90, "pitch": -90},
+			],
+			"bricks": [
+				{"part": "3031", "color": 0, "x": 0, "y": 0, "z": 0, "rot": 0},
+				{"part": "3003", "color": 0, "x": 0, "y": 1, "z": 0, "rot": 0},
+				{"part": "3003", "color": 0, "x": 2, "y": 1, "z": 0, "rot": 0},
+				{"part": "3003", "color": 0, "x": 0, "y": 1, "z": 2, "rot": 0},
+				{"part": "3003", "color": 0, "x": 2, "y": 1, "z": 2, "rot": 0},
+				{"part": "3005", "color": 0, "x": 0, "y": 4, "z": 0, "rot": 0},
+				{"part": "3005", "color": 0, "x": 3, "y": 4, "z": 0, "rot": 0},
+				{"part": "3005", "color": 0, "x": 0, "y": 4, "z": 3, "rot": 0},
+				{"part": "3005", "color": 0, "x": 3, "y": 4, "z": 3, "rot": 0},
+				{"part": "3003", "color": 0, "x": 1, "y": 4, "z": 1, "rot": 0},
+				{"part": "11211", "color": 0, "x": 1, "y": 4, "z": 3, "rot": 0},
+				{"part": "11211", "color": 0, "x": 3, "y": 4, "z": 1, "rot": 1},
+				{"part": "11211", "color": 0, "x": 1, "y": 4, "z": 0, "rot": 2},
+				{"part": "11211", "color": 0, "x": 0, "y": 4, "z": 1, "rot": 3},
+				{"part": "3031", "color": 0, "x": 0, "y": 7, "z": 0, "rot": 0},
+				{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "section": "skin front"},
+				{"part": "15068", "color": 4, "x": 0, "y": 1, "z": 0, "rot": 3, "section": "skin front"},
+				{"part": "15068", "color": 4, "x": 2, "y": 1, "z": 0, "rot": 1, "section": "skin front"},
+				{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "section": "skin right"},
+				{"part": "15068", "color": 4, "x": 0, "y": 1, "z": 0, "rot": 3, "section": "skin right"},
+				{"part": "15068", "color": 4, "x": 2, "y": 1, "z": 0, "rot": 1, "section": "skin right"},
+				{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "section": "skin back"},
+				{"part": "15068", "color": 4, "x": 0, "y": 1, "z": 0, "rot": 3, "section": "skin back"},
+				{"part": "15068", "color": 4, "x": 2, "y": 1, "z": 0, "rot": 1, "section": "skin back"},
+				{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0, "section": "skin left"},
+				{"part": "15068", "color": 4, "x": 0, "y": 1, "z": 0, "rot": 3, "section": "skin left"},
+				{"part": "15068", "color": 4, "x": 2, "y": 1, "z": 0, "rot": 1, "section": "skin left"},
+			],
+		},
+		{
 			"name": "round body",
 			"group": "round bodies",
 			"when": "anything round in section, four studs across — a rocket "

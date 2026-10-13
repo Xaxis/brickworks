@@ -723,6 +723,32 @@ func turn_selection_by(degrees: float) -> int:
 	return turned
 
 
+## Turn the selection by any turn at all, about the point its turns go
+## round, as one step: the inspector's Turn, Tilt and Roll together. A turn
+## about the upright goes through [method turn_selection_by], which keeps
+## a right angle on the studs; any other is about the selection's middle,
+## its parts held as turned covers off the grid as a hinged panel's are.
+## Refused, changing nothing, where it would run into something.
+func turn_selection_basis(turn: Basis, words: String = "") -> int:
+	turn = turn.orthonormalized()
+	if turn.is_equal_approx(Basis.IDENTITY):
+		return 0
+	if (turn * Vector3.UP).dot(Vector3.UP) > 0.99999:
+		var x: Vector3 = turn * Vector3.RIGHT
+		return turn_selection_by(rad_to_deg(atan2(-x.z, x.x)))
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	var middle: Vector3 = _bounds_of(alive, Transform3D.IDENTITY).get_center()
+	var around: Transform3D = Transform3D(Basis.IDENTITY, middle) \
+		* Transform3D(turn, Vector3.ZERO) * Transform3D(Basis.IDENTITY, -middle)
+	return _reposition(func(at: Transform3D) -> Transform3D:
+		var to: Transform3D = around * at
+		to = Transform3D(to.basis.orthonormalized(), to.origin)
+		return _tidy(to, BrickLattice.is_square_to_grid(to.basis)),
+		words if not words.is_empty() else "turned %s" % _many(alive.size()))
+
+
 ## Tip the selection a quarter over, about a level axis through its middle
 ## (``axis`` is x or z), keeping its bottom where it was. Studio's up and
 ## down arrows; T here. One step; refused, changing nothing, where it would

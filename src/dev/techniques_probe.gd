@@ -58,14 +58,13 @@ func _run() -> void:
 				% [name, ", ".join(missing)])
 			continue
 
-		var model := Assistant.Model.new()
-		for raw: Variant in technique["bricks"]:
-			model.placements.append(Assistant.Placement.from_dict(raw))
-		# Turned as it says, where it says: an angled construction is a
-		# section, and built without one it is a different construction.
-		for raw: Variant in technique.get("sections", []):
-			var section: Assistant.Section = Assistant.Section.from_dict(raw)
-			model.sections[section.name] = section
+		# Read as a design's own words are, so a section's hinge is laid and
+		# a repeat is said again. Turned as it says, where it says: an angled
+		# construction is a section, and built without one it is a different
+		# construction.
+		var model: Assistant.Model = assistant._read_model({"bricks": technique["bricks"],
+			"sections": technique.get("sections", []),
+			"repeat_section": technique.get("repeat_section", [])})
 		var verdict: Dictionary = assistant._check(model)
 		if not bool(verdict["ok"]):
 			_fail("%s does not build: %s" % [name, verdict["summary"]])
@@ -85,18 +84,22 @@ func _run() -> void:
 		# rocky ground each came out a tenth or two of a stud off the grid
 		# as a whole, which on the baseplate nothing measures and on a
 		# room's floor is a part off its studs.
-		var floored := Assistant.Model.new()
-		floored.placements.append(Assistant.Placement.from_dict({"part": "91405",
-			"color": 72, "x": -6, "y": 0, "z": -6, "rot": 0}))
+		var lifted_bricks: Array = [{"part": "91405", "color": 72, "x": -6, "y": 0,
+			"z": -6, "rot": 0}]
 		for raw: Variant in technique["bricks"]:
 			var lifted: Dictionary = (raw as Dictionary).duplicate()
-			lifted["y"] = float(lifted["y"]) + 1.0
-			floored.placements.append(Assistant.Placement.from_dict(lifted))
+			if str(lifted.get("section", "")).is_empty():
+				lifted["y"] = float(lifted["y"]) + 1.0
+			lifted_bricks.append(lifted)
+		var lifted_sections: Array = []
 		for raw: Variant in technique.get("sections", []):
 			var lifted: Dictionary = (raw as Dictionary).duplicate()
-			lifted["y"] = float(lifted["y"]) + 1.0
-			var section: Assistant.Section = Assistant.Section.from_dict(lifted)
-			floored.sections[section.name] = section
+			if str(lifted.get("within", "")).is_empty():
+				lifted["y"] = float(lifted["y"]) + 1.0
+			lifted_sections.append(lifted)
+		var floored: Assistant.Model = assistant._read_model({"bricks": lifted_bricks,
+			"sections": lifted_sections,
+			"repeat_section": technique.get("repeat_section", [])})
 		var on_floor: String = str(assistant._check(floored)["feedback"])
 		if on_floor.contains("off its studs"):
 			_fail("%s stood on a floor is off its studs: %s" % [name,

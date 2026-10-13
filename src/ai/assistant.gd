@@ -433,6 +433,11 @@ class Placement extends RefCounted:
 	## stands apart on purpose (a stand, a sign) be told from one that came
 	## loose (Assistant._standing_apart).
 	var group: String = ""
+	## A turn of this one part, yaw then pitch then roll in degrees, about
+	## its own corner: zero for none. Read into a section of its own before
+	## anything else sees it ([method Assistant._turned_parts]), since a part
+	## turned off the grid is checked as a section is.
+	var turn := Vector3.ZERO
 
 	static func from_dict(raw: Dictionary) -> Placement:
 		var p := Placement.new()
@@ -459,6 +464,8 @@ class Placement extends RefCounted:
 		p.joint = int(raw.get("joint", -1))
 		p.section = str(raw.get("section", "")).strip_edges()
 		p.dressing = bool(raw.get("dressing", false))
+		p.turn = Vector3(float(raw.get("yaw", 0)), float(raw.get("pitch", 0)),
+			float(raw.get("roll", 0)))
 		return p
 
 	## This brick again, in another section. A copy is a new brick, so
@@ -556,40 +563,142 @@ class Scanner extends RefCounted:
 ## Inside a section the coordinates are ordinary studs and plates from
 ## the section's own corner. Where the section sits, and how far it is
 ## turned, is said once.
+##
+## Turned any way at all: yaw, then pitch, then roll, or an axis and an
+## angle. One axis was all a section had, and a dome's panel needs two —
+## one to face it round the dome, one to tip it back to the curve — so a
+## session given one axis built a pyramid, its panels facing four ways. And
+## built inside another section ([member within]), which is how a real set
+## chains its hinged panels: 10143's shell is sixteen segments each turned
+## 22.5 degrees from the last, every one carrying panels hinged to it.
 class Section extends RefCounted:
 	var name: String
 	var x: float = 0.0        ## studs, where the section's origin sits
 	var y: float = 0.0        ## plates
 	var z: float = 0.0        ## studs
 	var axis: String = "z"    ## which way the hinge pin runs: x, y or z
+	## An axis given as a direction instead of a letter, or zero.
+	var axis_way := Vector3.ZERO
 	var degrees: float = 0.0
-	## Built on a hinge brick, 3937 with 3938 on it. Then x, y and z are
-	## where the hinge's base stands, like any brick's, the section's own
-	## coordinates start on the hinge top's studs, and it turns about the
-	## hinge's real pin. The app puts the two halves in and finds the pin
+	## Degrees, applied yaw first, then pitch, then roll, about the
+	## section's origin in its parent's coordinates. The section's own +z is
+	## its nose: yaw swings it towards +x about the upright, pitch lifts it,
+	## roll lifts its +x side.
+	var yaw: float = 0.0
+	var pitch: float = 0.0
+	var roll: float = 0.0
+	## The section this one is built in: its x, y, z and its hinge's base are
+	## then in that section's own coordinates, and it goes where that one
+	## goes. Empty for the model's own.
+	var within: String = ""
+	var parent: Section = null
+	## Built on a joint whose two halves the app lays: x, y and z are then
+	## where the joint's base stands, like any brick's, the section's own
+	## coordinates start on the top half's studs, and it turns about the
+	## joint's real line. The app puts the halves in and finds the line
 	## ([method Assistant._fit_hinge]): working it out by hand is the
 	## arithmetic designs get wrong, and since a lean has to turn on a
-	## joint, it is the arithmetic every lean needs.
+	## joint, it is the arithmetic every lean needs. [member hinge_kind]
+	## says which joint, one of [constant Hinges.KINDS].
 	var hinge: bool = false
+	var hinge_kind: String = Hinges.TILTING
 	var hinge_color: int = 72
-	## For a hinged section, in LDU: the pin from the base's corner, and
-	## the section's own origin from the pin.
+	## For a hinged section, in LDU: the line from the base's corner, and
+	## the section's own origin from it.
 	var pin_from_corner := Vector3.ZERO
 	var origin_from_pin := Vector3.ZERO
+	## The quarter turns the joint's two halves are laid at.
+	var base_rot: int = 0
+	var top_rot: int = 0
+	## Where the top half's corner sits in the section's own studs and
+	## plates: so that its first stud stands at the origin's, and the
+	## section's bricks start on its studs. Below the origin by its height,
+	## and back or down further where its joint stands out of its body — a
+	## clip's round reaches past the plate it is on.
+	var top_at := Vector3(0, -2, 0)
+	## Set on the section the app makes to hold a hinge's base when the
+	## hinge is turned off the square: the name of the section it is the
+	## base of. Its frame is that section's hinge frame, so the two cannot
+	## disagree.
+	var base_for: String = ""
+	var base_of: Section = null
+	## What could not be read as asked, for the check to say.
+	var odd: String = ""
 
-	static func from_dict(raw: Dictionary) -> Section:
-		var s := Section.new()
-		s.name = str(raw.get("name", "")).strip_edges()
-		s.x = float(raw.get("x", 0))
-		s.y = float(raw.get("y", 0))
-		s.z = float(raw.get("z", 0))
-		s.axis = str(raw.get("axis", "z")).to_lower()
-		if not ["x", "y", "z"].has(s.axis):
-			s.axis = "z"
-		s.degrees = float(raw.get("degrees", 0))
-		# A hinge brick's pin lies flat; about the upright it is a turntable.
-		s.hinge = bool(raw.get("hinge", false)) and s.axis != "y"
-		s.hinge_color = int(raw.get("hinge_color", 72))
+	## Read from what a design or an edit said. [param was] is the section
+	## of that name already there, for an edit that only says what changes.
+	static func from_dict(raw: Dictionary, was: Section = null) -> Section:
+		var s := Section.new() if was == null else was.copied(was.name)
+		if was != null:
+			s.within = was.within
+			s.base_for = was.base_for
+			s.odd = ""
+		s.name = str(raw.get("name", s.name)).strip_edges()
+		s.x = float(raw.get("x", s.x))
+		s.y = float(raw.get("y", s.y))
+		s.z = float(raw.get("z", s.z))
+		var line: Variant = raw.get("line", raw.get("axis", s.axis))
+		if line is Array and (line as Array).size() == 3:
+			var way := Vector3(float(line[0]), float(line[1]), float(line[2]))
+			if way.length() < 0.001:
+				s.odd = "its axis [0, 0, 0] runs no way at all"
+			else:
+				s.axis_way = way.normalized()
+				s.axis = ""
+		else:
+			s.axis = str(line).to_lower().trim_prefix("+")
+			if not ["x", "y", "z"].has(s.axis):
+				if not s.axis.is_empty():
+					s.odd = ("its axis '%s' is not x, y, z or a direction [x, y, z]"
+						% s.axis)
+				s.axis = "z"
+			s.axis_way = Vector3.ZERO
+		s.degrees = float(raw.get("degrees", s.degrees))
+		for pair: Array in [["yaw", "turn"], ["pitch", "tilt"], ["roll", "bank"]]:
+			var said: Variant = raw.get(pair[0], raw.get(pair[1]))
+			if said != null:
+				s.set(pair[0], float(said))
+		s.within = str(raw.get("within", raw.get("in", s.within))).strip_edges()
+		if s.within == s.name and not s.name.is_empty():
+			s.odd = "it is said to be within itself"
+			s.within = ""
+		var joint: Variant = raw.get("hinge", s.hinge_kind if s.hinge else false)
+		if joint is bool:
+			s.hinge = joint
+			if joint and was == null:
+				s.hinge_kind = Hinges.TILTING
+		elif joint is String:
+			var kind: String = Hinges.kind_named(joint)
+			if kind.is_empty() and not str(joint).strip_edges().is_empty() \
+					and str(joint).to_lower() != "false":
+				s.odd = ("there is no hinge called '%s'; there are %s"
+					% [joint, Hinges.listing()])
+			s.hinge = not kind.is_empty()
+			if s.hinge:
+				s.hinge_kind = kind
+		if s.hinge:
+			# The joint's line lies flat, across the section's nose: pitch
+			# lifts the nose about a line along x, roll lifts the +x side
+			# about one along z. Said either way, it is the same hinge.
+			if not raw.has("axis") and (was == null or not was.hinge):
+				s.axis = "z" if not is_zero_approx(s.roll) and is_zero_approx(s.pitch) \
+					else "x"
+			if s.hinge_kind != Hinges.BALL:
+				if s.axis == "y" or s.axis.is_empty():
+					s.odd = ("a %s hinge's line lies flat, so its axis is x or z; "
+						% s.hinge_kind + "about the upright it is a turntable — "
+						+ "give the section a yaw instead")
+					s.hinge = false
+				elif not is_zero_approx(s.pitch) and not is_zero_approx(s.roll):
+					s.odd = ("a %s hinge turns about one line, so it takes a "
+						% s.hinge_kind + "pitch or a roll, not both. To tip two "
+						+ "ways, hinge a section within this one")
+				elif s.axis == "x" and not is_zero_approx(s.roll) \
+						or s.axis == "z" and not is_zero_approx(s.pitch):
+					s.odd = ("its hinge's line runs along %s, so it turns by %s; "
+						% [s.axis, "pitch" if s.axis == "x" else "roll"]
+						+ "leave the axis out to have it follow the angle given")
+		s.hinge_color = int(raw.get("hinge_color", s.hinge_color))
 		return s
 
 	## The same section somewhere else, its hinge with it.
@@ -600,11 +709,22 @@ class Section extends RefCounted:
 		s.y = y
 		s.z = z
 		s.axis = axis
+		s.axis_way = axis_way
 		s.degrees = degrees
+		s.yaw = yaw
+		s.pitch = pitch
+		s.roll = roll
+		s.within = within
+		s.parent = parent
 		s.hinge = hinge
+		s.hinge_kind = hinge_kind
 		s.hinge_color = hinge_color
 		s.pin_from_corner = pin_from_corner
 		s.origin_from_pin = origin_from_pin
+		s.base_rot = base_rot
+		s.top_rot = top_rot
+		s.top_at = top_at
+		s.odd = odd
 		return s
 
 	## The way a section's pin runs, for its axis.
@@ -613,15 +733,118 @@ class Section extends RefCounted:
 			return Vector3.RIGHT
 		return Vector3.UP if along == "y" else Vector3.BACK
 
+	## Yaw, then pitch, then roll, as a basis: the nose is +z.
+	static func turned(yaw_deg: float, pitch_deg: float, roll_deg: float) -> Basis:
+		return Basis(Vector3.UP, deg_to_rad(yaw_deg)) \
+			* Basis(Vector3.RIGHT, -deg_to_rad(pitch_deg)) \
+			* Basis(Vector3.BACK, deg_to_rad(roll_deg))
+
+	## The yaw, pitch and roll that make [param basis], in degrees.
+	static func angles_of(basis: Basis) -> Vector3:
+		var e: Vector3 = basis.orthonormalized().get_euler(EULER_ORDER_YXZ)
+		return Vector3(rad_to_deg(e.y), -rad_to_deg(e.x), rad_to_deg(e.z))
+
+	## How it is turned in its parent's coordinates, about its origin.
+	func turn() -> Basis:
+		var line: Vector3 = axis_way if axis_way != Vector3.ZERO else pin_of(axis)
+		return exact(turned(yaw, pitch, roll) * Basis(line, deg_to_rad(degrees)))
+
+	## A quarter turn made exactly one. Yaw -90 then pitch -90 came out a
+	## hair off the square in floating point, and a skin stood on side
+	## studs that way was rasterised a cell short of the core it stood on,
+	## and called adrift where the same skin a ten-millionth of a stud over
+	## was held.
+	static func exact(basis: Basis) -> Basis:
+		return BrickLattice.snap_basis(basis) if BrickLattice.is_square_to_grid(basis) \
+			else basis
+
+	## How a hinged section turns about its joint's line.
+	func hinge_turn() -> Basis:
+		if hinge_kind == Hinges.BALL:
+			var line: Vector3 = axis_way if axis_way != Vector3.ZERO else pin_of(axis)
+			return turned(0.0, pitch, roll) * Basis(line, deg_to_rad(degrees))
+		var pin: Vector3 = pin_of(axis)
+		var lift: float = -pitch if axis == "x" else roll
+		return exact(Basis(pin, deg_to_rad(degrees + lift)))
+
+	## Where the base of a hinged section's joint stands, in its parent's
+	## coordinates: its corner, on the lattice since a part stands there,
+	## turned by the yaw about its first stud — which is where a part on one
+	## stud swivels.
+	func hinge_own() -> Transform3D:
+		var corner: Vector3 = BrickLattice.to_ldu(BrickLattice.to_cell(
+			Vector3(x * STUD, y * PLATE, z * STUD)))
+		if is_zero_approx(fposmod(yaw, 360.0)):
+			return Transform3D(Basis.IDENTITY, corner)
+		var stud := Vector3(STUD * 0.5, 0.0, STUD * 0.5)
+		var turn: Basis = exact(Basis(Vector3.UP, deg_to_rad(yaw)))
+		return Transform3D(turn, corner + stud - turn * stud)
+
+	## The hinge's frame in the world.
+	func hinge_frame() -> Transform3D:
+		var mine: Transform3D = hinge_own()
+		return dusted(mine if parent == null else parent.placed() * mine)
+
+	## Where it sits in its parent's coordinates, and how it is turned.
+	func own() -> Transform3D:
+		if hinge:
+			return hinge_own() * Transform3D(hinge_turn(), pin_from_corner) \
+				* Transform3D(Basis.IDENTITY, origin_from_pin)
+		return Transform3D(turn(), Vector3(x * STUD, y * PLATE, z * STUD))
+
 	## Where this section sits in the world, and how it is turned.
 	func placed() -> Transform3D:
-		var pin: Vector3 = pin_of(axis)
-		var turn := Basis(pin, deg_to_rad(degrees))
-		var corner := Vector3(x * STUD, y * PLATE, z * STUD)
+		if base_of != null:
+			return base_of.hinge_frame()
+		var mine: Transform3D = own()
+		return dusted(mine if parent == null else parent.placed() * mine)
+
+	## A frame with the arithmetic's dust taken off its place, to the
+	## thousandth of an LDU an LDraw file writes: a skin a ten-millionth of a
+	## stud out of the side it stands on was rasterised a whole cell away
+	## from it once its quarter turn was exact, and called adrift.
+	static func dusted(at: Transform3D) -> Transform3D:
+		return Transform3D(at.basis, Vector3(snappedf(at.origin.x, 0.001),
+			snappedf(at.origin.y, 0.001), snappedf(at.origin.z, 0.001)))
+
+	## Whether it is turned in a way that needs a joint to hold it: not
+	## square to what it is built on, and not only turned about the upright,
+	## which a part on one stud does.
+	func leans() -> bool:
+		if square():
+			return false
+		return (_turned_from_parent() * Vector3.UP).dot(Vector3.UP) < 0.9999
+
+	## Whether it is turned only by quarter turns from what it is built on.
+	func square() -> bool:
+		return BrickLattice.is_square_to_grid(_turned_from_parent())
+
+	## How it is turned from what it is built on: a hinge's frame by its
+	## hinge's yaw.
+	func _turned_from_parent() -> Basis:
+		return own().basis if base_of == null else base_of.hinge_own().basis
+
+	## Whether its up is still the world's up, however it is turned about it.
+	func upright() -> bool:
+		return (placed().basis * Vector3.UP).dot(Vector3.UP) > 0.9999
+
+	## How it is turned, in the words a design uses.
+	func said() -> String:
+		var parts := PackedStringArray()
+		for pair: Array in [["yaw", yaw], ["pitch", pitch], ["roll", roll]]:
+			if not is_zero_approx(float(pair[1])):
+				parts.append("%s %s" % [pair[0], Placement._num(float(pair[1]))])
+		if not is_zero_approx(degrees):
+			parts.append("%s degrees about %s" % [Placement._num(degrees),
+				axis if axis_way == Vector3.ZERO else "[%s, %s, %s]" % [
+					Placement._num(axis_way.x), Placement._num(axis_way.y),
+					Placement._num(axis_way.z)]])
+		var out: String = "not turned" if parts.is_empty() else ", ".join(parts)
 		if hinge:
-			return Transform3D(turn, corner + pin_from_corner) \
-				* Transform3D(Basis.IDENTITY, origin_from_pin)
-		return Transform3D(turn, corner)
+			out += " on a %s hinge" % hinge_kind
+		if not within.is_empty():
+			out += ", within '%s'" % within
+		return out
 
 	## The quarter turn that lays a hinge brick's pin along [member axis].
 	func hinge_rot() -> int:
@@ -651,6 +874,45 @@ class Model extends RefCounted:
 
 	func section_for(placement: Placement) -> Section:
 		return sections.get(placement.section)
+
+	## Each section's parent and each hinge base's section, found by name.
+	## Asked again after anything that adds or replaces a section, since an
+	## edit that re-declares one makes a new one its children must follow. A
+	## section within one that is not there, or within itself by way of
+	## others, is said so and built in the model's own coordinates.
+	func link_sections() -> void:
+		for section: Section in sections.values():
+			section.parent = null
+			if not section.within.is_empty():
+				section.parent = sections.get(section.within)
+				if section.parent == null and section.odd.is_empty():
+					section.odd = ("it is within '%s', which is not one of the sections"
+						% section.within)
+			section.base_of = sections.get(section.base_for) \
+				if not section.base_for.is_empty() else null
+		for section: Section in sections.values():
+			var seen: Dictionary = {}
+			var at: Section = section
+			while at != null:
+				if seen.has(at):
+					section.odd = "it is within '%s', which is within it" % section.within
+					section.parent = null
+					break
+				seen[at] = true
+				at = at.base_of.parent if at.base_of != null else at.parent
+
+	## The sections built within [param name], at any depth, nearest first.
+	func sections_within(name: String) -> Array[Section]:
+		var out: Array[Section] = []
+		var wanted: Array[String] = [name]
+		while not wanted.is_empty():
+			var next: String = wanted.pop_front()
+			for section: Section in sections.values():
+				if section.within == next or section.base_for == next:
+					if not out.has(section):
+						out.append(section)
+						wanted.append(section.name)
+		return out
 
 
 func _ready() -> void:
@@ -3058,9 +3320,11 @@ func _model_from_world() -> Model:
 	var mine: Dictionary = {}
 	for brick_id: int in _placed_ids + _sketched_ids:
 		mine[brick_id] = true
+	_forget_moved_sections()
 	var adopted: Dictionary = _adopted()
 	for section: Section in _adoptions.values():
 		model.sections[section.name] = section
+	model.link_sections()
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
@@ -3111,6 +3375,37 @@ func _model_from_world() -> Model:
 		placement.group = brick.group
 		model.placements.append(placement)
 	return model
+
+
+## A brick the window has turned or moved since it was laid in a section is
+## no longer where its section says, so the section is forgotten for it and
+## it is read where it stands. Read back by its section, a panel tipped in
+## the inspector went back to where it had been at the next edit.
+func _forget_moved_sections() -> void:
+	if _section_of.is_empty() or world == null or library == null:
+		return
+	var linked := Model.new()
+	linked.sections = _sections.duplicate()
+	linked.link_sections()
+	for brick_id: int in _section_of.keys():
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var section: Section = linked.sections.get(_section_of[brick_id])
+		var kept: Array = _local_of.get(brick_id, [])
+		if brick == null or section == null or kept.size() < 5:
+			continue
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var said: Transform3D = section.placed() * _square_transform(Placement.from_dict({
+			"part": brick.part_id, "x": kept[0], "y": kept[1], "z": kept[2],
+			"face": kept[3], "rot": kept[4]}), mesh)
+		var basis: Basis = brick.transform.basis.orthonormalized()
+		var same: bool = said.origin.distance_to(brick.transform.origin) < 1.0
+		for k: int in 3:
+			same = same and said.basis[k].normalized().dot(basis[k]) > 0.9995
+		if not same:
+			_section_of.erase(brick_id)
+			_local_of.erase(brick_id)
 
 
 ## The assemblies the design standing has named: by the run of this app's
@@ -3170,10 +3465,20 @@ func _adopted() -> Dictionary:
 			if not is_nan(turn):
 				axis = one
 				break
+		# Turned two ways or more — a dome's panel faced round it and tipped to
+		# its curve — it was laid in a frame turned so, which is the least turn
+		# that squares it. Left square, the next edit re-seated every panel of
+		# a dome flat.
+		var whole := Basis()
 		if is_nan(turn):
-			continue
+			var basis: Basis = brick.transform.basis.orthonormalized()
+			whole = (basis * BrickLattice.snap_basis(basis).inverse()).orthonormalized()
+			if BrickLattice.is_square_to_grid(whole):
+				continue
+			axis = "any"
+			turn = 0.0
 		var pin: Vector3 = Section.pin_of(axis)
-		var unturn := Basis(pin, -deg_to_rad(turn))
+		var unturn := Basis(pin, -deg_to_rad(turn)) if axis != "any" else whole.inverse()
 		var local: Vector3 = unturn * brick.transform.origin
 		# A square brick is read where it is, as it always was: the cell it
 		# rounds to is at most an LDU off, which every joint rule allows. Put
@@ -3181,10 +3486,14 @@ func _adopted() -> Dictionary:
 		# seated half a stud into its frame came back in that section's
 		# coordinates, and a reader that copied it without its section stood
 		# it across the frame (joints_probe).
-		if turn == 0.0:
+		if turn == 0.0 and axis != "any":
 			continue
+		var angles: Vector3 = Section.angles_of(whole)
 		var rest := Vector3(_on_lattice(local.x), _on_lattice(local.y), _on_lattice(local.z))
 		var key: String = "%s %.2f %.1f %.1f %.1f" % [axis, turn, rest.x, rest.y, rest.z]
+		if axis == "any":
+			key = "any %.2f %.2f %.2f %.1f %.1f %.1f" % [angles.x, angles.y, angles.z,
+				rest.x, rest.y, rest.z]
 		var section: Section = _adoptions.get(key)
 		if section == null:
 			if middle == Vector3.INF:
@@ -3197,20 +3506,28 @@ func _adopted() -> Dictionary:
 			# of it nearest the middle.
 			var square := rest
 			for k: int in 3:
-				if pin[k] == 0.0:
+				if pin[k] == 0.0 or axis == "any":
 					square[k] = rest[k] + BrickLattice.CELL * round((near[k] - rest[k])
 						/ BrickLattice.CELL)
-			var origin: Vector3 = Basis(pin, deg_to_rad(turn)) * square
+			var origin: Vector3 = unturn.inverse() * square
 			var name: String = "turned %s" % Placement._num(turn) if axis == "y" \
 				else "tipped %s about %s" % [Placement._num(turn), axis]
+			if axis == "any":
+				name = "turned %s, %s, %s" % [Placement._num(snappedf(angles.x, 0.1)),
+					Placement._num(snappedf(angles.y, 0.1)), Placement._num(snappedf(angles.z, 0.1))]
 			var named: String = name
 			var n: int = 1
 			while _sections.has(named) or _adoptions.values().any(
 					func(other: Section) -> bool: return other.name == named):
 				n += 1
 				named = "%s %d" % [name, n]
-			section = Section.from_dict({"name": named, "x": origin.x / STUD,
-				"y": origin.y / PLATE, "z": origin.z / STUD, "axis": axis, "degrees": turn})
+			if axis == "any":
+				section = Section.from_dict({"name": named, "x": origin.x / STUD,
+					"y": origin.y / PLATE, "z": origin.z / STUD, "yaw": angles.x,
+					"pitch": angles.y, "roll": angles.z})
+			else:
+				section = Section.from_dict({"name": named, "x": origin.x / STUD,
+					"y": origin.y / PLATE, "z": origin.z / STUD, "axis": axis, "degrees": turn})
 			_adoptions[key] = section
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if mesh == null:
@@ -3338,19 +3655,37 @@ func _edit(args: Dictionary) -> Model:
 	# An edit may add sections, or move one that is already there —
 	# which is how a hinged part gets opened further without every
 	# brick in it being described again.
+	# Parts turned where they stand, as the window's Turn, Tilt and Roll
+	# turn a selection: about the middle of what is named, which becomes a
+	# section turned so, within whatever they were built in.
+	var turn_trouble: Array = []
+	for raw: Variant in args.get("turn", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var said: String = _turn_bricks(model, raw, by_id)
+		if not said.is_empty():
+			turn_trouble.append(said)
+
+	# Said in part, an edit changes only what it says: a new pitch on a
+	# panel keeps its place, its hinge and what it is built in.
 	for raw: Variant in args.get("sections", []):
 		if typeof(raw) != TYPE_DICTIONARY:
 			continue
-		var section: Section = Section.from_dict(raw)
-		if section.name.is_empty():
+		var name: String = str((raw as Dictionary).get("name", "")).strip_edges()
+		if name.is_empty():
 			continue
-		var was: Section = model.sections.get(section.name)
+		var was: Section = model.sections.get(name)
+		var section: Section = Section.from_dict(raw, was)
 		model.sections[section.name] = section
+		model.link_sections()
+		# What is built in it moves with it, at any depth.
+		var moving: Dictionary = {section.name: true}
+		for inner: Section in model.sections_within(section.name):
+			moving[inner.name] = true
 		for placement: Placement in model.placements:
-			if placement.section == section.name:
+			if moving.has(placement.section):
 				placement.moved = true
-		if section.hinge:
-			_fit_hinge(section)
+		if section.hinge or (was != null and was.hinge):
 			_rehinge(model, section, was)
 		_touched += 1
 
@@ -3371,6 +3706,7 @@ func _edit(args: Dictionary) -> Model:
 	for raw: Variant in args.get("add", []):
 		model.placements.append(Placement.from_dict(raw))
 		_touched += 1
+	_turned_parts(model)
 
 	# After the adds, so one call can declare a section, fill it and
 	# repeat it — which is the whole point of being able to repeat.
@@ -3383,7 +3719,7 @@ func _edit(args: Dictionary) -> Model:
 	# caused one. Found because the progress line started saying how much
 	# shorthand a call carried, and an edit was claiming patterns.
 	var before: int = model.placements.size()
-	_repeat_trouble = []
+	_repeat_trouble = turn_trouble
 	_pattern_trouble = []
 	_pattern_advice = []
 	_expand_repeats(model, args, _repeat_trouble)
@@ -4488,8 +4824,16 @@ func _remember_section(brick_id: int, placement: Placement,
 	_local_of[brick_id] = [placement.x, placement.y, placement.z,
 		placement.face, placement.rot]
 	var section: Section = model.sections.get(placement.section)
-	if section != null:
-		_sections[placement.section] = section
+	# And every section it is built in, and the one a hinge's frame is the
+	# base of, which may have no bricks of their own: a chain of hinged
+	# panels read back without its middle link falls apart.
+	var seen: Dictionary = {}
+	while section != null and not seen.has(section):
+		seen[section] = true
+		_sections[section.name] = section
+		if section.base_of != null:
+			_sections[section.base_of.name] = section.base_of
+		section = section.base_of.parent if section.base_of != null else section.parent
 
 
 ## Whether a placement is inside the section that was asked about.
@@ -5591,14 +5935,13 @@ func _read_model(args: Dictionary) -> Model:
 	model.description = str(args.get("description", ""))
 	model.stands_on = _floor_of(args)
 	_read_sections(model, args)
-	for section: Section in model.sections.values():
+	for section: Section in model.sections.values().duplicate():
 		if section.hinge:
-			_fit_hinge(section)
-			model.placements.append(_hinge_base(section))
-			model.placements.append(_hinge_top(section))
+			_lay_hinge(model, section)
 	var written: Array = args.get("bricks", [])
 	for raw: Variant in written:
 		model.placements.append(Placement.from_dict(raw))
+	_turned_parts(model)
 
 	# And the shapes it described rather than counted out. Patterns are
 	# expanded after the bricks because mirror reflects what is there.
@@ -5724,7 +6067,7 @@ func _restyle(args: Dictionary) -> Dictionary:
 		var frame := Transform3D.IDENTITY
 		if not placement.section.is_empty():
 			var section: Section = model.section_for(placement)
-			if section == null or section.axis != "y":
+			if section == null or not section.upright():
 				continue
 			frame = section.placed()
 		var seen: Vector3 = frame * Vector3(placement.x * STUD, placement.y * PLATE,
@@ -5797,7 +6140,7 @@ func _restyle(args: Dictionary) -> Dictionary:
 			var frame := Transform3D.IDENTITY
 			if not placement.section.is_empty():
 				var section: Section = model.section_for(placement)
-				if section == null or section.axis != "y":
+				if section == null or not section.upright():
 					continue
 				frame = section.placed()
 			var seen: Vector3 = frame * Vector3(placement.x * STUD, placement.y * PLATE,
@@ -9693,7 +10036,11 @@ const MOST_BRICKS := 50000
 ## The step is applied per copy, so times=7 with dx=24 lays seven bays in
 ## a row. degrees= steps too, and a section turns about its own origin:
 ## put the origin at the centre of a tower and degrees=45 with times=7
-## walks a module round it.
+## walks a module round it. Or round a centre said as around={x, z}, yaw=
+## stepping each copy round it, as a dome's panels go round its axis, each
+## keeping its own pitch and roll — or stepping those too. What is built
+## within the section, at any depth, is copied with it: a panel and the
+## panels hinged on it go round as one.
 static func _expand_repeats(model: Model, args: Dictionary,
 		trouble: Array) -> void:
 	for raw: Variant in args.get("repeat_section", []):
@@ -9715,11 +10062,21 @@ static func _expand_repeats(model: Model, args: Dictionary,
 				+ " declare that section, then repeat it.")
 			continue
 		var source: Section = model.sections[from]
-		var body: Array[Placement] = []
+		# What is within it goes with it, but not the frame its own hinge's
+		# base stands in: each copy lays its own base, turned as it is.
+		var inner: Array[Section] = []
+		for one: Section in model.sections_within(from):
+			if one.base_for != from:
+				inner.append(one)
+		var bodies: Dictionary = {from: []}
+		for one: Section in inner:
+			bodies[one.name] = []
+		var count: int = 0
 		for placement: Placement in model.placements:
-			if placement.section == from:
-				body.append(placement)
-		if body.is_empty():
+			if bodies.has(placement.section):
+				(bodies[placement.section] as Array).append(placement)
+				count += 1
+		if (bodies[from] as Array).is_empty() and count == 0:
 			trouble.append(("Section \"%s\" has no bricks in it, so " % from)
 				+ "repeating it would copy nothing. Place its bricks "
 				+ ("first, with section=\"%s\" on each." % from))
@@ -9731,9 +10088,9 @@ static func _expand_repeats(model: Model, args: Dictionary,
 				% [times, from] + "take; %d is the most." % MOST_COPIES)
 			continue
 		var room: int = MOST_BRICKS - model.placements.size()
-		if body.size() * times > room:
+		if count * times > room:
 			trouble.append(("%d copies of \"%s\" is %d bricks, and there "
-				% [times, from, body.size() * times])
+				% [times, from, count * times])
 				+ ("is room for %d. " % maxi(0, room))
 				+ "Build it in pieces, or make the section smaller.")
 			continue
@@ -9744,29 +10101,90 @@ static func _expand_repeats(model: Model, args: Dictionary,
 		var axis: String = str(order.get("axis", source.axis)).to_lower()
 		if not ["x", "y", "z"].has(axis):
 			axis = source.axis
+		var turns := Vector3(float(order.get("yaw", 0)), float(order.get("pitch", 0)),
+			float(order.get("roll", 0)))
+		var centre: Variant = null
+		var around: Variant = order.get("around")
+		if around is Dictionary:
+			centre = Vector2(float((around as Dictionary).get("x", source.x)),
+				float((around as Dictionary).get("z", source.z)))
+		elif around != null:
+			trouble.append("around is a centre, {\"x\": studs, \"z\": studs}, "
+				+ "in the coordinates %s is built in." % from)
+			continue
 		var base: String = str(order.get("name", from)).strip_edges()
 		if base.is_empty():
 			base = from
 
 		for n: int in range(1, times + 1):
-			var name: String = "%s %d" % [base, n + 1]
-			var at: int = 2
-			while model.sections.has(name):
-				at += 1
-				name = "%s %d" % [base, at]
+			var name: String = _free_name(model, base, n + 1)
 			var copy: Section = source.copied(name)
 			copy.x = source.x + step.x * n
 			copy.y = source.y + step.y * n
 			copy.z = source.z + step.z * n
 			copy.axis = axis
 			copy.degrees = source.degrees + turn * n
+			copy.yaw = source.yaw + turns.x * n
+			copy.pitch = source.pitch + turns.y * n
+			copy.roll = source.roll + turns.z * n
+			if centre != null:
+				# Carried round the centre by as much as it is turned, so the
+				# copy is the source turned rigidly about the upright there. A
+				# hinge swivels about its base's first stud, so that is what
+				# goes round.
+				var pivot := Vector2(source.x, source.z)
+				if source.hinge:
+					pivot += Vector2(0.5, 0.5)
+				var gone: Vector3 = Basis(Vector3.UP, deg_to_rad(turns.x * n)) \
+					* Vector3(pivot.x - centre.x, 0.0, pivot.y - centre.y)
+				copy.x = centre.x + gone.x + step.x * n - (pivot.x - source.x)
+				copy.z = centre.y + gone.z + step.z * n - (pivot.y - source.z)
+				# A hinge's base stands on studs, so each copy's on the studs
+				# nearest where the turn carries it, as the first one's are:
+				# carried exactly, all but the quarter turns stood between
+				# studs, and the one turned full circle was refused for it.
+				if source.hinge:
+					copy.x = _on_studs_as(copy.x, source.x)
+					copy.z = _on_studs_as(copy.z, source.z)
 			model.sections[name] = copy
-			for placement: Placement in body:
-				model.placements.append(placement.copied_into(name))
+			var mapped: Dictionary = {from: name}
+			for one: Section in inner:
+				mapped[one.name] = _free_name(model, one.name, n + 1, mapped.values())
+			for one: Section in inner:
+				var again: Section = one.copied(mapped[one.name])
+				again.within = str(mapped.get(one.within, one.within))
+				again.base_for = str(mapped.get(one.base_for, one.base_for))
+				model.sections[again.name] = again
+			for key: String in bodies:
+				for placement: Placement in bodies[key]:
+					model.placements.append(placement.copied_into(mapped[key]))
 			# The hinge's top is in the section and came with it; its base
 			# stands outside, so each copy gets its own.
 			if copy.hinge:
+				if _needs_frame(copy):
+					var frame := Section.new()
+					frame.name = _base_name(copy)
+					frame.base_for = copy.name
+					model.sections[frame.name] = frame
 				model.placements.append(_hinge_base(copy))
+		model.link_sections()
+
+
+## [param value] on the nearest stud that is on the same footing as [param
+## like]: whole studs for a whole one, halves for a half.
+static func _on_studs_as(value: float, like: float) -> float:
+	var footing: float = fposmod(snappedf(like, 0.5), 1.0)
+	return roundf(value - footing) + footing
+
+
+## A section name not yet taken: [param base] with a number from [param n].
+static func _free_name(model: Model, base: String, n: int, taken: Array = []) -> String:
+	var at: int = n
+	var name: String = "%s %d" % [base, at]
+	while model.sections.has(name) or taken.has(name):
+		at += 1
+		name = "%s %d" % [base, at]
+	return name
 
 
 ## The sections a model declares, before any brick refers to one.
@@ -9777,67 +10195,195 @@ static func _read_sections(model: Model, args: Dictionary) -> void:
 		var section: Section = Section.from_dict(raw)
 		if not section.name.is_empty():
 			model.sections[section.name] = section
+	model.link_sections()
 
 
 const HINGE_BASE := "3937"
 const HINGE_TOP := "3938"
 
 
-## Where a hinged section's pin is, and where its own coordinates start,
-## read off the hinge brick itself: the base's flat bore is the pin, and
-## closed, the top stands a plate up on the base's corner with its studs
-## two plates above that. Measured on 6085's gatehouse flag (`leaning on
-## a hinge`): the pin 1.75 plates up and half a stud in, the top's studs
-## 1.25 plates above it.
+## Where a hinged section's joint is, and where its own coordinates start,
+## read off the joint's parts ([method Hinges.fit]): for the tilting hinge
+## the base's flat bore is the pin, and closed, the top stands a plate up on
+## the base's corner with its studs two plates above that — measured on
+## 6085's gatehouse flag (`leaning on a hinge`): the pin 1.75 plates up and
+## half a stud in, the top's studs 1.25 plates above it. For the rest, the
+## line the two halves' joint records share.
 func _fit_hinge(section: Section) -> void:
-	var mesh: Lbm.PartMesh = library.mesh_for(HINGE_BASE) if library != null else null
-	if mesh == null:
+	# A part's corner is read off its cover, which takes the builder: an
+	# assistant made only to talk has neither and lays no hinge.
+	if library == null or builder == null:
 		return
-	var at: Transform3D = _square_transform(Placement.from_dict({
-		"part": HINGE_BASE, "rot": section.hinge_rot()}), mesh)
-	for connector: Lbm.Connector in mesh.connectors:
-		if connector.kind == "bore" and absf(connector.axis.y) < 0.5:
-			section.pin_from_corner = at * connector.position
-			break
-	section.origin_from_pin = Vector3(0, 3 * PLATE, 0) - section.pin_from_corner
+	var trouble: String = Hinges.fit(section, library,
+		func(part: String, rot: int, at: Vector3) -> Transform3D:
+			return _square_transform(Placement.from_dict({"part": part, "rot": rot,
+				"x": at.x, "y": at.y, "z": at.z}), library.mesh_for(part)))
+	if not trouble.is_empty():
+		if section.odd.is_empty():
+			section.odd = trouble
+		section.hinge = false
+		return
+
+
+## The section a hinge's base stands in when the hinge is turned about the
+## upright: its frame is the hinge's, so the base swivels with it.
+static func _base_name(section: Section) -> String:
+	return "%s hinge" % section.name
+
+
+static func _needs_frame(section: Section) -> bool:
+	return not is_zero_approx(fposmod(section.yaw, 360.0))
 
 
 static func _hinge_base(section: Section) -> Placement:
-	return Placement.from_dict({"part": HINGE_BASE, "color": section.hinge_color,
+	var part: String = str(Hinges.KINDS.get(section.hinge_kind,
+		Hinges.KINDS[Hinges.TILTING])[0])
+	if _needs_frame(section):
+		return Placement.from_dict({"part": part, "color": section.hinge_color,
+			"x": 0, "y": 0, "z": 0, "rot": section.base_rot,
+			"section": _base_name(section)})
+	return Placement.from_dict({"part": part, "color": section.hinge_color,
 		"x": section.x, "y": section.y, "z": section.z,
-		"rot": section.hinge_rot()})
+		"rot": section.base_rot, "section": section.within})
 
 
 static func _hinge_top(section: Section) -> Placement:
-	return Placement.from_dict({"part": HINGE_TOP, "color": section.hinge_color,
-		"x": 0, "y": -2, "z": 0, "rot": section.hinge_rot(),
+	var part: String = str(Hinges.KINDS.get(section.hinge_kind,
+		Hinges.KINDS[Hinges.TILTING])[1])
+	return Placement.from_dict({"part": part, "color": section.hinge_color,
+		"x": section.top_at.x, "y": section.top_at.y, "z": section.top_at.z,
+		"rot": section.top_rot,
 		"section": section.name})
 
 
-## An edit declaring a hinged section: its base moves with it, and a
-## section newly hinged gets both halves. The base stands outside the
-## section, so it is found where the section said it was.
+## Both halves of a hinged section's joint, and the frame its base stands
+## in when the hinge is turned about the upright.
+func _lay_hinge(model: Model, section: Section) -> void:
+	_fit_hinge(section)
+	if not section.hinge:
+		return
+	if _needs_frame(section):
+		var frame := Section.new()
+		frame.name = _base_name(section)
+		frame.base_for = section.name
+		model.sections[frame.name] = frame
+	model.placements.append(_hinge_base(section))
+	model.placements.append(_hinge_top(section))
+	model.link_sections()
+
+
+## An edit declaring a hinged section, or unhinging one: the old halves and
+## the frame the base stood in go, and the new ones are laid where the
+## section now says. Found by what they are and where the section said they
+## were, since the base stands outside the section.
 func _rehinge(model: Model, section: Section, was: Section) -> void:
-	var base: Placement = null
-	if was != null:
+	if was != null and was.hinge:
+		var kind: Array = Hinges.KINDS.get(was.hinge_kind, Hinges.KINDS[Hinges.TILTING])
+		var frame: String = _base_name(was)
+		var kept: Array[Placement] = []
 		for placement: Placement in model.placements:
-			if placement.part == HINGE_BASE and placement.section.is_empty() \
-					and is_equal_approx(placement.x, was.x) \
-					and is_equal_approx(placement.y, was.y) \
-					and is_equal_approx(placement.z, was.z):
-				base = placement
-				break
-	if base == null:
-		model.placements.append(_hinge_base(section))
-	else:
-		base.x = section.x
-		base.y = section.y
-		base.z = section.z
-		base.rot = section.hinge_rot()
-		base.moved = true
-	if not model.placements.any(func(p: Placement) -> bool:
-			return p.section == section.name and p.part == HINGE_TOP):
-		model.placements.append(_hinge_top(section))
+			var base: bool = placement.part == kind[0] and (placement.section == frame
+				or (placement.section == was.within and not _needs_frame(was)
+					and is_equal_approx(placement.x, was.x)
+					and is_equal_approx(placement.y, was.y)
+					and is_equal_approx(placement.z, was.z)))
+			var top: bool = placement.part == kind[1] and placement.section == was.name \
+				and Vector3(placement.x, placement.y, placement.z).is_equal_approx(was.top_at)
+			if not base and not top:
+				kept.append(placement)
+		model.placements = kept
+		model.sections.erase(frame)
+	if section.hinge:
+		_lay_hinge(model, section)
+	model.link_sections()
+
+
+## Turn the bricks an edit names, about the middle of them, as one: they
+## become a section turned so, within whatever section they were in. What
+## the window's Turn, Tilt and Roll do to a selection, said in an edit.
+## Bricks from two sections are not one thing to turn, and are said so.
+func _turn_bricks(model: Model, order: Dictionary, by_id: Dictionary) -> String:
+	var chosen: Array[Placement] = []
+	for id_raw: Variant in order.get("bricks", []):
+		var placement: Placement = by_id.get(int(id_raw))
+		if placement == null:
+			_unknown.append(int(id_raw))
+		elif not chosen.has(placement):
+			chosen.append(placement)
+	var turn := Vector3(float(order.get("yaw", 0)), float(order.get("pitch", 0)),
+		float(order.get("roll", 0)))
+	if chosen.is_empty() or turn == Vector3.ZERO:
+		return ""
+	var inside: String = chosen[0].section
+	if chosen.any(func(p: Placement) -> bool: return p.section != inside):
+		return ("turn: bricks %s are in different sections, so they are "
+			% str(order.get("bricks", [])) + "not one thing to turn; turn each section's "
+			+ "own, or give the section a new yaw, pitch or roll")
+	# The middle of their boxes, in the coordinates they are written in,
+	# on the lattice.
+	var low := Vector3.INF
+	var high := -Vector3.INF
+	for placement: Placement in chosen:
+		var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var box: AABB = (_square_transform(placement, mesh) * mesh.bounds).abs()
+		low = low.min(box.position)
+		high = high.max(box.end)
+	if low == Vector3.INF:
+		return ""
+	var middle: Vector3 = BrickLattice.to_ldu(BrickLattice.to_cell((low + high) * 0.5))
+	var name: String = _free_name(model, "turned", 1)
+	var section := Section.new()
+	section.name = name
+	section.x = middle.x / STUD
+	section.y = middle.y / PLATE
+	section.z = middle.z / STUD
+	section.yaw = turn.x
+	section.pitch = turn.y
+	section.roll = turn.z
+	section.within = inside
+	model.sections[name] = section
+	for placement: Placement in chosen:
+		placement.x -= section.x
+		placement.y -= section.y
+		placement.z -= section.z
+		placement.section = name
+		placement.moved = true
+		_touched += 1
+	model.link_sections()
+	return ""
+
+
+## The parts turned on their own, each read into a section of one turned
+## about its corner: the same arithmetic as any section, so a part turned
+## off the grid is checked as one is. Named for the part, so a later edit
+## can turn it again by name.
+static func _turned_parts(model: Model) -> void:
+	for placement: Placement in model.placements:
+		if placement.turn == Vector3.ZERO:
+			continue
+		var name: String = "%s turned" % placement.part
+		var n: int = 1
+		while model.sections.has(name):
+			n += 1
+			name = "%s turned %d" % [placement.part, n]
+		var section := Section.new()
+		section.name = name
+		section.x = placement.x
+		section.y = placement.y
+		section.z = placement.z
+		section.yaw = placement.turn.x
+		section.pitch = placement.turn.y
+		section.roll = placement.turn.z
+		section.within = placement.section
+		model.sections[name] = section
+		placement.x = 0.0
+		placement.y = 0.0
+		placement.z = 0.0
+		placement.section = name
+		placement.turn = Vector3.ZERO
+	model.link_sections()
 
 
 # -- validation ----------------------------------------------------------
@@ -9980,6 +10526,14 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	for said: Variant in _repeat_trouble:
 		_note(issues, "repeat", str(said))
 	advice.append_array(_pattern_advice)
+	# A turn or a hinge that could not be read as asked is said, not
+	# quietly built some other way: a panel told to tip two ways on a
+	# one-pin hinge and laid on one of them looks right and is not.
+	model.link_sections()
+	for name: String in model.sections:
+		var odd: String = (model.sections[name] as Section).odd
+		if not odd.is_empty():
+			_note(issues, "section", "section '%s': %s." % [name, odd])
 
 	if model.placements.is_empty():
 		# Which of the two this is matters enormously.
@@ -10345,6 +10899,9 @@ func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionar
 	var turning: String = _drive_said(model, entries, meshing, placed_at)
 	if not turning.is_empty():
 		advice.append(turning)
+	var hinged: String = _hinges_said(model)
+	if not hinged.is_empty():
+		advice.append(hinged)
 
 	# Every section has to be fixed to something outside itself.
 	# Held together inside and touching nothing is a part that falls off
@@ -12659,7 +13216,10 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 	# was placed: a leaning brick that also overlapped was never placed.
 	for group: String in model.sections:
 		var section: Section = model.sections[group]
-		if section.axis == "y" or is_zero_approx(fposmod(section.degrees, 90.0)):
+		# Square to what it is built on, or turned only about the upright,
+		# it stands on studs as anything does; a section within a leaning
+		# one leans with it and is held to it by studs, square.
+		if not section.leans():
 			continue
 		if not model.placements.any(func(p: Placement) -> bool: return p.section == group):
 			continue
@@ -12675,19 +13235,20 @@ func _check_sections_attached(model: Model, cells_of: Dictionary,
 			continue
 		stuck[group] = true
 		_note(issues, "leaning on nothing",
-			"section '%s' leans %s degrees but nothing in it turns on "
-				% [group, Placement._num(absf(section.degrees))]
-				+ "anything: its bottom sits on the studs below at a "
+			"section '%s' is turned %s but nothing in it turns on "
+				% [group, section.said()]
+				+ "anything outside it: its bottom sits on the studs below at a "
 				+ "slant and grips none of them. Stand it upright on "
-				+ "its studs, or turn it about the upright (axis y) "
+				+ "its studs, or turn it only about the upright (yaw) "
 				+ "instead. A part leans in a real set only on a joint "
-				+ "whose pin lies along the section's axis at its pivot "
-				+ "— a tilting hinge (3937 with 3938 on it), finger "
-				+ "hinge plates (4275b with 4276b), a clip on a bar, a "
+				+ "whose line lies along the turn at its pivot "
+				+ "— a tilting hinge (3937 with 3938 on it), click "
+				+ "hinge plates, a clip on a bar, a "
 				+ "ball in a socket — one half outside the section and "
-				+ "the other in it. hinge: true on the section puts a "
-				+ "hinge brick under it and turns it about the pin for "
-				+ "you; show_technique(\"leaning on a hinge\") is one "
+				+ "the other in it. hinge: \"%s\" on the section " % Hinges.TILTING
+				+ "lays both halves and turns it about their line for "
+				+ "you (%s); show_technique(\"leaning on a hinge\") is one " % (
+					Hinges.offered(library) if library != null else Hinges.listing())
 				+ "written out. (3830/3831 and 2429/2430 swivel flat, "
 				+ "like a door; they do not lean.)")
 	for group: String in _sections_present(model, cells_of):
@@ -13138,7 +13699,7 @@ func _turns_against(model: Model, index: int, other: int,
 	if group.is_empty() or model.placements[other].section == group:
 		return false
 	var section: Section = model.sections.get(group)
-	if section == null or is_zero_approx(fposmod(section.degrees, 90.0)):
+	if section == null or section.square():
 		return false
 	for k: Variant in rounds.get(other, {}):
 		if int(k) < model.placements.size() \
@@ -14203,53 +14764,77 @@ AT AN ANGLE
 face and rot only ever give you square quarter turns. Much of what makes \
 a model look like the real thing is not square: a nacelle pylon raked \
 back, a wing swept, a hatch standing open, a roof at a pitch no slope \
-brick makes.
+brick makes, the panels of a dome.
 
 Say those as a SECTION. A section is a part of the model you build \
 square, in its own ordinary studs and plates from its own corner, and \
-then carry somewhere at an angle:
+then carry somewhere turned:
 
-  sections: [{name: "port pylon", x: 14, y: 8, z: 6,
-              axis: "z", degrees: 35}]
+  sections: [{name: "port pylon", x: 14, y: 8, z: 6, yaw: 20, pitch: 35}]
 
 Every brick with section: "port pylon" is then written as though that \
 pylon were sitting flat at the origin — x from 0, y from 0 — and the \
-whole thing is tipped 35 degrees and carried to 14,8,6. This is how a \
-real set does it and how a set's instructions read: build the assembly, \
-then attach it.
+whole thing is turned and carried to 14,8,6. This is how a real set \
+does it and how a set's instructions read: build the assembly, then \
+attach it.
 
 Do not try to angle bricks one at a time. Working out where each brick \
 lands once it is rotated is trigonometry, you would have to do it \
 forty times for one pylon, and every one of those is a chance to be a \
 tenth of a stud out.
 
-The axis is the hinge pin, and the sign is worth getting right first \
-time — a design that guessed it built both its pylons leaning inward \
-and spent a turn finding out. A positive angle:
+A turn is said yaw, then pitch, then roll, in degrees, and a section's \
+own +z is its nose:
+
+  yaw    swings the nose from +z towards +x, about the upright
+  pitch  then lifts the nose
+  roll   then lifts its +x side
+
+Yaw and pitch together face a panel any way at all — yaw says which way \
+round it faces, pitch tips it back — which one axis cannot: a dome whose \
+panels could only turn about one axis came out a pyramid. Or one turn \
+about one pin, axis "x", "y" or "z" (or line: [x, y, z]) and degrees, \
+whose sign is worth getting right first time:
 
   about z  leans the top towards -x (leftward), keeping +z forward
   about x  leans the top towards +z (backward)
   about y  swings the nose from +z towards +x, without tilting
 
-Negate it to go the other way. For a pair of raked pylons, one is the \
-negative of the other.
+Negate an angle to go the other way: for a pair of raked pylons, one is \
+the negative of the other. One part on its own takes yaw, pitch and roll \
+too, turned about its own corner; it becomes a section of one.
 
-A section that leans — turned about x or z — turns on a joint, as it \
-does in plastic, and the one-line way is hinge: true:
+A section within another (within: "wing") has its x, y and z in that \
+one's own coordinates and goes wherever it goes: a flap on a wing, a \
+panel hinged on a panel.
 
-  sections: [{name: "spire", x: 6, y: 18, z: 3, axis: "x",
-              degrees: 15, hinge: true}]
+A section that leans turns on a joint, as it does in plastic, and \
+hinge: lays both halves of a real one for you and turns the section \
+about the line they share:
 
-puts a hinge brick's base (3937) at 6,18,3 like any brick and its top \
-(3938) on it, and turns the section about the hinge's own pin. The \
-section's bricks start at 0,0,0 on the hinge top's two studs, which run \
-along the pin — 0..2 along x, 0..1 along z here — so a spire, a horn or \
-a raked pylon is written as if it stood square on a 1 x 2 plate. Finger \
-hinge plates, a clip on a bar and a ball in a socket are joints too, \
-written out by hand (show_technique("leaning on a hinge") shows one). A \
-section that only rests against the model at a slant grips none of the \
-studs it sits on and is refused. Turning about y and quarter turns \
-stand on studs as anything else does.
+  sections: [{name: "spire", x: 6, y: 18, z: 3, pitch: 15,
+              hinge: "tilting"}]
+
+  "tilting" (or true): a hinge brick's base, 3937, with its top, 3938, \
+resting closed on it. The section's bricks start at 0,0,0 on the top's \
+two studs, which run along the pin, so a spire, a horn or a raked pylon \
+is written as if it stood square on a 1 x 2 plate.
+  "clip": a plate with a bar on its end (60478) and a plate with a clip \
+on its end (63868), resting in line. The base runs along the nose to its \
+bar, the section starts on the clip plate's studs beyond it, and pitch \
+lifts the section about the bar.
+  "click": click hinge plates, 44302 then 44301, the same way round, \
+where this build's parts say where their fingers are.
+
+x, y, z are then where the base stands, like any brick's, in the \
+coordinates of whatever the section is within; yaw turns the base and \
+all on it about the base's first stud, as a part on one stud swivels; \
+pitch (or roll, with axis "z") turns the section about the joint's line. \
+{HINGE LINES} A hinge turns about one line, so it takes a pitch or a \
+roll and not both: to tip two ways, hinge a section within a hinged one. \
+A section that only rests against the model at a slant grips none of the \
+studs it sits on and is refused. Turned only about the upright, or by \
+quarter turns, it stands on studs as anything else does.
 
 Something rigid and turned meets a flat face along a line, so the \
 height at which a section touches the hull without digging into it is \
@@ -14257,13 +14842,14 @@ a narrow band — a fraction of a plate, not a whole one. Do not hunt for \
 it. When a section does not fit, the checker sweeps and tells you the y \
 where it would; use that number.
 
-Keep sections for the few places the angle is what makes the shape \
-read — a raked pylon, a swept wing, an opened hatch. Everything else \
-is quicker and steadier square. And if a section still will not attach \
-after two tries, build that one assembly square and say so in your \
-reply: a model that is ninety percent right and standing is worth more \
-than a perfect pylon and nothing under it. One design spent every turn \
-it had on a fifty-degree pylon and submitted nothing at all.
+Keep sections for the places the angle is what makes the shape read — \
+a raked pylon, a swept wing, an opened hatch, a curve that must not be \
+a staircase. Everything else is quicker and steadier square. And if a \
+section still will not attach after two tries, build that one assembly \
+square and say so in your reply: a model that is ninety percent right \
+and standing is worth more than a perfect pylon and nothing under it. \
+One design spent every turn it had on a fifty-degree pylon and \
+submitted nothing at all.
 
 Inside a section, support works exactly as it does anywhere else, in \
 that section's own square coordinates: a brick needs a brick beneath it \
@@ -14279,10 +14865,71 @@ eight checks finding that out by experiment; it is written here so you \
 do not have to.
 
 A section must touch the rest of the model somewhere, or it is a piece \
-that falls off when the model is picked up. Give a section a new \
-degrees or a new position with edit_model and everything in it moves \
-together, which is how a hatch is opened further without describing a \
-single brick again.
+that falls off when the model is picked up. Give a section a new yaw, \
+pitch or position with edit_model — its name and only what changes — and \
+everything in it, and within it, moves together, which is how a hatch is \
+opened further without describing a single brick again.
+
+ROUND BODIES AND DOMES
+A curve built in square plates is a staircase however fine the steps. \
+Real sets make a round body one of three ways, by its size. Choose by \
+how it is built, not by what the subject is.
+
+  Moulded parts, when one fits: a dish for a dome's cap (4740 2x2, 3960 \
+4x4, 44375b 6x6, 3961 8x8, 50990b 10x10), round bricks and plates for a \
+column, cones for a taper, round corner bricks for a quarter ring \
+(85080 2x2, 2577 and 48092 4x4). Up to about ten studs across, a dish \
+or a stack of round plates under curved slopes is the whole answer.
+  Sideways skins, for a band, a body lying on its side, an egg, a car's \
+curved flank: a core with studs out on its sides (11211, 87087, 4733, \
+brackets 99780 and 99207), and on each side a section turned to face out \
+— pitch -90 and yaw 0, 90, 180, 270 — built flat as a lens: a plate the \
+side's width, curved slopes (15068, 93606, 11477, 61678) falling away to \
+its ends, tiles between. Four skins round a square core read round. The \
+BB-8 sets and the Saturn V are built so.
+  Hinged panels, for a dome or a sphere bigger than a dish: the surface \
+cut into small flat panels, each a plate with tiles on it on a hinge, \
+tipped to the curve, no two at the same angle. 10143, the Death Star II, \
+is sixteen shell segments each turned 22.5 degrees from the last, \
+carrying panels on click hinges. Said as one strip from the equator up, \
+repeated round the centre:
+    1. Choose K bands, equator to top, and a panel length L studs, hinge \
+line to hinge line: at least 5, since each panel's own top half and the \
+next one's base both sit under it. Each band spans 90/K degrees, and the \
+lines lie on a circle of radius r = L / (2 sin(45/K)) studs: 4 bands of \
+L = 5 is 12.8, about 27 studs across over the panels.
+    2. A ring for the equator, outside the lines only — a clip's round \
+reaches past the plates it joins, so nothing may be under a joint: plates \
+in two crossed layers from r + 0.6 to r + 3 studs from the centre, its top \
+at y = 2. The lower layer may run on across the middle, a plate below the \
+joints, for the cap's column to stand on.
+    3. Band 1: a hinged section standing on the ring at the far side from \
+the centre, on whole studs, its nose to the centre (yaw 180 for one on the \
++z side), pitch 90 - 45/K: nearly upright, its studs facing out.
+    4. Each band above: a hinged section within the one below, its base \
+at that one's far end ({HINGE NEXT}), pitch -90/K — folding in by a \
+band's angle.
+    5. In each band's section: plates the panel's width over its hinge \
+halves, L - 1 studs long from z = 0, centred on the hinge's x 0..1 (an odd \
+width: x from -1 for 3, -2 for 5), tiles on them. A width no plate comes \
+in is two side by side, and then the tiles over them split the other way \
+round — a 2 then a 3 under, a 3 then a 2 over — or the half off the hinge \
+holds nothing.
+    6. Strips side by side leave a gap that widens as they climb, and \
+whatever is inside shows through it: a dome built so read as ribs over a \
+dark core. So lay two strips that take turns round it, as scales lap: the \
+second ("over 1") turned 360/N further round than the first, its panels \
+standing on a spacer — 1 x n plates three high over its hinge halves, x \
+0..1 — and wider, so they lap over the edges of the strips either side. \
+For N = 12 of 4 bands of L = 5: the first's panels 5, 5, 3 wide, the \
+second's 9, 7, 5; the top band left for the crown.
+    7. repeat_section for each, {from: "band 1", times: N/2 - 1, around: \
+{x, z} of the centre, yaw: 720 / N}, and the same from "over 1": \
+everything within each goes round with it, each copy's base on the studs \
+nearest where the turn carries it.
+    8. The crown: a dish just over the top band (50990b, 10 x 10, for r = \
+12.8) on a column of 2 x 2 round bricks from the ring's lower layer.
+show_technique("hinged panels") is a small one, built and checked.
 
 THE RULES YOUR DESIGN MUST SATISFY
 1. Nothing may overlap. Two parts cannot share space.
@@ -14940,7 +15587,85 @@ submit_design is for starting something new.
 An edit is applied as soon as it is accepted. Once you have made one, \
 the model is built — finish by saying what you did. Calling \
 submit_design afterwards with a list that predates the edit throws the \
-edit away."""
+edit away.""".replace("{HINGE LINES}", _hinge_lines()).replace("{HINGE NEXT}",
+		_hinge_next())
+
+
+## What is turned on which hinge, in a line or two: how many sections on
+## each kind, one of them as it was said, and where the base of a section
+## hinged within one goes. Said in the check's answer, because a session
+## acts on what a tool tells it and reads the guide once.
+func _hinges_said(model: Model) -> String:
+	var kinds: Dictionary = {}    ## kind -> [count, one section]
+	for section: Section in model.sections.values():
+		if not section.hinge:
+			continue
+		if not kinds.has(section.hinge_kind):
+			kinds[section.hinge_kind] = [0, section]
+		kinds[section.hinge_kind][0] = int(kinds[section.hinge_kind][0]) + 1
+	if kinds.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for kind: String in kinds:
+		var one: Section = kinds[kind][1]
+		var step: Vector3 = _hinge_step(kind)
+		said.append("%d section%s on %s hinges, '%s' %s%s" % [int(kinds[kind][0]),
+			"" if int(kinds[kind][0]) == 1 else "s", kind, one.name, one.said(),
+			"" if step == Vector3.INF else "; one hinged within one L studs long "
+				+ "stands its base at %s" % _step_said(step)])
+	return "Hinged: " + "; ".join(said) + "."
+
+
+## Where a hinged section's joint line is in its own coordinates, and where
+## the base of one hinged within it L studs on goes, for each kind of hinge
+## this build lays in line: worked out from the parts, so the numbers a
+## chain of panels needs are never a guess written down here.
+func _hinge_lines() -> String:
+	if library == null or builder == null:
+		return ""
+	var said := PackedStringArray()
+	for kind: String in [Hinges.CLIP, Hinges.CLICK]:
+		var next: Vector3 = _hinge_step(kind)
+		if next == Vector3.INF:
+			continue
+		var fit := Section.from_dict({"name": "fit", "hinge": kind, "pitch": 1})
+		_fit_hinge(fit)
+		var line: Vector3 = -fit.origin_from_pin
+		said.append(("On a %s hinge the line is at the section's own y=%s, z=%s, and a "
+			% [kind, Placement._num(snappedf(line.y / PLATE, 0.05)),
+				Placement._num(snappedf(line.z / STUD, 0.05))])
+			+ "section hinged within it L studs on stands its base at %s." % _step_said(next))
+	return " ".join(said)
+
+
+## Where the next panel's base goes, for the kind a dome is best hung on.
+func _hinge_next() -> String:
+	for kind: String in [Hinges.CLICK, Hinges.CLIP]:
+		var next: Vector3 = _hinge_step(kind)
+		if next != Vector3.INF:
+			return "on a %s hinge, %s" % [kind, _step_said(next)]
+	return "where its hinge's base stands on it"
+
+
+## The base of a section hinged within one of [param kind], from the parent's
+## origin, less L studs along z, in studs and plates; INF where the kind
+## cannot be laid here.
+func _hinge_step(kind: String) -> Vector3:
+	if library == null or builder == null or not Hinges.available(kind, library):
+		return Vector3.INF
+	var fit := Section.from_dict({"name": "fit", "hinge": kind, "pitch": 1})
+	_fit_hinge(fit)
+	if not fit.hinge:
+		return Vector3.INF
+	var next: Vector3 = -fit.origin_from_pin - fit.pin_from_corner
+	return Vector3(next.x / STUD, next.y / PLATE, next.z / STUD)
+
+
+static func _step_said(next: Vector3) -> String:
+	var along: float = snappedf(next.z, 0.05)
+	return "x=%s, y=%s, z=L%s" % [Placement._num(snappedf(next.x, 0.05)),
+		Placement._num(snappedf(next.y, 0.05)),
+		"" if is_zero_approx(along) else ("%+.2f" % along).trim_suffix("0").trim_suffix(".0")]
 
 
 ## Everything the app knows about designing well in it.
@@ -15013,6 +15738,10 @@ first. Put a pin, an axle, a gear or a bush by its line, axis "z" and \
 the x, y, z attachment_points gives the hole, never by its corner. Gears \
 mesh 1.25 LDU a tooth apart: an 8 and a 24, 2 studs.
 
+A CURVED SURFACE (a dome, a sphere, a round body): read_guide "round" \
+first: hinged panels turned by yaw and pitch, or skins built sideways — \
+never plates stepped in.
+
 ASKED ABOUT A SELECTION (parts the person selected): selection, then \
 where_to_attach (with part=, placements that fit as they are), then \
 edit_selection; never submit_design.
@@ -15024,7 +15753,8 @@ the whole model from it.
 
 read_guide sections: "work", "rules", "shapes" (repeat, mirror, fill, rock, \
 studs_out, prism, round, and shape with its face), "subject" (what each \
-kind of subject needs), "real", "colour", "angle" (sections on hinges), \
+kind of subject needs), "real", "colour", "angle" (sections turned any \
+way, on hinges), "round", \
 "coordinates", "sideways", "pins", "big", "look", "good", "beautiful", \
 "creative", "changing", "kind", "art", and "app" (what else the person can \
 do from the menus: set_floor, edit_steps, lay_flex, pose_model, \
@@ -15041,6 +15771,10 @@ const GUIDE_NAMES: Dictionary = {"work": "HOW TO WORK", "process": "HOW TO WORK"
 	"patterns": "SAY THE SHAPE, DO NOT COUNT IT OUT", "shape": "SAY THE SHAPE, DO NOT COUNT IT OUT",
 	"face": "SAY THE SHAPE, DO NOT COUNT IT OUT", "subject": "WHAT THE SUBJECT NEEDS",
 	"angle": "AT AN ANGLE", "sections": "AT AN ANGLE", "hinge": "AT AN ANGLE",
+	"round": "ROUND BODIES AND DOMES", "dome": "ROUND BODIES AND DOMES",
+	"domes": "ROUND BODIES AND DOMES", "sphere": "ROUND BODIES AND DOMES",
+	"curve": "ROUND BODIES AND DOMES", "curved": "ROUND BODIES AND DOMES",
+	"hinged panels": "ROUND BODIES AND DOMES", "skins": "ROUND BODIES AND DOMES",
 	"pins": "BUILDING WITH PINS AND AXLES", "technic": "BUILDING WITH PINS AND AXLES",
 	"real": "WHAT MAKES A MODEL LOOK REAL", "touches": "THE CREATIVE PASS",
 	"creative": "THE CREATIVE PASS",
@@ -15099,10 +15833,12 @@ func _show_technique(wanted: String) -> String:
 	# read as being in it.
 	for raw: Variant in technique.get("sections", []):
 		var section: Dictionary = raw
-		rows.append("  section \"%s\" at x=%s y=%s z=%s, turned %s degrees about %s"
-			% [section["name"], Placement._num(float(section["x"])),
-				Placement._num(float(section["y"])), Placement._num(float(section["z"])),
-				Placement._num(float(section["degrees"])), section["axis"]])
+		rows.append("  section \"%s\" at x=%s y=%s z=%s, %s" % [section["name"],
+			Placement._num(float(section["x"])), Placement._num(float(section["y"])),
+			Placement._num(float(section["z"])), Section.from_dict(section).said()])
+	for raw: Variant in technique.get("repeat_section", []):
+		var order: Dictionary = raw
+		rows.append("  repeat_section %s" % JSON.stringify(order))
 	for raw: Variant in technique["bricks"]:
 		var brick: Dictionary = raw
 		var face: String = str(brick.get("face", "up"))
@@ -16145,9 +16881,9 @@ func _sections_said(read: OpenPoints, laid_in: Dictionary) -> String:
 		var section: Section = read.model.sections.get(name)
 		if section == null:
 			continue
-		said.append("  '%s' (%d of them): its origin at x=%s y=%s z=%s, turned %s degrees about %s"
+		said.append("  '%s' (%d of them): its origin at x=%s y=%s z=%s, %s"
 			% [name, int(laid_in[name]), Placement._num(section.x), Placement._num(section.y),
-				Placement._num(section.z), Placement._num(section.degrees), section.axis])
+				Placement._num(section.z), section.said()])
 	return ("Some are laid turned, in a section, and are given above in that section's own "
 		+ "studs and plates. A part put down among them takes the same section= and its "
 		+ "x, y, z in those coordinates; nothing else about the section needs saying, and a "
@@ -16965,6 +17701,12 @@ func _tools() -> Array:
 				"the section this brick belongs to, if any. Its x, y "
 				+ "and z are then that section's own coordinates, not "
 				+ "the model's."},
+			"yaw": {"type": "number", "description": "turn this one part off the "
+				+ "grid, degrees about the upright (its +z swings towards +x), about "
+				+ "its own corner; it becomes a section of one. Any angle."},
+			"pitch": {"type": "number", "description": "and then lift its +z end, "
+				+ "degrees. A part that leans must turn on a joint."},
+			"roll": {"type": "number", "description": "and then lift its +x side, degrees"},
 		},
 		"required": ["part", "color", "x", "y", "z", "rot"],
 		"additionalProperties": false,
@@ -17281,26 +18023,48 @@ func _tools() -> Array:
 				"studs across, where this section's own origin sits"},
 			"y": {"type": "number", "description": "plates up"},
 			"z": {"type": "number", "description": "studs deep"},
-			"axis": {"type": "string", "enum": ["x", "y", "z"],
-				"description":
-					"which way the hinge pin runs. z tips it left and "
-					+ "right, x tips it forward and back, y swings it "
-					+ "round."},
+			"yaw": {"type": "number", "description":
+				"degrees about the upright: its +z (its nose) swings towards +x. "
+				+ "Applied first."},
+			"pitch": {"type": "number", "description":
+				"then degrees its nose lifts. Yaw and pitch together face a "
+				+ "panel any way round a dome and tip it to the curve."},
+			"roll": {"type": "number", "description":
+				"then degrees its +x side lifts"},
+			"axis": {"type": "string", "enum": ["x", "y", "z"], "description":
+				"or one turn about one pin: z tips it left and right, x forward "
+				+ "and back, y swings it round. Applied after yaw, pitch and roll."},
+			"line": {"type": "array", "items": {"type": "number"}, "description":
+				"or the turn's axis as a direction [x, y, z], instead of axis"},
 			"degrees": {"type": "number", "description":
-				"how far it is turned about that pin. Any angle."},
-			"hinge": {"type": "boolean", "description":
-				"lean it on a hinge brick (3937 under 3938), put in for "
-				+ "you: x, y, z are then where the hinge's base stands, "
-				+ "the bricks in the section start at 0,0,0 on the hinge "
-				+ "top's two studs (along the pin), and it turns about the "
-				+ "hinge's own pin. A section leaning about x or z must "
-				+ "turn on a joint; this is the one-line way."},
+				"how far it is turned about that axis or line. Any angle."},
+			"within": {"type": "string", "description":
+				"the section this one is built in: x, y, z (and its hinge's base) "
+				+ "are then that section's own coordinates, and it goes where it "
+				+ "goes. Panels hinged on panels, a chain round a dome."},
+			"hinge": {"description":
+				"turn it on a real joint, both halves laid for you: \"tilting\" "
+				+ "(or true; 3937 under 3938, rests closed), \"clip\" (60478's bar "
+				+ "in 63868's clip, rests in line), \"click\" (44302/44301, in "
+				+ "line, where this build's parts have it). x, y, z are then where "
+				+ "the base stands, like any brick, turned by yaw about its first "
+				+ "stud; the section's bricks start at 0,0,0 on the top half's "
+				+ "studs, its nose (+z) running away from the joint's line, and "
+				+ "pitch lifts it about that line (or roll, with the line along "
+				+ "z). A section that leans must turn on a joint; this is the "
+				+ "one-line way.",
+				"type": "string", "enum": ["tilting", "clip", "click"]},
 			"hinge_color": {"type": "integer", "description":
 				"the hinge's colour, if not 72"},
 		},
-		"required": ["name", "x", "y", "z", "axis", "degrees"],
+		"required": ["name", "x", "y", "z"],
 		"additionalProperties": false,
 	}
+
+	# The same, as an edit says it: a section already there needs only its
+	# name and what changes.
+	var section_change: Dictionary = section.duplicate(true)
+	section_change["required"] = ["name"]
 
 	# One built section, said again somewhere else. A large model is
 	# repetition, and this is how it is said.
@@ -17325,6 +18089,15 @@ func _tools() -> Array:
 				"description":
 					"which way that pin runs. Defaults to the source "
 					+ "section's."},
+			"around": {"type": "object", "description":
+				"{\"x\", \"z\"}: a centre, in the coordinates the section is "
+				+ "built in. Each copy is carried round it by its yaw step, "
+				+ "keeping its pitch and roll — a ring of panels round a dome.",
+				"properties": {"x": {"type": "number"}, "z": {"type": "number"}}},
+			"yaw": {"type": "number", "description":
+				"degrees further round per copy (360 / how many in the ring)"},
+			"pitch": {"type": "number", "description": "degrees more pitch per copy"},
+			"roll": {"type": "number", "description": "degrees more roll per copy"},
 			"name": {"type": "string", "description":
 				"what to call the copies. They are numbered from 2."},
 		},
@@ -17842,13 +18615,37 @@ func _tools() -> Array:
 							"additionalProperties": false,
 						},
 					},
+					"turn": {
+						"type": "array",
+						"description": "turn bricks where they stand, about "
+							+ "their middle, as one: they become a section "
+							+ "turned so, as the window's Turn, Tilt and Roll "
+							+ "do. A part that leans this way must turn on a "
+							+ "joint; give a section its own new angle instead.",
+						"items": {
+							"type": "object",
+							"properties": {
+								"bricks": {"type": "array",
+									"items": {"type": "integer"}},
+								"yaw": {"type": "number", "description":
+									"degrees about the upright"},
+								"pitch": {"type": "number", "description":
+									"degrees its +z end lifts"},
+								"roll": {"type": "number", "description":
+									"degrees its +x side lifts"},
+							},
+							"required": ["bricks"],
+							"additionalProperties": false,
+						},
+					},
 					"add": {"type": "array", "items": brick},
-					"sections": {"type": "array", "items": section,
+					"sections": {"type": "array", "items": section_change,
 						"description":
 							"add a section, or give one that already "
-							+ "exists a new angle or position — which "
-							+ "moves everything in it without naming a "
-							+ "single brick."},
+							+ "exists a new angle or position — its name "
+							+ "and only what changes — which moves "
+							+ "everything in it and within it without "
+							+ "naming a single brick."},
 					"repeat_section": {"type": "array",
 						"items": repeat_section, "description":
 							"say a section again somewhere else. One bay "

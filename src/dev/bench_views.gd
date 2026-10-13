@@ -8,6 +8,9 @@
 ## reference and both anchors with it, so the judge compares like with like.
 ## --close is in studs and plates (as view_model's where), --closef in
 ## fractions of the bounds; without either, the nearest quarter from the corner.
+## --views=corner,front,right,top takes those instead (any of ModelShot's
+## angles, and close), each as PREFIX_{view}.png: a round thing has to be seen
+## from more than one side to be called round.
 extends SceneTree
 
 
@@ -80,8 +83,14 @@ func _run() -> void:
 	print("bounds %s close %s" % [bounds, close])
 	var scenery: Dictionary = (main.get("_store") as ModelStore).scenery
 	var bounds_skip: AABB = AABB()
-	for view: Array in [["corner", "corner", AABB()], ["front", "front", AABB()],
-			["close", "corner", close]]:
+	var wanted: Array = [["corner", "corner", AABB()], ["front", "front", AABB()],
+		["close", "corner", close]]
+	if not _arg("--views").is_empty():
+		wanted = []
+		for name: String in _arg("--views").split(",", false):
+			wanted.append([name, "corner" if name == "close" else name,
+				close if name == "close" else AABB()])
+	for view: Array in wanted:
 		var image: Image = await shot.take(world, view[1], scenery, view[2])
 		if image == null:
 			print("  no picture for %s" % view[0])

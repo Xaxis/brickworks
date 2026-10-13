@@ -63,6 +63,14 @@
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
+              "pitch": {
+                "description": "and then lift its +z end, degrees. A part that leans must turn on a joint.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "and then lift its +x side, degrees",
+                "type": "number"
+              },
               "rot": {
                 "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
@@ -77,6 +85,10 @@
               },
               "y": {
                 "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "turn this one part off the grid, degrees about the upright (its +z swings towards +x), about its own corner; it becomes a section of one. Any angle.",
                 "type": "number"
               },
               "z": {
@@ -184,6 +196,14 @@
                       "description": "part number, e.g. 3001",
                       "type": "string"
                     },
+                    "pitch": {
+                      "description": "and then lift its +z end, degrees. A part that leans must turn on a joint.",
+                      "type": "number"
+                    },
+                    "roll": {
+                      "description": "and then lift its +x side, degrees",
+                      "type": "number"
+                    },
                     "rot": {
                       "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                       "type": "integer"
@@ -198,6 +218,10 @@
                     },
                     "y": {
                       "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                      "type": "number"
+                    },
+                    "yaw": {
+                      "description": "turn this one part off the grid, degrees about the upright (its +z swings towards +x), about its own corner; it becomes a section of one. Any angle.",
                       "type": "number"
                     },
                     "z": {
@@ -551,7 +575,7 @@
             "additionalProperties": false,
             "properties": {
               "axis": {
-                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "description": "or one turn about one pin: z tips it left and right, x forward and back, y swings it round. Applied after yaw, pitch and roll.",
                 "enum": [
                   "x",
                   "y",
@@ -560,19 +584,43 @@
                 "type": "string"
               },
               "degrees": {
-                "description": "how far it is turned about that pin. Any angle.",
+                "description": "how far it is turned about that axis or line. Any angle.",
                 "type": "number"
               },
               "hinge": {
-                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
-                "type": "boolean"
+                "description": "turn it on a real joint, both halves laid for you: \"tilting\" (or true; 3937 under 3938, rests closed), \"clip\" (60478's bar in 63868's clip, rests in line), \"click\" (44302/44301, in line, where this build's parts have it). x, y, z are then where the base stands, like any brick, turned by yaw about its first stud; the section's bricks start at 0,0,0 on the top half's studs, its nose (+z) running away from the joint's line, and pitch lifts it about that line (or roll, with the line along z). A section that leans must turn on a joint; this is the one-line way.",
+                "enum": [
+                  "tilting",
+                  "clip",
+                  "click"
+                ],
+                "type": "string"
               },
               "hinge_color": {
                 "description": "the hinge's colour, if not 72",
                 "type": "integer"
               },
+              "line": {
+                "description": "or the turn's axis as a direction [x, y, z], instead of axis",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "name": {
                 "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "pitch": {
+                "description": "then degrees its nose lifts. Yaw and pitch together face a panel any way round a dome and tip it to the curve.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "then degrees its +x side lifts",
+                "type": "number"
+              },
+              "within": {
+                "description": "the section this one is built in: x, y, z (and its hinge's base) are then that section's own coordinates, and it goes where it goes. Panels hinged on panels, a chain round a dome.",
                 "type": "string"
               },
               "x": {
@@ -581,6 +629,10 @@
               },
               "y": {
                 "description": "plates up",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "degrees about the upright: its +z (its nose) swings towards +x. Applied first.",
                 "type": "number"
               },
               "z": {
@@ -592,9 +644,7 @@
               "name",
               "x",
               "y",
-              "z",
-              "axis",
-              "degrees"
+              "z"
             ],
             "type": "object"
           },
@@ -626,7 +676,7 @@
     "name": "read_guide"
   },
   {
-    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
+    "description": "How a construction is actually made, in part numbers and coordinates, most of them as the LEGO Group built them in real sets. By what they are for — basics: half stud offset, face turned sideways, porthole or lamp, smooth diagonal, smooth top, taper; walls and stone: staggered wall, rough stone wall, weathered stone wall, corbelled wall walk, oversail on inverted slopes, stone corbel, balustrade, embossed brick wall; towers and columns: round tower, wide round tower, columns with capitals, stone column, turned wooden pillar; round bodies: hinged panels, sideways skins, round body, round body lying down, dome and cone cap, ring of cones under a round plate, spokes with tiles, curved skin panel, studs-out core, grille band, cone bell on round plates, round tip; faces and features: eye with a highlight, round face, beak or snout, ears or tufts, talons, headlamps and grille; machines and joints: struts pinned to a Technic course, two rounds pinned side by side, fin root on a Technic pin; angles: corner on a turntable, leaning on a hinge; roofs and spires: chimney, turret spire, roof ridge, striped awning; windows and doors: window in a wall, door in a wall, arched window, window with shutters, postern arch; rock and ground: fence, rock outcrop, rocky ground with plants, stone with ivy, cobbled path, staircase; plants: tree, planter, hedge with flowers, clipped hedge, leafy plant, flower bed; furniture and interiors: bed, bench, armchair, table, bookcase, fireplace, hearth, anvil, chest, potion shelf, dresser, sofa, four-poster bed, log pile; lights: lamp post, wall lantern, hanging lamp, bedside lamp, campfire; creative touches: lid or hatch raised on hinges, small creature, display stand with a nameplate. Ask before building one of these for the first time — a bracket's sideways stud is not at a whole number of plates, and the arithmetic is the part that goes wrong. Every one of them is checked against the same lattice your design is.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1125,6 +1175,14 @@
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
+              "pitch": {
+                "description": "and then lift its +z end, degrees. A part that leans must turn on a joint.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "and then lift its +x side, degrees",
+                "type": "number"
+              },
               "rot": {
                 "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
@@ -1139,6 +1197,10 @@
               },
               "y": {
                 "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "turn this one part off the grid, degrees about the upright (its +z swings towards +x), about its own corner; it becomes a section of one. Any angle.",
                 "type": "number"
               },
               "z": {
@@ -1262,6 +1324,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "around": {
+                "description": "{\"x\", \"z\"}: a centre, in the coordinates the section is built in. Each copy is carried round it by its yaw step, keeping its pitch and roll — a ring of panels round a dome.",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
               "axis": {
                 "description": "which way that pin runs. Defaults to the source section's.",
                 "enum": [
@@ -1295,9 +1369,21 @@
                 "description": "what to call the copies. They are numbered from 2.",
                 "type": "string"
               },
+              "pitch": {
+                "description": "degrees more pitch per copy",
+                "type": "number"
+              },
+              "roll": {
+                "description": "degrees more roll per copy",
+                "type": "number"
+              },
               "times": {
                 "description": "how many copies to make, each one step further than the last",
                 "type": "integer"
+              },
+              "yaw": {
+                "description": "degrees further round per copy (360 / how many in the ring)",
+                "type": "number"
               }
             },
             "required": [
@@ -1309,12 +1395,12 @@
           "type": "array"
         },
         "sections": {
-          "description": "add a section, or give one that already exists a new angle or position — which moves everything in it without naming a single brick.",
+          "description": "add a section, or give one that already exists a new angle or position — its name and only what changes — which moves everything in it and within it without naming a single brick.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "axis": {
-                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "description": "or one turn about one pin: z tips it left and right, x forward and back, y swings it round. Applied after yaw, pitch and roll.",
                 "enum": [
                   "x",
                   "y",
@@ -1323,19 +1409,43 @@
                 "type": "string"
               },
               "degrees": {
-                "description": "how far it is turned about that pin. Any angle.",
+                "description": "how far it is turned about that axis or line. Any angle.",
                 "type": "number"
               },
               "hinge": {
-                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
-                "type": "boolean"
+                "description": "turn it on a real joint, both halves laid for you: \"tilting\" (or true; 3937 under 3938, rests closed), \"clip\" (60478's bar in 63868's clip, rests in line), \"click\" (44302/44301, in line, where this build's parts have it). x, y, z are then where the base stands, like any brick, turned by yaw about its first stud; the section's bricks start at 0,0,0 on the top half's studs, its nose (+z) running away from the joint's line, and pitch lifts it about that line (or roll, with the line along z). A section that leans must turn on a joint; this is the one-line way.",
+                "enum": [
+                  "tilting",
+                  "clip",
+                  "click"
+                ],
+                "type": "string"
               },
               "hinge_color": {
                 "description": "the hinge's colour, if not 72",
                 "type": "integer"
               },
+              "line": {
+                "description": "or the turn's axis as a direction [x, y, z], instead of axis",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "name": {
                 "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "pitch": {
+                "description": "then degrees its nose lifts. Yaw and pitch together face a panel any way round a dome and tip it to the curve.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "then degrees its +x side lifts",
+                "type": "number"
+              },
+              "within": {
+                "description": "the section this one is built in: x, y, z (and its hinge's base) are then that section's own coordinates, and it goes where it goes. Panels hinged on panels, a chain round a dome.",
                 "type": "string"
               },
               "x": {
@@ -1346,18 +1456,48 @@
                 "description": "plates up",
                 "type": "number"
               },
+              "yaw": {
+                "description": "degrees about the upright: its +z (its nose) swings towards +x. Applied first.",
+                "type": "number"
+              },
               "z": {
                 "description": "studs deep",
                 "type": "number"
               }
             },
             "required": [
-              "name",
-              "x",
-              "y",
-              "z",
-              "axis",
-              "degrees"
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "description": "turn bricks where they stand, about their middle, as one: they become a section turned so, as the window's Turn, Tilt and Roll do. A part that leans this way must turn on a joint; give a section its own new angle instead.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bricks": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "pitch": {
+                "description": "degrees its +z end lifts",
+                "type": "number"
+              },
+              "roll": {
+                "description": "degrees its +x side lifts",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "degrees about the upright",
+                "type": "number"
+              }
+            },
+            "required": [
+              "bricks"
             ],
             "type": "object"
           },
@@ -1550,6 +1690,14 @@
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
+              "pitch": {
+                "description": "and then lift its +z end, degrees. A part that leans must turn on a joint.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "and then lift its +x side, degrees",
+                "type": "number"
+              },
               "rot": {
                 "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
@@ -1564,6 +1712,10 @@
               },
               "y": {
                 "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "turn this one part off the grid, degrees about the upright (its +z swings towards +x), about its own corner; it becomes a section of one. Any angle.",
                 "type": "number"
               },
               "z": {
@@ -1729,6 +1881,14 @@
                       "description": "part number, e.g. 3001",
                       "type": "string"
                     },
+                    "pitch": {
+                      "description": "and then lift its +z end, degrees. A part that leans must turn on a joint.",
+                      "type": "number"
+                    },
+                    "roll": {
+                      "description": "and then lift its +x side, degrees",
+                      "type": "number"
+                    },
                     "rot": {
                       "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                       "type": "integer"
@@ -1743,6 +1903,10 @@
                     },
                     "y": {
                       "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                      "type": "number"
+                    },
+                    "yaw": {
+                      "description": "turn this one part off the grid, degrees about the upright (its +z swings towards +x), about its own corner; it becomes a section of one. Any angle.",
                       "type": "number"
                     },
                     "z": {
@@ -2095,6 +2259,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "around": {
+                "description": "{\"x\", \"z\"}: a centre, in the coordinates the section is built in. Each copy is carried round it by its yaw step, keeping its pitch and roll — a ring of panels round a dome.",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
               "axis": {
                 "description": "which way that pin runs. Defaults to the source section's.",
                 "enum": [
@@ -2128,9 +2304,21 @@
                 "description": "what to call the copies. They are numbered from 2.",
                 "type": "string"
               },
+              "pitch": {
+                "description": "degrees more pitch per copy",
+                "type": "number"
+              },
+              "roll": {
+                "description": "degrees more roll per copy",
+                "type": "number"
+              },
               "times": {
                 "description": "how many copies to make, each one step further than the last",
                 "type": "integer"
+              },
+              "yaw": {
+                "description": "degrees further round per copy (360 / how many in the ring)",
+                "type": "number"
               }
             },
             "required": [
@@ -2146,7 +2334,7 @@
             "additionalProperties": false,
             "properties": {
               "axis": {
-                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "description": "or one turn about one pin: z tips it left and right, x forward and back, y swings it round. Applied after yaw, pitch and roll.",
                 "enum": [
                   "x",
                   "y",
@@ -2155,19 +2343,43 @@
                 "type": "string"
               },
               "degrees": {
-                "description": "how far it is turned about that pin. Any angle.",
+                "description": "how far it is turned about that axis or line. Any angle.",
                 "type": "number"
               },
               "hinge": {
-                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
-                "type": "boolean"
+                "description": "turn it on a real joint, both halves laid for you: \"tilting\" (or true; 3937 under 3938, rests closed), \"clip\" (60478's bar in 63868's clip, rests in line), \"click\" (44302/44301, in line, where this build's parts have it). x, y, z are then where the base stands, like any brick, turned by yaw about its first stud; the section's bricks start at 0,0,0 on the top half's studs, its nose (+z) running away from the joint's line, and pitch lifts it about that line (or roll, with the line along z). A section that leans must turn on a joint; this is the one-line way.",
+                "enum": [
+                  "tilting",
+                  "clip",
+                  "click"
+                ],
+                "type": "string"
               },
               "hinge_color": {
                 "description": "the hinge's colour, if not 72",
                 "type": "integer"
               },
+              "line": {
+                "description": "or the turn's axis as a direction [x, y, z], instead of axis",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "name": {
                 "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "pitch": {
+                "description": "then degrees its nose lifts. Yaw and pitch together face a panel any way round a dome and tip it to the curve.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "then degrees its +x side lifts",
+                "type": "number"
+              },
+              "within": {
+                "description": "the section this one is built in: x, y, z (and its hinge's base) are then that section's own coordinates, and it goes where it goes. Panels hinged on panels, a chain round a dome.",
                 "type": "string"
               },
               "x": {
@@ -2176,6 +2388,10 @@
               },
               "y": {
                 "description": "plates up",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "degrees about the upright: its +z (its nose) swings towards +x. Applied first.",
                 "type": "number"
               },
               "z": {
@@ -2187,9 +2403,7 @@
               "name",
               "x",
               "y",
-              "z",
-              "axis",
-              "degrees"
+              "z"
             ],
             "type": "object"
           },
@@ -2712,6 +2926,14 @@
                 "description": "part number, e.g. 3001",
                 "type": "string"
               },
+              "pitch": {
+                "description": "and then lift its +z end, degrees. A part that leans must turn on a joint.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "and then lift its +x side, degrees",
+                "type": "number"
+              },
               "rot": {
                 "description": "quarter turns about the face direction, 0-3; with axis, about that line",
                 "type": "integer"
@@ -2726,6 +2948,10 @@
               },
               "y": {
                 "description": "plates up from the ground, to the low corner. Quarters allowed, for parts lying on their side.",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "turn this one part off the grid, degrees about the upright (its +z swings towards +x), about its own corner; it becomes a section of one. Any angle.",
                 "type": "number"
               },
               "z": {
@@ -2853,6 +3079,18 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "around": {
+                "description": "{\"x\", \"z\"}: a centre, in the coordinates the section is built in. Each copy is carried round it by its yaw step, keeping its pitch and roll — a ring of panels round a dome.",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
               "axis": {
                 "description": "which way that pin runs. Defaults to the source section's.",
                 "enum": [
@@ -2886,9 +3124,21 @@
                 "description": "what to call the copies. They are numbered from 2.",
                 "type": "string"
               },
+              "pitch": {
+                "description": "degrees more pitch per copy",
+                "type": "number"
+              },
+              "roll": {
+                "description": "degrees more roll per copy",
+                "type": "number"
+              },
               "times": {
                 "description": "how many copies to make, each one step further than the last",
                 "type": "integer"
+              },
+              "yaw": {
+                "description": "degrees further round per copy (360 / how many in the ring)",
+                "type": "number"
               }
             },
             "required": [
@@ -2933,12 +3183,12 @@
           "type": "object"
         },
         "sections": {
-          "description": "add a section, or give one that already exists a new angle or position — which moves everything in it without naming a single brick.",
+          "description": "add a section, or give one that already exists a new angle or position — its name and only what changes — which moves everything in it and within it without naming a single brick.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "axis": {
-                "description": "which way the hinge pin runs. z tips it left and right, x tips it forward and back, y swings it round.",
+                "description": "or one turn about one pin: z tips it left and right, x forward and back, y swings it round. Applied after yaw, pitch and roll.",
                 "enum": [
                   "x",
                   "y",
@@ -2947,19 +3197,43 @@
                 "type": "string"
               },
               "degrees": {
-                "description": "how far it is turned about that pin. Any angle.",
+                "description": "how far it is turned about that axis or line. Any angle.",
                 "type": "number"
               },
               "hinge": {
-                "description": "lean it on a hinge brick (3937 under 3938), put in for you: x, y, z are then where the hinge's base stands, the bricks in the section start at 0,0,0 on the hinge top's two studs (along the pin), and it turns about the hinge's own pin. A section leaning about x or z must turn on a joint; this is the one-line way.",
-                "type": "boolean"
+                "description": "turn it on a real joint, both halves laid for you: \"tilting\" (or true; 3937 under 3938, rests closed), \"clip\" (60478's bar in 63868's clip, rests in line), \"click\" (44302/44301, in line, where this build's parts have it). x, y, z are then where the base stands, like any brick, turned by yaw about its first stud; the section's bricks start at 0,0,0 on the top half's studs, its nose (+z) running away from the joint's line, and pitch lifts it about that line (or roll, with the line along z). A section that leans must turn on a joint; this is the one-line way.",
+                "enum": [
+                  "tilting",
+                  "clip",
+                  "click"
+                ],
+                "type": "string"
               },
               "hinge_color": {
                 "description": "the hinge's colour, if not 72",
                 "type": "integer"
               },
+              "line": {
+                "description": "or the turn's axis as a direction [x, y, z], instead of axis",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
               "name": {
                 "description": "what to call it, e.g. port nacelle",
+                "type": "string"
+              },
+              "pitch": {
+                "description": "then degrees its nose lifts. Yaw and pitch together face a panel any way round a dome and tip it to the curve.",
+                "type": "number"
+              },
+              "roll": {
+                "description": "then degrees its +x side lifts",
+                "type": "number"
+              },
+              "within": {
+                "description": "the section this one is built in: x, y, z (and its hinge's base) are then that section's own coordinates, and it goes where it goes. Panels hinged on panels, a chain round a dome.",
                 "type": "string"
               },
               "x": {
@@ -2970,18 +3244,48 @@
                 "description": "plates up",
                 "type": "number"
               },
+              "yaw": {
+                "description": "degrees about the upright: its +z (its nose) swings towards +x. Applied first.",
+                "type": "number"
+              },
               "z": {
                 "description": "studs deep",
                 "type": "number"
               }
             },
             "required": [
-              "name",
-              "x",
-              "y",
-              "z",
-              "axis",
-              "degrees"
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "description": "turn bricks where they stand, about their middle, as one: they become a section turned so, as the window's Turn, Tilt and Roll do. A part that leans this way must turn on a joint; give a section its own new angle instead.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bricks": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "pitch": {
+                "description": "degrees its +z end lifts",
+                "type": "number"
+              },
+              "roll": {
+                "description": "degrees its +x side lifts",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "degrees about the upright",
+                "type": "number"
+              }
+            },
+            "required": [
+              "bricks"
             ],
             "type": "object"
           },

@@ -57,6 +57,13 @@
     },
     {
       "kind": "lib",
+      "label": "turned any way on hinges",
+      "entry": "src/ai/hinges.gd",
+      "reach": "godot --headless --path . --script src/dev/hinged_panels_probe.gd",
+      "area": "geometry"
+    },
+    {
+      "kind": "lib",
       "label": "stability",
       "entry": "src/assembly/stability.gd",
       "reach": "godot --headless --path . --script src/dev/stability_probe.gd",

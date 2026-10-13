@@ -15,6 +15,18 @@ whole cycle.
 
 ### Added
 
+- Parts and sections turned any way, held by real hinges. The properties
+  panel has Tilt and Roll beside Turn, so a selection tips about its
+  middle as well as turning round. A design can turn a section yaw, then
+  pitch, then roll (or about any axis), build one section within another,
+  repeat one round a centre with each copy turned on two axes, and hang a
+  section on a tilting hinge, a clip on a bar or click hinge plates, both
+  halves laid for it, the check holding it by its hinge. That is how a real
+  set builds a dome or a sphere, from small flat panels on hinges, and a
+  round band from skins built sideways: Claude can now do both, and is
+  told how (read_guide "round", show_technique "hinged panels" and
+  "sideways skins").
+
 - Sketch first: a first design can begin with three quick sketches to
   choose between, so you see whether your brief was understood before a
   full design is paid for. Each is the model's main masses only, under 150

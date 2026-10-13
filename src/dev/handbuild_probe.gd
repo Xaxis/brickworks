@@ -621,6 +621,23 @@ func _the_shell() -> void:
 	await _frames(5)
 	_check("typing a turn 90° on turns it a quarter (%.0f° to %.0f°)" % [yaw_was,
 		inspector._yaw.value], is_equal_approx(fposmod(inspector._yaw.value - yaw_was, 360.0), 90.0))
+	# Tilt and roll beside the turn: tipped about its middle, off the grid,
+	# as a hinged panel is. Lifted first, so tipping it does not put a
+	# corner through the baseplate.
+	var lift_field: LineEdit = inspector._y.get_line_edit()
+	lift_field.text = str(roundi(inspector._y.value + 48.0))
+	lift_field.text_submitted.emit(lift_field.text)
+	await _frames(5)
+	var tilt_field: LineEdit = inspector._tilt.get_line_edit()
+	tilt_field.text = "30"
+	tilt_field.text_submitted.emit("30")
+	await _frames(5)
+	var tipped: Vector2 = Inspector._tilt_of(_world.get_brick(red).transform.basis)
+	_check("typing a tilt of 30° tips it 30° off the grid (%.1f°, the box %.1f°)" % [tipped.x,
+		inspector._tilt.value], absf(tipped.x - 30.0) < 0.5
+		and absf(inspector._tilt.value - 30.0) < 0.5)
+	await _key(KEY_Z, true)
+	await _key(KEY_Z, true)
 	await _key(KEY_Z, true)
 	await _key(KEY_Z, true)
 	_select_only([red, blue])

@@ -957,6 +957,14 @@
       "tests": []
     },
     {
+      "id": "lib:turned any way on hinges",
+      "kind": "lib",
+      "entry": "src/ai/hinges.gd",
+      "reach": "godot --headless --path . --script src/dev/hinged_panels_probe.gd",
+      "area": "geometry",
+      "tests": []
+    },
+    {
       "id": "lib:worked constructions",
       "kind": "lib",
       "entry": "src/ai/techniques.gd",
