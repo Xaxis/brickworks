@@ -253,11 +253,21 @@ func _build() -> void:
 	_palette.minimum_size_changed.connect(_fit_palette)
 	resized.connect(_fit_palette)
 
+	# Always two lines tall, whatever it says: it was one line for a colour
+	# and two for a part, and choosing a part moved the palette up 19 px
+	# under the pointer, so the next colour clicked was a row off
+	# (brickworks.diy, 2026-10-12). What does not fit is on its tooltip.
 	_colour_note = Label.new()
 	_colour_note.add_theme_font_size_override("font_size", 12)
 	_colour_note.modulate = Color(1, 1, 1, 0.78)
 	_colour_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_colour_note.max_lines_visible = NOTE_LINES
+	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_colour_note.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(_colour_note)
+	var font: Font = _colour_note.get_theme_font("font")
+	_colour_note.custom_minimum_size.y = ceilf(font.get_height(12) * NOTE_LINES
+		+ float(_colour_note.get_theme_constant("line_spacing")) * (NOTE_LINES - 1))
 
 
 ## Fill in once the library is available.
@@ -505,6 +515,10 @@ func _on_colour(code: int) -> void:
 	color_chosen.emit(code)
 	# Previews are per colour, so the grid has to be redrawn.
 	_fill_grid()
+
+
+## How many lines the note under the palette always takes.
+const NOTE_LINES := 2
 
 
 ## Which colours the part in hand was really made in: those carry a dot.

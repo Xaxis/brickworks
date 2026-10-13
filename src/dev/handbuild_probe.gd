@@ -1465,6 +1465,7 @@ func _first_timer() -> void:
 	await _edit_cut()
 	await _hide_says_its_keys()
 	await _menus_show_the_real_keys()
+	await _the_palette_stays_put()
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the
@@ -1570,6 +1571,44 @@ func _menus_show_the_real_keys() -> void:
 	await _shot("first_timer_view_menu")
 	view.hide()
 	await _frames(3)
+
+
+## Choosing a part moved the palette 19 px (its note wrapped to a second
+## line), so the next colour clicked was a row off.
+func _the_palette_stays_put() -> void:
+	var bin: PartsBin = _main.get("_bin")
+	var dock: SideDock = _main.get("_bin_dock")
+	dock.set_open(true)
+	_builder.clear_selection()
+	await _key(KEY_ESCAPE)
+	# A colour in hand and no part: the note one line long, as it was
+	# before a part was chosen.
+	bin._selected_part = ""
+	bin._on_colour(15)
+	bin._mark_swatches()
+	# Slope 45 2 x 4, whose colours are all known: its note ran to two
+	# lines, as it did on the site.
+	bin._search.text = "3037"
+	bin._run_search("3037")
+	await _frames(10)
+	var white: Control = bin._swatches.get(15)
+	var cell: Button = null
+	for child: Node in bin._grid.get_children():
+		if str(child.get_meta("part", "")) == "3037":
+			cell = child
+	_check("the bin shows a white swatch and Slope 45 2 x 4 to choose",
+		white != null and cell != null)
+	if white == null or cell == null:
+		return
+	var was: float = white.get_global_rect().position.y
+	var note_was: String = bin._colour_note.text
+	await _click(cell.get_global_rect().get_center())
+	await _frames(10)
+	_check("choosing a part leaves the palette where it was (%.0f to %.0f px; \"%s\" to \"%s\")"
+		% [was, white.get_global_rect().position.y, note_was, bin._colour_note.text],
+		is_equal_approx(white.get_global_rect().position.y, was))
+	await _shot("first_timer_part_chosen")
+	await _key(KEY_ESCAPE)
 
 
 # -- helpers ------------------------------------------------------------------

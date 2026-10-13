@@ -42,7 +42,9 @@ geometry in front of them.
   colour data carries them, otherwise any part in a set in it since
   `recent_since` — 84 colours); "All 320" adds the rest after a rule. Each
   swatch is drawn as its finish; its name, finish and status are on hover, and
-  the colour in hand is named under the palette. A dot marks the colours the
+  the colour in hand is named under the palette, in a note always two lines
+  tall (the rest on its tooltip): it grew from one line to two when a part was
+  chosen and moved the palette 19 px under the pointer. A dot marks the colours the
   part in hand was really made in; a colour it was never made in is dimmed, but
   only where its list is complete. A swatch clicked with parts selected and
   nothing in hand paints them too, one undo step (`swatch_pressed`,
