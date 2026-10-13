@@ -1112,13 +1112,16 @@ async function theModeration(tokenA) {
     r = await call("/sitemap.xml");
     locs = [...r.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((one) => one[1]);
     listed = (await call("/api/share?op=list&page=1")).json?.models || [];
-    if (listed.every((one) => locs.includes(`${base}/m/${one.id}`)) && !locs.includes(`${base}/m/${bad}`)) break;
+    if (listed.every((one) => locs.includes(`${base}/m/${one.id}`)) && !(args.master && locs.includes(`${base}/m/${bad}`))) break;
     await new Promise((done) => setTimeout(done, 10000));
   }
   check(r.status === 200 && /xml/.test(r.headers.get("content-type") || "") && locs.some((loc) => loc.endsWith("/gallery"))
     && locs.some((loc) => loc.endsWith("/takedown")) && listed.every((one) => locs.includes(`${base}/m/${one.id}`))
-    && !locs.includes(`${base}/m/${bad}`),
-    `/sitemap.xml: the site's pages and every listed model (${locs.length} pages), none taken out`);
+    // Only the owner (--master) takes the bad actor's model out.
+    && !(args.master && locs.includes(`${base}/m/${bad}`)),
+    `/sitemap.xml: the site's pages and every listed model (${locs.length} pages), none taken out`
+    + ` [missing: ${listed.filter((one) => !locs.includes(`${base}/m/${one.id}`)).map((one) => `${one.id} ${one.name}`).join(", ") || "none"};`
+    + ` taken out still there: ${locs.includes(`${base}/m/${bad}`)}; gallery: ${locs.some((loc) => loc.endsWith("/gallery"))}; takedown: ${locs.some((loc) => loc.endsWith("/takedown"))}; status ${r.status}]`);
 
   // The database, with the key every page has.
   for (const table of ["reports", "barred_accounts", "barred_models", "act_log"]) {
