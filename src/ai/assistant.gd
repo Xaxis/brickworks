@@ -1734,6 +1734,7 @@ func _will_it_hold() -> String:
 	# rests on what is recorded. Without it every brick reads as
 	# carrying nothing.
 	judge.lattice = builder.lattice
+	judge.floor_ids = scenery
 	var report: Stability.Report = judge.check(world)
 	if report.is_stable():
 		return "It holds together: %s." % report.summary()
@@ -2686,7 +2687,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# and picks something else.
 			await _ensure_parts(trial)
 			var running: bool = _busy
-			var report: Dictionary = await _checked(trial)
+			var report: Dictionary = await _checked(trial, false, true)
 			# This app's own run, stopped while it was checked.
 			if running and not _busy:
 				return ""
@@ -2704,8 +2705,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var standing: bool = _outside_standing and not _busy \
 				and world != null and world.brick_count() > scenery.size()
 			# Nor about a selection: the model round it is the person's.
-			if not trial.placements.is_empty() and not _edited and not standing \
-					and not _keeps_to_focus():
+			var applied: bool = not trial.placements.is_empty() and not _edited \
+				and not standing and not _keeps_to_focus()
+			if applied:
 				await _apply(trial, false, true)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
@@ -2723,7 +2725,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# thought to ask for it.
 			if trial.placements.is_empty():
 				return report["feedback"]
-			return await _with_a_look(str(report["feedback"]),
+			var weighed: String = _balance_said(report, trial, applied)
+			return await _with_a_look(str(report["feedback"])
+				+ ("" if weighed.is_empty() else "\n\n" + weighed),
 				"Look at it. Does it read as the thing it is meant to "
 				+ "be? If not, that is worth more than another brick. "
 				+ "view_model gives any other side.")
@@ -9269,12 +9273,12 @@ func _rehinge(model: Model, section: Section, was: Section) -> void:
 ## be adding to; and the tables filled on first use — the style norms, the
 ## minifigure name patterns — are filled here. The probes call [method
 ## _check] itself, on their own thread, as before.
-func _checked(model: Model, alone: bool = false) -> Dictionary:
+func _checked(model: Model, alone: bool = false, weigh: bool = false) -> Dictionary:
 	# One worker at a time: a second check while one is out (the design
 	# loop and a connector both checking) is done here, as before.
 	if model.placements.size() < CHECK_OFF_THREAD_FROM or _standing_held \
 			or OS.has_feature("nothreads") or library == null:
-		return _check(model, alone)
+		return _check(model, alone, weigh)
 	_standing_held = true
 	await _ensure_parts(model)
 	Style.norms()
@@ -9287,7 +9291,7 @@ func _checked(model: Model, alone: bool = false) -> Dictionary:
 	library.begin_reading()
 	var report: Dictionary = {}
 	var task: int = WorkerThreadPool.add_task(func() -> void:
-		report.merge(_check(model, alone)), false, "check a design")
+		report.merge(_check(model, alone, weigh)), false, "check a design")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task):
 		await Engine.get_main_loop().process_frame
@@ -9298,7 +9302,7 @@ func _checked(model: Model, alone: bool = false) -> Dictionary:
 	if report.is_empty():
 		# A worker that failed leaves nothing. Checked here instead: slow,
 		# but an answer.
-		return _check(model, alone)
+		return _check(model, alone, weigh)
 	return report
 
 
@@ -9345,7 +9349,10 @@ func _others_standing(alone: bool) -> Array:
 ## assistant's work and leaves what the person placed by hand standing,
 ## so those bricks have to be in the lattice or a design can be declared
 ## buildable while sitting inside one of them.
-func _check(model: Model, alone: bool = false) -> Dictionary:
+##
+## ``weigh`` asks as well whether it would stand, and puts the answer in
+## "balance" (Balance.Report): check_design's, which a session reads.
+func _check(model: Model, alone: bool = false, weigh: bool = false) -> Dictionary:
 	var lattice := BrickLattice.new()
 	# Nothing here asks where a brick would come to rest, which is the
 	# only thing the column index is for, and keeping it is a third of
@@ -9698,7 +9705,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# Without the dressing that gave way, and checked again, so that every
 	# brick number said from here on is a number in the model as built.
 	if not gave_way.is_empty():
-		return _without_dressing(model, gave_way, alone)
+		return _without_dressing(model, gave_way, alone, weigh)
 
 	# Support is checked in world coordinates even for a section that
 	# has been carried somewhere at an angle, and that is not an
@@ -9918,7 +9925,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			+ "joints below, is what makes the whole thing one "
 			+ "piece.")
 
-	return {
+	var checked: Dictionary = {
 		"ok": ok,
 		"summary": summary,
 		"feedback": feedback,
@@ -9939,6 +9946,70 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		## where each one is.
 		"each_piece": each_piece,
 	}
+	if weigh:
+		checked["balance"] = _weighed(model, lattice, placed_at, boxes_of, joined, rounds, alone)
+	return checked
+
+
+## Whether a design checked by check_design would stand, for the session:
+## Balance over it as checked, or, once it stands in the world with parts
+## that turn on a hinge or a turntable, over every pose they reach
+## (Poser.sweep), as Tools, Check stability weighs it. Its bricks are
+## named as the design numbers them, with where they are.
+func _balance_said(report: Dictionary, trial: Model, applied: bool) -> String:
+	var balance: Balance.Report = report.get("balance")
+	var namer: Callable = func(id: int) -> String:
+		if id <= 0 or id > trial.placements.size():
+			return "a part already standing"
+		var placement: Placement = trial.placements[id - 1]
+		return "brick %d (%s at %s)" % [id - 1, placement.part, placement.where()]
+	if applied and assemblies != null and builder != null and world != null:
+		var poser := Poser.new()
+		poser.world = world
+		poser.builder = builder
+		poser.library = library
+		poser.assemblies = assemblies
+		if poser.find() > 0:
+			var judge := Balance.new()
+			judge.library = library
+			judge.lattice = builder.lattice
+			judge.floor_ids = scenery
+			balance = judge.measure(world.bricks(), poser.sweep())
+			namer = func(id: int) -> String:
+				var brick: BrickWorld.Brick = world.get_brick(id)
+				return "#%d (%s)" % [id, brick.part_id] if brick != null else "#%d" % id
+	return balance.said(namer) if balance != null else ""
+
+
+## Whether a checked design would stand (Balance), on the lattice it was
+## checked on: each placement that went in by its key there (its index and
+## one), with whatever was standing already (the negative keys), and the
+## pins, axles, clips and hinges the check already found joining them.
+func _weighed(model: Model, lattice: BrickLattice, placed_at: Dictionary,
+		boxes_of: Dictionary, joined: Dictionary, rounds: Dictionary,
+		alone: bool) -> Balance.Report:
+	var bricks: Array = []
+	for index: int in boxes_of:
+		var placement: Placement = model.placements[index]
+		bricks.append(BrickWorld.Brick.new(index + 1, placement.part, placement.color,
+			placed_at[index]))
+	if not alone and world != null:
+		var key: int = -1
+		for brick: BrickWorld.Brick in _others_standing(alone):
+			if library.mesh_for(brick.part_id) == null:
+				continue
+			bricks.append(BrickWorld.Brick.new(key, brick.part_id, brick.color_code,
+				brick.transform))
+			key -= 1
+	var links: Array = []
+	for held: Dictionary in [joined, rounds]:
+		for one: Variant in held:
+			for other: Variant in held[one]:
+				links.append([int(one) + 1, int(other) + 1])
+	var judge := Balance.new()
+	judge.library = library
+	judge.lattice = lattice
+	return judge.measure(bricks, [], links)
 
 
 ## What is left of [param blockers] for [param placement]: nothing, when it and
@@ -9993,13 +10064,13 @@ static func _give_way(blockers: PackedInt64Array, placement: Placement,
 ## The design without the dressing that gave way, checked again, and
 ## saying how much was left out.
 func _without_dressing(model: Model, gave_way: Dictionary,
-		alone: bool) -> Dictionary:
+		alone: bool, weigh: bool = false) -> Dictionary:
 	var kept: Array[Placement] = []
 	for index: int in model.placements.size():
 		if not gave_way.has(index):
 			kept.append(model.placements[index])
 	model.placements = kept
-	var report: Dictionary = _check(model, alone)
+	var report: Dictionary = _check(model, alone, weigh)
 	var left: int = gave_way.size()
 	var said: String = ("%d dressing tile%s on side studs would have "
 		% [left, "" if left == 1 else "s"]
@@ -15237,6 +15308,7 @@ func _focus_stability() -> String:
 	var judge := Stability.new()
 	judge.library = library
 	judge.lattice = builder.lattice
+	judge.floor_ids = scenery
 	var report: Stability.Report = judge.check(world)
 	var near := PackedStringArray()
 	for risk: Stability.Risk in report.risks:
@@ -16396,8 +16468,12 @@ func _tools() -> Array:
 		{
 			"name": "check_design",
 			"description": ("Check a list of parts for overlaps, floating "
-				+ "parts and whether it is one connected model. Safe to "
-				+ "call on a partial design while you work."),
+				+ "parts and whether it is one connected model, and weigh it: "
+				+ "whether it stands (its centre of mass against the edge of "
+				+ "what it stands on, in every pose its hinges and turntables "
+				+ "reach), the counterweight that would hold it, and its most "
+				+ "loaded stud joints. Safe to call on a partial design while "
+				+ "you work."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

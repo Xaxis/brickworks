@@ -1356,6 +1356,20 @@
       "entry": "src/parts/mesh_export.gd",
       "reach": "godot --headless --path . --script src/dev/mesh_export_probe.gd   (by hand: File, Export, then 3D model (.glb, .gltf, .obj, .stl)…)",
       "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "balance",
+      "entry": "src/assembly/balance.gd",
+      "reach": "godot --headless --path . --script src/dev/balance_probe.gd",
+      "area": "geometry"
+    },
+    {
+      "kind": "ui",
+      "label": "balance readout",
+      "entry": "src/render/balance_mark.gd",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
+      "area": "geometry"
     }
   ]
 }

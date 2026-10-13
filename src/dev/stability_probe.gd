@@ -18,9 +18,9 @@ func _initialize() -> void:
 
 	# Mass first: derived from volume, so it has to land near the
 	# published figures or nothing built on it means anything.
-	print("mass check (published in brackets):")
-	for pair: Array in [["3005", 0.44], ["3004", 0.78], ["3622", 1.18],
-			["3010", 1.74], ["3003", 1.18], ["3001", 2.20], ["2456", 3.28]]:
+	print("mass check (BrickLink's weights in brackets; balance_probe holds them to 8%):")
+	for pair: Array in [["3005", 0.44], ["3004", 0.83], ["3003", 1.35],
+			["3010", 1.64], ["3001", 2.32], ["2456", 3.74], ["3008", 3.21]]:
 		var info: PartLibrary.PartInfo = library.parts.get(pair[0])
 		if info:
 			print("  %-6s %5.2f g  [%.2f]  %s" % [

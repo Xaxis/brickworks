@@ -34,21 +34,30 @@
 class_name Stability
 extends RefCounted
 
-## ABS is about 1.05 g/cm³.
+## ABS is about 1.05 g/cm³ (1.03-1.06, Faria 2018; docs/MECHANISMS.md §4).
 const DENSITY_G_PER_CM3 := 1.05
-## Wall thickness, in LDU. A brick's side wall is 1.6 mm and its top is
-## 1 mm; 4 and 2.5 LDU respectively.
+## Wall thickness, in LDU, as LDraw draws it: the side wall 1.6 mm and the
+## top 1 mm.
 const WALL_LDU := 4.0
 const TOP_LDU := 2.5
+## The tubes under a part two studs or more each way, 6.4 mm across and
+## hollow to 4.8 (radii in LDU), one between each four studs; and the solid
+## posts under a part one stud wide, 3.2 mm across, one between each two.
+const TUBE_OUT_LDU := 8.0
+const TUBE_IN_LDU := 6.0
+const POST_LDU := 4.0
 ## 1 LDU is 0.4 mm, so a cubic LDU is 0.064 mm³, and a cubic centimetre
 ## is 15,625 of them.
 const CUBIC_LDU_PER_CM3 := 15625.0
 
-## What one stud's clutch will hold before it lets go, in grams.
+## What one stud's clutch is trusted with, in grams: a working load.
 ##
-## The LEGO Group's own figure for clutch power is a pull-off force
-## around 1 N per stud, which is about 100 g. Taken conservatively here:
-## a joint at exactly its limit is already a bad joint.
+## The LEGO Group does not publish its clutch figure ("the ideal strength's
+## value must remain secret", The Secret Life of LEGO® Bricks, p. 22). StableLego
+## measured 0.98 N per contact point, three or four to a stud, so a stud
+## lets go at about 3-4 N (arXiv 2402.10711). 80 g is 0.78 N, about a
+## quarter of that. Balance takes 1 N a stud as the working load and 3 N as
+## where it lets go (docs/MECHANISMS.md §4).
 const GRAMS_PER_STUD := 80.0
 
 ## How far outside the footprint the centre of mass may sit before the
@@ -99,6 +108,9 @@ class Report extends RefCounted:
 
 var library: PartLibrary
 var lattice: BrickLattice
+## Bricks that are the floor and not the model: the baseplate under it.
+## Left out of whether it tips over.
+var floor_ids: Dictionary = {}
 
 
 ## Check a model. Returns the joints that would fail, weakest first.
@@ -108,9 +120,8 @@ func check(world: BrickWorld) -> Report:
 	if bricks.is_empty():
 		return report
 
-	# Mass per brick, and the boxes each occupies, once.
+	# Mass per brick, once.
 	var mass: Dictionary = {}          ## id -> grams
-	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
@@ -119,59 +130,10 @@ func check(world: BrickWorld) -> Report:
 		mass[brick.id] = grams(info)
 		report.total_grams += mass[brick.id]
 
-	# Who rests on whom. A brick supports another when one of its cells
-	# sits directly beneath one of theirs.
-	# In boxes, and asked of the lattice once per brick.
-	#
-	# This walked every cell of every brick and asked the lattice what
-	# was in the cell above it. A 2x4 brick is nine thousand six hundred
-	# cells, so a thousand-brick model is ten million lookups: measured
-	# at 37 ms a brick, 41 seconds for the 1,106-brick castle that
-	# provoked this, and six minutes for the ten thousand the lattice
-	# can hold. The app shows this on every change and the design loop
-	# runs it on the one look it takes at its finished work.
-	#
-	# A brick's boxes lifted one cell is exactly the space whatever
-	# rests on it occupies, so one bucket query finds the candidates and
-	# the overlap of two boxes is a box — three subtractions and a
-	# product, rather than a lookup per cell. Verified against the
-	# cell-by-cell count on seven real pairs of parts: identical.
-	var above: Dictionary = {}         ## id -> { id: shared cell count }
-	var below: Dictionary = {}
-	for item: Variant in bricks:
-		var brick: BrickWorld.Brick = item
-		var mine: PackedInt32Array = _boxes(brick)
-		boxes_of[brick.id] = mine
-		if mine.is_empty():
-			continue
-		var lid: PackedInt32Array = BrickLattice.moved_by(
-			mine, Vector3i(0, 1, 0))
-		# A turned part's many slices sorted once, for every brick it might
-		# carry; and every brick whose bounds meet it counted outright, the
-		# count being the test. Asking the lattice which ones touch first
-		# compared the same boxes twice: on Orthanc that was 3.9 s, and
-		# counting box against box 6.5 s more.
-		var slices: Array = BrickLattice.slices_of(lid) \
-			if lid.size() >= SLICED_FROM * 6 else []
-		for over: int in lattice.near_bounds(lid, brick.id):
-			# Skipping pairs whose boxes already overlap was tried, on
-			# the theory that a part inside another is not resting on
-			# it. It is wrong, and measurably: a stud belongs to the
-			# brick below and reaches into the brick above, so nearly
-			# every real joint overlaps. The kart went from 42 joints to
-			# 14 and the car from 53 to 44.
-			var theirs: PackedInt32Array = lattice.boxes_of(over)
-			var shared: int = BrickLattice.shared_cells_sliced(lid, slices, theirs) \
-				if not slices.is_empty() and theirs.size() >= SLICED_FROM * 6 \
-				else BrickLattice.shared_cells(lid, theirs)
-			if shared <= 0:
-				continue
-			if not above.has(brick.id):
-				above[brick.id] = {}
-			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared
-			if not below.has(over):
-				below[over] = {}
-			below[over][brick.id] = int(below[over].get(brick.id, 0)) + shared
+	var graph: Dictionary = contacts(bricks)
+	var above: Dictionary = graph["above"]
+	var below: Dictionary = graph["below"]
+	var boxes_of: Dictionary = graph["boxes"]
 
 	# Push the load downward, sharing it among supporters.
 	#
@@ -231,12 +193,113 @@ func check(world: BrickWorld) -> Report:
 			report.risks.append(risk)
 
 	_check_levels(world, mass, boxes_of, report)
+	_check_tipping(bricks, mass, boxes_of, report)
 
 	report.risks.sort_custom(func(a: Risk, b: Risk) -> bool:
 		return a.margin < b.margin)
 	if not report.risks.is_empty():
 		report.weakest = report.risks[0]
 	return report
+
+
+## Whether the whole tips over on what it stands on: its centre of mass
+## past the edge of where it touches the floor (Balance.support_of), the
+## floor itself left out. The levels above cannot see it when the model
+## stands on a baseplate, because the plate is under every cut and as wide
+## as the ground: an arm eighteen studs past a 6x6 base read "stands up".
+func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
+		report: Report) -> void:
+	var model: Dictionary = {}
+	var grams: float = 0.0
+	var weighted := Vector3.ZERO
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		if floor_ids.has(brick.id) or not boxes_of.has(brick.id):
+			continue
+		model[brick.id] = boxes_of[brick.id]
+		var own: float = mass.get(brick.id, 0.0)
+		grams += own
+		weighted += _middle(brick) * own
+	if grams <= 0.0:
+		return
+	var hull: PackedVector2Array = Balance.support_of(model)["hull"]
+	if hull.size() < 3:
+		return
+	var centre: Vector3 = weighted / grams
+	var standing: Dictionary = Balance.margin_in(hull, Vector2(centre.x, centre.z))
+	var past: float = -float(standing["margin"]) / BrickLattice.STUD
+	if past <= 0.0:
+		return
+	var risk := Risk.new()
+	risk.kind = "tips"
+	risk.margin = 0.0
+	risk.carrying_grams = grams
+	risk.message = "its weight is %s studs past the %s edge of what it stands on" % [
+		Balance.studs(past), standing["edge"]]
+	report.risks.append(risk)
+
+
+## Who rests on whom, as the lattice has it: {"above": id -> {id of each
+## brick resting on it: cells shared}, "below": the same the other way
+## round, "boxes": id -> the boxes it occupies}. What [method check] weighs
+## and [Balance] cuts.
+func contacts(bricks: Array) -> Dictionary:
+	var boxes_of: Dictionary = {}      ## id -> PackedInt32Array, 6 per box
+	# Who rests on whom. A brick supports another when one of its cells
+	# sits directly beneath one of theirs.
+	# In boxes, and asked of the lattice once per brick.
+	#
+	# This walked every cell of every brick and asked the lattice what
+	# was in the cell above it. A 2x4 brick is nine thousand six hundred
+	# cells, so a thousand-brick model is ten million lookups: measured
+	# at 37 ms a brick, 41 seconds for the 1,106-brick castle that
+	# provoked this, and six minutes for the ten thousand the lattice
+	# can hold. The app shows this on every change and the design loop
+	# runs it on the one look it takes at its finished work.
+	#
+	# A brick's boxes lifted one cell is exactly the space whatever
+	# rests on it occupies, so one bucket query finds the candidates and
+	# the overlap of two boxes is a box — three subtractions and a
+	# product, rather than a lookup per cell. Verified against the
+	# cell-by-cell count on seven real pairs of parts: identical.
+	var above: Dictionary = {}         ## id -> { id: shared cell count }
+	var below: Dictionary = {}
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		var mine: PackedInt32Array = _boxes(brick)
+		boxes_of[brick.id] = mine
+		if mine.is_empty():
+			continue
+		var lid: PackedInt32Array = BrickLattice.moved_by(
+			mine, Vector3i(0, 1, 0))
+		# A turned part's many slices sorted once, for every brick it might
+		# carry; and every brick whose bounds meet it counted outright, the
+		# count being the test. Asking the lattice which ones touch first
+		# compared the same boxes twice: on Orthanc that was 3.9 s, and
+		# counting box against box 6.5 s more.
+		var slices: Array = BrickLattice.slices_of(lid) \
+			if lid.size() >= SLICED_FROM * 6 else []
+		for over: int in lattice.near_bounds(lid, brick.id):
+			# Skipping pairs whose boxes already overlap was tried, on
+			# the theory that a part inside another is not resting on
+			# it. It is wrong, and measurably: a stud belongs to the
+			# brick below and reaches into the brick above, so nearly
+			# every real joint overlaps. The kart went from 42 joints to
+			# 14 and the car from 53 to 44.
+			var theirs: PackedInt32Array = lattice.boxes_of(over)
+			var shared: int = BrickLattice.shared_cells_sliced(lid, slices, theirs) \
+				if not slices.is_empty() and theirs.size() >= SLICED_FROM * 6 \
+				else BrickLattice.shared_cells(lid, theirs)
+			if shared <= 0:
+				continue
+			if not above.has(brick.id):
+				above[brick.id] = {}
+			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared
+			if not below.has(over):
+				below[over] = {}
+			below[over][brick.id] = int(below[over].get(brick.id, 0)) + shared
+
+	return {"above": above, "below": below, "boxes": boxes_of}
 
 
 func _assess(
@@ -429,20 +492,26 @@ func _check_levels(
 ## wrong in a way that mattered — 32% light on a 1x1 and 10% heavy on a
 ## 2x4 — because a brick is not a uniformly filled box. It is a shell,
 ## and the thinner the part the more of it is wall. Subtracting the
-## cavity instead gets the trend right as well as the magnitude:
+## cavity instead got the trend right as well as the magnitude, but ran
+## light on longer parts — a 2x4 at 2.08 g, 11% under the 2.32 it weighs,
+## and a 2x6 22% under — because the tubes under them are plastic too.
+## Counted, against BrickLink's catalogue weights (2026-10-13):
 ##
-##     part     this    published
-##     1x1      0.47 g    0.44 g
-##     1x2      0.80 g    0.78 g
-##     2x2      1.22 g    1.18 g
-##     1x4      1.45 g    1.74 g
-##     2x4      2.08 g    2.20 g
-##     2x6      2.93 g    3.28 g
+##     part     this    BrickLink   without the tubes
+##     1x1      0.47 g    0.44 g      0.47 g
+##     1x2      0.87 g    0.83 g      0.80 g
+##     2x2      1.35 g    1.35 g      1.22 g
+##     1x4      1.67 g    1.64 g      1.45 g
+##     2x4      2.46 g    2.32 g      2.08 g
+##     2x6      3.56 g    3.74 g      2.93 g
+##     1x8      3.28 g    3.21 g      2.77 g
 ##
-## The remaining error is the underside tubes and ribs, which this does
-## not model, so it runs light on longer parts — worst case about 17% on
-## a 1x4. Stability is a ratio, and an error that biases the whole model
-## the same way mostly cancels.
+## Every one within 6%. StableLego weighed a 2x4 at 2.16 g and a 1x8 at
+## 3.03 (docs/MECHANISMS.md §2), so the weighings themselves differ by
+## that much. There is no mass table in the catalogue to look up instead;
+## this has to answer for 29,000 parts, most of which nobody has weighed.
+## Balance and Stability compare a model with itself, so an error that
+## biases the whole model the same way mostly cancels.
 static func grams(info: PartLibrary.PartInfo) -> float:
 	# The body, without the studs standing proud of it.
 	var width: float = info.size.x
@@ -460,6 +529,19 @@ static func grams(info: PartLibrary.PartInfo) -> float:
 	# The studs, which were taken off the body height above and are solid
 	# plastic: a 6 LDU radius standing 4 LDU proud.
 	material += info.stud_count * PI * 36.0 * 4.0
+	# The tubes or posts standing in the cavity, on a part with an underside
+	# to take studs and a footprint of whole studs.
+	var across: int = roundi(width / BrickLattice.STUD)
+	var deep: int = roundi(depth / BrickLattice.STUD)
+	if cavity > 0.0 and info.socket_count > 0 \
+			and absf(width - across * BrickLattice.STUD) < 1.0 \
+			and absf(depth - deep * BrickLattice.STUD) < 1.0:
+		var tall: float = maxf(height - TOP_LDU, 0.0)
+		if mini(across, deep) >= 2:
+			material += (across - 1) * (deep - 1) * PI * tall \
+				* (TUBE_OUT_LDU * TUBE_OUT_LDU - TUBE_IN_LDU * TUBE_IN_LDU)
+		elif maxi(across, deep) >= 2:
+			material += (maxi(across, deep) - 1) * PI * tall * POST_LDU * POST_LDU
 	return (material / CUBIC_LDU_PER_CM3) * DENSITY_G_PER_CM3
 
 
