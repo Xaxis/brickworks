@@ -739,10 +739,20 @@ fixing what it got wrong.
   fault, `loose`, unless it is named: every part of it in assemblies that
   hold none of the model (a design's `assemblies` box, the smallest that holds
   the part's corner, `_assembly_at`; or a file's sub-model: `Placement.group`),
-  or a whole figure. Pieces against the
-  model unjoined (a seam, one layer, a prism's faces), pieces of a size with
-  the model (a scene), pieces of the person's own and pieces held by nothing
-  (said as floating) are said as before. `edit_model` takes `assemblies` to
+  or a whole figure. A design's piece against the model (touching it, or
+  touching what does) that nothing joins is said with where it is and what
+  it is made of (`_unjoined_said`, the first four) and how to join it — a
+  plate or brick across the joint, a layer whose joints land across the
+  joints below — where it was only counted. It is not a fault: made one,
+  15 of `patterns_probe`'s models (round towers, octagonal shafts, turrets,
+  domes, cones, rock), 5 of `rooms_probe`'s shells, 6 worked techniques,
+  `dress_probe`'s wall and `rules_probe`'s one-layer wall failed — the
+  patterns lay pieces that touch (a prism's faces against its core), and
+  they are to be joined first. The verdict carries `each_piece`. Pieces of
+  a size with the model standing apart (a scene), pieces of the person's
+  own and pieces held by nothing (said as floating) are said as before.
+  `edit_probe`: a stack of 11 plates against a tower of 100 is said where
+  it is; a plate across the joint makes it one piece. `edit_model` takes `assemblies` to
   name one (one of the same name moves to the new box), the in-app loop tags
   its assemblies on the bricks as it ends and a session's on saving
   (`_tag_assemblies`, from `CommandSocket` `save_model`; one assembly only
@@ -1050,7 +1060,14 @@ fixing what it got wrong.
   repetition. Three verbs do the counting — `repeat`, `mirror`, `fill` — and
   `fill` takes `wall`, `layers`, `rise` and `shrink`, which between them say a
   dome, a cone, a round tower, a straight hull and a flaring bowl in one object.
-  Expansion happens here, from data: nothing runs anybody's code.
+  Expansion happens here, from data: nothing runs anybody's code. Layers of
+  plates over plates are laid the way, of four (turned or not, from the near
+  corner or the far), that leaves the two layers in fewest pieces
+  (`Patterns._layers_apart`), never a plate exactly over one under it: laid
+  the same way every layer, the held-out owl's base (20 x 16, two plates)
+  was columns of two, eleven pieces side by side. `patterns_probe`: a display
+  base two plates thick is one piece; a round one is still in pieces where
+  its rim's wing plates lie wedge on wedge.
 - `a module said again`: `repeat_section`, on both `submit_design` and
   `edit_model`, over `Assistant._expand_repeats`. Build the repeating unit once
   as a section, then give `{from, times, dx, dy, dz, degrees, axis}` and get a

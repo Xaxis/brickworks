@@ -8750,7 +8750,7 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 	# plaque lying loose in front of it and say every check passed. What is
 	# meant to stand apart is named, and the person sees it as an item of
 	# its own. What stands against the model unjoined (bricks side by side,
-	# a seam) is a remark still, as it was.
+	# a seam) is a remark still, each piece said where it is.
 	var apart_loose: int = (apart["loose"] as Array).size()
 	if apart_loose > 0:
 		feedback += ("\n\nA piece apart from the model is either a part "
@@ -8772,6 +8772,16 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 			+ "Intended, if it is meant to be a scene; worth a look "
 			+ "otherwise, because a part held by nothing falls off when "
 			+ "the model is picked up.")
+		var unjoined: Array = apart["unjoined"]
+		if not unjoined.is_empty():
+			feedback += (" Each falls off when the model is picked up; join it "
+				+ "with a plate or brick over or under the joint that reaches "
+				+ "across into both, or a layer whose joints land across the "
+				+ "joints below:")
+		for piece: Array in unjoined.slice(0, WORTH_SAYING):
+			feedback += "\n  - " + _unjoined_said(model, piece)
+		if unjoined.size() > WORTH_SAYING:
+			feedback += "\n  ...and %d more like that." % (unjoined.size() - WORTH_SAYING)
 	var items := PackedStringArray(apart["items"])
 	if apart_loose == 0 and not items.is_empty():
 		feedback += ("\n\n%s stand%s apart from the model, named."
@@ -8799,6 +8809,9 @@ func _check(model: Model, alone: bool = false) -> Dictionary:
 		"named": int(apart["named"]),
 		"kinds": issues.keys(),
 		"floating": floating.keys(),
+		## Each piece, as indices into the placements, for a probe to say
+		## where each one is.
+		"each_piece": each_piece,
 	}
 
 
@@ -10026,7 +10039,8 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 
 ## Which pieces standing apart from the model (touching nothing of it) are
 ## there on purpose, and which came loose: {"loose": the pieces nothing
-## names, "items": the names of the rest}.
+## names, "unjoined": the design's pieces against the model that nothing
+## joins, to be said where they are, "items": the names of the rest}.
 ##
 ## The held-out sports car finished in two pieces and said every check
 ## passed: a nameplate on a plate lay on the ground in front of it, joined
@@ -10040,7 +10054,8 @@ static func _outside(pieces: Array, box_of: Dictionary) -> Dictionary:
 ## design's in it; a piece of the person's own is theirs to leave.
 func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 		touching: Dictionary = {}, outside: Dictionary = {}) -> Dictionary:
-	var out: Dictionary = {"loose": [], "items": PackedStringArray(), "against": 0, "named": 0}
+	var out: Dictionary = {"loose": [], "unjoined": [], "items": PackedStringArray(),
+		"against": 0, "named": 0}
 	if pieces.size() <= 1:
 		return out
 	var main: int = -1
@@ -10061,8 +10076,10 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 	for index: int in pieces[main]:
 		main_names[_assembly_of(model, model.placements[index])] = true
 	# What touches the model, or touches what does: walls side by side that
-	# nothing bonds, a door beside its frame. Not joined, and said so by the
-	# seam and one-layer advice; not standing apart.
+	# nothing bonds, a door beside its frame, a base whose second layer of
+	# plates lies joint on joint over the first. Not standing apart, and not
+	# joined either: said, each where it is. The held-out owl finished in
+	# seven pieces that touched, told only how many.
 	var against: Dictionary = {main: true}
 	var reach: Array = [main]
 	while not reach.is_empty():
@@ -10071,14 +10088,13 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 			if not against.has(other):
 				against[other] = true
 				reach.append(other)
-	out["against"] = against.size() - 1
 	for n: int in pieces.size():
-		if against.has(n):
+		if n == main:
 			continue
 		var piece: Array = pieces[n]
 		# Inside the model's plan — a face of a prism against its posts, a
 		# part on the floor of a courtyard — is not standing apart from it.
-		if not outside.has(n):
+		if not against.has(n) and not outside.has(n):
 			out["against"] = int(out["against"]) + 1
 			continue
 		var designed: bool = false
@@ -10091,7 +10107,18 @@ func _standing_apart(model: Model, pieces: Array, floating: Dictionary = {},
 			adrift = adrift and floating.has(index)
 			names[_assembly_of(model, placement)] = true
 			parts.append({"part": placement.part})
-		# Held by nothing is said already, part by part.
+		# Against the model: said, with where each one of the design's is, so
+		# a design can lay a part across the joint. Not refused: the prisms,
+		# rooms, round towers and one-layer walls the patterns lay are in
+		# pieces that touch (a prism's faces against its core), and 26 of
+		# their probes' models failed when it was a fault.
+		if against.has(n):
+			out["against"] = int(out["against"]) + 1
+			if designed and not adrift:
+				(out["unjoined"] as Array).append(piece)
+			continue
+		# Held by nothing is said already, part by part; the person's own
+		# is theirs to leave.
 		if not designed or adrift:
 			continue
 		# Named when every part of it is in an assembly the model has no
@@ -10189,6 +10216,15 @@ static func _loose_said(model: Model, piece: Array) -> String:
 			Placement._num(low.y), Placement._num(low.z), Placement._num(high.x),
 			Placement._num(high.y)]
 		+ "z %s, joined to nothing of the model" % Placement._num(high.z))
+
+
+## Where a piece against the model is, what it is made of and what it
+## touches, for the check to say: the bricks it is beside, so a design can
+## lay a part across the joint.
+static func _unjoined_said(model: Model, piece: Array) -> String:
+	var said: String = _loose_said(model, piece).replace("joined to nothing of the model",
+		"against the model and joined to nothing of it")
+	return said
 
 
 ## Half a stud across and a plate up: faces turned to an angle meet at their

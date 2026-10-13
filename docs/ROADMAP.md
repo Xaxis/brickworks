@@ -1610,6 +1610,27 @@ above was three plates).
 Pictures: `shots/d3/head_{before,after}_{corner,front}.png` and
 `shots/d3/domes_{before,after}_corner.png` in this worktree.
 
+*Why the owl was seven pieces.* Not its body: laid again as submitted, its
+shape was one piece. Its base was a `fill` 20 x 16, two layers of plates,
+and the fill tiled every layer of plates the same way, so the base was
+columns of two plates each held only to the one over it; the post and the
+body joined some, and the rest stood side by side, eleven pieces as
+submitted and seven after the run's edits bridged a few. Plates over plates
+are now laid the way of four (turned or not, from the near corner or the
+far) that leaves the two layers in fewest pieces, never a plate exactly over
+one under it (`Patterns._layers_apart`). The owl's submission: 12 pieces
+before, 1 after. A round fill is still in pieces where its rim's wing
+plates lie wedge on wedge (14 across, two plates: 7 pieces).
+
+The check still says pieces against the model as a remark, now each with
+where it is and how to join it, where it only counted them. Made a fault,
+it failed 15 of `patterns_probe`'s models (round towers, octagonal shafts,
+turrets, domes, cones, rock), 5 of `rooms_probe`'s shells, 6 worked
+techniques, `dress_probe`'s wall and `rules_probe`'s one-layer wall: the
+patterns themselves lay pieces that touch (a prism's faces against its
+core, a column of side-stud bricks up a shaft). Those are to be joined
+before it can refuse a design.
+
 ## Long term: custom elements
 
 A LEGO designer can ask for a new element, or a change to one. Brickworks
