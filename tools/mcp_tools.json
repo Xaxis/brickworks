@@ -3600,6 +3600,73 @@
     "name": "make_unique"
   },
   {
+    "description": "Search brickworks.diy/gallery, the models people built in Brickworks and shared, and open one as a reference. With no open: a page of models matching q (words of a name, a builder, a tag or a description), kind, size, technic, instructions, sorted by sort; each with its link id, part count, credit and licence. open=<id>: one model compactly — what it is, its size, its sub-assemblies and steps, its parts by kind and the most used, its credit and its licence, and its picture — to learn how it is built. Read-only: nothing on the baseplate changes. Credit its builder and keep to its licence in anything made from it.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "description": "only models with their builder's own steps",
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "castle",
+            "space",
+            "vehicle",
+            "town",
+            "architecture",
+            "mechanism",
+            "robot",
+            "nature",
+            "figure",
+            "art",
+            "other"
+          ],
+          "type": "string"
+        },
+        "open": {
+          "description": "a model's link id, from a search, to read it",
+          "type": "string"
+        },
+        "page": {
+          "description": "1 when omitted",
+          "type": "integer"
+        },
+        "picture": {
+          "description": "with open: its picture too; true when omitted",
+          "type": "boolean"
+        },
+        "q": {
+          "description": "words to look for, up to 100 characters",
+          "type": "string"
+        },
+        "size": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "type": "string"
+        },
+        "sort": {
+          "enum": [
+            "newest",
+            "views",
+            "likes",
+            "remixes"
+          ],
+          "type": "string"
+        },
+        "technic": {
+          "description": "only Technic models and mechanisms",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "gallery"
+  },
+  {
     "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, or any call still going after 20 s). It waits up to 10 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",
     "input_schema": {
       "additionalProperties": false,

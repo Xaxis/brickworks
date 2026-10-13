@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe -->
 
 ## Sub-features
 
@@ -122,7 +122,27 @@ Sketch first — see assistant.md, "sketch first". 38 in all on 2026-10-13;
 `settle_feature`, with which a session accepts, adjusts or rejects the real
 piece the app laid for each feature, and without which `save_model` refuses
 — see assistant.md, the design loop's features.)
-above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_unique`; `mcp_sync_probe` keeps the count honest.)
+above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_unique`; 42 with `gallery`
+(below); `mcp_sync_probe` keeps the count honest.)
+- `the gallery over mcp` (`src/net/gallery_tool.gd`, `GalleryTool`, the
+  `gallery` tool of `AppTools`, 2026-10-13): read-only. With no `open`, a page
+  of brickworks.diy/gallery (`/api/share?op=list` of the app's own deployment,
+  `Deployment.api_base`; never a URL a session names) for `q`, `kind` (the
+  gallery's own kinds, `ModelKinds`), `size`, `technic`, `instructions`, `sort`
+  and `page`: one line a model with its link id, part count, credit, kind,
+  licence, counts, own steps and Technic, then how to read one and to credit
+  its builder. `open=<id>`: the viewer's own request (`/api/share?id=`), read
+  compactly — the link, the credit, what its owner wrote, its kind and tags,
+  its licence said as what a session may do with it (CC BY, CC BY-SA, all
+  rights reserved, or none chosen: learn, do not copy), what it was remixed
+  from, then from its file (`LdrModel.parse`, `flatten` against the
+  catalogue) its sub-assemblies and steps, its size in studs and bricks, its
+  parts by catalogue kind and the ten most used by part and colour — and its
+  small picture (or the big one when it has none) as an image block;
+  `picture=false` leaves it out. Nothing on the baseplate changes, and it is
+  answered in a tab showing a shared model too (`_while_looking`). In
+  `AppTools.GUIDE`. The viewer's JSON carries `description`, `tags` and
+  `kind` for it since then.
 
 ## How to reach it
 
@@ -160,6 +180,7 @@ Runtime:
 godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queue included
 godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, the guide, the menus in step
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
+BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 tools/mcp_check.py                                        # the relay's half
 tools/mcp_check.py --port=8787                            # against an app you opened
 tools/mcp_check.py --port=8846 --jobs                     # ...in a window: Orthanc's turntable as a job
@@ -194,6 +215,28 @@ accent in it is answered, and so is a second request sent in the same write.
 Brickworks over MCP" — initialize, ping, `tools/list` with MCP's `inputSchema`
 spelling, a search, a cleared baseplate, a design that lands, a save read back off
 disk, and the no-app case answering "not running" with the command to start it.
+
+`gallery_tool_probe` ends on "a session can search the gallery and read a model
+in it, and only read" (30 checks against the local functions and the live
+database, 2026-10-13): `gallery` in `tools/list` with the gallery's own 11
+kinds; a page newest first, each line a model with its link id, credit,
+licence and counts, and how to read one crediting its builder; a search, a
+kind most viewed first, nothing found said so; a kind, a size, a sort and an
+open that are not one refused in words, and a link never shared; one opened
+with its link, licence, sub-assemblies, size, parts by kind, the most used and
+"Read-only", its picture an image block, `picture=false` leaving it out, the
+baseplate's part count unchanged, and still answered while the tab shows a
+shared model; then, from answers played by `FakeGallery`, each licence's
+words, the owner's description, kind and tags, a size and kinds read from the
+file, and the most used part named. `mcp_check.py`, with the app's
+`BRICKWORKS_API` at a deployment that has the directory (or the local
+functions), also searches the gallery over MCP and opens the first model
+with its licence, size and picture as an MCP image block. A real session, on
+the subscription (`env -u ANTHROPIC_API_KEY claude -p ... --strict-mcp-config
+--tools "" --restricted --allowedTools mcp__brickworks__gallery`, against an
+app started with `--mcp=PORT`), asked for a castle as a reference, answered
+from the tool alone with its maker, its size and main parts and that, with no
+licence chosen, it may be learned from but not copied (2026-10-13).
 
 `mcp_sync_probe` ends on "the MCP is in step with the app". `app_tools_probe`
 ends on "a session can do what the person does from the menus": every one of

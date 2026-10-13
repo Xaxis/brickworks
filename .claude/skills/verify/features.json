@@ -302,6 +302,14 @@
       "tests": []
     },
     {
+      "id": "cli:gallery tool probe",
+      "kind": "cli",
+      "entry": "src/dev/gallery_tool_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   (relay_server.mjs 8790 running, .env sourced)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "cli:hoses and chains by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/flex_pose_flow.mjs",
@@ -1010,6 +1018,14 @@
       "entry": "src/parts/part_tool.gd",
       "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:the gallery over mcp",
+      "kind": "lib",
+      "entry": "src/net/gallery_tool.gd",
+      "reach": "the gallery tool (AppTools): search brickworks.diy/gallery, open=<id> reads one as a reference with its credit and licence",
+      "area": "mcp",
       "tests": []
     },
     {
