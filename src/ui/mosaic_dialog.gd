@@ -93,6 +93,19 @@ func _build() -> void:
 	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(_preview)
 
+	# What it comes to, under the picture of it. Worked out a moment after
+	# each change, it goes from a line ("working it out…") to three or
+	# four, and the picture gives way to it. Below the controls it pushed
+	# everything above it up by those lines as the count arrived: a click
+	# aimed at the brief landed on this text instead, and what was typed
+	# next went to the model as shortcuts (tools/web/art_flow.mjs).
+	_detail = Label.new()
+	_detail.add_theme_font_size_override("font_size", 12)
+	_detail.modulate = Color(1, 1, 1, 0.68)
+	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail.custom_minimum_size = Vector2(300, 0)
+	column.add_child(_detail)
+
 	var modes := HBoxContainer.new()
 	modes.add_theme_constant_override("separation", 6)
 	column.add_child(modes)
@@ -163,13 +176,6 @@ func _build() -> void:
 	_ask.add_theme_font_size_override("font_size", 12)
 	_ask.pressed.connect(design_with_claude)
 	claude.add_child(_ask)
-
-	_detail = Label.new()
-	_detail.add_theme_font_size_override("font_size", 12)
-	_detail.modulate = Color(1, 1, 1, 0.68)
-	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail.custom_minimum_size = Vector2(300, 0)
-	column.add_child(_detail)
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)

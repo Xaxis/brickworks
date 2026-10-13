@@ -870,8 +870,10 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 # python3 tools/web/serve.py build/web PORT): Build > Mosaic from a picture
 # (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
 # brickworksState.art read for its parts, every one on the baseplate, one
-# piece, Panel N#1 and Frame#1 in the tree; then Design with Claude, which
-# must close the dialog, open the assistant and, with no key, say so.
+# piece, Panel N#1 and Frame#1 in the tree; then a brief typed into the
+# dialog, which must take it (the tool still Select, not Orbit from its O),
+# and Design with Claude, which must close the dialog, open the assistant
+# and, with no key, say so.
 node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web
 godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the render is of the model
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one

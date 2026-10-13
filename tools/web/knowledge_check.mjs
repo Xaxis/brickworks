@@ -128,7 +128,10 @@ try {
   writeFileSync(`${out}/find_techniques.txt`, text);
   const index = asked.filter(([, u]) => u.endsWith("snippets.json.gz"));
   check(index.length === 1, `find_techniques fetched the index once (${index.length} times, ${(received / 1e6).toFixed(1)} MB)`);
-  const ids = [...text.matchAll(/id (\S+) /g)].map((m) => m[1]);
+  // Each piece leads with its number and id, then its name in quotes:
+  // 1. <id> "<name>", from <set>…; lays as it stands. (Assistant._piece_line;
+  // said() has run the lines together.)
+  const ids = [...text.matchAll(/(?:^| )\d\. (\S+) "/g)].map((m) => m[1]);
   check(ids.length >= 3 && text.includes("LDraw Official Model Repository"),
     `...and answered with credited real pieces in ${(foundMs / 1000).toFixed(1)} s: ${ids.slice(0, 3).join(", ")}`);
   for (const [n, image] of pictures(found).entries()) {
@@ -138,7 +141,7 @@ try {
 
   await claude("tools/call", { name: "clear_model", arguments: {} });
   await claude("tools/call", { name: "edit_model", arguments: { add: [{ part: "91405", color: 72, x: 0, y: 0, z: 0, rot: 0 }] } });
-  const laysId = (text.match(/id (\S+) [^.]*?lays as it stands/) || [])[1] || ids[0];
+  const laysId = (text.match(/(?:^| )\d\. (\S+) "[^;]*; lays as it stands/) || [])[1] || ids[0];
   const placed = said(await claude("tools/call", { name: "place_technique", arguments: { id: laysId, x: 4, y: 1, z: 4 } }));
   writeFileSync(`${out}/place_technique.txt`, placed);
   check(placed.includes("Done."), `place_technique laid ${laysId} on the plate: ${placed.slice(0, 120)}`);

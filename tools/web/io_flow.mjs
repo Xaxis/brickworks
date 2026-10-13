@@ -10,7 +10,8 @@
 // a file, the page's own file picker answered by Playwright, and checks its
 // five parts came in and that the status bar names the one only Studio has.
 // Then File > Export > BrickLink Studio model (.io), by the keys a person
-// would use in the menu, catches the download and reads it with Python's
+// would use in the menu (exportStudio says which, and why not its name
+// typed), catches the download and reads it with Python's
 // zipfile: model.ldr, .info, errorPartList.err and a thumbnail. Opens that
 // file again through the picker and checks the same five parts. Last, a
 // picture renamed .io: the status bar has to say it is not a Studio file.
@@ -110,19 +111,28 @@ async function open(file) {
   throw new Error("no file picker came up");
 }
 // File > Export > BrickLink Studio model (.io), by the menu's own keys: the
-// File menu, "Export" typed to find the submenu, the arrow into it, the
-// line's first words, Enter. Tried again if no download came, as a click is.
+// File menu, E for its one line that starts so, the arrow into Export, down
+// one from the LDraw model to the Studio one, Enter. Tried again if no
+// download came, as a click is.
+//
+// Not by typing "BrickLink Studio". A menu's search moves to the next line
+// that starts with what has been typed, so letter by letter it swings
+// between "BrickLink Studio model" and "BrickLink wanted list", and the
+// space chooses wherever it is. It also starts again when two keys reach the
+// app more than two seconds apart, which one slow software frame does. So
+// the line chosen depended on the frame times: on a busy machine the
+// download was the wanted list, bay_2025_bricklink.xml.
 async function exportStudio() {
   const file = await where("menu_file");
   for (let n = 0; n < 3; n++) {
     const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
     await page.mouse.click(file.x, file.y);
     await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.type("Export", { delay: 120 });
+    await page.keyboard.press("E");
     await page.waitForTimeout(800);
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(1500);
-    await page.keyboard.type("BrickLink Studio", { delay: 120 });
+    await page.keyboard.press("ArrowDown");
     await page.waitForTimeout(800);
     if (n === 0) await shot("2_export_menu.png");
     await page.keyboard.press("Enter");
