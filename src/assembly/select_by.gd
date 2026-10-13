@@ -12,44 +12,32 @@ class_name SelectBy
 extends RefCounted
 
 
-## One of colour, part or alike, by name.
-static func matching(kind: String, world: BrickWorld, seed_id: int,
+## Every brick of the colour, the part, or the part and colour ([param
+## kind]) of any of [param seeds], in one look over the model. Asked seed by
+## seed, with all of Orthanc selected, Same colour looked over its 9,429
+## parts 9,429 times and held the window for over a minute (2026-10-13,
+## command_probe).
+static func matching_any(kind: String, world: BrickWorld, seeds: Array,
 		scenery: Dictionary) -> Array:
+	var wanted: Dictionary = {}
+	for seed_id: int in seeds:
+		var seed: BrickWorld.Brick = world.get_brick(seed_id)
+		if seed != null:
+			wanted[_trait(kind, seed)] = true
+	if wanted.is_empty():
+		return []
+	return _where(world, scenery, func(brick: BrickWorld.Brick) -> bool:
+		return wanted.has(_trait(kind, brick)))
+
+
+## What a brick is matched by: its colour, its part, or both.
+static func _trait(kind: String, brick: BrickWorld.Brick) -> Variant:
 	match kind:
 		"colour":
-			return colour(world, seed_id, scenery)
+			return brick.color_code
 		"part":
-			return part(world, seed_id, scenery)
-		"alike":
-			return alike(world, seed_id, scenery)
-	return []
-
-
-## Every brick of this colour.
-static func colour(world: BrickWorld, seed_id: int, scenery: Dictionary) -> Array:
-	var seed: BrickWorld.Brick = world.get_brick(seed_id)
-	if seed == null:
-		return []
-	return _where(world, scenery, func(brick: BrickWorld.Brick) -> bool:
-		return brick.color_code == seed.color_code)
-
-
-## Every brick of this part, in any colour.
-static func part(world: BrickWorld, seed_id: int, scenery: Dictionary) -> Array:
-	var seed: BrickWorld.Brick = world.get_brick(seed_id)
-	if seed == null:
-		return []
-	return _where(world, scenery, func(brick: BrickWorld.Brick) -> bool:
-		return brick.part_id == seed.part_id)
-
-
-## Every brick of this part in this colour.
-static func alike(world: BrickWorld, seed_id: int, scenery: Dictionary) -> Array:
-	var seed: BrickWorld.Brick = world.get_brick(seed_id)
-	if seed == null:
-		return []
-	return _where(world, scenery, func(brick: BrickWorld.Brick) -> bool:
-		return brick.part_id == seed.part_id and brick.color_code == seed.color_code)
+			return brick.part_id
+	return "%s/%d" % [brick.part_id, brick.color_code]
 
 
 ## Every brick in the same sub-model as any of these: the whole tower
@@ -82,14 +70,39 @@ static func inverse(world: BrickWorld, selection: Dictionary,
 ## — a wall bay set beside another comes away on its own. A part lying on
 ## its side is joined across the face its studs point through, so a
 ## sideways panel on a SNOT brick comes with it.
+##
+## [param most] stops looking once that many are found: the properties
+## panel says how many parts one is joined to, and on Orthanc counting all
+## of them held the window for seconds at every click on a part.
 static func connected(world: BrickWorld, lattice: BrickLattice,
-		seeds: Array, scenery: Dictionary) -> Array:
+		seeds: Array, scenery: Dictionary, most: int = 1 << 30) -> Array:
 	var found: Dictionary = {}
 	var queue: Array = []
 	for seed_id: int in seeds:
 		if world.get_brick(seed_id) != null and not scenery.has(seed_id):
 			found[seed_id] = true
 			queue.append(seed_id)
+	while not queue.is_empty() and found.size() < most:
+		var here: int = queue.pop_back()
+		for other: int in _joined_to(world, lattice, here):
+			if found.has(other) or scenery.has(other):
+				continue
+			found[other] = true
+			queue.append(other)
+	return found.keys()
+
+
+## [method connected], a slice at a time (FramePace), [param job] counting
+## what it has found; nothing when it was cancelled.
+static func connected_paced(world: BrickWorld, lattice: BrickLattice,
+		seeds: Array, scenery: Dictionary, job: Working.Job) -> Array:
+	var found: Dictionary = {}
+	var queue: Array = []
+	for seed_id: int in seeds:
+		if world.get_brick(seed_id) != null and not scenery.has(seed_id):
+			found[seed_id] = true
+			queue.append(seed_id)
+	var most: int = world.brick_count() - scenery.size()
 	while not queue.is_empty():
 		var here: int = queue.pop_back()
 		for other: int in _joined_to(world, lattice, here):
@@ -97,6 +110,11 @@ static func connected(world: BrickWorld, lattice: BrickLattice,
 				continue
 			found[other] = true
 			queue.append(other)
+		if job.due():
+			job.count(found.size(), most)
+			await job.next()
+			if job.cancelled:
+				return []
 	return found.keys()
 
 

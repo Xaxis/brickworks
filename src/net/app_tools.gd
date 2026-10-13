@@ -892,7 +892,7 @@ func _export(input: Dictionary) -> String:
 	var said: String = ""
 	match str(input.get("format", "")):
 		"ldraw":
-			said = bar.export_now(exports.folder)
+			said = await bar.export_now(exports.folder)
 		"studio":
 			said = await exports.studio_io()
 		"picture":

@@ -9,6 +9,19 @@ class_name Download
 extends RefCounted
 
 
+## Where a file handed over on the desktop goes: their Downloads folder, or
+## [member folder] when set (a probe points it at a scratch folder, so that
+## timing every command never writes into a person's Downloads).
+static var folder: String = ""
+
+
+static func downloads() -> String:
+	if not folder.is_empty():
+		return folder
+	var found: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	return found if not found.is_empty() else OS.get_user_data_dir()
+
+
 ## Returns a line to show the person, which differs by platform because
 ## the outcome does: on the desktop there is a path they can go and look
 ## at, and in a browser there is not.
@@ -17,12 +30,10 @@ static func give(text: String, file_name: String, mime: String = "text/plain") -
 		JavaScriptBridge.download_buffer(text.to_utf8_buffer(), file_name, mime)
 		return "downloaded %s" % file_name
 
-	var folder: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	if folder.is_empty():
-		folder = OS.get_user_data_dir()
+	var into: String = downloads()
 	# The name comes from the model's title, which a design names: only
 	# its last part, so no title can put a file outside the folder.
-	var path: String = folder.path_join(file_name.replace("\\", "/").get_file())
+	var path: String = into.path_join(file_name.replace("\\", "/").get_file())
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("could not write %s (%d)" % [path, FileAccess.get_open_error()])

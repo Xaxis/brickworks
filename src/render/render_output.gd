@@ -24,11 +24,7 @@ var _settings: RenderSettings
 
 ## Where files go on the desktop.
 func where() -> String:
-	var to: String = folder if not folder.is_empty() \
-		else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	if to.is_empty():
-		to = OS.get_user_data_dir()
-	return to
+	return folder if not folder.is_empty() else Download.downloads()
 
 
 ## A file name from a model's name: its last part only, so no title can

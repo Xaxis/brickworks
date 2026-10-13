@@ -61,6 +61,11 @@ signal shop_list_wanted(shop: String)
 signal studio_wanted()
 
 
+## How a dialog's button runs its command, said on the status bar first when
+## it is slow: Shell.attend. As it is, without a shell.
+var attend: Callable = func(_name: String, work: Callable) -> void: work.call()
+
+
 ## A button's face in each state, faint until pointed at.
 const BUTTON_FACES := {"normal": Color(1, 1, 1, 0.06), "hover": Color(1, 1, 1, 0.14),
 	"pressed": Color(0.36, 0.6, 1.0, 0.32)}
@@ -142,20 +147,18 @@ func _build() -> void:
 	_confirm.dialog_text = ("Every brick on it goes, and it cannot be undone. "
 		+ "Save first if you might want it back.")
 	_confirm.ok_button_text = "Clear it"
-	_confirm.confirmed.connect(_on_clear)
+	_confirm.confirmed.connect(func() -> void: attend.call("clear", _on_clear))
 	add_child(_confirm)
 
 	_confirm_new = ConfirmationDialog.new()
 	_confirm_new.title = "Start a new model?"
 	_confirm_new.ok_button_text = "Start new without saving"
-	_confirm_new.confirmed.connect(_start_new)
-	_confirm_new.add_button("Save, then start new", true, "save")
+	_confirm_new.confirmed.connect(func() -> void: attend.call("new", _start_new))
+	_save_then_new_button = _confirm_new.add_button("Save, then start new", true, "save")
 	_confirm_new.custom_action.connect(func(action: StringName) -> void:
 		if action == &"save":
 			_confirm_new.hide()
-			_on_save()
-			if not store.has_unsaved_work():
-				_start_new())
+			attend.call("save_new", _save_then_new))
 	add_child(_confirm_new)
 
 	_saves = PopupMenu.new()
@@ -228,7 +231,15 @@ func bind(to: ModelStore) -> void:
 
 ## The bar's own controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
-	return {"model_name": _name, "account": _account}
+	var out: Dictionary = {"model_name": _name, "account": _account}
+	# New's question, for tools/web/progress_check.mjs.
+	if _confirm_new.visible:
+		out["new_save"] = _save_then_new_button
+		out["new_discard"] = _confirm_new.get_ok_button()
+	return out
+
+
+var _save_then_new_button: Button
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has
@@ -261,14 +272,47 @@ func _say(text: String) -> void:
 			_status.text = "")
 
 
-func _on_save() -> void:
+## Save under the model's name. True when it was saved.
+##
+## A big model's build order is worked out a slice at a time, the status
+## bar counting it with Cancel (ModelStore.save_as_paced): worked out in
+## one go it held a browser for seconds on Orthanc, which is what "Save,
+## then start new" froze on (2026-10-13).
+func _on_save() -> bool:
 	if store == null:
-		return
+		return false
 	if world.brick_count() == 0:
 		_say("nothing to save")
-		return
-	if not store.save_as(model_name()):
+		return false
+	var name: String = model_name()
+	var saved: bool = false
+	if not store.paces():
+		saved = store.save_as(name)
+	elif _saving != null:
+		return false
+	else:
+		_saving = Working.begin("Saving “%s”…" % name, 0, true)
+		await _saving.shown()
+		saved = await store.save_as_paced(name, _saving)
+		var stopped: bool = _saving.cancelled
+		_saving.end()
+		_saving = null
+		if stopped:
+			_say("stopped saving “%s”; nothing was written" % name)
+			return false
+	if not saved:
 		_say("could not save that name")
+	return saved
+
+
+## The save going, while it works out the build order.
+var _saving: Working.Job = null
+
+
+## "Save, then start new": the new model only once the save has been made.
+func _save_then_new() -> void:
+	if await _on_save():
+		await _start_new()
 
 
 ## "Saved" once it is: on the web a save is in the browser's storage only
@@ -409,7 +453,7 @@ func _on_export_chosen(id: int) -> void:
 func _on_export() -> void:
 	if store == null:
 		return
-	var said: String = export_now()
+	var said: String = await export_now()
 	if not said.is_empty():
 		_say(said)
 
@@ -427,14 +471,14 @@ func export_now(into: String = "") -> String:
 	var file_name: String = model_name().to_snake_case() \
 		+ (".mpd" if grouped else ".ldr")
 	if OS.has_feature("web"):
-		store.export_to(file_name, model_name())
-		return "downloaded %s" % file_name
+		if await store.export_paced(file_name, model_name()):
+			return "downloaded %s" % file_name
+		return ""
 	# Only the name's last part: a model's title is named by whoever
 	# designed it, and "../" in one would put the file somewhere else.
-	var folder: String = into if not into.is_empty() \
-		else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	var folder: String = into if not into.is_empty() else Download.downloads()
 	var path: String = folder.path_join(file_name.replace("\\", "/").get_file())
-	if store.export_to(path, model_name()):
+	if await store.export_paced(path, model_name()):
 		return "wrote %s" % path
 	return "could not write %s" % path
 
